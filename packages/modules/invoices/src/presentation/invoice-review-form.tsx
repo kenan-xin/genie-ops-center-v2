@@ -316,8 +316,11 @@ export function InvoiceReviewForm(props: {
 
   const canSave = canSubmit && dueOk && customerReady;
 
+  // A read due date offers no Mark as unspecified, so its helper names only the date.
   const helper = !dueOk
-    ? "Choose a due date or mark it unspecified to save."
+    ? reading?.fields.dueDate === undefined
+      ? "Choose a due date or mark it unspecified to save."
+      : "Enter a due date to save."
     : values.customer.kind === "new" && !values.customer.confirmed
       ? "Confirm the new customer to save."
       : canSave

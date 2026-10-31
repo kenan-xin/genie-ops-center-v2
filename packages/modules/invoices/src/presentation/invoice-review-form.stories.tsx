@@ -256,6 +256,23 @@ export const DueDateSourcesKept: Story = {
   },
 };
 
+// BF.3: a read due date cleared asks for a date, since this path has no Mark as unspecified.
+export const ReadDueDateCleared: Story = {
+  name: "Due date: read date cleared",
+  args: { view: dueDateReadReview },
+  globals: desktop,
+  beforeEach: () => serve(dueDateReadReview),
+  play: async ({ canvas }) => {
+    await userEvent.clear(canvas.getByLabelText("Due date"));
+
+    await expect(canvas.getByText("Enter a due date to save.")).toBeVisible();
+    await expect(saveButton(canvas, "Save as unpaid")).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+  },
+};
+
 // B5.3: a changed total is corrected, the read value typed back is extracted, a typed due date is entered.
 export const Tags: Story = {
   globals: desktop,
@@ -589,5 +606,11 @@ export const LinkedAutomaticallyOnPhone: Story = {
 export const SavedReadOnlyOnPhone: Story = {
   ...SavedReadOnly,
   name: "Saved read only on a phone",
+  globals: phone,
+};
+
+export const ReadDueDateClearedOnPhone: Story = {
+  ...ReadDueDateCleared,
+  name: "Due date: read date cleared on a phone",
   globals: phone,
 };
