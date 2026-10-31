@@ -144,6 +144,53 @@ export const MissingDueDate: Story = {
   },
 };
 
+// B5.7: a due-date radio keeps its first click after another field was selected first.
+// This story documents the click path only: user-event dispatches to the element without
+// hit-testing, so it cannot see a layout shift. The hit-testing proof is the plain Playwright
+// click in `apps/genie/e2e/dev/review.spec.ts`, where the original row lost that click.
+export const DueDateAfterAnotherField: Story = {
+  name: "Due date: one click after another field",
+  globals: desktop,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Show the source of Total" })
+    );
+    await userEvent.click(
+      canvas.getByRole("radio", { name: "Enter a due date" })
+    );
+
+    await expect(
+      canvas.getByRole("radio", { name: "Enter a due date" })
+    ).toBeChecked();
+    await expect(canvas.getByLabelText("Due date")).toBeVisible();
+  },
+};
+
+// B5.8: Tab focus inside a row selects it, so a keyboard user sees its source (Task 4, R-38).
+export const RowSelectedByTab: Story = {
+  name: "Row: Tab focus selects it",
+  globals: desktop,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    const radio = canvas.getByRole("radio", { name: "Enter a due date" });
+
+    const source = canvas.getByRole("button", {
+      name: "Show the source of Due date",
+    });
+
+    await expect(source).toHaveAttribute("aria-pressed", "false");
+
+    for (let tab = 0; tab < 30 && !radio.matches(":focus"); tab += 1) {
+      // oxlint-disable-next-line no-await-in-loop -- each Tab moves focus for the next check.
+      await userEvent.tab();
+    }
+
+    await expect(radio).toHaveFocus();
+    await expect(source).toHaveAttribute("aria-pressed", "true");
+  },
+};
+
 // B5.2 run 1: a typed due date saves source person.
 export const DueDateSources: Story = {
   name: "Due date sources: typed",

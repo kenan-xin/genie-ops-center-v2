@@ -241,12 +241,17 @@ export function ReviewFieldRow(props: ReviewFieldRowProps): ReactNode {
   const { field, label, tag, sources, unread, selected, onSelect, children } =
     props;
 
+  // Selecting collapses the source line of the row selected before, which moves this row. On a
+  // pointer press that move would happen between mousedown and mouseup and lose the click, so a
+  // pointer selects on click; keyboard focus matches :focus-visible and selects at once (Task 4).
   return (
     <div
       data-field={field}
       className={`flex flex-col gap-1 px-4 py-3 ${selected ? "bg-muted" : ""}`}
+      onFocus={(event) => {
+        if (event.target.matches(":focus-visible")) onSelect();
+      }}
       onClick={onSelect}
-      onFocus={onSelect}
     >
       <div className="flex items-start gap-3">
         <span className="w-32 shrink-0 text-sm text-muted-foreground">
