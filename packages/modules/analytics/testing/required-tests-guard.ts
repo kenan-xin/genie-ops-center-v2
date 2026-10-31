@@ -63,6 +63,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
           "filterValues",
         ].map((procedure) => `refuse ${procedure} to a person without its key`),
         "refuse a change on an older version and write nothing",
+        "refuse a save without expectedVersion that another save overtook at the lock",
         "refuse a panel on a dataset this deployment lacks and write nothing",
         "undo two renames in reverse order, then answer nothing-to-undo",
         "refuse an Undo whose panel the gate refuses now and restore nothing",

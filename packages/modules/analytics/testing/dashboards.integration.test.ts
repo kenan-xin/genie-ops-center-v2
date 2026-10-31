@@ -14,6 +14,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { EMPTY_DASHBOARD_CONFIG } from "../src/config.ts";
 import { analyticsModule } from "../src/module.ts";
 import { analyticsRouter } from "../src/router.ts";
+import { changeDashboard } from "../src/services/dashboards/store.ts";
 import {
   loadDashboardList,
   loadDashboardPage,
@@ -278,6 +279,38 @@ describe("the analytics dashboard procedures", () => {
     ).rejects.toMatchObject({ code: "analytics:dashboard-changed" });
 
     expect(await rowOf(id)).toEqual(before);
+  });
+
+  // The tool path sends no expectedVersion, so only the lock-time check stops a lost update.
+  it("refuse a save without expectedVersion that another save overtook at the lock", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+    });
+
+    // All five read version 1 before any of them locks the row.
+    const results = await Promise.allSettled(
+      [1, 2, 3, 4, 5].map((n) =>
+        changeDashboard(contextOf(owner), {
+          id,
+          changes: [{ op: "rename", name: `Save ${n}` }],
+        })
+      )
+    );
+
+    const saved = results.filter((result) => result.status === "fulfilled");
+
+    for (const result of results) {
+      if (result.status === "rejected") {
+        expect(result.reason).toMatchObject({
+          code: "analytics:dashboard-changed",
+        });
+      }
+    }
+
+    // Each save that went through moved the version once; none wrote over another.
+    expect((await rowOf(id)).version).toBe(1 + saved.length);
   });
 
   it("refuse a panel on a dataset this deployment lacks and write nothing", async () => {
