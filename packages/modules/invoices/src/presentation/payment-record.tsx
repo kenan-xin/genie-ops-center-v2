@@ -2,14 +2,18 @@
 
 import { PageHeader } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
-import { buttonVariants, Card, CardContent } from "@genie/ui";
+import { Button, buttonVariants, Card, CardContent } from "@genie/ui";
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
 import { HistoryTable } from "./allocations.tsx";
 import { formatDay, formatMoney, paymentLabel } from "./format.ts";
-import { INVOICES_QUERY, RecordLinks } from "./link-dialogs.tsx";
+import {
+  INVOICES_QUERY,
+  LinkInvoiceDialog,
+  RecordLinks,
+} from "./link-dialogs.tsx";
 import { PaymentStatusBadge } from "./payment-status-badge.tsx";
 import type { PaymentRecordView } from "./views.ts";
 
@@ -58,6 +62,7 @@ function ShownPayment(props: { readonly initial: ShownView }) {
   const id = props.initial.payment.id;
   const initialData: PaymentRecordView = props.initial;
   const invoices = useModuleClient(invoicesContract);
+  const [linking, setLinking] = useState(false);
 
   const { data: view } = useQuery({
     queryKey: [...INVOICES_QUERY, "payment-record", id],
@@ -71,10 +76,12 @@ function ShownPayment(props: { readonly initial: ShownView }) {
 
   const { payment } = view;
   const money = (cents: number) => formatMoney(cents, payment.currency);
+  const label = paymentLabel(payment);
+  const canLink = view.canWrite && payment.unallocatedCents > 0;
 
   return (
     <main className="flex flex-col gap-6">
-      <PageHeader title={paymentLabel(payment)} />
+      <PageHeader title={label} />
       <p>Amounts as of {view.asOf}, the reporting date.</p>
       <Card>
         <CardContent>
@@ -92,16 +99,37 @@ function ShownPayment(props: { readonly initial: ShownView }) {
           </dl>
         </CardContent>
       </Card>
-      {view.documentUrl === null ? null : (
-        <a
-          href={view.documentUrl}
-          target="_blank"
-          rel="noopener"
-          className={buttonVariants({ variant: "secondary" })}
-        >
-          Open the source document (PDF)
-        </a>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {view.documentUrl === null ? null : (
+          <a
+            href={view.documentUrl}
+            target="_blank"
+            rel="noopener"
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            Open the source document (PDF)
+          </a>
+        )}
+        {canLink ? (
+          <Button variant="secondary" onClick={() => setLinking(true)}>
+            Link to an invoice
+          </Button>
+        ) : null}
+      </div>
+      {canLink ? (
+        <LinkInvoiceDialog
+          open={linking}
+          payment={{
+            id: payment.id,
+            customerId: payment.customerId,
+            currency: payment.currency,
+            label,
+            unallocatedCents: payment.unallocatedCents,
+          }}
+          onClose={() => setLinking(false)}
+          onLinked={() => setLinking(false)}
+        />
+      ) : null}
       <section aria-labelledby="payment-allocations">
         <h2 id="payment-allocations" className="mb-2 font-semibold">
           Allocations

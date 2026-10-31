@@ -2,15 +2,19 @@
 
 import { PageHeader } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
-import { buttonVariants, Card, CardContent } from "@genie/ui";
+import { Button, buttonVariants, Card, CardContent } from "@genie/ui";
 import { useQuery } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
 import { HistoryTable } from "./allocations.tsx";
 import { formatDay, formatMoney } from "./format.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
-import { INVOICES_QUERY, RecordLinks } from "./link-dialogs.tsx";
+import {
+  CorrectTotalDialog,
+  INVOICES_QUERY,
+  RecordLinks,
+} from "./link-dialogs.tsx";
 import type { InvoiceDetail, InvoiceRecordView } from "./views.ts";
 
 const DUE_DATE_SOURCE: Record<InvoiceDetail["dueDateSource"], string> = {
@@ -77,6 +81,7 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
   const id = props.initial.invoice.id;
   const initialData: InvoiceRecordView = props.initial;
   const invoices = useModuleClient(invoicesContract);
+  const [correcting, setCorrecting] = useState(false);
 
   const { data: view } = useQuery({
     queryKey: [...INVOICES_QUERY, "invoice-record", id],
@@ -112,16 +117,37 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
           </dl>
         </CardContent>
       </Card>
-      {view.documentUrl === null ? null : (
-        <a
-          href={view.documentUrl}
-          target="_blank"
-          rel="noopener"
-          className={buttonVariants({ variant: "secondary" })}
-        >
-          Open the source document (PDF)
-        </a>
-      )}
+      <div className="flex flex-wrap gap-2">
+        {view.documentUrl === null ? null : (
+          <a
+            href={view.documentUrl}
+            target="_blank"
+            rel="noopener"
+            className={buttonVariants({ variant: "secondary" })}
+          >
+            Open the source document (PDF)
+          </a>
+        )}
+        {view.canWrite ? (
+          <Button variant="secondary" onClick={() => setCorrecting(true)}>
+            Correct the total
+          </Button>
+        ) : null}
+      </div>
+      {view.canWrite ? (
+        <CorrectTotalDialog
+          open={correcting}
+          invoice={{
+            id: invoice.id,
+            number: invoice.invoiceNumber,
+            currency: invoice.currency,
+            totalCents: invoice.totalCents,
+          }}
+          allocations={view.allocations}
+          onClose={() => setCorrecting(false)}
+          onCorrected={() => setCorrecting(false)}
+        />
+      ) : null}
       <section aria-labelledby="invoice-allocations">
         <h2 id="invoice-allocations" className="mb-2 font-semibold">
           Allocations

@@ -156,6 +156,29 @@ export const readOnlyInvoiceRecord: ShownInvoice = {
   canWrite: false,
 };
 
+/** Paid in full by two links of 3,000.00 and 2,000.00, for a correction below its links (R-32). */
+export const linkedInFullInvoiceRecord: ShownInvoice = {
+  ...partPaidInvoiceRecord,
+  invoice: {
+    ...partPaidInvoiceRecord.invoice,
+    allocatedCents: 500_000,
+    outstandingCents: 0,
+    status: { kind: "paid" },
+  },
+  allocations: [
+    {
+      ...PAYMENT,
+      id: "77777777-7777-4777-8777-777777777777",
+      amountCents: 300_000,
+    },
+    {
+      ...BY_A_PERSON,
+      id: "78787878-7878-4878-8878-787878787878",
+      amountCents: 200_000,
+    },
+  ],
+};
+
 export const noDueDateInvoiceRecord: InvoiceRecordView = {
   kind: "shown",
   asOf: "2026-10-27",

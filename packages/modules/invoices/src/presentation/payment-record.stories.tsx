@@ -6,9 +6,11 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   laterPaymentRecord,
+  openInvoicesOfPayment,
   partAllocatedPaymentRecord,
   readOnlyPaymentRecord,
 } from "./__fixtures__/payments.ts";
+import { formatDay, formatMoney } from "./format.ts";
 import { PaymentRecord } from "./payment-record.tsx";
 import type { PaymentRecordView } from "./views.ts";
 
@@ -17,6 +19,10 @@ const getPaymentRecord = fn();
 const unlinkAllocation = fn();
 
 const changeAllocation = fn();
+
+const listOpenInvoices = fn();
+
+const linkPayment = fn();
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
@@ -32,11 +38,15 @@ function serve(view: PaymentRecordView) {
   changeAllocation
     .mockReset()
     .mockResolvedValue({ allocationId: automatic?.id ?? "" });
+  listOpenInvoices.mockReset().mockResolvedValue(openInvoicesOfPayment);
+  linkPayment.mockReset().mockResolvedValue({
+    allocationId: "f0f0f0f0-f0f0-4f0f-8f0f-f0f0f0f0f0f0",
+  });
 }
 
-/** True when the record was read again after the last change. */
-function refetchedAfterChange(): boolean {
-  const changed = changeAllocation.mock.invocationCallOrder.at(-1) ?? Infinity;
+/** True when the record was read again after the last call of `mutation`. */
+function refetchedAfter(mutation: typeof changeAllocation): boolean {
+  const changed = mutation.mock.invocationCallOrder.at(-1) ?? Infinity;
 
   return getPaymentRecord.mock.invocationCallOrder.some(
     (order) => order > changed
@@ -88,9 +98,77 @@ async function changeAndRefuse(canvas: ReturnType<typeof within>) {
     REFUSAL
   );
   await expect(dialog).toBeVisible();
-  await expect(refetchedAfterChange()).toBe(false);
+  await expect(refetchedAfter(changeAllocation)).toBe(false);
 
   return dialog;
+}
+
+const larger = openInvoicesOfPayment.rows[1];
+
+const LINK_REFUSAL =
+  "That amount is more than the open balance of the invoice.";
+
+/**
+ * Opens Link to an invoice, checks that it asks for the open invoices of the payment's customer
+ * and currency, and chooses the smaller invoice, then the larger one: each fills the lower of its
+ * open amount and the payment's unallocated 2,000.00.
+ */
+async function chooseInvoice(canvas: ReturnType<typeof within>) {
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Link to an invoice" })
+  );
+
+  const dialog = await screen.findByRole("dialog");
+
+  await waitFor(() =>
+    expect(
+      within(dialog).getByRole("heading", {
+        name: `Link ${formatDay(partAllocatedPaymentRecord.payment.paymentDate)} to an invoice`,
+      })
+    ).toBeVisible()
+  );
+  await expect(listOpenInvoices).toHaveBeenCalledWith({
+    customerId: partAllocatedPaymentRecord.payment.customerId,
+    currency: "SGD",
+  });
+
+  const pick = async (label: string, filled: string) => {
+    await userEvent.click(
+      await within(dialog).findByRole("combobox", { name: "Invoice" })
+    );
+    await userEvent.click(await screen.findByRole("option", { name: label }));
+    await waitFor(() =>
+      expect(
+        within(dialog).getByRole("textbox", { name: "Amount" })
+      ).toHaveValue(filled)
+    );
+  };
+
+  // formatMoney, because the money format may join the currency with a no-break space.
+  await pick(`INV-2026-10-07 · open ${formatMoney(120_000, "SGD")}`, "1200.00");
+  await pick(`INV-2026-10-09 · open ${formatMoney(450_000, "SGD")}`, "2000.00");
+
+  // The popup fades out; axe must not catch it half unmounted.
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+
+  return dialog;
+}
+
+function refuseLinkOnce() {
+  serve(partAllocatedPaymentRecord);
+  linkPayment.mockRejectedValueOnce(new Error(LINK_REFUSAL));
+}
+
+/** Links the larger invoice, and answers the dialog that shows the refusal. */
+async function linkAndRefuse(canvas: ReturnType<typeof within>) {
+  const dialog = await chooseInvoice(canvas);
+
+  await userEvent.click(within(dialog).getByRole("button", { name: "Link" }));
+  await expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+    LINK_REFUSAL
+  );
+  await expect(dialog).toBeVisible();
+  await expect(refetchedAfter(linkPayment)).toBe(false);
 }
 
 /** A fresh query cache per story, with no retries so a refused call reports at once. */
@@ -106,7 +184,13 @@ function withQuery(Story: () => ReactNode) {
     <QueryClientProvider client={client}>
       <ModuleClientProvider
         client={{
-          invoices: { getPaymentRecord, unlinkAllocation, changeAllocation },
+          invoices: {
+            getPaymentRecord,
+            unlinkAllocation,
+            changeAllocation,
+            listOpenInvoices,
+            linkPayment,
+          },
         }}
       >
         <Story />
@@ -123,7 +207,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One payment at `/m/invoices/payments/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The card lists its amounts; the source PDF opens in a new tab through a short-lived link. Allocations and History are tables from 768 px and cards below it, each row opening the invoice. A writer of the payment gets Undo on an automatic link and Change amount and Remove link on every link; Change amount keeps a refusal inside its dialog. After each change the page reads the payment again. A payment dated after the reporting date shows a note instead of a balance.",
+          "One payment at `/m/invoices/payments/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The card lists its amounts; the source PDF opens in a new tab through a short-lived link. Allocations and History are tables from 768 px and cards below it, each row opening the invoice. A writer of the payment gets Undo on an automatic link and Change amount and Remove link on every link; Change amount keeps a refusal inside its dialog. A writer of a payment with unallocated money gets Link to an invoice: the open invoices of its customer in its currency, with the lower of the open amount and the unallocated amount filled in (R-31, R-32, decision 10). After each change the page reads the payment again. A payment dated after the reporting date shows a note instead of a balance.",
       },
     },
     a11y: { test: "error" },
@@ -161,7 +245,7 @@ export const ChangeAmount: Story = {
     await expect(
       within(dialog).queryByText("Change the link to INV-2026-09-03")
     ).not.toBeNull();
-    await waitFor(() => expect(refetchedAfterChange()).toBe(true));
+    await waitFor(() => expect(refetchedAfter(changeAllocation)).toBe(true));
     await expect(getPaymentRecord).toHaveBeenLastCalledWith({
       id: partAllocatedPaymentRecord.payment.id,
     });
@@ -188,7 +272,49 @@ export const ChangeAmountRefusedOnPhone: Story = {
   },
 };
 
-// B7.5 at 390: a reader without write sees the cards, and no Undo and no menu.
+// B8.1: the open invoices of the payment's customer and currency, the lower amount filled, and the link sent in cents.
+export const LinkInvoice: Story = {
+  name: "Link to an invoice",
+  globals: desktop,
+  play: async ({ canvas }) => {
+    const dialog = await chooseInvoice(canvas);
+
+    await userEvent.click(within(dialog).getByRole("button", { name: "Link" }));
+
+    await waitFor(() =>
+      expect(linkPayment).toHaveBeenCalledWith({
+        invoiceId: larger?.invoiceId,
+        paymentId: partAllocatedPaymentRecord.payment.id,
+        amountCents: 200_000,
+      })
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(refetchedAfter(linkPayment)).toBe(true));
+  },
+};
+
+// B8.1, ending with a refusal in the open dialog: axe scans the select, the amount and the alert at 1440.
+export const LinkInvoiceRefused: Story = {
+  name: "Link to an invoice, refused",
+  globals: desktop,
+  beforeEach: refuseLinkOnce,
+  play: async ({ canvas }) => {
+    await linkAndRefuse(canvas);
+  },
+};
+
+// B8.1 at 390, ending with the refusal in the open dialog for axe.
+export const LinkInvoiceRefusedOnPhone: Story = {
+  name: "Link to an invoice, refused, on a phone",
+  globals: phone,
+  beforeEach: refuseLinkOnce,
+  play: async ({ canvas }) => {
+    await linkAndRefuse(canvas);
+  },
+};
+
+// B7.5 and B8.5 at 390: a reader without write sees the cards, and no Undo, no menu and no Link.
+
 export const ReadOnly: Story = {
   name: "Read only",
   globals: phone,
@@ -202,5 +328,8 @@ export const ReadOnly: Story = {
     await expect(
       canvas.queryAllByRole("button", { name: /^Actions for/ })
     ).toEqual([]);
+    await expect(
+      canvas.queryByRole("button", { name: "Link to an invoice" })
+    ).toBeNull();
   },
 };

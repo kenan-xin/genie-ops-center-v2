@@ -4,6 +4,7 @@
  * They exist so a story renders without a database, a network call, or a tenant. They are not seed
  * data and they never reach a runtime path.
  */
+import type { OpenInvoiceRow } from "../../contract.ts";
 import type {
   PaymentListRow,
   PaymentListView,
@@ -123,6 +124,32 @@ export const readOnlyPaymentRecord: ShownPayment = {
   ...partAllocatedPaymentRecord,
   canWrite: false,
 };
+
+/**
+ * The open invoices of the part-allocated payment's customer in SGD: one below its 2,000.00
+ * unallocated, one above it.
+ */
+export const openInvoicesOfPayment = {
+  rows: [
+    {
+      invoiceId: "12121212-1212-4212-8212-121212121212",
+      number: "INV-2026-10-07",
+      invoiceDate: "2026-10-07",
+      dueDate: "2026-11-06",
+      currency: "SGD",
+      openCents: 120_000,
+    },
+    {
+      invoiceId: "13131313-1313-4313-8313-131313131313",
+      number: "INV-2026-10-09",
+      invoiceDate: "2026-10-09",
+      dueDate: "2026-11-08",
+      currency: "SGD",
+      openCents: 450_000,
+    },
+  ],
+  truncated: false,
+} satisfies { rows: readonly OpenInvoiceRow[]; truncated: boolean };
 
 export const laterPaymentRecord: PaymentRecordView = {
   kind: "after-reporting-date",

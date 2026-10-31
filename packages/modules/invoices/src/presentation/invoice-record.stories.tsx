@@ -6,6 +6,7 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   laterInvoiceRecord,
+  linkedInFullInvoiceRecord,
   noDueDateInvoiceRecord,
   partPaidInvoiceRecord,
   readOnlyInvoiceRecord,
@@ -18,6 +19,8 @@ const getInvoiceRecord = fn();
 const unlinkAllocation = fn();
 
 const changeAllocation = fn();
+
+const correctInvoiceTotal = fn();
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
@@ -34,6 +37,7 @@ function serve(view: InvoiceRecordView) {
   changeAllocation
     .mockReset()
     .mockResolvedValue({ allocationId: automatic?.id ?? "" });
+  correctInvoiceTotal.mockReset().mockResolvedValue({ outcome: "corrected" });
 }
 
 /** True when the record was read again after the last call of `mutation`. */
@@ -58,7 +62,12 @@ function withQuery(Story: () => ReactNode) {
     <QueryClientProvider client={client}>
       <ModuleClientProvider
         client={{
-          invoices: { getInvoiceRecord, unlinkAllocation, changeAllocation },
+          invoices: {
+            getInvoiceRecord,
+            unlinkAllocation,
+            changeAllocation,
+            correctInvoiceTotal,
+          },
         }}
       >
         <Story />
@@ -75,7 +84,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One invoice at `/m/invoices/invoices/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The card lists its facts and its balance; the due date names where it came from. The source PDF opens in a new tab through a short-lived link. Allocations and History are tables from 768 px and cards below it, each row opening the payment. A writer of the invoice gets Undo on an automatic link, without a confirmation, and Change amount and Remove link on every link; Remove link asks first. After each change the page reads the invoice again. An invoice dated after the reporting date shows a note instead of a balance.",
+          "One invoice at `/m/invoices/invoices/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The card lists its facts and its balance; the due date names where it came from. The source PDF opens in a new tab through a short-lived link. Allocations and History are tables from 768 px and cards below it, each row opening the payment. A writer of the invoice gets Undo on an automatic link, without a confirmation, and Change amount and Remove link on every link; Remove link asks first. A writer also gets Correct the total; a new total below the links answers `choose-links`, and the dialog asks for the new amount of each link and sends the lowered ones (R-32, decision 13). A refusal stays inside the open dialog. After each change the page reads the invoice again. An invoice dated after the reporting date shows a note instead of a balance.",
       },
     },
     a11y: { test: "error" },
@@ -250,7 +259,169 @@ export const RemoveLinkOpenOnPhone: Story = {
   },
 };
 
-// B7.5: a reader without write sees the links, and no Undo and no action.
+/** Opens Correct the total, checks the filled total, and saves `total`. */
+async function saveTotal(
+  canvas: ReturnType<typeof within>,
+  current: string,
+  total: string
+) {
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Correct the total" })
+  );
+
+  const dialog = await screen.findByRole("dialog");
+
+  // Inside waitFor: the dialog fades in, and an opacity of 0 is not visible yet.
+  await waitFor(() =>
+    expect(
+      within(dialog).getByRole("heading", {
+        name: "Correct the total of INV-2026-09-03",
+      })
+    ).toBeVisible()
+  );
+
+  const field = within(dialog).getByRole("textbox", { name: "Total" });
+
+  await expect(field).toHaveValue(current);
+  await userEvent.clear(field);
+  await userEvent.type(field, total);
+  await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+  return dialog;
+}
+
+// B8.2: a total above the links is sent once with no reduction, and the dialog closes.
+export const CorrectTotal: Story = {
+  name: "Correct the total",
+  globals: desktop,
+  play: async ({ canvas }) => {
+    await saveTotal(canvas, "5000.00", "4800.00");
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await expect(correctInvoiceTotal).toHaveBeenCalledTimes(1);
+    await expect(correctInvoiceTotal).toHaveBeenCalledWith({
+      id: partPaidInvoiceRecord.invoice.id,
+      totalCents: 480_000,
+      reductions: [],
+    });
+    await waitFor(() => expect(refetchedAfter(correctInvoiceTotal)).toBe(true));
+  },
+};
+
+const [first, second] = linkedInFullInvoiceRecord.allocations;
+
+const INSUFFICIENT =
+  "The reduced links still exceed the new total. Reduce more.";
+
+/** The first answer asks which of the two links, of 3,000.00 and 2,000.00, to lower. */
+function askForLinks() {
+  serve(linkedInFullInvoiceRecord);
+  correctInvoiceTotal.mockResolvedValueOnce({
+    outcome: "choose-links",
+    excessCents: 50_000,
+    allocations: [
+      {
+        allocationId: first?.id,
+        paymentId: first?.paymentId,
+        amountCents: 300_000,
+      },
+      {
+        allocationId: second?.id,
+        paymentId: second?.paymentId,
+        amountCents: 200_000,
+      },
+    ],
+  });
+}
+
+/** Saves 4500.00, answers the choice with one input per link, and lowers the first to `amount`. */
+async function lowerFirstLink(
+  canvas: ReturnType<typeof within>,
+  amount: string,
+  amountCents: number
+) {
+  const dialog = await saveTotal(canvas, "5000.00", "4500.00");
+
+  await expect(
+    await within(dialog).findByText(
+      "The links add up to SGD 500.00 more than the new total. Lower one or more links."
+    )
+  ).toBeVisible();
+
+  const lowered = within(dialog).getByRole("textbox", {
+    name: "New amount for TRF-0921-118",
+  });
+
+  await expect(lowered).toHaveValue("3000.00");
+  await expect(
+    within(dialog).getByRole("textbox", { name: "New amount for TRF-0930-140" })
+  ).toHaveValue("2000.00");
+  await userEvent.clear(lowered);
+  await userEvent.type(lowered, amount);
+  await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+  await waitFor(() => expect(correctInvoiceTotal).toHaveBeenCalledTimes(2));
+  await expect(correctInvoiceTotal).toHaveBeenLastCalledWith({
+    id: linkedInFullInvoiceRecord.invoice.id,
+    totalCents: 450_000,
+    reductions: [{ allocationId: first?.id, amountCents }],
+  });
+
+  return dialog;
+}
+
+// B8.3: below its links, the total asks for one input per link and sends the lowered one in cents.
+export const CorrectTotalBelowLinks: Story = {
+  name: "Correct the total below its links",
+  globals: desktop,
+  args: { view: linkedInFullInvoiceRecord },
+  beforeEach: askForLinks,
+  play: async ({ canvas }) => {
+    await lowerFirstLink(canvas, "2500.00", 250_000);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(refetchedAfter(correctInvoiceTotal)).toBe(true));
+  },
+};
+
+function refuseReductions() {
+  askForLinks();
+  correctInvoiceTotal.mockRejectedValueOnce(new Error(INSUFFICIENT));
+}
+
+/** Lowers the first link too little, and answers the dialog that shows the refusal. */
+async function lowerTooLittle(canvas: ReturnType<typeof within>) {
+  const dialog = await lowerFirstLink(canvas, "2800.00", 280_000);
+
+  await expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+    INSUFFICIENT
+  );
+  await expect(dialog).toBeVisible();
+  await expect(refetchedAfter(correctInvoiceTotal)).toBe(false);
+}
+
+// B8.4, ending with the refusal in the open dialog: axe scans the warning, the inputs and the alert at 1440.
+export const CorrectTotalRefused: Story = {
+  name: "Correct the total, refused",
+  globals: desktop,
+  args: { view: linkedInFullInvoiceRecord },
+  beforeEach: refuseReductions,
+  play: async ({ canvas }) => {
+    await lowerTooLittle(canvas);
+  },
+};
+
+// B8.4 at 390, ending with the refusal in the open dialog for axe.
+export const CorrectTotalRefusedOnPhone: Story = {
+  name: "Correct the total, refused, on a phone",
+  globals: phone,
+  args: { view: linkedInFullInvoiceRecord },
+  beforeEach: refuseReductions,
+  play: async ({ canvas }) => {
+    await lowerTooLittle(canvas);
+  },
+};
+
+// B7.5 and B8.5: a reader without write sees the links, and no Undo, no action and no correction.
 export const ReadOnly: Story = {
   name: "Read only",
   globals: desktop,
@@ -266,5 +437,8 @@ export const ReadOnly: Story = {
     await expect(
       canvas.queryAllByRole("button", { name: /^Actions for/ })
     ).toEqual([]);
+    await expect(
+      canvas.queryByRole("button", { name: "Correct the total" })
+    ).toBeNull();
   },
 };
