@@ -51,6 +51,12 @@ The module's four agent rules reach a holder of `analytics:write` only. They say
 
 The dashboard page shows the chat beside the dashboard for a person who may ask while AI is on: from the `lg` width it is a 22rem column to the right of the panels, and below that it follows them. Every message names the dashboard as the open record, and after each answer the page reads the dashboard again. While AI is off, a note says that the dashboard can still be changed by hand.
 
+## Demo seed
+
+The app's demo seed (`apps/genie/testing/seed-demo.ts`, described under "Demo seed" in the invoices-and-payments README) writes the Receivables overview starter dashboard for the demo account when its module list holds both `analytics` and `invoices` (R-51). The module knows no other module, so the config lives in the app, in `apps/genie/testing/receivables-overview.ts`. This module's `testing` entry provides only the generic `planDashboardSeed` and `seedDashboard`. The seed parses the config and writes the row directly with no chart gate, because it runs in plain Node, and adds one `analytics:dashboard-created` audit row with no actor. A second run finds the owner's dashboard of that name and writes nothing. `seed-demo.integration.test.ts` runs every starter panel through the gate as the demo account.
+
+The starter has the Customer field filter on `customerName`, the date range `all`, and six panels: the KPIs Invoiced sales, Collections, Outstanding and Overdue (1 x 1 each), the bar chart Invoiced sales and collections by month (4 x 2, the Chart of the recorded monthly answer), and Overdue ageing in four ranges of days overdue (2 x 2).
+
 ## Not built
 
 Shared dashboards, free SQL, a dashboard slot on a core page.

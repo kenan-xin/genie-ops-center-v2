@@ -4,4 +4,8 @@
  * module-owned, and nothing in a browser or a customer runtime imports them).
  */
 
+export type { DashboardConfig } from "../src/config.ts";
+
+export { planDashboardSeed, seedDashboard } from "./dashboard-seed.ts";
+
 export { insertDashboard } from "./factories.ts";

@@ -1,4 +1,9 @@
-import { seedRoles } from "@genie/core";
+import {
+  callProcedure,
+  principalFor,
+  registerModuleRuntime,
+  seedRoles,
+} from "@genie/core";
 import {
   DemoSeedRefused,
   enableModules,
@@ -6,7 +11,10 @@ import {
   markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
+import { analyticsModule, analyticsRouter } from "@genie/module-analytics";
 import { invoicesModule } from "@genie/module-invoices";
+import { readDemoCsv } from "@genie/module-invoices/testing";
+import type { ChartData } from "@genie/ui";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { seedDemo } from "./seed-demo.ts";
@@ -14,8 +22,9 @@ import { seedDemo } from "./seed-demo.ts";
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
 
 /**
- * The seed command writes only the owner's four kinds (role assignments, the reporting date, the
- * history PDFs through FileStorage, the demo pack history), writes nothing on a second run, and
+ * The seed command writes only the owner's five kinds (role assignments, the reporting date, the
+ * history PDFs through FileStorage, the demo pack history, the Receivables overview starter
+ * dashboard when analytics is listed), writes nothing on a second run, and
  * refuses a database that is not ready before it writes anything. It reads tables directly,
  * because the owner's write list names tables.
  */
@@ -88,22 +97,24 @@ function changes(
   );
 }
 
+const MODULES = [invoicesModule, analyticsModule];
+
 describe("the demo seed command", () => {
   let deployment: Deployment;
   let demoId: string;
-  const run = (dryRun: boolean) =>
+  const run = (dryRun: boolean, moduleIds = ["invoices", "analytics"]) =>
     seedDemo({
       databaseUrl: deployment.context.env.databaseUrl,
       // The address as an operator might type it; people are found by the lower-case address.
       email: "Demo@Example.invalid",
-      moduleIds: ["invoices"],
+      moduleIds,
       dryRun,
     });
 
   beforeAll(async () => {
-    deployment = await start([invoicesModule]);
-    await enableModules(deployment.context, ["invoices"]);
-    await seedRoles(deployment.context, [invoicesModule]);
+    deployment = await start(MODULES);
+    await enableModules(deployment.context, ["invoices", "analytics"]);
+    await seedRoles(deployment.context, MODULES);
     demoId = await insertUser(deployment.context, {
       email: DEMO_EMAIL,
       name: "Demo account",
@@ -111,7 +122,7 @@ describe("the demo seed command", () => {
   }, 240000);
 
   // The three cases run in order on one deployment: a dry run, the first run, then the second.
-  it("answers the four numbered lines on a fresh deployment in a dry run and writes nothing", async () => {
+  it("answers the five numbered lines on a fresh deployment in a dry run and writes nothing", async () => {
     const before = await tableCounts(deployment);
     const settingsBefore = await settings(deployment);
 
@@ -119,15 +130,28 @@ describe("the demo seed command", () => {
 
     expect(lines.slice(1)).toEqual([
       `Demo account: user ${demoId}`,
+      "Modules: invoices, analytics",
+      "1. Role assignments for the demo account: 6 to write, 0 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
+      "2. Reporting date: blank -> 2026-10-27",
+      "3. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
+      "4. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
+      "5. Receivables overview starter dashboard: 1 to write, 0 already present (dashboard row)",
+      "Dry run: nothing written.",
+    ]);
+    expect(changes(before, await tableCounts(deployment))).toEqual({});
+    expect(await settings(deployment)).toEqual(settingsBefore);
+  });
+
+  it("plans no starter dashboard in a dry run without analytics", async () => {
+    const lines = await run(true, ["invoices"]);
+
+    expect(lines.slice(2, -1)).toEqual([
       "Modules: invoices",
       "1. Role assignments for the demo account: 3 to write, 0 already present (Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: blank -> 2026-10-27",
       "3. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
       "4. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
-      "Dry run: nothing written.",
     ]);
-    expect(changes(before, await tableCounts(deployment))).toEqual({});
-    expect(await settings(deployment)).toEqual(settingsBefore);
   });
 
   it("writes only the owner's list on the first run and grants the demo person tenant-wide", async () => {
@@ -152,7 +176,8 @@ describe("the demo seed command", () => {
     // 6 customers, 36 invoices, 30 payments and 30 payment links, one module audit row each.
     expect(audit[0]).toEqual({ count: 102, only_invoice_actions: true });
     expect(changes(before, await tableCounts(deployment))).toEqual({
-      "public.role_assignment": 3,
+      "public.dashboard": 1,
+      "public.role_assignment": 6,
       "public.file": 66,
       "public.file_blob": 66,
       "public.document": 66,
@@ -161,9 +186,23 @@ describe("the demo seed command", () => {
       "public.payment": 30,
       "public.allocation": 30,
       "public.allocation_event": 30,
-      // Every new audit row names the demo account; the module writes them, not the seed.
-      "public.audit_event": 102,
+      // The module writes the history rows as the demo account; the starter row has no actor.
+      "public.audit_event": 103,
     });
+
+    const { rows: starter } = await client.query(
+      `select d.owner_user_id, d.name, d.version, a.action, a.actor_user_id
+       from dashboard d join audit_event a on a.target_id = d.id::text`
+    );
+    expect(starter).toEqual([
+      {
+        owner_user_id: demoId,
+        name: "Receivables overview",
+        version: 1,
+        action: "analytics:dashboard-created",
+        actor_user_id: null,
+      },
+    ]);
 
     const { rows: grants } = await client.query(
       `select r.name, a.principal_type, a.principal_id, a.scope_type, a.scope_id
@@ -202,14 +241,98 @@ describe("the demo seed command", () => {
     const lines = await run(false);
 
     expect(lines.slice(3)).toEqual([
-      "1. Role assignments for the demo account: 0 to write, 3 already present (Finance, Invoices and Payments user, Viewer)",
+      "1. Role assignments for the demo account: 0 to write, 6 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: 2026-10-27, already set",
       "3. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows)",
       "4. Demo pack history: 0 invoices and 0 payments to write, 36 and 30 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
+      "5. Receivables overview starter dashboard: 0 to write, 1 already present (dashboard row)",
       "Already seeded: nothing to write.",
     ]);
     expect(changes(before, await tableCounts(deployment))).toEqual({});
     expect(await settings(deployment)).toEqual(settingsBefore);
+  });
+
+  it("draws every starter panel through the chart gate as the demo account, also for one customer", async () => {
+    registerModuleRuntime(deployment.context, MODULES);
+    const caller = callProcedure(analyticsRouter, {
+      tenant: deployment.context,
+      caller: principalFor({
+        tenant: deployment.context,
+        modules: MODULES,
+        userId: demoId,
+        authenticated: true,
+      }),
+    });
+    const { rows } = await deployment.context.db.$client.query<{
+      id: string;
+    }>("select id from dashboard where owner_user_id = $1", [demoId]);
+    expect(rows).toHaveLength(1);
+    const id = rows[0]?.id ?? "";
+    // SAFETY: the contract answers `z.unknown()`, and the procedure answers the gate's ChartData.
+    const panel = async (panelId: string) =>
+      ((await caller.panelData({ id, panelId })) as ChartData).rows;
+    const kpis = async () =>
+      Object.fromEntries(
+        await Promise.all(
+          [
+            ["p1", "Invoiced sales"],
+            ["p2", "Collections"],
+            ["p3", "Outstanding"],
+            ["p4", "Overdue"],
+          ].map(async ([panelId = "", name = ""]) => [
+            name,
+            (await panel(panelId))[0]?.[name] ?? null,
+          ])
+        )
+      );
+
+    // R-36 measures on the demo pack history at 2026-10-27, in cents.
+    expect(await kpis()).toEqual({
+      "Invoiced sales": 23640000,
+      "Collections": 19520000,
+      "Outstanding": 4120000,
+      "Overdue": 2735000,
+    });
+    expect(
+      (await panel("p5")).map((row) => ({
+        month: String(row["x"]).slice(0, 7),
+        invoiced: row["Invoiced sales"] ?? null,
+        collected: row["Collections"] ?? null,
+      }))
+    ).toEqual(
+      readDemoCsv("04_Demo_Guide/expected_monthly_totals.csv").map((row) => ({
+        month: row["month"],
+        invoiced: Number(row["invoiced_sales"]) * 100,
+        collected: Number(row["payments_collected"]) * 100,
+      }))
+    );
+    const ageing = await panel("p6");
+    expect(
+      ageing.reduce((sum, row) => sum + Number(row["Overdue"] ?? 0), 0)
+    ).toBe(2735000);
+
+    await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [
+        {
+          op: "set-filters",
+          filters: {
+            dateRange: { preset: "all" },
+            field: {
+              field: "customerName",
+              label: "Customer",
+              value: "ABC Trading",
+            },
+          },
+        },
+      ],
+    });
+
+    expect(await kpis()).toMatchObject({
+      Outstanding: 650000,
+      Overdue: 650000,
+    });
   });
 
   it("keeps the time of history written after the seed when a later run writes again", async () => {

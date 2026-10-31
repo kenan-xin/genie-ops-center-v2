@@ -10,16 +10,23 @@ import {
   seedDemoAccess,
 } from "@genie/core/testing";
 import {
+  planDashboardSeed,
+  seedDashboard,
+} from "@genie/module-analytics/testing";
+import {
   type DemoHistoryPlan,
   demoReportingDate,
   planDemoHistory,
   seedDemoHistory,
 } from "@genie/module-invoices/testing";
 
+import { RECEIVABLES_OVERVIEW } from "./receivables-overview.ts";
+
 /**
  * Loads the demo pack history and the demo account's access into one deployment (R-59): every
  * role of the demo tenant's modules granted tenant-wide to the demo account, the reporting date,
- * the history PDFs through FileStorage and the history through the module procedures. It prints
+ * the history PDFs through FileStorage, the history through the module procedures and, with
+ * analytics, the Receivables overview starter dashboard. It prints
  * what it will write before it writes, and a second run writes nothing. The revert is a
  * `pg_dump` taken before the run (`docs/modules/invoices-and-payments/README.md`, "Demo seed").
  *
@@ -69,6 +76,20 @@ export async function seedDemo(input: {
 
     const { roles, reportingDate } = access;
 
+    // The starter reads invoices datasets, so it needs both modules (R-51).
+    const withStarter =
+      input.moduleIds.includes("analytics") &&
+      input.moduleIds.includes("invoices");
+
+    const starterInput = {
+      ownerUserId: access.userId,
+      name: RECEIVABLES_OVERVIEW.name,
+    };
+
+    const starter = withStarter
+      ? await planDashboardSeed(context, starterInput)
+      : { toWrite: 0, present: 0 };
+
     const lines = [
       `Demo seed for ${targetLabel(input.databaseUrl)}`,
       `Demo account: user ${access.userId}`,
@@ -79,6 +100,11 @@ export async function seedDemo(input: {
         : `2. Reporting date: ${reportingDate.from ?? "blank"} -> ${reportingDate.to}`,
       `3. History PDFs through FileStorage: ${history.documents.toWrite} to write, ${history.documents.present} already present (file, file_blob and document rows)`,
       `4. Demo pack history: ${history.invoices.toWrite} invoices and ${history.payments.toWrite} payments to write, ${history.invoices.present} and ${history.payments.present} already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)`,
+      ...(withStarter
+        ? [
+            `5. Receivables overview starter dashboard: ${starter.toWrite} to write, ${starter.present} already present (dashboard row)`,
+          ]
+        : []),
     ];
 
     const nothingToWrite =
@@ -86,7 +112,8 @@ export async function seedDemo(input: {
       reportingDate.from === reportingDate.to &&
       history.documents.toWrite === 0 &&
       history.invoices.toWrite === 0 &&
-      history.payments.toWrite === 0;
+      history.payments.toWrite === 0 &&
+      starter.toWrite === 0;
 
     if (input.dryRun) return [...lines, "Dry run: nothing written."];
 
@@ -96,6 +123,13 @@ export async function seedDemo(input: {
 
     if (withHistory) {
       await seedDemoHistory(context, { userId: access.userId });
+    }
+
+    if (withStarter) {
+      await seedDashboard(context, {
+        ...starterInput,
+        config: RECEIVABLES_OVERVIEW.config,
+      });
     }
 
     return [...lines, "Written."];
