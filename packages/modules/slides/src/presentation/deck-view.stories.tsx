@@ -2,7 +2,7 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { expect, fn, userEvent } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { deckPage, emptyDeckPage } from "./__fixtures__/decks.ts";
 import { DeckView } from "./deck-view.tsx";
@@ -125,6 +125,10 @@ export const EmptyDeck: Story = {
         "Add a slide, or create a deck by chat from the Slides list."
       )
     ).toBeVisible();
+    // No slide to present, so Present is off.
+    await expect(
+      canvas.getByRole("button", { name: "Present" })
+    ).toBeDisabled();
   },
 };
 
@@ -172,4 +176,30 @@ export const RailOnPhone: Story = {
   globals: phone,
   beforeEach: () => serve(deckPage),
   play: railPlay,
+};
+
+// B5.1: Present opens at the slide the page shows, and Escape returns to it.
+export const Present: Story = {
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Slide 2: Collections narrowed the gap to the plan line",
+      })
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Present" }));
+
+    const dialog = within(
+      await screen.findByRole("dialog", {
+        name: "Present Receivables at a glance",
+      })
+    );
+
+    await waitFor(() => expect(dialog.getByText("2 / 5")).toBeVisible());
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  },
 };

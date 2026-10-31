@@ -17,9 +17,19 @@ const preview: Preview = {
           styles: { width: "390px", height: "844px" },
           type: "mobile",
         },
+        phone844x390: {
+          name: "Phone 844 x 390 (rotated)",
+          styles: { width: "844px", height: "390px" },
+          type: "mobile",
+        },
         desktop1440: {
           name: "Desktop 1440",
           styles: { width: "1440px", height: "900px" },
+          type: "desktop",
+        },
+        desktop1920: {
+          name: "Desktop 1920 x 1080",
+          styles: { width: "1920px", height: "1080px" },
           type: "desktop",
         },
       },

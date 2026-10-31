@@ -4,6 +4,7 @@ import { PageHeader } from "@genie/core/features/shell";
 import { Button, EmptyState } from "@genie/ui";
 import { useState } from "react";
 
+import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
 import { figuresDate } from "./slide-layout.ts";
 import { useDeck } from "./use-deck.ts";
@@ -25,6 +26,7 @@ export function DeckView(props: DeckViewProps) {
   const deckQuery = useDeck(view.deck);
   const deck = deckQuery.data ?? view.deck;
   const [shown, setShown] = useState(0);
+  const [presenting, setPresenting] = useState(false);
 
   // A refetch may remove slides, so the shown index never points past the last one.
   const index = Math.min(shown, Math.max(deck.slides.length - 1, 0));
@@ -39,7 +41,15 @@ export function DeckView(props: DeckViewProps) {
         Figures as of {figuresDate(deck.figuresAsOf)}
       </p>
       {/* The page's actions go here; wrapping keeps them from ever scrolling sideways. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2 empty:hidden" />
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        <Button
+          variant="secondary"
+          disabled={current === undefined}
+          onClick={() => setPresenting(true)}
+        >
+          Present
+        </Button>
+      </div>
       {current === undefined ? (
         <EmptyState
           variant="framed"
@@ -81,6 +91,12 @@ export function DeckView(props: DeckViewProps) {
           </div>
         </div>
       )}
+      <PresentMode
+        view={{ ...view, deck }}
+        startAt={index}
+        open={presenting}
+        onOpenChange={setPresenting}
+      />
     </main>
   );
 }
