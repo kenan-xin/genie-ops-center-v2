@@ -331,3 +331,214 @@ export const linkedAutomaticallyReview: DocumentReviewView = {
     ],
   },
 };
+
+const ORCHID_RETAIL = {
+  id: "20000000-0000-4000-8000-000000000005",
+  name: "Orchid Retail",
+};
+
+const ORCHID_AUG = "30000000-0000-4000-8000-000000000804";
+
+const ORCHID_SEP = "30000000-0000-4000-8000-000000000904";
+
+const ORCHID_OCT = "30000000-0000-4000-8000-000000001004";
+
+/** Orchid Retail's open invoices at the reporting date, oldest first. */
+const ORCHID_OPEN = [
+  {
+    invoiceId: ORCHID_AUG,
+    number: "INV-2026-08-04",
+    invoiceDate: "2026-08-04",
+    dueDate: "2026-08-18",
+    currency: "SGD",
+    openCents: 405000,
+  },
+  {
+    invoiceId: ORCHID_SEP,
+    number: "INV-2026-09-04",
+    invoiceDate: "2026-09-04",
+    dueDate: "2026-09-30",
+    currency: "SGD",
+    openCents: 420000,
+  },
+  {
+    invoiceId: ORCHID_OCT,
+    number: "INV-2026-10-04",
+    invoiceDate: "2026-10-04",
+    dueDate: null,
+    currency: "SGD",
+    openCents: 435000,
+  },
+];
+
+/** Meridian Labs' open invoices at the reporting date. */
+export const meridianOpenInvoices = [
+  {
+    invoiceId: "30000000-0000-4000-8000-000000001006",
+    number: "INV-2026-10-06",
+    invoiceDate: "2026-10-06",
+    dueDate: "2026-11-05",
+    currency: "SGD",
+    openCents: 950000,
+  },
+];
+
+const ALL_CUSTOMERS = [
+  ABC_TRADING,
+  MERIDIAN_LABS,
+  LUMI_DESIGN,
+  HARBOR_FOODS,
+  ORCHID_RETAIL,
+];
+
+/** The checked reading of live upload 03 (read-03). */
+const SPLIT_READING: StoredReading = {
+  fields: {
+    customer: { value: "Orchid Retail", quote: "Orchid Retail", page: 1 },
+    date: { value: "2026-10-27", quote: "Payment date 2026-10-27", page: 1 },
+    currency: { value: "SGD", quote: "Currency SGD", page: 1 },
+    amount: { value: "8250.00", quote: "TOTAL (SGD) 8,250.00", page: 1 },
+    reference: {
+      value: "OR-AUG-SEP-BUNDLE",
+      quote: "Payment reference OR-AUG-SEP-BUNDLE",
+      page: 1,
+    },
+    method: {
+      value: "Bank transfer",
+      quote: "Payment method Bank transfer",
+      page: 1,
+    },
+  },
+  invoiceNumbers: [
+    {
+      value: "INV-2026-08-04",
+      quote: "Invoice reference INV-2026-08-04 | SGD 4,050.00",
+      page: 1,
+    },
+    {
+      value: "INV-2026-09-04",
+      quote: "Invoice reference INV-2026-09-04 | SGD 4,200.00",
+      page: 1,
+    },
+  ],
+  dropped: [],
+};
+
+/** Live upload 03: one payment that names two invoices, proposed as a split (read-03, R-30). */
+export const splitPaymentReview: DocumentReviewView = {
+  document: {
+    id: "10000000-0000-4000-8000-000000000103",
+    label: "03_Payment_Covers_Two_Invoices.pdf",
+    kind: "payment",
+    status: "confirm-split",
+    reason: null,
+    fileUrl: "/demo-pack/03_Payment_Covers_Two_Invoices.pdf",
+  },
+  reading: SPLIT_READING,
+  canWrite: true,
+  customers: ALL_CUSTOMERS,
+  customerMatch: ORCHID_RETAIL,
+  payment: {
+    openInvoices: ORCHID_OPEN,
+    proposal: {
+      kind: "split",
+      parts: [
+        { invoiceId: ORCHID_AUG, amountCents: 405000 },
+        { invoiceId: ORCHID_SEP, amountCents: 420000 },
+      ],
+      unallocatedCents: 0,
+    },
+    possibleDuplicateOf: null,
+  },
+  saved: null,
+};
+
+/** Upload 03 read as SGD 4,350 with no invoice named: one open invoice has that amount. */
+export const suggestionsPaymentReview: DocumentReviewView = {
+  ...splitPaymentReview,
+  document: { ...splitPaymentReview.document, status: "no-match" },
+  reading: {
+    ...SPLIT_READING,
+    fields: {
+      ...SPLIT_READING.fields,
+      amount: { value: "4350.00", quote: "TOTAL (SGD) 4,350.00", page: 1 },
+    },
+    invoiceNumbers: [],
+  },
+  payment: {
+    openInvoices: ORCHID_OPEN,
+    proposal: { kind: "suggestions", invoiceIds: [ORCHID_OCT] },
+    possibleDuplicateOf: null,
+  },
+};
+
+/** Upload 03 naming only INV-2026-08-04: SGD 8,250 is more than its open SGD 4,050. */
+export const overpaymentPaymentReview: DocumentReviewView = {
+  ...splitPaymentReview,
+  reading: {
+    ...SPLIT_READING,
+    invoiceNumbers: SPLIT_READING.invoiceNumbers.slice(0, 1),
+  },
+  payment: {
+    openInvoices: ORCHID_OPEN,
+    proposal: {
+      kind: "overpayment",
+      invoiceId: ORCHID_AUG,
+      amountCents: 405000,
+      unallocatedCents: 420000,
+    },
+    possibleDuplicateOf: null,
+  },
+};
+
+/** Live upload 05: Meridian Labs pays SGD 2,222 and names no invoice (read-05, R-31). */
+export const noMatchPaymentReview: DocumentReviewView = {
+  document: {
+    id: "10000000-0000-4000-8000-000000000105",
+    label: "05_Payment_Unmatched.pdf",
+    kind: "payment",
+    status: "no-match",
+    reason: null,
+    fileUrl: "/demo-pack/05_Payment_Unmatched.pdf",
+  },
+  reading: {
+    fields: {
+      customer: { value: "Meridian Labs", quote: "Meridian Labs", page: 1 },
+      date: { value: "2026-10-27", quote: "Payment date 2026-10-27", page: 1 },
+      currency: { value: "SGD", quote: "Currency SGD", page: 1 },
+      amount: { value: "2222.00", quote: "TOTAL (SGD) 2,222.00", page: 1 },
+      reference: {
+        value: "ML-UNREFERENCED",
+        quote: "Payment reference ML-UNREFERENCED",
+        page: 1,
+      },
+      method: {
+        value: "Bank transfer",
+        quote: "Payment method Bank transfer",
+        page: 1,
+      },
+    },
+    invoiceNumbers: [],
+    dropped: [],
+  },
+  canWrite: true,
+  customers: ALL_CUSTOMERS,
+  customerMatch: MERIDIAN_LABS,
+  payment: {
+    openInvoices: meridianOpenInvoices,
+    proposal: { kind: "no-match" },
+    possibleDuplicateOf: null,
+  },
+  saved: null,
+};
+
+/** Upload 05 when a payment with the same date, amount and currency is saved already (R-33). */
+export const duplicatePaymentReview: DocumentReviewView = {
+  ...noMatchPaymentReview,
+  document: { ...noMatchPaymentReview.document, status: "possible-duplicate" },
+  payment: {
+    openInvoices: meridianOpenInvoices,
+    proposal: { kind: "no-match" },
+    possibleDuplicateOf: "40000000-0000-4000-8000-000000000005",
+  },
+};

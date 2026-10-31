@@ -1,17 +1,10 @@
 "use client";
 
 import { useModuleClient } from "@genie/core/rpc/client";
-import {
-  Button,
-  FieldError,
-  Input,
-  RadioGroup,
-  RadioGroupItem,
-  WarningNote,
-} from "@genie/ui";
+import { Input, RadioGroup, RadioGroupItem, WarningNote } from "@genie/ui";
 import { useForm, useSelector } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import {
   invoicesContract,
@@ -27,7 +20,6 @@ import {
 } from "../contract.ts";
 import { centsOf } from "../services/reading/quote-check.ts";
 import {
-  CustomerField,
   customerChoiceOf,
   initialCustomer,
   type CustomerValue,
@@ -41,14 +33,16 @@ import {
   sourcesOf,
   type ReviewFieldKey,
 } from "./review-fields.tsx";
+import {
+  issuesOf,
+  optionalText,
+  ReviewCustomerRow,
+  ReviewSaveBar,
+  ReviewTextRow,
+} from "./review-form.tsx";
 import type { DocumentReviewView } from "./views.ts";
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
-
-const AMOUNT_MESSAGE =
-  "Enter the amount as digits with up to two decimals, for example 5000.00.";
-
-const SAVE_HELPER_ID = "review-save-helper";
 
 type DueChoice =
   | { readonly kind: "kept"; readonly value: string }
@@ -142,12 +136,6 @@ function dueText(due: DueChoice): string | null {
   return due.kind === "kept" || due.kind === "person" ? due.value : null;
 }
 
-function optionalText(value: string): string | null {
-  const text = value.trim();
-
-  return text === "" ? null : text;
-}
-
 function amountCents(value: string): number | undefined {
   return centsOf(value);
 }
@@ -208,25 +196,6 @@ function formFieldOf(key: string): (typeof FORM_FIELDS)[number] | undefined {
   return isFormField(key) ? key : undefined;
 }
 
-function issuesOf(
-  issues: readonly {
-    readonly path: readonly PropertyKey[];
-    readonly message: string;
-  }[]
-): FormIssues {
-  const messages: FormIssues = {};
-
-  for (const issue of issues) {
-    const field = formFieldOf(String(issue.path[0] ?? ""));
-
-    if (field === undefined || messages[field] !== undefined) continue;
-
-    messages[field] = field === "amount" ? AMOUNT_MESSAGE : issue.message;
-  }
-
-  return messages;
-}
-
 /** The form's own validation: the save schema over the values the form holds (R-28, R-33). */
 function formValidator(
   kind: "invoice" | "paid-receipt",
@@ -241,7 +210,9 @@ function formValidator(
 
     if (parsed.success) return undefined;
 
-    return { fields: issuesOf(parsed.error.issues) };
+    const fields: FormIssues = issuesOf(parsed.error.issues, formFieldOf);
+
+    return { fields };
   };
 }
 
@@ -271,7 +242,6 @@ export function InvoiceReviewForm(props: {
   const reading = view.reading;
   const invoices = useModuleClient(invoicesContract);
   const queryClient = useQueryClient();
-  const keepNext = useRef(false);
 
   const [attempted, setAttempted] = useState(false);
   const [pending, setPending] = useState(false);
@@ -284,14 +254,10 @@ export function InvoiceReviewForm(props: {
       onMount: formValidator(kind, view),
       onChange: formValidator(kind, view),
     },
+    // The Keep choice rides on one submit only, so a refused Keep never reaches the next save.
+    onSubmitMeta: { keep: false },
     onSubmitInvalid: () => setAttempted(true),
-    onSubmit: async ({ value }) => {
-      const keep = keepNext.current;
-
-      keepNext.current = false;
-
-      await submit(value, keep);
-    },
+    onSubmit: ({ value, meta }) => submit(value, meta.keep),
   });
 
   const values = useSelector(form.store, (state) => state.values);
@@ -455,42 +421,22 @@ export function InvoiceReviewForm(props: {
         // SAFETY: this form's validator stores one plain message string per field.
         const issue = item.state.meta.errors[0] as string | undefined;
 
-        const message =
-          field === "amount" || attempted || item.state.meta.isTouched
-            ? issue
-            : undefined;
-
-        const id = `review-${field}`;
-
         return (
-          <ReviewFieldRow
+          <ReviewTextRow
+            view={view}
+            selected={props.selected}
+            onSelect={props.onSelect}
             field={field}
             label={label}
-            tag={liveTagOf(reading, field, item.state.value)}
-            sources={sourcesOf(reading, field)}
-            unread={reading === null}
-            selected={props.selected === field}
-            onSelect={() => props.onSelect(field)}
-          >
-            <div className="flex flex-col gap-1.5">
-              <Input
-                id={id}
-                aria-label={label}
-                type={field === "date" ? "date" : "text"}
-                inputMode={field === "amount" ? "decimal" : "text"}
-                value={item.state.value}
-                aria-invalid={message === undefined ? undefined : true}
-                aria-describedby={
-                  message === undefined ? undefined : `${id}-error`
-                }
-                onChange={(event) => item.handleChange(event.target.value)}
-                onBlur={item.handleBlur}
-              />
-              {message === undefined ? null : (
-                <FieldError id={`${id}-error`}>{message}</FieldError>
-              )}
-            </div>
-          </ReviewFieldRow>
+            value={item.state.value}
+            message={
+              field === "amount" || attempted || item.state.meta.isTouched
+                ? issue
+                : undefined
+            }
+            onChange={(next) => item.handleChange(next)}
+            onBlur={item.handleBlur}
+          />
         );
       }}
     </form.Field>
@@ -509,32 +455,15 @@ export function InvoiceReviewForm(props: {
             return (
               <form.Field key={field} name="customer">
                 {(item) => (
-                  <ReviewFieldRow
-                    field={field}
+                  <ReviewCustomerRow
+                    view={view}
+                    selected={props.selected}
+                    onSelect={props.onSelect}
                     label={label}
-                    tag={liveTagOf(
-                      reading,
-                      field,
-                      item.state.value.kind === "none"
-                        ? null
-                        : item.state.value.name
-                    )}
-                    sources={sourcesOf(reading, field)}
-                    unread={reading === null}
-                    selected={props.selected === field}
-                    onSelect={() => props.onSelect(field)}
-                  >
-                    <div className="flex flex-col gap-1.5">
-                      <CustomerField
-                        customers={view.customers}
-                        value={item.state.value}
-                        onChange={(next) => item.handleChange(next)}
-                      />
-                      {attempted && item.state.value.kind === "none" ? (
-                        <FieldError>Choose a customer to save.</FieldError>
-                      ) : null}
-                    </div>
-                  </ReviewFieldRow>
+                    value={item.state.value}
+                    attempted={attempted}
+                    onChange={(next) => item.handleChange(next)}
+                  />
                 )}
               </form.Field>
             );
@@ -570,29 +499,16 @@ export function InvoiceReviewForm(props: {
           <DuplicateNotice
             href={`/m/invoices/invoices/${duplicate}`}
             pending={pending}
-            onKeep={() => {
-              keepNext.current = true;
-              void form.handleSubmit();
-            }}
+            onKeep={() => void form.handleSubmit({ keep: true })}
             onDiscard={() => props.onDiscard()}
           />
         )}
         <SaveFailure message={saveError} />
-        {helper === undefined ? null : (
-          <p id={SAVE_HELPER_ID} className="text-xs text-muted-foreground">
-            {helper}
-          </p>
-        )}
-        <div className="flex justify-end">
-          <Button
-            type="submit"
-            aria-disabled={canSave ? undefined : true}
-            aria-describedby={helper === undefined ? undefined : SAVE_HELPER_ID}
-            loading={pending}
-          >
-            {kind === "invoice" ? "Save as unpaid" : "Save as paid"}
-          </Button>
-        </div>
+        <ReviewSaveBar
+          helper={helper}
+          pending={pending}
+          label={kind === "invoice" ? "Save as unpaid" : "Save as paid"}
+        />
       </div>
     </form>
   );

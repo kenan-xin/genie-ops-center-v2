@@ -28,6 +28,7 @@ import {
 import { invoicesContract } from "../contract.ts";
 import { type DocumentKind, kindText } from "./document-kind.ts";
 import { InvoiceReviewForm } from "./invoice-review-form.tsx";
+import { PaymentReviewForm } from "./payment-review-form.tsx";
 import {
   ReviewFieldList,
   type ReviewFieldKey,
@@ -204,6 +205,16 @@ export function DocumentReview(props: {
       <InvoiceReviewForm
         view={data}
         kind={kind}
+        selected={selected}
+        onSelect={setSelected}
+        onSaved={setSavedMessage}
+        onDiscard={() => setDiscardOpen(true)}
+      />
+    );
+  } else if (data.canWrite && kind === "payment") {
+    body = (
+      <PaymentReviewForm
+        view={data}
         selected={selected}
         onSelect={setSelected}
         onSaved={setSavedMessage}
