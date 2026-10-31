@@ -12,6 +12,7 @@ import {
 import { INVOICES_PERMISSIONS } from "./permissions.ts";
 import {
   DocumentInboxPage,
+  DocumentReviewPage,
   InvoiceListPage,
   InvoiceRecordPage,
   PaymentListPage,
@@ -31,6 +32,7 @@ import {
   sourceDocument,
 } from "./schema.ts";
 import { loadDocumentInbox } from "./services/documents/inbox.ts";
+import { loadDocumentReview } from "./services/documents/review.ts";
 import { loadInvoiceList, loadPaymentList } from "./services/pages/lists.ts";
 import {
   loadInvoiceRecord,
@@ -125,6 +127,18 @@ export const invoicesModule = {
         permission: "invoices:use",
         load: loadDocumentInbox,
         component: DocumentInboxPage,
+      }),
+      definePage({
+        path: "/m/invoices/documents/:id",
+        permission: "invoices:use",
+        record: {
+          type: RECORD_TYPES.document,
+          param: "id",
+          read: "invoices:read",
+        },
+        parent: DOCUMENTS_ENTRY.path,
+        load: (ctx, params) => loadDocumentReview(ctx, params.id ?? ""),
+        component: DocumentReviewPage,
       }),
       definePage({
         path: INVOICES_ENTRY.path,

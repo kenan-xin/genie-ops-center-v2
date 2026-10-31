@@ -147,6 +147,7 @@ export function DocumentViewer(props: DocumentViewerProps): ReactNode {
       role="region"
       aria-label={props.label}
       data-document-viewer=""
+      data-document-url={props.url}
       className="w-full min-w-0 [&_mark]:bg-primary/25"
     >
       {width === 0 ? (

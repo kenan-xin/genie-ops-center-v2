@@ -3,10 +3,11 @@
  * date, and the page only formats what it answered (R-9, R-36).
  */
 
-/** The Documents inbox view is the contract's, so the page and the loader share one shape. */
+/** The Documents inbox and review views are the contract's, so the page and the loader share one shape. */
 export type {
   DocumentInboxRow,
   DocumentInboxView,
+  DocumentReviewView,
   InboxStatus,
 } from "../contract.ts";
 

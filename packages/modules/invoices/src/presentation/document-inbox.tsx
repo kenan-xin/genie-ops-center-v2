@@ -1,6 +1,6 @@
 "use client";
 
-import { PageHeader } from "@genie/core/features/shell";
+import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
   Button,
@@ -11,9 +11,10 @@ import {
 } from "@genie/ui";
 import { useAsyncQueuer } from "@tanstack/react-pacer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
+import { kindText } from "./document-kind.ts";
 import { DocumentStatusBadge } from "./document-status-badge.tsx";
 import { formatMoney } from "./format.ts";
 import type { DocumentInboxRow, DocumentInboxView } from "./views.ts";
@@ -38,21 +39,6 @@ type Refusal = {
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
 
 const POLL_MS = 3_000;
-
-function kindText(kind: DocumentInboxRow["kind"]): string {
-  switch (kind) {
-    case "invoice":
-      return "Invoice";
-    case "payment":
-      return "Payment evidence";
-    case "paid-receipt":
-      return "Paid receipt";
-    case "purchase-order":
-      return "Purchase order";
-    case null:
-      return "Not classified";
-  }
-}
 
 /** The one line of "What we found", in the order of R-37 and decision 11. */
 function foundText(row: InboxRow): string {
@@ -188,8 +174,16 @@ export function DocumentInbox(props: DocumentInboxProps) {
       </Button>
     ) : null;
 
+  // A stored row opens its review; a Duplicate row has no record to open (R-23).
+  const documentLabel = (row: InboxRow): ReactNode =>
+    row.status === "duplicate" ? (
+      row.label
+    ) : (
+      <PageLink href={`/m/invoices/documents/${row.id}`}>{row.label}</PageLink>
+    );
+
   const columns: readonly DataTableColumn<InboxRow>[] = [
-    { id: "document", header: "Document", cell: (row) => row.label },
+    { id: "document", header: "Document", cell: documentLabel },
     { id: "type", header: "Type", cell: (row) => kindText(row.kind) },
     { id: "found", header: "What we found", cell: (row) => foundText(row) },
   ];
@@ -273,7 +267,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 </span>
               )}
               card={{
-                title: (row) => row.label,
+                title: documentLabel,
                 badge: (row) => <DocumentStatusBadge status={row.status} />,
                 detail: (row) => kindText(row.kind),
                 facts: (row) => [foundText(row)],

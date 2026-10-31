@@ -1,12 +1,14 @@
 import type { ModulePageProps } from "@genie/core";
 
 import { DocumentInbox } from "./document-inbox.tsx";
+import { DocumentReview } from "./document-review.tsx";
 import { InvoiceList } from "./invoice-list.tsx";
 import { InvoiceRecord } from "./invoice-record.tsx";
 import { PaymentList } from "./payment-list.tsx";
 import { PaymentRecord } from "./payment-record.tsx";
 import type {
   DocumentInboxView,
+  DocumentReviewView,
   InvoiceListView,
   InvoiceRecordView,
   PaymentListView,
@@ -16,6 +18,11 @@ import type {
 /** The Documents inbox, fed by `loadDocumentInbox`. */
 export function DocumentInboxPage(props: ModulePageProps<DocumentInboxView>) {
   return <DocumentInbox view={props.data} />;
+}
+
+/** One document's review, fed by `loadDocumentReview`. */
+export function DocumentReviewPage(props: ModulePageProps<DocumentReviewView>) {
+  return <DocumentReview view={props.data} />;
 }
 
 /** The Invoices list, fed by `loadInvoiceList`. */

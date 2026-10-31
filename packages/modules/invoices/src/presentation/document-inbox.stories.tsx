@@ -357,3 +357,50 @@ export const RefreshWhileReading: Story = {
     await expect(listDocuments.mock.calls.length).toBeGreaterThanOrEqual(2);
   },
 };
+
+/** Every stored row's label is a link to its review; a Duplicate row has none. */
+const checkRowLinks: Story["play"] = async ({ canvas }) => {
+  await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+    pdf("extra.pdf"),
+  ]);
+
+  await waitFor(() => expect(uploadDocument).toHaveBeenCalledTimes(1));
+
+  await Promise.all(
+    defaultDocumentInbox.rows.map((row) =>
+      expect(canvas.getByRole("link", { name: row.label })).toHaveAttribute(
+        "href",
+        `/m/invoices/documents/${row.id}`
+      )
+    )
+  );
+
+  await expect(
+    (await canvas.findAllByText("Same file as a.pdf")).length
+  ).toBeGreaterThan(0);
+  await expect(canvas.queryByRole("link", { name: "extra.pdf" })).toBeNull();
+};
+
+const serveDuplicate = () => {
+  serve(defaultDocumentInbox);
+  uploadDocument.mockResolvedValue({
+    outcome: "duplicate",
+    documentId: "document-a",
+    label: "a.pdf",
+  });
+};
+
+// B4.8: a stored row opens its review at both widths; the Duplicate row has no link.
+export const Links: Story = {
+  globals: desktop,
+  beforeEach: serveDuplicate,
+  play: checkRowLinks,
+};
+
+// B4.8 on a phone: the card title carries the same link.
+export const LinksOnPhone: Story = {
+  name: "Links on a phone",
+  globals: phone,
+  beforeEach: serveDuplicate,
+  play: checkRowLinks,
+};
