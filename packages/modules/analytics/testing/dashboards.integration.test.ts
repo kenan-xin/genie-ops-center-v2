@@ -10,6 +10,7 @@ import {
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { EMPTY_DASHBOARD_CONFIG } from "../src/config.ts";
 import { analyticsModule } from "../src/module.ts";
 import { analyticsRouter } from "../src/router.ts";
 import { insertDashboard } from "./factories.ts";
@@ -96,4 +97,326 @@ describe("the analytics listDashboards procedure", () => {
       code: "forbidden",
     });
   });
+});
+
+const EDITOR = ["analytics:use", "analytics:read", "analytics:write"] as const;
+
+/** A KPI on a dataset this deployment lacks, so the chart gate refuses it now. */
+const brokenKpi = {
+  type: "kpi",
+  title: "Missing",
+  series: [
+    {
+      name: "Records",
+      dataset: "missing.records",
+      query: { aggregates: [{ fn: "count", as: "n" }] },
+      value: "n",
+    },
+  ],
+} as const;
+
+const brokenConfig = {
+  ...EMPTY_DASHBOARD_CONFIG,
+  panels: [{ id: "p1", layout: { columns: 1, rows: 1 }, config: brokenKpi }],
+};
+
+const editor = async () =>
+  (await insertPersonWith(deployment.context, [...EDITOR])).userId;
+
+/** The stored row as the database holds it, to prove a refused write wrote nothing. */
+async function rowOf(id: string) {
+  const { rows } = await deployment.context.db.$client.query(
+    "select name, config, undo, version from dashboard where id = $1",
+    [id]
+  );
+
+  return rows[0];
+}
+
+async function auditOf(id: string) {
+  const { rows } = await deployment.context.db.$client.query(
+    "select action, actor_user_id, target_type, metadata from audit_event where target_id = $1 order by occurred_at, ctid",
+    [id]
+  );
+
+  return rows;
+}
+
+/** An owner's dashboard with one Undo entry, so every procedure would succeed for the owner. */
+async function ownedDashboard(ownerUserId: string) {
+  return insertDashboard(deployment.context, {
+    ownerUserId,
+    undo: [{ name: "Before", config: EMPTY_DASHBOARD_CONFIG }],
+  });
+}
+
+type Call = (
+  caller: ReturnType<typeof callerAs>,
+  id: string
+) => Promise<{ readonly id: string }>;
+
+const PROCEDURES: readonly (readonly [string, Call])[] = [
+  ["readDashboard", (caller, id) => caller.readDashboard({ id })],
+  [
+    "changeDashboard",
+    (caller, id) =>
+      caller.changeDashboard({
+        id,
+        expectedVersion: 1,
+        changes: [{ op: "rename", name: "Taken over" }],
+      }),
+  ],
+  [
+    "undoDashboard",
+    (caller, id) => caller.undoDashboard({ id, expectedVersion: 1 }),
+  ],
+  ["deleteDashboard", (caller, id) => caller.deleteDashboard({ id })],
+];
+
+describe("the analytics dashboard procedures", () => {
+  it.each(PROCEDURES)(
+    "answer not-found to %s on another person's dashboard and leave it the same",
+    async (_, call) => {
+      const owner = await editor();
+      const id = await ownedDashboard(owner);
+      const before = await rowOf(id);
+
+      await expect(call(callerAs(await editor()), id)).rejects.toMatchObject({
+        code: "not-found",
+      });
+      expect(await rowOf(id)).toEqual(before);
+    }
+  );
+
+  it.each([
+    ["createDashboard", ["analytics:use", "analytics:read"]],
+    ["changeDashboard", ["analytics:use", "analytics:read"]],
+    ["undoDashboard", ["analytics:use", "analytics:read"]],
+    ["deleteDashboard", ["analytics:use", "analytics:read"]],
+    ["readDashboard", ["analytics:use", "analytics:write"]],
+  ] as const)(
+    "refuse %s to a person without its key",
+    async (procedure, keys) => {
+      const { userId } = await insertPersonWith(deployment.context, [...keys]);
+      const id = await ownedDashboard(userId);
+      const caller = callerAs(userId);
+
+      const call =
+        procedure === "createDashboard"
+          ? caller.createDashboard({ name: "Mine" })
+          : PROCEDURES.find(([name]) => name === procedure)?.[1](caller, id);
+
+      await expect(call).rejects.toMatchObject({ code: "forbidden" });
+    }
+  );
+
+  it("refuse a change on an older version and write nothing", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      version: 2,
+    });
+
+    const before = await rowOf(id);
+
+    await expect(
+      callerAs(owner).changeDashboard({
+        id,
+        expectedVersion: 1,
+        changes: [{ op: "rename", name: "Hand save" }],
+      })
+    ).rejects.toMatchObject({ code: "analytics:dashboard-changed" });
+
+    expect(await rowOf(id)).toEqual(before);
+  });
+
+  it("refuse a panel on a dataset this deployment lacks and write nothing", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+    });
+
+    const before = await rowOf(id);
+
+    await expect(
+      callerAs(owner).changeDashboard({
+        id,
+        expectedVersion: 1,
+        changes: [{ op: "add-panel", panel: brokenKpi }],
+      })
+    ).rejects.toMatchObject({
+      code: "chart-invalid",
+      issues: [{ path: "changes.0.panel.series.0.dataset" }],
+    });
+
+    expect(await rowOf(id)).toEqual(before);
+    expect(await auditOf(id)).toEqual([]);
+  });
+
+  it("undo two renames in reverse order, then answer nothing-to-undo", async () => {
+    const owner = await editor();
+    const caller = callerAs(owner);
+    const { id } = await caller.createDashboard({ name: "First" });
+
+    await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [{ op: "rename", name: "Second" }],
+    });
+    await caller.changeDashboard({
+      id,
+      expectedVersion: 2,
+      changes: [{ op: "rename", name: "Third" }],
+    });
+
+    const once = await caller.undoDashboard({ id, expectedVersion: 3 });
+    const twice = await caller.undoDashboard({ id, expectedVersion: 4 });
+
+    expect(
+      [once, twice].map(({ name, version, canUndo }) => ({
+        name,
+        version,
+        canUndo,
+      }))
+    ).toEqual([
+      { name: "Second", version: 4, canUndo: true },
+      { name: "First", version: 5, canUndo: false },
+    ]);
+
+    expect(await rowOf(id)).toMatchObject({
+      name: "First",
+      version: 5,
+      undo: [],
+    });
+
+    await expect(
+      caller.undoDashboard({ id, expectedVersion: 5 })
+    ).rejects.toMatchObject({ code: "analytics:nothing-to-undo" });
+  });
+
+  it("refuse an Undo whose panel the gate refuses now and restore nothing", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      name: "Now",
+      undo: [{ name: "Before", config: brokenConfig }],
+    });
+
+    const before = await rowOf(id);
+
+    await expect(
+      callerAs(owner).undoDashboard({ id, expectedVersion: 1 })
+    ).rejects.toMatchObject({
+      code: "chart-invalid",
+      issues: [{ path: "panels.0.config.series.0.dataset" }],
+    });
+
+    expect(await rowOf(id)).toEqual(before);
+  });
+
+  it("save a rename of a dashboard that holds a panel the gate refuses now", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      config: brokenConfig,
+    });
+
+    await callerAs(owner).changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [{ op: "rename", name: "Renamed" }],
+    });
+
+    expect(await rowOf(id)).toMatchObject({
+      name: "Renamed",
+      config: brokenConfig,
+      version: 2,
+    });
+  });
+
+  it("undo a rename of a dashboard that holds a panel the gate refuses now", async () => {
+    const owner = await editor();
+    const caller = callerAs(owner);
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      name: "Before rename",
+      config: brokenConfig,
+    });
+
+    await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [{ op: "rename", name: "After rename" }],
+    });
+
+    await expect(
+      caller.undoDashboard({ id, expectedVersion: 2 })
+    ).resolves.toMatchObject({ name: "Before rename", version: 3 });
+
+    expect(await rowOf(id)).toMatchObject({ config: brokenConfig });
+  });
+
+  it("write one audit row for each create, change, Undo and delete", async () => {
+    const owner = await editor();
+    const caller = callerAs(owner);
+    const { id } = await caller.createDashboard({ name: "Audited" });
+
+    await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [{ op: "rename", name: "Audited again" }],
+    });
+    await caller.undoDashboard({ id, expectedVersion: 2 });
+    await caller.deleteDashboard({ id });
+
+    const row = (
+      action: string,
+      metadata: Readonly<Record<string, number>>
+    ) => ({
+      action: `analytics:dashboard-${action}`,
+      actor_user_id: owner,
+      target_type: "analytics-dashboard",
+      metadata,
+    });
+
+    expect(await auditOf(id)).toEqual([
+      row("created", {}),
+      row("changed", { version: 2, steps: 1 }),
+      row("undone", { version: 3 }),
+      row("deleted", {}),
+    ]);
+  });
+
+  it.each(["create", "rename"] as const)(
+    "refuse to %s a name the owner already uses in another case and with outer spaces",
+    async (how) => {
+      const owner = await editor();
+      const caller = callerAs(owner);
+
+      await insertDashboard(deployment.context, {
+        ownerUserId: owner,
+        name: "Sales Overview",
+      });
+
+      const id = await insertDashboard(deployment.context, {
+        ownerUserId: owner,
+        name: "Other",
+      });
+
+      await expect(
+        how === "create"
+          ? caller.createDashboard({ name: "  sales overview " })
+          : caller.changeDashboard({
+              id,
+              expectedVersion: 1,
+              changes: [{ op: "rename", name: "  sales overview " }],
+            })
+      ).rejects.toMatchObject({ code: "analytics:dashboard-name-taken" });
+    }
+  );
 });

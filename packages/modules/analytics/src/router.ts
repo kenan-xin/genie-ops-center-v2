@@ -1,8 +1,16 @@
 import { implementModule } from "@genie/core";
 
 import { analyticsContract } from "./contract.ts";
-import { assertCanRead } from "./services/dashboards/access.ts";
-import { listOwnDashboards } from "./services/dashboards/store.ts";
+import { assertCanRead, assertCanWrite } from "./services/dashboards/access.ts";
+import {
+  changeDashboard,
+  createDashboard,
+  deleteDashboard,
+  listOwnDashboards,
+  readOwnDashboard,
+  undoDashboard,
+  viewOf,
+} from "./services/dashboards/store.ts";
 
 const os = implementModule("analytics", analyticsContract);
 
@@ -16,6 +24,37 @@ export const analyticsRouter = os.router({
     await assertCanRead(context.caller);
 
     return listOwnDashboards(context);
+  }),
+
+  readDashboard: os.readDashboard.handler(async ({ context, input }) => {
+    await assertCanRead(context.caller);
+
+    return viewOf(await readOwnDashboard(context, input.id));
+  }),
+
+  createDashboard: os.createDashboard.handler(async ({ context, input }) => {
+    await assertCanWrite(context.caller);
+
+    return viewOf(await createDashboard(context, input));
+  }),
+
+  changeDashboard: os.changeDashboard.handler(async ({ context, input }) => {
+    await assertCanWrite(context.caller);
+
+    return viewOf(await changeDashboard(context, input));
+  }),
+
+  undoDashboard: os.undoDashboard.handler(async ({ context, input }) => {
+    await assertCanWrite(context.caller);
+
+    return viewOf(await undoDashboard(context, input));
+  }),
+
+  deleteDashboard: os.deleteDashboard.handler(async ({ context, input }) => {
+    await assertCanWrite(context.caller);
+    await deleteDashboard(context, input.id);
+
+    return { id: input.id };
   }),
 });
 

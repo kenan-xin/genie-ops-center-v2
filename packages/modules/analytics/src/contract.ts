@@ -60,7 +60,55 @@ export const dashboardSummary = z.object({
   updatedAt: z.string(),
 });
 
+/** One step of a change. A panel's raw config is checked by the chart gate, not here (D2). */
+export const dashboardChange = z.discriminatedUnion("op", [
+  z.strictObject({
+    op: z.literal("add-panel"),
+    panel: z.unknown(),
+    layout: panelLayout.optional(),
+  }),
+  z.strictObject({
+    op: z.literal("change-panel"),
+    panelId,
+    panel: z.unknown().optional(),
+    layout: panelLayout.optional(),
+  }),
+  z.strictObject({ op: z.literal("remove-panel"), panelId }),
+  z.strictObject({
+    op: z.literal("move-panel"),
+    panelId,
+    toIndex: z
+      .int()
+      .min(0)
+      .max(DASHBOARD_PANEL_LIMIT - 1),
+  }),
+  z.strictObject({ op: z.literal("rename"), name: dashboardName }),
+  z.strictObject({ op: z.literal("set-filters"), filters: dashboardFilters }),
+]);
+
+export const dashboardChanges = z
+  .array(dashboardChange)
+  .min(1)
+  .max(DASHBOARD_CHANGE_LIMIT);
+
+/** One dashboard as its owner reads it. The browser narrows each panel `config` (Global Constraints). */
+export const dashboardView = z.object({
+  id: z.string(),
+  name: z.string(),
+  version: z.int(),
+  canUndo: z.boolean(),
+  filters: dashboardFilters,
+  // Read-only, so the server's `DashboardView` answers it as is.
+  panels: z
+    .array(
+      z.object({ id: z.string(), layout: panelLayout, config: z.unknown() })
+    )
+    .readonly(),
+});
+
 export type PanelLayout = z.infer<typeof panelLayout>;
+
+export type DashboardChange = z.infer<typeof dashboardChange>;
 
 export type DateRangeFilter = z.infer<typeof dateRangeFilter>;
 
@@ -79,6 +127,32 @@ export const analyticsContract = {
   listDashboards: oc
     .route({ method: "GET", path: "/analytics/dashboards" })
     .output(z.array(dashboardSummary)),
+  readDashboard: oc
+    .route({ method: "GET", path: "/analytics/dashboards/{id}" })
+    .input(z.object({ id: dashboardId }))
+    .output(dashboardView),
+  createDashboard: oc
+    .route({ method: "POST", path: "/analytics/dashboards" })
+    .input(z.object({ name: dashboardName }))
+    .output(dashboardView),
+  changeDashboard: oc
+    .route({ method: "PATCH", path: "/analytics/dashboards/{id}" })
+    .input(
+      z.object({
+        id: dashboardId,
+        expectedVersion: z.int().min(1),
+        changes: dashboardChanges,
+      })
+    )
+    .output(dashboardView),
+  undoDashboard: oc
+    .route({ method: "POST", path: "/analytics/dashboards/{id}/undo" })
+    .input(z.object({ id: dashboardId, expectedVersion: z.int().min(1) }))
+    .output(dashboardView),
+  deleteDashboard: oc
+    .route({ method: "DELETE", path: "/analytics/dashboards/{id}" })
+    .input(z.object({ id: dashboardId }))
+    .output(z.object({ id: z.string() })),
 };
 
 export type AnalyticsContract = typeof analyticsContract;

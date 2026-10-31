@@ -30,10 +30,41 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/dashboards.integration.test.ts",
     reason:
-      "Spec 7 R-48 and R-51: only the owner reads a dashboard, behind analytics:read",
+      "Spec 7 R-48, R-49 and R-51: only the owner reads and writes a dashboard, behind can(), the chart gate, Undo and the audit",
     cases: [
-      "lists only the caller's own dashboards, the last changed first",
-      "refuses the list to a person without analytics:read",
-    ].map((name) => `the analytics listDashboards procedure ${name}`),
+      ...[
+        "lists only the caller's own dashboards, the last changed first",
+        "refuses the list to a person without analytics:read",
+      ].map((name) => `the analytics listDashboards procedure ${name}`),
+      ...[
+        ...[
+          "readDashboard",
+          "changeDashboard",
+          "undoDashboard",
+          "deleteDashboard",
+        ].map(
+          (procedure) =>
+            `answer not-found to ${procedure} on another person's dashboard and leave it the same`
+        ),
+        ...[
+          "createDashboard",
+          "changeDashboard",
+          "undoDashboard",
+          "deleteDashboard",
+          "readDashboard",
+        ].map((procedure) => `refuse ${procedure} to a person without its key`),
+        "refuse a change on an older version and write nothing",
+        "refuse a panel on a dataset this deployment lacks and write nothing",
+        "undo two renames in reverse order, then answer nothing-to-undo",
+        "refuse an Undo whose panel the gate refuses now and restore nothing",
+        "save a rename of a dashboard that holds a panel the gate refuses now",
+        "undo a rename of a dashboard that holds a panel the gate refuses now",
+        "write one audit row for each create, change, Undo and delete",
+        ...["create", "rename"].map(
+          (how) =>
+            `refuse to ${how} a name the owner already uses in another case and with outer spaces`
+        ),
+      ].map((name) => `the analytics dashboard procedures ${name}`),
+    ],
   },
 ];

@@ -2006,6 +2006,1043 @@
             }
           }
         }
+      },
+      "post": {
+        "operationId": "analytics.createDashboard",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "canUndo": {
+                      "type": "boolean"
+                    },
+                    "filters": {
+                      "type": "object",
+                      "properties": {
+                        "dateRange": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "preset": {
+                                  "enum": [
+                                    "all",
+                                    "this-month",
+                                    "last-3-months",
+                                    "last-6-months",
+                                    "this-year"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "preset"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "format": "date"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "field": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 40
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "field",
+                                "label",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "dateRange",
+                        "field"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "panels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "layout": {
+                            "type": "object",
+                            "properties": {
+                              "columns": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4
+                              },
+                              "rows": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2
+                              }
+                            },
+                            "required": [
+                              "columns",
+                              "rows"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "id",
+                          "layout"
+                        ]
+                      },
+                      "readOnly": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "version",
+                    "canUndo",
+                    "filters",
+                    "panels"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/dashboards/{id}": {
+      "get": {
+        "operationId": "analytics.readDashboard",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "canUndo": {
+                      "type": "boolean"
+                    },
+                    "filters": {
+                      "type": "object",
+                      "properties": {
+                        "dateRange": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "preset": {
+                                  "enum": [
+                                    "all",
+                                    "this-month",
+                                    "last-3-months",
+                                    "last-6-months",
+                                    "this-year"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "preset"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "format": "date"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "field": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 40
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "field",
+                                "label",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "dateRange",
+                        "field"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "panels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "layout": {
+                            "type": "object",
+                            "properties": {
+                              "columns": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4
+                              },
+                              "rows": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2
+                              }
+                            },
+                            "required": [
+                              "columns",
+                              "rows"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "id",
+                          "layout"
+                        ]
+                      },
+                      "readOnly": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "version",
+                    "canUndo",
+                    "filters",
+                    "panels"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "analytics.changeDashboard",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "changes": {
+                    "type": "array",
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "items": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "add-panel"
+                            },
+                            "panel": {},
+                            "layout": {
+                              "type": "object",
+                              "properties": {
+                                "columns": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 4
+                                },
+                                "rows": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 2
+                                }
+                              },
+                              "required": [
+                                "columns",
+                                "rows"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "op"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "change-panel"
+                            },
+                            "panelId": {
+                              "type": "string",
+                              "pattern": "^p[1-9][0-9]{0,2}$"
+                            },
+                            "panel": {},
+                            "layout": {
+                              "type": "object",
+                              "properties": {
+                                "columns": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 4
+                                },
+                                "rows": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 2
+                                }
+                              },
+                              "required": [
+                                "columns",
+                                "rows"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "panelId"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "remove-panel"
+                            },
+                            "panelId": {
+                              "type": "string",
+                              "pattern": "^p[1-9][0-9]{0,2}$"
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "panelId"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "move-panel"
+                            },
+                            "panelId": {
+                              "type": "string",
+                              "pattern": "^p[1-9][0-9]{0,2}$"
+                            },
+                            "toIndex": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 11
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "panelId",
+                            "toIndex"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "rename"
+                            },
+                            "name": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "name"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "set-filters"
+                            },
+                            "filters": {
+                              "type": "object",
+                              "properties": {
+                                "dateRange": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "preset": {
+                                          "enum": [
+                                            "all",
+                                            "this-month",
+                                            "last-3-months",
+                                            "last-6-months",
+                                            "this-year"
+                                          ],
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "preset"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "from": {
+                                          "type": "string",
+                                          "format": "date"
+                                        },
+                                        "to": {
+                                          "type": "string",
+                                          "format": "date"
+                                        }
+                                      },
+                                      "required": [
+                                        "from",
+                                        "to"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                "field": {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "field": {
+                                          "type": "string",
+                                          "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                        },
+                                        "label": {
+                                          "type": "string",
+                                          "minLength": 1,
+                                          "maxLength": 40
+                                        },
+                                        "value": {
+                                          "anyOf": [
+                                            {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            {
+                                              "type": "null"
+                                            }
+                                          ]
+                                        }
+                                      },
+                                      "required": [
+                                        "field",
+                                        "label",
+                                        "value"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "dateRange",
+                                "field"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "filters"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "expectedVersion",
+                  "changes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "canUndo": {
+                      "type": "boolean"
+                    },
+                    "filters": {
+                      "type": "object",
+                      "properties": {
+                        "dateRange": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "preset": {
+                                  "enum": [
+                                    "all",
+                                    "this-month",
+                                    "last-3-months",
+                                    "last-6-months",
+                                    "this-year"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "preset"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "format": "date"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "field": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 40
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "field",
+                                "label",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "dateRange",
+                        "field"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "panels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "layout": {
+                            "type": "object",
+                            "properties": {
+                              "columns": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4
+                              },
+                              "rows": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2
+                              }
+                            },
+                            "required": [
+                              "columns",
+                              "rows"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "id",
+                          "layout"
+                        ]
+                      },
+                      "readOnly": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "version",
+                    "canUndo",
+                    "filters",
+                    "panels"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "analytics.deleteDashboard",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analytics/dashboards/{id}/undo": {
+      "post": {
+        "operationId": "analytics.undoDashboard",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expectedVersion": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "required": [
+                  "expectedVersion"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "version": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "canUndo": {
+                      "type": "boolean"
+                    },
+                    "filters": {
+                      "type": "object",
+                      "properties": {
+                        "dateRange": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "preset": {
+                                  "enum": [
+                                    "all",
+                                    "this-month",
+                                    "last-3-months",
+                                    "last-6-months",
+                                    "this-year"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "preset"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "from": {
+                                  "type": "string",
+                                  "format": "date"
+                                },
+                                "to": {
+                                  "type": "string",
+                                  "format": "date"
+                                }
+                              },
+                              "required": [
+                                "from",
+                                "to"
+                              ],
+                              "additionalProperties": false
+                            }
+                          ]
+                        },
+                        "field": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "field": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 40
+                                },
+                                "value": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 200
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "field",
+                                "label",
+                                "value"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        }
+                      },
+                      "required": [
+                        "dateRange",
+                        "field"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "panels": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "layout": {
+                            "type": "object",
+                            "properties": {
+                              "columns": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 4
+                              },
+                              "rows": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 2
+                              }
+                            },
+                            "required": [
+                              "columns",
+                              "rows"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "config": {}
+                        },
+                        "required": [
+                          "id",
+                          "layout"
+                        ]
+                      },
+                      "readOnly": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "version",
+                    "canUndo",
+                    "filters",
+                    "panels"
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/invoices/documents": {
