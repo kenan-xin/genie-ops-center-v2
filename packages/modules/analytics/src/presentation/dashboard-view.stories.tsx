@@ -6,6 +6,9 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   chartOf,
+  chatNoneDashboardPage,
+  chatOffDashboardPage,
+  chatOnDashboardPage,
   defaultDashboardPage,
   emptyDashboardPage,
   FILTER_VALUES,
@@ -24,6 +27,9 @@ const undoDashboard = fn();
 const panelData = fn();
 
 const filterValues = fn();
+
+/** The chat's chart gate; these stories send no message, so it never runs. */
+const chart = fn();
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
@@ -49,6 +55,7 @@ function withQuery(Story: () => ReactNode) {
             panelData,
             filterValues,
           },
+          agent: { chart },
         }}
       >
         <Story />
@@ -133,6 +140,41 @@ export const Empty: Story = {
       canvas.getByText("Ask in the chat beside the dashboard to add a panel.")
     ).toBeVisible();
   },
+};
+
+/**
+ * The chat beside the dashboard, for a person who may ask while AI is on (R-49). From 1024 px it
+ * is a 22rem column to the right of the panels; below that it follows the panels. No message is
+ * sent here; Plan task 9 proves a chat change in a browser.
+ */
+export const ChatOn: Story = {
+  name: "Chat on",
+  args: { view: chatOnDashboardPage },
+  globals: desktop,
+  beforeEach: () => serve(chatOnDashboardPage),
+};
+
+export const ChatOnPhone: Story = {
+  name: "Chat on a phone",
+  args: { view: chatOnDashboardPage },
+  globals: phone,
+  beforeEach: () => serve(chatOnDashboardPage),
+};
+
+/** AI is off for the deployment: a note in place of the chat, and hand editing still works. */
+export const ChatOff: Story = {
+  name: "Chat off",
+  args: { view: chatOffDashboardPage },
+  globals: desktop,
+  beforeEach: () => serve(chatOffDashboardPage),
+};
+
+/** A person who may not ask (no `core:ask:use`): no chat and no note. */
+export const ChatNone: Story = {
+  name: "No chat",
+  args: { view: chatNoneDashboardPage },
+  globals: desktop,
+  beforeEach: () => serve(chatNoneDashboardPage),
 };
 
 export const EmptyWithoutChat: Story = {

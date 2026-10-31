@@ -90,6 +90,17 @@ export async function listOwnDashboards(
   }));
 }
 
+/** The caller's own dashboards with their configs, in the order of `listOwnDashboards` (R-48). */
+export async function listOwnRecords(
+  ctx: ModuleRequestContext
+): Promise<DashboardRecord[]> {
+  return ctx.tenant.db
+    .select(RECORD)
+    .from(dashboard)
+    .where(eq(dashboard.ownerUserId, ctx.caller.userId))
+    .orderBy(desc(dashboard.updatedAt), desc(dashboard.id));
+}
+
 export async function readOwnDashboard(
   ctx: ModuleRequestContext,
   id: string

@@ -1,5 +1,6 @@
 "use client";
 
+import { AgentPanel } from "@genie/core/features/agent";
 import { PageHeader } from "@genie/core/features/shell";
 import {
   Button,
@@ -11,8 +12,10 @@ import {
   EmptyState,
   Field,
   FieldLabel,
+  InfoNote,
   Input,
 } from "@genie/ui";
+import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 
 import type { DashboardChange } from "../contract.ts";
@@ -22,6 +25,7 @@ import {
   type AppIssue,
   appCodeOf,
   appIssuesOf,
+  dashboardQueryKey,
   useDashboard,
   useDashboardChange,
   useUndoDashboard,
@@ -106,6 +110,7 @@ export function DashboardView(props: DashboardViewProps) {
   const dashboard = dashboardQuery.data ?? view.dashboard;
   const change = useDashboardChange(dashboard);
   const undo = useUndoDashboard(dashboard);
+  const queryClient = useQueryClient();
   const nameId = useId();
   const [editing, setEditing] = useState(false);
   const [renaming, setRenaming] = useState<RenameTarget | null>(null);
@@ -237,49 +242,85 @@ export function DashboardView(props: DashboardViewProps) {
           ) : undefined
         }
       />
-      {renaming === null && refusal !== null ? (
-        <div className="mb-4">{refusal}</div>
-      ) : null}
-      {view.canWrite ? (
-        <div className="mb-4">
-          <FiltersBar dashboard={dashboard} />
-        </div>
-      ) : null}
-      {dashboard.panels.length === 0 ? (
-        <EmptyState
-          variant="framed"
-          title="No panels yet"
-          description={
-            view.chat.kind === "on"
-              ? "Ask in the chat beside the dashboard to add a panel."
-              : "This dashboard has no panels."
-          }
-        />
-      ) : (
-        <div className="grid gap-4 md:grid-cols-4">
-          {dashboard.panels.map((panel, index) => (
-            <PanelCard
-              key={panel.id}
-              dashboard={dashboard}
-              panel={panel}
-              index={index}
-              count={dashboard.panels.length}
-              timeZone={view.timeZone}
-              editing={editing}
-              onChange={(target, changes) =>
-                send(changes, { panelTitle: target.config.title })
+      {/* From lg the chat is a 22rem column (w-88) right of the panels; below lg it follows them. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 lg:flex-1">
+          {renaming === null && refusal !== null ? (
+            <div className="mb-4">{refusal}</div>
+          ) : null}
+          {view.canWrite ? (
+            <div className="mb-4">
+              <FiltersBar dashboard={dashboard} />
+            </div>
+          ) : null}
+          {dashboard.panels.length === 0 ? (
+            <EmptyState
+              variant="framed"
+              title="No panels yet"
+              description={
+                view.chat.kind === "on"
+                  ? "Ask in the chat beside the dashboard to add a panel."
+                  : "This dashboard has no panels."
               }
-              onRename={(target) =>
-                openRename({
-                  kind: "panel",
-                  panelId: target.id,
-                  value: target.config.title,
+            />
+          ) : (
+            <div className="grid gap-4 md:grid-cols-4">
+              {dashboard.panels.map((panel, index) => (
+                <PanelCard
+                  key={panel.id}
+                  dashboard={dashboard}
+                  panel={panel}
+                  index={index}
+                  count={dashboard.panels.length}
+                  timeZone={view.timeZone}
+                  editing={editing}
+                  onChange={(target, changes) =>
+                    send(changes, { panelTitle: target.config.title })
+                  }
+                  onRename={(target) =>
+                    openRename({
+                      kind: "panel",
+                      panelId: target.id,
+                      value: target.config.title,
+                    })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        {view.chat.kind === "on" ? (
+          <aside
+            aria-label="Chat about this dashboard"
+            className="min-w-0 lg:w-88 lg:shrink-0"
+          >
+            {/* A new key per dashboard, so a move to another dashboard starts a new chat. */}
+            <AgentPanel
+              key={dashboard.id}
+              context={{
+                recordType: "analytics-dashboard",
+                recordId: dashboard.id,
+              }}
+              models={view.chat.models}
+              timeZone={view.timeZone}
+              newChatHref={`/m/analytics/dashboards/${dashboard.id}`}
+              // A chat change saves a new version; the page reads it at once.
+              onFinished={() =>
+                void queryClient.invalidateQueries({
+                  queryKey: dashboardQueryKey(dashboard.id),
                 })
               }
             />
-          ))}
-        </div>
-      )}
+          </aside>
+        ) : null}
+        {view.chat.kind === "off" ? (
+          <div className="lg:w-88 lg:shrink-0">
+            <InfoNote size="md" role="status">
+              Chat is off. You can still change this dashboard by hand.
+            </InfoNote>
+          </div>
+        ) : null}
+      </div>
       <Dialog
         open={renaming !== null}
         onOpenChange={(open) => {

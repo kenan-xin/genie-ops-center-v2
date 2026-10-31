@@ -1,5 +1,10 @@
 import { definePage, type Module } from "@genie/core";
+import { capability } from "@genie/core/contracts";
 
+import {
+  ANALYTICS_AGENT_INSTRUCTIONS,
+  ANALYTICS_AGENT_TOOLS,
+} from "./agent-tools.ts";
 import { analyticsContract } from "./contract.ts";
 import { ANALYTICS_PERMISSIONS } from "./permissions.ts";
 import {
@@ -93,7 +98,12 @@ export const analyticsModule = {
 
   events: [],
 
-  capabilities: [],
+  capabilities: [
+    capability("agent-tools", {
+      tools: ANALYTICS_AGENT_TOOLS,
+      instructions: ANALYTICS_AGENT_INSTRUCTIONS,
+    }),
+  ],
 
   jobs: [],
 

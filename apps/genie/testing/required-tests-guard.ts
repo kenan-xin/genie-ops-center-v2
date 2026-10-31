@@ -289,4 +289,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the analytics panels on real data offer the field filter on customerName the values []",
     ],
   },
+  {
+    file: "testing/analytics-chat.integration.test.ts",
+    reason:
+      "Spec 7 R-46, R-47 and R-49: a chat change beside a dashboard saves through the store with one Undo entry and one agent audit row, Undo restores the dashboard, and the replayed follow-up request proves the tool output holds no clock value",
+    cases: [
+      "the analytics chat beside a dashboard adds the recorded panel with one Undo entry and one audit row, and Undo restores the empty dashboard",
+    ],
+  },
 ];

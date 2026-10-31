@@ -34,6 +34,23 @@ Default roles: `Analytics user` (`analytics:use`), `Analytics viewer` (`analytic
 
 Limits: 12 panels per dashboard, each panel 1 to 4 columns wide and 1 to 2 rows high, with an id `p<n>` that is never reused; 20 undo entries; 20 steps per change.
 
+## Agent tools and rules
+
+The module provides the `agent-tools` capability. Each tool runs as the person who asks, checks its key through `can()` again, and reads or changes only that person's own dashboards; another person's dashboard id answers `not-found`. Core writes one audit row per call.
+
+| Tool | Offered to | Does |
+| --- | --- | --- |
+| `analytics-list-dashboards` | `analytics:read` | Lists the person's dashboards: id, name, version and each panel's id, chart type and title. |
+| `analytics-read-dashboard` | `analytics:read` | Reads one dashboard: name, version, filters and each panel's id, layout and chart config. |
+| `analytics-create-dashboard` | `analytics:write` | Creates an empty dashboard with a name unique among the person's dashboards. |
+| `analytics-change-dashboard` | `analytics:write` | Saves one change of add-panel, change-panel, remove-panel, move-panel, rename or set-filters steps. |
+
+The two write tools are marked `writes: true`. A change goes through the same store path as a hand save: every added or changed panel passes the chart gate, a refused step saves nothing, and the save adds an Undo entry that Undo on the dashboard restores (Spec 7 R-46, R-49). No tool output holds a clock value or data rows, because a recorded follow-up request holds the output.
+
+The module's four agent rules reach a holder of `analytics:write` only. They say that the tools touch only the person's own dashboards, that a change runs only on the person's own request and has Undo, that a panel takes the config of a Chart in an answer and passes the chart check, and that the dashboard filters apply to every panel and are not repeated in a panel query.
+
+The dashboard page shows the chat beside the dashboard for a person who may ask while AI is on: from the `lg` width it is a 22rem column to the right of the panels, and below that it follows them. Every message names the dashboard as the open record, and after each answer the page reads the dashboard again. While AI is off, a note says that the dashboard can still be changed by hand.
+
 ## Not built
 
 Shared dashboards, free SQL, a dashboard slot on a core page.

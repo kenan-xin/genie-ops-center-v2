@@ -138,6 +138,27 @@ export const noChatDashboardPage: DashboardPageView = {
   chat: { kind: "none" },
 };
 
+export const chatOnDashboardPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  chat: {
+    kind: "on",
+    models: {
+      allowed: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+      chatDefault: "openai/gpt-6.1-terra",
+    },
+  },
+};
+
+export const chatOffDashboardPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  chat: { kind: "off" },
+};
+
+export const chatNoneDashboardPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  chat: { kind: "none" },
+};
+
 export const readOnlyDashboardPage: DashboardPageView = {
   ...defaultDashboardPage,
   canWrite: false,

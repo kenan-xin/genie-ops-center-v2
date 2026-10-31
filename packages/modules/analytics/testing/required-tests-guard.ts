@@ -74,4 +74,21 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       ].map((name) => `the analytics dashboard procedures ${name}`),
     ],
   },
+  {
+    file: "testing/agent-tools.integration.test.ts",
+    reason:
+      "Spec 7 R-46, R-48 and R-49: the agent tools read and change only the asker's own dashboards through the chart gate, and a write tool and the module rules reach only a holder of analytics:write",
+    cases: [
+      ...[
+        "analytics-list-dashboards answers no dashboard to another person",
+        "analytics-read-dashboard answers not-found to another person",
+        "analytics-change-dashboard answers not-found to another person",
+        "analytics-change-dashboard answers chart-invalid to the owner for a panel on an unknown dataset",
+      ].map(
+        (row) =>
+          `the analytics agent tools ${row} and leaves the owner's dashboard the same`
+      ),
+      "the analytics agent tools offers a reader the two read tools, a writer all four, and no analytics key none; the rules reach only a writer",
+    ],
+  },
 ];
