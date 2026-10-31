@@ -222,6 +222,8 @@ export const RefusedPanel: Story = {
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "You may not read this dataset."
     );
+    // The refused panel keeps its title, so the person can tell which one failed.
+    await expect(canvas.getByText("Monthly invoiced sales")).toBeVisible();
     await expect(
       await canvas.findByRole("figure", { name: "Invoiced sales" })
     ).toBeVisible();
@@ -231,6 +233,19 @@ export const RefusedPanel: Story = {
     await expect(
       canvas.queryByRole("figure", { name: "Monthly invoiced sales" })
     ).toBeNull();
+  },
+};
+
+// A panel still loading shows its title above the loading line.
+export const LoadingPanel: Story = {
+  name: "Loading panel",
+  globals: phone,
+  beforeEach: () => {
+    serve(defaultDashboardPage);
+    panelData.mockImplementation(() => new Promise(() => undefined));
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Top customers")).toBeVisible();
   },
 };
 

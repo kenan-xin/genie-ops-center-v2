@@ -242,6 +242,10 @@ export function PanelCard(props: PanelCardProps) {
               />
             </div>
           ) : null}
+          {/* Without a chart there is no figure title, so name the panel here. */}
+          {query.isError || query.data === undefined ? (
+            <p className="mb-1 text-sm font-medium">{panel.config.title}</p>
+          ) : null}
           {query.isError ? (
             <p role="alert" className="text-sm text-destructive">
               {query.error.message === ""
