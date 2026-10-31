@@ -125,6 +125,8 @@ function PanelActions(props: PanelActionsProps) {
             {COLUMNS.map((columns) => (
               <DropdownMenuItem
                 key={columns}
+                // The current size would save a no-op and spend an Undo entry.
+                disabled={columns === layout.columns}
                 onClick={() =>
                   onChange([
                     {
@@ -146,6 +148,7 @@ function PanelActions(props: PanelActionsProps) {
             {HEIGHTS.map((height) => (
               <DropdownMenuItem
                 key={height.rows}
+                disabled={height.rows === layout.rows}
                 onClick={() =>
                   onChange([
                     {

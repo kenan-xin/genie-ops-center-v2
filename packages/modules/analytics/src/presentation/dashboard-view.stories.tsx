@@ -512,6 +512,41 @@ export const EditActions: Story = {
   },
 };
 
+// The current width and height are off, so a choice never saves a no-op and spends an Undo entry.
+export const CurrentSize: Story = {
+  name: "Current size",
+  globals: desktop,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Width" })
+    );
+    await expect(
+      await screen.findByRole("menuitem", { name: "1 column" })
+    ).toHaveAttribute("data-disabled");
+    await expect(
+      screen.getByRole("menuitem", { name: "2 columns" })
+    ).not.toHaveAttribute("data-disabled");
+
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Height" })
+    );
+    await expect(
+      await screen.findByRole("menuitem", { name: "Short" })
+    ).toHaveAttribute("data-disabled");
+  },
+};
+
 // B5.3: a refused change names the panel and its hint, and keeps the stored panel.
 export const RefusedEdit: Story = {
   name: "Refused edit",
