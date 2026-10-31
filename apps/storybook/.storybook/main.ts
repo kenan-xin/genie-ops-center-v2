@@ -48,6 +48,12 @@ const config: StorybookConfig = {
   // compiles the product stylesheet with Tailwind's own Vite plugin.
   viteFinal: (viteConfig) =>
     mergeConfig(viteConfig, {
+      // A PDF stays a file: a story adds `?v=` to its link, which breaks the `data:` URL that
+      // Vite's 4 KB inline limit would make of a small demo PDF.
+      build: {
+        assetsInlineLimit: (file: string) =>
+          file.endsWith(".pdf") ? false : undefined,
+      },
       // The module client's packages. One selection's run fills the optimizer
       // cache, and a later selection that first imports them would reload
       // the browser mid-run and fail its stories. The chart stories add Recharts.
