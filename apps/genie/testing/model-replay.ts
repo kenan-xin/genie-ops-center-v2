@@ -1,9 +1,16 @@
+import { fileURLToPath } from "node:url";
+
 import {
   liveRecorder,
   loadModelRecordings,
   MODEL_PROVIDER_ORIGIN,
   replayModelTransport,
 } from "@genie/core/testing/model-transports";
+
+/** The absolute path of `testing/model-recordings`: the agent answers on the app's module selection. */
+export const APP_AGENT_RECORDINGS = fileURLToPath(
+  new URL("model-recordings", import.meta.url)
+);
 
 /**
  * Answers this process's requests to the model origin from the recordings of `directory`

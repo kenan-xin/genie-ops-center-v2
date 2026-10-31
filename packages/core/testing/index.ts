@@ -16,6 +16,7 @@ export { enableModules } from "./enable-modules.ts";
 
 export {
   agentRequest,
+  answerChartConfigs,
   readAgentReply,
   writeModelConnection,
 } from "./agent-helpers.ts";

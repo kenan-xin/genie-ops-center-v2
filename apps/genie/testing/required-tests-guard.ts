@@ -246,4 +246,27 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the generated-stack readiness wait reports a timeout with the still-running container's state and logs",
     ],
   },
+  {
+    file: "testing/invoice-answers.integration.test.ts",
+    reason:
+      "Spec 7 AC-8 on the invoice datasets, R-44 and R-46: the nine recorded answers give expected-answers.json and open their records, the invoices rules reach the prompt with read tools only, and a person without invoices:read gets no invoice chart",
+    cases: [
+      ...[
+        "overdue-invoices",
+        "repeated-late-payers",
+        "overdue-balances",
+        "monthly-invoiced-and-collected",
+        "top-customers-by-sales",
+        "top-customers-overdue",
+        "invoices-without-due-date",
+        "manual-due-dates",
+        "partial-payments",
+      ].map(
+        (id) =>
+          `the invoice answers through the agent the recorded answer to ${id} gives the expected answer and opens its records`
+      ),
+      "the invoice answers through the agent sends the invoices rules and only the read tools to the model for a person with invoices:read",
+      "the invoice answers through the agent refuses every chart of the nine answers to a person without invoices:read",
+    ],
+  },
 ];
