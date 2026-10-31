@@ -112,4 +112,44 @@ describe("the agent chart on placeholder.records", () => {
       }))
     );
   });
+
+  it("keeps the key column of a records table that selects nothing else", async () => {
+    const record = await insertPlaceholderRecord(deployment.context, {
+      label: "agent-chart only id",
+      recordedOn: "2026-01-01",
+    });
+
+    const config = {
+      type: "table",
+      title: "Records",
+      series: [
+        {
+          name: "Records",
+          dataset: "placeholder.records",
+          query: {
+            select: ["id"],
+            filters: [{ field: "id", op: "eq", value: record?.id }],
+          },
+        },
+      ],
+    };
+
+    const agent = await agentFor([
+      "core:ask:use",
+      "placeholder:read",
+      "placeholder:use",
+    ]);
+
+    const { data } = await agent.chart({ config });
+
+    expect({
+      columns: data.columns.map(({ key }) => key),
+      rows: data.rows,
+      paths: data.recordPaths,
+    }).toEqual({
+      columns: ["id"],
+      rows: [{ id: record?.id }],
+      paths: [`/placeholder/${record?.id}`],
+    });
+  });
 });

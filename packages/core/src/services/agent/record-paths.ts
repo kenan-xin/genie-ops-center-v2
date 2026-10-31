@@ -7,7 +7,8 @@ import { listDatasets, recordRoute } from "../datasets/index.ts";
 /**
  * An answer's records table opens each row's record (R-44, S7-11 D3). When a table selects its
  * dataset's record key field, each row's page is resolved through the record route as the viewer,
- * so a row that the viewer may not open answers null, and the key column is not drawn. Every other
+ * so a row that the viewer may not open answers null, and the key column is not drawn unless it is
+the only column. Every other
  * chart is answered unchanged.
  */
 export async function withRecordPaths(
@@ -44,6 +45,11 @@ export async function withRecordPaths(
       return route?.path ?? null;
     })
   );
+
+  // A table that selects only the key keeps it, so its rows still have a name.
+  if (data.columns.length === 1) {
+    return { config, data: { ...data, recordPaths } };
+  }
 
   return {
     config,
