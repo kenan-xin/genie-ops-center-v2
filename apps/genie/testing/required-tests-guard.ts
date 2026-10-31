@@ -269,4 +269,24 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the invoice answers through the agent refuses every chart of the nine answers to a person without invoices:read",
     ],
   },
+  {
+    file: "testing/analytics-panels.integration.test.ts",
+    reason:
+      "Spec 7 R-15 and R-49 on real data: the dashboard filters reach every panel through the chart gate, a field filter leaves a panel whose dataset lacks the field unfiltered, a change runs the gate, and the field filter offers the panel datasets' values",
+    cases: [
+      ...[
+        "no filter as 250000",
+        "the range 2026-02-01 to 2026-03-31 as 130000",
+        "the field filter label = Bravo as 80000",
+        "a field filter on customerName, which the dataset lacks as 250000",
+        "the range this-month as null",
+      ].map(
+        (row) =>
+          `the analytics panels on real data draw the KPI under ${row} cents`
+      ),
+      "the analytics panels on real data refuse a change to a line chart over the text field label and save nothing",
+      "the analytics panels on real data offer the field filter on label the values [ 'Alpha', 'Bravo', 'Charlie' ]",
+      "the analytics panels on real data offer the field filter on customerName the values []",
+    ],
+  },
 ];

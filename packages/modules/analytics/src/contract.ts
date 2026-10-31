@@ -153,6 +153,20 @@ export const analyticsContract = {
     .route({ method: "DELETE", path: "/analytics/dashboards/{id}" })
     .input(z.object({ id: dashboardId }))
     .output(z.object({ id: z.string() })),
+  /** One panel's chart data under the dashboard filters, through the chart gate (R-15, R-49). */
+  panelData: oc
+    .route({
+      method: "GET",
+      path: "/analytics/dashboards/{id}/panels/{panelId}",
+    })
+    .input(z.object({ id: dashboardId, panelId }))
+    // The gate's ChartData; the browser narrows it once (Global Constraints).
+    .output(z.unknown()),
+  /** The values the field filter offers, from the panel datasets that declare the field. */
+  filterValues: oc
+    .route({ method: "GET", path: "/analytics/dashboards/{id}/filter-values" })
+    .input(z.object({ id: dashboardId }))
+    .output(z.array(z.string())),
 };
 
 export type AnalyticsContract = typeof analyticsContract;

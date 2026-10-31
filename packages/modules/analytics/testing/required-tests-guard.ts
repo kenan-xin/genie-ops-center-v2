@@ -30,8 +30,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/dashboards.integration.test.ts",
     reason:
-      "Spec 7 R-48, R-49 and R-51: only the owner reads and writes a dashboard, behind can(), the chart gate, Undo and the audit",
+      "Spec 7 R-48, R-49 and R-51: only the owner reads and writes a dashboard, behind can(), the chart gate, Undo and the audit; the page loaders read only the owner's dashboard and offer chat only to a person who may ask",
     cases: [
+      ...[
+        "answer not-found to the dashboard page of another person's dashboard",
+        "refuse the dashboard list to a person without analytics:read",
+        "answer chat none on the dashboard page to a person without core:ask:use",
+      ].map((name) => `the analytics page loaders ${name}`),
       ...[
         "lists only the caller's own dashboards, the last changed first",
         "refuses the list to a person without analytics:read",
@@ -42,6 +47,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
           "changeDashboard",
           "undoDashboard",
           "deleteDashboard",
+          "panelData",
+          "filterValues",
         ].map(
           (procedure) =>
             `answer not-found to ${procedure} on another person's dashboard and leave it the same`

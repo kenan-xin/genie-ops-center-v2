@@ -6,6 +6,7 @@ import {
 import {
   enableModules,
   insertPersonWith,
+  markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -13,6 +14,10 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { EMPTY_DASHBOARD_CONFIG } from "../src/config.ts";
 import { analyticsModule } from "../src/module.ts";
 import { analyticsRouter } from "../src/router.ts";
+import {
+  loadDashboardList,
+  loadDashboardPage,
+} from "../src/services/pages/loaders.ts";
 import { insertDashboard } from "./factories.ts";
 
 /**
@@ -24,6 +29,8 @@ let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([analyticsModule]);
+  // The page loader reads the settings and the branding, which the seed step writes.
+  await markSetupDone(deployment.context);
   await enableModules(deployment.context, ["analytics"]);
 }, 120000);
 
@@ -32,8 +39,8 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
-function callerAs(userId: string) {
-  const context = {
+function contextOf(userId: string): ModuleRequestContext {
+  return {
     tenant: deployment.context,
     caller: principalFor({
       tenant: deployment.context,
@@ -41,9 +48,11 @@ function callerAs(userId: string) {
       userId,
       authenticated: true,
     }),
-  } satisfies ModuleRequestContext;
+  };
+}
 
-  return callProcedure(analyticsRouter, context);
+function callerAs(userId: string) {
+  return callProcedure(analyticsRouter, contextOf(userId));
 }
 
 describe("the analytics listDashboards procedure", () => {
@@ -142,10 +151,14 @@ async function auditOf(id: string) {
   return rows;
 }
 
-/** An owner's dashboard with one Undo entry, so every procedure would succeed for the owner. */
+/**
+ * An owner's dashboard with one Undo entry and a panel `p1`, so every procedure answers the owner
+ * something other than `not-found` (the panel's own refusal is `chart-invalid`).
+ */
 async function ownedDashboard(ownerUserId: string) {
   return insertDashboard(deployment.context, {
     ownerUserId,
+    config: brokenConfig,
     undo: [{ name: "Before", config: EMPTY_DASHBOARD_CONFIG }],
   });
 }
@@ -153,7 +166,8 @@ async function ownedDashboard(ownerUserId: string) {
 type Call = (
   caller: ReturnType<typeof callerAs>,
   id: string
-) => Promise<{ readonly id: string }>;
+  // oxlint-disable-next-line anti-slop/no-unknown-returns -- the cases read only the refusal, never the answer
+) => Promise<unknown>;
 
 const PROCEDURES: readonly (readonly [string, Call])[] = [
   ["readDashboard", (caller, id) => caller.readDashboard({ id })],
@@ -171,7 +185,40 @@ const PROCEDURES: readonly (readonly [string, Call])[] = [
     (caller, id) => caller.undoDashboard({ id, expectedVersion: 1 }),
   ],
   ["deleteDashboard", (caller, id) => caller.deleteDashboard({ id })],
+  ["panelData", (caller, id) => caller.panelData({ id, panelId: "p1" })],
+  ["filterValues", (caller, id) => caller.filterValues({ id })],
 ];
+
+describe("the analytics page loaders", () => {
+  it("answer not-found to the dashboard page of another person's dashboard", async () => {
+    const id = await ownedDashboard(await editor());
+
+    await expect(
+      loadDashboardPage(contextOf(await editor()), id)
+    ).rejects.toMatchObject({ code: "not-found" });
+  });
+
+  it("refuse the dashboard list to a person without analytics:read", async () => {
+    const { userId } = await insertPersonWith(deployment.context, [
+      "analytics:use",
+      "analytics:write",
+    ]);
+
+    await expect(loadDashboardList(contextOf(userId))).rejects.toMatchObject({
+      code: "forbidden",
+    });
+  });
+
+  it("answer chat none on the dashboard page to a person without core:ask:use", async () => {
+    const owner = await editor();
+    const id = await ownedDashboard(owner);
+
+    expect(await loadDashboardPage(contextOf(owner), id)).toMatchObject({
+      dashboard: { id },
+      chat: { kind: "none" },
+    });
+  });
+});
 
 describe("the analytics dashboard procedures", () => {
   it.each(PROCEDURES)(

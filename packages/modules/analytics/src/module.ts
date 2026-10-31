@@ -2,9 +2,16 @@ import { definePage, type Module } from "@genie/core";
 
 import { analyticsContract } from "./contract.ts";
 import { ANALYTICS_PERMISSIONS } from "./permissions.ts";
-import { DashboardListPage } from "./presentation/module-pages.tsx";
+import {
+  DashboardListPage,
+  DashboardPage,
+} from "./presentation/module-pages.tsx";
 import { analyticsRouter } from "./router.ts";
 import { dashboard, MIGRATIONS, MIGRATIONS_TABLE } from "./schema.ts";
+import {
+  loadDashboardList,
+  loadDashboardPage,
+} from "./services/pages/loaders.ts";
 
 /** The Dashboards workspace entry and the page of its path (DEC-50). */
 const DASHBOARDS_ENTRY = {
@@ -70,7 +77,15 @@ export const analyticsModule = {
       definePage({
         path: DASHBOARDS_ENTRY.path,
         permission: DASHBOARDS_ENTRY.requiredPermission,
+        load: loadDashboardList,
         component: DashboardListPage,
+      }),
+      definePage({
+        path: `${DASHBOARDS_ENTRY.path}/:id`,
+        permission: DASHBOARDS_ENTRY.requiredPermission,
+        parent: DASHBOARDS_ENTRY.path,
+        load: (ctx, params) => loadDashboardPage(ctx, params.id ?? ""),
+        component: DashboardPage,
       }),
     ],
     admin: [],

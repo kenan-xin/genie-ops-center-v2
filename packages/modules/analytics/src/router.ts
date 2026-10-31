@@ -2,6 +2,7 @@ import { implementModule } from "@genie/core";
 
 import { analyticsContract } from "./contract.ts";
 import { assertCanRead, assertCanWrite } from "./services/dashboards/access.ts";
+import { filterValues, panelData } from "./services/dashboards/panel-data.ts";
 import {
   changeDashboard,
   createDashboard,
@@ -55,6 +56,18 @@ export const analyticsRouter = os.router({
     await deleteDashboard(context, input.id);
 
     return { id: input.id };
+  }),
+
+  panelData: os.panelData.handler(async ({ context, input }) => {
+    await assertCanRead(context.caller);
+
+    return panelData(context, input);
+  }),
+
+  filterValues: os.filterValues.handler(async ({ context, input }) => {
+    await assertCanRead(context.caller);
+
+    return [...(await filterValues(context, input))];
   }),
 });
 
