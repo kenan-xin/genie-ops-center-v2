@@ -143,7 +143,13 @@ export const InvoiceRead: Story = {
         "Found on page 1, highlighted on the document: “TOTAL (SGD) 5,000.00”"
       )
     ).toBeVisible();
-    await waitFor(() => expect(marksText(canvasElement)).toContain("5,000.00"));
+    // The lazy viewer loads its chunk, fetches the PDF and draws the text layer first. The 1 s
+    // default missed it at 1.3 s three times under gate:merge load; the Reading story's lazy
+    // viewer budget is 8 s.
+    await waitFor(
+      () => expect(marksText(canvasElement)).toContain("5,000.00"),
+      { timeout: 8_000 }
+    );
 
     // B4.3 at 1440: both columns start at the same top.
     const { card, viewer } = await columns(canvasElement);
