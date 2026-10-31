@@ -60,6 +60,11 @@ export type ChartProps = ChartData & {
   readonly timeZone: string;
   /** Draws each link of `recordPaths`; a plain `a` when the host passes none. */
   readonly linkComponent?: ChartLinkComponent;
+  /**
+   * Slides: fill the parent height, keep a table a table at every viewport, and drop the Chart and
+   * Table tabs (F1). The slide already chooses the kind, and the canvas is scaled rather than reflowed.
+   */
+  readonly slide?: boolean;
 };
 
 function PlainLink(props: {
@@ -100,6 +105,50 @@ function tableColumn(column: ChartColumn): DataTableColumn<ChartRow> {
   };
 
   return isNumeric(column) ? { ...base, align: "end" } : base;
+}
+
+/**
+ * A slide's table: always the table layout, whatever the viewport, because the canvas is scaled and
+ * not reflowed (F1). It is compact enough for 12 rows on a 348 px body, and it has no actions.
+ */
+function SlideTable(props: {
+  readonly label: string;
+  readonly columns: readonly ChartColumn[];
+  readonly rows: readonly ChartRow[];
+}) {
+  return (
+    <div className="h-full overflow-auto">
+      <table className="w-full border-collapse text-xs">
+        <caption className="sr-only">{props.label}</caption>
+        <thead>
+          <tr>
+            {props.columns.map((column) => (
+              <th
+                key={column.key}
+                className="border-b border-border bg-muted px-2 py-0.5 text-left font-semibold text-muted-foreground"
+              >
+                {column.label}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {props.rows.map((row, index) => (
+            <tr key={index} className="border-b border-border last:border-0">
+              {props.columns.map((column) => (
+                <td
+                  key={column.key}
+                  className={`px-2 py-0.5 ${isNumeric(column) ? "text-right tabular-nums" : ""}`}
+                >
+                  {formatChartValue(column, row[column.key] ?? null, { row })}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 }
 
 /** The values as a table, a card list under 768 px (tokens.md, "Tables and card lists"). */
@@ -235,7 +284,7 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
         : AreaChart;
 
   return (
-    <ChartContainer>
+    <ChartContainer fill={props.slide === true}>
       <Plot data={data} title={props.title} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
         <XAxis
@@ -292,7 +341,7 @@ function DonutPlot(props: ChartProps & { readonly x: ChartColumn }) {
   });
 
   return (
-    <ChartContainer>
+    <ChartContainer fill={props.slide === true}>
       <PieChart title={props.title}>
         <Pie
           data={data}
@@ -327,7 +376,13 @@ function KpiValue(props: ChartProps) {
   const row = props.rows[0];
 
   return (
-    <p className="text-2xl font-bold tabular-nums">
+    <p
+      className={
+        props.slide === true
+          ? "flex h-full items-center text-3xl font-bold tabular-nums whitespace-nowrap"
+          : "text-2xl font-bold tabular-nums"
+      }
+    >
       {column === undefined || row === undefined
         ? ""
         : formatChartValue(column, row[column.key] ?? null)}
@@ -342,6 +397,7 @@ function KpiValue(props: ChartProps) {
  */
 export function Chart(props: ChartProps) {
   const titleId = useId();
+  const slide = props.slide === true;
 
   const table = (
     <ChartTable
@@ -363,6 +419,20 @@ export function Chart(props: ChartProps) {
     );
   } else if (props.kind === "kpi") {
     body = <KpiValue {...props} />;
+  } else if (slide) {
+    // The slide chose the kind, so it shows it without the Chart and Table tabs (F1).
+    body =
+      props.kind === "table" || props.x === undefined ? (
+        <SlideTable
+          label={props.title}
+          columns={props.columns}
+          rows={props.rows}
+        />
+      ) : props.kind === "donut" ? (
+        <DonutPlot {...props} x={props.x} />
+      ) : (
+        <CartesianPlot {...props} x={props.x} />
+      );
   } else if (props.x !== undefined && props.kind !== "table") {
     body = (
       <Tabs defaultValue="chart">
@@ -383,11 +453,16 @@ export function Chart(props: ChartProps) {
   }
 
   return (
-    <figure aria-labelledby={titleId} className="grid min-w-0 gap-3">
+    <figure
+      aria-labelledby={titleId}
+      className={
+        slide ? "flex h-full min-w-0 flex-col gap-1" : "grid min-w-0 gap-3"
+      }
+    >
       <div id={titleId} className="font-semibold">
         {props.title}
       </div>
-      {body}
+      {slide ? <div className="min-h-0 flex-1">{body}</div> : body}
       <figcaption className="text-xs text-muted-foreground">
         {chartCaption(props, props.timeZone)}
       </figcaption>

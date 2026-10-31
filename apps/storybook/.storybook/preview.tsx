@@ -17,6 +17,11 @@ const preview: Preview = {
           styles: { width: "390px", height: "844px" },
           type: "mobile",
         },
+        desktop1440: {
+          name: "Desktop 1440",
+          styles: { width: "1440px", height: "900px" },
+          type: "desktop",
+        },
       },
     },
   },

@@ -4,18 +4,20 @@ What the module renders.
 
 ## What belongs here
 
-Components, their stories, and their fixtures. A component takes its data as props, so it
-renders in a story with no database, no network call, and no tenant. The stories are the
-specification: they document the component on its Docs page and they are the browser behavior
-tests the Storybook host runs.
+Components, their stories, fixtures, and the browser hooks that read the Slides list and one deck
+through `useModuleClient`. A page component takes the loader's answer as `view` and starts its
+query from it, so a story renders the page with a stub client and no database, no network call,
+and no tenant. The stories are the specification: they document the component on its Docs page and
+they are the browser behavior tests the Storybook host runs.
 
 ## What must not go here
 
-Data fetching, a query client, a permission check, and any import of the runtime registry or
-the deployment environment. A component that cannot render from props alone does not belong in
-this folder.
+A permission check, the router, the schema, the deployment environment, or any import of
+`src/services/export/`. A component never asks a permission: its page's `permission` and its
+loader do. Nothing here imports another module or `pptxgenjs`.
 
 ## What it imports
 
-`@genie/ui`, `react`, `PageHeader` from `@genie/core/features/shell`, and its own fixtures. The
+`@genie/ui`, `react`, `@tanstack/react-query`, `@genie/core/rpc/client`, `PageHeader` from
+`@genie/core/features/shell`, the module's browser-safe `contract.ts`, and its own fixtures. The
 story file also imports the Storybook types.

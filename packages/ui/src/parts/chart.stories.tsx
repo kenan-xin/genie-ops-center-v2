@@ -455,3 +455,85 @@ export const TableViewDark: Story = {
   globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
   play: tableViewPlay,
 };
+
+const desktop = { viewport: { value: "desktop1440", isRotated: false } };
+
+const phone = { viewport: { value: "phone390", isRotated: false } };
+
+// A slide's body box is 536 x 348, so the chart fills the height its slide gives it (F1).
+const SLIDE_FRAME = { width: "100%", maxWidth: 536, height: 348 } as const;
+
+const slideChart = { ...invoiced, slide: true } as const satisfies ChartProps;
+
+const slideChartPlay: Story["play"] = async ({ canvas, canvasElement }) => {
+  // A slide chooses the kind, so there are no Chart and Table tabs.
+  await expect(canvas.queryByRole("tab")).toBeNull();
+  await waitFor(() =>
+    expect(
+      canvasElement.querySelector(".recharts-bar-rectangles")
+    ).not.toBeNull()
+  );
+
+  const figure = canvas.getByRole("figure", {
+    name: "Invoiced and collected",
+  });
+
+  await expect(Math.abs(figure.clientHeight - 348)).toBeLessThanOrEqual(1);
+  await expect(canvas.getByText(CAPTION)).toBeVisible();
+};
+
+const slideFrame = (args: ChartProps) => (
+  <div style={SLIDE_FRAME}>
+    <Chart {...args} />
+  </div>
+);
+
+export const SlideChart: Story = {
+  args: slideChart,
+  globals: desktop,
+  render: slideFrame,
+  play: slideChartPlay,
+};
+
+export const SlideChartOnPhone: Story = {
+  name: "Slide chart on a phone",
+  args: slideChart,
+  globals: phone,
+  render: slideFrame,
+  play: async (context) => {
+    await slideChartPlay(context);
+    await noPageScroll();
+  },
+};
+
+const slideTable = { ...records, slide: true } as const satisfies ChartProps;
+
+const slideTablePlay: Story["play"] = async ({ canvas }) => {
+  await expect(canvas.queryByRole("tab")).toBeNull();
+
+  const table = canvas.getByRole("table", { name: "Records" });
+
+  await expect(
+    within(table).getByRole("cell", { name: "€15.00" })
+  ).toBeVisible();
+  // At a phone viewport it is still a table, never the card list (F1).
+  await expect(canvas.queryByRole("list", { name: "Records" })).toBeNull();
+};
+
+export const SlideTable: Story = {
+  args: slideTable,
+  globals: desktop,
+  render: slideFrame,
+  play: slideTablePlay,
+};
+
+export const SlideTableOnPhone: Story = {
+  name: "Slide table on a phone",
+  args: slideTable,
+  globals: phone,
+  render: slideFrame,
+  play: async (context) => {
+    await slideTablePlay(context);
+    await noPageScroll();
+  },
+};
