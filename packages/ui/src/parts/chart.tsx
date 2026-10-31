@@ -190,9 +190,11 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
       : formatChartValue(column, Number(item.value));
   };
 
+  // React wants `key` passed directly, and a key in a spread logs an error to the console.
   const marks = columns.map((column, index) => {
+    const key = seriesKey(index);
+
     const shared = {
-      key: seriesKey(index),
       dataKey: seriesKey(index),
       name: column.label,
       // The motion tokens allow 150 to 220 ms, and a chart that animates longer reads as slow.
@@ -200,11 +202,12 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
     };
 
     if (props.kind === "bar") {
-      return <Bar {...shared} fill={slot(index)} radius={4} />;
+      return <Bar key={key} {...shared} fill={slot(index)} radius={4} />;
     }
 
     return props.kind === "line" ? (
       <Line
+        key={key}
         {...shared}
         type="monotone"
         stroke={slot(index)}
@@ -213,6 +216,7 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
       />
     ) : (
       <Area
+        key={key}
         {...shared}
         type="monotone"
         stroke={slot(index)}
