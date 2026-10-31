@@ -9,7 +9,7 @@ import {
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { DUE_DATE_SOURCES } from "../../contract.ts";
+import { allocationRow, DUE_DATE_SOURCES } from "../../contract.ts";
 import type {
   AllocationRow,
   InvoiceRecordView,
@@ -44,19 +44,7 @@ const detailRow = listRow.extend({
 
 const paymentDetailRow = paymentRow.extend({
   allocatedCents: z.number().int(),
-});
-
-/** One `invoices.allocations` row, as both record pages read it. */
-export const allocationRow = z.object({
-  id: z.string(),
-  invoiceId: z.string(),
-  invoiceNumber: z.string(),
-  paymentId: z.string(),
-  paymentReference: z.string().nullable(),
-  paymentDate: z.string(),
-  currency: z.string(),
-  amountCents: z.number().int(),
-  automatic: z.boolean(),
+  customerId: z.string(),
 });
 
 export const ALLOCATION_FIELDS = Object.keys(allocationRow.shape);
@@ -126,7 +114,7 @@ export async function loadInvoiceRecord(
 
   const detail = detailRow.parse(found);
 
-  const [allocations, history, own, branding] = await Promise.all([
+  const [allocations, history, own, branding, canWrite] = await Promise.all([
     queryDataset(ctx, {
       dataset: "invoices.allocations",
       query: {
@@ -141,12 +129,14 @@ export async function loadInvoiceRecord(
       .from(invoice)
       .where(eq(invoice.id, id)),
     ctx.tenant.branding.get(),
+    can(ctx.caller, "invoices:write", ref),
   ]);
 
   return {
     kind: "shown",
     asOf: read.asOf,
     timeZone: branding.defaultTimeZone,
+    canWrite,
     invoice: {
       ...invoiceListRowOf(detail),
       dueDateSource: detail.dueDateSource,
@@ -199,7 +189,7 @@ export async function loadPaymentRecord(
 
   const detail = paymentDetailRow.parse(found);
 
-  const [allocations, history, own, branding] = await Promise.all([
+  const [allocations, history, own, branding, canWrite] = await Promise.all([
     queryDataset(ctx, {
       dataset: "invoices.allocations",
       query: {
@@ -214,15 +204,18 @@ export async function loadPaymentRecord(
       .from(payment)
       .where(eq(payment.id, id)),
     ctx.tenant.branding.get(),
+    can(ctx.caller, "invoices:write", ref),
   ]);
 
   return {
     kind: "shown",
     asOf: read.asOf,
     timeZone: branding.defaultTimeZone,
+    canWrite,
     payment: {
       ...paymentListRowOf(detail),
       allocatedCents: detail.allocatedCents,
+      customerId: detail.customerId,
     },
     allocations: allocations.rows.map((row): AllocationRow =>
       allocationRow.parse(row)

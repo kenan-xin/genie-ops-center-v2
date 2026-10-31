@@ -405,6 +405,122 @@ export const documentReviewView = z.object({
 
 export type DocumentReviewView = z.infer<typeof documentReviewView>;
 
+export const invoiceStatus = z.union([
+  z.object({ kind: z.enum(["paid", "open", "no-due-date"]) }),
+  z.object({ kind: z.literal("overdue"), daysOverdue: z.number().int() }),
+]);
+
+export type InvoiceStatus = z.infer<typeof invoiceStatus>;
+
+export const invoiceListRow = z.object({
+  id: z.string(),
+  invoiceNumber: z.string(),
+  customerName: z.string(),
+  invoiceDate: z.string(),
+  dueDate: z.string().nullable(),
+  currency: z.string(),
+  totalCents: z.number().int(),
+  outstandingCents: z.number().int(),
+  status: invoiceStatus,
+});
+
+export type InvoiceListRow = z.infer<typeof invoiceListRow>;
+
+export const invoiceDetail = invoiceListRow.extend({
+  dueDateSource: z.enum(DUE_DATE_SOURCES),
+  paymentTerms: z.string().nullable(),
+  description: z.string().nullable(),
+  allocatedCents: z.number().int(),
+});
+
+export type InvoiceDetail = z.infer<typeof invoiceDetail>;
+
+/** One payment's three states, in the words of R-31. */
+export const PAYMENT_STATUSES = [
+  "allocated",
+  "part-allocated",
+  "unallocated",
+] as const;
+
+export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
+
+/** One payment as the list shows it, its unallocated money read into its status. */
+export const paymentListRow = z.object({
+  id: z.string(),
+  reference: z.string().nullable(),
+  customerName: z.string(),
+  paymentDate: z.string(),
+  method: z.string().nullable(),
+  currency: z.string(),
+  amountCents: z.number().int(),
+  unallocatedCents: z.number().int(),
+  status: z.enum(PAYMENT_STATUSES),
+});
+
+export type PaymentListRow = z.infer<typeof paymentListRow>;
+
+/** One link of a payment to an invoice, as `invoices.allocations` answers it. */
+export const allocationRow = z.object({
+  id: z.string(),
+  invoiceId: z.string(),
+  invoiceNumber: z.string(),
+  paymentId: z.string(),
+  paymentReference: z.string().nullable(),
+  paymentDate: z.string(),
+  currency: z.string(),
+  amountCents: z.number().int(),
+  automatic: z.boolean(),
+});
+
+export type AllocationRow = z.infer<typeof allocationRow>;
+
+/** One change of a link, oldest first. An unlinked link keeps its events. */
+export const historyRow = allocationRow.omit({ amountCents: true }).extend({
+  action: z.enum(["linked", "changed", "unlinked"]),
+  occurredAt: z.string(),
+  amountBeforeCents: z.number().int(),
+  amountAfterCents: z.number().int(),
+});
+
+export type HistoryRow = z.infer<typeof historyRow>;
+
+/** A record dated after the reporting date is in no balance yet, so it shows a note (P7). */
+const afterReportingDate = z.object({
+  kind: z.literal("after-reporting-date"),
+  asOf: z.string(),
+  label: z.string(),
+});
+
+/** `canWrite` is `invoices:write` on the record, which shows the link controls (R-32). */
+const shownRecord = z.object({
+  kind: z.literal("shown"),
+  asOf: z.string(),
+  timeZone: z.string(),
+  canWrite: z.boolean(),
+  allocations: z.array(allocationRow),
+  history: z.array(historyRow),
+  documentUrl: z.string().nullable(),
+});
+
+export const invoiceRecordView = z.discriminatedUnion("kind", [
+  shownRecord.extend({ invoice: invoiceDetail }),
+  afterReportingDate,
+]);
+
+export type InvoiceRecordView = z.infer<typeof invoiceRecordView>;
+
+export const paymentRecordView = z.discriminatedUnion("kind", [
+  shownRecord.extend({
+    payment: paymentListRow.extend({
+      allocatedCents: z.number().int(),
+      customerId: z.string(),
+    }),
+  }),
+  afterReportingDate,
+]);
+
+export type PaymentRecordView = z.infer<typeof paymentRecordView>;
+
 export const invoicesContract = {
   /** Every document, newest first, for a tenant-wide reader (R-37, decision 12). */
   listDocuments: oc
@@ -415,6 +531,16 @@ export const invoicesContract = {
     .route({ method: "GET", path: "/invoices/documents/{id}" })
     .input(z.object({ id: recordId }))
     .output(documentReviewView),
+  /** One invoice as of the reporting date, for a reader of it; the record page refetches it (decision 4). */
+  getInvoiceRecord: oc
+    .route({ method: "GET", path: "/invoices/invoices/{id}" })
+    .input(z.object({ id: recordId }))
+    .output(invoiceRecordView),
+  /** One payment as of the reporting date, for a reader of it; the record page refetches it (decision 4). */
+  getPaymentRecord: oc
+    .route({ method: "GET", path: "/invoices/payments/{id}" })
+    .input(z.object({ id: recordId }))
+    .output(paymentRecordView),
   /** Changes the type of a read document with no saved record, for a tenant-wide writer (R-27). */
   setDocumentKind: oc
     .route({ method: "PATCH", path: "/invoices/documents/{id}" })

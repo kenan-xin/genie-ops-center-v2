@@ -91,11 +91,25 @@ const PAYMENT = {
   automatic: true,
 } as const;
 
-/** Part-paid and overdue by 40 days, with one link, its one change and its source PDF. */
-export const partPaidInvoiceRecord: InvoiceRecordView = {
+const BY_A_PERSON = {
+  ...PAYMENT,
+  paymentId: "67676767-6767-4767-8767-676767676767",
+  paymentReference: "TRF-0930-140",
+  paymentDate: "2026-09-30",
+  automatic: false,
+} as const;
+
+type ShownInvoice = Extract<InvoiceRecordView, { kind: "shown" }>;
+
+/**
+ * Part-paid and overdue by 40 days, for a writer: an automatic link and a person's link, their
+ * changes and its source PDF.
+ */
+export const partPaidInvoiceRecord: ShownInvoice = {
   kind: "shown",
   asOf: "2026-10-27",
   timeZone: "Asia/Singapore",
+  canWrite: true,
   invoice: {
     ...OVERDUE,
     dueDateSource: "document",
@@ -107,7 +121,12 @@ export const partPaidInvoiceRecord: InvoiceRecordView = {
     {
       ...PAYMENT,
       id: "77777777-7777-4777-8777-777777777777",
-      amountCents: 200_000,
+      amountCents: 150_000,
+    },
+    {
+      ...BY_A_PERSON,
+      id: "78787878-7878-4878-8878-787878787878",
+      amountCents: 50_000,
     },
   ],
   history: [
@@ -117,16 +136,31 @@ export const partPaidInvoiceRecord: InvoiceRecordView = {
       action: "linked",
       occurredAt: "2026-09-21T02:15:00.000Z",
       amountBeforeCents: 0,
-      amountAfterCents: 200_000,
+      amountAfterCents: 150_000,
+    },
+    {
+      ...BY_A_PERSON,
+      id: "89898989-8989-4989-8989-898989898989",
+      action: "linked",
+      occurredAt: "2026-09-30T03:40:00.000Z",
+      amountBeforeCents: 0,
+      amountAfterCents: 50_000,
     },
   ],
   documentUrl: "https://example.test/api/files/download?token=fixture",
+};
+
+/** The same invoice for a reader without `invoices:write`. */
+export const readOnlyInvoiceRecord: ShownInvoice = {
+  ...partPaidInvoiceRecord,
+  canWrite: false,
 };
 
 export const noDueDateInvoiceRecord: InvoiceRecordView = {
   kind: "shown",
   asOf: "2026-10-27",
   timeZone: "Asia/Singapore",
+  canWrite: true,
   invoice: {
     ...NO_DUE_DATE,
     dueDateSource: "unspecified",

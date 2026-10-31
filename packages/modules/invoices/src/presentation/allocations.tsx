@@ -1,5 +1,5 @@
 import { PageLink } from "@genie/core/features/shell";
-import { DataTable, type DataTableColumn } from "@genie/ui";
+import { Button, DataTable, type DataTableColumn } from "@genie/ui";
 
 import { formatDay, formatInstant, formatMoney } from "./format.ts";
 import type { AllocationRow, HistoryRow } from "./views.ts";
@@ -25,7 +25,8 @@ const CHANGE: Record<HistoryRow["action"], string> = {
 const amount = (row: HistoryRow) =>
   `${formatMoney(row.amountBeforeCents, row.currency)} → ${formatMoney(row.amountAfterCents, row.currency)}`;
 
-function labelOf(row: Linked, other: LinkedRecord): string {
+/** How a link names its other record: a payment by reference, else by day; an invoice by number. */
+export function labelOf(row: Linked, other: LinkedRecord): string {
   return other === "payment"
     ? (row.paymentReference ?? formatDay(row.paymentDate))
     : row.invoiceNumber;
@@ -53,14 +54,36 @@ function OtherRecord(props: {
 // The whole card opens the other record, as the list's cards do.
 const CARD_LINK = "after:absolute after:inset-0";
 
+/** What a writer of the record may do to one link (R-32). */
+export type LinkActions = {
+  readonly onUndo: (row: AllocationRow) => void;
+  readonly onChange: (row: AllocationRow) => void;
+  readonly onRemove: (row: AllocationRow) => void;
+};
+
 export type AllocationTableProps = {
   readonly rows: readonly AllocationRow[];
   readonly other: LinkedRecord;
+  /** Without it the table shows no Undo and no action. */
+  readonly actions?: LinkActions;
 };
 
 /** The links of one record, each opening the other record. */
 export function AllocationTable(props: AllocationTableProps) {
-  const { rows, other } = props;
+  const { rows, other, actions } = props;
+
+  // Undo only for an automatic link, with no confirmation (decision 9).
+  const undo = (row: AllocationRow) =>
+    actions === undefined || !row.automatic ? null : (
+      <Button
+        variant="secondary"
+        size="sm"
+        aria-label={`Undo the automatic link to ${labelOf(row, other)}`}
+        onClick={() => actions.onUndo(row)}
+      >
+        Undo
+      </Button>
+    );
 
   const columns: readonly DataTableColumn<AllocationRow>[] = [
     {
@@ -75,7 +98,16 @@ export function AllocationTable(props: AllocationTableProps) {
       cell: (row) => formatMoney(row.amountCents, row.currency),
       align: "end",
     },
-    { id: "how", header: "How", cell: how },
+    {
+      id: "how",
+      header: "How",
+      cell: (row) => (
+        <span className="flex flex-wrap items-center gap-2">
+          {how(row)}
+          {undo(row)}
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -85,6 +117,18 @@ export function AllocationTable(props: AllocationTableProps) {
       rowKey={(row) => row.id}
       rowLabel={(row) => labelOf(row, other)}
       columns={columns}
+      actions={(row) =>
+        actions === undefined
+          ? []
+          : [
+              { label: "Change amount", onSelect: () => actions.onChange(row) },
+              {
+                label: "Remove link",
+                danger: true,
+                onSelect: () => actions.onRemove(row),
+              },
+            ]
+      }
       card={{
         title: (row) => (
           <OtherRecord row={row} other={other} className={CARD_LINK} />
@@ -94,6 +138,7 @@ export function AllocationTable(props: AllocationTableProps) {
           formatMoney(row.amountCents, row.currency),
           how(row),
         ],
+        content: undo,
       }}
     />
   );

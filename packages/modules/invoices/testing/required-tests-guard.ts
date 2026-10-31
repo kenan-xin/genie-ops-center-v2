@@ -281,6 +281,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the record answers link, change and unlink as three history rows in order, with no allocation left",
       "an invoice dated after the reporting date answers the note with its number",
       "a person with only invoices:use is refused the record page, its label and its loader",
+      "the record procedures answer canWrite for Finance only, and refuse a person with only invoices:use",
     ].map((row) => `invoice pages ${row}`),
   },
   {

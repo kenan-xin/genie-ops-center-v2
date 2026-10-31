@@ -28,6 +28,10 @@ import {
 import { listOpenInvoices } from "./services/ledger/open-invoices.ts";
 import { savePayment } from "./services/ledger/payments.ts";
 import { savePaidReceipt } from "./services/ledger/receipts.ts";
+import {
+  loadInvoiceRecord,
+  loadPaymentRecord,
+} from "./services/pages/records.ts";
 import { retryReading } from "./services/reading/job.ts";
 
 const os = implementModule("invoices", invoicesContract);
@@ -69,6 +73,12 @@ export const invoicesRouter = os.router({
   ),
   getDocumentReview: os.getDocumentReview.handler(({ context, input }) =>
     loadDocumentReview(context, input.id)
+  ),
+  getInvoiceRecord: os.getInvoiceRecord.handler(({ context, input }) =>
+    loadInvoiceRecord(context, input.id)
+  ),
+  getPaymentRecord: os.getPaymentRecord.handler(({ context, input }) =>
+    loadPaymentRecord(context, input.id)
   ),
   setDocumentKind: os.setDocumentKind.handler(({ context, input }) =>
     setDocumentKind(context, input)

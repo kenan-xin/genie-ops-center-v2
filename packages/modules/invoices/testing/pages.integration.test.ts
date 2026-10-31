@@ -8,11 +8,14 @@ import {
   openModulePage,
   principalFor,
   registerModuleRuntime,
+  seedRoles,
   type TenantContext,
 } from "@genie/core";
 import {
+  assignRole,
   enableModules,
   insertPersonWith,
+  insertUser,
   markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
@@ -48,6 +51,7 @@ beforeAll(async () => {
   deployment = await startDisposableDeployment([invoicesModule]);
   await markSetupDone(t());
   await enableModules(t(), ["invoices"]);
+  await seedRoles(t(), [invoicesModule]);
   await t().db.$client.query(
     "update tenant_settings set reporting_date = '2026-10-27'"
   );
@@ -78,6 +82,23 @@ function contextFor(userId: string): ModuleRPCContext {
       authenticated: true,
     }),
   };
+}
+
+/** A new person holding the seeded role of this name, tenant-wide. */
+async function personWithSeededRole(name: string): Promise<string> {
+  const { rows } = await t().db.$client.query<{ id: string }>(
+    "select id from role where name = $1",
+    [name]
+  );
+  const roleId = rows[0]?.id;
+
+  if (roleId === undefined) throw new Error(`no seeded role ${name}`);
+
+  const userId = await insertUser(t());
+
+  await assignRole(t(), { roleId, principal: { type: "user", id: userId } });
+
+  return userId;
 }
 
 function matchOf(segments: readonly string[]) {
@@ -300,6 +321,46 @@ describe("invoice pages", () => {
     ).toEqual({ kind: "refused" });
     await expect(
       loadInvoiceRecord(contextFor(userId), invoice.id)
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("the record procedures answer canWrite for Finance only, and refuse a person with only invoices:use", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const [invoice, payment] = await Promise.all([
+      insertInvoice(t(), { customerId }),
+      insertPayment(t(), { customerId }),
+    ]);
+    const [finance, viewer, user] = await Promise.all([
+      personWithSeededRole("Finance"),
+      personWithSeededRole("Viewer"),
+      insertPersonWith(t(), ["invoices:use"]),
+    ]);
+
+    const answers = await Promise.all(
+      [finance, viewer].flatMap((userId) => {
+        const api = callProcedure(invoicesRouter, contextFor(userId));
+
+        return [
+          api.getInvoiceRecord({ id: invoice.id }),
+          api.getPaymentRecord({ id: payment.id }),
+        ];
+      })
+    );
+
+    expect(answers).toMatchObject([
+      { kind: "shown", canWrite: true },
+      { kind: "shown", canWrite: true, payment: { customerId } },
+      { kind: "shown", canWrite: false },
+      { kind: "shown", canWrite: false, payment: { customerId } },
+    ]);
+
+    const refused = callProcedure(invoicesRouter, contextFor(user.userId));
+
+    await expect(
+      refused.getInvoiceRecord({ id: invoice.id })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      refused.getPaymentRecord({ id: payment.id })
     ).rejects.toMatchObject({ code: "forbidden" });
   });
 });

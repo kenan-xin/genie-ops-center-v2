@@ -62,17 +62,39 @@ const LINK = {
   automatic: true,
 } as const;
 
-/** Part-allocated, with one link to an invoice, its one change and its source PDF. */
-export const partAllocatedPaymentRecord: PaymentRecordView = {
+const BY_A_PERSON = {
+  ...LINK,
+  invoiceId: "22222222-2222-4222-8222-222222222222",
+  invoiceNumber: "INV-2026-10-02",
+  automatic: false,
+} as const;
+
+type ShownPayment = Extract<PaymentRecordView, { kind: "shown" }>;
+
+/**
+ * Part-allocated, for a writer: an automatic link and a person's link to two invoices, their
+ * changes and its source PDF.
+ */
+export const partAllocatedPaymentRecord: ShownPayment = {
   kind: "shown",
   asOf: "2026-10-27",
   timeZone: "Asia/Singapore",
-  payment: { ...PART_ALLOCATED, allocatedCents: 300_000 },
+  canWrite: true,
+  payment: {
+    ...PART_ALLOCATED,
+    allocatedCents: 300_000,
+    customerId: "f1f1f1f1-f1f1-4f1f-8f1f-f1f1f1f1f1f1",
+  },
   allocations: [
     {
       ...LINK,
       id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
-      amountCents: 300_000,
+      amountCents: 200_000,
+    },
+    {
+      ...BY_A_PERSON,
+      id: "d0d0d0d0-d0d0-4d0d-8d0d-d0d0d0d0d0d0",
+      amountCents: 100_000,
     },
   ],
   history: [
@@ -82,10 +104,24 @@ export const partAllocatedPaymentRecord: PaymentRecordView = {
       action: "linked",
       occurredAt: "2026-10-02T03:15:00.000Z",
       amountBeforeCents: 0,
-      amountAfterCents: 300_000,
+      amountAfterCents: 200_000,
+    },
+    {
+      ...BY_A_PERSON,
+      id: "e0e0e0e0-e0e0-4e0e-8e0e-e0e0e0e0e0e0",
+      action: "linked",
+      occurredAt: "2026-10-03T01:05:00.000Z",
+      amountBeforeCents: 0,
+      amountAfterCents: 100_000,
     },
   ],
   documentUrl: "https://example.test/api/files/download?token=fixture",
+};
+
+/** The same payment for a reader without `invoices:write`. */
+export const readOnlyPaymentRecord: ShownPayment = {
+  ...partAllocatedPaymentRecord,
+  canWrite: false,
 };
 
 export const laterPaymentRecord: PaymentRecordView = {

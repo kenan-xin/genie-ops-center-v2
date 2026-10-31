@@ -16,7 +16,7 @@ export async function allocationHistory(
   ctx: ModuleRPCContext,
   of: { readonly invoiceId: string } | { readonly paymentId: string },
   asOf: string
-): Promise<readonly HistoryRow[]> {
+): Promise<HistoryRow[]> {
   const scope = invoiceScope(await scopesFor(ctx.caller, "invoices:read"));
 
   return ctx.tenant.db

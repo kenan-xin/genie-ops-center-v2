@@ -1,12 +1,16 @@
 "use client";
 
 import { PageHeader } from "@genie/core/features/shell";
+import { useModuleClient } from "@genie/core/rpc/client";
 import { buttonVariants, Card, CardContent } from "@genie/ui";
+import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
-import { AllocationTable, HistoryTable } from "./allocations.tsx";
+import { invoicesContract } from "../contract.ts";
+import { HistoryTable } from "./allocations.tsx";
 import { formatDay, formatMoney } from "./format.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
+import { INVOICES_QUERY, RecordLinks } from "./link-dialogs.tsx";
 import type { InvoiceDetail, InvoiceRecordView } from "./views.ts";
 
 const DUE_DATE_SOURCE: Record<InvoiceDetail["dueDateSource"], string> = {
@@ -41,20 +45,47 @@ export type InvoiceRecordProps = {
   readonly view: InvoiceRecordView;
 };
 
+type ShownView = Extract<InvoiceRecordView, { kind: "shown" }>;
+
+function AfterReportingDate(props: {
+  readonly view: Exclude<InvoiceRecordView, ShownView>;
+}) {
+  return (
+    <main>
+      <PageHeader title={props.view.label} />
+      <p>
+        This invoice is dated after the reporting date, {props.view.asOf}, so no
+        balance includes it yet.
+      </p>
+    </main>
+  );
+}
+
 /** One invoice as of the reporting date: its facts, its balance, its links and their history. */
 export function InvoiceRecord(props: InvoiceRecordProps) {
   const { view } = props;
 
+  return view.kind === "after-reporting-date" ? (
+    <AfterReportingDate view={view} />
+  ) : (
+    <ShownInvoice initial={view} />
+  );
+}
+
+/** The page reads the invoice again after each change of a link (decision 4). */
+function ShownInvoice(props: { readonly initial: ShownView }) {
+  const id = props.initial.invoice.id;
+  const initialData: InvoiceRecordView = props.initial;
+  const invoices = useModuleClient(invoicesContract);
+
+  const { data: view } = useQuery({
+    queryKey: [...INVOICES_QUERY, "invoice-record", id],
+    queryFn: () => invoices.getInvoiceRecord({ id }),
+    initialData,
+  });
+
   if (view.kind === "after-reporting-date") {
-    return (
-      <main>
-        <PageHeader title={view.label} />
-        <p>
-          This invoice is dated after the reporting date, {view.asOf}, so no
-          balance includes it yet.
-        </p>
-      </main>
-    );
+    return <AfterReportingDate view={view} />;
   }
 
   const { invoice } = view;
@@ -95,11 +126,11 @@ export function InvoiceRecord(props: InvoiceRecordProps) {
         <h2 id="invoice-allocations" className="mb-2 font-semibold">
           Allocations
         </h2>
-        {view.allocations.length === 0 ? (
-          <p>No payment is linked yet.</p>
-        ) : (
-          <AllocationTable rows={view.allocations} other="payment" />
-        )}
+        <RecordLinks
+          rows={view.allocations}
+          other="payment"
+          canWrite={view.canWrite}
+        />
       </section>
       <section aria-labelledby="invoice-history">
         <h2 id="invoice-history" className="mb-2 font-semibold">
