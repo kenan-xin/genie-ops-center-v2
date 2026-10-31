@@ -2,7 +2,7 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { expect, fn, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   chartOf,
@@ -16,6 +16,10 @@ import { DashboardView } from "./dashboard-view.tsx";
 import type { DashboardPageView } from "./views.ts";
 
 const readDashboard = fn();
+
+const changeDashboard = fn();
+
+const undoDashboard = fn();
 
 const panelData = fn();
 
@@ -37,7 +41,15 @@ function withQuery(Story: () => ReactNode) {
   return (
     <QueryClientProvider client={client}>
       <ModuleClientProvider
-        client={{ analytics: { readDashboard, panelData, filterValues } }}
+        client={{
+          analytics: {
+            readDashboard,
+            changeDashboard,
+            undoDashboard,
+            panelData,
+            filterValues,
+          },
+        }}
       >
         <Story />
       </ModuleClientProvider>
@@ -68,6 +80,8 @@ type Story = StoryObj<typeof meta>;
 
 function serve(page: DashboardPageView) {
   readDashboard.mockReset().mockResolvedValue(page.dashboard);
+  changeDashboard.mockReset().mockResolvedValue(page.dashboard);
+  undoDashboard.mockReset().mockResolvedValue(page.dashboard);
   panelData
     .mockReset()
     .mockImplementation(async ({ panelId }: { readonly panelId: string }) =>
@@ -175,5 +189,428 @@ export const RefusedPanel: Story = {
     await expect(
       canvas.queryByRole("figure", { name: "Monthly invoiced sales" })
     ).toBeNull();
+  },
+};
+
+const DASHBOARD_CHANGED =
+  "This dashboard changed since you opened it. Reload it to see the latest version.";
+
+const CHART_INVALID =
+  "The chart does not fit its data. Fix the marked parts and try again.";
+
+// B5.2: each panel action sends one change, with the layout and the index it names.
+export const EditActions: Story = {
+  name: "Edit actions",
+  globals: desktop,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    ).toHaveAttribute("aria-pressed", "true");
+
+    // Rename dashboard
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Rename dashboard" })
+    );
+
+    const renameBoard = within(
+      await screen.findByRole("dialog", { name: "Rename dashboard" })
+    );
+
+    const nameField = renameBoard.getByRole("textbox", { name: "Name" });
+
+    await userEvent.clear(nameField);
+    await userEvent.type(nameField, "Cash in");
+    await userEvent.click(renameBoard.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "rename", name: "Cash in" }],
+    });
+    changeDashboard.mockClear();
+
+    // Rename panel
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Rename panel" })
+    );
+
+    const rename = within(
+      await screen.findByRole("dialog", { name: "Rename panel" })
+    );
+
+    const titleField = rename.getByRole("textbox", { name: "Title" });
+
+    await userEvent.clear(titleField);
+    await userEvent.type(titleField, "Total invoiced");
+    await userEvent.click(rename.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [
+        expect.objectContaining({
+          op: "change-panel",
+          panelId: "p1",
+          panel: expect.objectContaining({ title: "Total invoiced" }),
+        }),
+      ],
+    });
+    changeDashboard.mockClear();
+
+    // Move later; the first panel cannot move earlier.
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await expect(
+      await screen.findByRole("menuitem", { name: "Move earlier" })
+    ).toHaveAttribute("data-disabled");
+    await userEvent.click(screen.getByRole("menuitem", { name: "Move later" }));
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "move-panel", panelId: "p1", toIndex: 1 }],
+    });
+    changeDashboard.mockClear();
+
+    // Width 4 columns
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Width" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "4 columns" })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [
+        expect.objectContaining({
+          op: "change-panel",
+          panelId: "p1",
+          layout: { columns: 4, rows: 1 },
+        }),
+      ],
+    });
+    changeDashboard.mockClear();
+
+    // Chart type: a KPI offers only Table.
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Chart type" })
+    );
+    await expect(screen.queryByRole("menuitem", { name: "Bar" })).toBeNull();
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Table" })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [
+        expect.objectContaining({
+          op: "change-panel",
+          panelId: "p1",
+          panel: expect.objectContaining({ type: "table" }),
+        }),
+      ],
+    });
+    changeDashboard.mockClear();
+
+    // Remove panel
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove panel" })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "remove-panel", panelId: "p1" }],
+    });
+  },
+};
+
+// B5.3: a refused change names the panel and its hint, and keeps the stored panel.
+export const RefusedEdit: Story = {
+  name: "Refused edit",
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDashboardPage);
+    changeDashboard.mockRejectedValue(
+      Object.assign(new Error(CHART_INVALID), {
+        data: {
+          appCode: "chart-invalid",
+          requestId: "req-1",
+          issues: [
+            {
+              path: "changes.0.panel.series.0.x",
+              message: "Use a date field for the x-axis.",
+            },
+          ],
+        },
+      })
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove panel" })
+    );
+
+    const alert = await canvas.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(
+      `Invoiced sales was not changed. ${CHART_INVALID}`
+    );
+    await expect(alert).toHaveTextContent("Use a date field for the x-axis.");
+    await expect(
+      canvas.getByRole("figure", { name: "Invoiced sales" })
+    ).toBeVisible();
+  },
+};
+
+// B5.4: a version conflict offers a Reload that asks for the dashboard again.
+export const VersionConflict: Story = {
+  name: "Version conflict",
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDashboardPage);
+    changeDashboard.mockRejectedValue(
+      Object.assign(new Error(DASHBOARD_CHANGED), {
+        data: {
+          appCode: "analytics:dashboard-changed",
+          requestId: "req-2",
+        },
+      })
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Remove panel" })
+    );
+
+    const alert = await canvas.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(DASHBOARD_CHANGED);
+
+    readDashboard.mockClear();
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Reload" })
+    );
+
+    await waitFor(() =>
+      expect(readDashboard).toHaveBeenCalledWith({ id: "dashboard-1" })
+    );
+    await expect(canvas.queryByRole("alert")).toBeNull();
+  },
+};
+
+// B5.5: Undo is off while the dashboard has nothing to undo.
+export const UndoUnavailable: Story = {
+  name: "Undo unavailable",
+  globals: desktop,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeDisabled();
+  },
+};
+
+const undoablePage: DashboardPageView = {
+  ...defaultDashboardPage,
+  dashboard: {
+    ...defaultDashboardPage.dashboard,
+    version: 2,
+    canUndo: true,
+    panels: [],
+  },
+};
+
+const restoredPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  dashboard: {
+    ...defaultDashboardPage.dashboard,
+    version: 3,
+    canUndo: false,
+    filters: {
+      ...defaultDashboardPage.dashboard.filters,
+      dateRange: { from: "2026-09-01", to: "2026-09-30" },
+    },
+  },
+};
+
+// B5.5: Undo sends the current version and draws the restored config.
+export const Undo: Story = {
+  args: { view: undoablePage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(undoablePage);
+    undoDashboard.mockResolvedValue(restoredPage.dashboard);
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+
+    await waitFor(() =>
+      expect(undoDashboard).toHaveBeenCalledWith({
+        id: "dashboard-1",
+        expectedVersion: 2,
+      })
+    );
+    await expect(
+      await canvas.findByRole("figure", { name: "Invoiced sales" })
+    ).toBeVisible();
+    await expect(canvas.getByLabelText("From")).toHaveValue("2026-09-01");
+    await expect(canvas.getByLabelText("To")).toHaveValue("2026-09-30");
+  },
+};
+
+const chatChangedPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  dashboard: {
+    ...defaultDashboardPage.dashboard,
+    version: 2,
+    panels: [
+      {
+        id: "p1",
+        layout: { columns: 1, rows: 1 },
+        config: {
+          type: "table",
+          title: "Chat changed",
+          series: [
+            {
+              name: "Rows",
+              dataset: "invoices.invoices",
+              query: { select: ["customerName"] },
+            },
+          ],
+        },
+      },
+      ...defaultDashboardPage.dashboard.panels.slice(1),
+    ],
+  },
+};
+
+// Fix round 1: Save after a refetch sends the current panel config, not the dialog snapshot.
+export const RenamePanelAfterRefetch: Story = {
+  name: "Rename panel after refetch",
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDashboardPage);
+    changeDashboard.mockRejectedValue(
+      Object.assign(new Error(DASHBOARD_CHANGED), {
+        data: {
+          appCode: "analytics:dashboard-changed",
+          requestId: "req-3",
+        },
+      })
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Rename panel" })
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Rename panel" })
+    );
+
+    const titleField = dialog.getByRole("textbox", { name: "Title" });
+
+    await userEvent.clear(titleField);
+    await userEvent.type(titleField, "Total invoiced");
+
+    // The first save meets the conflict and offers Reload inside the dialog.
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+
+    readDashboard.mockResolvedValue(chatChangedPage.dashboard);
+    await userEvent.click(
+      await dialog.findByRole("button", { name: "Reload" })
+    );
+
+    await waitFor(() =>
+      expect(readDashboard).toHaveBeenCalledWith({ id: "dashboard-1" })
+    );
+
+    changeDashboard.mockClear();
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 2,
+      changes: [
+        expect.objectContaining({
+          op: "change-panel",
+          panelId: "p1",
+          panel: expect.objectContaining({
+            type: "table",
+            title: "Total invoiced",
+          }),
+        }),
+      ],
+    });
+  },
+};
+
+// DEC-25: the edit toolbar and the panel menu run at the phone viewport too.
+export const EditOnPhone: Story = {
+  name: "Edit on a phone",
+  globals: phone,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+
+    await expect(
+      await screen.findByRole("menuitem", { name: "Remove panel" })
+    ).toBeInTheDocument();
   },
 };

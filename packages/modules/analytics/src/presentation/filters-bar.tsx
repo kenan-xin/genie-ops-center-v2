@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@genie/ui";
 import { useQuery } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useState } from "react";
 
 import {
   analyticsContract,
@@ -52,11 +52,21 @@ export function FiltersBar(props: FiltersBarProps) {
   const rangeErrorId = useId();
 
   const range = dashboard.filters.dateRange;
+  const storedPreset = "preset" in range ? range.preset : null;
+  const storedFrom = "preset" in range ? "" : range.from;
+  const storedTo = "preset" in range ? "" : range.to;
   const [customMode, setCustomMode] = useState(false);
-  const [from, setFrom] = useState("preset" in range ? "" : range.from);
-  const [to, setTo] = useState("preset" in range ? "" : range.to);
+  const [from, setFrom] = useState(storedFrom);
+  const [to, setTo] = useState(storedTo);
   const [rangeError, setRangeError] = useState<string | null>(null);
   const custom = customMode || !("preset" in range);
+
+  // Follow a stored range that changed under the fields, such as after an Undo.
+  useEffect(() => {
+    setFrom(storedFrom);
+    setTo(storedTo);
+    setCustomMode(storedPreset === null);
+  }, [storedFrom, storedTo, storedPreset]);
 
   const field = dashboard.filters.field;
 
