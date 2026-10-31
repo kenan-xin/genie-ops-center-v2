@@ -1,0 +1,98 @@
+import { definePage, type Module } from "@genie/core";
+
+import { analyticsContract } from "./contract.ts";
+import { ANALYTICS_PERMISSIONS } from "./permissions.ts";
+import { DashboardListPage } from "./presentation/module-pages.tsx";
+import { analyticsRouter } from "./router.ts";
+import { dashboard, MIGRATIONS, MIGRATIONS_TABLE } from "./schema.ts";
+
+/** The Dashboards workspace entry and the page of its path (DEC-50). */
+const DASHBOARDS_ENTRY = {
+  id: "analytics-dashboards",
+  label: "Dashboards",
+  path: "/m/analytics/dashboards",
+  surface: "workspace",
+  requiredPermission: "analytics:use",
+} as const;
+
+/**
+ * Every point of the module contract this module declares. Nothing outside the contract is
+ * reachable from here: the router reads through `ctx.tenant`, every check goes through
+ * `can()`, and no other module is imported.
+ */
+export const analyticsModule = {
+  identity: {
+    id: "analytics",
+    displayName: "Analytics",
+    version: "0.0.0",
+    description:
+      "Dashboards of live charts over the datasets that modules publish.",
+  },
+
+  schema: {
+    tables: { dashboard },
+    // The declaration, not its result: the SQL read is deferred to bootstrap.
+    migrations: MIGRATIONS,
+    migrationsTable: MIGRATIONS_TABLE,
+  },
+
+  contract: analyticsContract,
+
+  router: analyticsRouter,
+
+  permissions: ANALYTICS_PERMISSIONS,
+
+  // A dashboard is owner-only and not a record type, so no role scope points at one (D7).
+  recordTypes: [],
+
+  // Final now: `seedRoles` never rewrites a seeded role, so a key added later would not reach it.
+  // No name another module declares, or seeding keeps only one of the two (R-33a).
+  defaultRoles: [
+    { name: "Analytics user", permissions: ["analytics:use"] },
+    {
+      name: "Analytics viewer",
+      permissions: ["analytics:use", "analytics:read"],
+    },
+    {
+      name: "Analytics editor",
+      permissions: ["analytics:use", "analytics:read", "analytics:write"],
+    },
+  ],
+
+  navigation: {
+    pinned: [DASHBOARDS_ENTRY],
+    entries: [DASHBOARDS_ENTRY],
+  },
+
+  // One page per navigation entry, at its path and under its key.
+  pages: {
+    workspace: [
+      definePage({
+        path: DASHBOARDS_ENTRY.path,
+        permission: DASHBOARDS_ENTRY.requiredPermission,
+        component: DashboardListPage,
+      }),
+    ],
+    admin: [],
+  },
+
+  events: [],
+
+  capabilities: [],
+
+  jobs: [],
+
+  inboundEndpoints: [],
+
+  integrationKinds: [],
+
+  /**
+   * Typed and empty: this module frames nothing, so it contributes no origin and the policy
+   * stays denied (R-15b).
+   */
+  contentSecurityPolicy: {
+    frameOrigins: async () => [],
+  },
+
+  tests: { presets: ["unit", "integration", "e2e"] },
+} satisfies Module;

@@ -3,6 +3,7 @@
 # lives in branding.seed.json, and the hosting mode lives in the runbook (DEC-35).
 modules:
   - "invoices"
+  - "analytics"
 onboarding_mode: "invite"
 local_accounts: false
 genie_studio_url: "https://dev-genie.001.gs"

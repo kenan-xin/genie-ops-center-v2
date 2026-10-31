@@ -7,6 +7,7 @@ import {
 import { placeholderModule } from "@genie/module-placeholder";
 import { describe, expect, it } from "vitest";
 
+import { selectedModules } from "./modules.ts";
 import { assertRegistryIsValid, assertSelectedIdentity } from "./registry.ts";
 
 /**
@@ -88,6 +89,15 @@ describe("assertRegistryIsValid", () => {
 
   it("accepts a registry the validator reported no problem for", () => {
     expect(() => assertRegistryIsValid([])).not.toThrow();
+  });
+});
+
+describe("the compiled selection", () => {
+  it("passes every registry check", () => {
+    // SAFETY: the generated file emits module declarations; the check under test reads them.
+    expect(() =>
+      assertRegistryIsValid(selectedModules as readonly Module[])
+    ).not.toThrow();
   });
 });
 
