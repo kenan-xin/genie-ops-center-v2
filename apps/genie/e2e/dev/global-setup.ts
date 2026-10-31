@@ -1,7 +1,7 @@
 import { execFile, spawn } from "node:child_process";
 import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createConnection } from "node:net";
-import { resolve } from "node:path";
+import { delimiter, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
@@ -28,7 +28,10 @@ import {
 import { selectedModuleIds, selectedModules } from "../../src/modules.ts";
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { BASE_PORTS } from "../../testing/e2e-ports.ts";
-import { replayModelRequests } from "../../testing/model-replay.ts";
+import {
+  APP_AGENT_RECORDINGS,
+  replayModelRequests,
+} from "../../testing/model-replay.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 
 const run = promisify(execFile);
@@ -93,17 +96,31 @@ export const ASK_PEOPLE = {
   noAsk: "e2e.no-ask@example.invalid",
 } as const;
 
+/** The people the invoice answer spec asks as, one per project; made only when invoices is selected. */
+export const INVOICE_ASK_PEOPLE = {
+  phone: "e2e.invoice-ask.phone@example.invalid",
+  desktop: "e2e.invoice-ask.desktop@example.invalid",
+} as const;
+
 const ASK_KEYS = ["core:ask:use", "placeholder:read", "placeholder:use"];
+
+const INVOICE_ASK_KEYS = ["core:ask:use", "invoices:read", "invoices:use"];
+
+/** The modules the registry compiles into `next dev`, so a spec skips a module this run leaves out. */
+export const DEV_MODULES: ReadonlySet<string> = new Set(selectedModuleIds);
 
 const PERMISSIONS_OF = new Map<string, readonly string[]>([
   [ASK_PEOPLE.phone, ASK_KEYS],
   [ASK_PEOPLE.desktop, ASK_KEYS],
   [ASK_PEOPLE.other, ASK_KEYS],
   [ASK_PEOPLE.noAsk, ["placeholder:use"]],
+  // The invoices keys exist only when the module is compiled in.
+  ...(DEV_MODULES.has("invoices")
+    ? Object.values(INVOICE_ASK_PEOPLE).map(
+        (email) => [email, INVOICE_ASK_KEYS] as const
+      )
+    : []),
 ]);
-
-/** The modules the registry compiles into `next dev`, so a spec skips a module this run leaves out. */
-export const DEV_MODULES: ReadonlySet<string> = new Set(selectedModuleIds);
 
 const databaseUrl = () =>
   `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`;
@@ -255,7 +272,7 @@ let readingWorker: ReadingWorker | undefined;
  * the worker says it started; one that ends first throws with its own output lines.
  */
 async function startReadingWorker(): Promise<void> {
-  replayModelRequests(INVOICES_READING_RECORDINGS);
+  replayModelRequests([INVOICES_READING_RECORDINGS]);
 
   const signal = new AbortController();
   const started = Promise.withResolvers<void>();
@@ -404,7 +421,9 @@ export default async function globalSetup(): Promise<void> {
   // dev` itself; setting it here would be the test arranging its own result.
   //
   // `--import` loads the model stand-in (`testing/model-standin.ts`, P13) before the server, so
-  // every model request of this run is answered from the placeholder's recordings. A failed
+  // every model request of this run is answered from the placeholder's and the app's recordings;
+  // record mode saves into the first folder, and the owner records the invoice answers through the
+  // app test. A failed
   // import stops `next dev`, so AI on never runs without it.
   const child = spawn(
     resolve(APP_ROOT, "node_modules/.bin/next"),
@@ -420,7 +439,7 @@ export default async function globalSetup(): Promise<void> {
           `${process.env.NODE_OPTIONS ?? ""} --import=${pathToFileURL(resolve(APP_ROOT, "testing/model-standin.ts")).href}`.trim(),
         GENIE_E2E_MODEL_RECORDINGS:
           process.env.GENIE_E2E_MODEL_RECORDINGS ??
-          PLACEHOLDER_AGENT_RECORDINGS,
+          [PLACEHOLDER_AGENT_RECORDINGS, APP_AGENT_RECORDINGS].join(delimiter),
       },
       stdio: ["ignore", "pipe", "pipe"],
       detached: true,

@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { mintDevSession } from "@genie/core/testing";
 import {
   expect,
   test,
@@ -9,15 +8,17 @@ import {
   type TestInfo,
 } from "@playwright/test";
 
-import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { atLg } from "../support/shell.ts";
 import {
-  ASK_PEOPLE,
-  DEV_DB_PORT,
-  DEV_MODULES,
-  DEV_PORT,
-} from "./global-setup.ts";
+  askQuestion,
+  devSession,
+  FIRST_PAINT,
+  hideDevelopmentWidgets,
+  PUBLIC_URL,
+  signInAs as signIn,
+} from "./ask-support.ts";
+import { ASK_PEOPLE, DEV_MODULES } from "./global-setup.ts";
 
 test.skip(
   !DEV_MODULES.has("placeholder"),
@@ -30,11 +31,6 @@ test.skip(
  * they hold, and the KPI's 3 comes from the chart gate over the three seeded records.
  */
 
-const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
-
-/** A development server compiles a route when it is first asked for (see `devtools.spec.ts`). */
-const FIRST_PAINT = { timeout: 120_000 };
-
 const QUESTION = "How many placeholder records are there?";
 
 /** The answer is one KPI that the chart gate draws. */
@@ -45,40 +41,8 @@ const answerOf = (scope: Page | Locator) =>
 const asker = (testInfo: TestInfo) =>
   testInfo.project.name === "phone" ? ASK_PEOPLE.phone : ASK_PEOPLE.desktop;
 
-function devSession(email: string) {
-  return mintDevSession({
-    databaseUrl: `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`,
-    publicUrl: PUBLIC_URL,
-    secret: TEST_AUTH_ENV.BETTER_AUTH_SECRET,
-    subject: { email },
-  });
-}
-
-async function signIn(page: Page, email: string): Promise<void> {
-  const { name, value, url, httpOnly, sameSite, expires } =
-    await devSession(email);
-
-  // Playwright refuses a cookie that carries both `url` and `path`; the `url` names the path.
-  await page
-    .context()
-    .addCookies([{ name, value, url, httpOnly, sameSite, expires }]);
-}
-
 /** Asks the question in an open conversation and answers the session id the browser sent. */
-async function ask(page: Page): Promise<string> {
-  const sent = page.waitForRequest(
-    (request) =>
-      request.url().endsWith("/api/agent") && request.method() === "POST"
-  );
-
-  await page.getByRole("textbox", { name: "Message Ask" }).fill(QUESTION);
-  await page.getByRole("button", { name: "Send" }).click();
-
-  // SAFETY: the bubble and Ask send the route's JSON body, whose `sessionId` is a string (P3).
-  const { sessionId } = (await sent).postDataJSON() as { sessionId: string };
-
-  return sessionId;
-}
+const ask = (page: Page) => askQuestion(page, QUESTION);
 
 /** The KPI that the gate drew. */
 async function expectAnswer(page: Page): Promise<void> {
@@ -111,20 +75,7 @@ async function openBubble(page: Page) {
   return bubble;
 }
 
-test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    // P11: react-lang mounts its Inspect widget in development unless this flag is already set.
-    Object.assign(globalThis, {
-      [Symbol.for("openui.devtools.autoMount")]: true,
-    });
-    // The TanStack Devtools trigger floats at the bottom right in development, over the bubble and
-    // the sheet's Send; its own setting hides it unless the address carries its flag.
-    localStorage.setItem(
-      "tanstack_devtools_settings",
-      JSON.stringify({ requireUrlFlag: true })
-    );
-  });
-});
+test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
 test("the bubble and Ask share a session, and the bubble opens again on a new chat", async ({
   page,
