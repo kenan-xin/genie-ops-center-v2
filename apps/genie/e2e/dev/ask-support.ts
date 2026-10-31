@@ -2,14 +2,14 @@ import { mintDevSession } from "@genie/core/testing";
 import type { Page } from "@playwright/test";
 
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
+import { FIRST_PAINT } from "./dev-support.ts";
 import { DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
+
+export { FIRST_PAINT };
 
 /** What the Ask specs share: a person's session, one question, and the development widgets hidden. */
 
 export const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
-
-/** A development server compiles a route when it is first asked for (see `devtools.spec.ts`). */
-export const FIRST_PAINT = { timeout: 120_000 };
 
 export function devSession(email: string) {
   return mintDevSession({

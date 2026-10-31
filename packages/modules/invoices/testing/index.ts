@@ -20,7 +20,12 @@ export {
   readDemoCsv,
   readDemoFile,
   readDemoJson,
+  toCents,
 } from "./demo-pack.ts";
+
+export { removeUploadRecords } from "./live-reset.ts";
+
+export { runningTotals } from "./live-totals.ts";
 
 export {
   type DemoHistoryCount,

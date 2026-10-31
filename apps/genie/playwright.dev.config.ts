@@ -1,7 +1,10 @@
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
 import { defineConfig, devices } from "@playwright/test";
 
 import { BASE_PORTS } from "./testing/e2e-ports.ts";
-import { scopedPort } from "./testing/worktree-scope.ts";
+import { scopedPort, scopedProject } from "./testing/worktree-scope.ts";
 
 const PORT = Number(
   process.env.GENIE_DEV_PORT ?? scopedPort(BASE_PORTS.devApp)
@@ -23,11 +26,17 @@ const PORT = Number(
  */
 export default defineConfig({
   testDir: "./e2e/dev",
-  // A sibling of the fixture run's `test-results/fixture`, not `test-results`
-  // itself: Playwright empties its `outputDir` recursively at the start of a
-  // run, and the mandatory gate runs this beside the fixture browser run, so a
-  // directory that contains the other's artifacts would be deleted mid-run.
-  outputDir: "test-results/dev",
+  // Outside the repository, as a sibling of nothing: Turbopack infers the
+  // monorepo as its root and watches it, so an artifact written inside it (a
+  // screenshot, an error context) makes `next dev` recompile and reload the
+  // page. That reload destroyed axe's frame and repeated the pre-hydration click
+  // race under `--repeat-each`. The path is scoped to the worktree, so two runs
+  // never empty each other's output.
+  outputDir: join(tmpdir(), scopedProject("genie-e2e-dev-results")),
+  // The four invoice specs hold one ledger lock, so a higher worker count only adds page loads
+  // while one test runs. Eight workers crashed pages in a cold `next dev` rebuild; four keep both
+  // projects and their files moving without that load.
+  workers: 4,
   forbidOnly: true,
   reporter: [["list"]],
   use: { baseURL: `http://127.0.0.1:${PORT}` },

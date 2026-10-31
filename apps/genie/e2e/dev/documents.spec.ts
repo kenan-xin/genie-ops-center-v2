@@ -1,6 +1,5 @@
 import { randomUUID } from "node:crypto";
 
-import { mintDevSession } from "@genie/core/testing";
 import {
   LIVE_UPLOADS,
   readDemoFile,
@@ -8,14 +7,20 @@ import {
 } from "@genie/module-invoices/testing";
 import { expect, test, type Page } from "@playwright/test";
 
-import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
+import { withDeploymentLock } from "../support/lock.ts";
 import {
-  DEMO_ACCOUNT_EMAIL,
-  DEV_DB_PORT,
-  DEV_MODULES,
-  DEV_PORT,
-} from "./global-setup.ts";
+  LEDGER_LOCK,
+  LOCK_WAIT,
+  MONEY,
+  onPhone,
+  openInbox,
+  signIn,
+  type Upload,
+  UPLOAD_TIMEOUT,
+  uploadFiles,
+} from "./dev-support.ts";
+import { DEV_MODULES } from "./global-setup.ts";
 
 test.skip(
   !DEV_MODULES.has("invoices"),
@@ -30,28 +35,13 @@ test.skip(
  * the figures `invoices.spec.ts` asserts in the same run (decision 14).
  */
 
-const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
-
-/** A development server compiles a route when it is first asked for (see `devtools.spec.ts`). */
-const FIRST_PAINT = { timeout: 120_000 };
-
-/**
- * How long the readings take to show. Measured 4.0 s on the first green run at both viewports,
- * from the file selection to the last settled row; 30 s leaves room for a cold `next dev` to
- * compile the upload route and for the worker's backlog under the repeat-each run.
- */
+/** A cold route's reading, from the file selection to the settled row. Measured 4.0 s warm. */
 const READING_TIMEOUT = 30_000;
 
-/** A cold `next dev` gets the 120 s first-paint budget; the rest covers sign-in and the reads. */
-const TEST_TIMEOUT = FIRST_PAINT.timeout + 60_000;
-
-const MONEY = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "SGD",
-});
-
-/** Below Tailwind's `md`, `DataTable` draws its card list instead of the table. */
-const onPhone = (page: Page) => (page.viewportSize()?.width ?? 0) < 768;
+/**
+ * The lock's queue, one upload's two UPLOAD_TIMEOUTs (request, then response) and the body.
+ */
+const TEST_TIMEOUT = LOCK_WAIT + UPLOAD_TIMEOUT * 2 + 60_000;
 
 type ShownRow = {
   /** The badge's text, which is the status on both layouts. */
@@ -128,25 +118,6 @@ async function expectInboxRows(
   }).toPass({ timeout });
 }
 
-/**
- * The demonstration account's session, minted directly (no realm in this run). Authorization stays
- * real: `can()` and `scopesFor()` read the roles the seed granted the same person.
- */
-async function signIn(page: Page): Promise<void> {
-  const { name, value, url, httpOnly, sameSite, expires } =
-    await mintDevSession({
-      databaseUrl: `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`,
-      publicUrl: PUBLIC_URL,
-      secret: TEST_AUTH_ENV.BETTER_AUTH_SECRET,
-      subject: { email: DEMO_ACCOUNT_EMAIL },
-    });
-
-  // Playwright refuses a cookie that carries both `url` and `path`; the `url` names the path.
-  await page
-    .context()
-    .addCookies([{ name, value, url, httpOnly, sameSite, expires }]);
-}
-
 /** The demo pack's live upload, found by its number in `LIVE_UPLOADS`. */
 function liveUpload(number: string): string {
   const name = LIVE_UPLOADS.find((file) => file.startsWith(`${number}_`));
@@ -157,12 +128,6 @@ function liveUpload(number: string): string {
 
   return name;
 }
-
-type Upload = {
-  readonly name: string;
-  readonly mimeType: string;
-  readonly buffer: Buffer;
-};
 
 /**
  * One project's own copy of a live upload: `withNewId` rewrites the trailer `/ID`, so the copy has
@@ -178,88 +143,69 @@ function copyOf(number: string, project: string): Upload {
   };
 }
 
-/**
- * Opens the inbox and waits for the shell's mount ping. The activity client posts on mount, so the
- * page's effects have run: React's development double effect (mount, unmount, mount) is over. A
- * file chosen before that replay ends is lost, because its unmount calls Pacer's `stop()` after
- * `choose()` started the queue. `shell.spec.ts` uses the same ping before its first client action.
- */
-async function openInbox(page: Page): Promise<void> {
-  const mounted = page.waitForResponse((response) =>
-    response.url().endsWith("/api/session/activity")
-  );
-
-  await page.goto("/m/invoices/documents");
-  await expect(
-    page.getByRole("heading", { level: 1, name: "Documents" })
-  ).toBeVisible(FIRST_PAINT);
-  await mounted;
-}
-
-/** Hands the copies to the `<input type="file">` behind "Choose PDF files". */
-async function upload(page: Page, files: readonly Upload[]): Promise<void> {
-  await page
-    .locator('input[type="file"]')
-    .setInputFiles(files.map((file) => ({ ...file })));
-}
-
 test("uploads live documents and shows their statuses", async ({
   page,
 }, testInfo) => {
   test.setTimeout(TEST_TIMEOUT);
 
-  const project = testInfo.project.name;
-  const invoice = copyOf("01", project);
-  const split = copyOf("03", project);
-  const unmatched = copyOf("05", project);
-  const purchaseOrder = copyOf("07", project);
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      const project = testInfo.project.name;
+      const invoice = copyOf("01", project);
+      const split = copyOf("03", project);
+      const unmatched = copyOf("05", project);
+      const purchaseOrder = copyOf("07", project);
 
-  await signIn(page);
-  await openInbox(page);
+      await signIn(page);
+      await openInbox(page);
 
-  await upload(page, [invoice, split, unmatched, purchaseOrder]);
+      await uploadFiles(page, [invoice, split, unmatched, purchaseOrder]);
 
-  // B9.1: the multipart upload, the worker pickup and the list refresh all work in the real app.
-  await expectInboxRows(
-    page,
-    [
-      {
-        label: invoice.name,
-        status: "Needs your input",
-        text: [`ABC Trading · ${MONEY.format(5000)}`],
-      },
-      {
-        label: split.name,
-        status: "Confirm the split",
-        text: ["→ 2 invoices"],
-      },
-      {
-        label: unmatched.name,
-        status: "No matching invoice",
-        text: ["Meridian Labs"],
-      },
-      {
-        label: purchaseOrder.name,
-        status: "Kept as a reference",
-        text: ["No figure changes"],
-      },
-    ],
-    READING_TIMEOUT
-  );
+      // B9.1: the multipart upload, the worker pickup and the list refresh all work in the real app.
+      await expectInboxRows(
+        page,
+        [
+          {
+            label: invoice.name,
+            status: "Needs your input",
+            text: [`ABC Trading · ${MONEY.format(5000)}`],
+          },
+          {
+            label: split.name,
+            status: "Confirm the split",
+            text: ["→ 2 invoices"],
+          },
+          {
+            label: unmatched.name,
+            status: "No matching invoice",
+            text: ["Meridian Labs"],
+          },
+          {
+            label: purchaseOrder.name,
+            status: "Kept as a reference",
+            text: ["No figure changes"],
+          },
+        ],
+        READING_TIMEOUT
+      );
 
-  // B9.1: the same bytes again create nothing and add one Duplicate row for this visit (R-23).
-  await upload(page, [purchaseOrder]);
+      // B9.1: the same bytes again create nothing and add one Duplicate row for this visit (R-23).
+      await uploadFiles(page, [purchaseOrder]);
 
-  await expectInboxRows(
-    page,
-    [
-      {
-        label: purchaseOrder.name,
-        status: "Duplicate (nothing added)",
-        text: [`Same file as ${purchaseOrder.name}`],
-      },
-    ],
-    READING_TIMEOUT
+      await expectInboxRows(
+        page,
+        [
+          {
+            label: purchaseOrder.name,
+            status: "Duplicate (nothing added)",
+            text: [`Same file as ${purchaseOrder.name}`],
+          },
+        ],
+        READING_TIMEOUT
+      );
+    },
+    LOCK_WAIT
   );
 });
 
@@ -268,24 +214,30 @@ test("has no accessibility violations with rows", async ({
 }, testInfo) => {
   test.setTimeout(TEST_TIMEOUT);
 
-  const invoice = copyOf("01", testInfo.project.name);
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      const invoice = copyOf("01", testInfo.project.name);
 
-  await signIn(page);
-  await openInbox(page);
+      await signIn(page);
+      await openInbox(page);
 
-  await upload(page, [invoice]);
-  await expectInboxRows(
-    page,
-    [
-      {
-        label: invoice.name,
-        status: "Needs your input",
-        text: [`ABC Trading · ${MONEY.format(5000)}`],
-      },
-    ],
-    READING_TIMEOUT
+      await uploadFiles(page, [invoice]);
+      await expectInboxRows(
+        page,
+        [
+          {
+            label: invoice.name,
+            status: "Needs your input",
+            text: [`ABC Trading · ${MONEY.format(5000)}`],
+          },
+        ],
+        READING_TIMEOUT
+      );
+
+      // B9.2: the inbox with rows has no accessibility defect at this viewport (DEC-21, DEC-25).
+      await expectNoAxeViolations(page, "Documents inbox");
+    },
+    LOCK_WAIT
   );
-
-  // B9.2: the inbox with rows has no accessibility defect at this viewport (DEC-21, DEC-25).
-  await expectNoAxeViolations(page, "Documents inbox");
 });

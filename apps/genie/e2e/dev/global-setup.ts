@@ -33,6 +33,7 @@ import {
   replayModelRequests,
 } from "../../testing/model-replay.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
+import { lockDirectory } from "../support/lock.ts";
 
 const run = promisify(execFile);
 
@@ -401,6 +402,10 @@ export default async function globalSetup(): Promise<void> {
       `Something is already listening on 127.0.0.1:${DEV_PORT}. Stop it, or set GENIE_DEV_PORT to a free port. This run will not start beside a server it did not start.`
     );
   }
+
+  // After the port check, so a second run in this worktree never deletes a live run's lock. A
+  // worker killed on a timeout or Ctrl-C leaves the directory, and this run owns its scope.
+  rmSync(lockDirectory("invoices-ledger"), { recursive: true, force: true });
 
   await run("docker", [...COMPOSE, "up", "-d", "--wait"], {
     env: { ...process.env, GENIE_DEV_DB_PORT: String(DEV_DB_PORT) },

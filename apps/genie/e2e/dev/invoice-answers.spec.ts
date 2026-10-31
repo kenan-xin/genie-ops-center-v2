@@ -4,12 +4,13 @@ import { DEMO_PACK } from "@genie/module-invoices/testing";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
+import { withDeploymentLock } from "../support/lock.ts";
 import {
   askQuestion,
-  FIRST_PAINT,
   hideDevelopmentWidgets,
   signInAs,
 } from "./ask-support.ts";
+import { FIRST_PAINT, LEDGER_LOCK, LOCK_WAIT, sgd } from "./dev-support.ts";
 import { DEV_MODULES, INVOICE_ASK_PEOPLE } from "./global-setup.ts";
 
 test.skip(
@@ -42,14 +43,10 @@ const QUESTIONS = (
   }
 ).questions;
 
-const MONEY = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "SGD",
-});
-
-const sgd = (dollars: number) => MONEY.format(dollars);
-
 const RECORD_PATH = /^\/m\/invoices\/invoices\/[0-9a-f-]{36}$/;
+
+/** The cold route compiles plus the answer, with room for the lock to wait for the queue. */
+const TEST_TIMEOUT = LOCK_WAIT + FIRST_PAINT.timeout + 60_000;
 
 const figure = (page: Page, title: string) =>
   page.getByRole("figure", { name: title });
@@ -61,7 +58,7 @@ async function askOnAsk(page: Page, testInfo: TestInfo, id: string) {
   if (prompt === undefined) throw new Error(`No expected answer ${id}.`);
 
   // A development server compiles the shell, Ask, the route and the chart gate on first use.
-  test.setTimeout(180_000);
+  test.setTimeout(TEST_TIMEOUT);
 
   await hideDevelopmentWidgets(page);
   await signInAs(
@@ -70,10 +67,19 @@ async function askOnAsk(page: Page, testInfo: TestInfo, id: string) {
       ? INVOICE_ASK_PEOPLE.phone
       : INVOICE_ASK_PEOPLE.desktop
   );
+
+  // The shell posts on mount, so this response proves hydration: a fill or Send before it can be
+  // lost, leaving Send disabled and the conversation empty (`documents.spec.ts` waits the same).
+  const mounted = page.waitForResponse((response) =>
+    response.url().endsWith("/api/session/activity")
+  );
+
   await page.goto("/ask");
   await expect(page.getByRole("textbox", { name: "Message Ask" })).toBeVisible(
     FIRST_PAINT
   );
+  await mounted;
+
   await askQuestion(page, prompt);
   await expect(
     page.getByText("As of 27 October 2026, the reporting date.")
@@ -98,86 +104,112 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 test("the overdue invoices answer shows its date, rule, total and records, and a record opens in the app", async ({
   page,
 }, testInfo) => {
-  await askOnAsk(page, testInfo, "overdue-invoices");
+  test.setTimeout(TEST_TIMEOUT);
 
-  await expect(page.getByText(/^An invoice is overdue when/)).toBeVisible();
-  await expect(
-    figure(page, "Overdue total")
-      .getByText(sgd(27350))
-      .filter({ visible: true })
-  ).toBeVisible(FIRST_PAINT);
-  await expect(figure(page, "Overdue invoices").getByRole("link")).toHaveText(
-    [
-      "INV-2026-08-04",
-      "INV-2026-09-03",
-      "INV-2026-09-04",
-      "INV-2026-10-01",
-      "INV-2026-10-03",
-    ],
-    FIRST_PAINT
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await askOnAsk(page, testInfo, "overdue-invoices");
+
+      await expect(page.getByText(/^An invoice is overdue when/)).toBeVisible();
+      await expect(
+        figure(page, "Overdue total")
+          .getByText(sgd(27350))
+          .filter({ visible: true })
+      ).toBeVisible(FIRST_PAINT);
+      await expect(
+        figure(page, "Overdue invoices").getByRole("link")
+      ).toHaveText(
+        [
+          "INV-2026-08-04",
+          "INV-2026-09-03",
+          "INV-2026-09-04",
+          "INV-2026-10-01",
+          "INV-2026-10-03",
+        ],
+        FIRST_PAINT
+      );
+      await capture(page, testInfo, "ask-overdue-invoices");
+
+      // A click before hydration would make a full document load, so the marker is written after.
+      await page.waitForLoadState("networkidle");
+      await page.evaluate(() => {
+        // oxlint-disable-next-line no-underscore-dangle -- the marker `invoices.spec.ts` uses.
+        window.__genieMarker = 1;
+      });
+      await figure(page, "Overdue invoices")
+        .getByRole("link", { name: "INV-2026-08-04", exact: true })
+        .click();
+      await expect(
+        page.getByRole("heading", { level: 1, name: "INV-2026-08-04" })
+      ).toBeVisible(FIRST_PAINT);
+      // The host's link routes in the client, so the document, and the marker on it, survive.
+      // oxlint-disable-next-line no-underscore-dangle -- as above.
+      expect(await page.evaluate(() => window.__genieMarker)).toBe(1);
+    },
+    LOCK_WAIT
   );
-  await capture(page, testInfo, "ask-overdue-invoices");
-
-  // A click before hydration would make a full document load, so the marker is written after.
-  await page.waitForLoadState("networkidle");
-  await page.evaluate(() => {
-    // oxlint-disable-next-line no-underscore-dangle -- the marker `invoices.spec.ts` uses.
-    window.__genieMarker = 1;
-  });
-  await figure(page, "Overdue invoices")
-    .getByRole("link", { name: "INV-2026-08-04", exact: true })
-    .click();
-  await expect(
-    page.getByRole("heading", { level: 1, name: "INV-2026-08-04" })
-  ).toBeVisible(FIRST_PAINT);
-  // The host's link routes in the client, so the document, and the marker on it, survive.
-  // oxlint-disable-next-line no-underscore-dangle -- as above.
-  expect(await page.evaluate(() => window.__genieMarker)).toBe(1);
 });
 
 test("the late payer answer shows the counts per customer without links and every invoice paid late as a link", async ({
   page,
 }, testInfo) => {
-  await askOnAsk(page, testInfo, "repeated-late-payers");
+  test.setTimeout(TEST_TIMEOUT);
 
-  const counts = figure(page, "Late payment by customer");
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await askOnAsk(page, testInfo, "repeated-late-payers");
 
-  await expect(
-    counts.getByText("ABC Trading").filter({ visible: true })
-  ).toBeVisible(FIRST_PAINT);
-  await expect(counts.getByRole("link")).toHaveCount(0);
+      const counts = figure(page, "Late payment by customer");
 
-  const paidLate = figure(page, "Invoices paid late").getByRole("link");
+      await expect(
+        counts.getByText("ABC Trading").filter({ visible: true })
+      ).toBeVisible(FIRST_PAINT);
+      await expect(counts.getByRole("link")).toHaveCount(0);
 
-  await expect(paidLate).toHaveCount(13, FIRST_PAINT);
-  expect(await paidLate.first().getAttribute("href")).toMatch(RECORD_PATH);
-  await expect(
-    page.getByText(
-      "By that rule, ABC Trading, Harbor Foods and Orchid Retail pay late repeatedly.",
-      { exact: false }
-    )
-  ).toBeVisible();
-  await capture(page, testInfo, "ask-repeated-late-payers");
+      const paidLate = figure(page, "Invoices paid late").getByRole("link");
+
+      await expect(paidLate).toHaveCount(13, FIRST_PAINT);
+      expect(await paidLate.first().getAttribute("href")).toMatch(RECORD_PATH);
+      await expect(
+        page.getByText(
+          "By that rule, ABC Trading, Harbor Foods and Orchid Retail pay late repeatedly.",
+          { exact: false }
+        )
+      ).toBeVisible();
+      await capture(page, testInfo, "ask-repeated-late-payers");
+    },
+    LOCK_WAIT
+  );
 });
 
 test("the monthly answer draws invoiced sales and collections from two datasets in one chart, with the open invoices as links", async ({
   page,
 }, testInfo) => {
-  await askOnAsk(page, testInfo, "monthly-invoiced-and-collected");
+  test.setTimeout(TEST_TIMEOUT);
 
-  const months = figure(page, "Invoiced sales and collections by month");
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await askOnAsk(page, testInfo, "monthly-invoiced-and-collected");
 
-  await months.getByRole("tab", { name: "Table" }).click(FIRST_PAINT);
+      const months = figure(page, "Invoiced sales and collections by month");
 
-  // The table row on a desktop, the card on a phone: only one of the two is shown.
-  const may = months
-    .locator("tr, li")
-    .filter({ visible: true, hasText: "May 2026" });
+      await months.getByRole("tab", { name: "Table" }).click(FIRST_PAINT);
 
-  await expect(may).toContainText(sgd(34900));
-  await expect(may).toContainText(sgd(31300));
-  await expect(
-    figure(page, "Invoices with money outstanding").getByRole("link")
-  ).toHaveCount(7, FIRST_PAINT);
-  await capture(page, testInfo, "ask-monthly-invoiced-and-collected");
+      // The table row on a desktop, the card on a phone: only one of the two is shown.
+      const may = months
+        .locator("tr, li")
+        .filter({ visible: true, hasText: "May 2026" });
+
+      await expect(may).toContainText(sgd(34900));
+      await expect(may).toContainText(sgd(31300));
+      await expect(
+        figure(page, "Invoices with money outstanding").getByRole("link")
+      ).toHaveCount(7, FIRST_PAINT);
+      await capture(page, testInfo, "ask-monthly-invoiced-and-collected");
+    },
+    LOCK_WAIT
+  );
 });
