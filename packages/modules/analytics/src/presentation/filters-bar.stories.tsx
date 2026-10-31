@@ -9,6 +9,7 @@ import {
   screen,
   userEvent,
   waitFor,
+  within,
 } from "storybook/test";
 
 import type { DashboardChange } from "../contract.ts";
@@ -61,7 +62,7 @@ const meta = {
     a11y: { test: "error" },
   },
   decorators: [withQuery],
-  args: { dashboard: defaultDashboardPage.dashboard },
+  args: { dashboard: defaultDashboardPage.dashboard, onReload: fn() },
 } satisfies Meta<typeof FiltersBar>;
 
 export default meta;
@@ -147,6 +148,39 @@ export const CustomRange: Story = {
         },
       ],
     });
+  },
+};
+
+const DASHBOARD_CHANGED =
+  "This dashboard changed since you opened it. Reload it to see the latest version.";
+
+// A filter save that meets a newer version offers the same Reload as the view's refusal line.
+export const VersionConflict: Story = {
+  name: "Version conflict",
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDashboardPage.dashboard);
+    changeDashboard.mockRejectedValue(
+      Object.assign(new Error(DASHBOARD_CHANGED), {
+        data: { appCode: "analytics:dashboard-changed", requestId: "req-1" },
+      })
+    );
+  },
+  play: async ({ args, canvas }) => {
+    await userEvent.click(canvas.getByRole("combobox", { name: "Date range" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "This year" })
+    );
+
+    const alert = await canvas.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(DASHBOARD_CHANGED);
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Reload" })
+    );
+
+    await expect(args.onReload).toHaveBeenCalledTimes(1);
+    await expect(canvas.queryByRole("alert")).toBeNull();
   },
 };
 

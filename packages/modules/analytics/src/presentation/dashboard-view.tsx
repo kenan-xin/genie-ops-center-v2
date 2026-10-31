@@ -19,12 +19,10 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
 
 import type { DashboardChange } from "../contract.ts";
+import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
 import { FiltersBar } from "./filters-bar.tsx";
 import { PanelCard } from "./panel-card.tsx";
 import {
-  type AppIssue,
-  appCodeOf,
-  appIssuesOf,
   dashboardQueryKey,
   useDashboard,
   useDashboardChange,
@@ -36,12 +34,6 @@ export type DashboardViewProps = {
   readonly view: DashboardPageView;
 };
 
-type ChangeFailure = {
-  readonly kind: "change" | "undo";
-  readonly panelTitle?: string | undefined;
-  readonly error: unknown;
-};
-
 type RenameTarget =
   | { readonly kind: "dashboard"; readonly value: string }
   | {
@@ -49,59 +41,6 @@ type RenameTarget =
       readonly panelId: string;
       readonly value: string;
     };
-
-type Refusal = {
-  readonly message: string;
-  readonly issues: readonly AppIssue[];
-  readonly reload: boolean;
-};
-
-/** The refusal line of an edit, its issue lines and whether Reload follows (R-49). */
-function refusalOf(failure: ChangeFailure): Refusal {
-  const message = failure.error instanceof Error ? failure.error.message : "";
-  const issues = appIssuesOf(failure.error);
-  const reload = appCodeOf(failure.error) === "analytics:dashboard-changed";
-
-  if (failure.kind === "undo") {
-    return {
-      message: `The last change was not undone. ${message}`,
-      issues,
-      reload,
-    };
-  }
-
-  if (reload) return { message, issues, reload };
-
-  return {
-    message:
-      failure.panelTitle === undefined
-        ? message
-        : `${failure.panelTitle} was not changed. ${message}`,
-    issues,
-    reload,
-  };
-}
-
-function ChangeRefusal(props: {
-  readonly failure: ChangeFailure;
-  readonly onReload: () => void;
-}) {
-  const { message, issues, reload } = refusalOf(props.failure);
-
-  return (
-    <div role="alert" className="grid gap-1 text-sm text-destructive">
-      <p>{message}</p>
-      {issues.map((issue, index) => (
-        <p key={`${index}:${issue.path}`}>{issue.message}</p>
-      ))}
-      {reload ? (
-        <Button type="button" variant="secondary" onClick={props.onReload}>
-          Reload
-        </Button>
-      ) : null}
-    </div>
-  );
-}
 
 /** One dashboard: its filters, its live panel grid and its hand edits (R-48 to R-50). */
 export function DashboardView(props: DashboardViewProps) {
@@ -252,7 +191,7 @@ export function DashboardView(props: DashboardViewProps) {
           ) : null}
           {view.canWrite ? (
             <div className="mb-4">
-              <FiltersBar dashboard={dashboard} />
+              <FiltersBar dashboard={dashboard} onReload={reload} />
             </div>
           ) : null}
           {dashboard.panels.length === 0 ? (

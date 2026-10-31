@@ -22,6 +22,7 @@ import {
   dateRangeFilter,
   type DateRangeFilter,
 } from "../contract.ts";
+import { ChangeRefusal } from "./change-refusal.tsx";
 import { useDashboardChange } from "./use-dashboard.ts";
 import type { DashboardView } from "./views.ts";
 
@@ -38,6 +39,8 @@ const RANGE_ITEMS = [
 
 export type FiltersBarProps = {
   readonly dashboard: DashboardView;
+  /** Reads the dashboard again after a save met a newer version. */
+  readonly onReload: () => void;
 };
 
 /** The date range and the field filter, each save one `set-filters` change (R-49, D3). */
@@ -218,11 +221,15 @@ export function FiltersBar(props: FiltersBarProps) {
       )}
 
       {change.error === null ? null : (
-        <p role="alert" className="basis-full text-sm text-destructive">
-          {change.error.message === ""
-            ? "The filters were not saved."
-            : change.error.message}
-        </p>
+        <div className="basis-full">
+          <ChangeRefusal
+            failure={{ kind: "change", error: change.error }}
+            onReload={() => {
+              change.reset();
+              props.onReload();
+            }}
+          />
+        </div>
       )}
     </div>
   );
