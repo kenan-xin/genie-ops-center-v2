@@ -309,6 +309,46 @@ export const CustomerChange: Story = {
   },
 };
 
+/** Upload 05 with 21 open invoices of SGD 100.00, one more than a save links. */
+const manyOpenReview: DocumentReviewView = {
+  ...noMatchPaymentReview,
+  payment: {
+    openInvoices: Array.from({ length: 21 }, (_, index) => ({
+      invoiceId: `30000000-0000-4000-8000-${String(2000 + index).padStart(12, "0")}`,
+      number: `INV-MANY-${String(index + 1).padStart(2, "0")}`,
+      invoiceDate: "2026-10-06",
+      dueDate: "2026-11-05",
+      currency: "SGD",
+      openCents: 10000,
+    })),
+    proposal: { kind: "no-match" },
+    possibleDuplicateOf: null,
+  },
+};
+
+// BF.1: more than 20 checked links keeps Save blocked and says why, so Save never does nothing.
+export const TooManyLinks: Story = {
+  name: "Too many links",
+  args: { view: manyOpenReview },
+  globals: desktop,
+  beforeEach: () => serve(manyOpenReview),
+  play: async ({ canvas }) => {
+    for (const box of canvas.getAllByRole("checkbox", {
+      name: /^Link to INV-MANY-/u,
+    })) {
+      // oxlint-disable-next-line no-await-in-loop -- each check fills its amount from the rest.
+      await userEvent.click(box);
+    }
+
+    const save = canvas.getByRole("button", { name: "Save the payment" });
+
+    await expect(
+      canvas.getByText("Link at most 20 invoices in one save.")
+    ).toBeVisible();
+    await expect(save).toHaveAttribute("aria-disabled", "true");
+  },
+};
+
 // Fix round 1: open invoices that fail to load are never shown as none, and the save waits.
 export const OpenInvoicesFailed: Story = {
   name: "Open invoices failed",
@@ -412,5 +452,11 @@ export const OpenInvoicesFailedOnPhone: Story = {
 export const PossibleDuplicateOnPhone: Story = {
   ...PossibleDuplicate,
   name: "Possible duplicate on a phone",
+  globals: phone,
+};
+
+export const TooManyLinksOnPhone: Story = {
+  ...TooManyLinks,
+  name: "Too many links on a phone",
   globals: phone,
 };

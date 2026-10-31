@@ -178,6 +178,9 @@ export const saveInvoiceOutput = z.discriminatedUnion("outcome", [
 
 export type SaveInvoiceOutput = z.infer<typeof saveInvoiceOutput>;
 
+/** The most invoices one payment save links. */
+export const MAX_PAYMENT_LINKS = 20;
+
 export const savePaymentInput = z.object({
   documentId: recordId.nullable(),
   customer: customerChoice,
@@ -190,7 +193,7 @@ export const savePaymentInput = z.object({
   /** The links the person chose. The browser save never links by itself (decision 4). */
   allocations: z
     .array(z.strictObject({ invoiceId: recordId, amountCents: cents }))
-    .max(20),
+    .max(MAX_PAYMENT_LINKS),
   keepPossibleDuplicate: z.boolean(),
 });
 

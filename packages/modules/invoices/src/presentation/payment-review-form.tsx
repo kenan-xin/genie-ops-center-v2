@@ -8,6 +8,7 @@ import { useState, type ReactNode } from "react";
 import {
   currencyCode,
   invoicesContract,
+  MAX_PAYMENT_LINKS,
   type PaymentMatch,
   type ReadingField,
   savePaymentInput,
@@ -218,7 +219,10 @@ export function PaymentReviewForm(props: {
   const amountCents = centsOf(values.amount.trim());
   const check = checkLinks(amountCents ?? 0, links, open);
 
+  const tooManyLinks = links.length > MAX_PAYMENT_LINKS;
+
   const linksOk =
+    !tooManyLinks &&
     !check.abovePayment &&
     check.aboveOpen.length === 0 &&
     check.unreadable.length === 0;
@@ -236,9 +240,11 @@ export function PaymentReviewForm(props: {
         ? "Wait for the open invoices to load to save."
         : status.kind === "failed"
           ? "Load the open invoices again to save."
-          : canSave
-            ? undefined
-            : "Fix the fields marked above to save.";
+          : tooManyLinks
+            ? `Link at most ${MAX_PAYMENT_LINKS} invoices in one save.`
+            : canSave
+              ? undefined
+              : "Fix the fields marked above to save.";
 
   async function submit(value: FormValues, keep: boolean) {
     const parsed = savePaymentInput.safeParse(
