@@ -11,6 +11,7 @@ import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import type { AuditAction } from "../audit/actions.ts";
 import type { AuditMetadataValue } from "../audit/index.ts";
 import { insertAuditRow } from "../audit/insert.ts";
+import { can } from "../authorization/index.ts";
 import { listDatasets, queryDataset, recordRoute } from "../datasets/index.ts";
 import { datasetQuerySchema } from "../datasets/query.ts";
 
@@ -183,18 +184,43 @@ function audited(
   });
 }
 
-/** The model's tools for one request: the three core tools, then every enabled provider's tools in registration order. */
-export async function agentToolSet(
-  ctx: ModuleRequestContext,
-  session: { readonly id: string }
-): Promise<ToolSet> {
+/**
+ * Every enabled provider's tools in registration order that this person is offered: a tool with
+ * no `permission`, or one whose key the person holds.
+ */
+async function offeredModuleTools(
+  ctx: ModuleRequestContext
+): Promise<readonly AnyAgentTool[]> {
   const providers = await ctx.tenant.capabilities.list("agent-tools");
 
   // SAFETY: validateModule checked each agent-tools provision against AgentToolsProvider before
   // the registry took it, and `list` answers only providers of that name.
-  const moduleTools = providers.flatMap(
+  const tools = providers.flatMap(
     ({ implementation }) => (implementation as AgentToolsProvider).tools
   );
+
+  const held = await Promise.all(
+    tools.map(({ permission }) =>
+      permission === undefined ? true : can(ctx.caller, permission)
+    )
+  );
+
+  return tools.filter((_, index) => held[index] === true);
+}
+
+/** Whether this person is offered a module tool that changes data, which switches the prompt's write rule. */
+export async function offersWriteTool(
+  ctx: ModuleRequestContext
+): Promise<boolean> {
+  return (await offeredModuleTools(ctx)).some(({ writes }) => writes === true);
+}
+
+/** The model's tools for one request: the three core tools, then the offered module tools in registration order. */
+export async function agentToolSet(
+  ctx: ModuleRequestContext,
+  session: { readonly id: string }
+): Promise<ToolSet> {
+  const moduleTools = await offeredModuleTools(ctx);
 
   return Object.fromEntries([
     ...CORE_TOOLS.map((entry) => [

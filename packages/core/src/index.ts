@@ -494,6 +494,7 @@ export {
   readOwnSession,
   AGENT_TOOL_AUDIT_ACTION,
   agentToolSet,
+  offersWriteTool,
   type AgentAccess,
   agentAccess,
   type InboxLink,

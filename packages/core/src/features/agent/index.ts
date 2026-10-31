@@ -10,4 +10,12 @@ export { ChatBubble } from "./chat-bubble.tsx";
 
 export { Conversation } from "./conversation.tsx";
 
-export { AgentRefusal, agentTransport, type ChatRefusal } from "./transport.ts";
+export {
+  AGENT_ROUTE,
+  type AgentChatContext,
+  AgentRefusal,
+  agentTransport,
+  type ChatRefusal,
+} from "./transport.ts";
+
+export { AgentPanel } from "./agent-panel.tsx";

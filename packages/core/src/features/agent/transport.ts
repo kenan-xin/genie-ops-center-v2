@@ -4,11 +4,20 @@ import { z } from "zod";
 import type { AgentMessage } from "../../services/agent/index.ts";
 
 /**
- * The browser side of the agent route's body, `{ sessionId, message, modelId? }` (Task 5's
- * `chatRequestSchema`). The AI SDK's default body carries the whole history under its own shape;
- * the route reads one message, so this transport sends the last one and the picked model only.
- * The message keeps the client-made id, which the route accepts.
+ * The browser side of the agent route's body, `{ sessionId, message, modelId?, context? }` (Task
+ * 5's `chatRequestSchema`). The AI SDK's default body carries the whole history under its own
+ * shape; the route reads one message, so this transport sends the last one, the picked model and
+ * the record context only. The message keeps the client-made id, which the route accepts.
  */
+
+/** The agent route the app mounts. */
+export const AGENT_ROUTE = "/api/agent";
+
+/** The record open beside a chat, which the prompt names (S7-12, S7-13). */
+export type AgentChatContext = {
+  readonly recordType: string;
+  readonly recordId: string;
+};
 
 /** A refusal the route answered before the stream started, as a person reads it. */
 export class AgentRefusal extends Error {
@@ -64,11 +73,24 @@ export async function refusalFromResponse(
 
 const sendBody = z.object({ modelId: z.string().optional() });
 
+/** The body the route reads. */
+type AgentRouteBody = {
+  sessionId: string;
+  message: AgentMessage | undefined;
+  modelId?: string;
+  context?: AgentChatContext;
+};
+
 /**
  * The route's transport: one message to one session. A refusal before the stream starts becomes
  * the person-facing message the chat shows, not the route's JSON body.
  */
-export function agentTransport(api: string): ChatTransport<AgentMessage> {
+export function agentTransport(
+  api: string,
+  options?: { readonly context?: AgentChatContext }
+): ChatTransport<AgentMessage> {
+  const context = options?.context;
+
   return new DefaultChatTransport<AgentMessage>({
     api,
     fetch: async (input, init) => {
@@ -81,14 +103,16 @@ export function agentTransport(api: string): ChatTransport<AgentMessage> {
     prepareSendMessagesRequest: ({ id, messages, body }) => {
       const picked = sendBody.safeParse(body);
 
-      const base = { sessionId: id, message: messages.at(-1) };
+      const sent: AgentRouteBody = { sessionId: id, message: messages.at(-1) };
 
-      return {
-        body:
-          picked.success && picked.data.modelId !== undefined
-            ? { ...base, modelId: picked.data.modelId }
-            : base,
-      };
+      if (picked.success && picked.data.modelId !== undefined) {
+        sent.modelId = picked.data.modelId;
+      }
+
+      // No `context` key without a context, so every recorded Ask request stays the same.
+      if (context !== undefined) sent.context = context;
+
+      return { body: sent };
     },
   });
 }

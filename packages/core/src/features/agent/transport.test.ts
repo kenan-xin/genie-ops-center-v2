@@ -25,6 +25,9 @@ const sentBodySchema = z.object({
     parts: z.array(z.object({ type: z.string(), text: z.string() })),
   }),
   modelId: z.string().optional(),
+  context: z
+    .object({ recordType: z.string(), recordId: z.string() })
+    .optional(),
 });
 
 /** One send of the route's transport, with the body a picker would add. */
@@ -91,6 +94,29 @@ describe("the agent route's transport", () => {
       sessionId: SESSION_ID,
       message: MESSAGE,
     });
+  });
+
+  it("sends the record context only when the chat has one", async () => {
+    const fetchMock = fetchStub();
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const context = { recordType: "dashboard", recordId: "d-1" };
+
+    await send(agentTransport(API, { context }), undefined);
+    await send(agentTransport(API), undefined);
+
+    const [withContext, without] = fetchMock.mock.calls.map(([, init]) =>
+      sentBodySchema.parse(JSON.parse(String(init?.body)))
+    );
+
+    expect(withContext).toEqual({
+      sessionId: SESSION_ID,
+      message: MESSAGE,
+      context,
+    });
+    // A body without the key keeps every recorded Ask request the same.
+    expect(without).toEqual({ sessionId: SESSION_ID, message: MESSAGE });
   });
 
   it("maps the route's refusal body to the reason the chat shows", async () => {

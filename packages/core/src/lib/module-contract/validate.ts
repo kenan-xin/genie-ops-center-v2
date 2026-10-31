@@ -770,7 +770,8 @@ function capabilityProblems(module: Module): string[] {
       });
     }
 
-    for (const { name, description } of provision.implementation.tools) {
+    for (const { name, description, permission, writes } of provision
+      .implementation.tools) {
       const tool = `Agent tool "${name}"`;
 
       if (!AGENT_TOOL_NAME.test(name)) {
@@ -795,6 +796,17 @@ function capabilityProblems(module: Module): string[] {
 
       if (description.trim() === "") {
         problems.push(`${tool} has no description.`);
+      }
+
+      if (permission !== undefined && !declared.has(permission)) {
+        problems.push(
+          `${tool} names permission "${permission}", which the module does not declare.`
+        );
+      }
+
+      // A write tool without a key would be offered to every person (R-46).
+      if (writes === true && permission === undefined) {
+        problems.push(`${tool} changes data, so it names a permission.`);
       }
     }
   }

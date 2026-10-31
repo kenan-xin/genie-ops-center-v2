@@ -12,8 +12,11 @@ A tool reads only through the dataset service and the record route, as the perso
 `can()` and `scopesFor()` decide what it answers. Core writes one audit row per tool call, with
 the tool, the dataset, the input and the row count, never the returned values.
 
-The system prompt is core's rules, then the `instructions` lines of each enabled `agent-tools`
-provider whose key the person holds, then a blank line and the answer catalog.
+A module tool that names a `permission` is offered only to a person who holds that key. The
+system prompt is core's rules, then the `instructions` lines of each enabled `agent-tools`
+provider whose key the person holds, then the line that names the open record when the request
+carries a context, then a blank line and the answer catalog. Core's no-write rule becomes the write
+rule only for a person offered a tool with `writes: true`, so every other prompt stays the same.
 
 The `chart` procedure draws an answer's chart through the chart gate as the viewer. A table whose
 query selects its dataset's record key field opens each row's record through the record route,
@@ -28,7 +31,8 @@ broadened, so an administrator grants it through a role. The inbox links are the
 The route checks a request in this order and throws the catalogue error before the stream starts
 and before any write: not signed in (`unauthenticated`); no `core:ask:use` or the break-glass
 account (`forbidden`); AI not on (`ai-off`); a body over 64 KB (`request-too-large`); a body that
-is not one text part of 1 to 4,000 characters (`invalid-input`); another person's session id
+is not one text part of 1 to 4,000 characters, or whose optional record context is not a kebab-case
+type of at most 64 characters and an id of 1 to 64 letters, digits or hyphens (`invalid-input`); another person's session id
 (`not-found`); a model the settings do not allow, the picked one for a new session or the stored
 one for an existing session (`model-not-allowed`). Only then does it create the session, store
 the message and stream the answer, which it stores when the stream ends.

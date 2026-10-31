@@ -21,6 +21,7 @@ import {
   withLanding,
 } from "./__fixtures__/invalid-modules.ts";
 import { fixtureApi, validModule } from "./__fixtures__/valid-module.ts";
+import type { PermissionKey } from "./keys.ts";
 import {
   type DatasetDeclaration,
   definePage,
@@ -1278,6 +1279,10 @@ describe("validateModule", () => {
       validateModule(withTools(["fixture-count-records", longest]))
     ).toEqual([]);
 
+    expect(
+      validateModule(withTool({ permission: "fixture:read", writes: true }))
+    ).toEqual([]);
+
     expect(validateModule(withInstructions({}))).toEqual([]);
 
     expect(validateModule(withInbox({ permission: "fixture:use" }))).toEqual(
@@ -1308,6 +1313,14 @@ describe("validateModule", () => {
       [
         withTools(["fixture-count"], " "),
         'Agent tool "fixture-count" has no description.',
+      ],
+      [
+        withTool({ permission: "other:read" }),
+        'Agent tool "fixture-change" names permission "other:read", which the module does not declare.',
+      ],
+      [
+        withTool({ writes: true }),
+        'Agent tool "fixture-change" changes data, so it names a permission.',
       ],
       [
         withInstructions({ permission: "other:read" }),
@@ -1471,6 +1484,25 @@ function withTools(names: readonly string[], description = "Counts records.") {
   return {
     ...validModule,
     capabilities: [capability("agent-tools", { tools })],
+  };
+}
+
+/** The valid fixture providing one `fixture-change` tool with the given key and write flag. */
+function withTool(access: {
+  readonly permission?: PermissionKey;
+  readonly writes?: true;
+}) {
+  const tool = defineAgentTool({
+    name: "fixture-change",
+    description: "Changes a record.",
+    input: z.object({}),
+    run: async () => ({ output: 0, rowCount: 0 }),
+    ...access,
+  });
+
+  return {
+    ...validModule,
+    capabilities: [capability("agent-tools", { tools: [tool] })],
   };
 }
 

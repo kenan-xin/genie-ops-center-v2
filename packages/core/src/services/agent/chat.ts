@@ -15,6 +15,7 @@ import {
   GENERIC_ERROR_CODE,
   safeMessageFor,
 } from "../../lib/errors/index.ts";
+import { AGENT_TOOL_NAME } from "../../lib/module-contract/agent-tools.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { modelFor } from "../models/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
@@ -27,7 +28,7 @@ import {
   findOwnSession,
   readOwnSession,
 } from "./store.ts";
-import { agentToolSet } from "./tools.ts";
+import { agentToolSet, offersWriteTool } from "./tools.ts";
 
 /** The route's limits (P8): one bounded turn per request, never retried. */
 export const AGENT_LIMITS = {
@@ -53,6 +54,13 @@ const chatRequestSchema = z.strictObject({
       }),
     ]),
   }),
+  // The record open beside the chat. Checked by pattern only, because the prompt names it as text.
+  context: z
+    .strictObject({
+      recordType: z.string().max(64).regex(AGENT_TOOL_NAME),
+      recordId: z.string().regex(/^[A-Za-z0-9-]{1,64}$/),
+    })
+    .optional(),
 });
 
 function tooLarge(): AppError {
@@ -131,7 +139,8 @@ export async function handleAgentChat(
     throw new AppError(CORE_ERRORS["ai-off"]);
   }
 
-  const { sessionId, modelId, message } = await readChatRequest(request);
+  const { sessionId, modelId, message, context } =
+    await readChatRequest(request);
 
   const existing = await findOwnSession(ctx, sessionId);
 
@@ -168,6 +177,11 @@ export async function handleAgentChat(
     instructions: agentInstructions({
       reportingDate: await reportingDate(ctx.tenant),
       moduleLines: await moduleInstructionLines(ctx),
+      writeTools: await offersWriteTool(ctx),
+      openRecord:
+        context === undefined
+          ? undefined
+          : { type: context.recordType, id: context.recordId },
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
     messages: await convertToModelMessages(history, {

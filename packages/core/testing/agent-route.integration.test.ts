@@ -212,6 +212,24 @@ describe("the agent route", () => {
         code: "invalid-input",
       },
       {
+        why: "a context whose record type is not kebab-case",
+        send: () =>
+          refusal(
+            holder,
+            body({ context: { recordType: "Dashboard", recordId: "d-1" } })
+          ),
+        code: "invalid-input",
+      },
+      {
+        why: "a context whose record id holds a space",
+        send: () =>
+          refusal(
+            holder,
+            body({ context: { recordType: "dashboard", recordId: "d 1" } })
+          ),
+        code: "invalid-input",
+      },
+      {
         why: "another person's session id",
         send: () => refusal(holder, body({ sessionId: ownersSession })),
         code: "not-found",
@@ -253,6 +271,26 @@ describe("the agent route", () => {
 
     expect(messages.rowCount).toBe(0);
     expect(recorded.sent).toEqual([]);
+  });
+
+  it("names the record of a valid context in the system text it sends", async () => {
+    const sent = recorded.sent.length;
+
+    // No recording answers this request, so the stream ends in an error after the send.
+    await readAgentReply(
+      await handleAgentChat(
+        await asker(),
+        agentRequest(
+          body({ context: { recordType: "dashboard", recordId: "d-1" } })
+        ),
+        { logError: () => {} }
+      )
+    ).catch(() => undefined);
+
+    expect(recorded.sent).toHaveLength(sent + 1);
+    expect(JSON.stringify(recorded.sent.at(-1)?.body)).toContain(
+      "The person has the dashboard record d-1 open beside this chat."
+    );
   });
 
   it("answers the next message after a turn stored a tool call with no result", async () => {

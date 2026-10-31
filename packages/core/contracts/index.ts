@@ -75,14 +75,18 @@ export type AgentToolResult = {
 };
 
 /**
- * One read tool for the boss agent (R-43). It reads only through `queryDataset`, `can()` and
- * `scopesFor()` as `ctx.caller`, the person who asks (DEC-29), and core writes its audit row.
+ * One tool for the boss agent (R-43). It runs only through `can()` and `scopesFor()` as
+ * `ctx.caller`, the person who asks (DEC-29), and core writes its audit row.
  */
 export type AgentTool<TInput> = {
   /** `<moduleId>-<kebab-name>`, at most 64 characters, because providers accept no other name. */
   readonly name: string;
   readonly description: string;
   readonly input: ZodType<TInput>;
+  /** Core offers the tool only to a person who holds this key; `run` still checks access. */
+  readonly permission?: PermissionKey;
+  /** The tool changes data: it names a permission and gives its change an Undo (R-46). */
+  readonly writes?: true;
   run(ctx: ModuleRequestContext, input: TInput): Promise<AgentToolResult>;
 };
 
@@ -91,6 +95,8 @@ export type AnyAgentTool = {
   readonly name: string;
   readonly description: string;
   readonly input: ZodType;
+  readonly permission?: PermissionKey;
+  readonly writes?: true;
   run(ctx: ModuleRequestContext, input: never): Promise<AgentToolResult>;
 };
 
