@@ -26,6 +26,7 @@ import {
 } from "@genie/module-placeholder/testing";
 
 import { selectedModuleIds, selectedModules } from "../../src/modules.ts";
+import { ANALYTICS_CHAT_KEYS } from "../../testing/analytics-chat.ts";
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import {
@@ -103,6 +104,11 @@ export const INVOICE_ASK_PEOPLE = {
   desktop: "e2e.invoice-ask.desktop@example.invalid",
 } as const;
 
+/** The person who chats beside a dashboard, so its panel can be added by chat (D12). */
+export const ANALYTICS_PEOPLE = {
+  chat: "e2e.analytics.chat@example.invalid",
+} as const;
+
 const ASK_KEYS = ["core:ask:use", "placeholder:read", "placeholder:use"];
 
 const INVOICE_ASK_KEYS = ["core:ask:use", "invoices:read", "invoices:use"];
@@ -119,6 +125,12 @@ const PERMISSIONS_OF = new Map<string, readonly string[]>([
   ...(DEV_MODULES.has("invoices")
     ? Object.values(INVOICE_ASK_PEOPLE).map(
         (email) => [email, INVOICE_ASK_KEYS] as const
+      )
+    : []),
+  // The chat needs the analytics and invoices tools of the recorded default selection.
+  ...(DEV_MODULES.has("analytics") && DEV_MODULES.has("invoices")
+    ? Object.values(ANALYTICS_PEOPLE).map(
+        (email) => [email, ANALYTICS_CHAT_KEYS] as const
       )
     : []),
 ]);
