@@ -20,6 +20,6 @@ dataset answered.
 
 ## What it imports
 
-`@genie/ui`, `react`, `PageLink` from `@genie/core/features/shell`, `../contract.ts`, and its own
-files, plus `import type` from `@genie/core`. The story file also imports `@storybook/nextjs-vite`
-and `storybook/test`.
+`@genie/ui`, `react`, `react-pdf`, `PageLink` from `@genie/core/features/shell`, `../contract.ts`, the
+quote normalisation in `../services/reading/quote-check.ts`, and its own files, plus `import type`
+from `@genie/core`. The story file also imports `@storybook/nextjs-vite` and `storybook/test`.

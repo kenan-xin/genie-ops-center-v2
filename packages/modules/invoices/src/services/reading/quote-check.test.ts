@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ModelReading } from "./model-output.ts";
-import { centsOf, checkReading } from "./quote-check.ts";
+import { centsOf, checkReading, normalizeForQuote } from "./quote-check.ts";
 import type { StoredReading } from "./stored-reading.ts";
 
 type Quoted = ModelReading["customer"];
@@ -338,5 +338,16 @@ describe("the quote check", () => {
     ["5,000.00", undefined],
   ])("reads %s as %s cents", (value, expected) => {
     expect(centsOf(value)).toBe(expected);
+  });
+});
+
+describe("the quote normalisation", () => {
+  // The separator regex runs on UTF-16, so an astral character before the figure must not shift it.
+  it.each([
+    ["an emoji", "\u{1F600} TOTAL 5,000.00", "\u{1F600}TOTAL5000.00"],
+    ["a CJK Extension B character", "\u{20000} 5,000.00", "\u{20000}5000.00"],
+    ["Hangul jamo", "가 5,000.00", "가5000.00"],
+  ])("normalises %s before a thousands separator", (_, text, expected) => {
+    expect(normalizeForQuote(text)).toBe(expected);
   });
 });

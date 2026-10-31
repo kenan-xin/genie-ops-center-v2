@@ -9,17 +9,108 @@ import {
   type StoredReading,
 } from "./stored-reading.ts";
 
+/** A thousands separator between digits: `5,000.00` and `5’000.00` are one figure. */
+const THOUSANDS_SEPARATOR = /(?<=\d)[,'’](?=\d{3}(?!\d))/gu;
+
+const WHITESPACE = /\s+/gu;
+
+/** One base character and its combining marks, which NFKC may compose into one character. */
+const CHARACTER_CLUSTER = /\p{L}\p{M}*|./uy;
+
+/**
+ * The NFKC of `text`, one source character at a time, with each result character and the index of
+ * the source character it came from. NFKC may compose across a cluster boundary, for example two
+ * Hangul jamo, so a cluster grows until its normalised form is what the whole-string result holds
+ * at that point.
+ */
+function normalizedCharacters(text: string) {
+  const normalized = text.normalize("NFKC");
+
+  const characters: { readonly character: string; readonly source: number }[] =
+    [];
+
+  let position = 0;
+
+  for (let at = 0; at < text.length;) {
+    CHARACTER_CLUSTER.lastIndex = at;
+    const first = CHARACTER_CLUSTER.exec(text)?.[0] ?? text[at] ?? "";
+    let cluster = first;
+    let piece = cluster.normalize("NFKC");
+
+    while (
+      !normalized.startsWith(piece, position) &&
+      at + cluster.length < text.length
+    ) {
+      CHARACTER_CLUSTER.lastIndex = at + cluster.length;
+      cluster +=
+        CHARACTER_CLUSTER.exec(text)?.[0] ?? text[at + cluster.length] ?? "";
+      piece = cluster.normalize("NFKC");
+    }
+
+    for (const character of piece) {
+      characters.push({ character, source: at });
+    }
+
+    position += piece.length;
+    at += Math.max(cluster.length, 1);
+  }
+
+  return characters;
+}
+
+/** NFKC, then a thousands separator between digits goes. Every result character keeps its source. */
+function quoteCharacters(text: string) {
+  const characters = normalizedCharacters(text);
+  const joined = characters.map(({ character }) => character).join("");
+  const indexAt = new Map<number, number>();
+  let offset = 0;
+
+  // Separator matches are UTF-16 offsets into `joined`, not indexes into `characters`.
+  for (let index = 0; index < characters.length; index++) {
+    indexAt.set(offset, index);
+    offset += characters[index]?.character.length ?? 0;
+  }
+
+  const separators = new Set<number>();
+
+  for (const match of joined.matchAll(THOUSANDS_SEPARATOR)) {
+    const index =
+      match.index === undefined ? undefined : indexAt.get(match.index);
+
+    if (index !== undefined) separators.add(index);
+  }
+
+  return characters.filter((_, index) => !separators.has(index));
+}
+
 /** NFKC turns a no-break space into a space, then thousands separators go and whitespace collapses to one space. */
 function spacedForQuote(text: string): string {
-  return text
-    .normalize("NFKC")
-    .replaceAll(/(?<=\d)[,'’](?=\d{3}(?!\d))/gu, "")
-    .replaceAll(/\s+/gu, " ");
+  return quoteCharacters(text)
+    .map(({ character }) => character)
+    .join("")
+    .replaceAll(WHITESPACE, " ");
+}
+
+/**
+ * `normalizeForQuote` and, for each UTF-16 unit of its result, the index of the source character.
+ * `quoteRanges` searches `text` and indexes this map with UTF-16 offsets.
+ */
+export function normalizeForQuoteWithSource(text: string) {
+  const kept = quoteCharacters(text).filter(
+    ({ character }) => !/\s/u.test(character)
+  );
+
+  return {
+    text: kept.map(({ character }) => character).join(""),
+    source: kept.flatMap(({ character, source }) =>
+      Array.from({ length: character.length }, () => source)
+    ),
+  };
 }
 
 /** The spaced form without any whitespace, so a line break or a split line still matches. */
 export function normalizeForQuote(text: string): string {
-  return spacedForQuote(text).replaceAll(" ", "");
+  return normalizeForQuoteWithSource(text).text;
 }
 
 /** Integer arithmetic on the decimal string, never `parseFloat` times 100. */
