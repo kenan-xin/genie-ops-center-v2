@@ -236,6 +236,28 @@ export const RefusedPanel: Story = {
   },
 };
 
+// A change from Ask, another tab or a chat whose follow-up failed shows within 10 seconds.
+export const ChangedElsewhere: Story = {
+  name: "Changed elsewhere",
+  globals: desktop,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas }) => {
+    readDashboard.mockResolvedValue({
+      ...defaultDashboardPage.dashboard,
+      name: "Cash in",
+      version: 2,
+    });
+
+    await expect(
+      await canvas.findByRole(
+        "heading",
+        { name: "Cash in" },
+        { timeout: 12_000 }
+      )
+    ).toBeVisible();
+  },
+};
+
 // A panel still loading shows its title above the loading line.
 export const LoadingPanel: Story = {
   name: "Loading panel",

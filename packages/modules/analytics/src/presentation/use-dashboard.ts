@@ -45,7 +45,10 @@ function narrowDashboard(view: SavedDashboard): DashboardView {
   };
 }
 
-/** One dashboard as the page reads it, starting from the loader's answer. */
+/**
+ * One dashboard as the page reads it, starting from the loader's answer. It asks again every 10
+ * seconds and on focus, so a change from Ask, another tab or a chat whose follow-up failed shows.
+ */
 export function useDashboard(
   initial: DashboardView
 ): UseQueryResult<DashboardView> {
@@ -56,6 +59,8 @@ export function useDashboard(
     queryFn: async () =>
       narrowDashboard(await analytics.readDashboard({ id: initial.id })),
     initialData: initial,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   });
 }
 
