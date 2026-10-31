@@ -258,6 +258,42 @@ export const ChangedElsewhere: Story = {
   },
 };
 
+// A save moves the version, and each panel keeps its drawn chart while it asks again.
+export const SaveKeepsCharts: Story = {
+  name: "Save keeps charts",
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDashboardPage);
+    changeDashboard.mockResolvedValue({
+      ...defaultDashboardPage.dashboard,
+      version: 2,
+    });
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByRole("figure", { name: "Invoiced sales" });
+    panelData
+      .mockClear()
+      .mockImplementation(() => new Promise(() => undefined));
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoiced sales" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Move later" })
+    );
+
+    // Every panel asks for version 2; none drops back to the loading line.
+    await waitFor(() => expect(panelData).toHaveBeenCalledTimes(3));
+    await expect(
+      canvas.getByRole("figure", { name: "Invoiced sales" })
+    ).toBeVisible();
+    await expect(canvas.queryByText("Loading…")).toBeNull();
+  },
+};
+
 // A panel still loading shows its title above the loading line.
 export const LoadingPanel: Story = {
   name: "Loading panel",

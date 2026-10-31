@@ -5,6 +5,7 @@ import { appErrorData } from "@genie/core/rpc";
 import { useModuleClient } from "@genie/core/rpc/client";
 import type { ChartData } from "@genie/ui";
 import {
+  keepPreviousData,
   useMutation,
   useQuery,
   useQueryClient,
@@ -84,6 +85,8 @@ export function usePanelData(
     },
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
+    // A save moves the version in the key; the drawn chart stays until the new answer comes.
+    placeholderData: keepPreviousData,
     // A refusal is deterministic, and the 10-second refetch retries a transient one.
     retry: false,
   });
