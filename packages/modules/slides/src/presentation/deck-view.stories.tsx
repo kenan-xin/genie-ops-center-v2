@@ -1,14 +1,30 @@
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import {
+  QueryClient,
+  QueryClientProvider,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { deckPage, emptyDeckPage } from "./__fixtures__/decks.ts";
 import { DeckView } from "./deck-view.tsx";
+import { deckQueryKey } from "./use-deck.ts";
 import type { DeckPageView } from "./views.ts";
 
 const readDeck = fn();
+
+const changeDeck = fn();
+
+const undoDeck = fn();
+
+const refreshDeck = fn();
+
+const uploadDeckImage = fn();
+
+/** The fixture deck's content hash, which every write names (R-53). */
+const HASH = "0".repeat(64);
 
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
@@ -25,11 +41,38 @@ function withQuery(Story: () => ReactNode) {
 
   return (
     <QueryClientProvider client={client}>
-      <ModuleClientProvider client={{ slides: { readDeck } }}>
+      <ModuleClientProvider
+        client={{
+          slides: {
+            readDeck,
+            changeDeck,
+            undoDeck,
+            refreshDeck,
+            uploadDeckImage,
+          },
+        }}
+      >
         <Story />
       </ModuleClientProvider>
     </QueryClientProvider>
   );
+}
+
+/** Lets a story ask the deck query again, as the 10 s poll or a focus does. */
+function withRefetch(Story: () => ReactNode) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handler = () => {
+      void queryClient.refetchQueries({ queryKey: deckQueryKey("deck-1") });
+    };
+
+    window.addEventListener("refetch-deck", handler);
+
+    return () => window.removeEventListener("refetch-deck", handler);
+  }, [queryClient]);
+
+  return <Story />;
 }
 
 const meta = {
@@ -54,6 +97,24 @@ type Story = StoryObj<typeof meta>;
 
 function serve(page: DeckPageView) {
   readDeck.mockReset().mockResolvedValue(page.deck);
+  changeDeck.mockReset().mockResolvedValue(page.deck);
+  undoDeck.mockReset().mockResolvedValue(page.deck);
+  refreshDeck
+    .mockReset()
+    .mockResolvedValue({ deck: page.deck, changedSlides: [] });
+  uploadDeckImage.mockReset().mockResolvedValue({ fileId: "image-2" });
+}
+
+/** B6.7: the control at the centre of the viewport's hit test is the control itself. */
+function isHittable(element: HTMLElement) {
+  const box = element.getBoundingClientRect();
+
+  return (
+    document.elementFromPoint(
+      box.left + box.width / 2,
+      box.top + box.height / 2
+    ) === element
+  );
 }
 
 /** B4.3: the slide keeps 16:9 within 1 px, fits its container and never widens the page. */
@@ -201,5 +262,581 @@ export const Present: Story = {
 
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  },
+};
+
+// B6.2: each slide action sends the change it names, through the shown deck's hash.
+const slideActionsPlay: Story["play"] = async ({ canvas }) => {
+  // Slide 1 has no earlier place, so Move earlier is off.
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Actions for slide 1" })
+  );
+  await expect(
+    await screen.findByRole("menuitem", { name: "Move earlier" })
+  ).toHaveAttribute("data-disabled");
+  await userEvent.click(screen.getByRole("menuitem", { name: "Move later" }));
+
+  await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+  await expect(changeDeck).toHaveBeenCalledWith({
+    id: "deck-1",
+    expectedHash: HASH,
+    changes: [{ op: "move-slide", slideId: "s1", toIndex: 1 }],
+  });
+  changeDeck.mockClear();
+
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Actions for slide 1" })
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Remove slide" })
+  );
+
+  await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+  await expect(changeDeck).toHaveBeenCalledWith({
+    id: "deck-1",
+    expectedHash: HASH,
+    changes: [{ op: "remove-slide", slideId: "s1" }],
+  });
+  changeDeck.mockClear();
+
+  await userEvent.click(canvas.getByRole("button", { name: "Add slide" }));
+
+  const dialog = within(
+    await screen.findByRole("dialog", { name: "Add slide" })
+  );
+
+  await waitFor(() =>
+    expect(dialog.getByRole("textbox", { name: "Title" })).toBeVisible()
+  );
+  await userEvent.type(
+    dialog.getByRole("textbox", { name: "Title" }),
+    "A new claim"
+  );
+  await expect(
+    dialog.getByRole("textbox", { name: "Title" })
+  ).toHaveAccessibleDescription(
+    "State the finding of this slide in one sentence."
+  );
+  await userEvent.click(dialog.getByRole("button", { name: "Add" }));
+
+  await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+  await expect(changeDeck).toHaveBeenCalledWith({
+    id: "deck-1",
+    expectedHash: HASH,
+    changes: [
+      {
+        op: "add-slide",
+        slide: { elements: [{ kind: "title", text: "A new claim" }] },
+        toIndex: 1,
+      },
+    ],
+  });
+};
+
+export const SlideActions: Story = {
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: slideActionsPlay,
+};
+
+export const SlideActionsOnPhone: Story = {
+  name: "Slide actions on a phone",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: slideActionsPlay,
+};
+
+const DECK_CHANGED =
+  "This deck changed since you opened it. Reload it to see the latest version.";
+
+// B6.3: a conflict shows its message with Reload, and Reload asks for the deck again.
+export const DeckChanged: Story = {
+  name: "Deck changed",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockRejectedValue(
+      Object.assign(new Error(DECK_CHANGED), {
+        data: { appCode: "slides:deck-changed", requestId: "req-1" },
+      })
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 1" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Move later" })
+    );
+
+    const alert = await canvas.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(DECK_CHANGED);
+
+    readDeck.mockClear();
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Reload" })
+    );
+
+    await waitFor(() =>
+      expect(readDeck).toHaveBeenCalledWith({ id: "deck-1" })
+    );
+    await waitFor(() => expect(canvas.queryByRole("alert")).toBeNull());
+  },
+};
+
+const CHANGE_INVALID = "That change does not fit this deck.";
+
+// B6.3 (ruling F10): a refused change names the slide, and the slide keeps its content.
+export const RefusedSlideChange: Story = {
+  name: "Refused slide change",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockRejectedValue(
+      Object.assign(new Error(CHANGE_INVALID), {
+        data: {
+          appCode: "slides:change-invalid",
+          requestId: "req-2",
+          issues: [
+            {
+              path: "changes.0.slide.elements.3.fileId",
+              message: "Upload this image to the deck first.",
+            },
+          ],
+        },
+      })
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const title = sheet.getByRole("textbox", { name: "Title" });
+
+    await waitFor(() => expect(title).toBeVisible());
+    await userEvent.clear(title);
+    await userEvent.type(title, "Collections beat the plan line");
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    const alert = await sheet.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(
+      `Slide 2 was not changed. ${CHANGE_INVALID}`
+    );
+    await expect(alert).toHaveTextContent(
+      "Upload this image to the deck first."
+    );
+
+    await userEvent.click(sheet.getByRole("button", { name: "Close" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await expect(
+      canvas.getByRole("button", {
+        name: "Slide 2: Collections narrowed the gap to the plan line",
+      })
+    ).toBeVisible();
+  },
+};
+
+const undoPlay: Story["play"] = async ({ canvas }) => {
+  await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+
+  await waitFor(() =>
+    expect(undoDeck).toHaveBeenCalledWith({
+      id: "deck-1",
+      expectedHash: HASH,
+    })
+  );
+};
+
+// B6.4: Undo is in the toolbar with no edit sheet open, and sends the shown hash.
+export const Undo: Story = {
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: undoPlay,
+};
+
+// B6.4 and B6.7: Undo shows and is hittable at 390 x 844.
+export const UndoOnPhone: Story = {
+  name: "Undo on a phone",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async (context) => {
+    const button = context.canvas.getByRole("button", { name: "Undo" });
+
+    await expect(button).toBeVisible();
+    expect(isHittable(button)).toBe(true);
+    await undoPlay(context);
+  },
+};
+
+export const UndoUnavailable: Story = {
+  name: "Undo unavailable",
+  args: { view: { ...deckPage, deck: { ...deckPage.deck, canUndo: false } } },
+  globals: desktop,
+  beforeEach: () =>
+    serve({ ...deckPage, deck: { ...deckPage.deck, canUndo: false } }),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeDisabled();
+  },
+};
+
+// B6.5: Refresh data sends the hash and names each slide whose figures moved.
+export const RefreshData: Story = {
+  name: "Refresh data",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    refreshDeck.mockResolvedValue({
+      deck: deckPage.deck,
+      changedSlides: ["s2", "s3"],
+    });
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Refresh data" }));
+
+    await waitFor(() =>
+      expect(refreshDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: HASH,
+      })
+    );
+    await expect(
+      await canvas.findByText(
+        "Figures changed on slides 2 and 3. Check that their titles still state the finding."
+      )
+    ).toBeVisible();
+  },
+};
+
+export const RefreshDataNoChange: Story = {
+  name: "Refresh data changed nothing",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Refresh data" }));
+
+    await expect(await canvas.findByText("No figure changed.")).toBeVisible();
+  },
+};
+
+const NEW_HASH = "1".repeat(64);
+
+const NEWER_HASH = "2".repeat(64);
+
+/** The same deck after another writer changed it, with a newer figures date. */
+function changedDeck(
+  page: DeckPageView,
+  slides: DeckPageView["deck"]["slides"],
+  options?: {
+    readonly hash?: string;
+    readonly figuresAsOf?: string;
+  }
+): DeckPageView {
+  return {
+    ...page,
+    deck: {
+      ...page.deck,
+      contentHash: options?.hash ?? NEW_HASH,
+      figuresAsOf: options?.figuresAsOf ?? "2026-10-28",
+      slides,
+    },
+  };
+}
+
+function retitledSlide(
+  slide: DeckPageView["deck"]["slides"][number]
+): DeckPageView["deck"]["slides"][number] {
+  return {
+    ...slide,
+    elements: slide.elements.map((element, index) =>
+      index === 0 && element.kind === "title"
+        ? { ...element, text: "The other writer changed this slide" }
+        : element
+    ),
+  };
+}
+
+/** Lets the page ask again with `page`, then waits until its figures date shows it. */
+async function refetchWith(
+  page: DeckPageView,
+  canvasElement: HTMLElement,
+  label = "28 Oct 2026"
+): Promise<void> {
+  readDeck.mockResolvedValue(page.deck);
+
+  const before = readDeck.mock.calls.length;
+
+  window.dispatchEvent(new Event("refetch-deck"));
+  await waitFor(() =>
+    expect(readDeck.mock.calls.length).toBeGreaterThan(before)
+  );
+  await waitFor(() =>
+    expect(
+      canvasElement.querySelector("[data-figures-date]")?.textContent
+    ).toContain(label)
+  );
+}
+
+// C1(a): the editor sends the hash and content the person saw, so a newer refetch answers
+// deck-changed and the typed title stays.
+export const StaleEditorKeepsSeenHash: Story = {
+  name: "Stale editor keeps the hash it saw",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockRejectedValue(
+      Object.assign(new Error(DECK_CHANGED), {
+        data: { appCode: "slides:deck-changed", requestId: "req-4" },
+      })
+    );
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const title = sheet.getByRole("textbox", { name: "Title" });
+
+    await waitFor(() => expect(title).toBeVisible());
+
+    await refetchWith(
+      changedDeck(
+        deckPage,
+        deckPage.deck.slides.map((slide, index) =>
+          index === 1 ? retitledSlide(slide) : slide
+        )
+      ),
+      canvasElement
+    );
+
+    await userEvent.clear(title);
+    await userEvent.type(title, "My edit of the claim");
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+    await expect(changeDeck).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedHash: HASH })
+    );
+
+    const alert = await sheet.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(DECK_CHANGED);
+    await expect(title).toHaveValue("My edit of the claim");
+  },
+};
+
+// C1(b): the editor names the slide by id, so a reorder never moves the edit to another slide.
+export const StaleEditorTargetsSlideId: Story = {
+  name: "Stale editor targets the slide id",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const title = sheet.getByRole("textbox", { name: "Title" });
+
+    await waitFor(() => expect(title).toBeVisible());
+
+    // Slide 2 moves to place 1, so place 2 now holds slide 1.
+    await refetchWith(
+      changedDeck(deckPage, [
+        deckPage.deck.slides[1]!,
+        deckPage.deck.slides[0]!,
+        ...deckPage.deck.slides.slice(2),
+      ]),
+      canvasElement
+    );
+
+    await userEvent.clear(title);
+    await userEvent.type(title, "My edit of the claim");
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+    await expect(changeDeck).toHaveBeenCalledWith(
+      expect.objectContaining({
+        expectedHash: HASH,
+        changes: [
+          expect.objectContaining({ op: "change-slide", slideId: "s2" }),
+        ],
+      })
+    );
+  },
+};
+
+// I1: while one deck write runs, every other write control is off.
+export const BusyWhileRefreshing: Story = {
+  name: "Busy while refreshing",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    refreshDeck.mockImplementation(() => new Promise(() => undefined));
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Refresh data" }));
+
+    await waitFor(() => expect(refreshDeck).toHaveBeenCalledTimes(1));
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeDisabled();
+    await expect(
+      canvas.getByRole("button", { name: "Actions for slide 1" })
+    ).toBeDisabled();
+  },
+};
+
+// I4: Reload renews the open editor's hash, keeps the typed title, and the next Save succeeds.
+export const ReloadRenewsTheHash: Story = {
+  name: "Reload renews the hash",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockRejectedValue(
+      Object.assign(new Error(DECK_CHANGED), {
+        data: { appCode: "slides:deck-changed", requestId: "req-5" },
+      })
+    );
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const title = sheet.getByRole("textbox", { name: "Title" });
+
+    await waitFor(() => expect(title).toBeVisible());
+    await userEvent.clear(title);
+    await userEvent.type(title, "My edit of the claim");
+
+    const retitled = changedDeck(
+      deckPage,
+      deckPage.deck.slides.map((slide, index) =>
+        index === 1 ? retitledSlide(slide) : slide
+      )
+    );
+
+    await refetchWith(retitled, canvasElement);
+
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    const alert = await sheet.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(DECK_CHANGED);
+    await expect(title).toHaveValue("My edit of the claim");
+
+    const reloaded = changedDeck(
+      deckPage,
+      deckPage.deck.slides.map((slide, index) =>
+        index === 1 ? retitledSlide(slide) : slide
+      ),
+      { hash: NEWER_HASH, figuresAsOf: "2026-10-29" }
+    );
+
+    readDeck.mockResolvedValue(reloaded.deck);
+    changeDeck.mockResolvedValue(reloaded.deck);
+
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Reload" })
+    );
+
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector("[data-figures-date]")?.textContent
+      ).toContain("29 Oct 2026")
+    );
+    await waitFor(() => expect(sheet.queryByRole("alert")).toBeNull());
+    await expect(title).toHaveValue("My edit of the claim");
+
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ expectedHash: NEWER_HASH })
+    );
+  },
+};
+
+// C1 (M-c): a refetch that removes the open slide shows the deck-changed line, not an empty sheet.
+export const VanishedSlide: Story = {
+  name: "Vanished slide",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const title = sheet.getByRole("textbox", { name: "Title" });
+
+    await waitFor(() => expect(title).toBeVisible());
+
+    await refetchWith(
+      changedDeck(
+        deckPage,
+        deckPage.deck.slides.filter((slide) => slide.id !== "s2")
+      ),
+      canvasElement
+    );
+
+    const alert = await sheet.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(DECK_CHANGED);
+    await expect(
+      within(alert).getByRole("button", { name: "Reload" })
+    ).toBeVisible();
+    await expect(title).toBeVisible();
   },
 };

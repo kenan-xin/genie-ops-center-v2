@@ -8,6 +8,7 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
+import { useCallback } from "react";
 
 import { type DeckChange, slidesContract } from "../contract.ts";
 import type { DeckView, ShownElement } from "./views.ts";
@@ -59,19 +60,25 @@ export function useDeck(initial: DeckView): UseQueryResult<DeckView> {
   });
 }
 
-/** One save on the deck, at the hash the page read (R-53). */
+/** One save on the deck, at the hash the person saw (R-53). */
+export type DeckWrite = {
+  readonly changes: readonly DeckChange[];
+  /** The hash the person saw when the edit opened; never the newest read. */
+  readonly expectedHash: string;
+};
+
 export function useDeckChange(
   deck: DeckView
-): UseMutationResult<DeckView, Error, readonly DeckChange[]> {
+): UseMutationResult<DeckView, Error, DeckWrite> {
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (changes: readonly DeckChange[]) =>
+    mutationFn: async ({ changes, expectedHash }) =>
       narrowDeck(
         await slides.changeDeck({
           id: deck.id,
-          expectedHash: deck.contentHash,
+          expectedHash,
           changes: [...changes],
         })
       ),
@@ -79,4 +86,64 @@ export function useDeckChange(
       queryClient.setQueryData(deckQueryKey(view.id), view);
     },
   });
+}
+
+/** Undo restores the newest save as stored, at the hash the page read (R-46, D1). */
+export function useUndoDeck(
+  deck: DeckView
+): UseMutationResult<DeckView, Error, void> {
+  const slides = useModuleClient(slidesContract);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () =>
+      narrowDeck(
+        await slides.undoDeck({
+          id: deck.id,
+          expectedHash: deck.contentHash,
+        })
+      ),
+    onSuccess: (view) => {
+      queryClient.setQueryData(deckQueryKey(view.id), view);
+    },
+  });
+}
+
+/** Reads every figure again, at the hash the page read, and names the slides whose rows moved (D4). */
+export function useRefreshDeck(
+  deck: DeckView
+): UseMutationResult<
+  { readonly deck: DeckView; readonly changedSlides: readonly string[] },
+  Error,
+  void
+> {
+  const slides = useModuleClient(slidesContract);
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async () => {
+      const { deck: saved, changedSlides } = await slides.refreshDeck({
+        id: deck.id,
+        expectedHash: deck.contentHash,
+      });
+
+      return { deck: narrowDeck(saved), changedSlides };
+    },
+    onSuccess: ({ deck: view }) => {
+      queryClient.setQueryData(deckQueryKey(view.id), view);
+    },
+  });
+}
+
+/** One PNG or JPEG for the deck's image elements, answered as the file id a slide names (D6). */
+export function useUploadDeckImage(
+  deck: DeckView
+): (file: File) => Promise<string> {
+  const slides = useModuleClient(slidesContract);
+
+  return useCallback(
+    async (file: File) =>
+      (await slides.uploadDeckImage({ id: deck.id, file })).fileId,
+    [slides, deck.id]
+  );
 }

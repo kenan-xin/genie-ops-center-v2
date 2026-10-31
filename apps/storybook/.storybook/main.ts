@@ -61,6 +61,7 @@ const config: StorybookConfig = {
         include: [
           "@ai-sdk/react",
           "@orpc/contract",
+          "@tanstack/react-form",
           "@tanstack/react-pacer",
           "@tanstack/react-query",
           "@openuidev/react-lang",
