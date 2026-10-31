@@ -5,6 +5,7 @@ import {
   callProcedure,
   createAgentRouter,
   handleAgentChat,
+  moduleInstructionLines,
   type ModuleRequestContext,
   principalFor,
   readOwnSession,
@@ -393,6 +394,19 @@ describe("the invoice answers through the agent", () => {
       "placeholder-count-records",
     ]);
     expect(errors).toEqual([]);
+  });
+
+  it("gives the invoices rules to a reader of invoices and to no one else", async () => {
+    const [reader, other] = await Promise.all([
+      moduleInstructionLines(asker),
+      personWith(["core:ask:use", "invoices:use"]).then(moduleInstructionLines),
+    ]);
+
+    expect(reader).toHaveLength(5);
+    expect(reader[0]).toContain(
+      "you never create, change or link an invoice, a payment or a link between them"
+    );
+    expect(other).toEqual([]);
   });
 
   it("refuses every chart of the nine answers to a person without invoices:read", async () => {
