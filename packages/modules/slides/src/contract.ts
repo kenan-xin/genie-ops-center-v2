@@ -136,6 +136,52 @@ export const deckSummary = z.object({
   updatedAt: z.string(),
 });
 
+/**
+ * One step of a change. A data element's raw chart config is checked by the chart gate, not
+ * here (D3). Add takes a place up to the slide count, move up to the last slide (ruling F6).
+ */
+export const deckChange = z.discriminatedUnion("op", [
+  z.strictObject({
+    op: z.literal("add-slide"),
+    slide: slideInput,
+    toIndex: z
+      .int()
+      .min(0)
+      .max(DECK_SLIDE_LIMIT - 1)
+      .optional(),
+  }),
+  z.strictObject({ op: z.literal("change-slide"), slideId, slide: slideInput }),
+  z.strictObject({ op: z.literal("remove-slide"), slideId }),
+  z.strictObject({
+    op: z.literal("move-slide"),
+    slideId,
+    toIndex: z
+      .int()
+      .min(0)
+      .max(DECK_SLIDE_LIMIT - 1),
+  }),
+  z.strictObject({ op: z.literal("rename"), title: deckTitle }),
+]);
+
+export const deckChanges = z.array(deckChange).min(1).max(DECK_CHANGE_LIMIT);
+
+/** One deck as its owner reads it. The browser narrows each element (Global Constraints). */
+export const deckView = z.object({
+  id: z.string(),
+  title: z.string(),
+  contentHash: z.string(),
+  figuresAsOf: z.iso.date(),
+  canUndo: z.boolean(),
+  // Read-only, so the server's `DeckView` answers it as is.
+  slides: z
+    .array(
+      z.object({ id: z.string(), elements: z.array(z.unknown()).readonly() })
+    )
+    .readonly(),
+});
+
+export type DeckChange = z.infer<typeof deckChange>;
+
 export type ElementInput = z.infer<typeof elementInput>;
 
 export type SlideInput = z.infer<typeof slideInput>;
@@ -151,6 +197,28 @@ export const slidesContract = {
   listDecks: oc
     .route({ method: "GET", path: "/slides/decks" })
     .output(z.array(deckSummary)),
+  readDeck: oc
+    .route({ method: "GET", path: "/slides/decks/{id}" })
+    .input(z.object({ id: deckId }))
+    .output(deckView),
+  createDeck: oc
+    .route({ method: "POST", path: "/slides/decks" })
+    .input(z.object({ title: deckTitle }))
+    .output(deckView),
+  changeDeck: oc
+    .route({ method: "PATCH", path: "/slides/decks/{id}" })
+    .input(
+      z.object({ id: deckId, expectedHash: contentHash, changes: deckChanges })
+    )
+    .output(deckView),
+  undoDeck: oc
+    .route({ method: "POST", path: "/slides/decks/{id}/undo" })
+    .input(z.object({ id: deckId, expectedHash: contentHash }))
+    .output(deckView),
+  deleteDeck: oc
+    .route({ method: "DELETE", path: "/slides/decks/{id}" })
+    .input(z.object({ id: deckId }))
+    .output(z.object({ id: z.string() })),
 };
 
 export type SlidesContract = typeof slidesContract;

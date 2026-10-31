@@ -27,7 +27,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/decks.integration.test.ts",
     reason:
-      "Spec 7 R-52 and R-53: only the owner lists a deck, behind slides:read, and the content hash ignores key order",
+      "Spec 7 R-52, R-53 and R-46: only the owner reads or writes a deck, behind slides:read and slides:write; a change on an older hash, a broken chart or a foreign image writes nothing; Undo restores saves in reverse order; every write leaves one audit row, and delete removes the deck's files",
     cases: [
       ...[
         "lists only the caller's own decks, the last changed first",
@@ -37,6 +37,25 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "is the same for one content written with its keys in two orders",
         "changes when only the title changes",
       ].map((name) => `the slides content hash ${name}`),
+      ...[
+        ...["readDeck", "changeDeck", "undoDeck", "deleteDeck"].map(
+          (procedure) =>
+            `answer not-found to ${procedure} on another person's deck and leave it the same`
+        ),
+        ...[
+          "createDeck",
+          "changeDeck",
+          "undoDeck",
+          "deleteDeck",
+          "readDeck",
+        ].map((procedure) => `refuse ${procedure} to a person without its key`),
+        "refuse a change on an older hash and write nothing",
+        "refuse a chart on a dataset this deployment lacks and write nothing",
+        "undo two renames in reverse order with their hashes, then answer nothing-to-undo",
+        "refuse an image whose file is not one of the deck's images",
+        "write one audit row for each create, change, Undo and delete",
+        "delete the deck's image and export files with the deck",
+      ].map((name) => `the slides deck procedures ${name}`),
     ],
   },
 ];
