@@ -10,7 +10,9 @@ import { eq } from "drizzle-orm";
 import { invoicesContract } from "./contract.ts";
 import { RECORD_TYPES } from "./record-types.ts";
 import { allocation } from "./schema.ts";
+import { discardDocument } from "./services/documents/discard.ts";
 import { loadDocumentInbox } from "./services/documents/inbox.ts";
+import { setDocumentKind } from "./services/documents/kind.ts";
 import { loadDocumentReview } from "./services/documents/review.ts";
 import { uploadDocument } from "./services/documents/upload.ts";
 import { assertCanWrite } from "./services/ledger/access.ts";
@@ -67,6 +69,12 @@ export const invoicesRouter = os.router({
   ),
   getDocumentReview: os.getDocumentReview.handler(({ context, input }) =>
     loadDocumentReview(context, input.id)
+  ),
+  setDocumentKind: os.setDocumentKind.handler(({ context, input }) =>
+    setDocumentKind(context, input)
+  ),
+  discardDocument: os.discardDocument.handler(({ context, input }) =>
+    discardDocument(context, input.id)
   ),
   listOpenInvoices: os.listOpenInvoices.handler(({ context, input }) =>
     listOpenInvoices(context, input)

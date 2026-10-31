@@ -2790,6 +2790,108 @@
             }
           }
         }
+      },
+      "patch": {
+        "operationId": "invoices.setDocumentKind",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "enum": [
+                      "invoice",
+                      "payment",
+                      "paid-receipt",
+                      "purchase-order"
+                    ],
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "kind"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documentId": {
+                      "type": "string"
+                    },
+                    "kind": {
+                      "enum": [
+                        "invoice",
+                        "payment",
+                        "paid-receipt",
+                        "purchase-order"
+                      ],
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "documentId",
+                    "kind"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "invoices.discardDocument",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "documentId": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "documentId"
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/invoices/customers/{customerId}/open-invoices": {

@@ -415,6 +415,16 @@ export const invoicesContract = {
     .route({ method: "GET", path: "/invoices/documents/{id}" })
     .input(z.object({ id: recordId }))
     .output(documentReviewView),
+  /** Changes the type of a read document with no saved record, for a tenant-wide writer (R-27). */
+  setDocumentKind: oc
+    .route({ method: "PATCH", path: "/invoices/documents/{id}" })
+    .input(z.object({ id: recordId, kind: z.enum(DOCUMENT_KINDS) }))
+    .output(z.object({ documentId: z.string(), kind: z.enum(DOCUMENT_KINDS) })),
+  /** Deletes a document with no saved record, its field origins and its file (R-33). */
+  discardDocument: oc
+    .route({ method: "DELETE", path: "/invoices/documents/{id}" })
+    .input(z.object({ id: recordId }))
+    .output(z.object({ documentId: z.string() })),
   /** A customer's open invoices in one currency, oldest first, for a reader of the customer. */
   listOpenInvoices: oc
     .route({

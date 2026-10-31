@@ -14,10 +14,12 @@ import { INVOICE_ERRORS } from "../../errors.ts";
 import { RECORD_TYPES } from "../../record-types.ts";
 import { invoice, payment } from "../../schema.ts";
 import { normalizeInvoiceNumber } from "../matching/decide.ts";
+import { centsText } from "../reading/quote-check.ts";
 import { linkPayment } from "./allocations.ts";
 import { authorizeCustomer, lockCustomer } from "./customers.ts";
 import { assertDocumentKind } from "./documents.ts";
 import { findPossibleDuplicateInvoice } from "./invoices.ts";
+import { markReviewedOrigins } from "./origins.ts";
 
 const audit = moduleAudit("invoices");
 
@@ -37,7 +39,11 @@ export async function savePaidReceipt(
       await assertDocumentKind(tx, input.documentId, ["paid-receipt"]);
     }
 
-    const { customerId, created } = await lockCustomer(ctx, tx, input.customer);
+    const { customerId, created, name } = await lockCustomer(
+      ctx,
+      tx,
+      input.customer
+    );
 
     // One record per document outranks the duplicate prompt, so a double click is refused, not asked.
     if (input.documentId !== null) {
@@ -97,6 +103,20 @@ export async function savePaidReceipt(
     // The race backstop: another save of the same document committed after the check above.
     if (savedInvoice === undefined || savedPayment === undefined) {
       throw new AppError(INVOICE_ERRORS["document-already-saved"]);
+    }
+
+    if (input.documentId !== null) {
+      await markReviewedOrigins(tx, input.documentId, {
+        customer: name,
+        number: input.number,
+        date: input.date,
+        dueDate: input.dueDate,
+        currency: input.currency,
+        amount: centsText(input.totalCents),
+        description: input.description,
+        reference: input.reference,
+        method: input.method,
+      });
     }
 
     const { allocationId } = await linkPayment(ctx, tx, {

@@ -46,31 +46,36 @@ export async function authorizeCustomer(
 }
 
 /**
- * Locks the chosen customer row, the first lock of every write. A confirmed new name is created,
- * or, when that name already exists, the existing row is locked and reused.
+ * Locks the chosen customer row, the first lock of every write after the document row. A
+ * confirmed new name is created, or, when that name already exists, the existing row is locked
+ * and reused. Answers the name of the locked or created row.
  */
 export async function lockCustomer(
   ctx: ModuleRequestContext,
   tx: TenantTransaction,
   choice: CustomerChoice
-): Promise<{ readonly customerId: string; readonly created: boolean }> {
+): Promise<{
+  readonly customerId: string;
+  readonly created: boolean;
+  readonly name: string;
+}> {
   if ("id" in choice) {
     const [row] = await tx
-      .select({ id: customer.id })
+      .select({ id: customer.id, name: customer.name })
       .from(customer)
       .where(eq(customer.id, choice.id))
       .for("update");
 
     if (row === undefined) throw new AppError(CORE_ERRORS["not-found"]);
 
-    return { customerId: row.id, created: false };
+    return { customerId: row.id, created: false, name: row.name };
   }
 
   const [created] = await tx
     .insert(customer)
     .values({ name: choice.name, email: choice.email })
     .onConflictDoNothing()
-    .returning({ id: customer.id });
+    .returning({ id: customer.id, name: customer.name });
 
   if (created !== undefined) {
     await audit(
@@ -80,11 +85,11 @@ export async function lockCustomer(
       "Created a customer."
     );
 
-    return { customerId: created.id, created: true };
+    return { customerId: created.id, created: true, name: created.name };
   }
 
   const [existing] = await tx
-    .select({ id: customer.id })
+    .select({ id: customer.id, name: customer.name })
     .from(customer)
     .where(sameName(choice.name))
     .for("update");
@@ -93,5 +98,5 @@ export async function lockCustomer(
   if (existing === undefined)
     throw new Error("the conflicting customer is gone");
 
-  return { customerId: existing.id, created: false };
+  return { customerId: existing.id, created: false, name: existing.name };
 }

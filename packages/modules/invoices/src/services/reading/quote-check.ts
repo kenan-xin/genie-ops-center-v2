@@ -125,6 +125,13 @@ export function centsOf(value: string): number | undefined {
   return cents.safeParse(result).success ? result : undefined;
 }
 
+/** Integer cents as the decimal text that a reading stores: 500000 is "5000.00". Integer arithmetic only. */
+export function centsText(amountCents: number): string {
+  const fraction = amountCents % 100;
+
+  return `${(amountCents - fraction) / 100}.${String(fraction).padStart(2, "0")}`;
+}
+
 function length(max: number) {
   return (value: string) => value.length >= 1 && value.length <= max;
 }

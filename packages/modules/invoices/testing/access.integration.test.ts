@@ -198,6 +198,22 @@ const WRITES: readonly {
     },
   },
   {
+    name: "setDocumentKind",
+    call: async () => {
+      const { id } = await insertDocument(t(), { kind: "payment" });
+
+      return (caller) => caller.setDocumentKind({ id, kind: "invoice" });
+    },
+  },
+  {
+    name: "discardDocument",
+    call: async () => {
+      const { id } = await insertDocument(t());
+
+      return (caller) => caller.discardDocument({ id });
+    },
+  },
+  {
     name: "correctInvoiceTotal",
     call: async () => {
       const { invoiceId } = await aPair();
@@ -289,6 +305,24 @@ describe("invoices write access", () => {
     await expect(
       as(userId).uploadDocument({ file: aPdf() })
     ).rejects.toMatchObject({ code: "forbidden" });
+    expect(await ledgerState()).toEqual(before);
+  });
+
+  it("a writer scoped to one customer is refused setDocumentKind and discardDocument", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const { userId } = await insertPersonWith(t(), ["invoices:write"], {
+      type: "invoices-customer",
+      id: customerId,
+    });
+    const { id } = await insertDocument(t(), { kind: "payment" });
+    const before = await ledgerState();
+
+    await expect(
+      as(userId).setDocumentKind({ id, kind: "invoice" })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(as(userId).discardDocument({ id })).rejects.toMatchObject({
+      code: "forbidden",
+    });
     expect(await ledgerState()).toEqual(before);
   });
 

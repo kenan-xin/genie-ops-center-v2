@@ -1,5 +1,3 @@
-import { setTimeout as sleep } from "node:timers/promises";
-
 import {
   callProcedure,
   principalFor,
@@ -22,6 +20,7 @@ import {
   insertPayment,
   insertPaymentDocument,
 } from "./factories.ts";
+import { untilWaiting as untilWaitingOn } from "./locks.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
 
@@ -106,25 +105,7 @@ async function stateOf(invoiceId: string) {
   return rows[0];
 }
 
-/**
- * Polls until this database has `count` lock requests not yet granted. It reads `pg_locks`, which
- * the releasing session updates itself, so a wait that just ended never counts.
- */
-async function untilWaiting(count: number): Promise<number> {
-  let waiting = 0;
-
-  for (let tries = 0; tries < 200 && waiting < count; tries += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- polling one value until it holds.
-    await sleep(50);
-    // oxlint-disable-next-line no-await-in-loop
-    const { rows } = await t().db.$client.query<{ n: number }>(
-      "select count(*)::int as n from pg_locks l join pg_stat_activity a using (pid) where not l.granted and a.datname = current_database()"
-    );
-    waiting = rows[0]?.n ?? 0;
-  }
-
-  return waiting;
-}
+const untilWaiting = (count: number) => untilWaitingOn(t().db, count);
 
 const amounts = (...links: [Link, number][]) =>
   links.map(([link, amountCents]) => ({

@@ -33,6 +33,10 @@ export const INVOICE_ERRORS = defineModuleErrors("invoices", {
     message: "A record from that document is already saved.",
     status: 409,
   },
+  "document-not-read": {
+    message: "That document is still being read. Wait until the reading ends.",
+    status: 409,
+  },
   "document-not-pdf": {
     message: "That file is not a PDF. Upload a PDF document.",
     status: 400,

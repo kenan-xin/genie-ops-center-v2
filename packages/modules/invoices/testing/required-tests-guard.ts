@@ -105,6 +105,37 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `the document review ${row}`),
   },
   {
+    file: "testing/review-saves.integration.test.ts",
+    reason:
+      "Spec 7 R-27, R-30, R-31, R-33 and czjw.27: the review marks what the person changed, changes a type, and discards a document, one person at a time",
+    cases: [
+      "a payment saved from its reading with a changed amount marks only the amount corrected, and a method typed in entered",
+      ...["saveInvoice", "savePaidReceipt"].map(
+        (save) =>
+          `an invoice and a paid receipt saved with a changed total mark the total corrected and keep the rest (${save})`
+      ),
+      "a type change lets a hand save of an AI-off document go through, and is audited",
+      "a type change clears a stale match outcome",
+      ...[
+        "a type change of a saved document",
+        "a type change of a document still being read",
+        "a discard of a saved document",
+        "a discard of a document still being read",
+      ].map(
+        (row) =>
+          `refuses a type change or a discard of a saved document, or of one still being read: ${row}`
+      ),
+      "a discard removes the document, its origins and its file, is audited, and the same file uploads again as new",
+      ...[
+        "a type change waits for a save that holds the document and is refused",
+        "a save waits for a type change to purchase-order and is refused",
+      ].map(
+        (row) =>
+          `two people on one document: the second waits for the first and is refused (${row})`
+      ),
+    ].map((row) => `review saves ${row}`),
+  },
+  {
     file: "testing/live-readings.integration.test.ts",
     reason:
       "Spec 7 AC-7 up to the inbox: the seven live uploads reach their statuses and records with the recorded test model",
@@ -143,6 +174,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "savePaidReceipt",
         "uploadDocument",
         "retryReading",
+        "setDocumentKind",
+        "discardDocument",
         "correctInvoiceTotal",
       ].map(
         (name) =>
@@ -150,6 +183,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       ),
       "a writer scoped to one customer links its records and is refused on another customer's",
       "a writer scoped to one customer is refused uploadDocument",
+      "a writer scoped to one customer is refused setDocumentKind and discardDocument",
       "a writer scoped to one customer saves its invoices and is refused another customer's",
       "a writer scoped to one customer saves its payments and is refused another customer's",
     ].map((row) => `invoices write access ${row}`),

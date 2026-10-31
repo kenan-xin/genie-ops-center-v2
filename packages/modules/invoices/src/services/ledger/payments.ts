@@ -28,6 +28,7 @@ import {
   type OpenInvoice,
   type PaymentMatch,
 } from "../matching/decide.ts";
+import { centsText } from "../reading/quote-check.ts";
 import { assertCanWrite } from "./access.ts";
 import { linkPayment, lockInvoices } from "./allocations.ts";
 import {
@@ -37,6 +38,7 @@ import {
 } from "./customers.ts";
 import { assertDocumentKind, factsChecked } from "./documents.ts";
 import { readOpenInvoices } from "./open-invoices.ts";
+import { markReviewedOrigins } from "./origins.ts";
 
 const audit = moduleAudit("invoices");
 
@@ -179,7 +181,11 @@ export async function savePayment(
       await assertDocumentKind(tx, input.documentId, ["payment"]);
     }
 
-    const { customerId, created } = await lockCustomer(ctx, tx, input.customer);
+    const { customerId, created, name } = await lockCustomer(
+      ctx,
+      tx,
+      input.customer
+    );
 
     // One record per document outranks the duplicate prompt, so a double click is refused, not asked.
     if (
@@ -202,6 +208,18 @@ export async function savePayment(
     }
 
     const paymentId = await insertPayment(ctx, tx, { ...input, customerId });
+
+    if (input.documentId !== null) {
+      await markReviewedOrigins(tx, input.documentId, {
+        customer: name,
+        date: input.paymentDate,
+        currency: input.currency,
+        amount: centsText(input.amountCents),
+        reference: input.reference,
+        method: input.method,
+        invoiceNumbers: input.namedInvoiceNumbers,
+      });
+    }
 
     const allocations: {
       allocationId: string;

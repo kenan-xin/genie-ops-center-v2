@@ -39,7 +39,7 @@ A grant on a customer covers its invoices and payments.
 
 ## Links
 
-A link (an allocation) puts an amount of one payment against one invoice. Every write locks rows in one order: the customer row, then invoice rows in id order, then payment rows in id order, then allocation rows. A write can skip a level. One write reverses two levels: an invoice total correction locks the links of its invoice before their payments. This is safe because every write that touches a link locks the link's invoice first. With these rules, two writes cannot deadlock. Under those locks, a link is refused when it would make the invoice's allocations exceed its total, or the payment's allocations exceed its amount.
+A link (an allocation) puts an amount of one payment against one invoice. Every write locks rows in one order: the document row, then the customer row, then invoice rows in id order, then payment rows in id order, then allocation rows. A write can skip a level. One write reverses two levels: an invoice total correction locks the links of its invoice before their payments. This is safe because every write that touches a link locks the link's invoice first. With these rules, two writes cannot deadlock. Under those locks, a link is refused when it would make the invoice's allocations exceed its total, or the payment's allocations exceed its amount.
 
 A payment links only to an invoice of the same customer and the same currency. A pair links at most once. A second link of the same pair is refused with `link-exists`. Change the existing link instead. A removed link returns its amount to the payment as unallocated. Every link, change and removal writes an `allocation_event` row, with the amounts before and after and the person who made it, and an audit row on the invoice. `automatic` marks a link the module made by itself, which Undo can remove. A changed link is a person's link, so it loses the mark.
 
@@ -80,6 +80,16 @@ The module provides the `document-inbox` capability: Documents at `/m/invoices/d
 For a payment document with no saved record, the review also answers the matched customer's open invoices in the reading's currency, the R-30 proposal over their open amounts after all links, and the oldest saved payment of that customer with the same date, amount and currency as a Possible duplicate. The review computes these when it opens and stores nothing, so the save checks the same amounts again under its locks. For a document with saved records, it answers the invoice and the payment saved from it and their automatic links, which Undo can remove.
 
 A document has no customer before a save, so the review needs `invoices:read` on the whole deployment; a reader scoped to one customer is refused. `listOpenInvoices` at `GET /invoices/customers/{customerId}/open-invoices` answers a customer's invoices in one currency whose total exceeds their links, oldest first, at most 1,000 rows with `truncated` set past them, to a reader of that customer.
+
+## Reviewing a document
+
+Every save from a document, a type change and a discard lock the document row first, so two people on one document act one after another, and the second sees what the first did.
+
+`setDocumentKind` at `PATCH /invoices/documents/{id}` changes the type of a document (R-27). A document has no customer, so it needs `invoices:write` on the whole deployment. A document still being read or one that could not be read is refused with `document-not-read`, and one that an invoice or a payment was saved from with `document-already-saved`. The change clears a match outcome of the old type (`confirm-split`, `no-match`, `possible-duplicate`) and keeps `ai-off` and `no-text-layer`, so an AI-off document can be given a type and saved by hand. It writes an `invoices:document-kind-changed` audit row with the old type (`none` when it had none) and the new one.
+
+`discardDocument` at `DELETE /invoices/documents/{id}` deletes a document, its field origins and its file in one transaction, with the same grant. A document still being read is refused with `document-not-read`, and one with a saved record with `document-already-saved`. It writes an `invoices:document-discarded` audit row with the file name, and the same file can then be uploaded again as new.
+
+Each person's save from a document marks its fields against the stored reading, through the one rule `reviewedOrigins` that the review page also uses for its tags (czjw.27). A field the reading held that the person changed or cleared becomes `corrected` and keeps its quote and page. A field the reading did not hold that the person filled becomes `entered`. An amount compares by cents, a customer ignoring case, an invoice number and the named invoice numbers as they are stored, and any other field by its trimmed text, so a value typed back in another form keeps `extracted`. A `corrected` match fact stops R-31 from linking the payment by itself. A document with no stored reading gets no mark, and the reading job's own save writes none.
 
 ## Saving invoices
 

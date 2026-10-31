@@ -10,6 +10,8 @@ import { INVOICE_ERRORS } from "../../errors.ts";
 import {
   type DocumentKind,
   fieldOrigin,
+  invoice,
+  payment,
   sourceDocument,
 } from "../../schema.ts";
 
@@ -24,18 +26,55 @@ export const MATCH_FACT_FIELDS = [
   "amount",
 ] as const;
 
-/** Refuses a document that is absent, or of a kind this save does not take (R-33). */
+/**
+ * Locks the document row, the first lock of every write on a document, so a save, a type change
+ * and a discard of one document run one after another (README "Links"). Absent answers not-found.
+ */
+export async function lockDocument(tx: TenantTransaction, documentId: string) {
+  const [row] = await tx
+    .select({
+      kind: sourceDocument.kind,
+      readingStatus: sourceDocument.readingStatus,
+      readingOutcome: sourceDocument.readingOutcome,
+      fileId: sourceDocument.fileId,
+      fileName: sourceDocument.fileName,
+    })
+    .from(sourceDocument)
+    .where(eq(sourceDocument.id, documentId))
+    .for("update");
+
+  if (row === undefined) throw new AppError(CORE_ERRORS["not-found"]);
+
+  return row;
+}
+
+/** Refuses a document that an invoice or a payment was saved from. Call it under `lockDocument`. */
+export async function assertNoRecord(
+  tx: TenantTransaction,
+  documentId: string
+): Promise<void> {
+  const invoices = await tx
+    .select({ id: invoice.id })
+    .from(invoice)
+    .where(eq(invoice.documentId, documentId));
+
+  const payments = await tx
+    .select({ id: payment.id })
+    .from(payment)
+    .where(eq(payment.documentId, documentId));
+
+  if (invoices.length > 0 || payments.length > 0) {
+    throw new AppError(INVOICE_ERRORS["document-already-saved"]);
+  }
+}
+
+/** Locks the document and refuses one that is of a kind this save does not take (R-33). */
 export async function assertDocumentKind(
   tx: TenantTransaction,
   documentId: string,
   kinds: readonly DocumentKind[]
 ): Promise<void> {
-  const [row] = await tx
-    .select({ kind: sourceDocument.kind })
-    .from(sourceDocument)
-    .where(eq(sourceDocument.id, documentId));
-
-  if (row === undefined) throw new AppError(CORE_ERRORS["not-found"]);
+  const row = await lockDocument(tx, documentId);
 
   // A null kind is a document the reading job has not classified yet.
   if (row.kind === null || !kinds.includes(row.kind)) {
