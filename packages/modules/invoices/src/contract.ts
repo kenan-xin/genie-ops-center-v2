@@ -44,6 +44,82 @@ export const currencyCode = z.string().regex(/^[A-Z]{3}$/);
 
 export const isoDate = z.iso.date();
 
+/** The fields a reading may return, each with its value, its quote and its page (R-24). */
+export const READING_FIELDS = [
+  "customer",
+  "number",
+  "date",
+  "dueDate",
+  "paymentTerms",
+  "currency",
+  "amount",
+  "reference",
+  "method",
+  "description",
+] as const;
+
+export type ReadingField = (typeof READING_FIELDS)[number];
+
+export const quotedValue = z.object({
+  value: z.string(),
+  quote: z.string(),
+  page: z.number().int().positive(),
+});
+
+export type QuotedValue = z.infer<typeof quotedValue>;
+
+/**
+ * The checked reading on `document.reading`. A field in `fields` passed the quote check; a field
+ * in `dropped` had a value that failed it ("check this", R-25); a field in neither was not on the
+ * document.
+ */
+export const storedReading = z.object({
+  fields: z.partialRecord(z.enum(READING_FIELDS), quotedValue),
+  invoiceNumbers: z.array(quotedValue),
+  dropped: z.array(z.enum([...READING_FIELDS, "invoiceNumbers"])),
+});
+
+export type StoredReading = z.infer<typeof storedReading>;
+
+export const matchPart = z.object({
+  invoiceId: z.string(),
+  amountCents: cents,
+});
+
+export type MatchPart = z.infer<typeof matchPart>;
+
+/** What R-30 decides for a payment over the open amounts of its customer. */
+export const paymentMatch = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("automatic"),
+    invoiceId: z.string(),
+    amountCents: cents,
+  }),
+  z.object({
+    kind: z.literal("confirm"),
+    invoiceId: z.string(),
+    amountCents: cents,
+  }),
+  z.object({
+    kind: z.literal("overpayment"),
+    invoiceId: z.string(),
+    amountCents: cents,
+    unallocatedCents: cents,
+  }),
+  z.object({
+    kind: z.literal("split"),
+    parts: z.array(matchPart),
+    unallocatedCents: z.number().int().min(0),
+  }),
+  z.object({
+    kind: z.literal("suggestions"),
+    invoiceIds: z.array(z.string()),
+  }),
+  z.object({ kind: z.literal("no-match") }),
+]);
+
+export type PaymentMatch = z.infer<typeof paymentMatch>;
+
 /** An existing customer by id, or a new one that the person confirmed (R-33: created only on confirmation). */
 export const customerChoice = z.union([
   z.strictObject({ id: recordId }),
@@ -261,11 +337,92 @@ export type DocumentInboxRow = z.infer<typeof documentInboxRow>;
 
 export type DocumentInboxView = z.infer<typeof documentInboxView>;
 
+/** An invoice of a customer whose total exceeds all its links. */
+export const openInvoiceRow = z.object({
+  invoiceId: z.string(),
+  number: z.string(),
+  invoiceDate: z.string(),
+  dueDate: z.string().nullable(),
+  currency: z.string(),
+  openCents: z.number().int(),
+});
+
+export type OpenInvoiceRow = z.infer<typeof openInvoiceRow>;
+
+export const openInvoicesView = z.object({
+  rows: z.array(openInvoiceRow),
+  truncated: z.boolean(),
+});
+
+/** A link the reading made by itself, which the review offers to undo (R-32). */
+export const automaticLink = z.object({
+  allocationId: z.string(),
+  invoiceId: z.string(),
+  invoiceNumber: z.string(),
+  paymentId: z.string(),
+  paymentReference: z.string().nullable(),
+  paymentDate: z.string(),
+  currency: z.string(),
+  amountCents: cents,
+});
+
+export const documentReviewView = z.object({
+  document: z.object({
+    id: z.string(),
+    label: z.string(),
+    kind: z.enum(DOCUMENT_KINDS).nullable(),
+    status: z.enum(INBOX_STATUSES),
+    reason: z.enum(["ai-off", "no-text-layer"]).nullable(),
+    fileUrl: z.string(),
+  }),
+  reading: storedReading.nullable(),
+  canWrite: z.boolean(),
+  customers: z.array(z.object({ id: z.string(), name: z.string() })),
+  customerMatch: z.object({ id: z.string(), name: z.string() }).nullable(),
+  /** A payment document with no saved record; null for every other document. */
+  payment: z
+    .object({
+      openInvoices: z.array(openInvoiceRow),
+      proposal: paymentMatch,
+      possibleDuplicateOf: z.string().nullable(),
+    })
+    .nullable(),
+  /** The records saved from the document; null when none is. */
+  saved: z
+    .object({
+      invoice: z.object({ id: z.string(), number: z.string() }).nullable(),
+      payment: z
+        .object({
+          id: z.string(),
+          reference: z.string().nullable(),
+          paymentDate: z.string(),
+        })
+        .nullable(),
+      automaticLinks: z.array(automaticLink),
+    })
+    .nullable(),
+});
+
+export type DocumentReviewView = z.infer<typeof documentReviewView>;
+
 export const invoicesContract = {
   /** Every document, newest first, for a tenant-wide reader (R-37, decision 12). */
   listDocuments: oc
     .route({ method: "GET", path: "/invoices/documents" })
     .output(documentInboxView),
+  /** One document with its reading, file link, customer and payment proposal (R-30, R-38). */
+  getDocumentReview: oc
+    .route({ method: "GET", path: "/invoices/documents/{id}" })
+    .input(z.object({ id: recordId }))
+    .output(documentReviewView),
+  /** A customer's open invoices in one currency, oldest first, for a reader of the customer. */
+  listOpenInvoices: oc
+    .route({
+      method: "GET",
+      path: "/invoices/customers/{customerId}/open-invoices",
+    })
+    .input(z.object({ customerId: recordId, currency: currencyCode }))
+    .output(openInvoicesView),
   /** Stores one PDF once per exact file, for the reading job (R-23, decisions 9 and 10). */
   uploadDocument: oc
     .route({ method: "POST", path: "/invoices/documents" })

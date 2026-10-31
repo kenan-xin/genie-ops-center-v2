@@ -33,6 +33,7 @@ Amounts are integer cents beside a three-letter upper-case currency code. A bala
 - `invoices-customer`: a customer, labelled by name, with no parent and no path.
 - `invoices-invoice`: an invoice, labelled by number, under its customer, at `/m/invoices/invoices/<id>`.
 - `invoices-payment`: a payment, labelled by reference or date, under its customer, at `/m/invoices/payments/<id>`.
+- `invoices-document`: an uploaded document, labelled as in the inbox, with no parent, at `/m/invoices/documents/<id>`. Only a grant on the whole deployment covers it.
 
 A grant on a customer covers its invoices and payments.
 
@@ -71,6 +72,14 @@ The status is decided in this order: Reading and Could not read from the job; a 
 A document has no customer before a save, so the list needs `invoices:read` on the whole deployment; a reader scoped to one customer is refused. Upload and Retry need `invoices:write` on the whole deployment, and the view's `canUpload` says whether the person has it. The label is the file name, else the number of the invoice or the reference of the payment saved from it, else "Document", so a document stored before uploads kept a name shows its saved record.
 
 The module provides the `document-inbox` capability: Documents at `/m/invoices/documents`, for a holder of `invoices:write`, the key of the place where the module takes documents. Ask and the chat bubble link to it.
+
+## Document review
+
+`getDocumentReview` at `GET /invoices/documents/{id}` answers one document for its review: its label, kind, status and reason as the inbox decides them, a short-lived link to its file scoped to the `invoices-document` record, its stored reading, whether the person may write (`invoices:write` on the whole deployment), every customer by name (at most 1,000), and the customer whose name matches the reading's, ignoring case and outer spaces.
+
+For a payment document with no saved record, the review also answers the matched customer's open invoices in the reading's currency, the R-30 proposal over their open amounts after all links, and the oldest saved payment of that customer with the same date, amount and currency as a Possible duplicate. The review computes these when it opens and stores nothing, so the save checks the same amounts again under its locks. For a document with saved records, it answers the invoice and the payment saved from it and their automatic links, which Undo can remove.
+
+A document has no customer before a save, so the review needs `invoices:read` on the whole deployment; a reader scoped to one customer is refused. `listOpenInvoices` at `GET /invoices/customers/{customerId}/open-invoices` answers a customer's invoices in one currency whose total exceeds their links, oldest first, at most 1,000 rows with `truncated` set past them, to a reader of that customer.
 
 ## Saving invoices
 

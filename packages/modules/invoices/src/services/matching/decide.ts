@@ -1,3 +1,5 @@
+import type { MatchPart, PaymentMatch } from "../../contract.ts";
+
 export type OpenInvoice = {
   readonly invoiceId: string;
   readonly number: string;
@@ -14,35 +16,7 @@ export type PaymentFacts = {
   readonly factsChecked: boolean;
 };
 
-export type MatchPart = {
-  readonly invoiceId: string;
-  readonly amountCents: number;
-};
-
-export type PaymentMatch =
-  | {
-      readonly kind: "automatic";
-      readonly invoiceId: string;
-      readonly amountCents: number;
-    }
-  | {
-      readonly kind: "confirm";
-      readonly invoiceId: string;
-      readonly amountCents: number;
-    }
-  | {
-      readonly kind: "overpayment";
-      readonly invoiceId: string;
-      readonly amountCents: number;
-      readonly unallocatedCents: number;
-    }
-  | {
-      readonly kind: "split";
-      readonly parts: readonly MatchPart[];
-      readonly unallocatedCents: number;
-    }
-  | { readonly kind: "suggestions"; readonly invoiceIds: readonly string[] }
-  | { readonly kind: "no-match" };
+export type { MatchPart, PaymentMatch };
 
 export function normalizeInvoiceNumber(raw: string): string {
   return raw.trim().toUpperCase();

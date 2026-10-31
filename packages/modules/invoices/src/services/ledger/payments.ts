@@ -4,10 +4,11 @@ import {
   CORE_ERRORS,
   moduleAudit,
   type ModuleRequestContext,
+  type TenantContext,
   type TenantTransaction,
   withTransaction,
 } from "@genie/core";
-import { and, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import {
@@ -20,7 +21,7 @@ import {
 } from "../../contract.ts";
 import { INVOICE_ERRORS } from "../../errors.ts";
 import { RECORD_TYPES } from "../../record-types.ts";
-import { allocation, invoice, payment } from "../../schema.ts";
+import { invoice, payment } from "../../schema.ts";
 import {
   decidePaymentMatch,
   normalizedInvoiceNumbers,
@@ -35,6 +36,7 @@ import {
   lockCustomer,
 } from "./customers.ts";
 import { assertDocumentKind, factsChecked } from "./documents.ts";
+import { readOpenInvoices } from "./open-invoices.ts";
 
 const audit = moduleAudit("invoices");
 
@@ -98,12 +100,12 @@ async function paymentOfDocument(
  * The Possible duplicate key facts of a payment (decision 6): a saved payment of the customer with
  * the same payment date, amount and currency. Answers the oldest such payment.
  */
-async function findPossibleDuplicatePayment(
-  tx: TenantTransaction,
+export async function findPossibleDuplicatePayment(
+  db: TenantContext["db"] | TenantTransaction,
   customerId: string,
   facts: Pick<PaymentFields, "paymentDate" | "amountCents" | "currency">
 ): Promise<string | undefined> {
-  const [row] = await tx
+  const [row] = await db
     .select({ id: payment.id })
     .from(payment)
     .where(
@@ -227,10 +229,11 @@ export async function savePayment(
   });
 }
 
-/** The customer's open invoices in the currency, as the matching rules read them. */
+/** The customer's open invoices in the payment's currency, as the matching rules read them. */
 async function openInvoices(
   tx: TenantTransaction,
   customerId: string,
+  currency: string,
   namedNumbers: readonly string[]
 ): Promise<OpenInvoice[]> {
   const upperNumber = sql<string>`upper(btrim(${invoice.number}))`;
@@ -258,23 +261,12 @@ async function openInvoices(
   );
 
   // A plain read: these only become suggestions, which the person confirms under a lock later.
-  const others = await tx
-    .select({
-      invoiceId: invoice.id,
-      number: invoice.number,
-      invoiceDate: invoice.invoiceDate,
-      currency: invoice.currency,
-      openCents: sql<number>`(${invoice.totalCents} - coalesce((select sum(${allocation.amountCents}) from ${allocation} where ${allocation.invoiceId} = ${invoice.id}), 0))::int`,
-    })
-    .from(invoice)
-    .where(
-      and(
-        eq(invoice.customerId, customerId),
-        namedIds.length > 0 ? notInArray(invoice.id, namedIds) : undefined
-      )
-    );
+  const { rows } = await readOpenInvoices(tx, customerId, currency);
 
-  return [...locked, ...others];
+  return [
+    ...locked,
+    ...rows.filter((row) => !namedIds.includes(row.invoiceId)),
+  ];
 }
 
 /**
@@ -341,7 +333,7 @@ export async function recordPaymentFromReading(
         namedInvoiceNumbers,
         factsChecked: await factsChecked(tx, input.documentId),
       },
-      await openInvoices(tx, customerId, namedInvoiceNumbers)
+      await openInvoices(tx, customerId, input.currency, namedInvoiceNumbers)
     );
 
     if (match.kind !== "automatic") {

@@ -2210,6 +2210,679 @@
         }
       }
     },
+    "/invoices/documents/{id}": {
+      "get": {
+        "operationId": "invoices.getDocumentReview",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "document": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "invoice",
+                                "payment",
+                                "paid-receipt",
+                                "purchase-order"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "status": {
+                          "enum": [
+                            "reading",
+                            "could-not-read",
+                            "needs-input",
+                            "linked-automatically",
+                            "confirm-split",
+                            "possible-duplicate",
+                            "no-match",
+                            "kept-as-reference",
+                            "saved"
+                          ],
+                          "type": "string"
+                        },
+                        "reason": {
+                          "anyOf": [
+                            {
+                              "enum": [
+                                "ai-off",
+                                "no-text-layer"
+                              ],
+                              "type": "string"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "fileUrl": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "label",
+                        "kind",
+                        "status",
+                        "reason",
+                        "fileUrl"
+                      ]
+                    },
+                    "reading": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "fields": {
+                              "type": "object",
+                              "propertyNames": {
+                                "enum": [
+                                  "customer",
+                                  "number",
+                                  "date",
+                                  "dueDate",
+                                  "paymentTerms",
+                                  "currency",
+                                  "amount",
+                                  "reference",
+                                  "method",
+                                  "description"
+                                ],
+                                "type": "string"
+                              },
+                              "additionalProperties": {
+                                "type": "object",
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "quote": {
+                                    "type": "string"
+                                  },
+                                  "page": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "exclusiveMinimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "value",
+                                  "quote",
+                                  "page"
+                                ]
+                              }
+                            },
+                            "invoiceNumbers": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "value": {
+                                    "type": "string"
+                                  },
+                                  "quote": {
+                                    "type": "string"
+                                  },
+                                  "page": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "exclusiveMinimum": 0
+                                  }
+                                },
+                                "required": [
+                                  "value",
+                                  "quote",
+                                  "page"
+                                ]
+                              }
+                            },
+                            "dropped": {
+                              "type": "array",
+                              "items": {
+                                "enum": [
+                                  "customer",
+                                  "number",
+                                  "date",
+                                  "dueDate",
+                                  "paymentTerms",
+                                  "currency",
+                                  "amount",
+                                  "reference",
+                                  "method",
+                                  "description",
+                                  "invoiceNumbers"
+                                ],
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "required": [
+                            "fields",
+                            "invoiceNumbers",
+                            "dropped"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "canWrite": {
+                      "type": "boolean"
+                    },
+                    "customers": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "name": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "name"
+                        ]
+                      }
+                    },
+                    "customerMatch": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "name": {
+                              "type": "string"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "name"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "payment": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "openInvoices": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "number": {
+                                    "type": "string"
+                                  },
+                                  "invoiceDate": {
+                                    "type": "string"
+                                  },
+                                  "dueDate": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  },
+                                  "openCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  }
+                                },
+                                "required": [
+                                  "invoiceId",
+                                  "number",
+                                  "invoiceDate",
+                                  "dueDate",
+                                  "currency",
+                                  "openCents"
+                                ]
+                              }
+                            },
+                            "proposal": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "automatic"
+                                    },
+                                    "invoiceId": {
+                                      "type": "string"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 2147483647
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "invoiceId",
+                                    "amountCents"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "confirm"
+                                    },
+                                    "invoiceId": {
+                                      "type": "string"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 2147483647
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "invoiceId",
+                                    "amountCents"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "overpayment"
+                                    },
+                                    "invoiceId": {
+                                      "type": "string"
+                                    },
+                                    "amountCents": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 2147483647
+                                    },
+                                    "unallocatedCents": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 2147483647
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "invoiceId",
+                                    "amountCents",
+                                    "unallocatedCents"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "split"
+                                    },
+                                    "parts": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "invoiceId": {
+                                            "type": "string"
+                                          },
+                                          "amountCents": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 2147483647
+                                          }
+                                        },
+                                        "required": [
+                                          "invoiceId",
+                                          "amountCents"
+                                        ]
+                                      }
+                                    },
+                                    "unallocatedCents": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "parts",
+                                    "unallocatedCents"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "suggestions"
+                                    },
+                                    "invoiceIds": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string"
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "kind",
+                                    "invoiceIds"
+                                  ]
+                                },
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "kind": {
+                                      "const": "no-match"
+                                    }
+                                  },
+                                  "required": [
+                                    "kind"
+                                  ]
+                                }
+                              ]
+                            },
+                            "possibleDuplicateOf": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "openInvoices",
+                            "proposal",
+                            "possibleDuplicateOf"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "saved": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "invoice": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "number": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "number"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "payment": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "reference": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "paymentDate": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "reference",
+                                    "paymentDate"
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "automaticLinks": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "allocationId": {
+                                    "type": "string"
+                                  },
+                                  "invoiceId": {
+                                    "type": "string"
+                                  },
+                                  "invoiceNumber": {
+                                    "type": "string"
+                                  },
+                                  "paymentId": {
+                                    "type": "string"
+                                  },
+                                  "paymentReference": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "paymentDate": {
+                                    "type": "string"
+                                  },
+                                  "currency": {
+                                    "type": "string"
+                                  },
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 2147483647
+                                  }
+                                },
+                                "required": [
+                                  "allocationId",
+                                  "invoiceId",
+                                  "invoiceNumber",
+                                  "paymentId",
+                                  "paymentReference",
+                                  "paymentDate",
+                                  "currency",
+                                  "amountCents"
+                                ]
+                              }
+                            }
+                          },
+                          "required": [
+                            "invoice",
+                            "payment",
+                            "automaticLinks"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "document",
+                    "reading",
+                    "canWrite",
+                    "customers",
+                    "customerMatch",
+                    "payment",
+                    "saved"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/invoices/customers/{customerId}/open-invoices": {
+      "get": {
+        "operationId": "invoices.listOpenInvoices",
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          {
+            "name": "currency",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Z]{3}$"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "rows": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "invoiceId": {
+                            "type": "string"
+                          },
+                          "number": {
+                            "type": "string"
+                          },
+                          "invoiceDate": {
+                            "type": "string"
+                          },
+                          "dueDate": {
+                            "anyOf": [
+                              {
+                                "type": "string"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "currency": {
+                            "type": "string"
+                          },
+                          "openCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "invoiceId",
+                          "number",
+                          "invoiceDate",
+                          "dueDate",
+                          "currency",
+                          "openCents"
+                        ]
+                      }
+                    },
+                    "truncated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "rows",
+                    "truncated"
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/invoices/documents/{id}/retry": {
       "post": {
         "operationId": "invoices.retryReading",

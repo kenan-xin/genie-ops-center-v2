@@ -1,4 +1,9 @@
-import { AppError, CORE_ERRORS, type TenantTransaction } from "@genie/core";
+import {
+  AppError,
+  CORE_ERRORS,
+  type TenantContext,
+  type TenantTransaction,
+} from "@genie/core";
 import { and, eq, inArray, type SQL, sql, type SQLWrapper } from "drizzle-orm";
 
 import { INVOICE_ERRORS } from "../../errors.ts";
@@ -48,10 +53,10 @@ export function factsCheckedSql(documentId: SQLWrapper): SQL<boolean> {
 }
 
 export async function factsChecked(
-  tx: TenantTransaction,
+  db: TenantContext["db"] | TenantTransaction,
   documentId: string
 ): Promise<boolean> {
-  const [row] = await tx
+  const [row] = await db
     .select({ checked: factsCheckedSql(sql`${documentId}::uuid`) })
     .from(sourceDocument)
     .where(eq(sourceDocument.id, documentId));

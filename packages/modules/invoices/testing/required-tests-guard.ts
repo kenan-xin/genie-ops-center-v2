@@ -87,6 +87,24 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `the documents inbox ${row}`),
   },
   {
+    file: "testing/review.integration.test.ts",
+    reason:
+      "Spec 7 R-30, R-38 and DEC-39: the review reads a document, its file, its customer and its proposal, for a tenant-wide reader",
+    cases: [
+      "answers a read invoice document with its reading, a link to its own bytes and the customer it names",
+      "refuses a reader scoped to one customer, gives a Viewer no write, and lists open invoices only to a reader of the customer",
+      ...[
+        "two named invoices split",
+        "no number suggests by amount",
+        "the facts of a saved payment",
+      ].map(
+        (row) =>
+          `proposes the R-30 match over the open amounts after all links ${row}`
+      ),
+      "answers the records saved from a payment document and its automatic link",
+    ].map((row) => `the document review ${row}`),
+  },
+  {
     file: "testing/live-readings.integration.test.ts",
     reason:
       "Spec 7 AC-7 up to the inbox: the seven live uploads reach their statuses and records with the recorded test model",

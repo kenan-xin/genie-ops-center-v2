@@ -1,12 +1,14 @@
 import type { Module } from "@genie/core";
-import { sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
-import { customer, invoice, payment } from "./schema.ts";
+import { customer, invoice, payment, sourceDocument } from "./schema.ts";
+import { documentLabel } from "./services/documents/label.ts";
 
 export const RECORD_TYPES = {
   invoice: "invoices-invoice",
   payment: "invoices-payment",
   customer: "invoices-customer",
+  document: "invoices-document",
 } as const;
 
 /**
@@ -64,6 +66,20 @@ export const invoicesRecordTypes: Module["recordTypes"] = [
           parents: [{ type: RECORD_TYPES.customer, id: row.customerId }],
         }
       );
+    },
+  },
+  {
+    // No parent: a document has no customer before a save, so only a tenant-wide grant covers it.
+    type: RECORD_TYPES.document,
+    resolve: async (ctx, id) => {
+      const [row] = await ctx.tenant.db
+        .select({ label: documentLabel })
+        .from(sourceDocument)
+        .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
+        .leftJoin(payment, eq(payment.documentId, sourceDocument.id))
+        .where(sql`${sourceDocument.id}::text = ${id}`);
+
+      return row && { label: row.label, path: `/m/invoices/documents/${id}` };
     },
   },
 ];

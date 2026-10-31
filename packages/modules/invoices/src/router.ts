@@ -11,6 +11,7 @@ import { invoicesContract } from "./contract.ts";
 import { RECORD_TYPES } from "./record-types.ts";
 import { allocation } from "./schema.ts";
 import { loadDocumentInbox } from "./services/documents/inbox.ts";
+import { loadDocumentReview } from "./services/documents/review.ts";
 import { uploadDocument } from "./services/documents/upload.ts";
 import { assertCanWrite } from "./services/ledger/access.ts";
 import {
@@ -22,6 +23,7 @@ import {
   correctInvoiceTotal,
   saveInvoice,
 } from "./services/ledger/invoices.ts";
+import { listOpenInvoices } from "./services/ledger/open-invoices.ts";
 import { savePayment } from "./services/ledger/payments.ts";
 import { savePaidReceipt } from "./services/ledger/receipts.ts";
 import { retryReading } from "./services/reading/job.ts";
@@ -62,6 +64,12 @@ async function assertCanWriteLink(
 export const invoicesRouter = os.router({
   listDocuments: os.listDocuments.handler(({ context }) =>
     loadDocumentInbox(context)
+  ),
+  getDocumentReview: os.getDocumentReview.handler(({ context, input }) =>
+    loadDocumentReview(context, input.id)
+  ),
+  listOpenInvoices: os.listOpenInvoices.handler(({ context, input }) =>
+    listOpenInvoices(context, input)
   ),
   uploadDocument: os.uploadDocument.handler(({ context, input }) =>
     uploadDocument(context, input.file)

@@ -56,6 +56,28 @@ export function inboxStatusOf(document: {
   }
 }
 
+/**
+ * The columns that decide a document's label, status and reason, for `inboxStatusOf` and
+ * `reasonOf`. Valid in a select that left joins `invoice` and `payment` on `document_id`.
+ */
+export const documentState = {
+  label: documentLabel,
+  kind: sourceDocument.kind,
+  readingStatus: sql<ReadingStatus>`case when ${readingStalled} then 'could-not-read' else ${sourceDocument.readingStatus} end`,
+  readingOutcome: sourceDocument.readingOutcome,
+  hasRecord: sql<boolean>`(${invoice.id} is not null or ${payment.id} is not null)`,
+  linkedAutomatically: sql<boolean>`exists (select 1 from ${allocation} where ${allocation.paymentId} = ${payment.id} and ${allocation.automatic})`,
+};
+
+/** Why a document needs input though nothing failed: AI is off, or it has no text layer. */
+export function reasonOf(
+  readingOutcome: ReadingOutcome | null
+): DocumentInboxRow["reason"] {
+  return readingOutcome === "ai-off" || readingOutcome === "no-text-layer"
+    ? readingOutcome
+    : null;
+}
+
 /** The checked values of a stored reading that the inbox shows, or null before a reading. */
 function foundOf(reading: StoredReading | null): DocumentInboxRow["found"] {
   if (reading === null) return null;
@@ -89,13 +111,8 @@ export async function loadDocumentInbox(
     ctx.tenant.db
       .select({
         id: sourceDocument.id,
-        label: documentLabel,
-        kind: sourceDocument.kind,
-        readingStatus: sql<ReadingStatus>`case when ${readingStalled} then 'could-not-read' else ${sourceDocument.readingStatus} end`,
-        readingOutcome: sourceDocument.readingOutcome,
+        ...documentState,
         reading: sourceDocument.reading,
-        hasRecord: sql<boolean>`(${invoice.id} is not null or ${payment.id} is not null)`,
-        linkedAutomatically: sql<boolean>`exists (select 1 from ${allocation} where ${allocation.paymentId} = ${payment.id} and ${allocation.automatic})`,
       })
       .from(sourceDocument)
       .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
@@ -112,11 +129,7 @@ export async function loadDocumentInbox(
       label: document.label,
       kind: document.kind,
       status: inboxStatusOf(document),
-      reason:
-        document.readingOutcome === "ai-off" ||
-        document.readingOutcome === "no-text-layer"
-          ? document.readingOutcome
-          : null,
+      reason: reasonOf(document.readingOutcome),
       found: foundOf(document.reading),
     })),
     truncated: documents.length > INBOX_ROW_CAP,
