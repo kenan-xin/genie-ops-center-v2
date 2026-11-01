@@ -22,7 +22,7 @@ function withQuery(Story: () => ReactNode) {
   const [client] = useState(
     () =>
       new QueryClient({
-        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+        defaultOptions: { queries: { retry: false } },
       })
   );
 
@@ -127,6 +127,38 @@ export const ShowMoreOnPhone: Story = {
   args: { view: cut },
   globals: phone,
   play: async ({ canvas }) => showsMore(canvas),
+};
+
+/** The list, left for another screen and opened again with a new first page from the server. */
+function LeaveAndReturn() {
+  const [view, setView] = useState<InvoiceListView | null>(defaultInvoiceList);
+
+  return (
+    <>
+      <button type="button" onClick={() => setView(null)}>
+        Leave
+      </button>
+      <button type="button" onClick={() => setView(twoCurrencyInvoiceList)}>
+        Return
+      </button>
+      {view === null ? null : <InvoiceList view={view} />}
+    </>
+  );
+}
+
+export const FreshAfterReturn: Story = {
+  name: "Fresh after a return",
+  globals: desktop,
+  render: () => <LeaveAndReturn />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Leave" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Return" }));
+
+    // A save on another screen changes the server's first page; the list shows that page.
+    const amounts = await canvas.findAllByText("US$1,250.00");
+
+    await expect(amounts[0]).toBeVisible();
+  },
 };
 
 export const Empty: Story = {

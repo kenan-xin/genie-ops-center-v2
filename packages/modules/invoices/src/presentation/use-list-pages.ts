@@ -29,6 +29,8 @@ export function useListPages<Row>(input: {
     initialData: { pages: [input.first], pageParams: [null] },
     // The first page came with the request; a page read now would only repeat it.
     staleTime: Number.POSITIVE_INFINITY,
+    // Each visit brings a fresh first page; a cached one would hide a save made on another screen.
+    gcTime: 0,
   });
 
   return {
