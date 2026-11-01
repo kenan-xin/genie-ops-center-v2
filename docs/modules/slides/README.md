@@ -6,7 +6,7 @@ Anyone who presents figures from the data that modules publish.
 
 ## What it does
 
-A person creates a deck by chat, or edits it by hand. A deck is typed elements on 16:9 slides, never HTML. Edits are patch operations guarded by a content hash. A deck freezes its figures when it is made, shows that date, and changes them only on Refresh data. It uses the tenant branding, can be presented full screen, and exports to PowerPoint with native editable charts through pptxgenjs (`DEC-55`). Decks are owner-only. Full requirements: `../../specs/07-invoice-and-payments.md`, R-52 to R-57.
+A person creates a deck by chat, or edits it by hand. A deck is typed elements on 16:9 slides, never HTML. Edits are patch operations guarded by a content hash. A deck freezes its figures when it is made, shows that date, and changes them only on Refresh data. It uses the tenant branding, can be presented full screen, and exports to PowerPoint with native editable charts through pptxgenjs (`DEC-55`). The deck page is owner-only. An image or export link opens for any `slides:read` holder for its 5-minute life, because sharing a deck today means exporting it and sending the file (owner, 2026-11-01, Spec 7 R-52). Full requirements: `../../specs/07-invoice-and-payments.md`, R-52 to R-57.
 
 ## Permissions and roles
 

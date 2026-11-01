@@ -4,7 +4,7 @@ Confidence: 7.4/10
 
 Reasoning: the product behavior is settled one decision at a time with the owner, and two cold critiques tested the plan and the tickets against the code. The score is lower than earlier sections for three reasons. Four new parts must land in about five weeks with no slip order. The model calls depend on an outside service (OpenRouter) and on models that change. Several core seams are new (datasets, the chart gate, the agent runtime, the typed key store), and none of them exists in code yet.
 
-Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day.
+Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day. Amended 2026-11-01 with the owner rulings of wave 3: R-15, R-26, R-46, R-49 and R-52.
 
 ## Goal and scope
 
@@ -27,7 +27,7 @@ Planning artifacts, kept with the planning notes: the epic brief, the core flows
 
 Module documents: `../modules/invoices-and-payments/README.md`, `../modules/analytics/README.md`, `../modules/slides/README.md`. Demo data: `../modules/invoices-and-payments/demo-pack/` (fictional).
 
-Decisions: `../core/decision-log.md` `DEC-20`, `DEC-25`, `DEC-28`, `DEC-29` (amended 2026-10-27), `DEC-34`, `DEC-39`, `DEC-46`, `DEC-53`, `DEC-54`, `DEC-55`.
+Decisions: `../core/decision-log.md` `DEC-20`, `DEC-25`, `DEC-28`, `DEC-29` (amended 2026-10-27 and 2026-11-01), `DEC-34`, `DEC-39`, `DEC-46`, `DEC-53`, `DEC-54`, `DEC-55`.
 
 Architecture: `../architecture/module-contract.md`, `../architecture/data-shape.md`, `../architecture/ui-development.md`.
 
@@ -73,7 +73,7 @@ R-13. A capability is registered with its owning module id. The capability regis
 
 R-14. A panel config holds a chart type (KPI, bar, line, area, donut or table), one or more series, each a query in the shape of R-6, the field on each axis, and a title. Each chart type has a closed list of keys.
 
-R-15. One core gate checks a chart before anyone saves or shows it: the config passes its schema, every query runs, every configured field is a returned column of a type that fits the chart, a line or area chart has an ordered x-axis, a donut has non-negative parts of one whole, no chart has a second y-axis, and no chart has more than 8 series. An empty result is valid and shows an empty state. A failure saves nothing and returns the missing keys and a fix hint.
+R-15. One core gate checks a chart before anyone saves or shows it: the config passes its schema, every query runs, every configured field is a returned column of a type that fits the chart, a line or area chart has an ordered x-axis, a donut has non-negative parts of one whole, no chart has a second y-axis, and no chart has more than 8 series. An empty result is valid and shows an empty state. A failure saves nothing and returns the missing keys and a fix hint. A frozen deck chart gets this full check when the deck is made and on Refresh data. When the deck is opened, it gets only the read-access check, which hides a chart whose dataset the person can no longer read (R-54; owner, 2026-11-01).
 
 R-16. One chart component draws every chart in Analytics, Slides and chat, on the shadcn Chart component. It has a table view, a caption that names the dataset and the time the data was read, and stable series colors.
 
@@ -99,7 +99,7 @@ R-24. A reading job extracts the PDF text layer with page markers and sends it t
 
 R-25. The server checks each quote against the text layer after normalising whitespace, line breaks and number formats. A value whose quote is not in the text is dropped, and the field shows "check this".
 
-R-26. The reading job retries twice with backoff and is idempotent per document. After the retries the document shows Could not read with Retry. A partial reading keeps its valid fields. With AI off, or a PDF with no text layer, the person fills the fields by hand.
+R-26. The reading job retries twice with backoff and is idempotent per document. After the retries the document shows Could not read with Retry. A Could not read document keeps Retry, and its review also offers the type select and empty fields, so a person enters it by hand. Every field saved this way gets `field_origin` `corrected`. `setDocumentKind` accepts `could-not-read`. A stalled `reading` still needs Retry first (owner, 2026-11-01). A partial reading keeps its valid fields. With AI off, or a PDF with no text layer, the person fills the fields by hand.
 
 R-27. The model classifies each document as an invoice, payment evidence, a paid receipt or a purchase order. The person can change the type in the review.
 
@@ -141,7 +141,7 @@ R-44. An answer states the reporting date, uses only the measures of R-36, shows
 
 R-45. Chat answers render through OpenUI `@openuidev/react-lang` with a catalog of our own components. Every chart and table takes a checked panel config, never typed values. Repair is local. The `lang-core` install script is denied in `allowBuilds`, and `OPENUI_TELEMETRY_DISABLED=1` is set. `@openuidev/react-ui` is never installed. The prose of an answer is styled by a shadcn Typeset preset, `typeset-chat`, that matches the design tokens, and the OpenUI components are marked `not-typeset`.
 
-R-46. Tool results and document text are data, never instructions. A write tool runs only on an explicit request in the person's own message, and its change has Undo. The agent never creates, changes or links invoices and payments.
+R-46. Tool results and document text are data, never instructions. A write tool runs only on an explicit request in the person's own message. Undo reverses a chat change to an existing dashboard or deck. Delete reverses a chat create (`analytics-create-dashboard`, `slides-create-deck`) (owner, 2026-11-01). The agent never creates, changes or links invoices and payments.
 
 R-47. Every tool call writes an audit row with the tool, the dataset, the query and the row count, never the returned rows.
 
@@ -149,7 +149,7 @@ R-47. Every tool call writes an audit row with the tool, the dataset, the query 
 
 R-48. A dashboard is saved per owner with a config of filters and panels (R-14). Only its owner opens it.
 
-R-49. The person builds and changes a dashboard by chat beside it, or by hand: move, resize, rename, delete, chart type, filters. Dashboard filters for the date range and the customer apply to every panel. Every save passes the gate of R-15. Every chat change has Undo.
+R-49. The person builds and changes a dashboard by chat beside it, or by hand: move, resize, rename, delete, chart type, filters. Dashboard filters for the date range and the customer apply to every panel. Every save passes the gate of R-15. Every chat change to an existing dashboard has Undo. Delete reverses a dashboard that chat created (R-46).
 
 R-50. A panel refetches every 10 seconds and when the window regains focus.
 
@@ -157,7 +157,7 @@ R-51. The module declares `analytics:read` and `analytics:write` with default ro
 
 ### Slides module
 
-R-52. A deck is typed elements on 16:9 slides: title, text, bullet list, figure, chart, table and image. It is saved per owner, and only its owner opens it.
+R-52. A deck is typed elements on 16:9 slides: title, text, bullet list, figure, chart, table and image. It is saved per owner, and only its owner opens the deck page. An image or export link of a deck opens for any `slides:read` holder for its 5-minute life, because sharing a deck today means exporting it and sending the file (owner, 2026-11-01). Shared decks stay deferred.
 
 R-53. Edits are patch operations guarded by the content hash, so an edit made on an older version is refused.
 

@@ -202,6 +202,8 @@ Amended 2026-10-20, the boss agent is core (owner decision): every customer gets
 
 Amended 2026-10-27 (owner, Section 7). The capabilities registry gains a list form that returns every provider of one interface and skips a provider whose module is disabled, and modules provide agent tools through one `agent-tools` interface. A tool-call audit row stores the user, the tool, the dataset, the query and the row count, never the returned records, because an audit row outlives a person's access. A write tool runs only on an explicit request in the person's own message and its change has Undo, instead of an approval part. Core tools over people, groups and the audit log, and helper agents, are deferred. Revisit when a customer asks the agent about core data, or a question needs more than one agent. Section 7 builds the agent with OpenUI `react-lang` as the renderer of rich answers, with a catalog of our own components (`DEC-55`).
 
+Amended 2026-11-01 (owner, Section 7 wave 3). Undo reverses a chat change to an existing dashboard or deck. Delete reverses a chat create (`analytics-create-dashboard`, `slides-create-deck`), so a create adds no Undo entry. Spec 7 R-46 and R-49 hold the same rule.
+
 Trade-off: the document generation libraries enter every image, and every module author must write agent tools with clear descriptions and read-only defaults. In return, one agent answers across modules without any module knowing another.
 
 Designed in: the seams, now. Implemented: none; the agent needs its own specification before work starts. Revisit if a customer needs the agent to act without a signed-in user, for example on a schedule. That needs its own decision on whose rights it uses.
