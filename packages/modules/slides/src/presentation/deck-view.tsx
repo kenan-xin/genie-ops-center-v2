@@ -720,7 +720,9 @@ export function DeckView(props: DeckViewProps) {
         <div className="flex flex-col gap-4 md:flex-row md:items-start">
           <nav
             aria-label="Slides"
-            className="flex flex-wrap gap-2 md:w-56 md:shrink-0 md:flex-col"
+            // `flex-wrap` and `flex-col` together let a title widen the column past w-56, under
+            // the canvas; the desktop column must not wrap (the phone row still does).
+            className="flex flex-wrap gap-2 md:w-56 md:shrink-0 md:flex-nowrap md:flex-col"
           >
             {deck.slides.map((slide, slideIndex) => (
               <div key={slide.id} className="flex items-center gap-1">
@@ -732,7 +734,7 @@ export function DeckView(props: DeckViewProps) {
                   className="min-w-0 flex-1 justify-start"
                   onClick={() => setShown(slideIndex)}
                 >
-                  <span className="tabular-nums">{slideIndex + 1}</span>
+                  <span className="tabular-nums">{slideIndex + 1}</span>{" "}
                   <span className="max-md:sr-only truncate">
                     {titleOf(slide)}
                   </span>
