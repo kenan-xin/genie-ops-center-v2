@@ -1,7 +1,7 @@
 /**
  * The chat change on a dashboard that the app integration test and the dev e2e share (Spec 7
  * R-46, R-49, D12). The recorded model requests hold these values, so a change here re-records
- * `analytics-add-collections-1.json` and `-2.json`.
+ * `analytics-add-collections-1.json` to `-4.json`.
  */
 
 /** The keys of the person who chats beside the dashboard. */
@@ -33,9 +33,9 @@ export const COLLECTIONS_PANEL = {
       name: "Collections",
       dataset: "invoices.payments",
       query: {
-        aggregates: [{ fn: "sum", field: "amountCents", as: "collectedCents" }],
+        aggregates: [{ fn: "sum", field: "amountCents", as: "collections" }],
       },
-      value: "collectedCents",
+      value: "collections",
     },
   ],
 } as const;

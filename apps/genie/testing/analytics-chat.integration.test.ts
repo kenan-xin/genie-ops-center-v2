@@ -138,7 +138,11 @@ describe("the analytics chat beside a dashboard", () => {
       undo: 1,
       version: 2,
     });
+    // The recorded live model reads the datasets and the dashboard before its one change.
     expect(await toolCalls()).toEqual([
+      { tool: "list-datasets", outcome: "answered" },
+      { tool: "analytics-read-dashboard", outcome: "answered" },
+      { tool: "query-dataset", outcome: "answered" },
       { tool: "analytics-change-dashboard", outcome: "answered" },
     ]);
 
