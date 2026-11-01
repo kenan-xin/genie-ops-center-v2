@@ -5,6 +5,7 @@ import { deckTheme } from "./theme.ts";
 const BRANDING = {
   companyName: "Acme",
   primaryColor: "#0f766e",
+  primaryForeground: "#ffffff",
   fontFamily: "plus-jakarta-sans",
   logoLightFileId: "7d1e1c1a-0c39-4b8e-9a41-1d6f3f0e9a10",
 };
@@ -15,6 +16,11 @@ describe("deckTheme", () => {
     [
       "gives the token default for a null color",
       { primaryColor: null },
+      { primaryColor: "#2563eb" },
+    ],
+    [
+      "gives the app's default pair for a color that is not hex, as core's primaryPair does",
+      { primaryColor: "red" },
       { primaryColor: "#2563eb" },
     ],
     [

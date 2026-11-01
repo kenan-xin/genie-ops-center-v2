@@ -43,7 +43,7 @@ Refresh data reads every figure, chart and table of the deck again through the c
 
 ## Theme
 
-A deck draws with the tenant branding on each read, never a copy: the company name in the footer, the primary color for the title rule (`#2563eb` when the tenant set none), the font key mapped to its face name (Arial for a key outside the four the branding accepts), and the light logo. With no logo, the footer shows the company name only. Every read and write of a deck answers a short-lived link for each image it shows, under `slides:read` on the deck, so an image a save adds or Undo brings back shows at once. The page keeps a link until about a minute before it expires and then takes the newest read's link; an image whose link has not arrived shows a placeholder.
+A deck draws with the tenant branding on each read, never a copy: the company name in the footer, the primary color for the title rule (through core's `primaryPair`, so the app's default when the stored color or its foreground is not a valid hex value), the font key mapped to its face name (Arial for a key outside the four the branding accepts), and the light logo. With no logo, the footer shows the company name only. Every read and write of a deck answers a short-lived link for each image it shows, under `slides:read` on the deck, so an image a save adds or Undo brings back shows at once. The page keeps a link until about a minute before it expires and then takes the newest read's link; an image whose link has not arrived shows a placeholder.
 
 ## PowerPoint export
 

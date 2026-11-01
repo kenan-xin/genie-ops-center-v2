@@ -114,7 +114,7 @@ export {
   type SupportContact,
 } from "./lib/branding/support.ts";
 
-export { brandingTokens } from "./lib/branding/tokens.ts";
+export { brandingTokens, primaryPair } from "./lib/branding/tokens.ts";
 
 export type {
   BrandingTokens,
