@@ -230,7 +230,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     reason:
       "S7-07 R-59, S7-12 R-51 and the owner's seed pre-authorization require the seed to write only the five allowed kinds, nothing on a second run or a dry run, and nothing on a database that is not ready, and every starter panel to pass the chart gate as the demo account",
     cases: [
-      "the demo seed command answers the five numbered lines on a fresh deployment in a dry run and writes nothing",
+      "the demo seed command answers the six numbered lines on a fresh deployment in a dry run and writes nothing",
       "the demo seed command plans no starter dashboard in a dry run without analytics",
       "the demo seed command writes only the owner's list on the first run and grants the demo person tenant-wide",
       "the demo seed command changes no row and no setting on a second run",

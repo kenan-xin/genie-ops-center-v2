@@ -184,11 +184,12 @@ Write list, one numbered line each in its output, with the count to write and th
 
 1. Role assignments: every role of the listed modules, granted tenant-wide and directly to the demo account (`role_assignment`).
 2. Reporting date: the pack's `metadata.as_of_date`, 2026-10-27 (`tenant_settings.reporting_date`).
-3. History PDFs through `FileStorage` (`file`, `file_blob` and `document` rows).
-4. Demo pack history through the module procedures as the demo account (`customer`, `invoice`, `payment`, `allocation`, `allocation_event` and `audit_event` rows).
-5. Only when the list holds `analytics`: the Receivables overview starter dashboard of the demo account (one `dashboard` row and one `audit_event` row with no actor). The analytics README describes it.
+3. Model connection: the recommended defaults of the [evaluation report](evaluation/report.md), chat `anthropic/claude-opus-5.5` and document `openai/gpt-6.1-terra`, added to the allowed models that the deployment already has (`tenant_settings.chat_model`, `document_model` and `allowed_models`). It replaces a different chat or document model. It stores no model key, so AI stays off until an administrator stores the key in Settings.
+4. History PDFs through `FileStorage` (`file`, `file_blob` and `document` rows).
+5. Demo pack history through the module procedures as the demo account (`customer`, `invoice`, `payment`, `allocation`, `allocation_event` and `audit_event` rows).
+6. Only when the list holds `analytics`: the Receivables overview starter dashboard of the demo account (one `dashboard` row and one `audit_event` row with no actor). The analytics README describes it.
 
-The access writes and the starter dashboard go straight to the tables, so the access adds no audit row, notification or email (P13). If the history step fails, the role grants and the reporting date stay written, and a rerun finishes the job. Each PDF's SHA-256 keys its record, so a second run writes nothing and ends `Already seeded: nothing to write.`, and a stopped run resumes. `--dry-run` prints the same lines and writes nothing.
+The access writes and the starter dashboard go straight to the tables, so the access adds no audit row, notification or email (P13). If the history step fails, the role grants, the reporting date and the model connection stay written, and a rerun finishes the job. Each PDF's SHA-256 keys its record, so a second run writes nothing and ends `Already seeded: nothing to write.`, and a stopped run resumes. `--dry-run` prints the same lines and writes nothing.
 
 It refuses, writes nothing, prints `Refused: <reason>` and exits 1 when the module tables do not exist (start the app on the database once), when the module is switched off, when the module has no roles (switch it on in Admin > Modules, which creates them), or when no person has the address (the demo account signs in once).
 

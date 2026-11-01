@@ -6,6 +6,7 @@ import { createTenantContext } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 import {
   DemoSeedRefused,
+  modelsDiffer,
   planDemoAccess,
   seedDemoAccess,
 } from "@genie/core/testing";
@@ -22,10 +23,16 @@ import {
 
 import { RECEIVABLES_OVERVIEW } from "./receivables-overview.ts";
 
+/** The recommended defaults of the committed S7-14 report (`docs/modules/invoices-and-payments/evaluation/report.md`, AC-11). */
+const DEMO_MODELS = {
+  chat: "anthropic/claude-opus-5.5",
+  document: "openai/gpt-6.1-terra",
+};
+
 /**
  * Loads the demo pack history and the demo account's access into one deployment (R-59): every
  * role of the demo tenant's modules granted tenant-wide to the demo account, the reporting date,
- * the history PDFs through FileStorage, the history through the module procedures and, with
+ * the evaluated model connection, the history PDFs through FileStorage, the history through the module procedures and, with
  * analytics, the Receivables overview starter dashboard. It prints
  * what it will write before it writes, and a second run writes nothing. The revert is a
  * `pg_dump` taken before the run (`docs/modules/invoices-and-payments/README.md`, "Demo seed").
@@ -70,11 +77,13 @@ export async function seedDemo(input: {
       email: input.email,
       moduleIds: input.moduleIds,
       reportingDate: demoReportingDate(),
+      models: DEMO_MODELS,
     };
 
     const access = await planDemoAccess(context, accessInput);
 
-    const { roles, reportingDate } = access;
+    const { roles, reportingDate, models } = access;
+    const addedModels = models.to.allowed.length - models.from.allowed.length;
 
     // The starter reads invoices datasets, so it needs both modules (R-51).
     const withStarter =
@@ -98,11 +107,14 @@ export async function seedDemo(input: {
       reportingDate.from === reportingDate.to
         ? `2. Reporting date: ${reportingDate.to}, already set`
         : `2. Reporting date: ${reportingDate.from ?? "blank"} -> ${reportingDate.to}`,
-      `3. History PDFs through FileStorage: ${history.documents.toWrite} to write, ${history.documents.present} already present (file, file_blob and document rows)`,
-      `4. Demo pack history: ${history.invoices.toWrite} invoices and ${history.payments.toWrite} payments to write, ${history.invoices.present} and ${history.payments.present} already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)`,
+      modelsDiffer(access)
+        ? `3. Model connection: chat ${models.from.chat ?? "blank"} -> ${models.to.chat}, document ${models.from.document ?? "blank"} -> ${models.to.document}, ${addedModels} allowed models to add`
+        : `3. Model connection: chat ${models.to.chat} and document ${models.to.document}, already set`,
+      `4. History PDFs through FileStorage: ${history.documents.toWrite} to write, ${history.documents.present} already present (file, file_blob and document rows)`,
+      `5. Demo pack history: ${history.invoices.toWrite} invoices and ${history.payments.toWrite} payments to write, ${history.invoices.present} and ${history.payments.present} already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)`,
       ...(withStarter
         ? [
-            `5. Receivables overview starter dashboard: ${starter.toWrite} to write, ${starter.present} already present (dashboard row)`,
+            `6. Receivables overview starter dashboard: ${starter.toWrite} to write, ${starter.present} already present (dashboard row)`,
           ]
         : []),
     ];
@@ -110,6 +122,7 @@ export async function seedDemo(input: {
     const nothingToWrite =
       roles.toGrant.length === 0 &&
       reportingDate.from === reportingDate.to &&
+      !modelsDiffer(access) &&
       history.documents.toWrite === 0 &&
       history.invoices.toWrite === 0 &&
       history.payments.toWrite === 0 &&

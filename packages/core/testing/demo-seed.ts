@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { isEqual } from "es-toolkit";
 
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import { role, roleAssignment, tenantSettings, user } from "../src/schema.ts";
@@ -21,12 +22,24 @@ export type DemoAccessPlan = {
     readonly present: readonly string[];
   };
   readonly reportingDate: { readonly from: string | null; readonly to: string };
+  readonly models: {
+    readonly from: ModelConnection;
+    readonly to: ModelConnection;
+  };
+};
+
+type ModelConnection = {
+  readonly allowed: readonly string[];
+  readonly chat: string | null;
+  readonly document: string | null;
 };
 
 type DemoAccessInput = {
   readonly email: string;
   readonly moduleIds: readonly string[];
   readonly reportingDate: string;
+  /** The chat and document defaults; the seed adds both to the allowed models it finds. */
+  readonly models: { readonly chat: string; readonly document: string };
 };
 
 type Db = Pick<TenantContext, "db">;
@@ -82,7 +95,12 @@ async function readAccess(
   }
 
   const [settings] = await context.db
-    .select({ reportingDate: tenantSettings.reportingDate })
+    .select({
+      reportingDate: tenantSettings.reportingDate,
+      allowed: tenantSettings.allowedModels,
+      chat: tenantSettings.chatModel,
+      document: tenantSettings.documentModel,
+    })
     .from(tenantSettings);
 
   if (settings === undefined) {
@@ -92,6 +110,7 @@ async function readAccess(
   }
 
   const missing = roles.filter((row) => row.held === null);
+  const { chat, document } = input.models;
 
   return {
     plan: {
@@ -103,6 +122,18 @@ async function readAccess(
           .map((row) => row.name),
       },
       reportingDate: { from: settings.reportingDate, to: input.reportingDate },
+      models: {
+        from: {
+          allowed: settings.allowed,
+          chat: settings.chat,
+          document: settings.document,
+        },
+        to: {
+          allowed: [...new Set([...settings.allowed, chat, document])],
+          chat,
+          document,
+        },
+      },
     },
     grantIds: missing.map((row) => row.id),
   };
@@ -110,8 +141,8 @@ async function readAccess(
 
 /**
  * What the demo account's access needs: the person found by its lower-case address, every role of
- * the named modules it does not yet hold tenant-wide and directly, and the reporting date. Writes
- * nothing.
+ * the named modules it does not yet hold tenant-wide and directly, the reporting date and the model
+ * connection. Writes nothing.
  */
 export async function planDemoAccess(
   context: Db,
@@ -120,9 +151,14 @@ export async function planDemoAccess(
   return (await readAccess(context, input)).plan;
 }
 
+/** Whether the model connection differs from the one the seed writes. */
+export function modelsDiffer(plan: DemoAccessPlan): boolean {
+  return !isEqual(plan.models.from, plan.models.to);
+}
+
 /**
- * Grants the planned roles tenant-wide to the person directly and sets the reporting date when it
- * differs. Written as `dev-session` writes its grants, so no audit row, notification or email
+ * Grants the planned roles tenant-wide to the person directly, and sets the reporting date and the
+ * model connection when they differ. The model key stays the administrator's to store. Written as `dev-session` writes its grants, so no audit row, notification or email
  * follows (P13); `assignRole` would send a notification and an email per role.
  */
 export async function seedDemoAccess(
@@ -149,6 +185,16 @@ export async function seedDemoAccess(
       await tx
         .update(tenantSettings)
         .set({ reportingDate: plan.reportingDate.to });
+    }
+
+    if (modelsDiffer(plan)) {
+      const { allowed, chat, document } = plan.models.to;
+
+      await tx.update(tenantSettings).set({
+        allowedModels: [...allowed],
+        chatModel: chat,
+        documentModel: document,
+      });
     }
   });
 

@@ -22,9 +22,9 @@ import { seedDemo } from "./seed-demo.ts";
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
 
 /**
- * The seed command writes only the owner's five kinds (role assignments, the reporting date, the
- * history PDFs through FileStorage, the demo pack history, the Receivables overview starter
- * dashboard when analytics is listed), writes nothing on a second run, and
+ * The seed command writes only the owner's six kinds (role assignments, the reporting date, the
+ * evaluated model connection, the history PDFs through FileStorage, the demo pack history, the
+ * Receivables overview starter dashboard when analytics is listed), writes nothing on a second run, and
  * refuses a database that is not ready before it writes anything. It reads tables directly,
  * because the owner's write list names tables.
  */
@@ -119,10 +119,14 @@ describe("the demo seed command", () => {
       email: DEMO_EMAIL,
       name: "Demo account",
     });
+    // A model an administrator allowed before the seed, which the seed keeps.
+    await deployment.context.db.$client.query(
+      "update tenant_settings set allowed_models = '{deepseek/deepseek-v4.1-flash-1017}'"
+    );
   }, 240000);
 
   // The three cases run in order on one deployment: a dry run, the first run, then the second.
-  it("answers the five numbered lines on a fresh deployment in a dry run and writes nothing", async () => {
+  it("answers the six numbered lines on a fresh deployment in a dry run and writes nothing", async () => {
     const before = await tableCounts(deployment);
     const settingsBefore = await settings(deployment);
 
@@ -133,9 +137,10 @@ describe("the demo seed command", () => {
       "Modules: invoices, analytics",
       "1. Role assignments for the demo account: 6 to write, 0 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: blank -> 2026-10-27",
-      "3. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
-      "4. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
-      "5. Receivables overview starter dashboard: 1 to write, 0 already present (dashboard row)",
+      "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
+      "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
+      "5. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
+      "6. Receivables overview starter dashboard: 1 to write, 0 already present (dashboard row)",
       "Dry run: nothing written.",
     ]);
     expect(changes(before, await tableCounts(deployment))).toEqual({});
@@ -149,8 +154,9 @@ describe("the demo seed command", () => {
       "Modules: invoices",
       "1. Role assignments for the demo account: 3 to write, 0 already present (Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: blank -> 2026-10-27",
-      "3. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
-      "4. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
+      "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
+      "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
+      "5. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
     ]);
   });
 
@@ -220,9 +226,20 @@ describe("the demo seed command", () => {
     );
 
     const { rows: date } = await client.query<{ reporting_date: string }>(
-      "select reporting_date::text from tenant_settings"
+      "select reporting_date::text, allowed_models, chat_model, document_model from tenant_settings"
     );
-    expect(date).toEqual([{ reporting_date: "2026-10-27" }]);
+    expect(date).toEqual([
+      {
+        reporting_date: "2026-10-27",
+        allowed_models: [
+          "deepseek/deepseek-v4.1-flash-1017",
+          "anthropic/claude-opus-5.5",
+          "openai/gpt-6.1-terra",
+        ],
+        chat_model: "anthropic/claude-opus-5.5",
+        document_model: "openai/gpt-6.1-terra",
+      },
+    ]);
 
     // History reads as the pack's past: each link event at noon, Singapore time, of its payment date.
     const { rows: events } = await client.query<{ off: number; late: number }>(
@@ -243,9 +260,10 @@ describe("the demo seed command", () => {
     expect(lines.slice(3)).toEqual([
       "1. Role assignments for the demo account: 0 to write, 6 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: 2026-10-27, already set",
-      "3. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows)",
-      "4. Demo pack history: 0 invoices and 0 payments to write, 36 and 30 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
-      "5. Receivables overview starter dashboard: 0 to write, 1 already present (dashboard row)",
+      "3. Model connection: chat anthropic/claude-opus-5.5 and document openai/gpt-6.1-terra, already set",
+      "4. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows)",
+      "5. Demo pack history: 0 invoices and 0 payments to write, 36 and 30 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
+      "6. Receivables overview starter dashboard: 0 to write, 1 already present (dashboard row)",
       "Already seeded: nothing to write.",
     ]);
     expect(changes(before, await tableCounts(deployment))).toEqual({});

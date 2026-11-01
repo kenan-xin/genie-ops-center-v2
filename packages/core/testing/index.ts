@@ -66,6 +66,7 @@ export { markSetupDone } from "./mark-setup-done.ts";
 export {
   type DemoAccessPlan,
   DemoSeedRefused,
+  modelsDiffer,
   planDemoAccess,
   seedDemoAccess,
 } from "./demo-seed.ts";
