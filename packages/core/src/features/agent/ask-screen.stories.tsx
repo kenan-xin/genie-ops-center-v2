@@ -27,7 +27,7 @@ const SESSIONS: readonly AgentSessionSummary[] = [
 ];
 
 const INBOX: readonly InboxLink[] = [
-  { label: "Documents", href: "/m/placeholder" },
+  { label: "Documents", href: "/m/example" },
 ];
 
 const NO_MESSAGES: readonly AgentMessage[] = [];

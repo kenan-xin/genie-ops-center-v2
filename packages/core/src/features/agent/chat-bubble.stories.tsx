@@ -27,7 +27,7 @@ const SESSIONS: readonly AgentSessionSummary[] = [
 ];
 
 const INBOX: readonly InboxLink[] = [
-  { label: "Documents", href: "/m/placeholder" },
+  { label: "Documents", href: "/m/example" },
 ];
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
@@ -217,7 +217,7 @@ export const OpenDesktop: Story = {
     ).toHaveAttribute("href", `/ask/${FIRST_SESSION.id}`);
     await expect(
       screen.getByRole("link", { name: "Documents" })
-    ).toHaveAttribute("href", "/m/placeholder");
+    ).toHaveAttribute("href", "/m/example");
     await expect(screen.getByText(/^New session /)).toBeVisible();
   },
 };
