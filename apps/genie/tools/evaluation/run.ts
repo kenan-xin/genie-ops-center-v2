@@ -65,37 +65,9 @@ import {
   scoreCharts,
 } from "./score-answers.ts";
 import { scoreExtraction } from "./score-extraction.ts";
+import { costMeter, liveTransport } from "./transport.ts";
 
 const MODULES = [placeholderModule, invoicesModule];
-
-/** The provider cost of each answered request, summed: `usage.cost` where the answer gives one. */
-function costing(send: typeof globalThis.fetch) {
-  let spent: number | null = null;
-
-  const counted: typeof globalThis.fetch = async (input, init) => {
-    const response = await send(input, init);
-    const text = await response.clone().text();
-
-    for (const match of text.matchAll(/"cost":\s*([0-9.eE+-]+)/g)) {
-      spent = (spent ?? 0) + Number(match[1]);
-    }
-
-    return response;
-  };
-
-  return { fetch: counted, spent: () => spent };
-}
-
-/** The owner's key on every request of a live run; it never leaves this process otherwise. */
-function withKey(key: string): typeof globalThis.fetch {
-  return (input, init) => {
-    const headers = new Headers(init?.headers);
-
-    headers.set("authorization", `Bearer ${key}`);
-
-    return globalThis.fetch(input, { ...init, headers });
-  };
-}
 
 const chartTitle = z.object({ title: z.string() });
 
@@ -146,13 +118,13 @@ async function evaluateModel(
 
     await seedDemoHistory(tenant, { userId: seeder.userId });
 
-    const send = costing(
+    const send = costMeter(
       options.key === undefined
         ? replayModelTransport([
             ...loadModelRecordings(INVOICES_READING_RECORDINGS),
             ...loadModelRecordings(APP_AGENT_RECORDINGS),
           ])
-        : withKey(options.key)
+        : liveTransport(options.key)
     );
 
     useModelTransport(tenant, { transport: send.fetch });
@@ -169,7 +141,7 @@ async function evaluateModel(
     for (let run = 1; run <= options.runs; run += 1) {
       for (const { id, file } of EXTRACTION_CASES) {
         const started = performance.now();
-        const before = send.spent();
+        const before = send.mark();
         let reason: string | undefined;
         let reading: LiveReading | null = null;
 
@@ -180,7 +152,6 @@ async function evaluateModel(
         }
 
         const score = scoreExtraction(reading, expectedReadingOf(id));
-        const spent = send.spent();
 
         results.push({
           track: "extraction",
@@ -190,7 +161,7 @@ async function evaluateModel(
           pass: score.pass,
           reason: reason ?? score.mismatches.join(", "),
           ms: performance.now() - started,
-          costUsd: spent === null ? null : spent - (before ?? 0),
+          costUsd: send.since(before),
         });
       }
 
@@ -200,7 +171,7 @@ async function evaluateModel(
 
         for (const id of session) {
           const started = performance.now();
-          const before = send.spent();
+          const before = send.mark();
           const errors: unknown[] = [];
           let checked: (ChartRows | RefusedChart)[] = [];
 
@@ -260,9 +231,8 @@ async function evaluateModel(
             }
           }
 
-          const spent = send.spent();
           const ms = performance.now() - started;
-          const costUsd = spent === null ? null : spent - (before ?? 0);
+          const costUsd = send.since(before);
 
           const answer =
             broken === undefined
@@ -338,19 +308,20 @@ export async function runEvaluation(
 
   const results: CaseResult[] = [];
 
+  await mkdir(options.out, { recursive: true });
+
   /* oxlint-disable no-await-in-loop -- one deployment at a time. */
   for (const model of options.models) {
     results.push(...(await evaluateModel(options, model)));
+
+    // After each model, so a later failure keeps the paid results of the models before it.
+    await writeFile(
+      join(options.out, "results.json"),
+      `${JSON.stringify(results, undefined, 2)}\n`,
+      "utf8"
+    );
   }
   /* oxlint-enable no-await-in-loop */
-
-  await mkdir(options.out, { recursive: true });
-
-  await writeFile(
-    join(options.out, "results.json"),
-    `${JSON.stringify(results, undefined, 2)}\n`,
-    "utf8"
-  );
 
   const summaries = summarize(results);
   const defaults = recommendDefaults(summaries);
