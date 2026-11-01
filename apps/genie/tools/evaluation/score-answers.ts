@@ -1,16 +1,22 @@
 import { isDeepStrictEqual } from "node:util";
 
+import { panelConfigSchema } from "@genie/core";
+
 import {
+  type AnswerChart,
   CHART_CASES,
-  type ChartRows,
   question,
   READERS,
+  showsChart,
 } from "../../testing/invoice-answer-readers.ts";
 
 export type CaseScore = { readonly pass: boolean; readonly reason?: string };
 
-/** A chart the R-15 gate refused, by the title its config gave it. */
-export type RefusedChart = { readonly title: string; readonly refused: string };
+/** A chart the R-15 gate refused: the model's raw config and the refusal code. */
+export type RefusedChart = {
+  readonly config: unknown;
+  readonly refused: string;
+};
 
 /**
  * Scores one answer exactly (R-58): its checked charts, read back by the question's reader, equal
@@ -18,7 +24,7 @@ export type RefusedChart = { readonly title: string; readonly refused: string };
  */
 export function scoreAnswer(
   questionId: string,
-  charts: readonly ChartRows[]
+  charts: readonly AnswerChart[]
 ): CaseScore {
   const reader = READERS.get(questionId);
 
@@ -41,20 +47,40 @@ export function scoreAnswer(
     : { pass: false, reason: "wrong-answer" };
 }
 
-/** One score per chart case of the question: the chart is there and the gate accepted it. */
+/**
+ * One score per chart case of the question: a chart shows it and the gate accepted it. Else a
+ * refused chart whose config parses and shows it gives its refusal; a refused config that does
+ * not parse shows nothing, so its case is `missing`.
+ */
 export function scoreCharts(
   questionId: string,
-  checked: readonly (ChartRows | RefusedChart)[]
+  checked: readonly (AnswerChart | RefusedChart)[]
 ): readonly (CaseScore & { readonly title: string })[] {
+  const accepted = checked.flatMap((chart) =>
+    "refused" in chart ? [] : [chart.config]
+  );
+
+  const refused = checked.flatMap((chart) => {
+    if (!("refused" in chart)) return [];
+
+    const config = panelConfigSchema.safeParse(chart.config).data;
+
+    return config === undefined ? [] : [{ config, code: chart.refused }];
+  });
+
   return CHART_CASES.filter((item) => item.questionId === questionId).map(
-    ({ title }) => {
-      const found = checked.find((chart) => chart.title === title);
+    (spec) => {
+      const { title } = spec;
 
-      if (found === undefined) return { title, pass: false, reason: "missing" };
+      if (accepted.some((config) => showsChart(config, spec) !== undefined)) {
+        return { title, pass: true };
+      }
 
-      return "refused" in found
-        ? { title, pass: false, reason: found.refused }
-        : { title, pass: true };
+      const refusal = refused.find(
+        ({ config }) => showsChart(config, spec) !== undefined
+      );
+
+      return { title, pass: false, reason: refusal?.code ?? "missing" };
     }
   );
 }

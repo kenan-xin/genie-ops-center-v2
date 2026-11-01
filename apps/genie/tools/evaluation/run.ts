@@ -50,7 +50,7 @@ import { z } from "zod";
 
 import {
   agentFor,
-  type ChartRows,
+  type AnswerChart,
   question,
 } from "../../testing/invoice-answer-readers.ts";
 import { APP_AGENT_RECORDINGS } from "../../testing/model-replay.ts";
@@ -68,8 +68,6 @@ import { scoreExtraction } from "./score-extraction.ts";
 import { costMeter, liveTransport } from "./transport.ts";
 
 const MODULES = [placeholderModule, invoicesModule];
-
-const chartTitle = z.object({ title: z.string() });
 
 const refusal = z.object({ code: z.string() });
 
@@ -173,7 +171,7 @@ async function evaluateModel(
           const started = performance.now();
           const before = send.mark();
           const errors: unknown[] = [];
-          let checked: (ChartRows | RefusedChart)[] = [];
+          let checked: (AnswerChart | RefusedChart)[] = [];
 
           if (broken === undefined) {
             const reply = await handleAgentChat(
@@ -215,13 +213,11 @@ async function evaluateModel(
 
               checked = await Promise.all(
                 configs.map(async (config) => {
-                  const title = chartTitle.safeParse(config).data?.title ?? "";
-
                   try {
-                    return (await agent.chart({ config })).data;
+                    return await agent.chart({ config });
                   } catch (error) {
                     return {
-                      title,
+                      config,
                       refused:
                         refusal.safeParse(error).data?.code ?? String(error),
                     };
@@ -239,7 +235,7 @@ async function evaluateModel(
               ? scoreAnswer(
                   id,
                   checked.filter(
-                    (chart): chart is ChartRows => !("refused" in chart)
+                    (chart): chart is AnswerChart => !("refused" in chart)
                   )
                 )
               : { pass: false, reason: broken };

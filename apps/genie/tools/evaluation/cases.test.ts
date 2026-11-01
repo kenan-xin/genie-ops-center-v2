@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 
+import { panelConfigSchema } from "@genie/core";
 import {
   DEMO_PACK,
   READING_SYSTEM_PROMPT,
@@ -8,15 +9,51 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import {
-  type ChartRows,
+  type AnswerChart,
+  type ChartSpec,
   QUESTIONS,
   READERS,
 } from "../../testing/invoice-answer-readers.ts";
 import { ANSWER_CASES, CHART_CASES, EXTRACTION_CASES } from "./cases.ts";
 
-/** An empty chart with only the title a reader looks for. */
-function chart(title: string): ChartRows {
-  return { title, rows: [] };
+/** An empty chart of the spec's first type that shows its fields, under an unrelated title. */
+function chart({ types, dataset, columns }: ChartSpec): AnswerChart {
+  const fields = Object.values(columns);
+  const plain = fields.filter((field) => !field.endsWith(")"));
+
+  const aggregates = fields
+    .filter((field) => field.endsWith(")"))
+    .map((field, index) => {
+      const [fn, of] = field.slice(0, -1).split("(");
+
+      return { fn, field: of, as: `value${index}` };
+    });
+
+  const series = {
+    name: "Series",
+    dataset,
+    query:
+      aggregates.length === 0
+        ? { select: plain }
+        : { groupBy: plain.map((field) => ({ field })), aggregates },
+  };
+
+  const [type] = types;
+
+  return {
+    config: panelConfigSchema.parse({
+      type,
+      title: "Any title",
+      series: [
+        type === "table"
+          ? series
+          : type === "kpi"
+            ? { ...series, value: "value0" }
+            : { ...series, x: plain[0], y: "value0" },
+      ],
+    }),
+    data: { rows: [] },
+  };
 }
 
 const entity = z.record(
@@ -42,7 +79,7 @@ function entityValues(text: string): string[] {
 }
 
 describe("the evaluation cases", () => {
-  it("holds the seven live uploads, the nine questions in six sessions and thirteen chart cases", () => {
+  it("holds the seven live uploads, the nine questions in six sessions and fourteen chart cases", () => {
     expect(EXTRACTION_CASES.map((item) => item.id)).toEqual([
       "01",
       "02",
@@ -56,7 +93,7 @@ describe("the evaluation cases", () => {
     expect(ANSWER_CASES.flat().toSorted()).toEqual(
       QUESTIONS.map((item) => item.id).toSorted()
     );
-    expect(CHART_CASES).toHaveLength(13);
+    expect(CHART_CASES).toHaveLength(14);
   });
 
   it.each(CHART_CASES)(
@@ -64,14 +101,14 @@ describe("the evaluation cases", () => {
     ({ questionId, title }) => {
       const reader = READERS.get(questionId);
 
-      const titles = CHART_CASES.filter(
+      const cases = CHART_CASES.filter(
         (item) => item.questionId === questionId
-      ).map((item) => item.title);
+      );
 
       expect(reader).toBeDefined();
-      expect(() => reader?.(titles.map(chart))).not.toThrow();
+      expect(() => reader?.(cases.map(chart))).not.toThrow();
       expect(() =>
-        reader?.(titles.filter((item) => item !== title).map(chart))
+        reader?.(cases.filter((item) => item.title !== title).map(chart))
       ).toThrow(title);
     }
   );

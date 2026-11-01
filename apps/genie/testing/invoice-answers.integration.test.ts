@@ -159,9 +159,7 @@ describe("the invoice answers through the agent", () => {
       const agent = agentFor(asker);
 
       const charts = await Promise.all(
-        (answered.get(id) ?? []).map(
-          async (config) => (await agent.chart({ config })).data
-        )
+        (answered.get(id) ?? []).map((config) => agent.chart({ config }))
       );
 
       const { rows, totalCents } = question(id);
@@ -173,7 +171,9 @@ describe("the invoice answers through the agent", () => {
         totalCents === undefined ? { rows } : { rows, totalCents }
       );
 
-      const records = charts.filter((chart) => chart.recordPaths !== undefined);
+      const records = charts
+        .map((chart) => chart.data)
+        .filter((chart) => chart.recordPaths !== undefined);
 
       expect(records.length).toBeGreaterThan(0);
 

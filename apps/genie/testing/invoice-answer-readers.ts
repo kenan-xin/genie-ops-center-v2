@@ -2,8 +2,11 @@ import { readFileSync } from "node:fs";
 
 import {
   callProcedure,
+  type ChartType,
   createAgentRouter,
+  type DatasetQuery,
   type ModuleRequestContext,
+  type PanelConfig,
 } from "@genie/core";
 import { DEMO_PACK } from "@genie/module-invoices/testing";
 
@@ -49,140 +52,315 @@ export function agentFor(ctx: ModuleRequestContext, requestId: string) {
   return callProcedure(createAgentRouter(), { ...ctx, requestId });
 }
 
-export type CheckedChart = Awaited<
-  ReturnType<ReturnType<typeof agentFor>["chart"]>
->["data"];
+type CheckedChart = Awaited<ReturnType<ReturnType<typeof agentFor>["chart"]>>;
 
-/** The two parts of a checked chart that the readers read. */
-export type ChartRows = Pick<CheckedChart, "title" | "rows">;
+type Row = CheckedChart["data"]["rows"][number];
 
-type Row = CheckedChart["rows"][number];
+/** A chart of an answer that the gate accepted: the model's config and the rows it answered. */
+export type AnswerChart = {
+  readonly config: PanelConfig;
+  readonly data: { readonly rows: readonly Row[] };
+};
 
 export type Answered = {
   readonly rows: unknown;
   readonly totalCents?: unknown;
 };
 
-export function titled(charts: readonly ChartRows[], title: string) {
-  const chart = charts.find((candidate) => candidate.title === title);
+/**
+ * A chart that an answer must hold (`czjw.56`): one of `types`, with a series of `dataset` that
+ * answers every field in `columns`. `columns` maps each name of `expected-answers.json` to its
+ * dataset field, written `fn(field)` for an aggregate. A model names its charts, series and
+ * aggregates as it likes, so `title` only labels the chart case in the report.
+ */
+export type ChartSpec = {
+  readonly title: string;
+  readonly types: readonly ChartType[];
+  readonly dataset: string;
+  readonly columns: Readonly<Record<string, string>>;
+};
 
-  if (chart === undefined) throw new Error(`The answer has no chart ${title}.`);
-
-  return chart;
+/** Each field that a query answers, `field` or `fn(field)`, with the column it answers under. */
+function answeredColumns(query: DatasetQuery): Map<string, string> {
+  return new Map([
+    ...(query.select ?? []).map((field) => [field, field] as const),
+    ...(query.groupBy ?? []).map(({ field }) => [field, field] as const),
+    ...(query.aggregates ?? []).map(
+      ({ fn, field, as }) => [`${fn}(${field ?? ""})`, as] as const
+    ),
+  ]);
 }
 
-function pick(
-  data: { readonly rows: readonly Row[] },
-  keys: readonly string[]
-): Row[] {
-  return data.rows.map((row) =>
-    Object.fromEntries(keys.map((key) => [key, row[key] ?? null]))
-  );
+/**
+ * The row key of each field that a series of the chart answers. A table keeps the query's columns.
+ * A drawn chart answers its x or category under "x" and its value under the series name.
+ */
+function seriesKeys(
+  config: PanelConfig
+): readonly { dataset: string; keys: Map<string, string> }[] {
+  const all: readonly PanelConfig["series"][number][] = config.series;
+
+  return all.map((series) => {
+    const answered = answeredColumns(series.query);
+
+    if (config.type === "table")
+      return { dataset: series.dataset, keys: answered };
+
+    const drawn = new Map(
+      "x" in series
+        ? [
+            [series.x, "x"],
+            [series.y, series.name],
+          ]
+        : "category" in series
+          ? [
+              [series.category, "x"],
+              [series.value, series.name],
+            ]
+          : "value" in series
+            ? [[series.value, series.name]]
+            : []
+    );
+
+    return {
+      dataset: series.dataset,
+      keys: new Map(
+        [...answered].flatMap(([field, column]) => {
+          const key = drawn.get(column);
+
+          return key === undefined ? [] : [[field, key] as const];
+        })
+      ),
+    };
+  });
 }
+
+/** The row key of each field of the spec, when the config shows it; otherwise `undefined`. */
+export function showsChart(
+  config: PanelConfig,
+  spec: ChartSpec
+): Map<string, string> | undefined {
+  if (!spec.types.includes(config.type)) return undefined;
+
+  return seriesKeys(config).find(
+    ({ dataset, keys }) =>
+      dataset === spec.dataset &&
+      Object.values(spec.columns).every((field) => keys.has(field))
+  )?.keys;
+}
+
+/** The rows of the first chart that shows the spec, under the names of `expected-answers.json`. */
+export function read(charts: readonly AnswerChart[], spec: ChartSpec): Row[] {
+  for (const { config, data } of charts) {
+    const keys = showsChart(config, spec);
+
+    if (keys !== undefined) {
+      return data.rows.map((row) =>
+        Object.fromEntries(
+          Object.entries(spec.columns).map(([name, field]) => [
+            name,
+            row[keys.get(field) ?? field] ?? null,
+          ])
+        )
+      );
+    }
+  }
+
+  throw new Error(`The answer has no chart ${spec.title}.`);
+}
+
+const same = (...names: readonly string[]) =>
+  Object.fromEntries(names.map((name) => [name, name]));
+
+const TABLE = ["table"] as const;
+
+const INVOICES = "invoices.invoices";
+
+/** The charts that the nine answers read. */
+export const CHARTS = {
+  overdueInvoices: {
+    title: "Overdue invoices",
+    types: TABLE,
+    dataset: INVOICES,
+    columns: same(
+      "customerName",
+      "invoiceNumber",
+      "outstandingCents",
+      "dueDate",
+      "daysOverdue"
+    ),
+  },
+  overdueTotal: {
+    title: "Overdue total",
+    types: ["kpi"],
+    dataset: INVOICES,
+    columns: { totalCents: "sum(outstandingCents)" },
+  },
+  latePayment: {
+    title: "Late payment by customer",
+    types: TABLE,
+    dataset: "invoices.customers",
+    columns: {
+      customerName: "name",
+      ...same("settledWithDueDateCount", "paidLateCount"),
+    },
+  },
+  overdueBalances: {
+    title: "Overdue balance by customer",
+    types: TABLE,
+    dataset: INVOICES,
+    columns: {
+      customerName: "customerName",
+      overdueCents: "sum(outstandingCents)",
+    },
+  },
+  invoicedByMonth: {
+    title: "Invoiced sales by month",
+    types: ["bar", "line", "area"],
+    dataset: INVOICES,
+    columns: { month: "invoiceDate", invoicedCents: "sum(totalCents)" },
+  },
+  collectedByMonth: {
+    title: "Collections by month",
+    types: ["bar", "line", "area"],
+    dataset: "invoices.payments",
+    columns: { month: "paymentDate", collectedCents: "sum(amountCents)" },
+  },
+  salesByCustomer: {
+    title: "Invoiced sales by customer",
+    types: TABLE,
+    dataset: INVOICES,
+    columns: { customerName: "customerName", invoicedCents: "sum(totalCents)" },
+  },
+  noDueDate: {
+    title: "Invoices with no due date",
+    types: TABLE,
+    dataset: INVOICES,
+    columns: same(
+      "invoiceNumber",
+      "customerName",
+      "totalCents",
+      "outstandingCents"
+    ),
+  },
+  manualDueDates: {
+    title: "Due dates entered by a person",
+    types: TABLE,
+    dataset: INVOICES,
+    columns: same("invoiceNumber", "customerName", "dueDate"),
+  },
+  partialPayments: {
+    title: "Invoices with partial payments",
+    types: TABLE,
+    dataset: INVOICES,
+    columns: same(
+      "invoiceNumber",
+      "customerName",
+      "totalCents",
+      "allocatedCents",
+      "outstandingCents"
+    ),
+  },
+  allocations: {
+    title: "Allocations to those invoices",
+    types: TABLE,
+    dataset: "invoices.allocations",
+    columns: same(
+      "invoiceNumber",
+      "paymentReference",
+      "paymentDate",
+      "amountCents"
+    ),
+  },
+} satisfies Record<string, ChartSpec>;
+
+const totalOf = (charts: readonly AnswerChart[]) =>
+  read(charts, CHARTS.overdueTotal)[0]?.["totalCents"] ?? null;
 
 /** Each answer's checked charts in the shape of its question in `expected-answers.json`. */
-export type Reader = (charts: readonly ChartRows[]) => Answered;
+export type Reader = (charts: readonly AnswerChart[]) => Answered;
 
 export const READERS = new Map<string, Reader>(
   Object.entries({
     "overdue-invoices": (c) => ({
-      rows: pick(titled(c, "Overdue invoices"), [
-        "customerName",
-        "invoiceNumber",
-        "outstandingCents",
-        "dueDate",
-        "daysOverdue",
-      ]),
-      totalCents: titled(c, "Overdue total").rows[0]?.["Overdue"] ?? null,
+      rows: read(c, CHARTS.overdueInvoices),
+      totalCents: totalOf(c),
     }),
     "repeated-late-payers": (c) => ({
-      rows: titled(c, "Late payment by customer").rows.map((row) => ({
-        customerName: row["name"] ?? null,
-        settledWithDueDateCount: row["settledWithDueDateCount"] ?? null,
-        paidLateCount: row["paidLateCount"] ?? null,
-        // The README definition: late on more than half of the settled invoices with a due date.
-        repeatedLatePayer:
-          Number(row["paidLateCount"]) * 2 >
-          Number(row["settledWithDueDateCount"]),
-      })),
-    }),
-    "overdue-balances": (c) => ({
-      rows: pick(titled(c, "Overdue balance by customer"), [
-        "customerName",
-        "overdueCents",
-      ]),
-      totalCents: titled(c, "Overdue total").rows[0]?.["Overdue"] ?? null,
-    }),
-    "monthly-invoiced-and-collected": (c) => ({
-      rows: titled(c, "Invoiced sales and collections by month").rows.map(
-        (row) => ({
-          // Core answers a month bucket as its first day; the file names the month.
-          month: String(row["x"]).slice(0, 7),
-          invoicedCents: row["Invoiced sales"] ?? null,
-          collectedCents: row["Collections"] ?? null,
+      rows: read(c, CHARTS.latePayment).map((row) =>
+        Object.assign(row, {
+          // The README definition: late on more than half of the settled invoices with a due date.
+          repeatedLatePayer:
+            Number(row["paidLateCount"]) * 2 >
+            Number(row["settledWithDueDateCount"]),
         })
       ),
     }),
+    "overdue-balances": (c) => ({
+      rows: read(c, CHARTS.overdueBalances),
+      totalCents: totalOf(c),
+    }),
+    "monthly-invoiced-and-collected": (c) => {
+      // Core answers a month bucket as its first day; the file names the month. A model can draw
+      // both series in one chart or in two.
+      const byMonth = (spec: ChartSpec, key: string) =>
+        new Map(
+          read(c, spec).map((row) => [
+            String(row["month"]).slice(0, 7),
+            row[key] ?? null,
+          ])
+        );
+
+      const invoiced = byMonth(CHARTS.invoicedByMonth, "invoicedCents");
+      const collected = byMonth(CHARTS.collectedByMonth, "collectedCents");
+
+      return {
+        rows: [...new Set([...invoiced.keys(), ...collected.keys()])]
+          .toSorted()
+          .map((month) => ({
+            month,
+            invoicedCents: invoiced.get(month) ?? null,
+            collectedCents: collected.get(month) ?? null,
+          })),
+      };
+    },
     "top-customers-by-sales": (c) => ({
-      rows: pick(titled(c, "Invoiced sales by customer"), [
-        "customerName",
-        "invoicedCents",
-      ]),
+      rows: read(c, CHARTS.salesByCustomer),
     }),
     "top-customers-overdue": (c) => {
       const overdue = new Map(
-        titled(c, "Overdue balance by customer").rows.map((row) => [
+        read(c, CHARTS.overdueBalances).map((row) => [
           row["customerName"],
           row["overdueCents"],
         ])
       );
 
       return {
-        rows: titled(c, "Top three customers by invoiced sales").rows.map(
-          (row) => ({
-            customerName: row["customerName"] ?? null,
-            invoicedCents: row["invoicedCents"] ?? null,
+        rows: read(c, CHARTS.salesByCustomer).map((row) =>
+          Object.assign(row, {
             overdueCents: overdue.get(row["customerName"] ?? null) ?? 0,
           })
         ),
       };
     },
     "invoices-without-due-date": (c) => ({
-      rows: pick(titled(c, "Invoices with no due date"), [
-        "invoiceNumber",
-        "customerName",
-        "totalCents",
-        "outstandingCents",
-      ]),
+      rows: read(c, CHARTS.noDueDate),
     }),
     "manual-due-dates": (c) => ({
-      rows: pick(titled(c, "Due dates entered by a person"), [
-        "invoiceNumber",
-        "customerName",
-        "dueDate",
-      ]),
+      rows: read(c, CHARTS.manualDueDates),
     }),
     "partial-payments": (c) => {
-      const allocations = titled(c, "Allocations to those invoices").rows;
+      const allocations = read(c, CHARTS.allocations);
 
       return {
-        rows: pick(titled(c, "Invoices with partial payments"), [
-          "invoiceNumber",
-          "customerName",
-          "totalCents",
-          "allocatedCents",
-          "outstandingCents",
-        ]).map((row) =>
+        rows: read(c, CHARTS.partialPayments).map((row) =>
           Object.assign(row, {
-            allocations: pick(
-              {
-                rows: allocations.filter(
-                  (allocation) =>
-                    allocation["invoiceNumber"] === row["invoiceNumber"]
-                ),
-              },
-              ["paymentReference", "paymentDate", "amountCents"]
-            ),
+            allocations: allocations
+              .filter(
+                (allocation) =>
+                  allocation["invoiceNumber"] === row["invoiceNumber"]
+              )
+              .map(({ invoiceNumber: _number, ...allocation }) => allocation),
           })
         ),
       };
@@ -191,33 +369,24 @@ export const READERS = new Map<string, Reader>(
 );
 
 /**
- * The chart cases of the evaluation (R-58, plan D1): each chart title that a question's reader
- * asks for. A chart case passes when the answer holds that chart and the R-15 gate accepts it.
+ * The chart cases of the evaluation (R-58, plan D1): each chart that a question's reader reads. A
+ * chart case passes when the answer holds a chart that shows it and the R-15 gate accepts it.
  */
-export const CHART_CASES: readonly {
+export const CHART_CASES: readonly (ChartSpec & {
   readonly questionId: string;
-  readonly title: string;
-}[] = [
-  { questionId: "overdue-invoices", title: "Overdue invoices" },
-  { questionId: "overdue-invoices", title: "Overdue total" },
-  { questionId: "repeated-late-payers", title: "Late payment by customer" },
-  { questionId: "overdue-balances", title: "Overdue balance by customer" },
-  { questionId: "overdue-balances", title: "Overdue total" },
-  {
-    questionId: "monthly-invoiced-and-collected",
-    title: "Invoiced sales and collections by month",
-  },
-  { questionId: "top-customers-by-sales", title: "Invoiced sales by customer" },
-  { questionId: "top-customers-overdue", title: "Overdue balance by customer" },
-  {
-    questionId: "top-customers-overdue",
-    title: "Top three customers by invoiced sales",
-  },
-  {
-    questionId: "invoices-without-due-date",
-    title: "Invoices with no due date",
-  },
-  { questionId: "manual-due-dates", title: "Due dates entered by a person" },
-  { questionId: "partial-payments", title: "Invoices with partial payments" },
-  { questionId: "partial-payments", title: "Allocations to those invoices" },
+})[] = [
+  { questionId: "overdue-invoices", ...CHARTS.overdueInvoices },
+  { questionId: "overdue-invoices", ...CHARTS.overdueTotal },
+  { questionId: "repeated-late-payers", ...CHARTS.latePayment },
+  { questionId: "overdue-balances", ...CHARTS.overdueBalances },
+  { questionId: "overdue-balances", ...CHARTS.overdueTotal },
+  { questionId: "monthly-invoiced-and-collected", ...CHARTS.invoicedByMonth },
+  { questionId: "monthly-invoiced-and-collected", ...CHARTS.collectedByMonth },
+  { questionId: "top-customers-by-sales", ...CHARTS.salesByCustomer },
+  { questionId: "top-customers-overdue", ...CHARTS.overdueBalances },
+  { questionId: "top-customers-overdue", ...CHARTS.salesByCustomer },
+  { questionId: "invoices-without-due-date", ...CHARTS.noDueDate },
+  { questionId: "manual-due-dates", ...CHARTS.manualDueDates },
+  { questionId: "partial-payments", ...CHARTS.partialPayments },
+  { questionId: "partial-payments", ...CHARTS.allocations },
 ];
