@@ -147,6 +147,38 @@ describe("the answer scorer", () => {
     ).toEqual([true, true]);
   });
 
+  it("fails a monthly answer whose chart answers a month twice", () => {
+    const invoiced = monthly(
+      "invoices.invoices",
+      "totalCents",
+      "invoiceDate",
+      "invoicedCents"
+    );
+
+    // A day bucket answers each month on several rows; only the last day matches the file.
+    const days = {
+      config: invoiced.config,
+      data: {
+        rows: invoiced.data.rows.flatMap((row) => [
+          { x: String(row["x"]).replace(/01$/, "02"), Amount: 1 },
+          row,
+        ]),
+      },
+    };
+
+    expect(
+      scoreAnswer("monthly-invoiced-and-collected", [
+        days,
+        monthly(
+          "invoices.payments",
+          "amountCents",
+          "paymentDate",
+          "collectedCents"
+        ),
+      ]).pass
+    ).toBe(false);
+  });
+
   it("fails an answer with one row's cents changed", () => {
     const [table, kpi] = overdueBalances();
 

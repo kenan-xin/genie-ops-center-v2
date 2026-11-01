@@ -303,13 +303,23 @@ export const READERS = new Map<string, Reader>(
     "monthly-invoiced-and-collected": (c) => {
       // Core answers a month bucket as its first day; the file names the month. A model can draw
       // both series in one chart or in two.
-      const byMonth = (spec: ChartSpec, key: string) =>
-        new Map(
-          read(c, spec).map((row) => [
+      const byMonth = (spec: ChartSpec, key: string) => {
+        const rows = read(c, spec);
+
+        const months = new Map(
+          rows.map((row) => [
             String(row["month"]).slice(0, 7),
             row[key] ?? null,
           ])
         );
+
+        // A chart grouped finer than a month would otherwise keep only its last row per month.
+        if (months.size !== rows.length) {
+          throw new Error(`The chart ${spec.title} answers a month twice.`);
+        }
+
+        return months;
+      };
 
       const invoiced = byMonth(CHARTS.invoicedByMonth, "invoicedCents");
       const collected = byMonth(CHARTS.collectedByMonth, "collectedCents");
