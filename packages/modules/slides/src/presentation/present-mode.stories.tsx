@@ -135,6 +135,12 @@ async function assertKeyboard() {
   const dialog = await dialogBox();
 
   await waitFor(() => expect(dialog.getByText("1 / 5")).toBeVisible());
+  // The popup's key handler sees a key only after the open moves focus to the stage.
+  await waitFor(() =>
+    expect(document.activeElement).toBe(
+      document.querySelector("[data-present-stage]")
+    )
+  );
 
   const previous = dialog.getByRole("button", { name: "Previous slide" });
   const next = dialog.getByRole("button", { name: "Next slide" });
