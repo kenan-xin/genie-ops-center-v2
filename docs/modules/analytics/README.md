@@ -32,7 +32,7 @@ Default roles: `Analytics user` (`analytics:use`), `Analytics viewer` (`analytic
 | `version` | Starts at 1 and moves up at each save. |
 | `created_at`, `updated_at` | With time zone. |
 
-Limits: 12 panels per dashboard, each panel 1 to 4 columns wide and 1 to 2 rows high, with an id `p<n>` that is never reused; 20 undo entries; 20 steps per change.
+Limits: 12 panels per dashboard, each panel 1 to 4 columns wide and 1 to 2 rows high, with an id `p<n>` (a new panel takes the highest current number plus one, so removing the last panel frees its number for the next one); 20 undo entries; 20 steps per change.
 
 ## Agent tools and rules
 
