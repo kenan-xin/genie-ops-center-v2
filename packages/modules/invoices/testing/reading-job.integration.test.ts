@@ -184,6 +184,7 @@ const READINGS: readonly (readonly [
       currency: ["SGD", "Currency: SGD"],
       amount: ["8250.00", "TOTAL (SGD) 8,250.00"],
       reference: ["OR-AUG-SEP-BUNDLE", "Payment reference OR-AUG-SEP-BUNDLE"],
+      number: ["OR-AUG-SEP-BUNDLE", "Payment reference OR-AUG-SEP-BUNDLE"],
       method: ["Bank transfer", "Payment method Bank transfer"],
       description: [
         "Payment received for professional services.",
@@ -191,8 +192,8 @@ const READINGS: readonly (readonly [
       ],
     },
     [
-      ["INV-2026-08-04", "INV-2026-08-04"],
-      ["INV-2026-09-04", "INV-2026-09-04"],
+      ["INV-2026-08-04", "Invoice reference INV-2026-08-04 | SGD 4,050.00"],
+      ["INV-2026-09-04", "Invoice reference INV-2026-09-04 | SGD 4,200.00"],
     ],
   ],
   [
