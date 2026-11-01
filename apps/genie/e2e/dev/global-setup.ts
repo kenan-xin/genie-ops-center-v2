@@ -64,6 +64,15 @@ const APP_ROOT = resolve(import.meta.dirname, "../..");
 /** The build directory of this run's `next dev`, relative to `APP_ROOT`; gitignored. */
 const E2E_DIST_DIR = ".next-e2e-dev";
 
+/**
+ * A healthy run prints a handful of `Compiled in` lines; a full-reload loop prints one every
+ * 200 ms or so (xok3.40). More than this many within the window ends the run within a minute,
+ * rather than letting each test time out after 180 seconds.
+ */
+const RELOAD_LOOP_LINES = 50;
+
+const RELOAD_LOOP_WINDOW_MS = 60000;
+
 export const COMPOSE = [
   "compose",
   "-p",
@@ -354,6 +363,50 @@ export async function stopReadingWorker(): Promise<void> {
   readingWorker = undefined;
 }
 
+/**
+ * Counts the server's `Compiled in` lines over the last minute. Past the limit it stops the
+ * worker, the server and the database, then throws outside any promise the runner awaits, so the
+ * error ends the whole run, also once setup has returned and the specs drive the loop.
+ */
+function watchForReloadLoop(): (chunk: Buffer) => void {
+  const compiles: number[] = [];
+  let tripped = false;
+
+  return (chunk) => {
+    const count = String(chunk).split("Compiled in").length - 1;
+
+    if (tripped || count === 0) return;
+
+    const now = Date.now();
+
+    compiles.push(...Array.from({ length: count }, () => now));
+
+    while (
+      compiles[0] !== undefined &&
+      compiles[0] < now - RELOAD_LOOP_WINDOW_MS
+    )
+      compiles.shift();
+
+    if (compiles.length <= RELOAD_LOOP_LINES) return;
+
+    tripped = true;
+
+    const log = resolve(
+      APP_ROOT,
+      E2E_DIST_DIR,
+      "dev/logs/next-development.log"
+    );
+
+    void stopReadingWorker()
+      .then(stopEverything)
+      .finally(() => {
+        throw new Error(
+          `next dev is in a full-reload loop: ${compiles.length} "Compiled in" lines within ${RELOAD_LOOP_WINDOW_MS / 1000} seconds (xok3.40). The worker, the server and the database are stopped. Server log: ${log}`
+        );
+      });
+  };
+}
+
 async function isReady(url: string): Promise<boolean> {
   return fetch(url)
     .then((response) => response.status === 200)
@@ -484,6 +537,7 @@ export default async function globalSetup(): Promise<void> {
 
   child.stdout.on("data", (chunk) => (output += String(chunk)));
   child.stderr.on("data", (chunk) => (output += String(chunk)));
+  child.stdout.on("data", watchForReloadLoop());
   child.unref();
 
   writeFileSync(PID_FILE, String(child.pid), "utf8");
