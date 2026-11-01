@@ -294,8 +294,9 @@ describe("the slides PowerPoint export", () => {
       )
     );
 
+    // A save stores the pair: core's foregroundFor('#0f766e') is white, and primaryPair needs both.
     await query(
-      "update tenant_branding set primary_color = '#0f766e', logo_light_file_id = $1, company_name = 'Acme Export'",
+      "update tenant_branding set primary_color = '#0f766e', primary_foreground = '#ffffff', logo_light_file_id = $1, company_name = 'Acme Export'",
       [logo]
     );
     vi.useFakeTimers({ toFake: ["Date"] });
