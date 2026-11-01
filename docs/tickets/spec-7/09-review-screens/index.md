@@ -17,6 +17,7 @@ Depends on: [S7-08](../08-reading-job-and-inbox/index.md).
 - The full-page review of variant D: the pdf.js viewer with a text layer, origin tags, the highlight for the selected field, the due-date choice, Save as unpaid, type correction, the stacked phone layout. Installs the viewer library after a current-docs check.
 - Payment review: split confirmation, suggestions, overpayment, Possible duplicate, new customer confirmation.
 - Undo after an automatic link, and link correction from the record pages.
+- Added in the plan (D13): Correct the total on the invoice page, with its step that chooses the links to change (R-32). No other ticket held this screen, and S7-06 built only the procedure.
 
 ## Acceptance
 

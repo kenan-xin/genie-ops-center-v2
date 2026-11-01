@@ -25,7 +25,7 @@ Owner decision, 2026-10-27: full scope for the November 2026 festival, with no s
 | [S7-04](04-chart-gate-and-component/index.md) | `czjw.4` | S7-03 | none | Chart write gate and chart component |
 | [S7-05](05-model-connection/index.md) | `czjw.5` | S7-01 | none | Model connection and test model |
 | [S7-06](06-invoice-records-and-datasets/index.md) | `czjw.6` | S7-03 | none | Invoice records, matching and datasets |
-| [S7-07](07-invoice-pages-tenant-and-seed/index.md) | `czjw.7` | S7-02, S7-06 | none | Invoice pages, demo tenant and seed |
+| [S7-07](07-invoice-pages-tenant-and-seed/index.md) | `czjw.7` | S7-02, S7-06 | `czjw.28` (added 2026-11-01) | Invoice pages, demo tenant and seed |
 | [S7-08](08-reading-job-and-inbox/index.md) | `czjw.8` | S7-05, S7-07 | none | Reading job and Documents inbox |
 | [S7-09](09-review-screens/index.md) | `czjw.9` | S7-08 | none | Review screens |
 | [S7-10](10-agent-runtime/index.md) | `czjw.10` | S7-03, S7-04, S7-05 | none | Agent runtime, Ask and bubble |

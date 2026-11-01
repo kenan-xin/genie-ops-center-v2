@@ -16,6 +16,7 @@ Depends on: [S7-04](../04-chart-gate-and-component/index.md) to start, and [S7-1
 - Module `packages/modules/analytics`: the `dashboard` table and config schema, permissions and default roles, owner-only dashboards.
 - The Dashboards list and dashboard page, editing by hand, dashboard filters, the 10-second refresh, Undo, the chart gate on every save.
 - The chat panel and the dashboard tools through the `agent-tools` interface.
+- Added in the build (`7425db2f`), core contract extensions: an agent tool can name a `permission` and `writes: true`, the agent route takes an optional record context, and core's `AgentPanel` embeds a chat beside one record.
 - The Receivables overview starter as a step of the S7-07 seed script, with its test.
 - Add `analytics` to the include lists of `customers/genie-demo/deploy/` and `customers/genie-dev/deploy/` (`modules.txt` and `tenant.yaml`). S7-07 added `invoices` only, because the module did not exist yet.
 

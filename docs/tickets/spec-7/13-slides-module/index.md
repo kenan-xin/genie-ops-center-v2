@@ -17,6 +17,8 @@ Depends on: [S7-04](../04-chart-gate-and-component/index.md) to start, and [S7-1
 - Hash-guarded patch edits, the Slides list and deck editor, frozen figures and Refresh data, the tenant branding theme, present mode.
 - PowerPoint export with native charts through pptxgenjs, saved through `FileStorage`. Installs `pptxgenjs`.
 - The chat panel and the deck tools through the `agent-tools` interface, with one claim per slide.
+- Changed in the plan (D12): the chat creates decks beside the Slides list, and a person edits a deck by hand, so no deck change tool exists. The record context of `AgentPanel` becomes optional.
+- Added in the build, core helpers that both editor modules use: `appCodeOf`, `appIssuesOf` and `chatAvailability` (`b41ad406`), and `primaryPair` for the deck theme (`c9236e20`).
 - Add `slides` to the include lists of `customers/genie-demo/deploy/` and `customers/genie-dev/deploy/` (`modules.txt` and `tenant.yaml`). S7-07 added `invoices` only, because the module did not exist yet.
 
 ## Acceptance

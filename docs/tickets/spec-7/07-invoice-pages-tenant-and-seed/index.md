@@ -16,6 +16,7 @@ Depends on: [S7-02](../02-module-pages-and-browser-client/index.md), [S7-06](../
 - Invoices and Payments list pages and a record page for each, with balance, allocations and their history.
 - The demo tenant from `nx g @genie/generators:tenant-new`, with the three Section 7 modules in its include list, and the modules in the dev composition.
 - The seed script: demo pack history, history PDFs, every Section 7 role for the demo account, reporting date 2026-10-27.
+- Added 2026-11-01, bead `czjw.28`: the Invoices and Payments lists page past the 1,000-row dataset cap through the keyset cursor of the core dataset query (`listInvoices`, `listPayments`).
 
 Out of scope: the Documents inbox and review, the starter dashboard (S7-12).
 
