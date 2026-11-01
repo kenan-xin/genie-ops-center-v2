@@ -17,6 +17,23 @@ export type EvaluationOptions = {
 
 export type Refusal = { readonly refused: string };
 
+/** One argument: bare text and quoted parts with no space between them, as a shell reads it. */
+const ARGUMENT = /(?:[^\s"']+|"[^"]*"|'[^']*')+/g;
+
+/**
+ * The `EVALUATION_ARGS` text as arguments. A double- or single-quoted part keeps its spaces, so an
+ * `--out` path with a space stays one argument. No escapes and no variables.
+ */
+export function splitArgs(text: string): string[] {
+  if (text.replaceAll(ARGUMENT, "").trim() !== "") {
+    throw new Error("EVALUATION_ARGS has an unclosed quote.");
+  }
+
+  return (text.match(ARGUMENT) ?? []).map((argument) =>
+    argument.replaceAll(/"([^"]*)"|'([^']*)'/g, "$1$2")
+  );
+}
+
 /**
  * The runner's options. Recorded is the default and never reads the key. A live run needs
  * `--transport live`, the owner's `MODEL_RECORDING_KEY`, and a shell outside CI.

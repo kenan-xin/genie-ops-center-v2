@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { EVALUATION_MODELS, parseOptions } from "./options.ts";
+import { EVALUATION_MODELS, parseOptions, splitArgs } from "./options.ts";
 
 const KEY_TEXT =
   "Set MODEL_RECORDING_KEY in this shell first: read -rs MODEL_RECORDING_KEY && export MODEL_RECORDING_KEY";
@@ -47,6 +47,20 @@ describe("the evaluation options", () => {
         refused: "--runs must be a whole number from 1 to 10.",
       });
     }
+  });
+
+  it("keeps a quoted path with a space as one argument, and refuses an unclosed quote", () => {
+    expect(
+      parseOptions(splitArgs(`--out "/tmp/my eval" --runs 1`), {})
+    ).toMatchObject({ out: "/tmp/my eval", runs: 1 });
+    expect(splitArgs(`  --out='/tmp/my eval'  --model a/b `)).toEqual([
+      "--out=/tmp/my eval",
+      "--model",
+      "a/b",
+    ]);
+    expect(() => splitArgs(`--out "/tmp/my eval`)).toThrow(
+      "EVALUATION_ARGS has an unclosed quote."
+    );
   });
 
   it("names the three candidate models of the ticket", () => {
