@@ -11,6 +11,9 @@ export { withNewId } from "./pdf-fixtures.ts";
 /** The reading instructions, so the model evaluation can prove they hold no expected value. */
 export { READING_SYSTEM_PROMPT } from "../src/services/reading/model-reading.ts";
 
+/** The reading's own amount parser, so the evaluation scores money as the product reads it. */
+export { centsOf } from "../src/services/reading/quote-check.ts";
+
 export { type LiveReading, readLiveUpload } from "./live-reading.ts";
 
 /** The absolute path of testing/model-recordings: the hand-written readings of the live uploads. */

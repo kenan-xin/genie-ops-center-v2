@@ -54,6 +54,21 @@ describe("the extraction scorer", () => {
     ).toEqual({ pass: false, mismatches: ["amount"] });
   });
 
+  it("fails an amount text that the reading's parser refuses, though Number reads the same cents", () => {
+    const expected = expectedReadingOf("02");
+    const reading = exact(expected);
+
+    expect(
+      scoreExtraction(
+        {
+          ...reading,
+          fields: { ...reading.fields, amount: `${reading.fields.amount}0` },
+        },
+        expected
+      )
+    ).toEqual({ pass: false, mismatches: ["amount"] });
+  });
+
   it("fails a purchase order read as a payment", () => {
     const expected = expectedReadingOf("07");
 

@@ -1,6 +1,6 @@
 import { isDeepStrictEqual } from "node:util";
 
-import { panelConfigSchema } from "@genie/core";
+import { AppError, panelConfigSchema } from "@genie/core";
 
 import {
   type AnswerChart,
@@ -17,6 +17,19 @@ export type RefusedChart = {
   readonly config: unknown;
   readonly refused: string;
 };
+
+/**
+ * The app code of the `AppError` that refused a chart, also when a transport wrapped it as the
+ * cause. Any other error is no refusal, so its message names it, never a database or system code.
+ */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a caught error; this function is its parser
+export function refusalCode(error: unknown): string {
+  for (let cause = error; cause instanceof Error; cause = cause.cause) {
+    if (cause instanceof AppError) return cause.code;
+  }
+
+  return String(error);
+}
 
 /**
  * Scores one answer exactly (R-58): its checked charts, read back by the question's reader, equal

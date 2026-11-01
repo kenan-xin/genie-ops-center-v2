@@ -94,11 +94,60 @@ describe("the evaluation report", () => {
         models: ["a", "b"],
         runs: 1,
         summaries: [],
+        results: [],
         defaults,
         date: "2026-11-01",
       })
     ).toContain(
       "Document model: none, because no model passed an extraction case."
+    );
+  });
+
+  it("leaves the answers' cost and time out of the charts table", () => {
+    const text = renderReport({
+      transport: "recorded",
+      models: ["m"],
+      runs: 1,
+      summaries: summarize([
+        result("m", "charts", "q: c", 1, true, 0.0123, 4567),
+      ]),
+      results: [],
+      defaults: { chat: "m", document: null },
+      date: "2026-11-01",
+    });
+
+    expect(text).toContain("Chart cases of the nine answers");
+    expect(text).not.toContain("$0.0123");
+    expect(text).not.toContain("4.6 s");
+  });
+
+  it("lists every failure reason once, with the runs that gave it", () => {
+    const results = [
+      { ...result("m", "extraction", "02", 1, false), reason: "amount" },
+      { ...result("m", "extraction", "02", 2, true), reason: "" },
+      { ...result("m", "extraction", "02", 3, false), reason: "amount" },
+      { ...result("m", "answers", "q", 1, false), reason: "Error: a\nb" },
+      result("m", "charts", "q: c", 1, false),
+      { ...result("m", "answers", "r", 1, false), reason: "x".repeat(301) },
+    ];
+
+    const text = renderReport({
+      transport: "recorded",
+      models: ["m"],
+      runs: 3,
+      summaries: summarize(results),
+      results,
+      defaults: { chat: null, document: "m" },
+      date: "2026-11-01",
+    });
+
+    expect(text.split("## Failures\n\n")[1]?.trimEnd()).toBe(
+      [
+        "- m, extraction 02, runs 1, 3: amount",
+        "- m, answers q, runs 1: Error: a b",
+        "- m, charts q: c, runs 1: no reason given",
+        `- m, answers r, runs 1: ${"x".repeat(300)}... (cut, full text in results.json)`,
+      ].join("\n")
     );
   });
 
@@ -110,6 +159,7 @@ describe("the evaluation report", () => {
       models: ["m"],
       runs: 1,
       summaries,
+      results: [],
       defaults: { chat: "m", document: "m" },
       date: "2026-11-01",
     });

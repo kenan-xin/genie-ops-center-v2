@@ -1,4 +1,4 @@
-import { toCents } from "@genie/module-invoices/testing";
+import { centsOf } from "@genie/module-invoices/testing";
 
 import type { ExpectedReading } from "./expected.ts";
 
@@ -47,8 +47,8 @@ export type ExtractionScore = {
 };
 
 /**
- * Scores one reading exactly (R-58): text after trim, money in whole cents, invoice numbers as a
- * set. An expected `null` means the document does not state the value, so a kept value fails.
+ * Scores one reading exactly (R-58): text after trim, money in whole cents through the reading's
+ * own parser, invoice numbers as a set. An expected `null` means the document does not state the value, so a kept value fails.
  */
 export function scoreExtraction(
   reading: ExtractedReading | null,
@@ -72,10 +72,7 @@ export function scoreExtraction(
   if (expected.amountCents !== undefined) {
     const amount = reading.fields.amount;
 
-    if (
-      amount === undefined ||
-      toCents(Number(amount)) !== expected.amountCents
-    )
+    if (amount === undefined || centsOf(amount) !== expected.amountCents)
       mismatches.push("amount");
   }
 

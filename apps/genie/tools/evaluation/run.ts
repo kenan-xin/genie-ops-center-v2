@@ -46,7 +46,6 @@ import {
   seedDemoHistory,
 } from "@genie/module-invoices/testing";
 import { placeholderModule } from "@genie/module-placeholder";
-import { z } from "zod";
 
 import {
   agentFor,
@@ -61,6 +60,7 @@ import { type EvaluationOptions, parseOptions } from "./options.ts";
 import { recommendDefaults, renderReport, summarize } from "./report.ts";
 import {
   type RefusedChart,
+  refusalCode,
   scoreAnswer,
   scoreCharts,
 } from "./score-answers.ts";
@@ -68,8 +68,6 @@ import { scoreExtraction } from "./score-extraction.ts";
 import { costMeter, liveTransport } from "./transport.ts";
 
 const MODULES = [placeholderModule, invoicesModule];
-
-const refusal = z.object({ code: z.string() });
 
 async function personWith(
   tenant: TenantContext,
@@ -165,7 +163,11 @@ async function evaluateModel(
 
       for (const session of ANSWER_CASES) {
         const sessionId = randomUUID();
-        let broken: string | undefined;
+
+        // The question that broke the session and its reason; the later questions are not asked.
+        let broken:
+          | { readonly id: string; readonly reason: string }
+          | undefined;
 
         for (const id of session) {
           const started = performance.now();
@@ -193,7 +195,13 @@ async function evaluateModel(
             );
 
             if (!read || errors.length > 0) {
-              broken = String(errors[0] ?? "The agent reply did not read.");
+              broken = {
+                id,
+                reason:
+                  errors.length === 0
+                    ? "The agent reply did not read."
+                    : errors.map(String).join(" | "),
+              };
             } else {
               const { messages } = await readOwnSession(asker, sessionId);
 
@@ -205,7 +213,7 @@ async function evaluateModel(
                 try {
                   return answerChartConfigs(text);
                 } catch (error) {
-                  broken = String(error);
+                  broken = { id, reason: String(error) };
 
                   return [];
                 }
@@ -216,11 +224,7 @@ async function evaluateModel(
                   try {
                     return await agent.chart({ config });
                   } catch (error) {
-                    return {
-                      config,
-                      refused:
-                        refusal.safeParse(error).data?.code ?? String(error),
-                    };
+                    return { config, refused: refusalCode(error) };
                   }
                 })
               );
@@ -238,7 +242,13 @@ async function evaluateModel(
                     (chart): chart is AnswerChart => !("refused" in chart)
                   )
                 )
-              : { pass: false, reason: broken };
+              : {
+                  pass: false,
+                  reason:
+                    broken.id === id
+                      ? broken.reason
+                      : `not asked: question ${broken.id} failed earlier in the session`,
+                };
 
           results.push({
             track: "answers",
@@ -253,7 +263,8 @@ async function evaluateModel(
           for (const chart of broken === undefined
             ? scoreCharts(id, checked)
             : CHART_CASES.filter((item) => item.questionId === id).map(
-                ({ title }) => ({ title, pass: false, reason: broken })
+                // The answer case of this question carries the reason once.
+                ({ title }) => ({ title, pass: false, reason: "no-answer" })
               )) {
             results.push({
               track: "charts",
@@ -335,6 +346,7 @@ export async function runEvaluation(
       models: options.models,
       runs: options.runs,
       summaries,
+      results,
       defaults,
       date: new Date().toISOString().slice(0, 10),
     }),

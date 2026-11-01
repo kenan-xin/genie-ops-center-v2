@@ -1,4 +1,9 @@
-import type { DatasetQuery, PanelConfig } from "@genie/core";
+import {
+  AppError,
+  CORE_ERRORS,
+  type DatasetQuery,
+  type PanelConfig,
+} from "@genie/core";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -6,7 +11,7 @@ import {
   type AnswerChart,
   question,
 } from "../../testing/invoice-answer-readers.ts";
-import { scoreAnswer, scoreCharts } from "./score-answers.ts";
+import { refusalCode, scoreAnswer, scoreCharts } from "./score-answers.ts";
 
 type Row = Record<string, string | number | null>;
 
@@ -249,5 +254,21 @@ describe("the answer scorer", () => {
       { title: "Overdue balance by customer", pass: true },
       { title: "Overdue total", pass: false, reason: "chart-invalid" },
     ]);
+  });
+
+  it("names a refused chart by the app code, and an error that is no refusal by its message", () => {
+    const timeout = Object.assign(new Error("canceling statement"), {
+      code: "57014",
+    });
+
+    expect(
+      [
+        new AppError(CORE_ERRORS["invalid-input"]),
+        new Error("Internal server error", {
+          cause: new AppError(CORE_ERRORS["invalid-input"]),
+        }),
+        timeout,
+      ].map((error) => refusalCode(error))
+    ).toEqual(["invalid-input", "invalid-input", "Error: canceling statement"]);
   });
 });

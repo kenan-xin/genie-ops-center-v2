@@ -156,12 +156,39 @@ const TRACK_TITLES = {
   charts: "Chart cases of the nine answers",
 } satisfies Record<Track, string>;
 
-/** The report as Markdown: transport first, one table per track, the unstable cases, the defaults. */
+/** A reason can hold a whole request body; `results.json` keeps the full text. */
+const REASON_LENGTH = 300;
+
+function shortReason(reason: string | undefined): string {
+  const text = (reason || "no reason given").replaceAll(/\s+/g, " ");
+
+  return text.length <= REASON_LENGTH
+    ? text
+    : `${text.slice(0, REASON_LENGTH)}... (cut, full text in results.json)`;
+}
+
+/** Each failure reason once per model and case, with the runs that gave it, on one line. */
+function failureLines(results: readonly CaseResult[]): string[] {
+  const groups = Map.groupBy(
+    results.filter((item) => !item.pass),
+    (item) =>
+      `${item.model}, ${item.track} ${item.caseId}\n${shortReason(item.reason)}`
+  );
+
+  return [...groups].map(([key, items]) => {
+    const [head, reason] = key.split("\n");
+
+    return `- ${head}, runs ${items.map((item) => item.run).join(", ")}: ${reason}`;
+  });
+}
+
+/** The report as Markdown: transport first, one table per track, the defaults, every failure reason. */
 export function renderReport(input: {
   readonly transport: "recorded" | "live";
   readonly models: readonly string[];
   readonly runs: number;
   readonly summaries: readonly ModelSummary[];
+  readonly results: readonly CaseResult[];
   readonly defaults: Defaults;
   readonly date: string;
 }): string {
@@ -182,16 +209,25 @@ export function renderReport(input: {
 
     if (rows.length === 0) continue;
 
+    // A chart case shares its answer's model call, so its cost and time would repeat the answers'.
+    const timed = track !== "charts";
+
     lines.push(
       `## ${TRACK_TITLES[track]}`,
       "",
-      "| Model | Cases | Pass rate | Unstable cases | Mean cost | Mean time |",
-      "| --- | --- | --- | --- | --- | --- |",
+      `| Model | Cases | Pass rate | Unstable cases |${timed ? " Mean cost | Mean time |" : ""}`,
+      `| --- | --- | --- | --- |${timed ? " --- | --- |" : ""}`,
       ...rows.map(
         (item) =>
-          `| ${item.model} | ${item.cases} | ${percent(item.passRate)} | ${item.unstableCases.length === 0 ? "none" : item.unstableCases.join(", ")} | ${dollars(item.meanCostUsd)} | ${(item.meanMs / 1000).toFixed(1)} s |`
+          `| ${item.model} | ${item.cases} | ${percent(item.passRate)} | ${item.unstableCases.length === 0 ? "none" : item.unstableCases.join(", ")} |${timed ? ` ${dollars(item.meanCostUsd)} | ${(item.meanMs / 1000).toFixed(1)} s |` : ""}`
       ),
-      ""
+      "",
+      ...(timed
+        ? []
+        : [
+            "Each chart case comes from its answer's model call, so its cost and time are in the answers table.",
+            "",
+          ])
     );
   }
 
@@ -206,8 +242,14 @@ export function renderReport(input: {
       : `- Document model: ${input.defaults.document} (the highest pass rate on extraction).`,
     "",
     "A tie goes to the lower mean cost, then the lower mean time.",
+    "",
+    "## Failures",
     ""
   );
+
+  const failures = failureLines(input.results);
+
+  lines.push(...(failures.length === 0 ? ["None."] : failures), "");
 
   return lines.join("\n");
 }
