@@ -1,3 +1,4 @@
+import { InvalidToolInputError, NoSuchToolError } from "ai";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -10,6 +11,7 @@ import type {
 import { registerModuleRuntime } from "../src/lib/module-contract/runtime.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import { agentToolSet, offersWriteTool } from "../src/services/agent/index.ts";
+import { auditRefusedToolCall } from "../src/services/agent/tools.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import {
@@ -98,6 +100,79 @@ describe("the agent's module tools against a real database", () => {
       });
     } finally {
       await tenant.db.$client.end();
+      await deployment.stop();
+    }
+  });
+
+  it("writes one refused audit row for each tool call the AI SDK refuses before it runs, and repairs none", async () => {
+    const deployment = await startDisposableDeployment();
+    const tenant = deployment.context;
+
+    try {
+      const ctx: ModuleRequestContext = {
+        tenant,
+        caller: principalFor({
+          tenant,
+          modules: [],
+          userId: (await insertPersonWith(tenant, ["core:ask:use"])).userId,
+          authenticated: true,
+        }),
+      };
+
+      const refuse = auditRefusedToolCall(ctx, { id: "session-1" });
+
+      const invalid = '{"dataset":7}';
+
+      await expect(
+        refuse({
+          toolCall: { toolName: "query-dataset", input: invalid },
+          error: new InvalidToolInputError({
+            toolName: "query-dataset",
+            toolInput: invalid,
+            cause: new Error("dataset: expected a string"),
+          }),
+        })
+      ).resolves.toBeNull();
+
+      await expect(
+        refuse({
+          toolCall: { toolName: "delete-everything", input: "{}" },
+          error: new NoSuchToolError({
+            toolName: "delete-everything",
+            availableTools: ["list-datasets"],
+          }),
+        })
+      ).resolves.toBeNull();
+
+      const { rows } = await tenant.db.$client.query(
+        "select actor_user_id, metadata from audit_event where action = 'core:agent_tool_called' order by occurred_at, id"
+      );
+
+      expect(rows).toEqual([
+        {
+          actor_user_id: ctx.caller.userId,
+          metadata: {
+            sessionId: "session-1",
+            tool: "query-dataset",
+            dataset: null,
+            query: invalid,
+            rowCount: 0,
+            outcome: "invalid-input",
+          },
+        },
+        {
+          actor_user_id: ctx.caller.userId,
+          metadata: {
+            sessionId: "session-1",
+            tool: "delete-everything",
+            dataset: null,
+            query: "{}",
+            rowCount: 0,
+            outcome: "unknown-tool",
+          },
+        },
+      ]);
+    } finally {
       await deployment.stop();
     }
   });

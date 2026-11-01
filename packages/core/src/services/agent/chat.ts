@@ -29,7 +29,11 @@ import {
   findOwnSession,
   readOwnSession,
 } from "./store.ts";
-import { agentToolSet, offersWriteTool } from "./tools.ts";
+import {
+  agentToolSet,
+  auditRefusedToolCall,
+  offersWriteTool,
+} from "./tools.ts";
 
 /** The route's limits (P8): one bounded turn per request, never retried. */
 export const AGENT_LIMITS = {
@@ -189,6 +193,8 @@ export async function handleAgentChat(
       ignoreIncompleteToolCalls: true,
     }),
     tools,
+    // A call the SDK refuses before `execute` leaves one refused audit row (czjw.31).
+    repairToolCall: auditRefusedToolCall(ctx, { id: sessionId }),
     stopWhen: isStepCount(AGENT_LIMITS.steps),
     maxRetries: 0,
     // A client disconnect stops the model call too; `onEnd` still stores what streamed.

@@ -1,4 +1,9 @@
-import { tool, type ToolSet } from "ai";
+import {
+  type InvalidToolInputError,
+  NoSuchToolError,
+  tool,
+  type ToolSet,
+} from "ai";
 import { z } from "zod";
 
 import {
@@ -117,6 +122,71 @@ function refusalText(error: AppError): string {
 }
 
 /**
+ * The one audit row of an agent tool call (R-47, DEC-29): the input and the row count, never the
+ * returned values. A failed write keeps its database text from the model, like any other failure.
+ */
+async function writeToolAudit(
+  ctx: ModuleRequestContext,
+  session: { readonly id: string },
+  call: {
+    readonly tool: string;
+    readonly query: AuditMetadataValue;
+    readonly outcome: string;
+    readonly rowCount: number;
+    readonly dataset: string | null;
+  }
+): Promise<void> {
+  await insertAuditRow(ctx.tenant.db, {
+    actorUserId: ctx.caller.userId,
+    action: AGENT_TOOL_AUDIT_ACTION,
+    targetType: call.dataset === null ? null : "dataset",
+    targetId: call.dataset,
+    summary: `Agent tool ${call.tool}${call.dataset === null ? "" : ` on ${call.dataset}`}`,
+    metadata: {
+      sessionId: session.id,
+      tool: call.tool,
+      dataset: call.dataset,
+      query: call.query,
+      rowCount: call.rowCount,
+      outcome: call.outcome,
+    },
+  }).catch((cause: unknown) => {
+    throw new Error(COULD_NOT_RUN, { cause });
+  });
+}
+
+/**
+ * The `repairToolCall` hook of the agent route (`czjw.31`): the AI SDK calls it once for each tool
+ * call it refuses before `execute` (an unknown tool, or input its schema refuses). It writes one
+ * refused audit row with the raw input text and repairs nothing, so the model still gets the
+ * SDK's tool error.
+ */
+export function auditRefusedToolCall(
+  ctx: ModuleRequestContext,
+  session: { readonly id: string }
+) {
+  return async ({
+    toolCall,
+    error,
+  }: {
+    readonly toolCall: { readonly toolName: string; readonly input: string };
+    readonly error: NoSuchToolError | InvalidToolInputError;
+  }): Promise<null> => {
+    await writeToolAudit(ctx, session, {
+      tool: toolCall.toolName,
+      query: toolCall.input,
+      outcome: NoSuchToolError.isInstance(error)
+        ? "unknown-tool"
+        : "invalid-input",
+      rowCount: 0,
+      dataset: null,
+    });
+
+    return null;
+  };
+}
+
+/**
  * One tool as the model gets it. `execute` runs the tool as `ctx.caller` and writes one audit row
  * per call with the input and the row count, never the returned values (R-47, DEC-29).
  */
@@ -135,28 +205,17 @@ function audited(
       const query = input as AuditMetadataValue;
       const named = core ? datasetIn(query) : null;
 
-      const record = async (
+      const record = (
         outcome: string,
         rowCount: number,
         dataset: string | null
       ) =>
-        // A failed write keeps its database text from the model, like any other failure.
-        insertAuditRow(ctx.tenant.db, {
-          actorUserId: ctx.caller.userId,
-          action: AGENT_TOOL_AUDIT_ACTION,
-          targetType: dataset === null ? null : "dataset",
-          targetId: dataset,
-          summary: `Agent tool ${agentTool.name}${dataset === null ? "" : ` on ${dataset}`}`,
-          metadata: {
-            sessionId: session.id,
-            tool: agentTool.name,
-            dataset,
-            query,
-            rowCount,
-            outcome,
-          },
-        }).catch((cause: unknown) => {
-          throw new Error(COULD_NOT_RUN, { cause });
+        writeToolAudit(ctx, session, {
+          tool: agentTool.name,
+          query,
+          outcome,
+          rowCount,
+          dataset,
         });
 
       let result: Awaited<ReturnType<AnyAgentTool["run"]>>;

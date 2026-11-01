@@ -624,9 +624,10 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/agent-tools.integration.test.ts",
     reason:
-      "Spec 7 R-43 and R-46: a module tool that names a permission is offered only to a holder, and only a person offered a write tool gets the write rule",
+      "Spec 7 R-43, R-46 and R-47: a module tool that names a permission is offered only to a holder, only a person offered a write tool gets the write rule, and a tool call refused before it runs leaves one audit row",
     cases: [
       "the agent's module tools against a real database offers a keyed tool only to a holder, an unkeyed tool to everyone, and says when a write tool is offered",
+      "the agent's module tools against a real database writes one refused audit row for each tool call the AI SDK refuses before it runs, and repairs none",
     ],
   },
 ];
