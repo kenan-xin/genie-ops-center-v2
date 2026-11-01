@@ -4,11 +4,15 @@ import { z } from "zod";
 
 import {
   bulletsElement,
+  CHART_POINTS,
+  DATA_LIMIT_MESSAGES,
   DECK_SLIDE_LIMIT,
   imageElement,
   refineSlideRules,
   SLIDE_ELEMENT_LIMIT,
   slideId,
+  TABLE_COLUMNS,
+  TABLE_ROWS,
   textElement,
   titleElement,
 } from "./contract.ts";
@@ -39,12 +43,6 @@ export type UndoEntry = {
   readonly content: DeckContent;
   readonly frozenOn: string;
 };
-
-const TABLE_ROWS = 12;
-
-const TABLE_COLUMNS = 5;
-
-const CHART_POINTS = 60;
 
 const CHART_ELEMENT_TYPES: ReadonlySet<string> = new Set([
   "bar",
@@ -104,7 +102,7 @@ const frozenElement = <K extends keyof typeof TAKES>(kind: K) =>
         ctx.addIssue({
           code: "custom",
           path: ["data"],
-          message: `A slide table shows at most ${TABLE_ROWS} rows and ${TABLE_COLUMNS} columns. Limit or group the query.`,
+          message: DATA_LIMIT_MESSAGES.table,
         });
       }
 
@@ -112,7 +110,7 @@ const frozenElement = <K extends keyof typeof TAKES>(kind: K) =>
         ctx.addIssue({
           code: "custom",
           path: ["data"],
-          message: `A slide chart shows at most ${CHART_POINTS} points. Group the query by month or limit it.`,
+          message: DATA_LIMIT_MESSAGES.chart,
         });
       }
     });

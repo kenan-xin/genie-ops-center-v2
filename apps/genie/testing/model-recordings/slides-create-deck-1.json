@@ -323,7 +323,7 @@
           "type": "function",
           "function": {
             "name": "slides-create-deck",
-            "description": "Creates a deck for this person from a title and its slides. Each slide starts with a title element that states its finding, then at most one text or bullet list, and at most two figures (KPI), charts (bar, line, area or donut) or tables, each with a chart config. A slide holds at most one table, beside one text or one other figure, chart or image, not both. Every chart passes the chart check first, and a refused chart saves nothing. The figures are frozen as of the reporting date. The person can remove the deck with Delete in the Slides list.",
+            "description": "Creates a deck for this person from a title and its slides. Each slide starts with a title element that states its finding, then at most one text or bullet list, and at most two figures (KPI), charts (bar, line, area or donut) or tables, each with a chart config. A slide holds at most one table, beside one text or one other figure, chart or image, not both. A slide table shows at most 12 rows and 5 columns. Limit or group the query. A slide chart shows at most 60 points. Group the query by month or limit it. Every chart passes the chart check first, and a refused chart saves nothing. The figures are frozen as of the reporting date. The person can remove the deck with Delete in the Slides list.",
             "parameters": {
               "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",
@@ -461,7 +461,8 @@
                       }
                     },
                     "required": ["elements"],
-                    "additionalProperties": false
+                    "additionalProperties": false,
+                    "description": "A slide starts with its title, the one claim of the slide. A slide has one title. A slide holds at most one text or bullet list. A slide holds at most two figures, charts, tables or images. A table shares its slide with one text or one other figure, chart or image, not both. A slide table shows at most 12 rows and 5 columns. Limit or group the query. A slide chart shows at most 60 points. Group the query by month or limit it."
                   }
                 }
               },
@@ -613,7 +614,7 @@
           "cost_details": {
             "upstream_inference_cost": 0.0001904,
             "upstream_inference_prompt_cost": 0.0001154,
-            "upstream_inference_completions_cost": 7.5e-5
+            "upstream_inference_completions_cost": 0.000075
           },
           "completion_tokens_details": {
             "reasoning_tokens": 0,

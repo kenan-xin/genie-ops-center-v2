@@ -2,7 +2,14 @@ import { type AgentInstructions, defineAgentTool } from "@genie/core/contracts";
 import { z } from "zod";
 
 import type { StoredElement } from "./content.ts";
-import { DECK_SLIDE_LIMIT, deckId, deckTitle, slideInput } from "./contract.ts";
+import {
+  DATA_LIMIT_MESSAGES,
+  DECK_SLIDE_LIMIT,
+  deckId,
+  deckTitle,
+  SLIDE_RULE_MESSAGES,
+  slideInput,
+} from "./contract.ts";
 import { assertCanRead, assertCanWrite } from "./services/decks/access.ts";
 import {
   createDeck,
@@ -71,14 +78,26 @@ const readDeckTool = defineAgentTool({
   },
 });
 
+/*
+ * The server's own refusal sentences, so the model reads each rule before its first try (czjw.58).
+ * A count per element kind and a data size are no draft-07 keyword, so they ride as a description.
+ * Only here: on `slideInput` itself it would change the OpenAPI document of `changeDeck`.
+ */
+const slideRules = [
+  ...Object.values(SLIDE_RULE_MESSAGES),
+  ...Object.values(DATA_LIMIT_MESSAGES),
+].join(" ");
+
 /** Goes through the store, so the gate, the owner, the frozen date and the audit run as for a hand create. */
 const createDeckTool = defineAgentTool({
   name: "slides-create-deck",
-  description:
-    "Creates a deck for this person from a title and its slides. Each slide starts with a title element that states its finding, then at most one text or bullet list, and at most two figures (KPI), charts (bar, line, area or donut) or tables, each with a chart config. A slide holds at most one table, beside one text or one other figure, chart or image, not both. Every chart passes the chart check first, and a refused chart saves nothing. The figures are frozen as of the reporting date. The person can remove the deck with Delete in the Slides list.",
+  description: `Creates a deck for this person from a title and its slides. Each slide starts with a title element that states its finding, then at most one text or bullet list, and at most two figures (KPI), charts (bar, line, area or donut) or tables, each with a chart config. A slide holds at most one table, beside one text or one other figure, chart or image, not both. ${DATA_LIMIT_MESSAGES.table} ${DATA_LIMIT_MESSAGES.chart} Every chart passes the chart check first, and a refused chart saves nothing. The figures are frozen as of the reporting date. The person can remove the deck with Delete in the Slides list.`,
   input: z.strictObject({
     title: deckTitle,
-    slides: z.array(slideInput).min(1).max(DECK_SLIDE_LIMIT),
+    slides: z
+      .array(slideInput.describe(slideRules))
+      .min(1)
+      .max(DECK_SLIDE_LIMIT),
   }),
   permission: "slides:write",
   writes: true,

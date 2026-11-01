@@ -39,7 +39,7 @@ import {
 export const AGENT_LIMITS = {
   requestBytes: 64 * 1024,
   messageCharacters: 4000,
-  steps: 6,
+  steps: 10,
   turnMs: 180_000,
 } as const;
 

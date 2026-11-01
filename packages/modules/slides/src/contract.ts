@@ -61,7 +61,19 @@ export const elementInput = z.discriminatedUnion("kind", [
 
 export type ElementKind = z.infer<typeof elementInput>["kind"];
 
-const SLIDE_RULE_MESSAGES = {
+export const TABLE_ROWS = 12;
+
+export const TABLE_COLUMNS = 5;
+
+export const CHART_POINTS = 60;
+
+/** The refusals of a frozen element's data size, which the server checks after the chart gate. */
+export const DATA_LIMIT_MESSAGES = {
+  table: `A slide table shows at most ${TABLE_ROWS} rows and ${TABLE_COLUMNS} columns. Limit or group the query.`,
+  chart: `A slide chart shows at most ${CHART_POINTS} points. Group the query by month or limit it.`,
+};
+
+export const SLIDE_RULE_MESSAGES = {
   firstNotTitle: "A slide starts with its title, the one claim of the slide.",
   title: "A slide has one title.",
   body: "A slide holds at most one text or bullet list.",
