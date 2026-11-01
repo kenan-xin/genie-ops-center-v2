@@ -1,7 +1,9 @@
 "use client";
 
 import { PageHeader, PageLink } from "@genie/core/features/shell";
+import { useModuleClient } from "@genie/core/rpc/client";
 import {
+  Button,
   type ChartColumn,
   DataTable,
   type DataTableColumn,
@@ -9,7 +11,9 @@ import {
   formatChartValue,
 } from "@genie/ui";
 
+import { invoicesContract } from "../contract.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
+import { useListPages } from "./use-list-pages.ts";
 import type { InvoiceListRow, InvoiceListView } from "./views.ts";
 
 const AMOUNT: ChartColumn = {
@@ -52,6 +56,13 @@ export type InvoiceListProps = {
 /** The Invoices list: a table from 768 px, the same rows as cards below it. */
 export function InvoiceList(props: InvoiceListProps) {
   const { view } = props;
+  const invoices = useModuleClient(invoicesContract);
+
+  const list = useListPages({
+    key: ["invoices", "invoice-list", view.asOf],
+    first: view,
+    read: (after) => invoices.listInvoices({ after }),
+  });
 
   const columns: readonly DataTableColumn<InvoiceListRow>[] = [
     {
@@ -92,7 +103,7 @@ export function InvoiceList(props: InvoiceListProps) {
         <>
           <DataTable
             label="Invoices"
-            rows={view.rows}
+            rows={list.rows}
             rowKey={(row) => row.id}
             rowLabel={(row) => row.invoiceNumber}
             columns={columns}
@@ -114,8 +125,22 @@ export function InvoiceList(props: InvoiceListProps) {
               ],
             }}
           />
-          {view.truncated ? (
-            <p>Showing the first {view.rows.length} invoices.</p>
+          {list.more ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p>Showing the first {list.rows.length} invoices.</p>
+              <Button
+                variant="secondary"
+                disabled={list.loading}
+                onClick={list.showMore}
+              >
+                {list.loading ? "Loading more…" : "Show more"}
+              </Button>
+            </div>
+          ) : null}
+          {list.failed ? (
+            <p role="alert">
+              More invoices could not be read. Try Show more again.
+            </p>
           ) : null}
         </>
       )}

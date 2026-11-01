@@ -1,11 +1,79 @@
+import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect } from "storybook/test";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+import { expect, fn, userEvent } from "storybook/test";
 
 import {
   defaultInvoiceList,
   twoCurrencyInvoiceList,
 } from "./__fixtures__/invoices.ts";
 import { InvoiceList } from "./invoice-list.tsx";
+import type { InvoiceListView } from "./views.ts";
+
+const listInvoices = fn();
+
+const desktop = { viewport: { value: "desktop", isRotated: false } };
+
+const phone = { viewport: { value: "phone390", isRotated: false } };
+
+/** A fresh query cache per story, and the list procedure as a mock. */
+function withQuery(Story: () => ReactNode) {
+  const [client] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: false, gcTime: 0 } },
+      })
+  );
+
+  return (
+    <QueryClientProvider client={client}>
+      <ModuleClientProvider client={{ invoices: { listInvoices } }}>
+        <Story />
+      </ModuleClientProvider>
+    </QueryClientProvider>
+  );
+}
+
+const CURSOR = { values: ["2026-09-01", "INV-2026-09-01", "invoice-4"] };
+
+/** A first page that was cut, and the one row the next page answers. */
+const cut: InvoiceListView = {
+  ...defaultInvoiceList,
+  truncated: true,
+  next: CURSOR,
+};
+
+const [firstRow] = defaultInvoiceList.rows;
+
+const NEXT_PAGE: InvoiceListView = {
+  asOf: "2026-10-27",
+  rows:
+    firstRow === undefined
+      ? []
+      : [{ ...firstRow, id: "invoice-5", invoiceNumber: "INV-2026-08-30" }],
+  truncated: false,
+  next: null,
+};
+
+async function showsMore(
+  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"]
+) {
+  listInvoices.mockReset();
+  listInvoices.mockResolvedValue(NEXT_PAGE);
+
+  await expect(canvas.getByText("Showing the first 4 invoices.")).toBeVisible();
+
+  await userEvent.click(canvas.getByRole("button", { name: "Show more" }));
+
+  // The role query skips the copy that the other viewport hides (table or cards).
+  await expect(
+    await canvas.findByRole("link", { name: "INV-2026-08-30" })
+  ).toBeVisible();
+  await expect(listInvoices).toHaveBeenCalledWith({ after: CURSOR });
+  await expect(canvas.queryByRole("button", { name: "Show more" })).toBeNull();
+  await expect(canvas.queryByText(/Showing the first/)).toBeNull();
+}
 
 const meta = {
   title: "Modules/Invoices/Invoices list",
@@ -21,14 +89,21 @@ const meta = {
     a11y: { test: "error" },
   },
   args: { view: defaultInvoiceList },
+  decorators: [withQuery],
 } satisfies Meta<typeof InvoiceList>;
 
 export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// Documentation only: the e2e reads the real page.
-export const Default: Story = {};
+export const Default: Story = {
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.queryByRole("button", { name: "Show more" })
+    ).toBeNull();
+    await expect(canvas.queryByText(/Showing the first/)).toBeNull();
+  },
+};
 
 export const TwoCurrencies: Story = {
   name: "Two currencies",
@@ -40,14 +115,18 @@ export const TwoCurrencies: Story = {
   },
 };
 
-export const RowCap: Story = {
-  name: "Row cap",
-  args: { view: { ...defaultInvoiceList, truncated: true } },
-  play: async ({ canvas }) => {
-    await expect(
-      canvas.getByText("Showing the first 4 invoices.")
-    ).toBeVisible();
-  },
+export const ShowMore: Story = {
+  name: "Show more",
+  args: { view: cut },
+  globals: desktop,
+  play: async ({ canvas }) => showsMore(canvas),
+};
+
+export const ShowMoreOnPhone: Story = {
+  name: "Show more on a phone",
+  args: { view: cut },
+  globals: phone,
+  play: async ({ canvas }) => showsMore(canvas),
 };
 
 export const Empty: Story = {
