@@ -1,6 +1,10 @@
 node_modules
 **/node_modules
 **/.next
+# The dev e2e server's own build directory (genie-ops-center-v2-xok3.40). The
+# gate runs test:e2e:dev between build-image and the image-freshness guard, so
+# its writes changed the context hash and failed the guard.
+**/.next-e2e-dev
 **/storybook-static
 **/dist
 **/coverage
