@@ -27,7 +27,7 @@ Default roles: `Slides user` (`slides:use`), `Slides viewer` (`slides:use`, `sli
 | `id` | uuid primary key. |
 | `owner_user_id` | The owner's `user.id`, by value with no foreign key (data-shape module rule 2). |
 | `title` | 1 to 80 characters after trim. |
-| `content` | The zod-checked content: the slides in display order, each an id `s<n>` that is never reused and its typed elements. A figure, chart or table holds its chart config and the data frozen when it was read. |
+| `content` | The zod-checked content: the slides in display order, each an id `s<n>` (a new slide takes the highest current number plus one, so removing the last slide frees its number for the next one) and its typed elements. A figure, chart or table holds its chart config and the data frozen when it was read. |
 | `content_hash` | The hex sha256 of `{ title, content }` as jsonb text, computed by Postgres when the row is written. An edit sends the hash it read and is refused when the stored hash differs. |
 | `frozen_on` | The reporting date when the figures were read. Only Refresh data moves it. |
 | `undo` | The last 10 saves, newest first, each `{ title, content, frozenOn }`. |

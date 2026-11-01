@@ -15,7 +15,7 @@ export const DECK_CHANGE_LIMIT = 20;
 
 export const deckId = z.uuid();
 
-/** `s<n>`: the highest number plus one, never reused (D5). */
+/** `s<n>`: a new slide takes the highest current number plus one, so a removed last id comes back (D5). */
 export const slideId = z.string().regex(/^s[1-9][0-9]{0,2}$/);
 
 export const deckTitle = z.string().trim().min(1).max(80);
