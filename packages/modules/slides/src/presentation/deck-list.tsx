@@ -16,16 +16,101 @@ import {
   DialogTitle,
   EmptyState,
   Field,
+  FieldDescription,
+  FieldError,
   FieldLabel,
   InfoNote,
   Input,
 } from "@genie/ui";
+import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useId, useState } from "react";
+import { z } from "zod";
 
-import { type DeckSummary, slidesContract } from "../contract.ts";
+import { deckTitle, type DeckSummary, slidesContract } from "../contract.ts";
+import { describedBy, issueOf } from "./slide-editor.tsx";
 import { decksQueryKey } from "./use-deck.ts";
 import type { DeckListView } from "./views.ts";
+
+const newDeckSchema = z.object({ title: deckTitle });
+
+/** The New deck dialog's form, with the contract's title schema (CLAUDE.md, Forms). */
+function NewDeckForm(props: {
+  readonly saving: boolean;
+  readonly failure: string | null;
+  readonly onClose: () => void;
+  readonly onSubmit: (title: string) => void;
+}) {
+  const titleId = useId();
+  const helpId = useId();
+  const errorId = useId();
+  const [attempted, setAttempted] = useState(false);
+
+  const form = useForm({
+    defaultValues: { title: "" },
+    validators: {
+      onMount: newDeckSchema,
+      onChange: newDeckSchema,
+      onSubmit: newDeckSchema,
+    },
+    onSubmitInvalid: () => setAttempted(true),
+    // The validator does not hand back the trimmed value, so the title is trimmed here.
+    onSubmit: ({ value }) => props.onSubmit(value.title.trim()),
+  });
+
+  return (
+    <form
+      className="grid gap-4"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void form.handleSubmit();
+      }}
+    >
+      <form.Field name="title">
+        {(field) => {
+          const issue = issueOf(field.state.meta.errors);
+
+          const show =
+            issue !== undefined && (attempted || field.state.meta.isTouched);
+
+          return (
+            <Field>
+              <FieldLabel htmlFor={titleId}>Title</FieldLabel>
+              <Input
+                id={titleId}
+                value={field.state.value}
+                onValueChange={field.handleChange}
+                onBlur={field.handleBlur}
+                aria-invalid={show ? true : undefined}
+                aria-describedby={describedBy(
+                  helpId,
+                  show ? errorId : undefined
+                )}
+              />
+              <FieldDescription id={helpId}>
+                Up to 80 characters.
+              </FieldDescription>
+              {show ? <FieldError id={errorId}>{issue}</FieldError> : null}
+            </Field>
+          );
+        }}
+      </form.Field>
+      {props.failure === null ? null : (
+        <p role="alert" className="text-sm text-destructive">
+          {props.failure}
+        </p>
+      )}
+      <DialogFooter>
+        <Button type="button" variant="secondary" onClick={props.onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" loading={props.saving}>
+          Create
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+}
 
 const slideText = (count: number) =>
   `${count} ${count === 1 ? "slide" : "slides"}`;
@@ -44,9 +129,7 @@ export function DeckList(props: DeckListProps) {
   const { view } = props;
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
-  const titleId = useId();
   const [creating, setCreating] = useState(false);
-  const [title, setTitle] = useState("");
 
   const [confirm, setConfirm] = useState<{ id: string; title: string } | null>(
     null
@@ -59,10 +142,9 @@ export function DeckList(props: DeckListProps) {
   });
 
   const create = useMutation({
-    mutationFn: (deckTitle: string) => slides.createDeck({ title: deckTitle }),
+    mutationFn: (title: string) => slides.createDeck({ title }),
     onSuccess: () => {
       setCreating(false);
-      setTitle("");
       void queryClient.invalidateQueries({ queryKey: decksQueryKey() });
     },
   });
@@ -107,7 +189,6 @@ export function DeckList(props: DeckListProps) {
             <Button
               onClick={() => {
                 create.reset();
-                setTitle("");
                 setCreating(true);
               }}
             >
@@ -193,47 +274,12 @@ export function DeckList(props: DeckListProps) {
           <DialogHeader>
             <DialogTitle>New deck</DialogTitle>
           </DialogHeader>
-          <form
-            className="grid gap-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-
-              const trimmed = title.trim();
-
-              if (trimmed !== "") create.mutate(trimmed);
-            }}
-          >
-            <Field>
-              <FieldLabel htmlFor={titleId}>Title</FieldLabel>
-              <Input
-                id={titleId}
-                value={title}
-                maxLength={80}
-                onValueChange={setTitle}
-              />
-            </Field>
-            {create.error === null ? null : (
-              <p role="alert" className="text-sm text-destructive">
-                {create.error.message}
-              </p>
-            )}
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setCreating(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={title.trim() === ""}
-                loading={create.isPending}
-              >
-                Create
-              </Button>
-            </DialogFooter>
-          </form>
+          <NewDeckForm
+            saving={create.isPending}
+            failure={create.error?.message ?? null}
+            onClose={() => setCreating(false)}
+            onSubmit={(title) => create.mutate(title)}
+          />
         </DialogContent>
       </Dialog>
 

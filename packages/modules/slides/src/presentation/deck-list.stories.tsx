@@ -289,7 +289,24 @@ const newDeckPlay: Story["play"] = async ({ canvas }) => {
   await waitFor(() =>
     expect(dialog.getByRole("textbox", { name: "Title" })).toBeVisible()
   );
-  await expect(dialog.getByRole("button", { name: "Create" })).toBeDisabled();
+
+  const title = dialog.getByRole("textbox", { name: "Title" });
+
+  // The form checks the contract's title schema: a blank title names its error, helper first.
+  await userEvent.click(dialog.getByRole("button", { name: "Create" }));
+  await waitFor(() =>
+    expect(title).toHaveAccessibleDescription(
+      "Up to 80 characters. Give the deck a title."
+    )
+  );
+  await expect(title).toHaveAttribute("aria-invalid", "true");
+  await expect(createDeck).not.toHaveBeenCalled();
+
+  await userEvent.type(title, "  Quarter review  ");
+  await userEvent.click(dialog.getByRole("button", { name: "Create" }));
+  await waitFor(() =>
+    expect(createDeck).toHaveBeenCalledWith({ title: "Quarter review" })
+  );
 };
 
 export const NewDeck: Story = {

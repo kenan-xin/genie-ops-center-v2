@@ -18,7 +18,11 @@ export const deckId = z.uuid();
 /** `s<n>`: a new slide takes the highest current number plus one, so a removed last id comes back (D5). */
 export const slideId = z.string().regex(/^s[1-9][0-9]{0,2}$/);
 
-export const deckTitle = z.string().trim().min(1).max(80);
+export const deckTitle = z
+  .string()
+  .trim()
+  .min(1, "Give the deck a title.")
+  .max(80, "A deck title holds at most 80 characters.");
 
 /** The hex sha256 the database computes over the title and content (D2). */
 export const contentHash = z.string().regex(/^[0-9a-f]{64}$/);
