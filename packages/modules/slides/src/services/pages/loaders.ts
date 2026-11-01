@@ -3,7 +3,7 @@ import { omit } from "es-toolkit";
 
 import type { DeckListView, DeckPageView } from "../../presentation/views.ts";
 import { assertCanRead } from "../decks/access.ts";
-import { deckViewFor } from "../decks/show.ts";
+import { shownDeck } from "../decks/show.ts";
 import { listOwnDecks, readOwnDeck } from "../decks/store.ts";
 import { deckTheme } from "../decks/theme.ts";
 
@@ -25,8 +25,7 @@ export async function loadDeckList(
 
 /**
  * One deck page. Another person's deck id throws `not-found`, which `openModulePage` answers as
- * missing (R-52). Each image the deck shows gets one link under `slides:read` on the deck, and an
- * uploaded image no element names gets none (D6).
+ * missing (R-52). The deck carries its image links, as every read of it does (D6).
  */
 export async function loadDeckPage(
   ctx: ModuleRequestContext,
@@ -36,34 +35,14 @@ export async function loadDeckPage(
 
   const record = await readOwnDeck(ctx, id);
 
-  const shownImages = new Set(
-    record.content.slides.flatMap(({ elements }) =>
-      elements.flatMap((element) =>
-        element.kind === "image" ? [element.fileId] : []
-      )
-    )
-  );
-
-  const [deck, canWrite, branding, logo, imageLinks] = await Promise.all([
-    deckViewFor(ctx, record),
+  const [deck, canWrite, branding, logo] = await Promise.all([
+    shownDeck(ctx, record),
     can(ctx.caller, "slides:write"),
     ctx.tenant.branding.get(),
     ctx.tenant.fileStorage.createBrandingMarkLink({
       principal: ctx.caller,
       slot: "logoLight",
     }),
-    Promise.all(
-      [...shownImages].map(async (fileId) => {
-        const link = await ctx.tenant.fileStorage.createLink({
-          fileId,
-          principal: ctx.caller,
-          permission: "slides:read",
-          resource: { type: "slides-deck", id: record.id },
-        });
-
-        return [fileId, link.url] as const;
-      })
-    ),
   ]);
 
   return {
@@ -72,6 +51,5 @@ export async function loadDeckPage(
     timeZone: branding.defaultTimeZone,
     theme: omit(deckTheme(branding), ["logoFileId"]),
     logoUrl: logo?.url ?? null,
-    imageUrls: Object.fromEntries(imageLinks),
   };
 }

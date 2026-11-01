@@ -7,7 +7,7 @@ The server loaders behind the module's pages (Spec 7 R-52, R-55).
 A loader that asks the page's read key through `can()`, reads the caller's own decks through the
 deck store, and answers a view type from `../../presentation/views.ts`. Another person's deck
 answers `not-found`, which core shows as missing. File links come from `FileStorage` only, one per
-image the deck shows.
+image the deck shows, in the deck answer every read and write gives.
 
 ## What must not go here
 

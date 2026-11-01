@@ -184,6 +184,11 @@ export const deckView = z.object({
   contentHash: z.string(),
   figuresAsOf: z.iso.date(),
   canUndo: z.boolean(),
+  /** A short-lived link per image the deck shows, made at each read (D6). */
+  images: z.record(
+    z.string(),
+    z.object({ url: z.string(), expiresAt: z.iso.datetime() })
+  ),
   // Read-only, so the server's `DeckView` answers it as is.
   slides: z
     .array(

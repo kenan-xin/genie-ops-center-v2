@@ -783,7 +783,7 @@ export function DeckView(props: DeckViewProps) {
               timeZone={view.timeZone}
               theme={view.theme}
               logoUrl={view.logoUrl}
-              imageUrls={view.imageUrls}
+              images={deck.images}
             />
           </div>
         </div>

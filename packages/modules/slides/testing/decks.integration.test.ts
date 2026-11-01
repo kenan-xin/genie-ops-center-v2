@@ -620,6 +620,43 @@ describe("the slides deck images", () => {
     ]);
   });
 
+  it("answer a link that serves an image a change adds, without a page load", async () => {
+    const owner = await editor();
+    const id = await ownedDeck(owner);
+
+    const { fileId } = await callerAs(owner).uploadDeckImage({
+      id,
+      file: png(),
+    });
+
+    const answer = await callerAs(owner).changeDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+      changes: [
+        {
+          op: "add-slide",
+          slide: {
+            elements: [
+              title("Picture"),
+              { kind: "image", fileId, alt: "A dot" },
+            ],
+          },
+        },
+      ],
+    });
+
+    expect(answer.images).toHaveProperty(fileId);
+
+    const token = new URL(answer.images[fileId]!.url).searchParams.get("token");
+
+    const served = await deployment.context.fileStorage.fetchLink({
+      token: token ?? "",
+      principal: contextOf(owner).caller,
+    });
+
+    expect(served.bytes).toEqual(PNG);
+  });
+
   it("refuse a PDF with image-invalid and store no file", async () => {
     const owner = await editor();
     const id = await ownedDeck(owner);
@@ -715,6 +752,6 @@ describe("the slides page loaders", () => {
 
     const page = await loadDeckPage(contextOf(owner), id);
 
-    expect(Object.keys(page.imageUrls)).toEqual([shown]);
+    expect(Object.keys(page.deck.images)).toEqual([shown]);
   });
 });

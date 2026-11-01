@@ -3,6 +3,7 @@
 import { Chart } from "@genie/ui/chart";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
+import { type ImageLinks, keepImageLinks } from "./image-links.ts";
 import { CANVAS, figuresDate, slideLayout, TYPE_PX } from "./slide-layout.ts";
 import type { DeckPageView, ShownElement, ShownSlide } from "./views.ts";
 
@@ -12,7 +13,8 @@ export type SlideCanvasProps = {
   readonly timeZone: string;
   readonly theme: DeckPageView["theme"];
   readonly logoUrl: string | null;
-  readonly imageUrls: Readonly<Record<string, string>>;
+  /** The deck's image links from its newest read. */
+  readonly images: ImageLinks;
 };
 
 /** A style object of CSS custom properties only; the classes read them. */
@@ -29,9 +31,9 @@ function titleOf(slide: ShownSlide): string {
 function ElementBody(props: {
   readonly element: ShownElement;
   readonly timeZone: string;
-  readonly imageUrls: Readonly<Record<string, string>>;
+  readonly images: ImageLinks;
 }) {
-  const { element, timeZone, imageUrls } = props;
+  const { element, timeZone, images } = props;
 
   switch (element.kind) {
     case "title":
@@ -53,14 +55,25 @@ function ElementBody(props: {
           ))}
         </ul>
       );
-    case "image":
-      return (
+    case "image": {
+      const url = images[element.fileId]?.url;
+
+      // Until its link arrives, the image is a named placeholder, never an `img` with no source.
+      return url === undefined ? (
+        <div
+          role="img"
+          aria-label={element.alt}
+          className="bg-muted h-full w-full rounded"
+        />
+      ) : (
         <img
-          src={imageUrls[element.fileId] ?? ""}
+          src={url}
           alt={element.alt}
           className="h-full w-full object-contain"
         />
       );
+    }
+
     case "figure":
     case "chart":
     case "table":
@@ -81,9 +94,17 @@ function ElementBody(props: {
  * same layout (D10). Every box is absolute, from the shared `slideLayout`.
  */
 export function SlideCanvas(props: SlideCanvasProps) {
-  const { slide, figuresAsOf, timeZone, theme, logoUrl, imageUrls } = props;
+  const { slide, figuresAsOf, timeZone, theme, logoUrl, images } = props;
   const host = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
+  const [seenImages, setSeenImages] = useState(images);
+  const [keptImages, setKeptImages] = useState(images);
+
+  // Each read brings new links; a link with time left stays, so a poll loads no image again (I1).
+  if (images !== seenImages) {
+    setSeenImages(images);
+    setKeptImages(keepImageLinks(keptImages, images, Date.now()));
+  }
 
   useEffect(() => {
     const element = host.current;
@@ -199,7 +220,7 @@ export function SlideCanvas(props: SlideCanvasProps) {
               <ElementBody
                 element={element}
                 timeZone={timeZone}
-                imageUrls={imageUrls}
+                images={keptImages}
               />
             </div>
           );

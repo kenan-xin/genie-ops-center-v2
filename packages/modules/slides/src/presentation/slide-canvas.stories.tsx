@@ -52,7 +52,7 @@ const canvasProps = {
   timeZone: deckPage.timeZone,
   theme: deckPage.theme,
   logoUrl: deckPage.logoUrl,
-  imageUrls: deckPage.imageUrls,
+  images: deckPage.deck.images,
 };
 
 /** The overflow of one element, or null when its content fits. */
@@ -224,6 +224,21 @@ export const Image: Story = {
       })
     ).toBeVisible();
     await noOverflow(canvasElement);
+  },
+};
+
+// I1: an image whose link has not arrived draws its placeholder, never an `img` with no source.
+export const ImageBeforeItsLink: Story = {
+  name: "Image before its link",
+  args: { ...canvasProps, images: {}, slide: imageSlide },
+  globals: desktop,
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvasElement.querySelector("img")).toBeNull();
+    await expect(
+      canvas.getByRole("img", {
+        name: "A photograph of the finance team meeting at a table.",
+      })
+    ).toBeVisible();
   },
 };
 

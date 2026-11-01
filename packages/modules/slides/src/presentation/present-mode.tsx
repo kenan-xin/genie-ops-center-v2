@@ -186,7 +186,7 @@ export function PresentMode(props: PresentModeProps) {
                     timeZone={view.timeZone}
                     theme={view.theme}
                     logoUrl={view.logoUrl}
-                    imageUrls={view.imageUrls}
+                    images={view.deck.images}
                   />
                 </div>
               )}

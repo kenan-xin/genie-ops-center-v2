@@ -268,6 +268,9 @@ export const deckPage: DeckPageView = {
       hiddenSlide,
       imageSlide,
     ],
+    images: {
+      "image-1": { url: IMAGE_URL, expiresAt: "2099-01-01T00:00:00.000Z" },
+    },
   },
   canWrite: true,
   timeZone: "Asia/Singapore",
@@ -277,7 +280,6 @@ export const deckPage: DeckPageView = {
     fontFace: "Plus Jakarta Sans",
   },
   logoUrl: null,
-  imageUrls: { "image-1": IMAGE_URL },
 };
 
 export const emptyDeckPage: DeckPageView = {

@@ -2,7 +2,7 @@ import { implementModule } from "@genie/core";
 
 import { slidesContract } from "./contract.ts";
 import { assertCanRead, assertCanWrite } from "./services/decks/access.ts";
-import { deckViewFor } from "./services/decks/show.ts";
+import { shownDeck } from "./services/decks/show.ts";
 import {
   changeDeck,
   createDeck,
@@ -32,25 +32,25 @@ export const slidesRouter = os.router({
   readDeck: os.readDeck.handler(async ({ context, input }) => {
     await assertCanRead(context.caller);
 
-    return deckViewFor(context, await readOwnDeck(context, input.id));
+    return shownDeck(context, await readOwnDeck(context, input.id));
   }),
 
   createDeck: os.createDeck.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller);
 
-    return deckViewFor(context, await createDeck(context, input));
+    return shownDeck(context, await createDeck(context, input));
   }),
 
   changeDeck: os.changeDeck.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller);
 
-    return deckViewFor(context, await changeDeck(context, input));
+    return shownDeck(context, await changeDeck(context, input));
   }),
 
   undoDeck: os.undoDeck.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller);
 
-    return deckViewFor(context, await undoDeck(context, input));
+    return shownDeck(context, await undoDeck(context, input));
   }),
 
   deleteDeck: os.deleteDeck.handler(async ({ context, input }) => {
@@ -66,7 +66,7 @@ export const slidesRouter = os.router({
     const { record, changedSlides } = await refreshDeck(context, input);
 
     return {
-      deck: await deckViewFor(context, record),
+      deck: await shownDeck(context, record),
       changedSlides: [...changedSlides],
     };
   }),

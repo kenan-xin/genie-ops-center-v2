@@ -59,6 +59,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       ].map((name) => `the slides deck procedures ${name}`),
       ...[
         "store a PNG with the caller as uploader, append its id, keep the hash and write one audit row",
+        "answer a link that serves an image a change adds, without a page load",
         "refuse a PDF with image-invalid and store no file",
         "refuse a PDF body declared as image/png with image-invalid, store no file and keep the deck's images",
         "refuse an image over the deployment's upload limit with image-too-large and store no file",
