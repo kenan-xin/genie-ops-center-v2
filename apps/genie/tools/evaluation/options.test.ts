@@ -49,6 +49,18 @@ describe("the evaluation options", () => {
     }
   });
 
+  it("keeps a case limit from 1 to 100, and refuses zero, text and more", () => {
+    expect(parseOptions(["--out", "/tmp/x", "--limit", "1"], {})).toMatchObject(
+      { limit: 1 }
+    );
+
+    for (const limit of ["0", "x", "101", "1.5", ""]) {
+      expect(parseOptions(["--out", "/tmp/x", "--limit", limit], {})).toEqual({
+        refused: "--limit must be a whole number from 1 to 100.",
+      });
+    }
+  });
+
   it("keeps a quoted path with a space as one argument, and refuses an unclosed quote", () => {
     expect(
       parseOptions(splitArgs(`--out "/tmp/my eval" --runs 1`), {})

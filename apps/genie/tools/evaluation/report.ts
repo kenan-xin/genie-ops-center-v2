@@ -187,6 +187,7 @@ export function renderReport(input: {
   readonly transport: "recorded" | "live";
   readonly models: readonly string[];
   readonly runs: number;
+  readonly limit?: number | undefined;
   readonly summaries: readonly ModelSummary[];
   readonly results: readonly CaseResult[];
   readonly defaults: Defaults;
@@ -202,6 +203,12 @@ export function renderReport(input: {
     "",
     `Run on ${input.date} against ${source}. ${input.runs} runs per case. Models: ${input.models.join(", ")}. Reporting date 2026-10-27 (R-58).`,
     "",
+    ...(input.limit === undefined
+      ? []
+      : [
+          `A smoke run: the first ${input.limit} cases of each track. The chart cases are those of the asked questions.`,
+          "",
+        ]),
   ];
 
   for (const track of TRACKS) {

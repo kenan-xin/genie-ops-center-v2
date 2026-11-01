@@ -54,7 +54,7 @@ import {
 } from "../../testing/invoice-answer-readers.ts";
 import { APP_AGENT_RECORDINGS } from "../../testing/model-replay.ts";
 import type { CaseResult } from "./case-result.ts";
-import { ANSWER_CASES, CHART_CASES, EXTRACTION_CASES } from "./cases.ts";
+import { CHART_CASES, casesWithin } from "./cases.ts";
 import { expectedReadingOf } from "./expected.ts";
 import { type EvaluationOptions, parseOptions } from "./options.ts";
 import { recommendDefaults, renderReport, summarize } from "./report.ts";
@@ -88,6 +88,7 @@ async function personWith(
 
 async function evaluateModel(
   options: EvaluationOptions,
+  cases: ReturnType<typeof casesWithin>,
   model: string
 ): Promise<CaseResult[]> {
   const deployment = await startDisposableDeployment(MODULES);
@@ -135,7 +136,7 @@ async function evaluateModel(
 
     /* oxlint-disable no-await-in-loop -- one model request at a time, so each case gets its own time and cost. */
     for (let run = 1; run <= options.runs; run += 1) {
-      for (const { id, file } of EXTRACTION_CASES) {
+      for (const { id, file } of cases.extraction) {
         const started = performance.now();
         const before = send.mark();
         let reason: string | undefined;
@@ -161,7 +162,7 @@ async function evaluateModel(
         });
       }
 
-      for (const session of ANSWER_CASES) {
+      for (const session of cases.answers) {
         const sessionId = randomUUID();
 
         // The question that broke the session and its reason; the later questions are not asked.
@@ -301,10 +302,12 @@ export async function runEvaluation(
 
   if ("refused" in options) throw new Error(options.refused);
 
-  const perRun = EXTRACTION_CASES.length + ANSWER_CASES.flat().length;
+  // Before any model call, so a smoke run pays only for its own cases.
+  const cases = casesWithin(options.limit);
+  const perRun = cases.extraction.length + cases.answers.flat().length;
 
   console.log(
-    `Transport ${options.transport}. Models ${options.models.join(", ")}. ${options.runs} runs. ${EXTRACTION_CASES.length} extraction, ${ANSWER_CASES.flat().length} answer and ${CHART_CASES.length} chart cases.`
+    `Transport ${options.transport}. Models ${options.models.join(", ")}. ${options.runs} runs. ${cases.extraction.length} extraction, ${cases.answers.flat().length} answer and ${cases.charts.length} chart cases.`
   );
 
   if (options.transport === "live") {
@@ -319,7 +322,7 @@ export async function runEvaluation(
 
   /* oxlint-disable no-await-in-loop -- one deployment at a time. */
   for (const model of options.models) {
-    results.push(...(await evaluateModel(options, model)));
+    results.push(...(await evaluateModel(options, cases, model)));
 
     // After each model, so a later failure keeps the paid results of the models before it.
     await writeFile(
@@ -335,7 +338,7 @@ export async function runEvaluation(
 
   await writeFile(
     join(options.out, "report.json"),
-    `${JSON.stringify({ transport: options.transport, runs: options.runs, summaries, defaults }, undefined, 2)}\n`,
+    `${JSON.stringify({ transport: options.transport, runs: options.runs, limit: options.limit, summaries, defaults }, undefined, 2)}\n`,
     "utf8"
   );
 
@@ -345,6 +348,7 @@ export async function runEvaluation(
       transport: options.transport,
       models: options.models,
       runs: options.runs,
+      limit: options.limit,
       summaries,
       results,
       defaults,

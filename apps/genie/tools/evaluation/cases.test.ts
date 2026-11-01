@@ -14,7 +14,12 @@ import {
   QUESTIONS,
   READERS,
 } from "../../testing/invoice-answer-readers.ts";
-import { ANSWER_CASES, CHART_CASES, EXTRACTION_CASES } from "./cases.ts";
+import {
+  ANSWER_CASES,
+  CHART_CASES,
+  casesWithin,
+  EXTRACTION_CASES,
+} from "./cases.ts";
 
 /** An empty chart of the spec's first type that shows its fields, under an unrelated title. */
 function chart({ types, dataset, columns }: ChartSpec): AnswerChart {
@@ -94,6 +99,30 @@ describe("the evaluation cases", () => {
       QUESTIONS.map((item) => item.id).toSorted()
     );
     expect(CHART_CASES).toHaveLength(14);
+  });
+
+  it("keeps the first cases of each track under a limit, with whole earlier session turns", () => {
+    expect(casesWithin()).toEqual({
+      extraction: EXTRACTION_CASES,
+      answers: ANSWER_CASES,
+      charts: CHART_CASES,
+    });
+
+    const one = casesWithin(1);
+
+    expect(one.extraction.map((item) => item.id)).toEqual(["01"]);
+    expect(one.answers).toEqual([["overdue-invoices"]]);
+    expect(one.charts.map((item) => item.questionId)).toEqual(
+      CHART_CASES.filter((item) => item.questionId === "overdue-invoices").map(
+        (item) => item.questionId
+      )
+    );
+
+    // The second session is cut after its first question.
+    expect(casesWithin(2).answers).toEqual([
+      ["overdue-invoices"],
+      ["repeated-late-payers"],
+    ]);
   });
 
   it.each(CHART_CASES)(

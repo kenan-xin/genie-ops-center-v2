@@ -12,6 +12,8 @@ export type EvaluationOptions = {
   readonly models: readonly string[];
   readonly runs: number;
   readonly out: string;
+  /** The first cases of each track that run, for a smoke run. `undefined`: every case. */
+  readonly limit: number | undefined;
   readonly key?: string;
 };
 
@@ -49,6 +51,7 @@ export function parseOptions(
       model: { type: "string", multiple: true },
       runs: { type: "string", default: "3" },
       out: { type: "string" },
+      limit: { type: "string" },
     },
     strict: true,
   });
@@ -67,11 +70,21 @@ export function parseOptions(
     return { refused: "--runs must be a whole number from 1 to 10." };
   }
 
+  const limit = values.limit === undefined ? undefined : Number(values.limit);
+
+  if (
+    limit !== undefined &&
+    (!/^\d+$/.test(values.limit ?? "") || limit < 1 || limit > 100)
+  ) {
+    return { refused: "--limit must be a whole number from 1 to 100." };
+  }
+
   const options = {
     transport: values.transport,
     models: values.model ?? EVALUATION_MODELS,
     runs,
     out: values.out,
+    limit,
   } satisfies EvaluationOptions;
 
   if (options.transport === "recorded") return options;

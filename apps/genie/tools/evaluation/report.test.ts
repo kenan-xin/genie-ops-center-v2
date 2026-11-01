@@ -103,6 +103,21 @@ describe("the evaluation report", () => {
     );
   });
 
+  it("states a case limit", () => {
+    expect(
+      renderReport({
+        transport: "recorded",
+        models: ["m"],
+        runs: 1,
+        limit: 1,
+        summaries: [],
+        results: [],
+        defaults: { chat: null, document: null },
+        date: "2026-11-02",
+      })
+    ).toContain("A smoke run: the first 1 cases of each track.");
+  });
+
   it("leaves the answers' cost and time out of the charts table", () => {
     const text = renderReport({
       transport: "recorded",
