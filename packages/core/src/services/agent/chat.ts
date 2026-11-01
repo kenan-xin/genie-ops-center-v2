@@ -20,6 +20,7 @@ import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { modelFor } from "../models/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
 import { agentAccess } from "./access.ts";
+import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { agentInstructions } from "./prompt.ts";
 import {
@@ -167,7 +168,6 @@ export async function handleAgentChat(
     parts: [{ type: "text", text }],
   });
 
-  // shortcut: the whole session history goes to the model every turn; trim it when the deferred bead's trigger fires.
   const history = [...(await readOwnSession(ctx, sessionId)).messages];
 
   const tools = await agentToolSet(ctx, { id: sessionId });
@@ -184,7 +184,7 @@ export async function handleAgentChat(
           : { type: context.recordType, id: context.recordId },
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
-    messages: await convertToModelMessages(history, {
+    messages: await convertToModelMessages([...trimHistory(history)], {
       tools,
       ignoreIncompleteToolCalls: true,
     }),
