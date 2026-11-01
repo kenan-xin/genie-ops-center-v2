@@ -61,6 +61,13 @@ const nextConfig: NextConfig = {
   },
 };
 
+// The dev e2e run (`e2e/dev/global-setup.ts`) sets this, so its `next dev` keeps its Turbopack dev
+// cache apart from `.next/dev`, which `nx run @genie/app:dev` and cache restores also write. A
+// stale shared cache sent that server into a full-reload loop (xok3.40). Unset, Next keeps `.next`.
+const e2eDistDir = process.env.GENIE_E2E_DIST_DIR;
+
+if (e2eDistDir) nextConfig.distDir = e2eDistDir;
+
 const withNextIntl = createNextIntlPlugin();
 
 export default withNextIntl(nextConfig);

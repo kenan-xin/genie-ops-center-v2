@@ -84,6 +84,7 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     "**/dist/**",
     "**/coverage/**",
     "**/.nx/**",
+    "**/.next-e2e-dev/**",
 
     // Playwright's own output. Written by every browser run, so a `--check`
     // after one would otherwise report formatting inside a JSON trace file

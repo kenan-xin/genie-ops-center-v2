@@ -61,6 +61,9 @@ const COMPOSE_FILE = resolve(
 /** `apps/genie`, where the seed command and `next dev` run from. */
 const APP_ROOT = resolve(import.meta.dirname, "../..");
 
+/** The build directory of this run's `next dev`, relative to `APP_ROOT`; gitignored. */
+const E2E_DIST_DIR = ".next-e2e-dev";
+
 export const COMPOSE = [
   "compose",
   "-p",
@@ -464,6 +467,8 @@ export default async function globalSetup(): Promise<void> {
         ...TEST_AUTH_ENV,
         DATABASE_URL: databaseUrl(),
         PUBLIC_URL: publicUrl(),
+        // Read by `next.config.ts`: this server's build directory, apart from `.next` (xok3.40).
+        GENIE_E2E_DIST_DIR: E2E_DIST_DIR,
         NODE_OPTIONS:
           `${process.env.NODE_OPTIONS ?? ""} --import=${pathToFileURL(resolve(APP_ROOT, "testing/model-standin.ts")).href}`.trim(),
         GENIE_E2E_MODEL_RECORDINGS:
