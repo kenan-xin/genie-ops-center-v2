@@ -128,6 +128,10 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
       const shown = await shownRows(page, "Invoices");
 
       expect(shown).toHaveLength(expected.length);
+      // A whole list offers no next page (czjw.28).
+      await expect(page.getByRole("button", { name: "Show more" })).toHaveCount(
+        0
+      );
 
       const problems = expected.flatMap((invoice) => {
         const row = shown.find((entry) => entry.label === invoice.invoice_id);
@@ -256,6 +260,10 @@ test("the Payments list shows every seeded payment and the payment linked to INV
       const shown = await shownRows(page, "Payments");
 
       expect(shown).toHaveLength(payments.length);
+      // A whole list offers no next page (czjw.28).
+      await expect(page.getByRole("button", { name: "Show more" })).toHaveCount(
+        0
+      );
 
       const problems = payments.flatMap((payment) => {
         const row = shown.find(

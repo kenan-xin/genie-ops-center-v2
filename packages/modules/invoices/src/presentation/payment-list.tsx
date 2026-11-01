@@ -1,10 +1,13 @@
 "use client";
 
 import { PageHeader, PageLink } from "@genie/core/features/shell";
-import { DataTable, type DataTableColumn, EmptyState } from "@genie/ui";
+import { useModuleClient } from "@genie/core/rpc/client";
+import { Button, DataTable, type DataTableColumn, EmptyState } from "@genie/ui";
 
+import { invoicesContract } from "../contract.ts";
 import { formatDay, formatMoney, paymentLabel } from "./format.ts";
 import { PaymentStatusBadge } from "./payment-status-badge.tsx";
+import { useListPages } from "./use-list-pages.ts";
 import type { PaymentListRow, PaymentListView } from "./views.ts";
 
 const recordHref = (row: PaymentListRow) => `/m/invoices/payments/${row.id}`;
@@ -16,6 +19,13 @@ export type PaymentListProps = {
 /** The Payments list: a table from 768 px, the same rows as cards below it. */
 export function PaymentList(props: PaymentListProps) {
   const { view } = props;
+  const invoices = useModuleClient(invoicesContract);
+
+  const list = useListPages({
+    key: ["invoices", "payment-list", view.asOf],
+    first: view,
+    read: (after) => invoices.listPayments({ after }),
+  });
 
   const columns: readonly DataTableColumn<PaymentListRow>[] = [
     {
@@ -60,7 +70,7 @@ export function PaymentList(props: PaymentListProps) {
         <>
           <DataTable
             label="Payments"
-            rows={view.rows}
+            rows={list.rows}
             rowKey={(row) => row.id}
             rowLabel={paymentLabel}
             columns={columns}
@@ -83,8 +93,22 @@ export function PaymentList(props: PaymentListProps) {
               ],
             }}
           />
-          {view.truncated ? (
-            <p>Showing the first {view.rows.length} payments.</p>
+          {list.more ? (
+            <div className="flex flex-wrap items-center gap-3">
+              <p>Showing the first {list.rows.length} payments.</p>
+              <Button
+                variant="secondary"
+                disabled={list.loading}
+                onClick={list.showMore}
+              >
+                {list.loading ? "Loading more…" : "Show more"}
+              </Button>
+            </div>
+          ) : null}
+          {list.failed ? (
+            <p role="alert">
+              More payments could not be read. Try Show more again.
+            </p>
           ) : null}
         </>
       )}
