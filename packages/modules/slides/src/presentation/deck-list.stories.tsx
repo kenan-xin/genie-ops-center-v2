@@ -215,6 +215,21 @@ export const ChatOffOnPhone: Story = {
   play: chatOffPlay,
 };
 
+const chatOffReader = { ...chatOffDeckList, canWrite: false };
+
+// A person without slides:write has no New deck, so the note names none.
+export const ChatOffReadOnly: Story = {
+  name: "Chat off, read only",
+  args: { view: chatOffReader },
+  globals: desktop,
+  beforeEach: () => serve(chatOffReader),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("status")).toHaveTextContent(
+      /^Chat is off\.$/
+    );
+  },
+};
+
 const noChatPlay: Story["play"] = async ({ canvas }) => {
   await expect(canvas.queryByRole("complementary")).toBeNull();
   await expect(canvas.queryByText(/Chat is off/)).toBeNull();
