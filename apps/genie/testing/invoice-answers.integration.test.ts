@@ -4,6 +4,7 @@ import {
   handleAgentChat,
   moduleInstructionLines,
   type ModuleRequestContext,
+  panelConfigSchema,
   principalFor,
   readOwnSession,
   registerModuleRuntime,
@@ -147,11 +148,37 @@ function agentFor(ctx: ModuleRequestContext) {
   return agentAs(ctx, "req-invoice-answers");
 }
 
+/**
+ * A recorded chart config as another model could write it: its own title, series names and
+ * aggregate aliases (`czjw.56`). Each alias is renamed wherever the config refers to it.
+ */
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- a model's raw config; the gate's schema parses it
+function renamed(config: unknown) {
+  const parsed = panelConfigSchema.parse(config);
+
+  let series = 0;
+
+  const text = parsed.series
+    .flatMap((item) => item.query.aggregates ?? [])
+    .reduce(
+      (json, { as }) => json.replaceAll(`"${as}"`, `"${as}Renamed"`),
+      JSON.stringify(parsed)
+    )
+    .replace(/"title":"[^"]*"/, '"title":"Another title"')
+    .replaceAll(/"name":"[^"]*"/g, () => {
+      series += 1;
+
+      return `"name":"Series ${series}"`;
+    });
+
+  return panelConfigSchema.parse(JSON.parse(text));
+}
+
 const ORDERED = SESSIONS.flat();
 
 describe("the invoice answers through the agent", () => {
   it.each(ORDERED)(
-    "the recorded answer to %s gives the expected answer and opens its records",
+    "the recorded answer to %s gives the expected answer, also under other names, and opens its records",
     async (id) => {
       // First, so a recording miss prints the body the model was sent.
       expect(errors).toEqual([]);
@@ -167,9 +194,22 @@ describe("the invoice answers through the agent", () => {
 
       if (reader === undefined) throw new Error(`No reader for ${id}.`);
 
-      expect(reader(charts)).toEqual(
-        totalCents === undefined ? { rows } : { rows, totalCents }
+      const expected =
+        totalCents === undefined ? { rows } : { rows, totalCents };
+
+      expect(reader(charts)).toEqual(expected);
+
+      // The same charts under other names read the same through the real gate's row keys.
+      const others = await Promise.all(
+        (answered.get(id) ?? []).map((config) =>
+          agent.chart({ config: renamed(config) })
+        )
       );
+
+      expect(others.map((chart) => chart.config.title)).not.toContain(
+        charts[0]?.config.title
+      );
+      expect(reader(others)).toEqual(expected);
 
       const records = charts
         .map((chart) => chart.data)
