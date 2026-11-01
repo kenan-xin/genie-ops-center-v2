@@ -58,6 +58,7 @@ import type { CaseResult } from "./case-result.ts";
 import { ANSWER_CASES, CHART_CASES, EXTRACTION_CASES } from "./cases.ts";
 import { expectedReadingOf } from "./expected.ts";
 import { type EvaluationOptions, parseOptions } from "./options.ts";
+import { recommendDefaults, renderReport, summarize } from "./report.ts";
 import {
   type RefusedChart,
   scoreAnswer,
@@ -351,5 +352,29 @@ export async function runEvaluation(
     "utf8"
   );
 
-  console.log(`Wrote ${join(options.out, "results.json")}.`);
+  const summaries = summarize(results);
+  const defaults = recommendDefaults(summaries);
+
+  await writeFile(
+    join(options.out, "report.json"),
+    `${JSON.stringify({ transport: options.transport, runs: options.runs, summaries, defaults }, undefined, 2)}\n`,
+    "utf8"
+  );
+
+  await writeFile(
+    join(options.out, "report.md"),
+    renderReport({
+      transport: options.transport,
+      models: options.models,
+      runs: options.runs,
+      summaries,
+      defaults,
+      date: new Date().toISOString().slice(0, 10),
+    }),
+    "utf8"
+  );
+
+  console.log(
+    `Wrote results.json, report.json and report.md to ${options.out}.`
+  );
 }
