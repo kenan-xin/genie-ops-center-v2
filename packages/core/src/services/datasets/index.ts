@@ -6,7 +6,12 @@ import type {
 } from "../../lib/module-contract/module.ts";
 import { can } from "../authorization/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
-import { type DatasetQuery, checkDatasetQuery } from "./query.ts";
+import {
+  type DatasetCursor,
+  type DatasetQuery,
+  checkDatasetQuery,
+  cursorIssues,
+} from "./query.ts";
 import { findDataset } from "./registry.ts";
 import { datasetSource, runDatasetQuery } from "./run-query.ts";
 
@@ -33,6 +38,8 @@ export type DatasetResult = {
   readonly rows: readonly Readonly<Record<string, DatasetValue>>[];
   /** More rows matched than the result holds. */
   readonly truncated: boolean;
+  /** Where the next page starts, on a row query that was cut (czjw.28). */
+  readonly next?: DatasetCursor;
 };
 
 export type DatasetSummary = Omit<DatasetDeclaration, "source">;
@@ -74,7 +81,12 @@ export async function listDatasets(
  */
 export async function queryDataset(
   ctx: ModuleRequestContext,
-  input: { readonly dataset: string; readonly query: DatasetQuery }
+  input: {
+    readonly dataset: string;
+    readonly query: DatasetQuery;
+    /** Start after this row of an earlier page of the same query (czjw.28). */
+    readonly after?: DatasetCursor | undefined;
+  }
 ): Promise<DatasetResult> {
   const found = await findDataset(ctx, input.dataset);
 
@@ -88,8 +100,20 @@ export async function queryDataset(
 
   const { query, issues } = checkDatasetQuery(declaration.fields, input.query);
 
-  if (query === undefined || issues.length > 0) {
-    throw new AppError(CORE_ERRORS["dataset-query-invalid"], { issues });
+  const afterIssues =
+    query === undefined || input.after === undefined
+      ? []
+      : cursorIssues(
+          declaration.fields,
+          query,
+          declaration.recordKey.field,
+          input.after
+        );
+
+  if (query === undefined || issues.length > 0 || afterIssues.length > 0) {
+    throw new AppError(CORE_ERRORS["dataset-query-invalid"], {
+      issues: [...issues, ...afterIssues],
+    });
   }
 
   const asOf = await reportingDate(ctx.tenant);
@@ -100,6 +124,13 @@ export async function queryDataset(
     dataset: declaration.name,
     asOf,
     readAt,
-    ...(await runDatasetQuery(ctx.tenant, declaration, source, query)),
+    ...(await runDatasetQuery(
+      ctx.tenant,
+      declaration,
+      source,
+      query,
+      undefined,
+      input.after
+    )),
   };
 }

@@ -1,5 +1,7 @@
 import {
   createTenantContext,
+  type DatasetCursor,
+  type DatasetQuery,
   type DatasetSeries,
   listDatasets,
   principalFor,
@@ -100,6 +102,28 @@ const labelled = (label: string) =>
   [{ field: "label", op: "eq", value: label }] as const;
 
 const RECORDS = "placeholder.records";
+
+/** Every `id` of a row query, read one page at a time through each answer's `next` cursor. */
+async function readAllPages(
+  ctx: ModuleRequestContext,
+  query: DatasetQuery
+): Promise<string[]> {
+  const ids: string[] = [];
+  let after: DatasetCursor | undefined;
+
+  for (let page = 0; page < 200; page += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- each page starts after the one before it.
+    const result = await queryDataset(ctx, { dataset: RECORDS, query, after });
+
+    ids.push(...result.rows.map((row) => String(row["id"])));
+
+    if (result.next === undefined) return ids;
+
+    after = result.next;
+  }
+
+  throw new Error("The pages did not end.");
+}
 
 const countByMonth = (name: string, label: string): DatasetSeries => ({
   name,
@@ -325,6 +349,118 @@ describe("the placeholder dataset through queryDataset", () => {
 
     expect(result.rows).toHaveLength(1000);
     expect(result.truncated).toBe(true);
+  });
+
+  it("pages past 1,000 rows with a cursor, each row once, across ties on the sort column", async () => {
+    const label = "paged-ties";
+
+    // Three rows share each quantity, so the sort alone leaves ties that the record key breaks.
+    await deployment.context.db.$client.query(
+      "insert into placeholder_record (label, recorded_on, quantity) select $1, date '2026-01-01', g / 3 from generate_series(1, 1001) as g",
+      [label]
+    );
+
+    const ctx = contextFor(await person("placeholder:read"));
+
+    const ids = await readAllPages(ctx, {
+      select: ["id", "quantity"],
+      filters: labelled(label),
+      orderBy: [{ column: "quantity", direction: "desc" }],
+    });
+
+    expect(ids).toHaveLength(1001);
+    expect(new Set(ids).size).toBe(1001);
+  });
+
+  it.each(["asc", "desc"] as const)(
+    "pages %s through null sort values without losing or repeating a row",
+    async (direction) => {
+      const label = `paged-nulls-${direction}`;
+
+      await deployment.context.db.$client.query(
+        "insert into placeholder_record (label, recorded_on, quantity) select $1, date '2026-01-01', case when g % 3 = 0 then null else g % 5 end from generate_series(1, 30) as g",
+        [label]
+      );
+
+      const ids = await readAllPages(
+        contextFor(await person("placeholder:read")),
+        {
+          select: ["id", "quantity"],
+          filters: labelled(label),
+          orderBy: [{ column: "quantity", direction }],
+          limit: 7,
+        }
+      );
+
+      expect(ids).toHaveLength(30);
+      expect(new Set(ids).size).toBe(30);
+    }
+  );
+
+  it("keeps a record-scoped reader inside their scope on a later page", async () => {
+    const label = "paged-scope";
+
+    const named = await insertPlaceholderRecord(deployment.context, {
+      label,
+      recordedOn: "2026-01-01",
+    });
+
+    await insertPlaceholderRecord(deployment.context, {
+      label,
+      recordedOn: "2026-01-01",
+    });
+
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["placeholder:read"],
+      { type: "placeholder-record", id: named.id }
+    );
+
+    const result = await queryDataset(contextFor(userId), {
+      dataset: RECORDS,
+      query: { select: ["id"], filters: labelled(label) },
+      after: { values: ["00000000-0000-0000-0000-000000000000"] },
+    });
+
+    expect(result.rows).toEqual([{ id: named.id }]);
+  });
+
+  it("refuses a cursor on an aggregate query, with the wrong count of values, or with a value that does not fit", async () => {
+    const ctx = contextFor(await person("placeholder:read"));
+
+    const refused = (query: DatasetQuery, values: DatasetCursor["values"]) =>
+      queryDataset(ctx, { dataset: RECORDS, query, after: { values } });
+
+    await expect(
+      refused({ aggregates: [{ fn: "count", as: "n" }] }, ["x"])
+    ).rejects.toMatchObject({
+      code: "dataset-query-invalid",
+      issues: [expect.objectContaining({ path: "after" })],
+    });
+    await expect(
+      refused(
+        {
+          select: ["id"],
+          orderBy: [{ column: "id", direction: "asc" }],
+        },
+        ["x"]
+      )
+    ).rejects.toMatchObject({
+      code: "dataset-query-invalid",
+      issues: [expect.objectContaining({ path: "after.values" })],
+    });
+    await expect(
+      refused(
+        {
+          select: ["id", "recordedOn"],
+          orderBy: [{ column: "recordedOn", direction: "asc" }],
+        },
+        ["not a date", "x"]
+      )
+    ).rejects.toMatchObject({
+      code: "dataset-query-invalid",
+      issues: [expect.objectContaining({ path: "after.values.0" })],
+    });
   });
 
   it("stops a query after 5 seconds", async () => {

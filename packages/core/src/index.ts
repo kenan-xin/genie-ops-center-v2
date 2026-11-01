@@ -541,6 +541,7 @@ export {
 
 export {
   type DatasetAggregate,
+  type DatasetCursor,
   type DatasetFilter,
   type DatasetFilterValue,
   type DatasetGroup,
@@ -548,6 +549,7 @@ export {
   type DatasetQuery,
   type DatasetRange,
   DATASET_ROW_CAP,
+  datasetCursorSchema,
   datasetQuerySchema,
   validateDatasetQuery,
 } from "./services/datasets/query.ts";

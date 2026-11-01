@@ -65,6 +65,25 @@ export type DatasetQuery = {
   readonly limit?: number;
 };
 
+/**
+ * Where the next page of a row query starts (`czjw.28`): the last row's value of each `orderBy`
+ * column in order, then its record key. Plain values, like the audit log's cursor: a cursor only
+ * filters rows of the dataset's own scoped source, which the person may read anyway.
+ */
+export type DatasetCursor = {
+  readonly values: readonly (DatasetFilterValue | null)[];
+};
+
+/** At most the sort columns of a query plus its record key. */
+const MAX_CURSOR_VALUES = 6;
+
+export const datasetCursorSchema: z.ZodType<DatasetCursor> = z.strictObject({
+  values: z
+    .array(z.union([z.string(), z.number(), z.boolean(), z.null()]))
+    .min(1)
+    .max(MAX_CURSOR_VALUES),
+});
+
 const value = z.union([z.string(), z.number(), z.boolean()]);
 
 const range = z.strictObject({
@@ -285,6 +304,61 @@ export function checkDatasetQuery(
     query: parsed.data,
     issues: fieldIssues(fields, parsed.data, prefix),
   };
+}
+
+/**
+ * Every way a cursor does not fit its row query (`czjw.28`): a cursor applies to a row query only,
+ * holds one value per sort column and then the record key, and each value fits its column. A null
+ * fits a sort column, never the record key.
+ */
+export function cursorIssues(
+  fields: DatasetDeclaration["fields"],
+  query: DatasetQuery,
+  recordKeyField: string,
+  after: DatasetCursor
+): readonly AppErrorIssue[] {
+  const parsed = datasetCursorSchema.safeParse(after);
+
+  if (!parsed.success) return schemaIssues(parsed.error, "after");
+
+  if (query.aggregates !== undefined) {
+    return [{ path: "after", message: "A cursor applies to a row query." }];
+  }
+
+  const columns = [
+    ...(query.orderBy ?? []).map((order) => order.column),
+    recordKeyField,
+  ];
+
+  if (parsed.data.values.length !== columns.length) {
+    return [
+      {
+        path: "after.values",
+        message: `A cursor holds ${columns.length} values: one per sort column, then the record key.`,
+      },
+    ];
+  }
+
+  return parsed.data.values.flatMap((entry, index) => {
+    const column = columns[index] ?? "";
+
+    const type = Object.hasOwn(fields, column)
+      ? fields[column]?.type
+      : undefined;
+
+    const last = index === columns.length - 1;
+
+    if (type === undefined) return [];
+
+    if (entry === null ? !last : fits(type, entry)) return [];
+
+    return [
+      {
+        path: `after.values.${index}`,
+        message: `Value ${JSON.stringify(entry)} does not fit ${type} column "${column}".`,
+      },
+    ];
+  });
 }
 
 /** Every way the query does not fit the declared fields, as issues with dotted paths. Empty means it fits. */

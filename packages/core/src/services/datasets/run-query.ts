@@ -1,4 +1,4 @@
-import { and, isSQLWrapper, type SQL, sql } from "drizzle-orm";
+import { and, isSQLWrapper, or, type SQL, sql } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type {
@@ -12,6 +12,7 @@ import { pgErrorCode } from "../../utils/error-cause.ts";
 import type { DatasetColumn, DatasetResult, DatasetValue } from "./index.ts";
 import {
   DATASET_ROW_CAP,
+  type DatasetCursor,
   type DatasetFilter,
   type DatasetGroup,
   type DatasetQuery,
@@ -61,6 +62,9 @@ const AGGREGATE = { sum: "sum", avg: "avg", min: "min", max: "max" } as const;
 
 const DIRECTION = { asc: "asc", desc: "desc" } as const;
 
+/** The hidden last column of a row query: its record key, for the order and the cursor (czjw.28). */
+const KEY_COLUMN = "__record_key";
+
 /** One column of the answer: its metadata, its select expression and, for ranges, its labels. */
 type Output = {
   readonly column: DatasetColumn;
@@ -90,8 +94,9 @@ export async function runDatasetQuery(
   declaration: DatasetDeclaration,
   source: DatasetSource,
   query: DatasetQuery,
-  timeLimitMs: number = DATASET_TIME_LIMIT_MS
-): Promise<Pick<DatasetResult, "columns" | "rows" | "truncated">> {
+  timeLimitMs: number = DATASET_TIME_LIMIT_MS,
+  after?: DatasetCursor
+): Promise<Pick<DatasetResult, "columns" | "rows" | "truncated" | "next">> {
   const deadline = performance.now() + timeLimitMs;
   const ds = source.as("ds");
 
@@ -242,20 +247,69 @@ export async function runDatasetQuery(
   // parameter numbers, so a repeated CASE would not match its select item (Postgres 42803).
   const groupBy = groups.map((_, index) => String(index + 1)).join(", ");
 
-  const orderBy = query.orderBy?.length
-    ? sql.raw(
-        query.orderBy
-          .map(
-            (order) =>
-              `${names.indexOf(order.column) + 1} ${DIRECTION[order.direction]}`
-          )
-          .join(", ")
-      )
-    : aggregate
-      ? groupBy === ""
+  const sorted = (query.orderBy ?? []).map(
+    (order) =>
+      `${names.indexOf(order.column) + 1} ${DIRECTION[order.direction]}`
+  );
+
+  // A row query always ends its order on the record key (its hidden last column), so ties on the
+  // sort columns have one order and a cursor never skips or repeats a row (czjw.28).
+  const key = declaration.recordKey.field;
+
+  const orderBy = aggregate
+    ? sorted.length > 0
+      ? sql.raw(sorted.join(", "))
+      : groupBy === ""
         ? undefined
         : sql.raw(groupBy)
-      : sql`${field(declaration.recordKey.field)}`;
+    : sql.raw([...sorted, `${outputs.length + 1} asc`].join(", "));
+
+  // Postgres sorts nulls last ascending and first descending, so "after v" follows that order.
+  const beyond = (
+    name: string,
+    direction: "asc" | "desc",
+    value: DatasetValue
+  ): SQL => {
+    if (value === null) {
+      return direction === "asc" ? sql`false` : sql`${field(name)} is not null`;
+    }
+
+    return direction === "asc"
+      ? sql`(${cast(name)} > ${param(name, value)} or ${field(name)} is null)`
+      : sql`${cast(name)} < ${param(name, value)}`;
+  };
+
+  const level = (name: string, value: DatasetValue): SQL =>
+    value === null
+      ? sql`${field(name)} is null`
+      : sql`${cast(name)} = ${param(name, value)}`;
+
+  if (after !== undefined) {
+    const sortColumns = [
+      ...(query.orderBy ?? []).map(({ column, direction }) => ({
+        column,
+        direction,
+      })),
+      { column: key, direction: "asc" as const },
+    ];
+
+    const values = after.values;
+
+    const branches = sortColumns.map(({ column, direction }, index) =>
+      and(
+        ...sortColumns
+          .slice(0, index)
+          .map((before, position) =>
+            level(before.column, values[position] ?? null)
+          ),
+        beyond(column, direction, values[index] ?? null)
+      )
+    );
+
+    const keyset = or(...branches);
+
+    if (keyset !== undefined) conditions.push(keyset);
+  }
 
   const limit = query.limit ?? DATASET_ROW_CAP;
   const where = and(...conditions);
@@ -367,9 +421,10 @@ export async function runDatasetQuery(
           }
         }
 
-        const selection = Object.fromEntries(
-          outputs.map((output) => [output.column.name, output.expression])
-        );
+        const selection = Object.fromEntries([
+          ...outputs.map((output) => [output.column.name, output.expression]),
+          ...(aggregate ? [] : [[KEY_COLUMN, answer(cast(key), typeOf(key))]]),
+        ]);
 
         const base = tx.select(selection).from(ds).where(where).$dynamic();
 
@@ -407,7 +462,30 @@ export async function runDatasetQuery(
             : { name: column.name, type: column.type, currency };
         });
 
-        return { columns, rows, truncated: fetched.length > limit };
+        const answered: Pick<
+          DatasetResult,
+          "columns" | "rows" | "truncated" | "next"
+        > & { next?: DatasetCursor } = {
+          columns,
+          rows,
+          truncated: fetched.length > limit,
+        };
+
+        const last = fetched[limit - 1];
+
+        // The next page starts after the last row it answered: its sort values, then its key.
+        if (!aggregate && fetched.length > limit && last !== undefined) {
+          answered.next = {
+            values: [
+              ...(query.orderBy ?? []).map(
+                ({ column }) => last[column] ?? null
+              ),
+              last[KEY_COLUMN] ?? null,
+            ],
+          };
+        }
+
+        return answered;
       },
       { accessMode: "read only" }
     );
