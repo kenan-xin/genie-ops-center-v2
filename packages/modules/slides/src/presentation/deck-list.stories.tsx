@@ -5,8 +5,10 @@ import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
+  chatOffDeckList,
   deckList,
   emptyDeckList,
+  noChatDeckList,
   readOnlyDeckList,
 } from "./__fixtures__/decks.ts";
 import { DeckList } from "./deck-list.tsx";
@@ -17,6 +19,9 @@ const listDecks = fn();
 const createDeck = fn();
 
 const deleteDeck = fn();
+
+/** The chat's chart gate; these stories send no message, so it never runs. */
+const chart = fn();
 
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
@@ -37,7 +42,10 @@ function withQuery(Story: () => ReactNode) {
   return (
     <QueryClientProvider client={client}>
       <ModuleClientProvider
-        client={{ slides: { listDecks, createDeck, deleteDeck } }}
+        client={{
+          slides: { listDecks, createDeck, deleteDeck },
+          agent: { chart },
+        }}
       >
         <Story />
       </ModuleClientProvider>
@@ -53,7 +61,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Slides list at `/m/slides/decks` (Spec 7 R-52). It shows only the signed-in person's own decks, the last changed first. New deck asks for a title; Delete asks first, because a deleted deck and its images cannot be undone.",
+          "The Slides list at `/m/slides/decks` (Spec 7 R-52). It shows only the signed-in person's own decks, the last changed first. New deck asks for a title; Delete asks first, because a deleted deck and its images cannot be undone. Beside the list, a person who may ask gets a chat that creates decks (R-46, D12): from 1024 px a 22rem column on the right, below that after the list. With AI off a note takes its place.",
       },
     },
     a11y: { test: "error" },
@@ -120,6 +128,113 @@ export const EmptyOnPhone: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByText("No decks yet")).toBeVisible();
   },
+};
+
+/**
+ * The chat beside the list, for a person who may ask while AI is on. No message is sent here; Plan
+ * task 9 proves a chat create and the list refetch in a browser. At desktop the list keeps its
+ * text unclipped beside the 22rem column.
+ */
+export const ChatOn: Story = {
+  name: "Chat on",
+  globals: desktop,
+  beforeEach: () => serve(deckList),
+  play: async ({ canvas }) => {
+    const aside = canvas.getByRole("complementary", {
+      name: "Chat about your decks",
+    });
+
+    await expect(aside.getBoundingClientRect().width).toBe(352);
+    await expect(
+      within(aside).getByRole("button", { name: "Send" })
+    ).toBeVisible();
+
+    const table = canvas.getByRole("table", { name: "Decks" });
+    const column = table.parentElement;
+
+    await expect(column?.scrollWidth).toBe(column?.clientWidth);
+    await expect(
+      table.getBoundingClientRect().right <= aside.getBoundingClientRect().left
+    ).toBe(true);
+  },
+};
+
+/**
+ * Below 1024 px the chat follows the list. Its bottom space lets Send scroll clear of the shell's
+ * fixed phone bar and the Ask bubble (S7-12 Task 9), so Send is the element at its own center.
+ */
+export const ChatOnPhone: Story = {
+  name: "Chat on a phone",
+  globals: phone,
+  beforeEach: () => serve(deckList),
+  play: async ({ canvas }) => {
+    const aside = canvas.getByRole("complementary", {
+      name: "Chat about your decks",
+    });
+
+    const send = within(aside).getByRole("button", { name: "Send" });
+
+    await expect(
+      Number.parseFloat(getComputedStyle(aside).paddingBottom)
+    ).toBeGreaterThanOrEqual(80);
+
+    send.scrollIntoView({ block: "center" });
+
+    const box = send.getBoundingClientRect();
+
+    await expect(window.innerWidth).toBe(390);
+    await expect(
+      send.contains(
+        document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      )
+    ).toBe(true);
+  },
+};
+
+const chatOffPlay: Story["play"] = async ({ canvas }) => {
+  await expect(
+    canvas.getByText("Chat is off. You can still make a deck with New deck.")
+  ).toBeVisible();
+  await expect(canvas.queryByRole("complementary")).toBeNull();
+};
+
+/** AI is off for the deployment: a note in place of the chat, and New deck still works. */
+export const ChatOff: Story = {
+  name: "Chat off",
+  args: { view: chatOffDeckList },
+  globals: desktop,
+  beforeEach: () => serve(chatOffDeckList),
+  play: chatOffPlay,
+};
+
+export const ChatOffOnPhone: Story = {
+  name: "Chat off on a phone",
+  args: { view: chatOffDeckList },
+  globals: phone,
+  beforeEach: () => serve(chatOffDeckList),
+  play: chatOffPlay,
+};
+
+const noChatPlay: Story["play"] = async ({ canvas }) => {
+  await expect(canvas.queryByRole("complementary")).toBeNull();
+  await expect(canvas.queryByText(/Chat is off/)).toBeNull();
+};
+
+/** A person who may not ask (no `core:ask:use`): no chat and no note. */
+export const NoChat: Story = {
+  name: "No chat",
+  args: { view: noChatDeckList },
+  globals: desktop,
+  beforeEach: () => serve(noChatDeckList),
+  play: noChatPlay,
+};
+
+export const NoChatOnPhone: Story = {
+  name: "No chat on a phone",
+  args: { view: noChatDeckList },
+  globals: phone,
+  beforeEach: () => serve(noChatDeckList),
+  play: noChatPlay,
 };
 
 // Without slides:write there is no New deck and no per-row menu.

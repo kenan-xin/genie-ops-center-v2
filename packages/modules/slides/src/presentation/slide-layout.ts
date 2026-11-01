@@ -46,11 +46,6 @@ const VISUAL_X = 384;
 
 const VISUAL_W = 536;
 
-/** A table and another visual share the text column: the body on top, the visual below. */
-const SPLIT_BODY_H = 192;
-
-const SPLIT_VISUAL_H = BODY_H - SPLIT_BODY_H - COLUMN_GAP;
-
 const BODY_KINDS: ReadonlySet<ElementKind> = new Set(["text", "bullets"]);
 
 const VISUAL_KINDS: ReadonlySet<ElementKind> = new Set([
@@ -63,18 +58,16 @@ const VISUAL_KINDS: ReadonlySet<ElementKind> = new Set([
 /**
  * Places every element of one slide on the 960 x 540 canvas. The title is always first; a body and
  * visuals share the row, and one kind alone takes the full width. A table needs about 400 px of
- * column, so it takes the wide visual column and any other visual moves into the text column
- * (round 1 I1); without a table, two visuals sit side by side. Adjacent boxes touch and never
+ * column, so it takes the wide visual column and its one other box, a body or a visual, takes
+ * the text column (round 1 I1, T4-FIT); without a table, two visuals sit side by side. Adjacent boxes touch and never
  * overlap, so the screen and the export draw the same slide.
  */
 export function slideLayout(kinds: readonly ElementKind[]): SlideBoxes {
   const visuals = kinds.filter((kind) => VISUAL_KINDS.has(kind)).length;
   const hasBody = kinds.some((kind) => BODY_KINDS.has(kind));
   const hasTable = kinds.includes("table");
-  const otherVisuals = hasTable ? visuals - 1 : visuals;
   const body: { index: number; box: Box }[] = [];
   let visualAt = 0;
-  let tablePlaced = false;
 
   for (const [index, kind] of kinds.entries()) {
     // The title has its own box above the rule.
@@ -87,7 +80,7 @@ export function slideLayout(kinds: readonly ElementKind[]): SlideBoxes {
           x: MARGIN_X,
           y: BODY_Y,
           w: hasBody && visuals > 0 ? TEXT_W : CONTENT_W,
-          h: hasTable && otherVisuals > 0 ? SPLIT_BODY_H : BODY_H,
+          h: BODY_H,
         },
       });
 
@@ -96,10 +89,9 @@ export function slideLayout(kinds: readonly ElementKind[]): SlideBoxes {
 
     if (!VISUAL_KINDS.has(kind)) continue;
 
-    if (kind === "table" && !tablePlaced) {
-      tablePlaced = true;
-
-      const shares = hasBody || otherVisuals > 0;
+    // The contract allows one table, beside one body or one other visual (T4-FIT).
+    if (kind === "table") {
+      const shares = hasBody || visuals > 1;
 
       body.push({
         index,
@@ -117,12 +109,7 @@ export function slideLayout(kinds: readonly ElementKind[]): SlideBoxes {
     if (hasTable) {
       body.push({
         index,
-        box: {
-          x: MARGIN_X,
-          y: hasBody ? BODY_Y + SPLIT_BODY_H + COLUMN_GAP : BODY_Y,
-          w: TEXT_W,
-          h: hasBody ? SPLIT_VISUAL_H : BODY_H,
-        },
+        box: { x: MARGIN_X, y: BODY_Y, w: TEXT_W, h: BODY_H },
       });
 
       continue;

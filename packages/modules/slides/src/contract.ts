@@ -62,6 +62,8 @@ const SLIDE_RULE_MESSAGES = {
   title: "A slide has one title.",
   body: "A slide holds at most one text or bullet list.",
   visual: "A slide holds at most two figures, charts, tables or images.",
+  table:
+    "A table shares its slide with one text or one other figure, chart or image, not both.",
 };
 
 const LIMIT: Record<
@@ -95,6 +97,16 @@ function ruleIssues(
     if (seen[group] > max) {
       issues.push({ index, message: SLIDE_RULE_MESSAGES[group] });
     }
+  }
+
+  // A table needs the wide visual column, so its slide has room for one more box (T4-FIT).
+  const tables = kinds.filter((kind) => kind === "table").length;
+
+  if (tables > 1 || (tables === 1 && seen.body > 0 && seen.visual > 1)) {
+    issues.push({
+      index: kinds.length - 1,
+      message: SLIDE_RULE_MESSAGES.table,
+    });
   }
 
   return issues;

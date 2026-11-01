@@ -71,7 +71,7 @@ const largestSlide = (id: string) => ({
   elements: [
     { kind: "title", text: "t".repeat(90) },
     { kind: "bullets", items: Array.from({ length: 5 }, () => "b".repeat(80)) },
-    frozenElement("table", 12),
+    frozenElement("chart", 60),
     frozenElement("chart", 60),
   ] satisfies StoredElement[],
 });
@@ -100,6 +100,11 @@ describe("the deck content schema", () => {
       "refuses a slide with three visuals",
       deckOf(["title", "figure", "image", "table"]),
       "slides.0.elements.3: A slide holds at most two figures, charts, tables or images.",
+    ],
+    [
+      "refuses a table beside a text and another visual",
+      deckOf(["title", "text", "table", "figure"]),
+      "slides.0.elements.3: A table shares its slide with one text or one other figure, chart or image, not both.",
     ],
     [
       "refuses a figure with a bar config",

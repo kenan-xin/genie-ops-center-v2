@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { omit } from "es-toolkit";
 
 import { ModuleClientProvider } from "../../lib/rpc/module-client.tsx";
 import { AgentPanel } from "./agent-panel.tsx";
@@ -19,7 +20,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A new agent chat beside one record (R-49): a module page passes the record's type and id as `context`, and every message sends it, so the prompt tells the model which record 'this' means. Each mount starts its own session. The chart gate goes through the app's module client, which holds the `agent` area. The story sends nothing.",
+          "A new agent chat beside one record or one list (R-49): a record page passes the record's type and id as `context`, and every message sends it, so the prompt tells the model which record 'this' means. A list page, such as the Slides list, passes no `context`, and no message sends one. Each mount starts its own session. The chart gate goes through the app's module client, which holds the `agent` area. The story sends nothing.",
       },
     },
     a11y: { test: "error" },
@@ -52,6 +53,12 @@ export const Desktop: Story = {
 
 export const Phone: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
+};
+
+// Beside a list, as the Slides list does: no record, so no message sends a `context` (D12).
+export const WithoutContext: Story = {
+  name: "Without a record context",
+  render: (args) => <AgentPanel {...omit(args, ["context"])} />,
 };
 
 export const WithoutPicker: Story = {

@@ -1,5 +1,10 @@
 import { definePage, type Module } from "@genie/core";
+import { capability } from "@genie/core/contracts";
 
+import {
+  SLIDES_AGENT_INSTRUCTIONS,
+  SLIDES_AGENT_TOOLS,
+} from "./agent-tools.ts";
 import { slidesContract } from "./contract.ts";
 import { SLIDES_PERMISSIONS } from "./permissions.ts";
 import { DeckListPage, DeckPage } from "./presentation/module-pages.tsx";
@@ -84,7 +89,12 @@ export const slidesModule = {
 
   events: [],
 
-  capabilities: [],
+  capabilities: [
+    capability("agent-tools", {
+      tools: SLIDES_AGENT_TOOLS,
+      instructions: SLIDES_AGENT_INSTRUCTIONS,
+    }),
+  ],
 
   jobs: [],
 

@@ -35,7 +35,7 @@ Default roles: `Slides user` (`slides:use`), `Slides viewer` (`slides:use`, `sli
 | `export_file_id` | The last PowerPoint export, a file saved through `FileStorage` with the owner as uploader, or null. A new export replaces it and removes the previous file. |
 | `created_at`, `updated_at` | With time zone. |
 
-Limits: 20 slides per deck. A slide starts with its one title and holds at most 5 elements: at most one text or bullet list, and at most two figures, charts, tables or images. A deck title of 1 to 80 characters, a slide title of 1 to 90, a text of at most 280, 1 to 5 bullets of at most 80, an image alt text of 1 to 200. A slide table shows at most 12 rows and 5 columns, a slide chart at most 60 points. 10 undo entries, 20 steps per change.
+Limits: 20 slides per deck. A slide starts with its one title and holds at most 5 elements: at most one text or bullet list, and at most two figures, charts, tables or images. A slide holds at most one table, beside one text or one other figure, chart or image, not both, because a table takes the wide column. A deck title of 1 to 80 characters, a slide title of 1 to 90, a text of at most 280, 1 to 5 bullets of at most 80, an image alt text of 1 to 200. A slide table shows at most 12 rows and 5 columns, a slide chart at most 60 points. 10 undo entries, 20 steps per change.
 
 ## Refresh data
 
@@ -48,6 +48,10 @@ A deck draws with the tenant branding on each read, never a copy: the company na
 ## PowerPoint export
 
 Export to PowerPoint needs `slides:read`: a person who can open a deck can present and export it. The server builds the file with pptxgenjs from the same slide layout the screen uses, so each slide places the same boxes. A bar, line, area or donut chart becomes a native, editable PowerPoint chart; a figure is its value and title as text; a table is a PowerPoint table. Each data element keeps its source caption, and each data slide shows its figures date. A data element whose dataset the person can no longer read is the refusal line, with no figure. The file is saved through `FileStorage` with the person as uploader, named on `export_file_id`, and the previous export is removed in the same transaction. The answer is a short-lived download link under `slides:read` on the deck. Only a PNG or JPEG logo is placed in the footer; with an SVG logo the footer shows the company name only, because pptxgenjs cannot draw an SVG fallback on the server.
+
+## Chat
+
+A person who may ask gets a chat beside the Slides list, from 1024 px a column on the right and below that after the list. It sends no record context. Its tools are `slides-list-decks` and `slides-read-deck` (`slides:read`), and `slides-create-deck` (`slides:write`, a write tool). The create tool runs only when the person's own message asks for a deck (R-46). It saves through the same store as New deck: every figure, chart and table passes the chart gate first, a refused chart saves nothing, the figures freeze on the reporting date, and one audit row names the tool. A create adds no Undo entry: Delete on the Slides list is the inverse of a chat create, as for analytics dashboards. The module's rules for the agent reach only a holder of `slides:write`: each slide makes one claim, its title states the finding, and every number comes from a figure, chart or table on the same slide (R-56). No tool output holds a clock value, a data row or the id of a deck the tool made, so a recorded follow-up request is the same on every run. A deck is changed by hand on its page; there is no change tool.
 
 ## Not built
 

@@ -71,4 +71,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       ].map((name) => `the slides page loaders ${name}`),
     ],
   },
+  {
+    file: "testing/agent-tools.integration.test.ts",
+    reason:
+      "Spec 7 R-46, R-52 and R-56: the agent reads only the asker's own decks, a created chart passes the chart gate and a refused one stores nothing, every slide leads with its title and holds one table at most beside one other box, and the write tool and its rules reach only a holder of slides:write",
+    cases: [
+      "slides-read-deck answers not-found to another person and leaves the deck the same",
+      "slides-create-deck answers chart-invalid for a chart on an unknown dataset and stores no deck",
+      "slides-create-deck refuses in its input a slide whose first element is not its title",
+      "slides-create-deck refuses in its input a table that shares its slide with a text and another visual",
+      "offers a reader the two read tools, a writer all three, and no slides key none; the rules reach only a writer",
+    ].map((name) => `the slides agent tools ${name}`),
+  },
 ];

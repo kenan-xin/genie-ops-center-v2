@@ -244,15 +244,11 @@ export const largeKpiSlide: ShownSlide = {
   ],
 };
 
-/** A 12 x 5 table beside a KPI: the table needs the wide visual column (round 1 I1). */
+/** A 12 x 5 table beside a KPI: the table needs the wide visual column (round 1 I1, T4-FIT). */
 export const tableWithVisualSlide: ShownSlide = {
   id: "s9",
   elements: [
     { kind: "title", text: "Three customers hold most of the open balance" },
-    {
-      kind: "bullets",
-      items: ["Three customers paid late", "Two settled in September"],
-    },
     { kind: "figure", chart: KPI, data: KPI_DATA },
     { kind: "table", chart: TABLE, data: TABLE_DATA },
   ],
@@ -312,6 +308,16 @@ export const deckList: DeckListView = {
 };
 
 export const emptyDeckList: DeckListView = { ...deckList, decks: [] };
+
+export const chatOffDeckList: DeckListView = {
+  ...deckList,
+  chat: { kind: "off" },
+};
+
+export const noChatDeckList: DeckListView = {
+  ...deckList,
+  chat: { kind: "none" },
+};
 
 export const readOnlyDeckList: DeckListView = {
   ...deckList,

@@ -16,12 +16,13 @@ import {
 const NO_MESSAGES: readonly AgentMessage[] = [];
 
 /**
- * A new agent chat beside one record (R-49, S7-13): every message names the record, so the prompt
- * tells the model what "this" means. Each mount starts its own session (P3), and the chart gate
- * goes through the app's client, which holds the `agent` area.
+ * A new agent chat beside one record or one list (R-49, S7-13). Beside a record, every message
+ * names it, so the prompt tells the model what "this" means; beside a list, no context is sent.
+ * Each mount starts its own session (P3), and the chart gate goes through the app's client, which
+ * holds the `agent` area.
  */
 export function AgentPanel(props: {
-  readonly context: AgentChatContext;
+  readonly context?: AgentChatContext;
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
@@ -33,7 +34,10 @@ export function AgentPanel(props: {
   const [sessionId] = useState(() => crypto.randomUUID());
 
   const [transport] = useState(() =>
-    agentTransport(AGENT_ROUTE, { context: props.context })
+    agentTransport(
+      AGENT_ROUTE,
+      props.context === undefined ? undefined : { context: props.context }
+    )
   );
 
   const agent = useModuleClient(agentContract);

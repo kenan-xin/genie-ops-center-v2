@@ -1,5 +1,6 @@
 "use client";
 
+import { AgentPanel } from "@genie/core/features/agent";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -16,6 +17,7 @@ import {
   EmptyState,
   Field,
   FieldLabel,
+  InfoNote,
   Input,
 } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,7 +36,10 @@ export type DeckListProps = {
   readonly view: DeckListView;
 };
 
-/** The Slides list: the owner's own decks, with create and delete (R-52). */
+/**
+ * The Slides list: the owner's own decks, with create and delete (R-52), and the chat that creates
+ * decks beside it (R-46, D12). Delete is the inverse of a chat create.
+ */
 export function DeckList(props: DeckListProps) {
   const { view } = props;
   const slides = useModuleClient(slidesContract);
@@ -112,36 +117,67 @@ export function DeckList(props: DeckListProps) {
         }
       />
 
-      {remove.error === null ? null : (
-        <p role="alert" className="mb-4 text-sm text-destructive">
-          {remove.error.message === ""
-            ? "The deck was not deleted."
-            : remove.error.message}
-        </p>
-      )}
+      {/* From lg the chat is a 22rem column (w-88) right of the list; below lg it follows it. */}
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+        <div className="min-w-0 lg:flex-1">
+          {remove.error === null ? null : (
+            <p role="alert" className="mb-4 text-sm text-destructive">
+              {remove.error.message === ""
+                ? "The deck was not deleted."
+                : remove.error.message}
+            </p>
+          )}
 
-      {decks.data.length === 0 ? (
-        <EmptyState
-          variant="framed"
-          title="No decks yet"
-          description="Create a deck by chat beside this list, or start one with New deck."
-        />
-      ) : (
-        <DataTable
-          label="Decks"
-          rows={decks.data}
-          rowKey={(row) => row.id}
-          rowLabel={(row) => row.title}
-          columns={columns}
-          card={{
-            title: (row) => (
-              <PageLink href={hrefOf(row.id)}>{row.title}</PageLink>
-            ),
-            facts: (row) => [slideText(row.slideCount)],
-          }}
-          {...(actions === undefined ? {} : { actions })}
-        />
-      )}
+          {decks.data.length === 0 ? (
+            <EmptyState
+              variant="framed"
+              title="No decks yet"
+              description="Create a deck by chat beside this list, or start one with New deck."
+            />
+          ) : (
+            <DataTable
+              label="Decks"
+              rows={decks.data}
+              rowKey={(row) => row.id}
+              rowLabel={(row) => row.title}
+              columns={columns}
+              card={{
+                title: (row) => (
+                  <PageLink href={hrefOf(row.id)}>{row.title}</PageLink>
+                ),
+                facts: (row) => [slideText(row.slideCount)],
+              }}
+              {...(actions === undefined ? {} : { actions })}
+            />
+          )}
+        </div>
+        {view.chat.kind === "on" ? (
+          <aside
+            aria-label="Chat about your decks"
+            // The bottom space lets the composer scroll clear of the fixed phone bar and the bubble.
+            className="min-w-0 max-lg:pb-20 lg:w-88 lg:shrink-0 lg:pb-0"
+          >
+            <AgentPanel
+              models={view.chat.models}
+              timeZone={view.timeZone}
+              newChatHref="/m/slides/decks"
+              // A chat create adds a deck; the list reads it at once.
+              onFinished={() =>
+                void queryClient.invalidateQueries({
+                  queryKey: decksQueryKey(),
+                })
+              }
+            />
+          </aside>
+        ) : null}
+        {view.chat.kind === "off" ? (
+          <div className="lg:w-88 lg:shrink-0">
+            <InfoNote size="md" role="status">
+              Chat is off. You can still make a deck with New deck.
+            </InfoNote>
+          </div>
+        ) : null}
+      </div>
 
       <Dialog
         open={creating}

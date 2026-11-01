@@ -30,10 +30,7 @@ describe("slideLayout", () => {
     ["text with a chart", ["title", "text", "chart"]],
     ["bullets with two visuals", ["title", "bullets", "figure", "chart"]],
     ["two visuals alone", ["title", "chart", "figure"]],
-    [
-      "bullets with a figure and a table",
-      ["title", "bullets", "figure", "table"],
-    ],
+    ["bullets with a table", ["title", "bullets", "table"]],
     ["two visuals alone with a table", ["title", "chart", "table"]],
   ] as const)("keeps every box on the canvas and apart for %s", (_, kinds) => {
     const cells = cellsOf(kinds);
@@ -75,15 +72,14 @@ describe("slideLayout", () => {
   });
 
   // I1: a 12 x 5 table needs about 400 px of column, so it takes the wide visual column and the
-  // other visual moves into the text column, below the body when both are present.
+  // other box, a body or one visual (T4-FIT), takes the text column.
   it("gives a table the wide visual column", () => {
-    const withBody = slideLayout(["title", "bullets", "figure", "table"]);
+    const withBody = slideLayout(["title", "bullets", "table"]);
     const alone = slideLayout(["title", "chart", "table"]);
 
     expect(withBody.body).toEqual([
-      { index: 1, box: { x: 40, y: 136, w: 320, h: 192 } },
-      { index: 2, box: { x: 40, y: 344, w: 320, h: 140 } },
-      { index: 3, box: { x: 384, y: 136, w: 536, h: 348 } },
+      { index: 1, box: { x: 40, y: 136, w: 320, h: 348 } },
+      { index: 2, box: { x: 384, y: 136, w: 536, h: 348 } },
     ]);
     expect(alone.body).toEqual([
       { index: 1, box: { x: 40, y: 136, w: 320, h: 348 } },

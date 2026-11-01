@@ -331,4 +331,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the analytics chat beside a dashboard adds the recorded panel with one Undo entry and one audit row, and Undo restores the empty dashboard",
     ],
   },
+  {
+    file: "testing/slides-chat.integration.test.ts",
+    reason:
+      "Spec 7 R-46, R-47, R-55, R-56 and AC-10: a chat beside the Slides list creates the recorded five-slide deck through the store, frozen on the reporting date with the demo figures and one agent audit row, its export holds native charts, and a second chat replays both recordings, so the tool output holds no id and no clock value",
+    cases: [
+      "the slides chat beside the Slides list creates the recorded five-slide deck frozen on the reporting date, with one audit row, an export of native charts, and replays again",
+    ],
+  },
 ];
