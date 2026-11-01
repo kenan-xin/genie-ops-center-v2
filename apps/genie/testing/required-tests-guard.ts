@@ -265,7 +265,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "partial-payments",
       ].map(
         (id) =>
-          `the invoice answers through the agent the recorded answer to ${id} gives the expected answer and opens its records`
+          `the invoice answers through the agent the recorded answer to ${id} gives the expected answer, also under other names, and opens its records`
       ),
       "the invoice answers through the agent sends the invoices rules and only the read tools to the model for a person with invoices:read",
       "the invoice answers through the agent refuses every chart of the nine answers to a person without invoices:read",
