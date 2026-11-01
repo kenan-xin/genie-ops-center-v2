@@ -153,6 +153,7 @@ const READINGS: readonly (readonly [
         "Additional consulting project - October 2026",
         "Additional consulting project - October 2026",
       ],
+      reference: ["INV-LIVE-001", "Invoice number INV-LIVE-001"],
     },
     [],
   ],
@@ -164,10 +165,15 @@ const READINGS: readonly (readonly [
       date: ["2026-10-26", "Payment date 2026-10-26"],
       currency: ["SGD", "Currency SGD"],
       amount: ["3000.00", "TOTAL (SGD) 3,000.00"],
-      reference: ["HF-SEP-FINAL-PART", "Payment reference HF-SEP-FINAL-PART"],
+      reference: ["HF-SEP-FINAL-PART", "HF-SEP-FINAL-PART"],
+      number: ["HF-SEP-FINAL-PART", "HF-SEP-FINAL-PART"],
       method: ["Bank transfer", "Payment method Bank transfer"],
+      description: [
+        "Payment received for professional services.",
+        "Payment received for professional services.",
+      ],
     },
-    [["INV-2026-09-03", "Invoice reference INV-2026-09-03 | SGD 3,000.00"]],
+    [["INV-2026-09-03", "INV-2026-09-03"]],
   ],
   [
     "03",
@@ -175,14 +181,18 @@ const READINGS: readonly (readonly [
     {
       customer: ["Orchid Retail", "Orchid Retail"],
       date: ["2026-10-27", "Payment date 2026-10-27"],
-      currency: ["SGD", "Currency SGD"],
+      currency: ["SGD", "Currency: SGD"],
       amount: ["8250.00", "TOTAL (SGD) 8,250.00"],
       reference: ["OR-AUG-SEP-BUNDLE", "Payment reference OR-AUG-SEP-BUNDLE"],
       method: ["Bank transfer", "Payment method Bank transfer"],
+      description: [
+        "Payment received for professional services.",
+        "Payment received for professional services.",
+      ],
     },
     [
-      ["INV-2026-08-04", "Invoice reference INV-2026-08-04 | SGD 4,050.00"],
-      ["INV-2026-09-04", "Invoice reference INV-2026-09-04 | SGD 4,200.00"],
+      ["INV-2026-08-04", "INV-2026-08-04"],
+      ["INV-2026-09-04", "INV-2026-09-04"],
     ],
   ],
   [
@@ -194,7 +204,12 @@ const READINGS: readonly (readonly [
       currency: ["SGD", "Currency SGD"],
       amount: ["2222.00", "TOTAL (SGD) 2,222.00"],
       reference: ["ML-UNREFERENCED", "Payment reference ML-UNREFERENCED"],
+      number: ["ML-UNREFERENCED", "Payment reference ML-UNREFERENCED"],
       method: ["Bank transfer", "Payment method Bank transfer"],
+      description: [
+        "Payment received for professional services.",
+        "Payment received for professional services.",
+      ],
     },
     [],
   ],
@@ -209,6 +224,10 @@ const READINGS: readonly (readonly [
       amount: ["1800.00", "TOTAL (SGD) 1,800.00"],
       reference: ["LD-PURCHASE-1800", "Payment reference LD-PURCHASE-1800"],
       method: ["Card", "Payment method Card"],
+      description: [
+        "One-off design workshop. This receipt records both the sale and full payment.",
+        "One-off design workshop. This receipt records both the sale and full payment.",
+      ],
     },
     [],
   ],
@@ -221,6 +240,10 @@ const READINGS: readonly (readonly [
       date: ["2026-10-27", "Order date 2026-10-27"],
       currency: ["SGD", "Currency: SGD"],
       amount: ["2200.00", "TOTAL (SGD) 2,200.00"],
+      description: [
+        "Data integration workshop booking. Order confirmation only; invoice and payment confirmation have not been issued.",
+        "Data integration workshop booking. Order confirmation only; invoice and payment confirmation have\nnot been issued.",
+      ],
     },
     [],
   ],
@@ -529,6 +552,7 @@ describe("the reading job", () => {
       "date",
       "description",
       "number",
+      "reference",
     ]);
     expect((await originsOf(id)).map((origin) => origin.field)).not.toContain(
       "amount"

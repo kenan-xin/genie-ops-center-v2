@@ -1,6 +1,5 @@
 {
   "name": "read-01-invoice",
-  "handWritten": "S7-08, 2026-10-31: written by hand, no live run allowed; the request is the body the job sent; the answer is the reading the PDF and live_expected_entities_DO_NOT_PRELOAD.json state; the owner refreshes it live.",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -332,32 +331,40 @@
   "response": {
     "status": 200,
     "body": {
-      "id": "gen-1793369875-Xe0lqiXMvbzSFK323D0t",
+      "id": "gen-1793521814-QTcXbJz4fL6NVuY9MXOn",
       "object": "chat.completion",
-      "created": 1793369875,
+      "created": 1793521814,
       "model": "deepseek/deepseek-v4.1-flash-1017",
-      "provider": "OpenAI",
+      "provider": "Relace",
       "system_fingerprint": null,
-      "service_tier": "default",
+      "service_tier": null,
       "choices": [
         {
           "index": 0,
           "logprobs": null,
           "finish_reason": "stop",
-          "native_finish_reason": "completed",
+          "native_finish_reason": "stop",
           "message": {
             "role": "assistant",
-            "content": "{\"customer\":{\"value\":\"ABC Trading\",\"quote\":\"Bill to: ABC Trading\",\"page\":1},\"number\":{\"value\":\"INV-LIVE-001\",\"quote\":\"Invoice number INV-LIVE-001\",\"page\":1},\"date\":{\"value\":\"2026-10-26\",\"quote\":\"Invoice date 2026-10-26\",\"page\":1},\"dueDate\":{\"value\":null,\"quote\":null,\"page\":null},\"paymentTerms\":{\"value\":null,\"quote\":null,\"page\":null},\"currency\":{\"value\":\"SGD\",\"quote\":\"Currency: SGD\",\"page\":1},\"amount\":{\"value\":\"5000.00\",\"quote\":\"TOTAL (SGD) 5,000.00\",\"page\":1},\"reference\":{\"value\":null,\"quote\":null,\"page\":null},\"method\":{\"value\":null,\"quote\":null,\"page\":null},\"description\":{\"value\":\"Additional consulting project - October 2026\",\"quote\":\"Additional consulting project - October 2026\",\"page\":1},\"invoiceNumbers\":[],\"kind\":\"invoice\"}",
+            "content": "{\n  \"kind\": \"invoice\",\n  \"customer\": {\n    \"value\": \"ABC Trading\",\n    \"quote\": \"Bill to: ABC Trading\",\n    \"page\": 1\n  },\n  \"number\": {\n    \"value\": \"INV-LIVE-001\",\n    \"quote\": \"Invoice number INV-LIVE-001\",\n    \"page\": 1\n  },\n  \"date\": {\n    \"value\": \"2026-10-26\",\n    \"quote\": \"Invoice date 2026-10-26\",\n    \"page\": 1\n  },\n  \"dueDate\": {\n    \"value\": null,\n    \"quote\": null,\n    \"page\": null\n  },\n  \"paymentTerms\": {\n    \"value\": null,\n    \"quote\": null,\n    \"page\": null\n  },\n  \"currency\": {\n    \"value\": \"SGD\",\n    \"quote\": \"Currency: SGD\",\n    \"page\": 1\n  },\n  \"amount\": {\n    \"value\": \"5000.00\",\n    \"quote\": \"TOTAL (SGD) 5,000.00\",\n    \"page\": 1\n  },\n  \"reference\": {\n    \"value\": \"INV-LIVE-001\",\n    \"quote\": \"Invoice number INV-LIVE-001\",\n    \"page\": 1\n  },\n  \"method\": {\n    \"value\": null,\n    \"quote\": null,\n    \"page\": null\n  },\n  \"description\": {\n    \"value\": \"Additional consulting project - October 2026\",\n    \"quote\": \"Additional consulting project - October 2026\",\n    \"page\": 1\n  },\n  \"invoiceNumbers\": []\n}",
             "refusal": null,
-            "reasoning": null
+            "reasoning": "We need answer based on document. Need classify exactly one kind. Document is \"CUSTOMER INVOICE\", bill to ABC Trading, invoice number, date, total. It is invoice. Need fields: likely invoiceNumbers? User says invoiceNumbers lists each invoice number that payment evidence names, each with own quote and page. Empty for every other kind. Need return probably fields: document kind, customer, invoice number? Need infer expected schema from instruction? They mention \"For each field, return the value, the quote and the page.\" But they didn't list field names explicitly except invoiceNumbers. Need likely standard fields: kind, customer, invoiceNumber, invoiceDate, currency, amount, dueDate, paymentTerms? Need produce JSON maybe.\n\nNeed parse document. Fields:\n- kind: invoice\n- customer: ABC Trading. Quote \"Bill to: ABC Trading\" page 1.\n- invoiceNumber: INV-LIVE-001 quote \"Invoice number INV-LIVE-001\" page1\n- invoiceDate: 2026-10-26 quote \"Invoice date 2026-10-26\" page1\n- currency: SGD quote \"Currency: SGD\" page1 or \"TOTAL (SGD) 5,000.00\". Use currency line.\n- amount: total 5000.00 quote \"TOTAL (SGD) 5,000.00\" page1\n- dueDate: null (not stated)\n- paymentTerms: null (not stated)\n- invoiceNumbers: [] because invoice kind, empty.\nNeed maybe seller? Not asked. Need ensure quote character-for-character. \"Bill to: ABC Trading\" exact. \"Invoice number INV-LIVE-001\". \"Invoice date 2026-10-26\". \"Currency: SGD\". \"TOTAL (SGD) 5,000.00\". Page 1.\n\nNeed decide amount field is total. Yes.\n\nNeed mention invoice number singular maybe \"invoiceNumber\". Output structured. The request: \"Classify the document as exactly one kind...\" \"For each field, return the value, the quote and the page.\" We should give JSON object. Need maybe \"documentType\" not kind. Use \"kind\". Include fields with value/quote/page. For null: value null quote null page null. For invoiceNumbers empty array. Could include dueDate/paymentTerms null.\n\nNeed ensure no extra. Final only. Use valid JSON. Need not include markdown? Could. Desired oververbosity 5. Just JSON.\n\nNeed consider whether invoice date 2026-10-26. Yes.\n\nPotential issue: amount quote \"TOTAL (SGD) 5,000.00\" includes currency code and amount. Fine.\n\nNeed include \"customer\" quote \"Bill to: ABC Trading\"; page 1. It shows customer ABC Trading. Good.\n\nNeed if \"invoiceNumbers\" empty for invoice. Return [].\n\nNeed maybe \"currency\" quote \"Currency: SGD\" and page 1. Good.\n\nNeed maybe invoiceNumber quote includes exact \"Invoice number INV-LIVE-001\". Good.\n\nNeed maybe amount value \"5000.00\". Good.\n\nNeed maybe due date null. No due date in invoice; date only invoice date. Do not infer. Payment terms null. Good.\n\nNeed no computation. Good.\n\nLet's final.",
+            "reasoning_details": [
+              {
+                "type": "reasoning.text",
+                "text": "We need answer based on document. Need classify exactly one kind. Document is \"CUSTOMER INVOICE\", bill to ABC Trading, invoice number, date, total. It is invoice. Need fields: likely invoiceNumbers? User says invoiceNumbers lists each invoice number that payment evidence names, each with own quote and page. Empty for every other kind. Need return probably fields: document kind, customer, invoice number? Need infer expected schema from instruction? They mention \"For each field, return the value, the quote and the page.\" But they didn't list field names explicitly except invoiceNumbers. Need likely standard fields: kind, customer, invoiceNumber, invoiceDate, currency, amount, dueDate, paymentTerms? Need produce JSON maybe.\n\nNeed parse document. Fields:\n- kind: invoice\n- customer: ABC Trading. Quote \"Bill to: ABC Trading\" page 1.\n- invoiceNumber: INV-LIVE-001 quote \"Invoice number INV-LIVE-001\" page1\n- invoiceDate: 2026-10-26 quote \"Invoice date 2026-10-26\" page1\n- currency: SGD quote \"Currency: SGD\" page1 or \"TOTAL (SGD) 5,000.00\". Use currency line.\n- amount: total 5000.00 quote \"TOTAL (SGD) 5,000.00\" page1\n- dueDate: null (not stated)\n- paymentTerms: null (not stated)\n- invoiceNumbers: [] because invoice kind, empty.\nNeed maybe seller? Not asked. Need ensure quote character-for-character. \"Bill to: ABC Trading\" exact. \"Invoice number INV-LIVE-001\". \"Invoice date 2026-10-26\". \"Currency: SGD\". \"TOTAL (SGD) 5,000.00\". Page 1.\n\nNeed decide amount field is total. Yes.\n\nNeed mention invoice number singular maybe \"invoiceNumber\". Output structured. The request: \"Classify the document as exactly one kind...\" \"For each field, return the value, the quote and the page.\" We should give JSON object. Need maybe \"documentType\" not kind. Use \"kind\". Include fields with value/quote/page. For null: value null quote null page null. For invoiceNumbers empty array. Could include dueDate/paymentTerms null.\n\nNeed ensure no extra. Final only. Use valid JSON. Need not include markdown? Could. Desired oververbosity 5. Just JSON.\n\nNeed consider whether invoice date 2026-10-26. Yes.\n\nPotential issue: amount quote \"TOTAL (SGD) 5,000.00\" includes currency code and amount. Fine.\n\nNeed include \"customer\" quote \"Bill to: ABC Trading\"; page 1. It shows customer ABC Trading. Good.\n\nNeed if \"invoiceNumbers\" empty for invoice. Return [].\n\nNeed maybe \"currency\" quote \"Currency: SGD\" and page 1. Good.\n\nNeed maybe invoiceNumber quote includes exact \"Invoice number INV-LIVE-001\". Good.\n\nNeed maybe amount value \"5000.00\". Good.\n\nNeed maybe due date null. No due date in invoice; date only invoice date. Do not infer. Payment terms null. Good.\n\nNeed no computation. Good.\n\nLet's final.",
+                "format": "unknown",
+                "index": 0
+              }
+            ]
           }
         }
       ],
       "usage": {
-        "prompt_tokens": 9,
-        "completion_tokens": 6,
-        "total_tokens": 15,
-        "cost": 0.000039,
+        "prompt_tokens": 466,
+        "completion_tokens": 1040,
+        "total_tokens": 1506,
+        "cost": 0.00053631,
         "is_byok": false,
         "prompt_tokens_details": {
           "cached_tokens": 0,
@@ -366,12 +373,12 @@
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.000039,
-          "upstream_inference_prompt_cost": 0.000009,
-          "upstream_inference_completions_cost": 0.00003
+          "upstream_inference_cost": 0.00053631,
+          "upstream_inference_prompt_cost": 0.00001631,
+          "upstream_inference_completions_cost": 0.00052
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 0,
+          "reasoning_tokens": 682,
           "image_tokens": 0,
           "audio_tokens": 0
         }

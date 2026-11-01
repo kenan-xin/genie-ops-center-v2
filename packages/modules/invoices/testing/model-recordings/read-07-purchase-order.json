@@ -1,6 +1,5 @@
 {
   "name": "read-07-purchase-order",
-  "handWritten": "S7-08, 2026-10-31: written by hand, no live run allowed; the request is the body the job sent; the answer is the reading the PDF and live_expected_entities_DO_NOT_PRELOAD.json state; the owner refreshes it live.",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -332,32 +331,40 @@
   "response": {
     "status": 200,
     "body": {
-      "id": "gen-1793369875-Xe0lqiXMvbzSFK323D0t",
+      "id": "gen-1793521877-qWRJpVzXD6C2bWE1duov",
       "object": "chat.completion",
-      "created": 1793369875,
+      "created": 1793521877,
       "model": "deepseek/deepseek-v4.1-flash-1017",
-      "provider": "OpenAI",
+      "provider": "Wafer",
       "system_fingerprint": null,
-      "service_tier": "default",
+      "service_tier": null,
       "choices": [
         {
           "index": 0,
           "logprobs": null,
           "finish_reason": "stop",
-          "native_finish_reason": "completed",
+          "native_finish_reason": "stop",
           "message": {
             "role": "assistant",
-            "content": "{\"customer\":{\"value\":\"MERIDIAN LABS\",\"quote\":\"MERIDIAN LABS\",\"page\":1},\"number\":{\"value\":\"PO-LIVE-001\",\"quote\":\"Purchase order number PO-LIVE-001\",\"page\":1},\"date\":{\"value\":\"2026-10-27\",\"quote\":\"Order date 2026-10-27\",\"page\":1},\"dueDate\":{\"value\":null,\"quote\":null,\"page\":null},\"paymentTerms\":{\"value\":null,\"quote\":null,\"page\":null},\"currency\":{\"value\":\"SGD\",\"quote\":\"Currency: SGD\",\"page\":1},\"amount\":{\"value\":\"2200.00\",\"quote\":\"TOTAL (SGD) 2,200.00\",\"page\":1},\"reference\":{\"value\":null,\"quote\":null,\"page\":null},\"method\":{\"value\":null,\"quote\":null,\"page\":null},\"description\":{\"value\":null,\"quote\":null,\"page\":null},\"invoiceNumbers\":[],\"kind\":\"purchase-order\"}",
+            "content": "{\n  \"amount\": {\n    \"page\": 1,\n    \"quote\": \"TOTAL (SGD) 2,200.00\",\n    \"value\": \"2200.00\"\n  },\n  \"currency\": {\n    \"page\": 1,\n    \"quote\": \"Currency: SGD\",\n    \"value\": \"SGD\"\n  },\n  \"customer\": {\n    \"page\": 1,\n    \"quote\": \"MERIDIAN LABS\",\n    \"value\": \"MERIDIAN LABS\"\n  },\n  \"date\": {\n    \"page\": 1,\n    \"quote\": \"Order date 2026-10-27\",\n    \"value\": \"2026-10-27\"\n  },\n  \"description\": {\n    \"page\": 1,\n    \"quote\": \"Data integration workshop booking. Order confirmation only; invoice and payment confirmation have\\nnot been issued.\",\n    \"value\": \"Data integration workshop booking. Order confirmation only; invoice and payment confirmation have not been issued.\"\n  },\n  \"dueDate\": {\n    \"page\": null,\n    \"quote\": null,\n    \"value\": null\n  },\n  \"invoiceNumbers\": [],\n  \"kind\": \"purchase-order\",\n  \"method\": {\n    \"page\": null,\n    \"quote\": null,\n    \"value\": null\n  },\n  \"number\": {\n    \"page\": 1,\n    \"quote\": \"Purchase order number PO-LIVE-001\",\n    \"value\": \"PO-LIVE-001\"\n  },\n  \"paymentTerms\": {\n    \"page\": null,\n    \"quote\": null,\n    \"value\": null\n  }\n  ,\n  \"reference\": {\n    \"page\": null,\n    \"quote\": null,\n    \"value\": null\n  }\n}",
             "refusal": null,
-            "reasoning": null
+            "reasoning": "We need answer classify and fields. Need parse. Document purchase order. Need fields likely: kind, invoiceNumbers, customer, maybe seller? Prompt says \"For each field\" but fields unspecified in current message? Need infer expected schema maybe customer, invoiceNumbers, currency, amount, date, dueDate, paymentTerms, invoiceNumber? We need respond with relevant fields. Need be careful exact. Since no explicit field list, likely standard extraction: kind, invoiceNumbers, customer, maybe purchaseOrderNumber, date, currency, total. But user asks classify as exactly one kind and fields. Need include value quote page for each field. We need know fields from likely benchmark: invoiceNumber, invoiceDate, dueDate, paymentTerms, customer, vendor/seller, totalAmount, currency, purchaseOrderNumber, invoiceNumbers. Let's reason.\n\nDocument says PURCHASE ORDER. Supplier: GENIE (DEMO). Customer? Buyer is MERIDIAN LABS? The customer is the other party of seller: buyer on purchase order. Here supplier GENIE, buyer/customer MERIDIAN LABS. Is MERIDIAN LABS the company issuing PO? The doc header has MERIDIAN LABS, Supplier: GENIE. So customer = MERIDIAN LABS. Purchase order number PO-LIVE-001. Order date 2026-10-27. Currency SGD. Total 2,200.00. No invoice numbers. Payment status NOT STATED. No due date/payment terms. Need output JSON with fields.\n\nNeed decide exact schema. Could include:\nkind: \"purchase-order\"\ninvoiceNumbers: []\ncustomer: {value:\"MERIDIAN LABS\", quote:\"MERIDIAN LABS\", page:1}\npurchaseOrderNumber: {value:\"PO-LIVE-001\", quote:\"Purchase order number PO-LIVE-001\", page:1}\ndate: {value:\"2026-10-27\", quote:\"Order date 2026-10-27\", page:1}\ncurrency: {value:\"SGD\", quote:\"Currency: SGD\", page:1}\ntotalAmount: {value:\"2200.00\", quote:\"TOTAL (SGD) 2,200.00\", page:1}\ndueDate: null\npaymentTerms: null\nMaybe seller/vendor: GENIE (DEMO). But \"customer\" only requested. Could include seller? The prompt says \"The customer is...\" but not \"seller\". It mentions fields invoiceNumbers. Maybe expected fields: invoiceNumber, invoiceDate, dueDate, paymentTerms, customer, total, currency, purchaseOrderNumber. Since purchase order, maybe invoiceNumber null, invoiceDate null, dueDate null, paymentTerms null, customer, total, currency, purchaseOrderNumber. Need include invoiceNumbers empty.\n\nNeed answer concise JSON. Ensure quote character-for-character. For total quote can be \"TOTAL (SGD) 2,200.00\". Amount digits 2200.00. Date quote \"Order date 2026-10-27\". Currency quote \"Currency: SGD\". Customer quote \"MERIDIAN LABS\" appears top. Purchase order quote \"Purchase order number PO-LIVE-001\". Page all 1.\n\nNeed maybe \"payment status NOT STATED\" no.\n\nNeed include null fields with value/quote/page null. For invoiceNumbers empty array.\n\nFinal no markdown? Can use JSON. Need no extra.",
+            "reasoning_details": [
+              {
+                "type": "reasoning.text",
+                "text": "We need answer classify and fields. Need parse. Document purchase order. Need fields likely: kind, invoiceNumbers, customer, maybe seller? Prompt says \"For each field\" but fields unspecified in current message? Need infer expected schema maybe customer, invoiceNumbers, currency, amount, date, dueDate, paymentTerms, invoiceNumber? We need respond with relevant fields. Need be careful exact. Since no explicit field list, likely standard extraction: kind, invoiceNumbers, customer, maybe purchaseOrderNumber, date, currency, total. But user asks classify as exactly one kind and fields. Need include value quote page for each field. We need know fields from likely benchmark: invoiceNumber, invoiceDate, dueDate, paymentTerms, customer, vendor/seller, totalAmount, currency, purchaseOrderNumber, invoiceNumbers. Let's reason.\n\nDocument says PURCHASE ORDER. Supplier: GENIE (DEMO). Customer? Buyer is MERIDIAN LABS? The customer is the other party of seller: buyer on purchase order. Here supplier GENIE, buyer/customer MERIDIAN LABS. Is MERIDIAN LABS the company issuing PO? The doc header has MERIDIAN LABS, Supplier: GENIE. So customer = MERIDIAN LABS. Purchase order number PO-LIVE-001. Order date 2026-10-27. Currency SGD. Total 2,200.00. No invoice numbers. Payment status NOT STATED. No due date/payment terms. Need output JSON with fields.\n\nNeed decide exact schema. Could include:\nkind: \"purchase-order\"\ninvoiceNumbers: []\ncustomer: {value:\"MERIDIAN LABS\", quote:\"MERIDIAN LABS\", page:1}\npurchaseOrderNumber: {value:\"PO-LIVE-001\", quote:\"Purchase order number PO-LIVE-001\", page:1}\ndate: {value:\"2026-10-27\", quote:\"Order date 2026-10-27\", page:1}\ncurrency: {value:\"SGD\", quote:\"Currency: SGD\", page:1}\ntotalAmount: {value:\"2200.00\", quote:\"TOTAL (SGD) 2,200.00\", page:1}\ndueDate: null\npaymentTerms: null\nMaybe seller/vendor: GENIE (DEMO). But \"customer\" only requested. Could include seller? The prompt says \"The customer is...\" but not \"seller\". It mentions fields invoiceNumbers. Maybe expected fields: invoiceNumber, invoiceDate, dueDate, paymentTerms, customer, total, currency, purchaseOrderNumber. Since purchase order, maybe invoiceNumber null, invoiceDate null, dueDate null, paymentTerms null, customer, total, currency, purchaseOrderNumber. Need include invoiceNumbers empty.\n\nNeed answer concise JSON. Ensure quote character-for-character. For total quote can be \"TOTAL (SGD) 2,200.00\". Amount digits 2200.00. Date quote \"Order date 2026-10-27\". Currency quote \"Currency: SGD\". Customer quote \"MERIDIAN LABS\" appears top. Purchase order quote \"Purchase order number PO-LIVE-001\". Page all 1.\n\nNeed maybe \"payment status NOT STATED\" no.\n\nNeed include null fields with value/quote/page null. For invoiceNumbers empty array.\n\nFinal no markdown? Can use JSON. Need no extra.",
+                "format": "unknown",
+                "index": 0
+              }
+            ]
           }
         }
       ],
       "usage": {
-        "prompt_tokens": 9,
-        "completion_tokens": 6,
-        "total_tokens": 15,
-        "cost": 0.000039,
+        "prompt_tokens": 487,
+        "completion_tokens": 1077,
+        "total_tokens": 1564,
+        "cost": 0.000557006,
         "is_byok": false,
         "prompt_tokens_details": {
           "cached_tokens": 0,
@@ -366,12 +373,12 @@
           "video_tokens": 0
         },
         "cost_details": {
-          "upstream_inference_cost": 0.000039,
-          "upstream_inference_prompt_cost": 0.000009,
-          "upstream_inference_completions_cost": 0.00003
+          "upstream_inference_cost": 0.000557006,
+          "upstream_inference_prompt_cost": 0.000018506,
+          "upstream_inference_completions_cost": 0.0005385
         },
         "completion_tokens_details": {
-          "reasoning_tokens": 0,
+          "reasoning_tokens": 790,
           "image_tokens": 0,
           "audio_tokens": 0
         }
