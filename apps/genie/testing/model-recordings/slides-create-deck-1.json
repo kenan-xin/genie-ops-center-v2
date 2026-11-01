@@ -1,6 +1,5 @@
 {
-  "name": "slides-create-deck-1 (hand-written)",
-  "handWritten": "S7-13, 2026-11-01: written by hand; no live run allowed. The owner records it live (run-state, Blocked on owner).",
+  "name": "slides-create-deck-1",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -483,9 +482,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-s7-13-slides-create-deck-1",
+        "id": "gen-1793553222-pvV4i5UfcmXMNfcLCPGu",
         "object": "chat.completion.chunk",
-        "created": 1793371061,
+        "created": 1793553222,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -497,10 +496,10 @@
               "tool_calls": [
                 {
                   "index": 0,
-                  "id": "call_s7_13_create_deck",
+                  "id": "call_boRaWf1Evu5CI9U8Y6oDPet3",
                   "type": "function",
                   "function": {
-                    "name": "slides-create-deck",
+                    "name": "list-datasets",
                     "arguments": ""
                   }
                 }
@@ -512,9 +511,9 @@
         ]
       },
       {
-        "id": "gen-s7-13-slides-create-deck-1",
+        "id": "gen-1793553222-pvV4i5UfcmXMNfcLCPGu",
         "object": "chat.completion.chunk",
-        "created": 1793371061,
+        "created": 1793553222,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -538,9 +537,9 @@
         ]
       },
       {
-        "id": "gen-s7-13-slides-create-deck-1",
+        "id": "gen-1793553222-pvV4i5UfcmXMNfcLCPGu",
         "object": "chat.completion.chunk",
-        "created": 1793371061,
+        "created": 1793553222,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -553,7 +552,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\"title\":\"Monthly sales and collections\",\"slides\":[{\"elements\":[{\"kind\":\"title\",\"text\":\"Invoiced sales grew every month from May to October.\"},{\"kind\":\"text\",\"text\":\"October invoiced sales reached SGD 43,900.00.\"},{\"kind\":\"chart\",\"chart\":{\"type\":\"bar\",\"title\":\"Invoiced sales by month\",\"series\":[{\"name\":\"Invoiced sales\",\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"invoiceDate\",\"op\":\"between\",\"from\":\"2026-05-01\",\"to\":\"2026-10-31\"}],\"groupBy\":[{\"field\":\"invoiceDate\",\"bucket\":\"month\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"totalCents\",\"as\":\"invoicedCents\"}]},\"x\":\"invoiceDate\",\"y\":\"invoicedCents\"}]}}]},{\"elements\":[{\"kind\":\"title\",\"text\":\"Collections fell behind invoiced sales in September and October.\"},{\"kind\":\"chart\",\"chart\":{\"type\":\"bar\",\"title\":\"Invoiced sales and collections by month\",\"series\":[{\"name\":\"Invoiced sales\",\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"invoiceDate\",\"op\":\"between\",\"from\":\"2026-05-01\",\"to\":\"2026-10-31\"}],\"groupBy\":[{\"field\":\"invoiceDate\",\"bucket\":\"month\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"totalCents\",\"as\":\"invoicedCents\"}]},\"x\":\"invoiceDate\",\"y\":\"invoicedCents\"},{\"name\":\"Collections\",\"dataset\":\"invoices.payments\",\"query\":{\"filters\":[{\"field\":\"paymentDate\",\"op\":\"between\",\"from\":\"2026-05-01\",\"to\":\"2026-10-31\"}],\"groupBy\":[{\"field\":\"paymentDate\",\"bucket\":\"month\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"amountCents\",\"as\":\"collectedCents\"}]},\"x\":\"paymentDate\",\"y\":\"collectedCents\"}]}}]},{\"elements\":[{\"kind\":\"title\",\"text\":\"Harbor Foods, Orchid Retail and ABC Trading hold every overdue balance.\"},{\"kind\":\"chart\",\"chart\":{\"type\":\"bar\",\"title\":\"Overdue balance by customer\",\"series\":[{\"name\":\"Overdue\",\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"customerName\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"overdueCents\"}]},\"x\":\"customerName\",\"y\":\"overdueCents\"}]}},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Overdue\",\"series\":[{\"name\":\"Overdue\",\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"total\"}]},\"value\":\"total\"}]}}]},{\"elements\":[{\"kind\":\"title\",\"text\":\"ABC Trading, Harbor Foods and Orchid Retail paid most settled invoices late.\"},{\"kind\":\"table\",\"chart\":{\"type\":\"table\",\"title\":\"Late payments by customer\",\"series\":[{\"name\":\"Late payments\",\"dataset\":\"invoices.customers\",\"query\":{\"select\":[\"name\",\"settledWithDueDateCount\",\"paidLateCount\"],\"orderBy\":[{\"column\":\"paidLateCount\",\"direction\":\"desc\"}],\"limit\":12}}]}}]},{\"elements\":[{\"kind\":\"title\",\"text\":\"Follow up the largest overdue balances first.\"},{\"kind\":\"bullets\",\"items\":[\"Start with Harbor Foods, the largest overdue balance.\",\"Ask Orchid Retail for the due dates of its open invoices.\",\"Agree a payment plan with ABC Trading.\"]},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Outstanding\",\"series\":[{\"name\":\"Outstanding\",\"dataset\":\"invoices.invoices\",\"query\":{\"aggregates\":[{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"total\"}]},\"value\":\"total\"}]}}]}]}"
+                    "arguments": "{}"
                   }
                 }
               ]
@@ -564,9 +563,9 @@
         ]
       },
       {
-        "id": "gen-s7-13-slides-create-deck-1",
+        "id": "gen-1793553222-pvV4i5UfcmXMNfcLCPGu",
         "object": "chat.completion.chunk",
-        "created": 1793371061,
+        "created": 1793553222,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -582,9 +581,9 @@
         ]
       },
       {
-        "id": "gen-s7-13-slides-create-deck-1",
+        "id": "gen-1793553222-pvV4i5UfcmXMNfcLCPGu",
         "object": "chat.completion.chunk",
-        "created": 1793371061,
+        "created": 1793553222,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -600,20 +599,20 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 2251,
+          "prompt_tokens": 3448,
           "completion_tokens": 15,
-          "total_tokens": 2266,
-          "cost": 0.0001904,
+          "total_tokens": 3463,
+          "cost": 0.00438425,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 2248,
-            "cache_write_tokens": 0,
+            "cached_tokens": 0,
+            "cache_write_tokens": 3445,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.0001904,
-            "upstream_inference_prompt_cost": 0.0001154,
+            "upstream_inference_cost": 0.00438425,
+            "upstream_inference_prompt_cost": 0.00430925,
             "upstream_inference_completions_cost": 0.000075
           },
           "completion_tokens_details": {

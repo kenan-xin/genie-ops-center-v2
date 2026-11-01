@@ -35,7 +35,7 @@ import {
  * R-56, AC-10): the write tool saves through the store, so the figures freeze on the reporting date
  * and an audit row names the tool. The modules come in the order of the app's generated selection,
  * so the tool list equals the dev e2e list. The replayed follow-up request holds the tool output,
- * and a second chat replays both recordings again, so the output holds no id and no clock value.
+ * and a second chat replays every recording again, so the output holds no id and no clock value.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -152,7 +152,7 @@ describe("the slides chat beside the Slides list", () => {
 
     expect(others).toEqual([]);
     expect(deck).toMatchObject({
-      title: "Monthly sales and collections",
+      title: MONTHLY_DECK.title,
       frozen_on: "2026-10-27",
     });
     expect(
@@ -160,9 +160,7 @@ describe("the slides chat beside the Slides list", () => {
         elements[0]?.kind,
         elements[0]?.text,
       ])
-    ).toEqual(
-      MONTHLY_DECK.slides.map(({ elements }) => ["title", elements[0].text])
-    );
+    ).toEqual(MONTHLY_DECK.slideTitles.map((title) => ["title", title]));
 
     const rowsOf = (slide: number, element: number) =>
       deck?.content.slides[slide]?.elements[element]?.data?.rows ?? [];
@@ -178,10 +176,19 @@ describe("the slides chat beside the Slides list", () => {
         invoiced: Number(row["invoiced_sales"]) * 100,
       }))
     );
-    expect(rowsOf(2, 2)).toEqual([{ Overdue: 2735000 }]);
-    expect(await toolCalls()).toEqual([
+    // The overdue balance of each customer in `expected_baseline_answers.json`, SGD 27,350 in all.
+    expect(rowsOf(2, 2)).toEqual([
+      { x: "Harbor Foods", Overdue: 1260000 },
+      { x: "Orchid Retail", Overdue: 825000 },
+      { x: "ABC Trading", Overdue: 650000 },
+    ]);
+    // The model reads the datasets first, so each read has its own row beside the one write.
+    const calls = await toolCalls();
+
+    expect(calls.filter(({ tool }) => tool === "slides-create-deck")).toEqual([
       { tool: "slides-create-deck", outcome: "answered" },
     ]);
+    expect(calls.filter(({ outcome }) => outcome !== "answered")).toEqual([]);
 
     const slides = callProcedure(slidesRouter, asker);
     const answer = await slides.exportDeck({ id: deck?.id ?? "" });
@@ -193,14 +200,17 @@ describe("the slides chat beside the Slides list", () => {
 
     const pptx = await readPptx(fetched.bytes);
 
-    // The bars of slides 1, 2 and 3; the table and the figures are text (ruling F2).
+    // The lines of slides 1 and 2 and the bars of slide 3; the tables are text (ruling F2).
     expect(pptx.slideCount).toBe(5);
     expect(pptx.chartParts).toHaveLength(3);
     expect(await pptx.xmlOf(pptx.chartParts[0] ?? "")).toContain(
+      "<c:lineChart>"
+    );
+    expect(await pptx.xmlOf(pptx.chartParts[2] ?? "")).toContain(
       "<c:barChart>"
     );
 
-    // Delete is the inverse of a chat create (R-46); the same chat then replays both recordings.
+    // Delete is the inverse of a chat create (R-46); the same chat then replays all five recordings.
     await slides.deleteDeck({ id: deck?.id ?? "" });
     await chat("6a1d4e2f-3b5c-4d6e-8f7a-1b2c3d4e5f61");
 

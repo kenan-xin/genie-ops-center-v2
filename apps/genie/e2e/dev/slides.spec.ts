@@ -161,14 +161,18 @@ test("a deck created by chat is presented and exports native charts", async ({
           rail(page).getByRole("button", { name: /^Slide \d+:/ })
         ).toHaveCount(5);
 
-        // The deck the chat made puts the Overdue figure and the freeze date on slide 3.
-        await activate(page, railButton(page, 3));
+        // The deck the chat made puts the overdue table and the freeze date on slide 5.
+        await activate(page, railButton(page, 5));
 
         const slide = deckCanvas(page);
-        const overdue = slide.getByRole("figure", { name: "Overdue" });
 
+        const overdue = slide.getByRole("figure", {
+          name: "Overdue balance and oldest invoice by customer",
+        });
+
+        // Harbor Foods' overdue balance in `expected_baseline_answers.json`.
         await expect(
-          overdue.getByText(sgd(27_350), { exact: true })
+          overdue.getByText(sgd(12_600), { exact: true })
         ).toBeVisible(FIRST_PAINT);
         await expect(slide.locator("footer")).toContainText(
           "Figures as of 27 Oct 2026"
@@ -176,7 +180,7 @@ test("a deck created by chat is presented and exports native charts", async ({
 
         // A value the box cuts off still passes `toBeVisible`, so measure the box itself.
         const overflow = await slide
-          .locator('[data-slide-box="figure"]')
+          .locator('[data-slide-box="table"]')
           .evaluate((element) => ({
             width: element.scrollWidth - element.clientWidth,
             height: element.scrollHeight - element.clientHeight,
@@ -184,11 +188,11 @@ test("a deck created by chat is presented and exports native charts", async ({
 
         expect(
           overflow.width,
-          "the Overdue figure is clipped across"
+          "the overdue table is clipped across"
         ).toBeLessThanOrEqual(0);
         expect(
           overflow.height,
-          "the Overdue figure is clipped down"
+          "the overdue table is clipped down"
         ).toBeLessThanOrEqual(0);
 
         await expectNoAxeViolations(page, "Slides deck page");
@@ -239,12 +243,15 @@ test("a deck created by chat is presented and exports native charts", async ({
         const pptx = await readPptx(await readFile(path));
 
         expect(pptx.slideCount).toBe(5);
-        // Three charts: slides 1, 2 and 3. Slide 3's Overdue figure is text. pptxgenjs numbers
-        // chart parts per server process, so a later export in one run starts above chart1.
+        // Three charts: the lines of slides 1 and 2, the bars of slide 3. The tables are text.
+        // pptxgenjs numbers chart parts per server process, so a later export starts above chart1.
         expect(pptx.chartParts).toHaveLength(3);
-        expect(await pptx.xmlOf(pptx.chartParts[0]!)).toContain("<c:barChart>");
+        expect(await pptx.xmlOf(pptx.chartParts[0]!)).toContain(
+          "<c:lineChart>"
+        );
+        expect(await pptx.xmlOf(pptx.chartParts[2]!)).toContain("<c:barChart>");
         expect(await pptx.xmlOf("ppt/slides/slide3.xml")).toContain(
-          "Harbor Foods, Orchid Retail and ABC Trading hold every overdue balance."
+          MONTHLY_DECK.slideTitles[2]
         );
 
         // An override that names a missing part is a deck PowerPoint refuses to open.
