@@ -151,6 +151,14 @@ describe("the quote check", () => {
     ["500.00", "TOTAL 1 500.00", "TOTAL 1500.00"],
     // A quote that cuts the page's sign off.
     ["5000.00", "5,000.00", "Credit -5,000.00"],
+    // A credit written with its sign before the currency, in brackets, or as CR or DR.
+    ["5000.00", "Refund -$5,000.00"],
+    ["5000.00", "Refund -SGD 5,000.00"],
+    ["5000.00", "Refund - SGD 5,000.00"],
+    ["5000.00", "Credit ( S$ 5,000.00 )"],
+    ["5000.00", "Credit (5,000.00)"],
+    ["5000.00", "Balance 5,000.00 CR"],
+    ["5000.00", "Balance 5,000.00 DR"],
   ])(
     "drops the amount %s that its quote %s does not hold",
     (value, quote, page = quote) => {
@@ -172,6 +180,8 @@ describe("the quote check", () => {
     "2026-10-26 5,000.00",
     // A currency written without a space before the amount.
     "TOTAL SGD5,000.00",
+    // A currency symbol glued to a plain amount is not a credit sign.
+    "Amount paid: S$5,000.00",
   ])("keeps the amount 5000.00 that its quote %s holds", (quote) => {
     const real = checkReading(
       reading({ amount: { value: "5000.00", quote, page: 1 } }),

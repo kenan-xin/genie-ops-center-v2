@@ -169,12 +169,14 @@ const WORD_BOUNDS = {
 };
 
 /**
- * What makes a number token part of another figure: a digit or decimal point, a sign or a slash
- * before it, a dash or a slash after it. A letter does not, because "SGD5,000.00" is real (I-2).
+ * What makes a number token part of another figure or a credit: a digit or decimal point or a
+ * slash before it, a sign or an opening bracket before it with an optional currency between
+ * ("-SGD 5,000.00", "- SGD 5,000.00", "(5,000.00)"), a dash or a slash after it, or CR or DR after it. A letter
+ * alone does not, because "SGD5,000.00" is real (I-2).
  */
 const AMOUNT_BOUNDS = {
-  before: /(?:\d\.?|[-−/])$/u,
-  after: /^(?:\.?\d|[-/])/u,
+  before: /(?:\d\.?|\/|[-−(]\s?\p{L}{0,3}\p{Sc}?\s?)$/u,
+  after: /^(?:\.?\d|[-/]|\s?[CD]R(?!\p{L}))/iu,
 };
 
 /** `token` occurs in `text` with nothing that `bounds` names directly before or after it. */
