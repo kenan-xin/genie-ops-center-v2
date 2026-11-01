@@ -39,6 +39,9 @@ type of at most 64 characters and an id of 1 to 64 letters, digits or hyphens (`
 one for an existing session (`model-not-allowed`). Only then does it create the session, store
 the message and stream the answer, which it stores when the stream ends.
 
+The model gets at most the last 40 stored messages of a session, starting at a user message, so a
+long chat does not grow each prompt. The session still stores and shows every message.
+
 ## What must not go here
 
 Screens: the Ask page, the chat bubble and the answer renderer live in `features/agent/`. A
