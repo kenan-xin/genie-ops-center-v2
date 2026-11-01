@@ -37,7 +37,8 @@ import { APP_AGENT_RECORDINGS } from "./model-replay.ts";
  * The nine read questions of the invoice demo through the agent with the recorded model (Spec 7
  * AC-8, R-44, R-46), on the app's module selection. Each recorded answer is drawn through the agent
  * area as the asker and gives the rows of `expected-answers.json`, and its records open their
- * invoices. The recordings are hand-written (S7-11): the owner records them live through this file.
+ * invoices. `partial-payments-1` to `-4` are a live recording. The other eight answers stay
+ * hand-written (S7-11): the live model's answers to them did not meet the expected answers.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
