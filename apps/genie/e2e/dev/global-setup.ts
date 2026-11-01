@@ -33,6 +33,7 @@ import {
   APP_AGENT_RECORDINGS,
   replayModelRequests,
 } from "../../testing/model-replay.ts";
+import { SLIDES_CHAT_KEYS } from "../../testing/slides-chat.ts";
 import { scopedPort, scopedProject } from "../../testing/worktree-scope.ts";
 import { lockDirectory } from "../support/lock.ts";
 
@@ -109,6 +110,11 @@ export const ANALYTICS_PEOPLE = {
   chat: "e2e.analytics.chat@example.invalid",
 } as const;
 
+/** The person who chats beside the Slides list, so a chat deck can be read back (D12). */
+export const SLIDES_PEOPLE = {
+  chat: "e2e.slides.chat@example.invalid",
+} as const;
+
 const ASK_KEYS = ["core:ask:use", "placeholder:read", "placeholder:use"];
 
 const INVOICE_ASK_KEYS = ["core:ask:use", "invoices:read", "invoices:use"];
@@ -131,6 +137,12 @@ const PERMISSIONS_OF = new Map<string, readonly string[]>([
   ...(DEV_MODULES.has("analytics") && DEV_MODULES.has("invoices")
     ? Object.values(ANALYTICS_PEOPLE).map(
         (email) => [email, ANALYTICS_CHAT_KEYS] as const
+      )
+    : []),
+  // The slides chat reads invoices and writes decks, which exist only together.
+  ...(DEV_MODULES.has("slides") && DEV_MODULES.has("invoices")
+    ? Object.values(SLIDES_PEOPLE).map(
+        (email) => [email, SLIDES_CHAT_KEYS] as const
       )
     : []),
 ]);

@@ -1,0 +1,126 @@
+import {
+  createTenantContext,
+  type TenantContext,
+  withTransaction,
+} from "@genie/core";
+import { silentLogger } from "@genie/core/logging";
+
+import { selectedModuleIds } from "../../src/modules.ts";
+import { DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
+
+/**
+ * What the slides spec shares: the demo database's own rows. The chat person's decks are removed
+ * before and after a test, because a killed run must not leave a deck the next one reads (D16).
+ */
+
+let tenantContext: TenantContext | undefined;
+
+/** The spec process's own tenant context, built as `global-setup.ts` builds one. */
+function context(): TenantContext {
+  tenantContext ??= createTenantContext(
+    {
+      DATABASE_URL: `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`,
+      PUBLIC_URL: `http://127.0.0.1:${DEV_PORT}`,
+    },
+    silentLogger(),
+    selectedModuleIds,
+    undefined,
+    "core"
+  );
+
+  return tenantContext;
+}
+
+/** Frees the pool this process's context opened, so Playwright exits without it. */
+export async function closeSlidesDatabase(): Promise<void> {
+  await tenantContext?.db.$client.end();
+
+  tenantContext = undefined;
+}
+
+/**
+ * Mirrors `noOverflow` in `slide-canvas.stories.tsx` (B4.2), for one slide canvas: every box that
+ * is not a chart, and every descendant that clips or scrolls, must not hide content. A table's
+ * rows sit in a scrolling child, so the box's own size is not enough. This runs inside the page.
+ */
+export function slideOverflowFailures(canvas: HTMLElement): readonly string[] {
+  const failures: string[] = [];
+
+  for (const element of canvas.querySelectorAll<HTMLElement>(
+    "[data-slide-box]"
+  )) {
+    if (element.dataset["slideBox"] === "chart") continue;
+
+    const label = element.dataset["slideBox"] ?? "box";
+
+    if (element.scrollWidth > element.clientWidth + 1) {
+      failures.push(`${label} overflows horizontally`);
+    } else if (element.scrollHeight > element.clientHeight + 1) {
+      failures.push(`${label} overflows vertically`);
+    }
+
+    for (const child of element.querySelectorAll<HTMLElement>("*")) {
+      // The 1 x 1 sr-only node of a table caption clips on purpose; it is not slide content.
+      if (child.clientWidth <= 1 && child.clientHeight <= 1) continue;
+
+      const style = getComputedStyle(child);
+
+      const clips = [style.overflowX, style.overflowY].some(
+        (value) => value !== "visible"
+      );
+
+      if (!clips) continue;
+
+      const name = child.tagName.toLowerCase();
+
+      if (child.scrollWidth > child.clientWidth + 1) {
+        failures.push(`${label} hides content inside ${name} (horizontally)`);
+      } else if (child.scrollHeight > child.clientHeight + 1) {
+        failures.push(`${label} hides content inside ${name} (vertically)`);
+      }
+    }
+  }
+
+  return failures;
+}
+
+/**
+ * Deletes every deck this person owns with its image and export files, in one transaction, so a
+ * later run starts from an empty list (D16). A person the setup has not made yet owns none, which
+ * is the red run before the chat person exists.
+ */
+export async function removeOwnDecks(email: string): Promise<void> {
+  const tenant = context();
+
+  const { rows: people } = await tenant.db.$client.query<{ id: string }>(
+    'select id from "user" where email = $1',
+    [email]
+  );
+
+  const ownerUserId = people[0]?.id;
+
+  if (ownerUserId === undefined) return;
+
+  await withTransaction(tenant, async (tx) => {
+    // The id came from the `user` row just read, so it needs no bind parameter.
+    const deleted = await tx.execute<{
+      image_file_ids: readonly string[];
+      export_file_id: string | null;
+    }>(
+      `delete from deck
+       where owner_user_id = '${ownerUserId}'
+       returning image_file_ids, export_file_id`
+    );
+
+    const fileIds: string[] = [];
+
+    for (const row of deleted.rows) {
+      fileIds.push(...row.image_file_ids);
+
+      if (row.export_file_id !== null) fileIds.push(row.export_file_id);
+    }
+
+    // The file rows and their bytes go on the same transaction, as deleteDeck removes them.
+    await tenant.fileStorage.remove(fileIds, tx);
+  });
+}
