@@ -8,6 +8,9 @@ import { fileURLToPath } from "node:url";
 
 export { withNewId } from "./pdf-fixtures.ts";
 
+/** The reading instructions, so the model evaluation can prove they hold no expected value. */
+export { READING_SYSTEM_PROMPT } from "../src/services/reading/model-reading.ts";
+
 /** The absolute path of testing/model-recordings: the hand-written readings of the live uploads. */
 export const INVOICES_READING_RECORDINGS = fileURLToPath(
   new URL("model-recordings", import.meta.url)
