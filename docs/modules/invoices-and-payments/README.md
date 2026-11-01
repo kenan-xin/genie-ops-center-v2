@@ -196,6 +196,8 @@ Revert: take `pg_dump -Fc` before the run, and restore it with `pg_restore --cle
 
 `expected-answers.json`, beside the demo pack, holds the nine answers to the pack's read prompts at reporting date 2026-10-27, in integer cents: `overdue-invoices`, `repeated-late-payers`, `overdue-balances`, `monthly-invoiced-and-collected`, `top-customers-by-sales`, `top-customers-overdue`, `invoices-without-due-date`, `manual-due-dates` and `partial-payments`. Each holds its prompt, the R-36 measures it uses, its rows and, where one is meaningful, a total. Two answers rest on a definition. A customer repeatedly pays late when it paid late on more than half of its settled invoices with a known due date. Top customers are the three largest by invoiced sales. The values come from the pack's own expected files and its history records, never from this module's code, and `testing/demo-history.integration.test.ts` proves the datasets answer every one of them. The app test `apps/genie/testing/invoice-answers.integration.test.ts` asks the nine questions through the agent with hand-written recordings in `apps/genie/testing/model-recordings/`, and checks each answer's charts against this file. The owner records them live through that test file. S7-14 runs them as the answer track of the evaluation suite; both read this file.
 
+The model evaluation (S7-14) scores the candidate models on these nine answers and their 13 named charts, and on reading the seven live uploads against `live_expected_entities_DO_NOT_PRELOAD.json`, which only its scorer reads. Its runner and the owner's live command are in `apps/genie/tools/evaluation/README.md`. The committed report goes to `evaluation/` beside this file.
+
 ## Open decisions
 
 | Id | Question | Default if not decided |
