@@ -21,7 +21,9 @@ instead: an amount needs one number token with equal cents, an invoice number or
 a whole token (no letter or digit next to it), and any other value is a normalised substring.
 Its formats are the save inputs' formats, so a kept value always fits a save.
 `model-output.ts` holds the structured-output schema the model answers with; it carries no
-formats, so one badly formed value is dropped here instead of failing the whole answer.
+formats, so one badly formed value is dropped here instead of failing the whole answer. A field
+that the document does not state is null as a whole, so the schema keeps one union-typed
+parameter per field, under the Anthropic limit of 16.
 
 ## What must not go here
 

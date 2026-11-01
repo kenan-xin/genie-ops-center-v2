@@ -4,23 +4,19 @@ import type { ModelReading } from "./model-output.ts";
 import { centsOf, checkReading, normalizeForQuote } from "./quote-check.ts";
 import type { StoredReading } from "./stored-reading.ts";
 
-type Quoted = ModelReading["customer"];
-
-const NOTHING: Quoted = { value: null, quote: null, page: null };
-
 function reading(fields: Partial<ModelReading>): ModelReading {
   return {
     kind: "invoice",
-    customer: NOTHING,
-    number: NOTHING,
-    date: NOTHING,
-    dueDate: NOTHING,
-    paymentTerms: NOTHING,
-    currency: NOTHING,
-    amount: NOTHING,
-    reference: NOTHING,
-    method: NOTHING,
-    description: NOTHING,
+    customer: null,
+    number: null,
+    date: null,
+    dueDate: null,
+    paymentTerms: null,
+    currency: null,
+    amount: null,
+    reference: null,
+    method: null,
+    description: null,
     invoiceNumbers: [],
     ...fields,
   };
@@ -256,33 +252,6 @@ describe("the quote check", () => {
       dropped: ["customer"],
     });
   });
-
-  it.each([
-    [
-      "a null value is absent",
-      { value: null, quote: "Due date: 2026-11-30", page: 1 },
-      [],
-    ],
-    [
-      "a null quote is dropped",
-      { value: "2026-11-30", quote: null, page: 1 },
-      ["dueDate"],
-    ],
-    [
-      "a null page is dropped",
-      { value: "2026-11-30", quote: "Due date: 2026-11-30", page: null },
-      ["dueDate"],
-    ],
-  ] as const)(
-    "tells a missing value from an unquoted one: %s",
-    (_, dueDate, dropped) => {
-      const checked = checkReading(reading({ dueDate }), [
-        "Due date: 2026-11-30",
-      ]);
-
-      expect(checked).toEqual({ fields: {}, invoiceNumbers: [], dropped });
-    }
-  );
 
   const LONG_NAME = "A".repeat(201);
 

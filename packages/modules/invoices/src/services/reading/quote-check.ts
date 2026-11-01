@@ -237,13 +237,11 @@ function standsInQuote(
 function checked(
   field: ReadingField | "invoiceNumbers",
   hasFormat: (value: string) => boolean,
-  answer: { value: string; quote: string | null; page: number | null },
+  answer: { value: string; quote: string; page: number },
   pages: readonly string[]
 ): QuotedValue | undefined {
   const value = answer.value.trim();
   const { quote, page } = answer;
-
-  if (quote === null || page === null) return undefined;
 
   if (!Number.isInteger(page) || page < 1 || page > pages.length)
     return undefined;
@@ -279,16 +277,11 @@ export function checkReading(
   };
 
   for (const field of READING_FIELDS) {
-    const { value, quote, page } = output[field];
+    const answer = output[field];
 
-    if (value === null) continue;
+    if (answer === null) continue;
 
-    const passed = checked(
-      field,
-      HAS_FORMAT[field],
-      { value, quote, page },
-      pages
-    );
+    const passed = checked(field, HAS_FORMAT[field], answer, pages);
 
     if (passed) reading.fields[field] = passed;
     else reading.dropped.push(field);
