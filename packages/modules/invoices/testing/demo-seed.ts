@@ -231,13 +231,57 @@ function saved<K, V>(map: ReadonlyMap<K, V>, key: K, what: string): V {
   return value;
 }
 
+/** The invoices tables whose `id` the seed fixes; each defaults to `gen_random_uuid()`. */
+const FIXED_ID_TABLES = [
+  "customer",
+  "document",
+  "invoice",
+  "payment",
+  "allocation",
+  "allocation_event",
+  "field_origin",
+] as const;
+
 /**
  * Saves `01_History_Datasets/history_seed.json` as the given person would: invoices in invoice
  * date order, then payments in payment date order with the pack's allocations as the chosen links,
  * each on a document that holds its own PDF. A record already saved on its PDF's document is left
  * as it is, so a second run writes nothing and a stopped run resumes (each PDF's SHA-256 is the key).
+ *
+ * The rows get ids from one counter, so a fresh database always gets the same ids and a recorded
+ * model request that holds a record id replays (bead xok3.39). The counter stays, so a resumed run
+ * never reuses an id. The `gen_random_uuid()` defaults come back after the run.
  */
 export async function seedDemoHistory(
+  tenant: TenantContext,
+  input: { readonly userId: string }
+): Promise<{ readonly plan: DemoHistoryPlan; readonly ids: DemoHistoryIds }> {
+  const setDefaults = (value: string) =>
+    tenant.db.execute(
+      sql.raw(
+        FIXED_ID_TABLES.map(
+          (table) =>
+            `alter table "${table}" alter column id set default ${value}`
+        ).join("; ")
+      )
+    );
+
+  await tenant.db.execute(
+    sql`create sequence if not exists invoices_demo_seed_id`
+  );
+  // The version and variant digits make it a valid version 4 UUID, which zod requires.
+  await setDefaults(
+    "overlay(overlay(md5('genie-demo-' || nextval('invoices_demo_seed_id')) placing '4' from 13) placing '8' from 17)::uuid"
+  );
+
+  try {
+    return await saveDemoHistory(tenant, input);
+  } finally {
+    await setDefaults("gen_random_uuid()");
+  }
+}
+
+async function saveDemoHistory(
   tenant: TenantContext,
   input: { readonly userId: string }
 ): Promise<{ readonly plan: DemoHistoryPlan; readonly ids: DemoHistoryIds }> {
