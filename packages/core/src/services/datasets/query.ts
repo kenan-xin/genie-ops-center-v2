@@ -5,6 +5,10 @@ import type {
   DatasetDeclaration,
   DatasetFieldType,
 } from "../../lib/module-contract/module.ts";
+import {
+  type DatasetCursor,
+  datasetCursorSchema,
+} from "../../lib/rpc/index.ts";
 
 /**
  * The one generic dataset query shape (DEC-54, Spec 7 R-6 to R-8) and its check against a
@@ -12,6 +16,8 @@ import type {
  */
 
 export const DATASET_ROW_CAP = 1000;
+
+export { type DatasetCursor, datasetCursorSchema };
 
 export type DatasetFilterValue = string | number | boolean;
 
@@ -64,25 +70,6 @@ export type DatasetQuery = {
   readonly orderBy?: readonly DatasetOrder[];
   readonly limit?: number;
 };
-
-/**
- * Where the next page of a row query starts (`czjw.28`): the last row's value of each `orderBy`
- * column in order, then its record key. Plain values, like the audit log's cursor: a cursor only
- * filters rows of the dataset's own scoped source, which the person may read anyway.
- */
-export type DatasetCursor = {
-  readonly values: readonly (DatasetFilterValue | null)[];
-};
-
-/** At most the sort columns of a query plus its record key. */
-const MAX_CURSOR_VALUES = 6;
-
-export const datasetCursorSchema: z.ZodType<DatasetCursor> = z.strictObject({
-  values: z
-    .array(z.union([z.string(), z.number(), z.boolean(), z.null()]))
-    .min(1)
-    .max(MAX_CURSOR_VALUES),
-});
 
 const value = z.union([z.string(), z.number(), z.boolean()]);
 

@@ -1,3 +1,4 @@
+import type { DatasetCursor } from "@genie/core/rpc";
 /**
  * What the invoice pages render. A loader fills it from `invoices.invoices` as of the reporting
  * date, and the page only formats what it answered (R-9, R-36).
@@ -26,10 +27,14 @@ export type InvoiceListView = {
   readonly asOf: string;
   readonly rows: readonly InvoiceListRow[];
   readonly truncated: boolean;
+  /** Where the next page starts, when the list was cut (czjw.28). */
+  readonly next: DatasetCursor | null;
 };
 
 export type PaymentListView = {
   readonly asOf: string;
   readonly rows: readonly PaymentListRow[];
   readonly truncated: boolean;
+  /** Where the next page starts, when the list was cut (czjw.28). */
+  readonly next: DatasetCursor | null;
 };

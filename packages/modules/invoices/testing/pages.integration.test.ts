@@ -142,6 +142,51 @@ async function openRecord(
 const READER = ["invoices:use", "invoices:read"] as const;
 
 describe("invoice pages", () => {
+  it("the invoice list procedure pages past 1,000 invoices with its cursor, and refuses a person without invoices:read", async () => {
+    const customer = await insertCustomer(t());
+
+    if (customer === undefined) throw new Error("no customer");
+
+    // Four invoices share each date, all before the reporting date, so the record key orders the ties.
+    await t().db.$client.query(
+      "insert into invoice (customer_id, number, invoice_date, due_date, due_date_source, currency, total_cents) select $1, 'PAGED-' || g, date '2026-01-01' + (g / 4), date '2026-12-31', 'document', 'SGD', 100000 from generate_series(1, 1001) as g",
+      [customer.id]
+    );
+
+    const { userId } = await insertPersonWith(t(), READER, {
+      type: "invoices-customer",
+      id: customer.id,
+    });
+
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    const first = await reader.listInvoices({ after: null });
+
+    expect(first.rows).toHaveLength(1000);
+    expect(first.truncated).toBe(true);
+    expect(first.next).not.toBeNull();
+
+    const second = await reader.listInvoices({ after: first.next });
+
+    expect(second.rows).toHaveLength(1);
+    expect(second.next).toBeNull();
+    expect(
+      new Set([...first.rows, ...second.rows].map((row) => row.id)).size
+    ).toBe(1001);
+
+    const payments = await reader.listPayments({ after: null });
+
+    expect(payments.next).toBeNull();
+
+    const { userId: other } = await insertPersonWith(t(), ["invoices:use"]);
+
+    await expect(
+      callProcedure(invoicesRouter, contextFor(other)).listInvoices({
+        after: null,
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
   it("the lists answer only the customer a scoped reader may read", async () => {
     const [a, b] = await Promise.all([
       insertCustomer(t()),

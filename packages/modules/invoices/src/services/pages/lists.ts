@@ -1,4 +1,8 @@
-import { type ModuleRequestContext, queryDataset } from "@genie/core";
+import {
+  type DatasetCursor,
+  type ModuleRequestContext,
+  queryDataset,
+} from "@genie/core";
 import { z } from "zod";
 
 import type {
@@ -34,15 +38,16 @@ export function invoiceListRowOf(row: z.infer<typeof listRow>): InvoiceListRow {
 
 /**
  * The Invoices list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
- * scoped person sees only the customers they may read (DEC-39, R-9, R-36).
- *
- * shortcut: at most 1,000 rows (DATASET_ROW_CAP); page past it with czjw.28
+ * scoped person sees only the customers they may read (DEC-39, R-9, R-36). A page holds at most
+ * 1,000 rows; `after` reads the page after a cut one (czjw.28).
  */
 export async function loadInvoiceList(
-  ctx: ModuleRequestContext
+  ctx: ModuleRequestContext,
+  after: DatasetCursor | null = null
 ): Promise<InvoiceListView> {
   const result = await queryDataset(ctx, {
     dataset: "invoices.invoices",
+    after: after ?? undefined,
     query: {
       select: LIST_ROW_FIELDS,
       orderBy: [
@@ -56,6 +61,7 @@ export async function loadInvoiceList(
     asOf: result.asOf,
     rows: result.rows.map((row) => invoiceListRowOf(listRow.parse(row))),
     truncated: result.truncated,
+    next: result.next ?? null,
   };
 }
 
@@ -82,15 +88,16 @@ export function paymentListRowOf(
 
 /**
  * The Payments list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
- * scoped person sees only the payments they may read (DEC-39, R-9).
- *
- * shortcut: at most 1,000 rows (DATASET_ROW_CAP); page past it with czjw.28
+ * scoped person sees only the payments they may read (DEC-39, R-9). A page holds at most 1,000
+ * rows; `after` reads the page after a cut one (czjw.28).
  */
 export async function loadPaymentList(
-  ctx: ModuleRequestContext
+  ctx: ModuleRequestContext,
+  after: DatasetCursor | null = null
 ): Promise<PaymentListView> {
   const result = await queryDataset(ctx, {
     dataset: "invoices.payments",
+    after: after ?? undefined,
     query: {
       select: PAYMENT_ROW_FIELDS,
       orderBy: [
@@ -104,5 +111,6 @@ export async function loadPaymentList(
     asOf: result.asOf,
     rows: result.rows.map((row) => paymentListRowOf(paymentRow.parse(row))),
     truncated: result.truncated,
+    next: result.next ?? null,
   };
 }

@@ -74,6 +74,7 @@ export const defaultInvoiceList: InvoiceListView = {
   asOf: "2026-10-27",
   rows: [PAID, OPEN, OVERDUE, NO_DUE_DATE],
   truncated: false,
+  next: null,
 };
 
 export const twoCurrencyInvoiceList: InvoiceListView = {

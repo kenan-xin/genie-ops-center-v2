@@ -278,6 +278,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     reason:
       "Spec 7 R-59, R-9, R-1a and DEC-39: a page reads through the scoped dataset, a record page shows its link history and a later invoice's note, and a person without invoices:read gets neither the record nor its label",
     cases: [
+      "the invoice list procedure pages past 1,000 invoices with its cursor, and refuses a person without invoices:read",
       "the lists answer only the customer a scoped reader may read",
       "the record answers link, change and unlink as three history rows in order, with no allocation left",
       "an invoice dated after the reporting date answers the note with its number",

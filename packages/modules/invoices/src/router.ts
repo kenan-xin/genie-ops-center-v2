@@ -28,6 +28,7 @@ import {
 import { listOpenInvoices } from "./services/ledger/open-invoices.ts";
 import { savePayment } from "./services/ledger/payments.ts";
 import { savePaidReceipt } from "./services/ledger/receipts.ts";
+import { loadInvoiceList, loadPaymentList } from "./services/pages/lists.ts";
 import {
   loadInvoiceRecord,
   loadPaymentRecord,
@@ -86,6 +87,16 @@ export const invoicesRouter = os.router({
   discardDocument: os.discardDocument.handler(({ context, input }) =>
     discardDocument(context, input.id)
   ),
+  listInvoices: os.listInvoices.handler(async ({ context, input }) => {
+    const view = await loadInvoiceList(context, input.after);
+
+    return { ...view, rows: [...view.rows] };
+  }),
+  listPayments: os.listPayments.handler(async ({ context, input }) => {
+    const view = await loadPaymentList(context, input.after);
+
+    return { ...view, rows: [...view.rows] };
+  }),
   listOpenInvoices: os.listOpenInvoices.handler(({ context, input }) =>
     listOpenInvoices(context, input)
   ),

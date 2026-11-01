@@ -143,7 +143,7 @@ export const invoicesModule = {
       definePage({
         path: INVOICES_ENTRY.path,
         permission: "invoices:use",
-        load: loadInvoiceList,
+        load: (ctx) => loadInvoiceList(ctx),
         component: InvoiceListPage,
       }),
       definePage({
@@ -161,7 +161,7 @@ export const invoicesModule = {
       definePage({
         path: PAYMENTS_ENTRY.path,
         permission: "invoices:use",
-        load: loadPaymentList,
+        load: (ctx) => loadPaymentList(ctx),
         component: PaymentListPage,
       }),
       definePage({

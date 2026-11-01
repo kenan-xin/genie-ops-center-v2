@@ -1,4 +1,4 @@
-import { oc } from "@genie/core/rpc";
+import { datasetCursorSchema, oc } from "@genie/core/rpc";
 import { z } from "zod";
 
 /**
@@ -554,6 +554,30 @@ export const invoicesContract = {
     .route({ method: "DELETE", path: "/invoices/documents/{id}" })
     .input(z.object({ id: recordId }))
     .output(z.object({ documentId: z.string() })),
+  /** The Invoices list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28). */
+  listInvoices: oc
+    .route({ method: "GET", path: "/invoices/invoice-list" })
+    .input(z.object({ after: datasetCursorSchema.nullable() }))
+    .output(
+      z.object({
+        asOf: z.string(),
+        rows: z.array(invoiceListRow),
+        truncated: z.boolean(),
+        next: datasetCursorSchema.nullable(),
+      })
+    ),
+  /** The Payments list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28). */
+  listPayments: oc
+    .route({ method: "GET", path: "/invoices/payment-list" })
+    .input(z.object({ after: datasetCursorSchema.nullable() }))
+    .output(
+      z.object({
+        asOf: z.string(),
+        rows: z.array(paymentListRow),
+        truncated: z.boolean(),
+        next: datasetCursorSchema.nullable(),
+      })
+    ),
   /** A customer's open invoices in one currency, oldest first, for a reader of the customer. */
   listOpenInvoices: oc
     .route({

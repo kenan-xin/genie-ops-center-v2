@@ -51,6 +51,7 @@ export const defaultPaymentList: PaymentListView = {
   asOf: "2026-10-27",
   rows: [ALLOCATED, PART_ALLOCATED, UNALLOCATED],
   truncated: false,
+  next: null,
 };
 
 const LINK = {

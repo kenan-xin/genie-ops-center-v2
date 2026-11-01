@@ -51,5 +51,7 @@ export const RowCap: Story = {
 };
 
 export const Empty: Story = {
-  args: { view: { asOf: "2026-10-27", rows: [], truncated: false } },
+  args: {
+    view: { asOf: "2026-10-27", rows: [], truncated: false, next: null },
+  },
 };
