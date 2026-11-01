@@ -15,7 +15,11 @@ export type ModelSummary = {
   readonly meanMs: number;
 };
 
-export type Defaults = { readonly chat: string; readonly document: string };
+/** A track's default, or `null` when no model passed one of its cases. */
+export type Defaults = {
+  readonly chat: string | null;
+  readonly document: string | null;
+};
 
 const TRACKS: readonly Track[] = ["extraction", "answers", "charts"];
 
@@ -72,8 +76,11 @@ type Standing = {
   readonly ms: number;
 };
 
-/** The highest pass rate; a tie goes to the lower cost (a known cost beats none), then the lower time. */
-function best(standings: readonly Standing[]): string {
+/**
+ * The highest pass rate; a tie goes to the lower cost (a known cost beats none), then the lower
+ * time. No model when the best passed nothing: a default must have passed a case.
+ */
+function best(standings: readonly Standing[]): string | null {
   const [first] = standings.toSorted(
     (left, right) =>
       right.passRate - left.passRate ||
@@ -84,7 +91,7 @@ function best(standings: readonly Standing[]): string {
 
   if (first === undefined) throw new Error("No model was evaluated.");
 
-  return first.model;
+  return first.passRate > 0 ? first.model : null;
 }
 
 function standing(
@@ -191,8 +198,12 @@ export function renderReport(input: {
   lines.push(
     "## Recommended defaults",
     "",
-    `- Chat model: ${input.defaults.chat} (the highest pass rate on answers and charts).`,
-    `- Document model: ${input.defaults.document} (the highest pass rate on extraction).`,
+    input.defaults.chat === null
+      ? "- Chat model: none, because no model passed an answer or chart case."
+      : `- Chat model: ${input.defaults.chat} (the highest pass rate on answers and charts).`,
+    input.defaults.document === null
+      ? "- Document model: none, because no model passed an extraction case."
+      : `- Document model: ${input.defaults.document} (the highest pass rate on extraction).`,
     "",
     "A tie goes to the lower mean cost, then the lower mean time.",
     ""

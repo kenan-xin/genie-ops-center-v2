@@ -78,6 +78,30 @@ describe("the evaluation report", () => {
     ).toEqual({ chat: "talker", document: "reader" });
   });
 
+  it("recommends no default for a track on which no model passed a case", () => {
+    const defaults = recommendDefaults(
+      summarize([
+        result("a", "extraction", "01", 1, false),
+        result("a", "answers", "q", 1, true),
+        result("b", "extraction", "01", 1, false),
+      ])
+    );
+
+    expect(defaults).toEqual({ chat: "a", document: null });
+    expect(
+      renderReport({
+        transport: "live",
+        models: ["a", "b"],
+        runs: 1,
+        summaries: [],
+        defaults,
+        date: "2026-11-01",
+      })
+    ).toContain(
+      "Document model: none, because no model passed an extraction case."
+    );
+  });
+
   it("names its transport in the header, so a recorded report cannot pass as the live one", () => {
     const summaries = summarize([result("m", "extraction", "01", 1, true)]);
 
