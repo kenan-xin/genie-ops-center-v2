@@ -520,7 +520,8 @@ export default async function globalSetup(): Promise<void> {
         ...TEST_AUTH_ENV,
         DATABASE_URL: databaseUrl(),
         PUBLIC_URL: publicUrl(),
-        // Read by `next.config.ts`: this server's build directory, apart from `.next` (xok3.40).
+        // Read by `next.config.ts`: this server's build directory, apart from `.next`, and no
+        // Turbopack dev cache, which Next 16.4 can restore into a full-reload loop (xok3.40).
         GENIE_E2E_DIST_DIR: E2E_DIST_DIR,
         NODE_OPTIONS:
           `${process.env.NODE_OPTIONS ?? ""} --import=${pathToFileURL(resolve(APP_ROOT, "testing/model-standin.ts")).href}`.trim(),

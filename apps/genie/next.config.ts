@@ -61,12 +61,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-// The dev e2e run (`e2e/dev/global-setup.ts`) sets this, so its `next dev` keeps its Turbopack dev
-// cache apart from `.next/dev`, which `nx run @genie/app:dev` and cache restores also write. A
-// stale shared cache sent that server into a full-reload loop (xok3.40). Unset, Next keeps `.next`.
+// The dev e2e run (`e2e/dev/global-setup.ts`) sets this, so its `next dev` builds apart from
+// `.next/dev`, which `nx run @genie/app:dev` and cache restores also write. Unset, Next keeps `.next`.
 const e2eDistDir = process.env.GENIE_E2E_DIST_DIR;
 
-if (e2eDistDir) nextConfig.distDir = e2eDistDir;
+if (e2eDistDir) {
+  nextConfig.distDir = e2eDistDir;
+  // Next 16.4 can restore its dev cache into a full-reload loop: the client entry answers its first
+  // HMR subscribe with `restart` (vercel/next.js#100267, xok3.40). Turn the cache back on once a
+  // release carries the fix (vercel/next.js#100291).
+  nextConfig.experimental = {
+    ...nextConfig.experimental,
+    turbopackFileSystemCacheForDev: false,
+  };
+}
 
 const withNextIntl = createNextIntlPlugin();
 
