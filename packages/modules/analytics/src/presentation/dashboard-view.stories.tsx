@@ -276,6 +276,73 @@ export const ChangedElsewhere: Story = {
   },
 };
 
+// czjw.42: a refetch that started before a save and answers after it never shows the older version.
+export const SaveDuringRefetch: Story = {
+  name: "Save during a refetch",
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDashboardPage);
+    changeDashboard.mockResolvedValue({
+      ...defaultDashboardPage.dashboard,
+      name: "Cash in",
+      version: 2,
+    });
+  },
+  play: async ({ canvas }) => {
+    const refetch =
+      Promise.withResolvers<typeof defaultDashboardPage.dashboard>();
+
+    readDashboard.mockClear().mockReturnValue(refetch.promise);
+    // The focus refetch starts and stays in flight.
+    window.dispatchEvent(new Event("visibilitychange"));
+    await waitFor(() => expect(readDashboard).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Rename dashboard" })
+    );
+
+    const renameBoard = within(
+      await screen.findByRole("dialog", { name: "Rename dashboard" })
+    );
+
+    const nameField = renameBoard.getByRole("textbox", { name: "Name" });
+
+    await userEvent.clear(nameField);
+    await userEvent.type(nameField, "Cash in");
+    await userEvent.click(renameBoard.getByRole("button", { name: "Save" }));
+    await expect(
+      await canvas.findByRole("heading", { name: "Cash in" })
+    ).toBeVisible();
+
+    // The slow refetch answers the version from before the save.
+    refetch.resolve(defaultDashboardPage.dashboard);
+    await new Promise((settle) => setTimeout(settle, 200));
+
+    await expect(
+      canvas.getByRole("heading", { name: "Cash in" })
+    ).toBeVisible();
+
+    // The next hand edit sends the saved version, so it meets no conflict.
+    changeDashboard.mockClear();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Rename dashboard" })
+    );
+
+    const renameAgain = within(
+      await screen.findByRole("dialog", { name: "Rename dashboard" })
+    );
+
+    await userEvent.click(renameAgain.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedVersion: 2 })
+    );
+  },
+};
+
 // A save moves the version, and each panel keeps its drawn chart while it asks again.
 export const SaveKeepsCharts: Story = {
   name: "Save keeps charts",

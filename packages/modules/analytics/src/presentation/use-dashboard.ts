@@ -5,6 +5,7 @@ import { useModuleClient } from "@genie/core/rpc/client";
 import type { ChartData } from "@genie/ui";
 import {
   keepPreviousData,
+  type QueryClient,
   useMutation,
   useQuery,
   useQueryClient,
@@ -91,6 +92,17 @@ export function usePanelData(
   });
 }
 
+/**
+ * Shows a saved dashboard. A refetch that started before the save is cancelled first, so its
+ * older answer cannot land after the save and undo it on screen (czjw.42).
+ */
+async function showSaved(queryClient: QueryClient, view: DashboardView) {
+  const queryKey = dashboardQueryKey(view.id);
+
+  await queryClient.cancelQueries({ queryKey, exact: true });
+  queryClient.setQueryData(queryKey, view);
+}
+
 /** One save on the dashboard, at the version the page read (B2.5). */
 export function useDashboardChange(
   dashboard: DashboardView
@@ -107,9 +119,7 @@ export function useDashboardChange(
           changes: [...changes],
         })
       ),
-    onSuccess: (view) => {
-      queryClient.setQueryData(dashboardQueryKey(view.id), view);
-    },
+    onSuccess: (view) => showSaved(queryClient, view),
   });
 }
 
@@ -128,8 +138,6 @@ export function useUndoDashboard(
           expectedVersion: dashboard.version,
         })
       ),
-    onSuccess: (view) => {
-      queryClient.setQueryData(dashboardQueryKey(view.id), view);
-    },
+    onSuccess: (view) => showSaved(queryClient, view),
   });
 }
