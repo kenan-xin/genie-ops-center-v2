@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  CountPill,
+  Badge,
   focusRing,
   Tooltip,
   TooltipContent,
@@ -11,6 +11,7 @@ import {
   Blocks,
   Box,
   ChevronDown,
+  GripVertical,
   Palette,
   ScrollText,
   Settings,
@@ -67,6 +68,9 @@ const rowIdle = "font-medium text-foreground hover:bg-border/60";
 const rowChild =
   "font-medium text-muted-foreground hover:bg-border/60 hover:text-foreground";
 
+// A category is a heading, not a destination: heavier than the entries under it.
+const rowCategory = "font-semibold text-foreground hover:bg-border/60";
+
 // A filled row, not a hairline: in dark the card is the panel's own color, so the fill steps up.
 const rowActive =
   "bg-card font-semibold text-primary ring-1 ring-border dark:bg-border dark:text-brand-on-dark dark:ring-muted-foreground/30";
@@ -94,6 +98,8 @@ function Row(props: {
   readonly idle?: string;
   /** A module's entry brings no icon; nav rows give it this one, so labels start in one column. */
   readonly defaultIcon?: LucideIcon;
+  /** A pinned row leads with the grip of the reference design instead of an icon. */
+  readonly grip?: boolean;
   readonly linkComponent: ShellLinkComponent | undefined;
 }) {
   const isActive = props.link.href === props.active;
@@ -106,6 +112,13 @@ function Row(props: {
       aria-current={isActive ? "page" : undefined}
       className={`${rowBase} ${props.height} ${isActive ? rowActive : (props.idle ?? rowIdle)}`}
     >
+      {props.grip === true ? (
+        <GripVertical
+          aria-hidden
+          strokeWidth={1.75}
+          className="size-4 shrink-0 text-muted-foreground/70"
+        />
+      ) : null}
       {Icon === undefined ? null : (
         <Icon
           aria-hidden
@@ -143,7 +156,7 @@ function Category(props: {
         aria-labelledby={`${props.groupId}-name`}
         aria-describedby={`${props.groupId}-count`}
         onClick={props.onToggle}
-        className={`${rowBase} ${treeRow} w-full text-left ${rowIdle}`}
+        className={`${rowBase} ${treeRow} w-full text-left ${rowCategory}`}
       >
         <ChevronDown
           aria-hidden
@@ -161,7 +174,7 @@ function Category(props: {
           <TooltipContent>{category.name}</TooltipContent>
         </Tooltip>
         <span id={`${props.groupId}-count`}>
-          <CountPill>{category.entries.length}</CountPill>
+          <Badge variant="neutral">{category.entries.length}</Badge>
         </span>
       </button>
       {props.open ? (
@@ -274,6 +287,7 @@ export function NavigationRail(props: NavigationRailProps) {
               link={link}
               active={active}
               height={treeRow}
+              grip
               linkComponent={props.linkComponent}
             />
           ))}
