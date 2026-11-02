@@ -17,6 +17,27 @@
         }
       }
     },
+    "/agent/sessions/{id}/messages": {
+      "get": {
+        "operationId": "agent.messages",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/agent/chart": {
       "post": {
         "operationId": "agent.chart",
