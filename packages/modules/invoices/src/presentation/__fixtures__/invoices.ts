@@ -89,6 +89,8 @@ export const defaultInvoiceList: InvoiceListPageView = {
       outstandingCents: 1_255_000,
       overdueCents: 300_000,
       overdueCount: 1,
+      invoicedCents: 2_175_000,
+      count: 4,
     },
   ],
   customers: CUSTOMERS,
@@ -104,6 +106,8 @@ export const twoCurrencyInvoiceList: InvoiceListPageView = {
       outstandingCents: 125_000,
       overdueCents: 0,
       overdueCount: 0,
+      invoicedCents: 125_000,
+      count: 1,
     },
   ],
 };
@@ -120,6 +124,8 @@ export const overdueInvoicePage: InvoiceListView = {
       outstandingCents: 300_000,
       overdueCents: 300_000,
       overdueCount: 1,
+      invoicedCents: 500_000,
+      count: 1,
     },
   ],
 };
@@ -131,7 +137,14 @@ export const paidInvoicePage: InvoiceListView = {
   truncated: false,
   next: null,
   summary: [
-    { currency: "SGD", outstandingCents: 0, overdueCents: 0, overdueCount: 0 },
+    {
+      currency: "SGD",
+      outstandingCents: 0,
+      overdueCents: 0,
+      overdueCount: 0,
+      invoicedCents: 720_000,
+      count: 1,
+    },
   ],
 };
 

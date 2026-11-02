@@ -166,7 +166,7 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
   );
 });
 
-test("the Overdue chip keeps only the overdue invoices, in the address and in the summary", async ({
+test("the Overdue chip keeps only the overdue invoices, in the address and in the figure strip", async ({
   page,
 }) => {
   test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
@@ -198,13 +198,9 @@ test("the Overdue chip keeps only the overdue invoices, in the address and in th
 
       if (onPhone(page)) await page.keyboard.press("Escape");
 
-      // The server answers the filter, and the summary counts every overdue invoice.
-      await expect(
-        page.getByText(
-          `Overdue ${sgd(overdueAmount)} in ${overdue.length} invoices.`,
-          { exact: false }
-        )
-      ).toBeVisible();
+      // The server answers the filter, and the figure strip counts every overdue invoice.
+      await expect(fact(page, "Overdue")).toHaveText(sgd(overdueAmount));
+      await expect(fact(page, "Invoices")).toHaveText(String(overdue.length));
       await expect
         .poll(async () =>
           (await shownRows(page, "Invoices")).map((row) => row.label).toSorted()
@@ -307,6 +303,8 @@ test("the Payments list shows every seeded payment and the payment linked to INV
       const payments = readDemoCsv("01_History_Datasets/payments.csv");
 
       expect(payments).toHaveLength(30);
+      // The figure strip counts every payment, not only a loaded page.
+      await expect(fact(page, "Payments")).toHaveText(String(payments.length));
 
       const shown = await shownRows(page, "Payments");
 

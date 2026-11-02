@@ -2,12 +2,13 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   defaultPaymentList,
   linkedPaymentPage,
   notLinkedPaymentPage,
+  twoCurrencyPaymentList,
 } from "./__fixtures__/payments.ts";
 import { PaymentList } from "./payment-list.tsx";
 import type { PaymentListPageView, PaymentListView } from "./views.ts";
@@ -65,6 +66,14 @@ const listAddress = () => {
   });
 };
 
+/** The value of one figure in a currency's strip: the `dd` right after its label. */
+const figure = (canvasElement: HTMLElement, currency: string, label: string) =>
+  within(
+    within(canvasElement).getByRole("region", {
+      name: `Totals in ${currency}`,
+    })
+  ).getByText(label, { selector: "dt" }).nextElementSibling;
+
 const cut: PaymentListPageView = {
   ...defaultPaymentList,
   truncated: true,
@@ -81,6 +90,7 @@ const NEXT_PAGE: PaymentListView = {
       : [{ ...firstRow, id: "payment-4", reference: "TRF-0830-777" }],
   truncated: false,
   next: null,
+  summary: defaultPaymentList.summary,
 };
 
 async function showsMore(
@@ -141,11 +151,37 @@ export const Default: Story = {
   },
 };
 
+export const TwoCurrencies: Story = {
+  name: "Two currencies",
+  args: { view: twoCurrencyPaymentList },
+  play: async ({ canvasElement }) => {
+    // One strip per currency: no figure adds SGD and USD.
+    await expect(figure(canvasElement, "SGD", "Collected")).toHaveTextContent(
+      /^SGD\s?13,500\.00$/
+    );
+    await expect(figure(canvasElement, "SGD", "Allocated")).toHaveTextContent(
+      /^SGD\s?8,000\.00$/
+    );
+    await expect(figure(canvasElement, "SGD", "Unallocated")).toHaveTextContent(
+      /^SGD\s?5,500\.00$/
+    );
+    await expect(figure(canvasElement, "SGD", "Payments")).toHaveTextContent(
+      /^3$/
+    );
+    await expect(figure(canvasElement, "USD", "Collected")).toHaveTextContent(
+      /^US\$750\.00$/
+    );
+    await expect(figure(canvasElement, "USD", "Payments")).toHaveTextContent(
+      /^1$/
+    );
+  },
+};
+
 export const FilterByLink: Story = {
   name: "Filter by link",
   globals: desktop,
   beforeEach: atAddress("", notLinkedPaymentPage),
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const notLinked = canvas.getByRole("button", { name: "Not linked" });
 
     await userEvent.click(notLinked);
@@ -162,6 +198,13 @@ export const FilterByLink: Story = {
     ).toBeVisible();
     await expect(notLinked).toHaveAttribute("aria-pressed", "true");
     await expect(listAddress()).toEqual(["link=not-linked"]);
+    // The strip is the filtered page's: two payments, not the three of the unfiltered page.
+    await expect(figure(canvasElement, "SGD", "Payments")).toHaveTextContent(
+      /^2$/
+    );
+    await expect(figure(canvasElement, "SGD", "Collected")).toHaveTextContent(
+      /^SGD\s?8,500\.00$/
+    );
   },
 };
 
@@ -247,6 +290,7 @@ export const Empty: Story = {
       rows: [],
       truncated: false,
       next: null,
+      summary: [],
       customers: [],
     },
   },

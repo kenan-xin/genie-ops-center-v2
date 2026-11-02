@@ -48,15 +48,53 @@ const UNALLOCATED: PaymentListRow = {
   status: "unallocated",
 };
 
+const US_DOLLARS: PaymentListRow = {
+  id: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+  reference: "WIRE-1010-055",
+  customerName: "Cedar Point Studio",
+  paymentDate: "2026-10-10",
+  method: "Bank transfer",
+  currency: "USD",
+  amountCents: 75_000,
+  unallocatedCents: 75_000,
+  status: "unallocated",
+};
+
 export const defaultPaymentList: PaymentListPageView = {
   asOf: "2026-10-27",
   rows: [ALLOCATED, PART_ALLOCATED, UNALLOCATED],
   truncated: false,
   next: null,
-  customers: [ALLOCATED, PART_ALLOCATED, UNALLOCATED].map((row, index) => ({
-    id: `9${index}999999-9999-4999-8999-999999999999`,
-    name: row.customerName,
-  })),
+  summary: [
+    {
+      currency: "SGD",
+      collectedCents: 1_350_000,
+      allocatedCents: 800_000,
+      unallocatedCents: 550_000,
+      count: 3,
+    },
+  ],
+  customers: [ALLOCATED, PART_ALLOCATED, UNALLOCATED, US_DOLLARS].map(
+    (row, index) => ({
+      id: `9${index}999999-9999-4999-8999-999999999999`,
+      name: row.customerName,
+    })
+  ),
+};
+
+export const twoCurrencyPaymentList: PaymentListPageView = {
+  ...defaultPaymentList,
+  rows: [...defaultPaymentList.rows, US_DOLLARS],
+  summary: [
+    ...defaultPaymentList.summary,
+    {
+      currency: "USD",
+      collectedCents: 75_000,
+      allocatedCents: 0,
+      unallocatedCents: 75_000,
+      count: 1,
+    },
+  ],
 };
 
 /** Page one under the Not linked chip, as `listPayments` answers it. */
@@ -65,6 +103,15 @@ export const notLinkedPaymentPage: PaymentListView = {
   rows: [PART_ALLOCATED, UNALLOCATED],
   truncated: false,
   next: null,
+  summary: [
+    {
+      currency: "SGD",
+      collectedCents: 850_000,
+      allocatedCents: 300_000,
+      unallocatedCents: 550_000,
+      count: 2,
+    },
+  ],
 };
 
 /** Page one under the Linked chip and a search, as `listPayments` answers it. */
@@ -73,6 +120,15 @@ export const linkedPaymentPage: PaymentListView = {
   rows: [ALLOCATED],
   truncated: false,
   next: null,
+  summary: [
+    {
+      currency: "SGD",
+      collectedCents: 500_000,
+      allocatedCents: 500_000,
+      unallocatedCents: 0,
+      count: 1,
+    },
+  ],
 };
 
 const LINK = {

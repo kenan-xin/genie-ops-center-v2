@@ -287,6 +287,8 @@ describe("invoice pages", () => {
         outstandingCents: 300_000,
         overdueCents: 100_000,
         overdueCount: 1,
+        invoicedCents: 500_000,
+        count: 5,
       },
     ]);
   });
@@ -316,6 +318,8 @@ describe("invoice pages", () => {
         outstandingCents: 100_100,
         overdueCents: 100_100,
         overdueCount: 1001,
+        invoicedCents: 100_100,
+        count: 1001,
       },
     ]);
 
@@ -396,6 +400,75 @@ describe("invoice pages", () => {
       "PFL-LINKED",
       "PFL-NONE",
       "PFL-PART",
+    ]);
+  });
+
+  it("the payment list summary keeps each currency apart and covers only what the filters keep", async () => {
+    const customer = await insertCustomer(t());
+    const invoice = await insertInvoice(t(), {
+      customerId: customer.id,
+      totalCents: 1_000_000,
+    });
+
+    const [linked, part] = await Promise.all([
+      insertPayment(t(), { customerId: customer.id, amountCents: 100_000 }),
+      insertPayment(t(), { customerId: customer.id, amountCents: 100_000 }),
+      insertPayment(t(), {
+        customerId: customer.id,
+        currency: "USD",
+        amountCents: 50_000,
+      }),
+    ]);
+
+    await insertAllocation(t(), {
+      invoiceId: invoice.id,
+      paymentId: linked.id,
+      amountCents: 100_000,
+    });
+    await insertAllocation(t(), {
+      invoiceId: invoice.id,
+      paymentId: part.id,
+      amountCents: 40_000,
+    });
+
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    const summary = async (link?: "not-linked") =>
+      (
+        await reader.listPayments({
+          after: null,
+          filters: { customerId: customer.id, link },
+        })
+      ).summary;
+
+    const usd = {
+      currency: "USD",
+      collectedCents: 50_000,
+      allocatedCents: 0,
+      unallocatedCents: 50_000,
+      count: 1,
+    };
+
+    expect(await summary()).toEqual([
+      {
+        currency: "SGD",
+        collectedCents: 200_000,
+        allocatedCents: 140_000,
+        unallocatedCents: 60_000,
+        count: 2,
+      },
+      usd,
+    ]);
+    expect(await summary("not-linked")).toEqual([
+      {
+        currency: "SGD",
+        collectedCents: 100_000,
+        allocatedCents: 40_000,
+        unallocatedCents: 60_000,
+        count: 1,
+      },
+      usd,
     ]);
   });
 

@@ -8,6 +8,7 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FigureStrip,
   formatChartValue,
   ToggleGroup,
   ToggleGroupItem,
@@ -57,14 +58,32 @@ const STATUS_CHIPS = [
 const invoiceCount = (count: number) =>
   `${count} ${count === 1 ? "invoice" : "invoices"}`;
 
-/** One line per currency, so no total adds two currencies (Review Focus 1). */
-function SummaryLines(props: {
+/** One figure strip per currency, so no figure adds two currencies (Review Focus 1). */
+function SummaryStrips(props: {
   readonly summary: readonly InvoiceListSummary[];
 }) {
   return props.summary.map((entry) => (
-    <p key={entry.currency}>
-      {`Outstanding ${formatMoney(entry.outstandingCents, entry.currency)}. Overdue ${formatMoney(entry.overdueCents, entry.currency)} in ${invoiceCount(entry.overdueCount)}.`}
-    </p>
+    <FigureStrip
+      key={entry.currency}
+      label={`Totals in ${entry.currency}`}
+      figures={[
+        {
+          label: "Outstanding",
+          value: formatMoney(entry.outstandingCents, entry.currency),
+          lead: true,
+        },
+        {
+          label: "Overdue",
+          value: formatMoney(entry.overdueCents, entry.currency),
+          note: `In ${invoiceCount(entry.overdueCount)}`,
+        },
+        {
+          label: "Invoiced",
+          value: formatMoney(entry.invoicedCents, entry.currency),
+        },
+        { label: "Invoices", value: String(entry.count) },
+      ]}
+    />
   ));
 }
 
@@ -210,8 +229,10 @@ export function InvoiceList(props: InvoiceListProps) {
 
   return (
     <main>
-      <PageHeader title="Invoices" />
-      <p>Balances as of {formatDay(view.asOf)}, the reporting date.</p>
+      <PageHeader
+        title="Invoices"
+        meta={`Balances as of ${formatDay(view.asOf)}, the reporting date.`}
+      />
       {view.rows.length === 0 ? (
         <EmptyState
           variant="framed"
@@ -219,7 +240,10 @@ export function InvoiceList(props: InvoiceListProps) {
           description="Saved invoices show here with their balance."
         />
       ) : (
-        <>
+        <div className="flex flex-col gap-4">
+          {list.first === undefined ? null : (
+            <SummaryStrips summary={list.first.summary} />
+          )}
           <ListFilterBar
             searchLabel="Search invoice number or customer"
             search={filters.search}
@@ -234,9 +258,6 @@ export function InvoiceList(props: InvoiceListProps) {
               />
             )}
           />
-          {list.first === undefined ? null : (
-            <SummaryLines summary={list.first.summary} />
-          )}
           {list.pending ? <p role="status">Loading invoices…</p> : null}
           {list.broken ? (
             <p role="alert">
@@ -294,7 +315,7 @@ export function InvoiceList(props: InvoiceListProps) {
               More invoices could not be read. Try Show more again.
             </p>
           ) : null}
-        </>
+        </div>
       )}
     </main>
   );

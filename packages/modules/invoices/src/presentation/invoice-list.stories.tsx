@@ -2,7 +2,7 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   defaultInvoiceList,
@@ -65,6 +65,14 @@ const listAddress = () => {
     return value === null ? [] : [`${name}=${value}`];
   });
 };
+
+/** The value of one figure in a currency's strip: the `dd` right after its label. */
+const figure = (canvasElement: HTMLElement, currency: string, label: string) =>
+  within(
+    within(canvasElement).getByRole("region", {
+      name: `Totals in ${currency}`,
+    })
+  ).getByText(label, { selector: "dt" }).nextElementSibling;
 
 /** A first page that was cut, and the one row the next page answers. */
 const cut: InvoiceListPageView = {
@@ -151,22 +159,23 @@ export const Default: Story = {
 export const TwoCurrencies: Story = {
   name: "Two currencies",
   args: { view: twoCurrencyInvoiceList },
-  play: async ({ canvas }) => {
-    const amounts = await canvas.findAllByText("US$1,250.00");
-
-    await expect(amounts[0]).toBeVisible();
-
-    // One summary line per currency: no total adds SGD and USD.
-    await expect(
-      canvas.getByText(
-        /^Outstanding SGD\s?12,550\.00\. Overdue SGD\s?3,000\.00 in 1 invoice\.$/
-      )
-    ).toBeVisible();
-    await expect(
-      canvas.getByText(
-        /^Outstanding US\$1,250\.00\. Overdue US\$0\.00 in 0 invoices\.$/
-      )
-    ).toBeVisible();
+  play: async ({ canvasElement }) => {
+    // One strip per currency: no figure adds SGD and USD.
+    await expect(figure(canvasElement, "SGD", "Outstanding")).toHaveTextContent(
+      /^SGD\s?12,550\.00$/
+    );
+    await expect(figure(canvasElement, "SGD", "Invoiced")).toHaveTextContent(
+      /^SGD\s?21,750\.00$/
+    );
+    await expect(figure(canvasElement, "SGD", "Invoices")).toHaveTextContent(
+      /^4$/
+    );
+    await expect(figure(canvasElement, "USD", "Outstanding")).toHaveTextContent(
+      /^US\$1,250\.00$/
+    );
+    await expect(figure(canvasElement, "USD", "Invoices")).toHaveTextContent(
+      /^1$/
+    );
   },
 };
 
@@ -174,7 +183,7 @@ export const FilterByStatus: Story = {
   name: "Filter by status",
   globals: desktop,
   beforeEach: atAddress("", overdueInvoicePage),
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const overdue = canvas.getByRole("button", { name: "Overdue" });
 
     await userEvent.click(overdue);
@@ -191,11 +200,13 @@ export const FilterByStatus: Story = {
     ).toBeVisible();
     await expect(overdue).toHaveAttribute("aria-pressed", "true");
     await expect(listAddress()).toEqual(["status=overdue"]);
-    await expect(
-      canvas.getByText(
-        /^Outstanding SGD\s?3,000\.00\. Overdue SGD\s?3,000\.00 in 1 invoice\.$/
-      )
-    ).toBeVisible();
+    // The strip is the filtered page's: one invoice, not the four of the unfiltered page.
+    await expect(figure(canvasElement, "SGD", "Invoices")).toHaveTextContent(
+      /^1$/
+    );
+    await expect(figure(canvasElement, "SGD", "Overdue")).toHaveTextContent(
+      /^SGD\s?3,000\.00$/
+    );
   },
 };
 

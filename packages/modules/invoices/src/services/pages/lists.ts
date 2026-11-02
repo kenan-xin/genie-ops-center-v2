@@ -16,6 +16,7 @@ import type {
   PaymentListFilters,
   PaymentListPageView,
   PaymentListRow,
+  PaymentListSummary,
   PaymentListView,
 } from "../../presentation/views.ts";
 import { invoiceStatusOf, paymentStatusOf } from "./status.ts";
@@ -92,10 +93,11 @@ const summaryRow = z.object({
   currency: z.string(),
   overdue: z.boolean(),
   outstanding: z.number().int(),
+  invoiced: z.number().int(),
   invoices: z.number().int(),
 });
 
-/** Outstanding, and overdue money and count, per currency over every row the filters keep. */
+/** Outstanding, invoiced, the count, and overdue money and count, per currency over every kept row. */
 async function invoiceSummary(
   ctx: ModuleRequestContext,
   filters: readonly DatasetFilter[],
@@ -109,6 +111,7 @@ async function invoiceSummary(
       groupBy: [{ field: "currency" }, { field: "overdue" }],
       aggregates: [
         { fn: "sum", field: "outstandingCents", as: "outstanding" },
+        { fn: "sum", field: "totalCents", as: "invoiced" },
         { fn: "count", as: "invoices" },
       ],
     },
@@ -122,11 +125,15 @@ async function invoiceSummary(
       outstandingCents: 0,
       overdueCents: 0,
       overdueCount: 0,
+      invoicedCents: 0,
+      count: 0,
     };
 
     byCurrency.set(row.currency, {
       ...total,
       outstandingCents: total.outstandingCents + row.outstanding,
+      invoicedCents: total.invoicedCents + row.invoiced,
+      count: total.count + row.invoices,
       overdueCents: total.overdueCents + (row.overdue ? row.outstanding : 0),
       overdueCount: total.overdueCount + (row.overdue ? row.invoices : 0),
     });
@@ -248,29 +255,74 @@ export async function loadPaymentList(
   after: DatasetCursor | null = null,
   filters: PaymentListFilters = {}
 ): Promise<PaymentListView> {
-  const result = await queryDataset(ctx, {
-    dataset: "invoices.payments",
-    after: after ?? undefined,
-    search: filters.search,
-    query: {
-      select: PAYMENT_ROW_FIELDS,
-      filters: [
-        ...(filters.link === undefined ? [] : [LINK_FILTERS[filters.link]]),
-        ...customerAndDatesOf(filters, "paymentDate"),
-      ],
-      orderBy: [
-        { column: "paymentDate", direction: "desc" },
-        { column: "reference", direction: "desc" },
-      ],
-    },
-  });
+  const conditions = [
+    ...(filters.link === undefined ? [] : [LINK_FILTERS[filters.link]]),
+    ...customerAndDatesOf(filters, "paymentDate"),
+  ];
+
+  const [result, summary] = await Promise.all([
+    queryDataset(ctx, {
+      dataset: "invoices.payments",
+      after: after ?? undefined,
+      search: filters.search,
+      query: {
+        select: PAYMENT_ROW_FIELDS,
+        filters: conditions,
+        orderBy: [
+          { column: "paymentDate", direction: "desc" },
+          { column: "reference", direction: "desc" },
+        ],
+      },
+    }),
+    paymentSummary(ctx, conditions, filters.search),
+  ]);
 
   return {
     asOf: result.asOf,
     rows: result.rows.map((row) => paymentListRowOf(paymentRow.parse(row))),
     truncated: result.truncated,
     next: result.next ?? null,
+    summary,
   };
+}
+
+const paymentSummaryRow = z.object({
+  currency: z.string(),
+  collected: z.number().int(),
+  unallocated: z.number().int(),
+  payments: z.number().int(),
+});
+
+/** Collected, allocated, unallocated and the count, per currency over every row the filters keep. */
+async function paymentSummary(
+  ctx: ModuleRequestContext,
+  filters: readonly DatasetFilter[],
+  search: string | undefined
+): Promise<PaymentListSummary[]> {
+  const result = await queryDataset(ctx, {
+    dataset: "invoices.payments",
+    search,
+    query: {
+      filters,
+      groupBy: [{ field: "currency" }],
+      aggregates: [
+        { fn: "sum", field: "amountCents", as: "collected" },
+        { fn: "sum", field: "unallocatedCents", as: "unallocated" },
+        { fn: "count", as: "payments" },
+      ],
+    },
+  });
+
+  return result.rows
+    .map((entry) => paymentSummaryRow.parse(entry))
+    .map((row) => ({
+      currency: row.currency,
+      collectedCents: row.collected,
+      allocatedCents: row.collected - row.unallocated,
+      unallocatedCents: row.unallocated,
+      count: row.payments,
+    }))
+    .toSorted((left, right) => left.currency.localeCompare(right.currency));
 }
 
 /** The Payments page: its unfiltered first page and the customers of its picker. */

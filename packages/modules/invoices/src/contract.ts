@@ -467,9 +467,22 @@ export const invoiceListSummary = z.object({
   outstandingCents: z.number().int(),
   overdueCents: z.number().int(),
   overdueCount: z.number().int(),
+  invoicedCents: z.number().int(),
+  count: z.number().int(),
 });
 
 export type InvoiceListSummary = z.infer<typeof invoiceListSummary>;
+
+/** The totals of one currency over every payment the filters keep, not only the loaded page. */
+export const paymentListSummary = z.object({
+  currency: z.string(),
+  collectedCents: z.number().int(),
+  allocatedCents: z.number().int(),
+  unallocatedCents: z.number().int(),
+  count: z.number().int(),
+});
+
+export type PaymentListSummary = z.infer<typeof paymentListSummary>;
 
 export const invoiceDetail = invoiceListRow.extend({
   dueDateSource: z.enum(DUE_DATE_SOURCES),
@@ -637,7 +650,10 @@ export const invoicesContract = {
         summary: z.array(invoiceListSummary),
       })
     ),
-  /** The Payments list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28). */
+  /**
+   * The Payments list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28),
+   * with its filters and the summary of every payment they keep.
+   */
   listPayments: oc
     .route({ method: "GET", path: "/invoices/payment-list" })
     .input(
@@ -652,6 +668,7 @@ export const invoicesContract = {
         rows: z.array(paymentListRow),
         truncated: z.boolean(),
         next: datasetCursorSchema.nullable(),
+        summary: z.array(paymentListSummary),
       })
     ),
   /** A customer's open invoices in one currency, oldest first, for a reader of the customer. */

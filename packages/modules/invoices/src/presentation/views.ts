@@ -5,6 +5,7 @@ import type {
   InvoiceListRow,
   InvoiceListSummary,
   PaymentListRow,
+  PaymentListSummary,
 } from "../contract.ts";
 
 /**
@@ -27,6 +28,7 @@ export type {
   InvoiceStatus,
   PaymentListFilters,
   PaymentListRow,
+  PaymentListSummary,
   PaymentRecordView,
   PaymentStatus,
 } from "../contract.ts";
@@ -60,6 +62,8 @@ export type PaymentListView = {
   readonly truncated: boolean;
   /** Where the next page starts, when the list was cut (czjw.28). */
   readonly next: DatasetCursor | null;
+  /** One entry per currency, over every payment the filters keep. */
+  readonly summary: readonly PaymentListSummary[];
 };
 
 /** The unfiltered first page the server renders, and the customers of the picker. */

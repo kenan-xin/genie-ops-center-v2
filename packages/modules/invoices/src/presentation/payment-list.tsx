@@ -7,6 +7,7 @@ import {
   DataTable,
   type DataTableColumn,
   EmptyState,
+  FigureStrip,
   ToggleGroup,
   ToggleGroupItem,
 } from "@genie/ui";
@@ -29,6 +30,7 @@ import type {
   PaymentListFilters,
   PaymentListPageView,
   PaymentListRow,
+  PaymentListSummary,
   PaymentListView,
 } from "./views.ts";
 
@@ -48,6 +50,34 @@ const LINK_CHIPS = [
   { value: "linked", label: "Linked" },
   { value: "not-linked", label: "Not linked" },
 ] as const;
+
+/** One figure strip per currency, so no figure adds two currencies (Review Focus 1). */
+function SummaryStrips(props: {
+  readonly summary: readonly PaymentListSummary[];
+}) {
+  return props.summary.map((entry) => (
+    <FigureStrip
+      key={entry.currency}
+      label={`Totals in ${entry.currency}`}
+      figures={[
+        {
+          label: "Collected",
+          value: formatMoney(entry.collectedCents, entry.currency),
+          lead: true,
+        },
+        {
+          label: "Allocated",
+          value: formatMoney(entry.allocatedCents, entry.currency),
+        },
+        {
+          label: "Unallocated",
+          value: formatMoney(entry.unallocatedCents, entry.currency),
+        },
+        { label: "Payments", value: String(entry.count) },
+      ]}
+    />
+  ));
+}
 
 /** The link chips, the customer picker and the payment-date range. */
 function PaymentFilters(props: {
@@ -162,8 +192,10 @@ export function PaymentList(props: PaymentListProps) {
 
   return (
     <main>
-      <PageHeader title="Payments" />
-      <p>Amounts as of {formatDay(view.asOf)}, the reporting date.</p>
+      <PageHeader
+        title="Payments"
+        meta={`Amounts as of ${formatDay(view.asOf)}, the reporting date.`}
+      />
       {view.rows.length === 0 ? (
         <EmptyState
           variant="framed"
@@ -171,7 +203,10 @@ export function PaymentList(props: PaymentListProps) {
           description="Saved payments show here with the amount not yet linked to an invoice."
         />
       ) : (
-        <>
+        <div className="flex flex-col gap-4">
+          {list.first === undefined ? null : (
+            <SummaryStrips summary={list.first.summary} />
+          )}
           <ListFilterBar
             searchLabel="Search reference or customer"
             search={filters.search}
@@ -244,7 +279,7 @@ export function PaymentList(props: PaymentListProps) {
               More payments could not be read. Try Show more again.
             </p>
           ) : null}
-        </>
+        </div>
       )}
     </main>
   );

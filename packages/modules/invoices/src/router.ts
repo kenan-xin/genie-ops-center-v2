@@ -101,7 +101,7 @@ export const invoicesRouter = os.router({
   listPayments: os.listPayments.handler(async ({ context, input }) => {
     const view = await loadPaymentList(context, input.after, input.filters);
 
-    return { ...view, rows: [...view.rows] };
+    return { ...view, rows: [...view.rows], summary: [...view.summary] };
   }),
   listOpenInvoices: os.listOpenInvoices.handler(({ context, input }) =>
     listOpenInvoices(context, input)
