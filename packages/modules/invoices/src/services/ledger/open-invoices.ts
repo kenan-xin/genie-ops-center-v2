@@ -15,9 +15,6 @@ import { allocation, invoice } from "../../schema.ts";
 /** The lists' cap (czjw.28): one more row is read to know that the list was cut. */
 const OPEN_INVOICE_CAP = 1000;
 
-/** Every page of a long open list stops here, so one slow customer cannot hold a read open (czjw.49). */
-const OPEN_INVOICE_MAX_PAGES = 20;
-
 // A join, not a correlated subquery: drizzle leaves the columns of a one-table select unqualified,
 // so `invoice.id` inside a subquery on `allocation` would read `allocation.id`.
 const openCents = sql<number>`(${invoice.totalCents} - coalesce(sum(${allocation.amountCents}), 0))::int`;
@@ -52,7 +49,8 @@ function afterKey(key: OpenPageRow | null) {
  * The customer's invoices in the currency whose total exceeds all their links, oldest first.
  *
  * Every page is read, so the reading job decides on every open invoice, not on the first 1,000
- * (czjw.49). `truncated` says that the read stopped at `OPEN_INVOICE_MAX_PAGES`.
+ * (czjw.49). A page limit here would hide an equal-amount invoice from the decision, and the
+ * person would never learn that the match was made on part of the list.
  */
 export async function readOpenInvoices(
   db: TenantContext["db"] | TenantTransaction,
@@ -61,9 +59,9 @@ export async function readOpenInvoices(
 ): Promise<{ readonly rows: OpenInvoiceRow[]; readonly truncated: boolean }> {
   const rows: OpenInvoiceRow[] = [];
   let key: OpenPageRow | null = null;
-  let truncated = true;
+  let more = true;
 
-  for (let page = 0; page < OPEN_INVOICE_MAX_PAGES && truncated; page += 1) {
+  while (more) {
     // oxlint-disable-next-line no-await-in-loop -- each page needs the last row of the page before it.
     const found: readonly OpenPageRow[] = await db
       .select({
@@ -89,14 +87,14 @@ export async function readOpenInvoices(
       .limit(OPEN_INVOICE_CAP + 1);
 
     rows.push(...found.slice(0, OPEN_INVOICE_CAP));
-    truncated = found.length > OPEN_INVOICE_CAP;
+    more = found.length > OPEN_INVOICE_CAP;
 
     const last: OpenPageRow | undefined = found[OPEN_INVOICE_CAP - 1];
 
     if (last !== undefined) key = last;
   }
 
-  return { rows, truncated };
+  return { rows, truncated: false };
 }
 
 /** `readOpenInvoices` for a reader of the customer (`invoices:read` on it, else `forbidden`). */

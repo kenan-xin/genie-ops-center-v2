@@ -215,6 +215,35 @@ describe("payment saves", () => {
     });
   });
 
+  it("finds an equal-amount invoice past 20,000 open invoices", async () => {
+    const { id: customerId, name: customerName } = await insertCustomer(t());
+
+    // Twenty full pages before the match, so any page stop hides it from the decision.
+    await t().db.$client.query(
+      "insert into invoice (customer_id, number, invoice_date, due_date, due_date_source, currency, total_cents) select $1, 'INV-FAR-' || lpad(g::text, 6, '0'), date '2026-01-01' + (g % 200), date '2026-12-31', 'document', 'SGD', 500 from generate_series(1, 20000) as g",
+      [customerId]
+    );
+
+    const far = await insertInvoice(t(), {
+      customerId,
+      number: "INV-FAR-EDGE",
+      invoiceDate: "2026-10-06",
+      totalCents: 456_700,
+    });
+
+    const result = await read({
+      customerName,
+      amountCents: 456_700,
+      namedInvoiceNumbers: [],
+    });
+
+    // The decision sees every open invoice, so the far one is a suggestion, not silence.
+    expect(result).toMatchObject({
+      outcome: "needs-review",
+      match: { kind: "suggestions", invoiceIds: [far.id] },
+    });
+  });
+
   it("a payment saved with two chosen links saves both, and a link above an open balance saves nothing", async () => {
     const { id: customerId } = await insertCustomer(t());
     const a = await insertInvoice(t(), { customerId, totalCents: 405_000 });

@@ -344,6 +344,50 @@ export const RetryRefused: Story = {
 /** The stale times of each list read, for the one-reload check. */
 const listTimes: number[] = [];
 
+// B8.5: a batch of uploads bigger than one poll asks in chunks, so every reading row is polled.
+export const PollChunksManyRows: Story = {
+  name: "Poll chunks many rows",
+  args: {
+    view: {
+      ...defaultDocumentInbox,
+      rows: Array.from({ length: 150 }, (_, index) => ({
+        ...READING,
+        id: `reading-${String(index).padStart(3, "0")}`,
+        label: `reading-${index}.pdf`,
+      })),
+    },
+  },
+  globals: desktop,
+  beforeEach: () => {
+    serve({
+      ...defaultDocumentInbox,
+      rows: [],
+    });
+    documentStatus.mockImplementation(
+      async ({ ids }: { readonly ids: readonly string[] }) => {
+        if (ids.length > 100) {
+          throw new Error("The status poll takes at most 100 ids.");
+        }
+
+        return ids.map((id) => ({
+          id,
+          status: "reading" as const,
+          reason: null,
+        }));
+      }
+    );
+  },
+  play: async ({ canvas }) => {
+    await waitFor(() => expect(documentStatus).toHaveBeenCalled());
+    // Two chunks of 100 and 50: a single 150-id call is refused, and one row would stop polling.
+    const asked = documentStatus.mock.calls.flatMap(([input]) => input.ids);
+
+    await waitFor(() => expect(documentStatus.mock.calls.length).toBe(2));
+    await expect(new Set(asked).size).toBe(150);
+    await expect(canvas.getByRole("table")).toBeVisible();
+  },
+};
+
 // B8.5: a reading that ends reloads the list once, and the poll stops.
 export const ReadingEnds: Story = {
   name: "Reading ends",

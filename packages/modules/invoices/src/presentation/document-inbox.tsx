@@ -14,6 +14,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
+import type { DocumentStatus } from "../contract.ts";
 import { kindText } from "./document-kind.ts";
 import { DocumentStatusBadge } from "./document-status-badge.tsx";
 import { formatMoney } from "./format.ts";
@@ -38,6 +39,31 @@ type Refusal = {
 };
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
+
+/** The most ids one status poll asks for, as the procedure accepts (czjw.49). */
+const STATUS_POLL_CHUNK = 100;
+
+/**
+ * The status of every named document. The procedure takes at most `STATUS_POLL_CHUNK` ids, so a
+ * batch of uploads larger than one chunk asks in parallel chunks; otherwise its refused call
+ * would leave every row of the batch unread forever (czjw.49).
+ */
+async function documentStatusOf(
+  invoices: ReturnType<typeof useModuleClient<typeof invoicesContract>>,
+  ids: readonly string[]
+): Promise<DocumentStatus[]> {
+  const chunks: string[][] = [];
+
+  for (let at = 0; at < ids.length; at += STATUS_POLL_CHUNK) {
+    chunks.push(ids.slice(at, at + STATUS_POLL_CHUNK));
+  }
+
+  const answers = await Promise.all(
+    chunks.map((chunk) => invoices.documentStatus({ ids: chunk }))
+  );
+
+  return answers.flat();
+}
 
 /** The wait after each poll: 2, 4, 8 seconds, then 15 at most (czjw.49). */
 const POLL_WAITS_MS = [2_000, 4_000, 8_000, 15_000] as const;
@@ -115,7 +141,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
 
   const statuses = useQuery({
     queryKey: [...DOCUMENTS_QUERY, "status", readingIds.join(",")],
-    queryFn: () => invoices.documentStatus({ ids: readingIds }),
+    queryFn: () => documentStatusOf(invoices, readingIds),
     enabled: readingIds.length > 0,
     // The wait grows with each answer, and `false` stops the timer; the next reading starts it again.
     refetchInterval: (query) =>
