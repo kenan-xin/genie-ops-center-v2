@@ -48,6 +48,17 @@ const RECORD_PATH = /^\/m\/invoices\/invoices\/[0-9a-f-]{36}$/;
 /** The cold route compiles plus the answer, with room for the lock to wait for the queue. */
 const TEST_TIMEOUT = LOCK_WAIT + FIRST_PAINT.timeout + 60_000;
 
+/** Console errors and uncaught errors of the current test's page: `next dev` shows each as an issue badge. */
+let pageErrors: string[] = [];
+
+test.beforeEach(({ page }) => {
+  pageErrors = [];
+  page.on("console", (message) => {
+    if (message.type() === "error") pageErrors.push(message.text());
+  });
+  page.on("pageerror", (error) => pageErrors.push(error.message));
+});
+
 const figure = (page: Page, title: string) =>
   page.getByRole("figure", { name: title });
 
@@ -86,7 +97,7 @@ async function askOnAsk(page: Page, testInfo: TestInfo, id: string) {
   ).toBeVisible(FIRST_PAINT);
 }
 
-/** The viewport of the project, axe, and a full-page capture as evidence. */
+/** The viewport of the project, no page error, axe, and a full-page capture as evidence. */
 async function capture(page: Page, testInfo: TestInfo, name: string) {
   const width = testInfo.project.name === "phone" ? 390 : 1440;
 
@@ -95,6 +106,7 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
     height: testInfo.project.name === "phone" ? 844 : 900,
   });
   await expectNoAxeViolations(page, name);
+  expect(pageErrors, "the page logged an error").toEqual([]);
   await page.screenshot({
     path: testInfo.outputPath(`${name}-${width}-light.png`),
     fullPage: true,
