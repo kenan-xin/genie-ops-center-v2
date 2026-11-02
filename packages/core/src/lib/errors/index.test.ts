@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import {
   AppError,
@@ -16,6 +16,20 @@ const placeholderErrors = defineModuleErrors("placeholder", {
 });
 
 const REQUEST_ID = "01JD0000000000000000000000";
+
+describe("instanceof across copies", () => {
+  it("reads an AppError of a second copy of this file as an AppError", async () => {
+    // The dev server loads core once for a module and once for the app.
+    vi.resetModules();
+    const other = await import("./index.ts");
+
+    expect(other.AppError).not.toBe(AppError);
+    expect(new other.AppError(other.CORE_ERRORS.forbidden)).toBeInstanceOf(
+      AppError
+    );
+    expect(new Error("plain")).not.toBeInstanceOf(AppError);
+  });
+});
 
 describe("the catalogue", () => {
   it("gives every code one fixed safe message", () => {

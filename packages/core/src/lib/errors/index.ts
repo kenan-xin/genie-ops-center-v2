@@ -239,11 +239,30 @@ export type AppErrorIssue = {
   readonly message: string;
 };
 
+/** The registry-wide mark of an AppError, shared by every copy of this file. */
+const APP_ERROR_BRAND = Symbol.for("genie.app-error");
+
 /**
  * An error that carries a catalogue code. The cause is kept for the log and is never read by a
  * transport adapter, so wrapping an upstream failure loses no detail on the server side.
  */
 export class AppError extends Error {
+  /**
+   * `instanceof AppError` holds for an AppError of any copy of this file. A bundler can load core
+   * once for a module and once for the app (the dev server does), and a plain class check then
+   * reads a module's refusal as a fault, so the agent loses the fix hints. A subclass keeps the
+   * normal check.
+   */
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- `instanceof` hands this any value, so TypeScript requires `unknown` here.
+  static override [Symbol.hasInstance](value: unknown): boolean {
+    if (this !== AppError) {
+      return Function.prototype[Symbol.hasInstance].call(this, value);
+    }
+
+    // `Object` boxes a primitive left of `instanceof`, and a boxed primitive holds no brand.
+    return APP_ERROR_BRAND in Object(value);
+  }
+
   /**
    * Both fields are fixed at construction with `defineProperty`, not assigned. A transport
    * reads them for the response body, so a later `Object.assign` must not be able to put a
@@ -309,6 +328,8 @@ export class AppError extends Error {
     );
 
     this.name = "AppError";
+
+    Object.defineProperty(this, APP_ERROR_BRAND, { value: true });
 
     for (const [name, value] of [
       ["code", definition.code],
