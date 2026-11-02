@@ -2,6 +2,14 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-02
+
+### Added, the Section 7 redesign prototype
+
+- One clickable prototype for every Section 7 screen: the Invoices and Payments lists, the invoice and payment records, the Documents inbox, the two review screens, Ask, the chat on a record, Dashboards and Slides. All screens share one page pattern, and every chat surface follows the agent-native chat rules (design review `buv3.20`).
+- 25 captures at 1440 and 390. The prototype is a snapshot for the owner review, not an approved design.
+- Files: `product/section-7-redesign.prototype.html` and its captures. Record: `imports/2026-11-02-section-7-redesign.md`.
+
 ## 2026-10-30
 
 ### Added, the chart series colors

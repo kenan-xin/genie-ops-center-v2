@@ -8,6 +8,8 @@ Superseded on 2026-09-18. The product owner asked for one central access screen,
 
 Open [Invoice upload and review](invoice-upload-review.prototype.html) directly in a browser. It holds five variants of the upload and completion screens, switched by `?variant=`. The owner chose variant D on 2026-10-27; the others are kept as the record of the comparison. Its data is the fictional demo pack.
 
+Open [Section 7 redesign](section-7-redesign.prototype.html) directly in a browser. It holds every Section 7 screen in one page pattern, switched by `?screen=<key>&state=<state>` (design review `buv3.20`, 2026-11-02). It waits for the owner review. Its data is the fictional demo pack. The [import record](../imports/2026-11-02-section-7-redesign.md) lists the screens and the captures.
+
 Canonical designs:
 
 - [Access](../sections/access/spec.md): the one screen that writes a role assignment, and the read-only Overview of who reaches what.
