@@ -277,11 +277,14 @@ export async function checkChart(
 
   const { config } = parsed;
 
+  const datasets = await listDatasets(ctx);
+
   const readable = new Map(
-    (await listDatasets(ctx)).map((dataset) => [
-      dataset.name,
-      dataset.currencyField,
-    ])
+    datasets.map((dataset) => [dataset.name, dataset.currencyField])
+  );
+
+  const titles = new Map(
+    datasets.map((dataset) => [dataset.name, dataset.title ?? dataset.name])
   );
 
   const issues: AppErrorIssue[] = config.series.flatMap((series, index) =>
@@ -294,11 +297,17 @@ export async function checkChart(
 
   if (issues.length > 0) refuse(issues);
 
-  const data = await chartData(ctx, config, readable);
+  const drawn = await chartData(ctx, config, readable);
 
-  const answered = dataIssues(config, data);
+  const answered = dataIssues(config, drawn);
 
   if (answered.length > 0) refuse(answered);
+
+  // The caption names each dataset by title (6.1); `datasets` keeps the names.
+  const data: ChartData = {
+    ...drawn,
+    sources: drawn.datasets.map((name) => titles.get(name) ?? name),
+  };
 
   return { config, data };
 }

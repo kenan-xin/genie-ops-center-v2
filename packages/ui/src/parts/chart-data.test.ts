@@ -4,6 +4,7 @@ import {
   chartCaption,
   formatChartValue,
   isChartEmpty,
+  kpiChange,
   type ChartColumn,
   type ChartData,
 } from "./chart-data.ts";
@@ -77,6 +78,16 @@ describe("chartCaption", () => {
       "Source: placeholder.records, invoices.payments · Read 30 Oct 2026, 14:05"
     ));
 
+  it("names the sources by title when the chart has them, so a stored chart without keeps its names", () =>
+    expect(
+      chartCaption({ ...read, sources: ["Records", "Payments"] }, "UTC")
+    ).toBe("Source: Records, Payments · Read 30 Oct 2026, 06:05"));
+
+  it("drops the read time for a source-only caption", () =>
+    expect(
+      chartCaption({ ...read, sources: ["Records"] }, "UTC", "source")
+    ).toBe("Source: Records"));
+
   it("says when the rows were cut at the cap", () =>
     expect(
       chartCaption(
@@ -88,6 +99,35 @@ describe("chartCaption", () => {
         "Asia/Singapore"
       )
     ).toMatch(/ · First 1,000 rows$/));
+});
+
+describe("kpiChange", () => {
+  it.each([
+    ["a rise", 10_430, 10_000, { direction: "up", text: "+4.3% on September" }],
+    [
+      "a fall",
+      5910,
+      10_000,
+      { direction: "down", text: "−40.9% on September" },
+    ],
+    [
+      "no change",
+      500,
+      500,
+      { direction: "flat", text: "No change on September" },
+    ],
+    [
+      "a rise from 0, with no percentage",
+      500,
+      0,
+      { direction: "up", text: "Up from 0 on September" },
+    ],
+    ["no current figure", null, 500, null],
+  ] as const)("answers %s", (_, current, previous, expected) =>
+    expect(kpiChange(current, { previous, label: "September" })).toEqual(
+      expected
+    )
+  );
 });
 
 describe("isChartEmpty", () => {

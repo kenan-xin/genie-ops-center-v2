@@ -85,6 +85,31 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+/** The Rename dashboard item sits in the header's More menu (redesign 7.2 pattern). */
+async function openRenameDashboard(canvas: ReturnType<typeof within>) {
+  await userEvent.click(canvas.getByRole("button", { name: "More" }));
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Rename dashboard" })
+  );
+}
+
+/** The chat's request, held open, so a story sees what a starter chip sent without a model. */
+const agentFetch = fn(
+  (_url: RequestInfo | URL, _init?: RequestInit) =>
+    new Promise<Response>(() => {})
+);
+
+function holdAgentRequests() {
+  const original = globalThis.fetch;
+
+  agentFetch.mockClear();
+  globalThis.fetch = agentFetch;
+
+  return () => {
+    globalThis.fetch = original;
+  };
+}
+
 function serve(page: DashboardPageView) {
   readDashboard.mockReset().mockResolvedValue(page.dashboard);
   changeDashboard.mockReset().mockResolvedValue(page.dashboard);
@@ -116,6 +141,13 @@ export const Panels: Story = {
     );
 
     await expect(table.getByText("ABC Trading")).toBeVisible();
+
+    // One line names the read time; each panel names only its source (6.1).
+    await expect(
+      await canvas.findByText(/^Figures as of \d+ \w{3} \d{4}, \d{2}:\d{2}\.$/)
+    ).toBeVisible();
+    await expect(canvas.queryByText(/ · Read /)).toBeNull();
+    await expect(canvas.getByRole("button", { name: "More" })).toBeVisible();
   },
 };
 
@@ -130,22 +162,55 @@ export const PanelsOnPhone: Story = {
   },
 };
 
+/** A starter chip sends its text to the dashboard's chat, which opens for it (6.5). */
+async function starterSends(canvas: ReturnType<typeof within>) {
+  await expect(canvas.getByText("No panels yet")).toBeVisible();
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Add a chart by month" })
+  );
+
+  const chat = within(await screen.findByRole("region", { name: "Chat" }));
+
+  const sent = await within(chat.getByRole("log")).findByText(
+    "Add a chart by month"
+  );
+
+  // The phone's sheet slides in, so wait for it to settle.
+  await waitFor(() => expect(sent).toBeVisible());
+  await waitFor(() => expect(agentFetch).toHaveBeenCalledTimes(1));
+  await expect(String(agentFetch.mock.calls[0]?.[1]?.body)).toContain(
+    "Add a chart by month"
+  );
+}
+
 export const Empty: Story = {
   args: { view: emptyDashboardPage },
   globals: desktop,
-  beforeEach: () => serve(emptyDashboardPage),
-  play: async ({ canvas }) => {
-    await expect(canvas.getByText("No panels yet")).toBeVisible();
-    await expect(
-      canvas.getByText("Ask in the chat beside the dashboard to add a panel.")
-    ).toBeVisible();
+  beforeEach: () => {
+    serve(emptyDashboardPage);
+
+    return holdAgentRequests();
   },
+  play: ({ canvas }) => starterSends(canvas),
+};
+
+/** Below 1280 px the chat is a closed sheet, so the chip opens it first. */
+export const EmptyOnPhone: Story = {
+  name: "Empty on a phone",
+  args: { view: emptyDashboardPage },
+  globals: phone,
+  beforeEach: () => {
+    serve(emptyDashboardPage);
+
+    return holdAgentRequests();
+  },
+  play: ({ canvas }) => starterSends(canvas),
 };
 
 /**
- * The chat beside the dashboard, for a person who may ask while AI is on (R-49). From 1024 px it
- * is a 22rem column to the right of the panels; below that it follows the panels. No message is
- * sent here; Plan task 9 proves a chat change in a browser.
+ * The dashboard's own chat, for a person who may ask while AI is on (R-49). From 1280 px it docks
+ * open as a 400 px column; below that the "Open Chat" button opens it as a sheet. No message is
+ * sent here; `dashboards.spec.ts` proves a chat change in a browser.
  */
 export const ChatOn: Story = {
   name: "Chat on",
@@ -297,12 +362,7 @@ export const SaveDuringRefetch: Story = {
     window.dispatchEvent(new Event("visibilitychange"));
     await waitFor(() => expect(readDashboard).toHaveBeenCalledTimes(1));
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Edit dashboard" })
-    );
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Rename dashboard" })
-    );
+    await openRenameDashboard(canvas);
 
     const renameBoard = within(
       await screen.findByRole("dialog", { name: "Rename dashboard" })
@@ -327,9 +387,7 @@ export const SaveDuringRefetch: Story = {
 
     // The next hand edit sends the saved version, so it meets no conflict.
     changeDashboard.mockClear();
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Rename dashboard" })
-    );
+    await openRenameDashboard(canvas);
 
     const renameAgain = within(
       await screen.findByRole("dialog", { name: "Rename dashboard" })
@@ -440,9 +498,7 @@ export const EditActions: Story = {
     ).toHaveAttribute("aria-pressed", "true");
 
     // Rename dashboard
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Rename dashboard" })
-    );
+    await openRenameDashboard(canvas);
 
     const renameBoard = within(
       await screen.findByRole("dialog", { name: "Rename dashboard" })

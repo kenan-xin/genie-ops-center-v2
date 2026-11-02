@@ -126,7 +126,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One agent chat (R-40, R-18): the stored messages and the streamed answer, the composer, and the model picker of a new chat. A refused send shows the server's reason; a model the administrator removed offers a new chat. The stories stream fixture chunks through a fake transport and never call a model.",
+          "One agent chat (R-40, R-18): the stored messages and the streamed answer, the composer, and the model picker of a new chat. A refused send shows the server's reason; a model the administrator removed offers a new chat. The stories stream fixture chunks through a fake transport and never call a model. A `pending` message `{ text, onSent }` from the page, such as a starter chip outside the chat, sends once when nothing streams.",
       },
     },
     a11y: { test: "error" },

@@ -135,9 +135,14 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
           `/m/analytics/dashboards/${ANALYTICS_CHAT_DASHBOARD.id}`
         );
 
-        const chat = page.locator(
-          'aside[aria-label="Chat about this dashboard"]'
-        );
+        // The page's own chat docks open from 1280 px; below that it opens as a sheet.
+        const chat = page.getByRole("region", { name: "Chat", exact: true });
+
+        if (testInfo.project.name === "phone") {
+          await page
+            .getByRole("button", { name: "Open Chat" })
+            .click(FIRST_PAINT);
+        }
 
         await expect(chat).toBeVisible(FIRST_PAINT);
 
@@ -154,16 +159,14 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
         const send = chat.getByRole("button", { name: "Send" });
 
         if (testInfo.project.name === "phone") {
-          // Scroll to the end of the page, where the composer clears the fixed bar and the bubble.
-          await page.locator("[data-shell-content]").evaluate((element) => {
-            element.scrollTop = element.scrollHeight;
-          });
           await send.tap({ timeout: 15_000 });
+          // The sheet covers the phone screen, so close it to see the dashboard.
+          await chat.getByRole("button", { name: "Close the chat" }).tap();
         } else {
           await send.click({ timeout: 15_000 });
         }
 
-        // The panel grid comes before the aside, so the dashboard's own figure is the first.
+        // The panel grid comes before the chat, so the dashboard's own figure is the first.
         const collections = figure(page, "Collections").first();
 
         await expect(

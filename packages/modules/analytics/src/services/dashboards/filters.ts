@@ -53,6 +53,86 @@ export function dateBounds(
   }
 }
 
+const DAY_MS = 86_400_000;
+
+const isoDay = (time: number) => new Date(time).toISOString().slice(0, 10);
+
+const timeOf = (date: string) => Date.parse(`${date}T00:00:00Z`);
+
+const monthName = new Intl.DateTimeFormat("en-GB", {
+  month: "long",
+  timeZone: "UTC",
+});
+
+/** The same day `back` months earlier, clamped to that month's last day (31 May -> 30 Apr). */
+function monthsBefore(date: string, back: number): string {
+  const [year = 0, month = 1, day = 1] = date.split("-").map(Number);
+  // Day 0 of the next month is the last day of the target month.
+  const lastDay = new Date(Date.UTC(year, month - back, 0)).getUTCDate();
+
+  return isoDay(Date.UTC(year, month - 1 - back, Math.min(day, lastDay)));
+}
+
+/**
+ * The period a KPI compares with (prototype `deltaLine`): the same days of the prior month, the
+ * months or the year before a preset, or the same day count before a custom range. `all` has no
+ * prior period, so it answers null.
+ */
+export function priorBounds(
+  range: DateRangeFilter,
+  reportingDate: string
+): {
+  readonly from: string;
+  readonly to: string;
+  readonly label: string;
+} | null {
+  if (!("preset" in range)) {
+    const days = (timeOf(range.to) - timeOf(range.from)) / DAY_MS + 1;
+    const end = timeOf(range.from) - DAY_MS;
+
+    return {
+      from: isoDay(end - (days - 1) * DAY_MS),
+      to: isoDay(end),
+      label: days === 1 ? "the day before" : `the ${days} days before`,
+    };
+  }
+
+  switch (range.preset) {
+    case "all":
+      return null;
+
+    case "this-year": {
+      const year = Number(reportingDate.slice(0, 4)) - 1;
+
+      return {
+        from: `${year}-01-01`,
+        to: monthsBefore(reportingDate, 12),
+        label: String(year),
+      };
+    }
+
+    case "this-month": {
+      const from = monthStart(reportingDate, 1);
+
+      return {
+        from,
+        to: monthsBefore(reportingDate, 1),
+        label: monthName.format(timeOf(from)),
+      };
+    }
+
+    default: {
+      const months = MONTHS_BACK[range.preset] + 1;
+
+      return {
+        from: monthStart(reportingDate, 2 * months - 1),
+        to: monthsBefore(reportingDate, months),
+        label: `the ${months} months before`,
+      };
+    }
+  }
+}
+
 /**
  * The panel with the dashboard filters added to each series' own filters (R-49, D3): the date range
  * on the time field of the series' dataset, and the field filter only where that dataset declares

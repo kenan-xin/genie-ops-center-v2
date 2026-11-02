@@ -31,6 +31,12 @@ export function AgentPanel(props: {
   readonly suggestions: readonly string[];
   readonly timeZone: string;
   readonly newChatHref: string;
+  /** The composer's hint text. */
+  readonly placeholder?: string | undefined;
+  /** A message the page sends from outside the chat, once; see `Conversation`. */
+  readonly pending?:
+    | { readonly text: string; readonly onSent: () => void }
+    | undefined;
   readonly onFinished?: () => void;
 }): ReactNode {
   const [sessionId] = useState(() => crypto.randomUUID());
@@ -57,6 +63,8 @@ export function AgentPanel(props: {
       checkChart={checkChart}
       timeZone={props.timeZone}
       newChatHref={props.newChatHref}
+      placeholder={props.placeholder}
+      pending={props.pending}
       onFinished={() => props.onFinished?.()}
     />
   );

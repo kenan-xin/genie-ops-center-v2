@@ -17,7 +17,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The place of a chat panel (Section 7 redesign, choice 2): from 1280 px a fixed 400 px column `[data-chat-docked]`, from 768 px a 480 px sheet, below that the whole screen. A round 48 px button 'Open <label>' opens it, and Escape or Close hand focus back to the button. `page` marks a page's own chat, so the shell hides its general chat button; `dockedByDefault` opens the column on a wide screen. The panel is `ChatPanel`: a title with a status dot, an optional 'About ...' line, actions and Close.",
+          "The place of a chat panel (Section 7 redesign, choice 2): from 1280 px a fixed 400 px column `[data-chat-docked]`, from 768 px a 480 px sheet, below that the whole screen. A round 48 px button 'Open <label>' opens it, and Escape or Close hand focus back to the button. `page` marks a page's own chat, so the shell hides its general chat button; `dockedByDefault` opens the column on a wide screen, and `openRequested` opens the chat while true, for a page that sends from outside it. The panel is `ChatPanel`: a title with a status dot, an optional 'About ...' line, actions and Close.",
       },
     },
     a11y: { test: "error" },

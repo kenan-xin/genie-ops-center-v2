@@ -2,7 +2,12 @@ import type { PanelConfig } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
 import type { DashboardFilters, DateRangeFilter } from "../../contract.ts";
-import { type DatasetFacts, dateBounds, effectivePanel } from "./filters.ts";
+import {
+  type DatasetFacts,
+  dateBounds,
+  effectivePanel,
+  priorBounds,
+} from "./filters.ts";
 
 describe("dateBounds", () => {
   it.each([
@@ -43,6 +48,43 @@ describe("dateBounds", () => {
     unknown,
   ])[])("answers %o at %s as %o", (range, date, bounds) => {
     expect(dateBounds(range, date)).toEqual(bounds);
+  });
+});
+
+describe("priorBounds", () => {
+  it.each([
+    [
+      { preset: "this-month" },
+      "2026-10-27",
+      { from: "2026-09-01", to: "2026-09-27", label: "September" },
+    ],
+    [
+      { preset: "this-month" },
+      "2026-05-31",
+      { from: "2026-04-01", to: "2026-04-30", label: "April" },
+    ],
+    [
+      { preset: "last-3-months" },
+      "2026-10-27",
+      { from: "2026-05-01", to: "2026-07-27", label: "the 3 months before" },
+    ],
+    [
+      { preset: "this-year" },
+      "2026-10-27",
+      { from: "2025-01-01", to: "2025-10-27", label: "2025" },
+    ],
+    [
+      { from: "2026-10-11", to: "2026-10-20" },
+      "2026-10-27",
+      { from: "2026-10-01", to: "2026-10-10", label: "the 10 days before" },
+    ],
+    [{ preset: "all" }, "2026-10-27", null],
+  ] as const satisfies readonly (readonly [
+    DateRangeFilter,
+    string,
+    unknown,
+  ])[])("compares %o at %s with %o", (range, date, bounds) => {
+    expect(priorBounds(range, date)).toEqual(bounds);
   });
 });
 

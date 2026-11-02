@@ -1,5 +1,6 @@
 "use client";
 
+import { MinusIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
 import { useId, type ComponentType, type ReactNode } from "react";
 import {
   Area,
@@ -34,6 +35,7 @@ import {
   chartCaption,
   formatChartValue,
   isChartEmpty,
+  kpiChange,
   type ChartColumn,
   type ChartData,
   type ChartRow,
@@ -65,6 +67,8 @@ export type ChartProps = ChartData & {
    * Table tabs (F1). The slide already chooses the kind, and the canvas is scaled rather than reflowed.
    */
   readonly slide?: boolean;
+  /** `source` drops the read time from the caption, where the page names it once (6.1). */
+  readonly caption?: "full" | "source";
 };
 
 function PlainLink(props: {
@@ -352,8 +356,12 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
             />
           )}
         />
+        {/* A legend at the top of every multi-series chart (6.2). */}
         {columns.length > 1 ? (
-          <ChartLegend content={<ChartLegendContent />} />
+          <ChartLegend
+            verticalAlign="top"
+            content={<ChartLegendContent verticalAlign="top" />}
+          />
         ) : null}
         {marks}
       </Plot>
@@ -406,11 +414,26 @@ function DonutPlot(props: ChartProps & { readonly x: ChartColumn }) {
   );
 }
 
+const TREND_ICON = {
+  up: TrendingUpIcon,
+  down: TrendingDownIcon,
+  flat: MinusIcon,
+} as const;
+
 function KpiValue(props: ChartProps) {
   const column = props.columns[0];
   const row = props.rows[0];
+  const value = column === undefined ? null : (row?.[column.key] ?? null);
 
-  return (
+  // Neutral, not good or bad: whether a rise is good depends on the figure.
+  const change =
+    props.change === undefined || props.slide === true
+      ? null
+      : kpiChange(value === null ? null : Number(value), props.change);
+
+  const Trend = change === null ? null : TREND_ICON[change.direction];
+
+  const figure = (
     <p
       className={
         props.slide === true
@@ -422,6 +445,18 @@ function KpiValue(props: ChartProps) {
         ? ""
         : formatChartValue(column, row[column.key] ?? null)}
     </p>
+  );
+
+  return change === null || Trend === null ? (
+    figure
+  ) : (
+    <div className="grid gap-1">
+      {figure}
+      <p className="flex items-center gap-1 text-xs font-medium text-muted-foreground">
+        <Trend aria-hidden="true" className="size-3.5" strokeWidth={1.75} />
+        {change.text}
+      </p>
+    </div>
   );
 }
 
@@ -499,7 +534,7 @@ export function Chart(props: ChartProps) {
       </div>
       {slide ? <div className="min-h-0 flex-1">{body}</div> : body}
       <figcaption className="text-xs text-muted-foreground">
-        {chartCaption(props, props.timeZone)}
+        {chartCaption(props, props.timeZone, props.caption)}
       </figcaption>
     </figure>
   );

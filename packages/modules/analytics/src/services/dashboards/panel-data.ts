@@ -8,7 +8,7 @@ import {
 } from "@genie/core";
 import type { ChartData } from "@genie/ui";
 
-import { datasetFacts, effectivePanel } from "./filters.ts";
+import { datasetFacts, effectivePanel, priorBounds } from "./filters.ts";
 import { readOwnDashboard } from "./store.ts";
 
 /** The most values the field filter offers. */
@@ -33,14 +33,58 @@ export async function panelData(
     reportingDate(ctx.tenant),
   ]);
 
-  const effective = effectivePanel(
-    panel.config,
-    record.config.filters,
-    datasets,
-    date
+  const { filters } = record.config;
+
+  const data = (
+    await checkChart(ctx, effectivePanel(panel.config, filters, datasets, date))
+  ).data;
+
+  const prior =
+    panel.config.type === "kpi" ? priorBounds(filters.dateRange, date) : null;
+
+  if (prior === null) return data;
+
+  const { label, ...range } = prior;
+
+  // The change line is extra: a refused or empty prior read drops it, never the panel.
+  const previous = await checkChart(
+    ctx,
+    effectivePanel(
+      panel.config,
+      { ...filters, dateRange: range },
+      datasets,
+      date
+    )
+  ).then(
+    ({ data: before }) => priorKpiValue(data, before),
+    (cause: unknown) => {
+      if (cause instanceof AppError && cause.code === "chart-invalid") {
+        return null;
+      }
+
+      throw cause;
+    }
   );
 
-  return (await checkChart(ctx, effective)).data;
+  return previous === null ? data : { ...data, change: { previous, label } };
+}
+
+/**
+ * The prior period's KPI figure, or null when it cannot be compared: an empty period, or money
+ * in another currency than the current figure (one figure set per currency).
+ */
+export function priorKpiValue(
+  current: ChartData,
+  before: ChartData
+): number | null {
+  const [column] = before.columns;
+
+  if (column?.currency !== current.columns[0]?.currency) return null;
+
+  // A KPI value is a number or money; a sum over no rows answers null.
+  const value = column === undefined ? null : before.rows[0]?.[column.key];
+
+  return value === null || value === undefined ? null : Number(value);
 }
 
 /**

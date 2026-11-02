@@ -1,6 +1,6 @@
 "use client";
 
-import { AgentPanel } from "@genie/core/features/agent";
+import { AgentPanel, ChatDock, ChatPanel } from "@genie/core/features/agent";
 import { PageHeader } from "@genie/core/features/shell";
 import {
   Button,
@@ -9,9 +9,14 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   EmptyState,
   Field,
   FieldLabel,
+  formatReadTime,
   InfoNote,
   Input,
 } from "@genie/ui";
@@ -34,6 +39,19 @@ export type DashboardViewProps = {
   readonly view: DashboardPageView;
 };
 
+/** The empty dashboard's starters (6.5); the module names no dataset. */
+const STARTERS = [
+  "Add a figure for this month",
+  "Add a chart by month",
+  "Add a table of the latest records",
+] as const;
+
+/** The chat's own suggestions (6.4), apart from the starters so no chip shows twice. */
+const CHAT_SUGGESTIONS = [
+  "Compare with the prior quarter",
+  "Make the charts one size",
+] as const;
+
 type RenameTarget =
   | { readonly kind: "dashboard"; readonly value: string }
   | {
@@ -54,6 +72,12 @@ export function DashboardView(props: DashboardViewProps) {
   const [editing, setEditing] = useState(false);
   const [renaming, setRenaming] = useState<RenameTarget | null>(null);
   const [failure, setFailure] = useState<ChangeFailure | null>(null);
+
+  // The latest read of any panel, for the one "Figures as of" line (6.1).
+  const [readAt, setReadAt] = useState<string | null>(null);
+
+  // A starter chip of the empty dashboard, until the chat sent it.
+  const [starter, setStarter] = useState<string | undefined>(undefined);
 
   function send(
     changes: readonly DashboardChange[],
@@ -140,35 +164,24 @@ export function DashboardView(props: DashboardViewProps) {
       <ChangeRefusal failure={failure} onReload={reload} />
     );
 
-  const chatOn = view.chat.kind === "on";
+  const chat = view.chat;
+  const chatOn = chat.kind === "on";
+
+  // Only a person who may write gets the chat's write tools.
+  const starters = chatOn && view.canWrite;
 
   return (
     <main>
       <PageHeader
         title={dashboard.name}
-        actions={
+        meta={
+          readAt === null
+            ? undefined
+            : `Figures as of ${formatReadTime(readAt, view.timeZone)}.`
+        }
+        secondaryActions={
           view.canWrite ? (
             <>
-              <Button
-                variant="secondary"
-                aria-pressed={editing}
-                onClick={() => {
-                  setEditing(!editing);
-                  setFailure(null);
-                }}
-              >
-                Edit dashboard
-              </Button>
-              {editing ? (
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    openRename({ kind: "dashboard", value: dashboard.name })
-                  }
-                >
-                  Rename dashboard
-                </Button>
-              ) : null}
               {/* Outside edit mode too: a chat answer tells the person to use Undo (R-49). */}
               {dashboard.canUndo ? (
                 <Button
@@ -179,13 +192,41 @@ export function DashboardView(props: DashboardViewProps) {
                   Undo
                 </Button>
               ) : null}
+              {/* A mode switch, so a pressed button, not a menu item. */}
+              <Button
+                variant="secondary"
+                aria-pressed={editing}
+                onClick={() => {
+                  setEditing(!editing);
+                  setFailure(null);
+                }}
+              >
+                Edit dashboard
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button variant="secondary" size="icon" aria-label="More" />
+                  }
+                >
+                  <span aria-hidden="true">⋯</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() =>
+                      openRename({ kind: "dashboard", value: dashboard.name })
+                    }
+                  >
+                    Rename dashboard
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : undefined
         }
       />
-      {/* From lg the chat is a 22rem column (w-88) right of the panels; below lg it follows them. */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="min-w-0 lg:flex-1">
+      <div className="grid gap-4">
+        <div className="min-w-0">
           {renaming === null && refusal !== null ? (
             <div className="mb-4">{refusal}</div>
           ) : null}
@@ -199,17 +240,32 @@ export function DashboardView(props: DashboardViewProps) {
               variant="framed"
               title="No panels yet"
               description={
-                // Only a person who may write gets the chat's write tools.
-                chatOn && view.canWrite
-                  ? "Ask in the chat beside the dashboard to add a panel."
+                starters
+                  ? "Ask the chat for a chart, a figure or a table. You can move them after."
                   : "This dashboard has no panels."
+              }
+              action={
+                starters ? (
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {STARTERS.map((text) => (
+                      <Button
+                        key={text}
+                        variant="secondary"
+                        size="sm"
+                        onClick={() => setStarter(text)}
+                      >
+                        {text}
+                      </Button>
+                    ))}
+                  </div>
+                ) : undefined
               }
             />
           ) : (
             <div
-              className={`grid gap-4 md:grid-cols-4 ${chatOn ? "lg:grid-cols-1 xl:grid-cols-2" : ""}`}
+              className={`grid gap-4 md:grid-cols-4 ${chatOn ? "xl:grid-cols-2" : ""}`}
             >
-              {/* Beside the chat column the grid has fewer columns, so a panel keeps useful width. */}
+              {/* Beside the docked chat the grid has two columns, so a panel keeps useful width. */}
               {dashboard.panels.map((panel, index) => (
                 <PanelCard
                   key={panel.id}
@@ -220,6 +276,11 @@ export function DashboardView(props: DashboardViewProps) {
                   timeZone={view.timeZone}
                   editing={editing}
                   narrow={chatOn}
+                  onRead={(at) =>
+                    setReadAt((latest) =>
+                      latest === null || at > latest ? at : latest
+                    )
+                  }
                   onChange={(target, changes) =>
                     send(changes, { panelTitle: target.config.title })
                   }
@@ -235,41 +296,55 @@ export function DashboardView(props: DashboardViewProps) {
             </div>
           )}
         </div>
-        {chatOn ? (
-          <aside
-            aria-label="Chat about this dashboard"
-            // The bottom space lets the composer scroll clear of the fixed phone bar and the bubble.
-            className="min-w-0 max-lg:pb-20 lg:w-88 lg:shrink-0 lg:pb-0"
-          >
-            {/* A new key per dashboard, so a move to another dashboard starts a new chat. */}
-            <AgentPanel
-              key={dashboard.id}
-              context={{
-                recordType: "analytics-dashboard",
-                recordId: dashboard.id,
-              }}
-              models={view.chat.models}
-              labels={view.chat.labels}
-              suggestions={view.chat.suggestions}
-              timeZone={view.timeZone}
-              newChatHref={`/m/analytics/dashboards/${dashboard.id}`}
-              // A chat change saves a new version; the page reads it at once.
-              onFinished={() =>
-                void queryClient.invalidateQueries({
-                  queryKey: dashboardQueryKey(dashboard.id),
-                })
-              }
-            />
-          </aside>
-        ) : null}
-        {view.chat.kind === "off" ? (
-          <div className="lg:w-88 lg:shrink-0">
-            <InfoNote size="md" role="status">
-              Chat is off. You can still change this dashboard by hand.
-            </InfoNote>
-          </div>
+        {chat.kind === "off" ? (
+          <InfoNote size="md" role="status">
+            Chat is off. You can still change this dashboard by hand.
+          </InfoNote>
         ) : null}
       </div>
+      {chat.kind === "on" ? (
+        // The page's own chat, docked open from 1280 px; the shell hides its general chat.
+        <ChatDock
+          label="Chat"
+          page
+          dockedByDefault
+          openRequested={starter !== undefined}
+        >
+          {(close) => (
+            <ChatPanel
+              title="Chat"
+              about={`About ${dashboard.name}`}
+              onClose={close}
+            >
+              {/* A new key per dashboard, so a move to another dashboard starts a new chat. */}
+              <AgentPanel
+                key={dashboard.id}
+                context={{
+                  recordType: "analytics-dashboard",
+                  recordId: dashboard.id,
+                }}
+                models={chat.models}
+                labels={chat.labels}
+                suggestions={view.canWrite ? CHAT_SUGGESTIONS : []}
+                placeholder="Ask for a chart or a change"
+                timeZone={view.timeZone}
+                newChatHref={`/m/analytics/dashboards/${dashboard.id}`}
+                pending={
+                  starter === undefined
+                    ? undefined
+                    : { text: starter, onSent: () => setStarter(undefined) }
+                }
+                // A chat change saves a new version; the page reads it at once.
+                onFinished={() =>
+                  void queryClient.invalidateQueries({
+                    queryKey: dashboardQueryKey(dashboard.id),
+                  })
+                }
+              />
+            </ChatPanel>
+          )}
+        </ChatDock>
+      ) : null}
       <Dialog
         open={renaming !== null}
         onOpenChange={(open) => {

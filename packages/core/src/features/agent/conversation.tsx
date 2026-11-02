@@ -19,7 +19,7 @@ import {
 } from "@genie/ui";
 import type { ChatTransport } from "ai";
 import { ArrowUpIcon, SparklesIcon } from "lucide-react";
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
@@ -59,9 +59,16 @@ export function Conversation(props: {
   /** Starter questions above the composer; hidden while an answer streams or after a refusal. */
   readonly suggestions: readonly string[];
   /** The composer's hint text. */
-  readonly placeholder?: string;
+  readonly placeholder?: string | undefined;
   /** Shown above the composer while the chat has no message, for example a welcome line. */
   readonly empty?: ReactNode;
+  /**
+   * A message the page asks to send, for example a starter chip outside the chat. `onSent` runs
+   * once it went out, so the page clears it; a pending that stayed set would send again.
+   */
+  readonly pending?:
+    | { readonly text: string; readonly onSent: () => void }
+    | undefined;
   readonly onFinished?: (sessionId: string) => void;
 }): ReactNode {
   const [draft, setDraft] = useState("");
@@ -111,6 +118,16 @@ export function Conversation(props: {
       showPicker && modelId !== "" ? { body: { modelId } } : undefined
     );
   }
+
+  const { pending } = props;
+
+  // Waits for a streaming answer to finish, like a typed message (B9.1).
+  useEffect(() => {
+    if (pending === undefined || busy) return;
+
+    send(pending.text);
+    pending.onSent();
+  }, [pending?.text, busy]);
 
   const showSuggestions =
     !busy && refusal === null && props.suggestions.length > 0;

@@ -37,6 +37,8 @@ export function ChatDock(props: {
   readonly page?: true;
   /** Opens docked on a wide screen, as Dashboards and Slides do. */
   readonly dockedByDefault?: true;
+  /** While true the chat opens, for example when a page sends a message from outside it. */
+  readonly openRequested?: boolean | undefined;
   /** Called each time the chat opens or closes, for example to load its list only once seen. */
   readonly onOpenChange?: ((open: boolean) => void) | undefined;
   readonly children: (close: () => void) => ReactNode;
@@ -66,6 +68,12 @@ export function ChatDock(props: {
     }
     // Only on mount: a later callback identity must not reopen a closed chat.
   }, [dockedByDefault]);
+
+  const { openRequested } = props;
+
+  useEffect(() => {
+    if (openRequested === true) setOpen(true);
+  }, [openRequested]);
 
   useEffect(() => {
     if (open || !returnFocus.current) return;

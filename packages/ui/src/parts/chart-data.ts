@@ -35,6 +35,10 @@ export type ChartData = {
   /** Table only: the page each row opens, by row index, or null. */
   readonly recordPaths?: readonly (string | null)[];
   readonly datasets: readonly string[];
+  /** The datasets by human title, for the caption (6.1); a chart stored without them shows `datasets`. */
+  readonly sources?: readonly string[];
+  /** KPI only: the figure of the prior period, for the change line, for example "September". */
+  readonly change?: { readonly previous: number; readonly label: string };
   /** The ISO instant of the read. */
   readonly readAt: string;
   readonly truncated: boolean;
@@ -150,25 +154,80 @@ export function formatChartValue(
   }).format(Number(value));
 }
 
-/** "Source: <datasets> · Read <time>", plus the row cap when the read was cut (R-16). */
-export function chartCaption(
-  data: Pick<ChartData, "datasets" | "readAt" | "truncated" | "rows">,
-  timeZone: string
-): string {
-  const read = new Intl.DateTimeFormat(LOCALE, {
+/** An instant as "27 Oct 2026, 09:06" in the tenant zone. */
+export function formatReadTime(instant: string, timeZone: string): string {
+  return new Intl.DateTimeFormat(LOCALE, {
     day: "numeric",
     month: "short",
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
     timeZone,
-  }).format(new Date(data.readAt));
+  }).format(new Date(instant));
+}
 
-  const caption = `Source: ${data.datasets.join(", ")} · Read ${read}`;
+/**
+ * "Source: <sources> · Read <time>", plus the row cap when the read was cut (R-16). `source` drops
+ * the read time, where the page names it once (6.1).
+ */
+export function chartCaption(
+  data: Pick<
+    ChartData,
+    "datasets" | "sources" | "readAt" | "truncated" | "rows"
+  >,
+  timeZone: string,
+  form: "full" | "source" = "full"
+): string {
+  const source = `Source: ${(data.sources ?? data.datasets).join(", ")}`;
+
+  const caption =
+    form === "source"
+      ? source
+      : `${source} · Read ${formatReadTime(data.readAt, timeZone)}`;
 
   return data.truncated
     ? `${caption} · First ${data.rows.length.toLocaleString(LOCALE)} rows`
     : caption;
+}
+
+export type KpiChange = {
+  readonly direction: "up" | "down" | "flat";
+  readonly text: string;
+};
+
+/**
+ * A KPI against its prior period, as "+4.3% on September" (prototype `deltaLine`). A rise from 0
+ * has no percentage, and a missing current figure has no line.
+ */
+export function kpiChange(
+  current: number | null,
+  change: NonNullable<ChartData["change"]>
+): KpiChange | null {
+  if (current === null) return null;
+
+  const { previous, label } = change;
+
+  if (current === previous) {
+    return { direction: "flat", text: `No change on ${label}` };
+  }
+
+  const direction = current > previous ? "up" : "down";
+
+  if (previous === 0) {
+    return {
+      direction,
+      text: `${direction === "up" ? "Up" : "Down"} from 0 on ${label}`,
+    };
+  }
+
+  const percent = new Intl.NumberFormat(LOCALE, {
+    maximumFractionDigits: 1,
+  }).format(Math.abs(((current - previous) / Math.abs(previous)) * 100));
+
+  return {
+    direction,
+    text: `${direction === "up" ? "+" : "−"}${percent}% on ${label}`,
+  };
 }
 
 /** No figure to draw: no rows, or only missing values, or a donut with no part above 0. */

@@ -116,7 +116,7 @@ export { ConfirmDialog } from "./parts/confirm-dialog.tsx";
 
 export { DataTable } from "./parts/data-table.tsx";
 
-export { formatChartValue } from "./parts/chart-data.ts";
+export { formatChartValue, formatReadTime } from "./parts/chart-data.ts";
 
 export type {
   ChartColumn,

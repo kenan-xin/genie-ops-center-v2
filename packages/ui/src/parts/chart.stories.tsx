@@ -37,7 +37,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The one chart of Analytics, Slides and chat (Spec 7 R-16), on the shadcn Chart. It draws the `ChartData` that the core chart gate answers: series in the fixed slots `--chart-1` to `--chart-8` (tokens.md, \"Chart series colors\"), a Chart and a Table view, and a caption that names the dataset and the read time. No rows show the compact empty state. A table whose `recordPaths` names a row's page links that row's first cell, and on a phone its card title, through `linkComponent`; a row without a page stays plain text. Import it from `@genie/ui/chart`, so a page with no chart never loads Recharts.",
+          'The one chart of Analytics, Slides and chat (Spec 7 R-16), on the shadcn Chart. It draws the `ChartData` that the core chart gate answers: series in the fixed slots `--chart-1` to `--chart-8` (tokens.md, "Chart series colors"), a Chart and a Table view, and a caption that names the sources by title (the dataset names for a stored chart without them) and the read time, or only the sources with `caption="source"`. A multi-series chart shows its legend above the plot, and a KPI with `change` shows a neutral change line against the prior period. No rows show the compact empty state. A table whose `recordPaths` names a row\'s page links that row\'s first cell, and on a phone its card title, through `linkComponent`; a row without a page stays plain text. Import it from `@genie/ui/chart`, so a page with no chart never loads Recharts.',
       },
     },
   },
@@ -137,6 +137,29 @@ const barPlay: Story["play"] = async ({ canvas, canvasElement, globals }) => {
 export const Bar: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
   play: barPlay,
+};
+
+/** A legend at the top of every multi-series chart, so it shows before the plot (6.2). */
+export const TwoSeriesLegend: Story = {
+  name: "Two series, legend on top",
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const [legend, plot] = await waitFor(() => {
+      const found = [
+        canvasElement.querySelector(".recharts-legend-wrapper"),
+        canvasElement.querySelector(".recharts-cartesian-grid"),
+      ];
+
+      expect(found).not.toContain(null);
+
+      // SAFETY: the line above checked that both elements exist.
+      return found as [Element, Element];
+    });
+
+    await expect(legend.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      plot.getBoundingClientRect().top
+    );
+  },
 };
 
 export const BarDark: Story = {
@@ -336,6 +359,28 @@ export const Kpi: Story = {
   args: kpi,
   globals: { viewport: { value: "desktop", isRotated: false } },
   play: kpiPlay,
+};
+
+/**
+ * A dashboard KPI: the source by title without the read time, which the page names once (6.1),
+ * and the change against the prior period.
+ */
+export const KpiSourceOnly: Story = {
+  name: "KPI, source only, with its change",
+  args: {
+    ...kpi,
+    sources: ["Records"],
+    caption: "source",
+    change: { previous: 1_000_000, label: "September" },
+  },
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("+23.5% on September")).toBeVisible();
+    await expect(
+      canvas.getByText("Source: Records", { exact: true })
+    ).toBeVisible();
+    await expect(canvas.queryByText(/Read /)).toBeNull();
+  },
 };
 
 export const KpiDark: Story = {

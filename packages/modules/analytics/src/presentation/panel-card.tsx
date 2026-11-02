@@ -16,6 +16,7 @@ import {
   DropdownMenuTrigger,
 } from "@genie/ui";
 import { Chart } from "@genie/ui/chart";
+import { useEffect } from "react";
 
 import type { DashboardChange } from "../contract.ts";
 import { convertibleTypes, convertPanel } from "./panel-convert.ts";
@@ -29,12 +30,12 @@ const COLUMN_SPAN = {
   4: "md:col-span-4",
 } as const;
 
-/** Beside the chat the grid has one column at lg and two at xl, so a span never exceeds it. */
+/** Beside the docked chat the grid has two columns from xl, so a span never exceeds it. */
 const COLUMN_SPAN_NARROW = {
-  1: "md:col-span-1 lg:col-span-1 xl:col-span-1",
-  2: "md:col-span-2 lg:col-span-1 xl:col-span-2",
-  3: "md:col-span-3 lg:col-span-1 xl:col-span-2",
-  4: "md:col-span-4 lg:col-span-1 xl:col-span-2",
+  1: "md:col-span-1",
+  2: "md:col-span-2",
+  3: "md:col-span-3 xl:col-span-2",
+  4: "md:col-span-4 xl:col-span-2",
 } as const;
 
 const ROW_HEIGHT = {
@@ -210,6 +211,8 @@ export type PanelCardProps = {
     changes: readonly DashboardChange[]
   ) => void;
   readonly onRename: (panel: PanelView) => void;
+  /** Each read's instant, so the page names the figures' time once (6.1). */
+  readonly onRead: (readAt: string) => void;
 };
 
 /** One panel: its chart, its own refusal so the other panels still draw (Review Focus 2). */
@@ -224,9 +227,15 @@ export function PanelCard(props: PanelCardProps) {
     narrow,
     onChange,
     onRename,
+    onRead,
   } = props;
 
   const query = usePanelData(dashboard, panel.id);
+  const readAt = query.data?.readAt;
+
+  useEffect(() => {
+    if (readAt !== undefined) onRead(readAt);
+  }, [readAt]);
 
   return (
     <div
@@ -263,6 +272,7 @@ export function PanelCard(props: PanelCardProps) {
             <Chart
               {...query.data}
               timeZone={timeZone}
+              caption="source"
               linkComponent={PageLink}
             />
           )}
