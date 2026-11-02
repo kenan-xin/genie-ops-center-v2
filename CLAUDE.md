@@ -16,6 +16,8 @@ Name epics in one pattern. A roadmap section epic is `Spec <n>: <roadmap section
 
 Keep `docs/tech-plans/` and `docs/tickets/` current. Every approved specification gets a technical plan `docs/tech-plans/<nn>-<slug>.md` before its tickets start, and its row in `docs/tech-plans/README.md` changes when its status changes. When the owner approves a ticket breakdown, write `docs/tickets/spec-<n>/README.md` (ticket, bead, dependencies, folded beads) and one `<nn>-<slug>/index.md` per ticket with its scope and acceptance, in the same change that records the approval. When a ticket's scope, dependencies or bead changes, update its file and the index. Beads still owns status and claims.
 
+Before a ticket breakdown goes to the owner, list every design section under `docs/design/sections/` that the specification's section owns (`docs/design/README.md` maps them), and the open amendment files under `docs/design/` that touch it. Map each section to the numbered requirement and the ticket that build it. A section or amendment with no requirement is raised to the owner before the breakdown is approved; it is never dropped silently (owner, 2026-11-02, after the Access screen was designed but never planned).
+
 ## Read first
 
 1. `docs/core/vision.md`: the platform, decisions (`DEC-n`), open questions (`OPEN-n`).
