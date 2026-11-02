@@ -153,11 +153,11 @@ export function DocumentReview(props: {
     );
   }
 
+  // A Could not read document takes a type too, so a person enters it by hand (R-26).
   const showType =
-    data.canWrite &&
-    data.saved === null &&
-    data.document.status !== "reading" &&
-    data.document.status !== "could-not-read";
+    data.canWrite && data.saved === null && data.document.status !== "reading";
+
+  const couldNotRead = data.document.status === "could-not-read";
 
   const showDiscard =
     data.canWrite && data.saved === null && data.document.status !== "reading";
@@ -169,15 +169,6 @@ export function DocumentReview(props: {
       <p className="px-4 py-3 text-sm">
         Reading the document. The fields show when it is read.
       </p>
-    );
-  } else if (data.document.status === "could-not-read") {
-    body = (
-      <div className="flex flex-col gap-3 px-4 py-3">
-        <WarningNote>
-          The document could not be read. Retry it from Documents.
-        </WarningNote>
-        <PageLink href="/m/invoices/documents">Back to Documents</PageLink>
-      </div>
     );
   } else if (kind === null) {
     body = (
@@ -289,6 +280,17 @@ export function DocumentReview(props: {
                     {`${label} was not changed. ${changeKind.error.message}`}
                   </p>
                 )}
+              </div>
+            ) : null}
+            {couldNotRead ? (
+              <div className="flex flex-col gap-3 px-4 pt-3">
+                <WarningNote>
+                  The document could not be read. Retry it from Documents, or
+                  choose its type and fill in the fields by hand.
+                </WarningNote>
+                <PageLink href="/m/invoices/documents">
+                  Back to Documents
+                </PageLink>
               </div>
             ) : null}
             {body}

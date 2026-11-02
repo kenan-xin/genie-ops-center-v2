@@ -101,6 +101,13 @@ export const couldNotReadReview: DocumentReviewView = {
   },
 };
 
+/** Upload 01 after its reading failed and a person chose Invoice, to enter it by hand (R-26). */
+export const couldNotReadTypedReview: DocumentReviewView = {
+  ...couldNotReadReview,
+  document: { ...couldNotReadReview.document, kind: "invoice" },
+  customers: [ABC_TRADING],
+};
+
 /** Live upload 07: the purchase order that changes no figure (read-07). */
 export const purchaseOrderReview: DocumentReviewView = {
   document: {

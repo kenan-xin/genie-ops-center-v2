@@ -25,9 +25,10 @@ const KEPT_OUTCOMES: ReadonlySet<ReadingOutcome | null> = new Set([
 ]);
 
 /**
- * Changes the type of a read document with no saved record (R-27, decision 6). A document has no
- * customer, so it needs a tenant-wide `invoices:write`. A match outcome of the old type goes,
- * because it no longer says anything about the document.
+ * Changes the type of a read or Could not read document with no saved record (R-26, R-27,
+ * decision 6). A document has no customer, so it needs a tenant-wide `invoices:write`. A match
+ * outcome of the old type goes, because it no longer says anything about the document. The reading
+ * status stays, so a Could not read document keeps Retry until a person saves it.
  */
 export async function setDocumentKind(
   ctx: ModuleRequestContext,
@@ -38,7 +39,8 @@ export async function setDocumentKind(
   return withTransaction(ctx.tenant, async (tx) => {
     const document = await lockDocument(tx, input.id);
 
-    if (document.readingStatus !== "read") {
+    // A stalled reading may still end, so it needs Retry first (R-26).
+    if (document.readingStatus === "reading") {
       throw new AppError(INVOICE_ERRORS["document-not-read"]);
     }
 

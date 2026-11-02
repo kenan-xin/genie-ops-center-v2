@@ -8,6 +8,7 @@ import { DEMO_PDF } from "./__fixtures__/demo-pdfs.ts";
 import {
   aiOffReview,
   couldNotReadReview,
+  couldNotReadTypedReview,
   invoiceReview,
   purchaseOrderReview,
   readOnlyReview,
@@ -363,21 +364,36 @@ export const Discard: Story = {
   },
 };
 
-// The remaining states, for their copy and the accessibility check at both widths.
+const COULD_NOT_READ_NOTE =
+  "The document could not be read. Retry it from Documents, or choose its type and fill in the fields by hand.";
+
+// R-26: a Could not read document keeps Retry and offers the type select for hand entry.
 export const CouldNotRead: Story = {
   name: "Could not read",
   args: { view: couldNotReadReview },
   globals: desktop,
   beforeEach: () => serve(couldNotReadReview),
   play: async ({ canvas }) => {
-    await expect(
-      canvas.getByText(
-        "The document could not be read. Retry it from Documents."
-      )
-    ).toBeVisible();
+    await expect(canvas.getByText(COULD_NOT_READ_NOTE)).toBeVisible();
+    await expect(canvas.getByRole("combobox", { name: "Type" })).toBeEnabled();
     await expect(
       canvas.getByRole("link", { name: "Back to Documents" })
     ).toHaveAttribute("href", "/m/invoices/documents");
+  },
+};
+
+// R-26: once typed, the same document shows the empty save form under the note.
+export const CouldNotReadTyped: Story = {
+  name: "Could not read, entered by hand",
+  args: { view: couldNotReadTypedReview },
+  globals: desktop,
+  beforeEach: () => serve(couldNotReadTypedReview),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(COULD_NOT_READ_NOTE)).toBeVisible();
+    await expect(canvas.getByText("Customer")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Save as unpaid" })
+    ).toBeVisible();
   },
 };
 
@@ -448,6 +464,12 @@ export const DiscardOnPhone: Story = {
 export const CouldNotReadOnPhone: Story = {
   ...CouldNotRead,
   name: "Could not read on a phone",
+  globals: phone,
+};
+
+export const CouldNotReadTypedOnPhone: Story = {
+  ...CouldNotReadTyped,
+  name: "Could not read, entered by hand, on a phone",
   globals: phone,
 };
 

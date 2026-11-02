@@ -195,6 +195,27 @@ async function documentInReading(): Promise<string> {
     .id;
 }
 
+/** A reading that stopped a day ago; the page shows it as Could not read, but its job may still end. */
+async function stalledReading(): Promise<string> {
+  const { id } = await insertDocument(t(), {
+    kind: null,
+    readingStatus: "reading",
+    readingAttempts: 1,
+  });
+
+  await t().db.$client.query(
+    "update document set updated_at = now() - interval '1 day' where id = $1",
+    [id]
+  );
+
+  return id;
+}
+
+const inboxRowOf = async (id: string) =>
+  (await api().listDocuments({ after: null })).rows.find(
+    (row) => row.id === id
+  );
+
 describe("review saves", () => {
   it("a payment saved from its reading with a changed amount marks only the amount corrected, and a method typed in entered", async () => {
     const { id: customerId } = await insertCustomer(t(), {
@@ -302,6 +323,104 @@ describe("review saves", () => {
     ]);
   });
 
+  it("a Could not read document keeps Retry, takes a type and a hand save, and marks every saved field corrected", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const { id } = await insertDocument(t(), {
+      kind: null,
+      readingStatus: "could-not-read",
+    });
+
+    await expect(
+      api().setDocumentKind({ id, kind: "payment" })
+    ).resolves.toEqual({ documentId: id, kind: "payment" });
+    expect(await inboxRowOf(id)).toMatchObject({
+      kind: "payment",
+      status: "could-not-read",
+    });
+    await expect(api().getDocumentReview({ id })).resolves.toMatchObject({
+      document: { kind: "payment", status: "could-not-read" },
+      reading: null,
+      saved: null,
+    });
+
+    await expect(
+      api().savePayment({
+        documentId: id,
+        customer: { id: customerId },
+        paymentDate: "2026-10-20",
+        currency: "SGD",
+        amountCents: 800_000,
+        reference: null,
+        method: null,
+        namedInvoiceNumbers: ["INV-2026-09-04"],
+        allocations: [],
+        keepPossibleDuplicate: false,
+      })
+    ).resolves.toMatchObject({ outcome: "saved" });
+
+    const corrected = { origin: "corrected", quote: null, page: null };
+
+    // Every match fact is corrected, so R-31 never links this payment by itself.
+    expect(await originsOf(id)).toEqual({
+      amount: corrected,
+      currency: corrected,
+      customer: corrected,
+      date: corrected,
+      invoiceNumbers: corrected,
+    });
+    // Saved, so a Retry can no longer run the job over the person's fields.
+    expect(await inboxRowOf(id)).toMatchObject({ status: "saved" });
+    await expect(api().retryReading({ id })).rejects.toMatchObject({
+      code: "invoices:document-not-retryable",
+    });
+  });
+
+  it("a hand save of a Could not read document whose reading was stored before the match failed marks its read fields corrected too", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const id = await readDocument("payment", {
+      fields: {
+        customer: onPage1("Orchid Retail"),
+        amount: onPage1("8250.00", "Amount paid SGD 8,250.00"),
+        reference: onPage1("TRF-1"),
+      },
+      invoiceNumbers: [onPage1("INV-2026-09-04")],
+      dropped: [],
+    });
+    await t().db.$client.query(
+      "update document set reading_status = 'could-not-read' where id = $1",
+      [id]
+    );
+
+    await expect(
+      api().savePayment({
+        documentId: id,
+        customer: { id: customerId },
+        paymentDate: "2026-10-20",
+        currency: "SGD",
+        amountCents: 825_000,
+        reference: null,
+        method: null,
+        namedInvoiceNumbers: ["INV-2026-09-04"],
+        allocations: [],
+        keepPossibleDuplicate: false,
+      })
+    ).resolves.toMatchObject({ outcome: "saved" });
+
+    // The match facts are unchecked by R-31, so none stays extracted, even one typed back the same.
+    expect(await originsOf(id)).toEqual({
+      amount: {
+        origin: "corrected",
+        quote: "Amount paid SGD 8,250.00",
+        page: 1,
+      },
+      currency: { origin: "corrected", quote: null, page: null },
+      customer: expect.objectContaining({ origin: "corrected" }),
+      date: { origin: "corrected", quote: null, page: null },
+      invoiceNumbers: expect.objectContaining({ origin: "corrected" }),
+      reference: expect.objectContaining({ origin: "corrected" }),
+    });
+  });
+
   it("a type change clears a stale match outcome", async () => {
     const { id } = await insertDocument(t(), {
       kind: "payment",
@@ -331,6 +450,12 @@ describe("review saves", () => {
       "a type change",
       "a document still being read",
       documentInReading,
+      "invoices:document-not-read",
+    ],
+    [
+      "a type change",
+      "a stalled reading",
+      stalledReading,
       "invoices:document-not-read",
     ],
     [
