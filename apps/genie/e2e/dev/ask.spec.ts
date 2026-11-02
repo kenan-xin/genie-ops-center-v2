@@ -77,7 +77,7 @@ async function openBubble(page: Page) {
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
-test("the bubble and Ask share a session, and the bubble opens again on a new chat", async ({
+test("the bubble and Ask share a session, and only New chat starts another", async ({
   page,
 }, testInfo) => {
   // A development server compiles the shell, Ask, the route and the chart gate on first use.
@@ -95,18 +95,25 @@ test("the bubble and Ask share a session, and the bubble opens again on a new ch
   await expectAnswer(page);
   await expectNoAxeViolations(page, "The open bubble");
 
-  // B11.1: on the same page, opening again starts a new chat, and the history keeps the first.
+  // czjw.60: on the same page, opening again continues the chat, and only New chat starts one.
   await bubble.getByRole("button", { name: "Close" }).click();
   await expect(bubble).toBeHidden();
 
   const reopened = await openBubble(page);
 
-  await expect(reopened.getByRole("log", { name: "Conversation" })).toBeEmpty();
+  await expect(
+    reopened
+      .getByRole("log", { name: "Conversation" })
+      .getByText(QUESTION, { exact: true })
+  ).toBeVisible(FIRST_PAINT);
   await expect(
     reopened
       .getByRole("navigation", { name: "Chats" })
       .locator(`a[href="/ask/${sessionId}"]`)
   ).toHaveText(QUESTION);
+
+  await reopened.getByRole("button", { name: "New chat" }).click();
+  await expect(reopened.getByRole("log", { name: "Conversation" })).toBeEmpty();
   expect(await ask(page)).not.toBe(sessionId);
   await expect(answerOf(reopened)).toBeVisible(FIRST_PAINT);
 
@@ -132,6 +139,49 @@ test("the bubble and Ask share a session, and the bubble opens again on a new ch
   );
   await expectAnswer(page);
   await expectNoAxeViolations(page, "Ask with the session");
+});
+
+/**
+ * czjw.60: the bubble keeps the tab's chat through a link and a page load, which a `next dev`
+ * reload of `/ask` proves, so the answer is still there when the bubble opens again.
+ */
+test("a reopened bubble shows the earlier message after a link and a reload", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/account");
+  await expect(page.getByRole("button", { name: "Open Ask" })).toBeVisible(
+    FIRST_PAINT
+  );
+
+  const bubble = await openBubble(page);
+  const sessionId = await ask(page);
+
+  await expectAnswer(page);
+  await bubble.getByRole("button", { name: "Close" }).click();
+  await expect(bubble).toBeHidden();
+
+  // A link out of the page, then a reload: the tab keeps the chat and its saved messages.
+  await page.goto("/ask");
+  await page.reload();
+
+  const reopened = await openBubble(page);
+
+  await expect(
+    reopened
+      .getByRole("log", { name: "Conversation" })
+      .getByText(QUESTION, { exact: true })
+  ).toBeVisible(FIRST_PAINT);
+  await expect(answerOf(reopened).getByText("3", { exact: true })).toBeVisible(
+    FIRST_PAINT
+  );
+  await expect(
+    reopened
+      .getByRole("navigation", { name: "Chats" })
+      .locator(`a[href="/ask/${sessionId}"]`)
+  ).toHaveText(QUESTION);
 });
 
 test("a person without Ask gets no bubble and the denied page on Ask", async ({
