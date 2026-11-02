@@ -127,17 +127,13 @@ function duplicateOf(partial: Upload, project: string): Upload {
   };
 }
 
-/** One inbox row, read from whichever layout the viewport draws. */
+/** One inbox row, in whichever group it sits, read from whichever layout the viewport draws. */
 function rowOf(page: Page, label: string) {
+  const main = page.getByRole("main");
+
   return onPhone(page)
-    ? page
-        .getByRole("list", { name: "Documents" })
-        .getByRole("listitem")
-        .filter({ hasText: label })
-    : page
-        .getByRole("table", { name: "Documents" })
-        .locator("tbody tr")
-        .filter({ hasText: label });
+    ? main.getByRole("list").getByRole("listitem").filter({ hasText: label })
+    : main.getByRole("table").locator("tbody tr").filter({ hasText: label });
 }
 
 /** Waits until the row of `upload` shows its status (R-37). */

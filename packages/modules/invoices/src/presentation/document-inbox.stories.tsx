@@ -140,27 +140,74 @@ const retryView: DocumentInboxView = {
   rows: [COULD_NOT_READ],
 };
 
-const statusWordsInTable: Story["play"] = async ({ canvas }) => {
-  const table = within(canvas.getByRole("table"));
+type Canvas = Parameters<NonNullable<Story["play"]>>[0]["canvas"];
+
+/** A status pill; the Reading group's heading and caption say "Reading" too. */
+const BADGE = '[data-slot="badge"]';
+
+/** Every word shows once in one of the groups' tables or card lists, whichever the width draws. */
+async function expectStatusWords(
+  canvas: Canvas,
+  role: "table" | "list"
+): Promise<void> {
+  const groups = canvas.getAllByRole(role);
 
   await Promise.all(
-    STATUS_WORDS.map((word) => expect(table.getByText(word)).toBeVisible())
+    STATUS_WORDS.map((word) =>
+      expect(
+        groups.flatMap((group) =>
+          within(group).queryAllByText(word, { selector: BADGE })
+        )
+      ).toHaveLength(1)
+    )
   );
-};
+}
 
-const statusWordsInCards: Story["play"] = async ({ canvas }) => {
-  const list = within(canvas.getByRole("list", { name: "Documents" }));
+/** The group tables in their order on the page. */
+const tableNames = (canvas: Canvas) =>
+  canvas
+    .getAllByRole("table")
+    .map((table) => table.querySelector("caption")?.textContent);
 
-  await Promise.all(
-    STATUS_WORDS.map((word) => expect(list.getByText(word)).toBeVisible())
-  );
-};
+const NEEDS_REVIEW = defaultDocumentInbox.rows.filter((row) =>
+  ["needs-input", "confirm-split", "possible-duplicate", "no-match"].includes(
+    row.status
+  )
+);
 
-// B8.1: every R-37 status word, at the desktop width.
+// B8.1: every R-37 status word, at the desktop width. Design review 3.1, 3.2, choice 13: Needs
+// you on top, Reading between, Done below; each row that needs the person offers Review, and the
+// chips show one group at a time with its size.
 export const Default: Story = {
   globals: desktop,
   beforeEach: () => serve(defaultDocumentInbox),
-  play: statusWordsInTable,
+  play: async ({ canvas }) => {
+    await expectStatusWords(canvas, "table");
+    await expect(tableNames(canvas)).toEqual(["Needs you", "Reading", "Done"]);
+
+    const needsYou = within(canvas.getByRole("table", { name: "Needs you" }));
+
+    await Promise.all(
+      NEEDS_REVIEW.map((row) =>
+        expect(
+          needsYou.getByRole("link", { name: `Review ${row.label}` })
+        ).toHaveAttribute("href", `/m/invoices/documents/${row.id}`)
+      )
+    );
+    await expect(needsYou.getByRole("button", { name: "Retry" })).toBeVisible();
+    await expect(
+      canvas.getAllByRole("link", { name: /^Review / })
+    ).toHaveLength(NEEDS_REVIEW.length);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Needs you 5" }));
+    await expect(tableNames(canvas)).toEqual(["Needs you"]);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Done 3" }));
+    await expect(tableNames(canvas)).toEqual(["Done"]);
+
+    await userEvent.click(canvas.getByRole("button", { name: "All 9" }));
+    await expect(tableNames(canvas)).toEqual(["Needs you", "Reading", "Done"]);
+  },
 };
 
 // B8.1: the same rows as cards, at the phone width.
@@ -168,7 +215,7 @@ export const DefaultOnPhone: Story = {
   name: "Default on a phone",
   globals: phone,
   beforeEach: () => serve(defaultDocumentInbox),
-  play: statusWordsInCards,
+  play: ({ canvas }) => expectStatusWords(canvas, "list"),
 };
 
 export const Dark: Story = {
@@ -197,17 +244,21 @@ export const AiOff: Story = {
   },
 };
 
-// B8.6: without upload rights there is no upload area and no Retry.
+// B8.6: without upload rights there is no upload, no Review and no Retry (Review Focus 3).
 export const ReadOnly: Story = {
   name: "Read only",
   args: { view: readOnlyDocumentInbox },
   globals: desktop,
   beforeEach: () => serve(readOnlyDocumentInbox),
   play: async ({ canvas }) => {
+    await expect(canvas.queryByRole("button", { name: "Upload" })).toBeNull();
     await expect(
       canvas.queryByRole("button", { name: "Choose PDF files" })
     ).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Retry" })).toBeNull();
+    await expect(canvas.queryAllByRole("link", { name: /^Review / })).toEqual(
+      []
+    );
   },
 };
 
@@ -453,9 +504,10 @@ export const Retry: Story = {
       expect(retryReading).toHaveBeenCalledWith({ id: COULD_NOT_READ.id })
     );
 
-    const table = within(canvas.getByRole("table"));
+    // The row moves from Needs you to the Reading group.
+    const table = within(await canvas.findByRole("table", { name: "Reading" }));
 
-    await expect(await table.findByText("Reading")).toBeVisible();
+    await expect(table.getByText("Reading", { selector: BADGE })).toBeVisible();
   },
 };
 
@@ -482,6 +534,12 @@ export const RetryRefused: Story = {
     await waitFor(() => expect(listDocuments).toHaveBeenCalledTimes(1));
   },
 };
+
+/** The finished row's status word, read from the Needs you group it moves to. */
+const needsYouRow = (canvas: Canvas) =>
+  within(canvas.getByRole("table", { name: "Needs you" })).getByText(
+    "Needs your input"
+  );
 
 /** The stale times of each list read, for the one-reload check. */
 const listTimes: number[] = [];
@@ -548,12 +606,9 @@ export const ReadingEnds: Story = {
     ]);
   },
   play: async ({ canvas }) => {
-    const table = within(canvas.getByRole("table"));
-
-    await waitFor(
-      () => expect(table.getByText("Needs your input")).toBeVisible(),
-      { timeout: 6_000 }
-    );
+    await waitFor(() => expect(needsYouRow(canvas)).toBeVisible(), {
+      timeout: 6_000,
+    });
     // One reload for the finished reading (the first page came with the request), and then none:
     // a second poll tick would add one more read to this list.
     await waitFor(() => expect(listTimes).toHaveLength(1));
@@ -613,12 +668,9 @@ export const RefreshWhileReading: Story = {
     );
   },
   play: async ({ canvas }) => {
-    const table = within(canvas.getByRole("table"));
-
-    await waitFor(
-      () => expect(table.getByText("Needs your input")).toBeVisible(),
-      { timeout: 6_000 }
-    );
+    await waitFor(() => expect(needsYouRow(canvas)).toBeVisible(), {
+      timeout: 6_000,
+    });
     // The row was polled by its id, not by reading the whole list.
     await expect(documentStatus).toHaveBeenCalledWith({ ids: [READING.id] });
   },
@@ -683,7 +735,7 @@ export const UploadsWithoutSecureContext: Story = {
       pdf("extra.pdf"),
     ]);
 
-    const table = within(canvas.getByRole("table"));
+    const table = within(canvas.getByRole("table", { name: "Done" }));
 
     await expect(await table.findByText("Same file as a.pdf")).toBeVisible();
   },

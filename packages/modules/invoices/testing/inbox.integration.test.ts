@@ -15,11 +15,13 @@ import {
   markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { DocumentInboxRow } from "../src/contract.ts";
 import { invoicesModule } from "../src/module.ts";
 import { invoicesRouter } from "../src/router.ts";
+import { sourceDocument } from "../src/schema.ts";
 import { loadDocumentInbox } from "../src/services/documents/inbox.ts";
 import type { StoredReading } from "../src/services/reading/stored-reading.ts";
 import {
@@ -111,7 +113,16 @@ const row = (
   status: DocumentInboxRow["status"],
   reason: DocumentInboxRow["reason"] = null,
   found: DocumentInboxRow["found"] = null
-): DocumentInboxRow => ({ id, label, kind, status, reason, found });
+): DocumentInboxRow => ({
+  id,
+  label,
+  kind,
+  status,
+  reason,
+  // The upload time case below proves the value.
+  uploadedAt: expect.any(String),
+  found,
+});
 
 async function inboxOf(userId: string) {
   const access = await agentAccess(as(userId));
@@ -220,7 +231,29 @@ describe("the documents inbox", () => {
       next: null,
       ai: "no-key",
       canUpload: true,
+      timeZone: expect.any(String),
     });
+  });
+
+  it("answers each document's upload time, not the time its reading ended", async () => {
+    const document = await insertDocument(t(), { fileName: "uploaded.pdf" });
+    await t()
+      .db.update(sourceDocument)
+      .set({
+        createdAt: new Date("2026-10-27T01:06:00.000Z"),
+        updatedAt: new Date("2026-10-27T01:09:30.000Z"),
+      })
+      .where(eq(sourceDocument.id, document.id));
+    const finance = await personWithSeededRole("Finance");
+
+    const { rows } = await callProcedure(
+      invoicesRouter,
+      as(finance)
+    ).listDocuments({ after: null });
+
+    expect(rows.find((shown) => shown.id === document.id)?.uploadedAt).toBe(
+      "2026-10-27T01:06:00.000Z"
+    );
   });
 
   it("reads the inbox one page at a time from a cursor", async () => {

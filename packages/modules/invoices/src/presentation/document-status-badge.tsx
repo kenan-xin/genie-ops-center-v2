@@ -1,4 +1,5 @@
 import { Badge } from "@genie/ui";
+import { Loader2Icon } from "lucide-react";
 
 import type { InboxStatus } from "./views.ts";
 
@@ -40,5 +41,18 @@ const VARIANT: Record<
 export function DocumentStatusBadge(props: DocumentStatusBadgeProps) {
   const { status } = props;
 
-  return <Badge variant={VARIANT[status]}>{LABEL[status]}</Badge>;
+  // A turning icon, so a Reading row does not look stuck (design review 3.3). `Spinner` would add a
+  // second status word for a screen reader; the pill's word is the status.
+  return (
+    <Badge variant={VARIANT[status]}>
+      {status === "reading" ? (
+        <Loader2Icon
+          aria-hidden="true"
+          strokeWidth={1.75}
+          className="motion-safe:animate-spin"
+        />
+      ) : null}
+      {LABEL[status]}
+    </Badge>
+  );
 }

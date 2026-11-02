@@ -6,9 +6,14 @@
  */
 import type { DocumentInboxRow, DocumentInboxView } from "../views.ts";
 
+/** Uploaded on 27 Oct 2026 at 09:10 in Singapore, one minute earlier per row, so the list reads newest first. */
+const uploadedAt = (row: number) =>
+  new Date(Date.UTC(2026, 9, 27, 1, 11 - row)).toISOString();
+
 const ROWS: DocumentInboxRow[] = [
   {
     id: "10000000-0000-4000-8000-000000000001",
+    uploadedAt: uploadedAt(1),
     label: "reading.pdf",
     kind: null,
     status: "reading",
@@ -17,6 +22,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000002",
+    uploadedAt: uploadedAt(2),
     label: "broken.pdf",
     kind: null,
     status: "could-not-read",
@@ -25,6 +31,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000003",
+    uploadedAt: uploadedAt(3),
     label: "invoice.pdf",
     kind: "invoice",
     status: "needs-input",
@@ -38,6 +45,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000004",
+    uploadedAt: uploadedAt(4),
     label: "payment.pdf",
     kind: "payment",
     status: "linked-automatically",
@@ -51,6 +59,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000005",
+    uploadedAt: uploadedAt(5),
     label: "split.pdf",
     kind: "payment",
     status: "confirm-split",
@@ -64,6 +73,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000006",
+    uploadedAt: uploadedAt(6),
     label: "possible-duplicate.pdf",
     kind: "payment",
     status: "possible-duplicate",
@@ -77,6 +87,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000007",
+    uploadedAt: uploadedAt(7),
     label: "unmatched.pdf",
     kind: "payment",
     status: "no-match",
@@ -90,6 +101,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000008",
+    uploadedAt: uploadedAt(8),
     label: "order.pdf",
     kind: "purchase-order",
     status: "kept-as-reference",
@@ -103,6 +115,7 @@ const ROWS: DocumentInboxRow[] = [
   },
   {
     id: "10000000-0000-4000-8000-000000000009",
+    uploadedAt: uploadedAt(9),
     label: "saved.pdf",
     kind: "paid-receipt",
     status: "saved",
@@ -123,6 +136,7 @@ export const defaultDocumentInbox: DocumentInboxView = {
   next: null,
   ai: "on",
   canUpload: true,
+  timeZone: "Asia/Singapore",
 };
 
 export const aiOffDocumentInbox: DocumentInboxView = {
@@ -136,9 +150,6 @@ export const readOnlyDocumentInbox: DocumentInboxView = {
 };
 
 export const emptyDocumentInbox: DocumentInboxView = {
+  ...defaultDocumentInbox,
   rows: [],
-  truncated: false,
-  next: null,
-  ai: "on",
-  canUpload: true,
 };

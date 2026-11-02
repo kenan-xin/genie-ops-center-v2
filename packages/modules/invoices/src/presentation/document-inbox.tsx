@@ -4,21 +4,34 @@ import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
   Button,
+  buttonVariants,
+  CountPill,
   DataTable,
   type DataTableColumn,
   EmptyState,
+  focusRing,
   InfoNote,
   infoTint,
+  ToggleGroup,
+  ToggleGroupItem,
 } from "@genie/ui";
 import { useAsyncQueuer } from "@tanstack/react-pacer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { UploadIcon } from "lucide-react";
+import {
+  type DragEvent,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { invoicesContract } from "../contract.ts";
 import type { DocumentStatus } from "../contract.ts";
 import { kindText } from "./document-kind.ts";
 import { DocumentStatusBadge } from "./document-status-badge.tsx";
-import { formatMoney } from "./format.ts";
+import { formatInstant, formatMoney } from "./format.ts";
+import { type InboxGroup, inboxGroupOf } from "./inbox-groups.ts";
 import { useListPages } from "./use-list-pages.ts";
 import type { DocumentInboxPageView, DocumentInboxRow } from "./views.ts";
 
@@ -41,6 +54,19 @@ type Refusal = {
 };
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
+
+/** The groups top to bottom (design review 3.1, choice 13). */
+const GROUPS: readonly {
+  readonly group: InboxGroup;
+  readonly label: string;
+}[] = [
+  { group: "needs-you", label: "Needs you" },
+  { group: "reading", label: "Reading" },
+  { group: "done", label: "Done" },
+];
+
+/** The chips; Reading shows under All only, because nobody acts on it. */
+type Shown = "all" | "needs-you" | "done";
 
 const LEAVE_WARNING =
   "Files are still uploading. If you leave this page, the files that did not upload yet are dropped. Leave the page?";
@@ -132,6 +158,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const [refusals, setRefusals] = useState<readonly Refusal[]>([]);
   const [duplicates, setDuplicates] = useState<readonly DuplicateRow[]>([]);
   const [dragging, setDragging] = useState(false);
+  const [shown, setShown] = useState<Shown>("all");
   // Keys for refusals and Duplicate rows; `crypto.randomUUID` exists only in a secure context.
   const serial = useRef(0);
   const nextKey = () => `upload-${(serial.current += 1)}`;
@@ -192,6 +219,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
             kind: null,
             status: "duplicate",
             reason: null,
+            uploadedAt: new Date().toISOString(),
             found: null,
             sameAs: answer.label,
           },
@@ -285,25 +313,92 @@ export function DocumentInbox(props: DocumentInboxProps) {
       </Button>
     ) : null;
 
+  // Every row that waits for the person offers its review; Could not read offers Retry (3.2).
+  const rowAction = (row: InboxRow): ReactNode =>
+    row.status === "could-not-read" ? (
+      retryButton(row)
+    ) : inboxGroupOf(row.status) === "needs-you" && data.canUpload ? (
+      <PageLink
+        href={`/m/invoices/documents/${row.id}`}
+        aria-label={`Review ${row.label}`}
+        className={`${buttonVariants({ variant: "secondary", size: "sm" })} ${focusRing}`}
+      >
+        Review
+      </PageLink>
+    ) : null;
+
   // A stored row opens its review; a Duplicate row has no record to open (R-23).
   const documentLabel = (row: InboxRow): ReactNode =>
     row.status === "duplicate" ? (
       row.label
     ) : (
-      <PageLink href={`/m/invoices/documents/${row.id}`}>{row.label}</PageLink>
+      <PageLink href={`/m/invoices/documents/${row.id}`} title={row.label}>
+        {row.label}
+      </PageLink>
     );
+
+  const uploaded = (row: InboxRow) =>
+    formatInstant(row.uploadedAt, data.timeZone);
 
   const columns: readonly DataTableColumn<InboxRow>[] = [
     { id: "document", header: "Document", cell: documentLabel },
     { id: "type", header: "Type", cell: (row) => kindText(row.kind) },
     { id: "found", header: "What we found", cell: (row) => foundText(row) },
+    { id: "uploaded", header: "Uploaded", cell: uploaded },
   ];
+
+  const grouped = GROUPS.map(({ group, label }) => ({
+    group,
+    label,
+    rows: rows.filter((row) => inboxGroupOf(row.status) === group),
+  }));
+
+  const sizeOf = (group: InboxGroup) =>
+    grouped.find((entry) => entry.group === group)?.rows.length ?? 0;
+
+  const needYou = sizeOf("needs-you");
+
+  // A drop anywhere on the inbox uploads, so the zone of an empty inbox and the list share it.
+  const dropTarget = {
+    onDragEnter: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setDragging(true);
+    },
+    onDragOver: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setDragging(true);
+    },
+    onDragLeave: (event: DragEvent<HTMLElement>) => {
+      // Crossing the button or the text fires dragleave; only leaving the zone ends the drag.
+      const into = event.relatedTarget;
+
+      if (!(into instanceof Node && event.currentTarget.contains(into)))
+        setDragging(false);
+    },
+    onDrop: (event: DragEvent<HTMLElement>) => {
+      event.preventDefault();
+      setDragging(false);
+      choose(event.dataTransfer.files);
+    },
+  };
+
+  const upload = data.canUpload ? (
+    <Button onClick={() => input.current?.click()}>
+      <UploadIcon aria-hidden="true" data-icon="inline-start" />
+      Upload
+    </Button>
+  ) : undefined;
 
   return (
     <main>
       <PageHeader
         title="Documents"
-        description="Drop invoices, receipts and payment evidence in any order. Each one is read, classified and matched."
+        meta={
+          rows.length === 0
+            ? "Nothing uploaded yet."
+            : `${needYou} ${needYou === 1 ? "needs" : "need"} you. Newest uploads first.`
+        }
+        actions={upload}
       />
       {data.ai === "on" ? null : (
         <InfoNote size="md" role="status">
@@ -311,99 +406,142 @@ export function DocumentInbox(props: DocumentInboxProps) {
         </InfoNote>
       )}
       {data.canUpload ? (
-        <div
-          data-drop-zone=""
-          // tokens.md, Drop zone: the tint while dragging carries state, so it stays blue.
-          className={`mt-4 rounded-xl border p-4 ${
-            dragging
-              ? `border-solid border-primary dark:border-brand-on-dark ${infoTint}`
-              : "border-dashed border-input bg-muted"
-          }`}
-          onDragEnter={(event) => {
-            event.preventDefault();
-            setDragging(true);
+        <input
+          ref={input}
+          type="file"
+          accept="application/pdf"
+          multiple
+          className="sr-only"
+          tabIndex={-1}
+          aria-label="Choose PDF files"
+          onChange={(event) => {
+            choose(event.target.files);
+            event.target.value = "";
           }}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={(event) => {
-            // Crossing the button or the text fires dragleave; only leaving the zone ends the drag.
-            const into = event.relatedTarget;
-
-            if (!(into instanceof Node && event.currentTarget.contains(into)))
-              setDragging(false);
-          }}
-          onDrop={(event) => {
-            event.preventDefault();
-            setDragging(false);
-            choose(event.dataTransfer.files);
-          }}
-        >
-          <input
-            ref={input}
-            type="file"
-            accept="application/pdf"
-            multiple
-            className="sr-only"
-            tabIndex={-1}
-            aria-label="Choose PDF files"
-            onChange={(event) => {
-              choose(event.target.files);
-              event.target.value = "";
-            }}
-          />
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-sm text-muted-foreground">
-              {dragging ? "Drop to upload" : "Drop PDF files here, or"}
-            </span>
-            <Button variant="secondary" onClick={() => input.current?.click()}>
-              Choose PDF files
-            </Button>
-          </div>
-          {refusals.length === 0 ? null : (
-            <div role="alert" className="mt-2 text-sm text-destructive">
-              {refusals.map((refusal) => (
-                <p key={refusal.key}>{`${refusal.name}: ${refusal.message}`}</p>
-              ))}
-            </div>
-          )}
-        </div>
+        />
       ) : null}
-      <div className="mt-6">
+      {refusals.length === 0 ? null : (
+        <div role="alert" className="mt-4 text-sm text-destructive">
+          {refusals.map((refusal) => (
+            <p key={refusal.key}>{`${refusal.name}: ${refusal.message}`}</p>
+          ))}
+        </div>
+      )}
+      <div className="mt-4">
         {retryFailed === null ? null : (
           <p role="alert" className="mb-2 text-sm text-destructive">
             {retryFailed}
           </p>
         )}
-        {rows.length === 0 ? (
+        {rows.length === 0 && data.canUpload ? (
+          <div
+            data-drop-zone=""
+            // tokens.md, Drop zone: the tint while dragging carries state, so it stays blue.
+            className={`rounded-xl border p-4 ${
+              dragging
+                ? `border-solid border-primary dark:border-brand-on-dark ${infoTint}`
+                : "border-dashed border-input bg-muted"
+            }`}
+            {...dropTarget}
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="text-sm text-muted-foreground">
+                {dragging ? "Drop to upload" : "Drop PDF files here, or"}
+              </span>
+              <Button
+                variant="secondary"
+                onClick={() => input.current?.click()}
+              >
+                Choose PDF files
+              </Button>
+            </div>
+          </div>
+        ) : rows.length === 0 ? (
           <EmptyState
             variant="framed"
             title="No documents yet"
             description="Uploaded invoices, receipts and payment evidence show here with their reading status."
           />
         ) : (
-          <>
-            <DataTable
-              label="Documents"
-              rows={rows}
-              rowKey={(row) => row.id}
-              rowLabel={(row) => row.label}
-              columns={columns}
-              status={(row) => (
-                <span className="flex flex-wrap items-center gap-2">
-                  <DocumentStatusBadge status={row.status} />
-                  {retryButton(row)}
-                </span>
-              )}
-              card={{
-                title: documentLabel,
-                badge: (row) => <DocumentStatusBadge status={row.status} />,
-                detail: (row) => kindText(row.kind),
-                facts: (row) => [foundText(row)],
-                content: retryButton,
+          <div className="flex flex-col gap-4">
+            <ToggleGroup
+              aria-label="Show"
+              value={[shown]}
+              onValueChange={(value) => {
+                const [chosen] = value;
+
+                // A click on the pressed chip answers no chip; the list keeps its group.
+                if (
+                  chosen === "all" ||
+                  chosen === "needs-you" ||
+                  chosen === "done"
+                )
+                  setShown(chosen);
               }}
-            />
+            >
+              <ToggleGroupItem value="all">All {rows.length}</ToggleGroupItem>
+              <ToggleGroupItem value="needs-you">
+                Needs you {needYou}
+              </ToggleGroupItem>
+              <ToggleGroupItem value="done">
+                Done {sizeOf("done")}
+              </ToggleGroupItem>
+            </ToggleGroup>
+            <div
+              className={`overflow-hidden rounded-xl border ${
+                dragging && data.canUpload
+                  ? `border-primary dark:border-brand-on-dark ${infoTint}`
+                  : "border-border"
+              }`}
+              {...(data.canUpload ? dropTarget : {})}
+            >
+              {grouped.flatMap((entry) =>
+                entry.rows.length === 0 ||
+                (shown !== "all" && shown !== entry.group) ? (
+                  []
+                ) : (
+                  <section
+                    key={entry.group}
+                    aria-labelledby={`inbox-${entry.group}`}
+                    className="border-b border-border last:border-b-0"
+                  >
+                    <div className="flex items-center gap-2 px-4 pt-4 pb-3">
+                      <h2
+                        id={`inbox-${entry.group}`}
+                        className="text-base font-semibold"
+                      >
+                        {entry.label}
+                      </h2>
+                      <CountPill>{entry.rows.length}</CountPill>
+                    </div>
+                    <DataTable
+                      label={entry.label}
+                      framed={false}
+                      rows={entry.rows}
+                      rowKey={(row) => row.id}
+                      rowLabel={(row) => row.label}
+                      columns={columns}
+                      status={(row) => (
+                        <span className="flex flex-wrap items-center gap-2">
+                          <DocumentStatusBadge status={row.status} />
+                          {rowAction(row)}
+                        </span>
+                      )}
+                      card={{
+                        title: documentLabel,
+                        badge: (row) => (
+                          <DocumentStatusBadge status={row.status} />
+                        ),
+                        facts: (row) => [foundText(row)],
+                        detail: (row) =>
+                          `${kindText(row.kind)} · uploaded ${uploaded(row)}`,
+                        content: rowAction,
+                      }}
+                    />
+                  </section>
+                )
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-3">
               {list.more ? (
                 <>
@@ -423,7 +561,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 </p>
               ) : null}
             </div>
-          </>
+          </div>
         )}
       </div>
     </main>

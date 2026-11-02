@@ -319,6 +319,8 @@ export const documentInboxRow = z.object({
   kind: z.enum(DOCUMENT_KINDS).nullable(),
   status: z.enum(INBOX_STATUSES),
   reason: z.enum(["ai-off", "no-text-layer"]).nullable(),
+  /** When the file was uploaded, as an ISO instant (design review 3.4). */
+  uploadedAt: z.string(),
   found: z
     .object({
       customer: z.string().nullable(),
@@ -336,6 +338,8 @@ export const documentInboxView = z.object({
   next: datasetCursorSchema.nullable(),
   ai: z.enum(["on", "no-key", "no-models"]),
   canUpload: z.boolean(),
+  /** The tenant's zone, in which the Uploaded column prints its times. */
+  timeZone: z.string(),
 });
 
 export type DocumentInboxRow = z.infer<typeof documentInboxRow>;

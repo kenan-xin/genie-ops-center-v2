@@ -3253,6 +3253,9 @@
                               }
                             ]
                           },
+                          "uploadedAt": {
+                            "type": "string"
+                          },
                           "found": {
                             "anyOf": [
                               {
@@ -3316,6 +3319,7 @@
                           "kind",
                           "status",
                           "reason",
+                          "uploadedAt",
                           "found"
                         ]
                       }
@@ -3370,6 +3374,9 @@
                     },
                     "canUpload": {
                       "type": "boolean"
+                    },
+                    "timeZone": {
+                      "type": "string"
                     }
                   },
                   "required": [
@@ -3377,7 +3384,8 @@
                     "truncated",
                     "next",
                     "ai",
-                    "canUpload"
+                    "canUpload",
+                    "timeZone"
                   ]
                 }
               }

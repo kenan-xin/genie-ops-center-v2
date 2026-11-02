@@ -117,12 +117,13 @@ export async function loadDocumentInbox(
 ): Promise<DocumentInboxView> {
   await assertCanReadEverywhere(ctx.caller);
 
-  const [documents, status, writeScope] = await Promise.all([
+  const [documents, status, writeScope, branding] = await Promise.all([
     ctx.tenant.db
       .select({
         id: sourceDocument.id,
-        // The cursor orders on the created time, which the row does not show.
+        // The cursor orders on this text with microseconds; the row shows `uploadedAt`.
         createdAt: createdAtUs,
+        uploadedAt: sourceDocument.createdAt,
         ...documentState,
         reading: sourceDocument.reading,
       })
@@ -144,6 +145,7 @@ export async function loadDocumentInbox(
       .limit(INBOX_ROW_CAP + 1),
     modelStatus(ctx.tenant),
     scopesFor(ctx.caller, "invoices:write"),
+    ctx.tenant.branding.get(),
   ]);
 
   const last = documents[INBOX_ROW_CAP - 1];
@@ -155,6 +157,7 @@ export async function loadDocumentInbox(
       kind: document.kind,
       status: inboxStatusOf(document),
       reason: reasonOf(document.readingOutcome),
+      uploadedAt: document.uploadedAt.toISOString(),
       found: foundOf(document.reading),
     })),
     truncated: documents.length > INBOX_ROW_CAP,
@@ -164,6 +167,7 @@ export async function loadDocumentInbox(
         : null,
     ai: status.state,
     canUpload: writeScope.kind === "all",
+    timeZone: branding.defaultTimeZone,
   };
 }
 

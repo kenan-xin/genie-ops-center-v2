@@ -58,17 +58,16 @@ function readRow(items: readonly Element[]): ShownRow[] {
   }));
 }
 
-/** Every shown row of the inbox, read from whichever layout the viewport draws. */
+/**
+ * Every shown row of the inbox, from every group (Needs you, Reading, Done), read from whichever
+ * layout the viewport draws. The other layout is `display: none`, so its rows are skipped.
+ */
 function shownRows(page: Page): Promise<readonly ShownRow[]> {
+  const main = page.getByRole("main");
+
   return onPhone(page)
-    ? page
-        .getByRole("list", { name: "Documents" })
-        .getByRole("listitem")
-        .evaluateAll(readRow)
-    : page
-        .getByRole("table", { name: "Documents" })
-        .locator("tbody tr")
-        .evaluateAll(readRow);
+    ? main.getByRole("list").getByRole("listitem").evaluateAll(readRow)
+    : main.getByRole("table").locator("tbody tr").evaluateAll(readRow);
 }
 
 type ExpectedRow = {
