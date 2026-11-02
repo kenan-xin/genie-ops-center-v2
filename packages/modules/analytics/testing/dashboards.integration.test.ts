@@ -438,6 +438,96 @@ describe("the analytics dashboard procedures", () => {
     });
   });
 
+  it("save a title-only rename of a panel the gate refuses now", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      config: brokenConfig,
+    });
+
+    await callerAs(owner).changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [
+        {
+          op: "change-panel",
+          panelId: "p1",
+          panel: { ...brokenKpi, title: "Renamed" },
+        },
+      ],
+    });
+
+    expect(await rowOf(id)).toMatchObject({
+      config: {
+        panels: [{ id: "p1", config: { ...brokenKpi, title: "Renamed" } }],
+      },
+      version: 2,
+    });
+  });
+
+  it("undo a title-only rename of a panel the gate refuses now", async () => {
+    const owner = await editor();
+    const caller = callerAs(owner);
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      config: brokenConfig,
+    });
+
+    await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [
+        {
+          op: "change-panel",
+          panelId: "p1",
+          panel: { ...brokenKpi, title: "Renamed" },
+        },
+      ],
+    });
+
+    await expect(
+      caller.undoDashboard({ id, expectedVersion: 2 })
+    ).resolves.toMatchObject({ version: 3 });
+
+    expect(await rowOf(id)).toMatchObject({ config: brokenConfig });
+  });
+
+  it("refuse a renamed panel whose dataset changed too and write nothing", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      config: brokenConfig,
+    });
+
+    const before = await rowOf(id);
+
+    await expect(
+      callerAs(owner).changeDashboard({
+        id,
+        expectedVersion: 1,
+        changes: [
+          {
+            op: "change-panel",
+            panelId: "p1",
+            panel: {
+              ...brokenKpi,
+              title: "Renamed",
+              series: [{ ...brokenKpi.series[0], dataset: "missing.other" }],
+            },
+          },
+        ],
+      })
+    ).rejects.toMatchObject({
+      code: "chart-invalid",
+      issues: [{ path: "changes.0.panel.series.0.dataset" }],
+    });
+
+    expect(await rowOf(id)).toEqual(before);
+  });
+
   it("undo a rename of a dashboard that holds a panel the gate refuses now", async () => {
     const owner = await editor();
     const caller = callerAs(owner);

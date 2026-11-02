@@ -1,3 +1,5 @@
+import { isDeepStrictEqual } from "node:util";
+
 import {
   AppError,
   checkChart,
@@ -5,6 +7,7 @@ import {
   moduleAudit,
   type ModuleRequestContext,
   type PanelConfig,
+  panelConfigSchema,
   type TenantTransaction,
   withTransaction,
 } from "@genie/core";
@@ -236,6 +239,29 @@ async function gate(
   }
 }
 
+/**
+ * The draft when it differs from the stored panel only in its title, else `undefined`. A rename
+ * reads no data, so it skips the gate (plan D2). Both sides are parsed, so a stored panel that the
+ * schema normalizes compares equal; a draft that does not parse goes to the gate for its refusal.
+ */
+function titleOnly(
+  stored: PanelConfig | undefined,
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- a raw panel config; the schema is its parser
+  draft: unknown
+): PanelConfig | undefined {
+  const before = panelConfigSchema.safeParse(stored);
+  const after = panelConfigSchema.safeParse(draft);
+
+  if (!before.success || !after.success) return undefined;
+
+  return isDeepStrictEqual(
+    { ...after.data, title: before.data.title },
+    before.data
+  )
+    ? after.data
+    : undefined;
+}
+
 async function save(
   tx: TenantTransaction,
   row: DashboardRecord,
@@ -262,8 +288,8 @@ async function save(
 
 /**
  * Applies the steps to the caller's own dashboard. Each added or changed panel passes the chart
- * gate; a panel no step touched is kept as stored, so one broken panel blocks no other change
- * (D2, Review Focus 2). Without `expectedVersion` the steps apply to the version read here.
+ * gate, except a stored panel whose only change is its title (D2); a panel no step touched is kept
+ * as stored, so one broken panel blocks no other change (D2, Review Focus 2). Without `expectedVersion` the steps apply to the version read here.
  *
  * The gate runs before the transaction, so no save holds a row lock and a second pool connection
  * while chart queries run. The transaction then locks the row and refuses `dashboard-changed`
@@ -284,17 +310,20 @@ export async function changeDashboard(
     input.changes
   );
 
+  const stored = new Map(row.config.panels.map((panel) => [panel.id, panel]));
   const checked = new Map<string, PanelConfig>();
 
   for (const [id, step] of applied.checks) {
     const draft = applied.panels.find((panel) => panel.id === id);
 
-    // One at a time, so a refusal always names the same step.
-    // oxlint-disable-next-line no-await-in-loop
-    checked.set(id, await gate(ctx, draft?.config, `changes.${step}.panel.`));
+    checked.set(
+      id,
+      titleOnly(stored.get(id)?.config, draft?.config) ??
+        // One at a time, so a refusal always names the same step.
+        // oxlint-disable-next-line no-await-in-loop
+        (await gate(ctx, draft?.config, `changes.${step}.panel.`))
+    );
   }
-
-  const stored = new Map(row.config.panels.map((panel) => [panel.id, panel]));
 
   const panels = applied.panels.map(({ id, layout }) => {
     const config = checked.get(id) ?? stored.get(id)?.config;
@@ -330,8 +359,9 @@ export async function changeDashboard(
 
 /**
  * Restores the newest save. Each panel it brings back passes the chart gate, so Undo never
- * restores a broken chart; a panel stored the same now is kept as is, so one broken panel blocks
- * no Undo (D1, D2, Review Focus 2). The gate runs before the transaction, as in a change.
+ * restores a broken chart; a panel stored the same now, or the same but for its title, skips the
+ * gate, so one broken panel blocks no Undo and a rename can always be undone (D1, D2, Review
+ * Focus 2). The gate runs before the transaction, as in a change.
  */
 export async function undoDashboard(
   ctx: ModuleRequestContext,
@@ -347,21 +377,23 @@ export async function undoDashboard(
   // Both sides come from jsonb, which stores object keys in one fixed order, so equal configs
   // print the same text.
   const current = new Map(
-    row.config.panels.map(({ id, config }) => [id, JSON.stringify(config)])
+    row.config.panels.map(({ id, config }) => [id, config])
   );
 
   const panels: StoredPanel[] = [];
 
   for (const [index, panel] of entry.config.panels.entries()) {
-    const unchanged = current.get(panel.id) === JSON.stringify(panel.config);
+    const now = current.get(panel.id);
+    const unchanged = JSON.stringify(now) === JSON.stringify(panel.config);
 
     panels.push({
       ...panel,
       config: unchanged
         ? panel.config
-        : // One at a time, so a refusal always names the same panel.
+        : (titleOnly(now, panel.config) ??
+          // One at a time, so a refusal always names the same panel.
           // oxlint-disable-next-line no-await-in-loop
-          await gate(ctx, panel.config, `panels.${index}.config.`),
+          (await gate(ctx, panel.config, `panels.${index}.config.`))),
     });
   }
 

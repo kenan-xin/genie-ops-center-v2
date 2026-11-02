@@ -21,7 +21,7 @@ export const DATE_RANGE_PRESETS = [
 
 export const dashboardId = z.uuid();
 
-/** `p<n>`: the highest number plus one, never reused (D9). */
+/** `p<n>`: a new panel takes the highest current number plus one, so a removed last id comes back (D9). */
 export const panelId = z.string().regex(/^p[1-9][0-9]{0,2}$/);
 
 export const dashboardName = z.string().trim().min(1).max(80);
