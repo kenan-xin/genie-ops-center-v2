@@ -115,7 +115,7 @@ export const invoicesModule = {
   ],
 
   navigation: {
-    pinned: [DOCUMENTS_ENTRY, INVOICES_ENTRY, PAYMENTS_ENTRY],
+    pinned: [],
     entries: [DOCUMENTS_ENTRY, INVOICES_ENTRY, PAYMENTS_ENTRY],
   },
 

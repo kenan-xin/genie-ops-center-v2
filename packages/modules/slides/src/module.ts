@@ -63,7 +63,7 @@ export const slidesModule = {
   ],
 
   navigation: {
-    pinned: [SLIDES_ENTRY],
+    pinned: [],
     entries: [SLIDES_ENTRY],
   },
 

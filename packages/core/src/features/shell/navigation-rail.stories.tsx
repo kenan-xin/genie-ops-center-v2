@@ -240,6 +240,20 @@ export const Admin: Story = {
   },
 };
 
+/** Modules pin nothing by default, so the rail drops the Pinned caption instead of an empty group. */
+export const NothingPinned: Story = {
+  args: { navigation: { ...workspaceNavigation, pinned: [] } },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("navigation", { name: "Workspace" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("navigation", { name: "Pinned" })
+    ).toBeNull();
+    await expect(canvas.queryByText("Pinned")).toBeNull();
+  },
+};
+
 export const Empty: Story = {
   args: {
     navigation: { workspace: [], pinned: [], categories: [], admin: [] },

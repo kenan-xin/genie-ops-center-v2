@@ -72,7 +72,7 @@ export const analyticsModule = {
   ],
 
   navigation: {
-    pinned: [DASHBOARDS_ENTRY],
+    pinned: [],
     entries: [DASHBOARDS_ENTRY],
   },
 
