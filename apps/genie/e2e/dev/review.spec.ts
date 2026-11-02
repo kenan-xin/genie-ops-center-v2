@@ -10,13 +10,10 @@ import {
 import { silentLogger } from "@genie/core/logging";
 import { invoicesModule } from "@genie/module-invoices";
 import {
-  LIVE_UPLOADS,
-  readDemoFile,
   readDemoJson,
   removeUploadRecords,
   runningTotals,
   toCents,
-  withNewId,
 } from "@genie/module-invoices/testing";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
@@ -24,14 +21,19 @@ import { expectNoAxeViolations } from "../support/axe.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
   allocationsOn,
+  copyOf,
   DATABASE_URL,
+  expectStatus,
   FIRST_PAINT,
   fact,
   LEDGER_LOCK,
+  liveUpload,
   LOCK_WAIT,
   onPhone,
   openInbox,
+  openReview,
   PUBLIC_URL,
+  rowOf,
   sgd,
   signIn,
   type Upload,
@@ -60,9 +62,6 @@ test.skip(
 
 /** The name every upload of this spec carries, so its saved records can be found again. */
 const UPLOAD_PREFIX = "review-";
-
-/** A cold route's reading, from the file selection to the settled row. Measured 4.0 s warm. */
-const READING_TIMEOUT = 30_000;
 
 /** A save or Undo answers after its transaction commits. Measured under 2 s; 30 s covers a cold RPC route. */
 const SAVE_TIMEOUT = 30_000;
@@ -93,31 +92,6 @@ const LIVE_TOTALS = readDemoJson(
   "04_Demo_Guide/expected_live_running_totals.json"
 ) as LiveTotals;
 
-/** The demo pack's live upload, found by its number in `LIVE_UPLOADS`. */
-function liveUpload(number: string): string {
-  const name = LIVE_UPLOADS.find((file) => file.startsWith(`${number}_`));
-
-  if (name === undefined) {
-    throw new Error(`The demo pack has no live upload ${number}.`);
-  }
-
-  return name;
-}
-
-/**
- * One project's own copy of a live upload: `withNewId` rewrites the trailer `/ID`, so the copy
- * has its own SHA-256 and the text layer the recordings answer for (decision 14).
- */
-function copyOf(number: string, project: string): Upload {
-  const file = liveUpload(number);
-
-  return {
-    name: `${UPLOAD_PREFIX}${project}-${randomUUID()}-${file}`,
-    mimeType: "application/pdf",
-    buffer: withNewId(readDemoFile(`03_Live_Upload_Documents/${file}`)),
-  };
-}
-
 /** Upload 04 is the bytes of this run's 02 copy, under its own name. */
 function duplicateOf(partial: Upload, project: string): Upload {
   return {
@@ -125,42 +99,6 @@ function duplicateOf(partial: Upload, project: string): Upload {
     mimeType: partial.mimeType,
     buffer: partial.buffer,
   };
-}
-
-/** One inbox row, in whichever group it sits, read from whichever layout the viewport draws. */
-function rowOf(page: Page, label: string) {
-  const main = page.getByRole("main");
-
-  return onPhone(page)
-    ? main.getByRole("list").getByRole("listitem").filter({ hasText: label })
-    : main.getByRole("table").locator("tbody tr").filter({ hasText: label });
-}
-
-/** Waits until the row of `upload` shows its status (R-37). */
-async function expectStatus(
-  page: Page,
-  file: Upload,
-  status: string,
-  timeout = READING_TIMEOUT
-): Promise<void> {
-  await expect(
-    rowOf(page, file.name).getByText(status, { exact: true })
-  ).toBeVisible({ timeout });
-}
-
-/** Opens one row's review page. */
-async function openReview(
-  page: Page,
-  file: Upload,
-  title: string
-): Promise<void> {
-  await page
-    .getByRole("link", { name: file.name, exact: true })
-    .first()
-    .click();
-  await expect(
-    page.getByRole("heading", { level: 1, name: title })
-  ).toBeVisible(FIRST_PAINT);
 }
 
 /** Below 1024 px the review shows one pane at a time (choice 14); from 1024 px both show. */
@@ -285,6 +223,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
   test.setTimeout(TEST_TIMEOUT);
 
   const project = testInfo.project.name;
+  const label = `${UPLOAD_PREFIX}${project}`;
 
   await page.setViewportSize(
     project === "phone"
@@ -303,7 +242,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await openInbox(page);
 
         // 01: an invoice without a due date waits for the person, who enters one (R-28).
-        const invoice = copyOf("01", project);
+        const invoice = copyOf("01", label);
 
         await uploadFiles(page, [invoice]);
         await expectStatus(page, invoice, "Needs your input");
@@ -362,7 +301,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await openInbox(page);
 
         // 02: one named invoice alone, within its open balance, so R-30 links it by itself.
-        const partial = copyOf("02", project);
+        const partial = copyOf("02", label);
 
         await uploadFiles(page, [partial]);
         await expectStatus(page, partial, "Linked automatically");
@@ -370,7 +309,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await expectTotalsAfter("02_Payment_Partial_Existing_Invoice.pdf");
 
         // 03: one payment covering two invoices waits for the person's split (R-30).
-        const split = copyOf("03", project);
+        const split = copyOf("03", label);
 
         await uploadFiles(page, [split]);
         await expectStatus(page, split, "Confirm the split");
@@ -408,7 +347,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await expectTotalsAfter("04_Duplicate_of_Partial_Payment.pdf");
 
         // 05: a payment matching no open balance is saved as unallocated (R-31).
-        const unmatched = copyOf("05", project);
+        const unmatched = copyOf("05", label);
 
         await uploadFiles(page, [unmatched]);
         await expectStatus(page, unmatched, "No matching invoice");
@@ -424,7 +363,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await openInbox(page);
 
         // 06: a paid receipt is one invoice, one payment and one link (R-33).
-        const receipt = copyOf("06", project);
+        const receipt = copyOf("06", label);
 
         await uploadFiles(page, [receipt]);
         await expectStatus(page, receipt, "Needs your input");
@@ -445,7 +384,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await openInbox(page);
 
         // 07: a purchase order is kept as a reference and changes no figure.
-        const purchaseOrder = copyOf("07", project);
+        const purchaseOrder = copyOf("07", label);
 
         await uploadFiles(page, [purchaseOrder]);
         await expectStatus(page, purchaseOrder, "Kept as a reference");

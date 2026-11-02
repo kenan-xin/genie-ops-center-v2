@@ -1,4 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import { mintDevSession } from "@genie/core/testing";
+import {
+  LIVE_UPLOADS,
+  readDemoFile,
+  withNewId,
+} from "@genie/module-invoices/testing";
 import {
   expect,
   type Page,
@@ -97,6 +104,70 @@ export type Upload = {
   readonly mimeType: string;
   readonly buffer: Buffer;
 };
+
+/** A cold route's reading, from the file selection to the settled row. Measured 4.0 s warm. */
+export const READING_TIMEOUT = 30_000;
+
+/** The demo pack's live upload, found by its number in `LIVE_UPLOADS`. */
+export function liveUpload(number: string): string {
+  const name = LIVE_UPLOADS.find((file) => file.startsWith(`${number}_`));
+
+  if (name === undefined) {
+    throw new Error(`The demo pack has no live upload ${number}.`);
+  }
+
+  return name;
+}
+
+/**
+ * One copy of a live upload, named `<label>-<uuid>-<file>`: `withNewId` rewrites the trailer
+ * `/ID`, so the copy has its own SHA-256 and the text layer the recordings answer for (decision 14).
+ */
+export function copyOf(number: string, label: string): Upload {
+  const file = liveUpload(number);
+
+  return {
+    name: `${label}-${randomUUID()}-${file}`,
+    mimeType: "application/pdf",
+    buffer: withNewId(readDemoFile(`03_Live_Upload_Documents/${file}`)),
+  };
+}
+
+/** One inbox row, in whichever group it sits, read from whichever layout the viewport draws. */
+export function rowOf(page: Page, label: string) {
+  const main = page.getByRole("main");
+
+  return onPhone(page)
+    ? main.getByRole("list").getByRole("listitem").filter({ hasText: label })
+    : main.getByRole("table").locator("tbody tr").filter({ hasText: label });
+}
+
+/** Waits until the row of `file` shows its status (R-37). */
+export async function expectStatus(
+  page: Page,
+  file: Upload,
+  status: string,
+  timeout = READING_TIMEOUT
+): Promise<void> {
+  await expect(
+    rowOf(page, file.name).getByText(status, { exact: true })
+  ).toBeVisible({ timeout });
+}
+
+/** Opens one row's review page. */
+export async function openReview(
+  page: Page,
+  file: Upload,
+  title: string
+): Promise<void> {
+  await page
+    .getByRole("link", { name: file.name, exact: true })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("heading", { level: 1, name: title })
+  ).toBeVisible(FIRST_PAINT);
+}
 
 /** The inbox posts one file to this route, then the reading worker picks it up. */
 const UPLOAD_ROUTE = "/api/rpc/invoices/uploadDocument";

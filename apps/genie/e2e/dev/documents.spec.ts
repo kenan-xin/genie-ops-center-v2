@@ -1,22 +1,16 @@
-import { randomUUID } from "node:crypto";
-
-import {
-  LIVE_UPLOADS,
-  readDemoFile,
-  withNewId,
-} from "@genie/module-invoices/testing";
 import { expect, test, type Page } from "@playwright/test";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
+  copyOf,
   LEDGER_LOCK,
   LOCK_WAIT,
   MONEY,
   onPhone,
   openInbox,
+  READING_TIMEOUT,
   signIn,
-  type Upload,
   UPLOAD_TIMEOUT,
   uploadFiles,
 } from "./dev-support.ts";
@@ -34,9 +28,6 @@ test.skip(
  * is rewritten, so every copy has its own hash. It never uploads `02`: its automatic link changes
  * the figures `invoices.spec.ts` asserts in the same run (decision 14).
  */
-
-/** A cold route's reading, from the file selection to the settled row. Measured 4.0 s warm. */
-const READING_TIMEOUT = 30_000;
 
 /**
  * The lock's queue, one upload's two UPLOAD_TIMEOUTs (request, then response) and the body.
@@ -115,31 +106,6 @@ async function expectInboxRows(
 
     expect(problems).toEqual([]);
   }).toPass({ timeout });
-}
-
-/** The demo pack's live upload, found by its number in `LIVE_UPLOADS`. */
-function liveUpload(number: string): string {
-  const name = LIVE_UPLOADS.find((file) => file.startsWith(`${number}_`));
-
-  if (name === undefined) {
-    throw new Error(`The demo pack has no live upload ${number}.`);
-  }
-
-  return name;
-}
-
-/**
- * One project's own copy of a live upload: `withNewId` rewrites the trailer `/ID`, so the copy has
- * its own SHA-256 and the text layer the recordings answer for (decision 14).
- */
-function copyOf(number: string, project: string): Upload {
-  const file = liveUpload(number);
-
-  return {
-    name: `${project}-${randomUUID()}-${file}`,
-    mimeType: "application/pdf",
-    buffer: withNewId(readDemoFile(`03_Live_Upload_Documents/${file}`)),
-  };
 }
 
 test("uploads live documents and shows their statuses", async ({
