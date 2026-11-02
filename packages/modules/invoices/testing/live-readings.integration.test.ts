@@ -153,7 +153,9 @@ describe("live readings", () => {
       label: "02_Payment_Partial_Existing_Invoice.pdf",
     });
 
-    const view = await callProcedure(invoicesRouter, ctx).listDocuments();
+    const view = await callProcedure(invoicesRouter, ctx).listDocuments({
+      after: null,
+    });
     const live = Object.fromEntries(
       view.rows
         .filter(({ label }) => LIVE_UPLOADS.includes(label))

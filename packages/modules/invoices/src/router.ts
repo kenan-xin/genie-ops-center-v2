@@ -11,7 +11,10 @@ import { invoicesContract } from "./contract.ts";
 import { RECORD_TYPES } from "./record-types.ts";
 import { allocation } from "./schema.ts";
 import { discardDocument } from "./services/documents/discard.ts";
-import { loadDocumentInbox } from "./services/documents/inbox.ts";
+import {
+  loadDocumentInbox,
+  loadDocumentStatus,
+} from "./services/documents/inbox.ts";
 import { setDocumentKind } from "./services/documents/kind.ts";
 import { loadDocumentReview } from "./services/documents/review.ts";
 import { uploadDocument } from "./services/documents/upload.ts";
@@ -69,8 +72,11 @@ async function assertCanWriteLink(
  * `module-disabled` when the entitlement is off, before any handler runs.
  */
 export const invoicesRouter = os.router({
-  listDocuments: os.listDocuments.handler(({ context }) =>
-    loadDocumentInbox(context)
+  listDocuments: os.listDocuments.handler(({ context, input }) =>
+    loadDocumentInbox(context, input.after)
+  ),
+  documentStatus: os.documentStatus.handler(({ context, input }) =>
+    loadDocumentStatus(context, input.ids)
   ),
   getDocumentReview: os.getDocumentReview.handler(({ context, input }) =>
     loadDocumentReview(context, input.id)

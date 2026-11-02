@@ -17,14 +17,14 @@ type ListPage<Row> = {
 export function useListPages<Row>(input: {
   readonly key: readonly unknown[];
   readonly first: ListPage<Row>;
-  readonly read: (after: DatasetCursor) => Promise<ListPage<Row>>;
+  /** `null` reads page one again, so a refetch brings a changed first page. */
+  readonly read: (after: DatasetCursor | null) => Promise<ListPage<Row>>;
 }) {
   const query = useInfiniteQuery({
     queryKey: input.key,
-    // SAFETY: the first page has no cursor; the server already read it.
+    // SAFETY: page one has no cursor; the server already read it, so the param is a null cursor.
     initialPageParam: null as DatasetCursor | null,
-    queryFn: ({ pageParam }) =>
-      pageParam === null ? Promise.resolve(input.first) : input.read(pageParam),
+    queryFn: ({ pageParam }) => input.read(pageParam),
     getNextPageParam: (last) => last.next,
     initialData: { pages: [input.first], pageParams: [null] },
     // The first page came with the request; a page read now would only repeat it.
@@ -41,5 +41,7 @@ export function useListPages<Row>(input: {
     showMore: () => {
       void query.fetchNextPage();
     },
+    // Reads every page again, so a changed first page reaches the list (czjw.49).
+    reload: () => query.refetch(),
   };
 }

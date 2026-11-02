@@ -197,7 +197,7 @@ describe("the documents inbox", () => {
     const finance = await personWithSeededRole("Finance");
 
     await expect(
-      callProcedure(invoicesRouter, as(finance)).listDocuments()
+      callProcedure(invoicesRouter, as(finance)).listDocuments({ after: null })
     ).resolves.toEqual({
       rows: [
         row(saved.id, "saved.pdf", "payment", "saved"),
@@ -217,9 +217,78 @@ describe("the documents inbox", () => {
         row(old.id, "INV-OLD-1", "invoice", "saved"),
       ],
       truncated: false,
+      next: null,
       ai: "no-key",
       canUpload: true,
     });
+  });
+
+  it("reads the inbox one page at a time from a cursor", async () => {
+    // 1,001 documents, so the first page is cut exactly as the invoice list is (czjw.28).
+    await t().db.$client.query(
+      "insert into document (kind, sha256, file_id, file_name, reading_status) select 'payment', md5(g::text) || md5('b' || g::text), gen_random_uuid(), 'paged-' || g || '.pdf', 'read' from generate_series(1, 1001) as g"
+    );
+
+    const finance = await personWithSeededRole("Finance");
+    const reader = callProcedure(invoicesRouter, as(finance));
+
+    const [counted] = (
+      await t().db.$client.query<{ total: string }>(
+        "select count(*)::text as total from document"
+      )
+    ).rows;
+    const total = Number(counted?.total ?? 0);
+    expect(total).toBeGreaterThan(1000);
+
+    const first = await reader.listDocuments({ after: null });
+    expect(first.rows).toHaveLength(1000);
+    expect(first.next).not.toBeNull();
+
+    // Every row shares one created time, so the id breaks the tie; page two must hold exactly the
+    // rows the same order puts after row 1,000, or the edge repeats one row and skips another.
+    const expected = (
+      await t().db.$client.query<{ id: string }>(
+        "select id from document order by created_at desc, id desc offset 1000"
+      )
+    ).rows.map((edge) => edge.id);
+
+    const second = await reader.listDocuments({ after: first.next });
+    expect(second.rows.map((pageRow) => pageRow.id)).toEqual(expected);
+    expect(second.next).toBeNull();
+  });
+
+  it("answers the status of the ids it is given, and no other document", async () => {
+    const split = await insertDocument(t(), {
+      fileName: "split.pdf",
+      readingOutcome: "confirm-split",
+    });
+    await insertDocument(t(), {
+      fileName: "other.pdf",
+      readingStatus: "reading",
+    });
+    const finance = await personWithSeededRole("Finance");
+
+    await expect(
+      callProcedure(invoicesRouter, as(finance)).documentStatus({
+        ids: [split.id],
+      })
+    ).resolves.toEqual([
+      { id: split.id, status: "confirm-split", reason: null },
+    ]);
+  });
+
+  it("refuses a scoped reader's status poll", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const { id } = await insertDocument(t(), { fileName: "a.pdf" });
+    const { userId: scoped } = await insertPersonWith(
+      t(),
+      ["invoices:use", "invoices:read"],
+      { type: "invoices-customer", id: customerId }
+    );
+
+    await expect(
+      callProcedure(invoicesRouter, as(scoped)).documentStatus({ ids: [id] })
+    ).rejects.toMatchObject({ code: "forbidden" });
   });
 
   it("refuses a reader scoped to one customer, and offers no upload to a Viewer", async () => {
@@ -231,7 +300,7 @@ describe("the documents inbox", () => {
     );
 
     await expect(
-      callProcedure(invoicesRouter, as(scoped)).listDocuments()
+      callProcedure(invoicesRouter, as(scoped)).listDocuments({ after: null })
     ).rejects.toMatchObject({ code: "forbidden" });
     await expect(loadDocumentInbox(as(scoped))).rejects.toMatchObject({
       code: "forbidden",
@@ -240,7 +309,7 @@ describe("the documents inbox", () => {
     const viewer = await personWithSeededRole("Viewer");
 
     await expect(
-      callProcedure(invoicesRouter, as(viewer)).listDocuments()
+      callProcedure(invoicesRouter, as(viewer)).listDocuments({ after: null })
     ).resolves.toMatchObject({ canUpload: false });
   });
 

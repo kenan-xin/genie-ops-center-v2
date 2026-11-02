@@ -314,7 +314,9 @@ describe("review saves", () => {
       document: { kind: "invoice", reading_outcome: null },
     });
     expect(
-      (await api().listDocuments()).rows.find((row) => row.id === id)
+      (await api().listDocuments({ after: null })).rows.find(
+        (row) => row.id === id
+      )
     ).toMatchObject({ kind: "invoice", status: "needs-input" });
   });
 

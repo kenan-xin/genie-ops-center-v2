@@ -120,6 +120,7 @@ const ROWS: DocumentInboxRow[] = [
 export const defaultDocumentInbox: DocumentInboxView = {
   rows: ROWS,
   truncated: false,
+  next: null,
   ai: "on",
   canUpload: true,
 };
@@ -137,6 +138,7 @@ export const readOnlyDocumentInbox: DocumentInboxView = {
 export const emptyDocumentInbox: DocumentInboxView = {
   rows: [],
   truncated: false,
+  next: null,
   ai: "on",
   canUpload: true,
 };

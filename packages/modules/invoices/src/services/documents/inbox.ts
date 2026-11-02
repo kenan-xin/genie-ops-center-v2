@@ -1,9 +1,11 @@
 import { modelStatus, type ModuleRequestContext, scopesFor } from "@genie/core";
-import { desc, eq, sql } from "drizzle-orm";
+import type { DatasetCursor } from "@genie/core/rpc";
+import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
 
 import type {
   DocumentInboxRow,
   DocumentInboxView,
+  DocumentStatus,
   InboxStatus,
 } from "../../contract.ts";
 import {
@@ -26,6 +28,12 @@ import { documentLabel } from "./label.ts";
 
 /** The lists' cap (czjw.28): one more row is read to know that the list was cut. */
 const INBOX_ROW_CAP = 1000;
+
+/**
+ * The created time as text with microseconds, the precision the column holds. The cursor carries
+ * this text, so a page edge never loses a row that shares a millisecond, and the id breaks the tie.
+ */
+const createdAtUs = sql<string>`to_char(${sourceDocument.createdAt} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
 /**
  * A document's inbox status, in the order of decision 11: the job state, then a purchase order,
@@ -100,10 +108,12 @@ function foundOf(reading: StoredReading | null): DocumentInboxRow["found"] {
  * document has no customer before a save, so the list needs a tenant-wide `invoices:read`
  * (decision 12). The label is the file name, else the saved record's number (decision 13).
  *
- * shortcut: at most 1,000 rows; page past it with czjw.28
+ * `after` reads the page after a cut one (czjw.49): the order is the created time and then the id,
+ * so a page edge never repeats or skips a document.
  */
 export async function loadDocumentInbox(
-  ctx: ModuleRequestContext
+  ctx: ModuleRequestContext,
+  after: DatasetCursor | null = null
 ): Promise<DocumentInboxView> {
   await assertCanReadEverywhere(ctx.caller);
 
@@ -111,17 +121,32 @@ export async function loadDocumentInbox(
     ctx.tenant.db
       .select({
         id: sourceDocument.id,
+        // The cursor orders on the created time, which the row does not show.
+        createdAt: createdAtUs,
         ...documentState,
         reading: sourceDocument.reading,
       })
       .from(sourceDocument)
       .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
       .leftJoin(payment, eq(payment.documentId, sourceDocument.id))
+      .where(
+        after === null
+          ? undefined
+          : or(
+              sql`${sourceDocument.createdAt} < ${String(after.values[0])}::timestamptz`,
+              and(
+                sql`${sourceDocument.createdAt} = ${String(after.values[0])}::timestamptz`,
+                sql`${sourceDocument.id} < ${String(after.values[1])}::uuid`
+              )
+            )
+      )
       .orderBy(desc(sourceDocument.createdAt), desc(sourceDocument.id))
       .limit(INBOX_ROW_CAP + 1),
     modelStatus(ctx.tenant),
     scopesFor(ctx.caller, "invoices:write"),
   ]);
+
+  const last = documents[INBOX_ROW_CAP - 1];
 
   return {
     rows: documents.slice(0, INBOX_ROW_CAP).map((document) => ({
@@ -133,7 +158,36 @@ export async function loadDocumentInbox(
       found: foundOf(document.reading),
     })),
     truncated: documents.length > INBOX_ROW_CAP,
+    next:
+      documents.length > INBOX_ROW_CAP && last !== undefined
+        ? { values: [last.createdAt, last.id] }
+        : null,
     ai: status.state,
     canUpload: writeScope.kind === "all",
   };
+}
+
+/**
+ * The status of the named documents, for the inbox poll (czjw.49). The poll reads no reading
+ * jsonb: a row still Reading has none, and the list reload after a finished reading brings the
+ * found values. The read check is the list's, because a document has no customer before a save.
+ */
+export async function loadDocumentStatus(
+  ctx: ModuleRequestContext,
+  ids: readonly string[]
+): Promise<DocumentStatus[]> {
+  await assertCanReadEverywhere(ctx.caller);
+
+  const documents = await ctx.tenant.db
+    .select({ id: sourceDocument.id, ...documentState })
+    .from(sourceDocument)
+    .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
+    .leftJoin(payment, eq(payment.documentId, sourceDocument.id))
+    .where(inArray(sourceDocument.id, [...ids]));
+
+  return documents.map((document) => ({
+    id: document.id,
+    status: inboxStatusOf(document),
+    reason: reasonOf(document.readingOutcome),
+  }));
 }

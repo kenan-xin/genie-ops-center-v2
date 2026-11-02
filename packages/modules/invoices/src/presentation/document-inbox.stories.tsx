@@ -23,6 +23,8 @@ const uploadDocument = fn();
 
 const retryReading = fn();
 
+const documentStatus = fn();
+
 /** The order the mock saw each upload start and end, to prove one at a time. */
 const uploadEvents: string[] = [];
 
@@ -54,7 +56,14 @@ function withQuery(Story: () => ReactNode) {
   return (
     <QueryClientProvider client={client}>
       <ModuleClientProvider
-        client={{ invoices: { uploadDocument, listDocuments, retryReading } }}
+        client={{
+          invoices: {
+            uploadDocument,
+            listDocuments,
+            retryReading,
+            documentStatus,
+          },
+        }}
       >
         <Story />
       </ModuleClientProvider>
@@ -95,6 +104,7 @@ function serve(view: DocumentInboxView) {
   listDocuments.mockReset().mockResolvedValue(view);
   uploadDocument.mockReset().mockResolvedValue(uploaded("file"));
   retryReading.mockReset().mockResolvedValue({ documentId: "document-id" });
+  documentStatus.mockReset().mockResolvedValue([]);
   uploadEvents.length = 0;
 }
 
@@ -112,19 +122,14 @@ const COULD_NOT_READ = rowWithStatus("could-not-read");
 
 const READING = rowWithStatus("reading");
 
-const retryView: DocumentInboxView = {
-  ...defaultDocumentInbox,
-  rows: [COULD_NOT_READ],
-};
-
 const readingView: DocumentInboxView = {
   ...defaultDocumentInbox,
   rows: [READING],
 };
 
-const needsInputView: DocumentInboxView = {
+const retryView: DocumentInboxView = {
   ...defaultDocumentInbox,
-  rows: [{ ...READING, status: "needs-input" }],
+  rows: [COULD_NOT_READ],
 };
 
 const statusWordsInTable: Story["play"] = async ({ canvas }) => {
@@ -336,15 +341,89 @@ export const RetryRefused: Story = {
   },
 };
 
-// B8.5: while a row is Reading the page asks again, and the row changes without a reload.
+/** The stale times of each list read, for the one-reload check. */
+const listTimes: number[] = [];
+
+// B8.5: a reading that ends reloads the list once, and the poll stops.
+export const ReadingEnds: Story = {
+  name: "Reading ends",
+  args: { view: readingView },
+  globals: desktop,
+  beforeEach: () => {
+    serve(readingView);
+    listTimes.length = 0;
+    listDocuments.mockImplementation(async () => {
+      listTimes.push(Date.now());
+
+      return listTimes.length === 1 ? readingView : defaultDocumentInbox;
+    });
+    documentStatus.mockResolvedValue([
+      { id: READING.id, status: "needs-input", reason: null },
+    ]);
+  },
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table"));
+
+    await waitFor(
+      () => expect(table.getByText("Needs your input")).toBeVisible(),
+      { timeout: 6_000 }
+    );
+    // One reload for the finished reading (the first page came with the request), and then none:
+    // a second poll tick would add one more read to this list.
+    await waitFor(() => expect(listTimes).toHaveLength(1));
+    await new Promise((resolve) => setTimeout(resolve, 2_500));
+    await expect(listTimes).toHaveLength(1);
+    // The row was polled by its id, not by reading the whole list.
+    await expect(documentStatus).toHaveBeenCalledWith({ ids: [READING.id] });
+  },
+};
+
+// B8.5 on a cut list: Show more asks for the page after the cursor.
+export const ShowMore: Story = {
+  name: "Show more",
+  args: {
+    view: {
+      ...defaultDocumentInbox,
+      next: { values: ["2026-10-01T00:00:00.000000Z", "document-a"] },
+    },
+  },
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDocumentInbox);
+    listDocuments.mockResolvedValue({
+      rows: defaultDocumentInbox.rows,
+      truncated: false,
+      next: null,
+      ai: "on",
+      canUpload: true,
+    });
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Show more" }));
+
+    await waitFor(() =>
+      expect(listDocuments).toHaveBeenCalledWith({
+        after: { values: ["2026-10-01T00:00:00.000000Z", "document-a"] },
+      })
+    );
+  },
+};
+
 export const RefreshWhileReading: Story = {
   name: "Refresh while reading",
   args: { view: readingView },
   globals: desktop,
   beforeEach: () => {
     serve(readingView);
-    listDocuments.mockImplementation(async () =>
-      listDocuments.mock.calls.length === 1 ? readingView : needsInputView
+    listTimes.length = 0;
+    listDocuments.mockImplementation(async () => {
+      listTimes.push(Date.now());
+
+      return readingView;
+    });
+    documentStatus.mockImplementation(
+      async ({ ids }: { readonly ids: readonly string[] }) =>
+        ids.map((id) => ({ id, status: "needs-input" as const, reason: null }))
     );
   },
   play: async ({ canvas }) => {
@@ -354,7 +433,8 @@ export const RefreshWhileReading: Story = {
       () => expect(table.getByText("Needs your input")).toBeVisible(),
       { timeout: 6_000 }
     );
-    await expect(listDocuments.mock.calls.length).toBeGreaterThanOrEqual(2);
+    // The row was polled by its id, not by reading the whole list.
+    await expect(documentStatus).toHaveBeenCalledWith({ ids: [READING.id] });
   },
 };
 

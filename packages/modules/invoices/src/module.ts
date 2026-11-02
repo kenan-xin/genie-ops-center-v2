@@ -125,7 +125,8 @@ export const invoicesModule = {
       definePage({
         path: DOCUMENTS_ENTRY.path,
         permission: "invoices:use",
-        load: loadDocumentInbox,
+        // The page reads page one; the inbox reads a later page from the procedure.
+        load: (ctx) => loadDocumentInbox(ctx),
         component: DocumentInboxPage,
       }),
       definePage({

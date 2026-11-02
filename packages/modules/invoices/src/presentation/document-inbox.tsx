@@ -11,16 +11,17 @@ import {
 } from "@genie/ui";
 import { useAsyncQueuer } from "@tanstack/react-pacer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
 import { kindText } from "./document-kind.ts";
 import { DocumentStatusBadge } from "./document-status-badge.tsx";
 import { formatMoney } from "./format.ts";
-import type { DocumentInboxRow, DocumentInboxView } from "./views.ts";
+import { useListPages } from "./use-list-pages.ts";
+import type { DocumentInboxPageView, DocumentInboxRow } from "./views.ts";
 
 export type DocumentInboxProps = {
-  readonly view: DocumentInboxView;
+  readonly view: DocumentInboxPageView;
 };
 
 /** A `duplicate` answer adds a row for this visit; nothing was stored (R-23, decision 10). */
@@ -38,7 +39,13 @@ type Refusal = {
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
 
-const POLL_MS = 3_000;
+/** The wait after each poll: 2, 4, 8 seconds, then 15 at most (czjw.49). */
+const POLL_WAITS_MS = [2_000, 4_000, 8_000, 15_000] as const;
+
+/** The wait after `tick` answers: the first is 2 seconds, and the last repeats. */
+export function pollWaitMs(tick: number): number {
+  return POLL_WAITS_MS[Math.min(tick, POLL_WAITS_MS.length - 1)] ?? 15_000;
+}
 
 /** The one line of "What we found", in the order of R-37 and decision 11. */
 function foundText(row: InboxRow): string {
@@ -94,15 +101,48 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const [refusals, setRefusals] = useState<readonly Refusal[]>([]);
   const [duplicates, setDuplicates] = useState<readonly DuplicateRow[]>([]);
 
-  const documents = useQuery({
-    queryKey: DOCUMENTS_QUERY,
-    queryFn: () => invoices.listDocuments(),
-    initialData: view,
-    refetchInterval: (query) =>
-      query.state.data?.rows.some((row) => row.status === "reading") === true
-        ? POLL_MS
-        : false,
+  // The list reads one page at a time from the cursor, and Show more reads the next (czjw.49).
+  const list = useListPages({
+    key: DOCUMENTS_QUERY,
+    first: view,
+    read: (after) => invoices.listDocuments({ after }),
   });
+
+  // Only the rows still Reading are polled, by their ids, so a finished row costs no poll (czjw.49).
+  const readingIds = list.rows
+    .filter((row) => row.status === "reading")
+    .map((row) => row.id);
+
+  const statuses = useQuery({
+    queryKey: [...DOCUMENTS_QUERY, "status", readingIds.join(",")],
+    queryFn: () => invoices.documentStatus({ ids: readingIds }),
+    enabled: readingIds.length > 0,
+    // The wait grows with each answer, and `false` stops the timer; the next reading starts it again.
+    refetchInterval: (query) =>
+      query.state.data === undefined
+        ? false
+        : pollWaitMs(query.state.dataUpdateCount - 1),
+  });
+
+  const latest = new Map(
+    (statuses.data ?? []).map((status) => [status.id, status])
+  );
+
+  const listed = list.rows.map((row) => {
+    const status = latest.get(row.id);
+
+    return status === undefined ? row : { ...row, ...status };
+  });
+
+  const reading = listed.some((row) => row.status === "reading");
+
+  // One reload when the last reading ends: the list brings the found values the poll leaves out.
+  useEffect(() => {
+    if (statuses.data === undefined || reading) return;
+
+    void list.reload();
+    // A finished reading is one event; `reading` turns false once, after it.
+  }, [reading, statuses.data === undefined]);
 
   // One file at a time, in the chosen order (decision 9). A refusal is kept beside its name.
   const uploads = useAsyncQueuer<File>(
@@ -153,8 +193,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
     uploads.start();
   }
 
-  const data = documents.data;
-  const rows: readonly InboxRow[] = [...duplicates, ...data.rows];
+  const data = view;
+  const rows: readonly InboxRow[] = [...duplicates, ...listed];
 
   // The save-failure rule of DESIGN.md: one alert line with what failed and why; Retry stays the retry.
   const retryFailed =
@@ -274,9 +314,25 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 content: retryButton,
               }}
             />
-            {data.truncated ? (
-              <p>Showing the first {data.rows.length} documents.</p>
-            ) : null}
+            <div className="flex flex-wrap items-center gap-3">
+              {list.more ? (
+                <>
+                  <p>Showing the first {listed.length} documents.</p>
+                  <Button
+                    variant="secondary"
+                    disabled={list.loading}
+                    onClick={list.showMore}
+                  >
+                    {list.loading ? "Loading more…" : "Show more"}
+                  </Button>
+                </>
+              ) : null}
+              {list.failed ? (
+                <p role="alert">
+                  More documents could not be read. Try Show more again.
+                </p>
+              ) : null}
+            </div>
           </>
         )}
       </div>

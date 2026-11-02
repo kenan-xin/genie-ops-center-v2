@@ -332,11 +332,24 @@ export const documentInboxRow = z.object({
 export const documentInboxView = z.object({
   rows: z.array(documentInboxRow),
   truncated: z.boolean(),
+  /** Where the next page starts, when the list was cut (czjw.28, czjw.49). */
+  next: datasetCursorSchema.nullable(),
   ai: z.enum(["on", "no-key", "no-models"]),
   canUpload: z.boolean(),
 });
 
 export type DocumentInboxRow = z.infer<typeof documentInboxRow>;
+
+/** One inbox row's status, as the reading poll answers it (R-37, czjw.49). */
+export const documentStatusRow = documentInboxRow.pick({
+  id: true,
+  status: true,
+  reason: true,
+});
+
+export const documentStatuses = z.array(documentStatusRow);
+
+export type DocumentStatus = z.infer<typeof documentStatusRow>;
 
 export type DocumentInboxView = z.infer<typeof documentInboxView>;
 
@@ -525,10 +538,16 @@ export const paymentRecordView = z.discriminatedUnion("kind", [
 export type PaymentRecordView = z.infer<typeof paymentRecordView>;
 
 export const invoicesContract = {
-  /** Every document, newest first, for a tenant-wide reader (R-37, decision 12). */
+  /** Every document, newest first, for a tenant-wide reader (R-37, decision 12); 1,000 rows a page (czjw.49). */
   listDocuments: oc
     .route({ method: "GET", path: "/invoices/documents" })
+    .input(z.object({ after: datasetCursorSchema.nullable() }))
     .output(documentInboxView),
+  /** The status of the documents the inbox is still reading (czjw.49). */
+  documentStatus: oc
+    .route({ method: "GET", path: "/invoices/documents/status" })
+    .input(z.object({ ids: z.array(recordId).min(1).max(100) }))
+    .output(documentStatuses),
   /** One document with its reading, file link, customer and payment proposal (R-30, R-38). */
   getDocumentReview: oc
     .route({ method: "GET", path: "/invoices/documents/{id}" })
