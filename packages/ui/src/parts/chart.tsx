@@ -169,6 +169,30 @@ function ChartTable(props: {
 
   const titleOf = (row: ChartRow) => String(first?.cell(row) ?? "");
 
+  // A card shows a column's one currency once, above the list, and its amounts bare (5.5).
+  const byId = new Map(props.columns.map((column) => [column.key, column]));
+
+  const currencies = [
+    ...new Set(
+      props.columns.flatMap((column) =>
+        column.type === "money" && column.currency !== undefined
+          ? [column.currency]
+          : []
+      )
+    ),
+  ];
+
+  const cardCell = (id: string, row: ChartRow) => {
+    const column = byId.get(id);
+
+    return column === undefined
+      ? ""
+      : formatChartValue(column, row[column.key] ?? null, {
+          row,
+          bare: currencies.length === 1,
+        });
+  };
+
   // A row with a page links its first cell; a row without one, or without a name for the link,
   // keeps plain text (R-44).
   const linked = (row: ChartRow, className = RECORD_LINK) => {
@@ -189,7 +213,7 @@ function ChartTable(props: {
       ? rest
       : [{ ...first, cell: (row: ChartRow) => linked(row) }, ...rest];
 
-  return (
+  const table = (
     <DataTable
       label={props.label}
       rows={props.rows}
@@ -204,13 +228,24 @@ function ChartTable(props: {
             {rest.map((column) => (
               <div key={column.id} className="flex justify-between gap-3">
                 <dt className="text-muted-foreground">{column.header}</dt>
-                <dd className="tabular-nums">{column.cell(row)}</dd>
+                <dd className="tabular-nums">{cardCell(column.id, row)}</dd>
               </div>
             ))}
           </dl>
         ),
       }}
     />
+  );
+
+  return currencies.length === 1 ? (
+    <div className="grid gap-2">
+      <p className="text-xs text-muted-foreground md:hidden">
+        Amounts in {currencies[0]}
+      </p>
+      {table}
+    </div>
+  ) : (
+    table
   );
 }
 

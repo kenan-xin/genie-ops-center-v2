@@ -45,8 +45,10 @@ export async function ShellFrame(props: {
   return (
     <>
       <SessionActivityMount idleMinutes={settings.sessionIdleMinutes} />
-      <AgentBubble />
-      <NextAppShell {...shell}>{props.children}</NextAppShell>
+      {/* The shell's chat slot: it makes room for the docked column and steps aside on Ask. */}
+      <NextAppShell {...shell} chat={<AgentBubble />}>
+        {props.children}
+      </NextAppShell>
     </>
   );
 }
@@ -133,6 +135,7 @@ async function shellProps(
       offline: t("offline"),
       pageContent: t("pageContent"),
       account: t("account"),
+      ask: t("ask"),
       changePassword: t("changePassword"),
       opensInNewTab: t("opensInNewTab"),
       helpAndSupport: t("helpAndSupport"),

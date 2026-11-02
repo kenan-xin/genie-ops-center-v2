@@ -323,6 +323,35 @@ export const Dark: Story = {
   globals: { theme: "dark" },
 };
 
+/**
+ * A table that scrolls sideways takes a tab stop, so a keyboard can scroll it, for example beside
+ * a docked chat at 1280 px; a table that fits takes none (axe `scrollable-region-focusable`).
+ */
+export const ScrollsSideways: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: (args) => (
+    <div className="grid gap-6">
+      <div data-testid="narrow" style={{ width: 240 }}>
+        <DataTable {...omit(args, ["onOpenRow"])} />
+      </div>
+      <div data-testid="wide">
+        <DataTable {...omit(args, ["onOpenRow"])} />
+      </div>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const container = (id: string) =>
+      canvas
+        .getByTestId(id)
+        .querySelector<HTMLElement>('[data-slot="table-container"]');
+
+    await waitFor(() =>
+      expect(container("narrow")).toHaveAttribute("tabindex", "0")
+    );
+    await expect(container("wide")).not.toHaveAttribute("tabindex");
+  },
+};
+
 // A list whose identity is a page link that covers its row (design review 1.5).
 const linked = (row: Person) => (
   <a href={`#${row.id}`} className="after:absolute after:inset-0">

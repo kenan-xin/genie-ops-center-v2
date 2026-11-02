@@ -128,7 +128,7 @@ function ChartRefused(props: { readonly issue: string | undefined }) {
 
 function ChartView({ props }: ViewProps) {
   const streaming = useIsStreaming();
-  const { check, timeZone } = useChartCheck();
+  const { check, timeZone, datasetTitles } = useChartCheck();
   const { config } = checkPanelConfig(props.config);
 
   const query = useQuery({
@@ -166,6 +166,9 @@ function ChartView({ props }: ViewProps) {
     <div className="not-typeset">
       <Chart
         {...query.data.data}
+        datasets={query.data.data.datasets.map(
+          (name) => datasetTitles[name] ?? name
+        )}
         timeZone={timeZone}
         linkComponent={PageLink}
       />

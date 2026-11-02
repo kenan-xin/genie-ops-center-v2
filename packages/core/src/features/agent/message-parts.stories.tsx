@@ -1,7 +1,7 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { expect, fn, waitFor } from "storybook/test";
+import { expect, fn, userEvent, waitFor } from "storybook/test";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { AgentMessage } from "../../services/agent/index.ts";
@@ -92,6 +92,8 @@ function FirstFrame(props: { readonly children: ReactNode }) {
   return <div ref={ref}>{props.children}</div>;
 }
 
+const TITLES = { "example.items": "Items" };
+
 function Providers(props: {
   readonly check: CheckChart;
   readonly timeZone: string;
@@ -103,7 +105,11 @@ function Providers(props: {
 
   return (
     <QueryClientProvider client={client}>
-      <ChartCheckProvider check={props.check} timeZone={props.timeZone}>
+      <ChartCheckProvider
+        check={props.check}
+        timeZone={props.timeZone}
+        datasetTitles={TITLES}
+      >
         <FirstFrame>{props.children}</FirstFrame>
       </ChartCheckProvider>
     </QueryClientProvider>
@@ -284,6 +290,56 @@ export const StreamingToolCall: Story = {
   play: async ({ canvas }) => {
     // A live model streams a tool's input after its name, so the call first shows without input.
     await expect(await canvas.findByText("Read the data")).toBeVisible();
+  },
+};
+
+const checkSourced = fn(resolveKpi);
+
+/**
+ * A finished answer names its source by the dataset's title, beside Copy, and says how it counted
+ * in a closed fold (design review 5.1, 5.2). The chart's caption names the title too.
+ */
+export const SourcesAndMethod: Story = {
+  name: "Sources and method",
+  args: {
+    message: {
+      id: "sourced",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-query-dataset",
+          toolCallId: "call-items",
+          state: "output-available",
+          input: { dataset: "example.items", query: {} },
+          output: {
+            dataset: "example.items",
+            asOf: "2026-10-27",
+            columns: [],
+            rows: [{}, {}],
+            truncated: false,
+          },
+        },
+        { type: "text", text: CHART_ANSWER },
+      ],
+    },
+    labels: { steps: {}, datasets: TITLES },
+  },
+  decorators: [withChartCheck(checkSourced)],
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("42")).toBeVisible();
+    await expect(canvas.getByText(/^Source: Items · Read /)).toBeVisible();
+
+    const sources = canvas.getByRole("list", { name: "Sources" });
+
+    await expect(sources).toHaveTextContent("Source: Items");
+    await expect(canvas.getByRole("button", { name: "Copy" })).toBeVisible();
+
+    const method = canvas.getByText("Items: 2 rows, as of 27 Oct 2026");
+
+    // The method waits in a closed fold, so the result reads first.
+    await expect(method).not.toBeVisible();
+    await userEvent.click(canvas.getByText("How this was counted"));
+    await expect(method).toBeVisible();
   },
 };
 

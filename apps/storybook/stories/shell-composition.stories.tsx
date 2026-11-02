@@ -56,6 +56,7 @@ const meta = {
       offline: "You are offline.",
       pageContent: "Page content",
       account: "Account",
+      ask: "Ask",
       changePassword: "Change password",
       opensInNewTab: "Opens in a new tab",
       helpAndSupport: "Help and support",

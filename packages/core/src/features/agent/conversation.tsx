@@ -60,6 +60,8 @@ export function Conversation(props: {
   readonly suggestions: readonly string[];
   /** The composer's hint text. */
   readonly placeholder?: string;
+  /** Shown above the composer while the chat has no message, for example a welcome line. */
+  readonly empty?: ReactNode;
   readonly onFinished?: (sessionId: string) => void;
 }): ReactNode {
   const [draft, setDraft] = useState("");
@@ -114,8 +116,15 @@ export function Conversation(props: {
     !busy && refusal === null && props.suggestions.length > 0;
 
   return (
-    <ChartCheckProvider check={props.checkChart} timeZone={props.timeZone}>
+    <ChartCheckProvider
+      check={props.checkChart}
+      timeZone={props.timeZone}
+      datasetTitles={props.labels.datasets}
+    >
       <div className="flex min-h-0 flex-1 flex-col">
+        {props.empty === undefined || chat.messages.length > 0 ? null : (
+          <div className="p-4 md:p-5">{props.empty}</div>
+        )}
         <div
           role="log"
           aria-live="polite"

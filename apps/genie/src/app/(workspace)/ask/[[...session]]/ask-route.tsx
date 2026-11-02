@@ -64,6 +64,7 @@ export function AskRoute(props: {
       newChatHref="/ask"
       inbox={props.inbox}
       aiOn={props.aiOn}
+      timeZone={props.timeZone}
     >
       {props.aiOn ? (
         <Conversation

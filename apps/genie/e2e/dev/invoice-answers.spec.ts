@@ -10,7 +10,13 @@ import {
   hideDevelopmentWidgets,
   signInAs,
 } from "./ask-support.ts";
-import { FIRST_PAINT, LEDGER_LOCK, LOCK_WAIT, sgd } from "./dev-support.ts";
+import {
+  FIRST_PAINT,
+  LEDGER_LOCK,
+  LOCK_WAIT,
+  onPhone,
+  sgd,
+} from "./dev-support.ts";
 import { DEV_MODULES, INVOICE_ASK_PEOPLE } from "./global-setup.ts";
 
 test.skip(
@@ -215,8 +221,12 @@ test("the monthly answer draws invoiced sales and collections from two datasets 
         .locator("tr, li")
         .filter({ visible: true, hasText: "May 2026" });
 
-      await expect(may).toContainText(sgd(34900));
-      await expect(may).toContainText(sgd(31300));
+      // A phone card names the one currency once above the list, so its amounts are bare (5.5).
+      const amount = (dollars: number) =>
+        onPhone(page) ? sgd(dollars).replace(/^SGD\s*/, "") : sgd(dollars);
+
+      await expect(may).toContainText(amount(34900));
+      await expect(may).toContainText(amount(31300));
       await expect(
         figure(page, "Invoices with money outstanding").getByRole("link")
       ).toHaveCount(7, FIRST_PAINT);

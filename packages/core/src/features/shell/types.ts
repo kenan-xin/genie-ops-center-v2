@@ -78,6 +78,8 @@ export type ShellStrings = {
   readonly offline: string;
   readonly pageContent: string;
   readonly account: string;
+  /** Core's Ask page, which is no rail link, so its phone top bar is named here (5.3). */
+  readonly ask: string;
   readonly changePassword: string;
   readonly opensInNewTab: string;
   readonly helpAndSupport: string;

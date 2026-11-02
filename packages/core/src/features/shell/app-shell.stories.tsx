@@ -73,6 +73,7 @@ const strings: ShellStrings = {
     "You are offline. Changes will not be saved until the connection returns.",
   pageContent: "Page content",
   account: "Account",
+  ask: "Ask",
   changePassword: "Change password",
   opensInNewTab: "Opens in a new tab",
   helpAndSupport: "Help and support",
@@ -297,6 +298,17 @@ export const WorkspacePhone: Story = {
     await screen.findByRole("dialog", { name: "Navigation" });
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  },
+};
+
+/** Ask is no rail link, yet its phone top bar names it, on a session too (design review 5.3). */
+export const AskOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  args: { currentPath: "/ask/00000000-0000-4000-8000-000000000001" },
+  play: async ({ canvasElement }) => {
+    const topBar = element(canvasElement, "[data-shell-top-bar]");
+
+    await expect(within(topBar).getByText("Ask")).toBeVisible();
   },
 };
 

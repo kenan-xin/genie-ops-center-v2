@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { ChatTransport, UIMessageChunk } from "ai";
-import { expect } from "storybook/test";
+import { expect, within } from "storybook/test";
 
 import type {
   AgentMessage,
@@ -85,6 +85,8 @@ const meta = {
     newChatHref: "/ask",
     inbox: INBOX,
     aiOn: true,
+    // East of UTC, so a late-evening UTC instant falls on the next day (design review 5.6).
+    timeZone: "Asia/Singapore",
     children: conversation,
   },
 } satisfies Meta<typeof AskScreen>;
@@ -95,6 +97,23 @@ type Story = StoryObj<typeof meta>;
 
 export const SessionsDesktop: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = canvas
+      .getAllByRole("navigation", { name: "Chats" })
+      .find((nav) => nav.checkVisibility());
+
+    if (list === undefined) throw new Error("No visible chat list.");
+
+    // 16:30 UTC on 29 Oct is 00:30 on 30 Oct in the tenant's zone.
+    const later = within(list).getByRole("link", { name: /What can you do\?/ });
+
+    await expect(later).toHaveTextContent("30 Oct 2026");
+
+    // A long title wraps to two lines before it is cut (design review 5.6).
+    const title = within(later).getByText("What can you do?");
+
+    await expect(getComputedStyle(title).webkitLineClamp).toBe("2");
+  },
 };
 
 export const SessionsOnPhone: Story = {

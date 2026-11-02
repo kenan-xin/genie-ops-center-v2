@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  Button,
   Marker,
   MarkerContent,
   MarkerIcon,
@@ -12,12 +13,19 @@ import {
   type OpenUIError,
   type ParseResult,
 } from "@openuidev/react-lang";
-import { CheckIcon, CircleSlashIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import {
+  CheckIcon,
+  ChevronRightIcon,
+  CircleSlashIcon,
+  CopyIcon,
+  DatabaseIcon,
+} from "lucide-react";
+import { useRef, useState, type ReactNode } from "react";
 
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
+import { methodLines, sourceTitles } from "./answer-sources.ts";
 import { stepLine, toolNameOf } from "./step-line.ts";
 
 /**
@@ -182,6 +190,81 @@ function assistantPart(
   );
 }
 
+/**
+ * Under a finished answer (design review 5.1, 5.2): the datasets it read by title, Copy, and how
+ * it counted in a closed fold, so the result reads first.
+ */
+function AnswerFooter(props: {
+  readonly parts: AgentMessage["parts"];
+  readonly labels: ChatLabels;
+  readonly answer: () => string;
+}): ReactNode {
+  const [copied, setCopied] = useState(false);
+
+  const sources = sourceTitles(props.parts, props.labels);
+  const method = methodLines(props.parts, props.labels);
+
+  return (
+    <div className="grid gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
+        {sources.length === 0 ? null : (
+          <ul aria-label="Sources" className="flex flex-wrap gap-1.5">
+            {sources.map((title) => (
+              <li
+                key={title}
+                className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+              >
+                <DatabaseIcon
+                  aria-hidden="true"
+                  className="size-3.5"
+                  strokeWidth={1.75}
+                />
+                <span className="sr-only">Source: </span>
+                {title}
+              </li>
+            ))}
+          </ul>
+        )}
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          // oxlint-disable-next-line shadcn/no-restyle -- Copy sits at the end of the source row (prototype `.srcs`)
+          className="ms-auto"
+          onClick={() => {
+            void navigator.clipboard.writeText(props.answer()).then(() => {
+              setCopied(true);
+              setTimeout(() => setCopied(false), 1500);
+            });
+          }}
+        >
+          <CopyIcon aria-hidden="true" strokeWidth={1.75} />
+          {copied ? "Copied" : "Copy"}
+        </Button>
+      </div>
+      {method.length === 0 ? null : (
+        <details className="group text-sm">
+          <summary
+            className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-md font-medium text-muted-foreground hover:text-foreground ${focusRing}`}
+          >
+            <ChevronRightIcon
+              aria-hidden="true"
+              className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+              strokeWidth={1.75}
+            />
+            How this was counted
+          </summary>
+          <ul className="grid gap-0.5 ps-5 text-muted-foreground">
+            {method.map((line, index) => (
+              <li key={index}>{line}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
 /** One message of an agent chat. */
 export function MessageParts(props: {
   readonly message: AgentMessage;
@@ -189,6 +272,8 @@ export function MessageParts(props: {
   /** The words for module tools and dataset titles; without them a step reads "Used a tool". */
   readonly labels?: ChatLabels;
 }): ReactNode {
+  const body = useRef<HTMLDivElement>(null);
+
   if (props.message.role === "user") {
     return (
       <div className="grid gap-2">
@@ -203,11 +288,26 @@ export function MessageParts(props: {
     );
   }
 
+  const labels = props.labels ?? NO_LABELS;
+
+  const answered =
+    !props.streaming &&
+    props.message.parts.some((part) => part.type === "text");
+
   return (
     <div className="grid gap-3">
-      {props.message.parts.map((part, index) =>
-        assistantPart(part, index, props.streaming, props.labels ?? NO_LABELS)
-      )}
+      <div ref={body} className="grid gap-3">
+        {props.message.parts.map((part, index) =>
+          assistantPart(part, index, props.streaming, labels)
+        )}
+      </div>
+      {answered ? (
+        <AnswerFooter
+          parts={props.message.parts}
+          labels={labels}
+          answer={() => body.current?.innerText ?? ""}
+        />
+      ) : null}
     </div>
   );
 }

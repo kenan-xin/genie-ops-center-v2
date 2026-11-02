@@ -24,6 +24,7 @@ type ConversationProps = {
   readonly suggestions: readonly string[];
   readonly timeZone: string;
   readonly newChatHref: string;
+  readonly empty: ReactNode;
   readonly onFinished: () => void;
 };
 
@@ -51,6 +52,7 @@ const LazyConversation = lazy(async () => {
           checkChart={checkChart}
           timeZone={props.timeZone}
           newChatHref={props.newChatHref}
+          empty={props.empty}
           onFinished={props.onFinished}
         />
       );
@@ -117,11 +119,13 @@ export function AgentBubbleMount(props: {
       sessionHref={(id) => `/ask/${id}`}
       inbox={props.inbox}
       sessions={sessions.data}
+      timeZone={props.timeZone}
       onOpenChange={setOpen}
-      conversation={(sessionId) => (
+      conversation={(sessionId, empty) => (
         <Suspense fallback={null}>
           <SavedConversation
             sessionId={sessionId}
+            empty={empty}
             models={props.models}
             labels={props.labels}
             suggestions={props.suggestions}

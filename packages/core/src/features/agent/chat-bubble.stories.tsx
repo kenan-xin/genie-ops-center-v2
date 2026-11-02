@@ -1,7 +1,7 @@
 import { Button } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { useState } from "react";
-import { expect, screen, userEvent, waitFor } from "storybook/test";
+import { useState, type ReactNode } from "react";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type {
   AgentSessionSummary,
@@ -30,22 +30,25 @@ const INBOX: readonly InboxLink[] = [
   { label: "Documents", href: "/m/example" },
 ];
 
-const desktop = { viewport: { value: "desktop", isRotated: false } };
+// From 1280 px the chat docks as a column; below it opens as a sheet.
+const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
 /**
- * Stands in for the conversation: it shows the id it was opened with and a Send of its own, so a
- * story can tell one chat from the next without a model.
+ * Stands in for the conversation: it shows the id it was opened with, the welcome, and a Send of
+ * its own, so a story can tell one chat from the next without a model.
  */
 function StubConversation(props: {
   readonly sessionId: string;
+  readonly empty: ReactNode;
   readonly onSend?: () => void;
 }) {
   const [sent, setSent] = useState(false);
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-2 p-4">
+      {sent ? <p>Message sent</p> : props.empty}
       <p>New session {props.sessionId}</p>
       <Button
         type="button"
@@ -56,7 +59,6 @@ function StubConversation(props: {
       >
         Send
       </Button>
-      {sent ? <p>Message sent</p> : null}
     </div>
   );
 }
@@ -75,9 +77,11 @@ function NewChatHarness() {
       sessionHref={(id) => `/ask/${id}`}
       inbox={INBOX}
       sessions={sessions}
-      conversation={(sessionId) => (
+      timeZone="UTC"
+      conversation={(sessionId, empty) => (
         <StubConversation
           sessionId={sessionId}
+          empty={empty}
           onSend={() =>
             setSessions((current) =>
               current.some((session) => session.id === sessionId)
@@ -99,20 +103,29 @@ function NewChatHarness() {
   );
 }
 
+/** The open panel, as a docked column or a sheet. */
+const panel = () => screen.getByRole("region", { name: "Ask" });
+
 async function openBubble(
   canvas: Parameters<NonNullable<StoryObj["play"]>>[0]["canvas"]
 ) {
   await userEvent.click(canvas.getByRole("button", { name: "Open Ask" }));
 
   // The Sheet enters at opacity 0, and the matcher reads the ancestors' opacity too.
-  await waitFor(() => expect(screen.getByRole("dialog")).toBeVisible());
+  await waitFor(() => expect(panel()).toBeVisible());
+}
+
+async function closeBubble() {
+  await userEvent.click(screen.getByRole("button", { name: "Close the chat" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("region", { name: "Ask" })).toBeNull()
+  );
 }
 
 /**
- * The chat bubble at the bottom right of every signed-in page (R-42, P15): a round button that
- * opens a Sheet with a new chat, the person's history, the Documents inbox link and Open Ask.
- * A reopen continues the tab's last chat, and only New chat starts a new one (`czjw.60`); the
- * history is shared with Ask.
+ * The general chat of every signed-in page (R-42, Section 7 redesign P7): a round "Open Ask"
+ * button and the "Ask" panel, docked from 1280 px and a sheet below. A reopen continues the tab's
+ * last chat, and only New chat starts a new one (`czjw.60`); the history is shared with Ask.
  */
 const meta = {
   title: "Core/Agent/Chat bubble",
@@ -122,7 +135,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The chat bubble: a fixed round button at the bottom right that opens a Sheet from the right. A reopen continues the last chat of this browser tab, also after a page load, and only New chat starts a new session. The history list is the person's shared sessions. The stub conversation shows the id; it calls no model.",
+          "The chat bubble: a round button at the bottom right that opens the Ask panel, a docked column from 1280 px and a sheet below. Its header holds New chat and Open Ask, the person's chats wait in a closed fold, and a new chat shows a welcome with the Documents inbox link. A reopen continues the last chat of this browser tab, also after a page load, and only New chat starts a new session. The stub conversation shows the id; it calls no model.",
       },
     },
     a11y: { test: "error" },
@@ -132,8 +145,9 @@ const meta = {
     sessionHref: (id: string) => `/ask/${id}`,
     inbox: INBOX,
     sessions: SESSIONS,
-    conversation: (sessionId: string) => (
-      <StubConversation sessionId={sessionId} />
+    timeZone: "UTC",
+    conversation: (sessionId: string, empty: ReactNode) => (
+      <StubConversation sessionId={sessionId} empty={empty} />
     ),
   },
 } satisfies Meta<typeof ChatBubble>;
@@ -155,11 +169,8 @@ export const ReopenKeepsTheChat: Story = {
     await userEvent.click(screen.getByRole("button", { name: "Send" }));
     await expect(screen.getByText("Message sent")).toBeVisible();
 
-    await userEvent.click(screen.getByRole("button", { name: "Close" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-
-    await userEvent.click(canvas.getByRole("button", { name: "Open Ask" }));
-    await waitFor(() => expect(screen.getByRole("dialog")).toBeVisible());
+    await closeBubble();
+    await openBubble(canvas);
 
     // The reopen continues the same session, and the tab keeps its id for a page load.
     const second = await screen.findByText(/^New session /);
@@ -174,8 +185,9 @@ export const ReopenKeepsTheChat: Story = {
     await expect(third.textContent).not.toBe(firstId);
 
     // The history still holds the session the first send created.
+    await userEvent.click(screen.getByRole("button", { name: "Chats" }));
     await expect(
-      screen.getByRole("link", { name: "Records after the first send" })
+      screen.getByRole("link", { name: /Records after the first send/ })
     ).toBeVisible();
   },
 };
@@ -186,7 +198,7 @@ export const ClosedDesktop: Story = {
     await expect(
       canvas.getByRole("button", { name: "Open Ask" })
     ).toBeVisible();
-    await expect(screen.queryByRole("dialog")).toBeNull();
+    await expect(screen.queryByRole("region", { name: "Ask" })).toBeNull();
   },
 };
 
@@ -213,20 +225,34 @@ export const OpenDesktop: Story = {
   play: async ({ canvas }) => {
     await openBubble(canvas);
 
-    await expect(screen.getByRole("heading", { name: "Ask" })).toBeVisible();
+    const open = within(panel());
+
+    await expect(open.getByRole("heading", { name: /^Ask/ })).toBeVisible();
+    await expect(open.getByRole("button", { name: "New chat" })).toBeVisible();
+    await expect(open.getByRole("link", { name: "Open Ask" })).toHaveAttribute(
+      "href",
+      "/ask"
+    );
+    // A new chat welcomes the person and links the Documents inbox (R-42).
+    await expect(open.getByRole("link", { name: "Documents" })).toHaveAttribute(
+      "href",
+      "/m/example"
+    );
+
+    // The chats wait in a closed fold, each with its day.
+    const chats = open.getByRole("button", { name: "Chats" });
+
+    await expect(chats).toHaveAttribute("aria-expanded", "false");
     await expect(
-      screen.getByRole("button", { name: "New chat" })
-    ).toBeVisible();
+      open.queryByRole("link", { name: /What can you do/ })
+    ).toBeNull();
+    await userEvent.click(chats);
     await expect(
-      screen.getByRole("link", { name: "Open Ask" })
-    ).toHaveAttribute("href", "/ask");
-    await expect(
-      screen.getByRole("link", { name: FIRST_SESSION.title })
+      open.getByRole("link", { name: /How many example records/ })
     ).toHaveAttribute("href", `/ask/${FIRST_SESSION.id}`);
     await expect(
-      screen.getByRole("link", { name: "Documents" })
-    ).toHaveAttribute("href", "/m/example");
-    await expect(screen.getByText(/^New session /)).toBeVisible();
+      open.getByRole("link", { name: /How many example records/ })
+    ).toHaveTextContent("30 Oct 2026");
   },
 };
 
@@ -235,9 +261,9 @@ export const OpenPhone: Story = {
   play: async ({ canvas }) => {
     await openBubble(canvas);
 
-    await expect(screen.getByRole("heading", { name: "Ask" })).toBeVisible();
+    await expect(screen.getByRole("dialog", { name: "Ask" })).toBeVisible();
     await expect(
-      screen.getByRole("button", { name: "New chat" })
+      within(panel()).getByRole("button", { name: "New chat" })
     ).toBeVisible();
     await expect(screen.getByText(/^New session /)).toBeVisible();
   },

@@ -64,8 +64,9 @@ async function openUntilVisible(trigger: Locator, target: Locator) {
   }).toPass(FIRST_PAINT);
 }
 
+/** The bubble's panel: a docked column from 1280 px (the desktop project), a sheet below. */
 async function openBubble(page: Page) {
-  const bubble = page.getByRole("dialog", { name: "Ask" });
+  const bubble = page.getByRole("region", { name: "Ask" });
 
   await openUntilVisible(
     page.getByRole("button", { name: "Open Ask" }),
@@ -73,6 +74,15 @@ async function openBubble(page: Page) {
   );
 
   return bubble;
+}
+
+/** The bubble's chats, in their closed fold. */
+async function chatsOf(bubble: Locator) {
+  const list = bubble.getByRole("navigation", { name: "Chats" });
+
+  await openUntilVisible(bubble.getByRole("button", { name: "Chats" }), list);
+
+  return list;
 }
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
@@ -96,7 +106,7 @@ test("the bubble and Ask share a session, and only New chat starts another", asy
   await expectNoAxeViolations(page, "The open bubble");
 
   // czjw.60: on the same page, opening again continues the chat, and only New chat starts one.
-  await bubble.getByRole("button", { name: "Close" }).click();
+  await bubble.getByRole("button", { name: "Close the chat" }).click();
   await expect(bubble).toBeHidden();
 
   const reopened = await openBubble(page);
@@ -107,10 +117,8 @@ test("the bubble and Ask share a session, and only New chat starts another", asy
       .getByText(QUESTION, { exact: true })
   ).toBeVisible(FIRST_PAINT);
   await expect(
-    reopened
-      .getByRole("navigation", { name: "Chats" })
-      .locator(`a[href="/ask/${sessionId}"]`)
-  ).toHaveText(QUESTION);
+    (await chatsOf(reopened)).locator(`a[href="/ask/${sessionId}"]`)
+  ).toContainText(QUESTION);
 
   await reopened.getByRole("button", { name: "New chat" }).click();
   await expect(reopened.getByRole("log", { name: "Conversation" })).toBeEmpty();
@@ -119,6 +127,11 @@ test("the bubble and Ask share a session, and only New chat starts another", asy
 
   await reopened.getByRole("link", { name: "Open Ask" }).click();
   await expect(page).toHaveURL(/\/ask$/, FIRST_PAINT);
+  // Ask is the chat, so the chat button steps aside there (design review 5.4).
+  await expect(page.getByRole("textbox", { name: "Message Ask" })).toBeVisible(
+    FIRST_PAINT
+  );
+  await expect(page.getByRole("button", { name: "Open Ask" })).toBeHidden();
 
   const listed = page
     .locator(`a[href="/ask/${sessionId}"]`)
@@ -160,11 +173,12 @@ test("a reopened bubble shows the earlier message after a link and a reload", as
   const sessionId = await ask(page);
 
   await expectAnswer(page);
-  await bubble.getByRole("button", { name: "Close" }).click();
+  await bubble.getByRole("button", { name: "Close the chat" }).click();
   await expect(bubble).toBeHidden();
 
-  // A link out of the page, then a reload: the tab keeps the chat and its saved messages.
+  // A page load on Ask, which shows no bubble, then back and a reload: the tab keeps the chat.
   await page.goto("/ask");
+  await page.goto("/account");
   await page.reload();
 
   const reopened = await openBubble(page);
@@ -178,10 +192,8 @@ test("a reopened bubble shows the earlier message after a link and a reload", as
     FIRST_PAINT
   );
   await expect(
-    reopened
-      .getByRole("navigation", { name: "Chats" })
-      .locator(`a[href="/ask/${sessionId}"]`)
-  ).toHaveText(QUESTION);
+    (await chatsOf(reopened)).locator(`a[href="/ask/${sessionId}"]`)
+  ).toContainText(QUESTION);
 });
 
 test("a person without Ask gets no bubble and the denied page on Ask", async ({

@@ -12,6 +12,8 @@ type ChartCheckContextValue = {
   readonly check: CheckChart;
   /** The viewer's zone for a chart's read-time caption, from `branding.defaultTimeZone`. */
   readonly timeZone: string;
+  /** Dataset titles by name, so a chart's caption names no internal dataset (design review 5.1). */
+  readonly datasetTitles: Readonly<Record<string, string>>;
 };
 
 const ChartCheckContext = createContext<ChartCheckContextValue | null>(null);
@@ -20,11 +22,16 @@ const ChartCheckContext = createContext<ChartCheckContextValue | null>(null);
 export function ChartCheckProvider(props: {
   readonly check: CheckChart;
   readonly timeZone: string;
+  readonly datasetTitles?: Readonly<Record<string, string>>;
   readonly children: ReactNode;
 }): ReactNode {
   return (
     <ChartCheckContext.Provider
-      value={{ check: props.check, timeZone: props.timeZone }}
+      value={{
+        check: props.check,
+        timeZone: props.timeZone,
+        datasetTitles: props.datasetTitles ?? {},
+      }}
     >
       {props.children}
     </ChartCheckContext.Provider>

@@ -58,7 +58,8 @@ const monthFormat = new Intl.DateTimeFormat(LOCALE, {
 function formatMoney(
   minorUnits: number,
   currency: string,
-  compact: boolean
+  compact: boolean,
+  bare: boolean
 ): string {
   try {
     // The standard formatter knows the minor unit digits; a compact one reports 0.
@@ -67,6 +68,13 @@ function formatMoney(
         style: "currency",
         currency,
       }).resolvedOptions().maximumFractionDigits ?? 2;
+
+    if (bare) {
+      return new Intl.NumberFormat(LOCALE, {
+        minimumFractionDigits: digits,
+        maximumFractionDigits: digits,
+      }).format(minorUnits / 10 ** digits);
+    }
 
     return new Intl.NumberFormat(LOCALE, {
       style: "currency",
@@ -96,7 +104,12 @@ function formatDate(column: ChartColumn, value: string): string {
 export function formatChartValue(
   column: ChartColumn,
   value: ChartValue,
-  options: { readonly row?: ChartRow; readonly compact?: boolean } = {}
+  options: {
+    readonly row?: ChartRow;
+    readonly compact?: boolean;
+    /** Money of a column's one currency without its code, where the currency shows once (5.5). */
+    readonly bare?: boolean;
+  } = {}
 ): string {
   if (value === null) {
     return "";
@@ -123,7 +136,12 @@ export function formatChartValue(
       : (options.row?.[column.currencyKey] ?? null));
 
   if (column.type === "money" && currency !== null) {
-    return formatMoney(Number(value), String(currency), compact);
+    return formatMoney(
+      Number(value),
+      String(currency),
+      compact,
+      options.bare === true && column.currency !== undefined
+    );
   }
 
   return new Intl.NumberFormat(LOCALE, {

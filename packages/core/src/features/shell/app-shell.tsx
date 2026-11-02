@@ -106,6 +106,9 @@ export function AppShell(props: AppShellProps) {
     (props.currentPath === props.menu.accountHref
       ? strings.account
       : undefined) ??
+    (props.currentPath === "/ask" || props.currentPath.startsWith("/ask/")
+      ? strings.ask
+      : undefined) ??
     (props.chrome === "admin" ? strings.adminPortal : strings.workspace);
 
   return (

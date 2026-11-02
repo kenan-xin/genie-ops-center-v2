@@ -3,11 +3,36 @@
 import { cn } from "cn";
 import * as React from "react";
 
+import { focusRing } from "../theme/tokens.ts";
+
 function Table({ className, ...props }: React.ComponentProps<"table">) {
+  const container = React.useRef<HTMLDivElement>(null);
+
+  const [scrolls, setScrolls] = React.useState(false);
+
+  // A table that scrolls sideways takes a tab stop, so a keyboard can scroll it (axe
+  // `scrollable-region-focusable`); a table that fits takes none.
+  React.useEffect(() => {
+    const box = container.current;
+
+    if (box === null) return;
+
+    const measure = () => setScrolls(box.scrollWidth > box.clientWidth);
+    const observer = new ResizeObserver(measure);
+
+    observer.observe(box);
+
+    if (box.firstElementChild !== null) observer.observe(box.firstElementChild);
+
+    return () => observer.disconnect();
+  }, []);
+
   return (
     <div
+      ref={container}
       data-slot="table-container"
-      className="relative w-full overflow-x-auto"
+      tabIndex={scrolls ? 0 : undefined}
+      className={`relative w-full overflow-x-auto rounded-sm ${focusRing}`}
     >
       <table
         data-slot="table"

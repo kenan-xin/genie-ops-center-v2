@@ -1,27 +1,22 @@
 "use client";
 
-import { Disclosure, focusRing } from "@genie/ui";
+import { buttonVariants, Disclosure, focusRing } from "@genie/ui";
+import { PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type {
   AgentSessionSummary,
   InboxLink,
 } from "../../services/agent/index.ts";
+import { SessionList } from "./session-list.tsx";
 
 const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
-
-function sessionClass(current: boolean): string {
-  return `flex min-h-10 items-center rounded-md px-2 text-sm ${
-    current
-      ? "bg-muted font-medium text-foreground"
-      : "text-muted-foreground hover:bg-muted hover:text-foreground"
-  } ${focusRing}`;
-}
 
 /**
  * The Ask screen (R-42, P15): the person's sessions as a 280 px column from `lg`, a closed
  * disclosure above the chat below it, New chat, one inbox link per readable provider, and the
  * conversation beside the list. With AI off the conversation is replaced by the off message (R-20).
+ * The conversation is the page's own chat, so the shell hides its chat button here (5.4).
  */
 export function AskScreen(props: {
   readonly sessions: readonly AgentSessionSummary[];
@@ -30,34 +25,25 @@ export function AskScreen(props: {
   readonly newChatHref: string;
   readonly inbox: readonly InboxLink[];
   readonly aiOn: boolean;
+  /** The tenant's zone for each chat's day. */
+  readonly timeZone: string;
   readonly children: ReactNode;
 }): ReactNode {
   const list = (
     <div className="grid gap-3">
-      <a href={props.newChatHref} className={linkClass}>
+      <a
+        href={props.newChatHref}
+        className={buttonVariants({ variant: "secondary" })}
+      >
+        <PlusIcon aria-hidden="true" strokeWidth={1.75} />
         New chat
       </a>
-      {props.sessions.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No chats yet.</p>
-      ) : (
-        <nav aria-label="Chats">
-          <ul className="grid gap-1">
-            {props.sessions.map((session) => (
-              <li key={session.id}>
-                <a
-                  href={props.sessionHref(session.id)}
-                  aria-current={
-                    session.id === props.currentId ? "page" : undefined
-                  }
-                  className={sessionClass(session.id === props.currentId)}
-                >
-                  <span className="line-clamp-1">{session.title}</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </nav>
-      )}
+      <SessionList
+        sessions={props.sessions}
+        currentId={props.currentId}
+        sessionHref={props.sessionHref}
+        timeZone={props.timeZone}
+      />
       {props.inbox.map((link) => (
         <p key={link.href} className="text-sm text-muted-foreground">
           To add documents, use{" "}
@@ -76,7 +62,11 @@ export function AskScreen(props: {
         <Disclosure summary="Chats">{list}</Disclosure>
       </div>
       <aside className="hidden lg:block lg:w-70 lg:shrink-0">{list}</aside>
-      <section aria-label="Conversation" className="min-w-0 flex-1">
+      <section
+        data-page-chat=""
+        aria-label="Conversation"
+        className="flex min-h-0 min-w-0 flex-1 flex-col"
+      >
         {props.aiOn ? (
           props.children
         ) : (

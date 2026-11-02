@@ -164,6 +164,20 @@ export const BarPhone: Story = {
   play: phonePlay,
 };
 
+/** The phone cards name a column's one currency once, above the list (design review 5.5). */
+export const TableCardsOneCurrency: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("tab", { name: "Table" }));
+
+    const list = canvas.getByRole("list", { name: "Invoiced and collected" });
+
+    await expect(canvas.getByText("Amounts in EUR")).toBeVisible();
+    await expect(within(list).getByText("1,500.00")).toBeVisible();
+    await expect(within(list).queryByText(/€/)).toBeNull();
+  },
+};
+
 export const BarPhoneDark: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false }, theme: "dark" },
   play: phonePlay,
