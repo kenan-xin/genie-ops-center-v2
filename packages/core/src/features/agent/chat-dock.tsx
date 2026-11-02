@@ -27,7 +27,9 @@ const isDocked = () => matchMedia(DOCKED).matches;
  * Where a chat panel lives (Section 7 redesign, choice 2): from 1280 px a fixed 400 px column
  * `[data-chat-docked]` at the right, which the shell makes room for; from 768 px a 480 px sheet;
  * below that the whole screen. A 48 px round button "Open <label>" opens it, and Escape or Close
- * hands focus back to that button. `page` marks a page's own chat (`[data-page-chat]`), so the
+ * hands focus back to that button. Closing only hides the panel, so its conversation survives a
+ * reopen. Crossing 1280 px moves the panel between the column and the sheet, which remounts it.
+ * `page` marks a page's own chat (`[data-page-chat]`), so the
  * shell hides its general chat button beside it.
  */
 export function ChatDock(props: {
@@ -78,24 +80,25 @@ export function ChatDock(props: {
       >
         <MessageCircleIcon aria-hidden="true" strokeWidth={1.75} />
       </Button>
+      {/* Both stay mounted while closed: a chat keeps its session and its streamed answer. */}
       {docked ? (
-        open ? (
-          <aside
-            data-chat-docked=""
-            aria-label={props.label}
-            className="fixed inset-y-0 right-0 z-30 w-100 border-s border-border bg-background"
-            onKeyDown={(event) => {
-              if (event.key === "Escape") close();
-            }}
-          >
-            {props.children(close)}
-          </aside>
-        ) : null
+        <aside
+          data-chat-docked={open ? "" : undefined}
+          aria-label={props.label}
+          hidden={!open}
+          className="fixed inset-y-0 right-0 z-30 w-100 border-s border-border bg-background"
+          onKeyDown={(event) => {
+            if (event.key === "Escape") close();
+          }}
+        >
+          {props.children(close)}
+        </aside>
       ) : (
         <Sheet open={open} onOpenChange={setOpen}>
           <SheetContent
             side="right"
             showCloseButton={false}
+            keepMounted
             aria-label={props.label}
             // oxlint-disable-next-line shadcn/no-restyle -- the panel brings its own header and padding
             className="gap-0 overflow-hidden p-0"

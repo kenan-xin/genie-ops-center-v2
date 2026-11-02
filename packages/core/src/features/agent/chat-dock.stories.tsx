@@ -62,6 +62,54 @@ export const PhoneFullScreen: Story = {
   },
 };
 
+const withDraft = (close: () => void) => (
+  <ChatPanel title="Chat" onClose={close}>
+    <label className="grid gap-1 p-4">
+      Draft
+      <input className="rounded-md border border-input p-2" />
+    </label>
+  </ChatPanel>
+);
+
+/** Closing and reopening keeps the chat, so a conversation is never lost to the Close button. */
+async function draftSurvivesReopen(
+  canvas: { getByRole: typeof screen.getByRole },
+  docked: boolean
+) {
+  // A docked chat opens by itself, and its button is hidden while it is open.
+  if (!docked) {
+    await userEvent.click(canvas.getByRole("button", { name: "Open Chat" }));
+  }
+
+  await userEvent.type(
+    await screen.findByRole("textbox", { name: "Draft" }),
+    "Half a question"
+  );
+  await userEvent.click(screen.getByRole("button", { name: "Close the chat" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("textbox", { name: "Draft" })).toBeNull()
+  );
+  await userEvent.click(canvas.getByRole("button", { name: "Open Chat" }));
+
+  await expect(
+    await screen.findByRole("textbox", { name: "Draft" })
+  ).toHaveValue("Half a question");
+}
+
+export const ReopenKeepsTheChatOnPhone: Story = {
+  name: "Reopen keeps the chat on a phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  args: { children: withDraft },
+  play: ({ canvas }) => draftSurvivesReopen(canvas, false),
+};
+
+export const ReopenKeepsTheChatDocked: Story = {
+  name: "Reopen keeps the chat when docked",
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: { children: withDraft, dockedByDefault: true },
+  play: ({ canvas }) => draftSurvivesReopen(canvas, true),
+};
+
 /** On a wide screen the chat opens docked, and Close hands focus back to the chat button. */
 export const DockedCloseReturnsFocus: Story = {
   globals: { viewport: { value: "desktop1440", isRotated: false } },
