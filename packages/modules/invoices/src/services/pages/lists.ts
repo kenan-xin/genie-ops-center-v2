@@ -12,6 +12,9 @@ import type {
   InvoiceListRow,
   InvoiceListSummary,
   InvoiceListView,
+  ListCustomer,
+  PaymentListFilters,
+  PaymentListPageView,
   PaymentListRow,
   PaymentListView,
 } from "../../presentation/views.ts";
@@ -58,9 +61,12 @@ const STATUS_FILTERS: Readonly<
   ],
 };
 
-function invoiceFiltersOf(filters: InvoiceListFilters): DatasetFilter[] {
+/** The customer and the date range of a list's filters, on the dataset's date field. */
+function customerAndDatesOf(
+  filters: Pick<InvoiceListFilters, "customerId" | "from" | "to">,
+  dateField: string
+): DatasetFilter[] {
   return [
-    ...(filters.status === undefined ? [] : STATUS_FILTERS[filters.status]),
     ...(filters.customerId === undefined
       ? []
       : [
@@ -68,10 +74,17 @@ function invoiceFiltersOf(filters: InvoiceListFilters): DatasetFilter[] {
         ]),
     ...(filters.from === undefined
       ? []
-      : [{ field: "invoiceDate", op: "gte", value: filters.from } as const]),
+      : [{ field: dateField, op: "gte", value: filters.from } as const]),
     ...(filters.to === undefined
       ? []
-      : [{ field: "invoiceDate", op: "lte", value: filters.to } as const]),
+      : [{ field: dateField, op: "lte", value: filters.to } as const]),
+  ];
+}
+
+function invoiceFiltersOf(filters: InvoiceListFilters): DatasetFilter[] {
+  return [
+    ...(filters.status === undefined ? [] : STATUS_FILTERS[filters.status]),
+    ...customerAndDatesOf(filters, "invoiceDate"),
   ];
 }
 
@@ -166,28 +179,33 @@ export async function loadInvoiceList(
 const listCustomer = z.object({ id: z.string(), name: z.string() });
 
 /**
- * The Invoices page: its unfiltered first page and the customers of its picker, both under the
- * person's read scope. shortcut: the picker offers the first 1,000 customers by name; a deployment
- * with more needs a searched picker.
+ * The customers of a list's picker, under the person's read scope. shortcut: the picker offers the
+ * first 1,000 customers by name; a deployment with more needs a searched picker.
  */
+async function loadListCustomers(
+  ctx: ModuleRequestContext
+): Promise<ListCustomer[]> {
+  const customers = await queryDataset(ctx, {
+    dataset: "invoices.customers",
+    query: {
+      select: ["id", "name"],
+      orderBy: [{ column: "name", direction: "asc" }],
+    },
+  });
+
+  return customers.rows.map((row) => listCustomer.parse(row));
+}
+
+/** The Invoices page: its unfiltered first page and the customers of its picker. */
 export async function loadInvoiceListPage(
   ctx: ModuleRequestContext
 ): Promise<InvoiceListPageView> {
   const [list, customers] = await Promise.all([
     loadInvoiceList(ctx),
-    queryDataset(ctx, {
-      dataset: "invoices.customers",
-      query: {
-        select: ["id", "name"],
-        orderBy: [{ column: "name", direction: "asc" }],
-      },
-    }),
+    loadListCustomers(ctx),
   ]);
 
-  return {
-    ...list,
-    customers: customers.rows.map((row) => listCustomer.parse(row)),
-  };
+  return { ...list, customers };
 }
 
 /** The fields a list row reads from one `invoices.payments` row, as the dataset answers them. */
@@ -204,6 +222,14 @@ export const paymentRow = z.object({
 
 export const PAYMENT_ROW_FIELDS = Object.keys(paymentRow.shape);
 
+/** Each link chip as a dataset filter: Linked is Allocated, Not linked is Part allocated or Unallocated. */
+const LINK_FILTERS: Readonly<
+  Record<NonNullable<PaymentListFilters["link"]>, DatasetFilter>
+> = {
+  "linked": { field: "unallocatedCents", op: "lte", value: 0 },
+  "not-linked": { field: "unallocatedCents", op: "gt", value: 0 },
+};
+
 /** One payment list row, its unallocated money read into its status. */
 export function paymentListRowOf(
   row: z.infer<typeof paymentRow>
@@ -214,17 +240,24 @@ export function paymentListRowOf(
 /**
  * The Payments list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
  * scoped person sees only the payments they may read (DEC-39, R-9). A page holds at most 1,000
- * rows; `after` reads the page after a cut one (czjw.28).
+ * rows; `after` reads the page after a cut one (czjw.28). The filters run in the dataset query, so
+ * they hold across pages (design review 1.4).
  */
 export async function loadPaymentList(
   ctx: ModuleRequestContext,
-  after: DatasetCursor | null = null
+  after: DatasetCursor | null = null,
+  filters: PaymentListFilters = {}
 ): Promise<PaymentListView> {
   const result = await queryDataset(ctx, {
     dataset: "invoices.payments",
     after: after ?? undefined,
+    search: filters.search,
     query: {
       select: PAYMENT_ROW_FIELDS,
+      filters: [
+        ...(filters.link === undefined ? [] : [LINK_FILTERS[filters.link]]),
+        ...customerAndDatesOf(filters, "paymentDate"),
+      ],
       orderBy: [
         { column: "paymentDate", direction: "desc" },
         { column: "reference", direction: "desc" },
@@ -238,4 +271,16 @@ export async function loadPaymentList(
     truncated: result.truncated,
     next: result.next ?? null,
   };
+}
+
+/** The Payments page: its unfiltered first page and the customers of its picker. */
+export async function loadPaymentListPage(
+  ctx: ModuleRequestContext
+): Promise<PaymentListPageView> {
+  const [list, customers] = await Promise.all([
+    loadPaymentList(ctx),
+    loadListCustomers(ctx),
+  ]);
+
+  return { ...list, customers };
 }

@@ -6,6 +6,7 @@
  */
 import type { OpenInvoiceRow } from "../../contract.ts";
 import type {
+  PaymentListPageView,
   PaymentListRow,
   PaymentListView,
   PaymentRecordView,
@@ -47,9 +48,29 @@ const UNALLOCATED: PaymentListRow = {
   status: "unallocated",
 };
 
-export const defaultPaymentList: PaymentListView = {
+export const defaultPaymentList: PaymentListPageView = {
   asOf: "2026-10-27",
   rows: [ALLOCATED, PART_ALLOCATED, UNALLOCATED],
+  truncated: false,
+  next: null,
+  customers: [ALLOCATED, PART_ALLOCATED, UNALLOCATED].map((row, index) => ({
+    id: `9${index}999999-9999-4999-8999-999999999999`,
+    name: row.customerName,
+  })),
+};
+
+/** Page one under the Not linked chip, as `listPayments` answers it. */
+export const notLinkedPaymentPage: PaymentListView = {
+  asOf: "2026-10-27",
+  rows: [PART_ALLOCATED, UNALLOCATED],
+  truncated: false,
+  next: null,
+};
+
+/** Page one under the Linked chip and a search, as `listPayments` answers it. */
+export const linkedPaymentPage: PaymentListView = {
+  asOf: "2026-10-27",
+  rows: [ALLOCATED],
   truncated: false,
   next: null,
 };

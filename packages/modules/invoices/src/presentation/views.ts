@@ -25,6 +25,7 @@ export type {
   InvoiceListSummary,
   InvoiceRecordView,
   InvoiceStatus,
+  PaymentListFilters,
   PaymentListRow,
   PaymentRecordView,
   PaymentStatus,
@@ -59,4 +60,9 @@ export type PaymentListView = {
   readonly truncated: boolean;
   /** Where the next page starts, when the list was cut (czjw.28). */
   readonly next: DatasetCursor | null;
+};
+
+/** The unfiltered first page the server renders, and the customers of the picker. */
+export type PaymentListPageView = PaymentListView & {
+  readonly customers: readonly ListCustomer[];
 };

@@ -99,7 +99,7 @@ export const invoicesRouter = os.router({
     return { ...view, rows: [...view.rows], summary: [...view.summary] };
   }),
   listPayments: os.listPayments.handler(async ({ context, input }) => {
-    const view = await loadPaymentList(context, input.after);
+    const view = await loadPaymentList(context, input.after, input.filters);
 
     return { ...view, rows: [...view.rows] };
   }),

@@ -504,6 +504,20 @@ export const paymentListRow = z.object({
 
 export type PaymentListRow = z.infer<typeof paymentListRow>;
 
+/** The link chips of the Payments list; no link means All. Not linked keeps any unlinked money. */
+export const PAYMENT_LIST_LINKS = ["linked", "not-linked"] as const;
+
+/** The filters of the Payments list, as its address and its procedure carry them (design review 1.4). */
+export const paymentListFilters = z.object({
+  search: invoiceListFilters.shape.search,
+  link: z.enum(PAYMENT_LIST_LINKS).optional(),
+  customerId: recordId.optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+});
+
+export type PaymentListFilters = z.infer<typeof paymentListFilters>;
+
 /** One link of a payment to an invoice, as `invoices.allocations` answers it. */
 export const allocationRow = z.object({
   id: z.string(),
@@ -626,7 +640,12 @@ export const invoicesContract = {
   /** The Payments list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28). */
   listPayments: oc
     .route({ method: "GET", path: "/invoices/payment-list" })
-    .input(z.object({ after: datasetCursorSchema.nullable() }))
+    .input(
+      z.object({
+        after: datasetCursorSchema.nullable(),
+        filters: paymentListFilters.optional(),
+      })
+    )
     .output(
       z.object({
         asOf: z.string(),

@@ -185,8 +185,14 @@ export const paymentsDataset: DatasetDeclaration = {
   fields: {
     id: text("The payment id."),
     customerId: text("The id of the paying customer."),
-    customerName: text("The name of the paying customer."),
-    reference: text("The payment reference, null when none."),
+    customerName: {
+      ...text("The name of the paying customer."),
+      searchable: true,
+    },
+    reference: {
+      ...text("The payment reference, null when none."),
+      searchable: true,
+    },
     method: text("The payment method, null when none."),
     paymentDate: date("The payment date, by which collections are counted."),
     currency: CURRENCY,

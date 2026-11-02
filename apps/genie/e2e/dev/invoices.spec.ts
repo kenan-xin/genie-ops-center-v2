@@ -371,3 +371,40 @@ test("the Payments list shows every seeded payment and the payment linked to INV
     LOCK_WAIT
   );
 });
+
+test("a reference search keeps only the matching payments, in the address and on the server", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signIn(page);
+      await openList(page, "/m/invoices/payments", "Payments");
+
+      const term = "txn-pay-2026-02";
+
+      const matching = readDemoCsv("01_History_Datasets/payments.csv")
+        .map((payment) => payment.payment_reference ?? "")
+        .filter((reference) => reference.toLowerCase().includes(term));
+
+      expect(matching.length).toBeGreaterThan(1);
+
+      // The search stays above the cards on a phone, so both viewports type in the same box.
+      await page
+        .getByRole("searchbox", { name: "Search reference or customer" })
+        .fill(term);
+      await expect(page).toHaveURL(new RegExp(`[?&]q=${term}(&|$)`));
+
+      await expect
+        .poll(async () =>
+          (await shownRows(page, "Payments")).map((row) => row.label).toSorted()
+        )
+        .toEqual(matching.toSorted());
+
+      await expectNoAxeViolations(page, "payments list searched");
+    },
+    LOCK_WAIT
+  );
+});

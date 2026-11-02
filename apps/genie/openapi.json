@@ -5313,6 +5313,44 @@
             "explode": true,
             "allowEmptyValue": true,
             "allowReserved": true
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "search": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "link": {
+                  "enum": [
+                    "linked",
+                    "not-linked"
+                  ],
+                  "type": "string"
+                },
+                "customerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "from": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "to": {
+                  "type": "string",
+                  "format": "date"
+                }
+              }
+            },
+            "style": "deepObject",
+            "explode": true,
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {

@@ -324,6 +324,81 @@ describe("invoice pages", () => {
     expect(second.rows.map((row) => row.status.kind)).toEqual(["overdue"]);
   });
 
+  it("the payment list filters by link, customer, payment date and text on the server", async () => {
+    const customer = await insertCustomer(t(), { name: "Paylane Supplies" });
+    const invoice = await insertInvoice(t(), {
+      customerId: customer.id,
+      totalCents: 1_000_000,
+    });
+
+    const [linked, part, none] = await Promise.all([
+      insertPayment(t(), {
+        customerId: customer.id,
+        reference: "PFL-LINKED",
+        paymentDate: "2026-08-01",
+        amountCents: 100_000,
+      }),
+      insertPayment(t(), {
+        customerId: customer.id,
+        reference: "PFL-PART",
+        paymentDate: "2026-09-01",
+        amountCents: 100_000,
+      }),
+      insertPayment(t(), {
+        customerId: customer.id,
+        reference: "PFL-NONE",
+        paymentDate: "2026-10-01",
+        amountCents: 100_000,
+      }),
+    ]);
+
+    await insertAllocation(t(), {
+      invoiceId: invoice.id,
+      paymentId: linked.id,
+      amountCents: 100_000,
+    });
+    await insertAllocation(t(), {
+      invoiceId: invoice.id,
+      paymentId: part.id,
+      amountCents: 40_000,
+    });
+
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    const references = async (filters: Record<string, string>) =>
+      (
+        await reader.listPayments({
+          after: null,
+          filters: { customerId: customer.id, ...filters },
+        })
+      ).rows
+        .map((row) => row.reference)
+        .toSorted();
+
+    expect(await references({ link: "linked" })).toEqual([linked.reference]);
+    expect(await references({ link: "not-linked" })).toEqual([
+      none.reference,
+      part.reference,
+    ]);
+    expect(await references({ search: "pfl-part" })).toEqual([part.reference]);
+    expect(await references({ from: "2026-08-15", to: "2026-09-30" })).toEqual([
+      part.reference,
+    ]);
+
+    // The customer name is searchable too, so a search alone finds this customer's three.
+    const byName = await reader.listPayments({
+      after: null,
+      filters: { search: "payLANE" },
+    });
+
+    expect(byName.rows.map((row) => row.reference).toSorted()).toEqual([
+      "PFL-LINKED",
+      "PFL-NONE",
+      "PFL-PART",
+    ]);
+  });
+
   it("the lists answer only the customer a scoped reader may read", async () => {
     const [a, b] = await Promise.all([
       insertCustomer(t()),

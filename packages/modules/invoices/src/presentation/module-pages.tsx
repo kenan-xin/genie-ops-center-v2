@@ -11,7 +11,7 @@ import type {
   DocumentReviewView,
   InvoiceListPageView,
   InvoiceRecordView,
-  PaymentListView,
+  PaymentListPageView,
   PaymentRecordView,
 } from "./views.ts";
 
@@ -35,8 +35,8 @@ export function InvoiceRecordPage(props: ModulePageProps<InvoiceRecordView>) {
   return <InvoiceRecord view={props.data} />;
 }
 
-/** The Payments list, fed by `loadPaymentList`. */
-export function PaymentListPage(props: ModulePageProps<PaymentListView>) {
+/** The Payments list, fed by `loadPaymentListPage`. */
+export function PaymentListPage(props: ModulePageProps<PaymentListPageView>) {
   return <PaymentList view={props.data} />;
 }
 
