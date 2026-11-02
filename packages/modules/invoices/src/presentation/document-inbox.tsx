@@ -8,6 +8,7 @@ import {
   type DataTableColumn,
   EmptyState,
   InfoNote,
+  infoTint,
 } from "@genie/ui";
 import { useAsyncQueuer } from "@tanstack/react-pacer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -34,11 +35,15 @@ type DuplicateRow = Omit<DocumentInboxRow, "status"> & {
 type InboxRow = DocumentInboxRow | DuplicateRow;
 
 type Refusal = {
+  readonly key: string;
   readonly name: string;
   readonly message: string;
 };
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
+
+const LEAVE_WARNING =
+  "Files are still uploading. If you leave this page, the files that did not upload yet are dropped. Leave the page?";
 
 /** The most ids one status poll asks for, as the procedure accepts (czjw.49). */
 const STATUS_POLL_CHUNK = 100;
@@ -126,6 +131,10 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const input = useRef<HTMLInputElement>(null);
   const [refusals, setRefusals] = useState<readonly Refusal[]>([]);
   const [duplicates, setDuplicates] = useState<readonly DuplicateRow[]>([]);
+  const [dragging, setDragging] = useState(false);
+  // Keys for refusals and Duplicate rows; `crypto.randomUUID` exists only in a secure context.
+  const serial = useRef(0);
+  const nextKey = () => `upload-${(serial.current += 1)}`;
 
   // The list reads one page at a time from the cursor, and Show more reads the next (czjw.49).
   const list = useListPages({
@@ -171,14 +180,14 @@ export function DocumentInbox(props: DocumentInboxProps) {
   }, [reading, statuses.data === undefined]);
 
   // One file at a time, in the chosen order (decision 9). A refusal is kept beside its name.
-  const uploads = useAsyncQueuer<File>(
+  const uploads = useAsyncQueuer<File, { readonly busy: boolean }>(
     async (file) => {
       const answer = await invoices.uploadDocument({ file });
 
       if (answer.outcome === "duplicate") {
         setDuplicates((previous) => [
           {
-            id: crypto.randomUUID(),
+            id: nextKey(),
             label: file.name,
             kind: null,
             status: "duplicate",
@@ -197,15 +206,51 @@ export function DocumentInbox(props: DocumentInboxProps) {
       onError: (error, file) => {
         setRefusals((previous) => [
           ...previous,
-          { name: file.name, message: refusalMessage(error) },
+          { key: nextKey(), name: file.name, message: refusalMessage(error) },
         ]);
       },
-    }
+    },
+    (state) => ({ busy: !state.isEmpty || state.activeItems.length > 0 })
   );
+
+  const { busy } = uploads.state;
+
+  // While files wait or upload, leaving drops them, so a reload, a close or an app link asks first.
+  useEffect(() => {
+    if (!busy) return undefined;
+
+    const unload = (event: BeforeUnloadEvent) => event.preventDefault();
+
+    // An app link is a client navigation that `beforeunload` never sees. Only `preventDefault`:
+    // the host's router link skips a prevented click (czjw.39).
+    const click = (event: MouseEvent) => {
+      const link =
+        event.target instanceof Element ? event.target.closest("a") : null;
+
+      if (
+        !(link instanceof HTMLAnchorElement) ||
+        link.target === "_blank" ||
+        link.origin !== window.location.origin ||
+        event.defaultPrevented
+      )
+        return;
+
+      if (!window.confirm(LEAVE_WARNING)) event.preventDefault();
+    };
+
+    window.addEventListener("beforeunload", unload);
+    document.addEventListener("click", click, true);
+
+    return () => {
+      window.removeEventListener("beforeunload", unload);
+      document.removeEventListener("click", click, true);
+    };
+  }, [busy]);
 
   const retry = useMutation({
     mutationFn: (id: string) => invoices.retryReading({ id }),
-    onSuccess: () =>
+    // A refused Retry reads the list too: the row may have changed on the server (czjw.39).
+    onSettled: () =>
       queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY }),
   });
 
@@ -267,10 +312,31 @@ export function DocumentInbox(props: DocumentInboxProps) {
       )}
       {data.canUpload ? (
         <div
-          className="mt-4 rounded-xl border border-dashed border-input bg-muted p-4"
-          onDragOver={(event) => event.preventDefault()}
+          data-drop-zone=""
+          // tokens.md, Drop zone: the tint while dragging carries state, so it stays blue.
+          className={`mt-4 rounded-xl border p-4 ${
+            dragging
+              ? `border-solid border-primary dark:border-brand-on-dark ${infoTint}`
+              : "border-dashed border-input bg-muted"
+          }`}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={(event) => {
+            // Crossing the button or the text fires dragleave; only leaving the zone ends the drag.
+            const into = event.relatedTarget;
+
+            if (!(into instanceof Node && event.currentTarget.contains(into)))
+              setDragging(false);
+          }}
           onDrop={(event) => {
             event.preventDefault();
+            setDragging(false);
             choose(event.dataTransfer.files);
           }}
         >
@@ -289,7 +355,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
           />
           <div className="flex flex-wrap items-center gap-3">
             <span className="text-sm text-muted-foreground">
-              Drop PDF files here, or
+              {dragging ? "Drop to upload" : "Drop PDF files here, or"}
             </span>
             <Button variant="secondary" onClick={() => input.current?.click()}>
               Choose PDF files
@@ -298,9 +364,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
           {refusals.length === 0 ? null : (
             <div role="alert" className="mt-2 text-sm text-destructive">
               {refusals.map((refusal) => (
-                <p key={`${refusal.name} ${refusal.message}`}>
-                  {`${refusal.name}: ${refusal.message}`}
-                </p>
+                <p key={refusal.key}>{`${refusal.name}: ${refusal.message}`}</p>
               ))}
             </div>
           )}

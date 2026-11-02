@@ -2,7 +2,15 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import {
+  expect,
+  fireEvent,
+  fn,
+  spyOn,
+  userEvent,
+  waitFor,
+  within,
+} from "storybook/test";
 
 import {
   aiOffDocumentInbox,
@@ -293,6 +301,137 @@ export const UploadRefused: Story = {
   },
 };
 
+// czjw.39: one file refused twice shows two lines, each with its own key.
+export const UploadRefusedTwice: Story = {
+  name: "Upload refused twice",
+  args: { view: emptyDocumentInbox },
+  globals: desktop,
+  beforeEach: () => {
+    serve(emptyDocumentInbox);
+    uploadDocument.mockRejectedValue(
+      new Error("That file is not a PDF. Upload a PDF document.")
+    );
+  },
+  play: async ({ canvas }) => {
+    const error = spyOn(console, "error");
+
+    try {
+      await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+        pdf("b.pdf"),
+        pdf("b.pdf"),
+      ]);
+
+      await waitFor(() =>
+        expect(
+          canvas.getAllByText(/^b\.pdf: That file is not a PDF/)
+        ).toHaveLength(2)
+      );
+      await expect(
+        error.mock.calls.filter(([message]) =>
+          String(message).includes("same key")
+        )
+      ).toEqual([]);
+    } finally {
+      error.mockRestore();
+    }
+  },
+};
+
+// czjw.39: a drag over the drop zone shows that a drop uploads.
+export const DragOver: Story = {
+  name: "Drag over",
+  args: { view: emptyDocumentInbox },
+  globals: desktop,
+  beforeEach: () => serve(emptyDocumentInbox),
+  play: async ({ canvas, canvasElement }) => {
+    const zone = canvasElement.querySelector<HTMLElement>("[data-drop-zone]");
+
+    if (zone === null) throw new Error("The inbox has no drop zone.");
+
+    fireEvent.dragEnter(zone);
+    fireEvent.dragOver(zone);
+    await expect(canvas.getByText("Drop to upload")).toBeVisible();
+    await expect(getComputedStyle(zone).borderTopStyle).toBe("solid");
+
+    // Crossing the button fires dragleave on the zone; the state stays.
+    fireEvent.dragLeave(zone, {
+      relatedTarget: canvas.getByRole("button", { name: "Choose PDF files" }),
+    });
+    await expect(canvas.getByText("Drop to upload")).toBeVisible();
+
+    fireEvent.dragLeave(zone, { relatedTarget: null });
+    await expect(canvas.getByText("Drop PDF files here, or")).toBeVisible();
+
+    // End in the drag-over state, so the capture shows it.
+    fireEvent.dragEnter(zone);
+  },
+};
+
+/** Fires the browser's unload event and answers whether a listener asked to stay. */
+function unload(): boolean {
+  const event = new Event("beforeunload", { cancelable: true });
+
+  window.dispatchEvent(event);
+
+  return event.defaultPrevented;
+}
+
+/** Clicks a link and answers whether a listener kept the page; the story never navigates. */
+function clickKeepsPage(link: HTMLElement): boolean {
+  let kept = false;
+
+  const record = (event: MouseEvent) => {
+    kept = event.defaultPrevented;
+    event.preventDefault();
+  };
+
+  window.addEventListener("click", record);
+  link.click();
+  window.removeEventListener("click", record);
+
+  return kept;
+}
+
+/** Ends the upload that `LeaveDuringUpload` holds open. */
+let finishUpload = () => {};
+
+// czjw.39: while a file uploads, leaving asks first; once the queue is empty, nothing asks.
+export const LeaveDuringUpload: Story = {
+  name: "Leave during upload",
+  globals: desktop,
+  beforeEach: () => {
+    serve(defaultDocumentInbox);
+    uploadDocument.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishUpload = () => resolve(uploaded("slow.pdf"));
+        })
+    );
+
+    const confirm = spyOn(window, "confirm").mockReturnValue(false);
+
+    return () => confirm.mockRestore();
+  },
+  play: async ({ canvas }) => {
+    const link = () => canvas.getByRole("link", { name: COULD_NOT_READ.label });
+
+    await expect(unload()).toBe(false);
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("slow.pdf"),
+    ]);
+    await waitFor(() => expect(uploadDocument).toHaveBeenCalledTimes(1));
+
+    await expect(unload()).toBe(true);
+    await expect(clickKeepsPage(link())).toBe(true);
+    await expect(window.confirm).toHaveBeenCalledTimes(1);
+
+    finishUpload();
+    await waitFor(() => expect(unload()).toBe(false));
+    await expect(clickKeepsPage(link())).toBe(false);
+    await expect(window.confirm).toHaveBeenCalledTimes(1);
+  },
+};
+
 // B8.4: Retry calls the row's id and the row then shows Reading.
 export const Retry: Story = {
   args: { view: retryView },
@@ -338,6 +477,9 @@ export const RetryRefused: Story = {
       `${COULD_NOT_READ.label} was not read again. That document is not waiting for a retry.`
     );
     await expect(canvas.getByRole("button", { name: "Retry" })).toBeEnabled();
+    // A refused Retry still reads the list again: the row can change on the server (czjw.39).
+    // The first page came with the view, so this is the only read.
+    await waitFor(() => expect(listDocuments).toHaveBeenCalledTimes(1));
   },
 };
 
@@ -519,6 +661,32 @@ export const Links: Story = {
   globals: desktop,
   beforeEach: serveDuplicate,
   play: checkRowLinks,
+};
+
+// czjw.39: a plain http host has no `crypto.randomUUID`, and a duplicate still adds its row.
+export const UploadsWithoutSecureContext: Story = {
+  name: "Uploads without a secure context",
+  globals: desktop,
+  beforeEach: () => {
+    serveDuplicate();
+    Object.defineProperty(crypto, "randomUUID", {
+      value: undefined,
+      configurable: true,
+    });
+
+    return () => {
+      Reflect.deleteProperty(crypto, "randomUUID");
+    };
+  },
+  play: async ({ canvas }) => {
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("extra.pdf"),
+    ]);
+
+    const table = within(canvas.getByRole("table"));
+
+    await expect(await table.findByText("Same file as a.pdf")).toBeVisible();
+  },
 };
 
 // B4.8 on a phone: the card title carries the same link.
