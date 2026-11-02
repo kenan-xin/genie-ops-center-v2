@@ -166,6 +166,9 @@
     "description": "Ask your administrator for access.",
     "contact": "Contact {companyName} support"
   },
+  "chatBubble": {
+    "loadFailed": "This chat could not load. Start a new chat."
+  },
   "viewer": {
     "heading": "Placeholder viewer",
     "frameTitle": "Embedded placeholder content"

@@ -4,6 +4,7 @@ import type { AgentMessage, InboxLink } from "@genie/core";
 import type { CheckChart } from "@genie/core/features/agent";
 import { ChatBubble } from "@genie/core/features/agent/bubble";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useTranslations } from "next-intl";
 import { lazy, Suspense, useState, type ReactNode } from "react";
 
 import { rpc } from "./rpc/client.ts";
@@ -60,6 +61,8 @@ const LazyConversation = lazy(async () => {
 function SavedConversation(
   props: Omit<ConversationProps, "initialMessages">
 ): ReactNode {
+  const t = useTranslations("chatBubble");
+
   const saved = useQuery({
     queryKey: ["agent", "messages", props.sessionId],
     queryFn: () => rpc.agent.messages({ id: props.sessionId }),
@@ -71,7 +74,7 @@ function SavedConversation(
   if (saved.isError) {
     return (
       <p role="alert" className="text-sm text-muted-foreground">
-        This chat could not load. Start a new chat.
+        {t("loadFailed")}
       </p>
     );
   }
