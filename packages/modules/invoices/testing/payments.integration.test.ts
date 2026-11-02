@@ -187,6 +187,34 @@ const READINGS: readonly {
 ];
 
 describe("payment saves", () => {
+  it("reads every open invoice before an automatic link, past row 1,000", async () => {
+    const { id: customerId, name: customerName } = await insertCustomer(t());
+
+    // 1,000 earlier invoices of another amount, so they fill every page before the match.
+    await t().db.$client.query(
+      "insert into invoice (customer_id, number, invoice_date, due_date, due_date_source, currency, total_cents) select $1, 'INV-EARLY-' || g, date '2026-01-01' + (g % 200), date '2026-12-31', 'document', 'SGD', 500 from generate_series(1, 1000) as g",
+      [customerId]
+    );
+
+    const edge = await insertInvoice(t(), {
+      customerId,
+      number: "INV-EDGE",
+      invoiceDate: "2026-10-05",
+      totalCents: 123_400,
+    });
+
+    const result = await read({
+      customerName,
+      amountCents: 123_400,
+      namedInvoiceNumbers: [],
+    });
+
+    expect(result).toMatchObject({
+      outcome: "needs-review",
+      match: { kind: "suggestions", invoiceIds: [edge.id] },
+    });
+  });
+
   it("a payment saved with two chosen links saves both, and a link above an open balance saves nothing", async () => {
     const { id: customerId } = await insertCustomer(t());
     const a = await insertInvoice(t(), { customerId, totalCents: 405_000 });
