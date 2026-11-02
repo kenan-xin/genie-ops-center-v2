@@ -1,5 +1,5 @@
 import { FileLinkRefusedError } from "@genie/core";
-import { DOWNLOAD_POLICY } from "@genie/core/security";
+import { DOWNLOAD_POLICY, PDF_POLICY } from "@genie/core/security";
 
 import { requireContext } from "../../../../context.ts";
 import { newRequestId } from "../../../../request-id.ts";
@@ -55,9 +55,11 @@ export async function GET(request: Request): Promise<Response> {
     return notFound();
   }
 
-  const disposition = served.mimeType.startsWith("image/")
-    ? "inline"
-    : "attachment";
+  // A PDF opens in the browser's viewer instead of a download dialog (owner, 2026-11-02).
+  const pdf = served.mimeType === "application/pdf";
+
+  const disposition =
+    pdf || served.mimeType.startsWith("image/") ? "inline" : "attachment";
 
   return new Response(new Uint8Array(served.bytes), {
     status: 200,
@@ -65,7 +67,7 @@ export async function GET(request: Request): Promise<Response> {
       "content-type": served.mimeType,
       "cache-control": "private, max-age=300",
       "content-disposition": `${disposition}; filename*=UTF-8''${encodeFileName(served.fileName)}`,
-      "content-security-policy": DOWNLOAD_POLICY,
+      "content-security-policy": pdf ? PDF_POLICY : DOWNLOAD_POLICY,
       "x-content-type-options": "nosniff",
     },
   });

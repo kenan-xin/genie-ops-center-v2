@@ -147,22 +147,39 @@ describe("GET /api/files/download (Spec 1 R-38)", () => {
   });
 
   it("encodes the RFC 8187 reserved characters in the file name", async () => {
-    served = () => Promise.resolve(file("application/pdf", "Q1 (Jane's)*.pdf"));
+    served = () => Promise.resolve(file("text/csv", "Q1 (Jane's)*.csv"));
 
     const response = await visit();
 
     expect(response.headers.get("content-disposition")).toBe(
-      "attachment; filename*=UTF-8''Q1%20%28Jane%27s%29%2A.pdf"
+      "attachment; filename*=UTF-8''Q1%20%28Jane%27s%29%2A.csv"
     );
   });
 
-  it("serves a document as an attachment", async () => {
+  it("serves a document that is not a PDF as an attachment", async () => {
+    served = () => Promise.resolve(file("text/csv", "report.csv"));
+
+    const response = await visit();
+
+    expect(response.headers.get("content-disposition")).toBe(
+      "attachment; filename*=UTF-8''report.csv"
+    );
+    expect(response.headers.get("content-security-policy")).toBe(
+      DOWNLOAD_POLICY
+    );
+  });
+
+  it("opens a PDF in the browser without the sandbox that blocks its viewer", async () => {
     served = () => Promise.resolve(file("application/pdf", "report.pdf"));
 
     const response = await visit();
 
     expect(response.headers.get("content-disposition")).toBe(
-      "attachment; filename*=UTF-8''report.pdf"
+      "inline; filename*=UTF-8''report.pdf"
     );
+    expect(response.headers.get("content-security-policy")).not.toContain(
+      "sandbox"
+    );
+    expect(response.headers.get("x-content-type-options")).toBe("nosniff");
   });
 });

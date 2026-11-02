@@ -15,6 +15,14 @@ export const DOWNLOAD_POLICY =
   "default-src 'none'; style-src 'unsafe-inline'; frame-ancestors 'none'; sandbox";
 
 /**
+ * The policy of a PDF opened in the browser (owner, 2026-11-02). Chrome refuses to show a PDF in a
+ * `sandbox` document, and its viewer runs a PDF's own script in the viewer's sandbox, not on the
+ * app origin, so this keeps everything else of the download policy but the sandbox.
+ */
+export const PDF_POLICY =
+  "default-src 'none'; style-src 'unsafe-inline'; object-src 'self'; frame-ancestors 'none'";
+
+/**
  * The standard security headers (R-47) in one place, so the configuration that puts them on every
  * response and the proxy that creates its own responses (a redirect, a refusal, the setup gate)
  * cannot drift apart. The CSP starts as the baseline; the viewer override replaces `frame-src`
