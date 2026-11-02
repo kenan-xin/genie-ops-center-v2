@@ -12,6 +12,7 @@ import {
 } from "@genie/ui";
 
 import { invoicesContract } from "../contract.ts";
+import { formatDay } from "./format.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
 import { useListPages } from "./use-list-pages.ts";
 import type { InvoiceListRow, InvoiceListView } from "./views.ts";
@@ -92,7 +93,7 @@ export function InvoiceList(props: InvoiceListProps) {
   return (
     <main>
       <PageHeader title="Invoices" />
-      <p>Balances as of {view.asOf}, the reporting date.</p>
+      <p>Balances as of {formatDay(view.asOf)}, the reporting date.</p>
       {view.rows.length === 0 ? (
         <EmptyState
           variant="framed"

@@ -118,7 +118,7 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
       await signIn(page);
       await openList(page, "/m/invoices/invoices", "Invoices");
       await expect(
-        page.getByText("Balances as of 2026-10-27, the reporting date.")
+        page.getByText("Balances as of 27 Oct 2026, the reporting date.")
       ).toBeVisible();
 
       const expected = readDemoCsv("04_Demo_Guide/expected_invoice_status.csv");
@@ -250,7 +250,7 @@ test("the Payments list shows every seeded payment and the payment linked to INV
       await signIn(page);
       await openList(page, "/m/invoices/payments", "Payments");
       await expect(
-        page.getByText("Amounts as of 2026-10-27, the reporting date.")
+        page.getByText("Amounts as of 27 Oct 2026, the reporting date.")
       ).toBeVisible();
 
       const payments = readDemoCsv("01_History_Datasets/payments.csv");

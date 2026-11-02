@@ -8,11 +8,16 @@ import {
   TooltipTrigger,
 } from "@genie/ui";
 import {
+  Banknote,
   Blocks,
   Box,
   ChevronDown,
   GripVertical,
+  Inbox,
+  LayoutDashboard,
   Palette,
+  Presentation,
+  Receipt,
   ScrollText,
   Settings,
   ShieldCheck,
@@ -23,6 +28,7 @@ import {
 } from "lucide-react";
 import { useEffect, useId, useState, type ReactNode } from "react";
 
+import type { NavigationIcon } from "../../lib/module-contract/module.ts";
 import { activeHref } from "./active-link.ts";
 import { readCollapsed, writeCollapsed } from "./collapsed-categories.ts";
 import { linkFor } from "./shell-link.ts";
@@ -54,6 +60,15 @@ const CORE_ICONS = new Map<string, LucideIcon>([
   ["core-modules", Blocks],
   ["core-categories", Tags],
 ]);
+
+// The icons a module entry may name (module contract, Navigation row).
+const MODULE_ICONS: Readonly<Record<NavigationIcon, LucideIcon>> = {
+  "banknote": Banknote,
+  "inbox": Inbox,
+  "layout-dashboard": LayoutDashboard,
+  "presentation": Presentation,
+  "receipt": Receipt,
+};
 
 // Rows are 44px under lg (touch targets), then 40px nav rows and 32px tree rows.
 const rowBase = `flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm motion-safe:transition-colors lg:min-h-0 ${focusRing}`;
@@ -96,14 +111,21 @@ function Row(props: {
   readonly active: string | undefined;
   readonly height: string;
   readonly idle?: string;
-  /** A module's entry brings no icon; nav rows give it this one, so labels start in one column. */
+  /** Nav rows draw an icon: the entry's own, else this one, so labels start in one column. */
   readonly defaultIcon?: LucideIcon;
   /** A pinned row leads with the grip of the reference design instead of an icon. */
   readonly grip?: boolean;
   readonly linkComponent: ShellLinkComponent | undefined;
 }) {
   const isActive = props.link.href === props.active;
-  const Icon = CORE_ICONS.get(props.link.id) ?? props.defaultIcon;
+
+  // Tree rows stay icon-free, as in the reference design; only nav rows draw the entry's icon.
+  const Icon =
+    CORE_ICONS.get(props.link.id) ??
+    (props.defaultIcon === undefined || props.link.icon === undefined
+      ? props.defaultIcon
+      : MODULE_ICONS[props.link.icon]);
+
   const Anchor = linkFor(props.link.href, props.linkComponent);
 
   return (

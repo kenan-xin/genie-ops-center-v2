@@ -59,7 +59,7 @@ export function PaymentList(props: PaymentListProps) {
   return (
     <main>
       <PageHeader title="Payments" />
-      <p>Amounts as of {view.asOf}, the reporting date.</p>
+      <p>Amounts as of {formatDay(view.asOf)}, the reporting date.</p>
       {view.rows.length === 0 ? (
         <EmptyState
           variant="framed"

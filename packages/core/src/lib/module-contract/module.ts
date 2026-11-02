@@ -83,6 +83,17 @@ export type DefaultRole = {
   readonly permissions: readonly PermissionKey[];
 };
 
+/**
+ * The lucide icons a module entry may name. A name, not a component, so it crosses to the browser;
+ * the shell maps it. Add a name here and in the rail's map when a module needs another.
+ */
+export type NavigationIcon =
+  | "banknote"
+  | "inbox"
+  | "layout-dashboard"
+  | "presentation"
+  | "receipt";
+
 /** 7. Navigation. At most one workspace entry carries the landing flag (DEC-49). */
 export type NavigationEntry = {
   readonly id: string;
@@ -91,6 +102,8 @@ export type NavigationEntry = {
   readonly surface: "workspace" | "admin";
   readonly requiredPermission: PermissionKey;
   readonly landing?: boolean;
+  /** Without one, the rail draws its default icon. */
+  readonly icon?: NavigationIcon;
 };
 
 /** The most entries a module may pin. */

@@ -39,8 +39,8 @@ function AfterReportingDate(props: {
     <main>
       <PageHeader title={props.view.label} />
       <p>
-        This payment is dated after the reporting date, {props.view.asOf}, so no
-        balance includes it yet.
+        This payment is dated after the reporting date,{" "}
+        {formatDay(props.view.asOf)}, so no balance includes it yet.
       </p>
     </main>
   );
@@ -82,7 +82,7 @@ function ShownPayment(props: { readonly initial: ShownView }) {
   return (
     <main className="flex flex-col gap-6">
       <PageHeader title={label} />
-      <p>Amounts as of {view.asOf}, the reporting date.</p>
+      <p>Amounts as of {formatDay(view.asOf)}, the reporting date.</p>
       <Card>
         <CardContent>
           <dl className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">

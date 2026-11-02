@@ -51,7 +51,7 @@ const coreGroupIds = new Set<string>(
 const isCoreGroup = (id: string): id is CoreAdminGroupId =>
   coreGroupIds.has(id);
 
-/** The tree as browser links: `{ id, label, href }` only, so no permission key leaves the server. */
+/** The tree as browser links: `{ id, label, href, icon }` only, so no permission key leaves the server. */
 export function shellNavigation(
   tree: NavigationTree,
   modules: readonly Module[],
@@ -64,6 +64,7 @@ export function shellNavigation(
         ? labels.coreEntries[entry.id]
         : undefined) ?? entry.label,
     href: entry.path,
+    icon: entry.icon,
   });
 
   return {

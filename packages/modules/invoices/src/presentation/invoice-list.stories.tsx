@@ -98,6 +98,10 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ canvas }) => {
+    // The caption writes the date as the table does (design review 1.1).
+    await expect(
+      canvas.getByText("Balances as of 27 Oct 2026, the reporting date.")
+    ).toBeVisible();
     await expect(
       canvas.queryByRole("button", { name: "Show more" })
     ).toBeNull();

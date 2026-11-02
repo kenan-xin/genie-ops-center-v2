@@ -1024,7 +1024,8 @@ function sameEntry(left: NavigationEntry, right: NavigationEntry): boolean {
     left.path === right.path &&
     left.surface === right.surface &&
     left.requiredPermission === right.requiredPermission &&
-    left.landing === right.landing
+    left.landing === right.landing &&
+    left.icon === right.icon
   );
 }
 

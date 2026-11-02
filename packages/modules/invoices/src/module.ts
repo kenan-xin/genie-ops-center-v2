@@ -46,6 +46,7 @@ const DOCUMENTS_ENTRY = {
   label: "Documents",
   path: "/m/invoices/documents",
   surface: "workspace",
+  icon: "inbox",
   requiredPermission: "invoices:use",
 } as const;
 
@@ -55,6 +56,7 @@ const INVOICES_ENTRY = {
   label: "Invoices",
   path: "/m/invoices/invoices",
   surface: "workspace",
+  icon: "receipt",
   requiredPermission: "invoices:use",
 } as const;
 
@@ -64,6 +66,7 @@ const PAYMENTS_ENTRY = {
   label: "Payments",
   path: "/m/invoices/payments",
   surface: "workspace",
+  icon: "banknote",
   requiredPermission: "invoices:use",
 } as const;
 

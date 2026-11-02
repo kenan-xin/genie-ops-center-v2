@@ -357,6 +357,7 @@ export type {
   ModuleRequestContext,
   ModuleSchema,
   NavigationEntry,
+  NavigationIcon,
   PageParams,
   PermissionChange,
   PermissionDeclaration,

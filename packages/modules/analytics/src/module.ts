@@ -23,6 +23,7 @@ const DASHBOARDS_ENTRY = {
   id: "analytics-dashboards",
   label: "Dashboards",
   path: "/m/analytics/dashboards",
+  icon: "layout-dashboard",
   surface: "workspace",
   requiredPermission: "analytics:use",
 } as const;

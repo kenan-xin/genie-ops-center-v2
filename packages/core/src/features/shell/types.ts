@@ -1,5 +1,7 @@
 import type { ComponentPropsWithRef, ComponentType } from "react";
 
+import type { NavigationIcon } from "../../lib/module-contract/module.ts";
+
 /**
  * The shell's view model as the browser receives it. Links carry no permission key: the server
  * already filtered them (Spec 3 R-30).
@@ -22,6 +24,7 @@ export type ShellLink = {
   readonly id: string;
   readonly label: string;
   readonly href: string;
+  readonly icon?: NavigationIcon | undefined;
 };
 
 export type ShellCategory = {

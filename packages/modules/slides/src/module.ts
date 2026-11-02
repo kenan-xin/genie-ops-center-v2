@@ -17,6 +17,7 @@ const SLIDES_ENTRY = {
   id: "slides-decks",
   label: "Slides",
   path: "/m/slides/decks",
+  icon: "presentation",
   surface: "workspace",
   requiredPermission: "slides:use",
 } as const;

@@ -240,6 +240,40 @@ export const Admin: Story = {
   },
 };
 
+/** A module entry names its own lucide icon; an entry without one keeps the default (1.2). */
+export const ModuleIcons: Story = {
+  args: {
+    navigation: {
+      ...workspaceNavigation,
+      workspace: [
+        {
+          id: "invoices-invoices",
+          label: "Invoices",
+          href: "/m/invoices/invoices",
+          icon: "receipt",
+        },
+        {
+          id: "invoices-payments",
+          label: "Payments",
+          href: "/m/invoices/payments",
+          icon: "banknote",
+        },
+        { id: "reports-home", label: "Reports", href: "/reports" },
+      ],
+    },
+  },
+  play: async ({ canvas }) => {
+    const workspace = canvas.getByRole("navigation", { name: "Workspace" });
+
+    const iconOf = (name: string) =>
+      within(workspace).getByRole("link", { name }).querySelector("svg");
+
+    await expect(iconOf("Invoices")).toHaveClass("lucide-receipt");
+    await expect(iconOf("Payments")).toHaveClass("lucide-banknote");
+    await expect(iconOf("Reports")).toHaveClass("lucide-box");
+  },
+};
+
 /** Modules pin nothing by default, so the rail drops the Pinned caption instead of an empty group. */
 export const NothingPinned: Story = {
   args: { navigation: { ...workspaceNavigation, pinned: [] } },
