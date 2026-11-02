@@ -99,6 +99,8 @@ export function SlideCanvas(props: SlideCanvasProps) {
   const [scale, setScale] = useState(1);
   const [seenImages, setSeenImages] = useState(images);
   const [keptImages, setKeptImages] = useState(images);
+  // The logo link expires after 5 minutes; a failed one is hidden so the company name shows alone.
+  const [failedLogo, setFailedLogo] = useState<string | null>(null);
 
   // Each read brings new links; a link with time left stays, so a poll loads no image again (I1).
   if (images !== seenImages) {
@@ -233,8 +235,13 @@ export function SlideCanvas(props: SlideCanvasProps) {
             {hasFigures ? `Figures as of ${figuresDate(figuresAsOf)}` : null}
           </span>
           <span className="flex items-center gap-2">
-            {logoUrl === null ? null : (
-              <img src={logoUrl} alt="" className="h-5 w-auto" />
+            {logoUrl === null || logoUrl === failedLogo ? null : (
+              <img
+                src={logoUrl}
+                alt=""
+                className="h-5 w-auto"
+                onError={() => setFailedLogo(logoUrl)}
+              />
             )}
             <span className="text-(length:--slide-footer-size)">
               {theme.companyName}

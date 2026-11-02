@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect } from "storybook/test";
+import { expect, waitFor } from "storybook/test";
 
 import {
   bulletsWithTwoVisualsSlide,
@@ -123,6 +123,23 @@ export const TitleOnly: Story = {
     await expect(canvas.queryByText(/Figures as of/)).toBeNull();
     await expect(canvas.getByText("Genie Ops")).toBeVisible();
     await noOverflow(canvasElement);
+  },
+};
+
+// czjw.46: a logo whose link expired draws no broken image, and the company name still shows.
+export const BrokenLogo: Story = {
+  name: "Broken logo",
+  args: {
+    ...canvasProps,
+    logoUrl: "data:image/png;base64,bm90LWFuLWltYWdl",
+    slide: titleOnlySlide,
+  },
+  globals: desktop,
+  play: async ({ canvas, canvasElement }) => {
+    await waitFor(() =>
+      expect(canvasElement.querySelector("footer img")).toBeNull()
+    );
+    await expect(canvas.getByText("Genie Ops")).toBeVisible();
   },
 };
 
