@@ -6,6 +6,7 @@ import {
   DialogClose,
   DialogContent,
   DialogTitle,
+  Kbd,
 } from "@genie/ui";
 import {
   useCallback,
@@ -24,7 +25,12 @@ export type PresentModeProps = {
   readonly startAt: number;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
+  /** How long the controls stay after the last move or key; stories pass a short one. */
+  readonly idleMs?: number | undefined;
 };
+
+/** The prototype's delay before the controls fade (7.5). */
+const IDLE_MS = 2500;
 
 /** A style object of CSS custom properties only; the classes read them. */
 type CssVars = CSSProperties & {
@@ -47,11 +53,13 @@ function isControl(target: EventTarget | null): boolean {
 
 /**
  * One deck full screen (R-55, D11). The popup fills the viewport above the shell and the Ask
- * bubble; the slide is the largest 16:9 box above the control row. Browser fullscreen is asked
+ * bubble; the slide is the largest 16:9 box above the control row. The controls fade when idle
+ * and stay on a touch screen (7.5). Browser fullscreen is asked
  * for only where the browser allows it, so an iPhone still gets the dialog alone.
  */
 export function PresentMode(props: PresentModeProps) {
   const { view, startAt, open, onOpenChange } = props;
+  const idleMs = props.idleMs ?? IDLE_MS;
   const slides = view.deck.slides;
   const count = slides.length;
   const [shown, setShown] = useState(() => clampIndex(startAt, count));
@@ -60,6 +68,26 @@ export function PresentMode(props: PresentModeProps) {
   const [popupElement, setPopupElement] = useState<HTMLDivElement | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const requested = useRef(false);
+  // The controls show after a move or a key and fade when idle; a touch screen keeps them (7.5).
+  const [awake, setAwake] = useState(true);
+  const [touch, setTouch] = useState(false);
+  const idleTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  const wake = useCallback(() => {
+    setAwake(true);
+    clearTimeout(idleTimer.current);
+    idleTimer.current = setTimeout(() => setAwake(false), idleMs);
+  }, [idleMs]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    // Nothing hovers on a touch screen, so nothing would bring the controls back.
+    setTouch(matchMedia("(hover: none)").matches);
+    wake();
+
+    return () => clearTimeout(idleTimer.current);
+  }, [open, wake]);
 
   // The portal mounts after this component's first effect, so the elements arrive through state.
   const stageRef = useCallback((element: HTMLDivElement | null) => {
@@ -121,6 +149,8 @@ export function PresentMode(props: PresentModeProps) {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    wake();
+
     switch (event.key) {
       case "ArrowRight":
       case "PageDown":
@@ -156,6 +186,8 @@ export function PresentMode(props: PresentModeProps) {
 
   const widthStyle: CssVars = { "--present-slide-width": `${width}px` };
 
+  const controlsShown = awake || touch;
+
   return (
     <Dialog open={open} onOpenChange={changeOpen}>
       <DialogContent
@@ -163,6 +195,12 @@ export function PresentMode(props: PresentModeProps) {
         showCloseButton={false}
         initialFocus={stage}
         onKeyDown={handleKeyDown}
+        onPointerMove={wake}
+        onPointerDown={(event) => {
+          if (event.pointerType === "touch") setTouch(true);
+
+          wake();
+        }}
         className="inset-0 z-50 overflow-visible md:inset-0 md:w-auto md:translate-none"
       >
         {/* The popup's own card, border and padding stay behind this viewport layer. */}
@@ -192,33 +230,75 @@ export function PresentMode(props: PresentModeProps) {
               )}
             </div>
           </div>
-          <div className="flex flex-wrap items-center justify-center gap-2 p-4">
-            <Button
-              variant="secondary"
-              disabled={index === 0}
-              focusableWhenDisabled
-              onClick={() => move(-1)}
+          {touch ? null : (
+            <p
+              aria-hidden="true"
+              data-shown={controlsShown ? "" : undefined}
+              className="fixed top-4 right-5 flex items-center gap-1 text-xs text-white/70 opacity-0 data-shown:opacity-100 motion-safe:transition-opacity motion-safe:duration-500"
             >
-              Previous slide
-            </Button>
-            <Button
-              variant="secondary"
-              disabled={index >= count - 1}
-              focusableWhenDisabled
-              onClick={() => move(1)}
+              <Kbd>←</Kbd> <Kbd>→</Kbd> move · <Kbd>Esc</Kbd> exits
+            </p>
+          )}
+          <div className="flex justify-center p-4">
+            {/* Quiet controls over the black: they fade when idle, and stay while one has focus. */}
+            <div
+              role="toolbar"
+              aria-label="Presentation"
+              data-shown={controlsShown ? "" : undefined}
+              className="flex items-center gap-0.5 rounded-full bg-white/10 p-1 opacity-0 focus-within:opacity-100 data-shown:opacity-100 motion-safe:transition-opacity motion-safe:duration-500"
             >
-              Next slide
-            </Button>
-            <span
-              aria-live="polite"
-              aria-atomic="true"
-              className="min-w-16 text-center text-white tabular-nums"
-            >
-              {count === 0 ? 0 : index + 1} / {count}
-            </span>
-            <DialogClose render={<Button variant="secondary" />}>
-              Exit
-            </DialogClose>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Previous slide"
+                disabled={index === 0}
+                focusableWhenDisabled
+                // oxlint-disable-next-line shadcn/no-restyle -- round light-on-black control of present mode (7.5)
+                className="rounded-full text-white hover:bg-white/15 hover:text-white"
+                onClick={() => move(-1)}
+              >
+                <span aria-hidden="true" className="pointer-events-none">
+                  ←
+                </span>
+              </Button>
+              <span
+                aria-live="polite"
+                aria-atomic="true"
+                className="min-w-14 px-1.5 text-center text-sm text-white tabular-nums"
+              >
+                {count === 0 ? 0 : index + 1} / {count}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Next slide"
+                disabled={index >= count - 1}
+                focusableWhenDisabled
+                // oxlint-disable-next-line shadcn/no-restyle -- round light-on-black control of present mode (7.5)
+                className="rounded-full text-white hover:bg-white/15 hover:text-white"
+                onClick={() => move(1)}
+              >
+                <span aria-hidden="true" className="pointer-events-none">
+                  →
+                </span>
+              </Button>
+              <span aria-hidden="true" className="mx-1 h-5 w-px bg-white/25" />
+              <DialogClose
+                render={
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Exit"
+                    // oxlint-disable-next-line shadcn/no-restyle -- round light-on-black control of present mode (7.5)
+                    className="rounded-full text-white hover:bg-white/15 hover:text-white"
+                  />
+                }
+              >
+                <span aria-hidden="true" className="pointer-events-none">
+                  ✕
+                </span>
+              </DialogClose>
+            </div>
           </div>
         </div>
       </DialogContent>

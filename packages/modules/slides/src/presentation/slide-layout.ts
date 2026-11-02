@@ -19,13 +19,15 @@ export type SlideBoxes = {
 
 /**
  * Font sizes in canvas pixels; the export multiplies them by 0.75 for points (D10). The screen's
- * KPI uses `text-3xl` (30 px) in the Chart part, so `figure` stays equal to it.
+ * KPI uses `text-3xl` (30 px) in the Chart part, so `figure` stays equal to it; a slide chart's
+ * axis and legend labels use `text-base` there, 15 px on the default root, so `label` is 15 (7.4).
  */
 export const TYPE_PX = {
   title: 32,
   text: 18,
   bullet: 18,
   figure: 30,
+  label: 15,
   caption: 12,
   footer: 12,
 } as const;

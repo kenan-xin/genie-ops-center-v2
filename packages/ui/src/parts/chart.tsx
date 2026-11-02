@@ -437,7 +437,7 @@ function KpiValue(props: ChartProps) {
     <p
       className={
         props.slide === true
-          ? "flex h-full items-center text-3xl font-bold tabular-nums whitespace-nowrap"
+          ? "text-3xl font-bold tabular-nums whitespace-nowrap"
           : "text-2xl font-bold tabular-nums"
       }
     >
@@ -532,7 +532,12 @@ export function Chart(props: ChartProps) {
       <div id={titleId} className="font-semibold">
         {props.title}
       </div>
-      {slide ? <div className="min-h-0 flex-1">{body}</div> : body}
+      {/* A KPI value stays right under its label (7.4); a plot takes the rest of the box. */}
+      {slide && props.kind !== "kpi" ? (
+        <div className="min-h-0 flex-1">{body}</div>
+      ) : (
+        body
+      )}
       <figcaption className="text-xs text-muted-foreground">
         {chartCaption(props, props.timeZone, props.caption)}
       </figcaption>

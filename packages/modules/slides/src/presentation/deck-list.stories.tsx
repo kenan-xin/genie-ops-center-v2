@@ -131,63 +131,38 @@ export const EmptyOnPhone: Story = {
 };
 
 /**
- * The chat beside the list, for a person who may ask while AI is on. No message is sent here; Plan
- * task 9 proves a chat create and the list refetch in a browser. At desktop the list keeps its
- * text unclipped beside the 22rem column.
+ * The page's own chat, for a person who may ask while AI is on (R-46, D12). From 1280 px it docks
+ * open as a 400 px column; below that the "Open Chat" button opens it full height. No message is
+ * sent here; `slides.spec.ts` proves a chat create and the list refetch in a browser.
  */
 export const ChatOn: Story = {
   name: "Chat on",
   globals: desktop,
   beforeEach: () => serve(deckList),
   play: async ({ canvas }) => {
-    const aside = canvas.getByRole("complementary", {
-      name: "Chat about your decks",
-    });
+    const chat = await canvas.findByRole("region", { name: "Chat" });
 
-    await expect(aside.getBoundingClientRect().width).toBe(352);
     await expect(
-      within(aside).getByRole("button", { name: "Send" })
+      within(chat).getByRole("button", { name: "Send" })
     ).toBeVisible();
-
-    const table = canvas.getByRole("table", { name: "Decks" });
-    const column = table.parentElement;
-
-    await expect(column?.scrollWidth).toBe(column?.clientWidth);
-    await expect(
-      table.getBoundingClientRect().right <= aside.getBoundingClientRect().left
-    ).toBe(true);
+    await expect(chat.getBoundingClientRect().width).toBeLessThanOrEqual(400);
   },
 };
 
-/**
- * Below 1024 px the chat follows the list. Its bottom space lets Send scroll clear of the shell's
- * fixed phone bar and the Ask bubble (S7-12 Task 9), so Send is the element at its own center.
- */
 export const ChatOnPhone: Story = {
   name: "Chat on a phone",
   globals: phone,
   beforeEach: () => serve(deckList),
   play: async ({ canvas }) => {
-    const aside = canvas.getByRole("complementary", {
-      name: "Chat about your decks",
-    });
+    await expect(canvas.queryByRole("region", { name: "Chat" })).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Open Chat" }));
 
-    const send = within(aside).getByRole("button", { name: "Send" });
+    const chat = await screen.findByRole("region", { name: "Chat" });
 
-    await expect(
-      Number.parseFloat(getComputedStyle(aside).paddingBottom)
-    ).toBeGreaterThanOrEqual(80);
-
-    send.scrollIntoView({ block: "center" });
-
-    const box = send.getBoundingClientRect();
-
-    await expect(window.innerWidth).toBe(390);
-    await expect(
-      send.contains(
-        document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
-      )
-    ).toBe(true);
+    // The sheet slides in, so Send shows once its opening transition ends.
+    await waitFor(() =>
+      expect(within(chat).getByRole("button", { name: "Send" })).toBeVisible()
+    );
   },
 };
 

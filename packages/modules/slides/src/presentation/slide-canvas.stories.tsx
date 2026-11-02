@@ -153,7 +153,8 @@ export const TitleOnlyOnPhone: Story = {
   },
 };
 
-// B4.4: a data slide names its freeze date and the chart names its source.
+// B4.4: a data slide names its freeze date and the chart names its source. 7.4: the axis labels
+// take the base size (15 px on the default root), never the 12 px that read as tiny on a slide.
 export const TextWithChart: Story = {
   name: "Text with a chart",
   args: { ...canvasProps, slide: textWithChartSlide },
@@ -164,6 +165,20 @@ export const TextWithChart: Story = {
       canvas.getByText(/Source: placeholder\.records/)
     ).toBeVisible();
     await noOverflow(canvasElement);
+
+    const tick = await waitFor(() => {
+      const element = canvasElement.querySelector<SVGElement>(
+        "[data-slide-box] .recharts-cartesian-axis-tick-value"
+      );
+
+      expect(element).not.toBeNull();
+
+      return element!;
+    });
+
+    await expect(
+      Number.parseFloat(getComputedStyle(tick).fontSize)
+    ).toBeGreaterThanOrEqual(15);
   },
 };
 
@@ -311,7 +326,26 @@ const largeKpiPlay: Story["play"] = async ({ canvas, canvasElement }) => {
   );
 
   await expect(box?.clientWidth).toBe(260);
-  await expect(lineCount(canvas.getByText("SGD 141,200.00"))).toBe(1);
+
+  const value = canvas.getByText("SGD 141,200.00");
+
+  await expect(lineCount(value)).toBe(1);
+
+  // 7.4: the value sits right under its label, never centred far below it. Canvas px, so the
+  // check holds at the phone's scale too.
+  const label = box!.querySelector<HTMLElement>("figure > div")!;
+  const scale = box!.getBoundingClientRect().width / box!.clientWidth;
+
+  // The text's own line, not its element: a full-height element centres the text inside it.
+  const text = document.createRange();
+
+  text.selectNodeContents(value);
+
+  const gap =
+    (text.getBoundingClientRect().top - label.getBoundingClientRect().bottom) /
+    scale;
+
+  await expect(gap).toBeLessThanOrEqual(16);
 };
 
 export const LargeKpi: Story = {

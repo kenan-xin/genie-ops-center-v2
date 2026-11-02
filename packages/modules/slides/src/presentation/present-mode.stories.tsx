@@ -1,7 +1,15 @@
 import { Button } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import {
+  expect,
+  fireEvent,
+  fn,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from "storybook/test";
 
 import { deckPage } from "./__fixtures__/decks.ts";
 import { PresentMode } from "./present-mode.tsx";
@@ -25,6 +33,7 @@ function PresentHarness(props: {
   readonly view: DeckPageView;
   readonly startAt: number;
   readonly initialOpen: boolean;
+  readonly idleMs?: number | undefined;
 }) {
   const [open, setOpen] = useState(props.initialOpen);
 
@@ -48,6 +57,7 @@ function PresentHarness(props: {
         startAt={props.startAt}
         open={open}
         onOpenChange={setOpen}
+        idleMs={props.idleMs}
       />
     </div>
   );
@@ -61,7 +71,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The deck presented full screen (Spec 7 R-55, D11). The black popup fills the viewport above the shell and the Ask bubble, the slide is the largest 16:9 box above the control row, and Previous, Next, the counter and Exit stay reachable on a phone. Arrow keys, PageUp, PageDown and Space move; Escape leaves. Browser fullscreen is requested only where the browser allows it.",
+          "The deck presented full screen (Spec 7 R-55, D11). The black popup fills the viewport above the shell and the Ask bubble, the slide is the largest 16:9 box above the control row, and Previous, Next, the counter and Exit stay reachable on a phone. The controls are a quiet round bar that fades after 2.5 s without a move or a key (`idleMs`), comes back on either, and stays on a touch screen; keyboard hints show at the top right where a pointer hovers (7.5). Arrow keys, PageUp, PageDown and Space move; Escape leaves. Browser fullscreen is requested only where the browser allows it.",
       },
     },
     a11y: { test: "error" },
@@ -71,6 +81,7 @@ const meta = {
       view={args.view}
       startAt={args.startAt}
       initialOpen={args.open}
+      idleMs={args.idleMs}
     />
   ),
   args: { view: deckPage, startAt: 0, open: true, onOpenChange: fn() },
@@ -297,6 +308,61 @@ const fullscreenPlay: Story["play"] = async ({ canvas }) => {
       Object.defineProperty(Element.prototype, "requestFullscreen", request);
     }
   }
+};
+
+/** The opacity the control bar settles at, after its fade. */
+async function barOpacity(expected: string) {
+  await waitFor(
+    () => {
+      const bar = screen.getByRole("toolbar", { name: "Presentation" });
+
+      expect(getComputedStyle(bar).opacity).toBe(expected);
+    },
+    { timeout: 3000 }
+  );
+}
+
+// 7.5: the controls fade after the idle time, and a pointer move or a key brings them back.
+export const IdleControls: Story = {
+  name: "Idle controls fade",
+  // Longer than the 500 ms fade, so the bar reaches full opacity before it fades again.
+  args: { idleMs: 1200 },
+  globals: desktop,
+  play: async () => {
+    const dialog = await dialogBox();
+
+    await waitFor(() => expect(dialog.getByText("1 / 5")).toBeVisible());
+    await barOpacity("0");
+
+    fireEvent.pointerMove(
+      document.querySelector<HTMLElement>("[data-present-stage]")!,
+      { pointerType: "mouse" }
+    );
+    await barOpacity("1");
+    await barOpacity("0");
+
+    await userEvent.keyboard("{ArrowRight}");
+    await waitFor(() => expect(dialog.getByText("2 / 5")).toBeVisible());
+    await barOpacity("1");
+  },
+};
+
+// 7.5: on a touch screen nothing hovers, so the controls stay once a touch is seen.
+export const TouchKeepsControls: Story = {
+  name: "Touch keeps the controls",
+  args: { idleMs: 600 },
+  globals: phone,
+  play: async () => {
+    const dialog = await dialogBox();
+
+    await waitFor(() => expect(dialog.getByText("1 / 5")).toBeVisible());
+    fireEvent.pointerDown(
+      document.querySelector<HTMLElement>("[data-present-stage]")!,
+      { pointerType: "touch" }
+    );
+    await new Promise((resolve) => setTimeout(resolve, 1200));
+    await barOpacity("1");
+  },
 };
 
 export const Fullscreen: Story = {

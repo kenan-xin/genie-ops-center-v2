@@ -80,8 +80,9 @@ const rail = (page: Page) => page.getByRole("navigation", { name: "Slides" });
 const railButton = (page: Page, number: number) =>
   rail(page).getByRole("button", { name: new RegExp(`^Slide ${number}:`) });
 
-/** The deck page's own canvas; present mode keeps a second one in its dialog. */
-const deckCanvas = (page: Page) => page.locator("main [data-slide-canvas]");
+/** The shown slide's canvas; the rail previews and present mode hold more of them. */
+const deckCanvas = (page: Page) =>
+  page.locator("main [data-shown-slide] [data-slide-canvas]");
 
 async function signInToList(page: Page): Promise<void> {
   await signInAs(page, SLIDES_PEOPLE.chat);
@@ -93,11 +94,16 @@ async function signInToList(page: Page): Promise<void> {
 }
 
 /**
- * Sends the recorded message in the aside, expects the deck in the list without a reload, and
- * opens it. The chat's second recorded answer makes the deck, so the message is sent once.
+ * Sends the recorded message in the page's chat, expects the deck in the list without a reload,
+ * and opens it. The chat's second recorded answer makes the deck, so the message is sent once.
  */
 async function createChatDeck(page: Page): Promise<void> {
-  const chat = page.locator('aside[aria-label="Chat about your decks"]');
+  // The page's own chat docks open from 1280 px; below that it opens full height.
+  const chat = page.getByRole("region", { name: "Chat", exact: true });
+
+  if (onPhone(page)) {
+    await activate(page, page.getByRole("button", { name: "Open Chat" }));
+  }
 
   await expect(chat).toBeVisible(FIRST_PAINT);
 
@@ -114,11 +120,9 @@ async function createChatDeck(page: Page): Promise<void> {
   const send = chat.getByRole("button", { name: "Send" });
 
   if (onPhone(page)) {
-    // Scroll to the end of the page, where the composer clears the fixed bar and the bubble.
-    await page.locator("[data-shell-content]").evaluate((element) => {
-      element.scrollTop = element.scrollHeight;
-    });
     await send.tap({ timeout: 15_000 });
+    // The chat covers the phone screen, so close it to see the list; it keeps streaming.
+    await chat.getByRole("button", { name: "Close the chat" }).tap();
   } else {
     await send.click({ timeout: 15_000 });
   }
@@ -357,8 +361,10 @@ test("every slide of the chat deck fits at the viewport", async ({ page }) => {
 
           const hit = await page.evaluate(
             ({ x, y }) =>
-              document.elementFromPoint(x, y)?.closest("button")?.textContent ??
-              null,
+              document
+                .elementFromPoint(x, y)
+                ?.closest("button")
+                ?.getAttribute("aria-label") ?? null,
             { x: button.x + button.width / 2, y: button.y + button.height / 2 }
           );
 

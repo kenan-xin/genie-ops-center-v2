@@ -653,55 +653,69 @@ export function DeckView(props: DeckViewProps) {
 
   return (
     <main>
-      <PageHeader title={deck.title} />
-      {/* Below lg the header has no room and the scaled slide footer is tiny, so the date is its
-          own readable line at every width (round 1 ruling). */}
-      <p data-figures-date="" className="mb-4 text-sm text-muted-foreground">
-        Figures as of {figuresDate(deck.figuresAsOf)}
-      </p>
-      {/* The page's actions go here; wrapping keeps them from ever scrolling sideways. */}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        {view.canWrite ? (
+      {/* 7.2: Present is the main action, Export beside it, the rest in More. The meta line is the
+          readable figures date at every width; the scaled slide footer is tiny on a phone. */}
+      <PageHeader
+        title={deck.title}
+        meta={
+          <span data-figures-date="">
+            {deck.slides.length === 1
+              ? "1 slide"
+              : `${deck.slides.length} slides`}{" "}
+            · Figures as of {figuresDate(deck.figuresAsOf)}
+          </span>
+        }
+        actions={
+          <Button
+            disabled={current === undefined || busy}
+            onClick={() => setPresenting(true)}
+          >
+            Present
+          </Button>
+        }
+        secondaryActions={
           <>
             <Button
               variant="secondary"
-              disabled={!deck.canUndo || busy}
-              loading={undo.isPending}
-              onClick={undoLast}
+              disabled={current === undefined || busy}
+              onClick={exportToPowerPoint}
             >
-              Undo
+              {exporting.isPending ? "Exporting…" : "Export to PowerPoint"}
             </Button>
-            <Button
-              variant="secondary"
-              disabled={!hasFigures(deck) || busy}
-              loading={refresh.isPending}
-              onClick={refreshData}
-            >
-              Refresh data
-            </Button>
-            <Button variant="secondary" disabled={busy} onClick={openRename}>
-              Rename deck
-            </Button>
-            <Button variant="secondary" disabled={busy} onClick={openAdd}>
-              Add slide
-            </Button>
+            {view.canWrite ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  disabled={busy}
+                  render={
+                    <Button
+                      variant="secondary"
+                      size="icon"
+                      aria-label="More"
+                      loading={refresh.isPending}
+                    />
+                  }
+                >
+                  <span aria-hidden="true">⋯</span>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={openAdd}>
+                    Add slide
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    disabled={!hasFigures(deck)}
+                    onClick={refreshData}
+                  >
+                    Refresh data
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={openRename}>
+                    Rename deck
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : null}
           </>
-        ) : null}
-        <Button
-          variant="secondary"
-          disabled={current === undefined || busy}
-          onClick={() => setPresenting(true)}
-        >
-          Present
-        </Button>
-        <Button
-          variant="secondary"
-          disabled={current === undefined || busy}
-          onClick={exportToPowerPoint}
-        >
-          {exporting.isPending ? "Exporting…" : "Export to PowerPoint"}
-        </Button>
-      </div>
+        }
+      />
       {pageRefusal}
       {refreshNumbers === null ? null : (
         <div className="mb-4">
@@ -710,6 +724,25 @@ export function DeckView(props: DeckViewProps) {
           </InfoNote>
         </div>
       )}
+      {/* Undo beside the slide (7.2), also with no slide left, so the last removal is undoable. */}
+      {view.canWrite ? (
+        <div className="mb-2 flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">
+            {current === undefined
+              ? null
+              : `Slide ${index + 1} of ${deck.slides.length}`}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={!deck.canUndo || busy}
+            loading={undo.isPending}
+            onClick={undoLast}
+          >
+            Undo
+          </Button>
+        </div>
+      ) : null}
       {current === undefined ? (
         <EmptyState
           variant="framed"
@@ -720,63 +753,82 @@ export function DeckView(props: DeckViewProps) {
         <div className="flex flex-col gap-4 md:flex-row md:items-start">
           <nav
             aria-label="Slides"
-            // `flex-wrap` and `flex-col` together let a title widen the column past w-56, under
-            // the canvas; the desktop column must not wrap (the phone row still does).
-            className="flex flex-wrap gap-2 md:w-56 md:shrink-0 md:flex-nowrap md:flex-col"
+            // 7.3: numbered previews, a column from 768 px and a strip that scrolls below it.
+            className="flex gap-3 overflow-x-auto px-1 pt-1 pb-2 md:w-40 md:shrink-0 md:flex-col md:overflow-visible md:p-0"
           >
             {deck.slides.map((slide, slideIndex) => (
-              <div key={slide.id} className="flex items-center gap-1">
-                <Button
-                  variant={slideIndex === index ? "secondary" : "ghost"}
-                  size="sm"
+              <div
+                key={slide.id}
+                className="relative flex w-32 shrink-0 items-start gap-1.5 md:w-auto"
+              >
+                {/* The number is the button; its overlay makes the whole preview the target. */}
+                <button
+                  type="button"
                   aria-label={`Slide ${slideIndex + 1}: ${titleOf(slide)}`}
                   aria-current={slideIndex === index}
-                  className="min-w-0 flex-1 justify-start"
+                  className="peer w-4 shrink-0 rounded-md text-end text-xs font-semibold text-muted-foreground tabular-nums outline-none after:absolute after:-inset-1 after:rounded-lg hover:after:bg-foreground/5 focus-visible:after:ring-2 focus-visible:after:ring-ring aria-current:text-foreground"
                   onClick={() => setShown(slideIndex)}
                 >
-                  <span className="tabular-nums">{slideIndex + 1}</span>{" "}
-                  <span className="max-md:sr-only truncate">
-                    {titleOf(slide)}
-                  </span>
-                </Button>
-                {view.canWrite ? (
-                  <RailMenu
+                  {slideIndex + 1}
+                </button>
+                <div
+                  data-slide-preview=""
+                  inert
+                  aria-hidden="true"
+                  className="pointer-events-none min-w-0 flex-1 overflow-hidden rounded-md border border-border peer-aria-current:ring-2 peer-aria-current:ring-foreground"
+                >
+                  <SlideCanvas
                     slide={slide}
-                    index={slideIndex}
-                    count={deck.slides.length}
-                    expectedHash={deck.contentHash}
-                    busy={busy}
-                    onEdit={openEditor}
-                    onMove={(target, toIndex) =>
-                      sendStep(
-                        [
-                          {
-                            op: "move-slide",
-                            slideId: target.slide.id,
-                            toIndex,
-                          },
-                        ],
-                        {
-                          expectedHash: target.expectedHash,
-                          slideNumber: target.number,
-                        }
-                      )
-                    }
-                    onRemove={(target) =>
-                      sendStep(
-                        [{ op: "remove-slide", slideId: target.slide.id }],
-                        {
-                          expectedHash: target.expectedHash,
-                          slideNumber: target.number,
-                        }
-                      )
-                    }
+                    figuresAsOf={deck.figuresAsOf}
+                    timeZone={view.timeZone}
+                    theme={view.theme}
+                    logoUrl={view.logoUrl}
+                    images={deck.images}
                   />
+                </div>
+                {view.canWrite ? (
+                  <div className="absolute top-0.5 right-0.5">
+                    <RailMenu
+                      slide={slide}
+                      index={slideIndex}
+                      count={deck.slides.length}
+                      expectedHash={deck.contentHash}
+                      busy={busy}
+                      onEdit={openEditor}
+                      onMove={(target, toIndex) =>
+                        sendStep(
+                          [
+                            {
+                              op: "move-slide",
+                              slideId: target.slide.id,
+                              toIndex,
+                            },
+                          ],
+                          {
+                            expectedHash: target.expectedHash,
+                            slideNumber: target.number,
+                          }
+                        )
+                      }
+                      onRemove={(target) =>
+                        sendStep(
+                          [{ op: "remove-slide", slideId: target.slide.id }],
+                          {
+                            expectedHash: target.expectedHash,
+                            slideNumber: target.number,
+                          }
+                        )
+                      }
+                    />
+                  </div>
                 ) : null}
               </div>
             ))}
           </nav>
-          <div className="min-w-0 flex-1">
+          <div
+            data-shown-slide=""
+            className="min-w-0 flex-1 overflow-hidden rounded-lg border border-border"
+          >
             <SlideCanvas
               slide={current}
               figuresAsOf={deck.figuresAsOf}

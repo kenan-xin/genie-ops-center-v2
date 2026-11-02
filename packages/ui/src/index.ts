@@ -240,6 +240,8 @@ export {
   BreadcrumbSeparator,
 } from "./components/breadcrumb.tsx";
 
+export { Kbd, KbdGroup } from "./components/kbd.tsx";
+
 export { Skeleton } from "./components/skeleton.tsx";
 
 export {

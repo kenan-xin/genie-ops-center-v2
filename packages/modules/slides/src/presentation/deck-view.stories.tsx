@@ -87,7 +87,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One deck at `/m/slides/decks/:id` (Spec 7 R-52, R-54). The header names the figures date, a rail of slide buttons selects the shown slide, and the slide keeps its 16:9 shape at every width. From 768 px the rail is a column on the left; below it, a wrapping row of numbered buttons above the slide.",
+          "One deck at `/m/slides/decks/:id` (Spec 7 R-52, R-54). The header names the slide count and the figures date; Present is the main action, Export to PowerPoint sits beside it, and Add slide, Refresh data and Rename deck sit in More (7.2). Undo sits above the shown slide, also when no slide is left. A rail of numbered slide previews selects the shown slide (7.3): from 768 px a column on the left, below it a strip that scrolls sideways above the slide. The slide keeps its 16:9 shape at every width.",
       },
     },
     a11y: { test: "error" },
@@ -124,7 +124,9 @@ function isHittable(element: HTMLElement) {
 
 /** B4.3: the slide keeps 16:9 within 1 px, fits its container and never widens the page. */
 async function slideFits(canvasElement: HTMLElement) {
-  const slide = canvasElement.querySelector<HTMLElement>("[data-slide-canvas]");
+  const slide = canvasElement.querySelector<HTMLElement>(
+    "[data-shown-slide] [data-slide-canvas]"
+  );
 
   expect(slide).not.toBeNull();
 
@@ -148,10 +150,53 @@ export const Deck: Story = {
     await expect(
       canvas.getByText("Receivables at a glance", { selector: "h1" })
     ).toBeVisible();
-    await expect(canvas.getByText("Figures as of 27 Oct 2026")).toBeVisible();
+    await expect(
+      canvasElement.querySelector("[data-figures-date]")
+    ).toHaveTextContent("5 slides · Figures as of 27 Oct 2026");
     await slideFits(canvasElement);
+
+    // 7.2: Present and Export are the page's actions; the rest sits in More.
+    await expect(canvas.getByRole("button", { name: "Present" })).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Export to PowerPoint" })
+    ).toBeVisible();
+
+    for (const name of ["Rename deck", "Add slide", "Refresh data"]) {
+      expect(canvas.queryByRole("button", { name })).toBeNull();
+    }
+
+    // Undo sits beside the slide, above it.
+    const undo = canvas.getByRole("button", { name: "Undo" });
+
+    const slide = canvasElement.querySelector(
+      "[data-shown-slide] [data-slide-canvas]"
+    );
+
+    await expect(
+      undo.getBoundingClientRect().bottom <= slide!.getBoundingClientRect().top
+    ).toBe(true);
+
+    await userEvent.click(canvas.getByRole("button", { name: "More" }));
+
+    // The menu fades in, so its items show once the opening transition ends.
+    await waitFor(() => {
+      for (const name of ["Add slide", "Refresh data", "Rename deck"]) {
+        expect(screen.getByRole("menuitem", { name })).toBeVisible();
+      }
+    });
+
+    await userEvent.keyboard("{Escape}");
   },
 };
+
+/** Opens the deck's More menu and picks one action. */
+async function pickFromMore(
+  canvas: ReturnType<typeof within>,
+  name: string
+): Promise<void> {
+  await userEvent.click(canvas.getByRole("button", { name: "More" }));
+  await userEvent.click(await screen.findByRole("menuitem", { name }));
+}
 
 export const DeckOnPhone: Story = {
   name: "Deck on a phone",
@@ -195,6 +240,8 @@ export const EmptyDeck: Story = {
     await expect(
       canvas.getByRole("button", { name: "Present" })
     ).toBeDisabled();
+    // The last removal stays undoable (R-49), with no slide to stand beside.
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeVisible();
   },
 };
 
@@ -208,7 +255,18 @@ export const EmptyDeckOnPhone: Story = {
   },
 };
 
-const railPlay: Story["play"] = async ({ canvas }) => {
+const railPlay: Story["play"] = async ({ canvas, canvasElement }) => {
+  // 7.3: each rail item shows a small preview of its slide, out of the tab order and the tree.
+  const previews = canvasElement.querySelectorAll(
+    'nav[aria-label="Slides"] [data-slide-preview] [data-slide-canvas]'
+  );
+
+  await expect(previews).toHaveLength(5);
+
+  for (const preview of previews) {
+    expect(preview.closest("[inert]")).not.toBeNull();
+  }
+
   const second = canvas.getByRole("button", {
     name: "Slide 2: Collections narrowed the gap to the plan line",
   });
@@ -304,7 +362,7 @@ const slideActionsPlay: Story["play"] = async ({ canvas }) => {
   });
   changeDeck.mockClear();
 
-  await userEvent.click(canvas.getByRole("button", { name: "Add slide" }));
+  await pickFromMore(canvas, "Add slide");
 
   const dialog = within(
     await screen.findByRole("dialog", { name: "Add slide" })
@@ -513,7 +571,7 @@ export const RefreshData: Story = {
     });
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Refresh data" }));
+    await pickFromMore(canvas, "Refresh data");
 
     await waitFor(() =>
       expect(refreshDeck).toHaveBeenCalledWith({
@@ -535,7 +593,7 @@ export const RefreshDataNoChange: Story = {
   globals: desktop,
   beforeEach: () => serve(deckPage),
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Refresh data" }));
+    await pickFromMore(canvas, "Refresh data");
 
     await expect(await canvas.findByText("No figure changed.")).toBeVisible();
   },
@@ -715,7 +773,7 @@ export const BusyWhileRefreshing: Story = {
     refreshDeck.mockImplementation(() => new Promise(() => undefined));
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Refresh data" }));
+    await pickFromMore(canvas, "Refresh data");
 
     await waitFor(() => expect(refreshDeck).toHaveBeenCalledTimes(1));
     await expect(canvas.getByRole("button", { name: "Undo" })).toBeDisabled();
@@ -862,9 +920,7 @@ const exportPlay: Story["play"] = async ({ canvas }) => {
   await waitFor(() =>
     expect(canvas.getByRole("button", { name: "Exporting…" })).toBeDisabled()
   );
-  await expect(
-    canvas.getByRole("button", { name: "Add slide" })
-  ).toBeDisabled();
+  await expect(canvas.getByRole("button", { name: "More" })).toBeDisabled();
   await expect(exportDeck).toHaveBeenCalledWith({ id: "deck-1" });
 
   pending.reject(new Error(EXPORT_FAILED));

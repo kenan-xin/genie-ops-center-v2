@@ -1,6 +1,6 @@
 "use client";
 
-import { AgentPanel } from "@genie/core/features/agent";
+import { AgentPanel, ChatDock, ChatPanel } from "@genie/core/features/agent";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -117,16 +117,23 @@ const slideText = (count: number) =>
 
 const hrefOf = (id: string) => `/m/slides/decks/${id}`;
 
+/** Starters that name no dataset: the module does not know which ones the deployment has. */
+const CHAT_SUGGESTIONS = [
+  "Make a deck of this month's figures",
+  "Make a deck of the latest records",
+] as const;
+
 export type DeckListProps = {
   readonly view: DeckListView;
 };
 
 /**
- * The Slides list: the owner's own decks, with create and delete (R-52), and the chat that creates
- * decks beside it (R-46, D12). Delete is the inverse of a chat create.
+ * The Slides list: the owner's own decks, with create and delete (R-52), and the page's own chat
+ * that creates decks, docked from 1280 px (R-46, D12). Delete is the inverse of a chat create.
  */
 export function DeckList(props: DeckListProps) {
   const { view } = props;
+  const { chat } = view;
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
   const [creating, setCreating] = useState(false);
@@ -198,9 +205,8 @@ export function DeckList(props: DeckListProps) {
         }
       />
 
-      {/* From lg the chat is a 22rem column (w-88) right of the list; below lg it follows it. */}
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
-        <div className="min-w-0 lg:flex-1">
+      <div className="grid gap-4">
+        <div className="min-w-0">
           {remove.error === null ? null : (
             <p role="alert" className="mb-4 text-sm text-destructive">
               {remove.error.message === ""
@@ -232,37 +238,37 @@ export function DeckList(props: DeckListProps) {
             />
           )}
         </div>
-        {view.chat.kind === "on" ? (
-          <aside
-            aria-label="Chat about your decks"
-            // The bottom space lets the composer scroll clear of the fixed phone bar and the bubble.
-            className="min-w-0 max-lg:pb-20 lg:w-88 lg:shrink-0 lg:pb-0"
-          >
-            <AgentPanel
-              models={view.chat.models}
-              labels={view.chat.labels}
-              suggestions={view.chat.suggestions}
-              timeZone={view.timeZone}
-              newChatHref="/m/slides/decks"
-              // A chat create adds a deck; the list reads it at once.
-              onFinished={() =>
-                void queryClient.invalidateQueries({
-                  queryKey: decksQueryKey(),
-                })
-              }
-            />
-          </aside>
-        ) : null}
         {view.chat.kind === "off" ? (
-          <div className="lg:w-88 lg:shrink-0">
-            <InfoNote size="md" role="status">
-              {view.canWrite
-                ? "Chat is off. You can still make a deck with New deck."
-                : "Chat is off."}
-            </InfoNote>
-          </div>
+          <InfoNote size="md" role="status">
+            {view.canWrite
+              ? "Chat is off. You can still make a deck with New deck."
+              : "Chat is off."}
+          </InfoNote>
         ) : null}
       </div>
+      {chat.kind === "on" ? (
+        // The page's own chat, docked open from 1280 px; the shell hides its general chat.
+        <ChatDock label="Chat" page dockedByDefault>
+          {(close) => (
+            <ChatPanel title="Chat" about="About your decks" onClose={close}>
+              <AgentPanel
+                models={chat.models}
+                labels={chat.labels}
+                suggestions={view.canWrite ? CHAT_SUGGESTIONS : []}
+                placeholder="Ask for a deck or a slide"
+                timeZone={view.timeZone}
+                newChatHref="/m/slides/decks"
+                // A chat create adds a deck; the list reads it at once.
+                onFinished={() =>
+                  void queryClient.invalidateQueries({
+                    queryKey: decksQueryKey(),
+                  })
+                }
+              />
+            </ChatPanel>
+          )}
+        </ChatDock>
+      ) : null}
 
       <Dialog
         open={creating}
