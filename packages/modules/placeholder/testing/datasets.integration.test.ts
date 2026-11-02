@@ -98,6 +98,20 @@ async function insertRows(
   );
 }
 
+/** Writes one row per label and answers the ids, in label order. */
+async function insertLabels(labels: readonly string[]): Promise<string[]> {
+  const rows = await Promise.all(
+    labels.map((label) =>
+      insertPlaceholderRecord(deployment.context, {
+        label,
+        recordedOn: "2026-01-01",
+      })
+    )
+  );
+
+  return rows.map((row) => row.id);
+}
+
 const labelled = (label: string) =>
   [{ field: "label", op: "eq", value: label }] as const;
 
@@ -106,14 +120,20 @@ const RECORDS = "placeholder.records";
 /** Every `id` of a row query, read one page at a time through each answer's `next` cursor. */
 async function readAllPages(
   ctx: ModuleRequestContext,
-  query: DatasetQuery
+  query: DatasetQuery,
+  search?: string
 ): Promise<string[]> {
   const ids: string[] = [];
   let after: DatasetCursor | undefined;
 
   for (let page = 0; page < 200; page += 1) {
     // oxlint-disable-next-line no-await-in-loop -- each page starts after the one before it.
-    const result = await queryDataset(ctx, { dataset: RECORDS, query, after });
+    const result = await queryDataset(ctx, {
+      dataset: RECORDS,
+      query,
+      after,
+      search,
+    });
 
     ids.push(...result.rows.map((row) => String(row["id"])));
 
@@ -423,6 +443,67 @@ describe("the placeholder dataset through queryDataset", () => {
     });
 
     expect(result.rows).toEqual([{ id: named.id }]);
+  });
+
+  it("searches labels case-insensitively across page edges, each match once", async () => {
+    const matches = await insertLabels(
+      Array.from(
+        { length: 13 },
+        (_, index) => `page-${index % 2 === 0 ? "JxSrch" : "jxsrch"}-${index}`
+      )
+    );
+
+    await insertLabels(
+      Array.from({ length: 10 }, (_, index) => `page-other-${index}`)
+    );
+
+    const ids = await readAllPages(
+      contextFor(await person("placeholder:read")),
+      { select: ["id"], limit: 5 },
+      "JXSRCH"
+    );
+
+    expect(ids.toSorted()).toEqual(matches.toSorted());
+  });
+
+  it("searches only inside a record-scoped reader's scope", async () => {
+    const [named] = await insertLabels(["scope-vksrch-a", "scope-vksrch-b"]);
+
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["placeholder:read"],
+      { type: "placeholder-record", id: named ?? "" }
+    );
+
+    const result = await queryDataset(contextFor(userId), {
+      dataset: RECORDS,
+      query: { select: ["id"] },
+      search: "vksrch",
+    });
+
+    expect(result.rows).toEqual([{ id: named }]);
+  });
+
+  it("matches % and _ in a search literally", async () => {
+    const [percent, underscore] = await insertLabels([
+      "wild-wq%7",
+      "wild-wq_7",
+      "wild-wqx7",
+    ]);
+
+    const ctx = contextFor(await person("placeholder:read"));
+
+    const search = async (term: string) =>
+      (
+        await queryDataset(ctx, {
+          dataset: RECORDS,
+          query: { select: ["id"] },
+          search: term,
+        })
+      ).rows;
+
+    expect(await search("wq%7")).toEqual([{ id: percent }]);
+    expect(await search("wq_7")).toEqual([{ id: underscore }]);
   });
 
   it("refuses a cursor on an aggregate query, with the wrong count of values, or with a value that does not fit", async () => {

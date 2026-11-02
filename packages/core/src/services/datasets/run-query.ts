@@ -96,7 +96,8 @@ export async function runDatasetQuery(
   source: DatasetSource,
   query: DatasetQuery,
   timeLimitMs: number = DATASET_TIME_LIMIT_MS,
-  after?: DatasetCursor
+  after?: DatasetCursor,
+  search?: string
 ): Promise<Pick<DatasetResult, "columns" | "rows" | "truncated" | "next">> {
   const deadline = performance.now() + timeLimitMs;
   const ds = source.as("ds");
@@ -156,6 +157,20 @@ export async function runDatasetQuery(
   };
 
   const conditions = (query.filters ?? []).map(condition);
+
+  // The search is one more condition on the scoped source, so a cursor, an aggregate and the
+  // currency check all see it. Its term is a bound parameter, `\`, `%` and `_` escaped for LIKE.
+  if (search !== undefined) {
+    const pattern = `%${search.replaceAll(/[\\%_]/g, "\\$&")}%`;
+
+    const matches = Object.entries(declaration.fields)
+      .filter(([, entry]) => entry.searchable === true)
+      .map(([name]) => sql`${cast(name)} ilike ${pattern}`);
+
+    const any = or(...matches);
+
+    if (any !== undefined) conditions.push(any);
+  }
 
   const group = (entry: DatasetGroup): Output => {
     if ("bucket" in entry) {

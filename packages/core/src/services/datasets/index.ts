@@ -10,6 +10,7 @@ import {
   type DatasetCursor,
   type DatasetQuery,
   checkDatasetQuery,
+  checkDatasetSearch,
   cursorIssues,
   rowKeyOf,
 } from "./query.ts";
@@ -87,6 +88,8 @@ export async function queryDataset(
     readonly query: DatasetQuery;
     /** Start after this row of an earlier page of the same query (czjw.28). */
     readonly after?: DatasetCursor | undefined;
+    /** Keep only rows whose searchable fields hold this text, case-insensitively. */
+    readonly search?: string | undefined;
   }
 ): Promise<DatasetResult> {
   const found = await findDataset(ctx, input.dataset);
@@ -111,9 +114,19 @@ export async function queryDataset(
           input.after
         );
 
-  if (query === undefined || issues.length > 0 || afterIssues.length > 0) {
+  const searched =
+    input.search === undefined
+      ? { issues: [] }
+      : checkDatasetSearch(declaration.fields, input.search);
+
+  if (
+    query === undefined ||
+    issues.length > 0 ||
+    afterIssues.length > 0 ||
+    searched.issues.length > 0
+  ) {
     throw new AppError(CORE_ERRORS["dataset-query-invalid"], {
-      issues: [...issues, ...afterIssues],
+      issues: [...issues, ...afterIssues, ...searched.issues],
     });
   }
 
@@ -131,7 +144,8 @@ export async function queryDataset(
       source,
       query,
       undefined,
-      input.after
+      input.after,
+      searched.search
     )),
   };
 }

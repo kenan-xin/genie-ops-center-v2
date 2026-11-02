@@ -391,6 +391,8 @@ export type DatasetField = {
   /** A money field holds integer minor units (cents) of the row's currency. */
   readonly type: DatasetFieldType;
   readonly description: string;
+  /** A text field that a query's `search` matches, case-insensitively, as a substring. */
+  readonly searchable?: true;
 };
 
 /** The select that `source()` answers. Core uses it only as an aliased subquery. */

@@ -19,6 +19,7 @@ export const recordsDataset: DatasetDeclaration = {
       kind: "dimension",
       type: "text",
       description: "The record label.",
+      searchable: true,
     },
     recordedOn: {
       kind: "dimension",

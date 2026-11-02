@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { DatasetDeclaration } from "../../lib/module-contract/module.ts";
-import { type DatasetQuery, validateDatasetQuery } from "./query.ts";
+import {
+  checkDatasetSearch,
+  type DatasetQuery,
+  validateDatasetQuery,
+} from "./query.ts";
 import { type DatasetSeries, seriesIssues } from "./series.ts";
 
 const fields: DatasetDeclaration["fields"] = {
@@ -26,6 +30,14 @@ function paths(query: DatasetQuery): readonly string[] {
 function seriesPaths(series: readonly SeriesEntry[]): readonly string[] {
   return seriesIssues(series).map((issue) => issue.path);
 }
+
+describe("checkDatasetSearch", () => {
+  it("refuses a search on a dataset that marks no field searchable", () => {
+    expect(checkDatasetSearch(fields, "x").issues.map((i) => i.path)).toEqual([
+      "search",
+    ]);
+  });
+});
 
 describe("validateDatasetQuery", () => {
   it.each<{

@@ -463,6 +463,14 @@ export function validateModule(module: Module): readonly string[] {
       );
     }
 
+    for (const [fieldName, field] of Object.entries(dataset.fields)) {
+      if (field.searchable === true && field.type !== "text") {
+        problems.push(
+          `Dataset "${name}" marks field "${fieldName}" searchable, which is not a text field.`
+        );
+      }
+    }
+
     const holdsMoney = Object.values(dataset.fields).some(
       (field) => field.type === "money"
     );

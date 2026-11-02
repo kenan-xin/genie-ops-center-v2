@@ -293,6 +293,38 @@ export function checkDatasetQuery(
   };
 }
 
+/**
+ * A search term beside the query, like the cursor: a case-insensitive substring of any searchable
+ * field. It stays out of `datasetQuerySchema`, because the agent tool's schema is part of every
+ * recorded model request (DEC-55).
+ */
+export const datasetSearchSchema = z.string().trim().min(1).max(200);
+
+export type DatasetSearchCheck = {
+  readonly search?: string;
+  readonly issues: readonly AppErrorIssue[];
+};
+
+/** The trimmed term, or the issues. An ignored search would answer every row, so a dataset without a searchable field refuses it. */
+export function checkDatasetSearch(
+  fields: DatasetDeclaration["fields"],
+  search: string
+): DatasetSearchCheck {
+  const parsed = datasetSearchSchema.safeParse(search);
+
+  if (!parsed.success) return { issues: schemaIssues(parsed.error, "search") };
+
+  if (!Object.values(fields).some((field) => field.searchable === true)) {
+    return {
+      issues: [
+        { path: "search", message: "The dataset marks no field searchable." },
+      ],
+    };
+  }
+
+  return { search: parsed.data, issues: [] };
+}
+
 /** The field a row query's order and cursor end on: the row key, else the record key (czjw.48). */
 export function rowKeyOf(
   declaration: Pick<DatasetDeclaration, "recordKey" | "rowKeyField">

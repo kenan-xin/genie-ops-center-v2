@@ -1262,6 +1262,23 @@ describe("validateModule", () => {
         'Dataset "fixture.records" names row key field "amountCents", which is not a declared text field.',
       ],
       [
+        [
+          {
+            ...validDataset,
+            fields: {
+              ...validDataset.fields,
+              recordedOn: {
+                kind: "dimension",
+                type: "date",
+                description: "The day.",
+                searchable: true,
+              },
+            },
+          },
+        ],
+        'Dataset "fixture.records" marks field "recordedOn" searchable, which is not a text field.',
+      ],
+      [
         [withoutCurrency],
         'Dataset "fixture.records" holds a money field, so it must name a declared text currency field.',
       ],
