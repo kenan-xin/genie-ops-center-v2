@@ -289,28 +289,46 @@ describe("the analytics dashboard procedures", () => {
       ownerUserId: owner,
     });
 
-    // All five read version 1 before any of them locks the row.
-    const results = await Promise.allSettled(
-      [1, 2, 3, 4, 5].map((n) =>
-        changeDashboard(contextOf(owner), {
-          id,
-          changes: [{ op: "rename", name: `Save ${n}` }],
+    // The other save holds the row lock with version 2 uncommitted, so the tool save reads
+    // version 1 and then waits at its lock. The overlap is forced, never left to timing.
+    const other = await deployment.context.db.$client.connect();
+
+    try {
+      await other.query("begin");
+      await other.query(
+        "update dashboard set name = 'Other save', version = 2 where id = $1",
+        [id]
+      );
+
+      const raced = changeDashboard(contextOf(owner), {
+        id,
+        changes: [{ op: "rename", name: "Tool save" }],
+      });
+
+      // Commit only once the tool save waits on the row lock, so it read version 1 before.
+      await expect
+        .poll(async () => {
+          const { rows } = await deployment.context.db.$client.query<{
+            waiting: number;
+          }>(
+            "select count(*)::int as waiting from pg_stat_activity where datname = current_database() and wait_event_type = 'Lock' and query ilike '%from \"dashboard\"%for update%'"
+          );
+
+          return rows[0]?.waiting;
         })
-      )
-    );
+        .toBe(1);
+      await other.query("commit");
 
-    const saved = results.filter((result) => result.status === "fulfilled");
-
-    for (const result of results) {
-      if (result.status === "rejected") {
-        expect(result.reason).toMatchObject({
-          code: "analytics:dashboard-changed",
-        });
-      }
+      await expect(raced).rejects.toMatchObject({
+        code: "analytics:dashboard-changed",
+      });
+    } finally {
+      // Destroy the connection, so a failure before the commit ends its transaction and lock.
+      other.release(true);
     }
 
-    // Each save that went through moved the version once; none wrote over another.
-    expect((await rowOf(id)).version).toBe(1 + saved.length);
+    // The other save stands; the tool save wrote nothing over it.
+    expect(await rowOf(id)).toMatchObject({ name: "Other save", version: 2 });
   });
 
   it("refuse a panel on a dataset this deployment lacks and write nothing", async () => {
