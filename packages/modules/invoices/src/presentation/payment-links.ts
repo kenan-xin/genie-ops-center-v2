@@ -1,5 +1,5 @@
 import type { OpenInvoiceRow, PaymentMatch } from "../contract.ts";
-import { centsOf, centsText } from "../services/reading/quote-check.ts";
+import { amountText, centsOfText } from "./format.ts";
 
 /** One link the person keeps checked: the invoice and the amount as typed. */
 export type LinkDraft = {
@@ -30,7 +30,7 @@ export function checkLinks(
   const unreadable: string[] = [];
 
   for (const draft of drafts) {
-    const cents = centsOf(draft.amountText.trim());
+    const cents = centsOfText(draft.amountText);
 
     if (cents === undefined) {
       unreadable.push(draft.invoiceId);
@@ -55,13 +55,13 @@ export function checkLinks(
   };
 }
 
-/** The drafts a proposal starts with, amounts as `centsText`. Suggestions and no-match start with none. */
+/** The drafts a proposal starts with, amounts as `amountText`. Suggestions and no-match start with none. */
 export function draftsOfProposal(proposal: PaymentMatch): readonly LinkDraft[] {
   switch (proposal.kind) {
     case "split":
       return proposal.parts.map((part) => ({
         invoiceId: part.invoiceId,
-        amountText: centsText(part.amountCents),
+        amountText: amountText(part.amountCents),
       }));
     case "automatic":
     case "confirm":
@@ -69,7 +69,7 @@ export function draftsOfProposal(proposal: PaymentMatch): readonly LinkDraft[] {
       return [
         {
           invoiceId: proposal.invoiceId,
-          amountText: centsText(proposal.amountCents),
+          amountText: amountText(proposal.amountCents),
         },
       ];
     case "suggestions":
@@ -94,5 +94,5 @@ export function fillOf(
 
   const cents = Math.min(row.openCents, rest);
 
-  return cents > 0 ? centsText(cents) : "";
+  return cents > 0 ? amountText(cents) : "";
 }

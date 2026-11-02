@@ -61,7 +61,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). The document sits on the left, its fields on the right; below 1024 px they stack. A person opens the review from the inbox, changes the type, discards an unsaved document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
+          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). The document sits on the left, its fields on the right; below 1024 px a Fields and Document switch shows one at a time. The file name shows once, shortened, in the line under the title. A person opens the review from the inbox, changes the type, discards an unsaved document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
       },
     },
     a11y: { test: "error" },
@@ -135,8 +135,22 @@ export const InvoiceRead: Story = {
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas, canvasElement }) => {
+    // Design review 4.2: the file name shows once, shortened, with the whole name on hover; the
+    // trail ends in Review.
+    await expect(
+      canvas.getByTitle("01_Invoice_Missing_Due_Date.pdf")
+    ).toHaveTextContent(/^01_Invoice_Missing…_Date\.pdf$/u);
+    await expect(
+      canvas.queryAllByText(/01_Invoice_Missing_Due_Date\.pdf/u)
+    ).toHaveLength(0);
+    await expect(
+      within(canvas.getByRole("navigation", { name: "breadcrumb" })).getByText(
+        "Review"
+      )
+    ).toBeVisible();
+
     await userEvent.click(
-      canvas.getByRole("button", { name: "Show the source of Total" })
+      canvas.getByRole("button", { name: "Show Total on the document" })
     );
 
     await expect(
@@ -163,17 +177,23 @@ export const InvoiceRead: Story = {
   },
 };
 
-// B4.3 at 390: the fields card starts below the document.
+// Choice 14 at 390: Fields shows first, and the Document switch shows the document in its place.
 export const InvoiceReadOnPhone: Story = {
   name: "Invoice read on a phone",
   globals: phone,
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvasElement }) => {
+  play: async ({ canvas, canvasElement }) => {
     const { card, viewer } = await columns(canvasElement);
 
-    await expect(card.getBoundingClientRect().top).toBeGreaterThanOrEqual(
-      viewer.getBoundingClientRect().bottom
-    );
+    await expect(card).toBeVisible();
+    await expect(viewer).not.toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Document" }));
+    await expect(viewer).toBeVisible();
+    await expect(card).not.toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Fields" }));
+    await expect(card).toBeVisible();
   },
 };
 
@@ -419,7 +439,7 @@ export const AiOff: Story = {
   play: async ({ canvas }) => {
     await expect(
       canvas.getByText(
-        /01_Invoice_Missing_Due_Date\.pdf · not classified\. AI was off\. Fill in the fields by hand\./
+        /· not classified\. AI was off\. Fill in the fields by hand\./u
       )
     ).toBeVisible();
   },
@@ -437,10 +457,38 @@ export const TagsOnPhone: Story = {
   globals: phone,
 };
 
+// B4.4 at 390 (choice 14): the PDF draws on the Document pane and stays drawn while Fields shows.
 export const ReadingOnPhone: Story = {
   ...Reading,
   name: "Reading on a phone",
   globals: phone,
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Document" }));
+
+    const drawn = await waitFor(
+      () => {
+        const found = canvasElement.querySelector(
+          "[data-document-viewer] canvas"
+        );
+
+        if (found === null) throw new Error("The document has not drawn yet.");
+
+        return found;
+      },
+      { timeout: 8_000 }
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: "Fields" }));
+    await expect(
+      await canvas.findByText("Customer", {}, { timeout: 8_000 })
+    ).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Document" }));
+    await expect(drawn).toBeVisible();
+    await expect(
+      canvasElement.querySelector("[data-document-viewer]")
+    ).toHaveAttribute("data-document-url", `${DEMO_PDF.invoice01}?v=1`);
+  },
 };
 
 export const ReadOnlyOnPhone: Story = {

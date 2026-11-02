@@ -13,6 +13,8 @@ import {
   SelectTrigger,
   SelectValue,
   Skeleton,
+  ToggleGroup,
+  ToggleGroupItem,
   WarningNote,
 } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -27,6 +29,7 @@ import {
 
 import { invoicesContract } from "../contract.ts";
 import { type DocumentKind, kindText } from "./document-kind.ts";
+import { shortName } from "./format.ts";
 import { InvoiceReviewForm } from "./invoice-review-form.tsx";
 import { PaymentReviewForm } from "./payment-review-form.tsx";
 import {
@@ -57,6 +60,14 @@ const KIND_ITEMS: readonly {
   { value: "paid-receipt", label: kindText("paid-receipt") },
   { value: "purchase-order", label: kindText("purchase-order") },
 ];
+
+const DOCUMENTS_HREF = "/m/invoices/documents";
+
+/** The trail names the step, so the file name shows once, in the meta line (design review 4.2). */
+const TRAIL = {
+  parent: { label: "Documents", href: DOCUMENTS_HREF },
+  current: "Review",
+} as const;
 
 const subscribeToNothing = () => () => {};
 
@@ -102,6 +113,8 @@ export function DocumentReview(props: {
   const [firstFileUrl] = useState(view.document.fileUrl);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  // Below `lg` one pane shows at a time; from `lg` both sit side by side (choice 14).
+  const [pane, setPane] = useState<"fields" | "document">("fields");
   const browser = useSyncExternalStore(subscribeToNothing, inBrowser, onServer);
 
   const review = useQuery({
@@ -138,17 +151,24 @@ export function DocumentReview(props: {
 
   const title = titleOf(kind);
 
-  const subtitle =
+  const about =
     kind === null
-      ? `${label} · not classified${data.document.reason === null ? "" : `. ${reasonSentence(data.document.reason)}`}`
-      : `${label} · classified as ${kindText(kind)} · click a field to see where it came from`;
+      ? `not classified${data.document.reason === null ? "" : `. ${reasonSentence(data.document.reason)}`}`
+      : `classified as ${kindText(kind)} · select a field to see where it came from`;
+
+  const meta = (
+    <>
+      <span title={label}>{shortName(label)}</span>
+      {` · ${about}`}
+    </>
+  );
 
   if (discard.isSuccess) {
     return (
       <main>
-        <PageHeader title={title} />
+        <PageHeader title={title} breadcrumb={TRAIL} />
         <p className="mt-6">Discarded. Nothing was added.</p>
-        <PageLink href="/m/invoices/documents">Back to Documents</PageLink>
+        <PageLink href={DOCUMENTS_HREF}>Back to Documents</PageLink>
       </main>
     );
   }
@@ -203,6 +223,7 @@ export function DocumentReview(props: {
         onSelect={setSelected}
         onSaved={setSavedMessage}
         onDiscard={() => setDiscardOpen(true)}
+        discarding={discard.isPending}
       />
     );
   } else if (data.canWrite && kind === "payment") {
@@ -213,6 +234,7 @@ export function DocumentReview(props: {
         onSelect={setSelected}
         onSaved={setSavedMessage}
         onDiscard={() => setDiscardOpen(true)}
+        discarding={discard.isPending}
       />
     );
   } else {
@@ -226,12 +248,36 @@ export function DocumentReview(props: {
     );
   }
 
+  // A save form carries Discard in its own bar; every other body shows it under the card.
+  const formBody =
+    data.canWrite &&
+    data.saved === null &&
+    data.document.status !== "reading" &&
+    kind !== null &&
+    kind !== "purchase-order";
+
   return (
     <main>
-      <PageHeader title={title} />
-      <p className="text-sm text-muted-foreground">{subtitle}</p>
-      <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
-        <div className="min-w-0">
+      <PageHeader title={title} breadcrumb={TRAIL} meta={meta} />
+      <ToggleGroup
+        aria-label="Show"
+        className="mb-4 lg:hidden"
+        value={[pane]}
+        onValueChange={(value) => {
+          const [chosen] = value;
+
+          // A press on the pressed item answers none; the pane stays.
+          if (chosen === "fields" || chosen === "document") setPane(chosen);
+        }}
+      >
+        <ToggleGroupItem value="fields">Fields</ToggleGroupItem>
+        <ToggleGroupItem value="document">Document</ToggleGroupItem>
+      </ToggleGroup>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start">
+        {/* Hidden, not unmounted, so the PDF never loads again (`firstFileUrl`). */}
+        <div
+          className={`min-w-0 ${pane === "document" ? "" : "max-lg:hidden"}`}
+        >
           {browser ? (
             <Suspense
               fallback={<Skeleton aria-hidden className="aspect-3/4 w-full" />}
@@ -246,7 +292,10 @@ export function DocumentReview(props: {
             <Skeleton aria-hidden className="aspect-3/4 w-full" />
           )}
         </div>
-        <Card>
+        {/* `overflow-clip`, not `-hidden`, so the save bar sticks to the screen, not the card. */}
+        <Card
+          className={`overflow-clip ${pane === "fields" ? "" : "max-lg:hidden"}`}
+        >
           <div className="flex flex-col">
             {showType ? (
               <div className="flex flex-col gap-1 border-b border-border px-4 py-3">
@@ -288,28 +337,32 @@ export function DocumentReview(props: {
                   The document could not be read. Retry it from Documents, or
                   choose its type and fill in the fields by hand.
                 </WarningNote>
-                <PageLink href="/m/invoices/documents">
-                  Back to Documents
-                </PageLink>
+                <PageLink href={DOCUMENTS_HREF}>Back to Documents</PageLink>
               </div>
             ) : null}
             {body}
             {showDiscard ? (
-              <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-                {discard.error === null ? null : (
-                  <p role="alert" className="text-sm text-destructive">
-                    {`${label} was not discarded. ${discard.error.message}`}
-                  </p>
+              <>
+                {formBody && discard.error === null ? null : (
+                  <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+                    {discard.error === null ? null : (
+                      <p role="alert" className="text-sm text-destructive">
+                        {`${label} was not discarded. ${discard.error.message}`}
+                      </p>
+                    )}
+                    {formBody ? null : (
+                      <div className="flex justify-end">
+                        <Button
+                          variant="secondary"
+                          loading={discard.isPending}
+                          onClick={() => setDiscardOpen(true)}
+                        >
+                          Discard
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                 )}
-                <div className="flex justify-end">
-                  <Button
-                    variant="secondary"
-                    loading={discard.isPending}
-                    onClick={() => setDiscardOpen(true)}
-                  >
-                    Discard
-                  </Button>
-                </div>
                 <ConfirmDialog
                   open={discardOpen}
                   title={`Discard ${label}?`}
@@ -322,7 +375,7 @@ export function DocumentReview(props: {
                   }}
                   onClose={() => setDiscardOpen(false)}
                 />
-              </div>
+              </>
             ) : null}
           </div>
         </Card>

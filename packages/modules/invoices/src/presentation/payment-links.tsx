@@ -6,7 +6,8 @@ import {
   Checkbox,
   FieldError,
   FieldLabel,
-  Input,
+  InputGroup,
+  InputGroupInput,
 } from "@genie/ui";
 import type { ReactNode } from "react";
 
@@ -15,10 +16,10 @@ import {
   type OpenInvoiceRow,
   type PaymentMatch,
 } from "../contract.ts";
-import { formatMoney } from "./format.ts";
+import { formatMoney, moneyText } from "./format.ts";
 import { checkLinks, fillOf, type LinkDraft } from "./payment-links.ts";
 import { SaveFailure } from "./review-alerts.tsx";
-import { AMOUNT_MESSAGE } from "./review-form.tsx";
+import { AMOUNT_MESSAGE, CurrencyAddon } from "./review-form.tsx";
 
 /** Where the open invoices stand: shown, still loading, refused, or not asked for without a customer. */
 export type OpenStatus =
@@ -142,9 +143,22 @@ export function LinksEditor(props: {
                 ? `More than the open balance of ${row.number}.`
                 : undefined;
 
+            const setAmount = (amountText: string) =>
+              onChange(
+                drafts.map((item) =>
+                  item.invoiceId === row.invoiceId
+                    ? { invoiceId: row.invoiceId, amountText }
+                    : item
+                )
+              );
+
+            // One compact row per invoice: the link and its open balance, the amount beside them (4.7).
             return (
-              <li key={row.invoiceId} className="flex flex-col gap-1.5 py-2">
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <li
+                key={row.invoiceId}
+                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2"
+              >
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
                   <FieldLabel className="items-center">
                     <Checkbox
                       checked={draft !== undefined}
@@ -175,32 +189,34 @@ export function LinksEditor(props: {
                     {`Open ${formatMoney(row.openCents, row.currency)}`}
                   </span>
                 </div>
-                <Input
-                  id={id}
-                  aria-label={`Amount for ${row.number}`}
-                  inputMode="decimal"
-                  className="w-40"
-                  disabled={draft === undefined}
-                  value={draft?.amountText ?? ""}
-                  aria-invalid={message === undefined ? undefined : true}
-                  aria-describedby={
-                    message === undefined ? undefined : `${id}-error`
-                  }
-                  onChange={(event) =>
-                    onChange(
-                      drafts.map((item) =>
-                        item.invoiceId === row.invoiceId
-                          ? {
-                              invoiceId: row.invoiceId,
-                              amountText: event.target.value,
-                            }
-                          : item
-                      )
-                    )
-                  }
-                />
+                <InputGroup className="w-36 shrink-0">
+                  {/* An unchecked row's input is disabled and faded; its currency would fail contrast. */}
+                  {draft === undefined ? null : (
+                    <CurrencyAddon currency={row.currency} />
+                  )}
+                  <InputGroupInput
+                    id={id}
+                    aria-label={`Amount for ${row.number}`}
+                    inputMode="decimal"
+                    disabled={draft === undefined}
+                    value={draft?.amountText ?? ""}
+                    aria-invalid={message === undefined ? undefined : true}
+                    aria-describedby={
+                      message === undefined ? undefined : `${id}-error`
+                    }
+                    onChange={(event) => setAmount(event.target.value)}
+                    onBlur={() => {
+                      const shown = moneyText(draft?.amountText ?? "");
+
+                      if (draft !== undefined && shown !== draft.amountText)
+                        setAmount(shown);
+                    }}
+                  />
+                </InputGroup>
                 {message === undefined ? null : (
-                  <FieldError id={`${id}-error`}>{message}</FieldError>
+                  <FieldError id={`${id}-error`} className="basis-full">
+                    {message}
+                  </FieldError>
                 )}
               </li>
             );

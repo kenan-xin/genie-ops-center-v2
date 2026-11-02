@@ -18,13 +18,12 @@ import {
   savePaidReceiptInput,
   type StoredReading,
 } from "../contract.ts";
-import { centsOf } from "../services/reading/quote-check.ts";
 import {
   customerChoiceOf,
   initialCustomer,
   type CustomerValue,
 } from "./customer-field.tsx";
-import { formatDay } from "./format.ts";
+import { centsOfText, dayFromText, dayText, formatDay } from "./format.ts";
 import { DuplicateNotice, SaveFailure } from "./review-alerts.tsx";
 import {
   FIELDS_OF,
@@ -34,8 +33,10 @@ import {
   type ReviewFieldKey,
 } from "./review-fields.tsx";
 import {
+  inputTextOf,
   issuesOf,
   optionalText,
+  readingTextOf,
   ReviewCustomerRow,
   ReviewSaveBar,
   ReviewTextRow,
@@ -92,7 +93,9 @@ type SendAnswer = SaveInvoiceOutput | SavePaidReceiptOutput;
 
 function initialValues(view: DocumentReviewView): FormValues {
   const reading = view.reading;
-  const text = (field: ReadingField) => reading?.fields[field]?.value ?? "";
+
+  const text = (field: ReadingField) =>
+    inputTextOf(field, reading?.fields[field]?.value ?? "");
 
   return {
     customer: initialCustomer(view),
@@ -113,16 +116,20 @@ function initialDue(reading: StoredReading | null): DueChoice {
 
   return dueDate === undefined
     ? { kind: "none" }
-    : { kind: "kept", value: dueDate };
+    : { kind: "kept", value: dayText(dueDate) };
 }
 
 function dueOf(due: DueChoice): DueInput {
   switch (due.kind) {
     case "kept":
-      return { dueDate: due.value, dueDateSource: "document" };
+      return {
+        dueDate: readingTextOf("dueDate", due.value),
+        dueDateSource: "document",
+      };
     case "person":
       return {
-        dueDate: due.value === "" ? null : due.value,
+        dueDate:
+          due.value.trim() === "" ? null : readingTextOf("dueDate", due.value),
         dueDateSource: "person",
       };
     case "unspecified":
@@ -136,8 +143,28 @@ function dueText(due: DueChoice): string | null {
   return due.kind === "kept" || due.kind === "person" ? due.value : null;
 }
 
-function amountCents(value: string): number | undefined {
-  return centsOf(value);
+/** The due date as the reading stores it, for the origin tag. */
+function dueTagValue(due: DueChoice): string | null {
+  const text = dueText(due);
+
+  return text === null ? null : readingTextOf("dueDate", text);
+}
+
+/** The due date input; a day that reads takes the app's format when the person leaves it (4.4). */
+function dueDateInput(value: string, set: (value: string) => void): ReactNode {
+  return (
+    <Input
+      id="review-due-date"
+      type="text"
+      aria-label="Due date"
+      placeholder="25 Nov 2026"
+      value={value}
+      onChange={(event) => set(event.target.value)}
+      onBlur={() => {
+        if (dayText(value) !== value) set(dayText(value));
+      }}
+    />
+  );
 }
 
 function buildInput(
@@ -153,7 +180,7 @@ function buildInput(
     customer: customerChoiceOf(values.customer),
     number: values.number,
     currency: values.currency,
-    totalCents: amountCents(values.amount),
+    totalCents: centsOfText(values.amount),
     description: optionalText(values.description),
     keepPossibleDuplicate: keep,
     ...choice,
@@ -162,12 +189,12 @@ function buildInput(
   return kind === "invoice"
     ? {
         ...common,
-        invoiceDate: values.date,
+        invoiceDate: readingTextOf("date", values.date),
         paymentTerms: optionalText(values.paymentTerms),
       }
     : {
         ...common,
-        date: values.date,
+        date: readingTextOf("date", values.date),
         reference: optionalText(values.reference),
         method: optionalText(values.method),
       };
@@ -237,6 +264,7 @@ export function InvoiceReviewForm(props: {
   readonly onSelect: (field: ReviewFieldKey) => void;
   readonly onSaved: (message: string) => void;
   readonly onDiscard: () => void;
+  readonly discarding: boolean;
 }): ReactNode {
   const { view, kind } = props;
   const reading = view.reading;
@@ -307,10 +335,10 @@ export function InvoiceReviewForm(props: {
     }
   }
 
+  const dueTyped = dueText(values.due)?.trim() ?? "";
+
   const dueOk =
-    values.due.kind === "unspecified" ||
-    ((values.due.kind === "kept" || values.due.kind === "person") &&
-      values.due.value.trim() !== "");
+    values.due.kind === "unspecified" || dayFromText(dueTyped) !== null;
 
   const customerReady = customerChoiceOf(values.customer) !== undefined;
 
@@ -318,9 +346,11 @@ export function InvoiceReviewForm(props: {
 
   // A read due date offers no Mark as unspecified, so its helper names only the date.
   const helper = !dueOk
-    ? reading?.fields.dueDate === undefined
-      ? "Choose a due date or mark it unspecified to save."
-      : "Enter a due date to save."
+    ? dueTyped !== ""
+      ? "Write the due date as 25 Nov 2026 to save."
+      : reading?.fields.dueDate === undefined
+        ? "Choose a due date or mark it unspecified to save."
+        : "Enter a due date to save."
     : values.customer.kind === "new" && !values.customer.confirmed
       ? "Confirm the new customer to save."
       : canSave
@@ -333,23 +363,14 @@ export function InvoiceReviewForm(props: {
   ): ReactNode => {
     const readDue = reading?.fields.dueDate;
 
+    // The read day typed back stays the document's.
     if (readDue !== undefined) {
-      return (
-        <Input
-          id="review-due-date"
-          type="date"
-          aria-label="Due date"
-          value={dueText(due) ?? ""}
-          onChange={(event) => {
-            const value = event.target.value;
-
-            onChange(
-              value === readDue.value
-                ? { kind: "kept", value }
-                : { kind: "person", value }
-            );
-          }}
-        />
+      return dueDateInput(dueText(due) ?? "", (value) =>
+        onChange(
+          dayFromText(value) === readDue.value
+            ? { kind: "kept", value }
+            : { kind: "person", value }
+        )
       );
     }
 
@@ -387,17 +408,11 @@ export function InvoiceReviewForm(props: {
             <RadioGroupItem value="person" aria-label="Enter a due date" />
             <span>Enter a due date</span>
           </div>
-          {due.kind === "person" ? (
-            <Input
-              id="review-due-date"
-              type="date"
-              aria-label="Due date"
-              value={due.value}
-              onChange={(event) =>
-                onChange({ kind: "person", value: event.target.value })
-              }
-            />
-          ) : null}
+          {due.kind === "person"
+            ? dueDateInput(due.value, (value) =>
+                onChange({ kind: "person", value })
+              )
+            : null}
           <div className="flex items-start gap-2">
             <RadioGroupItem
               value="unspecified"
@@ -437,6 +452,7 @@ export function InvoiceReviewForm(props: {
                 ? issue
                 : undefined
             }
+            currency={values.currency}
             onChange={(next) => item.handleChange(next)}
             onBlur={item.handleBlur}
           />
@@ -479,7 +495,11 @@ export function InvoiceReviewForm(props: {
                   <ReviewFieldRow
                     field={field}
                     label={label}
-                    tag={liveTagOf(reading, field, dueText(item.state.value))}
+                    tag={liveTagOf(
+                      reading,
+                      field,
+                      dueTagValue(item.state.value)
+                    )}
                     sources={sourcesOf(reading, field)}
                     unread={reading === null}
                     selected={props.selected === field}
@@ -497,22 +517,26 @@ export function InvoiceReviewForm(props: {
           return textRow(field, label);
         })}
       </div>
-      <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-        {duplicate === null ? null : (
-          <DuplicateNotice
-            href={`/m/invoices/invoices/${duplicate}`}
-            pending={pending}
-            onKeep={() => void form.handleSubmit({ keep: true })}
-            onDiscard={() => props.onDiscard()}
-          />
-        )}
-        <SaveFailure message={saveError} />
-        <ReviewSaveBar
-          helper={helper}
-          pending={pending}
-          label={kind === "invoice" ? "Save as unpaid" : "Save as paid"}
-        />
-      </div>
+      {duplicate === null && saveError === null ? null : (
+        <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+          {duplicate === null ? null : (
+            <DuplicateNotice
+              href={`/m/invoices/invoices/${duplicate}`}
+              pending={pending}
+              onKeep={() => void form.handleSubmit({ keep: true })}
+              onDiscard={() => props.onDiscard()}
+            />
+          )}
+          <SaveFailure message={saveError} />
+        </div>
+      )}
+      <ReviewSaveBar
+        helper={helper}
+        pending={pending}
+        label={kind === "invoice" ? "Save as unpaid" : "Save as paid"}
+        discarding={props.discarding}
+        onDiscard={props.onDiscard}
+      />
     </form>
   );
 }

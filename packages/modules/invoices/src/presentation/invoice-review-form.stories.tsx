@@ -118,6 +118,7 @@ function saveButton(canvas: ReturnType<typeof within>, name: string) {
 }
 
 // B5.1: no due-date decision keeps Save disabled with its reason; a date or unspecified enables it.
+// Design review 4.4: a date the app cannot read keeps Save disabled and names the format.
 export const MissingDueDate: Story = {
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
@@ -134,7 +135,16 @@ export const MissingDueDate: Story = {
     );
     await expect(save).toHaveAttribute("aria-disabled", "true");
 
-    await userEvent.type(canvas.getByLabelText("Due date"), "2026-11-25");
+    const due = canvas.getByLabelText("Due date");
+
+    await userEvent.type(due, "25/11/2026");
+    await expect(
+      canvas.getByText("Write the due date as 25 Nov 2026 to save.")
+    ).toBeVisible();
+    await expect(save).toHaveAttribute("aria-disabled", "true");
+
+    await userEvent.clear(due);
+    await userEvent.type(due, "25 Nov 2026");
     await expect(save).not.toHaveAttribute("aria-disabled", "true");
 
     await userEvent.click(
@@ -154,7 +164,7 @@ export const DueDateAfterAnotherField: Story = {
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas }) => {
     await userEvent.click(
-      canvas.getByRole("button", { name: "Show the source of Total" })
+      canvas.getByRole("button", { name: "Show Total on the document" })
     );
     await userEvent.click(
       canvas.getByRole("radio", { name: "Enter a due date" })
@@ -176,7 +186,7 @@ export const RowSelectedByTab: Story = {
     const radio = canvas.getByRole("radio", { name: "Enter a due date" });
 
     const source = canvas.getByRole("button", {
-      name: "Show the source of Due date",
+      name: "Show Due date on the document",
     });
 
     await expect(source).toHaveAttribute("aria-pressed", "false");
@@ -200,7 +210,7 @@ export const DueDateSources: Story = {
     await userEvent.click(
       canvas.getByRole("radio", { name: "Enter a due date" })
     );
-    await userEvent.type(canvas.getByLabelText("Due date"), "2026-11-25");
+    await userEvent.type(canvas.getByLabelText("Due date"), "25 Nov 2026");
     await userEvent.click(saveButton(canvas, "Save as unpaid"));
 
     await waitFor(() =>
@@ -243,11 +253,17 @@ export const DueDateSourcesKept: Story = {
   globals: desktop,
   beforeEach: () => serve(dueDateReadReview),
   play: async ({ canvas }) => {
+    // Design review 4.4: the read days show in the app's one format.
+    await expect(canvas.getByLabelText("Due date")).toHaveValue("30 Nov 2026");
+    await expect(canvas.getByLabelText("Invoice date")).toHaveValue(
+      "26 Oct 2026"
+    );
     await userEvent.click(saveButton(canvas, "Save as unpaid"));
 
     await waitFor(() =>
       expect(saveInvoice).toHaveBeenCalledWith(
         expect.objectContaining({
+          invoiceDate: "2026-10-26",
           dueDate: "2026-11-30",
           dueDateSource: "document",
         })
@@ -299,6 +315,33 @@ export const Tags: Story = {
     await expect(
       fieldRow(canvasElement, "dueDate").getByText("Entered by you")
     ).toBeVisible();
+  },
+};
+
+// Design review 4.5: a typed amount shows its separators after the field loses focus and saves in cents.
+export const AmountFormatted: Story = {
+  name: "Amount formatted",
+  globals: desktop,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    const total = canvas.getByLabelText("Total");
+
+    await expect(total).toHaveValue("5,000.00");
+    await userEvent.clear(total);
+    await userEvent.type(total, "4200");
+    await userEvent.tab();
+    await expect(total).toHaveValue("4,200.00");
+
+    await userEvent.click(
+      canvas.getByRole("radio", { name: "Mark as unspecified" })
+    );
+    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+
+    await waitFor(() =>
+      expect(saveInvoice).toHaveBeenCalledWith(
+        expect.objectContaining({ totalCents: 420000 })
+      )
+    );
   },
 };
 
@@ -422,7 +465,7 @@ export const SaveRefused: Story = {
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "01_Invoice_Missing_Due_Date.pdf was not saved. A record from that document is already saved."
     );
-    await expect(total).toHaveValue("4000.00");
+    await expect(total).toHaveValue("4,000.00");
     await waitFor(() =>
       expect(getDocumentReview.mock.calls.length).toBeGreaterThan(reads)
     );
@@ -537,9 +580,33 @@ export const SavedReadOnly: Story = {
 };
 
 // Every form state at the phone width too, so axe checks each at 390 x 844.
+// Design review 4.6: at 390 the reason and Save stay on screen, not below the fold.
 export const MissingDueDateOnPhone: Story = {
   ...MissingDueDate,
   name: "Missing due date on a phone",
+  globals: phone,
+  play: async (context) => {
+    const { canvas } = context;
+
+    for (const element of [
+      saveButton(canvas, "Save as unpaid"),
+      canvas.getByText("Choose a due date or mark it unspecified to save."),
+    ]) {
+      const box = element.getBoundingClientRect();
+
+      // oxlint-disable-next-line no-await-in-loop -- one element per check.
+      await expect(box.top).toBeGreaterThanOrEqual(0);
+      // oxlint-disable-next-line no-await-in-loop -- one element per check.
+      await expect(box.bottom).toBeLessThanOrEqual(window.innerHeight);
+    }
+
+    await MissingDueDate.play?.(context);
+  },
+};
+
+export const AmountFormattedOnPhone: Story = {
+  ...AmountFormatted,
+  name: "Amount formatted on a phone",
   globals: phone,
 };
 

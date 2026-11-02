@@ -132,8 +132,11 @@ export function DocumentViewer(props: DocumentViewerProps): ReactNode {
 
     if (element === null) return;
 
+    // A hidden pane measures 0 (choice 14); keeping the last width keeps the drawn PDF, not a new load.
     const observer = new ResizeObserver(([entry]) => {
-      setWidth(Math.floor(entry?.contentRect.width ?? 0));
+      const next = Math.floor(entry?.contentRect.width ?? 0);
+
+      setWidth((last) => (next === 0 ? last : next));
     });
 
     observer.observe(element);

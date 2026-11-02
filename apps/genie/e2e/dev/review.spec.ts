@@ -163,6 +163,13 @@ async function openReview(
   ).toBeVisible(FIRST_PAINT);
 }
 
+/** Below 1024 px the review shows one pane at a time (choice 14); from 1024 px both show. */
+async function showPane(page: Page, pane: "Fields" | "Document") {
+  if (onPhone(page)) {
+    await page.getByRole("button", { name: pane, exact: true }).click();
+  }
+}
+
 /**
  * axe, then a full-page capture as evidence of the same screen (DEC-21, DEC-25). With a
  * `document`, both wait until that document's first page draws, so the capture shows the PDF
@@ -304,12 +311,15 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await openReview(page, invoice, "Review the invoice");
 
         // B9.3: the review of 01 has no accessibility defect before its save.
+        await showPane(page, "Document");
         await capture(page, testInfo, "review-invoice", invoice.name);
+        await showPane(page, "Fields");
 
         // B9.4: the pdf.js worker loads under `next dev`, so the source text is marked.
         await page
-          .getByRole("button", { name: "Show the source of Total" })
+          .getByRole("button", { name: "Show Total on the document" })
           .click();
+        await showPane(page, "Document");
         await expect(
           page
             .getByRole("region", { name: invoice.name })
@@ -317,6 +327,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
             .filter({ hasText: "5,000.00" })
             .first()
         ).toBeVisible({ timeout: VIEWER_TIMEOUT });
+        await showPane(page, "Fields");
 
         // B5.7: one tap on the phone and one click on desktop check the radio after Total was
         // selected; selecting on pointer focus moved the radio and lost the first press.
@@ -332,14 +343,15 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         // A pointer focus on the date input (a text field) matches :focus-visible, so it selects
         // its row at once; the press must still leave the input focused.
         await page
-          .getByRole("button", { name: "Show the source of Total" })
+          .getByRole("button", { name: "Show Total on the document" })
           .click();
         await (onPhone(page) ? dueDate.tap() : dueDate.click());
         await expect(dueDate).toBeFocused();
         await expect(
-          page.getByRole("button", { name: "Show the source of Due date" })
+          page.getByRole("button", { name: "Show Due date on the document" })
         ).toHaveAttribute("aria-pressed", "true");
-        await dueDate.fill("2026-11-25");
+        // Design review 4.4: the date is typed in the app's one format.
+        await dueDate.fill("25 Nov 2026");
         await page.getByRole("button", { name: "Save as unpaid" }).click();
         await expect(
           page.getByText(/INV-LIVE-001 saved as unpaid/)
@@ -371,7 +383,9 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         ).toBeVisible();
 
         // B9.3: the payment review has no accessibility defect before its save.
+        await showPane(page, "Document");
         await capture(page, testInfo, "review-payment", split.name);
+        await showPane(page, "Fields");
 
         await page.getByRole("button", { name: "Save the payment" }).click();
         await expect(page.getByText(/^Payment saved:/)).toBeVisible({

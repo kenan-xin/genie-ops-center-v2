@@ -13,13 +13,12 @@ import {
   type ReadingField,
   savePaymentInput,
 } from "../contract.ts";
-import { centsOf } from "../services/reading/quote-check.ts";
 import {
   customerChoiceOf,
   initialCustomer,
   type CustomerValue,
 } from "./customer-field.tsx";
-import { formatMoney } from "./format.ts";
+import { centsOfText, formatMoney } from "./format.ts";
 import {
   checkLinks,
   draftsOfProposal,
@@ -29,8 +28,10 @@ import { LinksEditor, type OpenStatus } from "./payment-links.tsx";
 import { DuplicateNotice, SaveFailure } from "./review-alerts.tsx";
 import { FIELDS_OF, type ReviewFieldKey } from "./review-fields.tsx";
 import {
+  inputTextOf,
   issuesOf,
   optionalText,
+  readingTextOf,
   ReviewCustomerRow,
   ReviewSaveBar,
   ReviewTextRow,
@@ -67,7 +68,9 @@ type TextField = (typeof TEXT_FIELDS)[number];
 
 function initialValues(view: DocumentReviewView): FormValues {
   const reading = view.reading;
-  const text = (field: ReadingField) => reading?.fields[field]?.value ?? "";
+
+  const text = (field: ReadingField) =>
+    inputTextOf(field, reading?.fields[field]?.value ?? "");
 
   return {
     customer: initialCustomer(view),
@@ -110,15 +113,15 @@ function buildInput(
   return {
     documentId: view.document.id,
     customer: customerChoiceOf(values.customer),
-    paymentDate: values.date,
+    paymentDate: readingTextOf("date", values.date),
     currency: values.currency,
-    amountCents: centsOf(values.amount.trim()),
+    amountCents: centsOfText(values.amount),
     reference: optionalText(values.reference),
     method: optionalText(values.method),
     namedInvoiceNumbers: numbersOf(values.invoiceNumbers),
     allocations: links.map((link) => ({
       invoiceId: link.invoiceId,
-      amountCents: centsOf(link.amountText.trim()),
+      amountCents: centsOfText(link.amountText),
     })),
     keepPossibleDuplicate: keep,
   };
@@ -131,6 +134,7 @@ export function PaymentReviewForm(props: {
   readonly onSelect: (field: ReviewFieldKey) => void;
   readonly onSaved: (message: string) => void;
   readonly onDiscard: () => void;
+  readonly discarding: boolean;
 }): ReactNode {
   const { view } = props;
   const invoices = useModuleClient(invoicesContract);
@@ -216,7 +220,7 @@ export function PaymentReviewForm(props: {
   );
 
   const proposal = asRead ? (view.payment?.proposal ?? NO_MATCH) : NO_MATCH;
-  const amountCents = centsOf(values.amount.trim());
+  const amountCents = centsOfText(values.amount);
   const check = checkLinks(amountCents ?? 0, links, open);
 
   const tooManyLinks = links.length > MAX_PAYMENT_LINKS;
@@ -337,6 +341,7 @@ export function PaymentReviewForm(props: {
                         ? issue
                         : undefined
                     }
+                    currency={values.currency}
                     onChange={(next) => item.handleChange(next)}
                     onBlur={item.handleBlur}
                   />
@@ -358,22 +363,26 @@ export function PaymentReviewForm(props: {
           onChange={(next) => form.setFieldValue("links", next)}
         />
       </div>
-      <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-        {duplicate === null ? null : (
-          <DuplicateNotice
-            href={`/m/invoices/payments/${duplicate}`}
-            pending={pending}
-            onKeep={() => void form.handleSubmit({ keep: true })}
-            onDiscard={() => props.onDiscard()}
-          />
-        )}
-        <SaveFailure message={saveError} />
-        <ReviewSaveBar
-          helper={helper}
-          pending={pending}
-          label={links.length > 0 ? "Save the payment" : "Save as unallocated"}
-        />
-      </div>
+      {duplicate === null && saveError === null ? null : (
+        <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+          {duplicate === null ? null : (
+            <DuplicateNotice
+              href={`/m/invoices/payments/${duplicate}`}
+              pending={pending}
+              onKeep={() => void form.handleSubmit({ keep: true })}
+              onDiscard={() => props.onDiscard()}
+            />
+          )}
+          <SaveFailure message={saveError} />
+        </div>
+      )}
+      <ReviewSaveBar
+        helper={helper}
+        pending={pending}
+        label={links.length > 0 ? "Save the payment" : "Save as unallocated"}
+        discarding={props.discarding}
+        onDiscard={props.onDiscard}
+      />
     </form>
   );
 }

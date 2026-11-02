@@ -1,10 +1,20 @@
 "use client";
 
-import { Button, FieldError, Input } from "@genie/ui";
+import {
+  Button,
+  FieldError,
+  Input,
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@genie/ui";
+import { InfoIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type { ReadingField } from "../contract.ts";
+import { currencyCode, type ReadingField } from "../contract.ts";
+import { centsText } from "../services/reading/quote-check.ts";
 import { CustomerField, type CustomerValue } from "./customer-field.tsx";
+import { centsOfText, dayFromText, dayText, moneyText } from "./format.ts";
 import {
   liveTagOf,
   ReviewFieldRow,
@@ -16,9 +26,46 @@ import type { DocumentReviewView } from "./views.ts";
 /** The parts both review forms share: messages, the text and customer rows, the save bar. */
 
 export const AMOUNT_MESSAGE =
-  "Enter the amount as digits with up to two decimals, for example 5000.00.";
+  "Enter the amount as digits with up to two decimals, for example 5,000.00.";
+
+export const DATE_MESSAGE = "Write the date as 26 Oct 2026.";
 
 const SAVE_HELPER_ID = "review-save-helper";
+
+/**
+ * A typed value as the reading stores it, so the origin tag and the save compare like with like:
+ * an amount as "5000.00", a day as ISO. Text that does not read stays as typed, so the save
+ * schema reports it.
+ */
+export function readingTextOf(field: ReadingField, text: string): string {
+  if (field === "amount") {
+    const cents = centsOfText(text);
+
+    return cents === undefined ? text : centsText(cents);
+  }
+
+  if (field === "date" || field === "dueDate") return dayFromText(text) ?? text;
+
+  return text;
+}
+
+/** The read value as the review's input shows it: days and amounts in the app's format. */
+export function inputTextOf(field: ReadingField, text: string): string {
+  if (field === "amount") return moneyText(text);
+
+  if (field === "date" || field === "dueDate") return dayText(text);
+
+  return text;
+}
+
+/** The currency beside an amount input, once the currency field holds a code. */
+export function CurrencyAddon(props: { readonly currency: string }): ReactNode {
+  const code = props.currency.trim().toUpperCase();
+
+  return currencyCode.safeParse(code).success ? (
+    <InputGroupAddon>{code}</InputGroupAddon>
+  ) : null;
+}
 
 export function optionalText(value: string): string | null {
   const text = value.trim();
@@ -41,7 +88,12 @@ export function issuesOf<F extends string>(
 
     if (field === undefined || messages[field] !== undefined) continue;
 
-    messages[field] = field === "amount" ? AMOUNT_MESSAGE : issue.message;
+    messages[field] =
+      field === "amount"
+        ? AMOUNT_MESSAGE
+        : field === "date"
+          ? DATE_MESSAGE
+          : issue.message;
   }
 
   return messages;
@@ -64,6 +116,8 @@ export function ReviewTextRow(
     /** The value the tag compares with the reading, when it differs from the text. */
     readonly tagValue?: string | readonly string[];
     readonly message: string | undefined;
+    /** The currency the amount input shows beside its figure. */
+    readonly currency?: string;
     readonly onChange: (value: string) => void;
     readonly onBlur: () => void;
   }
@@ -72,28 +126,55 @@ export function ReviewTextRow(
   const reading = props.view.reading;
   const id = `review-${field}`;
 
+  const control = {
+    id,
+    "aria-label": label,
+    "type": "text",
+    "inputMode": field === "amount" ? ("decimal" as const) : ("text" as const),
+    "placeholder": field === "date" ? "26 Oct 2026" : undefined,
+    "value": props.value,
+    "aria-invalid": message === undefined ? undefined : true,
+    "aria-describedby": message === undefined ? undefined : `${id}-error`,
+    "onChange": (event: { readonly target: { readonly value: string } }) =>
+      props.onChange(event.target.value),
+    // A day or an amount that reads takes the app's format when the person leaves it (4.4, 4.5).
+    "onBlur": () => {
+      if (field !== "invoiceNumbers") {
+        const shown = inputTextOf(field, props.value);
+
+        if (shown !== props.value) props.onChange(shown);
+      }
+
+      props.onBlur();
+    },
+  };
+
   return (
     <ReviewFieldRow
       field={field}
       label={label}
-      tag={liveTagOf(reading, field, props.tagValue ?? props.value)}
+      tag={liveTagOf(
+        reading,
+        field,
+        props.tagValue ??
+          (field === "invoiceNumbers"
+            ? props.value
+            : readingTextOf(field, props.value))
+      )}
       sources={sourcesOf(reading, field)}
       unread={reading === null}
       selected={props.selected === field}
       onSelect={() => props.onSelect(field)}
     >
       <div className="flex flex-col gap-1.5">
-        <Input
-          id={id}
-          aria-label={label}
-          type={field === "date" ? "date" : "text"}
-          inputMode={field === "amount" ? "decimal" : "text"}
-          value={props.value}
-          aria-invalid={message === undefined ? undefined : true}
-          aria-describedby={message === undefined ? undefined : `${id}-error`}
-          onChange={(event) => props.onChange(event.target.value)}
-          onBlur={props.onBlur}
-        />
+        {field === "amount" ? (
+          <InputGroup>
+            <CurrencyAddon currency={props.currency ?? ""} />
+            <InputGroupInput {...control} />
+          </InputGroup>
+        ) : (
+          <Input {...control} />
+        )}
         {message === undefined ? null : (
           <FieldError id={`${id}-error`}>{message}</FieldError>
         )}
@@ -141,22 +222,43 @@ export function ReviewCustomerRow(
   );
 }
 
-/** The save button, `aria-disabled` with the reason it waits for, never `disabled` (DESIGN.md). */
+/**
+ * Discard, Save and the reason Save waits for, in one bar that stays on screen (design review 4.6):
+ * fixed at the bottom below `md`, where the shell keeps the page clear of it, and sticky at the end
+ * of the fields card from `md`. Save is `aria-disabled` with its reason, never `disabled` (DESIGN.md).
+ */
 export function ReviewSaveBar(props: {
   readonly helper: string | undefined;
   readonly pending: boolean;
   readonly label: string;
+  readonly discarding: boolean;
+  readonly onDiscard: () => void;
 }): ReactNode {
   const { helper } = props;
 
   return (
-    <>
+    <div
+      data-shell-bottom-bar=""
+      className="z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:bottom-0"
+    >
       {helper === undefined ? null : (
-        <p id={SAVE_HELPER_ID} className="text-xs text-muted-foreground">
-          {helper}
+        <p
+          id={SAVE_HELPER_ID}
+          className="flex min-w-0 flex-1 basis-48 items-start gap-1.5 text-xs text-muted-foreground"
+        >
+          <InfoIcon aria-hidden className="mt-px size-3.5 shrink-0" />
+          <span>{helper}</span>
         </p>
       )}
-      <div className="flex justify-end">
+      <div className="ml-auto flex gap-2">
+        <Button
+          type="button"
+          variant="secondary"
+          loading={props.discarding}
+          onClick={props.onDiscard}
+        >
+          Discard
+        </Button>
         <Button
           type="submit"
           aria-disabled={helper === undefined ? undefined : true}
@@ -166,6 +268,6 @@ export function ReviewSaveBar(props: {
           {props.label}
         </Button>
       </div>
-    </>
+    </div>
   );
 }

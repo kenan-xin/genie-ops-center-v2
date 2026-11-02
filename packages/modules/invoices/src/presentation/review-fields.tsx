@@ -1,6 +1,7 @@
 "use client";
 
 import { Badge, Button } from "@genie/ui";
+import { LocateFixedIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { ReadingField, StoredReading } from "../contract.ts";
@@ -264,11 +265,12 @@ export function ReviewFieldRow(props: ReviewFieldRowProps): ReactNode {
             type="button"
             variant="ghost"
             size="icon"
-            aria-label={`Show the source of ${label}`}
+            aria-label={`Show ${label} on the document`}
+            title="Show on the document"
             aria-pressed={selected}
             onClick={onSelect}
           >
-            <span aria-hidden="true">“</span>
+            <LocateFixedIcon aria-hidden strokeWidth={1.75} />
           </Button>
         </span>
       </div>

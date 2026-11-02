@@ -131,8 +131,8 @@ export const Split: Story = {
     await expect(linkBox(canvas, "INV-2026-08-04")).toBeChecked();
     await expect(linkBox(canvas, "INV-2026-09-04")).toBeChecked();
     await expect(linkBox(canvas, "INV-2026-10-04")).not.toBeChecked();
-    await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4050.00");
-    await expect(amountFor(canvas, "INV-2026-09-04")).toHaveValue("4200.00");
+    await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4,050.00");
+    await expect(amountFor(canvas, "INV-2026-09-04")).toHaveValue("4,200.00");
     await expect(
       canvas.getByText(`Linked ${SGD(825000)}. Unallocated ${SGD(0)}.`)
     ).toBeVisible();
@@ -183,7 +183,7 @@ export const Suggestions: Story = {
         name: "Link to INV-2026-10-04",
       })
     );
-    await expect(amountFor(canvas, "INV-2026-10-04")).toHaveValue("4350.00");
+    await expect(amountFor(canvas, "INV-2026-10-04")).toHaveValue("4,350.00");
 
     await userEvent.click(
       canvas.getByRole("button", { name: "Save the payment" })
@@ -212,7 +212,7 @@ export const Overpayment: Story = {
     ).toBeVisible();
     await expect(linkBox(canvas, "INV-2026-08-04")).toBeChecked();
     await expect(linkBox(canvas, "INV-2026-09-04")).not.toBeChecked();
-    await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4050.00");
+    await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4,050.00");
     await expect(
       canvas.getByText(`Linked ${SGD(405000)}. Unallocated ${SGD(420000)}.`)
     ).toBeVisible();

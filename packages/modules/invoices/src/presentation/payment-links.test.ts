@@ -70,7 +70,7 @@ describe("the links of a payment under review", () => {
         PAYMENT_CENTS,
         [
           { invoiceId: AUG, amountText: "4050.00" },
-          { invoiceId: SEP, amountText: "4,200.00" },
+          { invoiceId: SEP, amountText: "42,00.00" },
         ],
         OPEN
       )
@@ -83,7 +83,8 @@ describe("the links of a payment under review", () => {
     });
   });
 
-  it("starts a split with each part's amount as decimal text", () => {
+  // Design review 4.5: the fill shows separators like the lists.
+  it("starts a split with each part's amount as the input shows it", () => {
     expect(
       draftsOfProposal({
         kind: "split",
@@ -94,8 +95,8 @@ describe("the links of a payment under review", () => {
         unallocatedCents: 0,
       })
     ).toEqual([
-      { invoiceId: AUG, amountText: "4050.00" },
-      { invoiceId: SEP, amountText: "4200.00" },
+      { invoiceId: AUG, amountText: "4,050.00" },
+      { invoiceId: SEP, amountText: "4,200.00" },
     ]);
   });
 });
