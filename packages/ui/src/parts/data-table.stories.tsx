@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { omit } from "es-toolkit";
 import { UserIcon } from "lucide-react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -320,4 +321,69 @@ export const PhoneRefusal: Story = {
 
 export const Dark: Story = {
   globals: { theme: "dark" },
+};
+
+// A list whose identity is a page link that covers its row (design review 1.5).
+const linked = (row: Person) => (
+  <a href={`#${row.id}`} className="after:absolute after:inset-0">
+    {row.email}
+  </a>
+);
+
+export const LinkedRows: Story = {
+  args: {
+    rowLinks: true,
+    columns: [
+      { id: "email", header: "Email", cell: linked },
+      { id: "name", header: "Name", cell: (row) => row.name },
+      { id: "role", header: "Role", cell: (row) => row.role },
+    ],
+    card: { title: linked, detail: (row) => row.name },
+  },
+  // The link opens the row, so no row button wraps it.
+  render: (args) => <DataTable {...omit(args, ["onOpenRow"])} />,
+  play: async ({ canvas }) => {
+    // A point over another cell belongs to that row's link, not the table's last link.
+    const name = within(
+      canvas.getByRole("row", { name: /avery@example.com/ })
+    ).getByRole("cell", { name: "Avery Stone" });
+
+    const box = name.getBoundingClientRect();
+
+    await expect(
+      document
+        .elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)
+        ?.closest("a")
+    ).toBe(canvas.getByRole("link", { name: "avery@example.com" }));
+
+    // The actions menu stays above the link.
+    const actions = canvas.getByRole("button", {
+      name: "Actions for avery@example.com",
+    });
+
+    const menu = actions.getBoundingClientRect();
+
+    await expect(
+      document
+        .elementFromPoint(
+          menu.left + menu.width / 2,
+          menu.top + menu.height / 2
+        )
+        ?.closest("button")
+    ).toBe(actions);
+  },
+};
+
+export const LinkedRowsPhone: Story = {
+  ...LinkedRows,
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const cards = within(
+      canvas.getByRole("list", { name: "People" })
+    ).getAllByRole("listitem");
+
+    await expect(
+      cards.filter((card) => card.querySelector("svg.lucide-chevron-right"))
+    ).toHaveLength(3);
+  },
 };

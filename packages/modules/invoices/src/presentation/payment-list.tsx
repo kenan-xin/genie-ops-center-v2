@@ -131,7 +131,12 @@ export function PaymentList(props: PaymentListProps) {
       id: "payment",
       header: "Payment",
       cell: (row) => (
-        <PageLink href={recordHref(row)}>{paymentLabel(row)}</PageLink>
+        <PageLink
+          href={recordHref(row)}
+          className="after:absolute after:inset-0"
+        >
+          {paymentLabel(row)}
+        </PageLink>
       ),
     },
     { id: "customer", header: "Customer", cell: (row) => row.customerName },
@@ -201,6 +206,7 @@ export function PaymentList(props: PaymentListProps) {
               rowKey={(row) => row.id}
               rowLabel={paymentLabel}
               columns={columns}
+              rowLinks
               status={(row) => <PaymentStatusBadge status={row.status} />}
               card={{
                 title: (row) => (

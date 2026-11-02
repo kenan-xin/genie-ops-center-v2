@@ -183,7 +183,12 @@ export function InvoiceList(props: InvoiceListProps) {
       id: "invoice",
       header: "Invoice",
       cell: (row) => (
-        <PageLink href={recordHref(row)}>{row.invoiceNumber}</PageLink>
+        <PageLink
+          href={recordHref(row)}
+          className="after:absolute after:inset-0"
+        >
+          {row.invoiceNumber}
+        </PageLink>
       ),
     },
     { id: "customer", header: "Customer", cell: (row) => row.customerName },
@@ -252,6 +257,7 @@ export function InvoiceList(props: InvoiceListProps) {
               rowKey={(row) => row.id}
               rowLabel={(row) => row.invoiceNumber}
               columns={columns}
+              rowLinks
               status={(row) => <InvoiceStatusBadge status={row.status} />}
               card={{
                 title: (row) => (

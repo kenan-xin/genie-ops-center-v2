@@ -1,6 +1,6 @@
 "use client";
 
-import { EllipsisIcon } from "lucide-react";
+import { ChevronRightIcon, EllipsisIcon } from "lucide-react";
 import { Fragment, useId, type ReactNode } from "react";
 
 import { Button } from "../components/button.tsx";
@@ -75,6 +75,12 @@ export type DataTableProps<Row> = {
   /** The phone card. Below 768 px the table is this list instead. */
   readonly card: DataTableCard<Row>;
   readonly onOpenRow?: (row: Row) => void;
+  /**
+   * Set when the identity cell and the card title hold a link with `after:absolute after:inset-0`.
+   * The link then covers its table row, and each card shows a chevron, so a row reads as a link
+   * (design review 1.5).
+   */
+  readonly rowLinks?: boolean;
   readonly actions?: (row: Row) => readonly DataTableAction[];
   /** `false` drops the outer border, for a table inside a card that draws its own. */
   readonly framed?: boolean;
@@ -129,6 +135,7 @@ export function DataTable<Row>({
   status,
   card,
   onOpenRow,
+  rowLinks = false,
   actions,
   framed = true,
 }: DataTableProps<Row>) {
@@ -208,7 +215,10 @@ export function DataTable<Row>({
           </TableHeader>
           <TableBody>
             {rows.map((row) => (
-              <TableRow key={rowKey(row)}>
+              <TableRow
+                key={rowKey(row)}
+                className={rowLinks ? "relative" : undefined}
+              >
                 {columns.map((column) => (
                   <TableCell
                     key={column.id}
@@ -222,7 +232,9 @@ export function DataTable<Row>({
                   </TableCell>
                 ))}
                 {status ? <TableCell>{status(row)}</TableCell> : null}
-                <TableCell className="text-right">{menu(row)}</TableCell>
+                <TableCell className="relative z-10 text-right">
+                  {menu(row)}
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -290,6 +302,12 @@ export function DataTable<Row>({
                   <div className="relative z-10">{content}</div>
                 )}
               </div>
+              {rowLinks ? (
+                <ChevronRightIcon
+                  aria-hidden="true"
+                  className="size-4 shrink-0 self-center text-muted-foreground"
+                />
+              ) : null}
               {/* No empty cell, so a card without actions keeps no gap at its end. */}
               {rowMenu === null ? null : (
                 <span className="relative z-10">{rowMenu}</span>
