@@ -62,6 +62,10 @@ test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7,
   // A person no other test signs in, so no concurrent sign-in replaces the stored id token.
   const email = e2eSignOutEmail(testInfo.project.name);
 
+  const mounted = page.waitForResponse((response) =>
+    response.url().endsWith("/api/session/activity")
+  );
+
   await signInThroughKeycloak(page, { email });
 
   const [tokens] = await queryDatabase(
@@ -81,6 +85,11 @@ test("the stored realm tokens rest sealed, and sign-out ends both sessions (R-7,
   const token = await sessionToken(context);
 
   expect(await sessionRows(token)).toBe(1);
+
+  // The landing page posts its activity call on mount (R-15a). Sent after the sign-out below, it
+  // answers 401, and the page's own move to the expired banner (R-17a) cancels the realm logout
+  // navigation (xok3.36). So the call answers first, under the live session.
+  expect((await mounted).status()).toBe(200);
 
   const signOut = await page.request.post("/api/auth/sign-out", {
     headers: { origin: new URL(page.url()).origin },
@@ -149,6 +158,10 @@ test(
     const email = e2eReaderEmail("auth", testInfo.project.name);
     const earlier = await realmSessionIds(E2E_SIGN_IN_REALM, email);
 
+    const mounted = page.waitForResponse((response) =>
+      response.url().endsWith("/api/session/activity")
+    );
+
     await signInThroughKeycloak(page, { email });
 
     // The stored token is gone, for example after a secret rotation that cannot unseal it.
@@ -162,6 +175,9 @@ test(
     );
 
     expect(sessions).toHaveLength(1);
+
+    // The landing page's mount call answers before the sign-out, as in the first test (xok3.36).
+    expect((await mounted).status()).toBe(200);
 
     const signOut = await page.request.post("/api/auth/sign-out", {
       headers: { origin: new URL(page.url()).origin },
