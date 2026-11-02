@@ -126,6 +126,15 @@ async function assertFits() {
   // The stage's padding is the margin above the control row, at every size.
   expect(controlTop - rect.bottom).toBeGreaterThanOrEqual(15);
 
+  // 7.5: the key hints sit on the black above the slide, never on its corner (Phase 10 captures).
+  const hints = [...document.querySelectorAll("p")].find((element) =>
+    element.textContent?.includes("exits")
+  );
+
+  if (hints !== undefined) {
+    expect(hints.getBoundingClientRect().bottom).toBeLessThanOrEqual(rect.top);
+  }
+
   for (const name of ["Previous slide", "Next slide", "Exit"]) {
     const control = dialog.getByRole("button", { name });
 

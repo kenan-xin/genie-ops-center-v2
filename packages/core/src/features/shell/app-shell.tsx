@@ -162,8 +162,10 @@ export function AppShell(props: AppShellProps) {
             aria-label={strings.pageContent}
             tabIndex={0}
             // The bottom space keeps the last row clear of the 48 px chat button, and of the
-            // phone's action bar under it (design review 2.2).
-            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-28 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 ${focusRing} focus-visible:ring-inset`}
+            // phone's action bar under it (design review 2.2). A page whose <main> carries
+            // `data-page-fill` (a chat page, which hides the chat button) fills the height instead,
+            // so its own parts scroll and its composer stays at the bottom (agent-native rule 1).
+            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-28 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 ${focusRing} focus-visible:ring-inset`}
           >
             <ShellContext.Provider
               value={{

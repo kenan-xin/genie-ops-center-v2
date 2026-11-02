@@ -312,6 +312,55 @@ export const AskOnPhone: Story = {
   },
 };
 
+/** A chat page that fills the content height, as Ask does: its log scrolls, its composer does not. */
+const fillPage = (
+  <main data-page-fill="" className="flex min-h-0 flex-1 flex-col">
+    <PageHeader title="Ask" />
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div
+        role="log"
+        aria-label="Conversation"
+        tabIndex={0}
+        className="min-h-0 flex-1 overflow-y-auto"
+      >
+        <div className="h-[200dvh]">A long answer.</div>
+      </div>
+      <textarea aria-label="Message Ask" rows={1} />
+    </div>
+  </main>
+);
+
+/**
+ * The composer of a page that fills the height sits at the window bottom at 1440 x 900 and at
+ * 390 x 844, and the conversation scrolls inside the page (agent-native rule 1, Phase 10 captures).
+ */
+async function expectComposerAtBottom(canvasElement: HTMLElement) {
+  const composer = within(canvasElement).getByRole("textbox", {
+    name: "Message Ask",
+  });
+
+  const { bottom } = composer.getBoundingClientRect();
+
+  await expect(bottom).toBeLessThanOrEqual(window.innerHeight);
+  await expect(bottom).toBeGreaterThanOrEqual(window.innerHeight - 48);
+
+  const log = within(canvasElement).getByRole("log", { name: "Conversation" });
+
+  await expect(log.scrollHeight).toBeGreaterThan(log.clientHeight);
+}
+
+export const FillPageDesktop: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  args: { currentPath: "/ask", children: fillPage },
+  play: async ({ canvasElement }) => expectComposerAtBottom(canvasElement),
+};
+
+export const FillPageOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  args: { currentPath: "/ask", children: fillPage },
+  play: async ({ canvasElement }) => expectComposerAtBottom(canvasElement),
+};
+
 /**
  * A child page on a phone (design review 2.1): its own top bar replaces the shell's, with a back
  * link and the record's name, and it stays at the top while the content scrolls.

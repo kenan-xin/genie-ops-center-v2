@@ -513,5 +513,8 @@
     --typeset-size: var(--text-base);
     --typeset-leading: var(--text-base--line-height);
     --typeset-flow: 1em;
+    /* A chat answer reads at the body size at every width, as the person's bubble does; the
+       upstream phone step of 1.125 made answers larger than the rest of the chat (Phase 10). */
+    font-size: var(--typeset-size);
   }
 }

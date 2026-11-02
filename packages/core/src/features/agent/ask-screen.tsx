@@ -57,11 +57,17 @@ export function AskScreen(props: {
   );
 
   return (
-    <div className="flex flex-col gap-6 lg:flex-row">
-      <div className="lg:hidden">
-        <Disclosure summary="Chats">{list}</Disclosure>
+    // Fills a `data-page-fill` page: the list and the conversation scroll, the composer stays at
+    // the bottom (agent-native rule 1).
+    <div className="flex min-h-0 flex-1 flex-col gap-6 lg:flex-row">
+      <div className="shrink-0 lg:hidden">
+        <Disclosure summary="Chats">
+          <div className="max-h-80 overflow-y-auto">{list}</div>
+        </Disclosure>
       </div>
-      <aside className="hidden lg:block lg:w-70 lg:shrink-0">{list}</aside>
+      <aside className="hidden lg:block lg:w-70 lg:shrink-0 lg:overflow-y-auto">
+        {list}
+      </aside>
       <section
         data-page-chat=""
         aria-label="Conversation"

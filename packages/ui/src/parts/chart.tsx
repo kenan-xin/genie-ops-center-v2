@@ -334,7 +334,13 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
             value === null ? "No value" : formatChartValue(x, value)
           }
         />
+        {/* The 60 px default cut a slide's base-size "SGD 60k". Off a slide, auto width measures
+            the ticks. A slide is scaled with a CSS transform, which the measure reads, so it
+            gets a fixed width in its 960 px canvas units.
+            shortcut: 84 px fits a compact label of 9 characters at 15 px, such as "SGD 1.25M";
+            measure the formatted ticks unscaled if a longer label appears. */}
         <YAxis
+          width={props.slide === true ? 84 : "auto"}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value: number) =>

@@ -76,7 +76,7 @@ export default async function AskPage(props: Props) {
     const aiOn = access.ai === "on";
 
     return (
-      <main>
+      <main data-page-fill="" className="flex min-h-0 flex-1 flex-col">
         <PageHeader title={t("ask.title")} />
         <AskRoute
           sessions={sessions}

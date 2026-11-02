@@ -208,6 +208,16 @@ export function PresentMode(props: PresentModeProps) {
           <DialogTitle className="sr-only">
             Present {view.deck.title}
           </DialogTitle>
+          {/* A row on the black above the slide, so the hints never cover its corner (7.5). */}
+          {touch ? null : (
+            <p
+              aria-hidden="true"
+              data-shown={controlsShown ? "" : undefined}
+              className="flex h-8 shrink-0 items-end justify-end gap-1 px-5 text-xs text-white/70 opacity-0 data-shown:opacity-100 motion-safe:transition-opacity motion-safe:duration-500"
+            >
+              <Kbd>←</Kbd> <Kbd>→</Kbd> move · <Kbd>Esc</Kbd> exits
+            </p>
+          )}
           {/* The padding is the slide's margin; the measured box inside it has none. */}
           <div className="flex min-h-0 flex-1 overflow-hidden p-4">
             <div
@@ -230,15 +240,6 @@ export function PresentMode(props: PresentModeProps) {
               )}
             </div>
           </div>
-          {touch ? null : (
-            <p
-              aria-hidden="true"
-              data-shown={controlsShown ? "" : undefined}
-              className="fixed top-4 right-5 flex items-center gap-1 text-xs text-white/70 opacity-0 data-shown:opacity-100 motion-safe:transition-opacity motion-safe:duration-500"
-            >
-              <Kbd>←</Kbd> <Kbd>→</Kbd> move · <Kbd>Esc</Kbd> exits
-            </p>
-          )}
           <div className="flex justify-center p-4">
             {/* Quiet controls over the black: they fade when idle, and stay while one has focus. */}
             <div

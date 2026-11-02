@@ -547,6 +547,68 @@ const slideFrame = (args: ChartProps) => (
   </div>
 );
 
+/** A currency shown as its code makes the longest tick, for example "SGD 60k". */
+const sgdSlideChart = {
+  ...slideChart,
+  columns: [
+    { key: "Invoiced", label: "Invoiced", type: "money", currency: "SGD" },
+  ],
+  rows: [
+    { x: "2026-05-01", Invoiced: 34_900 },
+    { x: "2026-06-01", Invoiced: 58_200 },
+  ],
+} as const satisfies ChartProps;
+
+/**
+ * A slide's labels take the base size, so the fixed 60 px axis cut "SGD 60k" at its left edge
+ * (Phase 10 captures): every tick starts inside the plot.
+ */
+export const SlideChartLongTicks: Story = {
+  name: "Slide chart with long axis labels",
+  args: sgdSlideChart,
+  globals: desktop,
+  render: slideFrame,
+  play: async (context) => longTicksPlay(context),
+};
+
+/**
+ * A phone scales the 960 px slide canvas with a CSS transform. A measured axis width reads the
+ * scaled labels and comes out too small, so the labels must fit at a scale of 0.4 too.
+ */
+export const SlideChartLongTicksScaled: Story = {
+  name: "Slide chart with long axis labels, scaled as on a phone",
+  args: sgdSlideChart,
+  globals: desktop,
+  render: (args) => (
+    <div className="origin-top-left scale-40">{slideFrame(args)}</div>
+  ),
+  play: async (context) => longTicksPlay(context),
+};
+
+const longTicksPlay: NonNullable<Story["play"]> = async ({ canvasElement }) => {
+  const plot = await waitFor(() => {
+    const element = canvasElement.querySelector("svg.recharts-surface");
+
+    expect(element).not.toBeNull();
+
+    return element!;
+  });
+
+  const lefts = await waitFor(() => {
+    const found = [
+      ...canvasElement.querySelectorAll(".recharts-cartesian-axis-tick-value"),
+    ].map((tick) => tick.getBoundingClientRect().left);
+
+    expect(found.length).toBeGreaterThan(0);
+
+    return found;
+  });
+
+  await expect(Math.min(...lefts)).toBeGreaterThanOrEqual(
+    plot.getBoundingClientRect().left
+  );
+};
+
 export const SlideChart: Story = {
   args: slideChart,
   globals: desktop,

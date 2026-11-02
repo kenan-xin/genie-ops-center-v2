@@ -12,6 +12,7 @@ Business logic, data fetching, and any import of an internal project. This is a 
 
 ## Behavior it guarantees
 
+- The trigger shows a chevron that turns when open, and the focus ring.
 - The trigger is a native `button`, so Enter and Space both toggle it with no key handler of our own.
 - The trigger carries `aria-expanded` and `aria-controls`; the content is a labelled `region`.
 - The content element is always mounted, so `aria-controls` always names an element that exists. Closed applies the native `hidden` attribute, which removes the content from sight and from the accessibility tree.
