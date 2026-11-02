@@ -79,6 +79,8 @@ const CURRENCY = text("The ISO currency code of the amounts on this row.");
 
 export const invoicesDataset: DatasetDeclaration = {
   name: "invoices.invoices",
+  title: "Invoices",
+  questions: ["Who owes us the most?", "Which invoices are overdue?"],
   description:
     "The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.",
   permission: "invoices:read",
@@ -179,6 +181,8 @@ export const invoicesDataset: DatasetDeclaration = {
 
 export const paymentsDataset: DatasetDeclaration = {
   name: "invoices.payments",
+  title: "Payments",
+  questions: ["How much did we collect this month?"],
   description:
     "The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.",
   permission: "invoices:read",
@@ -254,6 +258,7 @@ export const paymentsDataset: DatasetDeclaration = {
 
 export const customersDataset: DatasetDeclaration = {
   name: "invoices.customers",
+  title: "Customers",
   description:
     "Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.",
   permission: "invoices:read",
@@ -324,6 +329,7 @@ export const customersDataset: DatasetDeclaration = {
 
 export const allocationsDataset: DatasetDeclaration = {
   name: "invoices.allocations",
+  title: "Payment links",
   description:
     "One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.",
   permission: "invoices:read",

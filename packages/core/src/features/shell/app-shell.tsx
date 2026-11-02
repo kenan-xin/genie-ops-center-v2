@@ -31,6 +31,8 @@ export type AppShellProps = {
   readonly strings: ShellStrings;
   readonly children: ReactNode;
   readonly linkComponent?: ShellLinkComponent;
+  /** The general chat of every page, usually a `ChatDock`; it steps aside for a page's own chat. */
+  readonly chat?: ReactNode;
 };
 
 const iconButton = `flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-border/60 motion-safe:transition-colors ${focusRing}`;
@@ -107,9 +109,11 @@ export function AppShell(props: AppShellProps) {
     (props.chrome === "admin" ? strings.adminPortal : strings.workspace);
 
   return (
+    // A docked chat is a fixed 400 px column, so the page makes room for it; a page with its own
+    // chat hides the shell's chat button (Section 7 redesign, choice 2).
     <div
       data-shell=""
-      className="flex h-dvh flex-col overflow-hidden bg-background text-foreground"
+      className="flex h-dvh flex-col overflow-hidden bg-background text-foreground xl:has-[[data-chat-docked]]:pe-100 [&:has([data-page-chat])_[data-shell-chat]]:hidden"
     >
       <OfflineBar message={strings.offline} />
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:gap-3 lg:p-3">
@@ -170,6 +174,9 @@ export function AppShell(props: AppShellProps) {
           </div>
         </div>
       </div>
+      {props.chat === undefined ? null : (
+        <div data-shell-chat="">{props.chat}</div>
+      )}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
         <SheetContent
           side="left"

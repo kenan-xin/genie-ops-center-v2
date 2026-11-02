@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
-import { agentAccess } from "../src/services/agent/index.ts";
+import { agentAccess, chatAvailability } from "../src/services/agent/index.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import {
   removeIntegrationKey,
@@ -20,6 +20,9 @@ import {
 let deployment: DisposableDeployment;
 
 const ALLOWED = ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"];
+
+/** This deployment has no module, so no tool step and no dataset title. */
+const NO_LABELS = { steps: {}, datasets: {} };
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([]);
@@ -79,6 +82,8 @@ describe("agentAccess", () => {
 
     const holder = await person(["core:ask:use"]);
 
+    const manager = await person(["core:ask:use", "core:settings:manage"]);
+
     const cases = [
       {
         who: "a person without core:ask:use",
@@ -98,6 +103,7 @@ describe("agentAccess", () => {
           ai: "no-key",
           allowedModels: ALLOWED,
           chatModel: "openai/gpt-6.1-terra",
+          canPickModel: false,
           inbox: [],
         },
       },
@@ -109,6 +115,19 @@ describe("agentAccess", () => {
           ai: "on",
           allowedModels: ALLOWED,
           chatModel: "openai/gpt-6.1-terra",
+          canPickModel: false,
+          inbox: [],
+        },
+      },
+      {
+        who: "a holder who also manages the settings",
+        read: () => agentAccess(manager),
+        expected: {
+          permitted: true,
+          ai: "on",
+          allowedModels: ALLOWED,
+          chatModel: "openai/gpt-6.1-terra",
+          canPickModel: true,
           inbox: [],
         },
       },
@@ -125,5 +144,25 @@ describe("agentAccess", () => {
     expect(answers).toEqual(
       cases.map(({ who, expected }) => ({ who, access: expected }))
     );
+  });
+});
+
+describe("chatAvailability", () => {
+  it("offers the model picker only to a person who manages the settings (7.1)", async () => {
+    const member = await chatAvailability(await person(["core:ask:use"]));
+
+    const manager = await chatAvailability(
+      await person(["core:ask:use", "core:settings:manage"])
+    );
+
+    expect({ member, manager }).toEqual({
+      member: { kind: "on", models: null, labels: NO_LABELS, suggestions: [] },
+      manager: {
+        kind: "on",
+        models: { allowed: ALLOWED, chatDefault: "openai/gpt-6.1-terra" },
+        labels: NO_LABELS,
+        suggestions: [],
+      },
+    });
   });
 });

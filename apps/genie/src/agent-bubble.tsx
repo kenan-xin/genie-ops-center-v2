@@ -1,4 +1,8 @@
-import { agentAccess, type ModuleRequestContext } from "@genie/core";
+import {
+  agentAccess,
+  chatLabels,
+  type ModuleRequestContext,
+} from "@genie/core";
 import type { ReactNode } from "react";
 
 import { AgentBubbleMount } from "./agent-bubble-mount.tsx";
@@ -20,14 +24,21 @@ export async function AgentBubble(): Promise<ReactNode> {
 
   if (!access.permitted || access.ai !== "on") return null;
 
-  const branding = await ctx.tenant.branding.get();
+  const [branding, chat] = await Promise.all([
+    ctx.tenant.branding.get(),
+    chatLabels(ctx),
+  ]);
 
   return (
     <AgentBubbleMount
-      models={{
-        allowed: access.allowedModels,
-        chatDefault: access.chatModel,
-      }}
+      // Only a person who manages the settings picks the model (design review 7.1).
+      models={
+        access.canPickModel
+          ? { allowed: access.allowedModels, chatDefault: access.chatModel }
+          : null
+      }
+      labels={chat.labels}
+      suggestions={chat.suggestions}
       inbox={access.inbox}
       timeZone={branding.defaultTimeZone}
     />

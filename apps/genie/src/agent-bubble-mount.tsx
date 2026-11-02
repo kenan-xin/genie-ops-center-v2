@@ -1,6 +1,6 @@
 "use client";
 
-import type { AgentMessage, InboxLink } from "@genie/core";
+import type { AgentMessage, ChatLabels, InboxLink } from "@genie/core";
 import type { CheckChart } from "@genie/core/features/agent";
 import { ChatBubble } from "@genie/core/features/agent/bubble";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -19,7 +19,9 @@ type ConversationProps = {
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
-  };
+  } | null;
+  readonly labels: ChatLabels;
+  readonly suggestions: readonly string[];
   readonly timeZone: string;
   readonly newChatHref: string;
   readonly onFinished: () => void;
@@ -44,6 +46,8 @@ const LazyConversation = lazy(async () => {
           initialMessages={props.initialMessages}
           transport={transport}
           models={props.models}
+          labels={props.labels}
+          suggestions={props.suggestions}
           checkChart={checkChart}
           timeZone={props.timeZone}
           newChatHref={props.newChatHref}
@@ -91,7 +95,9 @@ export function AgentBubbleMount(props: {
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
-  };
+  } | null;
+  readonly labels: ChatLabels;
+  readonly suggestions: readonly string[];
   readonly inbox: readonly InboxLink[];
   readonly timeZone: string;
 }): ReactNode {
@@ -117,6 +123,8 @@ export function AgentBubbleMount(props: {
           <SavedConversation
             sessionId={sessionId}
             models={props.models}
+            labels={props.labels}
+            suggestions={props.suggestions}
             timeZone={props.timeZone}
             newChatHref="/ask"
             onFinished={() => {

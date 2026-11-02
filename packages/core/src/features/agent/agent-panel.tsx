@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 
 import { useModuleClient } from "../../lib/rpc/module-client.tsx";
 import { agentContract } from "../../services/agent/contract.ts";
-import type { AgentMessage } from "../../services/agent/index.ts";
+import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
 import {
@@ -27,6 +27,8 @@ export function AgentPanel(props: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
   } | null;
+  readonly labels: ChatLabels;
+  readonly suggestions: readonly string[];
   readonly timeZone: string;
   readonly newChatHref: string;
   readonly onFinished?: () => void;
@@ -50,6 +52,8 @@ export function AgentPanel(props: {
       initialMessages={NO_MESSAGES}
       transport={transport}
       models={props.models}
+      labels={props.labels}
+      suggestions={props.suggestions}
       checkChart={checkChart}
       timeZone={props.timeZone}
       newChatHref={props.newChatHref}

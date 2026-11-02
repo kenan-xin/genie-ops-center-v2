@@ -23,6 +23,8 @@ export {
   type InboxLink,
 } from "./access.ts";
 
+export { type ChatLabels, chatLabels } from "./labels.ts";
+
 export { type AgentContract, agentContract } from "./contract.ts";
 
 export { type AgentRouter, createAgentRouter } from "./router.ts";

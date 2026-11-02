@@ -501,6 +501,8 @@ export {
   type ChatAvailability,
   chatAvailability,
   type InboxLink,
+  type ChatLabels,
+  chatLabels,
   type AgentContract,
   agentContract,
   type AgentRouter,

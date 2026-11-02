@@ -283,7 +283,7 @@ export const StreamingToolCall: Story = {
   decorators: [withChartCheck(resolveKpi)],
   play: async ({ canvas }) => {
     // A live model streams a tool's input after its name, so the call first shows without input.
-    await expect(await canvas.findByText("Queried a dataset")).toBeVisible();
+    await expect(await canvas.findByText("Read the data")).toBeVisible();
   },
 };
 

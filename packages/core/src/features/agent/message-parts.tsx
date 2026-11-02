@@ -1,54 +1,93 @@
 "use client";
 
 import {
+  Marker,
+  MarkerContent,
+  MarkerIcon,
+  Spinner,
+  focusRing,
+} from "@genie/ui";
+import {
   Renderer,
   type OpenUIError,
   type ParseResult,
 } from "@openuidev/react-lang";
+import { CheckIcon, CircleSlashIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import type { AgentMessage } from "../../services/agent/index.ts";
+import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
+import { stepLine, toolNameOf } from "./step-line.ts";
 
 /**
  * The one message-part renderer (Spec 7 R-45, DEC-29). A user message is plain text. An assistant
- * message draws each text part through the answer catalog, one tool call as one muted line, and
- * skips step markers. A part the parser cannot read shows its text as a paragraph; a part that
- * failed shows what it could draw and one repair line.
+ * message draws each text part through the answer catalog, one tool call as one human step line
+ * with its object in bold (agent-native rule 3, design review 6.3), and skips step markers. A part
+ * the parser cannot read shows its text as a paragraph; a part that failed shows what it could draw
+ * and one repair line.
  */
 
 type MessagePart = AgentMessage["parts"][number];
 
-function toolNameOf(part: MessagePart): string | null {
-  if (part.type === "dynamic-tool") return part.toolName;
+const NO_LABELS: ChatLabels = { steps: {}, datasets: {} };
 
-  return part.type.startsWith("tool-") ? part.type.slice("tool-".length) : null;
-}
+const chipClass = `inline-flex min-h-8 cursor-pointer list-none items-center rounded-full border border-border bg-muted px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground ${focusRing}`;
 
-// oxlint-disable-next-line anti-slop/no-unknown-parameters -- the tool input is untyped UI data; this reads a display label only
-function datasetOf(input: unknown): string | undefined {
-  // SAFETY: the query-dataset tool's input is `{ dataset: string }`, or undefined while it
-  // streams; this reads a label only.
-  const dataset = (input as { readonly dataset?: unknown } | undefined)
-    ?.dataset;
+function stepIcon(part: MessagePart, streaming: boolean): ReactNode {
+  if (!("state" in part)) return null;
 
-  // oxlint-disable-next-line anti-slop/no-runtime-typeof -- a display label, not a parse
-  return typeof dataset === "string" ? dataset : undefined;
-}
+  if (part.state === "output-available")
+    return <CheckIcon strokeWidth={1.75} />;
 
-function toolLine(part: MessagePart, name: string): string {
-  if ("state" in part && part.state === "output-error") return "refused";
-
-  if (name === "list-datasets") return "Read the datasets";
-
-  if (name === "open-record") return "Opened a record";
-
-  if (name === "query-dataset") {
-    return `Queried ${"input" in part ? (datasetOf(part.input) ?? "a dataset") : "a dataset"}`;
+  if (part.state === "output-error") {
+    return <CircleSlashIcon strokeWidth={1.75} />;
   }
 
-  return name;
+  return streaming ? <Spinner label="Working" /> : null;
+}
+
+/** One tool call: a human line, and the query behind a chip that opens on demand (rule 3). */
+function ToolStep(props: {
+  readonly part: MessagePart;
+  readonly name: string;
+  readonly labels: ChatLabels;
+  readonly streaming: boolean;
+}): ReactNode {
+  const line = stepLine(props.part, props.labels);
+
+  const input =
+    props.name === "query-dataset" &&
+    "input" in props.part &&
+    props.part.input !== undefined
+      ? props.part.input
+      : undefined;
+
+  return (
+    <div className="grid gap-1">
+      <Marker>
+        <MarkerIcon>{stepIcon(props.part, props.streaming)}</MarkerIcon>
+        <MarkerContent>
+          {line.text}
+          {line.object === undefined ? null : (
+            <>
+              {" "}
+              <b className="font-semibold text-foreground">{line.object}</b>
+            </>
+          )}
+          {line.refused ? " (refused)" : null}
+        </MarkerContent>
+      </Marker>
+      {input === undefined ? null : (
+        <details className="ps-6 text-sm">
+          <summary className={chipClass}>Query used</summary>
+          <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 text-xs">
+            {JSON.stringify(input, null, 2)}
+          </pre>
+        </details>
+      )}
+    </div>
+  );
 }
 
 type ChartNode = {
@@ -121,7 +160,8 @@ function AnswerText(props: {
 function assistantPart(
   part: MessagePart,
   index: number,
-  streaming: boolean
+  streaming: boolean,
+  labels: ChatLabels
 ): ReactNode {
   if (part.type === "text") {
     return <AnswerText key={index} text={part.text} streaming={streaming} />;
@@ -132,9 +172,13 @@ function assistantPart(
   const name = toolNameOf(part);
 
   return name === null ? null : (
-    <p key={index} className="text-muted-foreground text-sm">
-      {toolLine(part, name)}
-    </p>
+    <ToolStep
+      key={index}
+      part={part}
+      name={name}
+      labels={labels}
+      streaming={streaming}
+    />
   );
 }
 
@@ -142,6 +186,8 @@ function assistantPart(
 export function MessageParts(props: {
   readonly message: AgentMessage;
   readonly streaming: boolean;
+  /** The words for module tools and dataset titles; without them a step reads "Used a tool". */
+  readonly labels?: ChatLabels;
 }): ReactNode {
   if (props.message.role === "user") {
     return (
@@ -160,7 +206,7 @@ export function MessageParts(props: {
   return (
     <div className="grid gap-3">
       {props.message.parts.map((part, index) =>
-        assistantPart(part, index, props.streaming)
+        assistantPart(part, index, props.streaming, props.labels ?? NO_LABELS)
       )}
     </div>
   );

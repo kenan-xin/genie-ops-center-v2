@@ -83,6 +83,11 @@ const TABLE_PANEL: PanelView = {
 const CHAT_ON = {
   kind: "on",
   models: { allowed: [], chatDefault: null },
+  labels: {
+    steps: { "analytics-change-dashboard": "Changed the dashboard" },
+    datasets: { "invoices.invoices": "Invoices" },
+  },
+  suggestions: [],
 } as const;
 
 export const defaultDashboardList: DashboardListView = {
@@ -141,7 +146,7 @@ export const noChatDashboardPage: DashboardPageView = {
 export const chatOnDashboardPage: DashboardPageView = {
   ...defaultDashboardPage,
   chat: {
-    kind: "on",
+    ...CHAT_ON,
     models: {
       allowed: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
       chatDefault: "openai/gpt-6.1-terra",

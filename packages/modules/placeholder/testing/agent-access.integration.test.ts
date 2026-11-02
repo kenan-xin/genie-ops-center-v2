@@ -1,5 +1,6 @@
 import {
   agentAccess,
+  chatLabels,
   createTenantContext,
   principalFor,
   registerModuleRuntime,
@@ -93,5 +94,44 @@ describe("agentAccess on the placeholder", () => {
       await tenant.db.$client.end();
       await enableModules(deployment.context, ["placeholder"]);
     }
+  });
+});
+
+async function labelsOf(permissions: readonly string[]) {
+  const userId = await personWith(permissions);
+  const tenant = deployment.context;
+
+  return chatLabels({
+    tenant,
+    caller: principalFor({
+      tenant,
+      modules: [placeholderModule],
+      userId,
+      authenticated: true,
+    }),
+  });
+}
+
+describe("chatLabels on the placeholder", () => {
+  it("names the placeholder's tool step, and its dataset title only for a reader", async () => {
+    expect({
+      reader: await labelsOf(["core:ask:use", "placeholder:read"]),
+      other: await labelsOf(["core:ask:use"]),
+    }).toEqual({
+      reader: {
+        labels: {
+          steps: { "placeholder-count-records": "Counted the records" },
+          datasets: { "placeholder.records": "Placeholder records" },
+        },
+        suggestions: [],
+      },
+      other: {
+        labels: {
+          steps: { "placeholder-count-records": "Counted the records" },
+          datasets: {},
+        },
+        suggestions: [],
+      },
+    });
   });
 });

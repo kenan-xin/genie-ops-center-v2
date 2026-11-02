@@ -1,5 +1,6 @@
 import {
   agentAccess,
+  chatLabels,
   AppError,
   ASK_PERMISSION,
   listOwnSessions,
@@ -65,10 +66,11 @@ export default async function AskPage(props: Props) {
 
     const t = await getTranslations("pages");
 
-    const [sessions, branding, current] = await Promise.all([
+    const [sessions, branding, current, chat] = await Promise.all([
       listOwnSessions(ctx),
       ctx.tenant.branding.get(),
       id === undefined ? undefined : currentSession(ctx, id),
+      chatLabels(ctx),
     ]);
 
     const aiOn = access.ai === "on";
@@ -80,11 +82,14 @@ export default async function AskPage(props: Props) {
           sessions={sessions}
           currentId={current?.session.id}
           initialMessages={current?.messages ?? []}
+          // Only a person who manages the settings picks the model (design review 7.1).
           models={
-            aiOn
+            aiOn && access.canPickModel
               ? { allowed: access.allowedModels, chatDefault: access.chatModel }
               : null
           }
+          labels={chat.labels}
+          suggestions={chat.suggestions}
           aiOn={aiOn}
           inbox={access.inbox}
           timeZone={branding.defaultTimeZone}

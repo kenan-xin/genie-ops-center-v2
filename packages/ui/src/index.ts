@@ -192,6 +192,24 @@ export { Avatar, AvatarFallback } from "./components/avatar.tsx";
 
 export { Badge } from "./components/badge.tsx";
 
+export { Bubble, BubbleContent } from "./components/bubble.tsx";
+
+export {
+  Marker,
+  MarkerContent,
+  MarkerIcon,
+  markerVariants,
+} from "./components/marker.tsx";
+
+export {
+  Message,
+  MessageAvatar,
+  MessageContent,
+  MessageFooter,
+  MessageGroup,
+  MessageHeader,
+} from "./components/message.tsx";
+
 export {
   Card,
   CardAction,

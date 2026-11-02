@@ -10,6 +10,12 @@ export { ChatBubble } from "./chat-bubble.tsx";
 
 export { Conversation } from "./conversation.tsx";
 
+export { ChatDock } from "./chat-dock.tsx";
+
+export { ChatPanel } from "./chat-panel.tsx";
+
+export { type StepLine, stepLine } from "./step-line.ts";
+
 export {
   AGENT_ROUTE,
   type AgentChatContext,

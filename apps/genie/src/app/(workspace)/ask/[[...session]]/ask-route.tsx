@@ -1,6 +1,11 @@
 "use client";
 
-import type { AgentMessage, AgentSessionSummary, InboxLink } from "@genie/core";
+import type {
+  AgentMessage,
+  AgentSessionSummary,
+  ChatLabels,
+  InboxLink,
+} from "@genie/core";
 import {
   agentTransport,
   AskScreen,
@@ -30,6 +35,8 @@ export function AskRoute(props: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
   } | null;
+  readonly labels: ChatLabels;
+  readonly suggestions: readonly string[];
   readonly aiOn: boolean;
   readonly inbox: readonly InboxLink[];
   readonly timeZone: string;
@@ -65,6 +72,8 @@ export function AskRoute(props: {
           initialMessages={props.initialMessages}
           transport={transport}
           models={props.models}
+          labels={props.labels}
+          suggestions={props.suggestions}
           checkChart={checkChart}
           timeZone={props.timeZone}
           newChatHref="/ask"

@@ -12,6 +12,7 @@ import { recordScope } from "./scope.ts";
 export const recordsDataset: DatasetDeclaration = {
   name: "placeholder.records",
   description: "The placeholder records a person may read, as of a date.",
+  title: "Placeholder records",
   permission: "placeholder:read",
   fields: {
     id: { kind: "dimension", type: "text", description: "The record id." },

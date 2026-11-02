@@ -306,7 +306,12 @@ export const deckList: DeckListView = {
   ],
   canWrite: true,
   timeZone: "Asia/Singapore",
-  chat: { kind: "on", models: { allowed: [], chatDefault: null } },
+  chat: {
+    kind: "on",
+    models: null,
+    labels: { steps: { "slides-create-deck": "Made a deck" }, datasets: {} },
+    suggestions: [],
+  },
 };
 
 export const emptyDeckList: DeckListView = { ...deckList, decks: [] };

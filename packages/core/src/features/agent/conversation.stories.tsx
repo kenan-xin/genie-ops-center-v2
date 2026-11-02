@@ -20,6 +20,12 @@ const MODELS = {
 
 const NO_MESSAGES: readonly AgentMessage[] = [];
 
+const FIRST_QUESTION = "How many records are there?";
+
+const SUGGESTIONS = [FIRST_QUESTION, "Which records are new?"];
+
+const suggestions = () => screen.queryByRole("group", { name: "Suggestions" });
+
 const checkChart: CheckChart = async () => {
   throw new Error("This conversation fixture draws no chart.");
 };
@@ -130,6 +136,8 @@ const meta = {
     initialMessages: NO_MESSAGES,
     transport: transportOf(sendPicked),
     models: MODELS,
+    labels: { steps: {}, datasets: { "example.items": "Items" } },
+    suggestions: SUGGESTIONS,
     checkChart,
     timeZone: "UTC",
     newChatHref: "/ask",
@@ -148,9 +156,21 @@ export const Streaming: Story = {
   play: async ({ canvas }) => {
     const box = canvas.getByRole("textbox", { name: "Message Ask" });
 
-    await userEvent.type(box, "How many records are there?");
-    await userEvent.click(canvas.getByRole("button", { name: "Send" }));
+    // A suggestion chip sends its question.
+    await userEvent.click(canvas.getByRole("button", { name: FIRST_QUESTION }));
     await expect(await canvas.findByText("Example totals")).toBeVisible();
+    await expect(sendHeld).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          expect.objectContaining({
+            parts: [{ type: "text", text: FIRST_QUESTION }],
+          }),
+        ],
+      })
+    );
+
+    // While the answer streams, no chip offers a second send.
+    await expect(suggestions()).toBeNull();
 
     // A second Enter and a second press, while the answer streams, send nothing.
     await userEvent.type(box, "and again");
@@ -199,6 +219,8 @@ export const PickAModel: Story = {
 export const Refused: Story = {
   args: { transport: transportOf(sendRefused) },
   play: async ({ canvas }) => {
+    await expect(suggestions()).not.toBeNull();
+
     const trigger = canvas.getByRole("combobox", { name: "Model" });
 
     await userEvent.click(trigger);
@@ -211,8 +233,10 @@ export const Refused: Story = {
     await userEvent.type(box, "Continue the chat");
     await userEvent.click(canvas.getByRole("button", { name: "Send" }));
 
-    // The server's reason replaces the answer, with the one recovery a removed model has.
+    // The server's reason replaces the answer, with the one recovery a removed model has, and no
+    // chip offers to send into the refused chat.
     await expect(await canvas.findByText(REFUSAL)).toBeVisible();
+    await expect(suggestions()).toBeNull();
     await expect(
       canvas.getByRole("link", { name: "Start a new chat" })
     ).toHaveAttribute("href", "/ask");

@@ -403,6 +403,10 @@ export type DatasetDeclaration = {
   readonly name: string;
   /** What the dataset holds, for the agent. */
   readonly description: string;
+  /** The name a person reads in a chat or a chart source, for example "Invoices". Never sent to the model. */
+  readonly title?: string;
+  /** Starter questions a chat offers a person who may read the dataset. Never sent to the model. */
+  readonly questions?: readonly string[];
   readonly permission: PermissionKey;
   /** Keyed by the name that the source select gives each column. */
   readonly fields: Readonly<Record<string, DatasetField>>;

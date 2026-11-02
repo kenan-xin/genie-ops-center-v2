@@ -38,6 +38,8 @@ const meta = {
       allowed: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
       chatDefault: "openai/gpt-6.1-terra",
     },
+    labels: { steps: {}, datasets: { "example.items": "Items" } },
+    suggestions: ["How many items are there?", "Which items are new?"],
     timeZone: "UTC",
     newChatHref: "/ask",
   },

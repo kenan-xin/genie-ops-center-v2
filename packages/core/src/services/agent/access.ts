@@ -3,6 +3,10 @@ import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { can } from "../authorization/index.ts";
 import { ASK_PERMISSION } from "../authorization/roles.ts";
 import { type AiState, modelStatus } from "../models/index.ts";
+import { type ChatLabels, chatLabels } from "./labels.ts";
+
+/** Only a person who manages the settings picks the chat's model (design review 7.1). */
+const MODEL_PICK_PERMISSION = "core:settings:manage";
 
 export type InboxLink = { readonly label: string; readonly href: string };
 
@@ -13,6 +17,8 @@ export type AgentAccess =
       readonly ai: AiState;
       readonly allowedModels: readonly string[];
       readonly chatModel: string | null;
+      /** Whether the chat shows the model picker. */
+      readonly canPickModel: boolean;
       readonly inbox: readonly InboxLink[];
     };
 
@@ -20,10 +26,13 @@ export type AgentAccess =
 export type ChatAvailability =
   | {
       readonly kind: "on";
+      /** null for a person who may not pick the model, so the chat hides the picker (7.1). */
       readonly models: {
         readonly allowed: readonly string[];
         readonly chatDefault: string | null;
-      };
+      } | null;
+      readonly labels: ChatLabels;
+      readonly suggestions: readonly string[];
     }
   | { readonly kind: "off" }
   | { readonly kind: "none" };
@@ -43,9 +52,10 @@ export async function agentAccess(
     return { permitted: false };
   }
 
-  const [status, providers] = await Promise.all([
+  const [status, providers, canPickModel] = await Promise.all([
     modelStatus(ctx.tenant),
     ctx.tenant.capabilities.list("document-inbox"),
+    can(ctx.caller, MODEL_PICK_PERMISSION),
   ]);
 
   // SAFETY: validateModule checked each document-inbox provision against DocumentInbox before the
@@ -63,6 +73,7 @@ export async function agentAccess(
     ai: status.state,
     allowedModels: status.allowedModels,
     chatModel: status.chatModel,
+    canPickModel,
     inbox: inboxes
       .filter((_, index) => allowed[index])
       .map(({ label, path }) => ({ label, href: path })),
@@ -81,6 +92,9 @@ export async function chatAvailability(
 
   return {
     kind: "on",
-    models: { allowed: access.allowedModels, chatDefault: access.chatModel },
+    models: access.canPickModel
+      ? { allowed: access.allowedModels, chatDefault: access.chatModel }
+      : null,
+    ...(await chatLabels(ctx)),
   };
 }

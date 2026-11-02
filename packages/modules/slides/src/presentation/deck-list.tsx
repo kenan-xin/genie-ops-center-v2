@@ -240,6 +240,8 @@ export function DeckList(props: DeckListProps) {
           >
             <AgentPanel
               models={view.chat.models}
+              labels={view.chat.labels}
+              suggestions={view.chat.suggestions}
               timeZone={view.timeZone}
               newChatHref="/m/slides/decks"
               // A chat create adds a deck; the list reads it at once.

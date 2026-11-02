@@ -247,7 +247,7 @@ function audited(
  * Every enabled provider's tools in registration order that this person is offered: a tool with
  * no `permission`, or one whose key the person holds.
  */
-async function offeredModuleTools(
+export async function offeredModuleTools(
   ctx: ModuleRequestContext
 ): Promise<readonly AnyAgentTool[]> {
   const providers = await ctx.tenant.capabilities.list("agent-tools");

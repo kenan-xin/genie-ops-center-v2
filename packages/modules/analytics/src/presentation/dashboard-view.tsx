@@ -249,6 +249,8 @@ export function DashboardView(props: DashboardViewProps) {
                 recordId: dashboard.id,
               }}
               models={view.chat.models}
+              labels={view.chat.labels}
+              suggestions={view.chat.suggestions}
               timeZone={view.timeZone}
               newChatHref={`/m/analytics/dashboards/${dashboard.id}`}
               // A chat change saves a new version; the page reads it at once.

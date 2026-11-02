@@ -87,6 +87,11 @@ export type AgentTool<TInput> = {
   readonly permission?: PermissionKey;
   /** The tool changes data: it names a permission and gives its change an Undo (R-46). */
   readonly writes?: true;
+  /**
+   * The line a chat shows for one call, in the past tense, for example "Changed the dashboard".
+   * The chat only; the model never reads it, so a change needs no new recording.
+   */
+  readonly step?: string;
   run(ctx: ModuleRequestContext, input: TInput): Promise<AgentToolResult>;
 };
 
@@ -97,6 +102,7 @@ export type AnyAgentTool = {
   readonly input: ZodType;
   readonly permission?: PermissionKey;
   readonly writes?: true;
+  readonly step?: string;
   run(ctx: ModuleRequestContext, input: never): Promise<AgentToolResult>;
 };
 

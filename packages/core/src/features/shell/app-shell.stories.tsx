@@ -7,6 +7,8 @@ import {
 } from "react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { ChatDock } from "../agent/chat-dock.tsx";
+import { ChatPanel } from "../agent/chat-panel.tsx";
 import { AppShell, type AppShellProps } from "./app-shell.tsx";
 import { COLLAPSED_CATEGORIES_KEY } from "./collapsed-categories.ts";
 import { PageHeader } from "./page-header.tsx";
@@ -650,4 +652,38 @@ export const AccountPageTitle: Story = {
 export const LongDrawerDark: Story = {
   ...LongDrawerScrollsOnlyTheEntries,
   globals: { ...phone, theme: "dark" },
+};
+
+const examplePanel = (title: string) => (close: () => void) => (
+  <ChatPanel title={title} onClose={close}>
+    <p className="p-4">The chat renders here.</p>
+  </ChatPanel>
+);
+
+/**
+ * A page with its own chat, as Dashboards has, hides the shell's general chat button, so the page
+ * shows one chat button (Section 7 redesign).
+ */
+export const PageChatHidesShellChat: Story = {
+  globals: desktop,
+  args: {
+    chat: <ChatDock label="Ask">{examplePanel("Ask")}</ChatDock>,
+    children: (
+      <main>
+        <PageHeader title="Example dashboard" />
+        <ChatDock label="Chat" page>
+          {examplePanel("Chat")}
+        </ChatDock>
+      </main>
+    ),
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("button", { name: "Open Chat" })
+    ).toBeVisible();
+    // The shell still holds its chat, out of sight beside the page's own.
+    await expect(
+      canvas.getByRole("button", { name: "Open Ask", hidden: true })
+    ).not.toBeVisible();
+  },
 };

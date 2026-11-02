@@ -9,6 +9,7 @@ export const countRecordsTool = defineAgentTool({
   name: "placeholder-count-records",
   description:
     "Counts the placeholder records this person may read, as of the reporting date.",
+  step: "Counted the records",
   input: z.strictObject({}),
   run: async (ctx) => {
     const { rows, asOf } = await queryDataset(ctx, {
