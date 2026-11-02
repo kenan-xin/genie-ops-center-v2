@@ -23,7 +23,8 @@ services:
     # Probe TCP, not the socket: the image's temporary init server answers a socket probe before
     # the real server listens (the same probe as compose.e2e.yaml).
     healthcheck:
-      test: ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "genie"]
+      test:
+        ["CMD", "pg_isready", "-h", "127.0.0.1", "-p", "5432", "-U", "genie"]
       interval: 2s
       timeout: 3s
       retries: 30
