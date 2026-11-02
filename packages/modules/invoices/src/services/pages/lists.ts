@@ -1,12 +1,16 @@
 import {
   type DatasetCursor,
+  type DatasetFilter,
   type ModuleRequestContext,
   queryDataset,
 } from "@genie/core";
 import { z } from "zod";
 
 import type {
+  InvoiceListFilters,
+  InvoiceListPageView,
   InvoiceListRow,
+  InvoiceListSummary,
   InvoiceListView,
   PaymentListRow,
   PaymentListView,
@@ -36,32 +40,153 @@ export function invoiceListRowOf(row: z.infer<typeof listRow>): InvoiceListRow {
   return { ...value, status: invoiceStatusOf(row) };
 }
 
-/**
- * The Invoices list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
- * scoped person sees only the customers they may read (DEC-39, R-9, R-36). A page holds at most
- * 1,000 rows; `after` reads the page after a cut one (czjw.28).
- */
-export async function loadInvoiceList(
+/** Each status chip as dataset filters, the same four states `invoiceStatusOf` names. */
+const STATUS_FILTERS: Readonly<
+  Record<NonNullable<InvoiceListFilters["status"]>, readonly DatasetFilter[]>
+> = {
+  "paid": [{ field: "outstandingCents", op: "lte", value: 0 }],
+  "overdue": [{ field: "overdue", op: "eq", value: true }],
+  // A due date source other than unspecified always carries a date (`invoice_due_date_check`).
+  "open": [
+    { field: "outstandingCents", op: "gt", value: 0 },
+    { field: "overdue", op: "eq", value: false },
+    { field: "dueDateSource", op: "neq", value: "unspecified" },
+  ],
+  "no-due-date": [
+    { field: "outstandingCents", op: "gt", value: 0 },
+    { field: "dueDate", op: "isNull" },
+  ],
+};
+
+function invoiceFiltersOf(filters: InvoiceListFilters): DatasetFilter[] {
+  return [
+    ...(filters.status === undefined ? [] : STATUS_FILTERS[filters.status]),
+    ...(filters.customerId === undefined
+      ? []
+      : [
+          { field: "customerId", op: "eq", value: filters.customerId } as const,
+        ]),
+    ...(filters.from === undefined
+      ? []
+      : [{ field: "invoiceDate", op: "gte", value: filters.from } as const]),
+    ...(filters.to === undefined
+      ? []
+      : [{ field: "invoiceDate", op: "lte", value: filters.to } as const]),
+  ];
+}
+
+const summaryRow = z.object({
+  currency: z.string(),
+  overdue: z.boolean(),
+  outstanding: z.number().int(),
+  invoices: z.number().int(),
+});
+
+/** Outstanding, and overdue money and count, per currency over every row the filters keep. */
+async function invoiceSummary(
   ctx: ModuleRequestContext,
-  after: DatasetCursor | null = null
-): Promise<InvoiceListView> {
+  filters: readonly DatasetFilter[],
+  search: string | undefined
+): Promise<InvoiceListSummary[]> {
   const result = await queryDataset(ctx, {
     dataset: "invoices.invoices",
-    after: after ?? undefined,
+    search,
     query: {
-      select: LIST_ROW_FIELDS,
-      orderBy: [
-        { column: "invoiceDate", direction: "desc" },
-        { column: "invoiceNumber", direction: "desc" },
+      filters,
+      groupBy: [{ field: "currency" }, { field: "overdue" }],
+      aggregates: [
+        { fn: "sum", field: "outstandingCents", as: "outstanding" },
+        { fn: "count", as: "invoices" },
       ],
     },
   });
+
+  const byCurrency = new Map<string, InvoiceListSummary>();
+
+  for (const row of result.rows.map((entry) => summaryRow.parse(entry))) {
+    const total = byCurrency.get(row.currency) ?? {
+      currency: row.currency,
+      outstandingCents: 0,
+      overdueCents: 0,
+      overdueCount: 0,
+    };
+
+    byCurrency.set(row.currency, {
+      ...total,
+      outstandingCents: total.outstandingCents + row.outstanding,
+      overdueCents: total.overdueCents + (row.overdue ? row.outstanding : 0),
+      overdueCount: total.overdueCount + (row.overdue ? row.invoices : 0),
+    });
+  }
+
+  return [...byCurrency.values()].toSorted((left, right) =>
+    left.currency.localeCompare(right.currency)
+  );
+}
+
+/**
+ * The Invoices list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
+ * scoped person sees only the customers they may read (DEC-39, R-9, R-36). A page holds at most
+ * 1,000 rows; `after` reads the page after a cut one (czjw.28). The filters run in the dataset
+ * query, so they hold across pages, and the summary covers every row they keep (design review 1.4).
+ */
+export async function loadInvoiceList(
+  ctx: ModuleRequestContext,
+  after: DatasetCursor | null = null,
+  filters: InvoiceListFilters = {}
+): Promise<InvoiceListView> {
+  const conditions = invoiceFiltersOf(filters);
+
+  const [result, summary] = await Promise.all([
+    queryDataset(ctx, {
+      dataset: "invoices.invoices",
+      after: after ?? undefined,
+      search: filters.search,
+      query: {
+        select: LIST_ROW_FIELDS,
+        filters: conditions,
+        orderBy: [
+          { column: "invoiceDate", direction: "desc" },
+          { column: "invoiceNumber", direction: "desc" },
+        ],
+      },
+    }),
+    invoiceSummary(ctx, conditions, filters.search),
+  ]);
 
   return {
     asOf: result.asOf,
     rows: result.rows.map((row) => invoiceListRowOf(listRow.parse(row))),
     truncated: result.truncated,
     next: result.next ?? null,
+    summary,
+  };
+}
+
+const listCustomer = z.object({ id: z.string(), name: z.string() });
+
+/**
+ * The Invoices page: its unfiltered first page and the customers of its picker, both under the
+ * person's read scope. shortcut: the picker offers the first 1,000 customers by name; a deployment
+ * with more needs a searched picker.
+ */
+export async function loadInvoiceListPage(
+  ctx: ModuleRequestContext
+): Promise<InvoiceListPageView> {
+  const [list, customers] = await Promise.all([
+    loadInvoiceList(ctx),
+    queryDataset(ctx, {
+      dataset: "invoices.customers",
+      query: {
+        select: ["id", "name"],
+        orderBy: [{ column: "name", direction: "asc" }],
+      },
+    }),
+  ]);
+
+  return {
+    ...list,
+    customers: customers.rows.map((row) => listCustomer.parse(row)),
   };
 }
 

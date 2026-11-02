@@ -171,6 +171,8 @@ export { RadioGroup, RadioGroupItem } from "./components/radio-group.tsx";
 
 export { Checkbox } from "./components/checkbox.tsx";
 
+export { ToggleGroup, ToggleGroupItem } from "./components/toggle-group.tsx";
+
 export {
   Tabs,
   TabsContent,

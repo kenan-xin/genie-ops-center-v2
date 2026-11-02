@@ -166,6 +166,57 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
   );
 });
 
+test("the Overdue chip keeps only the overdue invoices, in the address and in the summary", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signIn(page);
+      await openList(page, "/m/invoices/invoices", "Invoices");
+
+      const overdue = readDemoCsv(
+        "04_Demo_Guide/expected_invoice_status.csv"
+      ).filter((invoice) => invoice.status === "overdue");
+
+      const overdueAmount = overdue.reduce(
+        (sum, invoice) => sum + Number(invoice.outstanding_amount),
+        0
+      );
+
+      expect(overdue.length).toBeGreaterThan(1);
+
+      // On a phone the chips sit behind the one Filters button above the cards.
+      if (onPhone(page)) {
+        await page.getByRole("button", { name: "Filters" }).click();
+      }
+
+      await page.getByRole("button", { name: "Overdue", exact: true }).click();
+      await expect(page).toHaveURL(/[?&]status=overdue(&|$)/);
+
+      if (onPhone(page)) await page.keyboard.press("Escape");
+
+      // The server answers the filter, and the summary counts every overdue invoice.
+      await expect(
+        page.getByText(
+          `Overdue ${sgd(overdueAmount)} in ${overdue.length} invoices.`,
+          { exact: false }
+        )
+      ).toBeVisible();
+      await expect
+        .poll(async () =>
+          (await shownRows(page, "Invoices")).map((row) => row.label).toSorted()
+        )
+        .toEqual(overdue.map((invoice) => invoice.invoice_id).toSorted());
+
+      await expectNoAxeViolations(page, "invoices list filtered");
+    },
+    LOCK_WAIT
+  );
+});
+
 test("INV-2026-09-03 opens from its row without a document load and shows its balance, its link, its history and its PDF", async ({
   page,
 }) => {

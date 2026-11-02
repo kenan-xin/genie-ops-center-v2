@@ -9,7 +9,7 @@ import { PaymentRecord } from "./payment-record.tsx";
 import type {
   DocumentInboxView,
   DocumentReviewView,
-  InvoiceListView,
+  InvoiceListPageView,
   InvoiceRecordView,
   PaymentListView,
   PaymentRecordView,
@@ -26,7 +26,7 @@ export function DocumentReviewPage(props: ModulePageProps<DocumentReviewView>) {
 }
 
 /** The Invoices list, fed by `loadInvoiceList`. */
-export function InvoiceListPage(props: ModulePageProps<InvoiceListView>) {
+export function InvoiceListPage(props: ModulePageProps<InvoiceListPageView>) {
   return <InvoiceList view={props.data} />;
 }
 

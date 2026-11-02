@@ -5033,6 +5033,46 @@
             "explode": true,
             "allowEmptyValue": true,
             "allowReserved": true
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "search": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "status": {
+                  "enum": [
+                    "open",
+                    "overdue",
+                    "paid",
+                    "no-due-date"
+                  ],
+                  "type": "string"
+                },
+                "customerId": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "from": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "to": {
+                  "type": "string",
+                  "format": "date"
+                }
+              }
+            },
+            "style": "deepObject",
+            "explode": true,
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {
@@ -5176,13 +5216,46 @@
                           "type": "null"
                         }
                       ]
+                    },
+                    "summary": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "currency": {
+                            "type": "string"
+                          },
+                          "outstandingCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "overdueCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "overdueCount": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        "required": [
+                          "currency",
+                          "outstandingCents",
+                          "overdueCents",
+                          "overdueCount"
+                        ]
+                      }
                     }
                   },
                   "required": [
                     "asOf",
                     "rows",
                     "truncated",
-                    "next"
+                    "next",
+                    "summary"
                   ]
                 }
               }

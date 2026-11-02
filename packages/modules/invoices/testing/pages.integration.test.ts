@@ -32,7 +32,12 @@ import {
   loadInvoiceRecord,
   loadPaymentRecord,
 } from "../src/services/pages/records.ts";
-import { insertCustomer, insertInvoice, insertPayment } from "./factories.ts";
+import {
+  insertAllocation,
+  insertCustomer,
+  insertInvoice,
+  insertPayment,
+} from "./factories.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
 
@@ -185,6 +190,138 @@ describe("invoice pages", () => {
         after: null,
       })
     ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("the invoice list filters by status, customer, invoice date and text on the server", async () => {
+    const customer = await insertCustomer(t(), { name: "Filterline Works" });
+
+    const [paid, open, overdue, noDueDate, paidNoDueDate] = await Promise.all([
+      insertInvoice(t(), {
+        customerId: customer.id,
+        number: "FLT-PAID",
+        invoiceDate: "2026-08-01",
+      }),
+      insertInvoice(t(), {
+        customerId: customer.id,
+        number: "FLT-OPEN",
+        invoiceDate: "2026-09-01",
+        dueDate: "2026-11-30",
+      }),
+      insertInvoice(t(), {
+        customerId: customer.id,
+        number: "FLT-LATE",
+        invoiceDate: "2026-09-10",
+        dueDate: "2026-10-01",
+      }),
+      insertInvoice(t(), {
+        customerId: customer.id,
+        number: "FLT-NONE",
+        invoiceDate: "2026-10-01",
+        dueDate: null,
+      }),
+      insertInvoice(t(), {
+        customerId: customer.id,
+        number: "FLT-NONE-PAID",
+        invoiceDate: "2026-10-02",
+        dueDate: null,
+      }),
+    ]);
+
+    const payment = await insertPayment(t(), {
+      customerId: customer.id,
+      amountCents: 200_000,
+    });
+
+    await insertAllocation(t(), {
+      invoiceId: paid.id,
+      paymentId: payment.id,
+      amountCents: 100_000,
+    });
+    await insertAllocation(t(), {
+      invoiceId: paidNoDueDate.id,
+      paymentId: payment.id,
+      amountCents: 100_000,
+    });
+
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    const numbers = async (filters: Record<string, string>) =>
+      (
+        await reader.listInvoices({
+          after: null,
+          filters: { customerId: customer.id, ...filters },
+        })
+      ).rows
+        .map((row) => row.invoiceNumber)
+        .toSorted();
+
+    expect(await numbers({ status: "paid" })).toEqual([
+      "FLT-NONE-PAID",
+      "FLT-PAID",
+    ]);
+    expect(await numbers({ status: "open" })).toEqual([open.number]);
+    expect(await numbers({ status: "overdue" })).toEqual([overdue.number]);
+    expect(await numbers({ status: "no-due-date" })).toEqual([
+      noDueDate.number,
+    ]);
+    expect(await numbers({ search: "flt-none" })).toEqual([
+      "FLT-NONE",
+      "FLT-NONE-PAID",
+    ]);
+    expect(await numbers({ from: "2026-09-01", to: "2026-09-30" })).toEqual([
+      "FLT-LATE",
+      "FLT-OPEN",
+    ]);
+
+    // The customer name is searchable too, so a search alone finds this customer's five.
+    const byName = await reader.listInvoices({
+      after: null,
+      filters: { search: "filterLINE" },
+    });
+
+    expect(byName.rows).toHaveLength(5);
+    expect(byName.summary).toEqual([
+      {
+        currency: "SGD",
+        outstandingCents: 300_000,
+        overdueCents: 100_000,
+        overdueCount: 1,
+      },
+    ]);
+  });
+
+  it("the invoice list summary covers the whole filter, and the next page keeps the filter", async () => {
+    const customer = await insertCustomer(t());
+
+    await t().db.$client.query(
+      "insert into invoice (customer_id, number, invoice_date, due_date, due_date_source, currency, total_cents) select $1, 'LATE-' || g, date '2026-01-01' + (g / 4), date '2026-10-01', 'document', 'SGD', 100 from generate_series(1, 1001) as g",
+      [customer.id]
+    );
+    await insertInvoice(t(), {
+      customerId: customer.id,
+      dueDate: "2026-12-31",
+    });
+
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+    const filters = { customerId: customer.id, status: "overdue" } as const;
+
+    const first = await reader.listInvoices({ after: null, filters });
+
+    expect(first.rows).toHaveLength(1000);
+    expect(first.summary).toEqual([
+      {
+        currency: "SGD",
+        outstandingCents: 100_100,
+        overdueCents: 100_100,
+        overdueCount: 1001,
+      },
+    ]);
+
+    const second = await reader.listInvoices({ after: first.next, filters });
+
+    expect(second.rows.map((row) => row.status.kind)).toEqual(["overdue"]);
   });
 
   it("the lists answer only the customer a scoped reader may read", async () => {

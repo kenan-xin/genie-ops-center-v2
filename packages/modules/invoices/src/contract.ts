@@ -442,6 +442,35 @@ export const invoiceListRow = z.object({
 
 export type InvoiceListRow = z.infer<typeof invoiceListRow>;
 
+/** The status chips of the Invoices list; no status means All. */
+export const INVOICE_LIST_STATUSES = [
+  "open",
+  "overdue",
+  "paid",
+  "no-due-date",
+] as const;
+
+/** The filters of the Invoices list, as its address and its procedure carry them (design review 1.4). */
+export const invoiceListFilters = z.object({
+  search: z.string().trim().min(1).max(200).optional(),
+  status: z.enum(INVOICE_LIST_STATUSES).optional(),
+  customerId: recordId.optional(),
+  from: isoDate.optional(),
+  to: isoDate.optional(),
+});
+
+export type InvoiceListFilters = z.infer<typeof invoiceListFilters>;
+
+/** The totals of one currency over every invoice the filters keep, not only the loaded page. */
+export const invoiceListSummary = z.object({
+  currency: z.string(),
+  outstandingCents: z.number().int(),
+  overdueCents: z.number().int(),
+  overdueCount: z.number().int(),
+});
+
+export type InvoiceListSummary = z.infer<typeof invoiceListSummary>;
+
 export const invoiceDetail = invoiceListRow.extend({
   dueDateSource: z.enum(DUE_DATE_SOURCES),
   paymentTerms: z.string().nullable(),
@@ -573,16 +602,25 @@ export const invoicesContract = {
     .route({ method: "DELETE", path: "/invoices/documents/{id}" })
     .input(z.object({ id: recordId }))
     .output(z.object({ documentId: z.string() })),
-  /** The Invoices list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28). */
+  /**
+   * The Invoices list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28),
+   * with its filters and the summary of every invoice they keep.
+   */
   listInvoices: oc
     .route({ method: "GET", path: "/invoices/invoice-list" })
-    .input(z.object({ after: datasetCursorSchema.nullable() }))
+    .input(
+      z.object({
+        after: datasetCursorSchema.nullable(),
+        filters: invoiceListFilters.optional(),
+      })
+    )
     .output(
       z.object({
         asOf: z.string(),
         rows: z.array(invoiceListRow),
         truncated: z.boolean(),
         next: datasetCursorSchema.nullable(),
+        summary: z.array(invoiceListSummary),
       })
     ),
   /** The Payments list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28). */

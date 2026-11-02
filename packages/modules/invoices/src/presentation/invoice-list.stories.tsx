@@ -2,14 +2,16 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { expect, fn, userEvent } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
 
 import {
   defaultInvoiceList,
+  overdueInvoicePage,
+  paidInvoicePage,
   twoCurrencyInvoiceList,
 } from "./__fixtures__/invoices.ts";
 import { InvoiceList } from "./invoice-list.tsx";
-import type { InvoiceListView } from "./views.ts";
+import type { InvoiceListPageView, InvoiceListView } from "./views.ts";
 
 const listInvoices = fn();
 
@@ -37,8 +39,35 @@ function withQuery(Story: () => ReactNode) {
 
 const CURSOR = { values: ["2026-09-01", "INV-2026-09-01", "invoice-4"] };
 
+/** Opens the story at an address with these list parameters, and `listInvoices` answering `page`. */
+function atAddress(query: string, page: InvoiceListView) {
+  return () => {
+    listInvoices.mockReset();
+    listInvoices.mockResolvedValue(page);
+
+    const url = new URL(window.location.href);
+
+    for (const [name, value] of new URLSearchParams(query)) {
+      url.searchParams.set(name, value);
+    }
+
+    window.history.replaceState(null, "", url);
+  };
+}
+
+/** The list's own parameters in the address now. */
+const listAddress = () => {
+  const params = new URLSearchParams(window.location.search);
+
+  return ["q", "status", "customer", "from", "to"].flatMap((name) => {
+    const value = params.get(name);
+
+    return value === null ? [] : [`${name}=${value}`];
+  });
+};
+
 /** A first page that was cut, and the one row the next page answers. */
-const cut: InvoiceListView = {
+const cut: InvoiceListPageView = {
   ...defaultInvoiceList,
   truncated: true,
   next: CURSOR,
@@ -54,6 +83,7 @@ const NEXT_PAGE: InvoiceListView = {
       : [{ ...firstRow, id: "invoice-5", invoiceNumber: "INV-2026-08-30" }],
   truncated: false,
   next: null,
+  summary: defaultInvoiceList.summary,
 };
 
 async function showsMore(
@@ -70,7 +100,10 @@ async function showsMore(
   await expect(
     await canvas.findByRole("link", { name: "INV-2026-08-30" })
   ).toBeVisible();
-  await expect(listInvoices).toHaveBeenCalledWith({ after: CURSOR });
+  await expect(listInvoices).toHaveBeenCalledWith({
+    after: CURSOR,
+    filters: {},
+  });
   await expect(canvas.queryByRole("button", { name: "Show more" })).toBeNull();
   await expect(canvas.queryByText(/Showing the first/)).toBeNull();
 }
@@ -83,13 +116,19 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Invoices list at `/m/invoices/invoices`, read from `invoices.invoices` as of the reporting date (Spec 7 R-59, R-60). The caption names the reporting date because `PageHeader` hides its description below `lg`. From 768 px the rows are a table; below that they are the same rows as cards, with the invoice number opening the record and the balance as a fact. A cut read says how many rows it shows.",
+          "The Invoices list at `/m/invoices/invoices`, read from `invoices.invoices` as of the reporting date (Spec 7 R-59, R-60). The caption names the reporting date because `PageHeader` hides its description below `lg`. From 768 px the rows are a table; below that they are the same rows as cards, with the invoice number opening the record and the balance as a fact. A cut read says how many rows it shows. The search, the status chips, the customer picker and the invoice-date range live in the page address (`q`, `status`, `customer`, `from`, `to`) and run on the server through `listInvoices`; on a phone the filters sit behind one Filters button. The summary line, one per currency, covers every invoice the filters keep (design review 1.4).",
       },
     },
     a11y: { test: "error" },
   },
   args: { view: defaultInvoiceList },
   decorators: [withQuery],
+  // Each story leaves the address as it found it.
+  beforeEach: () => {
+    const before = window.location.href;
+
+    return () => window.history.replaceState(null, "", before);
+  },
 } satisfies Meta<typeof InvoiceList>;
 
 export default meta;
@@ -116,6 +155,109 @@ export const TwoCurrencies: Story = {
     const amounts = await canvas.findAllByText("US$1,250.00");
 
     await expect(amounts[0]).toBeVisible();
+
+    // One summary line per currency: no total adds SGD and USD.
+    await expect(
+      canvas.getByText(
+        /^Outstanding SGD\s?12,550\.00\. Overdue SGD\s?3,000\.00 in 1 invoice\.$/
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        /^Outstanding US\$1,250\.00\. Overdue US\$0\.00 in 0 invoices\.$/
+      )
+    ).toBeVisible();
+  },
+};
+
+export const FilterByStatus: Story = {
+  name: "Filter by status",
+  globals: desktop,
+  beforeEach: atAddress("", overdueInvoicePage),
+  play: async ({ canvas }) => {
+    const overdue = canvas.getByRole("button", { name: "Overdue" });
+
+    await userEvent.click(overdue);
+
+    await expect(listInvoices).toHaveBeenCalledWith({
+      after: null,
+      filters: { status: "overdue" },
+    });
+    await waitFor(() =>
+      expect(canvas.queryByRole("link", { name: "INV-2026-09-01" })).toBeNull()
+    );
+    await expect(
+      canvas.getByRole("link", { name: "INV-2026-09-03" })
+    ).toBeVisible();
+    await expect(overdue).toHaveAttribute("aria-pressed", "true");
+    await expect(listAddress()).toEqual(["status=overdue"]);
+    await expect(
+      canvas.getByText(
+        /^Outstanding SGD\s?3,000\.00\. Overdue SGD\s?3,000\.00 in 1 invoice\.$/
+      )
+    ).toBeVisible();
+  },
+};
+
+export const FiltersFromTheAddress: Story = {
+  name: "Filters from the address",
+  globals: desktop,
+  beforeEach: atAddress("?status=paid&q=INV-2026-09", paidInvoicePage),
+  play: async ({ canvas }) => {
+    await waitFor(() =>
+      expect(listInvoices).toHaveBeenCalledWith({
+        after: null,
+        filters: { search: "INV-2026-09", status: "paid" },
+      })
+    );
+    await expect(canvas.getByRole("button", { name: "Paid" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
+    await expect(
+      canvas.getByRole("searchbox", {
+        name: "Search invoice number or customer",
+      })
+    ).toHaveValue("INV-2026-09");
+    await waitFor(() =>
+      expect(canvas.queryByRole("link", { name: "INV-2026-10-02" })).toBeNull()
+    );
+  },
+};
+
+export const FiltersOnAPhone: Story = {
+  name: "Filters on a phone",
+  globals: phone,
+  // The story ends with the panel open. Base UI's focus guards are `aria-hidden` on purpose (they
+  // hand focus on), so only they skip `aria-hidden-focus`, as in the audit log stories.
+  parameters: {
+    a11y: {
+      test: "error",
+      config: {
+        rules: [
+          {
+            id: "aria-hidden-focus",
+            selector: '[aria-hidden="true"]:not([data-base-ui-focus-guard])',
+          },
+        ],
+      },
+    },
+  },
+  beforeEach: atAddress("", paidInvoicePage),
+  play: async ({ canvas }) => {
+    // The chips sit behind one button, so the cards start near the top.
+    await expect(canvas.queryByRole("group", { name: "Status" })).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Filters" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Paid" }));
+
+    await expect(listInvoices).toHaveBeenCalledWith({
+      after: null,
+      filters: { status: "paid" },
+    });
+    await expect(
+      await screen.findByRole("button", { name: /Filters/ })
+    ).toHaveTextContent("1");
   },
 };
 
@@ -135,7 +277,9 @@ export const ShowMoreOnPhone: Story = {
 
 /** The list, left for another screen and opened again with a new first page from the server. */
 function LeaveAndReturn() {
-  const [view, setView] = useState<InvoiceListView | null>(defaultInvoiceList);
+  const [view, setView] = useState<InvoiceListPageView | null>(
+    defaultInvoiceList
+  );
 
   return (
     <>
@@ -167,6 +311,13 @@ export const FreshAfterReturn: Story = {
 
 export const Empty: Story = {
   args: {
-    view: { asOf: "2026-10-27", rows: [], truncated: false, next: null },
+    view: {
+      asOf: "2026-10-27",
+      rows: [],
+      truncated: false,
+      next: null,
+      summary: [],
+      customers: [],
+    },
   },
 };

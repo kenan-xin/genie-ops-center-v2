@@ -33,7 +33,10 @@ import {
 } from "./schema.ts";
 import { loadDocumentInbox } from "./services/documents/inbox.ts";
 import { loadDocumentReview } from "./services/documents/review.ts";
-import { loadInvoiceList, loadPaymentList } from "./services/pages/lists.ts";
+import {
+  loadInvoiceListPage,
+  loadPaymentList,
+} from "./services/pages/lists.ts";
 import {
   loadInvoiceRecord,
   loadPaymentRecord,
@@ -147,7 +150,7 @@ export const invoicesModule = {
       definePage({
         path: INVOICES_ENTRY.path,
         permission: "invoices:use",
-        load: (ctx) => loadInvoiceList(ctx),
+        load: (ctx) => loadInvoiceListPage(ctx),
         component: InvoiceListPage,
       }),
       definePage({

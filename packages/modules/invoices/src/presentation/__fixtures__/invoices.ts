@@ -5,6 +5,7 @@
  * data and they never reach a runtime path.
  */
 import type {
+  InvoiceListPageView,
   InvoiceListRow,
   InvoiceListView,
   InvoiceRecordView,
@@ -70,16 +71,68 @@ const US_DOLLARS: InvoiceListRow = {
   status: { kind: "open" },
 };
 
-export const defaultInvoiceList: InvoiceListView = {
+const CUSTOMERS = [PAID, OPEN, OVERDUE, NO_DUE_DATE, US_DOLLARS].map(
+  (row, index) => ({
+    id: `9${index}999999-9999-4999-8999-999999999999`,
+    name: row.customerName,
+  })
+);
+
+export const defaultInvoiceList: InvoiceListPageView = {
   asOf: "2026-10-27",
   rows: [PAID, OPEN, OVERDUE, NO_DUE_DATE],
   truncated: false,
   next: null,
+  summary: [
+    {
+      currency: "SGD",
+      outstandingCents: 1_255_000,
+      overdueCents: 300_000,
+      overdueCount: 1,
+    },
+  ],
+  customers: CUSTOMERS,
 };
 
-export const twoCurrencyInvoiceList: InvoiceListView = {
+export const twoCurrencyInvoiceList: InvoiceListPageView = {
   ...defaultInvoiceList,
   rows: [...defaultInvoiceList.rows, US_DOLLARS],
+  summary: [
+    ...defaultInvoiceList.summary,
+    {
+      currency: "USD",
+      outstandingCents: 125_000,
+      overdueCents: 0,
+      overdueCount: 0,
+    },
+  ],
+};
+
+/** Page one under the Overdue chip, as `listInvoices` answers it. */
+export const overdueInvoicePage: InvoiceListView = {
+  asOf: "2026-10-27",
+  rows: [OVERDUE],
+  truncated: false,
+  next: null,
+  summary: [
+    {
+      currency: "SGD",
+      outstandingCents: 300_000,
+      overdueCents: 300_000,
+      overdueCount: 1,
+    },
+  ],
+};
+
+/** Page one under the Paid chip and a search, as `listInvoices` answers it. */
+export const paidInvoicePage: InvoiceListView = {
+  asOf: "2026-10-27",
+  rows: [PAID],
+  truncated: false,
+  next: null,
+  summary: [
+    { currency: "SGD", outstandingCents: 0, overdueCents: 0, overdueCount: 0 },
+  ],
 };
 
 const PAYMENT = {

@@ -84,9 +84,15 @@ export const invoicesDataset: DatasetDeclaration = {
   permission: "invoices:read",
   fields: {
     id: text("The invoice id."),
-    invoiceNumber: text("The invoice number as printed on the invoice."),
+    invoiceNumber: {
+      ...text("The invoice number as printed on the invoice."),
+      searchable: true,
+    },
     customerId: text("The id of the invoiced customer."),
-    customerName: text("The name of the invoiced customer."),
+    customerName: {
+      ...text("The name of the invoiced customer."),
+      searchable: true,
+    },
     invoiceDate: date("The invoice date, by which invoiced sales are counted."),
     dueDate: date("The due date, null when the invoice states none."),
     dueDateSource: text(

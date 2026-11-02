@@ -3,6 +3,7 @@ import type { DatasetCursor } from "@genie/core/rpc";
 import type {
   DocumentInboxView,
   InvoiceListRow,
+  InvoiceListSummary,
   PaymentListRow,
 } from "../contract.ts";
 
@@ -19,7 +20,9 @@ export type {
   HistoryRow,
   InboxStatus,
   InvoiceDetail,
+  InvoiceListFilters,
   InvoiceListRow,
+  InvoiceListSummary,
   InvoiceRecordView,
   InvoiceStatus,
   PaymentListRow,
@@ -38,6 +41,16 @@ export type InvoiceListView = {
   readonly truncated: boolean;
   /** Where the next page starts, when the list was cut (czjw.28). */
   readonly next: DatasetCursor | null;
+  /** One entry per currency, over every invoice the filters keep. */
+  readonly summary: readonly InvoiceListSummary[];
+};
+
+/** A customer the list's customer picker offers. */
+export type ListCustomer = { readonly id: string; readonly name: string };
+
+/** The unfiltered first page the server renders, and the customers of the picker. */
+export type InvoiceListPageView = InvoiceListView & {
+  readonly customers: readonly ListCustomer[];
 };
 
 export type PaymentListView = {
