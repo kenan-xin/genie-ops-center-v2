@@ -82,6 +82,44 @@ export const LongValuesPhone: Story = {
   },
 };
 
+/**
+ * At 1440 px the four figures of a record share one row, as the prototype draws them. The page
+ * column is 1100 px wide there: the window less the rail and the page padding.
+ */
+export const OneRowOnDesktop: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  decorators: [
+    (Story) => (
+      <div className="w-[1100px]">
+        <Story />
+      </div>
+    ),
+  ],
+  args: {
+    figures: [
+      {
+        label: "Outstanding",
+        value: "SGD 5,200.00",
+        lead: true,
+        status: <StatusPill tone="danger">Overdue · 40 days</StatusPill>,
+      },
+      { label: "Total", value: "SGD 7,200.00" },
+      { label: "Allocated", value: "SGD 2,000.00" },
+      { label: "Due date", value: "17 Sep 2026", note: "From the document" },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const strip = canvas.getByRole("region", { name: "Figures" });
+
+    const bottoms = [...strip.querySelectorAll("dl > div")].map((figure) =>
+      Math.round(figure.getBoundingClientRect().bottom)
+    );
+
+    // One row: every figure ends on the same line (the strip aligns them at the bottom).
+    await expect(new Set(bottoms).size).toBe(1);
+  },
+};
+
 export const Dark: Story = {
   globals: { theme: "dark" },
 };

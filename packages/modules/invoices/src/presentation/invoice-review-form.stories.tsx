@@ -600,6 +600,13 @@ export const MissingDueDateOnPhone: Story = {
       await expect(box.bottom).toBeLessThanOrEqual(window.innerHeight);
     }
 
+    // The label stacks above the input on a narrow pane, so a value such as INV-LIVE-001 reads whole.
+    await expect(
+      canvas
+        .getByRole("textbox", { name: "Invoice number" })
+        .getBoundingClientRect().width
+    ).toBeGreaterThanOrEqual(160);
+
     await MissingDueDate.play?.(context);
   },
 };

@@ -248,14 +248,16 @@ export function ReviewFieldRow(props: ReviewFieldRowProps): ReactNode {
   return (
     <div
       data-field={field}
-      className={`flex flex-col gap-1 px-4 py-3 ${selected ? "bg-muted" : ""}`}
+      // A container query, not a breakpoint: the pane is narrow on a phone and at 1024 px, where
+      // both panes share the width, so the label stacks above the value whenever the row is.
+      className={`@container flex flex-col gap-1 px-4 py-3 ${selected ? "bg-muted" : ""}`}
       onFocus={(event) => {
         if (event.target.matches(":focus-visible")) onSelect();
       }}
       onClick={onSelect}
     >
-      <div className="flex items-start gap-3">
-        <span className="w-32 shrink-0 text-sm text-muted-foreground">
+      <div className="flex flex-wrap items-start gap-x-3 gap-y-1.5">
+        <span className="w-full shrink-0 text-sm text-muted-foreground @md:w-32">
           {label}
         </span>
         <div className="min-w-0 flex-1 text-sm font-medium">{children}</div>
@@ -275,7 +277,7 @@ export function ReviewFieldRow(props: ReviewFieldRowProps): ReactNode {
         </span>
       </div>
       {selected ? (
-        <div className="pl-32 text-xs text-muted-foreground">
+        <div className="text-xs text-muted-foreground @md:pl-32">
           <SourceLines tag={tag} sources={sources} unread={unread} />
         </div>
       ) : null}

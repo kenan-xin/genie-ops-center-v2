@@ -27,11 +27,13 @@ export function FigureStrip(props: {
     >
       <dl className="grid grid-cols-2 gap-x-4 gap-y-3.5 md:flex md:flex-wrap md:items-end md:gap-x-12 md:gap-y-4">
         {props.figures.map((figure) => (
+          // From `md` a grid, not a wrapping flex row: a wrapping row is as wide as its label and
+          // value side by side, which pushed the figures apart and the last one to a second row.
           <div
             key={figure.label}
-            className={`flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1.5 ${figure.lead ? "col-span-2" : ""}`}
+            className={`flex min-w-0 flex-wrap content-start items-center gap-x-2.5 gap-y-1.5 md:grid md:auto-cols-max md:justify-start ${figure.lead ? "col-span-2" : ""}`}
           >
-            <dt className="basis-full text-xs font-semibold text-muted-foreground">
+            <dt className="basis-full text-xs font-semibold text-muted-foreground md:col-span-2">
               {figure.label}
             </dt>
             <dd
@@ -45,7 +47,7 @@ export function FigureStrip(props: {
             </dd>
             {figure.status === undefined ? null : <dd>{figure.status}</dd>}
             {figure.note === undefined ? null : (
-              <dd className="basis-full text-xs text-muted-foreground">
+              <dd className="basis-full text-xs text-muted-foreground md:col-span-2">
                 {figure.note}
               </dd>
             )}
