@@ -21,7 +21,7 @@ Read in this order:
 
 ## Local development
 
-One command starts Postgres 18 in Docker and the application with `next dev` on your machine. Sign-in uses the shared `genie-dev` realm on `https://sso.001.gs`.
+One command starts Postgres 18 in Docker, the job worker, and the application with `next dev` on your machine. Sign-in uses the shared `genie-dev` realm on `https://sso.001.gs`.
 
 ### Before you start
 
@@ -66,13 +66,13 @@ One command starts Postgres 18 in Docker and the application with `next dev` on 
 
 6. Open `http://localhost:3000` and sign in through `sso.001.gs`.
 
-From then on, step 5 alone starts everything. Press Ctrl+C to stop the application. The database keeps running until you run `docker compose -f deploy/stack/compose.dev.yaml stop`.
+From then on, step 5 alone starts everything. Press Ctrl+C to stop the application and the worker. The database keeps running until you run `docker compose -f deploy/stack/compose.dev.yaml stop`.
 
 ### What to know
 
 - Port 3000 must be free. The realm accepts only `http://localhost:3000` as the return address after sign-in.
-- The first request applies any pending migrations to the dev database.
-- The background worker does not run, so queued emails stay unsent.
+- The job worker starts first and applies any pending migrations to the dev database. Then `next dev` starts.
+- The worker runs queued jobs, for example the reading of an uploaded document. Its output lines start with `[worker]`.
 - The database keeps its data in a named Docker volume. `docker compose -f deploy/stack/compose.dev.yaml down` removes the container but keeps the data. Adding `-v` deletes the data.
 - Do not run `genie-ops setup` against an empty database with these values. The command runs only inside the built image today, and its realm step writes the shared `genie-dev` realm. Bead `genie-ops-center-v2-xok3.20` tracks one command that sets up an empty database without touching the realm.
 - To work on components without a database, run Storybook with `pnpm nx run @genie/storybook:storybook` and open `http://localhost:6006`.

@@ -5,12 +5,7 @@ import { delimiter, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
-import {
-  createTenantContext,
-  runWorker,
-  seedRoles,
-  SETUP_STEPS,
-} from "@genie/core";
+import { createTenantContext, seedRoles, SETUP_STEPS } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 import {
   assignRole,
@@ -28,6 +23,7 @@ import {
 import { selectedModuleIds, selectedModules } from "../../src/modules.ts";
 import { ANALYTICS_CHAT_KEYS } from "../../testing/analytics-chat.ts";
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
+import { startWorker, type StartedWorker } from "../../testing/dev-worker.ts";
 import { BASE_PORTS } from "../../testing/e2e-ports.ts";
 import {
   APP_AGENT_RECORDINGS,
@@ -293,72 +289,31 @@ async function seedAgent(): Promise<void> {
   }
 }
 
-/** The worker this run started beside `next dev`, so an upload's reading job runs (decision 14). */
-type ReadingWorker = {
-  readonly signal: AbortController;
-  readonly run: Promise<number>;
-  readonly lines: readonly string[];
-};
+/** How long the worker may take to start. `next dev` already migrated, so it only starts pg-boss. */
+const WORKER_START_MS = 60000;
 
-let readingWorker: ReadingWorker | undefined;
+/** The worker this run started beside `next dev`, so an upload's reading job runs (decision 14). */
+let readingWorker: StartedWorker | undefined;
 
 /**
- * Starts the module job worker in this process. `next dev` starts none, so without it every
- * upload stays Reading. The worker asks the document model from this process, so
- * `replayModelRequests` answers those requests here from the reading recordings. Returns once
- * the worker says it started; one that ends first throws with its own output lines.
+ * Starts the module job worker in this process, so an upload's reading job runs. The worker asks
+ * the document model from this process, so `replayModelRequests` answers those requests here
+ * from the reading recordings.
  */
 async function startReadingWorker(): Promise<void> {
   replayModelRequests([INVOICES_READING_RECORDINGS]);
 
-  const signal = new AbortController();
-  const started = Promise.withResolvers<void>();
-  const lines: string[] = [];
-
-  const workerRun = runWorker({
+  readingWorker = await startWorker({
     source: { DATABASE_URL: databaseUrl(), PUBLIC_URL: publicUrl() },
     modules: selectedModules,
     histories: [],
-    output: (line) => {
-      lines.push(line);
-
-      if (line.includes("worker started")) started.resolve();
-    },
-    errorOutput: (line) => lines.push(line),
-    signal: signal.signal,
-    shutdownTimeoutMs: 1000,
+    timeoutMs: WORKER_START_MS,
   });
-
-  // A run that ends before the line resolves the wait, so setup reports it rather than hanging.
-  void workerRun.then(
-    () => started.resolve(),
-    () => started.resolve()
-  );
-
-  readingWorker = { signal, run: workerRun, lines };
-
-  const outcome = await Promise.race([
-    started.promise.then(() => "started" as const),
-    workerRun.then(
-      () => "ended" as const,
-      () => "ended" as const
-    ),
-  ]);
-
-  if (outcome === "ended") {
-    throw new Error(
-      `The reading worker stopped before it started.\n${lines.join("\n")}`
-    );
-  }
 }
 
 /** Stops the worker this run started before the database it reads is removed. */
 export async function stopReadingWorker(): Promise<void> {
-  if (readingWorker === undefined) return;
-
-  readingWorker.signal.abort();
-
-  await readingWorker.run.catch(() => undefined);
+  await readingWorker?.stop();
 
   readingWorker = undefined;
 }

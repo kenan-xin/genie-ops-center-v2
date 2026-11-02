@@ -6,8 +6,9 @@ import {
 } from "./global-setup.ts";
 
 /**
- * Playwright runs this whether the specs passed or failed, so the development server and the
- * disposable database are removed either way. `GENIE_DEV_E2E_KEEP=1` keeps both for the captures
+ * Playwright runs this whether the specs passed or failed, and also after a failed global setup
+ * (1.64 queues the teardown before the setup), so the development server and the disposable
+ * database are removed either way. `GENIE_DEV_E2E_KEEP=1` keeps both for the captures
  * Phase 04 takes and prints the two commands that stop them.
  */
 export default async function globalTeardown(): Promise<void> {
