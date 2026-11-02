@@ -207,7 +207,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One payment at `/m/invoices/payments/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The card lists its amounts; the source PDF opens in a new tab through a short-lived link. Allocations and History are tables from 768 px and cards below it, each row opening the invoice. A writer of the payment gets Undo on an automatic link and Change amount and Remove link on every link; Change amount keeps a refusal inside its dialog. A writer of a payment with unallocated money gets Link to an invoice: the open invoices of its customer in its currency, with the lower of the open amount and the unallocated amount filled in (R-31, R-32, decision 10). After each change the page reads the payment again. A payment dated after the reporting date shows a note instead of a balance.",
+          'One payment at `/m/invoices/payments/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The page header holds the customer and "Open the PDF" (a new tab, through a short-lived link). The Figures strip leads with Unallocated while money is unallocated, else with Amount (choice 11). The Invoices card is a table from 768 px and cards below it, each row opening the invoice, and holds Link to an invoice. History is one dated sentence per change, newest first. A writer of the payment gets Undo on an automatic link and Change amount and Remove link on every link; Change amount keeps a refusal inside its dialog. A writer of a payment with unallocated money gets Link to an invoice: the open invoices of its customer in its currency, with the lower of the open amount and the unallocated amount filled in (R-31, R-32, decision 10). After each change the page reads the payment again. A payment dated after the reporting date shows a note instead of a balance.',
       },
     },
     a11y: { test: "error" },
@@ -221,8 +221,49 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// Static states: the e2e reads the real page (ui-development.md, step 4).
-export const Default: Story = {};
+/** The terms of the Figures strip, in order. */
+const figureTerms = (canvas: ReturnType<typeof within>) =>
+  within(canvas.getByRole("region", { name: "Figures" }))
+    .getAllByRole("term")
+    .map((term) => term.textContent);
+
+// Choice 11: unallocated money leads the strip.
+export const Default: Story = {
+  globals: desktop,
+  play: async ({ canvas }) => {
+    await expect(figureTerms(canvas)).toEqual([
+      "Unallocated",
+      "Amount",
+      "Allocated",
+      "Payment date",
+    ]);
+  },
+};
+
+const fullyAllocatedPaymentRecord = {
+  ...partAllocatedPaymentRecord,
+  payment: {
+    ...partAllocatedPaymentRecord.payment,
+    unallocatedCents: 0,
+    allocatedCents: 500_000,
+    status: "allocated",
+  },
+} satisfies PaymentRecordView;
+
+// Choice 11: with nothing unallocated, Amount leads and no "Unallocated SGD 0.00" shows.
+export const FullyAllocated: Story = {
+  name: "Fully allocated",
+  globals: desktop,
+  args: { view: fullyAllocatedPaymentRecord },
+  beforeEach: () => serve(fullyAllocatedPaymentRecord),
+  play: async ({ canvas }) => {
+    await expect(figureTerms(canvas)).toEqual([
+      "Amount",
+      "Allocated",
+      "Payment date",
+    ]);
+  },
+};
 
 export const AfterReportingDate: Story = {
   name: "After the reporting date",
@@ -321,7 +362,7 @@ export const ReadOnly: Story = {
   args: { view: readOnlyPaymentRecord },
   beforeEach: () => serve(readOnlyPaymentRecord),
   play: async ({ canvas }) => {
-    const list = canvas.getByRole("list", { name: "Allocations" });
+    const list = canvas.getByRole("list", { name: "Invoices" });
 
     await expect(within(list).getByText(/Automatic/)).toBeVisible();
     await expect(canvas.queryAllByRole("button", { name: /Undo/ })).toEqual([]);

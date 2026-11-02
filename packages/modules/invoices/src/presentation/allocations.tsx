@@ -2,10 +2,10 @@ import { PageLink } from "@genie/core/features/shell";
 import { Button, DataTable, type DataTableColumn } from "@genie/ui";
 
 import { formatDay, formatInstant, formatMoney } from "./format.ts";
+import { historySentence, labelOf, type LinkedRecord } from "./history-text.ts";
 import type { AllocationRow, HistoryRow } from "./views.ts";
 
-/** Which record of a link a row opens: the payment on an invoice's page, the invoice on a payment's. */
-export type LinkedRecord = "payment" | "invoice";
+export type { LinkedRecord };
 
 type Linked = Omit<AllocationRow, "id" | "amountCents">;
 
@@ -14,23 +14,13 @@ const HEADER: Record<LinkedRecord, string> = {
   invoice: "Invoice",
 };
 
-const how = (row: Linked) => (row.automatic ? "Automatic" : "By a person");
-
-const CHANGE: Record<HistoryRow["action"], string> = {
-  linked: "Linked",
-  changed: "Changed",
-  unlinked: "Unlinked",
+/** The name of a record's links card and of its table: the records on the other side. */
+export const LINKS_LABEL: Record<LinkedRecord, string> = {
+  payment: "Payments",
+  invoice: "Invoices",
 };
 
-const amount = (row: HistoryRow) =>
-  `${formatMoney(row.amountBeforeCents, row.currency)} → ${formatMoney(row.amountAfterCents, row.currency)}`;
-
-/** How a link names its other record: a payment by reference, else by day; an invoice by number. */
-export function labelOf(row: Linked, other: LinkedRecord): string {
-  return other === "payment"
-    ? (row.paymentReference ?? formatDay(row.paymentDate))
-    : row.invoiceNumber;
-}
+const how = (row: Linked) => (row.automatic ? "Automatic" : "By a person");
 
 function OtherRecord(props: {
   readonly row: Linked;
@@ -112,7 +102,7 @@ export function AllocationTable(props: AllocationTableProps) {
 
   return (
     <DataTable
-      label="Allocations"
+      label={LINKS_LABEL[other]}
       rows={rows}
       rowKey={(row) => row.id}
       rowLabel={(row) => labelOf(row, other)}
@@ -144,43 +134,34 @@ export function AllocationTable(props: AllocationTableProps) {
   );
 }
 
-export type HistoryTableProps = {
+export type HistoryListProps = {
+  /** Oldest first, as the record answers them. */
   readonly rows: readonly HistoryRow[];
   readonly other: LinkedRecord;
   /** The tenant's time zone, in which each change's time shows (P10). */
   readonly timeZone: string;
 };
 
-/** Every change of the links of one record, oldest first, with the amount before and after. */
-export function HistoryTable(props: HistoryTableProps) {
+/** Every change of the links of one record, newest first, one dated sentence each (2.5). */
+export function HistoryList(props: HistoryListProps) {
   const { rows, other, timeZone } = props;
 
-  const when = (row: HistoryRow) => formatInstant(row.occurredAt, timeZone);
-
-  const columns: readonly DataTableColumn<HistoryRow>[] = [
-    { id: "when", header: "When", cell: when },
-    { id: "change", header: "Change", cell: (row) => CHANGE[row.action] },
-    {
-      id: "other",
-      header: HEADER[other],
-      cell: (row) => <OtherRecord row={row} other={other} />,
-    },
-    { id: "amount", header: "Amount", cell: amount, align: "end" },
-    { id: "how", header: "How", cell: how },
-  ];
-
   return (
-    <DataTable
-      label="History"
-      rows={rows}
-      rowKey={(row) => row.id}
-      rowLabel={(row) => `${CHANGE[row.action]} ${when(row)}`}
-      columns={columns}
-      card={{
-        title: (row) => CHANGE[row.action],
-        detail: (row) => <OtherRecord row={row} other={other} />,
-        facts: (row) => [when(row), amount(row), how(row)],
-      }}
-    />
+    <ol aria-label="History" className="divide-y divide-border border-y">
+      {rows.toReversed().map((row) => (
+        <li
+          key={row.id}
+          className="flex flex-col gap-1 py-2.5 text-sm md:flex-row md:gap-3"
+        >
+          <time
+            dateTime={row.occurredAt}
+            className="shrink-0 text-muted-foreground tabular-nums md:w-44"
+          >
+            {formatInstant(row.occurredAt, timeZone)}
+          </time>
+          <span>{historySentence(row, other)}</span>
+        </li>
+      ))}
+    </ol>
   );
 }

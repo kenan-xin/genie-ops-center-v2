@@ -28,8 +28,9 @@ import {
   type CorrectInvoiceTotalOutput,
 } from "../contract.ts";
 import { centsOf, centsText } from "../services/reading/quote-check.ts";
-import { AllocationTable, labelOf, type LinkedRecord } from "./allocations.tsx";
+import { AllocationTable } from "./allocations.tsx";
 import { formatMoney } from "./format.ts";
+import { labelOf, type LinkedRecord } from "./history-text.ts";
 import { AMOUNT_MESSAGE } from "./review-form.tsx";
 import type { AllocationRow } from "./views.ts";
 

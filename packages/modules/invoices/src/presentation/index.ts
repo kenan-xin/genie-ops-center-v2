@@ -20,8 +20,8 @@ export {
 export {
   AllocationTable,
   type AllocationTableProps,
-  HistoryTable,
-  type HistoryTableProps,
+  HistoryList,
+  type HistoryListProps,
   type LinkedRecord,
 } from "./allocations.tsx";
 

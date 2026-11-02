@@ -461,7 +461,9 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         ).toBeVisible(FIRST_PAINT);
         await expect(fact(page, "Outstanding")).toHaveText(sgd(2200));
         await expect(
-          allocationsOn(page).filter({ hasText: "HF-SEP-FINAL-PART" })
+          allocationsOn(page, "Payments").filter({
+            hasText: "HF-SEP-FINAL-PART",
+          })
         ).toHaveCount(1);
 
         // B9.3: the record page with its Undo, Change amount and Remove link has no defect.
@@ -476,9 +478,11 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
           page.getByText("The link to HF-SEP-FINAL-PART is removed.")
         ).toBeVisible({ timeout: SAVE_TIMEOUT });
 
-        // S2: the automatic row leaves Allocations, not only its toast.
+        // S2: the automatic row leaves the Payments card, not only its toast.
         await expect(
-          allocationsOn(page).filter({ hasText: "HF-SEP-FINAL-PART" })
+          allocationsOn(page, "Payments").filter({
+            hasText: "HF-SEP-FINAL-PART",
+          })
         ).toHaveCount(0);
         await expect(fact(page, "Outstanding")).toHaveText(sgd(5200));
       } finally {

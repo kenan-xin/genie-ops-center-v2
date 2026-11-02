@@ -79,12 +79,15 @@ export const fact = (page: Page, label: string) =>
     `xpath=//dt[normalize-space(.)="${label}"]/following-sibling::dd[1]`
   );
 
-/** The links of one record, read from whichever layout the viewport draws. */
-export function allocationsOn(page: Page) {
+/**
+ * The links of one record, read from whichever layout the viewport draws. The card names the other
+ * side: "Payments" on an invoice, "Invoices" on a payment.
+ */
+export function allocationsOn(page: Page, label: "Payments" | "Invoices") {
   return onPhone(page)
-    ? page.getByRole("list", { name: "Allocations" }).getByRole("listitem")
+    ? page.getByRole("list", { name: label }).getByRole("listitem")
     : page
-        .getByRole("table", { name: "Allocations" })
+        .getByRole("table", { name: label })
         .locator("tbody")
         .getByRole("row");
 }

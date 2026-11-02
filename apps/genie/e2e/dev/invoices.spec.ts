@@ -4,6 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
+  allocationsOn,
   FIRST_PAINT,
   fact,
   LEDGER_LOCK,
@@ -247,26 +248,28 @@ test("INV-2026-09-03 opens from its row without a document load and shows its ba
       await expect(fact(page, "Total")).toHaveText(sgd(7200));
       await expect(fact(page, "Allocated")).toHaveText(sgd(2000));
       await expect(fact(page, "Outstanding")).toHaveText(sgd(5200));
-      await expect(fact(page, "Status")).toHaveText("Overdue · 40 days");
+      // The status pill sits beside Outstanding in the header strip (2.3).
+      await expect(page.getByRole("region", { name: "Figures" })).toContainText(
+        "Overdue · 40 days"
+      );
 
-      const allocations = onPhone(page)
-        ? page.getByRole("list", { name: "Allocations" }).getByRole("listitem")
-        : page
-            .getByRole("table", { name: "Allocations" })
-            .locator("tbody")
-            .getByRole("row");
+      const allocations = allocationsOn(page, "Payments");
 
       await expect(allocations).toHaveCount(1);
       await expect(allocations).toContainText("TXN-PAY-2026-026");
       await expect(allocations).toContainText(sgd(2000));
 
-      const history = await shownRows(page, "History");
+      // History reads as sentences with the stored link amount (2.5).
+      const history = page
+        .getByRole("list", { name: "History" })
+        .getByRole("listitem");
 
-      expect(history).toHaveLength(1);
-      expect(history[0]?.text).toContain("Linked");
+      await expect(history).toHaveCount(1);
+      await expect(history).toContainText("Payment TXN-PAY-2026-026 linked");
+      await expect(history).toContainText(`for ${sgd(2000)}.`);
 
       const pdf = page.getByRole("link", {
-        name: "Open the source document (PDF)",
+        name: "Open the PDF (source document, opens in a new tab)",
       });
 
       const href = await pdf.getAttribute("href");
@@ -354,12 +357,7 @@ test("the Payments list shows every seeded payment and the payment linked to INV
         page.getByRole("heading", { level: 1, name: reference ?? "" })
       ).toBeVisible(FIRST_PAINT);
 
-      const allocations = onPhone(page)
-        ? page.getByRole("list", { name: "Allocations" }).getByRole("listitem")
-        : page
-            .getByRole("table", { name: "Allocations" })
-            .locator("tbody")
-            .getByRole("row");
+      const allocations = allocationsOn(page, "Invoices");
 
       await expect(allocations).toHaveCount(1);
       await expect(allocations).toContainText("INV-2026-09-03");

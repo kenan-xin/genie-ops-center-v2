@@ -84,7 +84,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One invoice at `/m/invoices/invoices/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The card lists its facts and its balance; the due date names where it came from. The source PDF opens in a new tab through a short-lived link. Allocations and History are tables from 768 px and cards below it, each row opening the payment. A writer of the invoice gets Undo on an automatic link, without a confirmation, and Change amount and Remove link on every link; Remove link asks first. A writer also gets Correct the total; a new total below the links answers `choose-links`, and the dialog asks for the new amount of each link and sends the lowered ones (R-32, decision 13). A refusal stays inside the open dialog. After each change the page reads the invoice again. An invoice dated after the reporting date shows a note instead of a balance.",
+          'One invoice at `/m/invoices/invoices/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The page header holds the customer, "Open the PDF" (a new tab, through a short-lived link) and Correct the total. The Figures strip leads with Outstanding and its status, then Total, Allocated and the due date with where it came from. Details holds the other fields. The Payments card is a table from 768 px and cards below it, each row opening the payment. History is one dated sentence per change, newest first (Section 7 redesign, findings 2.1 to 2.5). A writer of the invoice gets Undo on an automatic link, without a confirmation, and Change amount and Remove link on every link; Remove link asks first. A writer also gets Correct the total; a new total below the links answers `choose-links`, and the dialog asks for the new amount of each link and sends the lowered ones (R-32, decision 13). A refusal stays inside the open dialog. After each change the page reads the invoice again. An invoice dated after the reporting date shows a note instead of a balance.',
       },
     },
     a11y: { test: "error" },
@@ -98,8 +98,37 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// Static states: the e2e reads the real page (ui-development.md, step 4).
-export const Default: Story = {};
+// 2.3 and 2.4: the strip leads with Outstanding and its pill; both actions sit in the page header.
+export const Default: Story = {
+  globals: desktop,
+  play: async ({ canvas }) => {
+    const figures = canvas.getByRole("region", { name: "Figures" });
+
+    await expect(
+      within(figures)
+        .getAllByRole("term")
+        .map((term) => term.textContent)
+    ).toEqual(["Outstanding", "Total", "Allocated", "Due date"]);
+    await expect(within(figures).getByText(/^Overdue/)).toBeVisible();
+
+    const header = canvas
+      .getByRole("heading", { level: 1, name: "INV-2026-09-03" })
+      .closest("header");
+
+    if (header === null) throw new Error("The title is outside a header.");
+
+    await expect(
+      within(header).getByRole("button", {
+        name: "Correct the total",
+      })
+    ).toBeVisible();
+    await expect(
+      within(header).getByRole("link", {
+        name: "Open the PDF (source document, opens in a new tab)",
+      })
+    ).toBeVisible();
+  },
+};
 
 export const NoDueDate: Story = {
   name: "No due date",
@@ -131,7 +160,7 @@ export const AutomaticLink: Story = {
       undo.map((button) => button.getAttribute("aria-label"))
     ).toEqual(["Undo the automatic link to TRF-0921-118"]);
     await expect(
-      within(canvas.getByRole("table", { name: "Allocations" })).getByText(
+      within(canvas.getByRole("table", { name: "Payments" })).getByText(
         "By a person"
       )
     ).toBeVisible();
@@ -162,7 +191,7 @@ export const AutomaticLinkOnPhone: Story = {
   name: "Automatic link on a phone",
   globals: phone,
   play: async ({ canvas }) => {
-    const list = canvas.getByRole("list", { name: "Allocations" });
+    const list = canvas.getByRole("list", { name: "Payments" });
 
     await expect(
       within(list).getAllByRole("button", { name: /^Undo/ })
@@ -429,7 +458,7 @@ export const ReadOnly: Story = {
   beforeEach: () => serve(readOnlyInvoiceRecord),
   play: async ({ canvas }) => {
     await expect(
-      within(canvas.getByRole("table", { name: "Allocations" })).getByText(
+      within(canvas.getByRole("table", { name: "Payments" })).getByText(
         "Automatic"
       )
     ).toBeVisible();

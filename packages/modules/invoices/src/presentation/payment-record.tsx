@@ -2,29 +2,17 @@
 
 import { PageHeader } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
-import { Button, buttonVariants, Card, CardContent } from "@genie/ui";
+import { Button, type Figure, FigureStrip } from "@genie/ui";
 import { useQuery } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { LinkIcon } from "lucide-react";
+import { useState } from "react";
 
 import { invoicesContract } from "../contract.ts";
-import { HistoryTable } from "./allocations.tsx";
 import { formatDay, formatMoney, paymentLabel } from "./format.ts";
-import {
-  INVOICES_QUERY,
-  LinkInvoiceDialog,
-  RecordLinks,
-} from "./link-dialogs.tsx";
+import { INVOICES_QUERY, LinkInvoiceDialog } from "./link-dialogs.tsx";
 import { PaymentStatusBadge } from "./payment-status-badge.tsx";
+import { Fact, OpenPdfLink, RecordBody } from "./record-parts.tsx";
 import type { PaymentRecordView } from "./views.ts";
-
-function Fact(props: { readonly label: string; readonly children: ReactNode }) {
-  return (
-    <>
-      <dt className="text-muted-foreground">{props.label}</dt>
-      <dd className="col-span-2">{props.children}</dd>
-    </>
-  );
-}
 
 export type PaymentRecordProps = {
   readonly view: PaymentRecordView;
@@ -79,43 +67,40 @@ function ShownPayment(props: { readonly initial: ShownView }) {
   const label = paymentLabel(payment);
   const canLink = view.canWrite && payment.unallocatedCents > 0;
 
+  const status = <PaymentStatusBadge status={payment.status} />;
+  const amount = { label: "Amount", value: money(payment.amountCents) };
+
+  // Choice 11: unallocated money leads; with none, the amount leads.
+  const lead: readonly Figure[] =
+    payment.unallocatedCents > 0
+      ? [
+          {
+            label: "Unallocated",
+            value: money(payment.unallocatedCents),
+            lead: true,
+            status,
+          },
+          amount,
+        ]
+      : [{ ...amount, lead: true, status }];
+
   return (
     <main className="flex flex-col gap-6">
-      <PageHeader title={label} />
-      <p>Amounts as of {formatDay(view.asOf)}, the reporting date.</p>
-      <Card>
-        <CardContent>
-          <dl className="grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
-            <Fact label="Customer">{payment.customerName}</Fact>
-            <Fact label="Payment date">{formatDay(payment.paymentDate)}</Fact>
-            <Fact label="Reference">{payment.reference ?? "None"}</Fact>
-            <Fact label="Method">{payment.method ?? "None"}</Fact>
-            <Fact label="Amount">{money(payment.amountCents)}</Fact>
-            <Fact label="Allocated">{money(payment.allocatedCents)}</Fact>
-            <Fact label="Unallocated">{money(payment.unallocatedCents)}</Fact>
-            <Fact label="Status">
-              <PaymentStatusBadge status={payment.status} />
-            </Fact>
-          </dl>
-        </CardContent>
-      </Card>
-      <div className="flex flex-wrap gap-2">
-        {view.documentUrl === null ? null : (
-          <a
-            href={view.documentUrl}
-            target="_blank"
-            rel="noopener"
-            className={buttonVariants({ variant: "secondary" })}
-          >
-            Open the source document (PDF)
-          </a>
-        )}
-        {canLink ? (
-          <Button variant="secondary" onClick={() => setLinking(true)}>
-            Link to an invoice
-          </Button>
-        ) : null}
-      </div>
+      <PageHeader
+        title={label}
+        meta={`${payment.customerName} · Amounts as of ${formatDay(view.asOf)}, the reporting date.`}
+        {...(view.documentUrl === null
+          ? {}
+          : { secondaryActions: <OpenPdfLink href={view.documentUrl} /> })}
+      />
+      <FigureStrip
+        label="Figures"
+        figures={[
+          ...lead,
+          { label: "Allocated", value: money(payment.allocatedCents) },
+          { label: "Payment date", value: formatDay(payment.paymentDate) },
+        ]}
+      />
       {canLink ? (
         <LinkInvoiceDialog
           open={linking}
@@ -130,30 +115,34 @@ function ShownPayment(props: { readonly initial: ShownView }) {
           onLinked={() => setLinking(false)}
         />
       ) : null}
-      <section aria-labelledby="payment-allocations">
-        <h2 id="payment-allocations" className="mb-2 font-semibold">
-          Allocations
-        </h2>
-        <RecordLinks
-          rows={view.allocations}
-          other="invoice"
-          canWrite={view.canWrite}
-        />
-      </section>
-      <section aria-labelledby="payment-history">
-        <h2 id="payment-history" className="mb-2 font-semibold">
-          History
-        </h2>
-        {view.history.length === 0 ? (
-          <p>No link has changed yet.</p>
-        ) : (
-          <HistoryTable
-            rows={view.history}
-            other="invoice"
-            timeZone={view.timeZone}
-          />
-        )}
-      </section>
+      <RecordBody
+        id="payment"
+        other="invoice"
+        allocations={view.allocations}
+        history={view.history}
+        canWrite={view.canWrite}
+        timeZone={view.timeZone}
+        linkAction={
+          canLink ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setLinking(true)}
+            >
+              <LinkIcon aria-hidden="true" />
+              Link to an invoice
+            </Button>
+          ) : undefined
+        }
+        facts={
+          <>
+            <Fact label="Customer">{payment.customerName}</Fact>
+            <Fact label="Payment date">{formatDay(payment.paymentDate)}</Fact>
+            <Fact label="Reference">{payment.reference ?? "None"}</Fact>
+            <Fact label="Method">{payment.method ?? "None"}</Fact>
+          </>
+        }
+      />
     </main>
   );
 }
