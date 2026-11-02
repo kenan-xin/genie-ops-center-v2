@@ -290,6 +290,44 @@ describe("invoice datasets", () => {
     ]);
   });
 
+  it("pages the allocations of one invoice across a page edge, each row once", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const { id: invoiceId } = await insertInvoice(t(), { customerId });
+    // One link per payment: an invoice and a payment share at most one allocation.
+    const inserted = await Promise.all(
+      [1, 2, 3].map(async () => {
+        const { id: paymentId } = await insertPayment(t(), { customerId });
+
+        return insertAllocation(t(), {
+          invoiceId,
+          paymentId,
+          amountCents: 1000,
+        });
+      })
+    );
+    const ctx = contextFor(reader);
+    const query: DatasetQuery = {
+      select: ["id"],
+      filters: [ofCustomer(customerId)],
+      limit: 2,
+    };
+
+    const first = await queryDataset(ctx, {
+      dataset: "invoices.allocations",
+      query,
+    });
+    const second = await queryDataset(ctx, {
+      dataset: "invoices.allocations",
+      query,
+      after: first.next,
+    });
+
+    expect(
+      [...first.rows, ...second.rows].map((row) => row["id"]).toSorted()
+    ).toEqual(inserted.map(({ id }) => id).toSorted());
+    expect(second.next).toBeUndefined();
+  });
+
   it("a link to an invoice dated after the reporting date leaves its payment unallocated and has no allocation row", async () => {
     const { id: customerId } = await insertCustomer(t());
     const { id: invoiceId } = await insertInvoice(t(), {

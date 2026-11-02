@@ -1258,6 +1258,10 @@ describe("validateModule", () => {
         'Dataset "fixture.records" names record key field "amountCents", which is not a declared text field.',
       ],
       [
+        [{ ...validDataset, rowKeyField: "amountCents" }],
+        'Dataset "fixture.records" names row key field "amountCents", which is not a declared text field.',
+      ],
+      [
         [withoutCurrency],
         'Dataset "fixture.records" holds a money field, so it must name a declared text currency field.',
       ],

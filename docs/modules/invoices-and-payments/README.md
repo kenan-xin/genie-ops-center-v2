@@ -151,7 +151,7 @@ Four datasets, each under `invoices:read` and filtered by `scopesFor()`. A grant
 
 Overdue is a positive outstanding with a known due date strictly before the reporting date, so due on the day is not overdue and an unspecified due date never is. Paid late holds only for a fully settled invoice with a known due date, so a part-paid invoice is not in the late-payment rate.
 
-The specification names three datasets. The fourth, `invoices.allocations`, is the only way the generic query shape can show each link. `invoices.customers` holds no money, because a customer can be invoiced in more than one currency and a figure per customer would mix them; its late-payment counts carry R-36 per customer.
+The specification names three datasets. The fourth, `invoices.allocations`, is the only way the generic query shape can show each link. Several of its rows share one invoice, so it pages by its row key, the allocation id. Each row still opens its invoice (`czjw.48`). `invoices.customers` holds no money, because a customer can be invoiced in more than one currency and a figure per customer would mix them; its late-payment counts carry R-36 per customer.
 
 ## Agent rules
 

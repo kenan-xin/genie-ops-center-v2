@@ -293,15 +293,22 @@ export function checkDatasetQuery(
   };
 }
 
+/** The field a row query's order and cursor end on: the row key, else the record key (czjw.48). */
+export function rowKeyOf(
+  declaration: Pick<DatasetDeclaration, "recordKey" | "rowKeyField">
+): string {
+  return declaration.rowKeyField ?? declaration.recordKey.field;
+}
+
 /**
  * Every way a cursor does not fit its row query (`czjw.28`): a cursor applies to a row query only,
- * holds one value per sort column and then the record key, and each value fits its column. A null
- * fits a sort column, never the record key.
+ * holds one value per sort column and then the row key, and each value fits its column. A null
+ * fits a sort column, never the row key.
  */
 export function cursorIssues(
   fields: DatasetDeclaration["fields"],
   query: DatasetQuery,
-  recordKeyField: string,
+  rowKeyField: string,
   after: DatasetCursor
 ): readonly AppErrorIssue[] {
   const parsed = datasetCursorSchema.safeParse(after);
@@ -314,14 +321,14 @@ export function cursorIssues(
 
   const columns = [
     ...(query.orderBy ?? []).map((order) => order.column),
-    recordKeyField,
+    rowKeyField,
   ];
 
   if (parsed.data.values.length !== columns.length) {
     return [
       {
         path: "after.values",
-        message: `A cursor holds ${columns.length} values: one per sort column, then the record key.`,
+        message: `A cursor holds ${columns.length} values: one per sort column, then the row key.`,
       },
     ];
   }

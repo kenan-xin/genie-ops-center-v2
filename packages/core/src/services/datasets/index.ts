@@ -11,6 +11,7 @@ import {
   type DatasetQuery,
   checkDatasetQuery,
   cursorIssues,
+  rowKeyOf,
 } from "./query.ts";
 import { findDataset } from "./registry.ts";
 import { datasetSource, runDatasetQuery } from "./run-query.ts";
@@ -106,7 +107,7 @@ export async function queryDataset(
       : cursorIssues(
           declaration.fields,
           query,
-          declaration.recordKey.field,
+          rowKeyOf(declaration),
           input.after
         );
 

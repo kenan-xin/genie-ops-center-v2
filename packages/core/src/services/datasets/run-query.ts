@@ -16,6 +16,7 @@ import {
   type DatasetFilter,
   type DatasetGroup,
   type DatasetQuery,
+  rowKeyOf,
 } from "./query.ts";
 
 /** Spec 7 R-8: a dataset query stops after 5 seconds. */
@@ -62,8 +63,8 @@ const AGGREGATE = { sum: "sum", avg: "avg", min: "min", max: "max" } as const;
 
 const DIRECTION = { asc: "asc", desc: "desc" } as const;
 
-/** The hidden last column of a row query: its record key, for the order and the cursor (czjw.28). */
-const KEY_COLUMN = "__record_key";
+/** The hidden last column of a row query: its row key, for the order and the cursor (czjw.28). */
+const KEY_COLUMN = "__row_key";
 
 /** One column of the answer: its metadata, its select expression and, for ranges, its labels. */
 type Output = {
@@ -252,9 +253,9 @@ export async function runDatasetQuery(
       `${names.indexOf(order.column) + 1} ${DIRECTION[order.direction]}`
   );
 
-  // A row query always ends its order on the record key (its hidden last column), so ties on the
-  // sort columns have one order and a cursor never skips or repeats a row (czjw.28).
-  const key = declaration.recordKey.field;
+  // A row query always ends its order on the row key (its hidden last column), so ties on the sort
+  // columns have one order and a cursor never skips or repeats a row (czjw.28, czjw.48).
+  const key = rowKeyOf(declaration);
 
   const orderBy = aggregate
     ? sorted.length > 0

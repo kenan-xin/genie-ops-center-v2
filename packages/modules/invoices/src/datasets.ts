@@ -334,6 +334,8 @@ export const allocationsDataset: DatasetDeclaration = {
   },
   timeField: "paymentDate",
   recordKey: { type: RECORD_TYPES.invoice, field: "invoiceId" },
+  // Several links share one invoice, so a page edge needs each link's own id (czjw.48).
+  rowKeyField: "id",
   currencyField: "currency",
   source: async (ctx, asOf) => {
     const scope = invoiceScope(await scopesFor(ctx.caller, "invoices:read"));

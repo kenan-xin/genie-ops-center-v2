@@ -393,6 +393,11 @@ export type DatasetDeclaration = {
   readonly fields: Readonly<Record<string, DatasetField>>;
   readonly timeField: string;
   readonly recordKey: { readonly type: string; readonly field: string };
+  /**
+   * A text field unique and never null on each row, when several rows share one record key. A row
+   * query's order and cursor end on it, and on the record key field when it is absent (czjw.48).
+   */
+  readonly rowKeyField?: string;
   readonly currencyField?: string;
   source(ctx: ModuleRequestContext, asOf: string): Promise<DatasetSource>;
 };

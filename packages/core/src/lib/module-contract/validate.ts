@@ -454,6 +454,15 @@ export function validateModule(module: Module): readonly string[] {
       );
     }
 
+    if (
+      dataset.rowKeyField !== undefined &&
+      dataset.fields[dataset.rowKeyField]?.type !== "text"
+    ) {
+      problems.push(
+        `Dataset "${name}" names row key field "${dataset.rowKeyField}", which is not a declared text field.`
+      );
+    }
+
     const holdsMoney = Object.values(dataset.fields).some(
       (field) => field.type === "money"
     );
