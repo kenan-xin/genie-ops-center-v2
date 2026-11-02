@@ -119,7 +119,9 @@ export function AppShell(props: AppShellProps) {
         >
           <Panel {...props} />
         </aside>
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {/* A child page brings its own top bar with a back link (design review 2.1), so the
+            menu bar steps aside. */}
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col [&:has([data-page-top-bar])>[data-shell-top-bar]]:hidden">
           <header
             data-shell-top-bar=""
             className="flex h-13.5 shrink-0 items-center gap-3 border-b border-border px-2 lg:hidden"
@@ -152,11 +154,14 @@ export function AppShell(props: AppShellProps) {
             role="group"
             aria-label={strings.pageContent}
             tabIndex={0}
-            className={`min-h-0 flex-1 overflow-auto px-4 py-4 md:px-6 lg:px-8 lg:py-2 has-[[data-shell-bottom-bar]]:max-md:pb-20 ${focusRing} focus-visible:ring-inset`}
+            // The bottom space keeps the last row clear of the 48 px chat button, and of the
+            // phone's action bar under it (design review 2.2).
+            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-28 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 ${focusRing} focus-visible:ring-inset`}
           >
             <ShellContext.Provider
               value={{
                 chrome: props.chrome,
+                backTo: strings.backTo,
                 linkComponent: props.linkComponent,
               }}
             >

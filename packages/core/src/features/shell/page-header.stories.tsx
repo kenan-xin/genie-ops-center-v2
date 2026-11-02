@@ -26,7 +26,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const inShell: Decorator = (Story) => (
-  <ShellContext.Provider value={{ chrome: "admin" }}>
+  <ShellContext.Provider value={{ chrome: "admin", backTo: "Back to {page}" }}>
     <Story />
   </ShellContext.Provider>
 );
@@ -185,7 +185,15 @@ export const BreadcrumbDesktop: Story = {
   decorators: [inShell],
   args: { title: "Roles", breadcrumb: rolesTrail },
   globals: { viewport: { value: "desktop", isRotated: false } },
-  play: playBreadcrumbDesktop,
+  play: async (context) => {
+    await playBreadcrumbDesktop(context);
+    // The phone bar's back link stays hidden beside the trail.
+    await expect(
+      context.canvas
+        .queryAllByRole("link", { name: "Back to Roles" })
+        .filter((link) => link.checkVisibility())
+    ).toEqual([]);
+  },
 };
 
 /** A module page passes no trail: core gives the header the trail of its route (R-1a). */
@@ -203,17 +211,28 @@ export const BreadcrumbFromTheRoute: Story = {
   play: playBreadcrumbDesktop,
 };
 
-/** Under 768 px the trail is one back link to the parent, though the title hides. */
+/**
+ * Below 1024 px a child page gets its own top bar: a back link to the parent and the record's
+ * name (design review 2.1). The trail hides; the title stays for a screen reader.
+ */
 export const BreadcrumbPhone: Story = {
   decorators: [inShell],
   args: { title: "Roles", breadcrumb: rolesTrail },
-  globals: { viewport: { value: "mobile1", isRotated: false } },
+  globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas, canvasElement }) => {
-    const back = canvas
-      .getAllByRole("link", { name: "Roles" })
-      .find((link) => link.checkVisibility());
+    const bar = region(canvasElement, "[data-page-top-bar]");
+    const back = bar.getByRole("link", { name: "Back to Roles" });
 
-    if (back === undefined) throw new Error("no visible back link");
+    await expect(back).toBeVisible();
+    await expect(bar.getByText("Tenant administrator")).toBeVisible();
+    await expect(
+      canvas
+        .queryAllByRole("link", { name: "Roles" })
+        .filter((link) => link.checkVisibility())
+    ).toEqual([]);
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: "Roles" })
+    ).toBeInTheDocument();
 
     await expect(back).toHaveAttribute("href", "/admin/roles");
     const box = back.getBoundingClientRect();
@@ -251,11 +270,44 @@ export const BreadcrumbLongLabel: Story = {
   },
   globals: { viewport: { value: "desktop", isRotated: false } },
   play: async ({ canvas }) => {
-    const label = canvas.getByText(/^Regional claims review/);
+    const label = within(
+      canvas.getByRole("navigation", { name: "breadcrumb" })
+    ).getByText(/^Regional claims review/);
 
     await expect(label).toHaveAttribute("title", label.textContent);
     await expect(label.scrollWidth).toBeGreaterThan(label.clientWidth);
     await expect(label.getBoundingClientRect().height).toBeLessThan(24);
+  },
+};
+
+/**
+ * A record on a phone: the meta line and the secondary actions stay in the header, and the main
+ * action moves to the bottom bar.
+ */
+export const MetaAndSecondaryActionsPhone: Story = {
+  decorators: [inShell],
+  args: {
+    title: "INV-0042",
+    meta: "Acme Pte Ltd · Issued 1 Oct 2026",
+    secondaryActions: <Button variant="secondary">Open the PDF</Button>,
+    actions: <Button>Record a payment</Button>,
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const header = region(canvasElement, "[data-shell-page-header]");
+
+    await expect(
+      header.getByText("Acme Pte Ltd · Issued 1 Oct 2026")
+    ).toBeVisible();
+    await expect(
+      header.getByRole("button", { name: "Open the PDF" })
+    ).toBeVisible();
+    await expect(header.getByText("Record a payment")).not.toBeVisible();
+    await expect(
+      region(canvasElement, "[data-shell-bottom-bar]").getByRole("button", {
+        name: "Record a payment",
+      })
+    ).toBeVisible();
   },
 };
 

@@ -460,7 +460,8 @@ test("a client navigation gives the new page its own title, and the route announ
   );
 });
 
-// tokens.md, Breadcrumbs: the trail at desktop, one back link on a phone; either opens Roles.
+// tokens.md, Breadcrumbs: the trail at desktop, the top bar's back link on a phone; either opens
+// Roles.
 test("Role detail links back to Roles through the page header trail", async ({
   page,
 }, testInfo) => {
@@ -474,7 +475,7 @@ test("Role detail links back to Roles through the page header trail", async ({
     .filter({ visible: true })
     .click();
 
-  if ((page.viewportSize()?.width ?? 0) >= 768) {
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
     await expect(
       page.getByRole("navigation", { name: "breadcrumb" })
     ).toContainText("Auditor");
@@ -490,7 +491,7 @@ test("Role detail links back to Roles through the page header trail", async ({
 
   const toRoles = page
     .getByRole("main")
-    .getByRole("link", { name: "Roles", exact: true })
+    .getByRole("link", { name: /^(Back to )?Roles$/ })
     .filter({ visible: true });
 
   await expect(toRoles).toHaveCount(1);

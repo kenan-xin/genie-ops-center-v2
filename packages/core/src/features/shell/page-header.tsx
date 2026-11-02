@@ -30,22 +30,65 @@ export type PageBreadcrumb = {
 export type PageHeaderProps = {
   readonly title: string;
   readonly description?: string;
+  /** A short line under the title, for example the customer and the issue date. Every width. */
+  readonly meta?: ReactNode;
+  /** The page's primary action; below `md` it moves to the bottom bar. */
   readonly actions?: ReactNode;
+  /** Other actions, such as "Open the PDF"; they stay in the header at every width. */
+  readonly secondaryActions?: ReactNode;
   readonly bottomBar?: ReactNode;
   /** Only on a page under a list; a top-level page passes none. */
   readonly breadcrumb?: PageBreadcrumb;
 };
 
-/** The trail from 768 px, and one back link to the parent below it. */
-function Trail(props: {
+/**
+ * A child page's own top bar below `lg` (design review 2.1): a back link to the parent and the
+ * record's name. It stays at the top of the content, and the shell hides its menu bar beside it.
+ * The name is for the eye; the page's `<h1>` stays for a screen reader.
+ */
+function PageTopBar(props: {
   readonly crumb: PageBreadcrumb;
+  readonly name: string;
+  readonly backTo: string;
   readonly Anchor: ReturnType<typeof linkFor>;
 }) {
   const { crumb, Anchor } = props;
 
   return (
+    <div
+      data-page-top-bar=""
+      // `-top-4`: a sticky box stops at the scroll area's padding edge, and the content pads 16 px.
+      className="sticky -top-4 z-10 -mx-4 -mt-4 mb-4 flex h-13.5 items-center gap-1 border-b border-border bg-background px-1 md:-mx-6 lg:hidden"
+    >
+      <Anchor
+        href={crumb.parent.href}
+        aria-label={props.backTo.replace("{page}", crumb.parent.label)}
+        className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-border/60 ${focusRing}`}
+      >
+        <ChevronLeft aria-hidden="true" strokeWidth={1.75} className="size-5" />
+      </Anchor>
+      <p
+        aria-hidden="true"
+        title={props.name}
+        className="min-w-0 flex-1 truncate text-base font-semibold"
+      >
+        {props.name}
+      </p>
+    </div>
+  );
+}
+
+/** The trail from 1024 px; below it the page top bar links back. */
+function Trail(props: {
+  readonly crumb: PageBreadcrumb;
+  readonly Anchor: ReturnType<typeof linkFor>;
+  readonly inShell: boolean;
+}) {
+  const { crumb, Anchor } = props;
+
+  return (
     <>
-      <Breadcrumb className="mb-1 max-md:hidden">
+      <Breadcrumb className={`mb-1 ${props.inShell ? "max-lg:hidden" : ""}`}>
         <BreadcrumbList className="flex-nowrap">
           <BreadcrumbItem className="shrink-0">
             <BreadcrumbLink render={<Anchor href={crumb.parent.href} />}>
@@ -64,13 +107,6 @@ function Trail(props: {
           )}
         </BreadcrumbList>
       </Breadcrumb>
-      <Anchor
-        href={crumb.parent.href}
-        className={`-ml-1 inline-flex min-h-11 items-center gap-1 rounded-sm pr-2 text-sm text-muted-foreground hover:text-foreground md:hidden ${focusRing}`}
-      >
-        <ChevronLeft aria-hidden="true" className="size-4" />
-        {crumb.parent.label}
-      </Anchor>
     </>
   );
 }
@@ -87,27 +123,44 @@ export function PageHeader(props: PageHeaderProps) {
   const hideBelowLg = inShell ? "max-lg:sr-only" : "";
   const bar = props.bottomBar ?? props.actions;
 
+  const Anchor =
+    crumb === undefined
+      ? undefined
+      : linkFor(crumb.parent.href, shell?.linkComponent);
+
+  const showsBelowLg =
+    props.meta !== undefined || props.secondaryActions !== undefined;
+
   // Below the width where the header shows nothing, take it out of the flow so a page's gap does not
-  // leave an empty band under the top bar. A trail always shows, so its header stays.
+  // leave an empty band under the top bar.
   const emptyBelow =
-    !inShell || crumb !== undefined
+    !inShell || showsBelowLg
       ? ""
       : props.actions === undefined
         ? "max-lg:sr-only"
         : "max-md:sr-only";
 
+  // Below `md` the side holds only hidden parts unless secondary actions show.
+  const sideBelowMd =
+    props.secondaryActions === undefined ? "max-md:hidden" : "";
+
   return (
     <>
+      {shell !== null && crumb !== undefined && Anchor !== undefined ? (
+        <PageTopBar
+          crumb={crumb}
+          backTo={shell.backTo}
+          name={crumb.current ?? props.title}
+          Anchor={Anchor}
+        />
+      ) : null}
       <header
         data-shell-page-header=""
-        className={`mb-6 flex items-center justify-between gap-4 ${emptyBelow}`}
+        className={`mb-6 flex flex-col items-start gap-3 lg:flex-row lg:items-center lg:justify-between lg:gap-4 ${emptyBelow}`}
       >
-        <div className="min-w-0">
-          {crumb === undefined ? null : (
-            <Trail
-              crumb={crumb}
-              Anchor={linkFor(crumb.parent.href, shell?.linkComponent)}
-            />
+        <div className="max-w-full min-w-0">
+          {crumb === undefined || Anchor === undefined ? null : (
+            <Trail crumb={crumb} Anchor={Anchor} inShell={inShell} />
           )}
           <h1 className={`text-xl font-bold ${hideBelowLg}`}>{props.title}</h1>
           {props.description === undefined ? null : (
@@ -115,22 +168,30 @@ export function PageHeader(props: PageHeaderProps) {
               {props.description}
             </p>
           )}
+          {props.meta === undefined ? null : (
+            <p className="mt-1 text-sm text-muted-foreground">{props.meta}</p>
+          )}
         </div>
         {inShell ? (
-          <div className="flex items-center gap-2">
+          <div className={`flex flex-wrap items-center gap-2 ${sideBelowMd}`}>
             <div
               data-shell-slot="search"
               aria-hidden="true"
               className="hidden lg:block"
             />
+            {props.secondaryActions}
             {props.actions === undefined ? null : (
               <div className="hidden items-center gap-2 md:flex">
                 {props.actions}
               </div>
             )}
           </div>
-        ) : props.actions === undefined ? null : (
-          <div className="flex items-center gap-2">{props.actions}</div>
+        ) : props.actions === undefined &&
+          props.secondaryActions === undefined ? null : (
+          <div className="flex flex-wrap items-center gap-2">
+            {props.secondaryActions}
+            {props.actions}
+          </div>
         )}
       </header>
       {inShell && bar !== undefined ? (

@@ -19,6 +19,7 @@
     "opensInNewTab": "Opens in a new tab",
     "administration": "Administration",
     "backToWorkspace": "Back to workspace",
+    "backTo": "Back to {page}",
     "helpAndSupport": "Help and support",
     "signOut": "Sign out",
     "roleAdministrator": "Administrator",

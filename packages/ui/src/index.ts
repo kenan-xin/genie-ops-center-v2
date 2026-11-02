@@ -138,6 +138,10 @@ export { IconTile } from "./parts/icon-tile.tsx";
 
 export { StickyActionBar } from "./parts/sticky-action-bar.tsx";
 
+export { FigureStrip } from "./parts/figure-strip.tsx";
+
+export type { Figure } from "./parts/figure-strip.tsx";
+
 export type { ConfirmDialogProps } from "./parts/confirm-dialog.tsx";
 
 export { DeploymentDiagnostics } from "./diagnostics/deployment-diagnostics.tsx";

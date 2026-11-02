@@ -137,6 +137,8 @@ async function shellProps(
       opensInNewTab: t("opensInNewTab"),
       helpAndSupport: t("helpAndSupport"),
       signOut: t("signOut"),
+      // Kept a template: the page header fills in the parent page's name.
+      backTo: t("backTo", { page: "{page}" }),
     },
   };
 }

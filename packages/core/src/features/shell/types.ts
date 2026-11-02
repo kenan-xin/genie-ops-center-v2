@@ -81,5 +81,7 @@ export type ShellStrings = {
   readonly changePassword: string;
   readonly opensInNewTab: string;
   readonly helpAndSupport: string;
+  /** A child page's phone back link, a template: `{page}` takes the parent page's name. */
+  readonly backTo: string;
   readonly signOut: string;
 };

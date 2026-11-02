@@ -120,7 +120,7 @@ test("opens a record page by its route parameter with its trail and title, and t
   ).toBeAttached();
   await expect(page).toHaveTitle(new RegExp(`^Placeholder record ${id} · .+$`));
 
-  if ((page.viewportSize()?.width ?? 0) >= 768) {
+  if ((page.viewportSize()?.width ?? 0) >= 1024) {
     const trail = page.getByRole("navigation", { name: "breadcrumb" });
 
     await expect(
@@ -133,7 +133,7 @@ test("opens a record page by its route parameter with its trail and title, and t
   } else {
     await expect(
       page
-        .getByRole("link", { name: "Placeholder", exact: true })
+        .getByRole("link", { name: "Back to Placeholder", exact: true })
         .filter({ visible: true })
     ).toHaveAttribute("href", "/placeholder");
   }

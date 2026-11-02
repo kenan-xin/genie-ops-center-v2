@@ -66,6 +66,7 @@ const strings: ShellStrings = {
   navigation: "Navigation",
   openNavigation: "Open navigation",
   closeNavigation: "Close navigation",
+  backTo: "Back to {page}",
   offline:
     "You are offline. Changes will not be saved until the connection returns.",
   pageContent: "Page content",
@@ -294,6 +295,54 @@ export const WorkspacePhone: Story = {
     await screen.findByRole("dialog", { name: "Navigation" });
     await userEvent.keyboard("{Escape}");
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  },
+};
+
+/**
+ * A child page on a phone (design review 2.1): its own top bar replaces the shell's, with a back
+ * link and the record's name, and it stays at the top while the content scrolls.
+ */
+export const ChildPagePhoneBar: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  args: {
+    children: (
+      <main>
+        <PageHeader
+          title="Order 42"
+          breadcrumb={{
+            parent: { label: "Orders", href: "/operations/orders" },
+            current: "Order 42",
+          }}
+        />
+        <div className="h-dvh" />
+        <div className="h-dvh" />
+      </main>
+    ),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(
+      element(canvasElement, "[data-shell-top-bar]")
+    ).not.toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "Open navigation" })
+    ).toBeNull();
+
+    const bar = element(canvasElement, "[data-page-top-bar]");
+    const back = within(bar).getByRole("link", { name: "Back to Orders" });
+
+    await expect(back).toBeVisible();
+    await expect(back).toHaveAttribute("href", "/operations/orders");
+    await expect(within(bar).getByText("Order 42")).toBeVisible();
+
+    const content = element(canvasElement, "[data-shell-content]");
+
+    content.scrollTo({ top: 600 });
+    await waitFor(() =>
+      expect(bar.getBoundingClientRect().top).toBe(
+        content.getBoundingClientRect().top
+      )
+    );
+    await expectNoOverflow(canvasElement);
   },
 };
 
