@@ -1,14 +1,33 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 
 import { createTenantContext, type TenantContext } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 import { removeUploadRecords } from "@genie/module-invoices/testing";
-import { expect, test, type Page } from "@playwright/test";
+import { readPptx } from "@genie/module-slides/testing";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { selectedModuleIds } from "../../src/modules.ts";
+import {
+  ANALYTICS_CHAT_DASHBOARD,
+  ANALYTICS_CHAT_MESSAGE,
+} from "../../testing/analytics-chat.ts";
 import { RECEIVABLES_OVERVIEW } from "../../testing/receivables-overview.ts";
+import {
+  MONTHLY_DECK,
+  SLIDES_CHAT_MESSAGE,
+} from "../../testing/slides-chat.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import { openNavigation } from "../support/shell.ts";
+import {
+  askQuestion,
+  hideDevelopmentWidgets,
+  signInAs,
+} from "./ask-support.ts";
+import {
+  closeDashboardDatabase,
+  resetChatDashboard,
+} from "./dashboard-support.ts";
 import {
   allocationsOn,
   copyOf,
@@ -29,7 +48,13 @@ import {
   UPLOAD_TIMEOUT,
   uploadFiles,
 } from "./dev-support.ts";
-import { DEV_MODULES } from "./global-setup.ts";
+import {
+  ANALYTICS_PEOPLE,
+  DEV_MODULES,
+  INVOICE_ASK_PEOPLE,
+  SLIDES_PEOPLE,
+} from "./global-setup.ts";
+import { closeSlidesDatabase, removeOwnDecks } from "./slides-support.ts";
 
 test.skip(
   !["invoices", "analytics", "slides", "placeholder"].every((id) =>
@@ -55,12 +80,17 @@ const UPLOAD_PREFIX = "demo-script-";
 const SAVE_TIMEOUT = 30_000;
 
 /**
- * The lock's queue, then the body: the cold pages (the shell, Invoices, Payments, Dashboards: four
- * first paints), one upload's worst case (two UPLOAD_TIMEOUTs: request, then response; later uploads
- * reuse the warm route), and about 120 s of seven readings, reviews and saves.
+ * The lock's queue, then the body: the cold pages (the shell, Invoices, Payments, Dashboards, Ask,
+ * a record, Slides, a deck: eight first paints), one upload's worst case (two UPLOAD_TIMEOUTs:
+ * request, then response; later uploads reuse the warm route), and about 180 s of seven readings,
+ * reviews and saves, three chat answers, present mode and the export.
  */
 const TEST_TIMEOUT =
-  LOCK_WAIT + FIRST_PAINT.timeout * 4 + UPLOAD_TIMEOUT * 2 + 120_000;
+  LOCK_WAIT + FIRST_PAINT.timeout * 8 + UPLOAD_TIMEOUT * 2 + 180_000;
+
+/** The overdue question of the demo pack's chatbot prompts, as the Ask recording holds it. */
+const OVERDUE_QUESTION =
+  "Which customers currently have overdue invoices? Show the unpaid amount, due date and days overdue, with sources.";
 
 /** The guide's totals after upload 07 (`expected_live_running_totals.json`, step 7). */
 const FINAL = {
@@ -100,7 +130,37 @@ test.beforeAll(() => {
 test.afterAll(async () => {
   await tenant?.db.$client.end();
   tenant = undefined;
+  await closeDashboardDatabase();
+  await closeSlidesDatabase();
 });
+
+// The development widgets float over the chat's Send in development.
+test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
+
+/** A tap on the phone project, where a fixed bar or the Ask bubble can cover a control. */
+async function activate(page: Page, target: Locator): Promise<void> {
+  await (onPhone(page) ? target.tap() : target.click());
+}
+
+/**
+ * Sends a message in the page's own chat, which docks open from 1280 px and opens as a sheet
+ * below that. On a phone the sheet covers the page, so it closes after Send and keeps streaming.
+ */
+async function sendInPageChat(page: Page, message: string): Promise<void> {
+  const chat = page.getByRole("region", { name: "Chat", exact: true });
+
+  if (onPhone(page)) {
+    await activate(page, page.getByRole("button", { name: "Open Chat" }));
+  }
+
+  await expect(chat).toBeVisible(FIRST_PAINT);
+  await chat.getByRole("textbox", { name: "Message Ask" }).fill(message);
+  await activate(page, chat.getByRole("button", { name: "Send" }));
+
+  if (onPhone(page)) {
+    await chat.getByRole("button", { name: "Close the chat" }).tap();
+  }
+}
 
 /** The four figures of the Invoices list strip, in the guide's dollars. */
 async function expectInvoiceStrip(
@@ -413,9 +473,156 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await removeUploadRecords(tenantOf(), UPLOAD_PREFIX);
         });
 
-        // Steps 8 to 10 follow in the next task of S7-15 (phase-11.md).
+        // Steps 8 to 10 sign in as the recorded chat people: the tool list is part of the matched
+        // request body, and the demo account's roles give it a longer list (phase-11.md, decisions).
+        await test.step("8. ask Ask which customers have overdue invoices", async () => {
+          await signInAs(
+            page,
+            onPhone(page)
+              ? INVOICE_ASK_PEOPLE.phone
+              : INVOICE_ASK_PEOPLE.desktop
+          );
+
+          // The shell posts on mount, so this response proves hydration before the question.
+          const mounted = page.waitForResponse((response) =>
+            response.url().endsWith("/api/session/activity")
+          );
+
+          await page.goto("/ask");
+          await expect(
+            page.getByRole("textbox", { name: "Message Ask" })
+          ).toBeVisible(FIRST_PAINT);
+          await mounted;
+          await askQuestion(page, OVERDUE_QUESTION);
+
+          await expect(
+            page.getByText("As of 27 October 2026, the reporting date.")
+          ).toBeVisible(FIRST_PAINT);
+          await expect(
+            page
+              .getByRole("figure", { name: "Overdue total" })
+              .getByText(sgd(27_350))
+              .filter({ visible: true })
+          ).toBeVisible(FIRST_PAINT);
+
+          const sources = page
+            .getByRole("figure", { name: "Overdue invoices" })
+            .getByRole("link");
+
+          await expect(sources).toHaveText(
+            [
+              "INV-2026-08-04",
+              "INV-2026-09-03",
+              "INV-2026-09-04",
+              "INV-2026-10-01",
+              "INV-2026-10-03",
+            ],
+            FIRST_PAINT
+          );
+
+          // A source opens its record in the app.
+          await page.waitForLoadState("networkidle");
+          await sources.filter({ hasText: "INV-2026-09-04" }).click();
+          await expect(
+            page.getByRole("heading", { level: 1, name: "INV-2026-09-04" })
+          ).toBeVisible(FIRST_PAINT);
+        });
+
+        await test.step("9. add a collections panel to a dashboard by chat", async () => {
+          await resetChatDashboard();
+          await signInAs(page, ANALYTICS_PEOPLE.chat);
+          await page.goto(
+            `/m/analytics/dashboards/${ANALYTICS_CHAT_DASHBOARD.id}`
+          );
+          await expect(
+            page.getByText("No panels yet", { exact: true })
+          ).toBeVisible(FIRST_PAINT);
+
+          await sendInPageChat(page, ANALYTICS_CHAT_MESSAGE);
+
+          // The panel reads the baseline ledger: step 7 removed the uploads.
+          await expect(
+            page
+              .getByRole("figure", { name: "Collections" })
+              .first()
+              .getByText(sgd(195_200), { exact: true })
+          ).toBeVisible(FIRST_PAINT);
+        });
+
+        await test.step("10. create the five-slide deck by chat, present it and export it", async () => {
+          await removeOwnDecks(SLIDES_PEOPLE.chat);
+          await signInAs(page, SLIDES_PEOPLE.chat);
+          await page.goto("/m/slides/decks");
+          await expect(
+            page.getByRole("heading", { level: 1, name: "Slides" })
+          ).toBeVisible(FIRST_PAINT);
+
+          await sendInPageChat(page, SLIDES_CHAT_MESSAGE);
+
+          const deck = page.getByRole("link", {
+            name: MONTHLY_DECK.title,
+            exact: true,
+          });
+
+          await expect(deck).toBeVisible(FIRST_PAINT);
+          await activate(page, deck);
+          await expect(
+            page.getByRole("heading", { level: 1, name: MONTHLY_DECK.title })
+          ).toBeVisible(FIRST_PAINT);
+
+          const rail = page.getByRole("navigation", { name: "Slides" });
+
+          await expect(
+            rail.getByRole("button", { name: /^Slide \d+:/ })
+          ).toHaveCount(5);
+
+          await activate(page, page.getByRole("button", { name: "Present" }));
+
+          const next = page.getByRole("button", { name: "Next slide" });
+
+          /* eslint-disable no-await-in-loop -- the deck moves one slide per press. */
+          for (const number of [1, 2, 3, 4, 5]) {
+            await expect(
+              page.getByText(`${number} / 5`, { exact: true })
+            ).toBeVisible(FIRST_PAINT);
+
+            if (number < 5) await activate(page, next);
+          }
+          /* eslint-enable no-await-in-loop */
+
+          await activate(page, page.getByRole("button", { name: "Exit" }));
+
+          const downloading = page.waitForEvent("download", {
+            timeout: FIRST_PAINT.timeout,
+          });
+
+          await activate(
+            page,
+            page.getByRole("button", { name: "Export to PowerPoint" })
+          );
+
+          const download = await downloading;
+
+          expect(download.suggestedFilename()).toMatch(/\.pptx$/);
+
+          const path = await download.path();
+
+          if (path === null) throw new Error("The export has no file.");
+
+          // The slides module's own reader opens the zip, so a broken or empty file fails here.
+          const pptx = await readPptx(await readFile(path));
+
+          expect(pptx.slideCount).toBe(5);
+          // The lines of slides 1 and 2 and the bars of slide 3 are native charts.
+          expect(pptx.chartParts).toHaveLength(3);
+          expect(await pptx.xmlOf("ppt/slides/slide1.xml")).toContain(
+            MONTHLY_DECK.slideTitles[0]
+          );
+        });
       } finally {
         await removeUploadRecords(tenantOf(), UPLOAD_PREFIX);
+        await resetChatDashboard();
+        await removeOwnDecks(SLIDES_PEOPLE.chat);
       }
     },
     LOCK_WAIT
