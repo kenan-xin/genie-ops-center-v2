@@ -8,7 +8,7 @@ import {
   type ModuleRequestContext,
   withTransaction,
 } from "@genie/core";
-import { silentLogger } from "@genie/core/logging";
+import { createLogger, silentLogger } from "@genie/core/logging";
 import {
   enableModules,
   insertPersonWith,
@@ -432,26 +432,43 @@ describe("the reading job", () => {
   });
 
   it("a failed enqueue leaves the uploaded document Could not read", async () => {
+    const lines: string[] = [];
     // `withTransaction` accepts only a context that `createTenantContext` built, so a spread copy
     // cannot carry the queue: a context of its own gets a copy that `createJobQueue` did not
     // build, and `enqueueJob` throws on it.
     const tenant = createTenantContext(
       { DATABASE_URL: t().env.databaseUrl, PUBLIC_URL: t().env.publicUrl },
-      silentLogger(),
+      createLogger(
+        { logLevel: "error" },
+        { write: (line: string) => lines.push(line) }
+      ),
       ["invoices"]
     );
     Object.assign(tenant, { jobQueue: { ...tenant.jobQueue } });
+    const file = new File(
+      [new Uint8Array(live01())],
+      "Invoice for Jane Tan.pdf",
+      {
+        type: "application/pdf",
+      }
+    );
     const { caller } = as(uploaderId);
 
-    const answer = await uploadDocument(
-      { tenant, caller },
-      file01(live01())
-    ).finally(() => tenant.db.$client.end());
+    const answer = await uploadDocument({ tenant, caller }, file).finally(() =>
+      tenant.db.$client.end()
+    );
 
     expect(answer.outcome).toBe("uploaded");
     expect(await documentRow(answer.documentId)).toMatchObject({
       readingStatus: "could-not-read",
     });
+    // Only the failed enqueue writes an error line here, and it names no file.
+    expect(lines).toHaveLength(1);
+    expect(JSON.parse(lines[0] ?? "{}")).toMatchObject({
+      level: "error",
+      documentId: answer.documentId,
+    });
+    expect(lines[0]).not.toContain("Jane");
   });
 
   it.each(READINGS)(

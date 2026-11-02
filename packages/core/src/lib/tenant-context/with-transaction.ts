@@ -140,8 +140,9 @@ export function registerContextLogger(
 
 /**
  * The process logger recorded for one context, or nothing for a context this factory did not
- * build. A service that must record a best-effort failure the transport does not surface - the Add
- * person realm-user compensation, for example - reads it here rather than building its own logger.
+ * build. A service or a module that must record a best-effort failure the transport does not
+ * surface - the Add person realm-user compensation, or a failed enqueue a module handles without
+ * throwing - reads it here rather than building its own logger (module-contract.md, Logging).
  */
 export function contextLoggerOf(
   context: TenantContext

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import {
   AppError,
+  contextLoggerOf,
   type ModuleRequestContext,
   type TenantTransaction,
   withTransaction,
@@ -110,7 +111,13 @@ export async function uploadDocument(
   if (answer.outcome === "uploaded") {
     // After the commit, so the job finds the row. A failed enqueue already left the document
     // Could not read, where Retry starts it again, so the stored upload still answers uploaded.
-    await enqueueReading(ctx, answer.documentId).catch(() => undefined);
+    // The line names the document only: a file name can carry a person's name.
+    await enqueueReading(ctx, answer.documentId).catch((error) => {
+      contextLoggerOf(ctx.tenant)?.error(
+        { err: error, documentId: answer.documentId },
+        "document reading enqueue failed"
+      );
+    });
   }
 
   return answer;
