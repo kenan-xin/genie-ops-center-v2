@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
 import type { CheckedChart } from "../charts/index.ts";
-import type { AgentSessionSummary } from "./store.ts";
+import type { AgentMessage, AgentSessionSummary } from "./store.ts";
 
 /**
  * The `agent` area's API (R-42), under core's `/agent/` area. It imports only zod and the
@@ -13,6 +13,11 @@ export const agentContract = {
   sessions: oc
     .route({ method: "GET", path: "/agent/sessions" })
     .output(z.custom<readonly AgentSessionSummary[]>()),
+  // The messages of one of the caller's own sessions; none for an id not saved yet.
+  messages: oc
+    .route({ method: "GET", path: "/agent/sessions/{id}/messages" })
+    .input(z.object({ id: z.string() }))
+    .output(z.custom<readonly AgentMessage[]>()),
   // The config is the model's raw panel config; the S7-04 gate is its parser.
   chart: oc
     .route({ method: "POST", path: "/agent/chart" })

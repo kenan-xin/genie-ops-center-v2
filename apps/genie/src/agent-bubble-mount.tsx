@@ -10,12 +10,11 @@ import { rpc } from "./rpc/client.ts";
 
 const SESSION_LIST_KEY = ["agent", "sessions"];
 
-const NO_MESSAGES: readonly AgentMessage[] = [];
-
 const checkChart: CheckChart = (config) => rpc.agent.chart({ config });
 
 type ConversationProps = {
   readonly sessionId: string;
+  readonly initialMessages: readonly AgentMessage[];
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
@@ -41,7 +40,7 @@ const LazyConversation = lazy(async () => {
       return (
         <Conversation
           sessionId={props.sessionId}
-          initialMessages={NO_MESSAGES}
+          initialMessages={props.initialMessages}
           transport={transport}
           models={props.models}
           checkChart={checkChart}
@@ -53,6 +52,32 @@ const LazyConversation = lazy(async () => {
     },
   };
 });
+
+/**
+ * The saved messages of the bubble's chat, read fresh on each open (`gcTime: 0`), so a reopen
+ * after a navigation or a page load continues the conversation (`czjw.60`).
+ */
+function SavedConversation(
+  props: Omit<ConversationProps, "initialMessages">
+): ReactNode {
+  const saved = useQuery({
+    queryKey: ["agent", "messages", props.sessionId],
+    queryFn: () => rpc.agent.messages({ id: props.sessionId }),
+    gcTime: 0,
+  });
+
+  if (saved.isPending) return null;
+
+  if (saved.isError) {
+    return (
+      <p role="alert" className="text-sm text-muted-foreground">
+        This chat could not load. Start a new chat.
+      </p>
+    );
+  }
+
+  return <LazyConversation {...props} initialMessages={saved.data} />;
+}
 
 /**
  * The browser half of the bubble (R-42, P6). The server has already refused a person without
@@ -86,7 +111,7 @@ export function AgentBubbleMount(props: {
       onOpenChange={setOpen}
       conversation={(sessionId) => (
         <Suspense fallback={null}>
-          <LazyConversation
+          <SavedConversation
             sessionId={sessionId}
             models={props.models}
             timeZone={props.timeZone}

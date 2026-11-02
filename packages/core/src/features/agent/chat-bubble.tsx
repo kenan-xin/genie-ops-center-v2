@@ -9,12 +9,15 @@ import {
   SheetTitle,
 } from "@genie/ui";
 import { MessageCircleIcon } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type {
   AgentSessionSummary,
   InboxLink,
 } from "../../services/agent/index.ts";
+
+/** The `sessionStorage` key that holds the bubble's current chat for this browser tab. */
+export const BUBBLE_SESSION_KEY = "genie.chat-bubble.session";
 
 const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
@@ -23,8 +26,8 @@ const sessionClass = `flex min-h-10 items-center rounded-md px-2 text-sm text-mu
 /**
  * The chat bubble at the bottom right of every signed-in page (R-42, P15). It opens a Sheet from
  * the right, full width on phones, with a new chat, the person's sessions, the Documents inbox
- * links and Open Ask. Every open starts a new session (B11.1), while the history list is the same
- * one Ask shows.
+ * links and Open Ask. Reopening continues the last chat of this browser tab, also after a page
+ * load, and only New chat starts a new session (`czjw.60`). The history list is the one Ask shows.
  */
 export function ChatBubble(props: {
   readonly askHref: string;
@@ -38,16 +41,22 @@ export function ChatBubble(props: {
 }): ReactNode {
   const [open, setOpen] = useState(false);
 
-  // The browser makes the id of a chat (P3), and one new id starts each open (B11.1).
-  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
+  // The browser makes the id of a chat (P3). The tab keeps it, so a page load reopens the same chat.
+  const [sessionId, setSessionId] = useState(
+    () =>
+      globalThis.sessionStorage?.getItem(BUBBLE_SESSION_KEY) ??
+      crypto.randomUUID()
+  );
+
+  useEffect(() => {
+    sessionStorage.setItem(BUBBLE_SESSION_KEY, sessionId);
+  }, [sessionId]);
 
   function startNewChat(): void {
     setSessionId(crypto.randomUUID());
   }
 
   function changeOpen(next: boolean): void {
-    if (next) startNewChat();
-
     setOpen(next);
     props.onOpenChange?.(next);
   }

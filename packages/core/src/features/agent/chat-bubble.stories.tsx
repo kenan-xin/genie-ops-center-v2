@@ -7,7 +7,7 @@ import type {
   AgentSessionSummary,
   InboxLink,
 } from "../../services/agent/index.ts";
-import { ChatBubble } from "./chat-bubble.tsx";
+import { BUBBLE_SESSION_KEY, ChatBubble } from "./chat-bubble.tsx";
 
 const FIRST_SESSION: AgentSessionSummary = {
   id: "00000000-0000-4000-8000-000000000001",
@@ -111,7 +111,8 @@ async function openBubble(
 /**
  * The chat bubble at the bottom right of every signed-in page (R-42, P15): a round button that
  * opens a Sheet with a new chat, the person's history, the Documents inbox link and Open Ask.
- * Each open starts a new session (B11.1); the history is shared with Ask.
+ * A reopen continues the tab's last chat, and only New chat starts a new one (`czjw.60`); the
+ * history is shared with Ask.
  */
 const meta = {
   title: "Core/Agent/Chat bubble",
@@ -121,7 +122,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The chat bubble: a fixed round button at the bottom right that opens a Sheet from the right. Every open starts a new session, while the history list is the person's shared sessions. The stub conversation proves the id changes; it calls no model.",
+          "The chat bubble: a fixed round button at the bottom right that opens a Sheet from the right. A reopen continues the last chat of this browser tab, also after a page load, and only New chat starts a new session. The history list is the person's shared sessions. The stub conversation shows the id; it calls no model.",
       },
     },
     a11y: { test: "error" },
@@ -141,8 +142,8 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-export const NewChatEachTime: Story = {
-  name: "New chat each time",
+export const ReopenKeepsTheChat: Story = {
+  name: "Reopen keeps the chat",
   render: () => <NewChatHarness />,
   globals: desktop,
   play: async ({ canvas }) => {
@@ -160,10 +161,17 @@ export const NewChatEachTime: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Open Ask" }));
     await waitFor(() => expect(screen.getByRole("dialog")).toBeVisible());
 
-    // A new session each open, with none of the last chat's content.
+    // The reopen continues the same session, and the tab keeps its id for a page load.
     const second = await screen.findByText(/^New session /);
-    await expect(second.textContent).not.toBe(firstId);
-    await expect(screen.queryByText("Message sent")).toBeNull();
+    await expect(second.textContent).toBe(firstId);
+    await expect(firstId).toContain(
+      sessionStorage.getItem(BUBBLE_SESSION_KEY) ?? "no stored id"
+    );
+
+    // Only New chat starts another session.
+    await userEvent.click(screen.getByRole("button", { name: "New chat" }));
+    const third = await screen.findByText(/^New session /);
+    await expect(third.textContent).not.toBe(firstId);
 
     // The history still holds the session the first send created.
     await expect(
