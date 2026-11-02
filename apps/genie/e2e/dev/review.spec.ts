@@ -167,13 +167,28 @@ async function openReview(
   ).toBeVisible(FIRST_PAINT);
 }
 
-/** axe, then a full-page capture as evidence of the same screen (DEC-21, DEC-25). */
+/**
+ * axe, then a full-page capture as evidence of the same screen (DEC-21, DEC-25). With a
+ * `document`, both wait until that document's first page draws, so the capture shows the PDF
+ * and not its loading Skeleton.
+ */
 async function capture(
   page: Page,
   testInfo: TestInfo,
-  name: string
+  name: string,
+  document?: string
 ): Promise<void> {
   const width = testInfo.project.name === "phone" ? 390 : 1440;
+
+  if (document !== undefined) {
+    // react-pdf sets the canvas style width only when the page has drawn.
+    await expect(
+      page
+        .getByRole("region", { name: document })
+        .locator('canvas[style*="width"]')
+        .first()
+    ).toBeVisible({ timeout: VIEWER_TIMEOUT });
+  }
 
   await expectNoAxeViolations(page, name);
   await page.screenshot({
@@ -293,7 +308,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await openReview(page, invoice, "Review the invoice");
 
         // B9.3: the review of 01 has no accessibility defect before its save.
-        await capture(page, testInfo, "review-invoice");
+        await capture(page, testInfo, "review-invoice", invoice.name);
 
         // B9.4: the pdf.js worker loads under `next dev`, so the source text is marked.
         await page
@@ -360,7 +375,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         ).toBeVisible();
 
         // B9.3: the payment review has no accessibility defect before its save.
-        await capture(page, testInfo, "review-payment");
+        await capture(page, testInfo, "review-payment", split.name);
 
         await page.getByRole("button", { name: "Save the payment" }).click();
         await expect(page.getByText(/^Payment saved:/)).toBeVisible({
