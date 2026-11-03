@@ -14,7 +14,7 @@ A person uploads documents to the Documents inbox. A model reads each one and cl
 
 ## Permissions and roles
 
-Three keys: `invoices:read` reads invoices, payments and customers, `invoices:write` saves invoices and payments and changes their links, and `invoices:use` opens the Invoices and Payments workspace (`DEC-50`). Three default roles: Finance (use, read and write), Viewer (use and read), and Invoices and Payments user (use). The roles carry `invoices:use` now because a seeded role is never rewritten. S7-07 adds the workspace entries and pages.
+Three keys: `invoices:read` reads invoices, payments and customers, `invoices:write` saves invoices and payments and changes their links, and `invoices:use` opens the Invoices and Payments workspace (`DEC-50`). Three default roles: Finance (use, read and write), Viewer (use and read), and Invoices and Payments user (use). The roles carry `invoices:use` now because a seeded role is never rewritten. Access adds the module with Viewer, its `defaultAccessRole`, because Finance changes shared money records and an administrator gives it on purpose (owner, A6, 2026-11-02). S7-07 adds the workspace entries and pages.
 
 ## Tables
 

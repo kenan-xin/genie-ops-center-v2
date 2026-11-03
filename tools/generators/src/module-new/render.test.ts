@@ -378,6 +378,7 @@ describe("the display name guard", () => {
 
     expect(module).toContain('displayName: "Contrats (UE) & Cœur",');
     expect(module).toContain('{ name: "Contrats (UE) & Cœur user"');
+    expect(module).toContain('defaultAccessRole: "Contrats (UE) & Cœur user",');
 
     // A name is never written into a pattern, so its punctuation cannot change
     // what an assertion matches.

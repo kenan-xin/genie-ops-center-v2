@@ -38,6 +38,11 @@ describe("the slides module declaration", () => {
     }
   });
 
+  it("adds Slides editor on Access, the owner's default access role (A6)", () => {
+    // A deck is visible to its owner only, so editing grants no reach into another person's work (owner, 2026-11-02).
+    expect(slidesModule.defaultAccessRole).toBe("Slides editor");
+  });
+
   it("contributes no frame origin until it frames something", async () => {
     expect(await slidesModule.contentSecurityPolicy.frameOrigins()).toEqual([]);
   });

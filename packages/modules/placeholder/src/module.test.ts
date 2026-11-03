@@ -26,6 +26,8 @@ describe("the placeholder module declaration", () => {
     expect(placeholderModule.defaultRoles).toEqual([
       { name: "Placeholder user", permissions: ["placeholder:use"] },
     ]);
+
+    expect(placeholderModule.defaultAccessRole).toBe("Placeholder user");
   });
 
   it("declares no categoryId on any navigation entry (Spec 3 R-29, AC-4)", () => {

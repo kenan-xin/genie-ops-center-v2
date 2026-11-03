@@ -183,6 +183,7 @@ export const placeholderModule = {
   defaultRoles: [
     { name: "Placeholder user", permissions: ["placeholder:use"] },
   ],
+  defaultAccessRole: "Placeholder user",
 
   navigation: {
     pinned: [home, archive],

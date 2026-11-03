@@ -39,6 +39,11 @@ describe("the analytics module declaration", () => {
     }
   });
 
+  it("adds Analytics editor on Access, the owner's default access role (A6)", () => {
+    // A dashboard is visible to its owner only, so editing grants no reach into another person's work (owner, 2026-11-02).
+    expect(analyticsModule.defaultAccessRole).toBe("Analytics editor");
+  });
+
   it("contributes no frame origin until it frames something", async () => {
     expect(await analyticsModule.contentSecurityPolicy.frameOrigins()).toEqual(
       []

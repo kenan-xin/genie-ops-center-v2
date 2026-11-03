@@ -16,7 +16,7 @@ A person builds dashboards of panels by chat beside the dashboard, or by hand. A
 | `analytics:read` | Open your own dashboards. |
 | `analytics:write` | Build and change your own dashboards. |
 
-Default roles: `Analytics user` (`analytics:use`), `Analytics viewer` (`analytics:use`, `analytics:read`) and `Analytics editor` (all three keys). No name that another module declares, because seeding keeps one role per name. Each key is tenant-wide and checked through `can()` with no resource: a dashboard is not a record type, so no role scope points at one, and every read filters on the owner.
+Default roles: `Analytics user` (`analytics:use`), `Analytics viewer` (`analytics:use`, `analytics:read`) and `Analytics editor` (all three keys). No name that another module declares, because seeding keeps one role per name. Each key is tenant-wide and checked through `can()` with no resource: a dashboard is not a record type, so no role scope points at one, and every read filters on the owner. Access adds the module with `Analytics editor`, its `defaultAccessRole`, because a person reaches only the dashboards that person owns (owner, A6, 2026-11-02).
 
 ## Tables
 

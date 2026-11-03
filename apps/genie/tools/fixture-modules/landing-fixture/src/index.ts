@@ -45,6 +45,7 @@ const landingFixtureModule = {
   defaultRoles: [
     { name: "Landing fixture user", permissions: ["landing-fixture:use"] },
   ],
+  defaultAccessRole: "Landing fixture user",
 
   navigation: { pinned: [], entries: [home] },
 

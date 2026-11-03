@@ -435,6 +435,7 @@ export const ${names.camel}Module = {
   defaultRoles: [
     { name: "${names.displayName} user", permissions: ["${names.id}:use"] },
   ],
+  defaultAccessRole: "${names.displayName} user",
 
   navigation: {
     pinned: [home],

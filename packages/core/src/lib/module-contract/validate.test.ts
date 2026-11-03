@@ -857,13 +857,31 @@ describe("validateModule", () => {
     }
   );
 
+  it("rejects a workspace module that declares no default access role (A6)", () => {
+    const { defaultAccessRole: _none, ...broken } = validModule;
+
+    expect(validateModule(broken)).toContain(
+      "A module with a workspace entry declares a default access role (A6)."
+    );
+  });
+
+  it("rejects a default access role that names no role of the module (A6)", () => {
+    expect(
+      validateModule({ ...validModule, defaultAccessRole: "Fixture viewer" })
+    ).toContain(
+      'Default access role "Fixture viewer" is not one of the module\'s default roles (A6).'
+    );
+  });
+
   it("asks for no default user role when the module has no workspace entry", () => {
     const adminOnly = validModule.navigation.entries.filter(
       (entry) => entry.surface === "admin"
     );
 
+    const { defaultAccessRole: _none, ...withoutAccessRole } = validModule;
+
     const ok = {
-      ...validModule,
+      ...withoutAccessRole,
       defaultRoles: [
         { name: "Fixture admin", permissions: ["fixture:admin" as const] },
       ],

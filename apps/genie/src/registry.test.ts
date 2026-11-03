@@ -49,6 +49,7 @@ function moduleWithLanding(id: string, landing: boolean): Module {
     router: implementModule(id, {}).router({}),
     permissions,
     defaultRoles: [{ name: `${id} user`, permissions: [usePermission] }],
+    defaultAccessRole: `${id} user`,
     navigation: { pinned: [], entries: [entry] },
   };
 }

@@ -62,6 +62,8 @@ export const slidesModule = {
       permissions: ["slides:use", "slides:read", "slides:write"],
     },
   ],
+  // A deck is visible to its owner only, so the editor role reaches no one else's work (A6).
+  defaultAccessRole: "Slides editor",
 
   navigation: {
     pinned: [],

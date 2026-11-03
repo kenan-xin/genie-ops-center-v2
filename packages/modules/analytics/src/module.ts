@@ -71,6 +71,8 @@ export const analyticsModule = {
       permissions: ["analytics:use", "analytics:read", "analytics:write"],
     },
   ],
+  // A dashboard is visible to its owner only, so the editor role reaches no one else's work (A6).
+  defaultAccessRole: "Analytics editor",
 
   navigation: {
     pinned: [],

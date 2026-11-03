@@ -16,7 +16,7 @@ A person creates a deck by chat, or edits it by hand. A deck is typed elements o
 | `slides:read` | Open your own decks. |
 | `slides:write` | Make and change your own decks. |
 
-Default roles: `Slides user` (`slides:use`), `Slides viewer` (`slides:use`, `slides:read`) and `Slides editor` (all three keys). No name that another module declares, because seeding keeps one role per name. Each key is tenant-wide and checked through `can()` with no resource: a deck is not a record type, so no role scope points at one, and every read filters on the owner. Another person's deck answers as missing.
+Default roles: `Slides user` (`slides:use`), `Slides viewer` (`slides:use`, `slides:read`) and `Slides editor` (all three keys). No name that another module declares, because seeding keeps one role per name. Each key is tenant-wide and checked through `can()` with no resource: a deck is not a record type, so no role scope points at one, and every read filters on the owner. Another person's deck answers as missing. Access adds the module with `Slides editor`, its `defaultAccessRole`, because a person reaches only the decks that person owns (owner, A6, 2026-11-02).
 
 ## Tables
 

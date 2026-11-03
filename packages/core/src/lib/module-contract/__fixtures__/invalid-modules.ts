@@ -33,12 +33,12 @@ function renamePage(
   };
 }
 
-/** Rewrite the identity, the contract's paths, the router's gate, every permission-key prefix, every page and navigation path, the ledger and the DEC-50 user role to a new module id. Other role names stay, so two renamed copies can share one. */
+/** Rewrite the identity, the contract's paths, the router's gate, every permission-key prefix, every page and navigation path, the ledger, and the DEC-50 user role with the default access role that names it to a new module id. Other role names stay, so two renamed copies can share one. */
 export function renameModule(module: Module, id: string): Module {
   const oldId = module.identity.id;
   const oldUserRole = `${module.identity.displayName} user`;
 
-  return {
+  const renamed: Module = {
     ...module,
     identity: { ...module.identity, id, displayName: id },
     schema: { ...module.schema, migrationsTable: moduleLedgerTable(id) },
@@ -74,6 +74,10 @@ export function renameModule(module: Module, id: string): Module {
       name: `${id}.${job.name.slice(oldId.length + 1)}`,
     })),
   };
+
+  return module.defaultAccessRole === oldUserRole
+    ? { ...renamed, defaultAccessRole: `${id} user` }
+    : renamed;
 }
 
 /** Flag the first workspace entry as the landing route (DEC-49). */

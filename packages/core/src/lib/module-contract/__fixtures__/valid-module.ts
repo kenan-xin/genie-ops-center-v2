@@ -77,6 +77,7 @@ export const validModule = {
   ],
 
   defaultRoles: [{ name: "Fixture user", permissions: ["fixture:use"] }],
+  defaultAccessRole: "Fixture user",
 
   navigation: {
     pinned: [

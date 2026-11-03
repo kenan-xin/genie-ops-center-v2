@@ -435,6 +435,8 @@ export type Module = {
   readonly permissions: readonly PermissionDeclaration[];
   readonly recordTypes: readonly RecordTypeDeclaration[];
   readonly defaultRoles: readonly DefaultRole[];
+  /** The default role Access assigns when an administrator adds the module; required for a module with a workspace entry (A6). */
+  readonly defaultAccessRole?: string;
   readonly navigation: ModuleNavigation;
   readonly pages: ModulePages;
   readonly categoryAssignment?: CategoryAssignment;

@@ -610,6 +610,25 @@ export function validateModule(module: Module): readonly string[] {
         `A module with a workspace entry seeds a default role named "${expected}" (DEC-50).`
       );
     }
+
+    if (module.defaultAccessRole === undefined) {
+      problems.push(
+        "A module with a workspace entry declares a default access role (A6)."
+      );
+    }
+  }
+
+  // Access assigns this role when an administrator adds the module, so it must
+  // be one the module seeds (A6).
+  const accessRole = module.defaultAccessRole;
+
+  if (
+    accessRole !== undefined &&
+    !module.defaultRoles.some((role) => role.name === accessRole)
+  ) {
+    problems.push(
+      `Default access role "${accessRole}" is not one of the module's default roles (A6).`
+    );
   }
 
   if (landingCount(module) > 1) {

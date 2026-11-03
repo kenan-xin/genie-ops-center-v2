@@ -119,6 +119,8 @@ export const invoicesModule = {
     },
     { name: "Viewer", permissions: ["invoices:use", "invoices:read"] },
   ],
+  // Finance changes shared money records, so an administrator picks it on purpose (A6).
+  defaultAccessRole: "Viewer",
 
   navigation: {
     pinned: [],
