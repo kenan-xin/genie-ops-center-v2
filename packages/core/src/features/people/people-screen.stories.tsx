@@ -135,6 +135,17 @@ export const SessionLastActiveIsRelative: Story = {
   },
 };
 
+/** G14: the directory groups heading carries one relative Synced time (mockup). */
+export const GroupsSyncedIsRelative: Story = {
+  args: { initialSelectedId: "u-bea" },
+  play: async () => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(sheet.getByRole("tab", { name: /Groups/ }));
+    await expect(sheet.getByText("Synced 1 d ago")).toBeVisible();
+  },
+};
+
 const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
 
 /** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */

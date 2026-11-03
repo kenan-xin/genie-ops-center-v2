@@ -612,7 +612,7 @@ function PersonGroups(props: {
               <h3 className="text-sm font-semibold text-foreground">{title}</h3>
               {source === "idp" && syncedAt !== null ? (
                 <span className="shrink-0 text-xs text-muted-foreground">
-                  Synced {fmtDateTime(syncedAt, props.viewer.timeZone, "")}
+                  Synced {signedInAgo(syncedAt, props.viewer)}
                 </span>
               ) : null}
             </div>
