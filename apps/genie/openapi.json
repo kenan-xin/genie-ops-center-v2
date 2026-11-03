@@ -1749,6 +1749,41 @@
         }
       }
     },
+    "/roles/access/{principalType}/{principalId}": {
+      "get": {
+        "operationId": "roles.recipientAccess",
+        "parameters": [
+          {
+            "name": "principalType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "user",
+                "group"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "principalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "operationId": "settings.read",

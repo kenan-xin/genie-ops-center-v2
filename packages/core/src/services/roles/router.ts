@@ -5,6 +5,7 @@ import {
   removeAssignment,
 } from "../authorization/role-assignment.ts";
 import { rolesContract } from "./contract.ts";
+import { readRecipientAccess } from "./effective-access.ts";
 import {
   copyRole,
   createRole,
@@ -109,6 +110,15 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         assignmentId: input.assignmentId,
       });
     }),
+
+    recipientAccess: managed.recipientAccess.handler(({ context, input }) =>
+      readRecipientAccess({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        recipient: { type: input.principalType, id: input.principalId },
+      })
+    ),
   });
 }
 

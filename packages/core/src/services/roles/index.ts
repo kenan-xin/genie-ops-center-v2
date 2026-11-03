@@ -96,7 +96,7 @@ function moduleAdminKeys(modules: readonly RolesModule[]): ReadonlySet<string> {
 }
 
 /** Each included module's entitlement state, read once (DEC-46 caches the reads). */
-async function entitlementByModule(
+export async function entitlementByModule(
   tenant: TenantContext,
   modules: readonly RolesModule[]
 ): Promise<ReadonlyMap<string, boolean>> {

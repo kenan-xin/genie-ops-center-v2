@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
+import type { AccessPath } from "./effective-access.ts";
 import type { RoleDetail, RolePermissionGroup, RoleRow } from "./index.ts";
 
 const roleId = z.object({ roleId: z.uuid() });
@@ -89,6 +90,20 @@ export const rolesContract = {
   unassign: oc
     .route({ method: "DELETE", path: "/roles/assignments/{assignmentId}" })
     .input(z.object({ assignmentId: z.uuid() })),
+
+  // A8, R-37d: every path through which one person or group holds a role, unpaged, for Grants.
+  recipientAccess: oc
+    .route({
+      method: "GET",
+      path: "/roles/access/{principalType}/{principalId}",
+    })
+    .input(
+      z.object({
+        principalType: z.enum(["user", "group"]),
+        principalId: z.string().min(1).max(200),
+      })
+    )
+    .output(z.custom<readonly AccessPath[]>()),
 };
 
 export type RolesContract = typeof rolesContract;

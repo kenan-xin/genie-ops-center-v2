@@ -36,13 +36,20 @@ export async function insertUser(
 
 export async function insertRole(
   context: Db,
-  values: { readonly permissions: readonly string[]; readonly name?: string }
+  values: {
+    readonly permissions: readonly string[];
+    readonly name?: string;
+    readonly moduleId?: string | null;
+    readonly isSystem?: boolean;
+  }
 ): Promise<string> {
   const [row] = await context.db
     .insert(role)
     .values({
       name: values.name ?? `Role ${randomUUID()}`,
       permissions: [...values.permissions],
+      moduleId: values.moduleId ?? null,
+      isSystem: values.isSystem ?? false,
     })
     .returning({ id: role.id });
 
@@ -85,6 +92,8 @@ export async function assignRole(
       readonly id: string;
     };
     readonly scope?: Scope | undefined;
+    /** The person who added the row, written to `created_by_user_id`. */
+    readonly createdBy?: string;
   }
 ): Promise<string> {
   const [row] = await context.db
@@ -95,6 +104,7 @@ export async function assignRole(
       principalId: values.principal.id,
       scopeType: values.scope?.type ?? null,
       scopeId: values.scope?.id ?? null,
+      createdByUserId: values.createdBy ?? null,
     })
     .returning({ id: roleAssignment.id });
 
