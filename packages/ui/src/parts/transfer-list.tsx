@@ -139,19 +139,19 @@ function Rows(props: {
                     onCheckedChange={() => props.onTick(item.id)}
                   />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">
+                    <span className="block font-medium break-words">
                       {item.label}
                     </span>
                     {item.description === undefined ? null : (
-                      <span className="block truncate text-xs text-muted-foreground">
+                      <span
+                        title={item.description}
+                        className="line-clamp-2 text-xs text-muted-foreground"
+                      >
                         {item.description}
                       </span>
                     )}
                     {item.note === undefined ? null : (
-                      <span
-                        title={item.note}
-                        className="block truncate text-xs font-medium"
-                      >
+                      <span className="block text-xs font-medium">
                         {item.note}
                       </span>
                     )}
@@ -293,10 +293,9 @@ export function TransferList(props: TransferListProps) {
   if (props.layout === "roster") {
     const both = [...movable("granted"), ...movable("available")];
 
-    const footer = [
-      moveButton("available", false),
-      moveButton("granted", false),
-    ];
+    const add = moveButton("available", false);
+
+    const remove = moveButton("granted", false);
 
     return (
       <div className="flex min-h-0 flex-1 flex-col">
@@ -326,11 +325,12 @@ export function TransferList(props: TransferListProps) {
             </section>
           ))}
         </div>
-        {footer.some((button) => button !== null) ? (
+        {add === null && remove === null ? null : (
           <div className="flex items-center gap-2 border-t border-border px-4 py-3">
-            {footer}
+            {add}
+            {remove}
           </div>
-        ) : null}
+        )}
       </div>
     );
   }
