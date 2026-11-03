@@ -134,7 +134,9 @@ Administrator recovery: the screens protect the last holder of `Tenant administr
 
 Amended 2026-10-30 (Spec 7): `core:ask:use` is the seventh core key. It is a member-facing use key, not an admin key. It opens Ask and the agent, and it never shows the admin switch. So the six admin keys are unchanged, and this key does not trigger the separation-of-duties revisit below.
 
-Designed in: Sections 1 and 2. Implemented: Sections 1 and 2. Revisit if a customer requires a separation-of-duties model where no single role may hold all core permissions.
+Amended 2026-11-02 (the access model, Specification 02 R-37e): core counts seven keys, so the old argument against a seventh key no longer applies. Both Access tabs, Grants and Overview, still sit behind `core:roles:manage`, and no new key is added now. Core seeds one more system role, `Ask user`, holding `core:ask:use`, so that Access can grant Ask as a Core row.
+
+Designed in: Sections 1 and 2. Implemented: Sections 1 and 2. Revisit if a customer requires a separation-of-duties model where no single role may hold all core permissions. Revisit also when an Auditor must read effective access on the Access Overview without holding `core:roles:manage`: the change is an eighth core key for that read, added to the `Auditor` role, not built today (2026-11-02).
 
 ### Permission evolution during upgrades (decided 2026-09-18)
 
@@ -559,6 +561,8 @@ Question: switching a module on or off was `genie-ops module enable|disable`, wh
 Decision: core gets a Modules page in the admin portal behind `core:settings:manage`. It lists every module compiled into the image with an enabled switch that writes `tenant_module.enabled` through the same core procedure as the command line, a category picker that writes `tenant_module.category_id` (`DEC-51`), and the groups and people who hold a role carrying the module's `<id>:use` key, read from `role_assignment` like the solutions Access overview, with a link to the Roles screen for changes. The module contract requires every module with a workspace entry to declare `<id>:use`, to require it on its workspace entries, and to seed a `<Display name> user` role that carries it. Every change on the page is an audit event. The category picker shows for a module with at least one static workspace entry, which every module that declares `<id>:use` has, and the solutions module's is its hub (`DEC-49`), so the picker moves that hub entry under a heading. A module with no static workspace entry, for example an admin-only module, shows no picker, because `tenant_module.category_id` places nothing for it.
 
 Why not a new `core:modules:manage` key: the page changes the same rows as the Tenant Settings module cards, and `DEC-23` counts six core admin keys, so a seventh admin key returns with the separation-of-duties revisit there. Why not assign roles on the Modules page: the Roles screen already assigns a role to a group or a person, and a second writer of `role_assignment` is the duplicate that `DEC-39` forbids.
+
+Amended 2026-11-02 (the access model, Specification 02 R-37 to R-37e): the one screen that assigns and removes roles is Access, not Roles. The Roles screen now defines roles only. The Modules page still writes no assignment. Its holders column links to `/admin/access?module=<id>` instead of the Roles screen. The reason above holds, and only the screen name changes.
 
 Trade-off: the customer's administrator can switch off a module Genie switched on, and switch on a compiled module an operator switched off. The image is the commercial boundary (`DEC-33`): a module that a customer does not have is not compiled in, so the switch is visibility, not a sale.
 
