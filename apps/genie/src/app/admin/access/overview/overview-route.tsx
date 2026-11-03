@@ -55,7 +55,13 @@ export function OverviewRoute(props: {
 
   const [query, setQuery] = useState("");
 
-  const [index, setIndex] = useState(0);
+  const lookup = `${subjectKey(subject)}|${query}`;
+
+  // The page index belongs to one subject and search. Each change sets a new pair at
+  // page 1, and a step that lands after the change leaves the new pair alone.
+  const [at, setAt] = useState({ lookup, index: 0 });
+
+  const index = at.lookup === lookup ? at.index : 0;
 
   const catalogue = useQuery({
     queryKey: ["access", "catalogue"],
@@ -120,19 +126,26 @@ export function OverviewRoute(props: {
         onSubjectChange={(next) => {
           setSubject(next);
           setQuery("");
-          setIndex(0);
+          setAt({ lookup: `${subjectKey(next)}|`, index: 0 });
         }}
         onQueryChange={(next) => {
           setQuery(next);
-          setIndex(0);
+          setAt({ lookup: `${subjectKey(subject)}|${next}`, index: 0 });
         }}
         page={page}
         onPage={async (step) => {
+          const from = lookup;
+
           if (step === 1 && index === pages.length - 1) {
             await results.fetchNextPage();
           }
 
-          setIndex((current) => Math.max(0, current + step));
+          // A step that lands after the lookup changed belongs to the old one: drop it.
+          setAt((current) =>
+            current.lookup === from
+              ? { lookup: from, index: Math.max(0, current.index + step) }
+              : current
+          );
         }}
         paging={results.isFetchingNextPage || results.isPlaceholderData}
         personPaths={personPaths.data}
