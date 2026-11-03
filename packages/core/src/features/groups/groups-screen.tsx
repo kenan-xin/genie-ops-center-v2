@@ -332,6 +332,11 @@ export function GroupInspector(
             </TabsList>
 
             <TabsContent value="members">
+              {group.source === "idp" ? (
+                <p className="mb-2 text-xs text-muted-foreground">
+                  Membership is managed in the identity provider.
+                </p>
+              ) : null}
               {/* One search picks and adds: a pick writes at once (clarify row 4). */}
               {group.source === "local" && selectable.length > 0 ? (
                 <Field className="mb-3">

@@ -837,6 +837,37 @@ export const LocalHeaderNamesTheKindOnce: Story = {
   },
 };
 
+/** The Members tab opens with where membership comes from, for a directory group only (capture). */
+export const MembersIntroNamesTheIdentityProvider: Story = {
+  play: async ({ canvas }) => {
+    const intro = "Membership is managed in the identity provider.";
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Finance managers/ })
+    );
+
+    const directory = within(
+      await screen.findByRole("dialog", { name: "Finance managers" })
+    );
+
+    await expect(directory.getByText(intro)).toBeVisible();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const local = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    // The sheet animates in, so the open Members tab is awaited.
+    await waitFor(() =>
+      expect(local.getByRole("tab", { name: /Members/ })).toBeVisible()
+    );
+    await expect(local.queryByText(intro)).toBeNull();
+  },
+};
+
 /** Delete is an outline with red text, not a solid red button (row 5). */
 export const DeleteIsAnOutlineWithRedText: Story = {
   args: { groups: [FIXTURE_LOCAL] },
