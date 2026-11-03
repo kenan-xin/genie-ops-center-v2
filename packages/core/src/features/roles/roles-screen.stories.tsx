@@ -266,6 +266,27 @@ export const LongCatalogueFormFitsTheScreen: Story = {
   },
 };
 
+/** G42: a row's Copy offers the row's retired key for removal, so the copy can be saved (R-33b). */
+export const RowCopyOffersTheUnavailableKey: Story = {
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoice approver" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Copy" })
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Copy role" })
+    );
+
+    await expect(dialog.getByText("retired:key")).toBeInTheDocument();
+    await expect(
+      dialog.getByRole("button", { name: "Remove" })
+    ).toBeInTheDocument();
+  },
+};
+
 /** G50: a failed role read shows its error, not "Loading role…" forever. */
 export const DetailReadFailureShowsTheError: Story = {
   args: {

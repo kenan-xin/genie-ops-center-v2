@@ -63,6 +63,8 @@ type FormState = {
   readonly name: string;
   readonly description: string;
   readonly permissions: readonly string[];
+  /** A row menu's Copy or Edit: the row's stored keys outside the catalogue, removable (R-33b). */
+  readonly unavailableKeys?: readonly UnavailableKey[];
 };
 
 /**
@@ -560,9 +562,10 @@ export function RolesScreen(props: RolesScreenProps) {
       state={form}
       catalogue={props.catalogue}
       unavailableKeys={
-        props.selectedRoleId === null
+        form.unavailableKeys ??
+        (props.selectedRoleId === null
           ? []
-          : (props.detail?.unavailableKeys ?? [])
+          : (props.detail?.unavailableKeys ?? []))
       }
       failure={submission.failure}
       submitting={submission.submitting}
@@ -771,6 +774,7 @@ export function RolesScreen(props: RolesScreenProps) {
                     name: `${role.name} copy`,
                     description: role.description,
                     permissions: role.permissions,
+                    unavailableKeys: role.unavailableKeys,
                   }),
               };
 
@@ -786,6 +790,7 @@ export function RolesScreen(props: RolesScreenProps) {
                           name: role.name,
                           description: role.description,
                           permissions: role.permissions,
+                          unavailableKeys: role.unavailableKeys,
                         }),
                     },
                     copy,
