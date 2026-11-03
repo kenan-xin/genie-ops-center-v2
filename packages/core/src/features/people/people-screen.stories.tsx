@@ -111,6 +111,17 @@ export const LastSignInIsRelative: Story = {
   },
 };
 
+/** G11: the profile shows the first sign-in as a day and time, the last one relative (mockup). */
+export const ProfileSignInTimes: Story = {
+  args: { initialSelectedId: "u-viewer" },
+  play: async () => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await expect(sheet.getByText("4 Jan, 10:00")).toBeVisible();
+    await expect(sheet.getByText("1 h ago")).toBeVisible();
+  },
+};
+
 const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
 
 /** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */

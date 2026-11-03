@@ -54,7 +54,11 @@ import {
   ShieldIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
-import { initials, relativeTime } from "../audit/helpers.ts";
+import {
+  fmtDateTime as fmtDayAndTime,
+  initials,
+  relativeTime,
+} from "../audit/helpers.ts";
 import { GroupName } from "../groups/group-name.tsx";
 import type {
   AccountType,
@@ -100,6 +104,16 @@ function signedInAgo(iso: string | null, viewer: PeopleViewer): string {
   if (iso === null) return "Never";
 
   return relativeTime(iso, new Date(viewer.nowIso), viewer.timeZone);
+}
+
+/** "1 Aug, 09:00" in the current year, with the year once older (design mockup). */
+function signedInOn(iso: string | null, viewer: PeopleViewer): string {
+  if (iso === null) return "Never";
+
+  return new Date(iso).getUTCFullYear() ===
+    new Date(viewer.nowIso).getUTCFullYear()
+    ? fmtDayAndTime(iso, viewer.timeZone)
+    : fmtDateTime(iso, viewer.timeZone, "Never");
 }
 
 const ONBOARDING_LABEL: Record<
@@ -306,19 +320,11 @@ export function PersonInspector(props: {
                 />
                 <ProfileRow
                   label="First sign-in"
-                  value={fmtDateTime(
-                    person.firstSignInAt,
-                    viewer.timeZone,
-                    "Never"
-                  )}
+                  value={signedInOn(person.firstSignInAt, viewer)}
                 />
                 <ProfileRow
                   label="Last sign-in"
-                  value={fmtDateTime(
-                    person.lastSignInAt,
-                    viewer.timeZone,
-                    "Never"
-                  )}
+                  value={signedInAgo(person.lastSignInAt, viewer)}
                 />
                 <ProfileRow
                   label="Onboarding"
