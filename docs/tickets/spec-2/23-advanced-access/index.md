@@ -4,7 +4,7 @@ Bead: `d8l5.33`. Status and claims live in Beads, not in this document.
 
 ## Governing documents
 
-- [Spec 2](../../../specs/02-identity-and-access.md), R-37c, R-38 and AC-28. Open point U3: a module with two record types gets a type picker when one exists.
+- [Spec 2](../../../specs/02-identity-and-access.md), R-37c, R-38 and AC-28. Open point U3: Advanced access offers a record scope only for a module with one record type that declares `search`, until U3 is answered.
 - The [Access design](../../../design/sections/access/spec.md), as S2-20 updates it.
 - [Decision log](../../../core/decision-log.md), `DEC-23` and `DEC-39`.
 - The [Spec 2 ticket index](../README.md).

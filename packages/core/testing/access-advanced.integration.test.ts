@@ -4,6 +4,7 @@ import {
   callProcedure,
   createRolesRouter,
   principalFor,
+  scopesFor,
   seedRoles,
   type ModuleHistorySource,
 } from "../src/index.ts";
@@ -603,6 +604,95 @@ async function manager(
 
   return id;
 }
+
+describe("a module role at one record", () => {
+  it("R1: adds a module role at one record, and scopesFor answers that record only", async () => {
+    const person: Principal = {
+      type: "user",
+      id: await insertUser(deployment.context),
+    };
+
+    await save(adaId, person, {
+      add: [
+        {
+          roleId: await roleIdOf("Fixture viewer"),
+          scope: { type: "fixture-record", id: "rec-a" },
+        },
+      ],
+    });
+
+    const caller = principalFor({
+      tenant: deployment.context,
+      modules,
+      userId: person.id,
+      authenticated: true,
+    });
+
+    expect(await scopesFor(caller, "fixture:read")).toEqual({
+      kind: "some",
+      scopes: [{ type: "fixture-record", id: "rec-a" }],
+    });
+  });
+
+  const SCOPE_REFUSALS = [
+    {
+      label: "a module system role for the whole tenant",
+      role: "Fixture viewer",
+      scope: null,
+      code: "invalid-input",
+    },
+    {
+      label: "a scope type that the role's module does not declare",
+      role: "Fixture viewer",
+      scope: { type: "pair-one", id: "p1" },
+      code: "invalid-input",
+    },
+    {
+      label: "a record that the resolver does not find",
+      role: "Fixture viewer",
+      scope: { type: "fixture-record", id: "rec-gone" },
+      code: "not-found",
+    },
+    {
+      label: "a role of a switched-off module",
+      role: "Dormant user",
+      scope: { type: "dormant-record", id: "d1" },
+      code: "module-disabled",
+    },
+  ];
+
+  it.each(SCOPE_REFUSALS)(
+    "R2: refuses $label and writes nothing",
+    async ({ role, scope, code }) => {
+      const recipient = await newGroup();
+
+      await expect(
+        save(adaId, recipient, {
+          add: [{ roleId: await roleIdOf(role), scope }],
+        })
+      ).rejects.toMatchObject({ code });
+      expect(await directRoles(recipient)).toEqual([]);
+    }
+  );
+
+  it("R3: offers a record scope only for a module with one searchable record type", async () => {
+    const { record } = await roles(adaId).advancedCatalogue();
+
+    expect(
+      record.map((option) => [
+        option.moduleId,
+        option.roleName,
+        option.enabled,
+        option.wholeTenant,
+        option.recordType,
+      ])
+    ).toEqual([
+      ["dormant", "Dormant user", false, false, "dormant-record"],
+      ["fixture", "Fixture viewer", true, false, "fixture-record"],
+      ["fixture", "Fixture editor", true, false, "fixture-record"],
+    ]);
+  });
+});
 
 function search(callerId: string, recordType: string, query: string) {
   return roles(callerId).scopeRecords({ recordType, query });

@@ -438,7 +438,7 @@ Open questions
 - Decided by the access model that the owner accepted on 2026-11-02, and no longer open: U4, a prefilled link that carries a role (R-37a). U5, a module administrator who sees a link to Access (R-37e). U6, a module that owns records and had no catalogue row (R-37a). U7, group nesting (R-37d).
 - Open, older than Access and not part of it: U1, the realm display name after a Branding change (`DEC-40`).
 - Open, design sample data only: U2, the keys of the Contracts sample module.
-- Open: U3, a module with two record types. No module declares two today. When one does, Advanced access (R-37c) gets a type picker.
+- Open: U3, a module with two or more record types. The Invoices module declares four today. Until this is answered, Advanced access (R-37c) offers a record scope only for a module that declares exactly one record type, and that type declares `search` (module contract, Record types). A type picker is one answer.
 - Decided by the product owner on 2026-09-27 and no longer open: SCIM stays deferred, and a person disabled at the company login keeps an open session until the idle timeout or the 24-hour cap (bead hum7, Deferred).
 - Decided by the product owner on 2026-09-18 and no longer open: an archived directory group stops granting (R-32).
 - Decided by the product owner on 2026-09-18 and no longer open: Remove revokes and bans and keeps the name; erasure is `genie-ops erase` (R-43, design copy corrected).

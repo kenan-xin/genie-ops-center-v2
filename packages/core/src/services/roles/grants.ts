@@ -86,7 +86,7 @@ function toGrantRole(raw: RawRole): GrantRole {
  * The role choice of one module (P3): its default access role, then its other declared roles in
  * declared order, then every other role of the module by name, custom roles included (A6).
  */
-function moduleRoles(
+export function moduleRoles(
   module: RolesModule,
   owned: readonly RawRole[]
 ): readonly GrantRole[] {

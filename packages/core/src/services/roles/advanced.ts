@@ -2,6 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { Scope } from "../../lib/module-contract/keys.ts";
+import type { Module } from "../../lib/module-contract/module.ts";
 import {
   ASK_USER_ROLE,
   AUDITOR_ROLE,
@@ -25,7 +26,8 @@ import {
   assertManagesAllRoles,
   recipientDisabled,
 } from "./effective-access.ts";
-import type { RolesModule } from "./index.ts";
+import { moduleRoles } from "./grants.ts";
+import { entitlementByModule, type RolesModule } from "./index.ts";
 
 /** The staged changes of one Advanced access save for one recipient (R-37c). */
 export type AdvancedChanges = {
@@ -124,8 +126,21 @@ function coreRank(name: string): number {
 }
 
 /**
+ * The one record type of a module that takes a record scope in Advanced access (AD1, Spec 2 U3):
+ * the module declares exactly one record type, and that type declares `search`. Else null.
+ */
+export function scopeRecordType(
+  module: Pick<Module, "recordTypes">
+): string | null {
+  const [only, ...rest] = module.recordTypes;
+
+  return only?.search !== undefined && rest.length === 0 ? only.type : null;
+}
+
+/**
  * The roles Advanced access can add, in the picker's groups (AD8). Core holds the core system
- * roles other than `Ask user`, which is a Grants row.
+ * roles other than `Ask user`, which is a Grants row. Module role at one record holds the system
+ * roles of each module with a scope record type, by module name.
  */
 export async function readAdvancedCatalogue(input: {
   readonly tenant: TenantContext;
@@ -134,16 +149,16 @@ export async function readAdvancedCatalogue(input: {
 }): Promise<AdvancedCatalogue> {
   await assertManagesAllRoles(input.caller);
 
-  const result = await input.tenant.db.$client.query<{
-    readonly id: string;
-    readonly name: string;
-  }>(
-    `select r.id::text as id, r.name from role r
-      where r.is_system and r.module_id is null and r.name <> $1`,
-    [ASK_USER_ROLE]
+  const result = await input.tenant.db.$client.query<NamedRole>(
+    `select r.id::text as id, r.name, r.is_system as "isSystem", r.module_id as "moduleId"
+       from role r`
   );
 
   const core = result.rows
+    .filter(
+      (row) =>
+        row.isSystem && row.moduleId === null && row.name !== ASK_USER_ROLE
+    )
     .toSorted(
       (a, b) =>
         coreRank(a.name) - coreRank(b.name) || a.name.localeCompare(b.name)
@@ -159,7 +174,32 @@ export async function readAdvancedCatalogue(input: {
       recordType: null,
     }));
 
-  return { core, record: [], custom: [] };
+  const entitled = await entitlementByModule(input.tenant, input.modules);
+
+  const record = input.modules
+    .filter((module) => scopeRecordType(module) !== null)
+    .toSorted((a, b) =>
+      a.identity.displayName.localeCompare(b.identity.displayName)
+    )
+    .flatMap((module) => {
+      const moduleId = module.identity.id;
+
+      return moduleRoles(
+        module,
+        result.rows.filter((row) => row.isSystem && row.moduleId === moduleId)
+      ).map((owned): AdvancedOption => ({
+        roleId: owned.id,
+        roleName: owned.name,
+        kind: "system",
+        moduleId,
+        moduleName: module.identity.displayName,
+        enabled: entitled.get(moduleId) === true,
+        wholeTenant: false,
+        recordType: scopeRecordType(module),
+      }));
+    });
+
+  return { core, record, custom: [] };
 }
 
 type NamedRole = {
@@ -172,17 +212,75 @@ type NamedRole = {
 const scopeKey = (roleId: string, scope: Scope | null) =>
   scope === null ? roleId : `${roleId}\u0000${scope.type}\u0000${scope.id}`;
 
+const invalidInput = () => new AppError(CORE_ERRORS["invalid-input"]);
+
+type AddCheck = {
+  readonly caller: RequestPrincipal;
+  readonly modules: readonly RolesModule[];
+  readonly entitled: ReadonlyMap<string, boolean>;
+};
+
 /**
- * Whether Advanced access may add the role at the scope (AD5). A core system role other than
- * `Ask user` goes to the whole tenant; `Ask user` is a Grants row.
+ * The module checks of a module role (AD5): its module is compiled (`not-found`) and on
+ * (`module-disabled`). A scope must be a record type of that module (`invalid-input`) and a record
+ * its resolver finds (`not-found`). A role that needs a scope and has none is `invalid-input`.
  */
-function addable(named: NamedRole, scope: Scope | null): boolean {
-  return (
-    named.isSystem &&
-    named.moduleId === null &&
-    named.name !== ASK_USER_ROLE &&
-    scope === null
+async function assertModuleScope(
+  check: AddCheck,
+  moduleId: string,
+  scope: Scope | null,
+  needsScope: boolean
+): Promise<void> {
+  const module = check.modules.find(
+    (candidate) => candidate.identity.id === moduleId
   );
+
+  if (module === undefined) {
+    throw new AppError(CORE_ERRORS["not-found"], {
+      cause: new Error(`No compiled module ${moduleId}`),
+    });
+  }
+
+  if (check.entitled.get(moduleId) !== true) {
+    throw new AppError(CORE_ERRORS["module-disabled"]);
+  }
+
+  if (scope === null) {
+    if (needsScope) throw invalidInput();
+
+    return;
+  }
+
+  if (!module.recordTypes.some((entry) => entry.type === scope.type)) {
+    throw invalidInput();
+  }
+
+  if ((await check.caller.recordOf(scope)) === undefined) {
+    throw new AppError(CORE_ERRORS["not-found"], {
+      cause: new Error(`No record ${scope.type} ${scope.id}`),
+    });
+  }
+}
+
+/**
+ * Refuses an add Advanced access does not take (AD5). A core system role other than `Ask user`
+ * goes to the whole tenant; `Ask user` and a whole-tenant module system role are Grants rows. A
+ * module system role goes to one record of its module.
+ */
+async function assertAddable(
+  check: AddCheck,
+  named: NamedRole,
+  scope: Scope | null
+): Promise<void> {
+  if (!named.isSystem) throw invalidInput();
+
+  if (named.moduleId === null) {
+    if (named.name === ASK_USER_ROLE || scope !== null) throw invalidInput();
+
+    return;
+  }
+
+  await assertModuleScope(check, named.moduleId, scope, true);
 }
 
 /**
@@ -221,6 +319,12 @@ export async function saveAdvanced(input: {
 
   const roles = new Map(named.rows.map((row) => [row.id, row]));
 
+  const check: AddCheck = {
+    caller: input.caller,
+    modules: input.modules,
+    entitled: await entitlementByModule(input.tenant, input.modules),
+  };
+
   for (const entry of add) {
     const found = roles.get(entry.roleId);
 
@@ -230,9 +334,9 @@ export async function saveAdvanced(input: {
       });
     }
 
-    if (!addable(found, entry.scope)) {
-      throw new AppError(CORE_ERRORS["invalid-input"]);
-    }
+    // One add at a time; the principal memoises each record.
+    // oxlint-disable-next-line no-await-in-loop
+    await assertAddable(check, found, entry.scope);
   }
 
   const { recipient } = input;
