@@ -26,7 +26,7 @@ import {
   assertManagesAllRoles,
   recipientDisabled,
 } from "./effective-access.ts";
-import { moduleRoles } from "./grants.ts";
+import { byName, moduleRoles } from "./grants.ts";
 import { entitlementByModule, type RolesModule } from "./index.ts";
 
 /** The staged changes of one Advanced access save for one recipient (R-37c). */
@@ -140,7 +140,8 @@ export function scopeRecordType(
 /**
  * The roles Advanced access can add, in the picker's groups (AD8). Core holds the core system
  * roles other than `Ask user`, which is a Grants row. Module role at one record holds the system
- * roles of each module with a scope record type, by module name.
+ * roles of each module with a scope record type, by module name. Custom roles holds every custom
+ * role of core or of a compiled module, by name.
  */
 export async function readAdvancedCatalogue(input: {
   readonly tenant: TenantContext;
@@ -199,7 +200,34 @@ export async function readAdvancedCatalogue(input: {
       }));
     });
 
-  return { core, record, custom: [] };
+  const compiled = new Map(
+    input.modules.map((module) => [module.identity.id, module])
+  );
+
+  const custom = result.rows
+    .filter(
+      (row) =>
+        !row.isSystem && (row.moduleId === null || compiled.has(row.moduleId))
+    )
+    .toSorted(byName)
+    .map((row): AdvancedOption => {
+      const module =
+        row.moduleId === null ? undefined : compiled.get(row.moduleId);
+
+      return {
+        roleId: row.id,
+        roleName: row.name,
+        kind: "custom",
+        moduleId: row.moduleId,
+        moduleName: module?.identity.displayName ?? CORE_ADMINISTRATION,
+        enabled:
+          module === undefined || entitled.get(module.identity.id) === true,
+        wholeTenant: true,
+        recordType: module === undefined ? null : scopeRecordType(module),
+      };
+    });
+
+  return { core, record, custom };
 }
 
 type NamedRole = {
@@ -263,24 +291,25 @@ async function assertModuleScope(
 }
 
 /**
- * Refuses an add Advanced access does not take (AD5). A core system role other than `Ask user`
- * goes to the whole tenant; `Ask user` and a whole-tenant module system role are Grants rows. A
- * module system role goes to one record of its module.
+ * Refuses an add Advanced access does not take (AD5). A core role, system or custom, goes to the
+ * whole tenant, except `Ask user`, which is a Grants row like a whole-tenant module system role. A
+ * module system role goes to one record of its module, and a module custom role to the whole
+ * tenant or one record.
  */
 async function assertAddable(
   check: AddCheck,
   named: NamedRole,
   scope: Scope | null
 ): Promise<void> {
-  if (!named.isSystem) throw invalidInput();
-
   if (named.moduleId === null) {
-    if (named.name === ASK_USER_ROLE || scope !== null) throw invalidInput();
+    if (scope !== null || (named.isSystem && named.name === ASK_USER_ROLE)) {
+      throw invalidInput();
+    }
 
     return;
   }
 
-  await assertModuleScope(check, named.moduleId, scope, true);
+  await assertModuleScope(check, named.moduleId, scope, named.isSystem);
 }
 
 /**

@@ -694,6 +694,88 @@ describe("a module role at one record", () => {
   });
 });
 
+describe("custom roles", () => {
+  beforeAll(async () => {
+    for (const [name, moduleId, key] of [
+      ["Access auditor", null, "core:audit:read"],
+      ["Fixture approver", "fixture", "fixture:use"],
+      ["Pair approver", "pair", "pair:use"],
+      ["Dormant approver", "dormant", "dormant:use"],
+      ["Ghost approver", "ghost", "ghost:use"],
+    ] as const) {
+      // oxlint-disable-next-line no-await-in-loop -- five rows, in order.
+      await insertRole(deployment.context, {
+        name,
+        moduleId,
+        permissions: [key],
+      });
+    }
+  });
+
+  it("C1: adds custom roles for the whole tenant and a module custom role at one record", async () => {
+    const group = await newGroup();
+    const approver = await roleIdOf("Fixture approver");
+
+    await save(adaId, group, {
+      add: [
+        { roleId: await roleIdOf("Access auditor"), scope: null },
+        { roleId: approver, scope: null },
+        { roleId: approver, scope: { type: "fixture-record", id: "rec-b" } },
+      ],
+    });
+
+    const rows = await deployment.context.db.$client.query<{
+      readonly name: string;
+      readonly scopeType: string | null;
+      readonly scopeId: string | null;
+    }>(
+      `select r.name, a.scope_type as "scopeType", a.scope_id as "scopeId"
+         from role_assignment a join role r on r.id = a.role_id
+        where a.principal_type = 'group' and a.principal_id = $1
+        order by r.name, a.scope_id nulls first`,
+      [group.id]
+    );
+
+    expect(rows.rows).toEqual([
+      { name: "Access auditor", scopeType: null, scopeId: null },
+      { name: "Fixture approver", scopeType: null, scopeId: null },
+      {
+        name: "Fixture approver",
+        scopeType: "fixture-record",
+        scopeId: "rec-b",
+      },
+    ]);
+  });
+
+  it("C3: lists the custom roles with their module, state and record type", async () => {
+    const { custom } = await roles(adaId).advancedCatalogue();
+
+    // Other tests insert custom core roles named "Role <uuid>".
+    const named = custom.filter(
+      (option) => !option.roleName.startsWith("Role ")
+    );
+
+    expect(
+      named.map((option) => [
+        option.roleName,
+        option.moduleName,
+        option.enabled,
+        option.recordType,
+      ])
+    ).toEqual([
+      ["Access auditor", "Core administration", true, null],
+      ["Access manager", "Core administration", true, null],
+      ["Dormant approver", "Dormant", false, "dormant-record"],
+      ["Fixture approver", "Fixture", true, "fixture-record"],
+      ["Pair approver", "Pair", true, null],
+    ]);
+    expect(custom.map((option) => option.roleName)).not.toContain(
+      "Ghost approver"
+    );
+    expect(custom.every((option) => option.wholeTenant)).toBe(true);
+  });
+});
+
 function search(callerId: string, recordType: string, query: string) {
   return roles(callerId).scopeRecords({ recordType, query });
 }

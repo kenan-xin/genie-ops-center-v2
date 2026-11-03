@@ -71,8 +71,10 @@ type RawRole = {
   readonly moduleId: string | null;
 };
 
-const byName = (a: { readonly name: string }, b: { readonly name: string }) =>
-  a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+export const byName = (
+  a: { readonly name: string },
+  b: { readonly name: string }
+) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
 
 function toGrantRole(raw: RawRole): GrantRole {
   return {
