@@ -72,6 +72,7 @@ import type {
   PeopleViewer,
   Person,
   PersonDetail,
+  PersonGroupOption,
   PersonStatus,
 } from "./types.ts";
 
@@ -246,6 +247,10 @@ export function PersonInspector(props: {
   readonly onManageAccess?: (() => void) | undefined;
   /** Opens the group a role comes through; without it the group name is plain text. */
   readonly onOpenGroup?: ((groupId: string) => void) | undefined;
+  /** The local groups Add to group offers; with the two callbacks only for a group manager (G16). */
+  readonly localGroups?: readonly PersonGroupOption[] | undefined;
+  readonly onAddToGroup?: ((groupId: string) => void) | undefined;
+  readonly onRemoveFromGroup?: ((groupId: string) => void) | undefined;
   readonly pending?: boolean | undefined;
 }) {
   const { person, viewer } = props;
@@ -396,7 +401,14 @@ export function PersonInspector(props: {
             </TabsContent>
 
             <TabsContent value="groups">
-              <PersonGroups groups={person.groups} viewer={viewer} />
+              <PersonGroups
+                groups={person.groups}
+                viewer={viewer}
+                localGroups={props.localGroups}
+                onAddToGroup={props.onAddToGroup}
+                onRemoveFromGroup={props.onRemoveFromGroup}
+                pending={props.pending}
+              />
             </TabsContent>
 
             <TabsContent value="roles">
@@ -597,16 +609,78 @@ function PersonSessions(props: {
   );
 }
 
-/** The Groups tab: directory groups, then local groups, each under its own heading. */
+/**
+ * The Groups tab: directory groups, then local groups, each under its own heading. With the group
+ * callbacks (a caller who manages groups), each local group has Remove and Add to group picks a
+ * local group the person is not in (design spec, Groups tab; G16). Directory membership stays
+ * read-only: the identity provider owns it.
+ */
 function PersonGroups(props: {
   readonly groups: PersonDetail["groups"];
   readonly viewer: PeopleViewer;
+  readonly localGroups?: readonly PersonGroupOption[] | undefined;
+  readonly onAddToGroup?: ((groupId: string) => void) | undefined;
+  readonly onRemoveFromGroup?: ((groupId: string) => void) | undefined;
+  readonly pending?: boolean | undefined;
 }) {
+  const [choice, setChoice] = useState<string | null>(null);
+  const pickerId = useId();
+
+  const choices = (props.localGroups ?? []).filter(
+    (option) => !props.groups.some((group) => group.id === option.id)
+  );
+
+  const choiceItems = choices.map((option) => ({
+    value: option.id,
+    label: option.label,
+  }));
+
+  const picker =
+    props.onAddToGroup === undefined || choices.length === 0 ? null : (
+      <div className="flex flex-wrap items-end gap-2">
+        <Field className="min-w-0 flex-1">
+          <FieldLabel htmlFor={pickerId}>Add to group</FieldLabel>
+          <Select
+            items={choiceItems}
+            value={choice}
+            onValueChange={(value) => setChoice(value)}
+          >
+            <SelectTrigger id={pickerId}>
+              <SelectValue placeholder="Choose a local group" />
+            </SelectTrigger>
+            <SelectContent>
+              {choiceItems.map((item) => (
+                <SelectItem key={item.value} value={item.value}>
+                  {item.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </Field>
+        <Button
+          variant="secondary"
+          disabled={choice === null}
+          loading={props.pending}
+          onClick={() => {
+            if (choice === null) return;
+
+            props.onAddToGroup?.(choice);
+            setChoice(null);
+          }}
+        >
+          <PlusIcon /> Add
+        </Button>
+      </div>
+    );
+
   if (props.groups.length === 0)
     return (
-      <p className="py-2 text-sm text-muted-foreground">
-        This person is in no group.
-      </p>
+      <div className="flex flex-col gap-3">
+        <p className="py-2 text-sm text-muted-foreground">
+          This person is in no group.
+        </p>
+        {picker}
+      </div>
     );
 
   const sections = [
@@ -659,12 +733,25 @@ function PersonGroups(props: {
                   <span className="min-w-0 flex-1">
                     <GroupName value={group.label} />
                   </span>
+                  {source === "local" &&
+                  props.onRemoveFromGroup !== undefined ? (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      aria-label={`Remove from ${group.label}`}
+                      loading={props.pending}
+                      onClick={() => props.onRemoveFromGroup?.(group.id)}
+                    >
+                      Remove
+                    </Button>
+                  ) : null}
                 </li>
               ))}
             </ul>
           </section>
         );
       })}
+      {picker}
     </div>
   );
 }
@@ -1098,6 +1185,19 @@ export function PeopleScreen(props: PeopleScreenProps) {
               : () => props.onManageAccess?.(selected.id)
           }
           onOpenGroup={props.onOpenGroup}
+          localGroups={props.localGroups}
+          onAddToGroup={
+            props.onAddToGroup === undefined
+              ? undefined
+              : (targetGroupId) =>
+                  props.onAddToGroup?.(selected.id, targetGroupId)
+          }
+          onRemoveFromGroup={
+            props.onRemoveFromGroup === undefined
+              ? undefined
+              : (targetGroupId) =>
+                  props.onRemoveFromGroup?.(selected.id, targetGroupId)
+          }
         />
       )}
 

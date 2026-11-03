@@ -160,6 +160,44 @@ export const ViaGroupOpensTheGroup: Story = {
   },
 };
 
+/** G16: a group manager removes a local group from the person and adds one the person is not in. */
+export const GroupsTabAddsAndRemovesLocalGroups: Story = {
+  args: {
+    initialSelectedId: "u-viewer",
+    localGroups: [
+      { id: "g-admins", label: "Genie Administrators" },
+      { id: "g-ops", label: "Operations" },
+    ],
+    onAddToGroup: fn(),
+    onRemoveFromGroup: fn(),
+  },
+  play: async ({ args }) => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(sheet.getByRole("tab", { name: /Groups/ }));
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Remove from Genie Administrators" })
+    );
+    await expect(args.onRemoveFromGroup).toHaveBeenCalledWith(
+      "u-viewer",
+      "g-admins"
+    );
+
+    // The picker offers only a group the person is not in.
+    await userEvent.click(
+      sheet.getByRole("combobox", { name: "Add to group" })
+    );
+    await expect(
+      screen.queryByRole("option", { name: "Genie Administrators" })
+    ).toBeNull();
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Operations" })
+    );
+    await userEvent.click(sheet.getByRole("button", { name: "Add" }));
+    await expect(args.onAddToGroup).toHaveBeenCalledWith("u-viewer", "g-ops");
+  },
+};
+
 const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
 
 /** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */

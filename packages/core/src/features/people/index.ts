@@ -23,6 +23,7 @@ export type {
   PersonDetail,
   PersonGroup,
   PersonGroupChip,
+  PersonGroupOption,
   PersonSession,
   PersonStatus,
 } from "./types.ts";

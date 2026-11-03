@@ -71,8 +71,11 @@ export function createPeopleRouter() {
 
     // `canAssignRoles` hides the Add person role picker for a holder of `core:people:manage`
     // alone, matching the server's refusal (DEC-39).
+    // `canManageGroups` shows the person's Add to group and Remove controls only to a caller the
+    // groups router lets add and remove members (G16).
     capabilities: managed.capabilities.handler(async ({ context }) => ({
       canAssignRoles: await can(context.caller, ASSIGN_PERMISSION),
+      canManageGroups: await can(context.caller, "core:groups:manage"),
     })),
 
     add: managed.add.handler(async ({ context, input }) => {

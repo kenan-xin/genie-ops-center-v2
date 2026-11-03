@@ -105,4 +105,21 @@ export type PeopleScreenProps = {
   readonly onManageAccess?: (personId: string) => void;
   /** Opens the group a role comes through, from the person's Roles tab (mockup link). */
   readonly onOpenGroup?: (groupId: string) => void;
+  /**
+   * The local groups the person's Groups tab offers in Add to group. The host passes them and the
+   * two callbacks only to a caller who manages groups (`canManageGroups`, G16).
+   */
+  readonly localGroups?: readonly PersonGroupOption[] | undefined;
+  readonly onAddToGroup?:
+    | ((personId: string, groupId: string) => void)
+    | undefined;
+  readonly onRemoveFromGroup?:
+    | ((personId: string, groupId: string) => void)
+    | undefined;
+};
+
+/** A local group as Add to group lists it. */
+export type PersonGroupOption = {
+  readonly id: string;
+  readonly label: string;
 };

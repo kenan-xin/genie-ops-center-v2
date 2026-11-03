@@ -40,7 +40,9 @@ export const peopleContract = {
   // What the screen may show this caller.
   capabilities: oc
     .route({ method: "GET", path: "/people/capabilities" })
-    .output(z.object({ canAssignRoles: z.boolean() })),
+    .output(
+      z.object({ canAssignRoles: z.boolean(), canManageGroups: z.boolean() })
+    ),
 
   add: oc
     .route({ method: "POST", path: "/people" })

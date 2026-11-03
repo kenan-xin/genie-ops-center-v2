@@ -1254,10 +1254,14 @@
                   "properties": {
                     "canAssignRoles": {
                       "type": "boolean"
+                    },
+                    "canManageGroups": {
+                      "type": "boolean"
                     }
                   },
                   "required": [
-                    "canAssignRoles"
+                    "canAssignRoles",
+                    "canManageGroups"
                   ]
                 }
               }

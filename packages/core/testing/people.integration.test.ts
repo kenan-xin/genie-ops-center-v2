@@ -966,6 +966,26 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
     expect(roleless.id).toBeTruthy();
   });
 
+  it("G16: offers the person's group controls only to a caller who manages groups", async () => {
+    const { userId: peopleOnly } = await insertPersonWith(deployment.context, [
+      "core:people:manage",
+    ]);
+
+    const { userId: groupsToo } = await insertPersonWith(deployment.context, [
+      "core:people:manage",
+      "core:groups:manage",
+    ]);
+
+    const capabilitiesOf = (userId: string) =>
+      callProcedure(createPeopleRouter(), {
+        tenant: deployment.context,
+        caller: request(userId),
+      }).capabilities();
+
+    expect((await capabilitiesOf(peopleOnly)).canManageGroups).toBe(false);
+    expect((await capabilitiesOf(groupsToo)).canManageGroups).toBe(true);
+  });
+
   it("allows roles for a caller holding both keys", async () => {
     const { userId } = await insertPersonWith(deployment.context, [
       "core:people:manage",

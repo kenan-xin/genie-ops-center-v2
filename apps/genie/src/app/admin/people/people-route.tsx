@@ -56,6 +56,22 @@ export function PeopleRoute(props: {
     queryFn: () => rpc.people.capabilities(),
   });
 
+  const canManageGroups = capabilities.data?.canManageGroups === true;
+
+  // The local groups the person's Add to group offers, read only for a caller who manages groups.
+  const groups = useQuery({
+    queryKey: ["groups", false],
+    queryFn: () => rpc.groups.list({ includeArchived: false }),
+    enabled: canManageGroups,
+  });
+
+  const localGroups = (groups.data ?? [])
+    .filter((group) => group.source === "local")
+    .map((group) => ({
+      id: group.id,
+      label: group.displayLabel ?? group.name,
+    }));
+
   // A status write's refusal shows on the page. Its message already carries the wait of a
   // rate-limit refusal (R-21).
   const action = useAdminWrite({
@@ -144,6 +160,21 @@ export function PeopleRoute(props: {
       }
       onResendInvitation={(personId) =>
         run(() => rpc.people.resendInvitation({ personId }))
+      }
+      localGroups={canManageGroups ? localGroups : undefined}
+      onAddToGroup={
+        canManageGroups
+          ? (personId, groupId) =>
+              run(() => rpc.groups.addMembers({ groupId, userIds: [personId] }))
+          : undefined
+      }
+      onRemoveFromGroup={
+        canManageGroups
+          ? (personId, groupId) =>
+              run(() =>
+                rpc.groups.removeMembers({ groupId, userIds: [personId] })
+              )
+          : undefined
       }
       onOpenGroup={(groupId) =>
         router.push(`/admin/groups?selected=${encodeURIComponent(groupId)}`)
