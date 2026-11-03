@@ -127,7 +127,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
     email: scenarioEmail("done", "admin", project),
   });
   await page.goto(`${baseUrl}/admin/people`);
-  await page.getByLabel("Search people").fill(member);
+  await page.getByLabel("Search by name or email").fill(member);
   // The row opens from the person's name; a phone card also holds "Actions for <email>".
   await page
     .getByRole("button", { name: /^E2E Person/ })

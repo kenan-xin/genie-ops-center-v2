@@ -58,7 +58,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   const publicUrl = new URL(page.url()).origin;
 
   // Open and close a person first, so the save below proves the closed person is not read again.
-  await page.getByLabel("Search people").fill(adminEmail);
+  await page.getByLabel("Search by name or email").fill(adminEmail);
   // The row opens from the person's name, which is the card's title on a phone and the table's
   // identity cell from 768 px.
   await personRow(page, "E2E Person").first().click();
@@ -67,7 +67,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   await closedInspector.getByRole("button", { name: "Close" }).click();
   await expect(closedInspector).toBeHidden();
-  await page.getByLabel("Search people").fill("");
+  await page.getByLabel("Search by name or email").fill("");
 
   const detailReads: string[] = [];
 
@@ -175,7 +175,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await inspector.getByRole("button", { name: "Close" }).click();
 
   // Self-protection: the signed-in administrator's own row cannot disable itself (R-38).
-  await page.getByLabel("Search people").fill(adminEmail);
+  await page.getByLabel("Search by name or email").fill(adminEmail);
 
   const selfRow = personRow(page, "E2E Person").first();
 
@@ -197,7 +197,9 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await expect(selfRow).toBeFocused();
 
   // The break-glass account never appears in People (R-39).
-  await page.getByLabel("Search people").fill(e2eBreakGlassEmail(project));
+  await page
+    .getByLabel("Search by name or email")
+    .fill(e2eBreakGlassEmail(project));
 
   await expect(page.getByText(/No people match/)).toBeVisible();
 

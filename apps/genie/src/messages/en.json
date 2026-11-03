@@ -50,8 +50,8 @@
     },
     "people": {
       "title": "People",
-      "description": "Everyone who can sign in.",
-      "searchLabel": "Search people",
+      "description": "Everyone who can sign in to this tenant.",
+      "searchLabel": "Search by name or email",
       "noMatch": {
         "title": "No people match",
         "description": "Clear the search and the filters to see everyone."
