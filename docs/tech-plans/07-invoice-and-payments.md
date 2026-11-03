@@ -22,6 +22,7 @@ Critical path: S7-01, S7-03, S7-06, S7-07, S7-08, S7-09, S7-15. The agent and th
 - Core names no module function. Module tools arrive through the `agent-tools` interface (`DEC-29`, amended).
 - The key lives only in the `DEC-53` core table. Model calls go through one core function.
 - OpenUI: `@openuidev/react-lang` only, the `lang-core` install script denied in `allowBuilds`, `OPENUI_TELEMETRY_DISABLED=1`. Never `@openuidev/react-ui`, which pulls in Radix and zustand.
+- Artifacts (R-45a, `DEC-56`, added 2026-11-03): core tables `agent_artifact` and `agent_artifact_version` beside the agent session; an artifact message part holds `{ artifactId, version }` only. A tool that makes or changes a chart, table, document or record list writes a new version in the same transaction as its message. The panel reads the chat's artifacts through the agent router as the session owner and renders each version's definition through the same OpenUI catalog, so the dataset query runs again as the viewer. The panel is a core feature in `packages/core/src/features/agent/`; on a phone it is a sheet.
 
 ## Dependencies to add, each with a tech-stack line in its ticket
 

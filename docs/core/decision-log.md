@@ -679,3 +679,15 @@ Why: no new environment variable, models switch without a restart, and the tests
 Trade-off: OpenRouter passes prompts to third-party model providers. Real customer data needs Management approval first.
 
 Designed in: Section 7. Implemented: the model connection and the recorded test model in Section 7 (S7-05). Revisit when a customer requires a model inside its own network: the base URL becomes a setting.
+
+## DEC-56. Agent artifacts and the artifact panel
+
+Question (Ask review in the wave 4 dry run, 2026-11-03): where does a chart or table of an answer live, how does a person change it, and how does Ask stay usable for any module?
+
+Decision (owner, 2026-11-03): a chart, table, document or record list of an answer is an artifact. The answer shows a compact card; selecting it opens a panel beside the chat on a desktop and a full-screen sheet on a phone. The panel lists every artifact of the chat. A change request makes a new version of the same artifact, and the panel steps between versions. Storage is two core tables, `agent_artifact` and `agent_artifact_version`, and a message part only points to an artifact id and version. A version stores the definition, never figures, so it runs again as the viewer under `can()` and `scopesFor()`. Core owns the panel and the four kinds. Ask, the bubble and the panel name no module domain.
+
+Why two tables and not versions inside message parts: a message is a fixed record of what was said, and an artifact changes over time. Versions inside parts spread one artifact over many messages, make the panel scan every message, and turn a later rename, share or "add to a dashboard" into a migration out of jsonb. The tables cost one migration now (owner: minimal change only when the change is also correct). Why a card plus a panel and not inline charts only: the person keeps the prose in view while reading a chart, which Claude's artifacts also do. ChatGPT reportedly moved from its Canvas side panel to inline blocks in mid-2026 because the panel differed across phone and desktop (third-party reports, not confirmed); the card is the same on both, and only the opened view differs. Why the panel does not open by itself: the person stays in control of the screen.
+
+Trade-off: one more pair of core tables and a panel component. A deck or dashboard stays a module record, not an artifact.
+
+Designed in: Section 7 (follow-up after wave 4). Revisit when a module needs a kind the four core kinds cannot show: add an `artifact-kinds` point to the module contract with a definition schema and a renderer, and keep the `kind` check open to it. Revisit when a person asks to keep an artifact outside its chat: give `agent_artifact` its own owner and page. Guard: the `kind` column and the definition-only rule stay, so both paths remain open.

@@ -111,7 +111,11 @@ A null scope means the whole tenant. `can(user, permission, resource?)` collects
 
 `agent_session`: id (uuid, no default: the browser makes it, so a new chat has its link at once), user_id (foreign key to `user.id`, on delete cascade), title, model_id, created_at, updated_at (moves with each message). Index on (user_id, updated_at). One boss-agent chat (Spec 7 R-41).
 
-`agent_message`: id (uuid), session_id (foreign key to `agent_session.id`, on delete cascade), seq (bigint, generated always as identity, the message order), role (`user` or `assistant`, checked), parts (jsonb, the AI SDK UI message parts, tool inputs and results included), created_at. Index on (session_id, seq).
+`agent_message`: id (uuid), session_id (foreign key to `agent_session.id`, on delete cascade), seq (bigint, generated always as identity, the message order), role (`user` or `assistant`, checked), parts (jsonb, the AI SDK UI message parts, tool inputs and results included), created_at. Index on (session_id, seq). A part that shows an artifact holds only `{ artifactId, version }`, never the artifact's definition (`DEC-56`).
+
+`agent_artifact`: id (uuid), session_id (foreign key to `agent_session.id`, on delete cascade), kind (`chart`, `table`, `document` or `record-list`, checked), title, latest_version (integer), created_at, updated_at. Index on (session_id, created_at). One artifact of one chat (Spec 7 R-45a). It is deleted with its chat, so the erasure of `DEC-17` covers it.
+
+`agent_artifact_version`: artifact_id (foreign key to `agent_artifact.id`, on delete cascade), version (integer, from 1), definition (jsonb: the checked panel config of a chart or table, the record list's query, or a document's text; never query results), message_id (foreign key to `agent_message.id`, on delete cascade, the answer that made this version), created_at. Primary key (artifact_id, version). A version is never changed after it is written.
 
 Both tables are owner-only. Every read and write goes through the core agent store and filters on the signed-in person's `user_id`. Another person's session id answers not found, the same as a missing one, so an id alone opens nothing. The rows go with their person. A `user` row is never deleted, so personal erasure (`DEC-17`) deletes the person's sessions, and their messages cascade.
 

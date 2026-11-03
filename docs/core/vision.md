@@ -159,6 +159,7 @@ Product/configuration reasoning lives in [the decision log](decision-log.md); ar
 | DEC-53 | An administrator types a connection's API key on a write-only screen. Core stores it as plain text in one core table that only the integrations service reads, an accepted risk with encryption as the revisit path. `decision-log.md`. |
 | DEC-54 | A module publishes datasets as a module contract point: described fields and a select that applies `scopesFor()`. Core runs one generic query shape over it, with a row cap and a time limit, and never names a module table. Closes `OPEN-11`. `decision-log.md`. |
 | DEC-55 | The boss agent's model is OpenRouter through the AI SDK, with the key typed under `DEC-53`, allowed models and a default per task in Settings, and a recorded test model in every gate. PowerPoint uses pptxgenjs in the app process. Closes `OPEN-12`. `decision-log.md`. |
+| DEC-56 | An agent answer's chart, table, document or record list is an artifact with versions, stored in its own tables beside the chat, shown as a card in the answer and in a panel (a sheet on a phone). Core owns the panel and the four kinds; Ask stays module-agnostic. `decision-log.md`. |
 
 Initial tenant branding requires customer identity, locale and time zone, with standard product appearance defaults; application email configuration may follow later. See the [branding seed contract](../architecture/branding-seed.md) for the approved rules and their DEC-35 amendment.
 

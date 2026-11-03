@@ -4,7 +4,7 @@ Confidence: 7.4/10
 
 Reasoning: the product behavior is settled one decision at a time with the owner, and two cold critiques tested the plan and the tickets against the code. The score is lower than earlier sections for three reasons. Four new parts must land in about five weeks with no slip order. The model calls depend on an outside service (OpenRouter) and on models that change. Several core seams are new (datasets, the chart gate, the agent runtime, the typed key store), and none of them exists in code yet.
 
-Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day. Amended 2026-11-01 with the owner rulings of wave 3: R-15, R-26, R-46, R-49 and R-52.
+Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day. Amended 2026-11-01 with the owner rulings of wave 3: R-15, R-26, R-46, R-49 and R-52. Amended 2026-11-03 with the owner rulings of the Ask review in the wave 4 dry run: R-41, R-42, R-42a, R-45a and AC-8 (`DEC-56`).
 
 ## Goal and scope
 
@@ -131,15 +131,21 @@ R-39. The module declares `invoices:read` and `invoices:write` and default roles
 
 R-40. The agent route handler lives in core and the app mounts it. Messages stream as AI SDK message parts.
 
-R-41. Core stores agent sessions and messages, including tool results. Only the owner opens a session.
+R-41. Core stores agent sessions, messages, including tool results, and the artifacts of R-45a with their versions. Only the owner opens a session and its artifacts.
 
-R-42. The Ask page lists the person's sessions and shows one. The chat bubble at the bottom right of every page starts a new session each time it opens. Both list the same sessions. Both link to the Documents inbox. Chat takes no file upload. A core permission gates Ask.
+The boss agent, Ask and the chat bubble are core and module-agnostic: they work the same whether the deployment runs finance, healthcare, legal or CRM modules. Their screens, labels and artifact kinds never name a module's domain; a module's words appear only as content from its datasets and tools (owner, 2026-11-03).
+
+R-42. The Ask page lists the person's sessions and shows one. The chat bubble at the bottom right of every page starts a new session each time it opens. Both list the same sessions. Both link to the Documents inbox. Chat takes no file upload. A core permission gates Ask. The main menu lists Ask for a person who holds that permission.
+
+R-42a. Layout of Ask (owner, 2026-11-03). On Ask, the main menu opens as its icon rail and the chat history opens beside it; on every other page the main menu stays open. The chat history collapses on its own toggle. Answers stream word by word as the model writes them, never all at once at the end. Stop keeps the text so far. The composer shows one focus ring, and Send stays disabled until the composer holds text. The prototype is `ask-chat.prototype.html`, variant B, in the design workspace.
 
 R-43. The agent's tools are `list-datasets` (names and descriptions first), `query-dataset` (fields of one dataset), `open-record` (R-11), and the tools that modules provide through the `agent-tools` interface. Core names no module tool.
 
 R-44. An answer states the reporting date, uses only the measures of R-36, shows how each figure was calculated, and lists the records behind it as rows that open the record. A question the records cannot answer is refused.
 
 R-45. Chat answers render through OpenUI `@openuidev/react-lang` with a catalog of our own components. Every chart and table takes a checked panel config, never typed values. Repair is local. The `lang-core` install script is denied in `allowBuilds`, and `OPENUI_TELEMETRY_DISABLED=1` is set. `@openuidev/react-ui` is never installed. The prose of an answer is styled by a shadcn Typeset preset, `typeset-chat`, that matches the design tokens, and the OpenUI components are marked `not-typeset`.
+
+R-45a. Artifacts (owner, 2026-11-03, `DEC-56`). A chart, a table, a document or a record list that an answer makes is an artifact. In the answer it shows as a compact card with its kind, title and version, the same on a phone and on a desktop. Selecting the card opens the artifact panel: on a desktop beside the chat, which stays visible, and on a phone as a full-screen sheet. The panel does not open by itself. It lists every artifact of the chat, not only the latest answer's. A change request on an artifact ("show it as a line by month") makes a new version of the same artifact, and the panel steps between its versions. A version stores the artifact's definition, never its figures, so opening any version runs its query again as the viewer. The panel offers Copy, Download and, for a table, the records behind it. Core owns the panel and the kinds chart, table, document and record list.
 
 R-46. Tool results and document text are data, never instructions. A write tool runs only on an explicit request in the person's own message. Undo reverses a chat change to an existing dashboard or deck. Delete reverses a chat create (`analytics-create-dashboard`, `slides-create-deck`) (owner, 2026-11-01). The agent never creates, changes or links invoices and payments.
 
@@ -193,7 +199,7 @@ AC-6. Integration tests on the demo pack history give every total in `expected_b
 
 AC-7. With the recorded test model, the seven live uploads reach the expected statuses and records, and the end-to-end review flow gives the results in `expected_live_running_totals.json`, at both viewports. Proves R-23 to R-28, R-37, R-38.
 
-AC-8. With the recorded test model, the nine read questions match the expected-answers file, a person without `invoices:read` is refused, a disabled module's tools are absent, and the bubble and Ask share sessions, at both viewports. Proves R-40 to R-47.
+AC-8. With the recorded test model, the nine read questions match the expected-answers file, a person without `invoices:read` is refused, a disabled module's tools are absent, and the bubble and Ask share sessions, at both viewports. A change request on a chart makes version 2 of the same artifact, the panel steps back to version 1, and a phone opens the artifact as a sheet. Proves R-40 to R-47, with R-42a and R-45a.
 
 AC-9. The starter dashboard shows the expected totals. A dashboard built by chat refreshes after a payment is saved, at both viewports. Proves R-48 to R-51.
 
@@ -212,6 +218,7 @@ Unit tests for pure rules (chart-type rules, quote normalisation, matching decis
 - The rest of Section 6 (relation scopes, the full outbound HTTP service, notifications, `s3`). Trigger: Spec 6 epic `215x`.
 - Core agent tools over people, groups and the audit log, and helper agents (`DEC-29`). Trigger: a customer asks the agent about core data.
 - Shared dashboards and decks. Trigger: a person asks to share one.
+- Artifact kinds that a module declares, artifacts outside one chat (shared, listed on their own page), and adding an artifact to a dashboard or deck (`DEC-56` Revisit). Trigger: a module needs a kind that the four core kinds cannot show, or a person asks to keep an artifact outside its chat.
 - A vision-model critique of charts. Trigger: 20 to 30 hand-labelled charts exist.
 - Encryption at rest of the typed key (`DEC-53` Revisit).
 - A generic starter-dashboard seam. Trigger: a second module ships a starter.
