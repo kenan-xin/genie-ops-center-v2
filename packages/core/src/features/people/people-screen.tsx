@@ -567,9 +567,31 @@ function PersonGroups(props: {
 
         if (groups.length === 0) return null;
 
+        // Sign-in refreshes every directory group at once, so one time heads the section.
+        const syncedAt =
+          groups
+            .flatMap((group) =>
+              group.syncedAt === null ? [] : [group.syncedAt]
+            )
+            .toSorted()
+            .at(-1) ?? null;
+
         return (
           <section key={source} aria-label={title}>
-            <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+            <div className="flex items-baseline justify-between gap-2">
+              <h3 className="text-sm font-semibold text-foreground">{title}</h3>
+              {source === "idp" && syncedAt !== null ? (
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  Synced {fmtDateTime(syncedAt, props.viewer.timeZone, "")}
+                </span>
+              ) : null}
+            </div>
+            {source === "idp" ? (
+              <p className="text-xs text-muted-foreground">
+                Membership is managed in the identity provider and refreshed at
+                every sign-in.
+              </p>
+            ) : null}
             <ul className="mt-1">
               {groups.map((group) => (
                 <li
@@ -583,12 +605,6 @@ function PersonGroups(props: {
                   <span className="min-w-0 flex-1">
                     <GroupName value={group.label} />
                   </span>
-                  {group.syncedAt === null ? null : (
-                    <span className="shrink-0 text-xs text-muted-foreground">
-                      synced{" "}
-                      {fmtDateTime(group.syncedAt, props.viewer.timeZone, "")}
-                    </span>
-                  )}
                 </li>
               ))}
             </ul>
