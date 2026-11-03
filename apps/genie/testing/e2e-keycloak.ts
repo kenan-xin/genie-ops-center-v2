@@ -82,6 +82,8 @@ export const E2E_READER_SPECS = [
   "access",
   // S2-22: the Overview administrator. Its own user, because the Grants spec runs in parallel.
   "access-overview",
+  // S2-23: the Advanced access administrator. Its own user, because the other Access specs run in parallel.
+  "access-advanced",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
@@ -114,6 +116,14 @@ export function e2ePlaceholderUngrantedEmail(project: string): string {
  */
 export function e2eAccessMemberEmail(project: string): string {
   return `e2e.access-member.${project}@example.com`;
+}
+
+/**
+ * The Advanced access proof's member (S2-23): a `user` row with no role, who reaches People or a
+ * Placeholder record only through what Advanced access gives them.
+ */
+export function e2eAccessAdvancedMemberEmail(project: string): string {
+  return `e2e.access-advanced-member.${project}@example.com`;
 }
 
 /** A realm user whose email is also a break-glass account's (R-62). */
