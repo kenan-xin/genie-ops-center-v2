@@ -30,6 +30,7 @@ import {
   type RolesModule,
   updateRole,
 } from "./index.ts";
+import { readRecordLabels, searchScopeRecords } from "./records.ts";
 
 // The session check, then the permission gate, both before input is parsed: an anonymous,
 // idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
@@ -192,6 +193,24 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         tenant: context.tenant,
         caller: context.caller,
         modules,
+      })
+    ),
+
+    scopeRecords: managed.scopeRecords.handler(({ context, input }) =>
+      searchScopeRecords({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        recordType: input.recordType,
+        query: input.query,
+      })
+    ),
+
+    recordLabels: managed.recordLabels.handler(({ context, input }) =>
+      readRecordLabels({
+        caller: context.caller,
+        modules,
+        records: input.records,
       })
     ),
 

@@ -75,6 +75,17 @@ export type RecordTypeDeclaration = {
     ctx: { readonly tenant: TenantContext },
     id: string
   ): Promise<RecordDescriptor | undefined>;
+  /**
+   * Optional. Answers the ids of at most `limit` records whose label matches `query`, read through
+   * `ctx.tenant` (DEC-34). Core resolves each id with `resolve` and shows it only when the caller
+   * may open the record under `can()` (R-69). Advanced access offers a record scope only for a
+   * module with exactly one record type that declares it (Spec 2 U3).
+   */
+  search?(
+    ctx: { readonly tenant: TenantContext },
+    query: string,
+    limit: number
+  ): Promise<readonly string[]>;
 };
 
 /** 6. Default roles. Declared in Section 0, seeded in Section 2. */

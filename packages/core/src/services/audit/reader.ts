@@ -1,12 +1,15 @@
 import { and, desc, eq, isNull, sql, type SQL } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
-import { permissionKeyFor } from "../../lib/module-contract/keys.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { auditEvent, user } from "../../schema.ts";
 import { likePattern } from "../../utils/like-pattern.ts";
 import { can, type RequestPrincipal } from "../authorization/index.ts";
+import {
+  readableRecords,
+  recordKey,
+} from "../authorization/readable-records.ts";
 import { AUDIT_ACTIONS } from "./actions.ts";
 
 /**
@@ -268,88 +271,6 @@ function cursorCondition(cursor: AuditEventCursor): SQL {
   return sql`(${auditEvent.occurredAt}, ${auditEvent.id}) < (${cursor.occurredAt}::timestamptz, ${cursor.id}::uuid)`;
 }
 
-/** The module that declares one record type, or undefined when none does. */
-function moduleForRecordType(
-  modules: AuditReadInput["modules"],
-  type: string
-): AuditReadInput["modules"][number] | undefined {
-  return modules.find((module) =>
-    module.recordTypes.some((recordType) => recordType.type === type)
-  );
-}
-
-/** A target the viewer may not open: no live label, no existence flag, no path (R-69). */
-const HIDDEN_TARGET: ResolvedTarget = { label: "", exists: false, path: null };
-
-type ResolvedTarget = {
-  readonly label: string;
-  readonly exists: boolean;
-  readonly path: string | null;
-};
-
-/**
- * Resolves each distinct target once, through the principal's own record resolver, and keeps the
- * live label, existence and path only when the viewer may open the record under `can()` on the
- * path's declared permission (defaulting to the owning module's `<id>:use`). Core's people, groups
- * and roles resolve through the same resolver and name their own manage key. A target the viewer
- * may not open is returned exactly like a target that no longer resolves: only the stored type and
- * id remain, so an auditor entitled to the event but not the record learns nothing live (R-69).
- *
- * The resolution goes through `caller.recordOf`, the same memo `can()` reads for parents, so the
- * owning module's resolver runs at most once for one target per request.
- */
-async function resolveTargets(
-  input: AuditReadInput,
-  targets: readonly { readonly type: string; readonly id: string }[]
-): Promise<Map<string, ResolvedTarget>> {
-  const resolved = new Map<string, ResolvedTarget>();
-
-  for (const target of targets) {
-    const key = `${target.type}\u0000${target.id}`;
-
-    if (resolved.has(key)) continue;
-
-    // oxlint-disable-next-line no-await-in-loop -- one target at a time; the principal memoises each.
-    const descriptor = await input.caller.recordOf({
-      type: target.type,
-      id: target.id,
-    });
-
-    const module = moduleForRecordType(input.modules, target.type);
-
-    // Core's own record types always name their permission; a module's default to `<id>:use`.
-    const permission =
-      descriptor?.permission ??
-      (module === undefined
-        ? undefined
-        : permissionKeyFor(module.identity.id, "use"));
-
-    if (descriptor === undefined || permission === undefined) {
-      resolved.set(key, HIDDEN_TARGET);
-      continue;
-    }
-
-    // oxlint-disable-next-line no-await-in-loop -- the check belongs to this target's resolution.
-    const allowed = await can(input.caller, permission, {
-      type: target.type,
-      id: target.id,
-    });
-
-    if (!allowed) {
-      resolved.set(key, HIDDEN_TARGET);
-      continue;
-    }
-
-    resolved.set(key, {
-      label: descriptor.label,
-      exists: true,
-      path: descriptor.path ?? null,
-    });
-  }
-
-  return resolved;
-}
-
 function toActorView(row: {
   readonly actorId: string | null;
   readonly actorName: string | null;
@@ -414,13 +335,13 @@ export async function readAuditPage(input: AuditReadInput): Promise<AuditPage> {
       : [{ type: row.targetType, id: row.targetId }]
   );
 
-  const resolved = await resolveTargets(input, targets);
+  const resolved = await readableRecords(input.caller, input.modules, targets);
 
   const events: AuditEventView[] = page.map((row) => {
     const target =
       row.targetType === null || row.targetId === null
         ? undefined
-        : resolved.get(`${row.targetType}\u0000${row.targetId}`);
+        : resolved.get(recordKey({ type: row.targetType, id: row.targetId }));
 
     return {
       id: row.id,

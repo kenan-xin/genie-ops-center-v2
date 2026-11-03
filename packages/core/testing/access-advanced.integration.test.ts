@@ -58,6 +58,10 @@ const modules: readonly FixtureModule[] = [
 
           return label === undefined ? undefined : { label };
         },
+        search: async (_ctx, query) =>
+          [...FIXTURE_RECORDS].flatMap(([id, label]) =>
+            label.toLowerCase().includes(query.toLowerCase()) ? [id] : []
+          ),
       },
     ],
     defaultRoles: [
@@ -71,8 +75,16 @@ const modules: readonly FixtureModule[] = [
     identity: { id: "pair", displayName: "Pair", version: "0.0.0" },
     permissions: [{ key: "pair:use", label: "Use" }],
     recordTypes: [
-      { type: "pair-one", resolve: async () => ({ label: "One" }) },
-      { type: "pair-two", resolve: async () => ({ label: "Two" }) },
+      {
+        type: "pair-one",
+        resolve: async () => ({ label: "One" }),
+        search: async () => ["p1"],
+      },
+      {
+        type: "pair-two",
+        resolve: async () => ({ label: "Two" }),
+        search: async () => ["p2"],
+      },
     ],
     defaultRoles: [{ name: "Pair user", permissions: ["pair:use"] }],
     defaultAccessRole: "Pair user",
@@ -82,7 +94,11 @@ const modules: readonly FixtureModule[] = [
     identity: { id: "dormant", displayName: "Dormant", version: "0.0.0" },
     permissions: [{ key: "dormant:use", label: "Use" }],
     recordTypes: [
-      { type: "dormant-record", resolve: async () => ({ label: "Sleepy" }) },
+      {
+        type: "dormant-record",
+        resolve: async () => ({ label: "Sleepy" }),
+        search: async () => ["d1"],
+      },
     ],
     defaultRoles: [{ name: "Dormant user", permissions: ["dormant:use"] }],
     defaultAccessRole: "Dormant user",
@@ -471,6 +487,17 @@ describe("the Advanced access writer", () => {
       await expect(roles(reader).advancedCatalogue()).rejects.toMatchObject({
         code: "forbidden",
       });
+      await expect(
+        roles(reader).scopeRecords({
+          recordType: "fixture-record",
+          query: "record",
+        })
+      ).rejects.toMatchObject({ code: "forbidden" });
+      await expect(
+        roles(reader).recordLabels({
+          records: [{ type: "fixture-record", id: "rec-a" }],
+        })
+      ).rejects.toMatchObject({ code: "forbidden" });
       expect(await directRoles(target)).toHaveLength(1);
     }
   );
@@ -554,5 +581,74 @@ describe("the Advanced access reads", () => {
         recordType: null,
       });
     }
+  });
+});
+
+/** A person with `core:roles:manage` for the whole tenant and the given `Fixture viewer` grant. */
+async function manager(
+  name: string,
+  fixture: "tenant" | "rec-a" | "none"
+): Promise<string> {
+  const id = await insertUser(deployment.context, { name });
+
+  await grantTo("Access manager", { type: "user", id });
+
+  if (fixture !== "none") {
+    await grantTo(
+      "Fixture viewer",
+      { type: "user", id },
+      fixture === "tenant" ? undefined : { type: "fixture-record", id: "rec-a" }
+    );
+  }
+
+  return id;
+}
+
+function search(callerId: string, recordType: string, query: string) {
+  return roles(callerId).scopeRecords({ recordType, query });
+}
+
+describe("the scope picker records", () => {
+  let reader: string;
+  let scout: string;
+  let bare: string;
+
+  beforeAll(async () => {
+    reader = await manager("Reader", "tenant");
+    scout = await manager("Scout", "rec-a");
+    bare = await manager("Bare", "none");
+  });
+
+  it("S2: lists the matching records that the caller can open, with the resolver's label", async () => {
+    expect(await search(reader, "fixture-record", "record")).toEqual([
+      { id: "rec-a", label: "Record A" },
+      { id: "rec-b", label: "Record B" },
+    ]);
+    expect(await search(scout, "fixture-record", "record")).toEqual([
+      { id: "rec-a", label: "Record A" },
+    ]);
+    expect(await search(bare, "fixture-record", "record")).toEqual([]);
+  });
+
+  it.each([
+    ["no-such-type", "not-found"],
+    ["plain-note", "not-found"],
+    ["dormant-record", "module-disabled"],
+  ])("S3: refuses a search of %s with %s", async (recordType, code) => {
+    await expect(search(reader, recordType, "")).rejects.toMatchObject({
+      code,
+    });
+  });
+
+  it("S4: labels only the records that the caller can open", async () => {
+    expect(
+      await roles(scout).recordLabels({
+        records: [
+          { type: "fixture-record", id: "rec-a" },
+          { type: "fixture-record", id: "rec-b" },
+          { type: "fixture-record", id: "rec-gone" },
+        ],
+      })
+    ).toEqual([{ type: "fixture-record", id: "rec-a", label: "Record A" }]);
   });
 });

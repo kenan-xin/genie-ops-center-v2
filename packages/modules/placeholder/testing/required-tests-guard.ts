@@ -138,4 +138,12 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent route on the placeholder refuses a module tool inside the stream for a person without placeholder:read, answers the refusal, and audits it as forbidden",
     ],
   },
+  {
+    file: "testing/record-search.integration.test.ts",
+    reason:
+      "Spec 2 R-37c and the module contract, Record types: the scope picker's search matches a label in any case, keeps the limit, and reads `%` as plain text",
+    cases: [
+      "the placeholder record search S1: answers the records whose label holds the query, in any case, up to the limit",
+    ],
+  },
 ];

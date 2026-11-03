@@ -5,6 +5,7 @@ import type { AdvancedCatalogue, RemovalGuard } from "./advanced.ts";
 import type { AccessPage, AccessPath } from "./effective-access.ts";
 import type { GrantRecipients, GrantRow } from "./grants.ts";
 import type { RoleDetail, RolePermissionGroup, RoleRow } from "./index.ts";
+import type { RecordLabel, ScopeRecord } from "./records.ts";
 
 const roleId = z.object({ roleId: z.uuid() });
 
@@ -200,6 +201,23 @@ export const rolesContract = {
   advancedCatalogue: oc
     .route({ method: "GET", path: "/roles/advanced/catalogue" })
     .output(z.custom<AdvancedCatalogue>()),
+
+  // R-37c, AD2, AD3: the records of one record type that match a search, under the record check.
+  scopeRecords: oc
+    .route({ method: "GET", path: "/roles/records/search" })
+    .input(
+      z.object({
+        recordType: z.string().min(1).max(200),
+        query: z.string().max(200),
+      })
+    )
+    .output(z.custom<readonly ScopeRecord[]>()),
+
+  // AD10: the labels of the scopes the caller may open; any other scope is left out.
+  recordLabels: oc
+    .route({ method: "POST", path: "/roles/records/labels" })
+    .input(z.object({ records: z.array(recordRef).max(100) }))
+    .output(z.custom<readonly RecordLabel[]>()),
 
   // R-37e, R-39: the groups and people the Grants picker offers, without the break-glass account.
   grantRecipients: oc

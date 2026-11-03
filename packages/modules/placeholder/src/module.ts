@@ -7,6 +7,7 @@ import {
   type TenantContext,
 } from "@genie/core";
 import { capability, defineEvent } from "@genie/core/contracts";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { countRecordsTool } from "./agent-tools.ts";
@@ -177,6 +178,18 @@ export const placeholderModule = {
         label: `Placeholder record ${id}`,
         path: `/placeholder/${id}`,
       }),
+      // `strpos`, not LIKE, so `%` and `_` stay plain text.
+      search: async (ctx, query: string, limit: number) =>
+        (
+          await ctx.tenant.db
+            .select({ id: placeholderRecord.id })
+            .from(placeholderRecord)
+            .where(
+              sql`strpos(lower(${placeholderRecord.label}), lower(${query})) > 0`
+            )
+            .orderBy(placeholderRecord.label)
+            .limit(limit)
+        ).map((row) => row.id),
     },
   ],
 
