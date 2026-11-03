@@ -129,7 +129,12 @@ function RoleRow(props: {
         <p className="font-semibold wrap-anywhere">{props.name}</p>
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className="text-muted-foreground">{props.module}</span>
-          <LabelPill>{props.scope}</LabelPill>
+          {/* A long record label breaks, so it stays inside the pill on a phone. */}
+          <LabelPill>
+            <span className="min-w-0 whitespace-normal wrap-anywhere">
+              {props.scope}
+            </span>
+          </LabelPill>
           {props.custom ? <LabelPill>Custom role</LabelPill> : null}
           {props.inactive === true ? (
             <StatusPill tone="warning">Inactive</StatusPill>
@@ -142,9 +147,10 @@ function RoleRow(props: {
           ) : null}
         </div>
         {props.reason === undefined ? null : (
-          <p id={reasonId} className="text-xs text-muted-foreground">
-            {props.reason}
-          </p>
+          // Amber, as the design draws the reason: Remove is blocked (tokens.md, Warning note).
+          <div id={reasonId}>
+            <WarningNote size="sm">{props.reason}</WarningNote>
+          </div>
         )}
       </div>
       <div className="shrink-0">

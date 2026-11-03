@@ -18,6 +18,8 @@ const meta = {
   parameters: {
     layout: "fullscreen",
     docs: {
+      // Every story mounts the sheet open; inline, the 15 modal sheets stack over the docs page.
+      story: { inline: false, iframeHeight: 640 },
       description: {
         component:
           "Advanced access on the Grants tab (R-37c): core administration, the Auditor role, a module role at one record, and custom roles for one recipient. Every change is staged as Pending, and one Save writes them all. Remove is disabled in place on a guarded Tenant administrator row (R-38). A refused save keeps every staged change.",
@@ -95,6 +97,33 @@ export const RecordWithoutLabel: Story = {
   },
 };
 
+/** A long record label wraps inside the sheet on a phone, and does not run past its edge. */
+export const LongRecordLabelPhone: Story = {
+  args: {
+    recordLabels: new Map([
+      [
+        "invoices-invoice\u0000inv-0142",
+        "Placeholder record 00000000-0000-4000-8000-0000000000a1",
+      ],
+    ]),
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async () => {
+    const dialog = await screen.findByRole("dialog", {
+      name: "Advanced access",
+    });
+
+    const text = within(dialog).getByText(/^One record · Placeholder record/);
+
+    // The pill box stops at the row's width, so the text inside it is what overflows.
+    const pill = text.closest<HTMLElement>("[class*='rounded-full']") ?? text;
+
+    await waitFor(() =>
+      expect(pill.scrollWidth).toBeLessThanOrEqual(pill.clientWidth)
+    );
+  },
+};
+
 /** K2: Undo restores a row, and Save sends only the removal still staged. */
 export const RemoveAndUndo: Story = {
   play: async ({ args }) => {
@@ -141,14 +170,16 @@ export const GuardedLastAdministrator: Story = {
   play: async () => {
     const row = rowOf(await sheet(), "Tenant administrator");
 
-    await expect(
-      row.getByRole("button", { name: "Remove Tenant administrator" })
-    ).toBeDisabled();
-    await expect(
-      row.getByText(
-        "Last active Tenant administrator path. Give the role to somebody else first."
-      )
-    ).toBeVisible();
+    const reason =
+      "Last active Tenant administrator path. Give the role to somebody else first.";
+
+    const remove = row.getByRole("button", {
+      name: "Remove Tenant administrator",
+    });
+
+    await expect(remove).toBeDisabled();
+    await expect(remove).toHaveAccessibleDescription(reason);
+    await expect(row.getByText(reason)).toBeVisible();
   },
 };
 
