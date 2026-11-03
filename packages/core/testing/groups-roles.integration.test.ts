@@ -1378,6 +1378,24 @@ describe("the roles list order", () => {
     expect(kinds.lastIndexOf("core")).toBeLessThan(kinds.indexOf("fixture"));
     expect(kinds.lastIndexOf("fixture")).toBeLessThan(kinds.indexOf("custom"));
   });
+
+  it("G39: describes a core system role even when its row stores no description", async () => {
+    const actor = await insertManager();
+
+    await deployment.context.db
+      .update(roleTable)
+      .set({ description: null })
+      .where(eq(roleTable.name, TENANT_ADMINISTRATOR_ROLE));
+
+    const listed = await rolesCaller(actor).list();
+
+    expect(
+      listed.find((entry) => entry.name === TENANT_ADMINISTRATOR_ROLE)
+        ?.description
+    ).toBe(
+      "Full control of people, groups, roles, branding, settings, and the audit log."
+    );
+  });
 });
 
 describe("the entitlement filter on roles", () => {

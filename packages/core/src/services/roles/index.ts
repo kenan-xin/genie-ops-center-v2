@@ -13,6 +13,7 @@ import { writeAdminAuditEvent } from "../audit/index.ts";
 import {
   CORE_PERMISSION_KEYS,
   CORE_PERMISSION_LABELS,
+  CORE_ROLE_DESCRIPTIONS,
 } from "../authorization/roles.ts";
 import { groupLabelSql } from "../groups/label.ts";
 
@@ -166,7 +167,10 @@ function toRoleRow(
   return {
     id: raw.id,
     name: raw.name,
-    description: raw.description,
+    description:
+      raw.description === "" && raw.isSystem && raw.moduleId === null
+        ? (CORE_ROLE_DESCRIPTIONS.get(raw.name) ?? "")
+        : raw.description,
     kind: raw.isSystem ? "system" : "custom",
     moduleId: raw.moduleId,
     permissions,

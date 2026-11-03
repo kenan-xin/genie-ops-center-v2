@@ -46,15 +46,29 @@ export {
   TENANT_ADMINISTRATOR_ROLE,
 } from "../../lib/module-contract/system-roles.ts";
 
+/**
+ * The line each core system role shows in the Roles list and detail (design data). A read falls
+ * back to it when the stored description is empty, so a deployment seeded before it gets it too.
+ */
+export const CORE_ROLE_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
+  [
+    TENANT_ADMINISTRATOR_ROLE,
+    "Full control of people, groups, roles, branding, settings, and the audit log.",
+  ],
+  [AUDITOR_ROLE, "Read-only access to the audit log."],
+]);
+
 const CORE_ROLES = [
   {
     name: TENANT_ADMINISTRATOR_ROLE,
+    description: CORE_ROLE_DESCRIPTIONS.get(TENANT_ADMINISTRATOR_ROLE),
     permissions: [...CORE_PERMISSION_KEYS],
     moduleId: null,
     isSystem: true,
   },
   {
     name: AUDITOR_ROLE,
+    description: CORE_ROLE_DESCRIPTIONS.get(AUDITOR_ROLE),
     permissions: ["core:audit:read"],
     moduleId: null,
     isSystem: true,
