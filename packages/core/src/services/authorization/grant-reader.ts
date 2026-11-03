@@ -8,6 +8,7 @@ import type {
   RecordDescriptor,
 } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { groupLabelSql } from "../groups/label.ts";
 import { CORE_RECORD_TYPES } from "./core-record-types.ts";
 import { eligibility } from "./eligibility.ts";
 import {
@@ -39,7 +40,7 @@ const ASSIGNMENTS_SQL = `
          r.permissions, a.scope_type, a.scope_id,
          r.name as role_name, r.module_id as module_name,
          cardinality(r.permissions) as permission_count,
-         case when a.principal_type = 'group' then g.name end as via
+         case when a.principal_type = 'group' then ${groupLabelSql("g")} end as via
     from "user" u
     left join role_assignment a
       on (a.principal_type = 'user' and a.principal_id = u.id)

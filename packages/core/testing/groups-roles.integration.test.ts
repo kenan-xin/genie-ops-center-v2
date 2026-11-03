@@ -7,6 +7,7 @@ import {
   createPeopleRouter,
   createRolesRouter,
   principalFor,
+  readOwnGroups,
   removeAssignment,
   type ModuleHistorySource,
   type RequestPrincipal,
@@ -23,7 +24,9 @@ import {
   role as roleTable,
   roleAssignment,
 } from "../src/schema.ts";
+import { readHolders } from "../src/services/authorization/holders.ts";
 import {
+  assignRole,
   enableModules,
   insertGroup,
   insertPersonWith,
@@ -362,6 +365,60 @@ describe("the groups router against a real database", () => {
 
     expect(joined[0]?.externalId).toBe("Finance");
     expect(joined[0]?.id).not.toBe(labeled?.id);
+  });
+
+  it("R-24c: names a labelled directory group by its label on every read, never by its value", async () => {
+    const value = "39545f73-134e-49ac-9731-0e96df8ea218";
+    const member = await insertUser(deployment.context);
+
+    const groupId = await insertGroup(deployment.context, [member], {
+      name: value,
+      externalId: value,
+      displayLabel: "Pilot finance",
+      source: "idp",
+      lastSeenAt: new Date(),
+    });
+
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["fixture:use"],
+    });
+
+    await assignRole(deployment.context, {
+      roleId,
+      principal: { type: "group", id: groupId },
+    });
+
+    const { userId: actor } = await insertPersonWith(deployment.context, [
+      "core:people:manage",
+      "core:roles:manage",
+    ]);
+
+    const people = await peopleCaller(actor).list();
+
+    const role = await rolesCaller(actor).get({ roleId });
+
+    const holders = await readHolders(deployment.context, modules, [
+      "fixture:use",
+    ]);
+
+    const summaries = (await request(member).grants()).roleSummaries ?? [];
+
+    const own = await readOwnGroups(deployment.context, member);
+
+    expect(
+      people.find((person) => person.id === member)?.groups.map((g) => g.label)
+    ).toEqual(["Pilot finance"]);
+    expect(role.assignments.map((a) => a.principalLabel)).toEqual([
+      "Pilot finance",
+    ]);
+    expect(
+      holders
+        .get("fixture:use")
+        ?.filter((holder) => holder.principalId === groupId)
+        .map((holder) => holder.label)
+    ).toEqual(["Pilot finance"]);
+    expect(summaries.map((summary) => summary.via)).toEqual(["Pilot finance"]);
+    expect(own.map((g) => g.name)).toEqual(["Pilot finance"]);
   });
 
   it("edits and clears a directory group label with a catalogue audit row", async () => {

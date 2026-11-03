@@ -20,6 +20,7 @@ import {
   assignRoleInTransaction,
   removeUserAssignments,
 } from "../authorization/role-assignment.ts";
+import { groupLabelSql } from "../groups/label.ts";
 import {
   createRealmUser,
   deleteRealmUser,
@@ -162,8 +163,8 @@ const PERSON_COLUMNS = `
   u.last_sign_in_at::text as "lastSignInAt",
   exists(select 1 from account a where a.user_id = u.id and a.provider_id = 'credential') as local,
   coalesce(
-    (select json_agg(json_build_object('id', g.id::text, 'label', coalesce(g.display_label, g.name))
-                     order by lower(coalesce(g.display_label, g.name)))
+    (select json_agg(json_build_object('id', g.id::text, 'label', ${groupLabelSql("g")})
+                     order by lower(${groupLabelSql("g")}))
        from group_member m join "group" g on g.id = m.group_id
       where m.user_id = u.id),
     '[]'::json) as groups,
@@ -305,12 +306,12 @@ export async function readPerson(
 
   const groups = await tenant.db.$client.query(
     `select g.id::text as id, g.name,
-            coalesce(g.display_label, g.name) as label, g.source,
+            ${groupLabelSql("g")} as label, g.source,
             m.synced_at::text as "syncedAt"
        from group_member m
        join "group" g on g.id = m.group_id
       where m.user_id = $1
-      order by lower(coalesce(g.display_label, g.name))`,
+      order by lower(${groupLabelSql("g")})`,
     [personId]
   );
 
@@ -324,7 +325,7 @@ export async function readPerson(
       union all
      select a.id::text as id, a.role_id::text as "roleId", r.name as "roleName",
             r.module_id as "moduleId", a.scope_type as "scopeType", a.scope_id as "scopeId",
-            'group' as source, g.id as "groupId", coalesce(g.display_label, g.name) as "groupName"
+            'group' as source, g.id as "groupId", ${groupLabelSql("g")} as "groupName"
        from group_member m
        join "group" g on g.id = m.group_id
        join role_assignment a

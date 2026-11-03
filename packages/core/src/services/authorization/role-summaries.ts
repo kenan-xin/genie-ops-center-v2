@@ -1,4 +1,5 @@
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { groupLabelSql } from "../groups/label.ts";
 import type { RequestPrincipal, RoleSummary } from "./principal.ts";
 
 /**
@@ -26,8 +27,9 @@ export async function readRoleSummaries(
 }
 
 /**
- * One group chip of the account page's Profile block (R-18): the group's name and whether it
- * arrived from the directory or was made locally.
+ * One group chip of the account page's Profile block (R-18): the group's name, which is its
+ * display label when one is set (R-24c), and whether it arrived from the directory or was made
+ * locally.
  */
 export type OwnGroup = {
   readonly id: string;
@@ -52,11 +54,11 @@ export async function readOwnGroups(
   // SAFETY: the statement below selects exactly the three columns this cast names, and the
   // pool returns unknown.
   const result = (await tenant.db.$client.query(
-    `select g.id::text as id, g.name, g.source
+    `select g.id::text as id, ${groupLabelSql("g")} as name, g.source
        from group_member m
        join "group" g on g.id = m.group_id
       where m.user_id = $1 and g.archived_at is null
-      order by g.name`,
+      order by lower(${groupLabelSql("g")})`,
     [userId]
   )) as { readonly rows: readonly OwnGroupRow[] };
 

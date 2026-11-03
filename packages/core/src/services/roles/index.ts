@@ -14,6 +14,7 @@ import {
   CORE_PERMISSION_KEYS,
   CORE_PERMISSION_LABELS,
 } from "../authorization/roles.ts";
+import { groupLabelSql } from "../groups/label.ts";
 
 /** The role catalogue entries a screen may offer, and what it can say about each module. */
 export type RolesModule = Pick<Module, "identity" | "permissions">;
@@ -282,7 +283,7 @@ export async function readRole(
   const assignments = await tenant.db.$client.query(
     `select a.id::text as id, a.principal_type as "principalType",
             a.principal_id as "principalId",
-            coalesce(u.name, g.name, 'Unknown') as "principalLabel",
+            coalesce(u.name, ${groupLabelSql("g")}, 'Unknown') as "principalLabel",
             a.scope_type as "scopeType", a.scope_id as "scopeId"
        from role_assignment a
        left join "user" u on a.principal_type = 'user' and u.id = a.principal_id
@@ -290,7 +291,7 @@ export async function readRole(
       where a.role_id = $1::uuid
         -- R-39: the break-glass account appears only in the audit log.
         and coalesce(u.is_break_glass, false) = false
-      order by a.principal_type, lower(coalesce(u.name, g.name))`,
+      order by a.principal_type, lower(coalesce(u.name, ${groupLabelSql("g")}))`,
     [roleId]
   );
 

@@ -12,6 +12,7 @@ import {
   lockAdministratorGuard,
 } from "../authorization/administrators.ts";
 import { removeGroupAssignments } from "../authorization/role-assignment.ts";
+import { groupLabelSql } from "./label.ts";
 
 /** One identity-provider group or one local group, as the Groups screen reads it. */
 export type GroupRow = {
@@ -137,7 +138,7 @@ export async function listGroups(
     `select ${GROUP_COLUMNS}
        from "group" g
       where ($1::boolean or g.archived_at is null)
-      order by (g.archived_at is not null), lower(coalesce(g.display_label, g.name))`,
+      order by (g.archived_at is not null), lower(${groupLabelSql("g")})`,
     [options.includeArchived]
   );
 

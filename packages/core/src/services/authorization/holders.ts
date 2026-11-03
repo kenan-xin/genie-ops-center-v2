@@ -1,6 +1,7 @@
 import type { PermissionKey } from "../../lib/module-contract/keys.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { groupLabelSql } from "../groups/label.ts";
 import { eligibility } from "./eligibility.ts";
 import { permissionCatalogue } from "./roles.ts";
 
@@ -22,7 +23,7 @@ const { inactivePerson, activeGroup } = eligibility("u", "g");
  */
 const HOLDERS_SQL = `
   select k.key, a.principal_type as "principalType", a.principal_id as "principalId",
-         coalesce(u.name, g.name) as label, r.name as "roleName"
+         coalesce(u.name, ${groupLabelSql("g")}) as label, r.name as "roleName"
     from role_assignment a
     join role r on r.id = a.role_id
     cross join unnest(r.permissions) as k(key)
@@ -31,7 +32,7 @@ const HOLDERS_SQL = `
    where k.key = any($1::text[])
      and ((u.id is not null and u.is_break_glass = false and not ${inactivePerson})
        or (g.id is not null and ${activeGroup}))
-   order by a.principal_type, lower(coalesce(u.name, g.name)), r.name`;
+   order by a.principal_type, lower(coalesce(u.name, ${groupLabelSql("g")})), r.name`;
 
 /**
  * The groups and people who hold each key through a role. The read applies the grant reader's
