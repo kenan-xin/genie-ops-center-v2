@@ -7,6 +7,7 @@ import {
   FIXTURE_CUSTOM_DETAIL,
   FIXTURE_DISABLED_MODULE_DETAIL,
   FIXTURE_ROLES,
+  FIXTURE_SYSTEM_ROLE,
   FIXTURE_SYSTEM_DETAIL,
   FIXTURE_TWO_UNAVAILABLE_DETAIL,
   FIXTURE_VIEWER,
@@ -78,7 +79,7 @@ export const Default: Story = {
 
     await expect(table.getByText("Tenant administrator")).toBeInTheDocument();
     await expect(table.getByText("Invoice approver")).toBeInTheDocument();
-    await expect(table.getByText("System · core")).toBeInTheDocument();
+    await expect(table.getByText("System · Core")).toBeInTheDocument();
     await expect(table.getByText("Custom")).toBeInTheDocument();
     await expect(canvas.getByPlaceholderText("Search roles")).toBeVisible();
   },
@@ -138,7 +139,8 @@ export const Phone: Story = {
     const cards = list.getAllByRole("listitem");
     const first = within(cards[0]!);
     const name = first.getByRole("button", { name: /Tenant administrator/ });
-    const kind = first.getByText(/^System/);
+    // G56: the phone card says only "System", as the mockup does.
+    const kind = first.getByText("System", { exact: true });
 
     await expect(
       new Set(cards.map((card) => card.getBoundingClientRect().height)).size
@@ -177,6 +179,26 @@ export const PhoneDark: Story = {
 
 export const Dark: Story = {
   globals: { theme: "dark" },
+};
+
+/** G40: a module's system role names the module by its display name, not its id. */
+export const KindNamesTheModule: Story = {
+  args: {
+    roles: [
+      ...FIXTURE_ROLES,
+      {
+        ...FIXTURE_SYSTEM_ROLE,
+        id: "r-fixture-user",
+        name: "Fixture user",
+        moduleId: "fixture",
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Roles" }));
+
+    await expect(table.getByText("System · Fixture")).toBeVisible();
+  },
 };
 
 /** G50: a failed role read shows its error, not "Loading role…" forever. */

@@ -288,17 +288,29 @@ function RoleFormBody(props: {
   );
 }
 
-function kindPill(role: Role) {
-  return role.kind === "system" ? (
-    <LabelPill>System · {role.moduleId ?? "Core"}</LabelPill>
-  ) : (
-    <LabelPill>Custom</LabelPill>
-  );
+/** "System · <module name>" or "Custom"; the phone card says only "System" (mockups). */
+function kindPill(
+  role: Role,
+  catalogue: readonly RolePermissionGroup[],
+  compact = false
+) {
+  if (role.kind !== "system") return <LabelPill>Custom</LabelPill>;
+
+  if (compact) return <LabelPill>System</LabelPill>;
+
+  const moduleName =
+    role.moduleId === null
+      ? "Core"
+      : (catalogue.find((group) => group.moduleId === role.moduleId)
+          ?.moduleName ?? role.moduleId);
+
+  return <LabelPill>System · {moduleName}</LabelPill>;
 }
 
 /** The role detail: header actions, permission groups with the entitlement state, and holders. */
 function RoleDetailView(props: {
   readonly detail: RoleDetail;
+  readonly catalogue: readonly RolePermissionGroup[];
   readonly onEdit: () => void;
   readonly onCopy: () => void;
   readonly onDelete: () => void;
@@ -323,7 +335,7 @@ function RoleDetailView(props: {
             <h2 className="text-xl font-semibold text-foreground">
               {detail.name}
             </h2>
-            {kindPill(detail)}
+            {kindPill(detail, props.catalogue)}
           </div>
           {detail.description === "" ? null : (
             <p className="mt-1 text-sm text-muted-foreground">
@@ -587,6 +599,7 @@ export function RolesScreen(props: RolesScreenProps) {
       <div>
         <RoleDetailView
           detail={props.detail}
+          catalogue={props.catalogue}
           pending={props.pending}
           onEdit={() =>
             openForm({
@@ -705,7 +718,11 @@ export function RolesScreen(props: RolesScreenProps) {
                   </span>
                 ),
               },
-              { id: "kind", header: "Kind", cell: kindPill },
+              {
+                id: "kind",
+                header: "Kind",
+                cell: (role) => kindPill(role, props.catalogue),
+              },
               {
                 id: "permissions",
                 header: "Permissions",
@@ -726,7 +743,7 @@ export function RolesScreen(props: RolesScreenProps) {
                 </IconTile>
               ),
               title: (role) => role.name,
-              badge: (role) => kindPill(role),
+              badge: (role) => kindPill(role, props.catalogue, true),
               facts: (role) => [
                 `${role.permissions.length} permission${role.permissions.length === 1 ? "" : "s"}`,
                 `${role.assignmentCount} assignment${role.assignmentCount === 1 ? "" : "s"}`,
