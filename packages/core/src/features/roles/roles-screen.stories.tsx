@@ -324,7 +324,7 @@ export const SystemRoleIsReadOnlyAndCopyable: Story = {
   },
 };
 
-/** d8l5.27: the Access seam. A host that passes `onOpenInAccess` gets the button back. */
+/** R-29b, R-37a: the holders show only as a count, and "Manage in Access" opens Access on the role. */
 export const ManageInAccessWhenTheHostPassesIt: Story = {
   args: {
     selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
@@ -332,6 +332,8 @@ export const ManageInAccessWhenTheHostPassesIt: Story = {
     onOpenInAccess: fn(),
   },
   play: async ({ args, canvas }) => {
+    await expect(canvas.getByText("1 group holds this role.")).toBeVisible();
+    await expect(canvas.queryByText("Operations")).toBeNull();
     await userEvent.click(
       canvas.getByRole("button", { name: "Manage in Access" })
     );

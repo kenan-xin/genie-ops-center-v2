@@ -41,6 +41,7 @@ import {
   WarningIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
+import { holdersSentence } from "./role-holders.ts";
 import type {
   Role,
   RoleDetail,
@@ -470,7 +471,6 @@ function RoleDetailView(props: {
             <h3 className="text-base font-semibold text-foreground">
               Who holds this role
             </h3>
-            {/* Until a host passes the Access screen (d8l5.27), the holders below are the view. */}
             {props.onOpenInAccess === undefined ? null : (
               <Button variant="secondary" onClick={props.onOpenInAccess}>
                 <ShieldIcon /> Manage in Access
@@ -480,20 +480,9 @@ function RoleDetailView(props: {
           <p className="text-sm text-muted-foreground">
             A role held through a group changes for every member of that group.
           </p>
-          <ul className="mt-1 divide-y divide-border">
-            {detail.assignments.map((assignment) => (
-              <li key={assignment.id} className="py-2 text-sm text-foreground">
-                {assignment.principalLabel}
-                <span className="text-muted-foreground">
-                  {" "}
-                  ·{" "}
-                  {assignment.scopeType === null
-                    ? "Whole tenant"
-                    : assignment.scopeId}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <p className="mt-1 text-sm text-foreground">
+            {holdersSentence(detail.assignments)}
+          </p>
         </section>
       </div>
 

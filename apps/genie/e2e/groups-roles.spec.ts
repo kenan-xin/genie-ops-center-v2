@@ -233,7 +233,12 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   expect(archived).toBe("t");
 
-  // The open inspector shows the path as dead at once, not the live path read before (R-32).
+  // Archive takes the group out of the list, which hides its inspector. Show archived brings the
+  // kept selection back, and its Access tab shows the path as dead, not the live path read before
+  // (R-32).
+  await expect(archivedInspector).toHaveCount(0);
+  await page.getByRole("checkbox", { name: /^Show archived/ }).check();
+  await archivedInspector.getByRole("tab", { name: /^Access/ }).click();
   await expect(
     archivedInspector.getByText("The group is archived")
   ).toBeVisible();
@@ -496,13 +501,22 @@ test("Role detail links back to Roles through the page header trail", async ({
     ).toContainText("Auditor");
   }
 
-  // d8l5.27: no Access route exists yet, so the holders card offers no way to it.
+  // R-29b, R-37a: the holders card links to Access with the role preselected.
+  const [auditorId] = await queryDatabase(
+    "select id from role where name = 'Auditor'"
+  );
+
   await expect(
     page.getByRole("heading", { name: "Who holds this role" })
   ).toBeVisible();
+  await page.getByRole("button", { name: "Manage in Access" }).click();
+  await expect(page).toHaveURL(
+    new RegExp(`/admin/access\\?role=${auditorId}$`)
+  );
+  await page.goBack();
   await expect(
-    page.getByRole("button", { name: "Manage in Access" })
-  ).toHaveCount(0);
+    page.getByRole("heading", { name: "Who holds this role" })
+  ).toBeVisible();
 
   const toRoles = page
     .getByRole("main")

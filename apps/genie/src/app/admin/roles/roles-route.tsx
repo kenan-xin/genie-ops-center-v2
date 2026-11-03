@@ -1,5 +1,6 @@
 "use client";
 
+import { accessHref } from "@genie/core/features/access";
 import {
   RolesScreen,
   type RoleInput,
@@ -8,7 +9,7 @@ import {
 import { PageHeader } from "@genie/core/features/shell";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { usePathname, useSearchParams } from "next/navigation.js";
+import { usePathname, useRouter, useSearchParams } from "next/navigation.js";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
@@ -23,6 +24,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
   const t = useTranslations("pages");
   const tNoMatch = useTranslations("noMatch");
   const pathname = usePathname();
+  const router = useRouter();
   const selectedRoleId = useSearchParams().get("selected");
 
   // A shallow history entry: Next syncs `useSearchParams` with it and renders nothing on the server.
@@ -136,7 +138,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
           )
         }
         onDeleteRole={(roleId) => run(() => rpc.roles.remove({ roleId }))}
-        // No onOpenInAccess until the Access screen exists (d8l5.27, deviation 888).
+        onOpenInAccess={(roleId) => router.push(accessHref({ role: roleId }))}
       />
     </>
   );
