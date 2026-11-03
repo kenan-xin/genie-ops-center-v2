@@ -153,44 +153,51 @@ function holderList(
 }
 
 /**
- * The phone row (fix list (4)): "Who can open it" over the holder summary, the whole row one link
- * to Roles and at least 44 px high. The full list lives on Roles: a button inside a link is invalid.
+ * The phone row (fix list (4)): "Who can open it" over the holder summary, at least 44 px high. With
+ * `href` the whole row is one link to Access, where the full list lives: a button inside a link is
+ * invalid. Without it (no `core:roles:manage`, R-37e) the same band is plain text.
  */
 function WhoCanOpen(props: {
   readonly module: ModuleView;
-  readonly rolesHref: string;
+  readonly href: string | undefined;
   readonly labels: AccessLabels;
 }) {
   const { module, labels } = props;
   const { principals, hidden } = namedHolders(module);
 
-  return (
-    // The negative margins take the band to the card's edges, as `modules-phone.png` draws it.
-    <a
-      href={props.rolesHref}
-      className={`-mx-4 -mb-3 flex min-h-12 items-center gap-2 border-t border-border bg-muted/50 px-4 py-2 text-sm ${focusRing}`}
-    >
-      <span className="grid min-w-0 flex-1">
-        <span className="text-xs font-semibold text-muted-foreground">
-          {labels.whoCanOpen}
-          <span className="sr-only">
-            {" "}
-            {labels.whoCanOpenFor(module.displayName)}
-          </span>
-        </span>
-        <span
-          className={`truncate ${module.enabled ? "text-foreground" : "text-muted-foreground"}`}
-        >
-          {principals.length === 0 ? (
-            labels.nobody
-          ) : (
-            <>
-              {holderList(principals, labels)}
-              {hidden > 0 ? ` ${labels.more(hidden)}` : null}
-            </>
-          )}
+  // The negative margins take the band to the card's edges, as `modules-phone.png` draws it.
+  const band =
+    "-mx-4 -mb-3 flex min-h-12 items-center gap-2 border-t border-border bg-muted/50 px-4 py-2 text-sm";
+
+  const summary = (
+    <span className="grid min-w-0 flex-1">
+      <span className="text-xs font-semibold text-muted-foreground">
+        {labels.whoCanOpen}
+        <span className="sr-only">
+          {" "}
+          {labels.whoCanOpenFor(module.displayName)}
         </span>
       </span>
+      <span
+        className={`truncate ${module.enabled ? "text-foreground" : "text-muted-foreground"}`}
+      >
+        {principals.length === 0 ? (
+          labels.nobody
+        ) : (
+          <>
+            {holderList(principals, labels)}
+            {hidden > 0 ? ` ${labels.more(hidden)}` : null}
+          </>
+        )}
+      </span>
+    </span>
+  );
+
+  if (props.href === undefined) return <div className={band}>{summary}</div>;
+
+  return (
+    <a href={props.href} className={`${band} ${focusRing}`}>
+      {summary}
       <span className="sr-only">{labels.manage}</span>
       <ChevronRightIcon
         aria-hidden="true"
@@ -203,11 +210,11 @@ function WhoCanOpen(props: {
 /**
  * Read-only: who holds a role carrying `<id>:use`. A switched-off module keeps them, muted (R-86).
  * The cell names three, groups first, and "+N" opens the full list with each role (DR-26).
- * Every change lives on the Roles screen the line links to, never here (R-85, DEC-39).
+ * Every change lives in Access, which the line links to for a viewer who may open it (R-85, R-37e).
  */
 function Access(props: {
   readonly module: ModuleView;
-  readonly rolesHref: string;
+  readonly href: string | undefined;
   readonly labels: AccessLabels;
 }) {
   const { module, labels } = props;
@@ -253,10 +260,12 @@ function Access(props: {
           ) : null}
         </div>
       )}
-      <a href={props.rolesHref} className={linkClass}>
-        Manage in Roles
-        <span className="sr-only"> for {module.displayName}</span>
-      </a>
+      {props.href === undefined ? null : (
+        <a href={props.href} className={linkClass}>
+          {labels.manage}
+          <span className="sr-only"> for {module.displayName}</span>
+        </a>
+      )}
     </div>
   );
 }
@@ -358,7 +367,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
   const access = (module: ModuleView) => (
     <Access
       module={module}
-      rolesHref={props.rolesHref}
+      href={props.manageAccessHref?.(module.id)}
       labels={props.accessLabels}
     />
   );
@@ -450,7 +459,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
                 </div>
                 <WhoCanOpen
                   module={module}
-                  rolesHref={props.rolesHref}
+                  href={props.manageAccessHref?.(module.id)}
                   labels={props.accessLabels}
                 />
               </div>

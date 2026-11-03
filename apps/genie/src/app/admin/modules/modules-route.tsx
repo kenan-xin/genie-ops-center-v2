@@ -1,5 +1,6 @@
 "use client";
 
+import { accessHref } from "@genie/core/features/access";
 import {
   type ModuleRefusal,
   ModulesScreen,
@@ -14,9 +15,10 @@ import { rpc } from "../../../rpc/client.ts";
 /**
  * The browser half of the Modules route. The server refused a caller without
  * `core:settings:manage` before this mounts, and every procedure re-checks it. Each write reloads
- * both lists and the server-rendered navigation, because a switch changes what members see.
+ * both lists and the server-rendered navigation, because a switch changes what members see. The
+ * holders link to Access only for a caller who holds `core:roles:manage` (R-37e).
  */
-export function ModulesRoute() {
+export function ModulesRoute(props: { readonly canManageAccess: boolean }) {
   const t = useTranslations("pages");
   const tNoMatch = useTranslations("noMatch");
   const [refusal, setRefusal] = useState<ModuleRefusal | undefined>(undefined);
@@ -72,7 +74,11 @@ export function ModulesRoute() {
       onCategory={(moduleId, categoryId) =>
         placeModule.mutate({ moduleId, categoryId })
       }
-      rolesHref="/admin/roles"
+      manageAccessHref={
+        props.canManageAccess
+          ? (moduleId) => accessHref({ module: moduleId })
+          : undefined
+      }
       settingsHref="/admin/settings"
       accessLabels={{
         more: (count) => t("modules.access.more", { count }),

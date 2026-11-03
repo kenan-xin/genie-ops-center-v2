@@ -120,7 +120,7 @@ test("lists every compiled module and switches one off through the confirm dialo
         ).toHaveCount(compiled);
         await expect(toggle).toBeChecked();
 
-        // Access lists the holders that `can()` grants, links to Roles and grants nothing here. No
+        // Access lists the holders that `can()` grants, links to Access and grants nothing here. No
         // break-glass account (R-39), no erased or banned person, no archived group (R-32).
         const holders = Number(
           await sql(
@@ -136,22 +136,25 @@ test("lists every compiled module and switches one off through the confirm dialo
         );
 
         // A desktop cell names three holders; "+N" opens the full list, one line per role (DR-26).
-        // A phone card has one "Who can open it" row instead, the whole row a link to Roles.
+        // A phone card has one "Who can open it" row instead, the whole row a link to Access (R-85).
         const expectHolderList = async () => {
           if (project === "phone") {
             const who = page.getByRole("link", {
               name: /^Who can open it for Placeholder/,
             });
 
-            await expect(who).toHaveAttribute("href", "/admin/roles");
+            await expect(who).toHaveAttribute(
+              "href",
+              "/admin/access?module=placeholder"
+            );
             await expect(who).not.toContainText("No one yet");
 
             return;
           }
 
           await expect(
-            page.getByRole("link", { name: "Manage in Roles for Placeholder" })
-          ).toHaveAttribute("href", "/admin/roles");
+            page.getByRole("link", { name: "Manage in Access for Placeholder" })
+          ).toHaveAttribute("href", "/admin/access?module=placeholder");
           await page
             .getByRole("button", { name: /more holders of Placeholder$/ })
             .filter({ visible: true })
@@ -338,7 +341,7 @@ test("a category is created, renamed, reordered, assigned to a module and delete
         ).toBeVisible();
         await expect(
           page.getByText(
-            "A category never grants access. Who can open a module is set in Roles."
+            "A category never grants access. Who can open a module is set in Access."
           )
         ).toHaveCount(1);
         await expect(

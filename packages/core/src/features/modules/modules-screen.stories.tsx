@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { accessHref } from "../access/access-link.ts";
 import {
   FIXTURE_CATEGORIES,
   FIXTURE_CONFIG_REFUSAL,
@@ -35,7 +36,7 @@ const meta = {
     categories: FIXTURE_CATEGORIES,
     onSwitch: fn(),
     onCategory: fn(),
-    rolesHref: "/admin/roles",
+    manageAccessHref: (id: string) => accessHref({ module: id }),
     settingsHref: "/admin/settings",
     searchLabel: "Search modules",
     noMatch: {
@@ -52,7 +53,7 @@ const meta = {
       whoCanOpen: "Who can open it",
       whoCanOpenFor: (module) => `for ${module}`,
       nobody: "No one yet",
-      manage: "Manage in Roles",
+      manage: "Manage in Access",
       category: "Category",
     },
   } satisfies ModulesScreenProps,
@@ -361,8 +362,8 @@ export const ManyHolders: Story = {
 };
 
 /**
- * (4) On a phone "Who can open it" is one row that links to Roles: three holders, groups first,
- * and "+12". The full list lives on Roles, because a button inside the link is not allowed.
+ * (4) On a phone "Who can open it" is one row that links to Access: three holders, groups first,
+ * and "+12". The full list lives in Access, because a button inside the link is not allowed.
  */
 export const ManyHoldersOnPhone: Story = {
   args: { modules: [FIXTURE_CROWDED] },
@@ -374,7 +375,7 @@ export const ManyHoldersOnPhone: Story = {
       name: /^Who can open it for Crowded/,
     });
 
-    await expect(who).toHaveAttribute("href", "/admin/roles");
+    await expect(who).toHaveAttribute("href", "/admin/access?module=crowded");
     await expect(who).toHaveTextContent(
       "Night shift (group), Finance managers (group), Person 1 +12"
     );
@@ -421,10 +422,9 @@ export const NobodyHolds: Story = {
     await expect(
       row.getByText("No one holds Reporting exports yet")
     ).toBeInTheDocument();
-    await expect(row.getByRole("link", { name: /Roles/ })).toHaveAttribute(
-      "href",
-      "/admin/roles"
-    );
+    await expect(
+      row.getByRole("link", { name: "Manage in Access for Reporting exports" })
+    ).toHaveAttribute("href", "/admin/access?module=exports");
   },
 };
 
@@ -441,12 +441,51 @@ export const NoAssignControl: Story = {
 
     await expect(assigning).toEqual([]);
 
-    // Every link leaves for Roles; none writes a role assignment here (R-85).
+    // Every link leaves for Access on its own module; none writes a role assignment here (R-85).
     const hrefs = new Set(
       canvas.getAllByRole("link").map((link) => link.getAttribute("href"))
     );
 
-    await expect([...hrefs]).toEqual(["/admin/roles"]);
+    await expect([...hrefs]).toEqual(
+      FIXTURE_MODULES.map((module) => `/admin/access?module=${module.id}`)
+    );
+  },
+};
+
+/** The host of a viewer without `core:roles:manage` passes no link. */
+function withoutAccessLink({
+  manageAccessHref: _omitted,
+  ...args
+}: ModulesScreenProps) {
+  return <ModulesScreen {...args} />;
+}
+
+/** R-37e, U5: a viewer without `core:roles:manage` gets no link to Access, but still the holders. */
+export const NoAccessLinkWithoutTheKey: Story = {
+  render: withoutAccessLink,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.queryByRole("link", { name: /Manage in Access/ })
+    ).toBeNull();
+    await expect(
+      canvas.getByRole("row", { name: /Fixture/ })
+    ).toHaveTextContent(/Finance managers/);
+  },
+};
+
+export const NoAccessLinkWithoutTheKeyOnPhone: Story = {
+  args: { modules: [FIXTURE_CROWDED] },
+  render: withoutAccessLink,
+  globals: phone,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.queryByRole("link", { name: /Who can open it/ })
+    ).toBeNull();
+    await expect(
+      canvas.getByRole("list", { name: "Modules" })
+    ).toHaveTextContent(
+      "Night shift (group), Finance managers (group), Person 1 +12"
+    );
   },
 };
 

@@ -43,7 +43,7 @@ export type AccessLabels = {
   readonly whoCanOpenFor: (moduleName: string) => string;
   /** The phone row's summary when nobody holds the module. */
   readonly nobody: string;
-  /** Read at the end of the phone row, which links to Roles. */
+  /** The desktop link to Access, also read at the end of the phone row that links there. */
   readonly manage: string;
   /** The visible label over the phone card's category picker. */
   readonly category: string;
@@ -58,7 +58,11 @@ export type ModulesScreenProps = {
   readonly refusal?: ModuleRefusal | undefined;
   readonly onSwitch: (moduleId: string, enabled: boolean) => void;
   readonly onCategory: (moduleId: string, categoryId: string | null) => void;
-  readonly rolesHref: string;
+  /**
+   * The link to Access on one module (R-85). The host passes it only to a viewer who holds
+   * `core:roles:manage`; without it the screen shows the holders and no link (R-37e).
+   */
+  readonly manageAccessHref?: ((moduleId: string) => string) | undefined;
   readonly settingsHref: string;
   readonly accessLabels: AccessLabels;
   readonly searchLabel: string;

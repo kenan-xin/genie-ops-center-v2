@@ -492,7 +492,7 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     "packages/core/src/features/branding/sign-in-tab.tsx": 6,
     "packages/core/src/features/categories/assign-items.tsx": 11,
     "packages/core/src/features/categories/categories-screen.tsx": 15,
-    "packages/core/src/features/modules/modules-screen.tsx": 16,
+    "packages/core/src/features/modules/modules-screen.tsx": 15,
     // +3 for the Reporting section's label, helper and Use today button (Spec 7 R-9).
     "packages/core/src/features/settings/core-sections.tsx": 13,
     // 2026-10-28: the "Last changed" line moved here from core-sections; the total is unchanged.

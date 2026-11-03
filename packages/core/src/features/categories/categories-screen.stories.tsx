@@ -37,7 +37,7 @@ const meta = {
     list: FIXTURE_LIST,
     copy: {
       notice:
-        "A category never grants access. Who can open a module is set in Roles.",
+        "A category never grants access. Who can open a module is set in Access.",
       helpLabel: "How categories work",
       help: [
         "A category groups what people already see in the navigation.",
@@ -89,7 +89,7 @@ const overview: Play = async ({ canvas }) => {
   // The access notice stays visible; how the page works sits in its help (helper-text rule).
   await expect(
     canvas.getByText(
-      "A category never grants access. Who can open a module is set in Roles."
+      "A category never grants access. Who can open a module is set in Access."
     )
   ).toBeVisible();
   await expect(canvas.queryByText(/Drag or use the arrows/)).toBeNull();

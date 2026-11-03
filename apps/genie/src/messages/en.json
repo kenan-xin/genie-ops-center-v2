@@ -97,7 +97,7 @@
     },
     "modules": {
       "title": "Modules",
-      "description": "The modules this deployment carries. Who can open a module is set in Roles.",
+      "description": "The modules this deployment carries. Who can open a module is set in Access.",
       "access": {
         "more": "+{count}",
         "showAll": "+{count} more holders of {module}",
@@ -107,7 +107,7 @@
         "whoCanOpen": "Who can open it",
         "whoCanOpenFor": "for {module}",
         "nobody": "No one yet",
-        "manage": "Manage in Roles",
+        "manage": "Manage in Access",
         "category": "Category"
       },
       "searchLabel": "Search modules",
@@ -119,7 +119,7 @@
     "categories": {
       "title": "Categories",
       "description": "Headings that group modules in the navigation.",
-      "notice": "A category never grants access. Who can open a module is set in Roles.",
+      "notice": "A category never grants access. Who can open a module is set in Access.",
       "help": {
         "label": "How categories work",
         "what": "A category groups what people already see in the navigation.",
