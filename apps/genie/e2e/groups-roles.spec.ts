@@ -471,7 +471,8 @@ test("Role detail links back to Roles through the page header trail", async ({
   await page.goto("/admin/roles");
 
   await page
-    .getByRole("button", { name: "Auditor", exact: true })
+    // The desktop row button also reads the role's description.
+    .getByRole("button", { name: /^Auditor\b/ })
     .filter({ visible: true })
     .click();
 
