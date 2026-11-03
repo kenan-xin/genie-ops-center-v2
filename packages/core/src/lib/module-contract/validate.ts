@@ -15,12 +15,17 @@ import {
   type NavigationEntry,
   type PermissionTransformation,
 } from "./module.ts";
-import { AUDITOR_ROLE, TENANT_ADMINISTRATOR_ROLE } from "./system-roles.ts";
+import {
+  ASK_USER_ROLE,
+  AUDITOR_ROLE,
+  TENANT_ADMINISTRATOR_ROLE,
+} from "./system-roles.ts";
 
 /** Core's own system roles, which no module transformation may rename to or from. */
 const CORE_SYSTEM_ROLES: ReadonlySet<string> = new Set([
   TENANT_ADMINISTRATOR_ROLE,
   AUDITOR_ROLE,
+  ASK_USER_ROLE,
 ]);
 
 /**

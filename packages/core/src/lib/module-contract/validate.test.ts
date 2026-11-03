@@ -216,6 +216,24 @@ describe("validateModule", () => {
     ]);
   });
 
+  it("refuses a role rename that takes the name of the core role Ask user", () => {
+    const broken = {
+      ...validModule,
+      permissionTransformations: [
+        {
+          id: "0001",
+          release: "1.1.0",
+          description: "Take over the Ask role",
+          change: { kind: "rename-role", from: "Fixture user", to: "Ask user" },
+        },
+      ],
+    } as const;
+
+    expect(validateModule(broken)).toEqual([
+      'Permission transformation "0001" renames the core system role "Ask user".',
+    ]);
+  });
+
   it("rejects a router that implementModule did not build", () => {
     const broken = { ...validModule, router: { ...validModule.router } };
 

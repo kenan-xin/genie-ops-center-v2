@@ -71,6 +71,13 @@
       "when": 1793347705572,
       "tag": "0009_agent_sessions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1793702846081,
+      "tag": "0010_ask_user_role",
+      "breakpoints": true
     }
   ]
 }

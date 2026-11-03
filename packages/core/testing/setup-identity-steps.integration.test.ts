@@ -287,7 +287,7 @@ async function setup(
 }
 
 describe("the roles setup step (R-55, R-33)", () => {
-  it("seeds the two system roles, Genie Administrators and each module's default roles", async () => {
+  it("seeds the three system roles, Genie Administrators and each module's default roles", async () => {
     const fixture = await setupFixture();
     const disabled = disabledModule();
 
@@ -314,11 +314,25 @@ describe("the roles setup step (R-55, R-33)", () => {
     const byName = new Map(roles.rows.map((row) => [row.name, row]));
 
     expect([...byName.keys()]).toEqual([
+      "Ask user",
       "Auditor",
       "Disabled fixture user",
       "Fixture user",
       "Tenant administrator",
     ]);
+
+    // A7: the role that grants Ask, seeded for Access and assigned to nobody (R-33a).
+    expect(byName.get("Ask user")).toMatchObject({
+      permissions: ["core:ask:use"],
+      is_system: true,
+      module_id: null,
+    });
+
+    const askHolders = await fixture.observer.query(
+      "select 1 from role_assignment ra join role r on r.id = ra.role_id where r.name = 'Ask user'"
+    );
+
+    expect(askHolders.rows).toEqual([]);
 
     expect(byName.get("Auditor")).toMatchObject({
       permissions: ["core:audit:read"],

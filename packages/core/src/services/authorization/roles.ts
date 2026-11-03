@@ -2,6 +2,7 @@ import { and, eq, sql } from "drizzle-orm";
 
 import type { Module } from "../../lib/module-contract/module.ts";
 import {
+  ASK_USER_ROLE,
   AUDITOR_ROLE,
   TENANT_ADMINISTRATOR_ROLE,
 } from "../../lib/module-contract/system-roles.ts";
@@ -42,6 +43,7 @@ export const ASK_PERMISSION: (typeof CORE_PERMISSION_KEYS)[number] =
   "core:ask:use";
 
 export {
+  ASK_USER_ROLE,
   AUDITOR_ROLE,
   TENANT_ADMINISTRATOR_ROLE,
 } from "../../lib/module-contract/system-roles.ts";
@@ -56,6 +58,7 @@ export const CORE_ROLE_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
     "Full control of people, groups, roles, branding, settings, and the audit log.",
   ],
   [AUDITOR_ROLE, "Read-only access to the audit log."],
+  [ASK_USER_ROLE, "Use Ask and the agent."],
 ]);
 
 const CORE_ROLES = [
@@ -70,6 +73,14 @@ const CORE_ROLES = [
     name: AUDITOR_ROLE,
     description: CORE_ROLE_DESCRIPTIONS.get(AUDITOR_ROLE),
     permissions: ["core:audit:read"],
+    moduleId: null,
+    isSystem: true,
+  },
+  // A7: the Ask row of Access grants this role. An existing deployment gets it from migration 0010.
+  {
+    name: ASK_USER_ROLE,
+    description: CORE_ROLE_DESCRIPTIONS.get(ASK_USER_ROLE),
+    permissions: [ASK_PERMISSION],
     moduleId: null,
     isSystem: true,
   },
@@ -152,7 +163,7 @@ export function defaultRoleRows(
 }
 
 /**
- * The seeding the `roles` setup step (S2-08) calls (R-33, R-55): the two core system roles and
+ * The seeding the `roles` setup step (S2-08) calls (R-33, R-55): the three core system roles and
  * every compiled module's default roles, each marked system, then the admin key of every module
  * whose entitlement is enabled. A module registered disabled gets its definitions only.
  *
