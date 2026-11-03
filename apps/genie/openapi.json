@@ -1437,6 +1437,18 @@
                       "minLength": 1,
                       "maxLength": 200
                     }
+                  },
+                  "moduleId": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
                   }
                 },
                 "required": [

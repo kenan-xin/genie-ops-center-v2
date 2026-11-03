@@ -55,6 +55,7 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         name: input.name,
         description: input.description,
         permissions: input.permissions,
+        moduleId: input.moduleId ?? null,
       }),
     })),
 

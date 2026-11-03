@@ -51,6 +51,8 @@ export const rolesContract = {
         name: z.string().min(1).max(200),
         description: z.string().max(1000).optional(),
         permissions,
+        // The module the custom role belongs to; absent or null means core (A6).
+        moduleId: z.string().min(1).max(200).nullish(),
       })
     )
     .output(created),

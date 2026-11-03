@@ -67,7 +67,7 @@ Overview pages the read by subject. Grants reads it unpaged for the one recipien
 
 **D2-7, the contract checks of the access model (A6, A7, ticket S2-18).** `validateModule` gains two refusals, each with a named cause. It refuses a default role of a module with a workspace entry that does not carry `<id>:use`. It refuses a module with a workspace entry that declares no `defaultAccessRole`, or one that names no role of its own. The four built modules declare the owner's defaults: Invoices "Viewer", Analytics "Analytics editor", Slides "Slides editor", Placeholder "Placeholder user". The `roles` step and `seedRoles` also seed the core system role `Ask user` with `core:ask:use` (R-33, R-55), as an insert of a missing role by name that never rewrites an existing role (R-33a).
 
-A custom role belongs to one module or to core. A module custom role must carry that module's use key. `role.module_id` exists, and `../architecture/data-shape.md` defines it as the module that declared a default role. S2-18 records how a custom role names its module. If it widens the meaning of that column, `data-shape.md` changes in the same commit.
+A custom role belongs to one module or to core. A module custom role must carry that module's use key. S2-18 records the module in `role.module_id`, and `../architecture/data-shape.md` says so.
 
 ## Delivery order and gates
 

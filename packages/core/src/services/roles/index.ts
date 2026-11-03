@@ -398,6 +398,35 @@ export async function declaredCatalogue(
   }));
 }
 
+/**
+ * A6: a custom role belongs to one module or to core (`moduleId` null). A module role must carry
+ * `<moduleId>:use` and only keys of that module, so it never grants rights outside the module that
+ * names it. A core role keeps any declared key, so a custom role made before this rule stays editable.
+ */
+function assertModuleRoleKeys(
+  moduleId: string | null,
+  permissions: readonly string[],
+  modules: readonly RolesModule[]
+): void {
+  if (moduleId === null) return;
+
+  const foreign = permissions.find((key) => !key.startsWith(`${moduleId}:`));
+
+  let fault: string | undefined;
+
+  if (!modules.some((module) => module.identity.id === moduleId)) {
+    fault = `The module ${moduleId} is not compiled into this image`;
+  } else if (!permissions.includes(`${moduleId}:use`)) {
+    fault = `A role of the module ${moduleId} must carry ${moduleId}:use`;
+  } else if (foreign !== undefined) {
+    fault = `A role of the module ${moduleId} carries only its keys, not ${foreign}`;
+  }
+
+  if (fault === undefined) return;
+
+  throw new AppError(CORE_ERRORS["invalid-input"], { cause: new Error(fault) });
+}
+
 async function assertNameFree(
   tx: TenantTransaction,
   name: string,
@@ -425,10 +454,12 @@ export async function createRole(
     readonly name: string;
     readonly description?: string | undefined;
     readonly permissions: readonly string[];
+    readonly moduleId?: string | null;
     readonly copiedFrom?: string;
   }
 ): Promise<string> {
   const name = input.name.trim();
+  const moduleId = input.moduleId ?? null;
 
   if (name === "") throw new AppError(CORE_ERRORS["invalid-input"]);
 
@@ -440,6 +471,7 @@ export async function createRole(
     await entitledCatalogue(tenant, modules),
     new Set()
   );
+  assertModuleRoleKeys(moduleId, input.permissions, modules);
 
   return withTransaction(tenant, async (tx) => {
     await assertNameFree(tx, name);
@@ -450,6 +482,7 @@ export async function createRole(
         name,
         description: input.description?.trim() || null,
         permissions: [...input.permissions],
+        moduleId,
         isSystem: false,
       })
       .returning({ id: role.id });
@@ -465,6 +498,7 @@ export async function createRole(
       metadata: {
         name,
         permissions: [...input.permissions],
+        moduleId,
         copiedFrom: input.copiedFrom ?? null,
       },
     });
@@ -496,6 +530,7 @@ export async function updateRole(
       .select({
         id: role.id,
         isSystem: role.isSystem,
+        moduleId: role.moduleId,
         permissions: role.permissions,
       })
       .from(role)
@@ -517,6 +552,7 @@ export async function updateRole(
       catalogue,
       new Set(existing.permissions)
     );
+    assertModuleRoleKeys(existing.moduleId, input.permissions, modules);
 
     await assertNameFree(tx, name, input.roleId);
 
@@ -595,6 +631,7 @@ export async function copyRole(
   const rows = await tenant.db
     .select({
       description: role.description,
+      moduleId: role.moduleId,
       permissions: role.permissions,
     })
     .from(role)
@@ -610,6 +647,8 @@ export async function copyRole(
     name: input.name,
     description: source.description ?? undefined,
     permissions: source.permissions,
+    // A copy belongs to the module of its source (A6).
+    moduleId: source.moduleId,
     copiedFrom: input.roleId,
   });
 }

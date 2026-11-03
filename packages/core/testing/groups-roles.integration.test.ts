@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -969,6 +971,95 @@ describe("the roles router against a real database", () => {
 
     await expect(
       rolesCaller(actor).create({ name: "Bogus", permissions: ["nope:nope"] })
+    ).rejects.toMatchObject({ code: "invalid-input" });
+  });
+
+  it("creates a custom role that belongs to a module, and copies a module role into that module (A6)", async () => {
+    const actor = await insertManager();
+    const roles = rolesCaller(actor);
+
+    const [viewer] = await deployment.context.db
+      .insert(roleTable)
+      .values({
+        name: `Fixture viewer ${randomUUID()}`,
+        permissions: ["fixture:use"],
+        moduleId: "fixture",
+        isSystem: true,
+      })
+      .returning({ id: roleTable.id });
+
+    if (viewer === undefined) throw new Error("no fixture viewer role");
+
+    const created = await roles.create({
+      name: `Fixture approver ${randomUUID()}`,
+      permissions: ["fixture:use", "fixture:admin"],
+      moduleId: "fixture",
+    });
+
+    const copied = await roles.copy({
+      roleId: viewer.id,
+      name: `Fixture viewer copy ${randomUUID()}`,
+    });
+
+    const rows = await roles.list();
+
+    expect(rows.find((row) => row.id === created.id)).toMatchObject({
+      kind: "custom",
+      moduleId: "fixture",
+    });
+    expect(rows.find((row) => row.id === copied.id)).toMatchObject({
+      kind: "custom",
+      moduleId: "fixture",
+    });
+  });
+
+  it.each([
+    {
+      problem: "lacks the use key of its module",
+      moduleId: "fixture",
+      permissions: ["fixture:admin"],
+    },
+    {
+      problem: "carries a key that is not its module's",
+      moduleId: "fixture",
+      permissions: ["fixture:use", "core:audit:read"],
+    },
+    {
+      problem: "names a module the image does not compile",
+      moduleId: "absent",
+      permissions: ["fixture:use"],
+    },
+  ])(
+    "refuses a module custom role that $problem (A6)",
+    async ({ moduleId, permissions }) => {
+      const actor = await insertManager();
+
+      await expect(
+        rolesCaller(actor).create({
+          name: `Module role ${randomUUID()}`,
+          permissions,
+          moduleId,
+        })
+      ).rejects.toMatchObject({ code: "invalid-input" });
+    }
+  );
+
+  it("refuses an edit that takes the use key out of a module custom role (A6)", async () => {
+    const actor = await insertManager();
+    const name = `Fixture approver ${randomUUID()}`;
+
+    const created = await rolesCaller(actor).create({
+      name,
+      permissions: ["fixture:use", "fixture:admin"],
+      moduleId: "fixture",
+    });
+
+    await expect(
+      rolesCaller(actor).update({
+        roleId: created.id,
+        name,
+        permissions: ["fixture:admin"],
+      })
     ).rejects.toMatchObject({ code: "invalid-input" });
   });
 });
