@@ -70,9 +70,9 @@ R-13. The workspace solution list is paged on `scopesFor(user, 'solutions:use')`
 
 R-14. `can()` and `scopesFor()` read the person's assignments once per request through the shared lazy loader and answer every later call from that read. The module creates no loader of its own and caches no answer across requests. Source: `DEC-48`.
 
-R-15. The module performs no permission check and builds no scope filter outside `can()` and `scopesFor()`. It owns no grant table. The Access overview reads `role_assignment` through core. Source: `../architecture/module-contract.md` "What a module must not do", `../modules/solutions/README.md` "Permissions and roles".
+R-15. The module performs no permission check and builds no scope filter outside `can()` and `scopesFor()`. It owns no grant table. The Access overview is the core Access screen (Spec 03 R-29b), and the module's read-only Access tab reads `role_assignment` through core (amended 2026-11-02, A5). Source: `../architecture/module-contract.md` "What a module must not do", `../modules/solutions/README.md` "Permissions and roles".
 
-R-15a. The Access overview and the per-record access view are read-only views over core data. The Add access shortcut and the remove control both open the core role assignment form, with the role, scope, or existing assignment preselected, and that core form performs the write. The module never calls an assignment write itself, so core stays the one writer of `role_assignment` (`DEC-39`, `DEC-50`; decided by the product owner on 2026-09-18).
+R-15a. The Access overview and the per-record access view are read-only views over core data. The Add access shortcut and the remove control both open the core role assignment form, with the role, scope, or existing assignment preselected, and that core form performs the write. The module never calls an assignment write itself, so core stays the one writer of `role_assignment` (`DEC-39`, `DEC-50`; decided by the product owner on 2026-09-18). Amended 2026-11-02 (access amendments, A5): the core role assignment form is the core Access screen (Spec 02 R-37a). The Solutions Access tab is read-only and holds one prefilled link, `/admin/access?module=solutions&record=<id>`. A solution is a catalogue row under Solutions on Access, and its role choice works like a module row. The Solutions module performs no write.
 
 R-16. Administrator reach is a separate key and is not a scope. A holder of the module's admin key reaches every administration screen and may preview any solution, and that is not counted as member access anywhere. Source: `../modules/solutions/README.md` "Permissions and roles" and `DEC-27`.
 
@@ -197,7 +197,7 @@ AC-10 (content security policy). Assert the Section 0 exact minimal CSP, with no
 
 AC-11 (feedback event). A unit test proves the event is declared inside the module and not in `packages/core/contracts`, that emitting it with no subscriber is a no-op that does not fail the request, and that a vote writes one audit row. Proves R-34 and R-35.
 
-AC-12 (administrator preview). An integration test proves a preview by an admin-key holder writes one audit row, creates no recent and no favorite row, and changes no count on the Access overview. An end-to-end test proves the preview is labeled. Proves R-36 and R-16.
+AC-12 (administrator preview). An integration test proves a preview by an admin-key holder writes one audit row, creates no recent and no favorite row, and changes no count on the core Access overview (amended 2026-11-02, A5). An end-to-end test proves the preview is labeled. Proves R-36 and R-16.
 
 AC-13 (Categories interaction). An integration test deletes a core category that a module record references, then proves the module record is unchanged, the navigation tree places that record in the ungrouped area, and the Categories page member count never counted it. Proves R-37 and R-9.
 
@@ -253,7 +253,7 @@ Manual checks, where no automated layer fits: the external interface revalidatio
 
 Former Proposal 1 (R-29) was decided by the product owner on 2026-09-18: both renderers ship, and the two libraries now have rows in `../core/tech-stack.md`.
 
-Former Proposal 2 (R-15a) was decided by the product owner on 2026-09-18: the remove control opens the core role assignment form, which performs the removal. No proposal remains open in this specification.
+Former Proposal 2 (R-15a) was decided by the product owner on 2026-09-18: the remove control opens the core role assignment form, which performs the removal. Since 2026-11-02 that form is the core Access screen (R-15a, A5). No proposal remains open in this specification.
 
 Not a proposal, recorded for the coordinator.
 
