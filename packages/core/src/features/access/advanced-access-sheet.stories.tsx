@@ -305,6 +305,24 @@ export const ModuleOff: Story = {
   },
 };
 
+/** K8: a save in flight keeps the sheet open, so its late answer cannot close another recipient's sheet. */
+export const SaveInFlight: Story = {
+  args: { onSave: fn(() => new Promise<void>(() => undefined)) },
+  play: async ({ args }) => {
+    const body = await sheet();
+
+    await userEvent.click(body.getByRole("button", { name: "Remove Finance" }));
+    await userEvent.click(body.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(args.onSave).toHaveBeenCalled());
+
+    await userEvent.keyboard("{Escape}");
+    await expect(args.onClose).not.toHaveBeenCalled();
+    await expect(
+      body.getByRole("button", { name: "Close Advanced access" })
+    ).toBeDisabled();
+  },
+};
+
 /** K7: a refused save keeps every staged change and shows the server's reason. */
 export const RefusedSave: Story = {
   args: {

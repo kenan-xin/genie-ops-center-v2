@@ -283,7 +283,8 @@ export function AdvancedAccessSheet(
     <Sheet
       open={props.open}
       onOpenChange={(next) => {
-        if (!next) props.onClose();
+        // A save in flight keeps the sheet open: its late answer would close the next one.
+        if (!next && !saving) props.onClose();
       }}
     >
       <SheetContent
@@ -309,6 +310,7 @@ export function AdvancedAccessSheet(
                 size="icon-sm"
                 className="absolute top-3 right-3"
                 aria-label="Close Advanced access"
+                disabled={saving}
               />
             }
           >
