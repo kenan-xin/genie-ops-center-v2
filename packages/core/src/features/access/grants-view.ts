@@ -38,6 +38,23 @@ const opens = (row: GrantRow, path: AccessPath) =>
   !path.notInEffect.includes("group-archived");
 
 /**
+ * The module that a path's role belongs to, by name (O16): the catalogue row that owns the role,
+ * else the row of the role's module, else "Core administration" for a core role.
+ */
+export function moduleNameOf(
+  path: AccessPath,
+  catalogue: readonly GrantRow[]
+): string {
+  return (
+    catalogue.find((row) => ownsRole(row, path.role.id))?.name ??
+    catalogue.find((row) => row.id === path.role.moduleId)?.name ??
+    // shortcut: a module with no Grants row shows its key, not its name; pass module names in if one ships such a role.
+    path.role.moduleId ??
+    "Core administration"
+  );
+}
+
+/**
  * Splits the catalogue for one recipient (P4, P6). A row is Granted when the recipient holds one
  * of its roles directly at whole-tenant scope, and shows the first such role in choice order. Every
  * other direct assignment is "Not shown here", so nothing the recipient holds is hidden.

@@ -35,6 +35,7 @@ import {
   grantsView,
   type GrantsView,
   linkDraft,
+  moduleNameOf,
   removalOf,
   saveInput,
 } from "./grants-view.ts";
@@ -103,15 +104,7 @@ function notShownLabel(
   path: AccessPath,
   catalogue: readonly GrantRow[]
 ): string {
-  const owner =
-    catalogue.find((row) => row.roles.some((role) => role.id === path.role.id))
-      ?.name ??
-    catalogue.find((row) => row.id === path.role.moduleId)?.name ??
-    // shortcut: a module with no Grants row shows its key, not its name; pass module names in if one ships such a role.
-    path.role.moduleId ??
-    "Core administration";
-
-  return `${path.role.name} (${owner}, ${path.scope === null ? "whole tenant" : "one record"})`;
+  return `${path.role.name} (${moduleNameOf(path, catalogue)}, ${path.scope === null ? "whole tenant" : "one record"})`;
 }
 
 /** A transfer row while it is built, so each optional field is added only when present. */
