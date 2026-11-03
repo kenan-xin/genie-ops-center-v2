@@ -77,6 +77,29 @@ describe("the Access grants draft (V5)", () => {
     });
   });
 
+  it("keeps an edit staged while a save was in flight", () => {
+    const store = createGrantsDraftStore();
+
+    store.getState().stageAdd([{ row: "slides", roleId: "r-slides-editor" }]);
+    store.getState().stageRemove(["core:ask"]);
+
+    const { add, change, remove } = store.getState();
+
+    store
+      .getState()
+      .stageAdd([{ row: "placeholder", roleId: "r-placeholder-user" }]);
+    store
+      .getState()
+      .setRole("invoices", "r-invoices-finance", "r-invoices-viewer");
+    store.getState().clearSaved({ add, change, remove });
+
+    expect(draftOf(store)).toEqual({
+      add: { placeholder: "r-placeholder-user" },
+      change: { invoices: "r-invoices-finance" },
+      remove: [],
+    });
+  });
+
   it("sets the role of a pending Add on the Add", () => {
     const store = createGrantsDraftStore();
 

@@ -308,9 +308,12 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     setFailure(null);
     setSaving(true);
 
+    // The rows stay editable while the save runs, so only what it sent is cleared after it.
+    const sent = { add: draft.add, change: draft.change, remove: draft.remove };
+
     try {
-      await props.onSave(saveInput(view, draft));
-      store.getState().reset();
+      await props.onSave(saveInput(view, sent));
+      store.getState().clearSaved(sent);
     } catch (error) {
       // The route rejects with its refusal, a plain object that carries the whole message.
       const refusal = REFUSAL.safeParse(error);

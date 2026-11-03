@@ -21,9 +21,17 @@ export type GrantsDraftState = GrantsDraft & {
     savedRoleId: string | undefined
   ) => void;
   readonly reset: (next?: GrantsDraft) => void;
+  /** Drops the changes that a save sent, and keeps any change staged while it ran. */
+  readonly clearSaved: (saved: GrantsDraft) => void;
 };
 
 export const EMPTY_DRAFT: GrantsDraft = { add: {}, change: {}, remove: [] };
+
+/** The rows that still hold the role a save sent. A row changed since then holds another, so it stays. */
+const unchangedRows = (
+  current: Readonly<Record<string, string>>,
+  sent: Readonly<Record<string, string>>
+) => Object.keys(current).filter((row) => current[row] === sent[row]);
 
 export type DraftCounts = {
   readonly add: number;
@@ -86,6 +94,15 @@ export function createGrantsDraftStore(): StoreApi<GrantsDraftState> {
             };
           }),
         reset: (next = EMPTY_DRAFT) => set({ ...next }),
+        clearSaved: (saved) =>
+          set((state) => ({
+            add: omit(state.add, unchangedRows(state.add, saved.add)),
+            change: omit(
+              state.change,
+              unchangedRows(state.change, saved.change)
+            ),
+            remove: state.remove.filter((row) => !saved.remove.includes(row)),
+          })),
       }),
       // The middleware switches itself off in a production build and without the extension.
       { name: "access-grants" }
