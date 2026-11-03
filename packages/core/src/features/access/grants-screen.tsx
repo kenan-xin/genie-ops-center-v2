@@ -107,6 +107,8 @@ function notShownLabel(
     catalogue.find((row) => row.roles.some((role) => role.id === path.role.id))
       ?.name ??
     catalogue.find((row) => row.id === path.role.moduleId)?.name ??
+    // shortcut: a module with no Grants row shows its key, not its name; pass module names in if one ships such a role.
+    path.role.moduleId ??
     "Core administration";
 
   return `${path.role.name} (${owner}, ${path.scope === null ? "whole tenant" : "one record"})`;
