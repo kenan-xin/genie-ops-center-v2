@@ -592,18 +592,22 @@ export function validateModule(module: Module): readonly string[] {
   }
 
   // DEC-50: a module with a workspace entry seeds one role named after its
-  // display name, and that role is what carries `<id>:use` to a person.
+  // display name. A6: every role of that module carries `<id>:use`, so no role
+  // grants rights in a module its holder cannot open.
   if (workspace.length > 0) {
     const expected = `${module.identity.displayName} user`;
-    const role = module.defaultRoles.find((entry) => entry.name === expected);
 
-    if (role === undefined) {
+    for (const role of module.defaultRoles) {
+      if (!role.permissions.includes(`${id}:use`)) {
+        problems.push(
+          `Default role "${role.name}" must carry "${id}:use" (A6).`
+        );
+      }
+    }
+
+    if (!module.defaultRoles.some((entry) => entry.name === expected)) {
       problems.push(
         `A module with a workspace entry seeds a default role named "${expected}" (DEC-50).`
-      );
-    } else if (!role.permissions.includes(`${id}:use`)) {
-      problems.push(
-        `Default role "${expected}" must carry "${id}:use" (DEC-50).`
       );
     }
   }

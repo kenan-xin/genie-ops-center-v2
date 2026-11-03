@@ -834,16 +834,28 @@ describe("validateModule", () => {
     expect(validateModule(broken).join(" ")).toContain('"Fixture user"');
   });
 
-  it("rejects a default user role that does not carry the use key (DEC-50)", () => {
-    const broken = {
-      ...validModule,
+  it.each([
+    {
+      name: "Fixture user",
       defaultRoles: [
         { name: "Fixture user", permissions: ["fixture:read" as const] },
       ],
-    };
-
-    expect(validateModule(broken).join(" ")).toContain("fixture:use");
-  });
+    },
+    {
+      name: "Fixture reader",
+      defaultRoles: [
+        ...validModule.defaultRoles,
+        { name: "Fixture reader", permissions: ["fixture:read" as const] },
+      ],
+    },
+  ])(
+    "rejects default role $name of a workspace module without the use key (A6)",
+    ({ name, defaultRoles }) => {
+      expect(validateModule({ ...validModule, defaultRoles })).toContain(
+        `Default role "${name}" must carry "fixture:use" (A6).`
+      );
+    }
+  );
 
   it("asks for no default user role when the module has no workspace entry", () => {
     const adminOnly = validModule.navigation.entries.filter(
@@ -852,7 +864,9 @@ describe("validateModule", () => {
 
     const ok = {
       ...validModule,
-      defaultRoles: [],
+      defaultRoles: [
+        { name: "Fixture admin", permissions: ["fixture:admin" as const] },
+      ],
       navigation: { pinned: adminOnly, entries: adminOnly },
     };
 
