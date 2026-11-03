@@ -1884,6 +1884,28 @@
         }
       }
     },
+    "/roles/grants/catalogue": {
+      "get": {
+        "operationId": "roles.grantCatalogue",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/roles/grants/recipients": {
+      "get": {
+        "operationId": "roles.grantRecipients",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/settings": {
       "get": {
         "operationId": "settings.read",

@@ -10,6 +10,7 @@ import {
   readAccessBySubject,
   readRecipientAccess,
 } from "./effective-access.ts";
+import { readGrantCatalogue, readGrantRecipients } from "./grants.ts";
 import {
   copyRole,
   createRole,
@@ -134,6 +135,18 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         cursor: input.cursor ?? null,
         limit: input.limit ?? ACCESS_PAGE_SIZE,
       })
+    ),
+
+    grantCatalogue: managed.grantCatalogue.handler(({ context }) =>
+      readGrantCatalogue({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+      })
+    ),
+
+    grantRecipients: managed.grantRecipients.handler(({ context }) =>
+      readGrantRecipients({ tenant: context.tenant, caller: context.caller })
     ),
   });
 }

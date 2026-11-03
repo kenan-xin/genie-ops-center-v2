@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
 import type { AccessPage, AccessPath } from "./effective-access.ts";
+import type { GrantRecipients, GrantRow } from "./grants.ts";
 import type { RoleDetail, RolePermissionGroup, RoleRow } from "./index.ts";
 
 const roleId = z.object({ roleId: z.uuid() });
@@ -123,6 +124,17 @@ export const rolesContract = {
       })
     )
     .output(z.custom<AccessPage>()),
+
+  // R-37a: the Grants rows, each module with a default access role and then Ask, with each
+  // row's role choice and entitlement.
+  grantCatalogue: oc
+    .route({ method: "GET", path: "/roles/grants/catalogue" })
+    .output(z.custom<readonly GrantRow[]>()),
+
+  // R-37e, R-39: the groups and people the Grants picker offers, without the break-glass account.
+  grantRecipients: oc
+    .route({ method: "GET", path: "/roles/grants/recipients" })
+    .output(z.custom<GrantRecipients>()),
 };
 
 export type RolesContract = typeof rolesContract;
