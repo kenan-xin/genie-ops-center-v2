@@ -15,6 +15,7 @@ import {
   FormActionBar,
   HelpDisclosure,
   IconTile,
+  InfoNote,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -28,6 +29,7 @@ import {
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { TENANT_ADMINISTRATOR_ROLE } from "../../lib/module-contract/system-roles.ts";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   CopyIcon,
@@ -371,6 +373,17 @@ function RoleDetailView(props: {
             {detail.permissionGroups.length}{" "}
             {detail.permissionGroups.length === 1 ? "module" : "modules"}.
           </p>
+          {detail.kind === "system" &&
+          detail.name === TENANT_ADMINISTRATOR_ROLE ? (
+            <div className="mt-2">
+              <InfoNote>
+                When a module is entitled, its admin permission is appended to
+                this role automatically, so administrators always reach every
+                entitled module&apos;s admin screens. Member use of a
+                module&apos;s records is still a separate grant.
+              </InfoNote>
+            </div>
+          ) : null}
           {detail.permissionGroups.map((group) => (
             <div
               key={group.moduleId}

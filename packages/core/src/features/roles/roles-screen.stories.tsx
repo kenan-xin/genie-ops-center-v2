@@ -194,8 +194,11 @@ export const SystemRoleIsReadOnlyAndCopyable: Story = {
     await expect(
       canvas.queryByRole("button", { name: /Delete role/ })
     ).not.toBeInTheDocument();
-    // The admin key added by entitlement is marked.
+    // The admin key added by entitlement is marked, and the note says why (G46).
     await expect(canvas.getByText("Added by entitlement")).toBeInTheDocument();
+    await expect(
+      canvas.getByText(/its admin permission is appended to this role/)
+    ).toBeVisible();
   },
 };
 
