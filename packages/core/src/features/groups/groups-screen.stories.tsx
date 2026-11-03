@@ -108,6 +108,25 @@ export const SyncColumnIsRelative: Story = {
   },
 };
 
+/** G53: a stale group opens with the amber warning, its last sighting and who it still reaches. */
+export const StaleGroupWarns: Story = {
+  args: {
+    initialSelectedId: "g-stale",
+    details: { "g-stale": { members: [], assignments: [] } },
+  },
+  play: async () => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await expect(
+      sheet.getByText("This group no longer arrives in sign-in tokens.")
+    ).toBeVisible();
+    await expect(
+      sheet.getByText(/Last seen 1 Jan 2026\..*the 1 person last seen in it/)
+    ).toBeVisible();
+    await expect(sheet.getByText("Stale")).toBeVisible();
+  },
+};
+
 export const Default: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Groups" }));

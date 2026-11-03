@@ -49,6 +49,7 @@ import {
   TabsList,
   TabsTrigger,
   Textarea,
+  WarningNote,
 } from "@genie/ui";
 import { EllipsisIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -239,9 +240,7 @@ export function GroupInspector(
                   {groupLabel(group)}
                 </SheetTitle>
                 {sourcePill(group)}
-                {group.lastSeenAt === null && group.source === "idp" ? (
-                  <StatusPill tone="neutral">Not seen yet</StatusPill>
-                ) : null}
+                {syncPill(group)}
               </div>
               {group.description === "" ? null : (
                 <p className="text-sm text-muted-foreground">
@@ -269,10 +268,22 @@ export function GroupInspector(
         </SheetHeader>
         <div className="flex min-w-0 flex-col gap-3 overflow-y-auto px-4 pb-4">
           {group.stale ? (
-            <div className="rounded-lg border border-border bg-muted p-3 text-sm text-foreground">
-              This group no longer arrives in the sign-in token. Archive it to
-              stop its grants.
-            </div>
+            <WarningNote size="md" role="status">
+              <p className="font-semibold">
+                This group no longer arrives in sign-in tokens.
+              </p>
+              {/* Archiving ends the grants (the principal loader skips an archived group), so
+                  the mockup's "assignments are kept" is not said here. */}
+              <p className="mt-0.5">
+                {group.lastSeenAt === null
+                  ? ""
+                  : `Last seen ${ago(group.lastSeenAt, viewer)}. `}
+                It was renamed or removed in the identity provider. Its roles
+                still apply to the {group.memberCount}{" "}
+                {group.memberCount === 1 ? "person" : "people"} last seen in it.
+                Archive it to stop its grants.
+              </p>
+            </WarningNote>
           ) : null}
 
           {/* Never a dead end: Open in Access when the host has the Access screen, the Roles tab
