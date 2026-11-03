@@ -116,6 +116,13 @@ export { ConfirmDialog } from "./parts/confirm-dialog.tsx";
 
 export { DataTable } from "./parts/data-table.tsx";
 
+export { TransferList } from "./parts/transfer-list.tsx";
+
+export type {
+  TransferItem,
+  TransferListProps,
+} from "./parts/transfer-list.tsx";
+
 export { formatChartValue, formatReadTime } from "./parts/chart-data.ts";
 
 export type {
