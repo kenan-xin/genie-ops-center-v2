@@ -539,7 +539,7 @@ function PersonSessions(props: {
               {session.device} · {session.browser}
               <span className="block text-xs text-muted-foreground">
                 {session.ipAddress} · last active{" "}
-                {fmtDateTime(session.lastActiveAt, props.viewer.timeZone, "")}
+                {signedInAgo(session.lastActiveAt, props.viewer)}
               </span>
             </span>
             <Button
@@ -554,7 +554,7 @@ function PersonSessions(props: {
         ))}
         {props.sessions.length === 0 ? (
           <li className="py-2 text-sm text-muted-foreground">
-            This person has no open session.
+            No active sessions.
           </li>
         ) : null}
       </ul>

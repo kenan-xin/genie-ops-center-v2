@@ -122,6 +122,19 @@ export const ProfileSignInTimes: Story = {
   },
 };
 
+/** G24: a session's last activity reads relative, as the mockup shows. */
+export const SessionLastActiveIsRelative: Story = {
+  args: { initialSelectedId: "u-viewer" },
+  play: async () => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(sheet.getByRole("tab", { name: /Sessions/ }));
+    await expect(
+      sheet.getByText(/203\.0\.113\.7 · last active 32 min ago/)
+    ).toBeVisible();
+  },
+};
+
 const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
 
 /** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */
