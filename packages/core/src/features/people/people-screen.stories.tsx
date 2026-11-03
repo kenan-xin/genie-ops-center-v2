@@ -732,6 +732,25 @@ export const SearchNarrowsTheList: Story = {
   },
 };
 
+/** The footer counts the people shown against everyone, and names the onboarding mode (capture). */
+export const FooterCountsTheShownPeople: Story = {
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("4 of 4 people")).toBeVisible();
+    await expect(canvas.getByText(/Onboarding: Invite only/)).toBeVisible();
+
+    await userEvent.type(canvas.getByLabelText("Search people"), "bea");
+
+    await expect(canvas.getByText("1 of 4 people")).toBeVisible();
+  },
+};
+
+export const FooterNamesJitOnboarding: Story = {
+  args: { settings: FIXTURE_JIT_SETTINGS },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/Onboarding: Just-in-time/)).toBeVisible();
+  },
+};
+
 /**
  * A host that refuses Add person the way the People route does: the promise rejects with the
  * catalogue message.

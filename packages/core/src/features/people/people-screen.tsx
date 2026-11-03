@@ -91,6 +91,14 @@ function fmtDateTime(
   });
 }
 
+const ONBOARDING_LABEL: Record<
+  PeopleScreenProps["settings"]["onboardingMode"],
+  string
+> = {
+  invite: "Invite only",
+  jit: "Just-in-time",
+};
+
 const STATUS_TONE = {
   active: "success",
   pending: "neutral",
@@ -938,6 +946,19 @@ export function PeopleScreen(props: PeopleScreenProps) {
               ],
             }}
             actions={rowActions}
+            footer={
+              <>
+                <span>
+                  {filtered.length} of {props.people.length}{" "}
+                  {props.people.length === 1 ? "person" : "people"}
+                </span>
+                {/* No setting names the provider yet, so the generic source stands (G13). */}
+                <span>
+                  Onboarding: {ONBOARDING_LABEL[props.settings.onboardingMode]}{" "}
+                  · External identity provider
+                </span>
+              </>
+            }
           />
         </div>
       )}
