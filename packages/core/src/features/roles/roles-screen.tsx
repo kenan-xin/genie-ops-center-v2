@@ -744,6 +744,8 @@ export function RolesScreen(props: RolesScreenProps) {
               ),
               title: (role) => role.name,
               badge: (role) => kindPill(role, props.catalogue, true),
+              detail: (role) =>
+                role.description === "" ? null : role.description,
               facts: (role) => [
                 `${role.permissions.length} permission${role.permissions.length === 1 ? "" : "s"}`,
                 `${role.assignmentCount} assignment${role.assignmentCount === 1 ? "" : "s"}`,

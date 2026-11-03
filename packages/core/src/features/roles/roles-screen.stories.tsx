@@ -130,6 +130,11 @@ export const Phone: Story = {
       document.documentElement.clientWidth
     );
 
+    // G49: the card carries the role's description, as the table row does.
+    await expect(
+      list.getByText("Full administration of this tenant")
+    ).toBeVisible();
+
     // One assignment reads in the singular.
     await expect(
       list.getByText("2 permissions · 1 assignment")
