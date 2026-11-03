@@ -235,6 +235,37 @@ export const RowMenuMatchesTheKind: Story = {
   },
 };
 
+/** G48: with a long catalogue the New role dialog stays on screen with its buttons visible. */
+export const LongCatalogueFormFitsTheScreen: Story = {
+  args: {
+    catalogue: Array.from({ length: 5 }, (_, index) => ({
+      moduleId: `module-${index}`,
+      moduleName: `Module ${index}`,
+      entitled: true,
+      keys: Array.from({ length: 6 }, (_entry, key) => ({
+        key: `module-${index}:key-${key}`,
+        label: `Permission ${key} of module ${index}`,
+        unavailable: false,
+      })),
+    })),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getAllByRole("button", { name: "New role" })[0]!
+    );
+
+    const dialog = await screen.findByRole("dialog", { name: "New role" });
+    const create = within(dialog).getByRole("button", { name: "Create role" });
+
+    await waitFor(() =>
+      expect(dialog.getBoundingClientRect().top).toBeGreaterThan(0)
+    );
+    await expect(create.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      window.innerHeight
+    );
+  },
+};
+
 /** G50: a failed role read shows its error, not "Loading role…" forever. */
 export const DetailReadFailureShowsTheError: Story = {
   args: {

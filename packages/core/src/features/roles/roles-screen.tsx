@@ -207,24 +207,24 @@ function RoleFormBody(props: {
             ({picked.length} selected)
           </span>
         </p>
-        {props.catalogue.map((group) => {
-          const keys = group.keys.map((entry) => entry.key);
-          const all = keys.every((key) => picked.includes(key));
+        {/* G48: the list scrolls in a bounded box, so the dialog and its buttons fit the screen. */}
+        <div className="max-h-72 overflow-y-auto rounded-lg border border-border">
+          {props.catalogue.map((group) => {
+            const keys = group.keys.map((entry) => entry.key);
+            const all = keys.every((key) => picked.includes(key));
 
-          return (
-            <fieldset
-              key={group.moduleId}
-              className="rounded-lg border border-input p-3"
-            >
-              <legend className="flex items-center gap-2 text-sm font-semibold text-foreground">
-                {group.moduleName}
-                <StatusPill tone={group.entitled ? "success" : "neutral"}>
-                  {group.entitled ? "Entitled" : "Not entitled"}
-                </StatusPill>
-              </legend>
-              {/* The capture offers a select-all per module. */}
-              <div className="flex justify-end">
+            return (
+              <fieldset key={group.moduleId} className="relative">
+                {/* The mockup: one band per module with its state and Select all on the same line.
+                  The button sits on the band but outside the legend, so the group's name stays short. */}
+                <legend className="float-left flex min-h-9 w-full items-center gap-2 bg-muted px-3 text-sm font-semibold text-foreground">
+                  {group.moduleName}
+                  <StatusPill tone={group.entitled ? "success" : "neutral"}>
+                    {group.entitled ? "Entitled" : "Not entitled"}
+                  </StatusPill>
+                </legend>
                 <Button
+                  className="absolute top-0 right-3"
                   variant="link"
                   size="sm"
                   onClick={() =>
@@ -238,31 +238,31 @@ function RoleFormBody(props: {
                   {all ? "Clear all" : "Select all"}
                   <span className="sr-only"> {group.moduleName}</span>
                 </Button>
-              </div>
-              {group.keys.map((entry) => (
-                <label
-                  key={entry.key}
-                  className="flex min-h-11 items-center gap-2 text-sm text-foreground"
-                >
-                  <Checkbox
-                    checked={picked.includes(entry.key)}
-                    onCheckedChange={() => toggle(entry.key)}
-                  />
-                  <span className="min-w-0 flex-1">{entry.label}</span>
-                  {/* The checkbox keeps the label as its name; the key is a visual hint. */}
-                  {entry.label === entry.key ? null : (
-                    <code
-                      aria-hidden="true"
-                      className="text-xs text-muted-foreground"
-                    >
-                      {entry.key}
-                    </code>
-                  )}
-                </label>
-              ))}
-            </fieldset>
-          );
-        })}
+                {group.keys.map((entry) => (
+                  <label
+                    key={entry.key}
+                    className="clear-left flex min-h-11 items-center gap-2 px-3 text-sm text-foreground"
+                  >
+                    <Checkbox
+                      checked={picked.includes(entry.key)}
+                      onCheckedChange={() => toggle(entry.key)}
+                    />
+                    <span className="min-w-0 flex-1">{entry.label}</span>
+                    {/* The checkbox keeps the label as its name; the key is a visual hint. */}
+                    {entry.label === entry.key ? null : (
+                      <code
+                        aria-hidden="true"
+                        className="text-xs text-muted-foreground"
+                      >
+                        {entry.key}
+                      </code>
+                    )}
+                  </label>
+                ))}
+              </fieldset>
+            );
+          })}
+        </div>
       </div>
 
       {/* A refused save reports in the action bar, beside the buttons, and keeps the form (U-1). */}
