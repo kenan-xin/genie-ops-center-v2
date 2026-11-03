@@ -372,6 +372,23 @@ export function PersonInspector(props: {
             </TabsContent>
 
             <TabsContent value="roles">
+              <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-muted-foreground">
+                    Everything this person can do, and where each grant comes
+                    from. Read-only here.
+                  </p>
+                  <HelpDisclosure label="How this adds up">
+                    A role held directly belongs to this person. A role held
+                    through a group stays while they are a member of that group.
+                  </HelpDisclosure>
+                </div>
+                {props.onManageAccess === undefined ? null : (
+                  <Button variant="secondary" onClick={props.onManageAccess}>
+                    <ShieldIcon /> Manage in Access
+                  </Button>
+                )}
+              </div>
               <ul className="divide-y divide-input">
                 {person.assignments.map((assignment) => (
                   <li
@@ -406,17 +423,11 @@ export function PersonInspector(props: {
                   </li>
                 ) : null}
               </ul>
-              {props.onManageAccess === undefined ? null : (
-                <div className="mt-3">
-                  <Button variant="secondary" onClick={props.onManageAccess}>
-                    <ShieldIcon /> Manage in Access
-                  </Button>
-                </div>
-              )}
-              <HelpDisclosure label="How this adds up">
-                A role held directly is this person&apos;s. A role held through
-                a group changes for every member of that group.
-              </HelpDisclosure>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Access is granted and taken back in one place, the Access
+                screen. A role held through a group changes for every member of
+                that group.
+              </p>
             </TabsContent>
 
             <TabsContent value="sessions">
