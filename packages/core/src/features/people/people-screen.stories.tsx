@@ -10,7 +10,11 @@ import {
   FIXTURE_SOLE_ADMIN_PERSON_ID,
   FIXTURE_VIEWER,
 } from "./__fixtures__/people.ts";
-import { PeopleScreen, SELF_REASON } from "./people-screen.tsx";
+import {
+  DISABLE_REMOVE_NOTE,
+  PeopleScreen,
+  SELF_REASON,
+} from "./people-screen.tsx";
 import type { PeopleScreenProps } from "./types.ts";
 
 const onAddPerson = fn();
@@ -641,6 +645,8 @@ export const SelfAndLastAdministratorDisableIsBlocked: Story = {
         "You cannot change your own access. Ask another administrator."
       )
     ).toBeInTheDocument();
+    // The refusal takes the place of the note, as the guard capture draws it.
+    await expect(inspector.queryByText(DISABLE_REMOVE_NOTE)).toBeNull();
   },
 };
 
@@ -654,6 +660,7 @@ export const ActionsStayUnderEveryTab: Story = {
     );
 
     await userEvent.click(inspector.getByRole("tab", { name: /Groups/ }));
+    await expect(inspector.getByText(DISABLE_REMOVE_NOTE)).toBeVisible();
     await expect(
       inspector.getByRole("button", { name: "Disable" })
     ).toBeVisible();

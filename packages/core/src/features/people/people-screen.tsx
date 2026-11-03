@@ -74,6 +74,10 @@ export const LAST_ADMIN_REASON =
 export const SELF_REASON =
   "You cannot change your own access. Ask another administrator.";
 
+/** The line above Disable and Remove; a refusal takes its place (design captures). */
+export const DISABLE_REMOVE_NOTE =
+  "Disabling keeps history and assignments. Removing drops their groups and direct roles and keeps their name and audit trail.";
+
 function fmtDateTime(
   iso: string | null,
   timeZone: string,
@@ -431,7 +435,11 @@ export function PersonInspector(props: {
         <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">
           {blocked ? (
             <p className="text-sm text-foreground">{blockedReason}</p>
-          ) : null}
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {DISABLE_REMOVE_NOTE}
+            </p>
+          )}
           <div className="flex flex-wrap gap-2">
             {person.status === "disabled" ? (
               <Button
