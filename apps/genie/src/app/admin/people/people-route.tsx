@@ -86,7 +86,8 @@ export function PeopleRoute(props: {
   // rate-limit refusal (R-21).
   const action = useAdminWrite({
     write: (work: () => Promise<void>) => work(),
-    invalidate: [["people"], ["person", selectedId]],
+    // Disable, Remove and a group change alter the person's paths, so the Access tab reloads too.
+    invalidate: [["people"], ["person", selectedId], ["access"]],
     refused: (refusal: Refusal) => setError(refusal.message),
   });
 

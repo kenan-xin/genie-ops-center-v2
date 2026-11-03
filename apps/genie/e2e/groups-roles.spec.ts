@@ -200,6 +200,14 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
     .getByRole("button", { name: new RegExp(GROUP_LABEL) })
     .first()
     .click();
+  const archivedInspector = page.getByRole("dialog", { name: GROUP_LABEL });
+
+  // The Access tab is read before the archive, so the archive must reload it.
+  await archivedInspector.getByRole("tab", { name: /^Access/ }).click();
+  await expect(
+    archivedInspector.getByText("Core administration · E2E reader")
+  ).toBeVisible();
+  await expect(archivedInspector.getByText("Not in effect")).toHaveCount(0);
   await page.getByRole("button", { name: "Archive group" }).click();
 
   const archiveDialog = page.getByRole("dialog", {
@@ -224,6 +232,11 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   );
 
   expect(archived).toBe("t");
+
+  // The open inspector shows the path as dead at once, not the live path read before (R-32).
+  await expect(
+    archivedInspector.getByText("The group is archived")
+  ).toBeVisible();
 
   // A second jit person with the same claim is now refused: no non-archived mapped group remains.
   const refusedEmail = e2eGroupsRolesEmail("refused", project);

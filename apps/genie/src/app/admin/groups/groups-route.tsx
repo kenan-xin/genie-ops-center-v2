@@ -64,7 +64,8 @@ export function GroupsRoute(props: {
   // One write runs any change and reloads the list and the open detail.
   const action = useAdminWrite({
     write: (work: () => Promise<void>) => work(),
-    invalidate: [["groups"], ["group", selectedId]],
+    // Archive, Restore and Delete alter the group's paths, so the Access tab reloads too.
+    invalidate: [["groups"], ["group", selectedId], ["access"]],
   });
 
   // The add dialogs await their write and show the refusal it rejects with (U-1), so it gets no
