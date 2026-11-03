@@ -363,7 +363,8 @@ function RoleDetailView(props: {
         </div>
       </section>
 
-      <div className="grid gap-4 lg:grid-cols-2 lg:items-start">
+      {/* grid-cols-1 is minmax(0, 1fr): an auto track grew to a long key and ran past a phone. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
         <section className="rounded-xl border border-border bg-card p-4 md:p-5">
           <h3 className="text-base font-semibold text-foreground">
             Permissions
@@ -401,12 +402,12 @@ function RoleDetailView(props: {
                 {group.keys.map((entry) => (
                   <li
                     key={entry.key}
-                    className="flex items-center gap-2 py-0.5 text-sm text-foreground"
+                    className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-0.5 text-sm text-foreground"
                   >
                     {/* The capture: the key's label, its mono key at the right. */}
-                    <span className="min-w-0 flex-1">{entry.label}</span>
+                    <span className="min-w-40 flex-1">{entry.label}</span>
                     {entry.label === entry.key ? null : (
-                      <code className="text-xs text-muted-foreground">
+                      <code className="text-xs text-muted-foreground wrap-anywhere">
                         {entry.key}
                       </code>
                     )}
