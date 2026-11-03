@@ -20,7 +20,11 @@ import { groupLabelSql } from "../groups/label.ts";
 /** The role catalogue entries a screen may offer, and what it can say about each module. */
 export type RolesModule = Pick<
   Module,
-  "identity" | "permissions" | "defaultRoles" | "defaultAccessRole"
+  | "identity"
+  | "permissions"
+  | "recordTypes"
+  | "defaultRoles"
+  | "defaultAccessRole"
 >;
 
 /** Why a stored key no longer grants: its module is switched off, or the key is retired/unknown. */

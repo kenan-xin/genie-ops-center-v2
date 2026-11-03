@@ -27,6 +27,12 @@ const scope = z
     { message: "A scope is both columns or neither" }
   );
 
+/** One record a scope points at: both halves, never one. `scope` names the half-null pair. */
+const recordRef = z.object({
+  type: z.string().min(1).max(200),
+  id: z.string().min(1).max(200),
+});
+
 /**
  * The Roles screen's API (R-37, ADR 0011), under core's `/roles/` area. It imports only zod and
  * the browser-safe `@genie/core/rpc` entry, so the browser client types its calls from it. Answers
@@ -155,6 +161,23 @@ export const rolesContract = {
           )
           .max(100),
         remove: z.array(z.object({ row: grantRow })).max(100),
+      })
+    ),
+
+  // R-37c, R-38: Advanced access adds and removes for one recipient, in one transaction.
+  saveAdvanced: oc
+    .route({
+      method: "POST",
+      path: "/roles/advanced/{principalType}/{principalId}",
+    })
+    .input(
+      z.object({
+        principalType: z.enum(["user", "group"]),
+        principalId: z.string().min(1).max(200),
+        add: z
+          .array(z.object({ roleId: z.uuid(), scope: recordRef.nullable() }))
+          .max(100),
+        remove: z.array(z.object({ assignmentId: z.uuid() })).max(100),
       })
     ),
 
