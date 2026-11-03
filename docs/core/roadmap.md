@@ -170,7 +170,7 @@ Work items:
 2. The dataset seam (`DEC-54`, closes `OPEN-11`), the chart write gate, the reporting-date setting, the module audit call, job retries and a job principal.
 3. The model connection with the typed key store of `DEC-53` (the model part of Section 6 item 4) and a recorded test model (`DEC-55`).
 4. The Invoice and Payments module, its Documents inbox and review, and a demo tenant seeded from the demo pack.
-5. The boss agent of `DEC-29`: the Ask page, the chat bubble, and answers over published datasets.
+5. The boss agent of `DEC-29`: the Ask page, the agent panel on every page, and answers over published datasets.
 6. The Analytics and Slides modules.
 7. An evaluation suite that picks the models.
 

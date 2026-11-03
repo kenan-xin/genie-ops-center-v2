@@ -4,7 +4,7 @@ Confidence: 7.4/10
 
 Reasoning: the product behavior is settled one decision at a time with the owner, and two cold critiques tested the plan and the tickets against the code. The score is lower than earlier sections for three reasons. Four new parts must land in about five weeks with no slip order. The model calls depend on an outside service (OpenRouter) and on models that change. Several core seams are new (datasets, the chart gate, the agent runtime, the typed key store), and none of them exists in code yet.
 
-Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day. Amended 2026-11-01 with the owner rulings of wave 3: R-15, R-26, R-46, R-49 and R-52. Amended 2026-11-03 with the owner rulings of the Ask review in the wave 4 dry run: R-41, R-42, R-42a, R-45a and AC-8 (`DEC-56`).
+Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day. Amended 2026-11-01 with the owner rulings of wave 3: R-15, R-26, R-46, R-49 and R-52. Amended 2026-11-03 with the owner rulings of the Ask review in the wave 4 dry run: R-41, R-42, R-42a, R-45a and AC-8 (`DEC-56`), and later that day R-42 and R-42a again (agent panel, collapsed history, step timeline).
 
 ## Goal and scope
 
@@ -12,7 +12,7 @@ Section 7 delivers an AI-assisted invoice and payment tracker, and the core seam
 
 In scope:
 
-- Core: module pages and a typed browser client (roadmap Section 6 items 1 and 2), the dataset seam (closes `OPEN-11`), the chart write gate, the model connection with a typed key store (the model part of Section 6 item 4, `DEC-53`), the module audit call, job retries and a job principal, the reporting-date setting, and the boss agent of `DEC-29` with the Ask page and the chat bubble.
+- Core: module pages and a typed browser client (roadmap Section 6 items 1 and 2), the dataset seam (closes `OPEN-11`), the chart write gate, the model connection with a typed key store (the model part of Section 6 item 4, `DEC-53`), the module audit call, job retries and a job principal, the reporting-date setting, and the boss agent of `DEC-29` with the Ask page and the agent panel (the chat bubble until 2026-11-03).
 - The Invoice and Payments module.
 - The Analytics module and the Slides module, which serve any module's datasets.
 - An evaluation suite that picks the models, and a demo deployment seeded from the demo pack.
@@ -133,11 +133,11 @@ R-40. The agent route handler lives in core and the app mounts it. Messages stre
 
 R-41. Core stores agent sessions, messages, including tool results, and the artifacts of R-45a with their versions. Only the owner opens a session and its artifacts.
 
-The boss agent, Ask and the chat bubble are core and module-agnostic: they work the same whether the deployment runs finance, healthcare, legal or CRM modules. Their screens, labels and artifact kinds never name a module's domain; a module's words appear only as content from its datasets and tools (owner, 2026-11-03).
+The boss agent, Ask and the agent panel are core and module-agnostic: they work the same whether the deployment runs finance, healthcare, legal or CRM modules. Their screens, labels and artifact kinds never name a module's domain; a module's words appear only as content from its datasets and tools (owner, 2026-11-03).
 
-R-42. The Ask page lists the person's sessions and shows one. The chat bubble at the bottom right of every page starts a new session each time it opens. Both list the same sessions. Both link to the Documents inbox. Chat takes no file upload. A core permission gates Ask. The main menu lists Ask for a person who holds that permission.
+R-42. The Ask page lists the person's sessions and shows one. The agent panel on every page except Ask starts a new session each time it opens (owner, 2026-11-03: a full-height panel docked on the right, not a floating bubble). On a desktop it pushes the page narrower and never covers it; on a phone it is a full-screen sheet. An Agent button in the top bar opens and closes it, and its status dot shows while the agent works, also with the panel closed. The same panel replaces a page's own chat, so a dashboard or a deck editor has no second chat; the panel names the open record through the page context. Both list the same sessions. Both link to the Documents inbox. Chat takes no file upload. A core permission gates Ask. The main menu lists Ask for a person who holds that permission.
 
-R-42a. Layout of Ask (owner, 2026-11-03). On Ask, the main menu opens as its icon rail and the chat history opens beside it; on every other page the main menu stays open. The chat history collapses on its own toggle. Answers stream word by word as the model writes them, never all at once at the end. Stop keeps the text so far. The composer shows one focus ring, and Send stays disabled until the composer holds text. The prototype is `ask-chat.prototype.html`, variant B, in the design workspace.
+R-42a. Layout of Ask (owner, 2026-11-03). On Ask, the main menu opens as its icon rail and the chat history opens beside it; on every other page the main menu stays open. The chat history collapses on its own toggle and then hides completely, with no second rail; only its toggle stays, in the Ask top bar. In Ask and the agent panel, tool work shows as a step timeline: the active step moves, older steps fold, repeated reads of one source group into one step with a count, a call that was refused and then fixed is one step, a final refusal is a clear failure with Try again, and before the first step a Thinking state moves. A step that runs past 3 seconds shows its elapsed time. Answers stream word by word as the model writes them, never all at once at the end. Stop keeps the text so far. The composer shows one focus ring, and Send stays disabled until the composer holds text. The prototype is `ask-chat.prototype.html`, variant B, in the design workspace.
 
 R-43. The agent's tools are `list-datasets` (names and descriptions first), `query-dataset` (fields of one dataset), `open-record` (R-11), and the tools that modules provide through the `agent-tools` interface. Core names no module tool.
 
@@ -199,7 +199,7 @@ AC-6. Integration tests on the demo pack history give every total in `expected_b
 
 AC-7. With the recorded test model, the seven live uploads reach the expected statuses and records, and the end-to-end review flow gives the results in `expected_live_running_totals.json`, at both viewports. Proves R-23 to R-28, R-37, R-38.
 
-AC-8. With the recorded test model, the nine read questions match the expected-answers file, a person without `invoices:read` is refused, a disabled module's tools are absent, and the bubble and Ask share sessions, at both viewports. A change request on a chart makes version 2 of the same artifact, the panel steps back to version 1, and a phone opens the artifact as a sheet. Proves R-40 to R-47, with R-42a and R-45a.
+AC-8. With the recorded test model, the nine read questions match the expected-answers file, a person without `invoices:read` is refused, a disabled module's tools are absent, and the agent panel and Ask share sessions, at both viewports. The agent panel opens from the Agent button, pushes the page on a desktop, and shows the step timeline while it works. A change request on a chart makes version 2 of the same artifact, the panel steps back to version 1, and a phone opens the artifact as a sheet. Proves R-40 to R-47, with R-42a and R-45a.
 
 AC-9. The starter dashboard shows the expected totals. A dashboard built by chat refreshes after a payment is saved, at both viewports. Proves R-48 to R-51.
 
