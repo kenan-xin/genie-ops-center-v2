@@ -14,6 +14,7 @@ import {
   useMediaQuery,
 } from "@genie/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
+import { z } from "zod";
 import { useStore } from "zustand";
 
 import type {
@@ -52,7 +53,10 @@ export type GrantsScreenProps = {
   /** The chosen recipient's paths, undefined while they load. */
   readonly paths: readonly AccessPath[] | undefined;
   /** A prefilled link, applied once on the first recipient (P17). */
-  readonly link?: { readonly module?: string; readonly role?: string };
+  readonly link?: {
+    readonly module?: string | undefined;
+    readonly role?: string | undefined;
+  };
   /** Rejects with `{ message }` when the server refuses. The screen keeps the draft. */
   readonly onSave: (changes: GrantChanges) => Promise<void>;
   /** A failed read. */
@@ -73,6 +77,8 @@ const EMPTY_COPY = {
       "A person is the exception. Use it when one person needs a module that their groups do not give.",
   },
 } as const;
+
+const REFUSAL = z.object({ message: z.string().min(1) });
 
 const KIND_LABEL = { group: "Groups", user: "People" } as const;
 
@@ -306,8 +312,13 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
       await props.onSave(saveInput(view, draft));
       store.getState().reset();
     } catch (error) {
+      // The route rejects with its refusal, a plain object that carries the whole message.
+      const refusal = REFUSAL.safeParse(error);
+
       setFailure(
-        error instanceof Error ? error.message : "The changes were not saved."
+        refusal.success
+          ? refusal.data.message
+          : "The access changes were not saved."
       );
     } finally {
       setSaving(false);

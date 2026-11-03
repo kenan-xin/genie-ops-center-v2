@@ -42,6 +42,11 @@
     }
   },
   "pages": {
+    "access": {
+      "title": "Access",
+      "description": "Choose a group or a person. Then give them modules and pick the role they hold in each.",
+      "notSaved": "The access changes were not saved."
+    },
     "ask": {
       "title": "Ask"
     },

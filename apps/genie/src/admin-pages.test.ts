@@ -51,6 +51,8 @@ describe("core admin pages", () => {
     expect(found).toEqual(
       [
         ...entries.map((entry) => `${entry.path.slice(1)}/loading.tsx`),
+        // An admin page with its own PageLoading; S2-24 gives it the navigation entry above.
+        "admin/access/loading.tsx",
         "(workspace)/placeholder/[[...path]]/loading.tsx",
         "(workspace)/m/[moduleId]/[[...path]]/loading.tsx",
         "admin/placeholder/[[...path]]/loading.tsx",

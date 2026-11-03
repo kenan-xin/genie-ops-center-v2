@@ -129,7 +129,10 @@ export function saveInput(view: GrantsView, draft: GrantsDraft): GrantChanges {
  */
 export function linkDraft(
   view: GrantsView,
-  link: { readonly module?: string; readonly role?: string }
+  link: {
+    readonly module?: string | undefined;
+    readonly role?: string | undefined;
+  }
 ): GrantsDraft {
   const rows = [...view.granted, ...view.catalog].map((entry) => entry.row);
 
