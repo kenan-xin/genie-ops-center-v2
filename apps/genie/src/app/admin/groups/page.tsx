@@ -34,7 +34,11 @@ export default async function GroupsPage() {
             description={t("groups.description")}
           />
           <GroupsRoute
-            viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
+            viewer={{
+              id: caller.userId,
+              timeZone: branding.defaultTimeZone,
+              nowIso: new Date().toISOString(),
+            }}
           />
         </main>
       );

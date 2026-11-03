@@ -25,6 +25,8 @@ export type GroupSource = Group["source"];
 export type GroupsViewer = {
   readonly id: string;
   readonly timeZone: string;
+  /** The server's clock at render, so a relative time reads the same on server and client. */
+  readonly nowIso: string;
 };
 
 /** The label a group shows: the display label when set, the name otherwise (R-24c). */

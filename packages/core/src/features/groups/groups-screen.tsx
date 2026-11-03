@@ -67,7 +67,7 @@ import {
   WarningIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
-import { initials } from "../audit/helpers.ts";
+import { initials, relativeTime } from "../audit/helpers.ts";
 import { GroupName, looksLikeId } from "./group-name.tsx";
 import {
   groupLabel,
@@ -77,21 +77,9 @@ import {
   type GroupsViewer,
 } from "./types.ts";
 
-function fmtDateTime(
-  iso: string | null,
-  timeZone: string,
-  empty: string
-): string {
-  if (iso === null) return empty;
-
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    timeZone,
-  });
+/** "1 h ago", "26 d ago", a date after 30 days (design mockups). */
+function ago(iso: string, viewer: GroupsViewer): string {
+  return relativeTime(iso, new Date(viewer.nowIso), viewer.timeZone);
 }
 
 function sourcePill(group: Group) {
@@ -126,17 +114,28 @@ function syncPill(group: Group) {
   return null;
 }
 
-/** The table's Status column: the state pill, or the sync date when the group is fresh. */
-function syncBadge(group: Group, viewer: GroupsViewer) {
+/** The table's Sync column (mockup): "1 h ago", "Stale · 26 d ago", or "Managed in Genie". */
+function syncCell(group: Group, viewer: GroupsViewer) {
+  if (group.source !== "idp" && !group.archived)
+    return (
+      <span className="text-xs text-muted-foreground">Managed in Genie</span>
+    );
+
   const pill = syncPill(group);
 
-  if (pill !== null) return pill;
+  const since =
+    group.lastSeenAt === null ? null : (
+      <span className="text-xs text-muted-foreground">
+        {ago(group.lastSeenAt, viewer)}
+      </span>
+    );
 
-  if (group.source !== "idp" || group.lastSeenAt === null) return null;
+  if (pill === null) return since;
 
   return (
-    <span className="text-xs text-muted-foreground">
-      Synced {fmtDateTime(group.lastSeenAt, viewer.timeZone, "never")}
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {pill}
+      {group.stale && since !== null ? <>· {since}</> : null}
     </span>
   );
 }
@@ -251,11 +250,11 @@ export function GroupInspector(
               )}
               {group.source === "idp" ? (
                 <p className="text-xs text-muted-foreground wrap-anywhere">
-                  {`Value: "${group.externalId ?? ""}" · last sync ${fmtDateTime(
-                    group.lastSeenAt,
-                    viewer.timeZone,
-                    "never"
-                  )}`}
+                  {/* The value stays whole, so it can be matched to the provider (R-24c). */}
+                  {group.lastSeenAt === null
+                    ? "Never synced"
+                    : `Synced ${ago(group.lastSeenAt, viewer)}`}{" "}
+                  · {group.externalId ?? ""}
                 </p>
               ) : null}
               {asksForLabel && editing !== "label" ? (
@@ -430,8 +429,7 @@ export function GroupInspector(
                           </Button>
                         ) : member.syncedAt === null ? null : (
                           <span className="shrink-0 text-xs text-muted-foreground">
-                            synced{" "}
-                            {fmtDateTime(member.syncedAt, viewer.timeZone, "")}
+                            synced {ago(member.syncedAt, viewer)}
                           </span>
                         )}
                       </li>
@@ -895,8 +893,12 @@ export function GroupsScreen(props: GroupsScreenProps) {
                 cell: (group) => group.assignmentCount,
                 align: "end",
               },
+              {
+                id: "sync",
+                header: "Sync",
+                cell: (group) => syncCell(group, props.viewer),
+              },
             ]}
-            status={(group) => syncBadge(group, props.viewer)}
             card={{
               media: (group) => (
                 <IconTile>
@@ -914,9 +916,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
                 `${group.memberCount} member${group.memberCount === 1 ? "" : "s"}`,
                 `${group.assignmentCount} role${group.assignmentCount === 1 ? "" : "s"}`,
                 ...(group.source === "idp" && group.lastSeenAt !== null
-                  ? [
-                      `synced ${fmtDateTime(group.lastSeenAt, props.viewer.timeZone, "never")}`,
-                    ]
+                  ? [`synced ${ago(group.lastSeenAt, props.viewer)}`]
                   : []),
               ],
             }}

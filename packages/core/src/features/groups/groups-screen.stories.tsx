@@ -94,6 +94,20 @@ export const HelpIsIconOnly: Story = {
   },
 };
 
+/** G26: the Sync column reads relative, "Stale · <when>", and "Managed in Genie" (mockup). */
+export const SyncColumnIsRelative: Story = {
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Groups" }));
+
+    await expect(
+      table.getByRole("columnheader", { name: "Sync" })
+    ).toBeVisible();
+    await expect(table.getByText("1 h ago")).toBeVisible();
+    await expect(table.getByText("1 Jan 2026")).toBeVisible();
+    await expect(table.getByText("Managed in Genie")).toBeVisible();
+  },
+};
+
 export const Default: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Groups" }));
@@ -443,9 +457,9 @@ export const LabelShowsAndValueStaysInTheInspector: Story = {
       await screen.findByRole("dialog", { name: "Finance managers" })
     );
 
-    // The label names the header; the raw value stays visible (R-24c).
+    // The label names the header; the raw value stays whole after the relative sync (R-24c, G32).
     await expect(
-      inspector.getByText(/Value: "0a1b2c3d-ob-id"/)
+      inspector.getByText("Synced 1 h ago · 0a1b2c3d-ob-id")
     ).toBeInTheDocument();
   },
 };

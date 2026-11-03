@@ -10,6 +10,7 @@ import type {
 export const FIXTURE_VIEWER: GroupsViewer = {
   id: "u-admin",
   timeZone: "UTC",
+  nowIso: "2026-09-01T11:00:00.000Z",
 };
 
 export const FIXTURE_ROLES: readonly AssignableRole[] = [
