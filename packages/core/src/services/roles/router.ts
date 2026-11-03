@@ -10,7 +10,11 @@ import {
   readAccessBySubject,
   readRecipientAccess,
 } from "./effective-access.ts";
-import { readGrantCatalogue, readGrantRecipients } from "./grants.ts";
+import {
+  readGrantCatalogue,
+  readGrantRecipients,
+  saveGrants,
+} from "./grants.ts";
 import {
   copyRole,
   createRole,
@@ -144,6 +148,20 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         modules,
       })
     ),
+
+    saveGrants: managed.saveGrants.handler(async ({ context, input }) => {
+      await saveGrants({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        recipient: { type: input.principalType, id: input.principalId },
+        changes: {
+          add: input.add,
+          change: input.change,
+          remove: input.remove,
+        },
+      });
+    }),
 
     grantRecipients: managed.grantRecipients.handler(({ context }) =>
       readGrantRecipients({ tenant: context.tenant, caller: context.caller })

@@ -1895,6 +1895,135 @@
         }
       }
     },
+    "/roles/grants/{principalType}/{principalId}": {
+      "post": {
+        "operationId": "roles.saveGrants",
+        "parameters": [
+          {
+            "name": "principalType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "user",
+                "group"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "principalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "add": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "roleId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "roleId"
+                      ]
+                    }
+                  },
+                  "change": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        },
+                        "assignmentId": {
+                          "type": "string",
+                          "format": "uuid"
+                        },
+                        "roleId": {
+                          "type": "string",
+                          "format": "uuid"
+                        }
+                      },
+                      "required": [
+                        "row",
+                        "assignmentId",
+                        "roleId"
+                      ]
+                    }
+                  },
+                  "remove": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "row": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        }
+                      },
+                      "required": [
+                        "row"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "add",
+                  "change",
+                  "remove"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {},
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/roles/grants/recipients": {
       "get": {
         "operationId": "roles.grantRecipients",

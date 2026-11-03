@@ -9,6 +9,9 @@ const roleId = z.object({ roleId: z.uuid() });
 
 const permissions = z.array(z.string().min(1).max(200));
 
+/** A Grants row: a module id, or the Ask row. */
+const grantRow = z.string().min(1).max(200);
+
 /** The answer of a write that creates a row: its id. */
 const created = z.custom<{ readonly id: string }>();
 
@@ -130,6 +133,30 @@ export const rolesContract = {
   grantCatalogue: oc
     .route({ method: "GET", path: "/roles/grants/catalogue" })
     .output(z.custom<readonly GrantRow[]>()),
+
+  // R-37a, P1: Add, the role swap and Remove for one recipient, in one transaction.
+  saveGrants: oc
+    .route({
+      method: "POST",
+      path: "/roles/grants/{principalType}/{principalId}",
+    })
+    .input(
+      z.object({
+        principalType: z.enum(["user", "group"]),
+        principalId: z.string().min(1).max(200),
+        add: z.array(z.object({ row: grantRow, roleId: z.uuid() })).max(100),
+        change: z
+          .array(
+            z.object({
+              row: grantRow,
+              assignmentId: z.uuid(),
+              roleId: z.uuid(),
+            })
+          )
+          .max(100),
+        remove: z.array(z.object({ row: grantRow })).max(100),
+      })
+    ),
 
   // R-37e, R-39: the groups and people the Grants picker offers, without the break-glass account.
   grantRecipients: oc

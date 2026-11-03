@@ -1,9 +1,22 @@
+import { and, eq } from "drizzle-orm";
+
+import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import { ASK_USER_ROLE } from "../../lib/module-contract/system-roles.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
+import { roleAssignment } from "../../schema.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
+import {
+  assignRoleInTransaction,
+  removeAssignmentInTransaction,
+} from "../authorization/role-assignment.ts";
 import { ASK_PERMISSION } from "../authorization/roles.ts";
 import { groupLabelSql } from "../groups/label.ts";
-import { assertManagesAllRoles } from "./effective-access.ts";
+import {
+  type AccessRecipient,
+  assertManagesAllRoles,
+  recipientDisabled,
+} from "./effective-access.ts";
 import { entitlementByModule, type RolesModule } from "./index.ts";
 
 /** The Core row that `Ask user` grants. A module id is kebab-case, so it never takes this key. */
@@ -154,6 +167,145 @@ export async function readGrantCatalogue(input: {
   });
 
   return rows;
+}
+
+/** The staged changes of one Grants save (P1, P7, P8). */
+export type GrantChanges = {
+  readonly add: readonly { readonly row: string; readonly roleId: string }[];
+  readonly change: readonly {
+    readonly row: string;
+    readonly assignmentId: string;
+    readonly roleId: string;
+  }[];
+  readonly remove: readonly { readonly row: string }[];
+};
+
+function notFound(reason: string): AppError {
+  return new AppError(CORE_ERRORS["not-found"], { cause: new Error(reason) });
+}
+
+/**
+ * Applies Add, the role swap and Remove for one recipient in one transaction (R-37a, P1). Every
+ * write goes through the one assignment writer (DEC-39), so the audit rows and the role events are
+ * the same as on every other screen. A refused entry refuses the whole save, and nothing is
+ * written.
+ */
+export async function saveGrants(input: {
+  readonly tenant: TenantContext;
+  readonly caller: RequestPrincipal;
+  readonly modules: readonly RolesModule[];
+  readonly recipient: AccessRecipient;
+  readonly changes: GrantChanges;
+}): Promise<void> {
+  await assertManagesAllRoles(input.caller);
+  // Refuses an erased person, the break-glass account and an unknown id (R-39).
+  await recipientDisabled(input.tenant, input.recipient);
+
+  const { add, change, remove } = input.changes;
+
+  const named = [...add, ...change, ...remove].map((entry) => entry.row);
+
+  if (new Set(named).size !== named.length) {
+    throw new AppError(CORE_ERRORS["invalid-input"]);
+  }
+
+  const catalogue = new Map(
+    (await readGrantCatalogue(input)).map((row) => [row.id, row])
+  );
+
+  /** The role ids a row owns, or `not-found` for an unknown row. */
+  const rolesOf = (rowId: string): ReadonlySet<string> => {
+    const row = catalogue.get(rowId);
+
+    if (row === undefined) throw notFound(`No Grants row ${rowId}`);
+
+    return new Set(row.roles.map((role) => role.id));
+  };
+
+  for (const entry of [...add, ...change]) {
+    if (!rolesOf(entry.row).has(entry.roleId)) {
+      throw notFound(`Role ${entry.roleId} is not a role of ${entry.row}`);
+    }
+  }
+
+  for (const entry of remove) rolesOf(entry.row);
+
+  const { recipient } = input;
+
+  const actorUserId = input.caller.userId;
+
+  await withTransaction(input.tenant, async (tx) => {
+    // Read again before each step, so a swap sees its own delete.
+    const held = () =>
+      tx
+        .select({
+          id: roleAssignment.id,
+          roleId: roleAssignment.roleId,
+          scopeType: roleAssignment.scopeType,
+        })
+        .from(roleAssignment)
+        .where(
+          and(
+            eq(roleAssignment.principalType, recipient.type),
+            eq(roleAssignment.principalId, recipient.id)
+          )
+        );
+
+    const grant = async (roleId: string) => {
+      const tenantWide = (await held()).some(
+        (row) => row.roleId === roleId && row.scopeType === null
+      );
+
+      if (!tenantWide) {
+        await assignRoleInTransaction(input.tenant, tx, {
+          actorUserId,
+          roleId,
+          principal: recipient,
+        });
+      }
+    };
+
+    const take = (assignmentId: string) =>
+      removeAssignmentInTransaction(input.tenant, tx, {
+        actorUserId,
+        assignmentId,
+        expect: recipient,
+      });
+
+    // One statement at a time on the one transaction.
+    /* oxlint-disable no-await-in-loop */
+    for (const entry of remove) {
+      const owned = rolesOf(entry.row);
+
+      // P5: every scope, so a record-scoped role does not keep the module open.
+      for (const row of await held()) {
+        if (owned.has(row.roleId)) await take(row.id);
+      }
+    }
+
+    for (const entry of change) {
+      const owned = rolesOf(entry.row);
+
+      const shown = (await held()).find(
+        (row) =>
+          row.id === entry.assignmentId &&
+          row.scopeType === null &&
+          owned.has(row.roleId)
+      );
+
+      if (shown === undefined) {
+        throw notFound(
+          `Assignment ${entry.assignmentId} is not a whole-tenant role of ${entry.row}`
+        );
+      }
+
+      await take(shown.id);
+      await grant(entry.roleId);
+    }
+
+    for (const entry of add) await grant(entry.roleId);
+    /* oxlint-enable no-await-in-loop */
+  });
 }
 
 /**

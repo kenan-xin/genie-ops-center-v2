@@ -230,5 +230,237 @@ describe("the Grants reads", () => {
     await expect(roles(reader).grantRecipients()).rejects.toMatchObject({
       code: "forbidden",
     });
+    await expect(
+      roles(reader).saveGrants({
+        principalType: "user",
+        principalId: reader,
+        add: [{ row: "fixture", roleId: fixtureEditorId }],
+        change: [],
+        remove: [],
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    expect(await directRoles({ type: "user", id: reader })).toHaveLength(1);
+  });
+});
+
+type Principal = { readonly type: "user" | "group"; readonly id: string };
+
+/** The recipient's own assignments, by role name: the rows a Grants save may change. */
+async function directRoles(principal: Principal) {
+  const result = await deployment.context.db.$client.query<{
+    readonly id: string;
+    readonly name: string;
+    readonly scoped: boolean;
+  }>(
+    `select a.id::text as id, r.name, a.scope_type is not null as scoped
+       from role_assignment a join role r on r.id = a.role_id
+      where a.principal_type = $1 and a.principal_id = $2
+      order by r.name, a.id`,
+    [principal.type, principal.id]
+  );
+
+  return result.rows;
+}
+
+async function namesOf(principal: Principal) {
+  return (await directRoles(principal)).map((row) => row.name);
+}
+
+function grantTo(
+  roleName: string,
+  principal: Principal,
+  scope?: { readonly type: string; readonly id: string }
+) {
+  return roleIdOf(roleName).then((roleId) =>
+    assignRole(deployment.context, { roleId, principal, scope })
+  );
+}
+
+function save(
+  recipient: Principal,
+  changes: {
+    readonly add?: readonly { row: string; roleId: string }[];
+    readonly change?: readonly {
+      row: string;
+      assignmentId: string;
+      roleId: string;
+    }[];
+    readonly remove?: readonly { row: string }[];
+  }
+) {
+  return roles(adaId).saveGrants({
+    principalType: recipient.type,
+    principalId: recipient.id,
+    add: [...(changes.add ?? [])],
+    change: [...(changes.change ?? [])],
+    remove: [...(changes.remove ?? [])],
+  });
+}
+
+describe("the Grants writer", () => {
+  it("Add writes the default access role", async () => {
+    const group: Principal = {
+      type: "group",
+      id: await insertGroup(deployment.context, []),
+    };
+
+    const rows = await roles(adaId).grantCatalogue();
+
+    await save(group, {
+      add: rows
+        .filter((row) => row.id === "fixture" || row.id === ASK_ROW)
+        .map((row) => ({ row: row.id, roleId: row.defaultRoleId ?? "" })),
+    });
+
+    expect(await directRoles(group)).toEqual([
+      expect.objectContaining({ name: "Ask user", scoped: false }),
+      expect.objectContaining({ name: "Fixture editor", scoped: false }),
+    ]);
+  });
+
+  it("a swap replaces the shown role", async () => {
+    const viewerId = await roleIdOf("Fixture viewer");
+
+    const first: Principal = {
+      type: "group",
+      id: await insertGroup(deployment.context, []),
+    };
+
+    const shown = await grantTo("Fixture editor", first);
+
+    await save(first, {
+      change: [{ row: "fixture", assignmentId: shown, roleId: viewerId }],
+    });
+
+    expect(await namesOf(first)).toEqual(["Fixture viewer"]);
+
+    const second: Principal = {
+      type: "group",
+      id: await insertGroup(deployment.context, []),
+    };
+
+    const editor = await grantTo("Fixture editor", second);
+
+    await grantTo("Fixture viewer", second);
+    await save(second, {
+      change: [{ row: "fixture", assignmentId: editor, roleId: viewerId }],
+    });
+
+    expect(await namesOf(second)).toEqual(["Fixture viewer"]);
+  });
+
+  it("Remove takes every role of the row", async () => {
+    const person: Principal = {
+      type: "user",
+      id: await insertUser(deployment.context),
+    };
+
+    const team: Principal = {
+      type: "group",
+      id: await insertGroup(deployment.context, [person.id]),
+    };
+
+    const removed = [
+      await grantTo("Fixture editor", person),
+      await grantTo("Fixture approver", person),
+      await grantTo("Fixture viewer", person, {
+        type: "fixture_record",
+        id: "r1",
+      }),
+    ];
+
+    await grantTo("Ask user", person);
+    await grantTo("Fixture viewer", team);
+    await save(person, { remove: [{ row: "fixture" }] });
+
+    expect(await namesOf(person)).toEqual(["Ask user"]);
+    expect(await namesOf(team)).toEqual(["Fixture viewer"]);
+
+    const audit = await deployment.context.db.$client.query<{
+      readonly targetId: string;
+    }>(
+      `select target_id as "targetId" from audit_event
+        where action = 'core:role_assignment_removed' and target_id = any($1::text[])`,
+      [removed]
+    );
+
+    expect(audit.rows.map((row) => row.targetId).toSorted()).toEqual(
+      removed.toSorted()
+    );
+  });
+
+  it("refuses a change outside its row and writes nothing", async () => {
+    const person: Principal = {
+      type: "user",
+      id: await insertUser(deployment.context),
+    };
+
+    const other: Principal = {
+      type: "group",
+      id: await insertGroup(deployment.context, []),
+    };
+
+    const breakGlass: Principal = {
+      type: "user",
+      id: await insertUser(deployment.context, { isBreakGlass: true }),
+    };
+
+    await grantTo("Fixture editor", person);
+
+    const ask = await grantTo("Ask user", person);
+    const foreign = await grantTo("Fixture editor", other);
+    const viewerId = await roleIdOf("Fixture viewer");
+    const before = await directRoles(person);
+
+    const refusals: readonly [Principal, Parameters<typeof save>[1], string][] =
+      [
+        [
+          person,
+          {
+            change: [
+              { row: "fixture", assignmentId: foreign, roleId: viewerId },
+            ],
+          },
+          "not-found",
+        ],
+        [
+          person,
+          {
+            change: [{ row: "fixture", assignmentId: ask, roleId: viewerId }],
+          },
+          "not-found",
+        ],
+        [
+          person,
+          {
+            add: [{ row: "fixture", roleId: await roleIdOf("Dormant user") }],
+          },
+          "not-found",
+        ],
+        [
+          person,
+          {
+            add: [{ row: "fixture", roleId: viewerId }],
+            remove: [{ row: "fixture" }],
+          },
+          "invalid-input",
+        ],
+        [person, { add: [{ row: "nope", roleId: viewerId }] }, "not-found"],
+        [
+          breakGlass,
+          { add: [{ row: "fixture", roleId: fixtureEditorId }] },
+          "not-found",
+        ],
+      ];
+
+    for (const [recipient, changes, code] of refusals) {
+      // One refusal at a time, so each answer is read on its own.
+      // oxlint-disable-next-line no-await-in-loop
+      await expect(save(recipient, changes)).rejects.toMatchObject({ code });
+    }
+
+    expect(await directRoles(person)).toEqual(before);
+    expect(await namesOf(other)).toEqual(["Fixture editor"]);
+    expect(await directRoles(breakGlass)).toEqual([]);
   });
 });

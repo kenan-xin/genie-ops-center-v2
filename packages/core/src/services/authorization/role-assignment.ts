@@ -240,9 +240,8 @@ export async function removeUserAssignments(
   }
 }
 
-/** Removes one assignment by id, refusing the R-38 cases and emitting `core:role:revoked`. */
-export async function removeAssignment(input: {
-  readonly tenant: TenantContext;
+/** One removal by id. */
+type AssignmentRemoval = {
   readonly actorUserId: string;
   readonly assignmentId: string;
   /**
@@ -251,86 +250,103 @@ export async function removeAssignment(input: {
    * an id belonging to a person or another group is refused rather than removed.
    */
   readonly expect?: AssignmentPrincipal;
-}): Promise<void> {
+};
+
+/** Removes one assignment by id, refusing the R-38 cases and emitting `core:role:revoked`. */
+export async function removeAssignment(
+  input: AssignmentRemoval & { readonly tenant: TenantContext }
+): Promise<void> {
   await withTransaction(input.tenant, async (tx) => {
     await lockAdministratorGuard(tx);
-
-    const rows = await tx
-      .select({
-        id: roleAssignment.id,
-        roleId: roleAssignment.roleId,
-        principalType: roleAssignment.principalType,
-        principalId: roleAssignment.principalId,
-      })
-      .from(roleAssignment)
-      .where(eq(roleAssignment.id, input.assignmentId))
-      .limit(1);
-
-    const assignment = rows[0];
-
-    if (assignment === undefined) {
-      throw new AppError(CORE_ERRORS["not-found"], {
-        cause: new Error(`No assignment ${input.assignmentId}`),
-      });
-    }
-
-    if (
-      input.expect !== undefined &&
-      (assignment.principalType !== input.expect.type ||
-        assignment.principalId !== input.expect.id)
-    ) {
-      // A foreign assignment id is answered as not found: it reveals nothing about another
-      // principal's grants, and this Groups action may only change its own group's rows.
-      throw new AppError(CORE_ERRORS["not-found"], {
-        cause: new Error(
-          `Assignment ${input.assignmentId} is not the expected principal`
-        ),
-      });
-    }
-
-    const roleName = await roleNameOf(tx, assignment.roleId);
-
-    // R-38 self-protection: an administrator may not remove their own tenant administrator
-    // access. Another administrator may.
-    if (
-      roleName === TENANT_ADMINISTRATOR_ROLE &&
-      assignment.principalType === "user" &&
-      assignment.principalId === input.actorUserId
-    ) {
-      throw new AppError(CORE_ERRORS["self-protection"]);
-    }
-
-    await tx
-      .delete(roleAssignment)
-      .where(eq(roleAssignment.id, input.assignmentId));
-
+    await removeAssignmentInTransaction(input.tenant, tx, input);
     // The deletion is visible on this transaction, so the count is the after-state.
     await assertAdministratorRemains(tx);
-
-    await writeAdminAuditEvent(tx, {
-      action: "core:role_assignment_removed",
-      actorUserId: input.actorUserId,
-      targetType: "role-assignment",
-      targetId: input.assignmentId,
-      summary: `Removed the ${roleName} role from ${assignment.principalType} ${assignment.principalId}`,
-      metadata: {
-        roleId: assignment.roleId,
-        principalType: assignment.principalType,
-        principalId: assignment.principalId,
-      },
-    });
-
-    await emitRoleEvents(
-      input.tenant,
-      tx,
-      coreRoleRevoked,
-      roleName,
-      await affectedPeople(tx, {
-        type: assignment.principalType === "group" ? "group" : "user",
-        id: assignment.principalId,
-      })
-    );
   });
+}
+
+/**
+ * Deletes one assignment on the caller's transaction, with the `expect` check, the
+ * self-protection refusal, the audit row and the revoked events of {@link removeAssignment}. The
+ * caller takes the guard lock first and asserts the guard after its last write, so a batch is
+ * judged on its final state (R-38).
+ */
+export async function removeAssignmentInTransaction(
+  tenant: TenantContext,
+  tx: TenantTransaction,
+  input: AssignmentRemoval
+): Promise<void> {
+  const rows = await tx
+    .select({
+      id: roleAssignment.id,
+      roleId: roleAssignment.roleId,
+      principalType: roleAssignment.principalType,
+      principalId: roleAssignment.principalId,
+    })
+    .from(roleAssignment)
+    .where(eq(roleAssignment.id, input.assignmentId))
+    .limit(1);
+
+  const assignment = rows[0];
+
+  if (assignment === undefined) {
+    throw new AppError(CORE_ERRORS["not-found"], {
+      cause: new Error(`No assignment ${input.assignmentId}`),
+    });
+  }
+
+  if (
+    input.expect !== undefined &&
+    (assignment.principalType !== input.expect.type ||
+      assignment.principalId !== input.expect.id)
+  ) {
+    // A foreign assignment id is answered as not found: it reveals nothing about another
+    // principal's grants, and this Groups action may only change its own group's rows.
+    throw new AppError(CORE_ERRORS["not-found"], {
+      cause: new Error(
+        `Assignment ${input.assignmentId} is not the expected principal`
+      ),
+    });
+  }
+
+  const roleName = await roleNameOf(tx, assignment.roleId);
+
+  // R-38 self-protection: an administrator may not remove their own tenant administrator
+  // access. Another administrator may.
+  if (
+    roleName === TENANT_ADMINISTRATOR_ROLE &&
+    assignment.principalType === "user" &&
+    assignment.principalId === input.actorUserId
+  ) {
+    throw new AppError(CORE_ERRORS["self-protection"]);
+  }
+
+  await tx
+    .delete(roleAssignment)
+    .where(eq(roleAssignment.id, input.assignmentId));
+
+  await writeAdminAuditEvent(tx, {
+    action: "core:role_assignment_removed",
+    actorUserId: input.actorUserId,
+    targetType: "role-assignment",
+    targetId: input.assignmentId,
+    summary: `Removed the ${roleName} role from ${assignment.principalType} ${assignment.principalId}`,
+    metadata: {
+      roleId: assignment.roleId,
+      principalType: assignment.principalType,
+      principalId: assignment.principalId,
+    },
+  });
+
+  await emitRoleEvents(
+    tenant,
+    tx,
+    coreRoleRevoked,
+    roleName,
+    await affectedPeople(tx, {
+      type: assignment.principalType === "group" ? "group" : "user",
+      id: assignment.principalId,
+    })
+  );
 }
 
 /**
