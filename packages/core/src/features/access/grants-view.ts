@@ -1,9 +1,14 @@
+import { z } from "zod";
+
 import type {
   AccessPath,
   AccessRecipient,
 } from "../../services/roles/effective-access.ts";
 import type { GrantChanges, GrantRow } from "../../services/roles/grants.ts";
 import { EMPTY_DRAFT, type GrantsDraft } from "./grants-draft-store.ts";
+
+/** A refused save: the route rejects with a plain object that carries the whole message. */
+export const REFUSAL = z.object({ message: z.string().min(1) });
 
 export type GrantedRowView = {
   readonly row: GrantRow;

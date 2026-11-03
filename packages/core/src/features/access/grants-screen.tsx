@@ -13,7 +13,6 @@ import {
   useMediaQuery,
 } from "@genie/ui";
 import { type ReactNode, useEffect, useRef, useState } from "react";
-import { z } from "zod";
 import { useStore } from "zustand";
 
 import type {
@@ -36,6 +35,7 @@ import {
   type GrantsView,
   linkDraft,
   moduleNameOf,
+  REFUSAL,
   removalOf,
   saveInput,
 } from "./grants-view.ts";
@@ -78,8 +78,6 @@ const EMPTY_COPY = {
       "A person is the exception. Use it when one person needs a module that their groups do not give.",
   },
 } as const;
-
-const REFUSAL = z.object({ message: z.string().min(1) });
 
 const KIND_LABEL = { group: "Groups", user: "People" } as const;
 
@@ -310,7 +308,6 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
       await props.onSave(saveInput(view, sent));
       store.getState().clearSaved(sent);
     } catch (error) {
-      // The route rejects with its refusal, a plain object that carries the whole message.
       const refusal = REFUSAL.safeParse(error);
 
       setFailure(

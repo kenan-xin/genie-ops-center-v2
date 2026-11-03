@@ -1,3 +1,7 @@
+import type {
+  AdvancedCatalogue,
+  AdvancedOption,
+} from "../../../services/roles/advanced.ts";
 import type { AccessPath } from "../../../services/roles/effective-access.ts";
 import type {
   GrantRecipients,
@@ -131,6 +135,133 @@ const held = (id: string, by: AccessPath["holder"], roleId: string) =>
   fixturePath({ id, holder: by, ...role(roleId) });
 
 const financeInvoices = held("a-fin-1", holder.finance, "r-invoices-finance");
+
+const leadership = {
+  type: "group",
+  id: "g-leads",
+  name: "Leadership",
+} as const;
+
+/**
+ * The direct roles that Advanced access lists, as the prototype's `advanced` and `advanced-guard`
+ * states draw them: Operations holds Finance at one invoice and the custom Invoice approver, and
+ * Leadership holds the only Tenant administrator path.
+ */
+export const ADVANCED_PATHS = {
+  "g-ops": [
+    {
+      ...held("a-ops-record", holder.ops, "r-invoices-finance"),
+      scope: { type: "invoices-invoice", id: "inv-0142" },
+    },
+    {
+      ...held("a-ops-approver", holder.ops, "r-invoices-viewer"),
+      role: {
+        id: "r-invoice-approver",
+        name: "Invoice approver",
+        kind: "custom",
+        moduleId: "invoices",
+        permissions: ["invoices:use", "invoices:approve"],
+      },
+    },
+  ],
+  "g-leads": [
+    {
+      ...fixturePath({
+        id: "a-leads-admin",
+        holder: leadership,
+        role: { id: "r-tenant-admin", name: "Tenant administrator" },
+        moduleId: "core",
+      }),
+      role: {
+        id: "r-tenant-admin",
+        name: "Tenant administrator",
+        kind: "system",
+        moduleId: null,
+        permissions: ["core:roles:manage"],
+      },
+    },
+  ],
+} satisfies Record<string, readonly AccessPath[]>;
+
+/** The record labels the labels read answers for the scoped fixture rows. */
+export const ADVANCED_LABELS: ReadonlyMap<string, string> = new Map([
+  ["invoices-invoice\u0000inv-0142", "INV-2026-0142"],
+]);
+
+const option = (
+  fields: Pick<AdvancedOption, "roleId" | "roleName" | "moduleName"> &
+    Partial<AdvancedOption>
+): AdvancedOption => ({
+  kind: "system",
+  moduleId: null,
+  enabled: true,
+  wholeTenant: true,
+  recordType: null,
+  ...fields,
+});
+
+/** The Add a role picker of the prototype: Core, one record module, and three custom roles. */
+export const ADVANCED_CATALOGUE: AdvancedCatalogue = {
+  core: [
+    option({
+      roleId: "r-tenant-admin",
+      roleName: "Tenant administrator",
+      moduleName: "Core administration",
+    }),
+    option({
+      roleId: "r-auditor",
+      roleName: "Auditor",
+      moduleName: "Core administration",
+    }),
+  ],
+  record: [
+    option({
+      roleId: "r-placeholder-user",
+      roleName: "Placeholder user",
+      moduleId: "placeholder",
+      moduleName: "Placeholder",
+      wholeTenant: false,
+      recordType: "placeholder-record",
+    }),
+  ],
+  custom: [
+    option({
+      roleId: "r-access-manager",
+      roleName: "Access manager",
+      kind: "custom",
+      moduleName: "Core administration",
+    }),
+    option({
+      roleId: "r-invoice-approver",
+      roleName: "Invoice approver",
+      kind: "custom",
+      moduleId: "invoices",
+      moduleName: "Invoices",
+    }),
+    option({
+      roleId: "r-dashboard-curator",
+      roleName: "Dashboard curator",
+      kind: "custom",
+      moduleId: "analytics",
+      moduleName: "Analytics",
+      enabled: false,
+    }),
+  ],
+};
+
+/** The Placeholder records the picker search finds, by label. */
+export const FIXTURE_RECORDS = [
+  { id: "rec-north", label: "North depot" },
+  { id: "rec-south", label: "South depot" },
+] as const;
+
+export const searchFixtureRecords = async (
+  _recordType: string,
+  query: string
+) =>
+  FIXTURE_RECORDS.filter((record) =>
+    record.label.toLowerCase().includes(query.toLowerCase())
+  );
 
 /**
  * The paths of the S2-19 read for each sample recipient, as the prototype states draw them:
