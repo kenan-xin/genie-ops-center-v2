@@ -4,6 +4,8 @@ Confidence: 7.6/10. The spec is approved, and the owner settled the four load-be
 
 Status: drafted on 2026-09-27 from the owner's answers of that day, and corrected after the review in the Traycer artifact `review-section-2-tech-plan`. It supplements [Spec 2](../specs/02-identity-and-access.md) and does not replace its numbered requirements. The per-scenario guides and end-to-end tests come from the Traycer artifact `section-2-identity-scenario-plan`.
 
+Amended 2026-11-03 for the access model that the owner accepted on 2026-11-02 (Spec 2 R-37 to R-38, AC-28). Decisions D2-6 and D2-7, delivery step 7 and gate S2-G4 add the Access work: tickets S2-18 to S2-25 under epic d8l5. The score above is for the first sixteen tickets. The Access work adds two risks: no module declares `defaultAccessRole` yet, and the Access design on `develop` still shows the model of 2026-09-18 until S2-20 imports its update.
+
 ## Scope and decision authority
 
 Deliver Section 2 on the Section 1 foundation as built. Today, `genie-ops setup` knows two steps (`SETUP_STEPS` in `packages/core/src/services/setup/index.ts`), `can()` is the Section 0 stub, and no code talks to Keycloak. Better Auth is not installed. The latest release is 1.7.6.
@@ -59,6 +61,14 @@ Only the OAuth callback creates users through Better Auth. Setup steps, operator
 
 `apps/genie` mounts one catch-all route under `/api/auth/` that calls the member's handler. The instance sets `emailAndPassword.disableSignUp`, and the hook of D2-1 refuses every new user that does not come from an OAuth callback. Application columns such as `banned`, `status` and `is_break_glass` are declared with `input: false`, so no Better Auth endpoint can write them. The Better Auth tables are generated once with the Better Auth CLI, copied into `packages/core/src/schema.ts`, and shipped in the one migration of R-1. After that, the core schema is the source of truth.
 
+**D2-6, the effective-access read (R-37d, ticket S2-19).** One core read answers, for one recipient, every path to a role. A recipient is a group or a person. For a person, the read returns the direct `role_assignment` rows with principal type `user`, and the rows of every group that the person is a member of. For a group, it returns that group's rows only. Each result row carries the role, its module, the scope, the path (direct, or the group name), and the person in `role_assignment.created_by_user_id` as "added by". It also carries the facts that make a row "not in effect": an archived group (R-32), a disabled person, or a switched-off module. Groups do not nest, so the read expands a person through their own groups only (U7, resolved).
+
+Overview pages the read by subject. Grants reads it unpaged for the one recipient on the screen. The read lives in the roles router behind `core:roles:manage` (R-37e) and excludes the break-glass account (R-39). It adds no table, no permission key and no write. It is a read for the screens, not a second evaluator: `can()` and `scopesFor()` stay the only access checks (`DEC-39`). Its integration tests cover a person who reaches one module through two groups, and a group that was removed or archived.
+
+**D2-7, the contract checks of the access model (A6, A7, ticket S2-18).** `validateModule` gains two refusals, each with a named cause. It refuses a default role of a module with a workspace entry that does not carry `<id>:use`. It refuses a module with a workspace entry that declares no `defaultAccessRole`, or one that names no role of its own. The four built modules declare the owner's defaults: Invoices "Viewer", Analytics "Analytics editor", Slides "Slides editor", Placeholder "Placeholder user". The `roles` step and `seedRoles` also seed the core system role `Ask user` with `core:ask:use` (R-33, R-55), as an insert of a missing role by name that never rewrites an existing role (R-33a).
+
+A custom role belongs to one module or to core. A module custom role must carry that module's use key. `role.module_id` exists, and `../architecture/data-shape.md` defines it as the module that declared a default role. S2-18 records how a custom role names its module. If it widens the meaning of that column, `data-shape.md` changes in the same commit.
+
 ## Delivery order and gates
 
 1. Foundations. The identity migration (R-1 to R-3), the `realm` field of `tenant.yaml` (R-54a), the `bundled-keycloak` profile (R-54b, bead cla), and the stand-ins of D2-2.
@@ -67,12 +77,21 @@ Only the OAuth callback creates users through Better Auth. Setup steps, operator
 4. Guards. The Keycloak address guard of R-54c and the issuer comparison of R-54d. The `aud` check already comes with `requireIdTokenVerification` in step 2.
 5. Client-only mode (R-54a, R-17, bead 8i97).
 6. Scenarios and acceptance. Each scenario ships its guide under `docs/guides/sign-in/` and its end-to-end test together, as soon as its step exists. Then run the Section 2 acceptance at phone and desktop viewports.
+7. Access, added 2026-11-03 (wave 5 order of the owner, 2026-11-02). The tickets run one after another:
+   1. S2-25, the People, Groups and Roles fidelity pass. It needs no Access work, so it runs first.
+   2. S2-18, the contract checks of D2-7. Then S2-19, the read of D2-6.
+   3. S2-20, the Access design update with the `impeccable` skill. The owner reviews it at the final dry run, so it has no stop.
+   4. S2-21 Grants, S2-22 Overview, S2-23 Advanced access, then S2-24, the links into Access.
+
+   Every Access screen follows `../architecture/ui-development.md`: documented stories, failing behavior tests, then the screen. Every Access write goes through the one role-assignment service and the last-administrator check of R-38. No screen of this step adds a second writer of `role_assignment`.
 
 Gate S2-G1 comes after step 1. The migration applies on the Section 1 history and passes Squawk and `drizzle-kit check`. The generated stack starts with the profile and without it.
 
 Gate S2-G2 comes after step 2. On a fresh managed stack, the first administrator from `tenant.yaml` signs in through the `company` realm (AC-19). The two-context isolation test holds with one Better Auth instance per context.
 
 Gate S2-G3 comes at the end. Every Spec 2 acceptance criterion passes except AC-14. Each scenario test passes in CI, and one scheduled Entra run is green.
+
+Gate S2-G4 comes after step 7. AC-28 passes at a phone and a desktop viewport. A module granted on Grants appears in the sidebar of a group member, and Remove takes it away unless another path stays. The two `validateModule` refusals of D2-7 have unit tests, and the read of D2-6 has its integration tests against a real Postgres.
 
 ## Follow-ups outside the tickets
 

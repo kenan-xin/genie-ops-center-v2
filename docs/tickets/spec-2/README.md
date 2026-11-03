@@ -4,6 +4,8 @@ Spec: [Identity and access](../../specs/02-identity-and-access.md). Technical pl
 
 Status: approved on 2026-09-27 with 16 tickets. Some earlier beads merged into these tickets. They are closed with a reason that names the new ticket, and their old titles keep the old numbers. All 16 tickets are closed. Ticket S2-17 was added on 2026-10-27 by the `DEC-36` amendment of that day and is open. Three follow-up beads stay deferred: `d8l5.22`, and the owner beads `d8l5.23` and `d8l5.24`.
 
+Tickets S2-18 to S2-25 were added on 2026-11-03 for the access model that the owner accepted on 2026-11-02 (Spec 2 R-37 to R-38, AC-28). The owner approved their breakdown on 2026-11-02. They are open. The numbers continue after S2-17. The closed bead `d8l5.20` keeps its old title "S2-21: Scheduled real Entra run" in the follow-up table below. The ticket S2-21 of this index is Access Grants, bead `d8l5.31`. The amendments bead `cvij.2` writes the documents that S2-18 and S2-20 build from.
+
 ## Tickets
 
 | Ticket | Bead | Status | Title |
@@ -25,6 +27,66 @@ Status: approved on 2026-09-27 with 16 tickets. Some earlier beads merged into t
 | S2-15 | `d8l5.19` | closed | Client-only mode, with S-C |
 | S2-16 | `d8l5.21` | closed | Section 2 acceptance and the scheduled Entra run (gate S2-G3) |
 | [S2-17](17-local-accounts-beside-sso/index.md) | `d8l5.26` | open | Local accounts beside SSO in a brokered realm |
+| [S2-18](18-access-model-in-the-contract/index.md) | `d8l5.28` | open | Access model in the module contract |
+| [S2-19](19-effective-access-read/index.md) | `d8l5.29` | open | Effective access read for one recipient |
+| [S2-20](20-access-design-update/index.md) | `d8l5.30` | open | Access design update to the role-per-row model |
+| [S2-21](21-access-grants/index.md) | `d8l5.31` | open | Access Grants tab |
+| [S2-22](22-access-overview/index.md) | `d8l5.32` | open | Access Overview tab |
+| [S2-23](23-advanced-access/index.md) | `d8l5.33` | open | Advanced access |
+| [S2-24](24-links-into-access/index.md) | `d8l5.34` | open | Links into Access |
+| [S2-25](25-people-groups-roles-fidelity/index.md) | `d8l5.35` | open | People, Groups and Roles fidelity pass |
+
+### Dependencies and folded beads of S2-18 to S2-25
+
+The dependencies are the ones of the owner's breakdown, and Beads holds them. "Amendments" means the amendments bead `cvij.2`. No earlier bead is folded into these eight tickets.
+
+| Ticket | Depends on | Folded beads |
+| --- | --- | --- |
+| S2-18 | Amendments | none |
+| S2-19 | S2-18 | none |
+| S2-20 | Amendments | none |
+| S2-21 | S2-18, S2-19, S2-20 | none |
+| S2-22 | S2-19, S2-20 | none |
+| S2-23 | S2-21 | none |
+| S2-24 | S2-21 | none |
+| S2-25 | none, runs first | none |
+
+Wave 5 runs them in this order: S2-25, S2-18, S2-19, S2-20, S2-21, S2-22, S2-23, S2-24 (technical plan, delivery step 7).
+
+## Design sections and amendments that Spec 2 owns
+
+Checked on 2026-11-03 under the breakdown rule of `CLAUDE.md`. Every design section and every open amendment file under `docs/design/` that touches Spec 2 has a numbered requirement and a ticket. None was raised to the owner as unmapped.
+
+| Design section, screen | Requirement | Ticket |
+| --- | --- | --- |
+| `sign-in-and-tenant-pages`, sign-in page | R-17a, R-17c | S2-04, S2-05, S2-17 (Spec 3 owns the presentation) |
+| `sign-in-and-tenant-pages`, break-glass sign-in | R-62 to R-65 | S2-09 |
+| `sign-in-and-tenant-pages`, not-set-up page | R-17b, R-52 | Spec 1, then S2-08 for the identity steps |
+| `account-and-inbox`, account page and break-glass variant | R-18, R-66 | S2-07, S2-09 |
+| `account-and-inbox`, idle-timeout modal | R-14, R-15, R-15a | S2-07 (Spec 3 owns the presentation) |
+| `account-and-inbox`, Notifications page | Deferred in Spec 2, roadmap Section 6 item 5 (`DEC-21`) | none in Spec 2 |
+| `account-and-inbox`, Solutions hub empty state | Spec 4 | none in Spec 2 |
+| `people-groups-and-roles`, People | R-37, R-38, R-39, R-40 to R-43 | S2-10, S2-25 |
+| `people-groups-and-roles`, Groups | R-22 to R-25, R-24a to R-24c, R-38 | S2-11, S2-25 |
+| `people-groups-and-roles`, Roles | R-31, R-33, R-37 | S2-11, S2-25 |
+| `people-groups-and-roles`, the Access tab of the inspectors and Manage in Access | R-37, R-37e | S2-24 |
+| `people-groups-and-roles`, role holders on Roles as a count with a link | Spec 3 R-29b | S2-24 |
+| `access`, Grants | R-37a, R-37d, R-38 | S2-20 (design), S2-21 |
+| `access`, Overview | R-37b, R-37d, R-37e | S2-20 (design), S2-22 |
+| `access`, Advanced access | R-37c, R-38 | S2-20 (design), S2-23 |
+| `access`, prefilled links into Access | R-37a (`?role=`), R-37e, Spec 3 R-85 (`?module=`) | S2-24 |
+| `audit-and-tenant-settings`, Audit log | R-67 to R-69 | S2-12 |
+| `audit-and-tenant-settings`, Tenant settings, Modules, Categories | Spec 3 | none in Spec 2 |
+
+The file `docs/design/sections/access/spec.md` on `develop` still shows the model of 2026-09-18: solution rows, a Broader access card and no role choice per row. S2-20 imports its update. The Broader access and "Every solution" flows are replaced by U6, as R-37a records: every module has a catalogue row, and a record limit is an optional scope set in Advanced access. No Spec 2 line names the `?recipient=<id>` prefill. It counts under R-37, which renders the screens as the design specifies.
+
+| Amendment file | State | Where it lands |
+| --- | --- | --- |
+| `amendments-access-2026-09-18.md` | Superseded on 2026-11-02 | R-37 to R-38 and AC-28, built by S2-18 to S2-24 |
+| `decisions-open-2026-09-19.md` | B1 and B6 decided on 2026-09-27; B2, B3, B7 and B8 open | R-40 and R-51a for Spec 2. B2 and B3 belong to Spec 5, B7 and B8 to Spec 4 |
+| `amendments-modules-2026-09-19.md` | Raised, not applied | Spec 5 R-26b (bead `6nm`). Its link into Access lands on the prefilled links of S2-24 |
+
+The other files under `docs/design/` are records of past rounds (handovers, the accessibility pass, the help disclosure audit) or amendments that are accepted and applied (categories, settings).
 
 ## Follow-up beads under this epic
 
