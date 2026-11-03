@@ -61,7 +61,7 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
 
   const addDialog = page.getByRole("dialog", { name: "Add person" });
 
-  await addDialog.getByLabel("Email", { exact: true }).fill(personEmail);
+  await addDialog.getByLabel("Work email", { exact: true }).fill(personEmail);
   await addDialog.getByLabel("Display name", { exact: true }).fill(personName);
   await addDialog.getByRole("radio", { name: "Local password" }).press("Space");
 

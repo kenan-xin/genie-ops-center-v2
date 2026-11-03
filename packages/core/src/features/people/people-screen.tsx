@@ -9,6 +9,7 @@ import {
   DataTable,
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   Field,
@@ -18,6 +19,7 @@ import {
   focusRing,
   FormActionBar,
   HelpDisclosure,
+  InfoNote,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -41,6 +43,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  ToggleGroup,
+  ToggleGroupItem,
   type DataTableAction,
 } from "@genie/ui";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -1209,10 +1213,15 @@ export function AddPersonDialog(props: {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add person</DialogTitle>
+          {/* No setting names the provider yet, so the generic word stands (G13). */}
+          <DialogDescription>
+            They sign in with their identity provider account. Roles you pick
+            now apply at first sign-in.
+          </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
           <Field>
-            <FieldLabel htmlFor={emailId}>Email</FieldLabel>
+            <FieldLabel htmlFor={emailId}>Work email</FieldLabel>
             <Input
               ref={emailInput}
               id={emailId}
@@ -1227,7 +1236,11 @@ export function AddPersonDialog(props: {
             )}
           </Field>
           <Field>
-            <FieldLabel htmlFor={nameId}>Display name</FieldLabel>
+            {/* "(optional)" sits beside the label, not in it, so the field's name stays short. */}
+            <span className="flex items-baseline gap-1">
+              <FieldLabel htmlFor={nameId}>Display name</FieldLabel>
+              <span className="text-xs text-muted-foreground">(optional)</span>
+            </span>
             <Input
               id={nameId}
               placeholder="Filled from the directory at first sign-in"
@@ -1236,26 +1249,29 @@ export function AddPersonDialog(props: {
             />
           </Field>
           {canAssignRoles ? (
-            <Field>
-              <FieldLabel htmlFor={rolesId}>Roles</FieldLabel>
-              <Select
+            <div>
+              <span className="mb-1 flex items-baseline gap-1 text-xs">
+                <span id={rolesId} className="font-semibold text-foreground">
+                  Roles now
+                </span>
+                <span className="text-muted-foreground">(optional)</span>
+              </span>
+              <ToggleGroup
                 multiple
-                items={roleItems}
+                aria-labelledby={rolesId}
                 value={roleIds}
-                onValueChange={setRoleIds}
+                onValueChange={(value) => setRoleIds([...value])}
               >
-                <SelectTrigger id={rolesId}>
-                  <SelectValue placeholder="Choose roles" />
-                </SelectTrigger>
-                <SelectContent>
-                  {roleItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+                {roleItems.map((item) => (
+                  <ToggleGroupItem key={item.value} value={item.value}>
+                    {item.label}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Tenant-wide. Scoped access is added later in Access.
+              </p>
+            </div>
           ) : null}
 
           {localAvailable ? (
@@ -1302,11 +1318,17 @@ export function AddPersonDialog(props: {
             </label>
           ) : null}
 
-          <p className="text-sm text-muted-foreground">
-            {props.settings.onboardingMode === "jit"
-              ? "People in a group mapped to a role can also sign in without being added here."
-              : "Pending until first sign-in."}
-          </p>
+          <InfoNote>
+            {props.settings.onboardingMode === "jit" ? (
+              "People in a group mapped to a role can also sign in without being added here."
+            ) : (
+              <>
+                The person shows as{" "}
+                <StatusPill tone="neutral">Pending</StatusPill> until their
+                first sign-in.
+              </>
+            )}
+          </InfoNote>
         </div>
         {/* A refused add reports in the action bar, beside the buttons, and keeps the form. A
             refusal at the email field reports there only. */}

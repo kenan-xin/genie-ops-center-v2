@@ -231,7 +231,9 @@ test("invite: a pre-added person signs in, an unknown one is refused, and remova
 
       const addDialog = page.getByRole("dialog", { name: "Add person" });
 
-      await addDialog.getByLabel("Email", { exact: true }).fill(personEmail);
+      await addDialog
+        .getByLabel("Work email", { exact: true })
+        .fill(personEmail);
       await addDialog
         .getByLabel("Display name", { exact: true })
         .fill(displayName);

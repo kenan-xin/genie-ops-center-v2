@@ -93,7 +93,7 @@ test("AC-27: the SSO entry skips the realm, a local add on the SSO domain is ref
   await page.getByRole("button", { name: "Add person" }).click();
 
   const addDialog = page.getByRole("dialog", { name: "Add person" });
-  const email = addDialog.getByLabel("Email", { exact: true });
+  const email = addDialog.getByLabel("Work email", { exact: true });
 
   await email.fill(refusedEmail);
   await addDialog.getByLabel("Display name", { exact: true }).fill(personName);

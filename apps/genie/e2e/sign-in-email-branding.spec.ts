@@ -204,7 +204,7 @@ test("a branding change reaches the sign-in page and the email, light and dark",
           const addDialog = page.getByRole("dialog", { name: "Add person" });
 
           await addDialog
-            .getByLabel("Email", { exact: true })
+            .getByLabel("Work email", { exact: true })
             .fill(personEmail);
           await addDialog
             .getByLabel("Display name", { exact: true })

@@ -81,7 +81,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   const addDialog = page.getByRole("dialog", { name: "Add person" });
 
-  await addDialog.getByLabel("Email", { exact: true }).fill(personEmail);
+  await addDialog.getByLabel("Work email", { exact: true }).fill(personEmail);
   await addDialog
     .getByLabel("Display name", { exact: true })
     .fill(`E2E Added ${project}`);
@@ -221,7 +221,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
       const refusedDialog = page.getByRole("dialog", { name: "Add person" });
 
-      const email = refusedDialog.getByLabel("Email", { exact: true });
+      const email = refusedDialog.getByLabel("Work email", { exact: true });
       const addPath = "**/api/rpc/people/add";
 
       await email.fill(adminEmail);

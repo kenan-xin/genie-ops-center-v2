@@ -527,17 +527,21 @@ export const AddPersonSendsTheInvitationByDefault: Story = {
       await screen.findByRole("dialog", { name: "Add person" })
     );
 
-    await userEvent.type(dialog.getByLabelText("Email"), "new@example.com");
-    await userEvent.type(dialog.getByLabelText("Display name"), "New Person");
-    await userEvent.click(dialog.getByRole("combobox", { name: "Roles" }));
-    await userEvent.click(
-      await screen.findByRole("option", { name: "E2E reader" })
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "new@example.com"
     );
-    await userEvent.keyboard("{Escape}");
-    // The trigger names the picked role, not its id.
+    await userEvent.type(dialog.getByLabelText("Display name"), "New Person");
+    // G47: the roles are chips, each one pressed or not, as the mockup draws them.
+    const roles = within(dialog.getByRole("group", { name: "Roles now" }));
+
+    await userEvent.click(roles.getByRole("button", { name: "E2E reader" }));
     await expect(
-      dialog.getByRole("combobox", { name: "Roles" })
-    ).toHaveTextContent("E2E reader");
+      roles.getByRole("button", { name: "E2E reader" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      roles.getByRole("button", { name: "Tenant administrator" })
+    ).toHaveAttribute("aria-pressed", "false");
 
     // R-40a: the invitation checkbox is checked by default.
     const invitation = dialog.getByRole("checkbox", {
@@ -568,7 +572,10 @@ export const UncheckedInvitationSendsNoEmail: Story = {
       await screen.findByRole("dialog", { name: "Add person" })
     );
 
-    await userEvent.type(dialog.getByLabelText("Email"), "quiet@example.com");
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "quiet@example.com"
+    );
     await userEvent.click(
       dialog.getByRole("checkbox", { name: "Send invitation email" })
     );
@@ -593,7 +600,10 @@ export const AddLocalAccountNotesTheSetPasswordEmail: Story = {
       await screen.findByRole("dialog", { name: "Add person" })
     );
 
-    await userEvent.type(dialog.getByLabelText("Email"), "local@example.com");
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "local@example.com"
+    );
     await userEvent.click(
       dialog.getByRole("radio", { name: "Local password" })
     );
@@ -846,7 +856,10 @@ export const AddPersonRefusedOnSubmitStaysOpen: Story = {
       await screen.findByRole("dialog", { name: "Add person" })
     );
 
-    await userEvent.type(dialog.getByLabelText("Email"), "ada@example.com");
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "ada@example.com"
+    );
     await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
 
     await expect(onAddPerson).toHaveBeenCalled();
@@ -858,7 +871,9 @@ export const AddPersonRefusedOnSubmitStaysOpen: Story = {
     await expect(
       screen.getByRole("dialog", { name: "Add person" })
     ).toBeInTheDocument();
-    await expect(dialog.getByLabelText("Email")).toHaveValue("ada@example.com");
+    await expect(dialog.getByLabelText("Work email")).toHaveValue(
+      "ada@example.com"
+    );
     // The page does not repeat it behind the dialog.
     await expect(screen.getAllByText(/already exists/)).toHaveLength(1);
   },
@@ -884,7 +899,7 @@ export const AddPersonLocalOnSsoDomainShowsAtEmail: Story = {
       await screen.findByRole("dialog", { name: "Add person" })
     );
 
-    const email = dialog.getByLabelText("Email");
+    const email = dialog.getByLabelText("Work email");
 
     await userEvent.type(email, "ann@company.example");
     await userEvent.click(
@@ -923,7 +938,10 @@ export const AddPersonRefusalClearsOnCancel: Story = {
 
     const dialog = await open();
 
-    await userEvent.type(dialog.getByLabelText("Email"), "ada@example.com");
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "ada@example.com"
+    );
     await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
     await expect(await dialog.findByRole("alert")).toBeInTheDocument();
 
@@ -954,7 +972,10 @@ export const AddPersonLateRefusalAfterCancelIsDropped: Story = {
 
     const dialog = await open();
 
-    await userEvent.type(dialog.getByLabelText("Email"), "ada@example.com");
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "ada@example.com"
+    );
     await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
     await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
