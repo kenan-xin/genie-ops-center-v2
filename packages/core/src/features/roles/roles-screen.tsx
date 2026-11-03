@@ -708,6 +708,7 @@ export function RolesScreen(props: RolesScreenProps) {
                 `${role.assignmentCount} assignment${role.assignmentCount === 1 ? "" : "s"}`,
               ],
             }}
+            footer="System roles are seeded by modules and cannot be edited. Copy one to start a custom role."
           />
         </div>
       )}
