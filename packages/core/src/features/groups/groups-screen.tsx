@@ -394,12 +394,13 @@ export function GroupInspector(
               ) : (
                 <>
                   {/* Remove all stays while the group has members, even when every eligible
-                      person is already a member and the search is hidden. */}
-                  <div className="flex min-h-11 items-center justify-between gap-2">
-                    <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
-                      Members · {props.members.length}
-                    </span>
-                    {group.source === "local" ? (
+                      person is already a member and the search is hidden. A directory group has
+                      no Remove all, so the mockup draws no count header there (G34). */}
+                  {group.source === "local" ? (
+                    <div className="flex min-h-11 items-center justify-between gap-2">
+                      <span className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+                        Members · {props.members.length}
+                      </span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -410,8 +411,8 @@ export function GroupInspector(
                       >
                         Remove all
                       </Button>
-                    ) : null}
-                  </div>
+                    </div>
+                  ) : null}
                   <ul aria-label="Members" className="divide-y divide-border">
                     {props.members.map((member) => (
                       <li
