@@ -108,6 +108,39 @@ function ComboboxItem({ className, ...props }: ComboboxPrimitive.Item.Props) {
   );
 }
 
+/** A section of the list. Its `items` feed the `ComboboxCollection` inside it. */
+function ComboboxGroup({ className, ...props }: ComboboxPrimitive.Group.Props) {
+  return (
+    <ComboboxPrimitive.Group
+      data-slot="combobox-group"
+      className={cn("py-1 first:pt-0 last:pb-0", className)}
+      {...props}
+    />
+  );
+}
+
+/** The caption of a section, which names the group to assistive technology. */
+function ComboboxLabel({
+  className,
+  ...props
+}: ComboboxPrimitive.GroupLabel.Props) {
+  return (
+    <ComboboxPrimitive.GroupLabel
+      data-slot="combobox-label"
+      className={cn(
+        "px-2 pt-1.5 pb-1 text-xs font-semibold tracking-wide text-muted-foreground uppercase",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+/** The filtered items of the enclosing `ComboboxGroup`. */
+function ComboboxCollection(props: ComboboxPrimitive.Collection.Props) {
+  return <ComboboxPrimitive.Collection {...props} />;
+}
+
 function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
   return (
     <ComboboxPrimitive.Empty
@@ -123,10 +156,13 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
 
 export {
   Combobox,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
   ComboboxTrigger,
 };

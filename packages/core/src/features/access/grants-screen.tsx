@@ -5,7 +5,6 @@ import {
   ConfirmDialog,
   EmptyState,
   FormActionBar,
-  HelpDisclosure,
   StatusPill,
   ToggleGroup,
   ToggleGroupItem,
@@ -26,6 +25,7 @@ import type {
   GrantRecipients,
   GrantRow,
 } from "../../services/roles/grants.ts";
+import { AccessHelp } from "./access-help.tsx";
 import {
   createGrantsDraftStore,
   draftCounts,
@@ -395,21 +395,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
               <h2 id="grants-heading" className="text-lg font-semibold">
                 Modules and roles
               </h2>
-              <HelpDisclosure label="How access works">
-                <p>
-                  Each module has its own roles. Holding any role of a module
-                  gives access to it. Add gives the module&apos;s default role,
-                  and the choice on each Granted row changes it.
-                </p>
-                <p>
-                  Access adds up. A person reaches a module directly and through
-                  each of their groups. Removing one path leaves the others, and
-                  no rule denies access.
-                </p>
-                <p>
-                  A switched-off module keeps its grants and takes no new one.
-                </p>
-              </HelpDisclosure>
+              <AccessHelp />
             </div>
             <p className="max-w-prose text-sm text-muted-foreground">
               For {name}. Move rows, pick a role on each Granted row, then save.

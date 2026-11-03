@@ -40,10 +40,13 @@ export {
 
 export {
   Combobox,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
   ComboboxTrigger,
 } from "./components/combobox.tsx";

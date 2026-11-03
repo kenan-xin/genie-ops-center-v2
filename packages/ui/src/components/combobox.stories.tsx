@@ -4,10 +4,13 @@ import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
 // The package entry, so that the stories prove what an app can import.
 import {
   Combobox,
+  ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
+  ComboboxGroup,
   ComboboxInput,
   ComboboxItem,
+  ComboboxLabel,
   ComboboxList,
   ComboboxTrigger,
   Field,
@@ -92,6 +95,71 @@ export const WithTrigger: Story = {
       </ComboboxContent>
     </Combobox>
   ),
+};
+
+type Section = { readonly label: string; readonly items: readonly Person[] };
+
+const sections: readonly Section[] = [
+  {
+    label: "Groups",
+    items: [
+      { value: "g-1", label: "Finance team" },
+      { value: "g-2", label: "Operations" },
+    ],
+  },
+  { label: "People", items: people },
+];
+
+/** Sections with captions: a search keeps only the captions of the sections that still match. */
+export const Grouped: Story = {
+  render: () => (
+    <Combobox<Person> items={sections} value={null} onValueChange={fn()}>
+      <ComboboxTrigger aria-label="Recipient">
+        Choose a recipient
+      </ComboboxTrigger>
+      {/* With the search inside, the popup is a dialog, which needs a name. */}
+      <ComboboxContent aria-label="Recipients">
+        <div className="p-2">
+          <ComboboxInput aria-label="Search recipients" placeholder="Search" />
+        </div>
+        <ComboboxEmpty>Nothing matches.</ComboboxEmpty>
+        <ComboboxList>
+          {(section: Section) => (
+            <ComboboxGroup key={section.label} items={section.items}>
+              <ComboboxLabel>{section.label}</ComboboxLabel>
+              <ComboboxCollection>
+                {(person: Person) => (
+                  <ComboboxItem key={person.value} value={person}>
+                    {person.label}
+                  </ComboboxItem>
+                )}
+              </ComboboxCollection>
+            </ComboboxGroup>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  ),
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("combobox", { name: "Recipient" }));
+
+    // The popup fades in from opacity 0.
+    await waitFor(() =>
+      expect(screen.getByRole("group", { name: "Groups" })).toBeVisible()
+    );
+    await expect(screen.getByRole("group", { name: "People" })).toBeVisible();
+
+    await userEvent.type(
+      screen.getByRole("combobox", { name: "Search recipients" }),
+      "grace"
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("group", { name: "Groups" })).toBeNull()
+    );
+    await expect(screen.getByRole("group", { name: "People" })).toBeVisible();
+    await expect(screen.getAllByRole("option")).toHaveLength(1);
+  },
 };
 
 export const Dark: Story = {

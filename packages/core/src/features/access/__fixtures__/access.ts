@@ -175,6 +175,178 @@ const PATHS = {
 export const fixturePaths = (recipientId: string): readonly AccessPath[] =>
   Object.entries(PATHS).find(([id]) => id === recipientId)?.[1] ?? [];
 
+/** The extra Invoices holders of the prototype, so a module lookup pages past ten rows. */
+const INVOICE_GROUPS = [
+  ["g-ap", "Accounts payable", 9, "r-invoices-finance"],
+  ["g-ar", "Accounts receivable", 7, "r-invoices-finance"],
+  ["g-treasury", "Treasury", 4, "r-invoices-viewer"],
+  ["g-proc", "Procurement", 11, "r-invoices-viewer"],
+  ["g-ctrl", "Controllers", 5, "r-invoices-user"],
+  ["g-payroll", "Payroll", 6, "r-invoices-viewer"],
+  ["g-tax", "Tax desk", 3, "r-invoices-viewer"],
+  ["g-audit", "Audit committee", 5, "r-invoices-viewer"],
+  ["g-north", "Regional office North", 22, "r-invoices-user"],
+  ["g-south", "Regional office South", 18, "r-invoices-user"],
+  ["g-credit", "Credit control", 4, "r-invoices-finance"],
+  ["g-billing", "Billing support", 10, "r-invoices-user"],
+] as const;
+
+const more = {
+  former: { type: "group", id: "g-former", name: "Former finance" },
+  robin: { type: "user", id: "p-robin", name: "Robin Hale" },
+  drew: { type: "user", id: "p-drew", name: "Drew Patel" },
+  casey: { type: "user", id: "p-casey", name: "Casey Park" },
+} as const;
+
+/** A path of the Overview samples, added on the given day by the given person. */
+const sample = (
+  id: string,
+  by: AccessPath["holder"],
+  roleId: string,
+  extra: Partial<AccessPath> = {}
+): AccessPath => ({ ...held(id, by, roleId), ...extra });
+
+const addedOn = (day: string, name = "Alex Morgan") => ({
+  addedAt: `2026-${day}T09:00:00.000000Z`,
+  addedBy: { id: name === "Alex Morgan" ? "p-alex" : "p-jordan", name },
+});
+
+const auditor: AccessPath = {
+  ...sample(
+    "o-fin-auditor",
+    holder.finance,
+    "r-invoices-viewer",
+    addedOn("09-12")
+  ),
+  role: {
+    id: "r-auditor",
+    name: "Auditor",
+    kind: "system",
+    moduleId: null,
+    permissions: ["core:audit:read"],
+  },
+};
+
+const FINANCE_INVOICES = sample(
+  "o-fin-inv",
+  holder.finance,
+  "r-invoices-finance",
+  addedOn("10-20", "Jordan Lee")
+);
+
+const OPS_INVOICES = sample(
+  "o-ops-inv",
+  holder.ops,
+  "r-invoices-viewer",
+  addedOn("10-18")
+);
+
+const OPS_RECORD = sample("o-ops-rec", holder.ops, "r-invoices-finance", {
+  ...addedOn("09-08", "Jordan Lee"),
+  scope: { type: "invoice", id: "INV-2026-0142" },
+});
+
+const INVOICE_AUDITOR: AccessPath["role"] = {
+  id: "r-invoices-auditor",
+  name: "Invoice auditor",
+  kind: "custom",
+  moduleId: "invoices",
+  permissions: ["invoices:use", "invoices:read"],
+};
+
+const OPS_AUDITOR: AccessPath = {
+  ...sample("o-ops-aud", holder.ops, "r-invoices-auditor", addedOn("08-21")),
+  role: INVOICE_AUDITOR,
+};
+
+const FINANCE_PATHS = [
+  FINANCE_INVOICES,
+  sample("o-fin-an", holder.finance, "r-analytics-viewer", {
+    ...addedOn("10-14"),
+    notInEffect: ["module-off"],
+  }),
+  sample("o-fin-ask", holder.finance, "r-ask-user", addedOn("09-30")),
+  auditor,
+];
+
+const OPS_PATHS = [
+  OPS_INVOICES,
+  sample(
+    "o-ops-sl",
+    holder.ops,
+    "r-slides-editor",
+    addedOn("10-11", "Jordan Lee")
+  ),
+  sample("o-ops-ask", holder.ops, "r-ask-user", addedOn("09-25")),
+  OPS_RECORD,
+  OPS_AUDITOR,
+];
+
+const JAMIE_DIRECT = sample(
+  "o-jamie-inv",
+  holder.jamie,
+  "r-invoices-user",
+  addedOn("10-01", "Jordan Lee")
+);
+
+const INVOICE_PATHS: readonly AccessPath[] = [
+  FINANCE_INVOICES,
+  OPS_INVOICES,
+  JAMIE_DIRECT,
+  sample("o-robin-inv", more.robin, "r-invoices-viewer", {
+    ...addedOn("10-02"),
+    notInEffect: ["person-disabled"],
+  }),
+  sample("o-drew-inv", more.drew, "r-invoices-finance", addedOn("09-29")),
+  ...INVOICE_GROUPS.map(([id, name, , roleId], index) =>
+    sample(
+      `o-${id}`,
+      { type: "group", id, name },
+      roleId,
+      addedOn(
+        `09-${String(27 - index).padStart(2, "0")}`,
+        index % 2 === 0 ? "Alex Morgan" : "Jordan Lee"
+      )
+    )
+  ),
+  sample("o-former-inv", more.former, "r-invoices-viewer", {
+    ...addedOn("08-30"),
+    notInEffect: ["group-archived"],
+  }),
+  OPS_RECORD,
+  OPS_AUDITOR,
+  {
+    ...sample(
+      "o-casey-rec",
+      more.casey,
+      "r-invoices-auditor",
+      addedOn("08-12")
+    ),
+    role: INVOICE_AUDITOR,
+    scope: { type: "invoice", id: "INV-2026-0157" },
+  },
+];
+
+const OVERVIEW_PATHS = {
+  "user:p-jamie": [JAMIE_DIRECT, ...FINANCE_PATHS, ...OPS_PATHS],
+  "group:g-finance": FINANCE_PATHS,
+  "group:g-ops": OPS_PATHS,
+  "module:invoices": INVOICE_PATHS,
+} satisfies Record<string, readonly AccessPath[]>;
+
+/**
+ * Every path of one Overview subject, from the prototype's sample data: Jamie Chen holds ten
+ * (direct, through Finance team and through Operations), and Invoices has 21 holders, among them an
+ * archived group and a disabled person. Every other subject holds none.
+ */
+export const overviewPaths = (subject: {
+  readonly type: string;
+  readonly id: string;
+}): readonly AccessPath[] =>
+  Object.entries(OVERVIEW_PATHS).find(
+    ([key]) => key === `${subject.type}:${subject.id}`
+  )?.[1] ?? [];
+
 /** Two people share the name Alex Morgan, as every seeded e2e person shares one name. */
 export const FIXTURE_RECIPIENTS: GrantRecipients = {
   groups: [
@@ -192,5 +364,31 @@ export const FIXTURE_RECIPIENTS: GrantRecipients = {
     { id: "p-jamie", name: "Jamie Chen", email: "jamie.chen@example.com" },
     { id: "p-jordan", name: "Jordan Lee", email: "jordan.lee@example.com" },
     { id: "p-sam", name: "Sam Rivera", email: "sam.rivera@example.com" },
+  ],
+};
+
+/**
+ * The Grants recipients plus the prototype's other groups and people. Former finance is archived,
+ * so the recipients read leaves it out (O6). Robin Hale is disabled.
+ */
+export const OVERVIEW_RECIPIENTS: GrantRecipients = {
+  groups: [
+    ...FIXTURE_RECIPIENTS.groups,
+    ...INVOICE_GROUPS.map(([id, name, memberCount]) => ({
+      id,
+      name,
+      memberCount,
+    })),
+  ],
+  people: [
+    ...FIXTURE_RECIPIENTS.people,
+    { id: "p-drew", name: "Drew Patel", email: "drew.patel@example.com" },
+    { id: "p-morgan", name: "Morgan Ellis", email: "morgan.ellis@example.com" },
+    { id: "p-robin", name: "Robin Hale", email: "robin.hale@example.com" },
+    {
+      id: "p-taylor",
+      name: "Taylor Brooks",
+      email: "taylor.brooks@example.com",
+    },
   ],
 };
