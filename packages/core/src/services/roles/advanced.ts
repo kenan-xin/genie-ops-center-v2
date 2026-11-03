@@ -2,12 +2,17 @@ import { and, eq } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { Scope } from "../../lib/module-contract/keys.ts";
-import { ASK_USER_ROLE } from "../../lib/module-contract/system-roles.ts";
+import {
+  ASK_USER_ROLE,
+  AUDITOR_ROLE,
+  TENANT_ADMINISTRATOR_ROLE,
+} from "../../lib/module-contract/system-roles.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { roleAssignment } from "../../schema.ts";
+import { role, roleAssignment } from "../../schema.ts";
 import {
   assertAdministratorRemains,
+  countActiveAdministrators,
   lockAdministratorGuard,
 } from "../authorization/administrators.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
@@ -31,6 +36,132 @@ export type AdvancedChanges = {
   readonly remove: readonly { readonly assignmentId: string }[];
 };
 
+/** Why Remove is disabled in place on one assignment (R-38, AD7). */
+export type RemovalGuard = {
+  readonly assignmentId: string;
+  readonly reason: "self-protection" | "last-administrator";
+};
+
+/** One role that Advanced access can add (AD8). */
+export type AdvancedOption = {
+  readonly roleId: string;
+  readonly roleName: string;
+  readonly kind: "system" | "custom";
+  readonly moduleId: string | null;
+  /** The module display name, or "Core administration" for a core role. */
+  readonly moduleName: string;
+  readonly enabled: boolean;
+  readonly wholeTenant: boolean;
+  /** The record type a scope of this option points at, or null for the whole tenant. */
+  readonly recordType: string | null;
+};
+
+/** The three groups of the Add a role picker (AD8). */
+export type AdvancedCatalogue = {
+  readonly core: readonly AdvancedOption[];
+  readonly record: readonly AdvancedOption[];
+  readonly custom: readonly AdvancedOption[];
+};
+
+/**
+ * The recipient's direct `Tenant administrator` assignments whose Remove the screen disables in
+ * place (R-38, AD7): the caller's own row, else the last active administrator path. It reads saved
+ * rows only, so the writer's check stays the backstop for a stale screen.
+ */
+export async function readAdministratorGuards(input: {
+  readonly tenant: TenantContext;
+  readonly caller: RequestPrincipal;
+  readonly recipient: AccessRecipient;
+}): Promise<readonly RemovalGuard[]> {
+  await assertManagesAllRoles(input.caller);
+  await recipientDisabled(input.tenant, input.recipient);
+
+  const { recipient } = input;
+
+  return withTransaction(input.tenant, async (tx) => {
+    const rows = await tx
+      .select({ id: roleAssignment.id })
+      .from(roleAssignment)
+      .innerJoin(role, eq(role.id, roleAssignment.roleId))
+      .where(
+        and(
+          eq(role.name, TENANT_ADMINISTRATOR_ROLE),
+          eq(role.isSystem, true),
+          eq(roleAssignment.principalType, recipient.type),
+          eq(roleAssignment.principalId, recipient.id)
+        )
+      );
+
+    const guards: RemovalGuard[] = [];
+
+    for (const row of rows) {
+      if (recipient.type === "user" && recipient.id === input.caller.userId) {
+        guards.push({ assignmentId: row.id, reason: "self-protection" });
+      } else if (
+        // One count at a time on the one transaction.
+        // oxlint-disable-next-line no-await-in-loop
+        (await countActiveAdministrators(tx, {
+          exceptAssignmentId: row.id,
+        })) === 0
+      ) {
+        guards.push({ assignmentId: row.id, reason: "last-administrator" });
+      }
+    }
+
+    return guards;
+  });
+}
+
+const CORE_ADMINISTRATION = "Core administration";
+
+/** `Tenant administrator`, then `Auditor`, then any other core system role by name. */
+const CORE_ORDER: readonly string[] = [TENANT_ADMINISTRATOR_ROLE, AUDITOR_ROLE];
+
+function coreRank(name: string): number {
+  const index = CORE_ORDER.indexOf(name);
+
+  return index === -1 ? CORE_ORDER.length : index;
+}
+
+/**
+ * The roles Advanced access can add, in the picker's groups (AD8). Core holds the core system
+ * roles other than `Ask user`, which is a Grants row.
+ */
+export async function readAdvancedCatalogue(input: {
+  readonly tenant: TenantContext;
+  readonly caller: RequestPrincipal;
+  readonly modules: readonly RolesModule[];
+}): Promise<AdvancedCatalogue> {
+  await assertManagesAllRoles(input.caller);
+
+  const result = await input.tenant.db.$client.query<{
+    readonly id: string;
+    readonly name: string;
+  }>(
+    `select r.id::text as id, r.name from role r
+      where r.is_system and r.module_id is null and r.name <> $1`,
+    [ASK_USER_ROLE]
+  );
+
+  const core = result.rows
+    .toSorted(
+      (a, b) =>
+        coreRank(a.name) - coreRank(b.name) || a.name.localeCompare(b.name)
+    )
+    .map((row): AdvancedOption => ({
+      roleId: row.id,
+      roleName: row.name,
+      kind: "system",
+      moduleId: null,
+      moduleName: CORE_ADMINISTRATION,
+      enabled: true,
+      wholeTenant: true,
+      recordType: null,
+    }));
+
+  return { core, record: [], custom: [] };
+}
+
 type NamedRole = {
   readonly id: string;
   readonly name: string;
@@ -45,11 +176,11 @@ const scopeKey = (roleId: string, scope: Scope | null) =>
  * Whether Advanced access may add the role at the scope (AD5). A core system role other than
  * `Ask user` goes to the whole tenant; `Ask user` is a Grants row.
  */
-function addable(role: NamedRole, scope: Scope | null): boolean {
+function addable(named: NamedRole, scope: Scope | null): boolean {
   return (
-    role.isSystem &&
-    role.moduleId === null &&
-    role.name !== ASK_USER_ROLE &&
+    named.isSystem &&
+    named.moduleId === null &&
+    named.name !== ASK_USER_ROLE &&
     scope === null
   );
 }
@@ -91,15 +222,15 @@ export async function saveAdvanced(input: {
   const roles = new Map(named.rows.map((row) => [row.id, row]));
 
   for (const entry of add) {
-    const role = roles.get(entry.roleId);
+    const found = roles.get(entry.roleId);
 
-    if (role === undefined) {
+    if (found === undefined) {
       throw new AppError(CORE_ERRORS["not-found"], {
         cause: new Error(`No role ${entry.roleId}`),
       });
     }
 
-    if (!addable(role, entry.scope)) {
+    if (!addable(found, entry.scope)) {
       throw new AppError(CORE_ERRORS["invalid-input"]);
     }
   }

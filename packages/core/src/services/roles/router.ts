@@ -4,7 +4,11 @@ import {
   assignRole,
   removeAssignment,
 } from "../authorization/role-assignment.ts";
-import { saveAdvanced } from "./advanced.ts";
+import {
+  readAdministratorGuards,
+  readAdvancedCatalogue,
+  saveAdvanced,
+} from "./advanced.ts";
 import { rolesContract } from "./contract.ts";
 import {
   ACCESS_PAGE_SIZE,
@@ -173,6 +177,23 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         changes: { add: input.add, remove: input.remove },
       });
     }),
+
+    administratorGuards: managed.administratorGuards.handler(
+      ({ context, input }) =>
+        readAdministratorGuards({
+          tenant: context.tenant,
+          caller: context.caller,
+          recipient: { type: input.principalType, id: input.principalId },
+        })
+    ),
+
+    advancedCatalogue: managed.advancedCatalogue.handler(({ context }) =>
+      readAdvancedCatalogue({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+      })
+    ),
 
     grantRecipients: managed.grantRecipients.handler(({ context }) =>
       readGrantRecipients({ tenant: context.tenant, caller: context.caller })

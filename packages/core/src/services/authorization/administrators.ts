@@ -33,11 +33,18 @@ export async function lockAdministratorGuard(
 /**
  * The number of distinct people who can administer the tenant right now: an active, not banned,
  * not erased, non-break-glass person holding `Tenant administrator` directly or through a
- * non-archived group.
+ * non-archived group. `exceptAssignmentId` counts as if that one assignment were gone, so a
+ * screen can ask whether its removal would leave nobody (AD7).
  */
 export async function countActiveAdministrators(
-  tx: TenantTransaction
+  tx: TenantTransaction,
+  options: { readonly exceptAssignmentId?: string } = {}
 ): Promise<number> {
+  const except =
+    options.exceptAssignmentId === undefined
+      ? sql``
+      : sql`and a.id <> ${options.exceptAssignmentId}::uuid`;
+
   const result = await tx.execute<{ count: number }>(sql`
     select count(distinct u.id)::int as count
       from "user" u
@@ -54,6 +61,7 @@ export async function countActiveAdministrators(
               and r.is_system = true
               and a.principal_type = 'user'
               and a.principal_id = u.id
+              ${except}
          )
          or exists (
            select 1
@@ -65,6 +73,7 @@ export async function countActiveAdministrators(
             where m.user_id = u.id
               and r.name = ${TENANT_ADMINISTRATOR_ROLE}
               and r.is_system = true
+              ${except}
          )
        )
   `);

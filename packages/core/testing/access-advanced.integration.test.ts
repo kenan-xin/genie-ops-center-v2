@@ -462,7 +462,97 @@ describe("the Advanced access writer", () => {
           add: [{ roleId: await roleIdOf(AUDITOR_ROLE), scope: null }],
         })
       ).rejects.toMatchObject({ code: "forbidden" });
+      await expect(
+        roles(reader).administratorGuards({
+          principalType: "user",
+          principalId: kimId,
+        })
+      ).rejects.toMatchObject({ code: "forbidden" });
+      await expect(roles(reader).advancedCatalogue()).rejects.toMatchObject({
+        code: "forbidden",
+      });
       expect(await directRoles(target)).toHaveLength(1);
     }
   );
+});
+
+function guards(callerId: string, recipient: Principal) {
+  return roles(callerId).administratorGuards({
+    principalType: recipient.type,
+    principalId: recipient.id,
+  });
+}
+
+describe("the Advanced access reads", () => {
+  it("G1: names the last active Tenant administrator path of a person and of a group, and nothing once a second administrator exists", async () => {
+    const pat: Principal = {
+      type: "user",
+      id: await insertUser(deployment.context),
+    };
+
+    const group = await newGroup([await insertUser(deployment.context)]);
+
+    await banKim(true);
+
+    try {
+      const direct = await grantTo(TENANT_ADMINISTRATOR_ROLE, pat);
+
+      expect(await guards(adaId, pat)).toEqual([
+        { assignmentId: direct, reason: "last-administrator" },
+      ]);
+
+      await dropAdministrator(pat);
+
+      const shared = await grantTo(TENANT_ADMINISTRATOR_ROLE, group);
+
+      expect(await guards(adaId, group)).toEqual([
+        { assignmentId: shared, reason: "last-administrator" },
+      ]);
+
+      await banKim(false);
+
+      expect(await guards(adaId, group)).toEqual([]);
+    } finally {
+      await banKim(false);
+      await dropAdministrator(pat);
+      await dropAdministrator(group);
+    }
+  });
+
+  it("G2: names self-protection on the caller's own direct Tenant administrator role", async () => {
+    const sam: Principal = {
+      type: "user",
+      id: await insertUser(deployment.context, { name: "Sam" }),
+    };
+
+    try {
+      const own = await grantTo(TENANT_ADMINISTRATOR_ROLE, sam);
+
+      expect(await guards(sam.id, sam)).toEqual([
+        { assignmentId: own, reason: "self-protection" },
+      ]);
+    } finally {
+      await dropAdministrator(sam);
+    }
+  });
+
+  it("G3: offers Tenant administrator, then Auditor, under Core, and never Ask user", async () => {
+    const { core } = await roles(adaId).advancedCatalogue();
+
+    expect(core.map((option) => option.roleName)).toEqual([
+      TENANT_ADMINISTRATOR_ROLE,
+      AUDITOR_ROLE,
+    ]);
+
+    for (const option of core) {
+      expect(option).toMatchObject({
+        kind: "system",
+        moduleId: null,
+        moduleName: "Core administration",
+        enabled: true,
+        wholeTenant: true,
+        recordType: null,
+      });
+    }
+  });
 });

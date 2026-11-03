@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
+import type { AdvancedCatalogue, RemovalGuard } from "./advanced.ts";
 import type { AccessPage, AccessPath } from "./effective-access.ts";
 import type { GrantRecipients, GrantRow } from "./grants.ts";
 import type { RoleDetail, RolePermissionGroup, RoleRow } from "./index.ts";
@@ -180,6 +181,25 @@ export const rolesContract = {
         remove: z.array(z.object({ assignmentId: z.uuid() })).max(100),
       })
     ),
+
+  // R-38, AD7: the recipient's assignments whose Remove is disabled in place, with the reason.
+  administratorGuards: oc
+    .route({
+      method: "GET",
+      path: "/roles/advanced/guards/{principalType}/{principalId}",
+    })
+    .input(
+      z.object({
+        principalType: z.enum(["user", "group"]),
+        principalId: z.string().min(1).max(200),
+      })
+    )
+    .output(z.custom<readonly RemovalGuard[]>()),
+
+  // R-37c, AD8: the roles Advanced access can add, in the picker's three groups.
+  advancedCatalogue: oc
+    .route({ method: "GET", path: "/roles/advanced/catalogue" })
+    .output(z.custom<AdvancedCatalogue>()),
 
   // R-37e, R-39: the groups and people the Grants picker offers, without the break-glass account.
   grantRecipients: oc

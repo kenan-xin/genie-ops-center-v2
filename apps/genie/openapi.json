@@ -2145,6 +2145,52 @@
         }
       }
     },
+    "/roles/advanced/guards/{principalType}/{principalId}": {
+      "get": {
+        "operationId": "roles.administratorGuards",
+        "parameters": [
+          {
+            "name": "principalType",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "enum": [
+                "user",
+                "group"
+              ],
+              "type": "string"
+            }
+          },
+          {
+            "name": "principalId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/roles/advanced/catalogue": {
+      "get": {
+        "operationId": "roles.advancedCatalogue",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/roles/grants/recipients": {
       "get": {
         "operationId": "roles.grantRecipients",
