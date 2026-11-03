@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import type { AccessPath } from "../../services/roles/effective-access.ts";
+import { FIXTURE_ROWS, fixturePath } from "../access/__fixtures__/access.ts";
 import {
   FIXTURE_DETAILS,
   FIXTURE_JIT_SETTINGS,
@@ -146,17 +148,113 @@ export const GroupsSyncedIsRelative: Story = {
   },
 };
 
-/** G21: a role held through a group links that group, and the link opens that group's id. */
-export const ViaGroupOpensTheGroup: Story = {
-  args: { initialSelectedId: "u-viewer", onOpenGroup: fn() },
+const financeTeam = {
+  type: "group",
+  id: "g-finance",
+  name: "Finance team",
+} as const;
+
+/**
+ * Ada's paths from the S2-19 read: Invoices directly and through Finance team, and Slides through
+ * an archived group, which grants nothing.
+ */
+const ADA_PATHS: readonly AccessPath[] = [
+  fixturePath({
+    id: "a-ada-direct",
+    holder: { type: "user", id: "u-viewer", name: "Ada Admin" },
+    role: { id: "r-invoices-viewer", name: "Viewer" },
+    moduleId: "invoices",
+  }),
+  fixturePath({
+    id: "a-ada-finance",
+    holder: financeTeam,
+    role: { id: "r-invoices-finance", name: "Finance" },
+    moduleId: "invoices",
+  }),
+  {
+    ...fixturePath({
+      id: "a-ada-former",
+      holder: { type: "group", id: "g-former", name: "Former finance" },
+      role: { id: "r-slides-editor", name: "Slides editor" },
+      moduleId: "slides",
+    }),
+    notInEffect: ["group-archived"],
+  },
+];
+
+const adaAccess = {
+  paths: ADA_PATHS,
+  catalogue: FIXTURE_ROWS,
+  recordLabels: new Map<string, string>(),
+};
+
+/** G19, G20: the Access tab lists module, role and path from the one read, read-only (LK2, LK3). */
+export const AccessTabListsEveryPath: Story = {
+  args: {
+    initialSelectedId: "u-viewer",
+    access: adaAccess,
+    onManageAccess: fn(),
+  },
   play: async ({ args }) => {
     const sheet = within(await screen.findByRole("dialog"));
 
-    await userEvent.click(sheet.getByRole("tab", { name: /Roles/ }));
+    await userEvent.click(sheet.getByRole("tab", { name: /Access/ }));
+
+    await expect(sheet.getByText("Invoices · Viewer")).toBeVisible();
+    await expect(
+      sheet.getByText(
+        "Direct assignment · also through Finance team · added by Alex Morgan"
+      )
+    ).toBeVisible();
+    await expect(sheet.getByText("Invoices · Finance")).toBeVisible();
+    await expect(
+      sheet.getByText(
+        "via Finance team · also through a direct assignment · added by Alex Morgan"
+      )
+    ).toBeVisible();
+
+    // I2: a path through an archived group is never shown as live.
+    const former = sheet.getByText("Slides · Slides editor").closest("li");
+
+    await expect(former).not.toBeNull();
+    await expect(
+      within(former ?? document.body).getByText("Not in effect")
+    ).toBeVisible();
+    await expect(
+      within(former ?? document.body).getByText("The group is archived")
+    ).toBeVisible();
+
     await userEvent.click(
-      sheet.getByRole("button", { name: "Genie Administrators" })
+      sheet.getByRole("button", { name: "Manage in Access" })
     );
-    await expect(args.onOpenGroup).toHaveBeenCalledWith("g-admins");
+    await expect(args.onManageAccess).toHaveBeenCalledWith("u-viewer");
+  },
+};
+
+/** U5, LK4: without the Roles key the host passes no read and no link, so neither shows. */
+export const NoAccessTabWithoutTheKey: Story = {
+  args: { initialSelectedId: "u-viewer" },
+  play: async () => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await expect(sheet.getByRole("tab", { name: /Profile/ })).toBeVisible();
+    await expect(sheet.queryByRole("tab", { name: /Access/ })).toBeNull();
+    await expect(sheet.queryByRole("tab", { name: /Roles/ })).toBeNull();
+    await expect(
+      sheet.queryByRole("button", { name: "Manage in Access" })
+    ).toBeNull();
+  },
+};
+
+/** G21: a role held through a group links that group, and the link opens that group's id. */
+export const ViaGroupOpensTheGroup: Story = {
+  args: { initialSelectedId: "u-viewer", access: adaAccess, onOpenGroup: fn() },
+  play: async ({ args }) => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(sheet.getByRole("tab", { name: /Access/ }));
+    await userEvent.click(sheet.getByRole("button", { name: "Finance team" }));
+    await expect(args.onOpenGroup).toHaveBeenCalledWith("g-finance");
   },
 };
 

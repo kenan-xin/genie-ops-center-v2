@@ -1,14 +1,14 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { FIXTURE_ROWS, fixturePath } from "../access/__fixtures__/access.ts";
 import {
-  FIXTURE_ASSIGNMENTS,
+  FIXTURE_ARCHIVED,
   FIXTURE_DIRECTORY,
   FIXTURE_GROUPS,
   FIXTURE_LOCAL,
   FIXTURE_MEMBERS,
   FIXTURE_PEOPLE,
-  FIXTURE_ROLES,
   FIXTURE_VIEWER,
 } from "./__fixtures__/groups.ts";
 import { GroupsScreen } from "./groups-screen.tsx";
@@ -23,8 +23,6 @@ const onDeleteGroup = fn();
 const onDeleteLocalGroup = fn();
 
 const onCreateLocalGroup = fn();
-
-const onAssignRole = fn();
 
 /**
  * The Groups directory (R-24 to R-25). The host owns the data and the writes, so each destructive
@@ -57,24 +55,16 @@ const meta = {
     includeArchived: false,
     onChangeIncludeArchived: fn(),
     people: FIXTURE_PEOPLE,
-    roles: FIXTURE_ROLES,
     lastAdministratorGroupIds: [],
     details: {
-      [FIXTURE_DIRECTORY.id]: {
-        members: FIXTURE_MEMBERS,
-        assignments: FIXTURE_ASSIGNMENTS,
-      },
-      [FIXTURE_LOCAL.id]: {
-        members: FIXTURE_MEMBERS,
-        assignments: [FIXTURE_ASSIGNMENTS[1]!],
-      },
+      [FIXTURE_DIRECTORY.id]: { members: FIXTURE_MEMBERS },
+      [FIXTURE_LOCAL.id]: { members: FIXTURE_MEMBERS },
     },
     onAddDirectoryGroup,
     onArchiveGroup,
     onDeleteGroup,
     onDeleteLocalGroup,
     onCreateLocalGroup,
-    onAssignRole,
     labelHint: "Add a display label",
   } satisfies GroupsScreenProps,
 } satisfies Meta<typeof GroupsScreen>;
@@ -112,7 +102,7 @@ export const SyncColumnIsRelative: Story = {
 export const StaleGroupWarns: Story = {
   args: {
     initialSelectedId: "g-stale",
-    details: { "g-stale": { members: [], assignments: [] } },
+    details: { "g-stale": { members: [] } },
   },
   play: async () => {
     const sheet = within(await screen.findByRole("dialog"));
@@ -620,7 +610,7 @@ export const LocalGroupDeleteConfirmNamesBothCounts: Story = {
 export const EmptyLocalGroupDeleteConfirmCountsNothing: Story = {
   args: {
     groups: [{ ...FIXTURE_LOCAL, memberCount: 0, assignmentCount: 0 }],
-    details: { [FIXTURE_LOCAL.id]: { members: [], assignments: [] } },
+    details: { [FIXTURE_LOCAL.id]: { members: [] } },
   },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
@@ -648,37 +638,12 @@ export const Empty: Story = {
   },
 };
 
-export const AssignsARoleToAPreAddedGroup: Story = {
-  play: async ({ canvas }) => {
-    onAssignRole.mockClear();
-
-    await userEvent.click(canvas.getByRole("button", { name: /^Sales/ }));
-
-    const inspector = within(
-      await screen.findByRole("dialog", { name: "Sales" })
-    );
-
-    await userEvent.click(inspector.getByRole("tab", { name: /^Roles/ }));
-    await userEvent.click(
-      inspector.getByRole("combobox", { name: "Give this group a role" })
-    );
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Auditor" })
-    );
-    await userEvent.click(
-      inspector.getByRole("button", { name: "Assign role" })
-    );
-
-    expect(onAssignRole).toHaveBeenCalledWith("g-not-seen", "r-2");
-  },
-};
-
 export const RemoveAllStaysVisibleWhenEveryoneIsAMember: Story = {
   args: {
     groups: [FIXTURE_LOCAL],
     people: FIXTURE_PEOPLE,
     details: {
-      [FIXTURE_LOCAL.id]: { members: FIXTURE_MEMBERS, assignments: [] },
+      [FIXTURE_LOCAL.id]: { members: FIXTURE_MEMBERS },
     },
   },
   play: async ({ canvas }) => {
@@ -749,7 +714,7 @@ export const AddsAPersonInOneStep: Story = {
       { id: "p-3", name: "Alan Turing", email: "alan@example.invalid" },
     ],
     details: {
-      [FIXTURE_LOCAL.id]: { members: [FIXTURE_MEMBERS[0]!], assignments: [] },
+      [FIXTURE_LOCAL.id]: { members: [FIXTURE_MEMBERS[0]!] },
     },
     onAddMembers: fn(),
   },
@@ -822,8 +787,59 @@ export const RemovesOneMemberFromTheGroup: Story = {
   },
 };
 
-/** The access card names its roles and always offers a next step (row 2). */
+/** Operations' one path from the S2-19 read. */
+const operationsAccess = {
+  paths: [
+    fixturePath({
+      id: "a-ops-viewer",
+      holder: { type: "group", id: "g-local", name: "Operations" },
+      role: { id: "r-invoices-viewer", name: "Viewer" },
+      moduleId: "invoices",
+    }),
+  ],
+  catalogue: FIXTURE_ROWS,
+  recordLabels: new Map<string, string>(),
+};
+
+/** G33, G37: the Access tab is read-only, and the card opens Access with the group chosen. */
 export const AccessCardIsNeverADeadEnd: Story = {
+  args: {
+    groups: [FIXTURE_LOCAL],
+    access: operationsAccess,
+    onOpenInAccess: fn(),
+  },
+  play: async ({ canvas, args }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    await expect(
+      inspector.getByText("1 role through this group")
+    ).toBeInTheDocument();
+
+    await userEvent.click(inspector.getByRole("tab", { name: /^Access/ }));
+    await expect(inspector.getByText("Invoices · Viewer")).toBeVisible();
+    await expect(
+      inspector.getByText("Direct assignment · added by Alex Morgan")
+    ).toBeVisible();
+    await expect(
+      inspector.queryByRole("button", { name: "Remove" })
+    ).toBeNull();
+    await expect(
+      inspector.queryByRole("combobox", { name: "Give this group a role" })
+    ).toBeNull();
+
+    await userEvent.click(
+      inspector.getByRole("button", { name: "Open in Access" })
+    );
+    await expect(args.onOpenInAccess).toHaveBeenCalledWith("g-local");
+  },
+};
+
+/** U5, LK4: without the Roles key the card keeps only its count, and no Access tab shows. */
+export const AccessCardWithoutTheKey: Story = {
   args: { groups: [FIXTURE_LOCAL] },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
@@ -835,13 +851,38 @@ export const AccessCardIsNeverADeadEnd: Story = {
     await expect(
       inspector.getByText("1 role through this group")
     ).toBeInTheDocument();
-
-    // The host passes no Access link, so the card opens the Roles tab instead.
-    await userEvent.click(inspector.getByRole("button", { name: "See roles" }));
-
     await expect(
-      inspector.getByRole("tab", { name: /^Roles/ })
-    ).toHaveAttribute("aria-selected", "true");
+      inspector.queryByRole("button", { name: "Open in Access" })
+    ).toBeNull();
+    await expect(
+      inspector.queryByRole("button", { name: "See roles" })
+    ).toBeNull();
+    await expect(inspector.queryByRole("tab", { name: /^Access/ })).toBeNull();
+    await expect(inspector.queryByRole("tab", { name: /^Roles/ })).toBeNull();
+  },
+};
+
+/** LK13: Grants lists no archived group, so its card offers no Open in Access. */
+export const ArchivedGroupOffersNoOpenInAccess: Story = {
+  args: {
+    groups: [FIXTURE_ARCHIVED],
+    includeArchived: true,
+    access: { ...operationsAccess, paths: [] },
+    onOpenInAccess: fn(),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Ex-contractors/ })
+    );
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Ex-contractors" })
+    );
+
+    await expect(inspector.getByRole("tab", { name: /^Access/ })).toBeVisible();
+    await expect(
+      inspector.queryByRole("button", { name: "Open in Access" })
+    ).toBeNull();
   },
 };
 

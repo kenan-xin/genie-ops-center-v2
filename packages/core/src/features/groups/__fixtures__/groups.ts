@@ -1,7 +1,5 @@
 import type {
-  AssignableRole,
   Group,
-  GroupAssignment,
   GroupMember,
   GroupsViewer,
   PersonOption,
@@ -12,12 +10,6 @@ export const FIXTURE_VIEWER: GroupsViewer = {
   timeZone: "UTC",
   nowIso: "2026-09-01T11:00:00.000Z",
 };
-
-export const FIXTURE_ROLES: readonly AssignableRole[] = [
-  { id: "r-1", name: "Tenant administrator", moduleId: "core" },
-  { id: "r-2", name: "Auditor", moduleId: "core" },
-  { id: "r-3", name: "Invoice approver", moduleId: null },
-];
 
 export const FIXTURE_PEOPLE: readonly PersonOption[] = [
   { id: "p-1", name: "Ada Lovelace", email: "ada@example.invalid" },
@@ -118,29 +110,5 @@ export const FIXTURE_MEMBERS: readonly GroupMember[] = [
     email: "grace@example.invalid",
     source: "idp",
     syncedAt: "2026-09-01T10:00:00.000Z",
-  },
-];
-
-export const FIXTURE_ASSIGNMENTS: readonly GroupAssignment[] = [
-  {
-    id: "a-1",
-    roleId: "r-1",
-    roleName: "Tenant administrator",
-    scopeType: null,
-    scopeId: null,
-  },
-  {
-    id: "a-2",
-    roleId: "r-2",
-    roleName: "Auditor",
-    scopeType: null,
-    scopeId: null,
-  },
-  {
-    id: "a-3",
-    roleId: "r-3",
-    roleName: "Invoice approver",
-    scopeType: "office",
-    scopeId: "office-1",
   },
 ];

@@ -9,6 +9,7 @@ import type {
   PersonSessionRow as PersonSession,
   PersonStatus,
 } from "../../services/people/index.ts";
+import type { InspectorAccess } from "../access/access-path-list.tsx";
 import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
@@ -102,9 +103,14 @@ export type PeopleScreenProps = {
   /** Sign out every session of a person. */
   readonly onRevokeAllSessions?: (personId: string) => void;
   /** Opens the Access screen with this person chosen (the one assignment writer, DEC-39). */
-  readonly onManageAccess?: (personId: string) => void;
-  /** Opens the group a role comes through, from the person's Roles tab (mockup link). */
+  readonly onManageAccess?: ((personId: string) => void) | undefined;
+  /** Opens the group a role comes through, from the person's Access tab (mockup link). */
   readonly onOpenGroup?: (groupId: string) => void;
+  /**
+   * The selected person's access from the S2-19 read. The host passes it only to a viewer with
+   * `core:roles:manage`; undefined hides the Access tab (LK4, U5).
+   */
+  readonly access?: InspectorAccess | undefined;
   /**
    * The local groups the person's Groups tab offers in Add to group. The host passes them and the
    * two callbacks only to a caller who manages groups (`canManageGroups`, G16).

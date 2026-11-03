@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
-import type { Locator, Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 import {
   e2eAccessAdvancedMemberEmail,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
+import { openAdvancedAccess, saveAdvancedAccess } from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
@@ -37,32 +38,6 @@ async function opens(page: Page, path: string, heading: string) {
   ).toBeAttached();
 
   return (await denied.count()) === 0;
-}
-
-const sheetOf = (page: Page) =>
-  page.getByRole("dialog", { name: "Advanced access" });
-
-async function openSheet(page: Page): Promise<Locator> {
-  await page
-    .getByRole("button", { name: "Advanced access", exact: true })
-    .click();
-
-  const sheet = sheetOf(page);
-
-  await expect(sheet).toBeVisible();
-
-  return sheet;
-}
-
-/** Saves the sheet and waits for the write; the sheet closes on success. */
-async function saveSheet(page: Page, sheet: Locator): Promise<void> {
-  const response = page.waitForResponse((answer) =>
-    answer.url().includes("/api/rpc/roles/saveAdvanced")
-  );
-
-  await sheet.getByRole("button", { name: "Save changes" }).click();
-  expect((await response).status()).toBe(200);
-  await expect(sheet).toBeHidden();
 }
 
 test("Advanced access gives core administration and a role at one record, and Remove takes each away", async ({
@@ -104,7 +79,7 @@ test("Advanced access gives core administration and a role at one record, and Re
       .click();
 
     // E1, E3: Tenant administrator for the whole tenant. The staged add passes axe first.
-    let sheet = await openSheet(page);
+    let sheet = await openAdvancedAccess(page);
 
     await chooseOption(
       page,
@@ -114,18 +89,18 @@ test("Advanced access gives core administration and a role at one record, and Re
     await sheet.getByRole("button", { name: "Add to the list" }).click();
     await expect(sheet.getByText("Pending", { exact: true })).toBeVisible();
     await expectNoAxeViolations(page, "Advanced access with an add pending");
-    await saveSheet(page, sheet);
+    await saveAdvancedAccess(page, sheet);
 
     await signInThroughKeycloak(memberPage, { email: member });
     await expect
       .poll(() => opens(memberPage, "/admin/people", "People"), POLL)
       .toBe(true);
 
-    sheet = await openSheet(page);
+    sheet = await openAdvancedAccess(page);
     await sheet
       .getByRole("button", { name: "Remove Tenant administrator" })
       .click();
-    await saveSheet(page, sheet);
+    await saveAdvancedAccess(page, sheet);
     await expect
       .poll(() => opens(memberPage, "/admin/people", "People"), POLL)
       .toBe(false);
@@ -133,14 +108,14 @@ test("Advanced access gives core administration and a role at one record, and Re
     // E2: Placeholder user at one record, picked by search.
     const pick = `Placeholder record ${recordId}`;
 
-    sheet = await openSheet(page);
+    sheet = await openAdvancedAccess(page);
     await chooseOption(page, "Role", "Placeholder: Placeholder user");
     await sheet.getByRole("combobox", { name: "Choose a record" }).click();
     await page.getByLabel("Search records").fill(recordLabel);
     await page.getByRole("option", { name: pick, exact: true }).click();
     await sheet.getByRole("button", { name: "Add to the list" }).click();
     await expect(sheet.getByText(`One record · ${pick}`)).toBeVisible();
-    await saveSheet(page, sheet);
+    await saveAdvancedAccess(page, sheet);
 
     await expect
       .poll(
@@ -152,11 +127,11 @@ test("Advanced access gives core administration and a role at one record, and Re
       await opens(memberPage, `/placeholder/${otherId}`, "e2e-visible")
     ).toBe(false);
 
-    sheet = await openSheet(page);
+    sheet = await openAdvancedAccess(page);
     await sheet
       .getByRole("button", { name: "Remove Placeholder user" })
       .click();
-    await saveSheet(page, sheet);
+    await saveAdvancedAccess(page, sheet);
     await expect
       .poll(
         () => opens(memberPage, `/placeholder/${recordId}`, recordLabel),

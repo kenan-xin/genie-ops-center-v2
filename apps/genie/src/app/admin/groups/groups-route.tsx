@@ -1,22 +1,30 @@
 "use client";
 
+import { accessHref } from "@genie/core/features/access";
 import { GroupsScreen, type GroupsViewer } from "@genie/core/features/groups";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation.js";
+import { useRouter } from "next/navigation.js";
 import { useState } from "react";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
+import { useInspectorAccess } from "../access/use-inspector-access.ts";
 
 /**
  * The browser half of the Groups route. The server has already refused a caller without
  * `core:groups:manage` before this mounts, and every procedure re-checks it, so the screen holds
  * no denied state. It owns the selected group, the archived toggle and the writes, and reloads the
- * list through TanStack Query after each one.
+ * list through TanStack Query after each one. The group's roles are given and taken in Access
+ * only (LK6), and only a viewer with `core:roles:manage` reads them and gets the link (LK4, LK5).
  */
-export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
+export function GroupsRoute(props: {
+  readonly viewer: GroupsViewer;
+  readonly canManageAccess: boolean;
+}) {
   const t = useTranslations("pages");
+  const router = useRouter();
   const tNoMatch = useTranslations("noMatch");
   const [includeArchived, setIncludeArchived] = useState(false);
   // An audit target link opens the screen with its group selected.
@@ -47,9 +55,10 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
     queryFn: () => rpc.people.active(),
   });
 
-  const assignableRoles = useQuery({
-    queryKey: ["groups", "assignable-roles"],
-    queryFn: () => rpc.groups.assignableRoles(),
+  const access = useInspectorAccess({
+    canManageAccess: props.canManageAccess,
+    recipient: selectedId === null ? null : { type: "group", id: selectedId },
+    open,
   });
 
   // One write runs any change and reloads the list and the open detail.
@@ -118,7 +127,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       includeArchived={includeArchived}
       onChangeIncludeArchived={setIncludeArchived}
       people={people.data ?? []}
-      roles={assignableRoles.data ?? []}
+      access={access}
       lastAdministratorGroupIds={
         detail.data?.lastAdministrator === true ? [selected] : []
       }
@@ -132,12 +141,7 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       details={
         detail.data === undefined
           ? {}
-          : {
-              [detail.data.id]: {
-                members: detail.data.members,
-                assignments: detail.data.assignments,
-              },
-            }
+          : { [detail.data.id]: { members: detail.data.members } }
       }
       loading={list.isPending}
       pending={
@@ -174,11 +178,10 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
       onRemoveAllMembers={(groupId) =>
         run(() => rpc.groups.removeAllMembers({ groupId }))
       }
-      onAssignRole={(groupId, roleId) =>
-        run(() => rpc.groups.assignRole({ groupId, roleId }))
-      }
-      onUnassignRole={(groupId, assignmentId) =>
-        run(() => rpc.groups.unassign({ groupId, assignmentId }))
+      onOpenInAccess={
+        props.canManageAccess
+          ? (groupId) => router.push(accessHref({ recipient: groupId }))
+          : undefined
       }
     />
   );

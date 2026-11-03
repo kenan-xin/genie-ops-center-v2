@@ -10,6 +10,7 @@ import {
   setRealmUserGroupMemberships,
 } from "../testing/e2e-keycloak.ts";
 import { doneAdmitGroup, doneGrantGroup, scenarioEmail } from "./scenarios.ts";
+import { openAdvancedAccess, saveAdvancedAccess } from "./support/access.ts";
 import {
   BROKER_DB,
   brokeredBaseUrl,
@@ -144,8 +145,8 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   await expect(person.getByText(grantGroup, { exact: true })).toBeVisible();
   await person.getByRole("button", { name: "Close" }).click();
 
-  // AC-22: the administrator maps the person's other group to the reader role on the Groups
-  // screen. The person does nothing further.
+  // AC-22: the administrator gives the person's other group the reader role, from the Groups
+  // screen through Open in Access and Advanced access (R-37a). The person does nothing further.
   await page.goto(`${baseUrl}/admin/groups`);
   await page
     .getByRole("button", { name: new RegExp(grantGroup) })
@@ -154,17 +155,14 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
 
   const group = page.getByRole("dialog", { name: grantGroup });
 
-  await group.getByRole("tab", { name: /^Roles/ }).click();
-  await chooseOption(page, "Give this group a role", "S2-13 reader");
+  await group.getByRole("button", { name: "Open in Access" }).click();
+  await expect(page).toHaveURL(/\/admin\/access\?recipient=/);
 
-  const [assigned] = await Promise.all([
-    page.waitForResponse((response) =>
-      response.url().includes("/api/rpc/groups/assignRole")
-    ),
-    group.getByRole("button", { name: "Assign role" }).click(),
-  ]);
+  const sheet = await openAdvancedAccess(page);
 
-  expect(assigned.status()).toBe(200);
+  await chooseOption(page, "Role", "S2-13 reader (Core administration)");
+  await sheet.getByRole("button", { name: "Add to the list" }).click();
+  await saveAdvancedAccess(page, sheet);
 
   // AC-22 and AC-23: the role reaches the open session on its next request; the module appears.
   await placeholderVisible(memberPage, baseUrl);

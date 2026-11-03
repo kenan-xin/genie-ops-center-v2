@@ -6,6 +6,7 @@ import {
   e2eGroupsRolesGroup,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
+import { openAdvancedAccess, saveAdvancedAccess } from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
@@ -133,7 +134,6 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
     BRANDING_LOCK_WAIT_MS
   );
 
-  // Map the group to a role through the screen's own assign step (R-24b), not SQL.
   const groupRow = page
     .getByRole("button", { name: new RegExp(GROUP_LABEL) })
     .first();
@@ -142,17 +142,24 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   const inspector = page.getByRole("dialog", { name: GROUP_LABEL });
 
-  await inspector.getByRole("tab", { name: /^Roles/ }).click();
-  await chooseOption(page, "Give this group a role", "E2E reader");
+  await expect(inspector).toBeVisible();
+  await inspector.getByRole("button", { name: "Close" }).click();
 
-  const [assignResponse] = await Promise.all([
-    page.waitForResponse((response) =>
-      response.url().includes("/api/rpc/groups/assignRole")
-    ),
-    inspector.getByRole("button", { name: "Assign role" }).click(),
-  ]);
+  // The sheet closes rather than unmounting, so focus returns to the row's open button (R-22).
+  await expect(inspector).toBeHidden();
+  await expect(groupRow).toBeFocused();
 
-  expect(assignResponse.status()).toBe(200);
+  // Map the group to a role through the screens, not SQL: Open in Access, then Advanced access
+  // (R-24b, R-37a). Access lists the group before any sign-in has seen it.
+  await groupRow.click();
+  await inspector.getByRole("button", { name: "Open in Access" }).click();
+  await expect(page).toHaveURL(/\/admin\/access\?recipient=/);
+
+  const sheet = await openAdvancedAccess(page);
+
+  await chooseOption(page, "Role", "E2E reader (Core administration)");
+  await sheet.getByRole("button", { name: "Add to the list" }).click();
+  await saveAdvancedAccess(page, sheet);
 
   const [assigned] = await queryDatabase(
     `select count(*) from role_assignment a
@@ -162,12 +169,6 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   );
 
   expect(assigned).toBe("1");
-
-  await inspector.getByRole("button", { name: "Close" }).click();
-
-  // The sheet closes rather than unmounting, so focus returns to the row's open button (R-22).
-  await expect(inspector).toBeHidden();
-  await expect(groupRow).toBeFocused();
 
   // A jit person whose token carries the group is admitted and holds the role through it.
   const admittedEmail = e2eGroupsRolesEmail("admitted", project);

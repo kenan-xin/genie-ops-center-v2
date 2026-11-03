@@ -1,4 +1,4 @@
-import { coreAdminPermission } from "@genie/core";
+import { can, coreAdminPermission } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
@@ -39,6 +39,10 @@ export default async function GroupsPage() {
               timeZone: branding.defaultTimeZone,
               nowIso: new Date().toISOString(),
             }}
+            canManageAccess={await can(
+              caller,
+              coreAdminPermission("core-access")
+            )}
           />
         </main>
       );

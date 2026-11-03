@@ -5,6 +5,7 @@ import type {
   GroupRow as Group,
 } from "../../services/groups/index.ts";
 import type { AssignablePerson as PersonOption } from "../../services/people/index.ts";
+import type { InspectorAccess } from "../access/access-path-list.tsx";
 import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
@@ -55,18 +56,15 @@ export type GroupsScreenProps = {
   /** A group to open on mount, for a link such as an audit target (`?selected=`). */
   readonly initialSelectedId?: string | undefined;
   readonly people: readonly PersonOption[];
-  /** The roles the inspector can assign to a group (R-24b). */
-  readonly roles?: readonly AssignableRole[] | undefined;
-  /** Per-group members and assignments for the inspector, loaded by the host on selection. */
+  /** Per-group members for the inspector, loaded by the host on selection. */
   readonly details?: Readonly<
-    Record<
-      string,
-      {
-        readonly members: readonly GroupMember[];
-        readonly assignments: readonly GroupAssignment[];
-      }
-    >
+    Record<string, { readonly members: readonly GroupMember[] }>
   >;
+  /**
+   * The selected group's access from the S2-19 read. The host passes it only to a viewer with
+   * `core:roles:manage`; undefined hides the Access tab (LK4, U5).
+   */
+  readonly access?: InspectorAccess | undefined;
   /** The catalogue prompt the inspector of an unlabelled group whose value looks like an id shows (R-24c). */
   readonly labelHint: string;
   /** R-38: group ids where archiving or removing a member would leave no administrator. */
@@ -104,22 +102,18 @@ export type GroupsScreenProps = {
     userIds: readonly string[]
   ) => void;
   readonly onRemoveAllMembers?: (groupId: string) => void;
-  /** Assign a role to the group through the one role-assignment service (R-24b). */
-  readonly onAssignRole?: (groupId: string, roleId: string) => void;
-  /** Remove one of the group's role assignments. */
-  readonly onUnassignRole?: (groupId: string, assignmentId: string) => void;
   /** Opens the Access screen with this group chosen (the one assignment writer, DEC-39). */
-  readonly onOpenInAccess?: (groupId: string) => void;
+  readonly onOpenInAccess?: ((groupId: string) => void) | undefined;
 };
 
 /** One group's detail as the inspector reads it. */
 export type GroupInspectorProps = {
   readonly group: Group;
   readonly members: readonly GroupMember[];
-  readonly assignments: readonly GroupAssignment[];
+  /** The group's access from the S2-19 read; undefined hides the Access tab (LK4). */
+  readonly access?: InspectorAccess | undefined;
   readonly viewer: GroupsViewer;
   readonly people: readonly PersonOption[];
-  readonly roles: readonly AssignableRole[];
   readonly lastAdministrator: boolean;
   /** The prompt an unlabelled directory group whose value is an id shows (R-24c). */
   readonly labelHint?: string | undefined;
@@ -131,8 +125,6 @@ export type GroupInspectorProps = {
   readonly onEditLabel: (displayLabel: string | null) => void;
   readonly onEditLocal: (name: string, description: string) => void;
   readonly onOpenInAccess?: (() => void) | undefined;
-  readonly onAssignRole: (roleId: string) => void;
-  readonly onUnassignRole: (assignmentId: string) => void;
   readonly onAddMembers: (userIds: readonly string[]) => void;
   readonly onRemoveMembers: (userIds: readonly string[]) => void;
   readonly onRemoveAllMembers: () => void;

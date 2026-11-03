@@ -33,11 +33,6 @@ import {
   InputGroupInput,
   InputGroupText,
   LabelPill,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -55,6 +50,7 @@ import { EllipsisIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { AccessPathList } from "../access/access-path-list.tsx";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   ArchiveIcon,
@@ -161,7 +157,7 @@ export function GroupInspector(
 ) {
   const { group, viewer } = props;
   const open = props.open ?? true;
-  const [tab, setTab] = useState<"members" | "roles">("members");
+  const [tab, setTab] = useState<"members" | "access">("members");
   const [editing, setEditing] = useState<null | "label" | "local">(null);
 
   const [confirm, setConfirm] = useState<
@@ -174,13 +170,11 @@ export function GroupInspector(
   const [labelDraft, setLabelDraft] = useState(group.displayLabel ?? "");
   const [nameDraft, setNameDraft] = useState(group.name);
   const [descriptionDraft, setDescriptionDraft] = useState(group.description);
-  const [roleToAssign, setRoleToAssign] = useState("");
   const [memberSearch, setMemberSearch] = useState("");
   const labelId = useId();
   const nameId = useId();
   const descriptionId = useId();
   const addMembersId = useId();
-  const roleAssignId = useId();
 
   // The sheet stays mounted, so each open starts from the group's own values.
   useEffect(() => {
@@ -190,7 +184,6 @@ export function GroupInspector(
     setLabelDraft(group.displayLabel ?? "");
     setNameDraft(group.name);
     setDescriptionDraft(group.description);
-    setRoleToAssign("");
     setMemberSearch("");
   }, [open, group.id]);
 
@@ -213,11 +206,6 @@ export function GroupInspector(
     group.displayLabel === null &&
     looksLikeId(group.name) &&
     props.labelHint !== undefined;
-
-  const roleItems = props.roles.map((role) => ({
-    value: role.id,
-    label: role.name,
-  }));
 
   return (
     <Sheet
@@ -286,8 +274,8 @@ export function GroupInspector(
             </WarningNote>
           ) : null}
 
-          {/* Never a dead end: Open in Access when the host has the Access screen, the Roles tab
-              otherwise. The count uses the Roles tab's word (clarify row 2). */}
+          {/* Open in Access only for a viewer with the Roles key and a group Grants lists; any other
+              viewer reads the count alone (LK4, LK13). */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input p-3">
             <div className="flex min-w-0 items-center gap-3">
               <ShieldIcon
@@ -305,11 +293,7 @@ export function GroupInspector(
                 </p>
               </div>
             </div>
-            {props.onOpenInAccess === undefined ? (
-              <Button variant="link" onClick={() => setTab("roles")}>
-                See roles
-              </Button>
-            ) : (
+            {props.onOpenInAccess === undefined ? null : (
               <Button variant="link" onClick={props.onOpenInAccess}>
                 Open in Access
               </Button>
@@ -328,7 +312,7 @@ export function GroupInspector(
           <Tabs
             value={tab}
             onValueChange={(value) =>
-              setTab(value === "roles" ? "roles" : "members")
+              setTab(value === "access" ? "access" : "members")
             }
           >
             <TabsList aria-label="Group detail">
@@ -336,9 +320,14 @@ export function GroupInspector(
               <TabsTrigger value="members">
                 Members <LabelPill>{props.members.length}</LabelPill>
               </TabsTrigger>
-              <TabsTrigger value="roles">
-                Roles <LabelPill>{props.assignments.length}</LabelPill>
-              </TabsTrigger>
+              {props.access === undefined ? null : (
+                <TabsTrigger value="access">
+                  Access{" "}
+                  {props.access.paths === undefined ? null : (
+                    <LabelPill>{props.access.paths.length}</LabelPill>
+                  )}
+                </TabsTrigger>
+              )}
             </TabsList>
 
             <TabsContent value="members">
@@ -451,73 +440,15 @@ export function GroupInspector(
               )}
             </TabsContent>
 
-            <TabsContent value="roles">
-              <ul className="divide-y divide-border">
-                {props.assignments.map((assignment) => (
-                  <li
-                    key={assignment.id}
-                    className="flex items-center justify-between gap-2 py-2 text-sm text-foreground"
-                  >
-                    <span className="min-w-0 wrap-anywhere">
-                      {assignment.roleName}
-                      {assignment.scopeType === null ? null : (
-                        <span className="text-muted-foreground">
-                          {" "}
-                          · {assignment.scopeType} {assignment.scopeId}
-                        </span>
-                      )}
-                    </span>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      loading={props.pending}
-                      onClick={() => props.onUnassignRole(assignment.id)}
-                    >
-                      Remove
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-
-              {/* R-24b: a pre-added directory group can be given a role before any sign-in. */}
-              {props.roles.length === 0 ? null : (
-                <div className="mt-3 flex items-end gap-2">
-                  <div className="min-w-0 flex-1">
-                    <Field>
-                      <FieldLabel htmlFor={roleAssignId}>
-                        Give this group a role
-                      </FieldLabel>
-                      <Select
-                        items={roleItems}
-                        value={roleToAssign === "" ? null : roleToAssign}
-                        onValueChange={(value) => setRoleToAssign(value ?? "")}
-                      >
-                        <SelectTrigger id={roleAssignId}>
-                          <SelectValue placeholder="Choose a role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {roleItems.map((item) => (
-                            <SelectItem key={item.value} value={item.value}>
-                              {item.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </Field>
-                  </div>
-                  <Button
-                    disabled={roleToAssign === ""}
-                    loading={props.pending}
-                    onClick={() => {
-                      props.onAssignRole(roleToAssign);
-                      setRoleToAssign("");
-                    }}
-                  >
-                    Assign role
-                  </Button>
-                </div>
-              )}
-            </TabsContent>
+            {props.access === undefined ? null : (
+              <TabsContent value="access">
+                <AccessPathList
+                  {...props.access}
+                  recipient={{ type: "group", id: group.id }}
+                  empty="This group holds no role yet."
+                />
+              </TabsContent>
+            )}
           </Tabs>
 
           {editing === "label" ? (
@@ -1017,10 +948,9 @@ export function GroupsScreen(props: GroupsScreenProps) {
           labelHint={props.labelHint}
           group={selected}
           members={props.details?.[selected.id]?.members ?? []}
-          assignments={props.details?.[selected.id]?.assignments ?? []}
+          access={props.access}
           viewer={props.viewer}
           people={props.people}
-          roles={props.roles ?? []}
           lastAdministrator={props.lastAdministratorGroupIds.includes(
             selected.id
           )}
@@ -1044,13 +974,10 @@ export function GroupsScreen(props: GroupsScreenProps) {
             props.onUpdateLocalGroup?.(selected.id, nextName, nextDescription)
           }
           onOpenInAccess={
-            props.onOpenInAccess === undefined
+            // Grants lists no archived group, so the link would land on nobody (LK13).
+            props.onOpenInAccess === undefined || selected.archived
               ? undefined
               : () => props.onOpenInAccess?.(selected.id)
-          }
-          onAssignRole={(roleId) => props.onAssignRole?.(selected.id, roleId)}
-          onUnassignRole={(assignmentId) =>
-            props.onUnassignRole?.(selected.id, assignmentId)
           }
           onAddMembers={(userIds) => props.onAddMembers?.(selected.id, userIds)}
           onRemoveMembers={(userIds) =>

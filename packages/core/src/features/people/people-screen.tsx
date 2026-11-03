@@ -49,6 +49,10 @@ import {
 } from "@genie/ui";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
+import {
+  AccessPathList,
+  type InspectorAccess,
+} from "../access/access-path-list.tsx";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   DirectoryIcon,
@@ -158,7 +162,7 @@ const STATUS_FILTER_ITEMS = [
 
 type StatusFilter = (typeof STATUS_FILTER_ITEMS)[number]["value"];
 
-const TABS = ["profile", "groups", "roles", "sessions"] as const;
+const TABS = ["profile", "groups", "access", "sessions"] as const;
 
 type ConfirmKind = "disable" | "remove";
 
@@ -226,7 +230,9 @@ function PersonConfirms(props: {
 }
 
 /**
- * The person inspector: header, Profile, Groups, Roles and Sessions tabs (R-37). Disable and
+ * The person inspector: header, Profile, Groups, Access and Sessions tabs (R-37). The Access tab
+ * shows only when the host passes the access read, so a viewer without the Roles key sees none
+ * (LK4). Disable and
  * Remove confirm inside the sheet, so that one Escape closes only the confirm (PD-8);
  * `onDisable` and `onRemove` fire once confirmed.
  */
@@ -244,6 +250,8 @@ export function PersonInspector(props: {
   readonly onResendInvitation: () => void;
   readonly onRevokeSession: (sessionId: string) => void;
   readonly onRevokeAllSessions: () => void;
+  /** The person's access from the S2-19 read; undefined hides the Access tab (LK4). */
+  readonly access?: InspectorAccess | undefined;
   readonly onManageAccess?: (() => void) | undefined;
   /** Opens the group a role comes through; without it the group name is plain text. */
   readonly onOpenGroup?: ((groupId: string) => void) | undefined;
@@ -314,9 +322,14 @@ export function PersonInspector(props: {
               <TabsTrigger value="groups">
                 Groups <LabelPill>{person.groups.length}</LabelPill>
               </TabsTrigger>
-              <TabsTrigger value="roles">
-                Roles <LabelPill>{person.assignments.length}</LabelPill>
-              </TabsTrigger>
+              {props.access === undefined ? null : (
+                <TabsTrigger value="access">
+                  Access{" "}
+                  {props.access.paths === undefined ? null : (
+                    <LabelPill>{props.access.paths.length}</LabelPill>
+                  )}
+                </TabsTrigger>
+              )}
               <TabsTrigger value="sessions">
                 Sessions <LabelPill>{person.sessions.length}</LabelPill>
               </TabsTrigger>
@@ -411,79 +424,39 @@ export function PersonInspector(props: {
               />
             </TabsContent>
 
-            <TabsContent value="roles">
-              <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-                <div className="min-w-0 flex-1">
-                  <p className="text-xs text-muted-foreground">
-                    Everything this person can do, and where each grant comes
-                    from. Read-only here.
-                  </p>
-                  <HelpDisclosure label="How this adds up">
-                    A role held directly belongs to this person. A role held
-                    through a group stays while they are a member of that group.
-                  </HelpDisclosure>
+            {props.access === undefined ? null : (
+              <TabsContent value="access">
+                <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-muted-foreground">
+                      Everything this person can do, and where each grant comes
+                      from. Read-only here.
+                    </p>
+                    <HelpDisclosure label="How this adds up">
+                      A role held directly belongs to this person. A role held
+                      through a group stays while they are a member of that
+                      group.
+                    </HelpDisclosure>
+                  </div>
+                  {props.onManageAccess === undefined ? null : (
+                    <Button variant="secondary" onClick={props.onManageAccess}>
+                      <ShieldIcon /> Manage in Access
+                    </Button>
+                  )}
                 </div>
-                {props.onManageAccess === undefined ? null : (
-                  <Button variant="secondary" onClick={props.onManageAccess}>
-                    <ShieldIcon /> Manage in Access
-                  </Button>
-                )}
-              </div>
-              <ul className="divide-y divide-border">
-                {person.assignments.map((assignment) => (
-                  <li
-                    key={assignment.id}
-                    className="flex flex-col gap-0.5 py-2 text-sm text-foreground"
-                  >
-                    <span className="flex flex-wrap items-center gap-2">
-                      <span className="font-medium">{assignment.roleName}</span>
-                      <LabelPill>
-                        {assignment.scopeType === null
-                          ? "Whole tenant"
-                          : `${assignment.scopeType} ${assignment.scopeId}`}
-                      </LabelPill>
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      {assignment.source === "direct" ? (
-                        "Direct"
-                      ) : (
-                        <>
-                          via{" "}
-                          {props.onOpenGroup === undefined ||
-                          assignment.groupId === null ? (
-                            <GroupName
-                              value={assignment.groupName ?? "a group"}
-                            />
-                          ) : (
-                            <button
-                              type="button"
-                              className={`font-medium text-foreground underline ${focusRing}`}
-                              onClick={() =>
-                                props.onOpenGroup?.(assignment.groupId ?? "")
-                              }
-                            >
-                              <GroupName
-                                value={assignment.groupName ?? "a group"}
-                              />
-                            </button>
-                          )}
-                        </>
-                      )}
-                    </span>
-                  </li>
-                ))}
-                {person.assignments.length === 0 ? (
-                  <li className="py-2 text-sm text-muted-foreground">
-                    This person holds no role yet.
-                  </li>
-                ) : null}
-              </ul>
-              <p className="mt-3 text-xs text-muted-foreground">
-                Access is granted and taken back in one place, the Access
-                screen. A role held through a group changes for every member of
-                that group.
-              </p>
-            </TabsContent>
+                <AccessPathList
+                  {...props.access}
+                  recipient={{ type: "user", id: person.id }}
+                  empty="This person holds no role yet."
+                  onOpenGroup={props.onOpenGroup}
+                />
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Access is granted and taken back in one place, the Access
+                  screen. A role held through a group changes for every member
+                  of that group.
+                </p>
+              </TabsContent>
+            )}
 
             <TabsContent value="sessions">
               <PersonSessions
@@ -1179,6 +1152,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
             props.onRevokeSession?.(selected.id, sessionId)
           }
           onRevokeAllSessions={() => props.onRevokeAllSessions?.(selected.id)}
+          access={props.access}
           onManageAccess={
             props.onManageAccess === undefined
               ? undefined

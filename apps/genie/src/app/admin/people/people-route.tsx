@@ -1,5 +1,6 @@
 "use client";
 
+import { accessHref } from "@genie/core/features/access";
 import {
   PeopleScreen,
   type NewPersonInput,
@@ -13,16 +14,19 @@ import { useState } from "react";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { type Refusal, rpc } from "../../../rpc/client.ts";
+import { useInspectorAccess } from "../access/use-inspector-access.ts";
 
 /**
  * The browser half of the People route. The server has already refused a caller without
  * `core:people:manage` before this mounts, and every procedure re-checks it, so the screen holds
  * no denied state. It owns the selection, the writes and the refusal message, and reloads the list
- * and the open detail through TanStack Query after each one.
+ * and the open detail through TanStack Query after each one. Only a viewer with
+ * `core:roles:manage` reads the person's access and gets the link into Access (LK4, LK5).
  */
 export function PeopleRoute(props: {
   readonly viewer: PeopleViewer;
   readonly settings: PeopleSettings;
+  readonly canManageAccess: boolean;
 }) {
   const t = useTranslations("pages");
   const router = useRouter();
@@ -57,6 +61,12 @@ export function PeopleRoute(props: {
   });
 
   const canManageGroups = capabilities.data?.canManageGroups === true;
+
+  const access = useInspectorAccess({
+    canManageAccess: props.canManageAccess,
+    recipient: selectedId === null ? null : { type: "user", id: selectedId },
+    open,
+  });
 
   // The local groups the person's Add to group offers, read only for a caller who manages groups.
   const groups = useQuery({
@@ -178,6 +188,12 @@ export function PeopleRoute(props: {
       }
       onOpenGroup={(groupId) =>
         router.push(`/admin/groups?selected=${encodeURIComponent(groupId)}`)
+      }
+      access={access}
+      onManageAccess={
+        props.canManageAccess
+          ? (personId) => router.push(accessHref({ recipient: personId }))
+          : undefined
       }
     />
   );
