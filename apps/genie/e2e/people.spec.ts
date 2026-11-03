@@ -144,7 +144,9 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   });
 
   await expect(
-    inspector.getByText("Identity provider", { exact: true })
+    inspector.getByText("Brokered through the identity provider", {
+      exact: true,
+    })
   ).toBeVisible();
 
   await inspector.getByRole("button", { name: /Remove/ }).click();

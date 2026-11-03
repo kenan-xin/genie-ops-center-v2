@@ -181,7 +181,9 @@ function groupPills(person: Person) {
 }
 
 function accountTypeLabel(accountType: AccountType): string {
-  return accountType === "local" ? "Local password" : "Identity provider";
+  return accountType === "local"
+    ? "Local password"
+    : "Brokered through the identity provider";
 }
 
 /** The Disable and Remove confirms, each always rendered and opened by `confirm`. */
@@ -311,12 +313,20 @@ export function PersonInspector(props: {
                 <ProfileRow label="Name" value={person.name} />
                 <ProfileRow label="Email" value={person.email} />
                 <ProfileRow
-                  label="Account type"
+                  label="Account"
                   value={accountTypeLabel(person.accountType)}
                 />
                 <ProfileRow
                   label="Identity source"
                   value={person.identitySource}
+                />
+                <ProfileRow
+                  label="Onboarding"
+                  value={
+                    person.onboarding === "jit"
+                      ? "Joined at first sign-in"
+                      : "Added by an administrator"
+                  }
                 />
                 <ProfileRow
                   label="First sign-in"
@@ -325,10 +335,6 @@ export function PersonInspector(props: {
                 <ProfileRow
                   label="Last sign-in"
                   value={signedInAgo(person.lastSignInAt, viewer)}
-                />
-                <ProfileRow
-                  label="Onboarding"
-                  value={person.onboarding === "jit" ? "JIT" : "Invited"}
                 />
               </dl>
 
