@@ -915,6 +915,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
                   : []),
               ],
             }}
+            footer="Directory groups arrive in the sign-in token and are refreshed at every sign-in. A group that stops arriving is marked stale and keeps its roles."
           />
         </div>
       )}
