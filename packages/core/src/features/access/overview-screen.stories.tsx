@@ -167,7 +167,12 @@ export const ByPerson: Story = {
       row("The Analytics module is off").getByText("Not in effect")
     ).toBeVisible();
     await expect(row("Analytics viewer").getByText("Analytics")).toBeVisible();
-    await expect(table.getByText("One record · INV-2026-0142")).toBeVisible();
+    const record = table.getByText("a0774a4a-a630-41ba-8364-bcb715ff0c6a");
+
+    await expect(record).toBeVisible();
+    await expect(record.parentElement).toHaveTextContent(
+      "One record · a0774a4a-a630-41ba-8364-bcb715ff0c6a"
+    );
     await expect(row("Invoice auditor").getByText("Custom role")).toBeVisible();
 
     const direct = row("Invoices and Payments user");
@@ -197,6 +202,15 @@ export const ByPersonPhone: Story = {
 
     await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
       document.documentElement.clientWidth
+    );
+
+    // A long record id must wrap inside its card, not run past the edge.
+    await Promise.all(
+      list
+        .getAllByRole("listitem")
+        .map((item) =>
+          expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth)
+        )
     );
   },
 };

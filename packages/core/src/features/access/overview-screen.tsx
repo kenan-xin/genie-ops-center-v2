@@ -149,7 +149,13 @@ const ModuleCell = (props: { readonly row: OverviewRow }) => (
     {props.row.module}
     {props.row.record === null ? null : (
       <Pill>
-        <LabelPill>One record · {props.row.record}</LabelPill>
+        {/* The id breaks, so a long one neither clips a phone card nor widens the column. */}
+        <LabelPill>
+          One record ·{" "}
+          <span className="min-w-0 whitespace-normal wrap-anywhere">
+            {props.row.record}
+          </span>
+        </LabelPill>
       </Pill>
     )}
   </>
@@ -180,7 +186,7 @@ const AddedCell = (props: {
   readonly timeZone: string;
 }) => (
   <>
-    <span className="tabular-nums">
+    <span className="whitespace-nowrap tabular-nums">
       {fmtDate(props.row.addedAt, props.timeZone)}
     </span>
     {props.row.addedBy === null ? null : <Muted>by {props.row.addedBy}</Muted>}

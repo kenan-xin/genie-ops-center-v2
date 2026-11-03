@@ -243,7 +243,8 @@ const OPS_INVOICES = sample(
 
 const OPS_RECORD = sample("o-ops-rec", holder.ops, "r-invoices-finance", {
   ...addedOn("09-08", "Jordan Lee"),
-  scope: { type: "invoice", id: "INV-2026-0142" },
+  // A record shows its uuid until S2-23 brings record labels (O15).
+  scope: { type: "invoice", id: "a0774a4a-a630-41ba-8364-bcb715ff0c6a" },
 });
 
 const INVOICE_AUDITOR: AccessPath["role"] = {
