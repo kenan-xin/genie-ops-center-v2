@@ -25,10 +25,14 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
   // The detail is read only while the sheet is open; a close keeps `selectedId` for the exit.
   const [open, setOpen] = useState(initialSelectedId !== undefined);
 
+  // One read with the archived groups, so the toggle can name their count (G30).
   const list = useQuery({
-    queryKey: ["groups", includeArchived],
-    queryFn: () => rpc.groups.list({ includeArchived }),
+    queryKey: ["groups", true],
+    queryFn: () => rpc.groups.list({ includeArchived: true }),
   });
+
+  const all = list.data ?? [];
+  const archivedCount = all.filter((group) => group.archived).length;
 
   const detail = useQuery({
     queryKey: ["group", selectedId],
@@ -101,7 +105,8 @@ export function GroupsRoute(props: { readonly viewer: GroupsViewer }) {
 
   return (
     <GroupsScreen
-      groups={list.data ?? []}
+      groups={includeArchived ? all : all.filter((group) => !group.archived)}
+      archivedCount={archivedCount}
       viewer={props.viewer}
       labelHint={t("groups.addLabelHint")}
       searchLabel={t("groups.searchLabel")}

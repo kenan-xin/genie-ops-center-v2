@@ -127,6 +127,16 @@ export const StaleGroupWarns: Story = {
   },
 };
 
+/** G30: the archived toggle names how many groups it hides. */
+export const ShowArchivedNamesTheCount: Story = {
+  args: { archivedCount: 1 },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("checkbox", { name: "Show archived (1)" })
+    ).toBeVisible();
+  },
+};
+
 export const Default: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Groups" }));

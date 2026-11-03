@@ -793,6 +793,9 @@ export function GroupsScreen(props: GroupsScreenProps) {
               onCheckedChange={props.onChangeIncludeArchived}
             />
             Show archived
+            {props.archivedCount === undefined || props.archivedCount === 0
+              ? null
+              : ` (${props.archivedCount})`}
           </label>
           <Button
             variant="secondary"

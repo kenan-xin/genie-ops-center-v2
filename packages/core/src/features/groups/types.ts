@@ -47,6 +47,8 @@ export type GroupsScreenProps = {
   /** The copy when the search and the archived filter match no group. */
   readonly noMatch: NoMatchCopy;
   readonly includeArchived: boolean;
+  /** How many groups are archived, shown on the toggle as "Show archived (n)" (mockup). */
+  readonly archivedCount?: number | undefined;
   readonly onChangeIncludeArchived: (includeArchived: boolean) => void;
   /** Fires when a row opens or the inspector closes, so the host can load that group's detail. */
   readonly onSelectGroup?: (groupId: string | null) => void;
