@@ -78,6 +78,8 @@ export const E2E_READER_SPECS = [
   "screens",
   "branding",
   "shell",
+  // S2-21: the Access administrator (`core:roles:manage`).
+  "access",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
@@ -102,6 +104,14 @@ export function e2eSignOutEmail(project: string): string {
  */
 export function e2ePlaceholderUngrantedEmail(project: string): string {
   return `e2e.placeholder-ungranted.${project}@example.com`;
+}
+
+/**
+ * The Access proof's member (S2-21): a `user` row with no role, who reaches Placeholder only
+ * through what the Grants tab gives them or their local group.
+ */
+export function e2eAccessMemberEmail(project: string): string {
+  return `e2e.access-member.${project}@example.com`;
 }
 
 /** A realm user whose email is also a break-glass account's (R-62). */
