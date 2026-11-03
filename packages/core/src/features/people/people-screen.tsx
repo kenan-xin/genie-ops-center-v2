@@ -237,6 +237,8 @@ export function PersonInspector(props: {
   readonly onRevokeSession: (sessionId: string) => void;
   readonly onRevokeAllSessions: () => void;
   readonly onManageAccess?: (() => void) | undefined;
+  /** Opens the group a role comes through; without it the group name is plain text. */
+  readonly onOpenGroup?: ((groupId: string) => void) | undefined;
   readonly pending?: boolean | undefined;
 }) {
   const { person, viewer } = props;
@@ -428,9 +430,24 @@ export function PersonInspector(props: {
                       ) : (
                         <>
                           via{" "}
-                          <GroupName
-                            value={assignment.groupName ?? "a group"}
-                          />
+                          {props.onOpenGroup === undefined ||
+                          assignment.groupId === null ? (
+                            <GroupName
+                              value={assignment.groupName ?? "a group"}
+                            />
+                          ) : (
+                            <button
+                              type="button"
+                              className={`font-medium text-foreground underline ${focusRing}`}
+                              onClick={() =>
+                                props.onOpenGroup?.(assignment.groupId ?? "")
+                              }
+                            >
+                              <GroupName
+                                value={assignment.groupName ?? "a group"}
+                              />
+                            </button>
+                          )}
                         </>
                       )}
                     </span>
@@ -1073,6 +1090,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
               ? undefined
               : () => props.onManageAccess?.(selected.id)
           }
+          onOpenGroup={props.onOpenGroup}
         />
       )}
 

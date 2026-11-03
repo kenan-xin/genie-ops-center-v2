@@ -146,6 +146,20 @@ export const GroupsSyncedIsRelative: Story = {
   },
 };
 
+/** G21: a role held through a group links that group, and the link opens that group's id. */
+export const ViaGroupOpensTheGroup: Story = {
+  args: { initialSelectedId: "u-viewer", onOpenGroup: fn() },
+  play: async ({ args }) => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(sheet.getByRole("tab", { name: /Roles/ }));
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Genie Administrators" })
+    );
+    await expect(args.onOpenGroup).toHaveBeenCalledWith("g-admins");
+  },
+};
+
 const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
 
 /** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */

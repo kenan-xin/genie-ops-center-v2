@@ -8,7 +8,7 @@ import {
 } from "@genie/core/features/people";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { useSearchParams } from "next/navigation.js";
+import { useRouter, useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
@@ -25,6 +25,7 @@ export function PeopleRoute(props: {
   readonly settings: PeopleSettings;
 }) {
   const t = useTranslations("pages");
+  const router = useRouter();
   const tNoMatch = useTranslations("noMatch");
   // An audit target link opens the screen with its person selected.
   const initialSelectedId = useSearchParams().get("selected") ?? undefined;
@@ -143,6 +144,9 @@ export function PeopleRoute(props: {
       }
       onResendInvitation={(personId) =>
         run(() => rpc.people.resendInvitation({ personId }))
+      }
+      onOpenGroup={(groupId) =>
+        router.push(`/admin/groups?selected=${encodeURIComponent(groupId)}`)
       }
     />
   );

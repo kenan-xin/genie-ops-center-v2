@@ -103,4 +103,6 @@ export type PeopleScreenProps = {
   readonly onRevokeAllSessions?: (personId: string) => void;
   /** Opens the Access screen with this person chosen (the one assignment writer, DEC-39). */
   readonly onManageAccess?: (personId: string) => void;
+  /** Opens the group a role comes through, from the person's Roles tab (mockup link). */
+  readonly onOpenGroup?: (groupId: string) => void;
 };
