@@ -464,3 +464,89 @@ describe("the Grants writer", () => {
     expect(await directRoles(breakGlass)).toEqual([]);
   });
 });
+
+/** Bans the only counted administrator, so R-38 sees none left. */
+function banKim(banned: boolean) {
+  return deployment.context.db.$client.query(
+    `update "user" set banned = $1 where id = $2`,
+    [banned, kimId]
+  );
+}
+
+async function newGroup(): Promise<Principal> {
+  return { type: "group", id: await insertGroup(deployment.context, []) };
+}
+
+describe("the Grants guards", () => {
+  it("refuses an Add on a switched-off module and writes no other Add", async () => {
+    const group = await newGroup();
+
+    await expect(
+      save(group, {
+        add: [
+          { row: "fixture", roleId: fixtureEditorId },
+          { row: "dormant", roleId: await roleIdOf("Dormant user") },
+        ],
+      })
+    ).rejects.toMatchObject({ code: "module-disabled" });
+
+    expect(await namesOf(group)).toEqual([]);
+  });
+
+  it("refuses a swap on a switched-off module", async () => {
+    const group = await newGroup();
+
+    const shown = await grantTo("Dormant user", group);
+
+    await expect(
+      save(group, {
+        change: [
+          {
+            row: "dormant",
+            assignmentId: shown,
+            roleId: await roleIdOf("Dormant viewer"),
+          },
+        ],
+      })
+    ).rejects.toMatchObject({ code: "module-disabled" });
+
+    expect(await namesOf(group)).toEqual(["Dormant user"]);
+  });
+
+  it("lets Remove take the roles of a switched-off module", async () => {
+    const group = await newGroup();
+
+    await grantTo("Dormant user", group);
+    await save(group, { remove: [{ row: "dormant" }] });
+
+    expect(await namesOf(group)).toEqual([]);
+  });
+
+  it("Remove of Ask never takes Tenant administrator", async () => {
+    const group = await newGroup();
+
+    await grantTo(TENANT_ADMINISTRATOR_ROLE, group);
+    await grantTo("Ask user", group);
+    await save(group, { remove: [{ row: ASK_ROW }] });
+
+    expect(await namesOf(group)).toEqual([TENANT_ADMINISTRATOR_ROLE]);
+  });
+
+  it("refuses a save that leaves no active administrator", async () => {
+    const group = await newGroup();
+
+    await grantTo("Fixture editor", group);
+
+    await banKim(true);
+
+    try {
+      await expect(
+        save(group, { remove: [{ row: "fixture" }] })
+      ).rejects.toMatchObject({ code: "last-administrator" });
+    } finally {
+      await banKim(false);
+    }
+
+    expect(await namesOf(group)).toEqual(["Fixture editor"]);
+  });
+});

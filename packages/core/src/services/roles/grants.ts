@@ -5,6 +5,10 @@ import { ASK_USER_ROLE } from "../../lib/module-contract/system-roles.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import { roleAssignment } from "../../schema.ts";
+import {
+  assertAdministratorRemains,
+  lockAdministratorGuard,
+} from "../authorization/administrators.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
 import {
   assignRoleInTransaction,
@@ -226,6 +230,11 @@ export async function saveGrants(input: {
     if (!rolesOf(entry.row).has(entry.roleId)) {
       throw notFound(`Role ${entry.roleId} is not a role of ${entry.row}`);
     }
+
+    // R-37a, P9: a switched-off module takes no new grant. Remove stays open (R-33d).
+    if (catalogue.get(entry.row)?.enabled !== true) {
+      throw new AppError(CORE_ERRORS["module-disabled"]);
+    }
   }
 
   for (const entry of remove) rolesOf(entry.row);
@@ -235,6 +244,10 @@ export async function saveGrants(input: {
   const actorUserId = input.caller.userId;
 
   await withTransaction(input.tenant, async (tx) => {
+    await lockAdministratorGuard(tx);
+
+    let deleted = false;
+
     // Read again before each step, so a swap sees its own delete.
     const held = () =>
       tx
@@ -265,12 +278,14 @@ export async function saveGrants(input: {
       }
     };
 
-    const take = (assignmentId: string) =>
-      removeAssignmentInTransaction(input.tenant, tx, {
+    const take = async (assignmentId: string) => {
+      await removeAssignmentInTransaction(input.tenant, tx, {
         actorUserId,
         assignmentId,
         expect: recipient,
       });
+      deleted = true;
+    };
 
     // One statement at a time on the one transaction.
     /* oxlint-disable no-await-in-loop */
@@ -305,6 +320,9 @@ export async function saveGrants(input: {
 
     for (const entry of add) await grant(entry.roleId);
     /* oxlint-enable no-await-in-loop */
+
+    // R-38: the one check, once, on the final state of the batch.
+    if (deleted) await assertAdministratorRemains(tx);
   });
 }
 
