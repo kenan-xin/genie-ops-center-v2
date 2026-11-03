@@ -46,40 +46,38 @@ export function RoleChoice(props: {
       : props.roles.find((role) => role.id === props.savedRoleId);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex w-56 max-w-full flex-col gap-1">
+      <Select
+        items={items}
+        value={props.value}
+        disabled={props.disabledReason !== undefined}
+        onValueChange={(roleId: string | null) => {
+          if (roleId !== null) props.onChange(roleId);
+        }}
+      >
+        <SelectTrigger
+          size="sm"
+          aria-label={`Role for ${props.rowName}`}
+          aria-describedby={
+            props.disabledReason === undefined ? undefined : reasonId
+          }
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       {saved === undefined ? null : (
-        <del className="text-xs text-muted-foreground">
+        <del className="self-end text-xs text-muted-foreground">
           <span className="sr-only">Was </span>
           {saved.name}
         </del>
       )}
-      <div className="w-56 max-w-full">
-        <Select
-          items={items}
-          value={props.value}
-          disabled={props.disabledReason !== undefined}
-          onValueChange={(roleId: string | null) => {
-            if (roleId !== null) props.onChange(roleId);
-          }}
-        >
-          <SelectTrigger
-            size="sm"
-            aria-label={`Role for ${props.rowName}`}
-            aria-describedby={
-              props.disabledReason === undefined ? undefined : reasonId
-            }
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {items.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
       {props.disabledReason === undefined ? null : (
         <span id={reasonId} className="sr-only">
           {props.disabledReason}
