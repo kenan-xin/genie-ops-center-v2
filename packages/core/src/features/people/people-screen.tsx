@@ -164,6 +164,9 @@ function statusPill(status: PersonStatus) {
 }
 
 function groupPills(person: Person) {
+  if (person.groups.length === 0)
+    return <span className="text-muted-foreground">—</span>;
+
   return (
     <span className="flex flex-wrap items-center gap-1">
       {person.groups.slice(0, 2).map((group) => (
