@@ -144,6 +144,8 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
     // E5: the member holds no `core:roles:manage`.
     await memberPage.goto("/admin/access");
     await expect(memberPage.getByTestId("permission-denied")).toBeVisible();
+    await memberPage.goto("/admin/access/overview");
+    await expect(memberPage.getByTestId("permission-denied")).toBeVisible();
 
     // E2: the role choice swaps the default for the custom Placeholder role, and a reload shows it.
     await chooseOption(page, "Role for Placeholder", reviewer);

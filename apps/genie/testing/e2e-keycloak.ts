@@ -80,6 +80,8 @@ export const E2E_READER_SPECS = [
   "shell",
   // S2-21: the Access administrator (`core:roles:manage`).
   "access",
+  // S2-22: the Overview administrator. Its own user, because the Grants spec runs in parallel.
+  "access-overview",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
