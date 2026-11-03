@@ -24,6 +24,7 @@ Before a ticket breakdown goes to the owner, list every design section under `do
 2. `docs/core/roadmap.md`: core sections in dependency order, each with a definition of done.
 3. `docs/architecture/data-shape.md`: the deployment tables, the core tables, and the rules for module tables.
 3a. `docs/architecture/access-model.md`: how sign-in, the `groups` claim, group-to-role mapping, and local groups work. Read before touching identity or access.
+3b. `docs/architecture/agent.md`: how the one agent works, what core owns, and how a module adds datasets and agent tools. Read before touching the agent, Ask or a module's agent tools.
 4. `docs/core/tech-stack.md`: every dependency and why.
 4a. `docs/core/decision-log.md`: questions decided by default, with what is designed in now and implemented later. Revisit there before proposing a change.
 5. `docs/modules/README.md`, then `docs/modules/<module>/README.md` for the module you touch.

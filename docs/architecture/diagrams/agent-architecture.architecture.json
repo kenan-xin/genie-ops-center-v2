@@ -1,0 +1,83 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "The agent: core runs it, modules plug in data and tools",
+    "quality_profile": "showcase",
+    "locale": "en",
+    "output": "docs/architecture/diagrams/agent-architecture.html",
+    "repository": {
+      "url": "git@github.com:kenan-xin/genie-ops-center-v2.git",
+      "provider": "github",
+      "link_mode": "local-only",
+      "revision": "5d558f8d23d98c28ccf7761099fc85ae858b0503"
+    },
+    "views": [
+      { "id": "one-turn", "label": "One question, one answer", "focus": ["person", "chat", "route", "model", "tools"], "note": "The route sends the question, history and tool list to the model, runs the tools it calls, and streams the answer back." },
+      { "id": "modules-plug-in", "label": "How a module plugs in", "focus": ["slides", "invoices", "tools", "query"], "note": "A module never changes core. It declares datasets, and its own tools and prompt rules if needed. Only enabled modules count." },
+      { "id": "safety", "label": "What keeps it safe", "focus": ["tools", "authz", "store", "route"], "note": "Tools run as the person who asks: can() picks their tools, scopesFor() filters rows, and each call writes an audit row." }
+    ]
+  },
+  "components": [
+    { "id": "person", "type": "external", "label": "Person", "sublabel": "signed in, holds Ask", "pos": [40, 240], "size": [130, 62] },
+    { "id": "chat", "type": "frontend", "label": "Ask and the chat panel", "sublabel": "one set of core chat parts", "pos": [240, 240], "size": [190, 62], "tag": "core", "sources": [
+      { "path": "packages/core/src/features/agent/ask-screen.tsx", "line": 1, "end_line": 93, "label": "Ask page" },
+      { "path": "packages/core/src/features/agent/chat-bubble.tsx", "line": 1, "end_line": 123, "label": "chat bubble today" },
+      { "path": "packages/core/src/features/agent/conversation.tsx", "line": 1, "end_line": 278, "label": "shared conversation" }
+    ] },
+    { "id": "route", "type": "backend", "label": "Agent route", "sublabel": "/api/agent, one turn", "pos": [520, 240], "size": [190, 62], "tag": "core", "sources": [
+      { "path": "apps/genie/src/app/api/agent/route.ts", "line": 19, "end_line": 40, "label": "app mounts it" },
+      { "path": "packages/core/src/services/agent/chat.ts", "line": 130, "end_line": 232, "label": "handleAgentChat" },
+      { "path": "packages/core/src/services/agent/tools.ts", "line": 123, "end_line": 156, "label": "audit row per tool call" }
+    ] },
+    { "id": "model", "type": "external", "label": "Chat model", "sublabel": "OpenRouter, allowed models", "pos": [520, 60], "size": [190, 62], "sources": [
+      { "path": "packages/core/src/services/models/index.ts", "line": 53, "end_line": 95, "label": "modelFor" }
+    ] },
+    { "id": "tools", "type": "backend", "label": "Tool set", "sublabel": "3 core tools + module tools", "pos": [800, 240], "size": [190, 62], "tag": "core", "sources": [
+      { "path": "packages/core/src/services/agent/tools.ts", "line": 34, "end_line": 106, "label": "core tools" },
+      { "path": "packages/core/src/services/agent/tools.ts", "line": 250, "end_line": 280, "label": "module tools" }
+    ] },
+    { "id": "query", "type": "backend", "label": "Dataset query", "sublabel": "one query shape, row cap", "pos": [1070, 240], "size": [180, 62], "tag": "core", "sources": [
+      { "path": "packages/core/src/services/datasets/index.ts", "line": 55, "end_line": 90, "label": "listDatasets, queryDataset" }
+    ] },
+    { "id": "tables", "type": "database", "label": "Module tables", "sublabel": "in the one database", "pos": [1340, 240], "size": [170, 62], "sources": [
+      { "path": "packages/modules/invoices/src/datasets.ts", "line": 125, "end_line": 135, "label": "a dataset's own select" }
+    ] },
+    { "id": "slides", "type": "backend", "label": "Slides module", "sublabel": "agent tools: decks", "pos": [800, 60], "size": [190, 62], "tag": "module", "sources": [
+      { "path": "packages/modules/slides/src/agent-tools.ts", "line": 1, "end_line": 138, "label": "deck tools" },
+      { "path": "packages/modules/slides/src/module.ts", "line": 90, "end_line": 96, "label": "agent-tools capability" }
+    ] },
+    { "id": "invoices", "type": "backend", "label": "Invoices module", "sublabel": "datasets + prompt rules", "pos": [1070, 60], "size": [180, 62], "tag": "module", "sources": [
+      { "path": "packages/modules/invoices/src/module.ts", "line": 192, "end_line": 227, "label": "no tools, rules, datasets" },
+      { "path": "packages/modules/invoices/src/datasets.ts", "line": 125, "end_line": 135, "label": "rows by scopesFor" }
+    ] },
+    { "id": "store", "type": "database", "label": "Chat store and audit", "sublabel": "sessions, messages, audit rows", "pos": [520, 420], "size": [190, 62], "sources": [
+      { "path": "packages/core/src/services/agent/store.ts", "line": 1, "end_line": 198, "label": "agent_session, agent_message" },
+      { "path": "packages/core/src/services/agent/chat.ts", "line": 169, "end_line": 225, "label": "stores both messages" }
+    ] },
+    { "id": "authz", "type": "security", "label": "can() and scopesFor()", "sublabel": "one authorization seam", "pos": [800, 420], "size": [190, 62], "tag": "core", "sources": [
+      { "path": "packages/core/src/services/agent/tools.ts", "line": 250, "end_line": 268, "label": "tools a person holds" }
+    ] }
+  ],
+  "boundaries": [
+    { "kind": "region", "label": "Enabled modules of this deployment", "wraps": ["slides", "invoices"], "pad": 16 }
+  ],
+  "connections": [
+    { "id": "ask", "from": "person", "to": "chat", "label": "asks", "variant": "emphasis" },
+    { "id": "send", "from": "chat", "to": "route", "label": "streams", "variant": "emphasis" },
+    { "id": "think", "from": "route", "to": "model", "label": "prompt, history, tool list", "variant": "emphasis" },
+    { "id": "call", "from": "route", "to": "tools", "label": "runs tools", "variant": "emphasis" },
+    { "id": "read", "from": "tools", "to": "query", "label": "query" },
+    { "id": "select", "from": "query", "to": "tables", "label": "SQL" },
+    { "id": "plug-tools", "from": "slides", "to": "tools", "label": "its tools", "variant": "dashed" },
+    { "id": "plug-data", "from": "invoices", "to": "query", "label": "its datasets", "variant": "dashed" },
+    { "id": "keep", "from": "route", "to": "store", "label": "messages, audit rows" },
+    { "id": "check", "from": "tools", "to": "authz", "label": "can() per tool", "variant": "security" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Core owns the agent", "items": ["One agent for the whole app (DEC-29): route, prompt, sessions, Ask, the chat panel", "Three general tools: list-datasets, query-dataset, open-record (Spec 7 R-43)", "Core never names a module tool and never reads a module table"] },
+    { "dot": "emerald", "title": "A module plugs in", "items": ["Datasets: described fields and measures, rows filtered by scopesFor()", "Optional agent tools and prompt rules through the agent-tools capability", "A switched-off module's tools and datasets are gone from the agent"] },
+    { "dot": "rose", "title": "Safety", "items": ["Every tool runs as the person who asks, never as an admin", "Tool results and document text are data, never instructions (R-46)", "One audit row per tool call: tool, dataset, query, row count (R-47)"] },
+    { "dot": "amber", "title": "Planned after wave 4", "items": ["Artifacts with versions in their own tables (DEC-56)", "A docked agent panel replaces the bubble; pages send their context", "Long chats summarized; full lists as an artifact or a file"] }
+  ]
+}
