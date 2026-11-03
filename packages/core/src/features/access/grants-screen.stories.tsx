@@ -17,7 +17,11 @@ import { GrantsScreen } from "./grants-screen.tsx";
 
 type Args = {
   readonly initial: AccessRecipient | null;
-  readonly link?: { readonly module?: string; readonly role?: string };
+  readonly link?: {
+    readonly recipient?: string;
+    readonly module?: string;
+    readonly role?: string;
+  };
   readonly refusal?: string;
   readonly onSave: (changes: GrantChanges) => Promise<void>;
   readonly onSaveAdvanced: (changes: AdvancedChanges) => Promise<void>;
@@ -388,6 +392,36 @@ export const CoreRoleLinkOpensAdvancedAccess: Story = {
       expect(within(row ?? document.body).getByText("Pending")).toBeVisible()
     );
     await expect(args.onSaveAdvanced).not.toHaveBeenCalled();
+  },
+};
+
+/** LK1: a `?recipient=` link of a person presses People and picks the person once. */
+export const PrefilledPersonLink: Story = {
+  args: { link: { recipient: "p-jamie" } },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("group", { name: "Granted" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "People" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      canvas.getByRole("combobox", { name: "Choose a person" })
+    ).toHaveTextContent("Jamie Chen");
+  },
+};
+
+/** LK1: a link to an id that no list holds (an archived group, an old bookmark) picks nobody. */
+export const UnlistedRecipientLinkIsIgnored: Story = {
+  args: { link: { recipient: "g-former" } },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Choose a group" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Groups" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(canvas.queryByRole("group", { name: "Granted" })).toBeNull();
   },
 };
 

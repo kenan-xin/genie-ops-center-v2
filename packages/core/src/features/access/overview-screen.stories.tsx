@@ -201,6 +201,11 @@ export const ByPerson: Story = {
     await expect(direct.getByText("Direct assignment")).toBeVisible();
     await expect(direct.getByText("1 Oct 2026")).toBeVisible();
     await expect(direct.getByText("by Jordan Lee")).toBeVisible();
+
+    // O8: the recipient link opens Grants with Jamie Chen chosen.
+    await expect(
+      canvas.getByRole("link", { name: "Change access" })
+    ).toHaveAttribute("href", "/admin/access?recipient=p-jamie");
   },
 };
 
@@ -243,6 +248,10 @@ export const ByModule: Story = {
     await expect(await header(canvas, "holders of")).toHaveTextContent(
       "21 holders of Invoices"
     );
+    // A module is no recipient, so its lookup links nowhere (O8).
+    await expect(
+      canvas.queryByRole("link", { name: "Change access" })
+    ).toBeNull();
     await expect(canvas.getByText("1–10 of 21")).toBeVisible();
 
     await userEvent.click(canvas.getByRole("button", { name: "Next" }));

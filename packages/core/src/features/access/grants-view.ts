@@ -4,7 +4,11 @@ import type {
   AccessPath,
   AccessRecipient,
 } from "../../services/roles/effective-access.ts";
-import type { GrantChanges, GrantRow } from "../../services/roles/grants.ts";
+import type {
+  GrantChanges,
+  GrantRecipients,
+  GrantRow,
+} from "../../services/roles/grants.ts";
 import { EMPTY_DRAFT, type GrantsDraft } from "./grants-draft-store.ts";
 
 /** A refused save: the route rejects with a plain object that carries the whole message. */
@@ -143,6 +147,25 @@ export function saveInput(view: GrantsView, draft: GrantsDraft): GrantChanges {
     }),
     remove: draft.remove.map((row) => ({ row })),
   };
+}
+
+/**
+ * The recipient that a `?recipient=` link names, only when Grants lists it: a group first, then a
+ * person. An archived group, an erased person or an old bookmark answers null (LK1).
+ */
+export function linkedRecipient(
+  id: string | undefined,
+  recipients: GrantRecipients
+): AccessRecipient | null {
+  if (id === undefined) return null;
+
+  if (recipients.groups.some((entry) => entry.id === id)) {
+    return { type: "group", id };
+  }
+
+  return recipients.people.some((entry) => entry.id === id)
+    ? { type: "user", id }
+    : null;
 }
 
 /**

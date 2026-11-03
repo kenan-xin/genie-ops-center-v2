@@ -19,8 +19,10 @@ import { useRecordLabels } from "./use-record-labels.ts";
 const RECORD_SEARCH_STALE_MS = 30_000;
 
 /**
- * The browser half of the Access route. The recipient stays in screen state (P18). A prefilled
- * `?module=` or `?role=` link stages its change on the first recipient, and nothing is written
+ * The browser half of the Access route. The recipient stays in screen state (P18). A
+ * `?recipient=` link picks a listed recipient once and stays out of the URL, so back navigation
+ * never switches the recipient (LK1). A prefilled `?module=` or `?role=` link stages its change on
+ * the first recipient, and nothing is written
  * before Save (P17). Each save reloads every Access read, and the navigation, which changes when
  * an administrator grants a module to a group they belong to.
  */
@@ -94,6 +96,7 @@ export function AccessRoute() {
         onRecipientChange={setRecipient}
         paths={paths.data}
         link={{
+          recipient: search.get("recipient") ?? undefined,
           module: search.get("module") ?? undefined,
           role: search.get("role") ?? undefined,
         }}

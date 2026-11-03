@@ -2,9 +2,11 @@
 
 import {
   Button,
+  buttonVariants,
   DataTable,
   type DataTableColumn,
   EmptyState,
+  focusRing,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -25,7 +27,9 @@ import type {
 import type { GrantRecipients, GrantRow } from "../../services/roles/grants.ts";
 import { HelpIcon, SearchIcon } from "../admin/icons.tsx";
 import { fmtDate } from "../audit/helpers.ts";
+import { PageLink } from "../shell/page-link.tsx";
 import { AccessHelp } from "./access-help.tsx";
+import { accessHref } from "./access-link.ts";
 import { type OverviewRow, overviewRows } from "./overview-view.ts";
 import {
   ChoicePicker,
@@ -321,6 +325,14 @@ function Results(
               </InputGroupText>
             </InputGroupAddon>
           </InputGroup>
+        )}
+        {byModule ? null : (
+          <PageLink
+            href={accessHref({ recipient: props.subject.id })}
+            className={`${buttonVariants({ variant: "secondary", size: "sm" })} ${focusRing}`}
+          >
+            Change access
+          </PageLink>
         )}
       </div>
 

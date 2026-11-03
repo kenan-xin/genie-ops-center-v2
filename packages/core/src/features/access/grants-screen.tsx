@@ -46,6 +46,7 @@ import {
   grantsView,
   type GrantsView,
   linkDraft,
+  linkedRecipient,
   moduleNameOf,
   REFUSAL,
   removalOf,
@@ -65,8 +66,12 @@ export type GrantsScreenProps = {
   readonly onRecipientChange: (next: AccessRecipient | null) => void;
   /** The chosen recipient's paths, undefined while they load. */
   readonly paths: readonly AccessPath[] | undefined;
-  /** A prefilled link, applied once on the first recipient (P17). */
+  /**
+   * A prefilled link. `recipient` picks a listed recipient once, when the recipients arrive (LK1).
+   * `module` and `role` stage their change once, on the first recipient (P17).
+   */
   readonly link?: {
+    readonly recipient?: string | undefined;
     readonly module?: string | undefined;
     readonly role?: string | undefined;
   };
@@ -252,6 +257,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const linkApplied = useRef(false);
 
+  const recipientLinkApplied = useRef(false);
+
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const [advancedAdd, setAdvancedAdd] = useState<AdvancedAdd | undefined>();
@@ -270,6 +277,26 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
         });
 
   const advancedCatalogue = props.advanced.catalogue;
+
+  // A recipient link picks once, when the recipients first arrive, so a later read never takes back
+  // the administrator's own pick. It needs no paths, unlike the module and role link below.
+  const linkedId = props.link?.recipient;
+
+  const { recipients, recipient: chosen, onRecipientChange } = props;
+
+  useEffect(() => {
+    if (recipientLinkApplied.current || recipients === undefined) return;
+
+    recipientLinkApplied.current = true;
+
+    const match =
+      chosen === null ? linkedRecipient(linkedId, recipients) : null;
+
+    if (match === null) return;
+
+    setKind(match.type);
+    onRecipientChange(match);
+  }, [recipients, chosen, linkedId, onRecipientChange]);
 
   // A prefilled link stages its change once, on the first recipient whose paths arrive (P17). A
   // core role link that Grants cannot stage waits for the Advanced catalogue, then opens Advanced

@@ -5,9 +5,19 @@ import type {
   AccessRecipient,
   NotInEffect,
 } from "../../services/roles/effective-access.ts";
-import { FIXTURE_ROWS, fixtureRow } from "./__fixtures__/access.ts";
+import {
+  FIXTURE_RECIPIENTS,
+  FIXTURE_ROWS,
+  fixtureRow,
+} from "./__fixtures__/access.ts";
 import { EMPTY_DRAFT } from "./grants-draft-store.ts";
-import { grantsView, linkDraft, removalOf, saveInput } from "./grants-view.ts";
+import {
+  grantsView,
+  linkDraft,
+  linkedRecipient,
+  removalOf,
+  saveInput,
+} from "./grants-view.ts";
 
 const jamie: AccessRecipient = { type: "user", id: "p-jamie" };
 
@@ -19,6 +29,19 @@ const holders = {
   analysts: { type: "group", id: "g-analysts", name: "Analysts" },
   ops: { type: "group", id: "g-ops", name: "Operations" },
 } as const;
+
+describe("linkedRecipient", () => {
+  it.each([
+    ["g-ops", { type: "group", id: "g-ops" }],
+    ["p-jamie", { type: "user", id: "p-jamie" }],
+    ["g-former", null],
+  ] as const)(
+    "linkedRecipient(%s) picks only a listed recipient",
+    (id, expected) => {
+      expect(linkedRecipient(id, FIXTURE_RECIPIENTS)).toEqual(expected);
+    }
+  );
+});
 
 let next = 0;
 
