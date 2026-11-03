@@ -20,6 +20,8 @@ export type ConfirmDialogProps = {
   readonly danger: boolean;
   readonly onConfirm: () => void;
   readonly onClose: () => void;
+  /** A body between the description and the buttons, for example the list of what goes. */
+  readonly children?: React.ReactNode;
 };
 
 // Escape, the scrim and Cancel are one cancel. Confirm leaves `open` to the caller.
@@ -31,6 +33,7 @@ export function ConfirmDialog({
   danger,
   onConfirm,
   onClose,
+  children,
 }: ConfirmDialogProps) {
   const cancelRef = React.useRef<HTMLButtonElement>(null);
 
@@ -48,6 +51,7 @@ export function ConfirmDialog({
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
+        {children}
         <DialogFooter>
           <Button ref={cancelRef} variant="secondary" onClick={onClose}>
             Cancel

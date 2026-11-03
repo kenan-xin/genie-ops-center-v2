@@ -1,3 +1,4 @@
+import type { AccessPath } from "../../../services/roles/effective-access.ts";
 import type {
   GrantRecipients,
   GrantRow,
@@ -82,6 +83,31 @@ export const fixtureRow = (id: string): GrantRow => {
 
   return row;
 };
+
+/** One path of the S2-19 read, with the fields the Remove confirmation reads. */
+export function fixturePath(input: {
+  readonly id: string;
+  readonly holder: AccessPath["holder"];
+  readonly role: { readonly id: string; readonly name: string };
+  readonly moduleId: string;
+  readonly scope?: AccessPath["scope"];
+}): AccessPath {
+  return {
+    assignmentId: input.id,
+    holder: input.holder,
+    role: {
+      id: input.role.id,
+      name: input.role.name,
+      kind: "system",
+      moduleId: input.moduleId,
+      permissions: [`${input.moduleId}:use`],
+    },
+    scope: input.scope ?? null,
+    addedBy: { id: "p-alex", name: "Alex Morgan" },
+    addedAt: "2026-11-01T09:00:00.000000Z",
+    notInEffect: [],
+  };
+}
 
 /** Two people share the name Alex Morgan, as every seeded e2e person shares one name. */
 export const FIXTURE_RECIPIENTS: GrantRecipients = {
