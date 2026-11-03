@@ -23,6 +23,7 @@ import {
   E2E_READER_SPECS,
   E2E_SIGN_IN_REALM,
   e2eAccessAdvancedMemberEmail,
+  e2eAccessLinksMemberEmail,
   e2eAccessMemberEmail,
   e2eAdministratorEmail,
   e2eBrandingAdminEmail,
@@ -122,6 +123,9 @@ const ACCESS_ADVANCED_MEMBER_EMAILS = E2E_PROJECTS.map(
   e2eAccessAdvancedMemberEmail
 );
 
+/** The links proof's member: a `user` row; the spec writes its role (S2-24). */
+const ACCESS_LINKS_MEMBER_EMAILS = E2E_PROJECTS.map(e2eAccessLinksMemberEmail);
+
 const MAPPED_GROUP = "E2E mapped";
 
 /** Every realm user the proofs sign in as; a sign-out user is created by its first sign-in. */
@@ -134,6 +138,7 @@ const REALM_EMAILS = [
   ...PLACEHOLDER_UNGRANTED_EMAILS,
   ...ACCESS_MEMBER_EMAILS,
   ...ACCESS_ADVANCED_MEMBER_EMAILS,
+  ...ACCESS_LINKS_MEMBER_EMAILS,
   ...E2E_PROJECTS.flatMap((project) => [
     e2eGroupsRolesEmail("admitted", project),
     e2eGroupsRolesEmail("refused", project),
@@ -289,7 +294,7 @@ async function seedTestSetup(): Promise<void> {
       "insert into placeholder_record (label) select 'e2e-visible' where not exists (select 1 from placeholder_record where label = 'e2e-visible')",
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows(READER_EMAILS, false)}, ${userRows(BREAK_GLASS_EMAILS, true)} on conflict (email) do nothing`,
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows(OFFBOARD_EMAILS, false)} on conflict (email) do nothing`,
-      `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows([...PLACEHOLDER_UNGRANTED_EMAILS, ...ACCESS_MEMBER_EMAILS, ...ACCESS_ADVANCED_MEMBER_EMAILS], false)} on conflict (email) do nothing`,
+      `insert into "user" (id, name, email, email_verified, status, is_break_glass) values ${userRows([...PLACEHOLDER_UNGRANTED_EMAILS, ...ACCESS_MEMBER_EMAILS, ...ACCESS_ADVANCED_MEMBER_EMAILS, ...ACCESS_LINKS_MEMBER_EMAILS], false)} on conflict (email) do nothing`,
       `insert into role (name, permissions, is_system) values ('E2E reader', array[${permissions}], false) on conflict (name) do nothing`,
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'E2E reader' and u.email in (${READER_EMAILS.map((email) => `'${email}'`).join(", ")}) on conflict do nothing`,
       // The active administrator the R-38 rule counts, made a member of the `Genie Administrators`

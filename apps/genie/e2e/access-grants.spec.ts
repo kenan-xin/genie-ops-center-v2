@@ -5,6 +5,7 @@ import {
   e2eAccessMemberEmail,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
+import { pickRecipient } from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
@@ -34,27 +35,6 @@ async function placeholderLinks(page: Page): Promise<number> {
   return (await openNavigation(page))
     .getByRole("link", { name: "Placeholder", exact: true })
     .count();
-}
-
-async function pickRecipient(
-  page: Page,
-  kind: "group" | "user",
-  search: string
-): Promise<void> {
-  await page
-    .getByRole("combobox", {
-      name: kind === "group" ? "Choose a group" : "Choose a person",
-    })
-    .click();
-  await page
-    .getByLabel(kind === "group" ? "Search groups" : "Search people")
-    .fill(search);
-  await page
-    .getByRole("option", { name: new RegExp(`^${search} · |· ${search}$`) })
-    .click();
-  await expect(
-    page.getByRole("group", { name: "Granted", exact: true })
-  ).toBeVisible();
 }
 
 /** Ticks one row on a side and presses the footer's move button (both transfer list forms). */

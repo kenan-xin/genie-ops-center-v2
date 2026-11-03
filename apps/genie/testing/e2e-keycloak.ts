@@ -84,6 +84,8 @@ export const E2E_READER_SPECS = [
   "access-overview",
   // S2-23: the Advanced access administrator. Its own user, because the other Access specs run in parallel.
   "access-advanced",
+  // S2-24: the links into Access. Its own user, because the other Access specs run in parallel.
+  "access-links",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];
@@ -124,6 +126,14 @@ export function e2eAccessMemberEmail(project: string): string {
  */
 export function e2eAccessAdvancedMemberEmail(project: string): string {
   return `e2e.access-advanced-member.${project}@example.com`;
+}
+
+/**
+ * The links proof's member (S2-24): a `user` row whose only role, written by the spec, holds
+ * `core:people:manage` and `core:settings:manage` and no `core:roles:manage`.
+ */
+export function e2eAccessLinksMemberEmail(project: string): string {
+  return `e2e.access-links-member.${project}@example.com`;
 }
 
 /** A realm user whose email is also a break-glass account's (R-62). */
