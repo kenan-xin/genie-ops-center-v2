@@ -179,6 +179,20 @@ export const Dark: Story = {
   globals: { theme: "dark" },
 };
 
+/** G50: a failed role read shows its error, not "Loading role…" forever. */
+export const DetailReadFailureShowsTheError: Story = {
+  args: {
+    selectedRoleId: "r-missing",
+    error: "The role could not be read.",
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("alert")).toHaveTextContent(
+      "The role could not be read."
+    );
+    await expect(canvas.queryByText("Loading role…")).toBeNull();
+  },
+};
+
 export const SystemRoleIsReadOnlyAndCopyable: Story = {
   args: {
     selectedRoleId: FIXTURE_SYSTEM_DETAIL.id,

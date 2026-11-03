@@ -116,7 +116,13 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
         detail={detail.data}
         loading={list.isPending}
         pending={action.isPending || save.isPending}
-        error={list.isError ? "The roles could not be read." : undefined}
+        error={
+          list.isError
+            ? "The roles could not be read."
+            : detail.isError
+              ? "The role could not be read."
+              : undefined
+        }
         onCreateRole={(input) => saveRole(null, input)}
         onUpdateRole={(roleId, input) => saveRole(roleId, input)}
         onRemoveUnavailableKey={(roleId, input) =>

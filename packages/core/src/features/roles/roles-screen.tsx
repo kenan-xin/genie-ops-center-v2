@@ -563,11 +563,21 @@ export function RolesScreen(props: RolesScreenProps) {
 
   if (props.selectedRoleId !== null) {
     if (props.detail === undefined) {
+      // A failed read shows its error, as the list does, never an endless loading line (G50).
       return (
         <div>
-          <p role="status" className="text-sm text-muted-foreground">
-            Loading role…
-          </p>
+          {props.error === undefined ? (
+            <p role="status" className="text-sm text-muted-foreground">
+              Loading role…
+            </p>
+          ) : (
+            <p
+              role="alert"
+              className="text-sm text-destructive dark:text-destructive-on-dark"
+            >
+              {props.error}
+            </p>
+          )}
           {formDialog}
         </div>
       );
