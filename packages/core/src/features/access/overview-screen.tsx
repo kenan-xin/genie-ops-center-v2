@@ -420,14 +420,8 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <span
-          id="overview-look-up"
-          className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-        >
-          Look up
-        </span>
         <ToggleGroup<Lookup>
-          aria-labelledby="overview-look-up"
+          aria-label="Look up"
           value={[lookup]}
           onValueChange={(values) => {
             // A second press on the pressed segment empties the value: keep the segment.
@@ -464,7 +458,7 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
             }}
           />
         </div>
-        <span className="md:ml-auto">
+        <span className="ml-auto">
           <AccessHelp align="end" />
         </span>
       </div>

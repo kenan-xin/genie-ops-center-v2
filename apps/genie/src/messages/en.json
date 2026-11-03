@@ -45,6 +45,7 @@
     "access": {
       "title": "Access",
       "description": "Choose a group or a person. Then give them modules and pick the role they hold in each.",
+      "overviewDescription": "Who reaches which module, with which role, and through which path.",
       "notSaved": "The access changes were not saved."
     },
     "ask": {

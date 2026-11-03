@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  AccessTabs,
   GrantsScreen,
   type GrantsScreenProps,
 } from "@genie/core/features/access";
@@ -62,6 +63,7 @@ export function AccessRoute() {
         title={t("access.title")}
         description={t("access.description")}
       />
+      <AccessTabs current="grants" />
       <GrantsScreen
         catalogue={catalogue.data}
         recipients={recipients.data}
