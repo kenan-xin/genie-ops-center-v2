@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
-import type { AccessPath } from "./effective-access.ts";
+import type { AccessPage, AccessPath } from "./effective-access.ts";
 import type { RoleDetail, RolePermissionGroup, RoleRow } from "./index.ts";
 
 const roleId = z.object({ roleId: z.uuid() });
@@ -104,6 +104,25 @@ export const rolesContract = {
       })
     )
     .output(z.custom<readonly AccessPath[]>()),
+
+  // A8, R-37b: the same paths for Overview, by person, group or module, newest first. The cursor
+  // is the last row of a page; a malformed one is a zod input error, never a database cast.
+  accessBySubject: oc
+    .route({ method: "GET", path: "/roles/access" })
+    .input(
+      z.object({
+        subject: z.object({
+          type: z.enum(["user", "group", "module"]),
+          id: z.string().min(1).max(200),
+        }),
+        query: z.string().max(200).optional(),
+        cursor: z
+          .object({ addedAt: z.iso.datetime(), assignmentId: z.uuid() })
+          .nullish(),
+        limit: z.number().int().min(1).max(100).optional(),
+      })
+    )
+    .output(z.custom<AccessPage>()),
 };
 
 export type RolesContract = typeof rolesContract;

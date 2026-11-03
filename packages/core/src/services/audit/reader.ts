@@ -5,6 +5,7 @@ import { permissionKeyFor } from "../../lib/module-contract/keys.ts";
 import type { Module } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { auditEvent, user } from "../../schema.ts";
+import { likePattern } from "../../utils/like-pattern.ts";
 import { can, type RequestPrincipal } from "../authorization/index.ts";
 import { AUDIT_ACTIONS } from "./actions.ts";
 
@@ -188,17 +189,6 @@ function parseMetadata(cause: unknown) {
 }
 
 /* oxlint-enable anti-slop/no-runtime-typeof */
-
-/**
- * One `ILIKE` pattern for a literal search term. `%`, `_` and the backslash are escaped and the
- * pattern is used with `ESCAPE '\'`, so a search for `_` or `%` matches those characters literally
- * rather than turning into a wildcard (R-67).
- */
-function likePattern(query: string): string {
-  const escaped = query.replace(/[\\%_]/g, (character) => `\\${character}`);
-
-  return `%${escaped}%`;
-}
 
 /**
  * One SQL condition for the date range. Presets are measured on the server clock in UTC: `today`

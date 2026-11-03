@@ -10,7 +10,7 @@ import {
 } from "../src/index.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
 import { TENANT_ADMINISTRATOR_ROLE } from "../src/lib/module-contract/system-roles.ts";
-import { user } from "../src/schema.ts";
+import { roleAssignment, user } from "../src/schema.ts";
 import {
   assignRole,
   enableModules,
@@ -298,5 +298,144 @@ describe("the effective-access read of one recipient", () => {
         principalId: someone,
       })
     ).rejects.toMatchObject({ code: "forbidden" });
+
+    await expect(
+      roles(reader).accessBySubject({
+        subject: { type: "module", id: "fixture" },
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+});
+
+describe("the paged effective-access read by subject", () => {
+  it("lists every role that opens the module, an older custom role included, and no role that only administers it", async () => {
+    const openedUser = await insertRole(deployment.context, {
+      name: "Opened user",
+      moduleId: "opened",
+      permissions: ["opened:use"],
+      isSystem: true,
+    });
+
+    const olderOpener = await insertRole(deployment.context, {
+      name: "Older opener",
+      permissions: ["core:audit:read", "opened:use"],
+    });
+
+    const administration = await insertRole(deployment.context, {
+      name: "Opened administration",
+      permissions: ["opened:admin"],
+    });
+
+    const x = await insertUser(deployment.context);
+    const y = await insertUser(deployment.context);
+    const z = await insertUser(deployment.context);
+    const team = await insertGroup(deployment.context, []);
+
+    const breakGlass = await insertUser(deployment.context, {
+      isBreakGlass: true,
+    });
+
+    await grant(openedUser, { type: "user", id: x });
+    await grant(openedUser, { type: "group", id: team });
+    await grant(olderOpener, { type: "user", id: y });
+    await grant(administration, { type: "user", id: z });
+    await grant(openedUser, { type: "user", id: breakGlass });
+
+    const page = await roles(adminId).accessBySubject({
+      subject: { type: "module", id: "opened" },
+    });
+
+    expect(page.total).toBe(3);
+    expect(page.paths.map((path) => path.holder.id).toSorted()).toEqual(
+      [x, team, y].toSorted()
+    );
+  });
+
+  it("pages paths written in one statement without a skip or a repeat, and counts them on the first page", async () => {
+    const pagingUser = await insertRole(deployment.context, {
+      name: "Paging user",
+      moduleId: "paging",
+      permissions: ["paging:use"],
+      isSystem: true,
+    });
+
+    const people = [
+      await insertUser(deployment.context),
+      await insertUser(deployment.context),
+      await insertUser(deployment.context),
+    ];
+
+    // One statement, so the three rows share one `created_at` (as Add person writes them).
+    const written = await deployment.context.db
+      .insert(roleAssignment)
+      .values(
+        people.map((id) => ({
+          roleId: pagingUser,
+          principalType: "user",
+          principalId: id,
+        }))
+      )
+      .returning({ id: roleAssignment.id });
+
+    const subject = { type: "module", id: "paging" } as const;
+
+    const first = await roles(adminId).accessBySubject({ subject, limit: 2 });
+
+    expect(first.paths).toHaveLength(2);
+    expect(first.total).toBe(3);
+    expect(first.nextCursor).not.toBeNull();
+
+    const second = await roles(adminId).accessBySubject({
+      subject,
+      limit: 2,
+      cursor: first.nextCursor,
+    });
+
+    expect(second.paths).toHaveLength(1);
+    expect(second.nextCursor).toBeNull();
+    expect(
+      [...first.paths, ...second.paths]
+        .map((path) => path.assignmentId)
+        .toSorted()
+    ).toEqual(written.map((row) => row.id).toSorted());
+  });
+
+  it("searches by holder, role and module name before it pages, and counts only the matches", async () => {
+    const person = await insertUser(deployment.context);
+
+    const team = await insertGroup(deployment.context, [person], {
+      name: "Search finance team",
+    });
+
+    await grant(viewerRoleId, { type: "user", id: person });
+    await grant(dormantRoleId, { type: "user", id: person });
+    await grant(viewerRoleId, { type: "group", id: team });
+
+    const search = (query: string) =>
+      roles(adminId).accessBySubject({
+        subject: { type: "user", id: person },
+        query,
+        limit: 1,
+      });
+
+    const byHolder = await search("finance team");
+
+    expect(byHolder.total).toBe(1);
+    expect(byHolder.paths.map((path) => path.holder.name)).toEqual([
+      "Search finance team",
+    ]);
+
+    const byModule = await search("sleeping");
+
+    expect(byModule.total).toBe(1);
+    expect(byModule.paths.map((path) => path.role.name)).toEqual([
+      "Dormant user",
+    ]);
+
+    const byRole = await search("viewer");
+
+    expect(byRole.total).toBe(2);
+    expect(byRole.paths).toHaveLength(1);
+    expect(byRole.nextCursor).not.toBeNull();
   });
 });

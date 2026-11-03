@@ -5,7 +5,11 @@ import {
   removeAssignment,
 } from "../authorization/role-assignment.ts";
 import { rolesContract } from "./contract.ts";
-import { readRecipientAccess } from "./effective-access.ts";
+import {
+  ACCESS_PAGE_SIZE,
+  readAccessBySubject,
+  readRecipientAccess,
+} from "./effective-access.ts";
 import {
   copyRole,
   createRole,
@@ -117,6 +121,18 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         caller: context.caller,
         modules,
         recipient: { type: input.principalType, id: input.principalId },
+      })
+    ),
+
+    accessBySubject: managed.accessBySubject.handler(({ context, input }) =>
+      readAccessBySubject({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        subject: input.subject,
+        query: input.query ?? "",
+        cursor: input.cursor ?? null,
+        limit: input.limit ?? ACCESS_PAGE_SIZE,
       })
     ),
   });

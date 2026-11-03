@@ -9,6 +9,7 @@ import type {
 } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { pgErrorCode } from "../../utils/error-cause.ts";
+import { likePattern } from "../../utils/like-pattern.ts";
 import type { DatasetColumn, DatasetResult, DatasetValue } from "./index.ts";
 import {
   DATASET_ROW_CAP,
@@ -161,7 +162,7 @@ export async function runDatasetQuery(
   // The search is one more condition on the scoped source, so a cursor, an aggregate and the
   // currency check all see it. Its term is a bound parameter, `\`, `%` and `_` escaped for LIKE.
   if (search !== undefined) {
-    const pattern = `%${search.replaceAll(/[\\%_]/g, "\\$&")}%`;
+    const pattern = likePattern(search);
 
     const matches = Object.entries(declaration.fields)
       .filter(([, entry]) => entry.searchable === true)
