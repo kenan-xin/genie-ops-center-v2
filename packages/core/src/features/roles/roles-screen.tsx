@@ -288,6 +288,15 @@ function RoleFormBody(props: {
   );
 }
 
+/** The Delete role confirm's line, from the detail and the row menu alike. */
+function deleteDescription(assignmentCount: number): string {
+  if (assignmentCount === 0) return "It has no assignments.";
+
+  return assignmentCount === 1
+    ? "Its 1 assignment goes with it."
+    : `Its ${assignmentCount} assignments go with it.`;
+}
+
 /** "System · <module name>" or "Custom"; the phone card says only "System" (mockups). */
 function kindPill(
   role: Role,
@@ -489,13 +498,7 @@ function RoleDetailView(props: {
       <ConfirmDialog
         open={confirmDelete}
         title={`Delete ${detail.name}?`}
-        description={
-          detail.assignmentCount === 0
-            ? "It has no assignments."
-            : detail.assignmentCount === 1
-              ? "Its 1 assignment goes with it."
-              : `Its ${detail.assignmentCount} assignments go with it.`
-        }
+        description={deleteDescription(detail.assignmentCount)}
         confirmLabel="Delete role"
         danger
         onConfirm={() => {
@@ -526,6 +529,13 @@ export function RolesScreen(props: RolesScreenProps) {
   });
 
   const [formOpen, setFormOpen] = useState(false);
+
+  // The row menu's Delete confirm. Closing keeps the role, so the title holds during the exit.
+  const [deleting, setDeleting] = useState<{
+    readonly role: Role;
+    readonly open: boolean;
+  } | null>(null);
+
   const submission = useDialogSubmit();
   const searchId = useId();
 
@@ -751,6 +761,41 @@ export function RolesScreen(props: RolesScreenProps) {
                 `${role.assignmentCount} assignment${role.assignmentCount === 1 ? "" : "s"}`,
               ],
             }}
+            // G42: the mockup's row menu. A system role is only copied; a custom one is edited too.
+            actions={(role) => {
+              const copy = {
+                label: "Copy",
+                onSelect: () =>
+                  openForm({
+                    mode: "copy",
+                    name: `${role.name} copy`,
+                    description: role.description,
+                    permissions: role.permissions,
+                  }),
+              };
+
+              return role.kind === "system"
+                ? [copy]
+                : [
+                    {
+                      label: "Edit",
+                      onSelect: () =>
+                        openForm({
+                          mode: "edit",
+                          roleId: role.id,
+                          name: role.name,
+                          description: role.description,
+                          permissions: role.permissions,
+                        }),
+                    },
+                    copy,
+                    {
+                      label: "Delete",
+                      danger: true,
+                      onSelect: () => setDeleting({ role, open: true }),
+                    },
+                  ];
+            }}
             footer="System roles are seeded by modules and cannot be edited. Copy one to start a custom role."
           />
         </div>
@@ -773,6 +818,25 @@ export function RolesScreen(props: RolesScreenProps) {
       </StickyActionBar>
 
       {formDialog}
+
+      <ConfirmDialog
+        open={deleting?.open ?? false}
+        title={`Delete ${deleting?.role.name ?? ""}?`}
+        description={deleteDescription(deleting?.role.assignmentCount ?? 0)}
+        confirmLabel="Delete role"
+        danger
+        onConfirm={() => {
+          if (deleting === null) return;
+
+          setDeleting({ ...deleting, open: false });
+          props.onDeleteRole?.(deleting.role.id);
+        }}
+        onClose={() =>
+          setDeleting((current) =>
+            current === null ? null : { ...current, open: false }
+          )
+        }
+      />
     </div>
   );
 }

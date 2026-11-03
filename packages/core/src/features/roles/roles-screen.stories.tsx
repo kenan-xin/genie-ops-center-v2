@@ -143,7 +143,7 @@ export const Phone: Story = {
     // The card leads with a tile, and the kind pill shares the name's line.
     const cards = list.getAllByRole("listitem");
     const first = within(cards[0]!);
-    const name = first.getByRole("button", { name: /Tenant administrator/ });
+    const name = first.getByRole("button", { name: /^Tenant administrator/ });
     // G56: the phone card says only "System", as the mockup does.
     const kind = first.getByText("System", { exact: true });
 
@@ -170,7 +170,7 @@ export const Phone: Story = {
     ).toBeVisible();
 
     await userEvent.click(
-      list.getByRole("button", { name: /Tenant administrator/ })
+      list.getByRole("button", { name: /^Tenant administrator/ })
     );
 
     expect(args.onSelectRole).toHaveBeenCalledWith("r-tenant-admin");
@@ -203,6 +203,35 @@ export const KindNamesTheModule: Story = {
     const table = within(canvas.getByRole("table", { name: "Roles" }));
 
     await expect(table.getByText("System · Fixture")).toBeVisible();
+  },
+};
+
+/** G42: the row menu copies a system role, and edits, copies or deletes a custom one. */
+export const RowMenuMatchesTheKind: Story = {
+  play: async ({ args, canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Tenant administrator" })
+    );
+    await expect(
+      (await screen.findAllByRole("menuitem")).map((item) => item.textContent)
+    ).toEqual(["Copy"]);
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Invoice approver" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" })
+    );
+
+    const confirm = await screen.findByRole("dialog", {
+      name: "Delete Invoice approver?",
+    });
+
+    await userEvent.click(
+      within(confirm).getByRole("button", { name: "Delete role" })
+    );
+    await expect(args.onDeleteRole).toHaveBeenCalledWith("r-invoice");
   },
 };
 
