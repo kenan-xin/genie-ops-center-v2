@@ -126,22 +126,18 @@ export function CopyIcon(props: SVGProps<SVGSVGElement>) {
   );
 }
 
+/** A directory group: a building, as the mockups draw it (the identity provider's directory). */
 export function DirectoryIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z" />
+      <path d="M5 21V4a1 1 0 0 1 1-1h8a1 1 0 0 1 1 1v17M15 9h3a1 1 0 0 1 1 1v11M3 21h18" />
+      <path d="M9 7h2M9 11h2M9 15h2" />
     </Icon>
   );
 }
 
-export function LocalIcon(props: SVGProps<SVGSVGElement>) {
-  return (
-    <Icon {...props}>
-      <path d="M4 20V5a1 1 0 0 1 1-1h9l6 6v10a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1Z" />
-      <path d="M14 4v6h6" />
-    </Icon>
-  );
-}
+/** A local group: people, as the mockups draw it. */
+export const LocalIcon = UsersIcon;
 
 export function MailIcon(props: SVGProps<SVGSVGElement>) {
   return (
