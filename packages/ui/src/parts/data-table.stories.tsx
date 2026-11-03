@@ -57,7 +57,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The composed table of Spec 3 R-23. From 768 px it is a table in a bordered card, with the header band on top and the edge columns inset 20 px. A column with `align: "end"` lines its header and cells up at the end, for counts. Below, the same rows are a card list with the identity, the status, at most two facts and the actions menu. The identity is a native button, so Enter and Space open the row, and the actions menu follows it in the tab order. A refused action stays in the menu, disabled, and shows its reason as visible text that is the item\'s description. Columns use the TanStack field names `id`, `header` and `cell`, so a later sort can adopt them.',
+          'The composed table of Spec 3 R-23. From 768 px it is a table in a bordered card, with the header band on top and the edge columns inset 20 px. A column with `align: "end"` lines its header and cells up at the end, for counts. Below, the same rows are a card list with the identity, the status, at most two facts and the actions menu. The identity is a native button, so Enter and Space open the row, and the actions menu follows it in the tab order. A refused action stays in the menu, disabled, and shows its reason as visible text that is the item\'s description. Columns use the TanStack field names `id`, `header` and `cell`, so a later sort can adopt them. An optional `footer` adds a band under the rows, inside the frame, for a count or a note about the list.',
       },
     },
   },
@@ -400,6 +400,45 @@ export const LinkedRows: Story = {
         )
         ?.closest("button")
     ).toBe(actions);
+  },
+};
+
+/**
+ * A footer band closes the frame under the rows, for a count or a note about the list (the People,
+ * Groups and Roles captures). It renders once and stays inside the frame at both widths.
+ */
+export const WithFooter: Story = {
+  args: { footer: "3 of 3 people" },
+  play: async ({ canvas }) => {
+    const footers = canvas.getAllByText("3 of 3 people");
+
+    await expect(footers).toHaveLength(1);
+    await expect(footers[0]).toBeVisible();
+
+    const frame = footers[0]!.parentElement!;
+
+    await expect(getComputedStyle(frame).borderTopLeftRadius).toBe("12px");
+    await expect(frame).toContainElement(
+      canvas.getByRole("table", { name: "People" })
+    );
+  },
+};
+
+export const WithFooterPhone: Story = {
+  args: { footer: "3 of 3 people" },
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async ({ canvas }) => {
+    const footers = canvas.getAllByText("3 of 3 people");
+
+    await expect(footers).toHaveLength(1);
+    await expect(footers[0]).toBeVisible();
+
+    const frame = footers[0]!.parentElement!;
+
+    await expect(getComputedStyle(frame).borderTopLeftRadius).toBe("12px");
+    await expect(frame).toContainElement(
+      canvas.getByRole("list", { name: "People" })
+    );
   },
 };
 

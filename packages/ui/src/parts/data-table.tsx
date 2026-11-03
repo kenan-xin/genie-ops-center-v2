@@ -84,6 +84,11 @@ export type DataTableProps<Row> = {
   readonly actions?: (row: Row) => readonly DataTableAction[];
   /** `false` drops the outer border, for a table inside a card that draws its own. */
   readonly framed?: boolean;
+  /**
+   * A band under the rows, inside the frame, at both widths: a count or a note about the list.
+   * Its children sit at the two ends of the band.
+   */
+  readonly footer?: ReactNode;
 };
 
 /** One line of facts, so that every card of a list keeps the same height. */
@@ -138,8 +143,12 @@ export function DataTable<Row>({
   rowLinks = false,
   actions,
   framed = true,
+  footer,
 }: DataTableProps<Row>) {
-  const frame = framed ? "rounded-xl border border-border" : "";
+  const outer = framed ? "rounded-xl border border-border" : "";
+
+  // With a footer, one frame holds the rows and the band, so the band renders once.
+  const frame = footer === undefined ? outer : "";
 
   // The identity opens the row through a native button (R-23): Enter and Space
   // come with it, and the actions menu follows it in the tab order.
@@ -188,7 +197,7 @@ export function DataTable<Row>({
   const identityColumn =
     columns.find((column) => column.id === identityId) ?? columns[0];
 
-  return (
+  const body = (
     <>
       {/* A bordered card holds the header band and the rows, so the band does not float (UI-1). */}
       <div
@@ -317,5 +326,19 @@ export function DataTable<Row>({
         })}
       </ul>
     </>
+  );
+
+  if (footer === undefined) return body;
+
+  return (
+    <div className={`overflow-hidden ${outer}`}>
+      {body}
+      <div
+        data-slot="data-table-footer"
+        className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t border-border px-4 py-2.5 text-xs text-muted-foreground md:px-5"
+      >
+        {footer}
+      </div>
+    </div>
   );
 }
