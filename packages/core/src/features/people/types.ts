@@ -40,6 +40,8 @@ export type PeopleSettings = {
 export type PeopleViewer = {
   readonly id: string;
   readonly timeZone: string;
+  /** The server's clock at render, so a relative time reads the same on server and client. */
+  readonly nowIso: string;
 };
 
 /** What Add person writes (R-40, R-40a). */

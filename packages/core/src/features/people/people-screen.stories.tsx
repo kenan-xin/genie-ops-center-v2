@@ -100,6 +100,17 @@ export const Default: Story = {
   },
 };
 
+/** G2, G3: last sign-in reads relative, a date once old, and "Never" for nobody yet (mockup). */
+export const LastSignInIsRelative: Story = {
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "People" }));
+
+    await expect(table.getByText("1 h ago")).toBeVisible();
+    await expect(table.getByText("1 May 2026")).toBeVisible();
+    await expect(table.getAllByText("Never")).toHaveLength(2);
+  },
+};
+
 const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
 
 /** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */

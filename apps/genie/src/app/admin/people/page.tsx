@@ -37,7 +37,11 @@ export default async function PeoplePage() {
             description={t("people.description")}
           />
           <PeopleRoute
-            viewer={{ id: caller.userId, timeZone: branding.defaultTimeZone }}
+            viewer={{
+              id: caller.userId,
+              timeZone: branding.defaultTimeZone,
+              nowIso: new Date().toISOString(),
+            }}
             settings={{
               onboardingMode:
                 settings.onboardingMode === "jit" ? "jit" : "invite",

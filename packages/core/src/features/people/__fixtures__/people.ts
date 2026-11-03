@@ -15,6 +15,7 @@ import type {
 export const FIXTURE_VIEWER: PeopleViewer = {
   id: "u-viewer",
   timeZone: "Europe/Amsterdam",
+  nowIso: "2026-09-30T09:12:00.000Z",
 };
 
 export const FIXTURE_SETTINGS: PeopleSettings = {

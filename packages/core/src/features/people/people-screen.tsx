@@ -54,7 +54,7 @@ import {
   ShieldIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
-import { initials } from "../audit/helpers.ts";
+import { initials, relativeTime } from "../audit/helpers.ts";
 import { GroupName } from "../groups/group-name.tsx";
 import type {
   AccountType,
@@ -93,6 +93,13 @@ function fmtDateTime(
     minute: "2-digit",
     timeZone,
   });
+}
+
+/** "1 h ago", "2 d ago", a date after 30 days, or "Never" (design mockups). */
+function signedInAgo(iso: string | null, viewer: PeopleViewer): string {
+  if (iso === null) return "Never";
+
+  return relativeTime(iso, new Date(viewer.nowIso), viewer.timeZone);
 }
 
 const ONBOARDING_LABEL: Record<
@@ -763,7 +770,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
   };
 
   const lastSignIn = (person: Person) =>
-    fmtDateTime(person.lastSignInAt, props.viewer.timeZone, "—");
+    signedInAgo(person.lastSignInAt, props.viewer);
 
   const selected = props.details?.[selectedId ?? ""];
 
