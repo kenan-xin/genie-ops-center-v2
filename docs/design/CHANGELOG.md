@@ -2,6 +2,15 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-03
+
+### Changed, the Access design to the role-per-row model
+
+- One prototype for the Access screens of the access model of 2026-11-02 (Specification 02, R-37a to R-37e, R-38): a role choice on each Granted row, Add with the module's default access role, a Remove confirmation that names the roles that go and the paths that stay, a switched-off module, the Core group with Ask, Overview by recipient and by module, and Advanced access with the last-administrator guard.
+- The section spec is rewritten to the new model. The Show filter, the solution rows and the Broader access card are gone. The captures of 2026-09-18 stay as history, and the spec marks which ones are replaced.
+- 20 captures at 1440 and 390. Owner review pending at the Phase 15 dry run.
+- Files: `product/sections/access/access.prototype.html` and its captures. Record: `imports/2026-11-03-access-role-per-row.md`.
+
 ## 2026-11-02
 
 ### Added, the Section 7 redesign prototype
