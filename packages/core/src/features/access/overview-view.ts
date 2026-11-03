@@ -3,6 +3,7 @@ import type {
   AccessSubject,
 } from "../../services/roles/effective-access.ts";
 import type { GrantRecipients, GrantRow } from "../../services/roles/grants.ts";
+import { scopeKey } from "./advanced-view.ts";
 import { moduleNameOf } from "./grants-view.ts";
 
 /** One row of the Overview table (R-37d). */
@@ -12,7 +13,7 @@ export type OverviewRow = {
   /** The Who column: the person or the group that holds the assignment. */
   readonly holder: AccessPath["holder"];
   readonly module: string;
-  /** `scope.id` of a one-record role, else null. */
+  /** The record's label of a one-record role, else its `scope.id`; null for the whole tenant. */
   readonly record: string | null;
   readonly role: string;
   readonly custom: boolean;
@@ -75,6 +76,8 @@ export function overviewRows(input: {
   readonly personPaths: readonly AccessPath[] | undefined;
   readonly catalogue: readonly GrantRow[];
   readonly recipients: GrantRecipients;
+  /** Record labels by `scopeKey`, only for records the caller can open (AD10). */
+  readonly recordLabels: ReadonlyMap<string, string>;
 }): readonly OverviewRow[] {
   const { subject } = input;
 
@@ -109,7 +112,10 @@ export function overviewRows(input: {
       key: path.assignmentId,
       holder: path.holder,
       module,
-      record: path.scope?.id ?? null,
+      record:
+        path.scope === null
+          ? null
+          : (input.recordLabels.get(scopeKey(path.scope)) ?? path.scope.id),
       role: path.role.name,
       custom: path.role.kind === "custom",
       path: pathOf(path),

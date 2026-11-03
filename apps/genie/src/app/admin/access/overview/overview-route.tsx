@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { type ComponentProps, useState } from "react";
 
 import { rpc } from "../../../../rpc/client.ts";
+import { useRecordLabels } from "../use-record-labels.ts";
 
 type Subject = ComponentProps<typeof OverviewScreen>["subject"];
 
@@ -112,6 +113,8 @@ export function OverviewRoute(props: {
           hasNext: index < pages.length - 1 || results.hasNextPage,
         };
 
+  const recordLabels = useRecordLabels(page?.paths);
+
   return (
     <>
       <PageHeader
@@ -149,6 +152,7 @@ export function OverviewRoute(props: {
         }}
         paging={results.isFetchingNextPage || results.isPlaceholderData}
         personPaths={personPaths.data}
+        recordLabels={recordLabels}
         timeZone={props.timeZone}
         auditLogHref={props.auditLog ? "/admin/audit" : undefined}
         {...(catalogue.isError ||

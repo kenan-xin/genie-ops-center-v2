@@ -265,7 +265,7 @@ export const searchFixtureRecords = async (
 
 /**
  * The paths of the S2-19 read for each sample recipient, as the prototype states draw them:
- * Operations (role choice), Jamie Chen (a group path stays), Sam Rivera (no path stays),
+ * Operations (role choice, and two advanced roles), Leadership (the only administrator path), Jamie Chen (a group path stays), Sam Rivera (no path stays),
  * Finance team (Analytics is off), and Sales desk (Ask, with Tenant administrator not shown).
  */
 const PATHS = {
@@ -273,7 +273,9 @@ const PATHS = {
     held("a-ops-1", holder.ops, "r-invoices-viewer"),
     held("a-ops-2", holder.ops, "r-slides-editor"),
     held("a-ops-3", holder.ops, "r-ask-user"),
+    ...ADVANCED_PATHS["g-ops"],
   ],
+  "g-leads": ADVANCED_PATHS["g-leads"],
   "g-finance": [
     financeInvoices,
     held("a-fin-2", holder.finance, "r-analytics-viewer"),

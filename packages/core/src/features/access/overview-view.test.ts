@@ -119,6 +119,7 @@ const also = (shown: AccessPath) =>
     personPaths: all,
     catalogue: FIXTURE_ROWS,
     recipients: FIXTURE_RECIPIENTS,
+    recordLabels: new Map(),
   })[0]?.alsoThrough;
 
 describe("overviewRows", () => {
@@ -138,6 +139,7 @@ describe("overviewRows", () => {
       personPaths: undefined,
       catalogue: FIXTURE_ROWS,
       recipients: FIXTURE_RECIPIENTS,
+      recordLabels: new Map(),
     });
 
     expect(
@@ -161,6 +163,7 @@ describe("overviewRows", () => {
       personPaths: all,
       catalogue: FIXTURE_ROWS,
       recipients: FIXTURE_RECIPIENTS,
+      recordLabels: new Map(),
     });
 
     expect(rows.map((row) => [row.module, row.path, row.notInEffect])).toEqual([
@@ -168,6 +171,30 @@ describe("overviewRows", () => {
       ["Ask", "Direct assignment", []],
       ["Core administration", "via Finance team", []],
       ["Analytics", "via Finance team", ["The Analytics module is off"]],
+    ]);
+  });
+
+  it("W3: shows the record label when the labels read gives one, else the id", () => {
+    const unlabeled: AccessPath = {
+      ...path("a-scoped-2", ops, invoicesFinance, "invoices"),
+      scope: { type: "invoice", id: "inv-0157" },
+    };
+
+    const rows = overviewRows({
+      subject: { type: "group", id: "g-ops" },
+      paths: [scoped, unlabeled, direct],
+      personPaths: undefined,
+      catalogue: FIXTURE_ROWS,
+      recipients: FIXTURE_RECIPIENTS,
+      recordLabels: new Map([
+        ["invoice\u0000INV-2026-0142", "Harbor invoice 142"],
+      ]),
+    });
+
+    expect(rows.map((row) => row.record)).toEqual([
+      "Harbor invoice 142",
+      "inv-0157",
+      null,
     ]);
   });
 });

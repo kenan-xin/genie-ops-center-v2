@@ -17,6 +17,7 @@ import { OverviewScreen } from "./overview-screen.tsx";
 type Args = {
   readonly initial: AccessSubject | null;
   readonly onSubjectChange: (next: AccessSubject | null) => void;
+  readonly recordLabels?: ReadonlyMap<string, string>;
 };
 
 const PAGE = 10;
@@ -69,6 +70,7 @@ function Harness(args: Args) {
       onPage={(step) => setIndex((current) => current + step)}
       paging={false}
       personPaths={subject?.type === "user" ? all : undefined}
+      recordLabels={args.recordLabels ?? new Map()}
       timeZone="UTC"
       auditLogHref="/admin/audit"
     />
@@ -137,6 +139,25 @@ export const NoSubject: Story = {
         id: "g-ops",
       })
     );
+  },
+};
+
+/** W3: a record the viewer can open shows its label in the pill, not its id (O15). */
+export const RecordLabel: Story = {
+  args: {
+    initial: jamie,
+    recordLabels: new Map([
+      ["invoice\u0000a0774a4a-a630-41ba-8364-bcb715ff0c6a", "INV-2026-0142"],
+    ]),
+  },
+  play: async ({ canvas }) => {
+    const table = within(
+      await canvas.findByRole("table", { name: "Assignments for Jamie Chen" })
+    );
+
+    await expect(
+      table.getByText("INV-2026-0142").parentElement
+    ).toHaveTextContent("One record · INV-2026-0142");
   },
 };
 

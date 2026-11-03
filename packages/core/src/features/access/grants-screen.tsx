@@ -16,6 +16,11 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useStore } from "zustand";
 
 import type {
+  AdvancedCatalogue,
+  AdvancedChanges,
+  RemovalGuard,
+} from "../../services/roles/advanced.ts";
+import type {
   AccessPath,
   AccessRecipient,
 } from "../../services/roles/effective-access.ts";
@@ -24,7 +29,14 @@ import type {
   GrantRecipients,
   GrantRow,
 } from "../../services/roles/grants.ts";
+import type { ScopeRecord } from "../../services/roles/records.ts";
 import { AccessHelp } from "./access-help.tsx";
+import { AdvancedAccessSheet } from "./advanced-access-sheet.tsx";
+import {
+  type AdvancedAdd,
+  advancedLinkAdd,
+  scopeKey,
+} from "./advanced-view.ts";
 import {
   createGrantsDraftStore,
   draftCounts,
@@ -60,6 +72,19 @@ export type GrantsScreenProps = {
   };
   /** Rejects with `{ message }` when the server refuses. The screen keeps the draft. */
   readonly onSave: (changes: GrantChanges) => Promise<void>;
+  /** The reads and writes of Advanced access (R-37c). */
+  readonly advanced: {
+    readonly catalogue: AdvancedCatalogue | undefined;
+    /** The chosen recipient's guarded removals, undefined while they load. */
+    readonly guards: readonly RemovalGuard[] | undefined;
+    readonly onSave: (changes: AdvancedChanges) => Promise<void>;
+    readonly onSearchRecords: (
+      recordType: string,
+      query: string
+    ) => Promise<readonly ScopeRecord[]>;
+  };
+  /** Record labels by `scopeKey`, only for records the caller can open (AD10). */
+  readonly recordLabels: ReadonlyMap<string, string>;
   /** A failed read. */
   readonly error?: string;
 };
@@ -97,12 +122,23 @@ function nameOf(
   return list?.find((entry) => entry.id === recipient.id)?.name ?? "";
 }
 
-/** "Tenant administrator (Core administration, whole tenant)" (P4). */
+/** "Tenant administrator (Core administration, whole tenant)", "Finance (Invoices, one record, INV-2026-0142)" (P4, AD10). */
 function notShownLabel(
   path: AccessPath,
-  catalogue: readonly GrantRow[]
+  catalogue: readonly GrantRow[],
+  recordLabels: ReadonlyMap<string, string>
 ): string {
-  return `${path.role.name} (${moduleNameOf(path, catalogue)}, ${path.scope === null ? "whole tenant" : "one record"})`;
+  const label =
+    path.scope === null ? undefined : recordLabels.get(scopeKey(path.scope));
+
+  const scope =
+    path.scope === null
+      ? "whole tenant"
+      : label === undefined
+        ? "one record"
+        : `one record, ${label}`;
+
+  return `${path.role.name} (${moduleNameOf(path, catalogue)}, ${scope})`;
 }
 
 /** A transfer row while it is built, so each optional field is added only when present. */
@@ -216,6 +252,10 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const linkApplied = useRef(false);
 
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
+  const [advancedAdd, setAdvancedAdd] = useState<AdvancedAdd | undefined>();
+
   const panes = useMediaQuery("(min-width: 1280px)", { noSsr: true });
 
   const catalogue = props.catalogue ?? [];
@@ -229,15 +269,60 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
           recipient: props.recipient,
         });
 
-  // A prefilled link stages its change once, on the first recipient whose paths arrive (P17).
+  const advancedCatalogue = props.advanced.catalogue;
+
+  // A prefilled link stages its change once, on the first recipient whose paths arrive (P17). A
+  // core role link that Grants cannot stage waits for the Advanced catalogue, then opens Advanced
+  // access with the role staged (AD12).
   useEffect(() => {
     if (linkApplied.current || view === null || props.link === undefined) {
       return;
     }
 
+    const staged = linkDraft(view, props.link);
+
+    const { recipient } = props;
+
+    const grantsStaged =
+      Object.keys(staged.add).length + Object.keys(staged.change).length > 0;
+
+    if (grantsStaged || props.link.role === undefined || recipient === null) {
+      linkApplied.current = true;
+      store.getState().reset(staged);
+
+      return;
+    }
+
+    if (advancedCatalogue === undefined) return;
+
     linkApplied.current = true;
-    store.getState().reset(linkDraft(view, props.link));
-  }, [view, props.link, store]);
+
+    const add = advancedLinkAdd({
+      catalogue: advancedCatalogue,
+      held: new Set(
+        (props.paths ?? []).flatMap((path) =>
+          path.scope === null &&
+          path.holder.type === recipient.type &&
+          path.holder.id === recipient.id
+            ? [path.role.id]
+            : []
+        )
+      ),
+      roleId: props.link.role,
+    });
+
+    if (add !== null) {
+      setAdvancedAdd(add);
+      setAdvancedOpen(true);
+    }
+  }, [
+    view,
+    props.link,
+    props.paths,
+    props.recipient,
+    advancedCatalogue,
+    store,
+  ]);
 
   const counts = draftCounts(draft);
 
@@ -262,6 +347,11 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     setFailure(null);
   };
 
+  const closeAdvanced = () => {
+    setAdvancedOpen(false);
+    setAdvancedAdd(undefined);
+  };
+
   const switchKind = (next: Kind) =>
     guardSwitch(KIND_LABEL[next], () => {
       clear();
@@ -274,6 +364,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
     guardSwitch(nameOf(next, props.recipients), () => {
       clear();
+      closeAdvanced();
       props.onRecipientChange(next);
     });
   };
@@ -367,6 +458,16 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
             />
           </div>
         )}
+        <Button
+          variant="ghost"
+          disabled={props.recipient === null}
+          {...(props.recipient === null
+            ? { title: "Choose a group or a person first" }
+            : {})}
+          onClick={() => setAdvancedOpen(true)}
+        >
+          Advanced access
+        </Button>
       </div>
 
       {props.error === undefined ? null : (
@@ -455,12 +556,24 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                   </p>
                 ) : null}
                 {view.notShown.length === 0 ? null : (
-                  <p>
-                    Not shown here:{" "}
-                    {view.notShown
-                      .map((path) => notShownLabel(path, catalogue))
-                      .join(", ")}
-                  </p>
+                  <>
+                    <p>
+                      Not shown here:{" "}
+                      {view.notShown
+                        .map((path) =>
+                          notShownLabel(path, catalogue, props.recordLabels)
+                        )
+                        .join(", ")}
+                    </p>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      className="-ml-3 self-start"
+                      onClick={() => setAdvancedOpen(true)}
+                    >
+                      Open Advanced access
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -510,6 +623,24 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
           removals={confirmRemove ? removals() : []}
           onConfirm={() => void save()}
           onClose={() => setConfirmRemove(false)}
+        />
+      )}
+
+      {props.recipient === null || view === null ? null : (
+        <AdvancedAccessSheet
+          // A new recipient starts a new sheet, so no draft crosses recipients.
+          key={`${props.recipient.type}:${props.recipient.id}`}
+          open={advancedOpen}
+          recipientName={name}
+          rows={view.notShown}
+          catalogue={props.advanced.catalogue}
+          guards={props.advanced.guards}
+          grantRows={catalogue}
+          recordLabels={props.recordLabels}
+          initialAdd={advancedAdd}
+          onSearchRecords={props.advanced.onSearchRecords}
+          onSave={props.advanced.onSave}
+          onClose={closeAdvanced}
         />
       )}
 

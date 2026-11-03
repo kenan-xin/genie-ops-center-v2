@@ -6,13 +6,17 @@ import {
   type GrantsScreenProps,
 } from "@genie/core/features/access";
 import { PageHeader } from "@genie/core/features/shell";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useSearchParams } from "next/navigation.js";
 import { useState } from "react";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
+import { useRecordLabels } from "./use-record-labels.ts";
+
+/** A record search answer stays fresh this long, so a retyped query is not read twice. */
+const RECORD_SEARCH_STALE_MS = 30_000;
 
 /**
  * The browser half of the Access route. The recipient stays in screen state (P18). A prefilled
@@ -47,6 +51,25 @@ export function AccessRoute() {
       }),
     enabled: recipient !== null,
   });
+
+  const queryClient = useQueryClient();
+
+  const advancedCatalogue = useQuery({
+    queryKey: ["access", "advanced", "catalogue"],
+    queryFn: () => rpc.roles.advancedCatalogue(),
+  });
+
+  const guards = useQuery({
+    queryKey: ["access", "advanced", "guards", recipient?.type, recipient?.id],
+    queryFn: () =>
+      rpc.roles.administratorGuards({
+        principalType: recipient?.type ?? "group",
+        principalId: recipient?.id ?? "",
+      }),
+    enabled: recipient !== null,
+  });
+
+  const recordLabels = useRecordLabels(paths.data);
 
   // The screen awaits the save and shows the refusal in its pending bar, so a refusal gets no toast.
   const save = useAdminWrite({
@@ -87,7 +110,33 @@ export function AccessRoute() {
             });
           })
         }
-        {...(catalogue.isError || recipients.isError || paths.isError
+        advanced={{
+          catalogue: advancedCatalogue.data,
+          guards: guards.data,
+          onSearchRecords: (recordType, query) =>
+            queryClient.fetchQuery({
+              queryKey: ["access", "records", recordType, query],
+              queryFn: () => rpc.roles.scopeRecords({ recordType, query }),
+              staleTime: RECORD_SEARCH_STALE_MS,
+            }),
+          onSave: (changes) =>
+            save.mutateAsync(async () => {
+              if (recipient === null) return;
+
+              await rpc.roles.saveAdvanced({
+                principalType: recipient.type,
+                principalId: recipient.id,
+                add: [...changes.add],
+                remove: [...changes.remove],
+              });
+            }),
+        }}
+        recordLabels={recordLabels}
+        {...(catalogue.isError ||
+        recipients.isError ||
+        paths.isError ||
+        advancedCatalogue.isError ||
+        guards.isError
           ? { error: "The access could not be read." }
           : {})}
       />

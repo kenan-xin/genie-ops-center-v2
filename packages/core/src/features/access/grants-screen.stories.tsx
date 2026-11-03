@@ -2,12 +2,16 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import * as React from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import type { AdvancedChanges } from "../../services/roles/advanced.ts";
 import type { AccessRecipient } from "../../services/roles/effective-access.ts";
 import type { GrantChanges } from "../../services/roles/grants.ts";
 import {
+  ADVANCED_CATALOGUE,
+  ADVANCED_LABELS,
   FIXTURE_RECIPIENTS,
   FIXTURE_ROWS,
   fixturePaths,
+  searchFixtureRecords,
 } from "./__fixtures__/access.ts";
 import { GrantsScreen } from "./grants-screen.tsx";
 
@@ -16,6 +20,7 @@ type Args = {
   readonly link?: { readonly module?: string; readonly role?: string };
   readonly refusal?: string;
   readonly onSave: (changes: GrantChanges) => Promise<void>;
+  readonly onSaveAdvanced: (changes: AdvancedChanges) => Promise<void>;
 };
 
 /** Holds the recipient the way the route does, and answers each recipient's paths at once. */
@@ -35,6 +40,13 @@ function Harness(args: Args) {
 
         if (args.refusal !== undefined) throw new Error(args.refusal);
       }}
+      advanced={{
+        catalogue: ADVANCED_CATALOGUE,
+        guards: recipient === null ? undefined : [],
+        onSave: args.onSaveAdvanced,
+        onSearchRecords: searchFixtureRecords,
+      }}
+      recordLabels={ADVANCED_LABELS}
     />
   );
 }
@@ -57,7 +69,7 @@ const meta = {
     },
     a11y: { test: "error" },
   },
-  args: { initial: null, onSave: fn() },
+  args: { initial: null, onSave: fn(), onSaveAdvanced: fn() },
   render: (args) => (
     <div className="p-4 md:p-8">
       <Harness {...args} />
@@ -313,6 +325,69 @@ export const SaveInFlight: Story = {
         .getByRole("button", { name: "People", hidden: true })
         .closest("[inert]")
     ).not.toBeNull();
+  },
+};
+
+const advancedSheet = async () =>
+  within(await screen.findByRole("dialog", { name: "Advanced access" }));
+
+/** W2: Advanced access waits for a recipient, then opens on their advanced roles. */
+export const AdvancedAccessOpensFromTheToolbar: Story = {
+  play: async ({ canvas }) => {
+    const open = canvas.getByRole("button", { name: "Advanced access" });
+
+    await expect(open).toBeDisabled();
+
+    await userEvent.click(
+      canvas.getByRole("combobox", { name: "Choose a group" })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Operations · 40 members" })
+    );
+    await waitFor(() => expect(open).toBeEnabled());
+    await userEvent.click(open);
+
+    const sheet = await advancedSheet();
+
+    // The sheet fades in, so its rows turn visible after the transition.
+    await waitFor(() =>
+      expect(sheet.getByText("Invoice approver")).toBeVisible()
+    );
+  },
+};
+
+/** W2: "Not shown here" names the record by label and opens Advanced access. */
+export const NotShownHereOpensAdvancedAccess: Story = {
+  args: { initial: group("g-ops") },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText(/Finance \(Invoices, one record, INV-2026-0142\)/)
+    ).toBeVisible();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Open Advanced access" })
+    );
+    const sheet = await advancedSheet();
+
+    await waitFor(() =>
+      expect(sheet.getByText("One record · INV-2026-0142")).toBeVisible()
+    );
+  },
+};
+
+/** W2, AD12: a `?role=` link of a core role opens Advanced access with the role staged. */
+export const CoreRoleLinkOpensAdvancedAccess: Story = {
+  args: { initial: group("g-ops"), link: { role: "r-auditor" } },
+  play: async ({ args }) => {
+    const sheet = await advancedSheet();
+
+    const row = sheet.getByText("Auditor", { exact: true }).closest("li");
+
+    await expect(row).not.toBeNull();
+    await waitFor(() =>
+      expect(within(row ?? document.body).getByText("Pending")).toBeVisible()
+    );
+    await expect(args.onSaveAdvanced).not.toHaveBeenCalled();
   },
 };
 

@@ -7,6 +7,8 @@ export { AccessTabs } from "./access-tabs.tsx";
  */
 export { GrantsScreen, type GrantsScreenProps } from "./grants-screen.tsx";
 
+export { scopeKey } from "./advanced-view.ts";
+
 export {
   type OverviewPage,
   OverviewScreen,

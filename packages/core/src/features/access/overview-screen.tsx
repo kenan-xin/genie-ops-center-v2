@@ -62,6 +62,8 @@ export type OverviewScreenProps = {
   readonly paging: boolean;
   /** Every path of a person subject (O4). */
   readonly personPaths: readonly AccessPath[] | undefined;
+  /** Record labels by `scopeKey`, only for records the viewer can open (AD10). */
+  readonly recordLabels: ReadonlyMap<string, string>;
   /** The tenant's default time zone, for the Added date (O11). */
   readonly timeZone: string;
   /** Set only for a viewer who holds `core:audit:read` (O10). */
@@ -282,6 +284,7 @@ function Results(
     personPaths: props.personPaths,
     catalogue,
     recipients: props.recipients ?? { groups: [], people: [] },
+    recordLabels: props.recordLabels,
   });
 
   const to = page.from + page.paths.length - 1;
