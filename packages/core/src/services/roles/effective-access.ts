@@ -307,8 +307,9 @@ export async function readAccessBySubject(input: {
 
   const last = rows.at(-1);
 
+  // Ask is core, so the map never holds it: only a registered module can be off.
   const subjectModuleOff =
-    subject.type === "module" && entitled.get(subject.id) !== true;
+    subject.type === "module" && entitled.get(subject.id) === false;
 
   return {
     paths: rows.map((raw) =>

@@ -438,4 +438,37 @@ describe("the paged effective-access read by subject", () => {
     expect(byRole.paths).toHaveLength(1);
     expect(byRole.nextCursor).not.toBeNull();
   });
+
+  it("flags every path of a switched-off module, and none of Ask, which core owns", async () => {
+    const askUser = await insertRole(deployment.context, {
+      name: "Overview Ask user",
+      permissions: ["core:ask:use"],
+      isSystem: true,
+    });
+
+    const person = await insertUser(deployment.context);
+    const team = await insertGroup(deployment.context, []);
+
+    await grant(askUser, { type: "user", id: person });
+    await grant(askUser, { type: "group", id: team });
+    await grant(dormantRoleId, { type: "user", id: person });
+
+    const ask = await roles(adminId).accessBySubject({
+      subject: { type: "module", id: "core:ask" },
+    });
+
+    expect(
+      ask.paths
+        .filter((path) => [person, team].includes(path.holder.id))
+        .map((path) => path.notInEffect)
+    ).toEqual([[], []]);
+
+    const dormant = await roles(adminId).accessBySubject({
+      subject: { type: "module", id: "dormant" },
+    });
+
+    expect(
+      dormant.paths.find((path) => path.holder.id === person)?.notInEffect
+    ).toEqual(["module-off"]);
+  });
 });
