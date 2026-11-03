@@ -6,6 +6,8 @@ Status: Approved by the product owner for ticket breakdown, 2026-09-27, after th
 
 Amended 2026-10-27 for ticket S2-17 (bead `genie-ops-center-v2-d8l5.26`), local accounts beside the identity provider in a brokered realm, after the owner's `DEC-36` amendment of that day. The amendment adds R-17c, R-40b, R-53a, R-58a and AC-27, and adds a paragraph to R-50. The owner approved it on 2026-10-27, with the refusal text of R-40b.
 
+Amended 2026-11-02 for the Access screens (bead `genie-ops-center-v2-cvij.2`), after the owner accepted the access model that day. A group or a person has access to a module exactly when it holds at least one role of that module, so no separate access table exists. The amendment changes R-37 and R-38, and adds R-37a to R-37e and AC-28. It supersedes `../design/amendments-access-2026-09-18.md`. Tickets S2-18 to S2-25 build it (`../tickets/spec-2/README.md`).
+
 ## Goal and scope
 
 Section 2 makes a customer employee able to sign in through the customer's identity provider, be recorded as a person with their directory groups, hold roles through those groups, and reach only what those roles allow. It also makes offboarding in the identity provider effective at the next sign-in, and makes an open session end at the idle timeout or at the 24 hour cap at the latest (`../core/roadmap.md`, Section 2 goal, `DEC-46`).
@@ -35,7 +37,7 @@ Out of scope: record-scope proof end to end (Section 4 item 2), the Notification
 - `../core/tech-stack.md`: "Identity and access", "Communication", "Quality".
 - `../runbooks/deployment.md`: "Set up a new customer", "Add the identity provider", "Recovery by scenario".
 - `../runbooks/keycloak-realm.md`: the realm template and identity provider runbook, written beside this specification.
-- Design files, which own presentation and are cited, never restated: `../design/sections/sign-in-and-tenant-pages/spec.md` and `types.ts`, `../design/sections/account-and-inbox/spec.md` and `types.ts` (account page and sessions only), `../design/sections/people-groups-and-roles/spec.md` and `types.ts`, `../design/sections/audit-and-tenant-settings/spec.md` (Audit log screen only).
+- Design files, which own presentation and are cited, never restated: `../design/sections/sign-in-and-tenant-pages/spec.md` and `types.ts`, `../design/sections/account-and-inbox/spec.md` and `types.ts` (account page and sessions only), `../design/sections/people-groups-and-roles/spec.md` and `types.ts`, `../design/sections/access/spec.md` and `types.ts` (as amended by R-37a to R-37e), `../design/sections/audit-and-tenant-settings/spec.md` (Audit log screen only).
 
 ## Requirements
 
@@ -157,9 +159,28 @@ R-36. Core sends a person to the landing route after sign-in only when the entry
 
 ### People, Groups, and Roles
 
-R-37. Three core routers, each procedure behind `can()` with `core:people:manage`, `core:groups:manage`, or `core:roles:manage`, back the three admin portal screens. The screens are rendered as `../design/sections/people-groups-and-roles/spec.md` specifies.
+R-37. Amended 2026-11-02 (A1). Three core routers, each procedure behind `can()` with `core:people:manage`, `core:groups:manage`, or `core:roles:manage`, back the four admin portal screens: People, Groups, Roles, and Access. The roles router keeps `core:roles:manage` and backs two screens: Roles for the role definitions, and Access for the role assignments. No new router exists. People, Groups, and Roles are rendered as `../design/sections/people-groups-and-roles/spec.md` specifies. Access is rendered as `../design/sections/access/spec.md` specifies, as amended by R-37a to R-37e. The Roles page defines roles and never assigns them. Add person and Add group keep assigning roles at creation through the same role-assignment service (R-40, owner decision B1 of 2026-09-27).
 
-R-38. Self-protection is enforced on the server and mirrored in the screens. No person may disable or remove themselves. No write may leave zero active holders of `Tenant administrator`, counting direct assignments and assignments held through a group. One core function performs this check and every writer calls it: disable person, remove person, remove a direct assignment, remove an assignment from a role, delete a local group, remove a group member, remove all members of a group, and archive a directory group (`../architecture/data-shape.md`, "Identity", self-protection, and `../design/sections/people-groups-and-roles/spec.md`, "User Flows"). A refusal returns a stable error code and the screen shows the control disabled with the same reason.
+R-37a. Access, Grants tab (A1). Access is the one screen that assigns and removes roles after creation, through the one role-assignment service (`DEC-39`). A group or a person has access to a module exactly when it holds at least one role of that module. Access adds up across direct assignments and groups, and no deny rule exists. The Grants tab works in this order:
+
+- The administrator picks a group, or a person as the exception.
+- A Catalog and Granted transfer list shows every enabled module, grouped Modules and Core. The Core group holds Ask, which the core system role `Ask user` with `core:ask:use` grants (A7). Solutions join as a third group later.
+- Every module has a catalogue row. A record limit is an optional scope on the same role assignment, set in Advanced access (R-37c).
+- Add assigns the module's default access role, which the module declares as `defaultAccessRole` (`../architecture/module-contract.md`).
+- Each Granted row offers the module's roles by name, its default access role first. A change of the choice swaps the role.
+- Remove takes every role of that module from the recipient. A confirmation first names those roles and every other path that stays.
+- A switched-off module takes no new grant and keeps its existing grants. The row shows the reason, and Remove stays available.
+- The link `/admin/access?role=<id>` preselects the module of that role and puts the role in the row's choice. A link with a core role opens Advanced access.
+
+R-37b. Access, Overview tab (A1). Overview is read-only. The administrator chooses by group or person, or by module, and then picks one subject. Nothing is read before that choice. The results are searchable and paged. Each row names the holder, the module, the role, the path (direct, or through a group), and the person who added it.
+
+R-37c. Advanced access (A1). Advanced access assigns and removes core administration, the `Auditor` role, a module role at a record scope, and custom roles. It writes through the same role-assignment service, and every removal calls the last-administrator check of R-38.
+
+R-37d. One read of every path for a recipient (A8). One server read returns, for one recipient, its direct assignments and the assignments that its groups carry, each with the role, the path, and the person who added it. Overview pages this read. Grants reads it unpaged for one recipient. The read adds no table, no permission key, and no write. Groups do not nest, so the read expands a person through their own groups only, and an "also through" line names those groups only. The read excludes the break-glass account, as R-39 does for the other three screens (`DEC-24`).
+
+R-37e. The permission behind Access (A7). Both tabs sit behind `core:roles:manage`, so Overview shares the write key for now. An Auditor who must read effective access without the write key needs a later eighth core key, recorded as a revisit of `DEC-23` and not built. A link into Access, for example from a module's configure sheet, is hidden for a person without `core:roles:manage`, and the server refuses that person.
+
+R-38. Self-protection is enforced on the server and mirrored in the screens. No person may disable or remove themselves. No write may leave zero active holders of `Tenant administrator`, counting direct assignments and assignments held through a group. One core function performs this check and every writer calls it: disable person, remove person, on Access the removal of a direct `Tenant administrator` assignment, the removal of that assignment from a group, and Remove of a recipient's last path to the role (writer list amended 2026-11-02, A2), delete a local group, remove a group member, remove all members of a group, and archive a directory group (`../architecture/data-shape.md`, "Identity", self-protection, and `../design/sections/people-groups-and-roles/spec.md`, "User Flows"). A refusal returns a stable error code and the screen shows the control disabled with the same reason.
 
 R-39. The break-glass account is excluded from every read of the three screens by `is_break_glass` and appears only in the audit log (`DEC-24`).
 
@@ -338,6 +359,8 @@ AC-26 (retained access lifecycle). On the existing-database lifecycle fixture, a
 
 AC-27 (S2-17, local accounts beside SSO). Against the stand-in Keycloak, `genie-ops realm local-accounts enable` on a brokered realm with a provider leaves the password form and the provider button on the realm page, sets `realm_supports_local_accounts` and the domain list, and writes one audit row. A second run changes nothing, a later `genie-ops setup` keeps the change, and the command refuses client-only mode and a realm without a provider. Add person refuses a local account on a recorded domain and on its subdomain, and accepts one on another domain. An end-to-end test, at phone and desktop: an administrator adds a local person outside the domains, that person sets a password from the realm's email in Mailpit and signs in with email and password, and a brokered person still reaches the provider from the company entry without the realm page. Proves R-17c, R-40b, R-50 as amended, R-53a, R-58a.
 
+AC-28 (S2-18 to S2-25, Access). At a phone and a desktop viewport, an administrator grants a module to a group on Grants, and the module appears in the sidebar of a member of that group. The role choice of the Granted row swaps the role. Remove takes every role of that module from the recipient. The module then disappears from the sidebar, unless another path stays, and the confirmation names that path. A switched-off module takes no new grant and keeps its existing grants with the reason shown. Overview lists the holder, the module, the role, the path, and the person who added it, by group, by person, and by module. The server refuses every Access write that would leave no active holder of `Tenant administrator`, and refuses every Access procedure to a caller without `core:roles:manage`. `validateModule` refuses a module role without `<id>:use`, and a module with a workspace entry and no `defaultAccessRole` (`../architecture/module-contract.md`). Proves R-37, R-37a to R-37e, R-38.
+
 ## Verification
 
 Permission-evolution acceptance (AC-25; R-33a–R-33c): execute every scenario in `../architecture/permission-evolution.md`, Required upgrade verification, against an existing configured database. Include direct/group and scoped/broad grants, independent custom copies, mixed-module roles, archived groups, meaningful authorization denial before explicit new grants, equivalent renames, retired/unknown keys, retries/concurrency, failure/recovery, and audited security revocation. Assert preserved role/assignment IDs and memberships alongside real `can()`/`scopesFor()` outcomes. E2E proves role-editor warnings and denied/allowed behavior at both viewports; Storybook presentation tests alone do not satisfy this gate. These are future test requirements, not completed proof.
@@ -412,6 +435,10 @@ Open questions
 - Decided by the product owner on 2026-09-27 and no longer open: the `realm` field in `tenant.yaml` and the `bundled-keycloak` Compose profile (beads 8i97 and cla, R-54a to R-54d).
 - Decided by the product owner on 2026-09-27 and no longer open: per-app access, where a `jit` sign-in is admitted only through a mapped group (`DEC-7` as amended, R-9), and adding a directory group before first sign-in (`DEC-52`, R-24b).
 - Decided by the product owner on 2026-09-27 and no longer open: the invitation email (bead zdd, R-40a, R-41) and the group display label (bead uxl, R-24c).
+- Decided by the access model that the owner accepted on 2026-11-02, and no longer open: U4, a prefilled link that carries a role (R-37a). U5, a module administrator who sees a link to Access (R-37e). U6, a module that owns records and had no catalogue row (R-37a). U7, group nesting (R-37d).
+- Open, older than Access and not part of it: U1, the realm display name after a Branding change (`DEC-40`).
+- Open, design sample data only: U2, the keys of the Contracts sample module.
+- Open: U3, a module with two record types. No module declares two today. When one does, Advanced access (R-37c) gets a type picker.
 - Decided by the product owner on 2026-09-27 and no longer open: SCIM stays deferred, and a person disabled at the company login keeps an open session until the idle timeout or the 24-hour cap (bead hum7, Deferred).
 - Decided by the product owner on 2026-09-18 and no longer open: an archived directory group stops granting (R-32).
 - Decided by the product owner on 2026-09-18 and no longer open: Remove revokes and bans and keeps the name; erasure is `genie-ops erase` (R-43, design copy corrected).

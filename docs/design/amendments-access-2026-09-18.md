@@ -1,6 +1,8 @@
 # Amendments the Access redesign needs
 
-Date: 2026-09-18. Author: design owner. Status: raised, not applied.
+Date: 2026-09-18. Author: design owner. Status: superseded on 2026-11-02.
+
+Superseded on 2026-11-02. The owner accepted one access model that day: a group or a person has access to a module exactly when it holds at least one role of that module. The amendments rewritten to that model are applied in `../specs/02-identity-and-access.md` (R-37 to R-38, AC-28), in the amendment lines of `DEC-50` and `DEC-23` in `../core/decision-log.md`, in Specifications 03 and 04, and in `../architecture/module-contract.md`. U4 to U7 are resolved there. U1 to U3 stay open in the open questions of Specification 02. Read the text below as history only.
 
 This round moves every grant and revoke into one core screen, Access. The design tree is updated. The platform documents are not: this file lists what a document says today, what the design needs, and why. Nothing under `/home/kenan/work/genie-ops-center-v2` was edited. The platform owner decides each item.
 

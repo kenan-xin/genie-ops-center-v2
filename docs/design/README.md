@@ -21,7 +21,7 @@ Design rounds and the core section each one serves. The rounds carry no numberin
 | `sections/sign-in-and-tenant-pages` | Section 1 (not-set-up page) and Section 2 (sign-in, break-glass sign-in) |
 | `sections/account-and-inbox` | Section 2 (account page, sessions) and Section 3 (idle timeout, shell empty state, personal overrides). The Notifications page, opened from the header bell, is a later capability, Section 6 item 5. |
 | `sections/people-groups-and-roles` | Section 2 |
-| `sections/access` | Section 2. Grants writes every role assignment, Overview reads who reaches what. The amendments this round needs are in `amendments-access-2026-09-18.md` |
+| `sections/access` | Section 2. Grants writes every role assignment, Overview reads who reaches what. The amendments of `amendments-access-2026-09-18.md` are superseded by the access model of 2026-11-02, applied in Specification 02 (R-37 to R-38) |
 | `sections/branding` | Section 3 |
 | `sections/audit-and-tenant-settings` | Section 2 item 12 (audit reader) and Section 3 (Tenant settings, Modules, Categories) |
 | `sections/email-templates` | Section 3 |
