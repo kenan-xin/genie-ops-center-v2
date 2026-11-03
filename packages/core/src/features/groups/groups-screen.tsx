@@ -885,7 +885,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
                         <GroupName value={groupLabel(group)} />
                       </span>
                       <span className="text-xs font-normal text-muted-foreground wrap-anywhere">
-                        {group.description}
+                        {group.description === "" ? "—" : group.description}
                       </span>
                     </span>
                   </span>
