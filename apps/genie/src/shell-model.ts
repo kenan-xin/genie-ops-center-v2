@@ -23,6 +23,7 @@ export const shellModel = cache(async (): Promise<ShellModel> => {
         "core-people": t("coreNavigation.people"),
         "core-groups": t("coreNavigation.groups"),
         "core-roles": t("coreNavigation.roles"),
+        "core-access": t("coreNavigation.access"),
         "core-branding": t("coreNavigation.branding"),
         "core-settings": t("coreNavigation.settings"),
         "core-audit": t("coreNavigation.audit"),

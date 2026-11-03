@@ -13,12 +13,12 @@ export async function generateMetadata() {
 }
 
 /**
- * The Access screen, behind `core:roles:manage` (R-37e). It shares the Roles key, because it is
- * the one screen that writes who holds a role (DEC-39). The one authorization seam refuses an
+ * The Access screen, behind `core:roles:manage` (R-37e). Its navigation entry shares the Roles key,
+ * because Access is the one screen that writes who holds a role (DEC-39). The one authorization seam refuses an
  * anonymous or unpermitted request before the screen mounts, and every procedure checks again.
  */
 export default async function AccessPage() {
-  return renderIfPermitted(coreAdminPermission("core-roles"), async () => (
+  return renderIfPermitted(coreAdminPermission("core-access"), async () => (
     <main>
       <AccessRoute />
     </main>

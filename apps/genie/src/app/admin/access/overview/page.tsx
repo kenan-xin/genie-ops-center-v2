@@ -20,7 +20,7 @@ export async function generateMetadata() {
  */
 export default async function AccessOverviewPage() {
   return renderIfPermitted(
-    coreAdminPermission("core-roles"),
+    coreAdminPermission("core-access"),
     async (caller) => {
       const branding = await requireContext().tenant.branding.get();
 

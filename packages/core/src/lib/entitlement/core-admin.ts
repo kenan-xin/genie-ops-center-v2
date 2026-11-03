@@ -32,6 +32,13 @@ const CORE_ADMIN_GROUPS = [
         surface: "admin",
         requiredPermission: "core:roles:manage",
       },
+      {
+        id: "core-access",
+        label: "Access",
+        path: "/admin/access",
+        surface: "admin",
+        requiredPermission: "core:roles:manage",
+      },
     ],
   },
   {

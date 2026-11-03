@@ -51,14 +51,23 @@ describe("core admin pages", () => {
     expect(found).toEqual(
       [
         ...entries.map((entry) => `${entry.path.slice(1)}/loading.tsx`),
-        // An admin page with its own PageLoading; S2-24 gives it the navigation entry above.
-        "admin/access/loading.tsx",
         "(workspace)/placeholder/[[...path]]/loading.tsx",
         "(workspace)/m/[moduleId]/[[...path]]/loading.tsx",
         "admin/placeholder/[[...path]]/loading.tsx",
         "admin/m/[moduleId]/[[...path]]/loading.tsx",
       ].toSorted()
     );
+  });
+
+  it("lists Access between Roles and Branding (R-29b)", () => {
+    const ids = entries.map((entry) => entry.id);
+    const at = ids.indexOf("core-roles");
+
+    expect(ids.slice(at, at + 3)).toEqual([
+      "core-roles",
+      "core-access",
+      "core-branding",
+    ]);
   });
 
   it("refuses an id the table does not declare at compile time", () => {
