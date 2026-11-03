@@ -402,7 +402,7 @@ export function GroupInspector(
                       </Button>
                     ) : null}
                   </div>
-                  <ul aria-label="Members" className="divide-y divide-input">
+                  <ul aria-label="Members" className="divide-y divide-border">
                     {props.members.map((member) => (
                       <li
                         key={member.id}
@@ -442,7 +442,7 @@ export function GroupInspector(
             </TabsContent>
 
             <TabsContent value="roles">
-              <ul className="divide-y divide-input">
+              <ul className="divide-y divide-border">
                 {props.assignments.map((assignment) => (
                   <li
                     key={assignment.id}

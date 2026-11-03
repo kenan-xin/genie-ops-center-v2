@@ -443,7 +443,7 @@ function RoleDetailView(props: {
           <p className="text-sm text-muted-foreground">
             A role held through a group changes for every member of that group.
           </p>
-          <ul className="mt-1 divide-y divide-input">
+          <ul className="mt-1 divide-y divide-border">
             {detail.assignments.map((assignment) => (
               <li key={assignment.id} className="py-2 text-sm text-foreground">
                 {assignment.principalLabel}

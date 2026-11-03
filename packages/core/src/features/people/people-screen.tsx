@@ -408,7 +408,7 @@ export function PersonInspector(props: {
                   </Button>
                 )}
               </div>
-              <ul className="divide-y divide-input">
+              <ul className="divide-y divide-border">
                 {person.assignments.map((assignment) => (
                   <li
                     key={assignment.id}
@@ -529,7 +529,7 @@ function PersonSessions(props: {
 }) {
   return (
     <>
-      <ul className="divide-y divide-input">
+      <ul className="divide-y divide-border">
         {props.sessions.map((session) => (
           <li
             key={session.id}
