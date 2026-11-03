@@ -199,7 +199,8 @@ export async function listRoles(
   const entitled = await entitlementByModule(tenant, modules);
 
   const result = await tenant.db.$client.query(
-    `select ${ROLE_COLUMNS} from role r order by r.is_system desc, lower(r.name)`
+    `select ${ROLE_COLUMNS} from role r
+      order by r.is_system desc, r.module_id is not null, lower(r.name)`
   );
 
   // SAFETY: the statement selects exactly the role columns.

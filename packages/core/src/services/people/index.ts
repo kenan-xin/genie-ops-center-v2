@@ -164,7 +164,7 @@ const PERSON_COLUMNS = `
   exists(select 1 from account a where a.user_id = u.id and a.provider_id = 'credential') as local,
   coalesce(
     (select json_agg(json_build_object('id', g.id::text, 'label', ${groupLabelSql("g")})
-                     order by lower(${groupLabelSql("g")}))
+                     order by g.source = 'local', lower(${groupLabelSql("g")}))
        from group_member m join "group" g on g.id = m.group_id
       where m.user_id = u.id),
     '[]'::json) as groups,

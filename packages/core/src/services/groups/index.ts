@@ -138,7 +138,7 @@ export async function listGroups(
     `select ${GROUP_COLUMNS}
        from "group" g
       where ($1::boolean or g.archived_at is null)
-      order by (g.archived_at is not null), lower(${groupLabelSql("g")})`,
+      order by (g.archived_at is not null), g.source = 'local', lower(${groupLabelSql("g")})`,
     [options.includeArchived]
   );
 

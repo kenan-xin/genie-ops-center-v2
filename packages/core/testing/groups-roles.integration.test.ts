@@ -421,6 +421,53 @@ describe("the groups router against a real database", () => {
     expect(own.map((g) => g.name)).toEqual(["Pilot finance"]);
   });
 
+  it("G6: lists a person's directory groups before their local groups", async () => {
+    const member = await insertUser(deployment.context);
+
+    await insertGroup(deployment.context, [member], {
+      name: `Aaa local ${Date.now()}`,
+    });
+    await insertGroup(deployment.context, [member], {
+      name: `Zzz directory ${Date.now()}`,
+      externalId: `Zzz directory ${Date.now()}`,
+      source: "idp",
+      lastSeenAt: new Date(),
+    });
+
+    const { userId: actor } = await insertPersonWith(deployment.context, [
+      "core:people:manage",
+    ]);
+
+    const people = await peopleCaller(actor).list();
+
+    expect(
+      people
+        .find((person) => person.id === member)
+        ?.groups.map((g) => g.label.slice(0, 3))
+    ).toEqual(["Zzz", "Aaa"]);
+  });
+
+  it("G28: lists directory groups before local groups", async () => {
+    const local = await insertGroup(deployment.context, [], {
+      name: `Aaa local list ${Date.now()}`,
+    });
+
+    const directory = await insertGroup(deployment.context, [], {
+      name: `Zzz directory list ${Date.now()}`,
+      externalId: `Zzz directory list ${Date.now()}`,
+      source: "idp",
+      lastSeenAt: new Date(),
+    });
+
+    const actor = await insertManager();
+
+    const ids = (
+      await groupsCaller(actor).list({ includeArchived: false })
+    ).map((entry) => entry.id);
+
+    expect(ids.indexOf(directory)).toBeLessThan(ids.indexOf(local));
+  });
+
   it("edits and clears a directory group label with a catalogue audit row", async () => {
     const actor = await insertManager();
 
@@ -1310,6 +1357,26 @@ describe("the review fixes", () => {
         .from(roleAssignment)
         .where(eq(roleAssignment.id, assignmentId))
     ).toEqual([]);
+  });
+});
+
+describe("the roles list order", () => {
+  it("G41: lists core roles, then module roles, then custom roles", async () => {
+    const actor = await insertManager();
+
+    await deployment.context.db.insert(roleTable).values({
+      name: `Aaa fixture role ${Date.now()}`,
+      permissions: ["fixture:use"],
+      moduleId: "fixture",
+      isSystem: true,
+    });
+
+    const kinds = (await rolesCaller(actor).list()).map((entry) =>
+      entry.kind === "custom" ? "custom" : (entry.moduleId ?? "core")
+    );
+
+    expect(kinds.lastIndexOf("core")).toBeLessThan(kinds.indexOf("fixture"));
+    expect(kinds.lastIndexOf("fixture")).toBeLessThan(kinds.indexOf("custom"));
   });
 });
 
