@@ -14,6 +14,20 @@ Specification: [07-invoice-and-payments.md](../specs/07-invoice-and-payments.md)
 
 Critical path: S7-01, S7-03, S7-06, S7-07, S7-08, S7-09, S7-15. The agent and the editors run beside it.
 
+Follow-up of the wave 4 review (owner, 2026-11-03). The phases run one after another. P2-4 to P2-7 run on an Opus model.
+
+| Phase | Work | Tickets |
+| --- | --- | --- |
+| P2-0 | Spec 7 rulings and the ticket files | none |
+| P2-1 | Collapsible icon rail first, because Ask's layout depends on it, then the date picker that the list header needs | `6wz1.89`, S7-16, `xok3.49` |
+| P2-2 | One list header in `packages/ui`, virtualized `DataTable`, sorting in the database with the Updated column | S7-17 to S7-22 |
+| P2-3 | Document desk on the records, then the review fixes | S7-23 to S7-27 |
+| P2-4 | Agent panel, Ask layout and artifact panel on one shared component set, Ask in the main menu | S7-28 to S7-30 |
+| P2-5 | Page context through the module contract, the deck change tool, the deck retry fixes | S7-31 to S7-33 |
+| P2-6 | Compaction with its summary line, short lists, table artifacts and file exports as a core background job | S7-34, S7-35 |
+| P2-7 | Answer rules, the expected-answers file, live re-recording, demo step 9 | S7-36 to S7-39 |
+| P2-8 | Dry run, signed off by the owner | none |
+
 ## Boundaries
 
 - Core never names a module table. Datasets compose over the select a module returns (`DEC-54`).
