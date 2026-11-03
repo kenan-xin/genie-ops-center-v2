@@ -9,6 +9,7 @@ import {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
   Field,
   FieldLabel,
 } from "../index.ts";
@@ -69,6 +70,28 @@ export const Default: Story = {
       expect(screen.getByText("No one matches.")).toBeVisible()
     );
   },
+};
+
+/** The search inside the popup: a trigger shows the choice, and the field opens with the list. */
+export const WithTrigger: Story = {
+  render: () => (
+    <Combobox<Person> items={people} value={null} onValueChange={fn()}>
+      <ComboboxTrigger aria-label="Person">Choose a person</ComboboxTrigger>
+      <ComboboxContent>
+        <div className="p-2">
+          <ComboboxInput aria-label="Search people" placeholder="Search" />
+        </div>
+        <ComboboxEmpty>No one matches.</ComboboxEmpty>
+        <ComboboxList>
+          {(person: Person) => (
+            <ComboboxItem key={person.value} value={person}>
+              {person.label}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  ),
 };
 
 export const Dark: Story = {

@@ -45,6 +45,7 @@ export {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
 } from "./components/combobox.tsx";
 
 export {

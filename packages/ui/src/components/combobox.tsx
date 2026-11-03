@@ -1,10 +1,11 @@
 "use client";
 
 // From the shadcn base-nova `combobox`, trimmed to a search field and its list and moved onto the
-// tokens `select.tsx` uses. The chips, the clear button, the trigger and the input group are left
-// out until a screen needs them.
+// tokens `select.tsx` uses. The chips, the clear button and the input group are left out until a
+// screen needs them.
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
+import { ChevronDownIcon } from "lucide-react";
 
 import { focusRing } from "../theme/tokens.ts";
 import { Input } from "./input.tsx";
@@ -19,6 +20,34 @@ function ComboboxInput(props: ComboboxPrimitive.Input.Props) {
       render={<Input />}
       {...props}
     />
+  );
+}
+
+/**
+ * The button that opens the list, for the search-inside-the-popup form. It takes the shape of the
+ * md `SelectTrigger`, and its text is the current choice or the prompt.
+ */
+function ComboboxTrigger({
+  className,
+  children,
+  ...props
+}: ComboboxPrimitive.Trigger.Props) {
+  return (
+    <ComboboxPrimitive.Trigger
+      data-slot="combobox-trigger"
+      className={cn(
+        "flex h-10 min-h-10 w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-sm whitespace-nowrap text-foreground motion-safe:transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50",
+        focusRing,
+        className
+      )}
+      {...props}
+    >
+      <span className="truncate">{children}</span>
+      <ChevronDownIcon
+        aria-hidden="true"
+        className="pointer-events-none size-4 shrink-0 text-muted-foreground"
+      />
+    </ComboboxPrimitive.Trigger>
   );
 }
 
@@ -99,4 +128,5 @@ export {
   ComboboxInput,
   ComboboxItem,
   ComboboxList,
+  ComboboxTrigger,
 };
