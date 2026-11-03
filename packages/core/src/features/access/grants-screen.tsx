@@ -341,7 +341,11 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      {/* A save in flight freezes the recipient and the rows: an edit made now would race the write. */}
+      <div
+        inert={saving}
+        className="flex flex-wrap items-center gap-x-3 gap-y-2"
+      >
         <span
           id="grants-grant-to"
           className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
@@ -387,6 +391,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
         />
       ) : (
         <section
+          inert={saving}
           aria-labelledby="grants-heading"
           className="flex flex-col rounded-xl border border-border bg-card"
         >

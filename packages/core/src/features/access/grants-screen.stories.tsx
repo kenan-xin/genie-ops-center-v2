@@ -288,6 +288,34 @@ export const SaveRefused: Story = {
   },
 };
 
+/** A save in flight freezes the picker and the rows, so no edit races the write it does not see. */
+export const SaveInFlight: Story = {
+  args: {
+    initial: group("g-ops"),
+    onSave: fn(() => new Promise<void>(() => undefined)),
+  },
+  play: async ({ canvas }) => {
+    const choice = await canvas.findByRole("combobox", {
+      name: "Role for Invoices",
+    });
+
+    await userEvent.click(choice);
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Finance" })
+    );
+    await userEvent.click(
+      pendingBar().getByRole("button", { name: "Save changes" })
+    );
+
+    await waitFor(() => expect(choice.closest("[inert]")).not.toBeNull());
+    await expect(
+      canvas
+        .getByRole("button", { name: "People", hidden: true })
+        .closest("[inert]")
+    ).not.toBeNull();
+  },
+};
+
 /** P17: a `?role=` link stages a change on the first recipient, and writes nothing. */
 export const PrefilledRoleLink: Story = {
   args: { initial: group("g-ops"), link: { role: "r-invoices-finance" } },
