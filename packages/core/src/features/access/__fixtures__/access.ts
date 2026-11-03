@@ -109,6 +109,72 @@ export function fixturePath(input: {
   };
 }
 
+const holder = {
+  ops: { type: "group", id: "g-ops", name: "Operations" },
+  finance: { type: "group", id: "g-finance", name: "Finance team" },
+  sales: { type: "group", id: "g-sales", name: "Sales desk" },
+  jamie: { type: "user", id: "p-jamie", name: "Jamie Chen" },
+  sam: { type: "user", id: "p-sam", name: "Sam Rivera" },
+} as const;
+
+const role = (id: string) => {
+  const found = FIXTURE_ROWS.flatMap((row) =>
+    row.roles.map((candidate) => ({ row: row.id, role: candidate }))
+  ).find((entry) => entry.role.id === id);
+
+  if (found === undefined) throw new Error(`No fixture role ${id}`);
+
+  return { role: found.role, moduleId: found.row };
+};
+
+const held = (id: string, by: AccessPath["holder"], roleId: string) =>
+  fixturePath({ id, holder: by, ...role(roleId) });
+
+const financeInvoices = held("a-fin-1", holder.finance, "r-invoices-finance");
+
+/**
+ * The paths of the S2-19 read for each sample recipient, as the prototype states draw them:
+ * Operations (role choice), Jamie Chen (a group path stays), Sam Rivera (no path stays),
+ * Finance team (Analytics is off), and Sales desk (Ask, with Tenant administrator not shown).
+ */
+const PATHS = {
+  "g-ops": [
+    held("a-ops-1", holder.ops, "r-invoices-viewer"),
+    held("a-ops-2", holder.ops, "r-slides-editor"),
+    held("a-ops-3", holder.ops, "r-ask-user"),
+  ],
+  "g-finance": [
+    financeInvoices,
+    held("a-fin-2", holder.finance, "r-analytics-viewer"),
+  ],
+  "g-sales": [
+    held("a-sales-1", holder.sales, "r-ask-user"),
+    {
+      ...fixturePath({
+        id: "a-sales-2",
+        holder: holder.sales,
+        role: { id: "r-tenant-admin", name: "Tenant administrator" },
+        moduleId: "core",
+      }),
+      role: {
+        id: "r-tenant-admin",
+        name: "Tenant administrator",
+        kind: "system",
+        moduleId: null,
+        permissions: ["core:ask:use", "core:roles:manage"],
+      },
+    },
+  ],
+  "p-jamie": [
+    held("a-jamie-1", holder.jamie, "r-invoices-viewer"),
+    financeInvoices,
+  ],
+  "p-sam": [held("a-sam-1", holder.sam, "r-slides-editor")],
+} satisfies Record<string, readonly AccessPath[]>;
+
+export const fixturePaths = (recipientId: string): readonly AccessPath[] =>
+  Object.entries(PATHS).find(([id]) => id === recipientId)?.[1] ?? [];
+
 /** Two people share the name Alex Morgan, as every seeded e2e person shares one name. */
 export const FIXTURE_RECIPIENTS: GrantRecipients = {
   groups: [

@@ -266,6 +266,9 @@ export type { EmptyStateProps } from "./parts/empty-state.tsx";
 
 export { HelpDisclosure } from "./parts/help-disclosure.tsx";
 
+// Core lists no Base UI dependency, so a core screen takes the hook from here.
+export { useMediaQuery } from "@base-ui/react/unstable-use-media-query";
+
 export { FormActionBar } from "./parts/form-action-bar.tsx";
 
 export { FilterDisclosure } from "./parts/filter-disclosure.tsx";

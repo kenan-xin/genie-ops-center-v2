@@ -6,6 +6,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./errors": "./src/lib/errors/index.ts",
+    "./features/access": "./src/features/access/index.ts",
     "./features/account": "./src/features/account/index.ts",
     "./features/agent": "./src/features/agent/index.ts",
     "./features/agent/bubble": "./src/features/agent/chat-bubble.tsx",
