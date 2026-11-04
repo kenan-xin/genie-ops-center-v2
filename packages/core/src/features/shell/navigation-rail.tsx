@@ -16,6 +16,7 @@ import {
   Inbox,
   Key,
   LayoutDashboard,
+  MessageCircle,
   Palette,
   Presentation,
   Receipt,
@@ -60,6 +61,7 @@ export type NavigationRailProps = {
 
 // Roles is ShieldCheck, not Shield: the admin capture draws the check.
 const CORE_ICONS = new Map<string, LucideIcon>([
+  ["core-ask", MessageCircle],
   ["core-people", Users],
   ["core-groups", UsersRound],
   ["core-roles", ShieldCheck],

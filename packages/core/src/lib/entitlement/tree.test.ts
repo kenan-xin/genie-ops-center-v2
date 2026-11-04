@@ -4,6 +4,7 @@ import { CORE_PERMISSION_KEYS } from "../../services/authorization/index.ts";
 import { validModule } from "../module-contract/__fixtures__/valid-module.ts";
 import type { Module, NavigationEntry } from "../module-contract/module.ts";
 import { CORE_ADMIN_NAVIGATION } from "./core-admin.ts";
+import { CORE_WORKSPACE_NAVIGATION } from "./core-workspace.ts";
 import { CORE_NAVIGATION_ID, type PermittedEntry } from "./index.ts";
 import { buildNavigationTree } from "./tree.ts";
 
@@ -60,6 +61,34 @@ const OPERATIONS = { id: "cat-operations", name: "Operations", position: 2 };
 const EMPTY = { id: "cat-empty", name: "Empty", position: 3 };
 
 describe("buildNavigationTree", () => {
+  it("lists Ask first in the workspace for a holder of core:ask:use only", () => {
+    const alpha = moduleWith("alpha", [entry("alpha-home", "Home")]);
+
+    // As `permittedNavigation` keeps Ask for a holder of its key, and drops it for anyone else.
+    const ask = CORE_WORKSPACE_NAVIGATION.map((declared) =>
+      Object.assign({}, declared, { moduleId: CORE_NAVIGATION_ID })
+    );
+
+    const tree = (permitted: readonly PermittedEntry[]) =>
+      buildNavigationTree({
+        modules: [alpha],
+        permitted,
+        categories: [],
+        categoryOf: new Map([["alpha", null]]),
+      });
+
+    const holder = tree([...permittedOf([alpha]), ...ask]);
+
+    expect(holder.workspace.map((item) => [item.id, item.path])).toEqual([
+      ["core-ask", "/ask"],
+      ["alpha-home", "/alpha-home"],
+    ]);
+
+    expect(tree(permittedOf([alpha])).workspace.map((item) => item.id)).toEqual(
+      ["alpha-home"]
+    );
+  });
+
   it("puts the entries of a module with no category in the workspace block, in declared order", () => {
     const alpha = moduleWith("alpha", [
       entry("alpha-zed", "Zed"),

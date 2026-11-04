@@ -6,6 +6,7 @@ import type {
   NavigationCategory,
 } from "../tenant-context/readers.ts";
 import { CORE_ADMIN_NAVIGATION } from "./core-admin.ts";
+import { CORE_WORKSPACE_NAVIGATION } from "./core-workspace.ts";
 import {
   CORE_NAVIGATION_ID,
   landingRoute,
@@ -101,6 +102,15 @@ export function buildNavigationTree(input: {
     ),
   }));
 
+  // Core's workspace entries lead the workspace block, in declared order (AG23).
+  const coreWorkspace = CORE_WORKSPACE_NAVIGATION.flatMap(
+    (declared) =>
+      input.permitted.find(
+        (entry) =>
+          entry.moduleId === CORE_NAVIGATION_ID && entry.id === declared.id
+      ) ?? []
+  );
+
   const moduleGroups = ofModules("admin").map(({ module, entries }) => ({
     id: module.identity.id,
     entries,
@@ -108,7 +118,7 @@ export function buildNavigationTree(input: {
 
   return {
     pinned,
-    workspace: byCategory.get(undefined) ?? [],
+    workspace: [...coreWorkspace, ...(byCategory.get(undefined) ?? [])],
     categories,
     admin: [...coreGroups, ...moduleGroups].filter(
       (group) => group.entries.length > 0
@@ -131,7 +141,10 @@ export async function navigationTree(input: {
       entitlements: input.tenant.entitlements,
       modules: input.modules,
       caller: input.caller,
-      coreEntries: CORE_ADMIN_NAVIGATION.flatMap((group) => group.entries),
+      coreEntries: [
+        ...CORE_WORKSPACE_NAVIGATION,
+        ...CORE_ADMIN_NAVIGATION.flatMap((group) => group.entries),
+      ],
     }),
     input.tenant.categories.list(),
     Promise.all(

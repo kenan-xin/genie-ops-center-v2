@@ -7,7 +7,11 @@ import { z } from "zod";
 import { ShellContext } from "../shell/shell-context.ts";
 import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
 import { AgentButton } from "./agent-button.tsx";
-import { AgentPanelHost } from "./agent-panel-host.tsx";
+import {
+  AGENT_PANEL_SESSION_KEY,
+  AGENT_PANEL_STORED_KEY,
+  AgentPanelHost,
+} from "./agent-panel-host.tsx";
 import { resetAgentPanel, useAgentPage } from "./agent-panel-store.ts";
 
 /** Ends the held answer of the last request. */
@@ -212,6 +216,61 @@ export const WorksWithThePanelClosed: Story = {
     await expect(
       await canvas.findByRole("button", { name: "Agent" })
     ).toBeVisible();
+  },
+};
+
+const openInAsk = () => screen.getByRole("link", { name: "Open in Ask" });
+
+// AM3: Open in Ask starts Ask afresh before any answer, continues the chat after one, and waits
+// while an answer streams, which Ask could not show yet (I1, Review Focus 3).
+export const OpenInAsk: Story = {
+  name: "Open in Ask",
+  render: () => <Frame page={false} />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await panel();
+
+    await expect(openInAsk()).toHaveAttribute("href", "/ask");
+
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Message" }),
+      "How many records are there?{Enter}"
+    );
+    await screen.findByText("Half an");
+    await expect(
+      screen.getByRole("button", { name: "Open in Ask" })
+    ).toBeDisabled();
+
+    release();
+    await screen.findByText("Half an answer.");
+
+    const id = sessionStorage.getItem(AGENT_PANEL_SESSION_KEY);
+
+    await waitFor(() =>
+      expect(openInAsk()).toHaveAttribute("href", `/ask/${id}`)
+    );
+
+    // New chat has no stored answer yet.
+    await userEvent.click(screen.getByRole("button", { name: "New chat" }));
+    await expect(openInAsk()).toHaveAttribute("href", "/ask");
+  },
+};
+
+const SAVED_ID = "00000000-0000-4000-8000-0000000000aa";
+
+// A page load keeps the tab's chat, and Open in Ask still continues it (I1).
+export const OpenInAskAfterAPageLoad: Story = {
+  name: "Open in Ask after a page load",
+  render: () => <Frame page={false} />,
+  beforeEach: () => {
+    sessionStorage.setItem(AGENT_PANEL_SESSION_KEY, SAVED_ID);
+    sessionStorage.setItem(AGENT_PANEL_STORED_KEY, SAVED_ID);
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await panel();
+
+    await expect(openInAsk()).toHaveAttribute("href", `/ask/${SAVED_ID}`);
   },
 };
 

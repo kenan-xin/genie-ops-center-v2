@@ -34,6 +34,7 @@
       "catalog": "Catalog"
     },
     "coreNavigation": {
+      "ask": "Ask",
       "people": "People",
       "groups": "Groups",
       "roles": "Roles",

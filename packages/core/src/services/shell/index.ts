@@ -104,14 +104,15 @@ export function administration(
 
 /**
  * Where home sends a person when no landing route resolves (R-34): the first workspace entry in the
- * navigation rail's order, the same rule as `adminHome`. Undefined means no grants.
+ * navigation rail's order, the same rule as `adminHome`. Core's entries are tools, not landing
+ * pages, so home skips them (AG23). Undefined means no grants.
  */
 export function workspaceHome(tree: NavigationTree): string | undefined {
   return [
     ...tree.workspace,
     ...tree.pinned,
     ...tree.categories.flatMap((category) => category.entries),
-  ][0]?.path;
+  ].find((entry) => entry.moduleId !== CORE_NAVIGATION_ID)?.path;
 }
 
 type RealmPageInput = {

@@ -31,6 +31,12 @@ import {
 /** The `sessionStorage` key that holds the panel's chat for this browser tab (`czjw.60`). */
 export const AGENT_PANEL_SESSION_KEY = "genie.agent-panel.session";
 
+/**
+ * The `sessionStorage` key that holds the id of the last chat with a stored answer, so Open in Ask
+ * names a chat that Ask can show, also after a page load (AG12).
+ */
+export const AGENT_PANEL_STORED_KEY = "genie.agent-panel.stored";
+
 /** From this width the panel is a column beside the page (AG11). */
 const DOCKED = "(min-width: 1280px)";
 
@@ -46,6 +52,8 @@ const clearOutbox = () => agentPanelStore.setState({ outbox: null });
 const pageContext = () => agentPanelStore.getState().page?.context;
 
 const pageFinished = () => agentPanelStore.getState().page?.onFinished?.();
+
+const openInAsk = "Open in Ask";
 
 /**
  * The agent panel of every signed-in page but Ask (R-42, `czjw.81`): from 1280 px a 400 px column,
@@ -81,6 +89,17 @@ export function AgentPanelHost(props: {
     sessionStorage.setItem(AGENT_PANEL_SESSION_KEY, sessionId);
   }, [sessionId]);
 
+  // A new chat has another id, so it counts as unstored until its first answer ends.
+  const [stored, setStored] = useState(() =>
+    globalThis.sessionStorage?.getItem(AGENT_PANEL_STORED_KEY)
+  );
+
+  const finished = (id: string) => {
+    sessionStorage.setItem(AGENT_PANEL_STORED_KEY, id);
+    setStored(id);
+    pageFinished();
+  };
+
   // The chat draws only once the panel opened, so a page load fetches no chat chunk.
   const [used, setUsed] = useState(false);
   // A new key reads the saved messages again, when the panel opens while no answer streams.
@@ -112,7 +131,10 @@ export function AgentPanelHost(props: {
     setPanelOpen(false);
   }
 
-  const Anchor = linkFor(ASK_HREF, shell?.linkComponent);
+  // Ask shows a chat only once it has a stored answer; before that Open in Ask starts Ask afresh.
+  const askHref = stored === sessionId ? `${ASK_HREF}/${sessionId}` : ASK_HREF;
+
+  const Anchor = linkFor(askHref, shell?.linkComponent);
 
   const panel = (
     <section
@@ -146,13 +168,26 @@ export function AgentPanelHost(props: {
           <PlusIcon aria-hidden="true" strokeWidth={1.75} />
           New chat
         </Button>
-        <Anchor
-          href={ASK_HREF}
-          aria-label="Open in Ask"
-          className={buttonVariants({ variant: "ghost", size: "icon" })}
-        >
-          <Maximize2Icon aria-hidden="true" strokeWidth={1.75} />
-        </Anchor>
+        {working ? (
+          // The answer is stored only when it ends, so Ask would show the question alone.
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled
+            aria-label={openInAsk}
+          >
+            <Maximize2Icon aria-hidden="true" strokeWidth={1.75} />
+          </Button>
+        ) : (
+          <Anchor
+            href={askHref}
+            aria-label={openInAsk}
+            className={buttonVariants({ variant: "ghost", size: "icon" })}
+          >
+            <Maximize2Icon aria-hidden="true" strokeWidth={1.75} />
+          </Anchor>
+        )}
         <Button
           type="button"
           variant="ghost"
@@ -187,7 +222,7 @@ export function AgentPanelHost(props: {
                   ? undefined
                   : { text: outbox.text, onSent: clearOutbox }
               }
-              onFinished={pageFinished}
+              onFinished={finished}
             />
           </Suspense>
         ) : null}

@@ -183,6 +183,26 @@ const entry = (path: string): PermittedEntry => ({
 });
 
 describe("workspaceHome", () => {
+  it("never sends home to Ask", () => {
+    const ask: PermittedEntry = {
+      id: "core-ask",
+      label: "Ask",
+      path: "/ask",
+      surface: "workspace",
+      requiredPermission: "core:ask:use",
+      moduleId: CORE_NAVIGATION_ID,
+    };
+
+    expect(
+      workspaceHome({
+        ...tree([]),
+        pinned: [],
+        workspace: [ask, entry("/w")],
+        categories: [],
+      })
+    ).toBe("/w");
+  });
+
   it("follows the rail: ungrouped entries, then pinned, then categories", () => {
     const empty = { ...tree([]), pinned: [], workspace: [], categories: [] };
     const finance = { id: "c1", name: "Finance", entries: [entry("/c")] };

@@ -20,6 +20,7 @@ export const shellModel = cache(async (): Promise<ShellModel> => {
     caller: await documentPrincipal(),
     labels: {
       coreEntries: {
+        "core-ask": t("coreNavigation.ask"),
         "core-people": t("coreNavigation.people"),
         "core-groups": t("coreNavigation.groups"),
         "core-roles": t("coreNavigation.roles"),
