@@ -298,8 +298,14 @@ export function DocumentInbox(props: DocumentInboxProps) {
     if (files === null) return;
 
     setRefusals([]);
-    // The new rows show under All, at the top under the default sort (LH20, I13).
-    state.set({ status: "all" });
+    // The new rows show under All with no filter, at the top under the default sort (LH20, I13).
+    state.set({
+      ...Object.fromEntries(
+        DEFINITION.filters.map((filter) => [filter.id, undefined])
+      ),
+      sort: undefined,
+      status: "all",
+    });
 
     for (const file of Array.from(files)) uploads.addItem(file);
 
@@ -316,8 +322,18 @@ export function DocumentInbox(props: DocumentInboxProps) {
 
   const counts = list.first?.counts ?? undefined;
   const needYou = counts?.["needs-you"] ?? 0;
-  // The server page counts the whole inbox, so a refused first upload keeps the drop zone.
-  const inboxEmpty = rows.length === 0 && (view.counts?.["all"] ?? 0) === 0;
+
+  // The tab never narrows the counts, so with no filter All counts the whole inbox. The latest
+  // page decides, so a first upload leaves the drop zone and a refused one keeps it.
+  const narrowed =
+    params.q !== undefined ||
+    params.type !== undefined ||
+    params.uploaded !== undefined;
+
+  const inboxEmpty =
+    rows.length === 0 &&
+    !narrowed &&
+    (counts?.["all"] ?? view.counts?.["all"] ?? 0) === 0;
 
   // The save-failure rule of DESIGN.md: one alert line with what failed and why; Retry stays the retry.
   const retryFailed =

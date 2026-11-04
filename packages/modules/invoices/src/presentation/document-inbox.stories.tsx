@@ -345,6 +345,64 @@ export const BackToNeedsYouAfterUpload: Story = {
   },
 };
 
+// The first upload into an empty inbox, then an empty tab: the header stays, so All is one click.
+export const EmptyTabAfterFirstUpload: Story = {
+  name: "Empty tab after the first upload",
+  args: { view: emptyDocumentInbox },
+  globals: desktop,
+  beforeEach: () => {
+    serve(emptyDocumentInbox);
+    const counts = { "needs-you": 0, "reading": 1, "done": 0, "all": 1 };
+
+    listDocuments.mockImplementation(
+      async ({ params }: { readonly params: { readonly status?: string } }) =>
+        params.status === "all"
+          ? { ...emptyDocumentInbox, rows: [NEW_UPLOAD], counts }
+          : { ...emptyDocumentInbox, counts }
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("new.pdf"),
+    ]);
+    await expect(
+      await canvas.findByRole("link", { name: "new.pdf" })
+    ).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("tab", { name: "Done" }));
+
+    await expect(
+      await canvas.findByText("No document matches these filters.")
+    ).toBeVisible();
+    await expect(canvas.getByRole("tab", { name: "All 1" })).toBeVisible();
+  },
+};
+
+// An upload clears the search, the filters and the sort, so the new row shows first (D2).
+export const UploadClearsTheFilters: Story = {
+  name: "Upload clears the filters",
+  globals: desktop,
+  beforeEach: () => {
+    serve({
+      ...defaultDocumentInbox,
+      rows: [NEW_UPLOAD, ...defaultDocumentInbox.rows],
+    });
+    atAddress("?q=order&type=invoice&sort=updated.asc");
+  },
+  play: async ({ canvas }) => {
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("new.pdf"),
+    ]);
+
+    await waitFor(() => expect(param("status")).toBe("all"));
+    await expect([param("q"), param("type"), param("sort")]).toEqual([
+      null,
+      null,
+      null,
+    ]);
+  },
+};
+
 export const Dark: Story = {
   globals: { ...desktop, theme: "dark" },
   beforeEach: () => serve(defaultDocumentInbox),
