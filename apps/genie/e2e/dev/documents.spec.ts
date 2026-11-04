@@ -4,6 +4,7 @@ import { expectNoAxeViolations } from "../support/axe.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
   copyOf,
+  FIRST_PAINT,
   LEDGER_LOCK,
   LOCK_WAIT,
   MONEY,
@@ -107,6 +108,49 @@ async function expectInboxRows(
     expect(problems).toEqual([]);
   }).toPass({ timeout });
 }
+
+/** React's words for a server and client render that differ (czjw.83). */
+const HYDRATION_MESSAGE = /hydrat|did not match|server rendered HTML/i;
+
+test("the inbox and a review page load with no hydration warning", async ({
+  page,
+}) => {
+  test.setTimeout(FIRST_PAINT.timeout * 3 + 60_000);
+
+  const messages: string[] = [];
+
+  page.on("console", (message) => messages.push(message.text()));
+  page.on("pageerror", (error) => messages.push(error.message));
+
+  // Each page gets its own document load, because a client navigation hydrates nothing.
+  const load = async (path: string) => {
+    const mounted = page.waitForResponse((response) =>
+      response.url().endsWith("/api/session/activity")
+    );
+
+    await page.goto(path);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible(
+      FIRST_PAINT
+    );
+    await mounted;
+  };
+
+  await signIn(page);
+  // The resting tab, then All, which holds a row on a fresh database too.
+  await load("/m/invoices/documents");
+  await load("/m/invoices/documents?status=all");
+
+  const review = await page
+    .getByRole("main")
+    .locator('a[href^="/m/invoices/documents/"]')
+    .first()
+    .getAttribute("href");
+
+  expect(review).toBeTruthy();
+  await load(review ?? "");
+
+  expect(messages.filter((text) => HYDRATION_MESSAGE.test(text))).toEqual([]);
+});
 
 test("uploads live documents and shows their statuses", async ({
   page,
