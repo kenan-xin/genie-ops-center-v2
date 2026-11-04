@@ -13,7 +13,13 @@ import { Document, Page, pdfjs, type TextContent } from "react-pdf";
 
 import "react-pdf/dist/Page/TextLayer.css";
 
-import { markedHtml, quoteRanges, type TextItem } from "./quote-marks.ts";
+import {
+  type CharRange,
+  markedHtml,
+  type MarkTag,
+  quoteRanges,
+  type TextItem,
+} from "./quote-marks.ts";
 
 pdfjs.GlobalWorkerOptions.workerSrc = new URL(
   "pdfjs-dist/build/pdf.worker.min.mjs",
@@ -23,13 +29,33 @@ pdfjs.GlobalWorkerOptions.workerSrc = new URL(
 // shortcut: no wasmUrl is set, so pdf.js decoders that need WASM, for example JPEG 2000
 // images, do not run. Set wasmUrl when a document that needs one must draw.
 
-export type ViewerHighlight = { readonly page: number; readonly quote: string };
+/**
+ * A quote to mark on a page. A `key` names its marks, so `onPlaces` reports where they sit; an
+ * untinted one (`tinted: false`) is found but shows no colour, and the viewer never scrolls to it.
+ */
+export type ViewerHighlight = {
+  readonly page: number;
+  readonly quote: string;
+  readonly key?: string;
+  readonly tinted?: false;
+};
+
+/** Where the marks of one key sit, in px from the top of the viewer region. */
+export type MarkPlace = {
+  readonly key: string;
+  readonly top: number;
+  readonly bottom: number;
+};
 
 export type DocumentViewerProps = {
   readonly url: string;
   /** The label of the document; it names the viewer region for assistive technology. */
   readonly label: string;
   readonly highlights: readonly ViewerHighlight[];
+  /** The places of the keyed marks, again after each page draws its text layer. */
+  readonly onPlaces?: (places: readonly MarkPlace[]) => void;
+  /** The file did not load: its link failed, or it is not a PDF. */
+  readonly onLoadError?: () => void;
 };
 
 /** The placeholder while the document or a page draws: one block of page shape. */
@@ -68,22 +94,58 @@ type PageProps = {
   readonly width: number;
   readonly highlights: readonly ViewerHighlight[];
   readonly failure: ReactNode;
+  /** The marks of this page, measured once its text layer has drawn. */
+  readonly onMarks: (pageNumber: number, marks: readonly HTMLElement[]) => void;
 };
+
+/** The ranges of each highlight, tagged with its index, so each mark can carry its key. */
+function taggedRanges(
+  items: readonly TextItem[],
+  quotes: readonly string[]
+): ReadonlyMap<number, readonly CharRange[]> {
+  const tagged = new Map<number, CharRange[]>();
+
+  quotes.forEach((quote, highlight) => {
+    for (const [item, ranges] of quoteRanges(items, [quote])) {
+      tagged.set(item, [
+        ...(tagged.get(item) ?? []),
+        ...ranges.map(([start, end]): CharRange => [start, end, highlight]),
+      ]);
+    }
+  });
+
+  return tagged;
+}
 
 /** One page at the measured width, with the quotes of its highlights marked in its text layer. */
 function DocumentPage(props: PageProps) {
+  const { onMarks, pageNumber } = props;
   const element = useRef<HTMLDivElement>(null);
   const [items, setItems] = useState<readonly TextItem[]>([]);
 
-  const quotes = useMemo(
-    () =>
-      props.highlights
-        .filter((highlight) => highlight.page === props.pageNumber)
-        .map((highlight) => highlight.quote),
-    [props.highlights, props.pageNumber]
+  const own = useMemo(
+    () => props.highlights.filter((highlight) => highlight.page === pageNumber),
+    [props.highlights, pageNumber]
   );
 
-  const ranges = useMemo(() => quoteRanges(items, quotes), [items, quotes]);
+  const tags = useMemo(
+    () =>
+      own.map((highlight): MarkTag =>
+        highlight.key === undefined
+          ? { tinted: highlight.tinted !== false }
+          : { key: highlight.key, tinted: highlight.tinted !== false }
+      ),
+    [own]
+  );
+
+  const ranges = useMemo(
+    () =>
+      taggedRanges(
+        items,
+        own.map((highlight) => highlight.quote)
+      ),
+    [items, own]
+  );
 
   const rememberItems = useCallback(({ items: found }: TextContent) => {
     setItems(textItems(found));
@@ -96,15 +158,24 @@ function DocumentPage(props: PageProps) {
     }: {
       readonly str: string;
       readonly itemIndex: number;
-    }) => markedHtml(str, ranges.get(itemIndex) ?? []),
-    [ranges]
+    }) => markedHtml(str, ranges.get(itemIndex) ?? [], tags),
+    [ranges, tags]
   );
 
   const revealMark = useCallback(() => {
-    element.current
-      ?.querySelector("mark")
+    const page = element.current;
+
+    page
+      ?.querySelector("mark:not([data-untinted])")
       ?.scrollIntoView({ block: "nearest" });
-  }, []);
+
+    onMarks(
+      pageNumber,
+      page === null
+        ? []
+        : Array.from(page.querySelectorAll<HTMLElement>("mark[data-highlight]"))
+    );
+  }, [onMarks, pageNumber]);
 
   return (
     <Page
@@ -121,11 +192,55 @@ function DocumentPage(props: PageProps) {
   );
 }
 
+/** The union of each key's marks, measured against the viewer region. */
+function placesOf(
+  region: HTMLElement,
+  marks: readonly HTMLElement[]
+): MarkPlace[] {
+  const origin = region.getBoundingClientRect().top;
+  const byKey = new Map<string, MarkPlace>();
+
+  for (const mark of marks) {
+    const key = mark.dataset.highlight;
+    const box = mark.getBoundingClientRect();
+
+    if (key === undefined || box.height === 0) continue;
+
+    const seen = byKey.get(key);
+    const top = box.top - origin;
+    const bottom = box.bottom - origin;
+
+    byKey.set(key, {
+      key,
+      top: seen === undefined ? top : Math.min(seen.top, top),
+      bottom: seen === undefined ? bottom : Math.max(seen.bottom, bottom),
+    });
+  }
+
+  return [...byKey.values()];
+}
+
 /** The pages of one document at the width of their container, with the source text marked (R-38). */
 export function DocumentViewer(props: DocumentViewerProps): ReactNode {
+  const { onPlaces, onLoadError } = props;
   const container = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
   const [pageCount, setPageCount] = useState(0);
+  const pagePlaces = useRef(new Map<number, readonly MarkPlace[]>());
+
+  const reportMarks = useCallback(
+    (pageNumber: number, marks: readonly HTMLElement[]) => {
+      const region = container.current;
+
+      if (region === null || onPlaces === undefined) return;
+
+      pagePlaces.current.set(pageNumber, placesOf(region, marks));
+      onPlaces([...pagePlaces.current.values()].flat());
+    },
+    [onPlaces]
+  );
+
+  const failed = useCallback(() => onLoadError?.(), [onLoadError]);
 
   useEffect(() => {
     const element = container.current;
@@ -151,7 +266,7 @@ export function DocumentViewer(props: DocumentViewerProps): ReactNode {
       aria-label={props.label}
       data-document-viewer=""
       data-document-url={props.url}
-      className="w-full min-w-0 [&_mark]:bg-primary/25"
+      className="w-full min-w-0 [&_mark:not([data-untinted])]:bg-primary/25 [&_mark[data-untinted]]:bg-transparent [&_mark[data-untinted]]:text-transparent"
     >
       {width === 0 ? (
         <PageSkeleton />
@@ -162,6 +277,8 @@ export function DocumentViewer(props: DocumentViewerProps): ReactNode {
           loading={<PageSkeleton />}
           error={<LoadFailure url={props.url} />}
           onLoadSuccess={({ numPages }) => setPageCount(numPages)}
+          onLoadError={failed}
+          onSourceError={failed}
           className="flex flex-col gap-4"
         >
           {Array.from({ length: pageCount }, (_, index) => (
@@ -171,6 +288,7 @@ export function DocumentViewer(props: DocumentViewerProps): ReactNode {
               width={width}
               highlights={props.highlights}
               failure={<LoadFailure url={props.url} />}
+              onMarks={reportMarks}
             />
           ))}
         </Document>

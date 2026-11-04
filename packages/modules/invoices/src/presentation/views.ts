@@ -31,6 +31,7 @@ export type {
   PaymentListSummary,
   PaymentRecordView,
   PaymentStatus,
+  RecordField,
 } from "../contract.ts";
 
 /** The Documents inbox as the server rendered it and as the client pages it (czjw.49). */

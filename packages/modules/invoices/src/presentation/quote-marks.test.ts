@@ -89,4 +89,22 @@ describe("the source marks of a page", () => {
       1: [[0, 14]],
     });
   });
+
+  // D5: the desk finds each pin's line by its key, and an untinted mark shows no colour.
+  it("names each mark by its highlight's key, and marks an untinted one as untinted", () => {
+    const html = markedHtml(
+      "Invoice date 2026-09-03",
+      [
+        [0, 12, 0],
+        [13, 23, 1],
+      ],
+      [
+        { key: "date", tinted: false },
+        { key: 'a"b', tinted: true },
+      ]
+    );
+
+    expect(html).toContain('<mark data-highlight="date" data-untinted="">');
+    expect(html).toContain('<mark data-highlight="a&quot;b">2026-09-03</mark>');
+  });
 });

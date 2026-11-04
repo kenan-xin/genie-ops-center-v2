@@ -8,8 +8,9 @@ Plain deterministic data and the view types that describe it. A fixture is a lit
 written in English, stable across runs, so a story renders the same thing every time and a failure
 names a real change.
 
-`pdfs/` holds copies of the live demo files that the review stories draw. `demo-pdfs.ts` imports
-them as URLs, so a Storybook build without this module emits none of them.
+`pdfs/` holds copies of the live demo files that the review stories draw, and of the history PDF
+that the record stories draw. `demo-pdfs.ts` imports them as URLs, so a Storybook build without
+this module emits none of them.
 
 ## What must not go here
 
@@ -18,4 +19,5 @@ runs at application runtime. A fixture exists for a story and never reaches a ru
 
 ## What it imports
 
-Only the view types from `../views.ts`, and the PDFs of `pdfs/` as URLs.
+Only the view types from `../views.ts`, the `DeskField` type of `../desk-canvas.tsx`, and the PDFs
+of `pdfs/` as URLs.

@@ -7,7 +7,15 @@ import {
 
 export type TextItem = { readonly str: string; readonly hasEOL: boolean };
 
-export type CharRange = readonly [start: number, end: number];
+/** A marked range of one item; `highlight` is the index of its highlight in the tags. */
+export type CharRange = readonly [
+  start: number,
+  end: number,
+  highlight?: number,
+];
+
+/** How a highlight's marks are written: its key names them, and an untinted one shows no colour. */
+export type MarkTag = { readonly key?: string; readonly tinted: boolean };
 
 /** Where a page character came from: its text item, and its index in that item's `str`. */
 type Source = { readonly item: number; readonly index: number };
@@ -89,13 +97,27 @@ export function quoteRanges(
   );
 }
 
+/** The opening tag of a range's mark: plain, or with its highlight's key and untinted flag. */
+function openMark(tag: MarkTag | undefined): string {
+  if (tag === undefined) return "<mark>";
+
+  const key =
+    tag.key === undefined ? "" : ` data-highlight="${escape(tag.key)}"`;
+
+  return `<mark${key}${tag.tinted ? "" : ' data-untinted=""'}>`;
+}
+
 /** One text item as HTML: every character escaped, each range inside one `<mark>`. */
-export function markedHtml(str: string, ranges: readonly CharRange[]): string {
+export function markedHtml(
+  str: string,
+  ranges: readonly CharRange[],
+  tags: readonly MarkTag[] = []
+): string {
   const sorted = ranges.toSorted((a, b) => a[0] - b[0]);
   let html = "";
   let at = 0;
 
-  for (const [start, end] of sorted) {
+  for (const [start, end, highlight] of sorted) {
     const from = Math.max(at, Math.min(start, str.length));
     const to = Math.min(Math.max(end, from), str.length);
 
@@ -103,7 +125,9 @@ export function markedHtml(str: string, ranges: readonly CharRange[]): string {
     at = from;
 
     if (to > from) {
-      html += `<mark>${escape(str.slice(from, to))}</mark>`;
+      const tag = highlight === undefined ? undefined : tags[highlight];
+
+      html += `${openMark(tag)}${escape(str.slice(from, to))}</mark>`;
       at = to;
     }
   }

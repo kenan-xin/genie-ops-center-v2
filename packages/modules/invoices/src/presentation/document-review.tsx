@@ -12,23 +12,16 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Skeleton,
   ToggleGroup,
   ToggleGroupItem,
   WarningNote,
 } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  lazy,
-  Suspense,
-  useMemo,
-  useState,
-  useSyncExternalStore,
-  type ReactNode,
-} from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
 import { type DocumentKind, kindText } from "./document-kind.ts";
+import { LazyDocumentViewer } from "./document-viewer-lazy.tsx";
 import { shortName } from "./format.ts";
 import { InvoiceReviewForm } from "./invoice-review-form.tsx";
 import { PaymentReviewForm } from "./payment-review-form.tsx";
@@ -43,13 +36,6 @@ import type { DocumentReviewView } from "./views.ts";
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
 
 const POLL_MS = 3_000;
-
-// react-pdf stays out of the module client's main bundle (decision 1).
-const LazyDocumentViewer = lazy(() =>
-  import("./document-viewer.tsx").then((module) => ({
-    default: module.DocumentViewer,
-  }))
-);
 
 const KIND_ITEMS: readonly {
   readonly value: DocumentKind;
@@ -68,12 +54,6 @@ const TRAIL = {
   parent: { label: "Documents", href: DOCUMENTS_HREF },
   current: "Review",
 } as const;
-
-const subscribeToNothing = () => () => {};
-
-const inBrowser = () => true;
-
-const onServer = () => false;
 
 function titleOf(kind: DocumentKind | null): string {
   switch (kind) {
@@ -115,7 +95,6 @@ export function DocumentReview(props: {
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
   // Below `lg` one pane shows at a time; from `lg` both sit side by side (choice 14).
   const [pane, setPane] = useState<"fields" | "document">("fields");
-  const browser = useSyncExternalStore(subscribeToNothing, inBrowser, onServer);
 
   const review = useQuery({
     queryKey: [...DOCUMENTS_QUERY, id],
@@ -278,19 +257,11 @@ export function DocumentReview(props: {
         <div
           className={`min-w-0 ${pane === "document" ? "" : "max-lg:hidden"}`}
         >
-          {browser ? (
-            <Suspense
-              fallback={<Skeleton aria-hidden className="aspect-3/4 w-full" />}
-            >
-              <LazyDocumentViewer
-                url={firstFileUrl}
-                label={label}
-                highlights={highlights}
-              />
-            </Suspense>
-          ) : (
-            <Skeleton aria-hidden className="aspect-3/4 w-full" />
-          )}
+          <LazyDocumentViewer
+            url={firstFileUrl}
+            label={label}
+            highlights={highlights}
+          />
         </div>
         {/* `overflow-clip`, not `-hidden`, so the save bar sticks to the screen, not the card. */}
         <Card
