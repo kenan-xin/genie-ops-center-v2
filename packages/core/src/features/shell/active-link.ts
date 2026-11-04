@@ -1,5 +1,10 @@
 import type { ShellLink, ShellNavigation } from "./types.ts";
 
+/** Core's Ask page and its chats, which open the main menu as the rail (R-42a). */
+export function isAskPath(path: string): boolean {
+  return path === "/ask" || path.startsWith("/ask/");
+}
+
 /** Every link the rail can show, over all four lists. */
 export function shellLinks(navigation: ShellNavigation): readonly ShellLink[] {
   return [

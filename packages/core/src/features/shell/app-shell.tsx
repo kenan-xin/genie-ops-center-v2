@@ -13,9 +13,16 @@ import {
   useMediaQuery,
 } from "@genie/ui";
 import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useEffectEvent,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
-import { activeHref, shellLinks } from "./active-link.ts";
+import { activeHref, isAskPath, shellLinks } from "./active-link.ts";
 import { IdentityBlock, TenantMark } from "./identity-block.tsx";
 import { deviceStorage, NavigationRail } from "./navigation-rail.tsx";
 import { OfflineBar } from "./offline-bar.tsx";
@@ -134,41 +141,49 @@ export function AppShell(props: AppShellProps) {
 
   // The server render is the open menu; the device's choice applies after mount (R-31 pattern).
   const [storedRail, setStoredRail] = useState(false);
+  // Each arrival at Ask starts as the rail, and a toggle there is never stored (R-42a, SD5).
+  const [askRail, setAskRail] = useState(true);
 
   useEffect(() => {
     setStoredRail(readRail(deviceStorage()));
   }, []);
 
-  const rail = storedRail;
+  const onAsk = isAskPath(props.currentPath);
+  const rail = onAsk ? askRail : storedRail;
 
   const toggleRail = () => {
-    setStoredRail(!rail);
-    writeRail(deviceStorage(), !rail);
+    if (onAsk) {
+      setAskRail(!rail);
+    } else {
+      setStoredRail(!rail);
+      writeRail(deviceStorage(), !rail);
+    }
   };
+
+  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (
+      event.key.toLowerCase() !== "b" ||
+      !(event.ctrlKey || event.metaKey) ||
+      event.altKey ||
+      event.shiftKey ||
+      fromTyping(event.target)
+    )
+      return;
+
+    event.preventDefault();
+    toggleRail();
+  });
 
   // Ctrl+B or Cmd+B from lg, never while the person types (SD6).
   useEffect(() => {
     if (!wide) return;
 
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (
-        event.key.toLowerCase() !== "b" ||
-        !(event.ctrlKey || event.metaKey) ||
-        event.altKey ||
-        event.shiftKey ||
-        fromTyping(event.target)
-      )
-        return;
-
-      event.preventDefault();
-      setStoredRail(!rail);
-      writeRail(deviceStorage(), !rail);
-    };
+    const onKeyDown = (event: KeyboardEvent) => onShortcut(event);
 
     document.addEventListener("keydown", onKeyDown);
 
     return () => document.removeEventListener("keydown", onKeyDown);
-  }, [wide, rail]);
+  }, [wide]);
 
   const toggleLabel = rail ? strings.expandMenu : strings.collapseMenu;
 
@@ -201,6 +216,8 @@ export function AppShell(props: AppShellProps) {
 
   // React's pattern for state that follows a prop: adjust it during render.
   if (shownPath !== props.currentPath) {
+    if (!isAskPath(shownPath)) setAskRail(true);
+
     setShownPath(props.currentPath);
     setDrawerOpen(false);
   }
@@ -221,9 +238,7 @@ export function AppShell(props: AppShellProps) {
     (props.currentPath === props.menu.accountHref
       ? strings.account
       : undefined) ??
-    (props.currentPath === "/ask" || props.currentPath.startsWith("/ask/")
-      ? strings.ask
-      : undefined) ??
+    (onAsk ? strings.ask : undefined) ??
     (props.chrome === "admin" ? strings.adminPortal : strings.workspace);
 
   return (

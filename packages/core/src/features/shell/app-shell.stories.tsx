@@ -597,6 +597,41 @@ export const ClientRoutedPhone: Story = {
   },
 };
 
+/**
+ * Ask opens as the rail on each arrival (R-42a, I18a), whatever the device keeps. A toggle on Ask
+ * lasts until the person leaves Ask, and never reaches the other pages or storage.
+ */
+export const AskOpensAsTheRail: Story = {
+  globals: desktop,
+  render: (args) => <ClientRouted {...args} />,
+  args: {
+    currentPath: "/ask",
+    navigation: {
+      ...navigation,
+      workspace: [
+        ...navigation.workspace,
+        { id: "ask", label: "Ask", href: "/ask" },
+      ],
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const aside = element(canvasElement, "aside");
+
+    await waitFor(() => expect(aside).toHaveAttribute("data-shell-rail"));
+    await userEvent.click(
+      within(aside).getByRole("button", { name: "Expand menu" })
+    );
+    await expect(aside).not.toHaveAttribute("data-shell-rail");
+
+    await userEvent.click(within(aside).getByRole("link", { name: "Reports" }));
+    await expect(aside).not.toHaveAttribute("data-shell-rail");
+    await expect(window.localStorage.getItem(SIDEBAR_RAIL_KEY)).toBeNull();
+
+    await userEvent.click(within(aside).getByRole("link", { name: "Ask" }));
+    await expect(aside).toHaveAttribute("data-shell-rail");
+  },
+};
+
 const longNames = {
   identity: {
     companyName: LONG,

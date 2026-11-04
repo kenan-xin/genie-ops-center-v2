@@ -273,6 +273,54 @@ test("the drawer opens below lg with focus on the current entry, closes on route
   await expect(page.getByRole("dialog", { name: "Navigation" })).toHaveCount(0);
 });
 
+test("Ask opens as the rail, a collapse survives a reload, and a phone keeps the drawer (6wz1.89, R-42a)", async ({
+  page,
+}) => {
+  const errors: string[] = [];
+
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  if (!atLg(page)) {
+    await page.goto("/account");
+    await expect(
+      (await openNavigation(page)).getByRole("button", {
+        name: "Collapse menu",
+      })
+    ).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await page.goto("/ask");
+    await expect(page.locator("[data-shell-top-bar]")).toContainText("Ask");
+    await expect(page.locator("aside")).toBeHidden();
+    expect(errors).toEqual([]);
+
+    return;
+  }
+
+  const aside = page.getByRole("complementary", { name: "Navigation" });
+  const rail = page.locator("aside[data-shell-rail]");
+
+  await page.goto("/ask");
+  await expect(rail).toBeVisible();
+
+  await page.goto("/account");
+  await expect(rail).toHaveCount(0);
+
+  // A click before hydration does nothing, so it retries until the rail shows.
+  await expect(async () => {
+    if ((await rail.count()) === 0)
+      await aside.getByRole("button", { name: "Collapse menu" }).click();
+
+    await expect(rail).toBeVisible({ timeout: 1000 });
+  }).toPass({ timeout: 15_000 });
+
+  await page.reload();
+  await expect(rail).toBeVisible();
+  await expect(
+    aside.getByRole("button", { name: "Expand menu" })
+  ).toHaveAttribute("aria-expanded", "false");
+  expect(errors).toEqual([]);
+});
+
 test("a shell link opens its page in the same document: new row and title, drawer closed, content at the top, focus on the heading (NAV-1)", async ({
   page,
 }) => {
