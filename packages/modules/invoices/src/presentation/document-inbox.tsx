@@ -5,15 +5,13 @@ import { useModuleClient } from "@genie/core/rpc/client";
 import {
   Button,
   buttonVariants,
-  CountPill,
-  DataTable,
   type DataTableColumn,
   EmptyState,
   focusRing,
   InfoNote,
   infoTint,
-  ToggleGroup,
-  ToggleGroupItem,
+  ListHeader,
+  useListState,
 } from "@genie/ui";
 import { useAsyncQueuer } from "@tanstack/react-pacer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -26,13 +24,21 @@ import {
   type ReactNode,
 } from "react";
 
-import { invoicesContract } from "../contract.ts";
+import {
+  DOCUMENT_KINDS,
+  documentListParams,
+  invoicesContract,
+} from "../contract.ts";
 import type { DocumentStatus } from "../contract.ts";
 import { kindText } from "./document-kind.ts";
 import { DocumentStatusBadge } from "./document-status-badge.tsx";
 import { formatInstant, formatMoney } from "./format.ts";
-import { type InboxGroup, inboxGroupOf } from "./inbox-groups.ts";
-import { useListPages } from "./use-list-pages.ts";
+import { documentListDefinition } from "./list-definitions.ts";
+import {
+  procedureParams,
+  useListPages,
+  withOptions,
+} from "./use-list-pages.ts";
 import type { DocumentInboxPageView, DocumentInboxRow } from "./views.ts";
 
 export type DocumentInboxProps = {
@@ -55,21 +61,17 @@ type Refusal = {
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
 
-/** Every status, newest uploads first, as the page loader reads page one. */
-const INBOX_PARAMS = { status: "all", sort: "uploaded.desc" } as const;
+/** The inbox list header, with one type option per document kind (LH24). */
+const DEFINITION = withOptions(
+  documentListDefinition,
+  "type",
+  DOCUMENT_KINDS.map((kind) => ({ value: kind, label: kindText(kind) }))
+);
 
-/** The groups top to bottom (design review 3.1, choice 13). */
-const GROUPS: readonly {
-  readonly group: InboxGroup;
-  readonly label: string;
-}[] = [
-  { group: "needs-you", label: "Needs you" },
-  { group: "reading", label: "Reading" },
-  { group: "done", label: "Done" },
-];
-
-/** The chips; Reading shows under All only, because nobody acts on it. */
-type Shown = "all" | "needs-you" | "done";
+/** The statuses that wait for the person, the Needs you tab (decision 11, LH20). */
+const NEEDS_YOU = new Set<string>(
+  documentListDefinition.tabs.items[0].statuses
+);
 
 const LEAVE_WARNING =
   "Files are still uploading. If you leave this page, the files that did not upload yet are dropped. Leave the page?";
@@ -161,17 +163,20 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const [refusals, setRefusals] = useState<readonly Refusal[]>([]);
   const [duplicates, setDuplicates] = useState<readonly DuplicateRow[]>([]);
   const [dragging, setDragging] = useState(false);
-  const [shown, setShown] = useState<Shown>("all");
   // Keys for refusals and Duplicate rows; `crypto.randomUUID` exists only in a secure context.
   const serial = useRef(0);
   const nextKey = () => `upload-${(serial.current += 1)}`;
 
-  // The list reads one page at a time from the cursor, and Show more reads the next (czjw.49).
-  const list = useListPages({
-    key: DOCUMENTS_QUERY,
-    first: view,
-    // Task 8 moves this screen onto the list header; until then it reads every status.
-    read: (after) => invoices.listDocuments({ after, params: INBOX_PARAMS }),
+  // The tab, the filters and the sort live in the address; the server page is the default one.
+  const state = useListState(DEFINITION);
+  const params = procedureParams(documentListParams, state.params);
+  const filtered = Object.keys(params).length > 0;
+
+  // The list reads one page at a time from the cursor (czjw.49).
+  const list = useListPages<DocumentInboxPageView>({
+    key: [...DOCUMENTS_QUERY, params],
+    first: filtered ? undefined : view,
+    read: (after) => invoices.listDocuments({ after, params }),
   });
 
   // Only the rows still Reading are polled, by their ids, so a finished row costs no poll (czjw.49).
@@ -245,7 +250,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
         ]);
       },
     },
-    (state) => ({ busy: !state.isEmpty || state.activeItems.length > 0 })
+    (queue) => ({ busy: !queue.isEmpty || queue.activeItems.length > 0 })
   );
 
   const { busy } = uploads.state;
@@ -293,6 +298,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
     if (files === null) return;
 
     setRefusals([]);
+    // The new rows show under All, at the top under the default sort (LH20, I13).
+    state.set({ status: "all" });
 
     for (const file of Array.from(files)) uploads.addItem(file);
 
@@ -300,7 +307,17 @@ export function DocumentInbox(props: DocumentInboxProps) {
   }
 
   const data = view;
-  const rows: readonly InboxRow[] = [...duplicates, ...listed];
+
+  // This visit's Duplicate rows are done, so they show under All and Done.
+  const rows: readonly InboxRow[] =
+    state.tab === "all" || state.tab === "done"
+      ? [...duplicates, ...listed]
+      : listed;
+
+  const counts = list.first?.counts ?? undefined;
+  const needYou = counts?.["needs-you"] ?? 0;
+  // The server page counts the whole inbox, so a refused first upload keeps the drop zone.
+  const inboxEmpty = rows.length === 0 && (view.counts?.["all"] ?? 0) === 0;
 
   // The save-failure rule of DESIGN.md: one alert line with what failed and why; Retry stays the retry.
   const retryFailed =
@@ -324,7 +341,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const rowAction = (row: InboxRow): ReactNode =>
     row.status === "could-not-read" ? (
       retryButton(row)
-    ) : inboxGroupOf(row.status) === "needs-you" && data.canUpload ? (
+    ) : NEEDS_YOU.has(row.status) && data.canUpload ? (
       <PageLink
         href={`/m/invoices/documents/${row.id}`}
         aria-label={`Review ${row.label}`}
@@ -347,23 +364,31 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const uploaded = (row: InboxRow) =>
     formatInstant(row.uploadedAt, data.timeZone);
 
+  const updated = (row: InboxRow) =>
+    formatInstant(row.updatedAt, data.timeZone);
+
   const columns: readonly DataTableColumn<InboxRow>[] = [
     { id: "document", header: "Document", cell: documentLabel },
     { id: "type", header: "Type", cell: (row) => kindText(row.kind) },
     { id: "found", header: "What we found", cell: (row) => foundText(row) },
-    { id: "uploaded", header: "Uploaded", cell: uploaded },
+    { id: "uploaded", header: "Uploaded", cell: uploaded, sort: "date" },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => (
+        <span className="flex flex-wrap items-center gap-2">
+          <DocumentStatusBadge status={row.status} />
+          {rowAction(row)}
+        </span>
+      ),
+    },
+    { id: "updated", header: "Updated", cell: updated, sort: "date" },
   ];
 
-  const grouped = GROUPS.map(({ group, label }) => ({
-    group,
-    label,
-    rows: rows.filter((row) => inboxGroupOf(row.status) === group),
-  }));
-
-  const sizeOf = (group: InboxGroup) =>
-    grouped.find((entry) => entry.group === group)?.rows.length ?? 0;
-
-  const needYou = sizeOf("needs-you");
+  // The quick ranges of Uploaded count from today in the tenant's zone (LH25).
+  const today = new Intl.DateTimeFormat("en-CA", {
+    timeZone: data.timeZone,
+  }).format(new Date());
 
   // A drop anywhere on the inbox uploads, so the zone of an empty inbox and the list share it.
   const dropTarget = {
@@ -401,9 +426,11 @@ export function DocumentInbox(props: DocumentInboxProps) {
       <PageHeader
         title="Documents"
         meta={
-          rows.length === 0
+          inboxEmpty
             ? "Nothing uploaded yet."
-            : `${needYou} ${needYou === 1 ? "needs" : "need"} you. Newest uploads first.`
+            : needYou === 0
+              ? "No document needs you."
+              : `${needYou} ${needYou === 1 ? "needs" : "need"} you.`
         }
         actions={upload}
       />
@@ -440,7 +467,12 @@ export function DocumentInbox(props: DocumentInboxProps) {
             {retryFailed}
           </p>
         )}
-        {rows.length === 0 && data.canUpload ? (
+        {list.broken ? (
+          <p role="alert" className="mb-2 text-sm text-destructive">
+            The documents could not be read. Change a filter to try again.
+          </p>
+        ) : null}
+        {inboxEmpty && data.canUpload ? (
           <div
             data-drop-zone=""
             // tokens.md, Drop zone: the tint while dragging carries state, so it stays blue.
@@ -463,111 +495,60 @@ export function DocumentInbox(props: DocumentInboxProps) {
               </Button>
             </div>
           </div>
-        ) : rows.length === 0 ? (
+        ) : inboxEmpty ? (
           <EmptyState
             variant="framed"
             title="No documents yet"
             description="Uploaded invoices, receipts and payment evidence show here with their reading status."
           />
         ) : (
-          <div className="flex flex-col gap-4">
-            <ToggleGroup
-              aria-label="Show"
-              value={[shown]}
-              onValueChange={(value) => {
-                const [chosen] = value;
-
-                // A click on the pressed chip answers no chip; the list keeps its group.
-                if (
-                  chosen === "all" ||
-                  chosen === "needs-you" ||
-                  chosen === "done"
-                )
-                  setShown(chosen);
+          <div
+            className={`rounded-xl ${
+              dragging && data.canUpload
+                ? `ring-2 ring-primary dark:ring-brand-on-dark ${infoTint}`
+                : ""
+            }`}
+            {...(data.canUpload ? dropTarget : {})}
+          >
+            <ListHeader
+              definition={DEFINITION}
+              state={state}
+              counts={counts}
+              anchorDay={today}
+              table={{
+                rows,
+                rowKey: (row) => row.id,
+                rowLabel: (row) => row.label,
+                columns,
+                card: {
+                  title: documentLabel,
+                  badge: (row) => <DocumentStatusBadge status={row.status} />,
+                  facts: (row) => [foundText(row), `Updated ${updated(row)}`],
+                  detail: (row) =>
+                    `${kindText(row.kind)} · uploaded ${uploaded(row)}`,
+                  content: rowAction,
+                },
               }}
-            >
-              <ToggleGroupItem value="all">All {rows.length}</ToggleGroupItem>
-              <ToggleGroupItem value="needs-you">
-                Needs you {needYou}
-              </ToggleGroupItem>
-              <ToggleGroupItem value="done">
-                Done {sizeOf("done")}
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <div
-              className={`overflow-hidden rounded-xl border ${
-                dragging && data.canUpload
-                  ? `border-primary dark:border-brand-on-dark ${infoTint}`
-                  : "border-border"
-              }`}
-              {...(data.canUpload ? dropTarget : {})}
-            >
-              {grouped.flatMap((entry) =>
-                entry.rows.length === 0 ||
-                (shown !== "all" && shown !== entry.group) ? (
-                  []
-                ) : (
-                  <section
-                    key={entry.group}
-                    aria-labelledby={`inbox-${entry.group}`}
-                    className="border-b border-border last:border-b-0"
-                  >
-                    <div className="flex items-center gap-2 px-4 pt-4 pb-3">
-                      <h2
-                        id={`inbox-${entry.group}`}
-                        className="text-base font-semibold"
-                      >
-                        {entry.label}
-                      </h2>
-                      <CountPill>{entry.rows.length}</CountPill>
-                    </div>
-                    <DataTable
-                      label={entry.label}
-                      framed={false}
-                      rows={entry.rows}
-                      rowKey={(row) => row.id}
-                      rowLabel={(row) => row.label}
-                      columns={columns}
-                      status={(row) => (
-                        <span className="flex flex-wrap items-center gap-2">
-                          <DocumentStatusBadge status={row.status} />
-                          {rowAction(row)}
-                        </span>
-                      )}
-                      card={{
-                        title: documentLabel,
-                        badge: (row) => (
-                          <DocumentStatusBadge status={row.status} />
-                        ),
-                        facts: (row) => [foundText(row)],
-                        detail: (row) =>
-                          `${kindText(row.kind)} · uploaded ${uploaded(row)}`,
-                        content: rowAction,
-                      }}
-                    />
-                  </section>
-                )
-              )}
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              {list.more ? (
-                <>
-                  <p>Showing the first {listed.length} documents.</p>
-                  <Button
-                    variant="secondary"
-                    disabled={list.loading}
-                    onClick={list.showMore}
-                  >
-                    {list.loading ? "Loading more…" : "Show more"}
-                  </Button>
-                </>
-              ) : null}
-              {list.failed ? (
-                <p role="alert">
-                  More documents could not be read. Try Show more again.
-                </p>
-              ) : null}
-            </div>
+              page={{
+                loaded: rows.length,
+                more: list.more,
+                loading: list.pending || list.loading,
+                failed: list.failed,
+                onMore: list.showMore,
+              }}
+              empty={
+                state.tab === "needs-you" && !filtered
+                  ? {
+                      title: "Nothing needs you.",
+                      description:
+                        "Documents that wait for your review or a retry show here.",
+                    }
+                  : {
+                      title: "No document matches these filters.",
+                      description: "Change a filter, or clear them all.",
+                    }
+              }
+            />
           </div>
         )}
       </div>

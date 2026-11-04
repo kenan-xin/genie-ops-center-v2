@@ -16,6 +16,8 @@ import {
   aiOffDocumentInbox,
   defaultDocumentInbox,
   emptyDocumentInbox,
+  needsYouDocumentInbox,
+  nothingNeedsYouDocumentInbox,
   readOnlyDocumentInbox,
 } from "./__fixtures__/documents.ts";
 import { DocumentInbox } from "./document-inbox.tsx";
@@ -87,13 +89,19 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Documents inbox at `/m/invoices/documents` (Spec 7 R-20, R-23, R-37). The list asks for the documents again every 3 seconds while one is Reading. Uploads go one at a time in the chosen order; an exact copy adds a Duplicate (nothing added) row for this visit, and a refusal shows beside its file name while the next file still uploads. A Could not read row offers Retry. With AI off the page says that a person fills the fields by hand.",
+          "The Documents inbox at `/m/invoices/documents` (Spec 7 R-20, R-23, R-37) on the list header (variant C, `czjw.73`): the status tabs Needs you, Reading, Done and All with their counts, a search, the type and the upload date range, and the columns Document, Type, What we found, Uploaded, Status and Updated. Needs you is the resting tab, and a tab with no rows shows no count (`czjw.68`). An upload moves the list to All. The list polls the rows that are Reading. Uploads go one at a time in the chosen order; an exact copy adds a Duplicate (nothing added) row for this visit, and a refusal shows beside its file name while the next file still uploads. A Could not read row offers Retry. With AI off the page says that a person fills the fields by hand.",
       },
     },
     a11y: { test: "error" },
   },
   decorators: [withQuery],
-  args: { view: defaultDocumentInbox },
+  args: { view: needsYouDocumentInbox },
+  // Each story leaves the address as it found it.
+  beforeEach: () => {
+    const before = window.location.href;
+
+    return () => window.history.replaceState(null, "", before);
+  },
 } satisfies Meta<typeof DocumentInbox>;
 
 export default meta;
@@ -142,32 +150,64 @@ const retryView: DocumentInboxView = {
 
 type Canvas = Parameters<NonNullable<Story["play"]>>[0]["canvas"];
 
+/** Opens the story at an address with these list parameters. */
+function atAddress(query: string) {
+  const url = new URL(window.location.href);
+
+  for (const [name, value] of new URLSearchParams(query)) {
+    url.searchParams.set(name, value);
+  }
+
+  window.history.replaceState(null, "", url);
+}
+
+const param = (name: string) =>
+  new URLSearchParams(window.location.search).get(name);
+
+/** The one table of the inbox. */
+const documents = (canvas: Canvas) =>
+  within(canvas.getByRole("table", { name: "Documents" }));
+
 /** A status pill; the Reading group's heading and caption say "Reading" too. */
 const BADGE = '[data-slot="badge"]';
 
-/** Every word shows once in one of the groups' tables or card lists, whichever the width draws. */
+/** Every word shows once in the table or the card list, whichever the width draws. */
 async function expectStatusWords(
   canvas: Canvas,
   role: "table" | "list"
 ): Promise<void> {
-  const groups = canvas.getAllByRole(role);
+  const list = await canvas.findByRole(role, { name: "Documents" });
 
+  await waitFor(() =>
+    expect(
+      within(list).queryAllByText("Saved", { selector: BADGE })
+    ).toHaveLength(1)
+  );
   await Promise.all(
     STATUS_WORDS.map((word) =>
       expect(
-        groups.flatMap((group) =>
-          within(group).queryAllByText(word, { selector: BADGE })
-        )
+        within(list).queryAllByText(word, { selector: BADGE })
       ).toHaveLength(1)
     )
   );
 }
 
-/** The group tables in their order on the page. */
-const tableNames = (canvas: Canvas) =>
-  canvas
-    .getAllByRole("table")
-    .map((table) => table.querySelector("caption")?.textContent);
+/** D3: each row that needs the person offers Review, and Could not read offers Retry. */
+async function expectRowActions(canvas: Canvas): Promise<void> {
+  const table = documents(canvas);
+
+  await Promise.all(
+    NEEDS_REVIEW.map((row) =>
+      expect(
+        table.getByRole("link", { name: `Review ${row.label}` })
+      ).toHaveAttribute("href", `/m/invoices/documents/${row.id}`)
+    )
+  );
+  await expect(table.getByRole("button", { name: "Retry" })).toBeVisible();
+  await expect(canvas.getAllByRole("link", { name: /^Review / })).toHaveLength(
+    NEEDS_REVIEW.length
+  );
+}
 
 const NEEDS_REVIEW = defaultDocumentInbox.rows.filter((row) =>
   ["needs-input", "confirm-split", "possible-duplicate", "no-match"].includes(
@@ -175,47 +215,109 @@ const NEEDS_REVIEW = defaultDocumentInbox.rows.filter((row) =>
   )
 );
 
-// B8.1: every R-37 status word, at the desktop width. Design review 3.1, 3.2, choice 13: Needs
-// you on top, Reading between, Done below; each row that needs the person offers Review, and the
-// chips show one group at a time with its size.
+// Needs you is the resting tab, and the server page is its page one (LH20). D3: Review and Retry
+// show under Needs you and under All.
 export const Default: Story = {
   globals: desktop,
   beforeEach: () => serve(defaultDocumentInbox),
   play: async ({ canvas }) => {
-    await expectStatusWords(canvas, "table");
-    await expect(tableNames(canvas)).toEqual(["Needs you", "Reading", "Done"]);
-
-    const needsYou = within(canvas.getByRole("table", { name: "Needs you" }));
-
-    await Promise.all(
-      NEEDS_REVIEW.map((row) =>
-        expect(
-          needsYou.getByRole("link", { name: `Review ${row.label}` })
-        ).toHaveAttribute("href", `/m/invoices/documents/${row.id}`)
-      )
-    );
-    await expect(needsYou.getByRole("button", { name: "Retry" })).toBeVisible();
     await expect(
-      canvas.getAllByRole("link", { name: /^Review / })
-    ).toHaveLength(NEEDS_REVIEW.length);
+      canvas.getByRole("tab", { name: "Needs you 5" })
+    ).toHaveAttribute("aria-selected", "true");
+    await expectRowActions(canvas);
 
-    await userEvent.click(canvas.getByRole("button", { name: "Needs you 5" }));
-    await expect(tableNames(canvas)).toEqual(["Needs you"]);
-
-    await userEvent.click(canvas.getByRole("button", { name: "Done 3" }));
-    await expect(tableNames(canvas)).toEqual(["Done"]);
-
-    await userEvent.click(canvas.getByRole("button", { name: "All 9" }));
-    await expect(tableNames(canvas)).toEqual(["Needs you", "Reading", "Done"]);
+    await userEvent.click(canvas.getByRole("tab", { name: "All 9" }));
+    await expect(listDocuments).toHaveBeenCalledWith({
+      after: null,
+      params: { status: "all" },
+    });
+    await expectStatusWords(canvas, "table");
+    await expectRowActions(canvas);
+    await expect(
+      canvas.getByRole("columnheader", { name: /Updated/ })
+    ).toHaveAttribute("aria-sort", "descending");
   },
 };
 
-// B8.1: the same rows as cards, at the phone width.
+// B8.1: every status word as cards, at the phone width, under All.
 export const DefaultOnPhone: Story = {
   name: "Default on a phone",
   globals: phone,
-  beforeEach: () => serve(defaultDocumentInbox),
+  beforeEach: () => {
+    serve(defaultDocumentInbox);
+    atAddress("?status=all");
+  },
   play: ({ canvas }) => expectStatusWords(canvas, "list"),
+};
+
+/** D1: an empty Needs you shows no count, no 0, and says so (`czjw.68`). */
+async function nothingNeedsYou(canvas: Canvas): Promise<void> {
+  await expect(await canvas.findByText("Nothing needs you.")).toBeVisible();
+  await expect(canvas.queryAllByText(/^0$/)).toEqual([]);
+  await expect(canvas.queryByText(/Needs you 0/)).toBeNull();
+}
+
+export const NothingNeedsYou: Story = {
+  name: "Nothing needs you",
+  args: { view: nothingNeedsYouDocumentInbox },
+  globals: desktop,
+  beforeEach: () => serve(nothingNeedsYouDocumentInbox),
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("tab", { name: "Needs you" })
+    ).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.getByRole("tab", { name: "Done 30" })).toBeVisible();
+    await nothingNeedsYou(canvas);
+  },
+};
+
+export const NothingNeedsYouOnPhone: Story = {
+  name: "Nothing needs you on a phone",
+  args: { view: nothingNeedsYouDocumentInbox },
+  globals: phone,
+  beforeEach: () => serve(nothingNeedsYouDocumentInbox),
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", { name: "Needs you" })
+    ).toBeVisible();
+    await nothingNeedsYou(canvas);
+  },
+};
+
+const NEW_UPLOAD: DocumentInboxRow = {
+  ...READING,
+  id: "10000000-0000-4000-8000-000000000010",
+  label: "new.pdf",
+  uploadedAt: "2026-11-04T02:00:00.000Z",
+  updatedAt: "2026-11-04T02:00:00.000000Z",
+};
+
+// D2: a chosen file moves the list to All, where the new row is first under Updated, newest.
+export const UploadShowsAll: Story = {
+  name: "Upload shows All",
+  globals: desktop,
+  beforeEach: () => {
+    serve({
+      ...defaultDocumentInbox,
+      rows: [NEW_UPLOAD, ...defaultDocumentInbox.rows],
+    });
+  },
+  play: async ({ canvas }) => {
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("new.pdf"),
+    ]);
+
+    await waitFor(() => expect(param("status")).toBe("all"));
+    await expect(canvas.getByRole("tab", { name: /^All/ })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await waitFor(() =>
+      expect(documents(canvas).getAllByRole("row")[1]).toHaveTextContent(
+        "new.pdf"
+      )
+    );
+  },
 };
 
 export const Dark: Story = {
@@ -305,12 +407,16 @@ export const Uploads: Story = {
       ])
     );
 
-    const table = within(canvas.getByRole("table"));
+    const table = within(
+      await canvas.findByRole("table", { name: "Documents" })
+    );
 
     await expect(
       await table.findByText("Duplicate (nothing added)")
     ).toBeVisible();
     await expect(table.getByText("Same file as a.pdf")).toBeVisible();
+    // An upload moves the list to All, where this visit's Duplicate rows show.
+    await expect(param("status")).toBe("all");
   },
 };
 
@@ -504,10 +610,12 @@ export const Retry: Story = {
       expect(retryReading).toHaveBeenCalledWith({ id: COULD_NOT_READ.id })
     );
 
-    // The row moves from Needs you to the Reading group.
-    const table = within(await canvas.findByRole("table", { name: "Reading" }));
-
-    await expect(table.getByText("Reading", { selector: BADGE })).toBeVisible();
+    // The row reads again.
+    await waitFor(() =>
+      expect(
+        documents(canvas).getByText("Reading", { selector: BADGE })
+      ).toBeVisible()
+    );
   },
 };
 
@@ -537,9 +645,7 @@ export const RetryRefused: Story = {
 
 /** The finished row's status word, read from the Needs you group it moves to. */
 const needsYouRow = (canvas: Canvas) =>
-  within(canvas.getByRole("table", { name: "Needs you" })).getByText(
-    "Needs your input"
-  );
+  documents(canvas).getByText("Needs your input");
 
 /** The stale times of each list read, for the one-reload check. */
 const listTimes: number[] = [];
@@ -641,12 +747,15 @@ export const ShowMore: Story = {
     });
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Show more" }));
+    // Scroll loading reads the next page as soon as the end is near; Show more is its fallback.
+    const more = canvas.queryByRole("button", { name: "Show more" });
+
+    if (more !== null) await userEvent.click(more);
 
     await waitFor(() =>
       expect(listDocuments).toHaveBeenCalledWith({
         after: { values: ["2026-10-01T00:00:00.000000Z", "document-a"] },
-        params: { status: "all", sort: "uploaded.desc" },
+        params: {},
       })
     );
   },
@@ -686,11 +795,14 @@ const checkRowLinks: Story["play"] = async ({ canvas }) => {
 
   await waitFor(() => expect(uploadDocument).toHaveBeenCalledTimes(1));
 
-  await Promise.all(
-    defaultDocumentInbox.rows.map((row) =>
-      expect(canvas.getByRole("link", { name: row.label })).toHaveAttribute(
-        "href",
-        `/m/invoices/documents/${row.id}`
+  // The upload moves the list to All, which reads every row again.
+  await waitFor(() =>
+    Promise.all(
+      defaultDocumentInbox.rows.map((row) =>
+        expect(canvas.getByRole("link", { name: row.label })).toHaveAttribute(
+          "href",
+          `/m/invoices/documents/${row.id}`
+        )
       )
     )
   );
@@ -737,9 +849,9 @@ export const UploadsWithoutSecureContext: Story = {
       pdf("extra.pdf"),
     ]);
 
-    const table = within(canvas.getByRole("table", { name: "Done" }));
-
-    await expect(await table.findByText("Same file as a.pdf")).toBeVisible();
+    await expect(
+      await documents(canvas).findByText("Same file as a.pdf")
+    ).toBeVisible();
   },
 };
 

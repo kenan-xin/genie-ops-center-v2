@@ -159,4 +159,26 @@ export const readOnlyDocumentInbox: DocumentInboxView = {
 export const emptyDocumentInbox: DocumentInboxView = {
   ...defaultDocumentInbox,
   rows: [],
+  counts: { "needs-you": 0, "reading": 0, "done": 0, "all": 0 },
+};
+
+const NEEDS_YOU = new Set([
+  "needs-input",
+  "confirm-split",
+  "no-match",
+  "possible-duplicate",
+  "could-not-read",
+]);
+
+/** Page one under Needs you, the resting tab, as the page loader reads it (LH20). */
+export const needsYouDocumentInbox: DocumentInboxView = {
+  ...defaultDocumentInbox,
+  rows: defaultDocumentInbox.rows.filter((row) => NEEDS_YOU.has(row.status)),
+};
+
+/** Nothing needs the person, but the inbox holds read and saved documents (`czjw.68`). */
+export const nothingNeedsYouDocumentInbox: DocumentInboxView = {
+  ...defaultDocumentInbox,
+  rows: [],
+  counts: { "needs-you": 0, "reading": 1, "done": 30, "all": 31 },
 };
