@@ -5,6 +5,7 @@ import {
   isSlow,
   type MessagePart,
   rowText,
+  shownRows,
   stepTimeline,
 } from "./step-model.ts";
 
@@ -114,6 +115,39 @@ describe("stepTimeline", () => {
       false
     );
     expect(stepTimeline([answerText], LABELS, true).thinking).toBe(false);
+  });
+
+  it("never folds away the running step, even when it is not the last row", () => {
+    const running: MessagePart = {
+      type: "tool-query-dataset",
+      toolCallId: "call-running",
+      state: "input-available",
+      input: { dataset: "ledger.invoices", query: {} },
+    };
+
+    // A later read of Invoices makes its first row, the second of five, run again.
+    const { rows: all } = stepTimeline(
+      [
+        read("ledger.customers"),
+        read("ledger.invoices"),
+        read("ledger.payments"),
+        read("ledger.orders"),
+        read("ledger.refunds"),
+        running,
+      ],
+      LABELS,
+      true
+    );
+
+    const { shown, hidden } = shownRows(all, false);
+
+    expect(shown.map((row) => [rowText(row), row.state])).toEqual([
+      ["Reading Invoices", "active"],
+      ["Read ledger.orders", "done"],
+      ["Read ledger.refunds", "done"],
+    ]);
+    expect(hidden).toBe(2);
+    expect(shownRows(all, true).shown).toHaveLength(5);
   });
 
   it("shows the time from 3 s and the slow line from 20 s", () => {

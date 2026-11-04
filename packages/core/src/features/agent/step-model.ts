@@ -246,6 +246,23 @@ export function stepTimeline(
   };
 }
 
+/**
+ * The rows the working list shows: every running row, and the last finished ones up to
+ * `SHOWN_BEFORE_ACTIVE`, in their order. `hidden` counts the finished rows folded away.
+ */
+export function shownRows(rows: readonly TimelineRow[], expanded: boolean) {
+  const finished = rows.filter((row) => row.state !== "active");
+
+  const hidden =
+    expanded || finished.length <= SHOWN_BEFORE_ACTIVE
+      ? 0
+      : finished.length - SHOWN_BEFORE_ACTIVE;
+
+  const folded = new Set(finished.slice(0, hidden));
+
+  return { shown: rows.filter((row) => !folded.has(row)), hidden };
+}
+
 /** The elapsed time of the active step, shown from 3 s: "24s". */
 export function elapsedLabel(ms: number): string | null {
   return ms < 3000 ? null : `${Math.floor(ms / 1000)}s`;

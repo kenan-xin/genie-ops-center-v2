@@ -17,7 +17,7 @@ import {
   isSlow,
   type MessagePart,
   rowText,
-  SHOWN_BEFORE_ACTIVE,
+  shownRows,
   stepTimeline,
   type TimelineRow,
   toolNameOf,
@@ -220,12 +220,8 @@ export function StepTimeline(props: {
       </div>
     );
   } else if (props.streaming && rows.length > 0) {
-    const finished = rows.filter((row) => row.state !== "active");
-
-    const hidden =
-      earlier || finished.length <= SHOWN_BEFORE_ACTIVE
-        ? 0
-        : finished.length - SHOWN_BEFORE_ACTIVE;
+    // A running row always shows, also when a later read made an earlier row run again.
+    const { shown, hidden } = shownRows(rows, earlier);
 
     stepsView = (
       <div className="grid gap-1">
@@ -239,7 +235,7 @@ export function StepTimeline(props: {
           </button>
         )}
         <Rows>
-          {rows.slice(hidden).map((row) => {
+          {shown.map((row) => {
             if (row.state !== "active") return <Row key={row.key} row={row} />;
 
             const ms = elapsed(row.key);
