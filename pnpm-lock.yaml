@@ -815,6 +815,9 @@ importers:
       '@tanstack/react-form':
         specifier: 1.33.5
         version: 1.33.5(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+      '@tanstack/react-virtual':
+        specifier: 3.14.25
+        version: 3.14.25(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
@@ -4558,6 +4561,12 @@ packages:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
+  '@tanstack/react-virtual@3.14.25':
+    resolution: {integrity: sha512-LYNLaogi8NZUqjPgJ0byKQrXprkDJsZLd94u0i1UpYtXz2fgvbP4KrHygM4MSgSAvEaqykQofYdJ1Vuf7XIz/Q==}
+    peerDependencies:
+      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+      react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
   '@tanstack/solid-store@0.11.2':
     resolution: {integrity: sha512-lscar3xeRKfs/RQBcZjR9NG55sfMP5Pb8S/URohUqcnSB8Yu19JLE/hPjfSd7pKmCpjYq1ZbjqtpIc5bDE1lAQ==}
     peerDependencies:
@@ -4568,6 +4577,9 @@ packages:
 
   '@tanstack/store@0.11.2':
     resolution: {integrity: sha512-sJ4mjol8uQsHV0gOJzzjwXfh2Fwm+Sz0+8deqiTm4jGbMdjzNSW+xZCFm0kUa870uhd8yi+DpKnZb5Kc4apa0Q==}
+
+  '@tanstack/virtual-core@3.19.10':
+    resolution: {integrity: sha512-/ltpH0qUCs5XQYE7fIhgA+aqgC5NzSfLTDQkC+N1wOOdvIYx1FH/kz2LGfSeanNbekqy3WBu6mNIbqXhxE/pew==}
 
   '@testcontainers/postgresql@12.2.1':
     resolution: {integrity: sha512-MIbI5KjZ9M4SY4+xzxg/w4ZLBeV+Jd6ognXoWn7dh/mhIhBbn7ss0MiZHNg2XbCbu03BW9YQ9+H9xW8PFkJWaA==}
@@ -11141,6 +11153,12 @@ snapshots:
       react-dom: 19.3.1(react@19.3.1)
       use-sync-external-store: 1.7.0(react@19.3.1)
 
+  '@tanstack/react-virtual@3.14.25(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
+    dependencies:
+      '@tanstack/virtual-core': 3.19.10
+      react: 19.3.1
+      react-dom: 19.3.1(react@19.3.1)
+
   '@tanstack/solid-store@0.11.2(solid-js@1.9.15)':
     dependencies:
       '@tanstack/store': 0.11.2
@@ -11149,6 +11167,8 @@ snapshots:
   '@tanstack/store@0.11.1': {}
 
   '@tanstack/store@0.11.2': {}
+
+  '@tanstack/virtual-core@3.19.10': {}
 
   '@testcontainers/postgresql@12.2.1(supports-color@7.2.0)':
     dependencies:

@@ -64,6 +64,7 @@ const config: StorybookConfig = {
           "@tanstack/react-form",
           "@tanstack/react-pacer",
           "@tanstack/react-query",
+          "@tanstack/react-virtual",
           "@openuidev/react-lang",
           "react-pdf",
           "react-day-picker",

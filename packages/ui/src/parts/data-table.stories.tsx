@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { omit } from "es-toolkit";
 import { UserIcon } from "lucide-react";
+import { Profiler, useState, type ProfilerOnRenderCallback } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 // The package entry, not ./data-table.tsx, so that the stories prove what an
@@ -439,6 +440,194 @@ export const WithFooterPhone: Story = {
     await expect(frame).toContainElement(
       canvas.getByRole("list", { name: "People" })
     );
+  },
+};
+
+// czjw.70: a long list renders only the rows near the screen.
+const manyPeople = (count: number): readonly Person[] =>
+  Array.from({ length: count }, (_, index) => ({
+    id: `r-${index + 1}`,
+    email: `Row ${index + 1}`,
+    name: `Person number ${index + 1}`,
+    role: index % 3 === 0 ? "Administrator" : "Reviewer",
+    status: "Active",
+    lastSeen: "Today",
+    signIns: index % 40,
+  }));
+
+const tenThousand = manyPeople(10_000);
+
+const logMount =
+  (story: string): ProfilerOnRenderCallback =>
+  (_id, phase, ms) => {
+    if (phase === "mount") console.info(`${story} mount ms`, Math.round(ms));
+  };
+
+const scrollToEnd = (offset = 0) =>
+  window.scrollTo(0, document.documentElement.scrollHeight - offset);
+
+/** 10,000 rows at 1440: about one screen of rows renders, and screen readers still hear the full count. */
+export const TenThousandRows: Story = {
+  args: { rows: tenThousand },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: (args) => (
+    <Profiler id="table" onRender={logMount("TenThousandRows")}>
+      <DataTable {...args} />
+    </Profiler>
+  ),
+  play: async ({ canvas, canvasElement }) => {
+    const table = canvas.getByRole("table", { name: "People" });
+
+    await expect(table).toHaveAttribute("aria-rowcount", "10001");
+    await waitFor(() =>
+      expect(
+        canvas
+          .getAllByRole("row")
+          .filter((row) => row.hasAttribute("aria-rowindex")).length
+      ).toBeLessThanOrEqual(61)
+    );
+    // The hidden phone list measures 0 px, so it must not render every row.
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelectorAll('ul[aria-label="People"] > li')
+      ).toHaveLength(0)
+    );
+
+    // Measured rows can push the end down, so the scroll repeats, as a person keeps scrolling.
+    await waitFor(() => {
+      scrollToEnd();
+      expect(canvas.getByRole("row", { name: /Row 10000/ })).toHaveAttribute(
+        "aria-rowindex",
+        "10001"
+      );
+    });
+    window.scrollTo(0, 0);
+  },
+};
+
+export const TenThousandRowsPhone: Story = {
+  args: { rows: tenThousand },
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  render: (args) => (
+    <Profiler id="cards" onRender={logMount("TenThousandRowsPhone")}>
+      <DataTable {...args} />
+    </Profiler>
+  ),
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "People" });
+
+    await waitFor(() =>
+      expect(within(list).getAllByRole("listitem").length).toBeLessThanOrEqual(
+        60
+      )
+    );
+
+    const items = within(list).getAllByRole("listitem");
+
+    await expect(items[0]).toHaveAttribute("aria-posinset", "1");
+    await expect(items[0]).toHaveAttribute("aria-setsize", "10000");
+    await waitFor(() =>
+      expect(
+        canvas
+          .queryAllByRole("row", { hidden: true })
+          .filter((row) => row.closest("tbody") !== null)
+      ).toHaveLength(0)
+    );
+  },
+};
+
+/** Rows swap in and out as the page scrolls, but no column moves. */
+export const ColumnsHoldWhileScrolling: Story = {
+  args: { rows: tenThousand },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const widths = () =>
+      canvas
+        .getAllByRole("columnheader")
+        .map((cell) => cell.getBoundingClientRect().width);
+
+    await waitFor(() =>
+      expect(canvas.getByRole("row", { name: /Row 1\b/ })).toBeVisible()
+    );
+
+    const before = widths();
+
+    window.scrollTo(0, 5000);
+    await waitFor(() =>
+      expect(canvas.queryByRole("row", { name: /Row 1\b/ })).toBeNull()
+    );
+
+    const after = widths();
+
+    after.forEach((width, index) =>
+      expect(Math.abs(width - before[index]!)).toBeLessThanOrEqual(1)
+    );
+    window.scrollTo(0, 0);
+  },
+};
+
+const onEndReached = fn();
+
+/** Near the end of the rows the list asks for the next page, once per row count. */
+export const EndReached: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: function Render(args) {
+    const [count, setCount] = useState(150);
+
+    return (
+      <div className="grid gap-4">
+        <DataTable
+          {...args}
+          rows={manyPeople(count)}
+          onEndReached={onEndReached}
+        />
+        <button type="button" onClick={() => setCount(200)}>
+          Add 50 rows
+        </button>
+      </div>
+    );
+  },
+  play: async ({ canvas }) => {
+    onEndReached.mockClear();
+    await expect(onEndReached).not.toHaveBeenCalled();
+
+    await waitFor(() => {
+      scrollToEnd(300);
+      expect(onEndReached).toHaveBeenCalledTimes(1);
+    });
+    window.scrollBy(0, 10);
+    window.scrollBy(0, 10);
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await expect(onEndReached).toHaveBeenCalledTimes(1);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Add 50 rows" }));
+    window.scrollTo(0, 0);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    await waitFor(() => {
+      scrollToEnd();
+      expect(onEndReached).toHaveBeenCalledTimes(2);
+    });
+    window.scrollTo(0, 0);
+  },
+};
+
+/** Tab moves from one row to the next, also across the edge of the rendered window. */
+export const KeyboardAcrossWindow: Story = {
+  args: { rows: tenThousand },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const row20 = canvas.getByRole("row", { name: /Row 20\b/ });
+
+    within(row20).getByRole("button", { name: "Row 20" }).focus();
+    // The row's actions menu, then the next row.
+    await userEvent.tab();
+    await expect(row20.contains(document.activeElement)).toBe(true);
+    await userEvent.tab();
+
+    await expect(document.activeElement).toBe(
+      canvas.getByRole("button", { name: "Row 21" })
+    );
+    window.scrollTo(0, 0);
   },
 };
 
