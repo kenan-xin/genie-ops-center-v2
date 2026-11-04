@@ -1,21 +1,16 @@
 "use client";
 
-import { buttonVariants, Disclosure, focusRing } from "@genie/ui";
+import { buttonVariants, Disclosure } from "@genie/ui";
 import { PlusIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import type {
-  AgentSessionSummary,
-  InboxLink,
-} from "../../services/agent/index.ts";
+import type { AgentSessionSummary } from "../../services/agent/index.ts";
 import { SessionList } from "./session-list.tsx";
-
-const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
 /**
  * The Ask screen (R-42, P15): the person's sessions as a 280 px column from `lg`, a closed
- * disclosure above the chat below it, New chat, one inbox link per readable provider, and the
- * conversation beside the list. With AI off the conversation is replaced by the off message (R-20).
+ * disclosure above the chat below it, New chat, and the conversation beside the list; a new
+ * chat's empty state holds the inbox lines. With AI off the conversation is replaced by the off message (R-20).
  * The conversation is the page's own chat, so the shell hides its chat button here (5.4).
  */
 export function AskScreen(props: {
@@ -23,7 +18,6 @@ export function AskScreen(props: {
   readonly currentId: string | undefined;
   readonly sessionHref: (id: string) => string;
   readonly newChatHref: string;
-  readonly inbox: readonly InboxLink[];
   readonly aiOn: boolean;
   /** The tenant's zone for each chat's day. */
   readonly timeZone: string;
@@ -44,15 +38,6 @@ export function AskScreen(props: {
         sessionHref={props.sessionHref}
         timeZone={props.timeZone}
       />
-      {props.inbox.map((link) => (
-        <p key={link.href} className="text-sm text-muted-foreground">
-          To add documents, use{" "}
-          <a href={link.href} className={linkClass}>
-            {link.label}
-          </a>
-          .
-        </p>
-      ))}
     </div>
   );
 

@@ -96,15 +96,21 @@ describe("the agent route's transport", () => {
     });
   });
 
-  it("sends the record context only when the chat has one", async () => {
+  it("sends the context that the page holds when the message goes", async () => {
     const fetchMock = fetchStub();
 
     vi.stubGlobal("fetch", fetchMock);
 
     const context = { recordType: "dashboard", recordId: "d-1" };
 
-    await send(agentTransport(API, { context }), undefined);
-    await send(agentTransport(API), undefined);
+    // The page holds a record for the first message and none for the second.
+    let held: typeof context | undefined = context;
+
+    const transport = agentTransport(API, { context: () => held });
+
+    await send(transport, undefined);
+    held = undefined;
+    await send(transport, undefined);
 
     const [withContext, without] = fetchMock.mock.calls.map(([, init]) =>
       sentBodySchema.parse(JSON.parse(String(init?.body)))

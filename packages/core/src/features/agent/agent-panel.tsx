@@ -2,24 +2,17 @@
 
 import { useState, type ReactNode } from "react";
 
-import { useModuleClient } from "../../lib/rpc/module-client.tsx";
-import { agentContract } from "../../services/agent/contract.ts";
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
-import type { CheckChart } from "./chart-check.tsx";
-import { Conversation } from "./conversation.tsx";
-import {
-  AGENT_ROUTE,
-  type AgentChatContext,
-  agentTransport,
-} from "./transport.ts";
+import { AgentChat } from "./agent-chat.tsx";
+import type { AgentChatContext } from "./transport.ts";
 
 const NO_MESSAGES: readonly AgentMessage[] = [];
 
 /**
  * A new agent chat beside one record or one list (R-49, S7-13). Beside a record, every message
  * names it, so the prompt tells the model what "this" means; beside a list, no context is sent.
- * Each mount starts its own session (P3), and the chart gate goes through the app's client, which
- * holds the `agent` area.
+ * Each mount starts its own session (P3), and New chat starts another. Task 9 replaces it with the
+ * shell's agent panel.
  */
 export function AgentPanel(props: {
   readonly context?: AgentChatContext;
@@ -30,37 +23,32 @@ export function AgentPanel(props: {
   readonly labels: ChatLabels;
   readonly suggestions: readonly string[];
   readonly timeZone: string;
-  readonly newChatHref: string;
   /** A message the page sends from outside the chat, once; see `Conversation`. */
   readonly pending?:
     | { readonly text: string; readonly onSent: () => void }
     | undefined;
   readonly onFinished?: () => void;
 }): ReactNode {
-  const [sessionId] = useState(() => crypto.randomUUID());
+  const [sessionId, setSessionId] = useState(() => crypto.randomUUID());
 
-  const [transport] = useState(() =>
-    agentTransport(
-      AGENT_ROUTE,
-      props.context === undefined ? undefined : { context: props.context }
-    )
-  );
-
-  const agent = useModuleClient(agentContract);
-
-  const checkChart: CheckChart = (config) => agent.chart({ config });
+  const { context } = props;
 
   return (
-    <Conversation
+    <AgentChat
       sessionId={sessionId}
       initialMessages={NO_MESSAGES}
-      transport={transport}
+      context={() => context}
       models={props.models}
       labels={props.labels}
       suggestions={props.suggestions}
-      checkChart={checkChart}
+      inbox={[]}
       timeZone={props.timeZone}
-      newChatHref={props.newChatHref}
+      artifacts={{
+        kind: "link",
+        href: (ref) => `/ask/${sessionId}?artifact=${ref.artifactId}`,
+      }}
+      headingLevel={3}
+      onNewChat={() => setSessionId(crypto.randomUUID())}
       pending={props.pending}
       onFinished={() => props.onFinished?.()}
     />

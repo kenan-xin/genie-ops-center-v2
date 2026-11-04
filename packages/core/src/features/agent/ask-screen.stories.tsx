@@ -57,7 +57,10 @@ const conversation = (
     suggestions={[]}
     checkChart={checkChart}
     timeZone="UTC"
-    newChatHref="/ask"
+    inbox={INBOX}
+    artifacts={{ kind: "link", href: () => "/ask" }}
+    headingLevel={2}
+    onNewChat={() => undefined}
   />
 );
 
@@ -73,7 +76,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Ask screen: the session list as a 280 px column from lg and a closed disclosure below it, New chat, one inbox link per readable provider, and beside it the conversation. With AI off the conversation is replaced by the AI-off message (R-20).",
+          "The Ask screen: the session list as a 280 px column from lg and a closed disclosure below it, New chat, and beside it the conversation, whose empty state holds one inbox link per readable provider. With AI off the conversation is replaced by the AI-off message (R-20).",
       },
     },
     a11y: { test: "error" },
@@ -83,7 +86,6 @@ const meta = {
     currentId: SESSIONS[0]?.id,
     sessionHref: (id: string) => `/ask/${id}`,
     newChatHref: "/ask",
-    inbox: INBOX,
     aiOn: true,
     // East of UTC, so a late-evening UTC instant falls on the next day (design review 5.6).
     timeZone: "Asia/Singapore",

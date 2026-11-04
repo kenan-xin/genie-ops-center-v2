@@ -327,7 +327,6 @@ export function DashboardView(props: DashboardViewProps) {
                 labels={chat.labels}
                 suggestions={view.canWrite ? CHAT_SUGGESTIONS : []}
                 timeZone={view.timeZone}
-                newChatHref={`/m/analytics/dashboards/${dashboard.id}`}
                 pending={
                   starter === undefined
                     ? undefined

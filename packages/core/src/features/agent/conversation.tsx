@@ -4,7 +4,7 @@ import { useChat } from "@ai-sdk/react";
 import {
   Bubble,
   BubbleContent,
-  focusRing,
+  Button,
   Message,
   MessageContent,
   Select,
@@ -14,12 +14,17 @@ import {
   SelectValue,
 } from "@genie/ui";
 import type { ChatTransport } from "ai";
-import { SparklesIcon } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 
-import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
+import type {
+  AgentMessage,
+  ChatLabels,
+  InboxLink,
+} from "../../services/agent/index.ts";
+import type { ArtifactCardAction } from "./artifact-card.tsx";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
+import { AgentMark, ChatEmpty, pillClass } from "./chat-parts.tsx";
 import { Composer } from "./composer.tsx";
 import { MessageParts } from "./message-parts.tsx";
 import { refusalOf } from "./transport.ts";
@@ -54,14 +59,11 @@ function questionBefore(
     .join("");
 }
 
-const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
-
-const chipClass = `inline-flex min-h-8 items-center rounded-full border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground ${focusRing}`;
-
 /**
  * One agent chat (R-40, R-18), laid out as a chat (Section 7 redesign, agent-native rules 2, 5
- * and 6): the person's message in a muted bubble at the right, the answer as plain text under a
- * small agent mark, suggestion chips, and the `Composer`. The picked model goes with the first
+ * and 6): the empty state of a new chat, the person's message in a muted bubble at the right, the
+ * answer as plain text under a small agent mark with its steps and artifact cards, suggestion
+ * chips, and the `Composer`. The frame (the panel or Ask) gives what a card does and New chat. The picked model goes with the first
  * message only, because the session keeps the model the first message fixed (P4). While an answer
  * streams, nothing sends again (B9.1), and Stop ends it with its words kept (I18).
  */
@@ -77,13 +79,20 @@ export function Conversation(props: {
   readonly checkChart: CheckChart;
   /** The viewer's zone for a chart's read-time caption, from `branding.defaultTimeZone`. */
   readonly timeZone: string;
-  readonly newChatHref: string;
   /** The words for tool steps and dataset titles, so no internal name shows (6.3). */
   readonly labels: ChatLabels;
-  /** Starter questions above the composer; hidden while an answer streams or after a refusal. */
+  /** Starter questions; hidden while an answer streams or after a refusal. */
   readonly suggestions: readonly string[];
-  /** Shown above the composer while the chat has no message, for example a welcome line. */
-  readonly empty?: ReactNode;
+  /** The inbox lines of a new chat's empty state (R-42). */
+  readonly inbox: readonly InboxLink[];
+  /** What an artifact card does in this frame. */
+  readonly artifacts: ArtifactCardAction;
+  /** The empty state's heading level in the frame's outline. */
+  readonly headingLevel: 2 | 3;
+  /** Starts a new chat, the one recovery from a model the administrator removed. */
+  readonly onNewChat: () => void;
+  /** Tells the frame whether an answer streams, for its working state (R-42). */
+  readonly onWorking?: ((working: boolean) => void) | undefined;
   /**
    * A message the page asks to send, for example a starter chip outside the chat. `onSent` runs
    * once it went out, so the page clears it; a pending that stayed set would send again.
@@ -91,7 +100,7 @@ export function Conversation(props: {
   readonly pending?:
     | { readonly text: string; readonly onSent: () => void }
     | undefined;
-  readonly onFinished?: (sessionId: string) => void;
+  readonly onFinished?: ((sessionId: string) => void) | undefined;
 }): ReactNode {
   const [draft, setDraft] = useState("");
 
@@ -161,8 +170,17 @@ export function Conversation(props: {
     pending.onSent();
   }, [pending?.text, busy]);
 
+  const { onWorking } = props;
+
+  useEffect(() => {
+    onWorking?.(busy);
+  }, [busy, onWorking]);
+
+  const isNew = chat.messages.length === 0;
+
+  // A new chat offers its starters in the empty state; later they sit above the composer.
   const showSuggestions =
-    !busy && refusal === null && props.suggestions.length > 0;
+    !isNew && !busy && refusal === null && props.suggestions.length > 0;
 
   return (
     <ChartCheckProvider
@@ -171,9 +189,16 @@ export function Conversation(props: {
       datasetTitles={props.labels.datasets}
     >
       <div className="flex min-h-0 flex-1 flex-col">
-        {props.empty === undefined || chat.messages.length > 0 ? null : (
-          <div className="p-4 md:p-5">{props.empty}</div>
-        )}
+        {isNew ? (
+          <div className="p-4 md:p-5">
+            <ChatEmpty
+              headingLevel={props.headingLevel}
+              inbox={props.inbox}
+              suggestions={refusal === null ? props.suggestions : []}
+              onPick={send}
+            />
+          </div>
+        ) : null}
         <div
           role="log"
           aria-live="polite"
@@ -192,12 +217,7 @@ export function Conversation(props: {
               </Message>
             ) : (
               <Message key={message.id}>
-                <span
-                  aria-hidden="true"
-                  className="grid size-6 shrink-0 place-items-center self-start rounded-md border border-border bg-muted"
-                >
-                  <SparklesIcon className="size-3.5" strokeWidth={1.75} />
-                </span>
+                <AgentMark />
                 <MessageContent className="max-w-prose">
                   <span className="sr-only">Answer:</span>
                   <MessageParts
@@ -213,6 +233,7 @@ export function Conversation(props: {
 
                       if (question !== undefined) send(question);
                     }}
+                    artifacts={props.artifacts}
                   />
                 </MessageContent>
               </Message>
@@ -228,9 +249,14 @@ export function Conversation(props: {
             >
               <p className="text-sm">{refusal.message}</p>
               {refusal.requiresNewChat ? (
-                <a href={props.newChatHref} className={linkClass}>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={props.onNewChat}
+                >
                   Start a new chat
-                </a>
+                </Button>
               ) : null}
             </div>
           )}
@@ -245,7 +271,7 @@ export function Conversation(props: {
                 <button
                   key={question}
                   type="button"
-                  className={chipClass}
+                  className={pillClass}
                   onClick={() => send(question)}
                 >
                   {question}

@@ -13,6 +13,8 @@ import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
 import { methodLines, sourceTitles } from "./answer-sources.ts";
+import { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
+import { artifactRefsOf } from "./artifact-refs.ts";
 import { StepTimeline } from "./step-timeline.tsx";
 
 /**
@@ -166,6 +168,31 @@ function AnswerFooter(props: {
   );
 }
 
+/** The artifacts an answer made, after its prose (R-45a). */
+function ArtifactCards(props: {
+  readonly message: AgentMessage;
+  readonly action: ArtifactCardAction;
+  readonly ready: boolean;
+}): ReactNode {
+  const cards = artifactRefsOf(props.message);
+
+  if (cards.length === 0) return null;
+
+  return (
+    <ul aria-label="Artifacts" className="grid gap-2">
+      {cards.map((artifact) => (
+        <li key={artifact.toolCallId}>
+          <ArtifactCard
+            artifact={artifact}
+            action={props.action}
+            ready={props.ready}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** One message of an agent chat. */
 export function MessageParts(props: {
   readonly message: AgentMessage;
@@ -176,6 +203,8 @@ export function MessageParts(props: {
   readonly durationMs?: number | undefined;
   /** Sends the question again after a final refusal. */
   readonly onTryAgain?: (() => void) | undefined;
+  /** What an artifact card does; undefined shows no card. */
+  readonly artifacts?: ArtifactCardAction | undefined;
 }): ReactNode {
   const body = useRef<HTMLDivElement>(null);
 
@@ -218,6 +247,13 @@ export function MessageParts(props: {
           ) : null
         )}
       </div>
+      {props.artifacts === undefined ? null : (
+        <ArtifactCards
+          message={props.message}
+          action={props.artifacts}
+          ready={!props.streaming}
+        />
+      )}
       {answered ? (
         <AnswerFooter
           parts={props.message.parts}

@@ -83,14 +83,13 @@ type AgentRouteBody = {
 
 /**
  * The route's transport: one message to one session. A refusal before the stream starts becomes
- * the person-facing message the chat shows, not the route's JSON body.
+ * the person-facing message the chat shows, not the route's JSON body. `context` is read when a
+ * message goes, so the record of the page the person is on goes with it (AG9).
  */
 export function agentTransport(
   api: string,
-  options?: { readonly context?: AgentChatContext }
+  options?: { readonly context?: () => AgentChatContext | undefined }
 ): ChatTransport<AgentMessage> {
-  const context = options?.context;
-
   return new DefaultChatTransport<AgentMessage>({
     api,
     fetch: async (input, init) => {
@@ -108,6 +107,8 @@ export function agentTransport(
       if (picked.success && picked.data.modelId !== undefined) {
         sent.modelId = picked.data.modelId;
       }
+
+      const context = options?.context?.();
 
       // No `context` key without a context, so every recorded Ask request stays the same.
       if (context !== undefined) sent.context = context;

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { ChatTransport, UIMessageChunk } from "ai";
-import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { AgentMessage } from "../../services/agent/index.ts";
 import type { CheckChart } from "./chart-check.tsx";
@@ -141,6 +141,52 @@ const sendPicked = fn(async () =>
   )
 );
 
+const CHART_ID = "11111111-1111-4111-8111-111111111111";
+
+const TABLE_ID = "22222222-2222-4222-8222-222222222222";
+
+const PROSE = "Here are both.";
+
+function madeBy(id: string, type: string, title: string) {
+  return {
+    type: "tool-make-artifact" as const,
+    toolCallId: id,
+    state: "output-available" as const,
+    input: { config: { type, title, series: [] } },
+    output: { artifact: 1, version: 1, title },
+  };
+}
+
+/** A stored answer that made a chart and a table. */
+const ARTIFACT_CHAT: readonly AgentMessage[] = [
+  {
+    id: "question",
+    role: "user",
+    parts: [{ type: "text", text: "Chart the quantity and list the records" }],
+  },
+  {
+    id: "answer",
+    role: "assistant",
+    parts: [
+      madeBy("call-chart", "bar", "Quantity by record"),
+      madeBy("call-table", "table", "Records"),
+      {
+        type: "data-artifact",
+        id: "call-chart",
+        data: { artifactId: CHART_ID, version: 1 },
+      },
+      {
+        type: "data-artifact",
+        id: "call-table",
+        data: { artifactId: TABLE_ID, version: 1 },
+      },
+      { type: "text", text: PROSE },
+    ],
+  },
+];
+
+const openArtifact = fn();
+
 /** The route's own 400 body, so the story proves the refusal mapping it ships with. */
 const sendRefused = fn(async () => {
   throw await refusalFromResponse(
@@ -186,7 +232,10 @@ const meta = {
     suggestions: SUGGESTIONS,
     checkChart,
     timeZone: "UTC",
-    newChatHref: "/ask",
+    inbox: [{ label: "Documents", href: "/m/example" }],
+    artifacts: { kind: "panel", shown: null, onOpen: fn() },
+    headingLevel: 2,
+    onNewChat: fn(),
   },
   beforeEach: () => {
     releaseHeld = () => undefined;
@@ -270,10 +319,71 @@ export const StopKeepsTheAnswer: Story = {
   },
 };
 
+export const ArtifactCardsInAsk: Story = {
+  name: "Artifact cards in Ask",
+  args: {
+    initialMessages: ARTIFACT_CHAT,
+    artifacts: {
+      kind: "panel",
+      shown: { artifactId: CHART_ID, version: 1 },
+      onOpen: openArtifact,
+    },
+  },
+  play: async ({ canvas }) => {
+    const cards = canvas.getByRole("list", { name: "Artifacts" });
+
+    // The cards follow the prose of the answer.
+    await expect(
+      canvas.getByText(PROSE).compareDocumentPosition(cards) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    const shown = within(cards).getByRole("button", {
+      name: "Open Quantity by record",
+    });
+
+    await expect(shown).toHaveAttribute("aria-pressed", "true");
+    await expect(shown).toHaveTextContent("Showing");
+    await expect(shown).toHaveTextContent("Chart · v1");
+
+    await userEvent.click(
+      within(cards).getByRole("button", { name: "Open Records" })
+    );
+    await expect(openArtifact).toHaveBeenCalledWith({
+      artifactId: TABLE_ID,
+      version: 1,
+    });
+  },
+};
+
+export const ArtifactCardsInThePanel: Story = {
+  name: "Artifact cards in the panel",
+  args: {
+    initialMessages: ARTIFACT_CHAT,
+    artifacts: {
+      kind: "link",
+      href: (ref) => `/ask/chat-1?artifact=${ref.artifactId}`,
+    },
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("link", { name: "Open Quantity by record in Ask" })
+    ).toHaveAttribute("href", `/ask/chat-1?artifact=${CHART_ID}`);
+  },
+};
+
 export const PickAModel: Story = {
   name: "Pick a model",
   args: { transport: transportOf(sendPicked) },
   play: async ({ canvas }) => {
+    // A new chat says what the agent answers from and where documents go in (R-42).
+    await expect(
+      canvas.getByRole("heading", { name: "What would you like to know?" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Documents" })
+    ).toHaveAttribute("href", "/m/example");
+
     const trigger = canvas.getByRole("combobox", { name: "Model" });
 
     // The new chat offers the allowed models, with the chat default selected.
@@ -300,7 +410,7 @@ export const PickAModel: Story = {
 
 export const Refused: Story = {
   args: { transport: transportOf(sendRefused) },
-  play: async ({ canvas }) => {
+  play: async ({ args, canvas }) => {
     await expect(suggestions()).not.toBeNull();
 
     const trigger = canvas.getByRole("combobox", { name: "Model" });
@@ -319,9 +429,10 @@ export const Refused: Story = {
     // chip offers to send into the refused chat.
     await expect(await canvas.findByText(REFUSAL)).toBeVisible();
     await expect(suggestions()).toBeNull();
-    await expect(
-      canvas.getByRole("link", { name: "Start a new chat" })
-    ).toHaveAttribute("href", "/ask");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Start a new chat" })
+    );
+    await expect(args.onNewChat).toHaveBeenCalledTimes(1);
 
     // A refused first send stores no answer, so the chat is still new: the picker stays, and
     // the retry carries the same model instead of silently falling back to the default (R-18).

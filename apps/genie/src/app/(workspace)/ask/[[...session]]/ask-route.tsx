@@ -6,12 +6,7 @@ import type {
   ChatLabels,
   InboxLink,
 } from "@genie/core";
-import {
-  agentTransport,
-  AskScreen,
-  type CheckChart,
-  Conversation,
-} from "@genie/core/features/agent";
+import { AgentChat, AskScreen } from "@genie/core/features/agent";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
@@ -19,8 +14,6 @@ import { useState } from "react";
 import { rpc } from "../../../../rpc/client.ts";
 
 const SESSION_LIST_KEY = ["agent", "sessions"];
-
-const checkChart: CheckChart = (config) => rpc.agent.chart({ config });
 
 /**
  * The browser half of Ask (R-42, R-18, R-20). The server has read the list and the current
@@ -54,30 +47,32 @@ export function AskRoute(props: {
   const [newId] = useState(() => crypto.randomUUID());
   const sessionId = props.currentId ?? newId;
 
-  const [transport] = useState(() => agentTransport("/api/agent"));
-
   return (
     <AskScreen
       sessions={sessions.data}
       currentId={props.currentId}
       sessionHref={(id) => `/ask/${id}`}
       newChatHref="/ask"
-      inbox={props.inbox}
       aiOn={props.aiOn}
       timeZone={props.timeZone}
     >
       {props.aiOn ? (
-        <Conversation
+        <AgentChat
           key={sessionId}
           sessionId={sessionId}
           initialMessages={props.initialMessages}
-          transport={transport}
           models={props.models}
           labels={props.labels}
           suggestions={props.suggestions}
-          checkChart={checkChart}
+          inbox={props.inbox}
           timeZone={props.timeZone}
-          newChatHref="/ask"
+          // Task 11 opens the artifact panel from this address.
+          artifacts={{
+            kind: "link",
+            href: (ref) => `/ask/${sessionId}?artifact=${ref.artifactId}`,
+          }}
+          headingLevel={2}
+          onNewChat={() => router.push("/ask")}
           onFinished={(id) => {
             void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
 

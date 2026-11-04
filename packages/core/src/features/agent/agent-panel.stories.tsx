@@ -1,12 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { omit } from "es-toolkit";
 
-import { ModuleClientProvider } from "../../lib/rpc/module-client.tsx";
+import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
 import { AgentPanel } from "./agent-panel.tsx";
-
-const chart = async () => {
-  throw new Error("This panel fixture draws no chart.");
-};
 
 /**
  * A new agent chat beside one record. Its behavior is the Conversation's, whose stories cover
@@ -27,9 +23,9 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <ModuleClientProvider client={{ agent: { chart } }}>
+      <AgentClientStub>
         <Story />
-      </ModuleClientProvider>
+      </AgentClientStub>
     ),
   ],
   args: {
@@ -41,7 +37,6 @@ const meta = {
     labels: { steps: {}, datasets: { "example.items": "Items" } },
     suggestions: ["How many items are there?", "Which items are new?"],
     timeZone: "UTC",
-    newChatHref: "/ask",
   },
 } satisfies Meta<typeof AgentPanel>;
 

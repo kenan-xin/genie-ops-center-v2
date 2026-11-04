@@ -1,47 +1,17 @@
 "use client";
 
-import { Button, Disclosure, focusRing } from "@genie/ui";
-import { PlusIcon, SparklesIcon } from "lucide-react";
+import { Button, Disclosure } from "@genie/ui";
+import { PlusIcon } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
-import type {
-  AgentSessionSummary,
-  InboxLink,
-} from "../../services/agent/index.ts";
+import type { AgentSessionSummary } from "../../services/agent/index.ts";
 import { ChatDock } from "./chat-dock.tsx";
 import { ChatPanel } from "./chat-panel.tsx";
+import { linkClass } from "./chat-parts.tsx";
 import { SessionList } from "./session-list.tsx";
 
 /** The `sessionStorage` key that holds the bubble's current chat for this browser tab. */
 export const BUBBLE_SESSION_KEY = "genie.chat-bubble.session";
-
-const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
-
-/** The new chat's welcome: what Ask answers from, and where documents go in (R-42). */
-function Welcome(props: { readonly inbox: readonly InboxLink[] }): ReactNode {
-  return (
-    <div className="flex gap-3">
-      <span
-        aria-hidden="true"
-        className="grid size-6 shrink-0 place-items-center rounded-md border border-border bg-muted"
-      >
-        <SparklesIcon className="size-3.5" strokeWidth={1.75} />
-      </span>
-      <div className="grid gap-1 text-sm">
-        <p>Ask about the records you can see.</p>
-        {props.inbox.map((link) => (
-          <p key={link.href} className="text-muted-foreground">
-            To add documents, use{" "}
-            <a href={link.href} className={linkClass}>
-              {link.label}
-            </a>
-            .
-          </p>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 /**
  * The general chat of every signed-in page (R-42, Section 7 redesign P7): a `ChatDock` with the
@@ -53,14 +23,13 @@ function Welcome(props: { readonly inbox: readonly InboxLink[] }): ReactNode {
 export function ChatBubble(props: {
   readonly askHref: string;
   readonly sessionHref: (id: string) => string;
-  readonly inbox: readonly InboxLink[];
   /** undefined while the list loads. */
   readonly sessions: readonly AgentSessionSummary[] | undefined;
   /** The tenant's zone for each chat's day. */
   readonly timeZone: string;
   readonly onOpenChange?: (open: boolean) => void;
-  /** Renders the conversation of a session, with the welcome to show while it is empty. */
-  readonly conversation: (sessionId: string, empty: ReactNode) => ReactNode;
+  /** Renders the conversation of a session; `newChat` starts another. */
+  readonly conversation: (sessionId: string, newChat: () => void) => ReactNode;
 }): ReactNode {
   // The browser makes the id of a chat (P3). The tab keeps it, so a page load reopens the same chat.
   const [sessionId, setSessionId] = useState(
@@ -114,7 +83,9 @@ export function ChatBubble(props: {
             </Disclosure>
           </div>
           <div key={sessionId} className="flex min-h-0 flex-1 flex-col">
-            {props.conversation(sessionId, <Welcome inbox={props.inbox} />)}
+            {props.conversation(sessionId, () =>
+              setSessionId(crypto.randomUUID())
+            )}
           </div>
         </ChatPanel>
       )}

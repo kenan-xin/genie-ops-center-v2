@@ -1,12 +1,9 @@
 import { Button } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
-import type {
-  AgentSessionSummary,
-  InboxLink,
-} from "../../services/agent/index.ts";
+import type { AgentSessionSummary } from "../../services/agent/index.ts";
 import { BUBBLE_SESSION_KEY, ChatBubble } from "./chat-bubble.tsx";
 
 const FIRST_SESSION: AgentSessionSummary = {
@@ -26,29 +23,24 @@ const SESSIONS: readonly AgentSessionSummary[] = [
   },
 ];
 
-const INBOX: readonly InboxLink[] = [
-  { label: "Documents", href: "/m/example" },
-];
-
 // From 1280 px the chat docks as a column; below it opens as a sheet.
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
 /**
- * Stands in for the conversation: it shows the id it was opened with, the welcome, and a Send of
- * its own, so a story can tell one chat from the next without a model.
+ * Stands in for the conversation: it shows the id it was opened with and a Send of its own, so a
+ * story can tell one chat from the next without a model.
  */
 function StubConversation(props: {
   readonly sessionId: string;
-  readonly empty: ReactNode;
   readonly onSend?: () => void;
 }) {
   const [sent, setSent] = useState(false);
 
   return (
     <div className="grid gap-2 p-4">
-      {sent ? <p>Message sent</p> : props.empty}
+      {sent ? <p>Message sent</p> : null}
       <p>New session {props.sessionId}</p>
       <Button
         type="button"
@@ -75,13 +67,11 @@ function NewChatHarness() {
     <ChatBubble
       askHref="/ask"
       sessionHref={(id) => `/ask/${id}`}
-      inbox={INBOX}
       sessions={sessions}
       timeZone="UTC"
-      conversation={(sessionId, empty) => (
+      conversation={(sessionId) => (
         <StubConversation
           sessionId={sessionId}
-          empty={empty}
           onSend={() =>
             setSessions((current) =>
               current.some((session) => session.id === sessionId)
@@ -135,7 +125,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The chat bubble: a round button at the bottom right that opens the Ask panel, a docked column from 1280 px and a sheet below. Its header holds New chat and Open Ask, the person's chats wait in a closed fold, and a new chat shows a welcome with the Documents inbox link. A reopen continues the last chat of this browser tab, also after a page load, and only New chat starts a new session. The stub conversation shows the id; it calls no model.",
+          "The chat bubble: a round button at the bottom right that opens the Ask panel, a docked column from 1280 px and a sheet below. Its header holds New chat and Open Ask, the person's chats wait in a closed fold, and the conversation's empty state holds the Documents inbox link. A reopen continues the last chat of this browser tab, also after a page load, and only New chat starts a new session. The stub conversation shows the id; it calls no model.",
       },
     },
     a11y: { test: "error" },
@@ -143,11 +133,10 @@ const meta = {
   args: {
     askHref: "/ask",
     sessionHref: (id: string) => `/ask/${id}`,
-    inbox: INBOX,
     sessions: SESSIONS,
     timeZone: "UTC",
-    conversation: (sessionId: string, empty: ReactNode) => (
-      <StubConversation sessionId={sessionId} empty={empty} />
+    conversation: (sessionId: string) => (
+      <StubConversation sessionId={sessionId} />
     ),
   },
 } satisfies Meta<typeof ChatBubble>;
@@ -232,11 +221,6 @@ export const OpenDesktop: Story = {
     await expect(open.getByRole("link", { name: "Open Ask" })).toHaveAttribute(
       "href",
       "/ask"
-    );
-    // A new chat welcomes the person and links the Documents inbox (R-42).
-    await expect(open.getByRole("link", { name: "Documents" })).toHaveAttribute(
-      "href",
-      "/m/example"
     );
 
     // The chats wait in a closed fold, each with its day.

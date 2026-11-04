@@ -31,7 +31,7 @@ import {
  * stands still and the words carry the state.
  */
 
-const linkClass = `inline-flex min-h-8 items-center rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline dark:text-brand-on-dark ${focusRing}`;
+const stepLinkClass = `inline-flex min-h-8 items-center rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline dark:text-brand-on-dark ${focusRing}`;
 
 function steps(n: number): string {
   return `${n} ${n === 1 ? "step" : "steps"}`;
@@ -75,7 +75,7 @@ function Details(props: { readonly parts: readonly MessagePart[] }): ReactNode {
 
   return (
     <details className="group/details text-sm">
-      <summary className={`${linkClass} cursor-pointer list-none`}>
+      <summary className={`${stepLinkClass} cursor-pointer list-none`}>
         Details
       </summary>
       <div className="mt-1 grid gap-1">
@@ -232,7 +232,7 @@ export function StepTimeline(props: {
         {hidden === 0 ? null : (
           <button
             type="button"
-            className={`${linkClass} justify-self-start ps-7`}
+            className={`${stepLinkClass} justify-self-start ps-7`}
             onClick={() => setEarlier(true)}
           >
             +{hidden} earlier {hidden === 1 ? "step" : "steps"}
@@ -337,7 +337,7 @@ export function StepTimeline(props: {
               )}
               <button
                 type="button"
-                className={linkClass}
+                className={stepLinkClass}
                 onClick={() => setOpen(true)}
               >
                 See the steps

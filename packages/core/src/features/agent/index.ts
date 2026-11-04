@@ -25,3 +25,13 @@ export {
 } from "./transport.ts";
 
 export { AgentPanel } from "./agent-panel.tsx";
+
+export { AgentChat } from "./agent-chat.tsx";
+
+export { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
+
+export {
+  type ArtifactRef,
+  artifactRefsOf,
+  type CardArtifact,
+} from "./artifact-refs.ts";
