@@ -150,15 +150,19 @@ export function HistoryList(props: HistoryListProps) {
   const { rows, other, timeZone } = props;
 
   return (
-    <ol aria-label="History" className="divide-y divide-border border-y">
+    // Sized by its own width, because the record's drawer is narrow on a wide screen.
+    <ol
+      aria-label="History"
+      className="@container divide-y divide-border border-y"
+    >
       {rows.toReversed().map((row) => (
         <li
           key={row.id}
-          className="flex flex-col gap-1 py-2.5 text-sm md:flex-row md:gap-3"
+          className="flex flex-col gap-1 py-2.5 text-sm @lg:flex-row @lg:gap-3"
         >
           <time
             dateTime={row.occurredAt}
-            className="shrink-0 text-muted-foreground tabular-nums md:w-44"
+            className="shrink-0 text-muted-foreground tabular-nums @lg:w-44"
           >
             {formatInstant(row.occurredAt, timeZone)}
           </time>

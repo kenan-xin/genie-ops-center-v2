@@ -351,11 +351,17 @@ export const ChangeType: Story = {
   },
 };
 
+/** An upload's own name, which has no space to wrap at. */
+const LONG_LABEL = "2026-11-04_Scan_Invoice_Missing_Due_Date_ABC_Trading.pdf";
+
 // B4.7: Discard asks with Cancel focused; Cancel writes nothing and Confirm discards.
 export const Discard: Story = {
   globals: desktop,
   beforeEach: () => {
-    serve(invoiceReview);
+    serve({
+      ...invoiceReview,
+      document: { ...invoiceReview.document, label: LONG_LABEL },
+    });
     discardDocument.mockImplementation(
       () =>
         new Promise((resolve) => {
@@ -394,12 +400,17 @@ export const Discard: Story = {
       canvas.getByRole("button", { name: "Discard" })
     ).toHaveAttribute("aria-busy", "true");
     releaseDiscard?.();
+
     // czjw.64: the result card says what happened and offers the next step.
-    await expect(
-      await canvas.findByText(
-        "Discarded 01_Invoice_Missing_Due_Date.pdf. Nothing was added."
-      )
-    ).toBeVisible();
+    const discarded = await canvas.findByText(
+      `Discarded ${LONG_LABEL}. Nothing was added.`
+    );
+
+    await expect(discarded).toBeVisible();
+    // A file name has no space to wrap at, so on a phone it must break inside the card.
+    await expect(discarded.scrollWidth).toBeLessThanOrEqual(
+      discarded.clientWidth
+    );
     await expect(
       canvas.getByRole("button", { name: "Upload another" })
     ).toBeVisible();

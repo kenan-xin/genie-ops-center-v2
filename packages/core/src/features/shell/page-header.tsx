@@ -34,8 +34,15 @@ export type PageHeaderProps = {
   readonly meta?: ReactNode;
   /** The page's primary action; below `md` it moves to the bottom bar. */
   readonly actions?: ReactNode;
-  /** Other actions, such as "Open the PDF"; they stay in the header at every width. */
+  /** Other actions, such as "Open the PDF"; they stay in the header at every width, unless `compactBelowLg`. */
   readonly secondaryActions?: ReactNode;
+  /**
+   * Below `lg` the header shows only the title (inside a shell, in the top bar): the page shows its
+   * meta line and secondary actions in its own place, as the document desk's sheet does.
+   * shortcut: `actions` with this show nowhere from `md` to `lg`; give the page a place for them
+   * before a caller passes both.
+   */
+  readonly compactBelowLg?: boolean;
   readonly bottomBar?: ReactNode;
   /** Only on a page under a list; a top-level page passes none. */
   readonly breadcrumb?: PageBreadcrumb;
@@ -128,8 +135,12 @@ export function PageHeader(props: PageHeaderProps) {
       ? undefined
       : linkFor(crumb.parent.href, shell?.linkComponent);
 
+  const compact = props.compactBelowLg === true;
+  const hiddenIfCompact = compact ? "max-lg:hidden" : "";
+
   const showsBelowLg =
-    props.meta !== undefined || props.secondaryActions !== undefined;
+    !compact &&
+    (props.meta !== undefined || props.secondaryActions !== undefined);
 
   // Below the width where the header shows nothing, take it out of the flow so a page's gap does not
   // leave an empty band under the top bar.
@@ -169,11 +180,17 @@ export function PageHeader(props: PageHeaderProps) {
             </p>
           )}
           {props.meta === undefined ? null : (
-            <p className="mt-1 text-sm text-muted-foreground">{props.meta}</p>
+            <p
+              className={`mt-1 text-sm text-muted-foreground ${hiddenIfCompact}`}
+            >
+              {props.meta}
+            </p>
           )}
         </div>
         {inShell ? (
-          <div className={`flex flex-wrap items-center gap-2 ${sideBelowMd}`}>
+          <div
+            className={`flex flex-wrap items-center gap-2 ${sideBelowMd} ${hiddenIfCompact}`}
+          >
             <div
               data-shell-slot="search"
               aria-hidden="true"
@@ -188,7 +205,9 @@ export function PageHeader(props: PageHeaderProps) {
           </div>
         ) : props.actions === undefined &&
           props.secondaryActions === undefined ? null : (
-          <div className="flex flex-wrap items-center gap-2">
+          <div
+            className={`flex flex-wrap items-center gap-2 ${hiddenIfCompact}`}
+          >
             {props.secondaryActions}
             {props.actions}
           </div>

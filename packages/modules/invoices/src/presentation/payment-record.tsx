@@ -116,6 +116,8 @@ function ShownPayment(props: { readonly initial: ShownView }) {
     </Button>
   ) : undefined;
 
+  const meta = `${payment.customerName} · Amounts as of ${formatDay(view.asOf)}, the reporting date.`;
+
   return (
     <main>
       <DocumentDesk
@@ -124,12 +126,8 @@ function ShownPayment(props: { readonly initial: ShownView }) {
         documentUrl={view.documentUrl}
         refreshUrl={refreshUrl}
         fields={fields}
-        header={
-          <PageHeader
-            title={label}
-            meta={`${payment.customerName} · Amounts as of ${formatDay(view.asOf)}, the reporting date.`}
-          />
-        }
+        header={<PageHeader title={label} meta={meta} compactBelowLg />}
+        sheetHeader={<p className="text-sm text-muted-foreground">{meta}</p>}
         figures={
           <FigureStrip
             label="Figures"

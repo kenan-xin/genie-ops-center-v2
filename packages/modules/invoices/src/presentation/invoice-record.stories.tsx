@@ -151,9 +151,20 @@ export const Default: Story = {
       expect.stringContaining("TXN-PAY-2026-026"),
       expect.stringContaining("HF-SEP-FINAL-PART"),
     ]);
-    await expect(
-      within(drawer).getByRole("list", { name: "History" })
-    ).toBeVisible();
+    const history = within(drawer).getByRole("list", { name: "History" });
+
+    await expect(history).toBeVisible();
+
+    // The drawer is narrow, so each change shows its time above its sentence (variant C).
+    const [change] = within(history).getAllByRole("listitem");
+
+    const time = change?.querySelector("time")?.getBoundingClientRect();
+
+    const sentence = change
+      ?.querySelector("time + span")
+      ?.getBoundingClientRect();
+
+    await expect(time?.bottom).toBeLessThanOrEqual(sentence?.top ?? 0);
     await pageDrawn(canvasElement);
     await expect(
       canvas.queryByRole("link", { name: /Open the PDF/ })
@@ -211,6 +222,37 @@ export const PaidOnPhone: Story = {
   globals: phone,
   args: { view: linkedInFullInvoiceRecord },
   beforeEach: () => serve(linkedInFullInvoiceRecord),
+};
+
+const META = "Harbor Foods · Balances as of 27 Oct 2026, the reporting date.";
+
+// A phone shows the page first (variant C): the meta line and Correct the total wait in the sheet.
+export const PageFirstOnPhone: Story = {
+  name: "Page first on a phone",
+  globals: phone,
+  args: { view: deskInvoiceRecord },
+  beforeEach: () => serve(deskInvoiceRecord),
+  play: async ({ canvas, canvasElement }) => {
+    await pageDrawn(canvasElement);
+    await expect(
+      canvas.queryByRole("button", { name: "Correct the total" })
+    ).toBeNull();
+
+    await expect(
+      canvas.getAllByText(META).some((line) => line.checkVisibility())
+    ).toBe(false);
+
+    await openDetails(canvas);
+
+    const sheet = canvas.getByRole("region", {
+      name: "Details of INV-2026-09-03",
+    });
+
+    await expect(within(sheet).getByText(META)).toBeVisible();
+    await expect(
+      within(sheet).getByRole("button", { name: "Correct the total" })
+    ).toBeVisible();
+  },
 };
 
 export const NoDueDate: Story = {
@@ -380,6 +422,7 @@ async function saveTotal(
   current: string,
   total: string
 ) {
+  await openDetails(canvas);
   await userEvent.click(
     canvas.getByRole("button", { name: "Correct the total" })
   );

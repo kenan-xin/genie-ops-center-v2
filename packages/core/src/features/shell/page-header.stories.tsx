@@ -311,6 +311,39 @@ export const MetaAndSecondaryActionsPhone: Story = {
   },
 };
 
+/**
+ * A record whose page shows its meta line and secondary actions elsewhere below `lg` (the document
+ * desk's sheet): the header keeps only the title, for screen readers, and takes no room.
+ */
+export const CompactBelowLgPhone: Story = {
+  decorators: [inShell],
+  args: {
+    title: "INV-0042",
+    meta: "Acme Pte Ltd · Issued 1 Oct 2026",
+    secondaryActions: <Button variant="secondary">Correct the total</Button>,
+    compactBelowLg: true,
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    const header = region(canvasElement, "[data-shell-page-header]");
+
+    await expect(
+      header.getByText("Acme Pte Ltd · Issued 1 Oct 2026")
+    ).not.toBeVisible();
+    await expect(
+      header.queryByRole("button", { name: "Correct the total" })
+    ).toBeNull();
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: "INV-0042" })
+    ).toBeInTheDocument();
+    await expect(
+      canvasElement
+        .querySelector("[data-shell-page-header]")
+        ?.getBoundingClientRect().height
+    ).toBeLessThanOrEqual(1);
+  },
+};
+
 export const Dark: Story = {
   decorators: [inShell],
   args: { actions: <Button>Add person</Button> },

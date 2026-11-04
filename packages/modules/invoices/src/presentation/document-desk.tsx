@@ -40,6 +40,11 @@ export type DocumentDeskProps = {
   readonly fields: readonly DeskField[];
   /** The page header, at every width. */
   readonly header: ReactNode;
+  /**
+   * What the header shows from `lg` (the meta line and its actions), at the top of the opened
+   * sheet below it, so that a phone shows the page first (variant C).
+   */
+  readonly sheetHeader?: ReactNode;
   /** The figures: under the header from 1280 px, in the sheet below it. */
   readonly figures: ReactNode;
   /** What the closed sheet shows: the status, a caption and the lead amount. */
@@ -257,6 +262,11 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
           tabIndex={0}
           className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto border-t border-border px-4 pt-4 pb-6"
         >
+          {props.sheetHeader === undefined ? null : (
+            <div className="flex flex-col items-start gap-3 lg:hidden">
+              {props.sheetHeader}
+            </div>
+          )}
           {props.figures}
           <section aria-label="Fields" className="flex flex-col gap-2">
             <h2 className="text-base font-semibold">Fields</h2>

@@ -114,6 +114,15 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
       ? "entered"
       : view.fields.find((row) => row.field === "amount")?.origin;
 
+  const meta = `${invoice.customerName} · Balances as of ${formatDay(view.asOf)}, the reporting date.`;
+
+  const correct = view.canWrite ? (
+    <Button variant="secondary" onClick={() => setCorrecting(true)}>
+      <PencilIcon aria-hidden="true" />
+      Correct the total
+    </Button>
+  ) : undefined;
+
   const refreshUrl = async () => {
     const answer = await query.refetch();
 
@@ -131,16 +140,16 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
         header={
           <PageHeader
             title={invoice.invoiceNumber}
-            meta={`${invoice.customerName} · Balances as of ${formatDay(view.asOf)}, the reporting date.`}
-            secondaryActions={
-              view.canWrite ? (
-                <Button variant="secondary" onClick={() => setCorrecting(true)}>
-                  <PencilIcon aria-hidden="true" />
-                  Correct the total
-                </Button>
-              ) : undefined
-            }
+            meta={meta}
+            secondaryActions={correct}
+            compactBelowLg
           />
+        }
+        sheetHeader={
+          <>
+            <p className="text-sm text-muted-foreground">{meta}</p>
+            {correct}
+          </>
         }
         figures={
           <FigureStrip

@@ -140,7 +140,10 @@ export function ReviewResult(props: {
               <Icon />
             </IconTile>
             <div className="flex min-w-0 flex-col gap-1 pt-2">
-              <p role="status" className="text-base font-semibold">
+              <p
+                role="status"
+                className="text-base font-semibold wrap-anywhere"
+              >
                 {props.title}
               </p>
               {props.detail === undefined ? null : (
