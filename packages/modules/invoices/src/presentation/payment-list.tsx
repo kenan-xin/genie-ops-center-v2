@@ -196,8 +196,9 @@ export function PaymentList(props: PaymentListProps) {
                 facts: (row) => [
                   `${formatMoney(row.amountCents, row.currency)} paid ${formatDay(row.paymentDate)}`,
                   `Unallocated ${formatMoney(row.unallocatedCents, row.currency)}`,
-                  `Updated ${formatInstant(row.updatedAt, view.timeZone)}`,
                 ],
+                note: (row) =>
+                  `Updated ${formatInstant(row.updatedAt, view.timeZone)}`,
               },
             }}
             page={{

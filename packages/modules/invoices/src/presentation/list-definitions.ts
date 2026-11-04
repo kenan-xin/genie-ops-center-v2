@@ -158,7 +158,8 @@ export const documentListDefinition = {
       id: "q",
       kind: "search",
       label: "Search",
-      placeholder: "Search file, customer or number",
+      // The prototype's text: "customer or number" does not fit the 256 px search.
+      placeholder: "Search file, customer, number",
     },
     {
       id: "type",

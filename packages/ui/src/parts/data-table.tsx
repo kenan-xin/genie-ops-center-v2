@@ -67,6 +67,8 @@ export type DataTableCard<Row> = {
   readonly detail?: (row: Row) => ReactNode;
   /** Muted segments joined with " · " on one line. A long line truncates. */
   readonly facts?: (row: Row) => readonly ReactNode[];
+  /** A small muted last line on its own, for example the time of the last change. */
+  readonly note?: (row: Row) => ReactNode;
   /** Content under the facts that takes its own layout: a picker, a row of access. */
   readonly content?: (row: Row) => ReactNode;
   /** The end of line 1, above the row button: an age, or a switch, which stays clickable. */
@@ -522,6 +524,7 @@ export function DataTable<Row>({
           const badge = card.badge?.(row) ?? null;
           const detail = card.detail?.(row) ?? null;
           const facts = card.facts?.(row) ?? [];
+          const note = card.note?.(row) ?? null;
           const content = card.content?.(row) ?? null;
           const trailing = card.trailing?.(row) ?? null;
           const rowMenu = menu(row);
@@ -573,6 +576,11 @@ export function DataTable<Row>({
                 {facts.length === 0 ? null : (
                   <div className="truncate text-muted-foreground">
                     <Facts items={facts} />
+                  </div>
+                )}
+                {note === null ? null : (
+                  <div className="truncate text-xs text-muted-foreground">
+                    {note}
                   </div>
                 )}
                 {content === null ? null : (

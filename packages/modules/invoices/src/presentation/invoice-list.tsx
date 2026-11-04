@@ -221,8 +221,9 @@ export function InvoiceList(props: InvoiceListProps) {
                   row.dueDate === null
                     ? "No due date"
                     : `Due ${formatDay(row.dueDate)}`,
-                  `Updated ${formatInstant(row.updatedAt, view.timeZone)}`,
                 ],
+                note: (row) =>
+                  `Updated ${formatInstant(row.updatedAt, view.timeZone)}`,
               },
             }}
             page={{

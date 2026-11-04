@@ -535,9 +535,13 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 card: {
                   title: documentLabel,
                   badge: (row) => <DocumentStatusBadge status={row.status} />,
-                  facts: (row) => [foundText(row), `Updated ${updated(row)}`],
-                  detail: (row) =>
-                    `${kindText(row.kind)} · uploaded ${uploaded(row)}`,
+                  // The order of variant C: what we found, the type and upload day, then Updated.
+                  detail: foundText,
+                  facts: (row) => [
+                    kindText(row.kind),
+                    `uploaded ${uploaded(row)}`,
+                  ],
+                  note: (row) => `Updated ${updated(row)}`,
                   content: rowAction,
                 },
               }}

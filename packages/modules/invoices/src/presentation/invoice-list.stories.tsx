@@ -192,6 +192,15 @@ export const DefaultOnPhone: Story = {
   play: async ({ canvas, canvasElement }) => {
     await updatedAndFigures(canvas, canvasElement);
     await expect(canvas.getByText("Updated, newest")).toBeVisible();
+
+    // Updated keeps its own card line, so the facts never cut it off (variant C).
+    const updated = canvas
+      .getAllByText(/^Updated 2 Nov 2026, 16:40$/)
+      .find(isVisible);
+
+    await expect(updated!.scrollWidth).toBeLessThanOrEqual(
+      updated!.clientWidth
+    );
   },
 };
 
