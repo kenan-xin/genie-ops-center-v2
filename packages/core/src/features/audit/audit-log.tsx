@@ -10,7 +10,7 @@ import {
   FilterDisclosure,
   focusRing,
   HelpDisclosure,
-  Input,
+  DateRangePicker,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -337,27 +337,21 @@ function FilterPanel(props: {
       />
 
       {filters.range === "custom" ? (
-        <div className="flex items-center gap-2">
-          <Input
-            type="date"
-            aria-label="From"
-            value={filters.from ?? ""}
-            max={filters.to ?? undefined}
-            onChange={(event) =>
-              props.onChange({ ...filters, from: event.target.value || null })
-            }
-          />
-          <span className="shrink-0 text-xs text-muted-foreground">to</span>
-          <Input
-            type="date"
-            aria-label="To"
-            value={filters.to ?? ""}
-            min={filters.from ?? undefined}
-            onChange={(event) =>
-              props.onChange({ ...filters, to: event.target.value || null })
-            }
-          />
-        </div>
+        <DateRangePicker
+          label="Dates"
+          placeholder="Any date"
+          value={{
+            from: filters.from ?? undefined,
+            to: filters.to ?? undefined,
+          }}
+          onChange={(next) =>
+            props.onChange({
+              ...filters,
+              from: next.from ?? null,
+              to: next.to ?? null,
+            })
+          }
+        />
       ) : null}
 
       <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">

@@ -5,6 +5,7 @@ import { expect, test, type Page } from "@playwright/test";
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
+import { pickRange } from "./support/date-picker.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /** The tenant's seeded idle window; staging a session past it makes the next read refuse (R-14). */
@@ -143,7 +144,7 @@ test("an expired session on an RPC call lands on the sign-in page", async ({
   expect(activityCalls).toEqual([]);
 });
 
-/** The calendar date `offset` days ago, as the date inputs take it. */
+/** The calendar date `offset` days ago, as the range picker's `data-day` holds it. */
 function day(offset: number): string {
   return new Date(Date.now() - offset * 86_400_000).toISOString().slice(0, 10);
 }
@@ -264,8 +265,12 @@ test("a signed-in reader filters, pages and opens the audit log (AC-16)", async 
 
   // Date range: a custom window around the row older than the default 30 days.
   await chooseOption(page, "Date range", "Custom range");
-  await page.getByLabel("From", { exact: true }).fill(day(45));
-  await page.getByLabel("To", { exact: true }).fill(day(35));
+  await pickRange(
+    page,
+    page.getByRole("button", { name: /^Dates:/u }),
+    day(45),
+    day(35)
+  );
   await expect(showing(page, 1, 1)).toBeVisible();
   await expect(page.getByText(`${marker} old`).first()).toBeAttached();
   await chooseOption(page, "Date range", "Last 30 days");

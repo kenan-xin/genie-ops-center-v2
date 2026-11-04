@@ -2,15 +2,7 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import {
-  expect,
-  fireEvent,
-  fn,
-  screen,
-  userEvent,
-  waitFor,
-  within,
-} from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { DashboardChange } from "../contract.ts";
 import {
@@ -56,7 +48,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The dashboard filters (Spec 7 R-49, D3). A date range preset relative to the reporting date, or a custom From and To; and one text field filter whose values come from the panel datasets. Each choice saves one `set-filters` change, and a custom range that ends before it starts shows its field error and saves nothing.",
+          "The dashboard filters (Spec 7 R-49, D3). A date range preset relative to the reporting date, or a custom range picked in one range calendar; and one text field filter whose values come from the panel datasets. Each choice saves one `set-filters` change, and Apply with half a range shows its field error and saves nothing.",
       },
     },
     a11y: { test: "error" },
@@ -99,39 +91,52 @@ export const DefaultOnPhone: Story = {
   beforeEach: () => serve(defaultDashboardPage.dashboard),
 };
 
-// B4.4: a range that ends before it starts shows a field error and saves nothing.
+/** The day buttons of the open calendar, in date order; the month shown is today's. */
+const shownDays = () =>
+  waitFor(() => {
+    const days = [
+      ...document.querySelectorAll<HTMLButtonElement>("button[data-day]"),
+    ];
+
+    if (days.length < 6) throw new Error("The calendar is not open.");
+
+    return days;
+  });
+
+// B4.4, owner I8: half a range shows the trigger's error and saves nothing; a whole one saves once.
 export const CustomRange: Story = {
   name: "Custom range",
   globals: desktop,
   beforeEach: () => serve(defaultDashboardPage.dashboard),
   play: async ({ canvas }) => {
+    const message = "Choose a start and an end date.";
+
     await userEvent.click(canvas.getByRole("combobox", { name: "Date range" }));
     await userEvent.click(
       await screen.findByRole("option", { name: "Custom range" })
     );
 
-    fireEvent.change(canvas.getByLabelText("From"), {
-      target: { value: "2026-03-31" },
-    });
-    fireEvent.change(canvas.getByLabelText("To"), {
-      target: { value: "2026-03-01" },
-    });
+    const trigger = () => canvas.getByRole("button", { name: /^Dates:/u });
+
+    await userEvent.click(trigger());
+
+    const days = await shownDays();
+    const from = days[0]?.dataset["day"];
+    const to = days[5]?.dataset["day"];
+
+    await userEvent.click(days[0] ?? trigger());
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     await userEvent.click(canvas.getByRole("button", { name: "Apply" }));
 
-    await expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "The end date is on or after the start date."
-    );
-    await expect(canvas.getByLabelText("From")).toHaveAccessibleDescription(
-      "The end date is on or after the start date."
-    );
-    await expect(canvas.getByLabelText("To")).toHaveAccessibleDescription(
-      "The end date is on or after the start date."
-    );
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(message);
+    await expect(trigger()).toHaveAccessibleDescription(message);
     await expect(changeDashboard).not.toHaveBeenCalled();
 
-    fireEvent.change(canvas.getByLabelText("To"), {
-      target: { value: "2026-04-30" },
-    });
+    await userEvent.click(trigger());
+    await userEvent.click(
+      (await shownDays()).find((day) => day.dataset["day"] === to) ?? trigger()
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Done" }));
     await userEvent.click(canvas.getByRole("button", { name: "Apply" }));
 
     await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
@@ -142,7 +147,7 @@ export const CustomRange: Story = {
         {
           op: "set-filters",
           filters: {
-            dateRange: { from: "2026-03-31", to: "2026-04-30" },
+            dateRange: { from, to },
             field: { field: "label", label: "Customer", value: null },
           },
         },

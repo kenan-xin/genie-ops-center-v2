@@ -33,9 +33,9 @@ export type DateRangePickerProps = {
   readonly "placeholder": string;
   readonly "value": DayRange;
   readonly "onChange": (range: DayRange) => void;
-  readonly "disabled"?: boolean;
-  readonly "aria-invalid"?: boolean;
-  readonly "aria-describedby"?: string;
+  readonly "disabled"?: boolean | undefined;
+  readonly "aria-invalid"?: boolean | undefined;
+  readonly "aria-describedby"?: string | undefined;
 };
 
 /** The first pick starts a range; the second ends it, in day order. */

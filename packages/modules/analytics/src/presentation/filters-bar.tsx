@@ -3,10 +3,10 @@
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
   Button,
+  DateRangePicker,
   Field,
   FieldError,
   FieldLabel,
-  Input,
   Select,
   SelectContent,
   SelectItem,
@@ -49,8 +49,7 @@ export function FiltersBar(props: FiltersBarProps) {
   const analytics = useModuleClient(analyticsContract);
   const change = useDashboardChange(dashboard);
   const rangeId = useId();
-  const fromId = useId();
-  const toId = useId();
+  const datesId = useId();
   const fieldId = useId();
   const rangeErrorId = useId();
 
@@ -90,6 +89,13 @@ export function FiltersBar(props: FiltersBarProps) {
 
   function applyCustom(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+
+    // The schema's own message for a missing day is not written for people.
+    if (from === "" || to === "") {
+      setRangeError("Choose a start and an end date.");
+
+      return;
+    }
 
     const parsed = dateRangeFilter.safeParse({ from, to });
 
@@ -153,26 +159,19 @@ export function FiltersBar(props: FiltersBarProps) {
 
       {custom ? (
         <form className="flex flex-wrap items-end gap-2" onSubmit={applyCustom}>
-          <Field className="w-40">
-            <FieldLabel htmlFor={fromId}>From</FieldLabel>
-            <Input
-              id={fromId}
-              type="date"
-              value={from}
+          <Field className="w-64">
+            <FieldLabel htmlFor={datesId}>Dates</FieldLabel>
+            <DateRangePicker
+              id={datesId}
+              label="Dates"
+              placeholder="Choose the dates"
+              value={{ from: from || undefined, to: to || undefined }}
               aria-invalid={rangeError !== null}
               aria-describedby={rangeError === null ? undefined : rangeErrorId}
-              onChange={(event) => setFrom(event.target.value)}
-            />
-          </Field>
-          <Field className="w-40">
-            <FieldLabel htmlFor={toId}>To</FieldLabel>
-            <Input
-              id={toId}
-              type="date"
-              value={to}
-              aria-invalid={rangeError !== null}
-              aria-describedby={rangeError === null ? undefined : rangeErrorId}
-              onChange={(event) => setTo(event.target.value)}
+              onChange={(next) => {
+                setFrom(next.from ?? "");
+                setTo(next.to ?? "");
+              }}
             />
           </Field>
           <Button type="submit" variant="secondary" loading={change.isPending}>

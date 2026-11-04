@@ -10,7 +10,7 @@ import {
   Field,
   FieldLabel,
   FilterDisclosure,
-  Input,
+  DateRangePicker,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -127,7 +127,7 @@ export function CustomerFilter(props: {
   );
 }
 
-/** A date range as two native date fields, as the audit log and the dashboards ask for one. */
+/** A date range as one range picker (owner I8, list filter prototype C); each pick applies. */
 export function DateRangeFilter(props: {
   readonly label: string;
   readonly from: string | undefined;
@@ -137,41 +137,18 @@ export function DateRangeFilter(props: {
     readonly to: string | undefined;
   }) => void;
 }) {
-  const fromId = useId();
-  const toId = useId();
+  const id = useId();
 
   return (
-    <div className="flex items-end gap-2">
-      <Field className="md:w-40">
-        <FieldLabel htmlFor={fromId}>{`${props.label} from`}</FieldLabel>
-        <Input
-          id={fromId}
-          type="date"
-          value={props.from ?? ""}
-          max={props.to}
-          onChange={(event) =>
-            props.onChange({
-              from: event.target.value || undefined,
-              to: props.to,
-            })
-          }
-        />
-      </Field>
-      <Field className="md:w-40">
-        <FieldLabel htmlFor={toId}>To</FieldLabel>
-        <Input
-          id={toId}
-          type="date"
-          value={props.to ?? ""}
-          min={props.from}
-          onChange={(event) =>
-            props.onChange({
-              from: props.from,
-              to: event.target.value || undefined,
-            })
-          }
-        />
-      </Field>
-    </div>
+    <Field className="md:w-64">
+      <FieldLabel htmlFor={id}>{props.label}</FieldLabel>
+      <DateRangePicker
+        id={id}
+        label={props.label}
+        placeholder={`Any ${props.label.toLowerCase()}`}
+        value={{ from: props.from, to: props.to }}
+        onChange={(next) => props.onChange({ from: next.from, to: next.to })}
+      />
+    </Field>
   );
 }

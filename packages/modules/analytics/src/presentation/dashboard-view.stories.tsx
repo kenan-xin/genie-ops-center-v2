@@ -814,8 +814,10 @@ export const Undo: Story = {
     await expect(
       await canvas.findByRole("figure", { name: "Invoiced sales" })
     ).toBeVisible();
-    await expect(canvas.getByLabelText("From")).toHaveValue("2026-09-01");
-    await expect(canvas.getByLabelText("To")).toHaveValue("2026-09-30");
+    // The range text carries a thin space each side of its dash.
+    await expect(
+      canvas.getByRole("button", { name: /^Dates: 1\s–\s30 Sept 2026$/u })
+    ).toBeVisible();
   },
 };
 
