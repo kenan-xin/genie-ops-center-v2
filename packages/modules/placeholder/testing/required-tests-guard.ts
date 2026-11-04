@@ -135,12 +135,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/agent-route.integration.test.ts",
     reason:
-      "Spec 7 R-40, R-41 and R-18: the agent route streams UI message parts from the recorded model, stores the exchange, and keeps a session's model; AC-8 lines 1 and 2, R-43 and R-47: the route runs the tools as the asker, stores their results and audits each call",
+      "Spec 7 R-40, R-41 and R-18: the agent route streams UI message parts from the recorded model, stores the exchange, and keeps a session's model; AC-8 lines 1 and 2, R-43 and R-47: the route runs the tools as the asker, stores their results and audits each call; AC-8 and R-45a: a change request makes version 2 of the same artifact",
     cases: [
       "the agent route on the placeholder streams the recorded answer as UI message chunks and stores the exchange under the question",
       "the agent route on the placeholder sends a later message without a model id to the model the session started with",
       "the agent route on the placeholder answers a reader's count through list-datasets and query-dataset, stores both results, and audits both calls as the reader",
       "the agent route on the placeholder refuses a module tool inside the stream for a person without placeholder:read, answers the refusal, and audits it as forbidden",
+      "the agent route on the placeholder makes a chart artifact, a change makes version 2 of it, and the model never sees its id",
     ],
   },
   {

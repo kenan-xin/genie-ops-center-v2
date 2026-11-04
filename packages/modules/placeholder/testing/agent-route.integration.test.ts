@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   type AgentMessage,
   handleAgentChat,
+  listOwnArtifacts,
   type ModuleRequestContext,
   principalFor,
   readAuditPage,
@@ -68,6 +69,11 @@ const S3_ANSWER = [
   // The live answer ends with a line break.
   "",
 ].join("\n");
+
+/** AC-8: a chart artifact, then a change that makes its version 2. */
+const ARTIFACT_QUESTION = "Chart the quantity of each placeholder record.";
+
+const ARTIFACT_CHANGE = "Show it as a line by day instead.";
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([placeholderModule]);
@@ -293,5 +299,63 @@ describe("the agent route on the placeholder", () => {
         metadata: { sessionId, tool: "list-datasets", outcome: "answered" },
       },
     ]);
+  });
+
+  it("makes a chart artifact, a change makes version 2 of it, and the model never sees its id", async () => {
+    const ctx = await reader();
+
+    const sessionId = randomUUID();
+
+    await ask(ctx, { sessionId, message: message(ARTIFACT_QUESTION) });
+    await ask(ctx, { sessionId, message: message(ARTIFACT_CHANGE) });
+
+    // First, so a recording miss prints the body the model was sent.
+    expect(errors).toEqual([]);
+
+    const { messages } = await readOwnSession(ctx, sessionId);
+
+    const first = messages[1]?.parts ?? [];
+
+    const cards = first.filter(({ type }) => type === "data-artifact");
+
+    const calls = first.filter(({ type }) => type === "tool-make-artifact");
+
+    expect(cards).toMatchObject([
+      { type: "data-artifact", data: { version: 1 } },
+    ]);
+    expect(calls).toMatchObject([
+      { state: "output-error", errorText: expect.stringContaining("qty") },
+      {
+        state: "output-available",
+        output: { artifact: 1, version: 1, title: "Quantity by record" },
+      },
+    ]);
+
+    const artifacts = await listOwnArtifacts(ctx, sessionId);
+
+    expect(artifacts).toMatchObject([
+      {
+        number: 1,
+        kind: "chart",
+        latestVersion: 2,
+        versions: [
+          { version: 1, request: ARTIFACT_QUESTION },
+          {
+            version: 2,
+            request: ARTIFACT_CHANGE,
+            definition: { type: "line" },
+          },
+        ],
+      },
+    ]);
+
+    const artifactId = artifacts[0]?.id ?? "no artifact";
+
+    expect(JSON.stringify(cards)).toContain(artifactId);
+    expect(
+      recorded.sent.filter(({ body }) =>
+        JSON.stringify(body).includes(artifactId)
+      )
+    ).toEqual([]);
   });
 });
