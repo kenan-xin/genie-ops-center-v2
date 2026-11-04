@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
 import type { CheckedChart } from "../charts/index.ts";
+import type { AgentArtifact } from "./artifacts.ts";
 import type { AgentMessage, AgentSessionSummary } from "./store.ts";
 
 /**
@@ -18,6 +19,11 @@ export const agentContract = {
     .route({ method: "GET", path: "/agent/sessions/{id}/messages" })
     .input(z.object({ id: z.string() }))
     .output(z.custom<readonly AgentMessage[]>()),
+  // The artifacts of one of the caller's own sessions, each with every version (R-45a).
+  artifacts: oc
+    .route({ method: "GET", path: "/agent/sessions/{id}/artifacts" })
+    .input(z.object({ id: z.string() }))
+    .output(z.custom<readonly AgentArtifact[]>()),
   // The config is the model's raw panel config; the S7-04 gate is its parser.
   chart: oc
     .route({ method: "POST", path: "/agent/chart" })

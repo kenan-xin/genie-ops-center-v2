@@ -2,6 +2,7 @@ import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import { gatedArea } from "../../lib/rpc/implement-core-area.ts";
 import { ASK_PERMISSION } from "../authorization/roles.ts";
 import { checkChart } from "../charts/index.ts";
+import { listOwnArtifacts } from "./artifacts.ts";
 import { agentContract } from "./contract.ts";
 import { withRecordPaths } from "./record-paths.ts";
 import { listOwnSessions, readOwnSession } from "./store.ts";
@@ -32,6 +33,16 @@ export function createAgentRouter() {
     messages: os.messages.handler(async ({ context, input }) => {
       try {
         return (await readOwnSession(context, input.id)).messages;
+      } catch (cause) {
+        if (cause instanceof AppError && cause.code === "not-found") return [];
+
+        throw cause;
+      }
+    }),
+    // A malformed id reads as not found, and answers no artifacts, as `messages` does.
+    artifacts: os.artifacts.handler(async ({ context, input }) => {
+      try {
+        return await listOwnArtifacts(context, input.id);
       } catch (cause) {
         if (cause instanceof AppError && cause.code === "not-found") return [];
 

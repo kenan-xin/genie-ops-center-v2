@@ -605,7 +605,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     reason:
       "Spec 7 R-42: the agent area sits behind core:ask:use and lists only the caller's own sessions",
     cases: [
-      "the agent area refuses a person without core:ask:use on both procedures, and lists a holder's own sessions",
+      "the agent area refuses a person without core:ask:use on every procedure, and lists a holder's own sessions",
+      "the agent area answers the caller's artifacts of a chat with every version, and none of another person's",
       "the agent area refuses the break-glass account, which bypasses the key check (P7)",
     ],
   },

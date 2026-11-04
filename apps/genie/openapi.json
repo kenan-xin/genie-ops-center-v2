@@ -38,6 +38,27 @@
         }
       }
     },
+    "/agent/sessions/{id}/artifacts": {
+      "get": {
+        "operationId": "agent.artifacts",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/agent/chart": {
       "post": {
         "operationId": "agent.chart",

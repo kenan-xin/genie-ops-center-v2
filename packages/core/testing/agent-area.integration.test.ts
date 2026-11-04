@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { callProcedure } from "../src/lib/rpc/call-procedure.ts";
 import {
+  appendMessage,
   createAgentRouter,
   createOwnSession,
 } from "../src/services/agent/index.ts";
@@ -47,13 +48,19 @@ async function personWith(permissions: readonly string[]) {
 }
 
 describe("the agent area", () => {
-  it("refuses a person without core:ask:use on both procedures, and lists a holder's own sessions", async () => {
+  it("refuses a person without core:ask:use on every procedure, and lists a holder's own sessions", async () => {
     const outsider = await personWith([]);
 
     // A malformed config would fail the gate's parser; forbidden proves the key check runs first.
     await expect(outsider.agent.sessions()).rejects.toMatchObject({
       code: "forbidden",
     });
+    await expect(
+      outsider.agent.messages({ id: randomUUID() })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      outsider.agent.artifacts({ id: randomUUID() })
+    ).rejects.toMatchObject({ code: "forbidden" });
     await expect(
       outsider.agent.chart({ config: { kind: "not-a-chart" } })
     ).rejects.toMatchObject({ code: "forbidden" });
@@ -70,6 +77,66 @@ describe("the agent area", () => {
     expect(
       (await holder.agent.sessions()).map((session) => session.id)
     ).toEqual([id]);
+  });
+
+  it("answers the caller's artifacts of a chat with every version, and none of another person's", async () => {
+    const owner = await personWith(["core:ask:use"]);
+    const other = await personWith(["core:ask:use"]);
+    const id = randomUUID();
+    const artifactId = randomUUID();
+
+    const config = {
+      type: "bar",
+      title: "Quantity by record",
+      series: [
+        {
+          name: "Quantity",
+          dataset: "placeholder.records",
+          query: { limit: 10 },
+          x: "label",
+          y: "quantity",
+        },
+      ],
+    } as const;
+
+    await createOwnSession(owner.ctx, {
+      id,
+      title: "Quantity",
+      modelId: "openai/gpt-6.1-terra",
+    });
+
+    const answerWith = (version: number) =>
+      appendMessage(
+        owner.ctx,
+        id,
+        { role: "assistant", parts: [{ type: "text", text: "Here." }] },
+        [
+          {
+            toolCallId: `call_${version}`,
+            artifactId,
+            number: 1,
+            isNew: version === 1,
+            kind: "chart",
+            title: "Quantity by record",
+            version,
+            definition: config,
+          },
+        ]
+      );
+
+    await answerWith(1);
+    await answerWith(2);
+
+    expect(await owner.agent.artifacts({ id })).toMatchObject([
+      {
+        id: artifactId,
+        number: 1,
+        latestVersion: 2,
+        versions: [{ version: 1 }, { version: 2 }],
+      },
+    ]);
+    expect(await other.agent.artifacts({ id })).toEqual([]);
+    expect(await owner.agent.artifacts({ id: "not-a-uuid" })).toEqual([]);
   });
 
   it("refuses the break-glass account, which bypasses the key check (P7)", async () => {
