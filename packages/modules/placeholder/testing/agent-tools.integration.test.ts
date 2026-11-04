@@ -1,5 +1,9 @@
 import {
   agentToolSet,
+  artifactTool,
+  artifactTurn,
+  type ArtifactCardPart,
+  type ArtifactTurn,
   createTenantContext,
   moduleInstructionLines,
   principalFor,
@@ -105,7 +109,9 @@ async function call(
   name: string,
   input: AgentToolValue
 ): Promise<AgentToolValue> {
-  const execute = (await agentToolSet(ctx, { id: SESSION_ID }))[name]?.execute;
+  const execute = (
+    await agentToolSet(ctx, { id: SESSION_ID }, artifactTurn(SESSION_ID, 0))
+  )[name]?.execute;
 
   if (execute === undefined) throw new Error(`No tool "${name}".`);
 
@@ -117,6 +123,80 @@ async function call(
 }
 
 const selectIds = { dataset: RECORDS, query: { select: ["id"] } };
+
+const barConfig = {
+  type: "bar",
+  title: "Quantity by record",
+  series: [
+    {
+      name: "Quantity",
+      dataset: RECORDS,
+      query: {
+        groupBy: [{ field: "label" }],
+        aggregates: [{ fn: "sum", field: "quantity", as: "total" }],
+      },
+      x: "label",
+      y: "total",
+    },
+  ],
+} as const;
+
+const lineConfig = {
+  type: "line",
+  title: "Quantity by day",
+  series: [
+    {
+      name: "Quantity",
+      dataset: RECORDS,
+      query: {
+        groupBy: [{ field: "recordedOn" }],
+        aggregates: [{ fn: "sum", field: "quantity", as: "total" }],
+      },
+      x: "recordedOn",
+      y: "total",
+    },
+  ],
+} as const;
+
+const tableConfig = {
+  type: "table",
+  title: "Records",
+  series: [
+    {
+      name: "Records",
+      dataset: RECORDS,
+      query: { select: ["label", "quantity"] },
+    },
+  ],
+} as const;
+
+/** A turn whose card parts land in `written`, as the route's stream writer would take them. */
+function recordingTurn(storedCount: number) {
+  const written: ArtifactCardPart[] = [];
+
+  const turn: ArtifactTurn = {
+    ...artifactTurn(SESSION_ID, storedCount),
+    write: (part) => {
+      written.push(part);
+    },
+  };
+
+  return { turn, written };
+}
+
+/** Runs `make-artifact` as the AI SDK would, after it parsed the input. */
+async function makeArtifact(
+  ctx: ModuleRequestContext,
+  turn: ArtifactTurn,
+  input: AgentToolValue,
+  toolCallId = "call-make-artifact"
+): Promise<AgentToolValue> {
+  const { execute } = artifactTool(ctx, { id: SESSION_ID }, turn);
+
+  if (execute === undefined) throw new Error("No execute.");
+
+  return execute(input, { toolCallId, messages: [], context: {} });
+}
 
 /** The record ids that `query-dataset` answers the person, sorted. */
 async function queriedIds(ctx: ModuleRequestContext): Promise<string[]> {
@@ -139,7 +219,9 @@ async function listedNames(ctx: ModuleRequestContext): Promise<string[]> {
 /** The tool names and dataset names one request offers the person. */
 async function offered(ctx: ModuleRequestContext) {
   return {
-    tools: Object.keys(await agentToolSet(ctx, { id: SESSION_ID })),
+    tools: Object.keys(
+      await agentToolSet(ctx, { id: SESSION_ID }, artifactTurn(SESSION_ID, 0))
+    ),
     datasets: await listedNames(ctx),
   };
 }
@@ -428,5 +510,120 @@ describe("the agent tools on the placeholder", () => {
       rowCount: 0,
       outcome: "dataset-query-invalid",
     });
+  });
+
+  it("makes artifact 1 version 1, and a change makes version 2 of the same artifact, with no id for the model", async () => {
+    const ctx = contextFor(await reader());
+    const { turn, written } = recordingTurn(0);
+
+    const outputs = [
+      await makeArtifact(ctx, turn, { config: barConfig }, "call-1"),
+      await makeArtifact(
+        ctx,
+        turn,
+        { artifact: 1, config: lineConfig },
+        "call-2"
+      ),
+    ];
+
+    expect(outputs).toEqual([
+      { artifact: 1, version: 1, title: "Quantity by record" },
+      { artifact: 1, version: 2, title: "Quantity by day" },
+    ]);
+
+    const [first, second] = turn.pending;
+
+    expect(turn.pending).toHaveLength(2);
+    expect(second?.artifactId).toBe(first?.artifactId);
+    expect(turn.pending.map(({ kind, isNew }) => ({ kind, isNew }))).toEqual([
+      { kind: "chart", isNew: true },
+      { kind: "chart", isNew: false },
+    ]);
+    expect(written).toEqual([
+      {
+        type: "data-artifact",
+        id: "call-1",
+        data: { artifactId: first?.artifactId, version: 1 },
+      },
+      {
+        type: "data-artifact",
+        id: "call-2",
+        data: { artifactId: first?.artifactId, version: 2 },
+      },
+    ]);
+    expect(JSON.stringify(outputs)).not.toMatch(
+      /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/
+    );
+  });
+
+  it("refuses a change to an artifact number the chat does not have", async () => {
+    const person = await reader();
+    const { turn } = recordingTurn(0);
+
+    await expect(
+      makeArtifact(contextFor(person), turn, { artifact: 5, config: barConfig })
+    ).rejects.toThrow("This chat has no artifact 5.");
+
+    expect(turn.pending).toEqual([]);
+    expect((await toolRows(person))[0]?.metadata).toMatchObject({
+      tool: "make-artifact",
+      rowCount: 0,
+      outcome: "invalid-input",
+    });
+  });
+
+  it("refuses a config the chart gate refuses, with the gate's fix", async () => {
+    const { turn } = recordingTurn(0);
+
+    await expect(
+      makeArtifact(contextFor(await reader()), turn, {
+        config: {
+          ...barConfig,
+          series: [
+            {
+              ...barConfig.series[0],
+              query: {
+                groupBy: [{ field: "label" }],
+                aggregates: [{ fn: "sum", field: "qty", as: "total" }],
+              },
+            },
+          ],
+        },
+      })
+    ).rejects.toThrow(/qty/);
+
+    expect(turn.pending).toEqual([]);
+  });
+
+  it("refuses a change that turns a chart into a table", async () => {
+    const ctx = contextFor(await reader());
+    const { turn } = recordingTurn(0);
+
+    await makeArtifact(ctx, turn, { config: barConfig });
+
+    await expect(
+      makeArtifact(ctx, turn, { artifact: 1, config: tableConfig })
+    ).rejects.toThrow(
+      "An artifact keeps its kind. Make a new artifact for a table."
+    );
+    expect(turn.pending).toHaveLength(1);
+  });
+
+  it("numbers two new artifacts of one step apart, after the chat's stored ones", async () => {
+    const ctx = contextFor(await reader());
+    const { turn } = recordingTurn(1);
+
+    const outputs = await Promise.all([
+      makeArtifact(ctx, turn, { config: barConfig }, "call-a"),
+      makeArtifact(ctx, turn, { config: lineConfig }, "call-b"),
+    ]);
+
+    expect(
+      outputs
+        .map(
+          (output) => z.object({ artifact: z.number() }).parse(output).artifact
+        )
+        .toSorted()
+    ).toEqual([2, 3]);
   });
 });

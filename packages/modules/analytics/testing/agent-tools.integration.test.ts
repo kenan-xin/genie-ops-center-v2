@@ -1,5 +1,6 @@
 import {
   agentToolSet,
+  artifactTurn,
   moduleInstructionLines,
   type ModuleRequestContext,
   principalFor,
@@ -95,7 +96,9 @@ async function offered(permissions: readonly string[]) {
   const ctx = await personWith(["core:ask:use", ...permissions]);
 
   return {
-    tools: Object.keys(await agentToolSet(ctx, { id: "session" })),
+    tools: Object.keys(
+      await agentToolSet(ctx, { id: "session" }, artifactTurn("session", 0))
+    ),
     rules: (await moduleInstructionLines(ctx)).length,
   };
 }
@@ -162,7 +165,13 @@ describe("the analytics agent tools", () => {
   );
 
   it("offers a reader the two read tools, a writer all four, and no analytics key none; the rules reach only a writer", async () => {
-    const core = ["list-datasets", "query-dataset", "open-record"];
+    const core = [
+      "list-datasets",
+      "query-dataset",
+      "open-record",
+      "make-artifact",
+    ];
+
     const read = ["analytics-list-dashboards", "analytics-read-dashboard"];
     const write = ["analytics-create-dashboard", "analytics-change-dashboard"];
 

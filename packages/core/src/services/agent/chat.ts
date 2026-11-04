@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   convertToModelMessages,
+  createUIMessageStream,
   createUIMessageStreamResponse,
   isStepCount,
   streamText,
@@ -20,6 +21,8 @@ import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { modelFor } from "../models/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
 import { agentAccess } from "./access.ts";
+import { artifactTurn } from "./artifact-tool.ts";
+import { storedArtifactCount } from "./artifacts.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { agentInstructions } from "./prompt.ts";
@@ -174,7 +177,12 @@ export async function handleAgentChat(
 
   const history = [...(await readOwnSession(ctx, sessionId)).messages];
 
-  const tools = await agentToolSet(ctx, { id: sessionId });
+  const turn = artifactTurn(
+    sessionId,
+    await storedArtifactCount(ctx, sessionId)
+  );
+
+  const tools = await agentToolSet(ctx, { id: sessionId }, turn);
 
   const result = streamText({
     model,
@@ -205,22 +213,36 @@ export async function handleAgentChat(
   });
 
   return createUIMessageStreamResponse({
-    stream: toUIMessageStream({
-      stream: result.stream,
-      tools,
+    stream: createUIMessageStream({
       originalMessages: history,
-      generateMessageId: () => randomUUID(),
+      generateId: () => randomUUID(),
+      // The tool writes each artifact's card part into this stream while the answer streams.
+      execute: ({ writer }) => {
+        turn.write = (part) => writer.write(part);
+        writer.merge(
+          toUIMessageStream({
+            stream: result.stream,
+            tools,
+            onError: (error) => streamErrorText(error, hooks.logError),
+          })
+        );
+      },
       // The library awaits this in the stream's flush, so the response closes after the answer
-      // is stored. A cancelled stream stores what streamed (P8).
+      // is stored. A cancelled stream stores what streamed, with its artifact versions (P8).
       onEnd: async ({ responseMessage }) => {
         if (responseMessage.parts.length === 0) return;
 
         // A failed store errors the stream; log it, because no onError sees a flush failure.
-        await appendMessage(ctx, sessionId, {
-          id: responseMessage.id,
-          role: "assistant",
-          parts: responseMessage.parts,
-        }).catch((cause: unknown) => {
+        await appendMessage(
+          ctx,
+          sessionId,
+          {
+            id: responseMessage.id,
+            role: "assistant",
+            parts: responseMessage.parts,
+          },
+          turn.pending
+        ).catch((cause: unknown) => {
           hooks.logError(cause);
 
           throw cause;

@@ -265,6 +265,7 @@ describe("the invoice answers through the agent", () => {
       "list-datasets",
       "query-dataset",
       "open-record",
+      "make-artifact",
       "placeholder-count-records",
     ]);
     expect(errors).toEqual([]);

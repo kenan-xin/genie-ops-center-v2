@@ -10,7 +10,11 @@ import type {
 } from "../src/lib/module-contract/module.ts";
 import { registerModuleRuntime } from "../src/lib/module-contract/runtime.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
-import { agentToolSet, offersWriteTool } from "../src/services/agent/index.ts";
+import {
+  agentToolSet,
+  artifactTurn,
+  offersWriteTool,
+} from "../src/services/agent/index.ts";
 import { auditRefusedToolCall } from "../src/services/agent/tools.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
@@ -53,7 +57,9 @@ const fixtureModule: Module = {
 
 /** The tool names the model gets for this person, and whether one of them writes. */
 const offered = async (ctx: ModuleRequestContext) => ({
-  tools: Object.keys(await agentToolSet(ctx, { id: "session" })),
+  tools: Object.keys(
+    await agentToolSet(ctx, { id: "session" }, artifactTurn("session", 0))
+  ),
   writes: await offersWriteTool(ctx),
 });
 
@@ -86,7 +92,12 @@ describe("the agent's module tools against a real database", () => {
         }),
       });
 
-      const core = ["list-datasets", "query-dataset", "open-record"];
+      const core = [
+        "list-datasets",
+        "query-dataset",
+        "open-record",
+        "make-artifact",
+      ];
 
       await expect(offered(await person(["core:ask:use"]))).resolves.toEqual({
         tools: [...core, "fixture-read"],

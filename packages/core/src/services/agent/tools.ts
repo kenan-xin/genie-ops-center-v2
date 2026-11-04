@@ -19,6 +19,11 @@ import { insertAuditRow } from "../audit/insert.ts";
 import { can } from "../authorization/index.ts";
 import { listDatasets, queryDataset, recordRoute } from "../datasets/index.ts";
 import { datasetQuerySchema } from "../datasets/query.ts";
+import {
+  artifactTool,
+  type ArtifactTurn,
+  MAKE_ARTIFACT,
+} from "./artifact-tool.ts";
 
 export const AGENT_TOOL_AUDIT_ACTION: AuditAction = "core:agent_tool_called";
 
@@ -103,7 +108,7 @@ const openRecordTool = defineAgentTool({
   },
 });
 
-const COULD_NOT_RUN = "The tool could not run.";
+export const COULD_NOT_RUN = "The tool could not run.";
 
 const CORE_TOOLS = [listDatasetsTool, queryDatasetTool, openRecordTool];
 
@@ -115,7 +120,7 @@ function datasetIn(input: AuditMetadataValue): string | null {
 }
 
 /** The text the model reads for a refused call: the catalogue message and each issue's fix. */
-function refusalText(error: AppError): string {
+export function refusalText(error: AppError): string {
   return [
     error.safeMessage,
     ...(error.issues ?? []).map(({ path, message }) => `${path}: ${message}`),
@@ -126,7 +131,7 @@ function refusalText(error: AppError): string {
  * The one audit row of an agent tool call (R-47, DEC-29): the input and the row count, never the
  * returned values. A failed write keeps its database text from the model, like any other failure.
  */
-async function writeToolAudit(
+export async function writeToolAudit(
   ctx: ModuleRequestContext,
   session: { readonly id: string },
   call: {
@@ -275,10 +280,11 @@ export async function offersWriteTool(
   return (await offeredModuleTools(ctx)).some(({ writes }) => writes === true);
 }
 
-/** The model's tools for one request: the three core tools, then the offered module tools in registration order. */
+/** The model's tools for one request: the four core tools, then the offered module tools in registration order. */
 export async function agentToolSet(
   ctx: ModuleRequestContext,
-  session: { readonly id: string }
+  session: { readonly id: string },
+  turn: ArtifactTurn
 ): Promise<ToolSet> {
   const moduleTools = await offeredModuleTools(ctx);
 
@@ -287,6 +293,7 @@ export async function agentToolSet(
       entry.name,
       audited(ctx, session, entry, true),
     ]),
+    [MAKE_ARTIFACT, artifactTool(ctx, session, turn)],
     ...moduleTools.map((entry) => [
       entry.name,
       audited(ctx, session, entry, false),

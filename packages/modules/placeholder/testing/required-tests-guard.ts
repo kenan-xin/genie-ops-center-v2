@@ -100,7 +100,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/agent-tools.integration.test.ts",
     reason:
-      "Spec 7 R-43, R-47 and AC-8 lines 2 and 3: the agent tools read as the asker, and each call writes one audit row without the returned values. S7-11: a module's agent rules reach only a holder of its key while it is on",
+      "Spec 7 R-43, R-47 and AC-8 lines 2 and 3: the agent tools read as the asker, and each call writes one audit row without the returned values. S7-11: a module's agent rules reach only a holder of its key while it is on. R-45a: make-artifact numbers and versions an artifact with no id for the model",
     cases: [
       "the agent tools on the placeholder answers only the rows inside the asker's scope, from a core and a module tool",
       "the agent tools on the placeholder refuses a person without placeholder:read on every tool",
@@ -109,6 +109,11 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent tools on the placeholder writes one audit row per call with the query and row count, and no returned value",
       "the agent tools on the placeholder writes a refused call's row with outcome forbidden and row count 0",
       "the agent tools on the placeholder answers an unknown field with the dataset's fix hint and records dataset-query-invalid",
+      "the agent tools on the placeholder makes artifact 1 version 1, and a change makes version 2 of the same artifact, with no id for the model",
+      "the agent tools on the placeholder refuses a change to an artifact number the chat does not have",
+      "the agent tools on the placeholder refuses a config the chart gate refuses, with the gate's fix",
+      "the agent tools on the placeholder refuses a change that turns a chart into a table",
+      "the agent tools on the placeholder numbers two new artifacts of one step apart, after the chat's stored ones",
     ],
   },
   {

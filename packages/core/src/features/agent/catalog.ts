@@ -62,12 +62,9 @@ export function answerLibrary(views: AnswerViews): Library {
   const Chart = defineComponent({
     name: "Chart",
     description:
-      "One panel from a checked panel config. Use type kpi for one figure, table for rows, bar, line, area or donut for a chart. " +
-      "kpi, donut and table take a list of exactly one series. " +
-      "A kpi series has name, dataset, query and value. " +
-      "A donut series has name, dataset, query, category and value. " +
-      "A table series has name, dataset and query only. " +
-      "bar, line and area take one to eight series with x and y.",
+      "One figure from a checked panel config of type kpi. " +
+      "Its series list holds exactly one series with name, dataset, query and value. " +
+      "Make a table or a bar, line, area or donut chart with the make-artifact tool instead.",
     props: z.object({
       config: panelConfigSchema,
     }),
@@ -95,7 +92,7 @@ export function answerLibrary(views: AnswerViews): Library {
 /** What the catalog prompt adds to the fixed rules (R-45). */
 export const ANSWER_PROMPT_OPTIONS: PromptOptions = {
   additionalRules: [
-    "Put every figure, chart and table in a Chart with a panel config. Never type the values of a chart or a table.",
+    "Put each figure in a Chart of type kpi. Make every other chart and every table with make-artifact. The answer shows it as a card. Never type the values of a figure, a chart or a table.",
     "Write prose only with Heading, Paragraph and List.",
   ],
   examples: [

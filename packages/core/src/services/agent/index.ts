@@ -20,6 +20,14 @@ export {
 } from "./artifacts.ts";
 
 export {
+  type ArtifactCardPart,
+  artifactTool,
+  artifactTurn,
+  type ArtifactTurn,
+  MAKE_ARTIFACT,
+} from "./artifact-tool.ts";
+
+export {
   AGENT_TOOL_AUDIT_ACTION,
   agentToolSet,
   offersWriteTool,

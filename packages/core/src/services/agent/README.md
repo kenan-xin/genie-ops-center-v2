@@ -18,6 +18,13 @@ provider whose key the person holds, then the line that names the open record wh
 carries a context, then a blank line and the answer catalog. Core's no-write rule becomes the write
 rule only for a person offered a tool with `writes: true`, so every other prompt stays the same.
 
+`make-artifact` checks a panel config through the chart gate as the person and records a pending
+version of a chat artifact (`DEC-56`). The model names an artifact by its number in the chat and
+reads back no id, so a recorded request stays the same on every run. The tool writes a
+`data-artifact` part `{ artifactId, version }` into the answer's stream, and the route writes the
+answer with its pending versions in one transaction when the stream ends, also after Stop. The
+model never reads a `data-*` part.
+
 The `chart` procedure draws an answer's chart through the chart gate as the viewer. A table whose
 query selects its dataset's record key field opens each row's record through the record route,
 and the key column is not drawn.
