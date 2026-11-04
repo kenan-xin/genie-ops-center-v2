@@ -1,23 +1,41 @@
-import { modelStatus, type ModuleRequestContext, scopesFor } from "@genie/core";
+import {
+  likePattern,
+  modelStatus,
+  type ModuleRequestContext,
+  scopesFor,
+} from "@genie/core";
 import type { DatasetCursor } from "@genie/core/rpc";
-import { and, desc, eq, inArray, or, sql } from "drizzle-orm";
+import { readDayRange, readSort } from "@genie/ui/list-params";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  inArray,
+  or,
+  type SQL,
+  sql,
+  type SQLWrapper,
+} from "drizzle-orm";
 
 import type {
   DocumentInboxRow,
   DocumentInboxView,
+  DocumentListParams,
   DocumentStatus,
   InboxStatus,
 } from "../../contract.ts";
+import { documentListDefinition } from "../../presentation/list-definitions.ts";
 import {
   allocation,
-  type DocumentKind,
+  customer,
   invoice,
   payment,
   type ReadingOutcome,
-  type ReadingStatus,
   sourceDocument,
 } from "../../schema.ts";
 import { assertCanReadEverywhere } from "../ledger/access.ts";
+import { countsOf } from "../pages/lists.ts";
 import { readingStalled } from "../reading/job.ts";
 import { centsOf } from "../reading/quote-check.ts";
 import {
@@ -26,56 +44,41 @@ import {
 } from "../reading/stored-reading.ts";
 import { documentLabel } from "./label.ts";
 
-/** The lists' cap (czjw.28): one more row is read to know that the list was cut. */
-const INBOX_ROW_CAP = 1000;
+/** The rows of one inbox page (LH6): one more is read to know that the list was cut. */
+const INBOX_PAGE = 50;
+
+/** A time as text with microseconds, the precision the column holds, so a cursor names its row. */
+const microseconds = (column: SQLWrapper) =>
+  sql<string>`to_char(${column} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
 
 /**
- * The created time as text with microseconds, the precision the column holds. The cursor carries
- * this text, so a page edge never loses a row that shares a millisecond, and the id breaks the tie.
+ * A document's inbox status, one SQL rule in the order of decision 11: the job state, then a
+ * purchase order, then the records saved from it, then the stored match outcome, else the
+ * person's input. The list, its tabs and counts, the poll and the review all read it (LH20).
  */
-const createdAtUs = sql<string>`to_char(${sourceDocument.createdAt} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+const inboxStatus = sql<InboxStatus>`case
+  when ${readingStalled} then 'could-not-read'
+  when ${sourceDocument.readingStatus} <> 'read' then ${sourceDocument.readingStatus}
+  when ${sourceDocument.kind} = 'purchase-order' then 'kept-as-reference'
+  when exists (select 1 from ${allocation} where ${allocation.paymentId} = ${payment.id} and ${allocation.automatic}) then 'linked-automatically'
+  when ${invoice.id} is not null or ${payment.id} is not null then 'saved'
+  when ${sourceDocument.readingOutcome} in ('confirm-split', 'no-match', 'possible-duplicate') then ${sourceDocument.readingOutcome}
+  else 'needs-input'
+end`;
 
 /**
- * A document's inbox status, in the order of decision 11: the job state, then a purchase order,
- * then the records saved from it, then the stored match outcome, else the person's input.
- */
-export function inboxStatusOf(document: {
-  readonly readingStatus: ReadingStatus;
-  readonly kind: DocumentKind | null;
-  readonly readingOutcome: ReadingOutcome | null;
-  readonly hasRecord: boolean;
-  readonly linkedAutomatically: boolean;
-}): InboxStatus {
-  if (document.readingStatus !== "read") return document.readingStatus;
-
-  if (document.kind === "purchase-order") return "kept-as-reference";
-
-  if (document.linkedAutomatically) return "linked-automatically";
-
-  if (document.hasRecord) return "saved";
-
-  switch (document.readingOutcome) {
-    case "confirm-split":
-    case "no-match":
-    case "possible-duplicate":
-      return document.readingOutcome;
-    default:
-      return "needs-input";
-  }
-}
-
-/**
- * The columns that decide a document's label, status and reason, for `inboxStatusOf` and
- * `reasonOf`. Valid in a select that left joins `invoice` and `payment` on `document_id`.
+ * The columns that decide a document's label, status and reason. Valid in a select that left
+ * joins `invoice` and `payment` on `document_id`.
  */
 export const documentState = {
   label: documentLabel,
   kind: sourceDocument.kind,
-  readingStatus: sql<ReadingStatus>`case when ${readingStalled} then 'could-not-read' else ${sourceDocument.readingStatus} end`,
   readingOutcome: sourceDocument.readingOutcome,
-  hasRecord: sql<boolean>`(${invoice.id} is not null or ${payment.id} is not null)`,
-  linkedAutomatically: sql<boolean>`exists (select 1 from ${allocation} where ${allocation.paymentId} = ${payment.id} and ${allocation.automatic})`,
+  status: inboxStatus,
 };
+
+/** The customer of the record saved from a document, for the search (LH24). */
+const recordCustomerId = sql`coalesce(${invoice.customerId}, ${payment.customerId})`;
 
 /** Why a document needs input though nothing failed: AI is off, or it has no text layer. */
 export function reasonOf(
@@ -104,67 +107,150 @@ function foundOf(reading: StoredReading | null): DocumentInboxRow["found"] {
 }
 
 /**
- * Every document, newest first, with its label, kind, status and what was found (R-37). A
+ * The conditions of the address but the tab (LH24): the search over the file name, the saved
+ * record's number or reference, its customer and the read customer, with `%` and `_` literal; the
+ * type; and the upload day in the tenant zone. Valid in a select that also left joins `customer`
+ * on the record's customer.
+ */
+function filtersOf(params: DocumentListParams, timeZone: string): SQL[] {
+  const conditions: SQL[] = [];
+
+  if (params.q !== undefined) {
+    const pattern = likePattern(params.q);
+
+    const found = or(
+      sql`${sourceDocument.fileName} ilike ${pattern}`,
+      sql`${invoice.number} ilike ${pattern}`,
+      sql`${payment.reference} ilike ${pattern}`,
+      sql`${customer.name} ilike ${pattern}`,
+      sql`${sourceDocument.reading}->'fields'->'customer'->>'value' ilike ${pattern}`
+    );
+
+    if (found !== undefined) conditions.push(found);
+  }
+
+  if (params.type !== undefined) {
+    conditions.push(eq(sourceDocument.kind, params.type));
+  }
+
+  const { from, to } = readDayRange(params.uploaded);
+  const day = sql`(${sourceDocument.createdAt} at time zone ${timeZone})::date`;
+
+  if (from !== undefined) conditions.push(sql`${day} >= ${from}::date`);
+
+  if (to !== undefined) conditions.push(sql`${day} <= ${to}::date`);
+
+  return conditions;
+}
+
+/** The statuses of the address's tab, Needs you when it names none, or none for All (LH20). */
+function tabStatusesOf(params: DocumentListParams): readonly string[] {
+  const { items } = documentListDefinition.tabs;
+  const value = params.status ?? items[0].value;
+
+  return items.find((item) => item.value === value)?.statuses ?? [];
+}
+
+/**
+ * One page of the documents of a tab, with each label, kind, status and what was found (R-37). A
  * document has no customer before a save, so the list needs a tenant-wide `invoices:read`
  * (decision 12). The label is the file name, else the saved record's number (decision 13).
  *
- * `after` reads the page after a cut one (czjw.49): the order is the created time and then the id,
- * so a page edge never repeats or skips a document.
+ * The order is the sort column and then the id, both in the sort direction, which the
+ * `(column, id)` indexes serve; `after` holds the column as text with microseconds and the id, so
+ * a page edge never repeats or skips a document (czjw.49, czjw.71). Page one also answers the tab
+ * counts, never narrowed by the tab (LH17).
  */
 export async function loadDocumentInbox(
   ctx: ModuleRequestContext,
-  after: DatasetCursor | null = null
+  after: DatasetCursor | null = null,
+  params: DocumentListParams = {}
 ): Promise<DocumentInboxView> {
   await assertCanReadEverywhere(ctx.caller);
 
-  const [documents, status, writeScope, branding] = await Promise.all([
+  const branding = await ctx.tenant.branding.get();
+  const filters = filtersOf(params, branding.defaultTimeZone);
+  const statuses = tabStatusesOf(params);
+  const sort = readSort(documentListDefinition, params.sort);
+
+  const column =
+    sort.column === "uploaded"
+      ? sourceDocument.createdAt
+      : sourceDocument.updatedAt;
+
+  const order = sort.direction === "asc" ? asc : desc;
+  const beyond = sort.direction === "asc" ? sql.raw(">") : sql.raw("<");
+
+  const keyset =
+    after === null
+      ? undefined
+      : or(
+          sql`${column} ${beyond} ${String(after.values[0])}::timestamptz`,
+          and(
+            sql`${column} = ${String(after.values[0])}::timestamptz`,
+            sql`${sourceDocument.id} ${beyond} ${String(after.values[1])}::uuid`
+          )
+        );
+
+  const [documents, groups, status, writeScope] = await Promise.all([
     ctx.tenant.db
       .select({
         id: sourceDocument.id,
-        // The cursor orders on this text with microseconds; the row shows `uploadedAt`.
-        createdAt: createdAtUs,
+        sortKey: microseconds(column),
         uploadedAt: sourceDocument.createdAt,
+        updatedAt: microseconds(sourceDocument.updatedAt),
         ...documentState,
         reading: sourceDocument.reading,
       })
       .from(sourceDocument)
       .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
       .leftJoin(payment, eq(payment.documentId, sourceDocument.id))
+      .leftJoin(customer, eq(customer.id, recordCustomerId))
       .where(
-        after === null
-          ? undefined
-          : or(
-              sql`${sourceDocument.createdAt} < ${String(after.values[0])}::timestamptz`,
-              and(
-                sql`${sourceDocument.createdAt} = ${String(after.values[0])}::timestamptz`,
-                sql`${sourceDocument.id} < ${String(after.values[1])}::uuid`
-              )
-            )
+        and(
+          ...filters,
+          statuses.length === 0
+            ? undefined
+            : inArray(inboxStatus, [...statuses]),
+          keyset
+        )
       )
-      .orderBy(desc(sourceDocument.createdAt), desc(sourceDocument.id))
-      .limit(INBOX_ROW_CAP + 1),
+      .orderBy(order(column), order(sourceDocument.id))
+      .limit(INBOX_PAGE + 1),
+    after === null
+      ? ctx.tenant.db
+          .select({ status: inboxStatus, rows: sql<number>`count(*)::int` })
+          .from(sourceDocument)
+          .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
+          .leftJoin(payment, eq(payment.documentId, sourceDocument.id))
+          .leftJoin(customer, eq(customer.id, recordCustomerId))
+          .where(and(...filters))
+          // By position: the status rule binds parameters, so a repeated expression would not match.
+          .groupBy(sql`1`)
+      : null,
     modelStatus(ctx.tenant),
     scopesFor(ctx.caller, "invoices:write"),
-    ctx.tenant.branding.get(),
   ]);
 
-  const last = documents[INBOX_ROW_CAP - 1];
+  const last = documents[INBOX_PAGE - 1];
 
   return {
-    rows: documents.slice(0, INBOX_ROW_CAP).map((document) => ({
+    rows: documents.slice(0, INBOX_PAGE).map((document) => ({
       id: document.id,
       label: document.label,
       kind: document.kind,
-      status: inboxStatusOf(document),
+      status: document.status,
       reason: reasonOf(document.readingOutcome),
       uploadedAt: document.uploadedAt.toISOString(),
+      updatedAt: document.updatedAt,
       found: foundOf(document.reading),
     })),
-    truncated: documents.length > INBOX_ROW_CAP,
+    truncated: documents.length > INBOX_PAGE,
     next:
-      documents.length > INBOX_ROW_CAP && last !== undefined
-        ? { values: [last.createdAt, last.id] }
+      documents.length > INBOX_PAGE && last !== undefined
+        ? { values: [last.sortKey, last.id] }
         : null,
+    counts: groups === null ? null : countsOf(documentListDefinition, groups),
     ai: status.state,
     canUpload: writeScope.kind === "all",
     timeZone: branding.defaultTimeZone,
@@ -191,7 +277,7 @@ export async function loadDocumentStatus(
 
   return documents.map((document) => ({
     id: document.id,
-    status: inboxStatusOf(document),
+    status: document.status,
     reason: reasonOf(document.readingOutcome),
   }));
 }

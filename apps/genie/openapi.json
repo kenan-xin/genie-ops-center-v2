@@ -3742,6 +3742,55 @@
             "explode": true,
             "allowEmptyValue": true,
             "allowReserved": true
+          },
+          {
+            "name": "params",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "q": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "status": {
+                  "enum": [
+                    "needs-you",
+                    "reading",
+                    "done",
+                    "all"
+                  ],
+                  "type": "string"
+                },
+                "type": {
+                  "enum": [
+                    "invoice",
+                    "payment",
+                    "paid-receipt",
+                    "purchase-order"
+                  ],
+                  "type": "string"
+                },
+                "uploaded": {
+                  "type": "string"
+                },
+                "sort": {
+                  "enum": [
+                    "uploaded.asc",
+                    "uploaded.desc",
+                    "updated.asc",
+                    "updated.desc"
+                  ],
+                  "type": "string"
+                }
+              }
+            },
+            "style": "deepObject",
+            "explode": true,
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {
@@ -3810,6 +3859,9 @@
                           "uploadedAt": {
                             "type": "string"
                           },
+                          "updatedAt": {
+                            "type": "string"
+                          },
                           "found": {
                             "anyOf": [
                               {
@@ -3874,6 +3926,7 @@
                           "status",
                           "reason",
                           "uploadedAt",
+                          "updatedAt",
                           "found"
                         ]
                       }
@@ -3918,6 +3971,24 @@
                         }
                       ]
                     },
+                    "counts": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string"
+                          },
+                          "additionalProperties": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
                     "ai": {
                       "enum": [
                         "on",
@@ -3937,6 +4008,7 @@
                     "rows",
                     "truncated",
                     "next",
+                    "counts",
                     "ai",
                     "canUpload",
                     "timeZone"

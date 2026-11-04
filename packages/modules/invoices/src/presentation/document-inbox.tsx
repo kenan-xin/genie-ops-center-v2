@@ -55,6 +55,9 @@ type Refusal = {
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
 
+/** Every status, newest uploads first, as the page loader reads page one. */
+const INBOX_PARAMS = { status: "all", sort: "uploaded.desc" } as const;
+
 /** The groups top to bottom (design review 3.1, choice 13). */
 const GROUPS: readonly {
   readonly group: InboxGroup;
@@ -167,7 +170,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const list = useListPages({
     key: DOCUMENTS_QUERY,
     first: view,
-    read: (after) => invoices.listDocuments({ after }),
+    // Task 8 moves this screen onto the list header; until then it reads every status.
+    read: (after) => invoices.listDocuments({ after, params: INBOX_PARAMS }),
   });
 
   // Only the rows still Reading are polled, by their ids, so a finished row costs no poll (czjw.49).
@@ -212,6 +216,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
       const answer = await invoices.uploadDocument({ file });
 
       if (answer.outcome === "duplicate") {
+        const now = new Date().toISOString();
+
         setDuplicates((previous) => [
           {
             id: nextKey(),
@@ -219,7 +225,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
             kind: null,
             status: "duplicate",
             reason: null,
-            uploadedAt: new Date().toISOString(),
+            uploadedAt: now,
+            updatedAt: now,
             found: null,
             sameAs: answer.label,
           },

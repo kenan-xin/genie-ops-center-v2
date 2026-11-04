@@ -28,6 +28,12 @@ export async function markReviewedOrigins(
   documentId: string,
   reviewed: ReviewedFields
 ): Promise<void> {
+  // A save is the document's last change, so the inbox Updated moves with it (LH22).
+  await tx
+    .update(sourceDocument)
+    .set({ updatedAt: sql`now()` })
+    .where(eq(sourceDocument.id, documentId));
+
   const [row] = await tx
     .select({
       reading: sourceDocument.reading,

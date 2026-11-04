@@ -1,6 +1,7 @@
 import {
   agentAccess,
   callProcedure,
+  type DatasetCursor,
   type ModuleRequestContext,
   principalFor,
   registerModuleRuntime,
@@ -18,8 +19,9 @@ import {
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import type { DocumentInboxRow } from "../src/contract.ts";
+import type { DocumentInboxRow, InboxStatus } from "../src/contract.ts";
 import { invoicesModule } from "../src/module.ts";
+import { documentListDefinition } from "../src/presentation/list-definitions.ts";
 import { invoicesRouter } from "../src/router.ts";
 import { sourceDocument } from "../src/schema.ts";
 import { loadDocumentInbox } from "../src/services/documents/inbox.ts";
@@ -74,6 +76,10 @@ beforeAll(async () => {
   deployment = await startDisposableDeployment([invoicesModule]);
   // The settings row that modelStatus reads.
   await markSetupDone(t());
+  // Before any branding read, so the 10 s reader never holds another zone (DEC-46).
+  await t().db.$client.query(
+    "update tenant_branding set default_time_zone = 'Asia/Singapore'"
+  );
   await enableModules(t(), ["invoices"]);
   await seedRoles(t(), [invoicesModule]);
   registerModuleRuntime(t(), [invoicesModule]);
@@ -121,8 +127,34 @@ const row = (
   reason,
   // The upload time case below proves the value.
   uploadedAt: expect.any(String),
+  updatedAt: expect.any(String),
   found,
 });
+
+/** Each tab with these counts, as many rows as its count, and no row outside its statuses. */
+const tabsHolding = (counts: Record<string, number>) =>
+  documentListDefinition.tabs.items.map(({ value }) => ({
+    value,
+    counts,
+    rows: counts[value],
+    outside: [],
+  }));
+
+/** Every inbox row the params keep, page after page, so the reads run one after another. */
+async function walkInbox(
+  userId: string,
+  params: Record<string, string>,
+  after: DatasetCursor | null = null
+): Promise<DocumentInboxRow[]> {
+  const page = await callProcedure(invoicesRouter, as(userId)).listDocuments({
+    after,
+    params,
+  });
+
+  return page.next === null
+    ? page.rows
+    : [...page.rows, ...(await walkInbox(userId, params, page.next))];
+}
 
 async function inboxOf(userId: string) {
   const access = await agentAccess(as(userId));
@@ -208,7 +240,10 @@ describe("the documents inbox", () => {
     const finance = await personWithSeededRole("Finance");
 
     await expect(
-      callProcedure(invoicesRouter, as(finance)).listDocuments({ after: null })
+      callProcedure(invoicesRouter, as(finance)).listDocuments({
+        after: null,
+        params: { status: "all", sort: "uploaded.desc" },
+      })
     ).resolves.toEqual({
       rows: [
         row(saved.id, "saved.pdf", "payment", "saved"),
@@ -229,9 +264,10 @@ describe("the documents inbox", () => {
       ],
       truncated: false,
       next: null,
+      counts: expect.any(Object),
       ai: "no-key",
       canUpload: true,
-      timeZone: expect.any(String),
+      timeZone: "Asia/Singapore",
     });
   });
 
@@ -249,14 +285,14 @@ describe("the documents inbox", () => {
     const { rows } = await callProcedure(
       invoicesRouter,
       as(finance)
-    ).listDocuments({ after: null });
+    ).listDocuments({ after: null, params: { q: "uploaded.pdf" } });
 
     expect(rows.find((shown) => shown.id === document.id)?.uploadedAt).toBe(
       "2026-10-27T01:06:00.000Z"
     );
   });
 
-  it("reads the inbox one page at a time from a cursor", async () => {
+  it("reads the inbox 50 documents at a time from a cursor", async () => {
     // 1,001 documents, so the first page is cut exactly as the invoice list is (czjw.28).
     await t().db.$client.query(
       "insert into document (kind, sha256, file_id, file_name, reading_status) select 'payment', md5(g::text) || md5('b' || g::text), gen_random_uuid(), 'paged-' || g || '.pdf', 'read' from generate_series(1, 1001) as g"
@@ -273,21 +309,333 @@ describe("the documents inbox", () => {
     const total = Number(counted?.total ?? 0);
     expect(total).toBeGreaterThan(1000);
 
-    const first = await reader.listDocuments({ after: null });
-    expect(first.rows).toHaveLength(1000);
+    const params = { status: "all", sort: "uploaded.desc" } as const;
+    const first = await reader.listDocuments({ after: null, params });
+    expect(first.rows).toHaveLength(50);
     expect(first.next).not.toBeNull();
 
-    // Every row shares one created time, so the id breaks the tie; page two must hold exactly the
-    // rows the same order puts after row 1,000, or the edge repeats one row and skips another.
+    // Every row shares one created time, so the id breaks the tie; every page must hold exactly the
+    // rows the same order puts there, or an edge repeats one row and skips another.
     const expected = (
       await t().db.$client.query<{ id: string }>(
-        "select id from document order by created_at desc, id desc offset 1000"
+        "select id from document order by created_at desc, id desc"
       )
     ).rows.map((edge) => edge.id);
 
-    const second = await reader.listDocuments({ after: first.next });
-    expect(second.rows.map((pageRow) => pageRow.id)).toEqual(expected);
-    expect(second.next).toBeNull();
+    const walked = await walkInbox(finance, params);
+    expect(walked.map((pageRow) => pageRow.id)).toEqual(expected);
+  });
+
+  it.each<{
+    readonly name: string;
+    readonly status: InboxStatus;
+    readonly document: Parameters<typeof insertDocument>[1];
+    readonly record?: "invoice" | "payment" | "automatic";
+    readonly stalled?: true;
+  }>([
+    {
+      name: "being read",
+      status: "reading",
+      document: { kind: null, readingStatus: "reading" },
+    },
+    {
+      name: "stalled",
+      status: "could-not-read",
+      document: { kind: null, readingStatus: "reading", readingAttempts: 1 },
+      stalled: true,
+    },
+    {
+      name: "not read",
+      status: "could-not-read",
+      document: { kind: null, readingStatus: "could-not-read" },
+    },
+    {
+      name: "an order",
+      status: "kept-as-reference",
+      document: { kind: "purchase-order" },
+    },
+    {
+      name: "linked by the reading",
+      status: "linked-automatically",
+      document: { kind: "payment" },
+      record: "automatic",
+    },
+    {
+      name: "saved after a split",
+      status: "saved",
+      document: { kind: "payment", readingOutcome: "confirm-split" },
+      record: "payment",
+    },
+    {
+      name: "a saved invoice",
+      status: "saved",
+      document: { kind: "invoice" },
+      record: "invoice",
+    },
+    {
+      name: "a split",
+      status: "confirm-split",
+      document: { readingOutcome: "confirm-split" },
+    },
+    {
+      name: "no match",
+      status: "no-match",
+      document: { readingOutcome: "no-match" },
+    },
+    {
+      name: "a possible duplicate",
+      status: "possible-duplicate",
+      document: { readingOutcome: "possible-duplicate" },
+    },
+    {
+      name: "read with AI off",
+      status: "needs-input",
+      document: { kind: null, readingOutcome: "ai-off" },
+    },
+    {
+      name: "a read invoice",
+      status: "needs-input",
+      document: { kind: "invoice" },
+    },
+  ])(
+    "answers a document $name as $status in the list and in the poll",
+    async ({ name, status, document, record, stalled }) => {
+      const fileName = `state ${name}.pdf`;
+      const { id } = await insertDocument(t(), { ...document, fileName });
+      const { id: customerId } = await insertCustomer(t());
+
+      if (record === "invoice") {
+        await insertInvoice(t(), { customerId, documentId: id });
+      } else if (record !== undefined) {
+        const { id: invoiceId } = await insertInvoice(t(), { customerId });
+        const { id: paymentId } = await insertPayment(t(), {
+          customerId,
+          documentId: id,
+        });
+        await insertAllocation(t(), {
+          invoiceId,
+          paymentId,
+          amountCents: 1000,
+          automatic: record === "automatic",
+        });
+      }
+
+      if (stalled === true) {
+        await t().db.$client.query(
+          "update document set updated_at = now() - interval '2 days' where id = $1",
+          [id]
+        );
+      }
+
+      const finance = await personWithSeededRole("Finance");
+      const reader = callProcedure(invoicesRouter, as(finance));
+      const listed = await reader.listDocuments({
+        after: null,
+        params: { status: "all", q: fileName },
+      });
+      const polled = await reader.documentStatus({ ids: [id] });
+
+      expect({
+        listed: listed.rows.map((shown) => shown.status),
+        polled: polled.map((shown) => shown.status),
+      }).toEqual({ listed: [status], polled: [status] });
+    }
+  );
+
+  it("each tab lists only its statuses, and the counts under a search and a type do not follow the tab", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const [, , , saved] = await Promise.all([
+      insertDocument(t(), { kind: "payment", fileName: "tabdoc-a.pdf" }),
+      insertDocument(t(), {
+        kind: null,
+        readingStatus: "could-not-read",
+        fileName: "tabdoc-b.pdf",
+      }),
+      insertDocument(t(), {
+        kind: null,
+        readingStatus: "reading",
+        fileName: "tabdoc-c.pdf",
+      }),
+      insertDocument(t(), { kind: "invoice", fileName: "tabdoc-d.pdf" }),
+      insertDocument(t(), { kind: "purchase-order", fileName: "tabdoc-e.pdf" }),
+    ]);
+    await insertInvoice(t(), { customerId, documentId: saved.id });
+    const finance = await personWithSeededRole("Finance");
+    const reader = callProcedure(invoicesRouter, as(finance));
+
+    const tabsUnder = (params: Record<string, string>) =>
+      Promise.all(
+        documentListDefinition.tabs.items.map(async ({ value, statuses }) => {
+          const page = await reader.listDocuments({
+            after: null,
+            params: { ...params, status: value },
+          });
+          const kept: readonly string[] = statuses;
+
+          return {
+            value,
+            counts: page.counts,
+            rows: page.rows.length,
+            outside: page.rows.filter(
+              (shown) => kept.length > 0 && !kept.includes(shown.status)
+            ),
+          };
+        })
+      );
+
+    expect(await tabsUnder({ q: "tabdoc-" })).toEqual(
+      tabsHolding({ "needs-you": 2, "reading": 1, "done": 2, "all": 5 })
+    );
+    expect(await tabsUnder({ q: "tabdoc-", type: "payment" })).toEqual(
+      tabsHolding({ "needs-you": 1, "reading": 0, "done": 0, "all": 1 })
+    );
+  });
+
+  it("searches the file name, the saved number, the customer and the read customer, with % literal", async () => {
+    const { id: customerId } = await insertCustomer(t(), {
+      name: "Searchline Zeta Holdings",
+    });
+    const byFile = await insertDocument(t(), { fileName: "srch-alpha.pdf" });
+    const byNumber = await insertDocument(t(), { kind: "invoice" });
+    await insertInvoice(t(), {
+      customerId,
+      number: "SRCH-INV-77",
+      documentId: byNumber.id,
+    });
+    const byCustomer = await insertDocument(t(), { fileName: "c.pdf" });
+    await insertPayment(t(), { customerId, documentId: byCustomer.id });
+    const byReading = await insertDocument(t(), {
+      fileName: "d.pdf",
+      reading: {
+        fields: { customer: onPage1("Readline Omega Trading") },
+        invoiceNumbers: [],
+        dropped: [],
+      },
+    });
+    const percent = await insertDocument(t(), { fileName: "srch 50% off.pdf" });
+    await insertDocument(t(), { fileName: "srch 50x off.pdf" });
+    const finance = await personWithSeededRole("Finance");
+
+    const found = async (q: string) =>
+      (await walkInbox(finance, { status: "all", q }))
+        .map(({ id }) => id)
+        .toSorted();
+
+    expect({
+      file: await found("SRCH-ALPHA"),
+      number: await found("srch-inv-77"),
+      customer: await found("searchline zeta"),
+      reading: await found("readline omega"),
+      percent: await found("50%"),
+    }).toEqual({
+      file: [byFile.id],
+      number: [byNumber.id],
+      customer: [byCustomer.id, byNumber.id].toSorted(),
+      reading: [byReading.id],
+      percent: [percent.id],
+    });
+  });
+
+  it("filters the upload day in the tenant zone", async () => {
+    const late = await insertDocument(t(), { fileName: "zone-late.pdf" });
+    await t().db.$client.query(
+      "update document set created_at = timestamptz '2026-11-02T17:30:00Z' where id = $1",
+      [late.id]
+    );
+    const finance = await personWithSeededRole("Finance");
+
+    const kept = async (uploaded: string) =>
+      (
+        await walkInbox(finance, { status: "all", q: "zone-late", uploaded })
+      ).map(({ id }) => id);
+
+    // 17:30 UTC on 2 Nov is 01:30 on 3 Nov in Singapore.
+    expect({
+      third: await kept("2026-11-03..2026-11-03"),
+      second: await kept("2026-11-02..2026-11-02"),
+    }).toEqual({ third: [late.id], second: [] });
+  });
+
+  it.each([
+    { sort: "uploaded", column: "created_at" },
+    { sort: "updated", column: "updated_at" },
+  ] as const)(
+    "walks 55 documents under $sort in both directions, each once, ties by id in the sort direction",
+    async ({ sort, column }) => {
+      const tag = `walk-${sort}`;
+      // 16 rows share the earliest created time and 16 the latest updated time, so a page edge
+      // falls inside a tie in one direction of each sort.
+      await t().db.$client.query(
+        `insert into document (kind, sha256, file_id, file_name, reading_status, created_at, updated_at)
+         select 'payment', md5($1 || g) || md5('w' || $1 || g), gen_random_uuid(), $1 || '-' || g || '.pdf', 'read',
+           case when g >= 40 then timestamptz '2026-09-01 08:00:00.123456+00' else timestamptz '2026-09-02 08:00:00+00' + g * interval '1 second' end,
+           case when g >= 40 then timestamptz '2026-10-30 08:00:00.123456+00' else timestamptz '2026-10-01 08:00:00+00' + g * interval '1 second' end
+         from generate_series(1, 55) as g`,
+        [tag]
+      );
+      const finance = await personWithSeededRole("Finance");
+
+      const walks = await Promise.all(
+        (["asc", "desc"] as const).map(async (direction) => {
+          const walked = await walkInbox(finance, {
+            status: "all",
+            q: tag,
+            sort: `${sort}.${direction}`,
+          });
+          const { rows } = await t().db.$client.query<{ id: string }>(
+            `select id from document where file_name like $1 || '-%' order by ${column} ${direction}, id ${direction}`,
+            [tag]
+          );
+
+          return {
+            walked: walked.map(({ id }) => id),
+            expected: rows.map(({ id }) => id),
+          };
+        })
+      );
+
+      for (const walk of walks) {
+        expect(walk.walked).toHaveLength(55);
+        expect(walk.walked).toEqual(walk.expected);
+      }
+    }
+  );
+
+  it("a person's save moves the document's Updated time", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const document = await insertDocument(t(), {
+      kind: "invoice",
+      fileName: "touched.pdf",
+    });
+    await t().db.$client.query(
+      "update document set updated_at = timestamptz '2026-01-01T00:00:00Z' where id = $1",
+      [document.id]
+    );
+    const finance = await personWithSeededRole("Finance");
+    const reader = callProcedure(invoicesRouter, as(finance));
+
+    await reader.saveInvoice({
+      documentId: document.id,
+      customer: { id: customerId },
+      number: "INV-TOUCHED-1",
+      invoiceDate: "2026-10-26",
+      dueDate: null,
+      dueDateSource: "unspecified",
+      paymentTerms: null,
+      currency: "SGD",
+      totalCents: 500_000,
+      description: null,
+      keepPossibleDuplicate: false,
+    });
+
+    const { rows } = await reader.listDocuments({
+      after: null,
+      params: { status: "all", q: "touched.pdf" },
+    });
+
+    expect(rows.map(({ updatedAt }) => updatedAt > "2026-01-02")).toEqual([
+      true,
+    ]);
   });
 
   it("answers the status of the ids it is given, and no other document", async () => {

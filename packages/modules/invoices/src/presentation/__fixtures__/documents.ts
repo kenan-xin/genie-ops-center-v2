@@ -10,7 +10,13 @@ import type { DocumentInboxRow, DocumentInboxView } from "../views.ts";
 const uploadedAt = (row: number) =>
   new Date(Date.UTC(2026, 9, 27, 1, 11 - row)).toISOString();
 
-const ROWS: DocumentInboxRow[] = [
+/** Every fixture row last changed when it was uploaded. */
+const withUpdated = (row: Omit<DocumentInboxRow, "updatedAt">) => ({
+  ...row,
+  updatedAt: row.uploadedAt,
+});
+
+const ROWS: Omit<DocumentInboxRow, "updatedAt">[] = [
   {
     id: "10000000-0000-4000-8000-000000000001",
     uploadedAt: uploadedAt(1),
@@ -131,9 +137,10 @@ const ROWS: DocumentInboxRow[] = [
 
 /** One row per inbox status, so a story shows every R-37 word. */
 export const defaultDocumentInbox: DocumentInboxView = {
-  rows: ROWS,
+  rows: ROWS.map(withUpdated),
   truncated: false,
   next: null,
+  counts: { "needs-you": 5, "reading": 1, "done": 3, "all": 9 },
   ai: "on",
   canUpload: true,
   timeZone: "Asia/Singapore",

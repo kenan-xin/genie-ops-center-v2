@@ -111,7 +111,7 @@ async function showsMore(
   ).toBeVisible();
   await expect(listInvoices).toHaveBeenCalledWith({
     after: CURSOR,
-    filters: {},
+    params: {},
   });
   await expect(canvas.queryByRole("button", { name: "Show more" })).toBeNull();
   await expect(canvas.queryByText(/Showing the first/)).toBeNull();
@@ -191,7 +191,7 @@ export const FilterByStatus: Story = {
 
     await expect(listInvoices).toHaveBeenCalledWith({
       after: null,
-      filters: { status: "overdue" },
+      params: { status: "overdue" },
     });
     await waitFor(() =>
       expect(canvas.queryByRole("link", { name: "INV-2026-09-01" })).toBeNull()
@@ -219,7 +219,7 @@ export const FiltersFromTheAddress: Story = {
     await waitFor(() =>
       expect(listInvoices).toHaveBeenCalledWith({
         after: null,
-        filters: { search: "INV-2026-09", status: "paid" },
+        params: { q: "INV-2026-09", status: "paid" },
       })
     );
     await expect(canvas.getByRole("button", { name: "Paid" })).toHaveAttribute(
@@ -265,7 +265,7 @@ export const FiltersOnAPhone: Story = {
 
     await expect(listInvoices).toHaveBeenCalledWith({
       after: null,
-      filters: { status: "paid" },
+      params: { status: "paid" },
     });
     await expect(
       await screen.findByRole("button", { name: /Filters/ })

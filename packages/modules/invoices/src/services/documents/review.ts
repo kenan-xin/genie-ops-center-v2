@@ -25,7 +25,7 @@ import {
   normalizedInvoiceNumbers,
 } from "../matching/decide.ts";
 import { centsOf } from "../reading/quote-check.ts";
-import { documentState, inboxStatusOf, reasonOf } from "./inbox.ts";
+import { documentState, reasonOf } from "./inbox.ts";
 
 /** The customer choices of the review (czjw.28). */
 const CUSTOMER_CAP = 1000;
@@ -191,7 +191,7 @@ export async function loadDocumentReview(
       id,
       label: document.label,
       kind: document.kind,
-      status: inboxStatusOf(document),
+      status: document.status,
       reason: reasonOf(document.readingOutcome),
       fileUrl: link.url,
     },

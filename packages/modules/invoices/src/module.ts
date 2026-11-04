@@ -133,8 +133,13 @@ export const invoicesModule = {
       definePage({
         path: DOCUMENTS_ENTRY.path,
         permission: "invoices:use",
-        // The page reads page one; the inbox reads a later page from the procedure.
-        load: (ctx) => loadDocumentInbox(ctx),
+        // The page reads page one; the inbox reads a later page from the procedure. Task 8 of
+        // Phase 09 moves the screen onto the list header; until then it reads every status.
+        load: (ctx) =>
+          loadDocumentInbox(ctx, null, {
+            status: "all",
+            sort: "uploaded.desc",
+          }),
         component: DocumentInboxPage,
       }),
       definePage({

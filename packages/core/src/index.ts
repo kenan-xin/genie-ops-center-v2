@@ -559,6 +559,8 @@ export {
 
 export { listQueryOf } from "./services/datasets/list-query.ts";
 
+export { likePattern } from "./utils/like-pattern.ts";
+
 export type {
   DatasetListDefinition,
   ListQuery,

@@ -212,9 +212,9 @@ async function stalledReading(): Promise<string> {
 }
 
 const inboxRowOf = async (id: string) =>
-  (await api().listDocuments({ after: null })).rows.find(
-    (row) => row.id === id
-  );
+  (
+    await api().listDocuments({ after: null, params: { status: "all" } })
+  ).rows.find((row) => row.id === id);
 
 describe("review saves", () => {
   it("a payment saved from its reading with a changed amount marks only the amount corrected, and a method typed in entered", async () => {

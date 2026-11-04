@@ -155,6 +155,7 @@ describe("live readings", () => {
 
     const view = await callProcedure(invoicesRouter, ctx).listDocuments({
       after: null,
+      params: { status: "all" },
     });
     const live = Object.fromEntries(
       view.rows

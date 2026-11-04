@@ -84,7 +84,7 @@ function inTab(list: ListQuery, status: string): boolean {
 }
 
 /** The rows of each tab, from the groups of every status under the other filters (LH17). */
-function countsOf(
+export function countsOf(
   definition: DatasetListDefinition,
   groups: readonly { readonly status: string; readonly rows: number }[]
 ): Record<string, number> {

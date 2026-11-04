@@ -370,7 +370,9 @@ describe("the reading job", () => {
       .set({ updatedAt: ago(READING_STALLS_AFTER_MINUTES - 1) })
       .where(eq(sourceDocument.id, running));
 
-    const { rows } = await loadDocumentInbox(as(retrierId));
+    const { rows } = await loadDocumentInbox(as(retrierId), null, {
+      status: "all",
+    });
     const statusOf = (id: string) => rows.find((row) => row.id === id)?.status;
     expect(statusOf(stalled)).toBe("could-not-read");
     expect(statusOf(running)).toBe("reading");
@@ -400,7 +402,9 @@ describe("the reading job", () => {
       .set({ updatedAt: ago(24 * 60 + 1) })
       .where(eq(sourceDocument.id, lost));
 
-    const { rows } = await loadDocumentInbox(as(retrierId));
+    const { rows } = await loadDocumentInbox(as(retrierId), null, {
+      status: "all",
+    });
     const statusOf = (id: string) => rows.find((row) => row.id === id)?.status;
     expect(statusOf(queued)).toBe("reading");
     expect(statusOf(lost)).toBe("could-not-read");

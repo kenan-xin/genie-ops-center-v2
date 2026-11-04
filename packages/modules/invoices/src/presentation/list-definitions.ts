@@ -1,6 +1,8 @@
 import type { DatasetListDefinition } from "@genie/core";
 
 import type {
+  DOCUMENT_LIST_SORTS,
+  DOCUMENT_LIST_TABS,
   INVOICE_LIST_SORTS,
   INVOICE_LIST_TABS,
   PAYMENT_LIST_SORTS,
@@ -207,4 +209,7 @@ export const documentListDefinition = {
     { column: "updated", kind: "date", field: "updatedAt" },
   ],
   defaultSort: { column: "updated", direction: "desc" },
-} as const satisfies DatasetListDefinition;
+} as const satisfies ListOf<
+  (typeof DOCUMENT_LIST_TABS)[number],
+  (typeof DOCUMENT_LIST_SORTS)[number]
+>;

@@ -321,6 +321,8 @@ export const documentInboxRow = z.object({
   reason: z.enum(["ai-off", "no-text-layer"]).nullable(),
   /** When the file was uploaded, as an ISO instant (design review 3.4). */
   uploadedAt: z.string(),
+  /** The document's last change, UTC ISO text with microseconds (`czjw.71`). */
+  updatedAt: z.string(),
   found: z
     .object({
       customer: z.string().nullable(),
@@ -336,6 +338,8 @@ export const documentInboxView = z.object({
   truncated: z.boolean(),
   /** Where the next page starts, when the list was cut (czjw.28, czjw.49). */
   next: datasetCursorSchema.nullable(),
+  /** The rows of each tab under the other filters, never narrowed by the tab; page one only. */
+  counts: z.record(z.string(), z.number().int()).nullable(),
   ai: z.enum(["on", "no-key", "no-models"]),
   canUpload: z.boolean(),
   /** The tenant's zone, in which the Uploaded column prints its times. */
@@ -536,6 +540,27 @@ export const paymentListParams = z.object({
 
 export type PaymentListParams = z.infer<typeof paymentListParams>;
 
+/** The Documents inbox tabs, Needs you first as the resting tab (LH20), and its sorts. */
+export const DOCUMENT_LIST_TABS = [
+  "needs-you",
+  "reading",
+  "done",
+  "all",
+] as const;
+
+export const DOCUMENT_LIST_SORTS = ["uploaded", "updated"] as const;
+
+/** The Documents inbox address as its procedure takes it (LH24). */
+export const documentListParams = z.object({
+  q: invoiceListFilters.shape.search,
+  status: z.enum(DOCUMENT_LIST_TABS).optional(),
+  type: z.enum(DOCUMENT_KINDS).optional(),
+  uploaded: dayRange.optional(),
+  sort: sortParam(DOCUMENT_LIST_SORTS).optional(),
+});
+
+export type DocumentListParams = z.infer<typeof documentListParams>;
+
 /** The rows of each tab under the other filters, never narrowed by the tab itself (LH17). */
 const tabCounts = z.record(z.string(), z.number().int());
 
@@ -680,10 +705,18 @@ export const paymentRecordView = z.discriminatedUnion("kind", [
 export type PaymentRecordView = z.infer<typeof paymentRecordView>;
 
 export const invoicesContract = {
-  /** Every document, newest first, for a tenant-wide reader (R-37, decision 12); 1,000 rows a page (czjw.49). */
+  /**
+   * The documents of one inbox tab for a tenant-wide reader, 50 rows a page, sorted in the
+   * database (R-37, decision 12, czjw.49, czjw.71). Page one also answers the tab counts.
+   */
   listDocuments: oc
     .route({ method: "GET", path: "/invoices/documents" })
-    .input(z.object({ after: datasetCursorSchema.nullable() }))
+    .input(
+      z.object({
+        after: datasetCursorSchema.nullable(),
+        params: documentListParams.optional(),
+      })
+    )
     .output(documentInboxView),
   /** The status of the documents the inbox is still reading (czjw.49). */
   documentStatus: oc

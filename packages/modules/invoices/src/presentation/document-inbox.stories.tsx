@@ -635,6 +635,7 @@ export const ShowMore: Story = {
       rows: defaultDocumentInbox.rows,
       truncated: false,
       next: null,
+      counts: null,
       ai: "on",
       canUpload: true,
     });
@@ -645,6 +646,7 @@ export const ShowMore: Story = {
     await waitFor(() =>
       expect(listDocuments).toHaveBeenCalledWith({
         after: { values: ["2026-10-01T00:00:00.000000Z", "document-a"] },
+        params: { status: "all", sort: "uploaded.desc" },
       })
     );
   },

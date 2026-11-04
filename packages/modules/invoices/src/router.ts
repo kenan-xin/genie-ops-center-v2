@@ -73,7 +73,7 @@ async function assertCanWriteLink(
  */
 export const invoicesRouter = os.router({
   listDocuments: os.listDocuments.handler(({ context, input }) =>
-    loadDocumentInbox(context, input.after)
+    loadDocumentInbox(context, input.after, input.params)
   ),
   documentStatus: os.documentStatus.handler(({ context, input }) =>
     loadDocumentStatus(context, input.ids)
