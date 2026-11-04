@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   activityThrottleWaitMs,
+  announcedSeconds,
   formatCountdown,
   idleExpiry,
   isIdleExpired,
@@ -90,5 +91,25 @@ describe("formatCountdown", () => {
   it("clamps zero and a passed expiry to 0:00", () => {
     expect(formatCountdown(0)).toBe("0:00");
     expect(formatCountdown(-5)).toBe("0:00");
+  });
+});
+
+/** The live line's answer at each whole second from `fromS` down to `toS`, 400 ms in. */
+function spoken(leadMs: number, fromS: number, toS: number): number[] {
+  return Array.from({ length: fromS - toS + 1 }, (_, i) =>
+    announcedSeconds((fromS - i) * 1000 - 400, leadMs)
+  );
+}
+
+describe("announcedSeconds", () => {
+  it("speaks the lead, then changes only at 60, 30 and 10 seconds (I1)", () => {
+    expect(new Set(spoken(120_000, 120, 61))).toEqual(new Set([120]));
+    expect(new Set(spoken(120_000, 60, 31))).toEqual(new Set([60]));
+    expect(new Set(spoken(120_000, 30, 11))).toEqual(new Set([30]));
+    expect(new Set(spoken(120_000, 10, 0))).toEqual(new Set([10]));
+  });
+
+  it("speaks a short lead once and never a longer time than remains (I2)", () => {
+    expect(new Set(spoken(4_000, 4, 0))).toEqual(new Set([4]));
   });
 });

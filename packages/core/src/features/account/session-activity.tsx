@@ -211,6 +211,7 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
       <IdleWarningDialog
         open={open}
         remainingMs={remainingMs}
+        leadMs={leadMs}
         strings={props.warning}
         signOutAction={props.signOutAction}
         failed={failed}

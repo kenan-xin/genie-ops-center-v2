@@ -68,9 +68,8 @@ const meta = {
     onUnauthenticated,
     warning: {
       title: "Still there?",
-      description:
-        "You have been inactive for a while. For your security, this session ends after 15 minutes without activity.",
-      countdownLabel: "Signing out in",
+      signOutIn: "For your security, you will be signed out in {countdown}.",
+      announce: (seconds) => `You will be signed out in ${seconds} seconds.`,
       staySignedIn: "Stay signed in",
       signOutNow: "Sign out now",
       stayFailed: STAY_FAILED,
@@ -451,9 +450,56 @@ export const SignOutNowPosts: Story = {
   },
 };
 
+export const AnnouncesAtCalmIntervals: Story = {
+  name: "Speaks the time at open, not at every tick",
+  play: async () => {
+    const dialog = await openWarning(4_750);
+
+    const live = dialog.querySelector('[aria-live="polite"]');
+
+    await expect(live).toHaveTextContent(
+      "You will be signed out in 4 seconds."
+    );
+
+    const timer = within(dialog).getByRole("timer");
+
+    const firstTick = timer.textContent;
+
+    // The timer moves twice, and the live line keeps its words: a 3.75 second lead speaks once.
+    await sleep(2_000);
+    await expect(timer).not.toHaveTextContent(firstTick ?? "");
+    await expect(live).toHaveTextContent(
+      "You will be signed out in 4 seconds."
+    );
+  },
+};
+
 export const WarningPhone: Story = {
   name: "Warning on a phone",
   globals: { viewport: { value: "mobile1", isRotated: false } },
+  play: async () => {
+    const dialog = await openWarning(4_750);
+
+    const stay = within(dialog)
+      .getByRole("button", { name: "Stay signed in" })
+      .getBoundingClientRect();
+
+    const signOut = within(dialog)
+      .getByRole("button", { name: "Sign out now" })
+      .getBoundingClientRect();
+
+    // Stacked, full width, the primary on top: no cramped pair at 320 px.
+    await expect(stay.bottom).toBeLessThanOrEqual(signOut.top);
+    await expect(stay.width).toBe(signOut.width);
+    await expect(stay.width).toBeGreaterThan(
+      dialog.getBoundingClientRect().width * 0.8
+    );
+  },
+};
+
+export const WarningDark: Story = {
+  name: "Warning in dark",
+  globals: { theme: "dark" },
   play: async () => {
     await openWarning(4_750);
   },

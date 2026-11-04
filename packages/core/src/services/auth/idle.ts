@@ -30,6 +30,22 @@ export function formatCountdown(remainingMs: number): string {
 }
 
 /**
+ * The whole seconds that the warning's live line speaks: the lead at open, then 60, 30 and 10 as
+ * the count passes them. The answer changes only at those marks, so a screen reader hears the
+ * time at a calm rate, never every second.
+ */
+export function announcedSeconds(remainingMs: number, leadMs: number): number {
+  const seconds = Math.ceil(Math.max(0, remainingMs) / 1000);
+
+  const lead = Math.ceil(leadMs / 1000);
+
+  return Math.min(
+    ...[lead, 60, 30, 10].filter((mark) => mark >= seconds),
+    lead
+  );
+}
+
+/**
  * True when the idle window has closed. The boundary is half open: at exactly
  * `last activity + idle minutes` the session is already expired, which is what "refused after
  * the tenant's idle minutes" (AC-5) reads as.

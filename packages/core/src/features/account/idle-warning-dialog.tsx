@@ -3,21 +3,21 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@genie/ui";
-import { Clock } from "lucide-react";
-import { useId, useRef } from "react";
+import { useRef } from "react";
 import type { JSX } from "react";
 
-import { formatCountdown } from "../../services/auth/idle.ts";
+import { announcedSeconds, formatCountdown } from "../../services/auth/idle.ts";
 
 /** The warning's copy, which the application builds from its catalogue (R-41). */
 export type IdleWarningStrings = {
   readonly title: string;
-  readonly description: string;
-  readonly countdownLabel: string;
+  /** One sentence with `{countdown}` where the timer stands. */
+  readonly signOutIn: string;
+  /** The live line for a whole number of seconds. */
+  readonly announce: (seconds: number) => string;
   readonly staySignedIn: string;
   readonly signOutNow: string;
   /** The inline error when Stay signed in cannot reach the server. */
@@ -32,44 +32,42 @@ export type IdleWarningStrings = {
 export function IdleWarningDialog(props: {
   readonly open: boolean;
   readonly remainingMs: number;
+  /** The whole warning's length, which the live line speaks at open. */
+  readonly leadMs: number;
   readonly strings: IdleWarningStrings;
   readonly signOutAction: string;
   /** The last Stay signed in failed; the warning stays open for another try. */
   readonly failed: boolean;
   readonly onStaySignedIn: () => void;
 }): JSX.Element {
-  const countdownLabel = useId();
-
   const staySignedIn = useRef<HTMLButtonElement>(null);
+
+  const [before, after] = props.strings.signOutIn.split("{countdown}");
 
   return (
     <Dialog open={props.open}>
       <DialogContent showCloseButton={false} initialFocus={staySignedIn}>
-        {/* The capture: a neutral clock tile beside the title and the body, the countdown under them. */}
-        <div className="flex items-start gap-3">
-          <span
-            aria-hidden="true"
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg border border-border bg-muted text-muted-foreground"
-          >
-            <Clock className="size-4" />
-          </span>
-          <DialogHeader>
-            <DialogTitle>{props.strings.title}</DialogTitle>
-            <DialogDescription>{props.strings.description}</DialogDescription>
-          </DialogHeader>
-        </div>
-        <div className="flex flex-col items-start gap-1">
-          <p id={countdownLabel} className="text-sm text-muted-foreground">
-            {props.strings.countdownLabel}
-          </p>
-          <p
-            role="timer"
-            aria-labelledby={countdownLabel}
-            className="font-mono text-4xl font-semibold tabular-nums"
-          >
-            {formatCountdown(props.remainingMs)}
-          </p>
-        </div>
+        <DialogHeader>
+          <DialogTitle>{props.strings.title}</DialogTitle>
+          <DialogDescription>
+            {before}
+            <span
+              role="timer"
+              className="font-mono font-semibold text-foreground tabular-nums"
+            >
+              {formatCountdown(props.remainingMs)}
+            </span>
+            {after}
+          </DialogDescription>
+        </DialogHeader>
+        {/* The timer is silent; this line speaks at open and at 60, 30 and 10 seconds only. */}
+        <p className="sr-only" aria-live="polite">
+          {props.open
+            ? props.strings.announce(
+                announcedSeconds(props.remainingMs, props.leadMs)
+              )
+            : null}
+        </p>
         {props.failed ? (
           <p
             role="alert"
@@ -78,8 +76,9 @@ export function IdleWarningDialog(props: {
             {props.strings.stayFailed}
           </p>
         ) : null}
-        <DialogFooter>
-          {/* `contents`, so the button is the footer's flex item like its sibling. */}
+        {/* No `DialogFooter`: its divider is what the owner asked to lose. Stacked on a phone. */}
+        <div className="flex flex-col-reverse gap-2 pt-2 md:flex-row md:justify-end">
+          {/* `contents`, so the button is the row's flex item like its sibling. */}
           <form method="post" action={props.signOutAction} className="contents">
             <Button type="submit" variant="secondary">
               {props.strings.signOutNow}
@@ -88,7 +87,7 @@ export function IdleWarningDialog(props: {
           <Button ref={staySignedIn} onClick={props.onStaySignedIn}>
             {props.strings.staySignedIn}
           </Button>
-        </DialogFooter>
+        </div>
       </DialogContent>
     </Dialog>
   );

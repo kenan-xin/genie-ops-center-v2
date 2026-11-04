@@ -44,8 +44,9 @@ export function SessionActivityMount(props: { readonly idleMinutes: number }) {
       }}
       warning={{
         title: t("title"),
-        description: t("description", { idleMinutes: props.idleMinutes }),
-        countdownLabel: t("countdownLabel"),
+        // The dialog puts its live timer where `{countdown}` stands.
+        signOutIn: t("signOutIn", { countdown: "{countdown}" }),
+        announce: (seconds) => t("announce", { seconds }),
         staySignedIn: t("staySignedIn"),
         signOutNow: t("signOutNow"),
         stayFailed: t("stayFailed"),
