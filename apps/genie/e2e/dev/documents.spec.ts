@@ -51,8 +51,7 @@ function readRow(items: readonly Element[]): ShownRow[] {
 }
 
 /**
- * Every shown row of the inbox, from every group (Needs you, Reading, Done), read from whichever
- * layout the viewport draws. The other layout is `display: none`, so its rows are skipped.
+ * Every shown row of the inbox's open tab, read from whichever layout the viewport draws. The other layout is `display: none`, so its rows are skipped.
  */
 function shownRows(page: Page): Promise<readonly ShownRow[]> {
   const main = page.getByRole("main");
@@ -150,6 +149,153 @@ test("the inbox and a review page load with no hydration warning", async ({
   await load(review ?? "");
 
   expect(messages.filter((text) => HYDRATION_MESSAGE.test(text))).toEqual([]);
+});
+
+test("Done reads its first page, and a scroll to the end reads the rest", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signIn(page);
+      // The mount ping means no dev-server reload can replace the list during the scroll.
+      await openInbox(page, "done");
+
+      // The 66 seeded history documents are Done, so Done holds more than one page of 50 (LH6).
+      // A phone shows the count above the cards and in the footer; the hidden layout is skipped.
+      const first = page
+        .getByText(/^Showing 50 of \d+ documents$/)
+        .filter({ visible: true })
+        .first();
+
+      await expect(first).toBeVisible(FIRST_PAINT);
+
+      const total = Number(
+        /of (\d+)/.exec((await first.textContent()) ?? "")?.[1]
+      );
+
+      // More than one page, not exactly 66: the count follows what the run's other tests did.
+      expect(total).toBeGreaterThan(50);
+
+      // No click on Show more: reaching the end of the list reads the next page (czjw.70).
+      await page
+        .getByRole("button", { name: "Show more" })
+        .scrollIntoViewIfNeeded();
+
+      await expect(
+        page
+          .getByText(`${total} documents`, { exact: true })
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible();
+      await expect(page.getByRole("button", { name: "Show more" })).toHaveCount(
+        0
+      );
+      await expect.poll(async () => (await shownRows(page)).length).toBe(total);
+    },
+    LOCK_WAIT
+  );
+});
+
+/** On a phone the filters but the search sit in the Filters sheet; on a desktop in the bar. */
+async function withFilters(
+  page: Page,
+  pick: () => Promise<void>
+): Promise<void> {
+  if (onPhone(page)) {
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    await pick();
+    await page.getByRole("button", { name: /^Show / }).click();
+
+    return;
+  }
+
+  // A narrow bar keeps the controls that do not fit in More filters (LH27).
+  const more = page.getByRole("button", { name: "More filters" });
+
+  if (await more.isVisible()) await more.click();
+
+  await pick();
+}
+
+test("the inbox search, type and upload date narrow the rows on the server", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signIn(page);
+      await openInbox(page);
+
+      const shownTexts = async () =>
+        (await shownRows(page)).map((row) => row.text);
+
+      // The search matches the file name or the invoice number.
+      const term = "INV-2026-09-03";
+      const search = page.getByRole("searchbox", { name: "Search" });
+
+      await search.fill(term);
+      await expect(page).toHaveURL(new RegExp(`[?&]q=${term}(&|$)`));
+      await expect
+        .poll(async () => {
+          const texts = await shownTexts();
+
+          return texts.length > 0 && texts.every((text) => text.includes(term));
+        })
+        .toBe(true);
+
+      await search.fill("");
+      await expect(page).not.toHaveURL(/[?&]q=/);
+
+      // The type keeps only the payment documents.
+      await withFilters(page, async () => {
+        // The bar stays in the page on a phone, hidden, so only the shown trigger counts.
+        await page
+          .getByLabel("Document type: All types")
+          .filter({ visible: true })
+          .click();
+        await page.getByRole("option", { name: "Payment evidence" }).click();
+      });
+      await expect(page).toHaveURL(/[?&]type=payment(&|$)/);
+      await expect
+        .poll(async () => {
+          const texts = await shownTexts();
+
+          return (
+            texts.length > 0 &&
+            texts.every((text) => text.includes("Payment evidence"))
+          );
+        })
+        .toBe(true);
+
+      // Every document was uploaded today, so last month holds none and this month holds them.
+      const range = async (preset: string) =>
+        withFilters(page, async () => {
+          await page
+            .getByLabel(/^Upload date: /)
+            .filter({ visible: true })
+            .click();
+          await page.getByRole("button", { name: preset, exact: true }).click();
+          await page.getByRole("button", { name: "Done", exact: true }).click();
+        });
+
+      await range("Last month");
+      await expect(page).toHaveURL(/[?&]uploaded=/);
+      await expect(
+        page.getByText("No document matches these filters.")
+      ).toBeVisible();
+
+      await range("This month");
+      await expect
+        .poll(async () => (await shownTexts()).length)
+        .toBeGreaterThan(0);
+    },
+    LOCK_WAIT
+  );
 });
 
 test("uploads live documents and shows their statuses", async ({

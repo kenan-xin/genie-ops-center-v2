@@ -148,7 +148,13 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
           );
         }
 
-        const amount = sgd(Number(invoice.outstanding_amount));
+        // A phone card names a paid invoice by its total, "SGD 5,000.00 paid" (task 7, the card).
+        const outstanding = Number(invoice.outstanding_amount);
+
+        const amount =
+          onPhone(page) && outstanding === 0
+            ? `${sgd(Number(invoice.total_amount))} paid`
+            : sgd(outstanding);
 
         if (!row.text.includes(amount)) {
           found.push(
@@ -167,7 +173,7 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
   );
 });
 
-test("the Overdue chip keeps only the overdue invoices, in the address and in the figure strip", async ({
+test("the Overdue tab keeps only the overdue invoices, in the address and in the figure strip", async ({
   page,
 }) => {
   test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
@@ -189,15 +195,20 @@ test("the Overdue chip keeps only the overdue invoices, in the address and in th
 
       expect(overdue.length).toBeGreaterThan(1);
 
-      // On a phone the chips sit behind the one Filters button above the cards.
+      const tab = `Overdue ${overdue.length}`;
+
+      // On a phone the status is a radio in the Filters sheet; the tabs show from 768 px.
       if (onPhone(page)) {
-        await page.getByRole("button", { name: "Filters" }).click();
+        await page.getByRole("button", { name: /^Filters/ }).click();
+        await page.getByRole("radio", { name: tab }).click();
+        await expect(page).toHaveURL(/[?&]status=overdue(&|$)/);
+        await page
+          .getByRole("button", { name: `Show ${overdue.length} invoices` })
+          .click();
+      } else {
+        await page.getByRole("tab", { name: tab }).click();
+        await expect(page).toHaveURL(/[?&]status=overdue(&|$)/);
       }
-
-      await page.getByRole("button", { name: "Overdue", exact: true }).click();
-      await expect(page).toHaveURL(/[?&]status=overdue(&|$)/);
-
-      if (onPhone(page)) await page.keyboard.press("Escape");
 
       // The server answers the filter, and the figure strip counts every overdue invoice.
       await expect(fact(page, "Overdue")).toHaveText(sgd(overdueAmount));
@@ -209,6 +220,92 @@ test("the Overdue chip keeps only the overdue invoices, in the address and in th
         .toEqual(overdue.map((invoice) => invoice.invoice_id).toSorted());
 
       await expectNoAxeViolations(page, "invoices list filtered");
+    },
+    LOCK_WAIT
+  );
+});
+
+/** The demo pack's total of each shown invoice, in the shown order. */
+async function shownTotals(page: Page): Promise<readonly number[]> {
+  const totals = new Map(
+    readDemoCsv("04_Demo_Guide/expected_invoice_status.csv").map((invoice) => [
+      invoice.invoice_id,
+      Number(invoice.total_amount),
+    ])
+  );
+
+  return (await shownRows(page, "Invoices")).map(
+    (row) => totals.get(row.label) ?? Number.NaN
+  );
+}
+
+/** Waits until all 36 invoices show in the order of their totals. */
+async function expectTotalOrder(
+  page: Page,
+  direction: "asc" | "desc"
+): Promise<void> {
+  await expect
+    .poll(async () => {
+      const totals = await shownTotals(page);
+
+      return totals.length === 36 &&
+        totals.every((total, at) =>
+          at === 0
+            ? !Number.isNaN(total)
+            : direction === "asc"
+              ? (totals[at - 1] ?? 0) <= total
+              : (totals[at - 1] ?? 0) >= total
+        )
+        ? "in order"
+        : totals.join(", ");
+    })
+    .toBe("in order");
+}
+
+test("a sort by Total runs on the server in both directions and survives a reload", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout * 2 + 60_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signIn(page);
+
+      if (onPhone(page)) {
+        // A phone has no column headers: the address picks the column and the sort line reverses it.
+        await openList(
+          page,
+          "/m/invoices/invoices?sort=total.desc",
+          "Invoices"
+        );
+        await expectTotalOrder(page, "desc");
+        await page
+          .getByRole("button", { name: "Sort: Total, highest first" })
+          .click();
+      } else {
+        await openList(page, "/m/invoices/invoices", "Invoices");
+
+        const total = page.getByRole("columnheader", { name: "Total" });
+
+        // The first click sorts descending, the second ascending (LH5).
+        await total.getByRole("button").click();
+        await expect(page).toHaveURL(/[?&]sort=total\.desc(&|$)/);
+        await expect(total).toHaveAttribute("aria-sort", "descending");
+        await expectTotalOrder(page, "desc");
+        await total.getByRole("button").click();
+        await expect(total).toHaveAttribute("aria-sort", "ascending");
+      }
+
+      await expect(page).toHaveURL(/[?&]sort=total\.asc(&|$)/);
+      await expectTotalOrder(page, "asc");
+
+      // The reload reads the sort from the address, so the server page comes back in the same order.
+      await page.reload();
+      await expect(
+        page.getByRole("heading", { level: 1, name: "Invoices" })
+      ).toBeVisible(FIRST_PAINT);
+      await expectTotalOrder(page, "asc");
     },
     LOCK_WAIT
   );
@@ -388,9 +485,7 @@ test("a reference search keeps only the matching payments, in the address and on
       expect(matching.length).toBeGreaterThan(1);
 
       // The search stays above the cards on a phone, so both viewports type in the same box.
-      await page
-        .getByRole("searchbox", { name: "Search reference or customer" })
-        .fill(term);
+      await page.getByRole("searchbox", { name: "Search" }).fill(term);
       await expect(page).toHaveURL(new RegExp(`[?&]q=${term}(&|$)`));
 
       await expect

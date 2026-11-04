@@ -63,17 +63,18 @@ export async function signIn(page: Page): Promise<void> {
 }
 
 /**
- * Opens the inbox and waits for the shell's mount ping. The activity client posts on mount, so
+ * Opens the inbox under one tab, All by default so a row shows under any status, and waits for the
+ * shell's mount ping. The activity client posts on mount, so
  * the page's effects have run: React's development double effect (mount, unmount, mount) is over.
  * A file chosen before that replay ends is lost, because its unmount calls Pacer's `stop()` after
  * `choose()` started the queue.
  */
-export async function openInbox(page: Page): Promise<void> {
+export async function openInbox(page: Page, status = "all"): Promise<void> {
   const mounted = page.waitForResponse((response) =>
     response.url().endsWith("/api/session/activity")
   );
 
-  await page.goto("/m/invoices/documents");
+  await page.goto(`/m/invoices/documents?status=${status}`);
   await expect(
     page.getByRole("heading", { level: 1, name: "Documents" })
   ).toBeVisible(FIRST_PAINT);
@@ -133,7 +134,7 @@ export function copyOf(number: string, label: string): Upload {
   };
 }
 
-/** One inbox row, in whichever group it sits, read from whichever layout the viewport draws. */
+/** One inbox row of the open tab, read from whichever layout the viewport draws. */
 export function rowOf(page: Page, label: string) {
   const main = page.getByRole("main");
 
