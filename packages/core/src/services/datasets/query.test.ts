@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { DatasetDeclaration } from "../../lib/module-contract/module.ts";
 import {
   checkDatasetSearch,
+  cursorIssues,
   type DatasetQuery,
   validateDatasetQuery,
 } from "./query.ts";
@@ -332,6 +333,44 @@ describe("validateDatasetQuery", () => {
     },
   ])("accepts $name", ({ query }) => {
     expect(paths(query)).toEqual([]);
+  });
+});
+
+describe("the instant type", () => {
+  const timed: DatasetDeclaration["fields"] = {
+    ...fields,
+    updatedAt: { kind: "dimension", type: "instant", description: "Changed." },
+  };
+
+  const newest: DatasetQuery = {
+    select: ["updatedAt"],
+    orderBy: [{ column: "updatedAt", direction: "desc" }],
+  };
+
+  const cursor = (value: string) =>
+    cursorIssues(timed, newest, "id", { values: [value, "a1"] }).length;
+
+  it("takes a cursor value with microseconds and refuses a day or a minute", () => {
+    expect(cursor("2026-11-03T08:20:00.123456Z")).toBe(0);
+    expect(cursor("2026-11-03")).toBe(1);
+    expect(cursor("2026-11-03T08:20")).toBe(1);
+  });
+
+  it("filters with an ordering operator and refuses a month bucket", () => {
+    expect(
+      validateDatasetQuery(timed, {
+        select: ["id"],
+        filters: [
+          { field: "updatedAt", op: "gte", value: "2026-11-01T00:00:00Z" },
+        ],
+      })
+    ).toEqual([]);
+    expect(
+      validateDatasetQuery(timed, {
+        groupBy: [{ field: "updatedAt", bucket: "month" }],
+        aggregates: [count],
+      })
+    ).toHaveLength(1);
   });
 });
 

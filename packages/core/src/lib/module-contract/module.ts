@@ -393,8 +393,14 @@ export type PermissionTransformation = {
   readonly change: PermissionChange;
 };
 
-/** 19. Datasets (DEC-54). */
-export type DatasetFieldType = "text" | "date" | "number" | "money" | "boolean";
+/** 19. Datasets (DEC-54). An `instant` is a `timestamptz`, answered as UTC ISO text with microseconds. */
+export type DatasetFieldType =
+  | "text"
+  | "date"
+  | "instant"
+  | "number"
+  | "money"
+  | "boolean";
 
 export type DatasetField = {
   /** For the agent only. The type, not the kind, decides what a query can do. */
@@ -404,6 +410,12 @@ export type DatasetField = {
   readonly description: string;
   /** A text field that a query's `search` matches, case-insensitively, as a substring. */
   readonly searchable?: true;
+  /**
+   * Left out of `list-datasets`, so the agent never sees it, while a query still reads it. A new
+   * field carries it until the next recording refresh, because the recorded requests hold every
+   * listed field (DEC-55).
+   */
+  readonly hiddenFromAgent?: true;
 };
 
 /** The select that `source()` answers. Core uses it only as an aliased subquery. */

@@ -50,6 +50,7 @@ const QUERY_CANCELED = "57014";
 const CAST: Readonly<Record<DatasetFieldType, string>> = {
   text: "text",
   date: "date",
+  instant: "timestamptz",
   number: "numeric",
   money: "numeric",
   boolean: "boolean",
@@ -74,9 +75,14 @@ type Output = {
   readonly labels?: readonly string[];
 };
 
-/** How a value of the type reaches the caller: an ISO date, a JS number, or text and boolean as is. */
+/** How a value of the type reaches the caller: ISO date or UTC instant text, a JS number, or text and boolean as is. */
 function answer(expression: SQL, type: DatasetFieldType): SQL<DatasetValue> {
   if (type === "date") return sql`to_char(${expression}, 'YYYY-MM-DD')`;
+
+  // Microseconds, so a cursor value names its row's instant exactly.
+  if (type === "instant") {
+    return sql`to_char(${expression} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`;
+  }
 
   if (type === "number" || type === "money") {
     return sql`(${expression})::float8`;
@@ -260,8 +266,9 @@ export async function runDatasetQuery(
   const outputs = aggregate ? [...groups, ...aggregated] : rowColumns;
   const names = outputs.map((output) => output.column.name);
 
-  // Group and order by output position: Drizzle renders each use of an expression with new
-  // parameter numbers, so a repeated CASE would not match its select item (Postgres 42803).
+  // An aggregate query groups and orders by output position: Drizzle renders each use of an
+  // expression with new parameter numbers, so a repeated CASE would not match its select item
+  // (Postgres 42803).
   const groupBy = groups.map((_, index) => String(index + 1)).join(", ");
 
   const sorted = (query.orderBy ?? []).map(
@@ -269,8 +276,9 @@ export async function runDatasetQuery(
       `${names.indexOf(order.column) + 1} ${DIRECTION[order.direction]}`
   );
 
-  // A row query always ends its order on the row key (its hidden last column), so ties on the sort
-  // columns have one order and a cursor never skips or repeats a row (czjw.28, czjw.48).
+  // A row query always ends its order on the row key, so ties on the sort columns have one order
+  // and a cursor never skips or repeats a row (czjw.28, czjw.48). It orders on each column's typed
+  // value, not the rendered text, so an index on the source column can serve it (LH3).
   const key = rowKeyOf(declaration);
 
   const orderBy = aggregate
@@ -279,7 +287,16 @@ export async function runDatasetQuery(
       : groupBy === ""
         ? undefined
         : sql.raw(groupBy)
-    : sql.raw([...sorted, `${outputs.length + 1} asc`].join(", "));
+    : sql.join(
+        [
+          ...(query.orderBy ?? []).map(
+            (order) =>
+              sql`${cast(order.column)} ${sql.raw(DIRECTION[order.direction])}`
+          ),
+          sql`${cast(key)} asc`,
+        ],
+        sql`, `
+      );
 
   // Postgres sorts nulls last ascending and first descending, so "after v" follows that order.
   const beyond = (

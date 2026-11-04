@@ -16,6 +16,7 @@
     "./config-form-schema": "./src/parts/config-form-schema.ts",
     "./chart": "./src/parts/chart.tsx",
     "./chart-data": "./src/parts/chart-data.ts",
+    "./list-params": "./src/list-header/list-params.ts",
     "./fonts.css": "./src/fonts/fonts.css",
     "./fonts/*": "./src/fonts/*"
   },

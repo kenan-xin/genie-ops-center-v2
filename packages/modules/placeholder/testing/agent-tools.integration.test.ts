@@ -20,6 +20,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { recordsDataset } from "../src/datasets.ts";
 import { placeholderModule } from "../src/module.ts";
 import { AGENT_RECORDS, insertAgentRecords } from "./agent-fixtures.ts";
 
@@ -215,6 +216,79 @@ describe("the agent tools on the placeholder", () => {
         count: { records, asOf: "2026-10-27" },
       }))
     );
+  });
+
+  it("leaves an agent-hidden field out of list-datasets and still answers it to a query", async () => {
+    const { quantity } = recordsDataset.fields;
+
+    if (quantity === undefined) throw new Error("No quantity field.");
+
+    const hidden = {
+      ...placeholderModule,
+      datasets: [
+        {
+          ...recordsDataset,
+          fields: {
+            ...recordsDataset.fields,
+            quantity: { ...quantity, hiddenFromAgent: true as const },
+          },
+        },
+      ],
+    };
+
+    const tenant = createTenantContext(
+      {
+        DATABASE_URL: deployment.context.env.databaseUrl,
+        PUBLIC_URL: deployment.context.env.publicUrl,
+      },
+      { error: () => {}, info: () => {}, debug: () => {} },
+      ["placeholder"]
+    );
+
+    registerModuleRuntime(tenant, [hidden]);
+
+    try {
+      const ctx: ModuleRequestContext = {
+        tenant,
+        caller: principalFor({
+          tenant,
+          modules: [hidden],
+          userId: await reader(),
+          authenticated: true,
+        }),
+      };
+
+      const { datasets } = z
+        .object({
+          datasets: z.array(
+            z.object({
+              name: z.string(),
+              fields: z.record(z.string(), z.unknown()),
+            })
+          ),
+        })
+        .parse(await call(ctx, "list-datasets", {}));
+
+      const listed = Object.keys(
+        datasets.find(({ name }) => name === RECORDS)?.fields ?? {}
+      );
+
+      expect(listed).toContain("amountCents");
+      expect(listed).not.toContain("quantity");
+
+      const { rows } = z
+        .object({ rows: z.array(z.object({ quantity: z.number() })) })
+        .parse(
+          await call(ctx, "query-dataset", {
+            dataset: RECORDS,
+            query: { select: ["id", "quantity"] },
+          })
+        );
+
+      expect(rows).toHaveLength(AGENT_RECORDS.length);
+    } finally {
+      await tenant.db.$client.end();
+    }
   });
 
   it("refuses a person without placeholder:read on every tool", async () => {

@@ -42,13 +42,14 @@ const listDatasetsTool = defineAgentTool({
       const entry: DatasetListing = {
         name: dataset.name,
         description: dataset.description,
+        // A hidden field stays out, so every recorded request keeps matching (DEC-55).
         fields: Object.fromEntries(
-          Object.entries(dataset.fields).map(
-            ([name, { kind, type, description }]) => [
+          Object.entries(dataset.fields)
+            .filter(([, field]) => field.hiddenFromAgent !== true)
+            .map(([name, { kind, type, description }]) => [
               name,
               { kind, type, description },
-            ]
-          )
+            ])
         ),
         timeField: dataset.timeField,
         recordKeyField: dataset.recordKey.field,

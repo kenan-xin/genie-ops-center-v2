@@ -50,7 +50,13 @@ function chartColumn(
 ): ChartColumn {
   const { name: _name, ...facts } = column;
 
-  return { ...facts, key, label };
+  // A chart reads an instant as text (LH2), so no sum or axis treats it as a number.
+  return {
+    ...facts,
+    type: facts.type === "instant" ? "text" : facts.type,
+    key,
+    label,
+  };
 }
 
 function columnNamed(result: DatasetResult, name: string): DatasetColumn {

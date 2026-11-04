@@ -139,9 +139,18 @@ export const datasetQuerySchema: z.ZodType<DatasetQuery> = z.strictObject({
 
 const ORDERED: ReadonlySet<DatasetFieldType> = new Set([
   "date",
+  "instant",
   "number",
   "money",
 ]);
+
+/** A UTC instant as core answers it, with up to six fraction digits. */
+function isInstant(text: string): boolean {
+  return (
+    /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/u.test(text) &&
+    !Number.isNaN(Date.parse(text))
+  );
+}
 
 const MAX_IN_VALUES = 1000;
 
@@ -164,6 +173,9 @@ function fits(type: DatasetFieldType, candidate: DatasetFilterValue): boolean {
     case "date":
       // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the value comes from a caller
       return typeof candidate === "string" && isCalendarDate(candidate);
+    case "instant":
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the value comes from a caller
+      return typeof candidate === "string" && isInstant(candidate);
     case "number":
     case "money":
       // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the value comes from a caller
@@ -486,7 +498,7 @@ export function validateDatasetQuery(
         if (!ORDERED.has(type)) {
           issues.push({
             path: `${at}.op`,
-            message: `"${filter.op}" applies to date, number and money fields, not ${type} field "${filter.field}".`,
+            message: `"${filter.op}" applies to date, instant, number and money fields, not ${type} field "${filter.field}".`,
           });
         } else if (filter.op === "between") {
           wrong(`${at}.from`, filter.from);

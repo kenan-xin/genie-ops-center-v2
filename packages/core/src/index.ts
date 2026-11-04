@@ -557,6 +557,13 @@ export {
   validateDatasetQuery,
 } from "./services/datasets/query.ts";
 
+export { listQueryOf } from "./services/datasets/list-query.ts";
+
+export type {
+  DatasetListDefinition,
+  ListQuery,
+} from "./services/datasets/list-query.ts";
+
 export {
   type CartesianSeries,
   CHART_SERIES_LIMIT,
