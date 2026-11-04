@@ -125,6 +125,32 @@ export const ArrowDownOpens: Story = {
   },
 };
 
+/** WCAG 2.5.3 (axe `label-content-name-mismatch`): a day's name holds the number it shows. */
+export const DayNamesHoldTheShownNumber: Story = {
+  args: { initial: "1 Nov 2026" },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Choose the due date" })
+    );
+    await dayButton("2026-11-01");
+
+    const mismatched = [
+      ...document.querySelectorAll("button[data-day]"),
+    ].filter(
+      (button) =>
+        !new RegExp(`(^|\\s)${button.textContent}(\\s|$)`, "u").test(
+          button.getAttribute("aria-label") ?? ""
+        )
+    );
+
+    await expect(mismatched).toEqual([]);
+
+    await expect(
+      (await dayButton("2026-11-01")).getAttribute("aria-label")
+    ).toBe("Sunday 1 November 2026, selected");
+  },
+};
+
 export const PhoneTouchTargets: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas }) => {

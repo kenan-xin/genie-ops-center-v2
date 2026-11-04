@@ -4,7 +4,12 @@ import { cn } from "cn";
 import { format } from "date-fns";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import type * as React from "react";
-import { DayButton, DayPicker, type DayButtonProps } from "react-day-picker";
+import {
+  DayButton,
+  DayPicker,
+  type DayButtonProps,
+  type Modifiers,
+} from "react-day-picker";
 
 import { focusRing } from "../theme/tokens.ts";
 import { buttonVariants } from "./button-variants.ts";
@@ -25,9 +30,20 @@ const navButton = cn(
   "aria-disabled:opacity-50"
 );
 
+/**
+ * The library's day name reads "Sunday, November 1st, 2026", which does not hold the "1" the
+ * button shows (WCAG 2.5.3, axe `label-content-name-mismatch`). Day first, as the app writes a day.
+ */
+function labelDayButton(date: Date, modifiers: Modifiers) {
+  const name = format(date, "EEEE d MMMM yyyy");
+
+  return `${modifiers.today ? "Today, " : ""}${name}${modifiers.selected ? ", selected" : ""}`;
+}
+
 function Calendar({
   className,
   classNames,
+  labels,
   showOutsideDays = false,
   weekStartsOn = 1,
   ...props
@@ -35,6 +51,7 @@ function Calendar({
   return (
     <DayPicker
       data-slot="calendar"
+      labels={{ labelDayButton, ...labels }}
       showOutsideDays={showOutsideDays}
       weekStartsOn={weekStartsOn}
       className={cn("w-fit", className)}
