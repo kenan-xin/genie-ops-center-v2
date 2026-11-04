@@ -113,8 +113,17 @@ export function IdentityBlock(props: {
   readonly chrome: ShellChrome;
   readonly identity: ShellIdentity;
   readonly adminPortalLabel: string;
+  /** The 60 px icon rail: the mark alone, named by the company. */
+  readonly rail?: boolean | undefined;
 }) {
   const { identity } = props;
+
+  if (props.rail === true)
+    return (
+      <div data-shell-identity="" className="flex justify-center pt-3 pb-1">
+        <TenantMark identity={identity} size="sm" alt={identity.companyName} />
+      </div>
+    );
 
   const secondLine =
     props.chrome === "admin" ? (

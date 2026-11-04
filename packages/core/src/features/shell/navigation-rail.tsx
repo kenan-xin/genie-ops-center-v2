@@ -27,7 +27,13 @@ import {
   UsersRound,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 
 import type { NavigationIcon } from "../../lib/module-contract/module.ts";
 import { activeHref } from "./active-link.ts";
@@ -48,6 +54,8 @@ export type NavigationRailProps = {
   readonly currentPath: string;
   readonly strings: Pick<ShellStrings, "workspace" | "pinned" | "categories">;
   readonly linkComponent?: ShellLinkComponent | undefined;
+  /** The 60 px icon rail: icons only, each label as hidden text and a tooltip on the right. */
+  readonly rail?: boolean | undefined;
 };
 
 // Roles is ShieldCheck, not Shield: the admin capture draws the check.
@@ -92,7 +100,8 @@ const rowCategory = "font-semibold text-foreground hover:bg-border/60";
 const rowActive =
   "bg-card font-semibold text-primary ring-1 ring-border dark:bg-border dark:text-brand-on-dark dark:ring-muted-foreground/30";
 
-function deviceStorage(): Storage | undefined {
+/** The browser's `localStorage`, or none where reading it throws. */
+export function deviceStorage(): Storage | undefined {
   try {
     return window.localStorage;
   } catch {
@@ -100,11 +109,42 @@ function deviceStorage(): Storage | undefined {
   }
 }
 
-function Caption(props: { readonly children: ReactNode }) {
+function Caption(props: {
+  readonly children: ReactNode;
+  readonly rail: boolean;
+}) {
+  // The rail splits groups with a short hairline; each nav keeps its name.
+  if (props.rail)
+    return (
+      <div aria-hidden="true" className="mx-auto my-2.5 h-px w-6 bg-border" />
+    );
+
   return (
     <div className="px-3 pt-5 pb-1.5 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
       {props.children}
     </div>
+  );
+}
+
+/**
+ * A 40 px rail row that the tooltip trigger renders as, so the whole row opens the tooltip on
+ * hover and focus. The Base UI trigger carries no style of its own, as with the user footer.
+ */
+function RailLink({
+  anchor: Anchor,
+  active,
+  ...rest
+}: ComponentProps<"a"> & {
+  readonly anchor: ShellLinkComponent | "a";
+  readonly href: string;
+  readonly active: boolean;
+}) {
+  return (
+    <Anchor
+      {...rest}
+      aria-current={active ? "page" : undefined}
+      className={`flex size-10 items-center justify-center rounded-lg motion-safe:transition-colors ${focusRing} ${active ? rowActive : rowIdle}`}
+    />
   );
 }
 
@@ -118,8 +158,37 @@ function Row(props: {
   /** A pinned row leads with the grip of the reference design instead of an icon. */
   readonly grip?: boolean;
   readonly linkComponent: ShellLinkComponent | undefined;
+  readonly rail: boolean;
 }) {
   const isActive = props.link.href === props.active;
+  const Anchor = linkFor(props.link.href, props.linkComponent);
+
+  const iconClass = `size-5 shrink-0 ${isActive ? "text-primary dark:text-brand-on-dark" : "text-muted-foreground"}`;
+
+  if (props.rail) {
+    // Every row draws an icon in the rail, so a tree or pinned row falls back to Box.
+    const RailIcon =
+      CORE_ICONS.get(props.link.id) ??
+      (props.link.icon === undefined ? Box : MODULE_ICONS[props.link.icon]);
+
+    return (
+      <Tooltip>
+        <TooltipTrigger
+          render={
+            <RailLink
+              anchor={Anchor}
+              href={props.link.href}
+              active={isActive}
+            />
+          }
+        >
+          <RailIcon aria-hidden strokeWidth={1.75} className={iconClass} />
+          <span className="sr-only">{props.link.label}</span>
+        </TooltipTrigger>
+        <TooltipContent side="right">{props.link.label}</TooltipContent>
+      </Tooltip>
+    );
+  }
 
   // Tree rows stay icon-free, as in the reference design; only nav rows draw the entry's icon.
   const Icon =
@@ -127,8 +196,6 @@ function Row(props: {
     (props.defaultIcon === undefined || props.link.icon === undefined
       ? props.defaultIcon
       : MODULE_ICONS[props.link.icon]);
-
-  const Anchor = linkFor(props.link.href, props.linkComponent);
 
   return (
     <Anchor
@@ -144,11 +211,7 @@ function Row(props: {
         />
       ) : null}
       {Icon === undefined ? null : (
-        <Icon
-          aria-hidden
-          strokeWidth={1.75}
-          className={`size-5 shrink-0 ${isActive ? "text-primary dark:text-brand-on-dark" : "text-muted-foreground"}`}
-        />
+        <Icon aria-hidden strokeWidth={1.75} className={iconClass} />
       )}
       <Tooltip>
         <TooltipTrigger render={<span className="min-w-0 flex-1" />}>
@@ -167,8 +230,30 @@ function Category(props: {
   readonly onToggle: () => void;
   readonly active: string | undefined;
   readonly linkComponent: ShellLinkComponent | undefined;
+  readonly rail: boolean;
 }) {
   const { category } = props;
+
+  // The rail shows no category header, and its entries flat, also when it is collapsed.
+  if (props.rail)
+    return (
+      <div
+        role="group"
+        aria-label={category.name}
+        className="flex flex-col items-center gap-0.5"
+      >
+        {category.entries.map((entry) => (
+          <Row
+            key={entry.id}
+            link={entry}
+            active={props.active}
+            height={treeRow}
+            linkComponent={props.linkComponent}
+            rail
+          />
+        ))}
+      </div>
+    );
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -216,6 +301,7 @@ function Category(props: {
               height={treeRow}
               idle={rowChild}
               linkComponent={props.linkComponent}
+              rail={false}
             />
           ))}
         </div>
@@ -233,7 +319,9 @@ function Category(props: {
  */
 export function NavigationRail(props: NavigationRailProps) {
   const { navigation, strings } = props;
+  const rail = props.rail === true;
   const active = activeHref(navigation, props.currentPath);
+  const list = `flex flex-col gap-0.5 ${rail ? "items-center" : ""}`;
   const idPrefix = useId();
 
   // The server render shows every category expanded; the device's choice applies after mount.
@@ -259,12 +347,8 @@ export function NavigationRail(props: NavigationRailProps) {
         {navigation.admin
           .filter((group) => group.entries.length > 0)
           .map((group) => (
-            <nav
-              key={group.id}
-              aria-label={group.label}
-              className="flex flex-col gap-0.5"
-            >
-              <Caption>{group.label}</Caption>
+            <nav key={group.id} aria-label={group.label} className={list}>
+              <Caption rail={rail}>{group.label}</Caption>
               {group.entries.map((entry) => (
                 <Row
                   key={entry.id}
@@ -273,6 +357,7 @@ export function NavigationRail(props: NavigationRailProps) {
                   height={navRow}
                   defaultIcon={Box}
                   linkComponent={props.linkComponent}
+                  rail={rail}
                 />
               ))}
             </nav>
@@ -288,8 +373,8 @@ export function NavigationRail(props: NavigationRailProps) {
   return (
     <div className="flex flex-col">
       {navigation.workspace.length === 0 ? null : (
-        <nav aria-label={strings.workspace} className="flex flex-col gap-0.5">
-          <Caption>{strings.workspace}</Caption>
+        <nav aria-label={strings.workspace} className={list}>
+          <Caption rail={rail}>{strings.workspace}</Caption>
           {navigation.workspace.map((link) => (
             <Row
               key={link.id}
@@ -298,13 +383,14 @@ export function NavigationRail(props: NavigationRailProps) {
               height={navRow}
               defaultIcon={Box}
               linkComponent={props.linkComponent}
+              rail={rail}
             />
           ))}
         </nav>
       )}
       {navigation.pinned.length === 0 ? null : (
-        <nav aria-label={strings.pinned} className="flex flex-col gap-0.5">
-          <Caption>{strings.pinned}</Caption>
+        <nav aria-label={strings.pinned} className={list}>
+          <Caption rail={rail}>{strings.pinned}</Caption>
           {navigation.pinned.map((link) => (
             <Row
               key={link.id}
@@ -313,13 +399,14 @@ export function NavigationRail(props: NavigationRailProps) {
               height={treeRow}
               grip
               linkComponent={props.linkComponent}
+              rail={rail}
             />
           ))}
         </nav>
       )}
       {categories.length === 0 ? null : (
-        <nav aria-label={strings.categories} className="flex flex-col gap-0.5">
-          <Caption>{strings.categories}</Caption>
+        <nav aria-label={strings.categories} className={list}>
+          <Caption rail={rail}>{strings.categories}</Caption>
           {categories.map((category) => (
             <Category
               key={category.id}
@@ -329,6 +416,7 @@ export function NavigationRail(props: NavigationRailProps) {
               onToggle={() => toggle(category.id)}
               active={active}
               linkComponent={props.linkComponent}
+              rail={rail}
             />
           ))}
         </nav>

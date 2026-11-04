@@ -12,6 +12,7 @@ import { ChatPanel } from "../agent/chat-panel.tsx";
 import { AppShell, type AppShellProps } from "./app-shell.tsx";
 import { COLLAPSED_CATEGORIES_KEY } from "./collapsed-categories.ts";
 import { PageHeader } from "./page-header.tsx";
+import { SIDEBAR_RAIL_KEY } from "./sidebar-rail.ts";
 import type { ShellNavigation, ShellStrings } from "./types.ts";
 
 const navigation: ShellNavigation = {
@@ -68,6 +69,9 @@ const strings: ShellStrings = {
   navigation: "Navigation",
   openNavigation: "Open navigation",
   closeNavigation: "Close navigation",
+  collapseMenu: "Collapse menu",
+  expandMenu: "Expand menu",
+  menuShortcut: "Ctrl B",
   backTo: "Back to {page}",
   offline:
     "You are offline. Changes will not be saved until the connection returns.",
@@ -92,6 +96,8 @@ const meta = {
   component: AppShell,
   tags: ["autodocs"],
   parameters: { layout: "fullscreen" },
+  // Another story's rail choice must not start this one as the rail.
+  beforeEach: () => window.localStorage.removeItem(SIDEBAR_RAIL_KEY),
   args: {
     chrome: "workspace",
     currentPath: "/operations/orders/42",
@@ -193,6 +199,102 @@ export const WorkspaceDesktop: Story = {
     await expect(edge.height).toBe(shell.height);
     await expect(getComputedStyle(aside).borderTopLeftRadius).toBe("0px");
     await expect(getComputedStyle(aside).borderRightWidth).toBe("1px");
+  },
+};
+
+const linkNames = (root: HTMLElement) =>
+  within(root)
+    .getAllByRole("link")
+    .map((link) => link.textContent);
+
+/**
+ * From `lg` the main menu collapses to a 60 px icon rail (6wz1.89). Every link keeps its name,
+ * the avatar keeps the person's name, and the toggle keeps focus.
+ */
+export const RailCollapses: Story = {
+  globals: desktop,
+  beforeEach: () => window.localStorage.removeItem(COLLAPSED_CATEGORIES_KEY),
+  play: async ({ canvas }) => {
+    const aside = canvas.getByRole("complementary", { name: "Navigation" });
+    const before = linkNames(aside);
+
+    await userEvent.click(
+      within(aside).getByRole("button", { name: "Collapse menu" })
+    );
+
+    const expand = within(aside).getByRole("button", { name: "Expand menu" });
+
+    await expect(expand).toHaveAttribute("aria-expanded", "false");
+    await expect(expand).toHaveFocus();
+    await waitFor(() => expect(aside.getBoundingClientRect().width).toBe(60));
+    await expect(linkNames(aside)).toEqual(before);
+    await expect(
+      within(aside).getByRole("button", { name: /Alex Morgan/ })
+    ).toBeVisible();
+    await expect(
+      within(aside).getByRole("img", { name: "Acme Logistics" })
+    ).toBeVisible();
+
+    // The next stop after the toggle is the first link, and its label shows beside the rail.
+    await userEvent.tab();
+    await expect(
+      within(aside).getByRole("link", { name: "Placeholder" })
+    ).toHaveFocus();
+
+    const tip = await screen.findByText("Placeholder", {
+      selector: "[data-slot=tooltip-content]",
+    });
+
+    await waitFor(() => expect(tip).toBeVisible());
+  },
+};
+
+/** The device's stored choice applies after mount (R-31 pattern). */
+export const RailFromTheDevice: Story = {
+  globals: desktop,
+  beforeEach: () => window.localStorage.setItem(SIDEBAR_RAIL_KEY, "true"),
+  play: async ({ canvasElement }) => {
+    await waitFor(() =>
+      expect(element(canvasElement, "aside")).toHaveAttribute("data-shell-rail")
+    );
+  },
+};
+
+/** Ctrl+B toggles the rail, but never while the person types in a field. */
+export const RailShortcutSkipsTyping: Story = {
+  globals: desktop,
+  args: {
+    children: (
+      <main>
+        <PageHeader title="Orders" />
+        <input aria-label="Search orders" />
+      </main>
+    ),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const aside = element(canvasElement, "aside");
+
+    await userEvent.keyboard("{Control>}b{/Control}");
+    await expect(aside).toHaveAttribute("data-shell-rail");
+    await userEvent.keyboard("{Control>}b{/Control}");
+    await expect(aside).not.toHaveAttribute("data-shell-rail");
+
+    await userEvent.click(
+      canvas.getByRole("textbox", { name: "Search orders" })
+    );
+    await userEvent.keyboard("{Control>}b{/Control}");
+    await expect(aside).not.toHaveAttribute("data-shell-rail");
+  },
+};
+
+/** Separator and icon contrast of the rail in dark, checked by axe. */
+export const RailDark: Story = {
+  globals: { ...desktop, theme: "dark" },
+  beforeEach: () => window.localStorage.setItem(SIDEBAR_RAIL_KEY, "true"),
+  play: async ({ canvasElement }) => {
+    await waitFor(() =>
+      expect(element(canvasElement, "aside")).toHaveAttribute("data-shell-rail")
+    );
   },
 };
 
@@ -606,6 +708,10 @@ export const DrawerFocusesTheCurrentEntry: Story = {
       expect(within(drawer).getByRole("link", { name: "Orders" })).toHaveFocus()
     );
     await expectFilledCurrentEntry(drawer);
+    // The rail exists only beside the content from lg; the drawer has no toggle for it.
+    await expect(
+      within(drawer).queryByRole("button", { name: "Collapse menu" })
+    ).toBeNull();
   },
 };
 

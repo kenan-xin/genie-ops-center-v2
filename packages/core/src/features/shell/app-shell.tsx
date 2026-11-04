@@ -1,14 +1,26 @@
 "use client";
 
-import { focusRing, Sheet, SheetContent, SheetTitle } from "@genie/ui";
-import { Menu, X } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  Button,
+  focusRing,
+  Kbd,
+  Sheet,
+  SheetContent,
+  SheetTitle,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  useMediaQuery,
+} from "@genie/ui";
+import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { activeHref, shellLinks } from "./active-link.ts";
 import { IdentityBlock, TenantMark } from "./identity-block.tsx";
-import { NavigationRail } from "./navigation-rail.tsx";
+import { deviceStorage, NavigationRail } from "./navigation-rail.tsx";
 import { OfflineBar } from "./offline-bar.tsx";
 import { ShellContext } from "./shell-context.ts";
+import { readRail, writeRail } from "./sidebar-rail.ts";
 import type {
   ShellChrome,
   ShellIdentity,
@@ -37,15 +49,47 @@ export type AppShellProps = {
 
 const iconButton = `flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-border/60 motion-safe:transition-colors ${focusRing}`;
 
-/** The one panel the desktop aside and the phone drawer both hold. */
-function Panel(props: AppShellProps) {
+/** A key event from a place where the person types, where Ctrl+B must not move the menu. */
+function fromTyping(target: EventTarget | null): boolean {
+  return (
+    target instanceof HTMLElement &&
+    (target.isContentEditable ||
+      target.closest("input, textarea, select") !== null)
+  );
+}
+
+/**
+ * The one panel the desktop aside and the phone drawer both hold. Only the aside passes `toggle`,
+ * so the drawer never shows the rail toggle.
+ */
+function Panel(
+  props: AppShellProps & {
+    readonly rail?: boolean;
+    readonly toggle?: ReactNode;
+  }
+) {
+  const rail = props.rail === true;
+
   return (
     <>
-      <IdentityBlock
-        chrome={props.chrome}
-        identity={props.identity}
-        adminPortalLabel={props.strings.adminPortal}
-      />
+      {/* One wrapper in both states, so the toggle keeps its node and its focus. */}
+      <div
+        className={
+          rail
+            ? "flex flex-col items-center gap-1.5 pb-1"
+            : "flex items-center pe-2"
+        }
+      >
+        <div className={rail ? "" : "min-w-0 flex-1"}>
+          <IdentityBlock
+            chrome={props.chrome}
+            identity={props.identity}
+            adminPortalLabel={props.strings.adminPortal}
+            rail={rail}
+          />
+        </div>
+        {props.toggle}
+      </div>
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <NavigationRail
           chrome={props.chrome}
@@ -53,6 +97,7 @@ function Panel(props: AppShellProps) {
           currentPath={props.currentPath}
           strings={props.strings}
           linkComponent={props.linkComponent}
+          rail={rail}
         />
       </div>
       <div className="border-t border-border p-2">
@@ -61,6 +106,7 @@ function Panel(props: AppShellProps) {
           menu={props.menu}
           strings={props.strings}
           linkComponent={props.linkComponent}
+          rail={rail}
         />
       </div>
     </>
@@ -83,6 +129,75 @@ export function AppShell(props: AppShellProps) {
   const drawer = useRef<HTMLDivElement>(null);
   const closeButton = useRef<HTMLButtonElement>(null);
   const scrolledPath = useRef(props.currentPath);
+  const navigationId = useId();
+  const wide = useMediaQuery("(min-width: 1024px)", {});
+
+  // The server render is the open menu; the device's choice applies after mount (R-31 pattern).
+  const [storedRail, setStoredRail] = useState(false);
+
+  useEffect(() => {
+    setStoredRail(readRail(deviceStorage()));
+  }, []);
+
+  const rail = storedRail;
+
+  const toggleRail = () => {
+    setStoredRail(!rail);
+    writeRail(deviceStorage(), !rail);
+  };
+
+  // Ctrl+B or Cmd+B from lg, never while the person types (SD6).
+  useEffect(() => {
+    if (!wide) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (
+        event.key.toLowerCase() !== "b" ||
+        !(event.ctrlKey || event.metaKey) ||
+        event.altKey ||
+        event.shiftKey ||
+        fromTyping(event.target)
+      )
+        return;
+
+      event.preventDefault();
+      setStoredRail(!rail);
+      writeRail(deviceStorage(), !rail);
+    };
+
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [wide, rail]);
+
+  const toggleLabel = rail ? strings.expandMenu : strings.collapseMenu;
+
+  const toggle = (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={toggleLabel}
+            aria-expanded={!rail}
+            aria-controls={navigationId}
+            onClick={toggleRail}
+          />
+        }
+      >
+        {rail ? (
+          <ChevronsRight aria-hidden strokeWidth={1.75} className="size-5" />
+        ) : (
+          <ChevronsLeft aria-hidden strokeWidth={1.75} className="size-5" />
+        )}
+      </TooltipTrigger>
+      <TooltipContent side="right">
+        {toggleLabel}
+        <Kbd>{strings.menuShortcut}</Kbd>
+      </TooltipContent>
+    </Tooltip>
+  );
 
   // React's pattern for state that follows a prop: adjust it during render.
   if (shownPath !== props.currentPath) {
@@ -122,10 +237,12 @@ export function AppShell(props: AppShellProps) {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Flush, full height, one border on its right (I19). */}
         <aside
+          id={navigationId}
           aria-label={strings.navigation}
-          className="hidden w-60 shrink-0 flex-col border-e border-border bg-muted lg:flex"
+          data-shell-rail={rail ? "" : undefined}
+          className={`hidden shrink-0 flex-col border-e border-border bg-muted motion-safe:transition-all motion-safe:duration-200 motion-safe:ease-out lg:flex ${rail ? "w-15" : "w-60"}`}
         >
-          <Panel {...props} />
+          <Panel {...props} rail={rail} toggle={toggle} />
         </aside>
         {/* A child page brings its own top bar with a back link (design review 2.1), so the
             menu bar steps aside. */}

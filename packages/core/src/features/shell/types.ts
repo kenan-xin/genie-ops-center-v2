@@ -75,6 +75,11 @@ export type ShellStrings = {
   readonly navigation: string;
   readonly openNavigation: string;
   readonly closeNavigation: string;
+  /** The rail toggle of the desktop aside: its name while the menu is open, then while it is the rail. */
+  readonly collapseMenu: string;
+  readonly expandMenu: string;
+  /** The toggle's shortcut as its tooltip shows it, for example "Ctrl B". */
+  readonly menuShortcut: string;
   readonly offline: string;
   readonly pageContent: string;
   readonly account: string;

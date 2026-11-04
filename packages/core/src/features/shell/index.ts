@@ -36,6 +36,8 @@ export {
   writeCollapsed,
 } from "./collapsed-categories.ts";
 
+export { readRail, SIDEBAR_RAIL_KEY, writeRail } from "./sidebar-rail.ts";
+
 export {
   NavigationRail,
   type NavigationRailProps,

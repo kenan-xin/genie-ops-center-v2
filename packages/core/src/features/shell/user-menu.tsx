@@ -43,17 +43,22 @@ export type UserMenuProps = {
     | "helpAndSupport"
     | "signOut"
   >;
+  /** The 60 px icon rail: the avatar alone, with the name and role as hidden text. */
+  readonly rail?: boolean | undefined;
 };
 
 const icon = "size-4 text-muted-foreground";
 
 // The footer row the menu trigger renders as; the Base UI trigger carries no style of its own.
-function FooterButton(props: ComponentProps<"button">) {
+function FooterButton({
+  rail,
+  ...props
+}: ComponentProps<"button"> & { readonly rail: boolean }) {
   return (
     <button
       {...props}
       type="button"
-      className={`flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg px-2 py-2 text-left hover:bg-border/60 data-popup-open:bg-border/60 motion-safe:transition-colors ${focusRing}`}
+      className={`flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg py-2 text-left hover:bg-border/60 data-popup-open:bg-border/60 motion-safe:transition-colors ${rail ? "justify-center" : "px-2"} ${focusRing}`}
     />
   );
 }
@@ -77,34 +82,45 @@ export function UserMenu(props: UserMenuProps) {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger data-shell-user-menu="" render={<FooterButton />}>
+        <DropdownMenuTrigger
+          data-shell-user-menu=""
+          render={<FooterButton rail={props.rail === true} />}
+        >
           <span
             aria-hidden="true"
             className="flex size-9 shrink-0 items-center justify-center rounded-full bg-border/60 text-xs font-bold text-foreground"
           >
             {initials(user.name)}
           </span>
-          <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-            <Tooltip>
-              {/* max-w-full: in an items-start column the trigger would size to its text. */}
-              <TooltipTrigger
-                render={<span className="block max-w-full min-w-0" />}
-              >
-                <span className="block max-w-full truncate text-sm font-semibold text-foreground">
-                  {user.name}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>{user.name}</TooltipContent>
-            </Tooltip>
-            <span className="block max-w-full truncate text-xs text-muted-foreground">
-              {user.roleLabel}
+          {props.rail === true ? (
+            <span className="sr-only">
+              {user.name}, {user.roleLabel}
             </span>
-          </span>
-          <ChevronsUpDown
-            aria-hidden
-            strokeWidth={1.75}
-            className="size-4 shrink-0 text-muted-foreground"
-          />
+          ) : (
+            <>
+              <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
+                <Tooltip>
+                  {/* max-w-full: in an items-start column the trigger would size to its text. */}
+                  <TooltipTrigger
+                    render={<span className="block max-w-full min-w-0" />}
+                  >
+                    <span className="block max-w-full truncate text-sm font-semibold text-foreground">
+                      {user.name}
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>{user.name}</TooltipContent>
+                </Tooltip>
+                <span className="block max-w-full truncate text-xs text-muted-foreground">
+                  {user.roleLabel}
+                </span>
+              </span>
+              <ChevronsUpDown
+                aria-hidden
+                strokeWidth={1.75}
+                className="size-4 shrink-0 text-muted-foreground"
+              />
+            </>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent side="top" align="start">
           <DropdownMenuItem
