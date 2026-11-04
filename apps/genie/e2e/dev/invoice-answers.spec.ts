@@ -92,9 +92,9 @@ async function askOnAsk(page: Page, testInfo: TestInfo, id: string) {
   );
 
   await page.goto("/ask");
-  await expect(page.getByRole("textbox", { name: "Message Ask" })).toBeVisible(
-    FIRST_PAINT
-  );
+  await expect(
+    page.getByRole("textbox", { name: "Message", exact: true })
+  ).toBeVisible(FIRST_PAINT);
   await mounted;
 
   await askQuestion(page, prompt);

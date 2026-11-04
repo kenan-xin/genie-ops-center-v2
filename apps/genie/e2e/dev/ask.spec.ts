@@ -9,12 +9,14 @@ import {
 } from "@playwright/test";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
-import { atLg } from "../support/shell.ts";
+import { atLg, openNavigation } from "../support/shell.ts";
 import {
   askQuestion,
   devSession,
   FIRST_PAINT,
   hideDevelopmentWidgets,
+  openAgentPanel,
+  openUntilVisible,
   PUBLIC_URL,
   signInAs as signIn,
 } from "./ask-support.ts";
@@ -26,12 +28,17 @@ test.skip(
 );
 
 /**
- * Ask and the chat bubble in `next dev` with the model stand-in (Spec 7 AC-8 line 4, R-42, P13).
+ * Ask and the agent panel in `next dev` with the model stand-in (Spec 7 AC-8 line 4, R-42, P13).
  * The stand-in replays the placeholder's recordings, so every question here is exactly the one
  * they hold, and the KPI's 3 comes from the chart gate over the three seeded records.
  */
 
 const QUESTION = "How many placeholder records are there?";
+
+/** The artifact conversation of `artifact-chart-*` and `artifact-change-*`. */
+const CHART_QUESTION = "Chart the quantity of each placeholder record.";
+
+const CHANGE_QUESTION = "Show it as a line by day instead.";
 
 /** The answer is one KPI that the chart gate draws. */
 const answerOf = (scope: Page | Locator) =>
@@ -51,43 +58,27 @@ async function expectAnswer(page: Page): Promise<void> {
   );
 }
 
-/**
- * Clicks `trigger` until `target` shows, as `openNavigation` does: a click before hydration does
- * nothing, and each retry clicks only while the target is hidden, so it never toggles one shut.
- */
-async function openUntilVisible(trigger: Locator, target: Locator) {
-  // FIRST_PAINT, not 15 s: after a source change a cold `next dev` compile hydrated later than that.
-  await expect(async () => {
-    if (!(await target.isVisible())) await trigger.click();
+/** Ask's chat history: a column from 1024 px, and below that a sheet that "Show chats" opens. */
+async function historyOf(page: Page): Promise<Locator> {
+  if (atLg(page))
+    return page.getByRole("complementary", { name: "Chat history" });
 
-    await expect(target).toBeVisible({ timeout: 1000 });
-  }).toPass(FIRST_PAINT);
-}
-
-/** The bubble's panel: a docked column from 1280 px (the desktop project), a sheet below. */
-async function openBubble(page: Page) {
-  const bubble = page.getByRole("region", { name: "Ask" });
+  const sheet = page.getByRole("dialog", { name: "Chats" });
 
   await openUntilVisible(
-    page.getByRole("button", { name: "Open Ask" }),
-    bubble
+    page.getByRole("button", { name: "Show chats" }),
+    sheet
   );
 
-  return bubble;
+  return sheet;
 }
 
-/** The bubble's chats, in their closed fold. */
-async function chatsOf(bubble: Locator) {
-  const list = bubble.getByRole("navigation", { name: "Chats" });
-
-  await openUntilVisible(bubble.getByRole("button", { name: "Chats" }), list);
-
-  return list;
-}
+const agentButton = (page: Page) =>
+  page.getByRole("button", { name: "Agent", exact: true });
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
-test("the bubble and Ask share a session, and only New chat starts another", async ({
+test("the agent panel and Ask share a chat, and only New chat starts another", async ({
   page,
 }, testInfo) => {
   // A development server compiles the shell, Ask, the route and the chart gate on first use.
@@ -95,53 +86,52 @@ test("the bubble and Ask share a session, and only New chat starts another", asy
 
   await signIn(page, asker(testInfo));
   await page.goto("/account");
-  await expect(page.getByRole("button", { name: "Open Ask" })).toBeVisible(
-    FIRST_PAINT
-  );
 
-  const bubble = await openBubble(page);
+  const panel = await openAgentPanel(page);
   const sessionId = await ask(page);
 
   await expectAnswer(page);
-  await expectNoAxeViolations(page, "The open bubble");
+  await expectNoAxeViolations(page, "The open agent panel");
 
   // czjw.60: on the same page, opening again continues the chat, and only New chat starts one.
-  await bubble.getByRole("button", { name: "Close the chat" }).click();
-  await expect(bubble).toBeHidden();
+  await panel.getByRole("button", { name: "Close the agent panel" }).click();
+  await expect(panel).toBeHidden();
 
-  const reopened = await openBubble(page);
+  const reopened = await openAgentPanel(page);
 
   await expect(
     reopened
       .getByRole("log", { name: "Conversation" })
       .getByText(QUESTION, { exact: true })
   ).toBeVisible(FIRST_PAINT);
-  await expect(
-    (await chatsOf(reopened)).locator(`a[href="/ask/${sessionId}"]`)
-  ).toContainText(QUESTION);
 
   await reopened.getByRole("button", { name: "New chat" }).click();
   await expect(reopened.getByRole("log", { name: "Conversation" })).toBeEmpty();
-  expect(await ask(page)).not.toBe(sessionId);
+
+  const secondId = await ask(page);
+
+  expect(secondId).not.toBe(sessionId);
   await expect(answerOf(reopened)).toBeVisible(FIRST_PAINT);
 
-  await reopened.getByRole("link", { name: "Open Ask" }).click();
-  await expect(page).toHaveURL(/\/ask$/, FIRST_PAINT);
-  // Ask is the chat, so the chat button steps aside there (design review 5.4).
-  await expect(page.getByRole("textbox", { name: "Message Ask" })).toBeVisible(
-    FIRST_PAINT
-  );
-  await expect(page.getByRole("button", { name: "Open Ask" })).toBeHidden();
+  // I1: Open in Ask continues the panel's new chat in Ask.
+  const openInAsk = reopened.getByRole("link", {
+    name: "Open in Ask",
+    exact: true,
+  });
 
-  const listed = page
-    .locator(`a[href="/ask/${sessionId}"]`)
-    .filter({ visible: true });
+  await expect(openInAsk).toHaveAttribute("href", `/ask/${secondId}`);
+  await openInAsk.click();
+  await expect(page).toHaveURL(`/ask/${secondId}`, FIRST_PAINT);
+  // Ask is the chat, so the Agent button steps aside there (AG10).
+  await expect(
+    page.getByRole("textbox", { name: "Message", exact: true })
+  ).toBeVisible(FIRST_PAINT);
+  await expect(agentButton(page)).toHaveCount(0);
 
-  // Below `lg` the list sits in the closed "Chats" disclosure.
-  if (!atLg(page)) {
-    await openUntilVisible(page.getByRole("button", { name: "Chats" }), listed);
-  }
+  // R-42a: Ask's history lists the panel's first chat too.
+  const listed = (await historyOf(page)).locator(`a[href="/ask/${sessionId}"]`);
 
+  await expect(listed).toContainText(QUESTION);
   await listed.click();
   await expect(page).toHaveURL(`/ask/${sessionId}`, FIRST_PAINT);
 
@@ -155,33 +145,30 @@ test("the bubble and Ask share a session, and only New chat starts another", asy
 });
 
 /**
- * czjw.60: the bubble keeps the tab's chat through a link and a page load, which a `next dev`
- * reload of `/ask` proves, so the answer is still there when the bubble opens again.
+ * czjw.60: the panel keeps the tab's chat through a link and a page load, which a `next dev`
+ * reload of `/ask` proves, so the answer is still there when the panel opens again.
  */
-test("a reopened bubble shows the earlier message after a link and a reload", async ({
+test("a reopened agent panel shows the earlier message after a link and a reload", async ({
   page,
 }, testInfo) => {
   test.setTimeout(180_000);
 
   await signIn(page, asker(testInfo));
   await page.goto("/account");
-  await expect(page.getByRole("button", { name: "Open Ask" })).toBeVisible(
-    FIRST_PAINT
-  );
 
-  const bubble = await openBubble(page);
-  const sessionId = await ask(page);
+  const panel = await openAgentPanel(page);
 
+  await ask(page);
   await expectAnswer(page);
-  await bubble.getByRole("button", { name: "Close the chat" }).click();
-  await expect(bubble).toBeHidden();
+  await panel.getByRole("button", { name: "Close the agent panel" }).click();
+  await expect(panel).toBeHidden();
 
-  // A page load on Ask, which shows no bubble, then back and a reload: the tab keeps the chat.
+  // A page load on Ask, which shows no panel, then back and a reload: the tab keeps the chat.
   await page.goto("/ask");
   await page.goto("/account");
   await page.reload();
 
-  const reopened = await openBubble(page);
+  const reopened = await openAgentPanel(page);
 
   await expect(
     reopened
@@ -191,12 +178,111 @@ test("a reopened bubble shows the earlier message after a link and a reload", as
   await expect(answerOf(reopened).getByText("3", { exact: true })).toBeVisible(
     FIRST_PAINT
   );
-  await expect(
-    (await chatsOf(reopened)).locator(`a[href="/ask/${sessionId}"]`)
-  ).toContainText(QUESTION);
 });
 
-test("a person without Ask gets no bubble and the denied page on Ask", async ({
+/**
+ * 997df600: Ask reads a chat's artifacts again on each visit, so a version that the panel made
+ * after a first visit shows on a client-side return within the app's 30 s stale time.
+ */
+test("Ask shows the version that the panel made after an earlier visit", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/account");
+
+  const panel = await openAgentPanel(page);
+
+  await askQuestion(page, CHART_QUESTION);
+  await expect(
+    panel.getByRole("link", { name: "Quantity by record" })
+  ).toBeVisible(FIRST_PAINT);
+  await panel.getByRole("link", { name: "Open in Ask", exact: true }).click();
+
+  const artifact = page.getByRole("region", { name: "Artifact", exact: true });
+  const conversation = page.getByRole("log", { name: "Conversation" });
+
+  await conversation
+    .getByRole("button", { name: "Quantity by record" })
+    .click(FIRST_PAINT);
+  await expect(artifact.getByText("Version 1 of 1")).toBeVisible(FIRST_PAINT);
+
+  // Back is a client-side move, so the app's query cache stays.
+  await page.goBack();
+  await expect(page).toHaveURL(/\/account$/, FIRST_PAINT);
+
+  const again = await openAgentPanel(page);
+
+  await askQuestion(page, CHANGE_QUESTION);
+  await expect(
+    again.getByRole("link", { name: "Quantity by day" })
+  ).toBeVisible(FIRST_PAINT);
+  await again.getByRole("link", { name: "Open in Ask", exact: true }).click();
+  await conversation
+    .getByRole("button", { name: "Quantity by day" })
+    .click(FIRST_PAINT);
+  await expect(artifact.getByText("Version 2 of 2")).toBeVisible(FIRST_PAINT);
+});
+
+test("Ask is in the main menu for a holder of Ask, and not for anyone else", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/account");
+
+  // R-42: the drawer on a phone, the menu aside on a desktop.
+  const navigation = await openNavigation(page);
+
+  await expect(
+    navigation.getByRole("link", { name: "Ask", exact: true })
+  ).toHaveAttribute("href", "/ask", FIRST_PAINT);
+
+  await page.context().clearCookies();
+  await signIn(page, ASK_PEOPLE.noAsk);
+  await page.goto("/account");
+  await expect(
+    (await openNavigation(page)).getByRole("link", { name: "Ask", exact: true })
+  ).toHaveCount(0);
+});
+
+test("Ask hides its chat history fully and shows it again", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/ask");
+
+  if (atLg(page)) {
+    const history = page.getByRole("complementary", { name: "Chat history" });
+
+    await openUntilVisible(
+      page.getByRole("button", { name: "Hide chats" }),
+      page.getByRole("button", { name: "Show chats" })
+    );
+    // I18c: hidden is gone, not a narrow strip.
+    await expect(history).toHaveCount(0);
+
+    await page.getByRole("button", { name: "Show chats" }).click();
+    await expect(history).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Hide chats" })
+    ).toBeFocused();
+  } else {
+    const sheet = await historyOf(page);
+
+    await expect(
+      sheet.getByRole("searchbox", { name: "Search chats" })
+    ).toBeVisible();
+  }
+
+  await expectNoAxeViolations(page, "Ask's chat history");
+});
+
+test("a person without Ask gets no Agent button and the denied page on Ask", async ({
   page,
 }) => {
   // Two pages that a development server may compile on first use.
@@ -207,7 +293,7 @@ test("a person without Ask gets no bubble and the denied page on Ask", async ({
   await expect(page.getByRole("heading", { level: 1 })).toBeVisible(
     FIRST_PAINT
   );
-  await expect(page.getByRole("button", { name: "Open Ask" })).toHaveCount(0);
+  await expect(agentButton(page)).toHaveCount(0);
 
   await page.goto("/ask");
   await expect(page.getByTestId("permission-denied")).toBeVisible(FIRST_PAINT);

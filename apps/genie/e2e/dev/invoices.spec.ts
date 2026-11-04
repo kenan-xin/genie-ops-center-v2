@@ -427,8 +427,11 @@ test("the Payments list shows every seeded payment and the payment linked to INV
     async () => {
       await signIn(page);
       await openList(page, "/m/invoices/payments", "Payments");
+      // A hard load can leave a hidden copy of the page (`xok3.55`), so only the shown line counts.
       await expect(
-        page.getByText("Amounts as of 27 Oct 2026, the reporting date.")
+        page
+          .getByText("Amounts as of 27 Oct 2026, the reporting date.")
+          .filter({ visible: true })
       ).toBeVisible();
 
       const payments = readDemoCsv("01_History_Datasets/payments.csv");

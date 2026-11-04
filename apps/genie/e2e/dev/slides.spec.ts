@@ -18,6 +18,7 @@ import { withDeploymentLock } from "../support/lock.ts";
 import {
   FIRST_PAINT,
   hideDevelopmentWidgets,
+  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import { LEDGER_LOCK, LOCK_WAIT, onPhone, sgd } from "./dev-support.ts";
@@ -98,14 +99,8 @@ async function signInToList(page: Page): Promise<void> {
  * and opens it. The chat's second recorded answer makes the deck, so the message is sent once.
  */
 async function createChatDeck(page: Page): Promise<void> {
-  // The page's own chat docks open from 1280 px; below that it opens full height.
-  const chat = page.getByRole("region", { name: "Chat", exact: true });
-
-  if (onPhone(page)) {
-    await activate(page, page.getByRole("button", { name: "Open Chat" }));
-  }
-
-  await expect(chat).toBeVisible(FIRST_PAINT);
+  // The agent panel: a column beside the list from 1280 px, full height below (AG11).
+  const chat = await openAgentPanel(page);
 
   // Before the chat change, so a reload of either the list or the deck page drops it.
   await page.evaluate(() => {
@@ -114,7 +109,7 @@ async function createChatDeck(page: Page): Promise<void> {
   });
 
   await chat
-    .getByRole("textbox", { name: "Message Ask" })
+    .getByRole("textbox", { name: "Message", exact: true })
     .fill(SLIDES_CHAT_MESSAGE);
 
   const send = chat.getByRole("button", { name: "Send" });
@@ -122,7 +117,7 @@ async function createChatDeck(page: Page): Promise<void> {
   if (onPhone(page)) {
     await send.tap({ timeout: 15_000 });
     // The chat covers the phone screen, so close it to see the list; it keeps streaming.
-    await chat.getByRole("button", { name: "Close the chat" }).tap();
+    await chat.getByRole("button", { name: "Close the agent panel" }).tap();
   } else {
     await send.click({ timeout: 15_000 });
   }

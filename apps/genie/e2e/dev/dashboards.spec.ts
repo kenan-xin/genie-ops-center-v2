@@ -10,6 +10,7 @@ import { withDeploymentLock } from "../support/lock.ts";
 import {
   FIRST_PAINT,
   hideDevelopmentWidgets,
+  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import {
@@ -135,16 +136,8 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
           `/m/analytics/dashboards/${ANALYTICS_CHAT_DASHBOARD.id}`
         );
 
-        // The page's own chat docks open from 1280 px; below that it opens as a sheet.
-        const chat = page.getByRole("region", { name: "Chat", exact: true });
-
-        if (testInfo.project.name === "phone") {
-          await page
-            .getByRole("button", { name: "Open Chat" })
-            .click(FIRST_PAINT);
-        }
-
-        await expect(chat).toBeVisible(FIRST_PAINT);
+        // The agent panel: a column beside the dashboard from 1280 px, a sheet below (AG11).
+        const chat = await openAgentPanel(page);
 
         // Before the chat change, so a reload of either the chat path or the refresh drops it.
         await page.evaluate(() => {
@@ -152,7 +145,10 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
           window.__genieMarker = 1;
         });
 
-        const message = chat.getByRole("textbox", { name: "Message Ask" });
+        const message = chat.getByRole("textbox", {
+          name: "Message",
+          exact: true,
+        });
 
         await message.fill(ANALYTICS_CHAT_MESSAGE);
 
@@ -161,7 +157,9 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
         if (testInfo.project.name === "phone") {
           await send.tap({ timeout: 15_000 });
           // The sheet covers the phone screen, so close it to see the dashboard.
-          await chat.getByRole("button", { name: "Close the chat" }).tap();
+          await chat
+            .getByRole("button", { name: "Close the agent panel" })
+            .tap();
         } else {
           await send.click({ timeout: 15_000 });
         }

@@ -22,6 +22,7 @@ import { openNavigation } from "../support/shell.ts";
 import {
   askQuestion,
   hideDevelopmentWidgets,
+  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import {
@@ -145,22 +146,19 @@ async function activate(page: Page, target: Locator): Promise<void> {
 }
 
 /**
- * Sends a message in the page's own chat, which docks open from 1280 px and opens as a sheet
- * below that. On a phone the sheet covers the page, so it closes after Send and keeps streaming.
+ * Sends a message in the agent panel, a column beside the page from 1280 px and a sheet below
+ * that. On a phone the sheet covers the page, so it closes after Send and keeps streaming.
  */
 async function sendInPageChat(page: Page, message: string): Promise<void> {
-  const chat = page.getByRole("region", { name: "Chat", exact: true });
+  const chat = await openAgentPanel(page);
 
-  if (onPhone(page)) {
-    await activate(page, page.getByRole("button", { name: "Open Chat" }));
-  }
-
-  await expect(chat).toBeVisible(FIRST_PAINT);
-  await chat.getByRole("textbox", { name: "Message Ask" }).fill(message);
+  await chat
+    .getByRole("textbox", { name: "Message", exact: true })
+    .fill(message);
   await activate(page, chat.getByRole("button", { name: "Send" }));
 
   if (onPhone(page)) {
-    await chat.getByRole("button", { name: "Close the chat" }).tap();
+    await chat.getByRole("button", { name: "Close the agent panel" }).tap();
   }
 }
 
@@ -472,7 +470,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           await page.goto("/ask");
           await expect(
-            page.getByRole("textbox", { name: "Message Ask" })
+            page.getByRole("textbox", { name: "Message", exact: true })
           ).toBeVisible(FIRST_PAINT);
           await mounted;
           await askQuestion(page, OVERDUE_QUESTION);
