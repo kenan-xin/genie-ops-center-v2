@@ -60,12 +60,12 @@ export function AskRoute(props: {
 
   const artifactsKey = ["agent", "artifacts", sessionId];
 
-  // Read again only when an answer ends, the one time a chat's artifacts change.
+  // Read again on each visit and when an answer ends: the panel can add versions to this chat
+  // while Ask is not shown, and a cached list from an earlier visit would hide them.
   const artifacts = useQuery({
     queryKey: artifactsKey,
     queryFn: () => rpc.agent.artifacts({ id: sessionId }),
     initialData: props.currentId === undefined ? [] : props.initialArtifacts,
-    staleTime: Number.POSITIVE_INFINITY,
   });
 
   const [shown, setShown] = useState(props.initialShown);
