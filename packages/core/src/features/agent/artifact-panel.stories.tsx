@@ -280,7 +280,7 @@ export const Copy: Story = {
 
     // Money as the table shows it, a negative amount as a number, a formula cell escaped.
     await expect(writeText).toHaveBeenCalledWith(
-      'Name\tBalance\r\nAlpha\t-6,500.00\r\n"\'=1+1"\t3.00'
+      'Name\tBalance (EUR)\r\nAlpha\t-6,500.00\r\n"\'=1+1"\t3.00'
     );
     await expect(await canvas.findByText("Rows copied")).toBeVisible();
   },

@@ -232,7 +232,8 @@ export function kpiChange(
 
 /**
  * The chart's values as labelled text rows, for Copy and Download (AG21): the x column first, then
- * each column, every value as the chart shows it, money of a column's one currency without its code.
+ * each column, every value as the chart shows it. Money of a column's one currency shows its code in
+ * the header, not in each cell; money with a currency per row keeps the code in each cell.
  */
 export type ChartTextRows = {
   readonly header: readonly string[];
@@ -246,7 +247,12 @@ export function chartRows(
     data.x === undefined ? data.columns : [data.x, ...data.columns];
 
   return {
-    header: columns.map((column) => column.label),
+    // A column of one currency drops the code from each amount, so the header names it once.
+    header: columns.map((column) =>
+      column.type === "money" && column.currency !== undefined
+        ? `${column.label} (${column.currency})`
+        : column.label
+    ),
     rows: data.rows.map((row) =>
       columns.map((column) =>
         formatChartValue(column, row[column.key] ?? null, { row, bare: true })

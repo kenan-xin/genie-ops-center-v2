@@ -31,17 +31,22 @@ describe("chartRows", () => {
     expect(
       chartRows({
         x: month,
-        columns: [money("EUR"), number],
+        columns: [
+          money("EUR"),
+          number,
+          { key: "due", label: "Due", type: "money", currencyKey: "cur" },
+        ],
         rows: [
-          { x: "2026-09-01", amount: 650_000, n: 1200 },
-          { x: "2026-10-01", amount: null, n: 3 },
+          { x: "2026-09-01", amount: 650_000, n: 1200, due: 100, cur: "USD" },
+          { x: "2026-10-01", amount: null, n: 3, due: 250, cur: "EUR" },
         ],
       })
     ).toEqual({
-      header: ["Day", "Amount", "Count"],
+      // The bare amounts keep their currency in the header; a currency per row stays in each cell.
+      header: ["Day", "Amount (EUR)", "Count", "Due"],
       rows: [
-        ["Sept 2026", "6,500.00", "1,200"],
-        ["Oct 2026", "", "3"],
+        ["Sept 2026", "6,500.00", "1,200", "US$1.00"],
+        ["Oct 2026", "", "3", "€2.50"],
       ],
     });
   });
