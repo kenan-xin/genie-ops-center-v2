@@ -299,13 +299,9 @@ export function DocumentInbox(props: DocumentInboxProps) {
 
     setRefusals([]);
     // The new rows show under All with no filter, at the top under the default sort (LH20, I13).
-    state.set({
-      ...Object.fromEntries(
-        DEFINITION.filters.map((filter) => [filter.id, undefined])
-      ),
-      sort: undefined,
-      status: "all",
-    });
+    // `clear` also drops a search still waiting for its pause, which would hide them again.
+    state.clear();
+    state.set({ sort: undefined, status: "all" });
 
     for (const file of Array.from(files)) uploads.addItem(file);
 

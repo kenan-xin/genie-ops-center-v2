@@ -403,6 +403,28 @@ export const UploadClearsTheFilters: Story = {
   },
 };
 
+// A search still waiting for its 300 ms pause does not come back after the upload clears it.
+export const UploadBeatsPendingSearch: Story = {
+  name: "Upload beats a pending search",
+  globals: desktop,
+  beforeEach: () => {
+    serve({
+      ...defaultDocumentInbox,
+      rows: [NEW_UPLOAD, ...defaultDocumentInbox.rows],
+    });
+  },
+  play: async ({ canvas }) => {
+    await userEvent.type(canvas.getByRole("searchbox"), "order");
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("new.pdf"),
+    ]);
+
+    await waitFor(() => expect(param("status")).toBe("all"));
+    await new Promise((resolve) => setTimeout(resolve, 500));
+    await expect(param("q")).toBeNull();
+  },
+};
+
 export const Dark: Story = {
   globals: { ...desktop, theme: "dark" },
   beforeEach: () => serve(defaultDocumentInbox),
