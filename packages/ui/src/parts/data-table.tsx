@@ -1,7 +1,13 @@
 "use client";
 
 import { useMediaQuery } from "@base-ui/react/unstable-use-media-query";
-import { ChevronRightIcon, EllipsisIcon } from "lucide-react";
+import {
+  ArrowDownIcon,
+  ArrowUpDownIcon,
+  ArrowUpIcon,
+  ChevronRightIcon,
+  EllipsisIcon,
+} from "lucide-react";
 import {
   Fragment,
   useEffect,
@@ -31,6 +37,7 @@ import {
   TableHeader,
   TableRow,
 } from "../components/table.tsx";
+import type { ListSort, ListSortKind } from "../list-header/definitions.ts";
 import { focusRing } from "../theme/tokens.ts";
 import { scrollParentOf, useRowWindow, VIRTUAL_FROM } from "./row-window.ts";
 
@@ -40,6 +47,8 @@ export type DataTableColumn<Row> = {
   readonly cell: (row: Row) => ReactNode;
   /** `end` lines the header and the cells up at the end of the column, for a count. */
   readonly align?: "end";
+  /** Set when the column sorts: its header is a button, and the kind names the phone sort words. */
+  readonly sort?: ListSortKind;
 };
 
 /**
@@ -107,7 +116,47 @@ export type DataTableProps<Row> = {
    * list can read its next page (LH12). Show more stays the accessible fallback.
    */
   readonly onEndReached?: () => void;
+  /**
+   * The sort of the rows, which the server applies. A sortable header starts a new column
+   * descending, and a second click reverses it (LH5).
+   */
+  readonly sort?: {
+    readonly by: ListSort;
+    readonly onChange: (sort: ListSort) => void;
+  };
 };
+
+/** The header of a sortable column: a button that fills the cell, at least 44 px under 1024 px. */
+function SortButton(props: {
+  readonly header: string;
+  readonly direction: "asc" | "desc" | undefined;
+  readonly onClick: () => void;
+}) {
+  const Icon =
+    props.direction === undefined
+      ? ArrowUpDownIcon
+      : props.direction === "asc"
+        ? ArrowUpIcon
+        : ArrowDownIcon;
+
+  return (
+    <button
+      type="button"
+      className={`group/sort inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold lg:min-h-0 ${focusRing}`}
+      onClick={props.onClick}
+    >
+      {props.header}
+      <Icon
+        aria-hidden="true"
+        className={
+          props.direction === undefined
+            ? "size-3.5 opacity-0 group-hover/sort:opacity-60 group-focus-visible/sort:opacity-60"
+            : "size-3.5"
+        }
+      />
+    </button>
+  );
+}
 
 const subscribeNothing = () => () => undefined;
 
@@ -173,6 +222,7 @@ export function DataTable<Row>({
   framed = true,
   footer,
   onEndReached,
+  sort,
 }: DataTableProps<Row>) {
   // A long list renders only the rows near the screen (czjw.70). Before hydration both layouts
   // render the first window, so the server and the client agree; after it only the shown one.
@@ -355,14 +405,43 @@ export function DataTable<Row>({
           )}
           <TableHeader>
             <TableRow ref={headRow} aria-rowindex={1}>
-              {columns.map((column) => (
-                <TableHead
-                  key={column.id}
-                  className={column.align === "end" ? "text-right" : undefined}
-                >
-                  {column.header}
-                </TableHead>
-              ))}
+              {columns.map((column) => {
+                const active =
+                  sort !== undefined && sort.by.column === column.id
+                    ? sort.by.direction
+                    : undefined;
+
+                return (
+                  <TableHead
+                    key={column.id}
+                    aria-sort={
+                      active === undefined
+                        ? undefined
+                        : active === "asc"
+                          ? "ascending"
+                          : "descending"
+                    }
+                    className={
+                      column.align === "end" ? "text-right" : undefined
+                    }
+                  >
+                    {sort === undefined || column.sort === undefined ? (
+                      column.header
+                    ) : (
+                      <SortButton
+                        header={column.header}
+                        direction={active}
+                        onClick={() =>
+                          sort.onChange({
+                            column: column.id,
+                            direction: active === "desc" ? "asc" : "desc",
+                          })
+                        }
+                      />
+                    )}
+                  </TableHead>
+                );
+              })}
               {status ? <TableHead>Status</TableHead> : null}
               <TableHead>
                 <span className="sr-only">Actions</span>

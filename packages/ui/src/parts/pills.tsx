@@ -18,8 +18,27 @@ export function MonoChip(props: { readonly children: ReactNode }) {
   return <Badge variant="mono">{props.children}</Badge>;
 }
 
-export function CountPill(props: { readonly children: ReactNode }) {
-  return <Badge variant="count">{props.children}</Badge>;
+/**
+ * A count. With a `tone`, a count of a status tab (R-37a): `neutral` grey, `danger` red (Overdue),
+ * `warning` amber (No due date, Not linked).
+ */
+export function CountPill(props: {
+  readonly children: ReactNode;
+  readonly tone?: "neutral" | "danger" | "warning";
+}) {
+  return (
+    <Badge
+      variant={
+        props.tone === undefined
+          ? "count"
+          : props.tone === "neutral"
+            ? "label"
+            : props.tone
+      }
+    >
+      {props.children}
+    </Badge>
+  );
 }
 
 /**

@@ -174,6 +174,12 @@ export { FilterBar } from "./list-header/filter-bar.tsx";
 
 export { FilterSheet } from "./list-header/filter-sheet.tsx";
 
+export { ListFigures } from "./list-header/list-figures.tsx";
+
+export { ListHeader } from "./list-header/list-header.tsx";
+
+export type { ListHeaderProps } from "./list-header/list-header.tsx";
+
 export { Calendar } from "./components/calendar.tsx";
 
 export { DatePicker } from "./parts/date-picker.tsx";

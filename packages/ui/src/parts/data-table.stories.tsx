@@ -443,6 +443,50 @@ export const WithFooterPhone: Story = {
   },
 };
 
+const onSort = fn();
+
+/**
+ * A column with `sort` has a header button, and the active one carries `aria-sort`. A new column
+ * starts descending; the server sorts the rows (czjw.71).
+ */
+export const Sorted: Story = {
+  args: {
+    columns: [
+      { id: "email", header: "Email", cell: (row) => row.email, sort: "text" },
+      { id: "name", header: "Name", cell: (row) => row.name },
+      {
+        id: "signIns",
+        header: "Sign-ins",
+        cell: (row) => row.signIns,
+        align: "end",
+        sort: "number",
+      },
+    ],
+    sort: { by: { column: "email", direction: "asc" }, onChange: onSort },
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("columnheader", { name: "Email" })
+    ).toHaveAttribute("aria-sort", "ascending");
+    await expect(
+      within(canvas.getByRole("columnheader", { name: "Name" })).queryByRole(
+        "button"
+      )
+    ).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Sign-ins" }));
+    await expect(onSort).toHaveBeenLastCalledWith({
+      column: "signIns",
+      direction: "desc",
+    });
+    await userEvent.click(canvas.getByRole("button", { name: "Email" }));
+    await expect(onSort).toHaveBeenLastCalledWith({
+      column: "email",
+      direction: "desc",
+    });
+  },
+};
+
 // czjw.70: a long list renders only the rows near the screen.
 const manyPeople = (count: number): readonly Person[] =>
   Array.from({ length: count }, (_, index) => ({
