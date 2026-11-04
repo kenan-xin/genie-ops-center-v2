@@ -285,8 +285,7 @@ test("sets and clears the reporting date (R-9)", async ({ page }, testInfo) => {
           page.getByRole("heading", { level: 2, name: "Reporting" })
         ).toBeVisible();
 
-        const date = page.getByLabel("Reporting date");
-        const save = page.getByRole("button", { name: "Save", exact: true });
+        const date = page.getByLabel("Reporting date", { exact: true });
 
         await expect(page.getByText(/Blank means today in .+\./)).toBeVisible();
 
@@ -295,24 +294,10 @@ test("sets and clears the reporting date (R-9)", async ({ page }, testInfo) => {
         expect(await settingsColumn("reporting_date")).toBe("2026-10-27");
 
         await page.reload();
-        await expect(date).toHaveValue("2026-10-27");
+        // The saved day reads back in the app format (owner I8). The half-typed date proof is
+        // the story HalfTypedReportingDateBlocksSave.
+        await expect(date).toHaveValue("27 Oct 2026");
         await expectNoAxeViolations(page, "Reporting");
-
-        // A half-typed date blocks Save instead of saving as blank, which would clear the
-        // setting to today and move every figure (Review Focus 3). Mobile Chromium opens the
-        // native picker instead and has no keyboard-editable segments, so this runs on desktop.
-        if (testInfo.project.name === "desktop") {
-          await date.click({ position: { x: 8, y: 10 } });
-          await page.keyboard.press("Backspace");
-          await expect(date).toHaveValue("");
-          await expect(save).toBeDisabled();
-          await expect(
-            page.getByText(
-              "Enter a whole date, or clear the field to use today."
-            )
-          ).toBeVisible();
-          expect(await settingsColumn("reporting_date")).toBe("2026-10-27");
-        }
 
         await page.reload();
         await page.getByRole("button", { name: "Use today" }).click();

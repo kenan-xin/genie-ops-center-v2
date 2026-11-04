@@ -2,6 +2,7 @@
 
 import {
   Button,
+  DatePicker,
   FieldError,
   Input,
   InputGroup,
@@ -131,7 +132,6 @@ export function ReviewTextRow(
     "aria-label": label,
     "type": "text",
     "inputMode": field === "amount" ? ("decimal" as const) : ("text" as const),
-    "placeholder": field === "date" ? "26 Oct 2026" : undefined,
     "value": props.value,
     "aria-invalid": message === undefined ? undefined : true,
     "aria-describedby": message === undefined ? undefined : `${id}-error`,
@@ -172,6 +172,18 @@ export function ReviewTextRow(
             <CurrencyAddon currency={props.currency ?? ""} />
             <InputGroupInput {...control} />
           </InputGroup>
+        ) : field === "date" ? (
+          <DatePicker
+            id={id}
+            aria-label={label}
+            placeholder="26 Oct 2026"
+            pickLabel={`Choose the ${label.toLowerCase()}`}
+            value={props.value}
+            aria-invalid={control["aria-invalid"]}
+            aria-describedby={control["aria-describedby"]}
+            onValueChange={props.onChange}
+            onBlur={props.onBlur}
+          />
         ) : (
           <Input {...control} />
         )}

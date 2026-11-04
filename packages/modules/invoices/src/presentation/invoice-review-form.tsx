@@ -1,7 +1,7 @@
 "use client";
 
 import { useModuleClient } from "@genie/core/rpc/client";
-import { Input, RadioGroup, RadioGroupItem, WarningNote } from "@genie/ui";
+import { DatePicker, RadioGroup, RadioGroupItem, WarningNote } from "@genie/ui";
 import { useForm, useSelector } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
@@ -150,19 +150,16 @@ function dueTagValue(due: DueChoice): string | null {
   return text === null ? null : readingTextOf("dueDate", text);
 }
 
-/** The due date input; a day that reads takes the app's format when the person leaves it (4.4). */
+/** The due date picker; a day that reads takes the app's format when the person leaves it (4.4, I8). */
 function dueDateInput(value: string, set: (value: string) => void): ReactNode {
   return (
-    <Input
+    <DatePicker
       id="review-due-date"
-      type="text"
       aria-label="Due date"
       placeholder="25 Nov 2026"
+      pickLabel="Choose the due date"
       value={value}
-      onChange={(event) => set(event.target.value)}
-      onBlur={() => {
-        if (dayText(value) !== value) set(dayText(value));
-      }}
+      onValueChange={set}
     />
   );
 }

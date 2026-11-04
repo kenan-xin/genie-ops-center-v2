@@ -757,9 +757,37 @@ export const ReportingDateSavesAndClears: Story = {
 };
 
 /**
- * The half-typed date proof lives in `tenant-settings.spec.ts`: a story's synthetic key events do
- * not edit Chrome's date segments, so the component browser cannot produce one.
+ * A half-typed date blocks Save instead of saving as blank, which would clear the setting to today
+ * and move every figure (Review Focus 3). The refusal shows once the person leaves the field, and
+ * Discard brings the stored day back.
  */
+export const HalfTypedReportingDateBlocksSave: Story = {
+  args: {
+    settings: {
+      ...FIXTURE_SETTINGS,
+      core: { ...FIXTURE_SETTINGS.core, reportingDate: "2026-01-01" },
+    },
+    target: { section: "reporting" },
+  },
+  play: async ({ args, canvas }) => {
+    const date = canvas.getByLabelText("Reporting date");
+    const refusal = "Enter a whole date, or clear the field to use today.";
+
+    await expect(date).toHaveValue("1 Jan 2026");
+
+    await userEvent.clear(date);
+    await userEvent.type(date, "27 Oct 20");
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(canvas.queryByText(refusal)).toBeNull();
+
+    await userEvent.tab();
+    await expect(await canvas.findByText(refusal)).toBeVisible();
+    await expect(args.onSaveReporting).not.toHaveBeenCalled();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Discard" }));
+    await waitFor(() => expect(date).toHaveValue("1 Jan 2026"));
+  },
+};
 
 /** The section saves through the screen, so a refusal reaches the field and the footer bar. */
 export const ReportingSaveRefusedMarksTheField: Story = {

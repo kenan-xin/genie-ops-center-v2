@@ -18,6 +18,7 @@ import {
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
+import { pickDay } from "../support/date-picker.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
   allocationsOn,
@@ -289,12 +290,27 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await expect(
           page.getByRole("button", { name: "Show Due date on the document" })
         ).toHaveAttribute("aria-pressed", "true");
-        // Design review 4.4: the date is typed in the app's one format.
-        await dueDate.fill("25 Nov 2026");
+        // Owner I8: the due date is picked in the calendar, which writes the app's one format.
+        await pickDay(
+          page,
+          page.getByRole("button", { name: "Choose the due date" }),
+          "2026-11-25"
+        );
+        await expect(dueDate).toHaveValue("25 Nov 2026");
         await page.getByRole("button", { name: "Save as unpaid" }).click();
         await expect(
           page.getByText(/INV-LIVE-001 saved as unpaid/)
         ).toBeVisible({ timeout: SAVE_TIMEOUT });
+
+        // I9: the picked day is saved as the same calendar day, in any zone of the browser.
+        const { rows: saved } = await tenantOf().db.$client.query<{
+          due: string;
+        }>(
+          "select i.due_date::text as due from invoice i join document d on d.id = i.document_id where d.file_name = $1",
+          [invoice.name]
+        );
+
+        expect(saved.map((row) => row.due)).toEqual(["2026-11-25"]);
 
         await expectTotalsAfter("01_Invoice_Missing_Due_Date.pdf");
 

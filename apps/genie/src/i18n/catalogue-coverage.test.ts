@@ -494,7 +494,8 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     "packages/core/src/features/categories/categories-screen.tsx": 15,
     "packages/core/src/features/modules/modules-screen.tsx": 15,
     // +3 for the Reporting section's label, helper and Use today button (Spec 7 R-9).
-    "packages/core/src/features/settings/core-sections.tsx": 13,
+    // +1 for the reporting date's calendar button name (owner I8, czjw.66).
+    "packages/core/src/features/settings/core-sections.tsx": 14,
     // 2026-10-28: the "Last changed" line moved here from core-sections; the total is unchanged.
     // +2 for the Reporting section's title and description (Spec 7 R-9).
     // +2 for the AI connection section's title and description (Spec 7 R-17).
