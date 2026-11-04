@@ -182,6 +182,9 @@ export function Conversation(props: {
   const showSuggestions =
     !isNew && !busy && refusal === null && props.suggestions.length > 0;
 
+  // On a wide frame the chat keeps a centered reading column (variant B).
+  const column = "mx-auto w-full max-w-3xl";
+
   return (
     <ChartCheckProvider
       check={props.checkChart}
@@ -190,7 +193,7 @@ export function Conversation(props: {
     >
       <div className="flex min-h-0 flex-1 flex-col">
         {isNew ? (
-          <div className="p-4 md:p-5">
+          <div className={`p-4 md:p-5 ${column}`}>
             <ChatEmpty
               headingLevel={props.headingLevel}
               inbox={props.inbox}
@@ -203,115 +206,122 @@ export function Conversation(props: {
           role="log"
           aria-live="polite"
           aria-label="Conversation"
-          className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto overscroll-contain p-4 md:p-5"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-4 md:p-5"
         >
-          {chat.messages.map((message, index) =>
-            message.role === "user" ? (
-              <Message key={message.id} align="end">
-                <Bubble variant="muted" align="end">
-                  <BubbleContent>
-                    <span className="sr-only">You: </span>
-                    <MessageParts message={message} streaming={false} />
-                  </BubbleContent>
-                </Bubble>
-              </Message>
-            ) : (
-              <Message key={message.id}>
-                <AgentMark />
-                <MessageContent className="max-w-prose">
-                  <span className="sr-only">Answer:</span>
-                  <MessageParts
-                    message={message}
-                    labels={props.labels}
-                    streaming={busy && index === chat.messages.length - 1}
-                    durationMs={
-                      liveTimes[message.id] ??
-                      storedDuration(chat.messages, index)
-                    }
-                    onTryAgain={() => {
-                      const question = questionBefore(chat.messages, index);
+          {/* No wrapper in an empty log, so it stays empty for a reader and a test. */}
+          {chat.messages.length === 0 ? null : (
+            <div className={`flex flex-col gap-6 ${column}`}>
+              {chat.messages.map((message, index) =>
+                message.role === "user" ? (
+                  <Message key={message.id} align="end">
+                    <Bubble variant="muted" align="end">
+                      <BubbleContent>
+                        <span className="sr-only">You: </span>
+                        <MessageParts message={message} streaming={false} />
+                      </BubbleContent>
+                    </Bubble>
+                  </Message>
+                ) : (
+                  <Message key={message.id}>
+                    <AgentMark />
+                    <MessageContent className="max-w-prose">
+                      <span className="sr-only">Answer:</span>
+                      <MessageParts
+                        message={message}
+                        labels={props.labels}
+                        streaming={busy && index === chat.messages.length - 1}
+                        durationMs={
+                          liveTimes[message.id] ??
+                          storedDuration(chat.messages, index)
+                        }
+                        onTryAgain={() => {
+                          const question = questionBefore(chat.messages, index);
 
-                      if (question !== undefined) send(question);
-                    }}
-                    artifacts={props.artifacts}
-                  />
-                </MessageContent>
-              </Message>
-            )
+                          if (question !== undefined) send(question);
+                        }}
+                        artifacts={props.artifacts}
+                      />
+                    </MessageContent>
+                  </Message>
+                )
+              )}
+            </div>
           )}
         </div>
 
-        <div className="grid shrink-0 gap-3 border-t border-border bg-background p-3 md:px-4 md:pb-4">
-          {refusal === null ? null : (
-            <div
-              role="alert"
-              className="grid gap-2 rounded-lg border border-border p-3"
-            >
-              <p className="text-sm">{refusal.message}</p>
-              {refusal.requiresNewChat ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  onClick={props.onNewChat}
-                >
-                  Start a new chat
-                </Button>
-              ) : null}
-            </div>
-          )}
-
-          {showSuggestions ? (
-            <div
-              role="group"
-              aria-label="Suggestions"
-              className="flex flex-wrap gap-1.5"
-            >
-              {props.suggestions.map((question) => (
-                <button
-                  key={question}
-                  type="button"
-                  className={pillClass}
-                  onClick={() => send(question)}
-                >
-                  {question}
-                </button>
-              ))}
-            </div>
-          ) : null}
-
-          <Composer
-            value={draft}
-            onChange={setDraft}
-            onSend={() => send(draft)}
-            onStop={() => void chat.stop()}
-            busy={busy}
-            picker={
-              showPicker ? (
-                <Select
-                  items={modelItems}
-                  value={modelId}
-                  onValueChange={(value) => setModelId(value ?? "")}
-                >
-                  <SelectTrigger
-                    aria-label="Model"
+        <div className="shrink-0 border-t border-border bg-background p-3 md:px-4 md:pb-4">
+          <div className={`grid gap-3 ${column}`}>
+            {refusal === null ? null : (
+              <div
+                role="alert"
+                className="grid gap-2 rounded-lg border border-border p-3"
+              >
+                <p className="text-sm">{refusal.message}</p>
+                {refusal.requiresNewChat ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
                     size="sm"
-                    // oxlint-disable-next-line shadcn/no-restyle -- a compact picker inside the composer (variant B)
-                    className="w-auto max-w-56 border-0 bg-transparent max-lg:h-11"
+                    onClick={props.onNewChat}
                   >
-                    <SelectValue placeholder="Default model" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {modelItems.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : undefined
-            }
-          />
+                    Start a new chat
+                  </Button>
+                ) : null}
+              </div>
+            )}
+
+            {showSuggestions ? (
+              <div
+                role="group"
+                aria-label="Suggestions"
+                className="flex flex-wrap gap-1.5"
+              >
+                {props.suggestions.map((question) => (
+                  <button
+                    key={question}
+                    type="button"
+                    className={pillClass}
+                    onClick={() => send(question)}
+                  >
+                    {question}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            <Composer
+              value={draft}
+              onChange={setDraft}
+              onSend={() => send(draft)}
+              onStop={() => void chat.stop()}
+              busy={busy}
+              picker={
+                showPicker ? (
+                  <Select
+                    items={modelItems}
+                    value={modelId}
+                    onValueChange={(value) => setModelId(value ?? "")}
+                  >
+                    <SelectTrigger
+                      aria-label="Model"
+                      size="sm"
+                      // oxlint-disable-next-line shadcn/no-restyle -- a compact picker inside the composer (variant B)
+                      className="w-auto max-w-56 border-0 bg-transparent max-lg:h-11"
+                    >
+                      <SelectValue placeholder="Default model" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {modelItems.map((item) => (
+                        <SelectItem key={item.value} value={item.value}>
+                          {item.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : undefined
+              }
+            />
+          </div>
         </div>
       </div>
     </ChartCheckProvider>

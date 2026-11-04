@@ -418,7 +418,7 @@ export const WorkspacePhone: Story = {
   },
 };
 
-/** Ask is no rail link, yet its phone top bar names it, on a session too (design review 5.3). */
+/** Ask's phone top bar names it, on a session too (design review 5.3). */
 export const AskOnPhone: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
   args: { currentPath: "/ask/00000000-0000-4000-8000-000000000001" },

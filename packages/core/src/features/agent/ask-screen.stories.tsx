@@ -251,6 +251,28 @@ export const HideTheChatHistory: Story = {
   },
 };
 
+// Variant B keeps the chat in a centered reading column on a wide screen, also with the history
+// hidden; a composer that spans the whole width is the bug this catches.
+export const ReadingColumnOnAWideScreen: Story = {
+  name: "Reading column on a wide screen",
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Hide chats" }));
+
+    const section = canvas
+      .getByRole("region", { name: "Conversation" })
+      .getBoundingClientRect();
+
+    const composer = canvas
+      .getByRole("textbox", { name: "Message" })
+      .getBoundingClientRect();
+
+    await expect(composer.width).toBeLessThanOrEqual(768);
+    await expect(
+      Math.abs(composer.left - section.left - (section.right - composer.right))
+    ).toBeLessThanOrEqual(2);
+  },
+};
+
 // AK3: the search ignores case and says when nothing matches.
 export const SearchChats: Story = {
   name: "Search chats",
@@ -287,7 +309,7 @@ export const AnArtifactOpensOnlyWhenAsked: Story = {
       "List the balances{Enter}"
     );
 
-    const card = await canvas.findByRole("button", { name: "Open Balances" });
+    const card = await canvas.findByRole("button", { name: /^Balances/ });
 
     await waitFor(() => expect(card).toBeEnabled());
     await expect(artifactPanel()).toBeNull();
