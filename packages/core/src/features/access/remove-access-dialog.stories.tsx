@@ -99,7 +99,10 @@ export const PathsStay: Story = {
     await expect(stays.getByRole("listitem")).toHaveTextContent(
       "FinanceThrough Finance team"
     );
-    await expect(body.getByRole("button", { name: "Cancel" })).toHaveFocus();
+    // The dialog moves its first focus a frame after it shows.
+    await waitFor(() =>
+      expect(body.getByRole("button", { name: "Cancel" })).toHaveFocus()
+    );
 
     await userEvent.click(
       body.getByRole("button", { name: "Remove and save" })
