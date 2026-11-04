@@ -100,6 +100,9 @@ export function setFilterCount(
 /** Fired after a write, which `replaceState` itself does not announce. */
 const ADDRESS_CHANGE = "genie:list-state";
 
+/** Fired by `clear`, so a control drops an edit that has not reached the address yet. */
+export const LIST_CLEARED = "genie:list-cleared";
+
 function subscribe(onChange: () => void): () => void {
   window.addEventListener("popstate", onChange);
   window.addEventListener(ADDRESS_CHANGE, onChange);
@@ -183,14 +186,16 @@ export function useListState(definition: ListDefinition): ListState {
       tab,
       sort: readSort(definition, params["sort"]),
       set: write,
-      clear: () =>
+      clear: () => {
+        window.dispatchEvent(new Event(LIST_CLEARED));
         write(
           Object.fromEntries(
             names
               .filter((name) => name !== "sort")
               .map((name) => [name, undefined])
           )
-        ),
+        );
+      },
     };
   }, [search, definition]);
 }

@@ -179,6 +179,29 @@ export const MultiOptionCounts: Story = {
   },
 };
 
+/** A search still waiting for its 300 ms pause does not come back after Clear filters. */
+export const ClearBeatsPendingSearch: Story = {
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByLabelText("Customer: All customers"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Harbor Freight" })
+    );
+    await waitFor(() => expect(param("customer")).toBe("c-1"));
+
+    await userEvent.type(canvas.getByLabelText("Search invoices"), "north", {
+      delay: null,
+    });
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear filters" })
+    );
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    await expect(param("q")).toBeNull();
+    await expect(param("customer")).toBeNull();
+    await expect(canvas.getByLabelText("Search invoices")).toHaveValue("");
+  },
+};
+
 /** Clear filters stays off until something is set, and then clears the filters and the search. */
 export const ClearFilters: Story = {
   play: async ({ canvas }) => {

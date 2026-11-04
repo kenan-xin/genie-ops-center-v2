@@ -28,7 +28,7 @@ import {
 import { quickRanges } from "../parts/calendar-day.ts";
 import { DateRangePicker } from "../parts/date-range-picker.tsx";
 import type { ListFilterDefinition, ListOption } from "./definitions.ts";
-import { dayRangeParam, readDayRange } from "./list-state.ts";
+import { dayRangeParam, LIST_CLEARED, readDayRange } from "./list-state.ts";
 
 export type ListFilterControlProps = {
   readonly filter: ListFilterDefinition;
@@ -78,6 +78,18 @@ function SearchControl({
   );
 
   useEffect(() => () => write.cancel(), [write]);
+
+  // Clear filters wins over a search still waiting for its pause.
+  useEffect(() => {
+    const drop = () => {
+      write.cancel();
+      setText("");
+    };
+
+    window.addEventListener(LIST_CLEARED, drop);
+
+    return () => window.removeEventListener(LIST_CLEARED, drop);
+  }, [write]);
 
   // Follow a search the address changed, such as Back, Clear filters or a shared link.
   useEffect(() => {
