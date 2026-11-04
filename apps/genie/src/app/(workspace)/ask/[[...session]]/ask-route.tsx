@@ -61,11 +61,13 @@ export function AskRoute(props: {
   const artifactsKey = ["agent", "artifacts", sessionId];
 
   // Read again on each visit and when an answer ends: the panel can add versions to this chat
-  // while Ask is not shown, and a cached list from an earlier visit would hide them.
+  // while Ask is not shown, and a cached list from an earlier visit would hide them. The app's
+  // default stale time (30 s) would skip the read on a quick return, so this list sets its own.
   const artifacts = useQuery({
     queryKey: artifactsKey,
     queryFn: () => rpc.agent.artifacts({ id: sessionId }),
     initialData: props.currentId === undefined ? [] : props.initialArtifacts,
+    staleTime: 0,
   });
 
   const [shown, setShown] = useState(props.initialShown);
