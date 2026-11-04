@@ -19,6 +19,18 @@ export type CardArtifact = ArtifactRef & {
   readonly title: string;
 };
 
+/** The latest version of one artifact of the chat, or null when the chat has no such artifact. */
+export function latestRef(
+  artifacts: readonly { readonly id: string; readonly latestVersion: number }[],
+  artifactId: string | undefined
+): ArtifactRef | null {
+  const artifact = artifacts.find((item) => item.id === artifactId);
+
+  return artifact === undefined
+    ? null
+    : { artifactId: artifact.id, version: artifact.latestVersion };
+}
+
 const cardData = z.object({
   artifactId: z.uuid(),
   version: z.number().int().positive(),

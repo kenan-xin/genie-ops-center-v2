@@ -1,12 +1,17 @@
 "use client";
 
 import type {
+  AgentArtifact,
   AgentMessage,
   AgentSessionSummary,
   ChatLabels,
   InboxLink,
 } from "@genie/core";
-import { AgentChat, AskScreen } from "@genie/core/features/agent";
+import {
+  AgentChat,
+  type ArtifactRef,
+  AskScreen,
+} from "@genie/core/features/agent";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
@@ -15,15 +20,21 @@ import { rpc } from "../../../../rpc/client.ts";
 
 const SESSION_LIST_KEY = ["agent", "sessions"];
 
+const NO_INBOX: readonly InboxLink[] = [];
+
 /**
- * The browser half of Ask (R-42, R-18, R-20). The server has read the list and the current
- * session and refused an unpermitted visitor before this mounts; the client owns the new chat's
- * id, the model picker's transport, and the list refresh a first answer earns.
+ * The browser half of Ask (R-42, R-42a, R-45a, R-18, R-20). The server has read the list, the
+ * current session and its artifacts, and refused an unpermitted visitor before this mounts; the
+ * client owns the new chat's id, the shown artifact, and the refresh an answer earns.
  */
 export function AskRoute(props: {
   readonly sessions: readonly AgentSessionSummary[];
   readonly currentId: string | undefined;
+  readonly title: string;
   readonly initialMessages: readonly AgentMessage[];
+  readonly initialArtifacts: readonly AgentArtifact[];
+  /** The artifact the address names, at its latest version (AG12). */
+  readonly initialShown: ArtifactRef | null;
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
@@ -47,14 +58,32 @@ export function AskRoute(props: {
   const [newId, setNewId] = useState(() => crypto.randomUUID());
   const sessionId = props.currentId ?? newId;
 
+  const artifactsKey = ["agent", "artifacts", sessionId];
+
+  // Read again only when an answer ends, the one time a chat's artifacts change.
+  const artifacts = useQuery({
+    queryKey: artifactsKey,
+    queryFn: () => rpc.agent.artifacts({ id: sessionId }),
+    initialData: props.currentId === undefined ? [] : props.initialArtifacts,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+
+  const [shown, setShown] = useState(props.initialShown);
+
   return (
     <AskScreen
       sessions={sessions.data}
       currentId={props.currentId}
+      title={props.title}
       sessionHref={(id) => `/ask/${id}`}
       newChatHref="/ask"
+      inbox={props.inbox}
       aiOn={props.aiOn}
       timeZone={props.timeZone}
+      datasetTitles={props.labels.datasets}
+      artifacts={artifacts.data}
+      shown={shown}
+      onShow={setShown}
     >
       {props.aiOn ? (
         <AgentChat
@@ -64,21 +93,22 @@ export function AskRoute(props: {
           models={props.models}
           labels={props.labels}
           suggestions={props.suggestions}
-          inbox={props.inbox}
+          // The chat history holds the inbox lines on Ask.
+          inbox={NO_INBOX}
           timeZone={props.timeZone}
-          // Task 11 opens the artifact panel from this address.
-          artifacts={{
-            kind: "link",
-            href: (ref) => `/ask/${sessionId}?artifact=${ref.artifactId}`,
-          }}
+          artifacts={{ kind: "panel", shown, onOpen: setShown }}
           headingLevel={2}
           // A fresh id remounts the chat, also when the address is already /ask.
           onNewChat={() => {
             setNewId(crypto.randomUUID());
+            setShown(null);
             router.push("/ask");
           }}
           onFinished={(id) => {
             void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
+            void queryClient.invalidateQueries({
+              queryKey: ["agent", "artifacts", id],
+            });
 
             // The first answer makes the session real, so the address can name it (P3).
             if (props.currentId === undefined) router.replace(`/ask/${id}`);

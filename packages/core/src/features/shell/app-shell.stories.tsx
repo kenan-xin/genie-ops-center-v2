@@ -429,10 +429,13 @@ export const AskOnPhone: Story = {
   },
 };
 
-/** A chat page that fills the content height, as Ask does: its log scrolls, its composer does not. */
+/**
+ * A flush chat page, as Ask is: it fills the content height and reaches its edges, its log
+ * scrolls, its composer does not.
+ */
 const fillPage = (
-  <main data-page-fill="" className="flex min-h-0 flex-1 flex-col">
-    <PageHeader title="Ask" />
+  <main data-page-flush="" className="flex min-h-0 flex-1 flex-col">
+    <h1 className="sr-only">Ask</h1>
     <div className="flex min-h-0 flex-1 flex-col">
       <div
         role="log"
@@ -464,6 +467,17 @@ async function expectComposerAtBottom(canvasElement: HTMLElement) {
   const log = within(canvasElement).getByRole("log", { name: "Conversation" });
 
   await expect(log.scrollHeight).toBeGreaterThan(log.clientHeight);
+
+  // Flush: no shell padding around the page.
+  const main = canvasElement.querySelector("main");
+  const area = main?.parentElement?.getBoundingClientRect();
+  const page = main?.getBoundingClientRect();
+
+  await expect([page?.left, page?.top, page?.right]).toEqual([
+    area?.left,
+    area?.top,
+    area?.right,
+  ]);
 }
 
 export const FillPageDesktop: Story = {

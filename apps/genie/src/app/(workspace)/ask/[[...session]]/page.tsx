@@ -3,11 +3,12 @@ import {
   chatLabels,
   AppError,
   ASK_PERMISSION,
+  listOwnArtifacts,
   listOwnSessions,
   type ModuleRequestContext,
   readOwnSession,
 } from "@genie/core";
-import { PageHeader } from "@genie/core/features/shell";
+import { latestRef } from "@genie/core/features/agent";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation.js";
 
@@ -20,6 +21,10 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   readonly params: Promise<{ readonly session?: string[] }>;
+  /** `artifact` names the artifact a card in the agent panel opens (AG12). */
+  readonly searchParams: Promise<{
+    readonly artifact?: string | string[];
+  }>;
 };
 
 export async function generateMetadata() {
@@ -47,6 +52,7 @@ async function currentSession(ctx: ModuleRequestContext, id: string) {
  */
 export default async function AskPage(props: Props) {
   const { session = [] } = await props.params;
+  const { artifact } = await props.searchParams;
 
   if (session.length > 1) notFound();
 
@@ -75,13 +81,23 @@ export default async function AskPage(props: Props) {
 
     const aiOn = access.ai === "on";
 
+    const artifacts =
+      current === undefined
+        ? []
+        : await listOwnArtifacts(ctx, current.session.id);
+
     return (
-      <main data-page-fill="" className="flex min-h-0 flex-1 flex-col">
-        <PageHeader title={t("ask.title")} />
+      // Flush: Ask's own columns reach the shell's edges (AG22).
+      <main data-page-flush="" className="flex min-h-0 flex-1 flex-col">
+        <h1 className="sr-only">{t("ask.title")}</h1>
         <AskRoute
           sessions={sessions}
           currentId={current?.session.id}
+          title={current?.session.title ?? "New chat"}
           initialMessages={current?.messages ?? []}
+          initialArtifacts={artifacts}
+          // A repeated parameter names its first value.
+          initialShown={latestRef(artifacts, [artifact].flat()[0])}
           // Only a person who manages the settings picks the model (design review 7.1).
           models={
             aiOn && access.canPickModel

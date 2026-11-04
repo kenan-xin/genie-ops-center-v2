@@ -29,5 +29,6 @@ export { ARTIFACT_VIEWS, type ArtifactKindView } from "./artifact-kinds.tsx";
 export {
   type ArtifactRef,
   artifactRefsOf,
+  latestRef,
   type CardArtifact,
 } from "./artifact-refs.ts";

@@ -308,7 +308,7 @@ export function AppShell(props: AppShellProps) {
             // 2.2). A page whose <main> carries `data-page-fill` (a chat page) fills the height
             // instead, so its own parts scroll and its composer stays at the bottom (agent-native
             // rule 1).
-            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 ${focusRing} focus-visible:ring-inset`}
+            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 has-[[data-page-flush]]:flex has-[[data-page-flush]]:flex-col has-[[data-page-flush]]:p-0 md:has-[[data-page-flush]]:p-0 lg:has-[[data-page-flush]]:p-0 ${focusRing} focus-visible:ring-inset`}
           >
             <ShellContext.Provider value={shellContext}>
               {props.children}
