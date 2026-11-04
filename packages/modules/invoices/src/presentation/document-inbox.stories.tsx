@@ -320,6 +320,31 @@ export const UploadShowsAll: Story = {
   },
 };
 
+// A return to the default tab reads page one again, not the server page of the first visit.
+export const BackToNeedsYouAfterUpload: Story = {
+  name: "Back to Needs you after an upload",
+  globals: desktop,
+  beforeEach: () => {
+    serve({
+      ...defaultDocumentInbox,
+      rows: [NEW_UPLOAD, ...defaultDocumentInbox.rows],
+    });
+  },
+  play: async ({ canvas }) => {
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("new.pdf"),
+    ]);
+    await waitFor(() => expect(param("status")).toBe("all"));
+    await waitFor(() => expect(uploadDocument).toHaveBeenCalledTimes(1));
+
+    await userEvent.click(canvas.getByRole("tab", { name: /^Needs you/ }));
+
+    await waitFor(() =>
+      expect(listDocuments).toHaveBeenCalledWith({ after: null, params: {} })
+    );
+  },
+};
+
 export const Dark: Story = {
   globals: { ...desktop, theme: "dark" },
   beforeEach: () => serve(defaultDocumentInbox),

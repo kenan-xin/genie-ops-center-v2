@@ -3,6 +3,7 @@
 import type { DatasetCursor } from "@genie/core/rpc";
 import type { ListDefinition, ListOption, ListParams } from "@genie/ui";
 import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { useRef } from "react";
 import type { z } from "zod";
 
 /** A definition with the options of one filter, which the page reads from its view. */
@@ -53,6 +54,9 @@ export function useListPages<Page extends ListPage>(input: {
   readonly read: (after: DatasetCursor | null) => Promise<Page>;
 }) {
   const { first } = input;
+  // The server page seeds the query once per visit. A later return to the same key, as after a
+  // filter or an upload, reads page one again, because the page may have changed since.
+  const seeded = useRef(false);
 
   const query = useInfiniteQuery({
     queryKey: input.key,
@@ -60,8 +64,13 @@ export function useListPages<Page extends ListPage>(input: {
     initialPageParam: null as DatasetCursor | null,
     queryFn: ({ pageParam }) => input.read(pageParam),
     getNextPageParam: (last) => last.next,
-    initialData: () =>
-      first === undefined ? undefined : { pages: [first], pageParams: [null] },
+    initialData: () => {
+      if (first === undefined || seeded.current) return undefined;
+
+      seeded.current = true;
+
+      return { pages: [first], pageParams: [null] };
+    },
     // A new filter keeps the old rows on screen until its page one arrives.
     placeholderData: keepPreviousData,
     // The first page came with the request; a page read now would only repeat it.
