@@ -164,7 +164,7 @@ async function inboxOf(userId: string) {
 
 describe("the documents inbox", () => {
   it("lists every document newest first with its label, kind, status and what was found", async () => {
-    const { id: customerId } = await insertCustomer(t());
+    const { id: customerId, name: customerName } = await insertCustomer(t());
 
     // Stored before uploads kept a name: labelled by its saved invoice.
     const old = await insertDocument(t(), { kind: "invoice" });
@@ -209,7 +209,10 @@ describe("the documents inbox", () => {
     });
 
     const linked = await insertDocument(t(), { fileName: "linked.pdf" });
-    const { id: linkedInvoice } = await insertInvoice(t(), { customerId });
+    const { id: linkedInvoice, number: linkedNumber } = await insertInvoice(
+      t(),
+      { customerId }
+    );
     const { id: linkedPayment } = await insertPayment(t(), {
       customerId,
       documentId: linked.id,
@@ -226,7 +229,9 @@ describe("the documents inbox", () => {
       fileName: "saved.pdf",
       readingOutcome: "confirm-split",
     });
-    const { id: savedInvoice } = await insertInvoice(t(), { customerId });
+    const { id: savedInvoice, number: savedNumber } = await insertInvoice(t(), {
+      customerId,
+    });
     const { id: savedPayment } = await insertPayment(t(), {
       customerId,
       documentId: saved.id,
@@ -239,6 +244,14 @@ describe("the documents inbox", () => {
 
     const finance = await personWithSeededRole("Finance");
 
+    // A saved document shows its record (czjw.82): the customer, the amount and the invoices.
+    const recordOf = (invoiceNumber: string) => ({
+      customer: customerName,
+      currency: "SGD",
+      amountCents: 100_000,
+      invoiceNumbers: [invoiceNumber],
+    });
+
     await expect(
       callProcedure(invoicesRouter, as(finance)).listDocuments({
         after: null,
@@ -246,8 +259,22 @@ describe("the documents inbox", () => {
       })
     ).resolves.toEqual({
       rows: [
-        row(saved.id, "saved.pdf", "payment", "saved"),
-        row(linked.id, "linked.pdf", "payment", "linked-automatically"),
+        row(
+          saved.id,
+          "saved.pdf",
+          "payment",
+          "saved",
+          null,
+          recordOf(savedNumber)
+        ),
+        row(
+          linked.id,
+          "linked.pdf",
+          "payment",
+          "linked-automatically",
+          null,
+          recordOf(linkedNumber)
+        ),
         row(order.id, "order.pdf", "purchase-order", "kept-as-reference"),
         row(duplicate.id, "duplicate.pdf", "payment", "possible-duplicate"),
         row(unmatched.id, "unmatched.pdf", "payment", "no-match"),
@@ -260,7 +287,14 @@ describe("the documents inbox", () => {
         row(aiOff.id, "ai-off.pdf", null, "needs-input", "ai-off"),
         row(failed.id, "failed.pdf", null, "could-not-read"),
         row(reading.id, "reading.pdf", null, "reading"),
-        row(old.id, "INV-OLD-1", "invoice", "saved"),
+        row(
+          old.id,
+          "INV-OLD-1",
+          "invoice",
+          "saved",
+          null,
+          recordOf("INV-OLD-1")
+        ),
       ],
       truncated: false,
       next: null,
@@ -636,6 +670,63 @@ describe("the documents inbox", () => {
     expect(rows.map(({ updatedAt }) => updatedAt > "2026-01-02")).toEqual([
       true,
     ]);
+  });
+
+  // czjw.82: the seed stores each history document with no reading, and the inbox read only the reading.
+  it("lists the saved record of a document with no reading under What we found", async () => {
+    const { id: customerId } = await insertCustomer(t(), {
+      name: "Kestrel History",
+    });
+    const invoiceDocument = await insertDocument(t(), {
+      kind: "invoice",
+      fileName: "history-invoice.pdf",
+    });
+    const paymentDocument = await insertDocument(t(), {
+      kind: "payment",
+      fileName: "history-payment.pdf",
+    });
+    const saved = await insertInvoice(t(), {
+      customerId,
+      number: "INV-HISTORY-1",
+      currency: "SGD",
+      totalCents: 420_000,
+      documentId: invoiceDocument.id,
+    });
+    const paid = await insertPayment(t(), {
+      customerId,
+      currency: "SGD",
+      amountCents: 150_000,
+      reference: "TRF-HISTORY-1",
+      documentId: paymentDocument.id,
+    });
+    await insertAllocation(t(), {
+      invoiceId: saved.id,
+      paymentId: paid.id,
+      amountCents: 150_000,
+    });
+    const finance = await personWithSeededRole("Finance");
+
+    const rows = await walkInbox(finance, {
+      status: "all",
+      q: "history-",
+    });
+
+    expect(
+      Object.fromEntries(rows.map(({ label, found }) => [label, found]))
+    ).toEqual({
+      "history-invoice.pdf": {
+        customer: "Kestrel History",
+        currency: "SGD",
+        amountCents: 420_000,
+        invoiceNumbers: ["INV-HISTORY-1"],
+      },
+      "history-payment.pdf": {
+        customer: "Kestrel History",
+        currency: "SGD",
+        amountCents: 150_000,
+        invoiceNumbers: ["INV-HISTORY-1"],
+      },
+    });
   });
 
   it("answers the status of the ids it is given, and no other document", async () => {

@@ -17,6 +17,7 @@ import {
   sql,
   type SQLWrapper,
 } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import type {
   DocumentInboxRow,
@@ -89,8 +90,55 @@ export function reasonOf(
     : null;
 }
 
-/** The checked values of a stored reading that the inbox shows, or null before a reading. */
-function foundOf(reading: StoredReading | null): DocumentInboxRow["found"] {
+/** An invoice that a payment links to, apart from the invoice saved from the document. */
+const linked = alias(invoice, "linked");
+
+/**
+ * The record saved from a document, as What we found shows it (LH30): its customer, currency and
+ * amount, and its invoice numbers, which for a payment are the invoices it links to. Valid in a
+ * select that left joins `invoice`, `payment` and the record's `customer`.
+ */
+const record = {
+  recordCustomer: customer.name,
+  recordCurrency: sql<
+    string | null
+  >`coalesce(${invoice.currency}, ${payment.currency})`,
+  recordCents: sql<
+    number | null
+  >`coalesce(${invoice.totalCents}, ${payment.amountCents})`,
+  recordNumbers: sql<string[] | null>`case
+    when ${invoice.id} is not null then array[${invoice.number}]
+    when ${payment.id} is not null then (
+      select coalesce(array_agg(${linked.number} order by ${linked.number}), '{}')
+      from ${allocation} join ${invoice} as ${sql.identifier("linked")} on ${linked.id} = ${allocation.invoiceId}
+      where ${allocation.paymentId} = ${payment.id}
+    )
+  end`,
+};
+
+/**
+ * What the inbox shows under What we found: the saved record when one exists, else the checked
+ * values of the stored reading, or null before a reading. A seeded history document has a record
+ * and no reading (`czjw.82`).
+ */
+function foundOf(document: {
+  readonly reading: StoredReading | null;
+  readonly recordCustomer: string | null;
+  readonly recordCurrency: string | null;
+  readonly recordCents: number | null;
+  readonly recordNumbers: string[] | null;
+}): DocumentInboxRow["found"] {
+  if (document.recordNumbers !== null) {
+    return {
+      customer: document.recordCustomer,
+      currency: document.recordCurrency,
+      amountCents: document.recordCents,
+      invoiceNumbers: document.recordNumbers,
+    };
+  }
+
+  const { reading } = document;
+
   if (reading === null) return null;
 
   const { fields, invoiceNumbers } = storedReading.parse(reading);
@@ -201,6 +249,7 @@ export async function loadDocumentInbox(
         updatedAt: microseconds(sourceDocument.updatedAt),
         ...documentState,
         reading: sourceDocument.reading,
+        ...record,
       })
       .from(sourceDocument)
       .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
@@ -243,7 +292,7 @@ export async function loadDocumentInbox(
       reason: reasonOf(document.readingOutcome),
       uploadedAt: document.uploadedAt.toISOString(),
       updatedAt: document.updatedAt,
-      found: foundOf(document.reading),
+      found: foundOf(document),
     })),
     truncated: documents.length > INBOX_PAGE,
     next:

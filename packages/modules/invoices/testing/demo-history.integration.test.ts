@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import {
   createTenantContext,
+  type DatasetCursor,
   type DatasetFilter,
   type DatasetQuery,
   type ModuleRequestContext,
@@ -20,7 +21,9 @@ import {
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import type { DocumentInboxRow } from "../src/contract.ts";
 import { invoicesModule } from "../src/module.ts";
+import { loadDocumentInbox } from "../src/services/documents/inbox.ts";
 import {
   DEMO_PACK,
   type DemoHistoryIds,
@@ -317,6 +320,27 @@ describe("demo history", () => {
         toCents(expected.unknown_due_date_amount)
       );
     }
+  });
+
+  // czjw.82: every history document showed "Nothing found", because the seed stores no reading.
+  it("lists what each history document created in the inbox", async () => {
+    const walk = async (
+      after: DatasetCursor | null
+    ): Promise<DocumentInboxRow[]> => {
+      const page = await loadDocumentInbox(contextFor(financeUserId), after, {
+        status: "all",
+      });
+
+      return page.next === null
+        ? page.rows
+        : [...page.rows, ...(await walk(page.next))];
+    };
+    const documents = await walk(null);
+
+    expect(documents.length).toBeGreaterThan(0);
+    expect(
+      documents.filter(({ found }) => found === null).map(({ label }) => label)
+    ).toEqual([]);
   });
 
   it("gives every invoice's outstanding, days overdue and paid-late flag in expected_invoice_status.csv", async () => {
