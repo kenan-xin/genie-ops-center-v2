@@ -888,6 +888,7 @@ export const LongDrawerDark: Story = {
 /** The app's host, with no model picker; the stub client loads no saved messages. */
 const agentPanel = (
   <AgentPanelHost
+    person="person-1"
     models={null}
     labels={{ steps: {}, datasets: {} }}
     suggestions={[]}

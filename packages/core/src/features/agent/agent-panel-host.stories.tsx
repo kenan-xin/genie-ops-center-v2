@@ -14,6 +14,12 @@ import {
 } from "./agent-panel-host.tsx";
 import { resetAgentPanel, useAgentPage } from "./agent-panel-store.ts";
 
+const PERSON = "person-1";
+
+const SESSION_KEY = `${AGENT_PANEL_SESSION_KEY}:${PERSON}`;
+
+const STORED_KEY = `${AGENT_PANEL_STORED_KEY}:${PERSON}`;
+
 /** Ends the held answer of the last request. */
 let release: () => void = () => undefined;
 
@@ -95,7 +101,7 @@ function TestPage() {
 }
 
 /** The shell's row as the host sees it: the page, then the panel. */
-function Frame(props: { readonly page: boolean }) {
+function Frame(props: { readonly page: boolean; readonly person?: string }) {
   const [page, setPage] = useState(props.page);
 
   return (
@@ -120,6 +126,7 @@ function Frame(props: { readonly page: boolean }) {
           ) : null}
         </main>
         <AgentPanelHost
+          person={props.person ?? PERSON}
           models={null}
           labels={{ steps: {}, datasets: {} }}
           suggestions={[]}
@@ -177,6 +184,7 @@ const meta = {
     };
   },
   args: {
+    person: PERSON,
     models: null,
     labels: { steps: {}, datasets: {} },
     suggestions: [],
@@ -244,7 +252,7 @@ export const OpenInAsk: Story = {
     release();
     await screen.findByText("Half an answer.");
 
-    const id = sessionStorage.getItem(AGENT_PANEL_SESSION_KEY);
+    const id = sessionStorage.getItem(SESSION_KEY);
 
     await waitFor(() =>
       expect(openInAsk()).toHaveAttribute("href", `/ask/${id}`)
@@ -263,14 +271,67 @@ export const OpenInAskAfterAPageLoad: Story = {
   name: "Open in Ask after a page load",
   render: () => <Frame page={false} />,
   beforeEach: () => {
-    sessionStorage.setItem(AGENT_PANEL_SESSION_KEY, SAVED_ID);
-    sessionStorage.setItem(AGENT_PANEL_STORED_KEY, SAVED_ID);
+    sessionStorage.setItem(SESSION_KEY, SAVED_ID);
+    sessionStorage.setItem(STORED_KEY, SAVED_ID);
   },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
     await panel();
 
     await expect(openInAsk()).toHaveAttribute("href", `/ask/${SAVED_ID}`);
+  },
+};
+
+/** Two people sign in on one tab, one after the other; a sign-in is a page load. */
+function TwoSignIns() {
+  const [person, setPerson] = useState("person-2");
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          resetAgentPanel();
+          setPerson(PERSON);
+        }}
+      >
+        Sign in as another person
+      </button>
+      <Frame key={person} person={person} page={false} />
+    </>
+  );
+}
+
+const sentSession = (index: number) =>
+  z
+    .object({ sessionId: z.string() })
+    .parse(JSON.parse(String(agentRoute.mock.calls[index]?.[1]?.body)))
+    .sessionId;
+
+// The route refuses another person's chat, so the second person's panel must start its own.
+export const AnotherPersonOnTheSameTab: Story = {
+  name: "Another person on the same tab",
+  render: () => <TwoSignIns />,
+  play: async ({ canvas }) => {
+    const ask = async () => {
+      await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+      await userEvent.type(
+        await screen.findByRole("textbox", { name: "Message" }),
+        "How many records are there?{Enter}"
+      );
+      await screen.findByText("Half an");
+      release();
+      await screen.findByText("Half an answer.");
+    };
+
+    await ask();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Sign in as another person" })
+    );
+    await ask();
+
+    await expect(sentSession(1)).not.toBe(sentSession(0));
   },
 };
 

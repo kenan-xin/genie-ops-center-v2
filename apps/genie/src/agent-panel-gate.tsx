@@ -23,6 +23,7 @@ export async function AgentPanelGate(props: {
 
   return (
     <AgentPanelHost
+      person={ctx.caller.userId}
       // Only a person who manages the settings picks the model (design review 7.1).
       models={
         access.canPickModel

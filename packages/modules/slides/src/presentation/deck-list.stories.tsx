@@ -65,6 +65,7 @@ function withAgentPanel(Story: () => ReactNode) {
       <AgentButton />
       <Story />
       <AgentPanelHost
+        person="person-1"
         models={null}
         labels={{ steps: {}, datasets: {} }}
         suggestions={[]}

@@ -28,11 +28,15 @@ import {
   setPanelWorking,
 } from "./agent-panel-store.ts";
 
-/** The `sessionStorage` key that holds the panel's chat for this browser tab (`czjw.60`). */
+/**
+ * The `sessionStorage` key, before `:<person id>`, that holds the panel's chat for this browser tab
+ * (`czjw.60`).
+ */
 export const AGENT_PANEL_SESSION_KEY = "genie.agent-panel.session";
 
 /**
- * The `sessionStorage` key that holds the id of the last chat with a stored answer, so Open in Ask
+ * The `sessionStorage` key, before `:<person id>`, that holds the id of the last chat with a stored
+ * answer, so Open in Ask
  * names a chat that Ask can show, also after a page load (AG12).
  */
 export const AGENT_PANEL_STORED_KEY = "genie.agent-panel.stored";
@@ -62,6 +66,8 @@ const openInAsk = "Open in Ask";
  * page reaches it only through `useAgentPage`. Closed, the chat stays mounted, so an answer goes on.
  */
 export function AgentPanelHost(props: {
+  /** The signed-in person's id: the tab keeps one chat per person, so another sign-in starts afresh. */
+  readonly person: string;
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
@@ -78,24 +84,25 @@ export function AgentPanelHost(props: {
   const outbox = useStore(agentPanelStore, (state) => state.outbox);
   const docked = useMediaQuery(DOCKED, {});
 
+  const sessionKey = `${AGENT_PANEL_SESSION_KEY}:${props.person}`;
+  const storedKey = `${AGENT_PANEL_STORED_KEY}:${props.person}`;
+
   // The browser makes the id of a chat (P3); the tab keeps it, so a page load reopens the chat.
   const [sessionId, setSessionId] = useState(
-    () =>
-      globalThis.sessionStorage?.getItem(AGENT_PANEL_SESSION_KEY) ??
-      crypto.randomUUID()
+    () => globalThis.sessionStorage?.getItem(sessionKey) ?? crypto.randomUUID()
   );
 
   useEffect(() => {
-    sessionStorage.setItem(AGENT_PANEL_SESSION_KEY, sessionId);
-  }, [sessionId]);
+    sessionStorage.setItem(sessionKey, sessionId);
+  }, [sessionKey, sessionId]);
 
   // A new chat has another id, so it counts as unstored until its first answer ends.
   const [stored, setStored] = useState(() =>
-    globalThis.sessionStorage?.getItem(AGENT_PANEL_STORED_KEY)
+    globalThis.sessionStorage?.getItem(storedKey)
   );
 
   const finished = (id: string) => {
-    sessionStorage.setItem(AGENT_PANEL_STORED_KEY, id);
+    sessionStorage.setItem(storedKey, id);
     setStored(id);
     pageFinished();
   };
