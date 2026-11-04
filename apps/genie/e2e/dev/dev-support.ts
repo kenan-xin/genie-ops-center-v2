@@ -81,11 +81,16 @@ export async function openInbox(page: Page, status = "all"): Promise<void> {
   await mounted;
 }
 
-/** One fact of a record page, read through the term that labels it. */
+/**
+ * One fact of a record page, read through the term that labels it. Visible only: a hard load can
+ * leave React's late streamed segment as a hidden `div#S:0` copy of the page in the body.
+ */
 export const fact = (page: Page, label: string) =>
-  page.locator(
-    `xpath=//dt[normalize-space(.)="${label}"]/following-sibling::dd[1]`
-  );
+  page
+    .locator(
+      `xpath=//dt[normalize-space(.)="${label}"]/following-sibling::dd[1]`
+    )
+    .filter({ visible: true });
 
 /**
  * The links of one record, read from whichever layout the viewport draws. The card names the other
