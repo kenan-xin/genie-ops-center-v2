@@ -241,9 +241,9 @@ export function PaymentReviewForm(props: {
     values.customer.kind === "new" && !values.customer.confirmed
       ? "Confirm the new customer to save."
       : status.kind === "loading"
-        ? "Wait for the open invoices to load to save."
+        ? "Save waits for the open invoices to load."
         : status.kind === "failed"
-          ? "Load the open invoices again to save."
+          ? "The open invoices did not load. Press Load again to save."
           : tooManyLinks
             ? `Link at most ${MAX_PAYMENT_LINKS} invoices in one save.`
             : canSave

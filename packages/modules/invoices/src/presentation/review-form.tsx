@@ -240,6 +240,9 @@ export function ReviewCustomerRow(
  * of the fields card from `md`. The shell's scroll area pads its bottom by 7 rem (`pb-28`), and a
  * sticky box stops at that padding edge, so the bar sticks 7 rem lower to meet the window bottom,
  * as the prototype's bar does. Save is `aria-disabled` with its reason, never `disabled` (DESIGN.md).
+ * The reason reads at Save's own size and color right before Save from `md`, and on its own
+ * right-aligned line above the buttons below `md` (czjw.65, I7). With a reason, Discard sits at
+ * the start of the bar from `md`, so the reason ends next to the button it explains.
  */
 export function ReviewSaveBar(props: {
   readonly helper: string | undefined;
@@ -253,35 +256,35 @@ export function ReviewSaveBar(props: {
   return (
     <div
       data-shell-bottom-bar=""
-      className="z-10 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-28"
+      className="z-10 flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-28"
     >
+      <Button
+        type="button"
+        variant="secondary"
+        className="max-md:ml-auto"
+        loading={props.discarding}
+        onClick={props.onDiscard}
+      >
+        Discard
+      </Button>
       {helper === undefined ? null : (
         <p
           id={SAVE_HELPER_ID}
-          className="flex min-w-0 flex-1 basis-48 items-start gap-1.5 text-xs text-muted-foreground"
+          className="order-first flex min-w-0 basis-full items-start justify-end gap-1.5 text-right text-sm text-foreground md:order-none md:flex-1 md:basis-0"
         >
-          <InfoIcon aria-hidden className="mt-px size-3.5 shrink-0" />
+          <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
           <span>{helper}</span>
         </p>
       )}
-      <div className="ml-auto flex gap-2">
-        <Button
-          type="button"
-          variant="secondary"
-          loading={props.discarding}
-          onClick={props.onDiscard}
-        >
-          Discard
-        </Button>
-        <Button
-          type="submit"
-          aria-disabled={helper === undefined ? undefined : true}
-          aria-describedby={helper === undefined ? undefined : SAVE_HELPER_ID}
-          loading={props.pending}
-        >
-          {props.label}
-        </Button>
-      </div>
+      <Button
+        type="submit"
+        className="md:ml-auto"
+        aria-disabled={helper === undefined ? undefined : true}
+        aria-describedby={helper === undefined ? undefined : SAVE_HELPER_ID}
+        loading={props.pending}
+      >
+        {props.label}
+      </Button>
     </div>
   );
 }

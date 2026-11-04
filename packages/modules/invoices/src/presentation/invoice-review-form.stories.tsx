@@ -582,6 +582,57 @@ export const SavedReadOnly: Story = {
   },
 };
 
+/** The reason Save waits for, and Save, as the person sees them. */
+async function reasonAndSave(canvas: ReturnType<typeof within>) {
+  const save = saveButton(canvas, "Save as unpaid");
+  const reason = document.getElementById("review-save-helper");
+
+  if (reason === null) throw new Error("The review shows no save reason.");
+
+  await expect(save).toHaveAttribute("aria-describedby", reason.id);
+  // The secondary size of Save's own words (text-sm), not the 12 px caption.
+  await expect(getComputedStyle(reason).fontSize).toBe(
+    getComputedStyle(save).fontSize
+  );
+  // The foreground color, not muted: the reason is what stands between the person and Save.
+  await expect(getComputedStyle(reason).color).toBe("rgb(17, 24, 39)");
+
+  return {
+    reason: reason.getBoundingClientRect(),
+    save: save.getBoundingClientRect(),
+  };
+}
+
+// D32 (czjw.65, I7): from 768 px the reason sits on Save's row and ends just before Save.
+export const SaveReasonBesideSave: Story = {
+  name: "Save reason beside Save",
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    const { reason, save } = await reasonAndSave(canvas);
+    const middle = (reason.top + reason.bottom) / 2;
+
+    await expect(middle).toBeGreaterThan(save.top);
+    await expect(middle).toBeLessThan(save.bottom);
+    await expect(save.left - reason.right).toBeGreaterThanOrEqual(0);
+    await expect(save.left - reason.right).toBeLessThanOrEqual(16);
+  },
+};
+
+// D33 (czjw.65, I7): on a phone the reason takes its own line, right above the buttons.
+export const SaveReasonBesideSaveOnPhone: Story = {
+  name: "Save reason beside Save on a phone",
+  globals: phone,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    const { reason, save } = await reasonAndSave(canvas);
+
+    await expect(save.top - reason.bottom).toBeGreaterThanOrEqual(0);
+    await expect(save.top - reason.bottom).toBeLessThanOrEqual(12);
+    await expect(Math.abs(save.right - reason.right)).toBeLessThanOrEqual(16);
+  },
+};
+
 // Every form state at the phone width too, so axe checks each at 390 x 844.
 // Design review 4.6: at 390 the reason and Save stay on screen, not below the fold.
 export const MissingDueDateOnPhone: Story = {
