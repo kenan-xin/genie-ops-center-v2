@@ -59,7 +59,7 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
-  ShieldIcon,
+  KeyIcon,
   TrashIcon,
   WarningIcon,
 } from "../admin/icons.tsx";
@@ -278,7 +278,7 @@ export function GroupInspector(
               viewer reads the count alone (LK4, LK13). */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input p-3">
             <div className="flex min-w-0 items-center gap-3">
-              <ShieldIcon
+              <KeyIcon
                 aria-hidden="true"
                 className="size-5 shrink-0 text-muted-foreground"
               />

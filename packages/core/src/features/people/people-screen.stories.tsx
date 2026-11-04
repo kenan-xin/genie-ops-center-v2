@@ -246,6 +246,37 @@ export const NoAccessTabWithoutTheKey: Story = {
   },
 };
 
+/** A two-digit Access count must not push the four tabs past a 390 px sheet (phase 07 capture). */
+export const AccessTabsFitOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  args: {
+    initialSelectedId: "u-viewer",
+    access: {
+      ...adaAccess,
+      paths: Array.from({ length: 11 }, (_, i) =>
+        fixturePath({
+          id: `a-ada-${i}`,
+          holder: { type: "user", id: "u-viewer", name: "Ada Admin" },
+          role: { id: `r-${i}`, name: `Role ${i}` },
+          moduleId: "invoices",
+        })
+      ),
+    },
+    onManageAccess: fn(),
+  },
+  play: async () => {
+    const sheet = within(await screen.findByRole("dialog"));
+    const tabs = sheet.getByRole("tablist", { name: "Person detail" });
+
+    await expect(sheet.getByRole("tab", { name: /Access/ })).toHaveTextContent(
+      "11"
+    );
+    await expect(tabs.scrollWidth).toBeLessThanOrEqual(
+      tabs.parentElement?.clientWidth ?? 0
+    );
+  },
+};
+
 /** G21: a role held through a group links that group, and the link opens that group's id. */
 export const ViaGroupOpensTheGroup: Story = {
   args: { initialSelectedId: "u-viewer", access: adaAccess, onOpenGroup: fn() },

@@ -36,6 +36,7 @@ import {
   PencilIcon,
   PlusIcon,
   SearchIcon,
+  KeyIcon,
   ShieldIcon,
   TrashIcon,
   WarningIcon,
@@ -473,7 +474,7 @@ function RoleDetailView(props: {
             </h3>
             {props.onOpenInAccess === undefined ? null : (
               <Button variant="secondary" onClick={props.onOpenInAccess}>
-                <ShieldIcon /> Manage in Access
+                <KeyIcon /> Manage in Access
               </Button>
             )}
           </div>

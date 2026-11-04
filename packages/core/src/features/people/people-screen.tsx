@@ -59,7 +59,7 @@ import {
   LocalIcon,
   PlusIcon,
   SearchIcon,
-  ShieldIcon,
+  KeyIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
 import {
@@ -440,7 +440,7 @@ export function PersonInspector(props: {
                   </div>
                   {props.onManageAccess === undefined ? null : (
                     <Button variant="secondary" onClick={props.onManageAccess}>
-                      <ShieldIcon /> Manage in Access
+                      <KeyIcon /> Manage in Access
                     </Button>
                   )}
                 </div>
