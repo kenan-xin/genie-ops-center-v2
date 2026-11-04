@@ -17,6 +17,7 @@ import {
   dayOfDate,
   formatDay,
   formatDayRange,
+  type QuickRange,
 } from "./calendar-day.ts";
 
 /** ISO days. Either end can be missing. */
@@ -36,6 +37,14 @@ export type DateRangePickerProps = {
   readonly "disabled"?: boolean | undefined;
   readonly "aria-invalid"?: boolean | undefined;
   readonly "aria-describedby"?: string | undefined;
+  /** Ranges one click sets, for example `quickRanges(today)` (LH25). */
+  readonly "presets"?: readonly QuickRange[] | undefined;
+  /** Classes of the trigger: its width and its height. */
+  readonly "className"?: string | undefined;
+  /** `filter-set` tints a list filter that holds a range (R-37a). */
+  readonly "variant"?: "secondary" | "filter-set" | undefined;
+  /** `filter`: the height of a list filter control. */
+  readonly "size"?: "md" | "filter" | undefined;
 };
 
 /**
@@ -64,6 +73,10 @@ export function DateRangePicker({
   value,
   onChange,
   disabled,
+  presets,
+  className,
+  variant = "secondary",
+  size = "md",
   ...aria
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
@@ -97,10 +110,25 @@ export function DateRangePicker({
         {...aria}
         disabled={disabled}
         aria-label={`${label}: ${text}`}
-        render={<Button variant="secondary" className="w-full" />}
+        render={
+          <Button
+            variant={variant}
+            size={size}
+            className={`w-full ${className ?? ""}`}
+          />
+        }
       >
         <CalendarIcon aria-hidden="true" />
-        <span className="flex-1 truncate text-left">{text}</span>
+        {/* A placeholder is muted and regular, a range set (R-37a). */}
+        <span
+          className={
+            known
+              ? "flex-1 truncate text-left"
+              : "flex-1 truncate text-left font-normal text-muted-foreground"
+          }
+        >
+          {text}
+        </span>
         <ChevronDownIcon aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent
@@ -110,6 +138,29 @@ export function DateRangePicker({
         aria-label={label}
         initialFocus={false}
       >
+        {presets === undefined ? null : (
+          <div
+            role="group"
+            aria-label="Quick ranges"
+            className="flex flex-wrap gap-1.5 border-b border-border pb-2.5"
+          >
+            {presets.map((preset) => (
+              <Button
+                key={preset.label}
+                variant={
+                  from === preset.from && to === preset.to
+                    ? "filter-set"
+                    : "secondary"
+                }
+                size="sm"
+                aria-pressed={from === preset.from && to === preset.to}
+                onClick={() => onChange({ from: preset.from, to: preset.to })}
+              >
+                {preset.label}
+              </Button>
+            ))}
+          </div>
+        )}
         <Calendar
           mode="range"
           autoFocus

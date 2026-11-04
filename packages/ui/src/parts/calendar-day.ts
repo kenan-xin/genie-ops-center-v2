@@ -1,4 +1,14 @@
-import { format, parseISO } from "date-fns";
+import {
+  endOfMonth,
+  endOfQuarter,
+  format,
+  parseISO,
+  startOfMonth,
+  startOfQuarter,
+  startOfYear,
+  subDays,
+  subMonths,
+} from "date-fns";
 
 import { formatChartValue } from "./chart-data.ts";
 
@@ -65,6 +75,41 @@ export const dateOfDay = (day: string) => parseISO(day);
 
 /** The ISO day of a date that the calendar picked, from its local fields. */
 export const dayOfDate = (date: Date) => format(date, "yyyy-MM-dd");
+
+export type QuickRange = {
+  readonly label: string;
+  readonly from: string;
+  readonly to: string;
+};
+
+/**
+ * The quick ranges of a list date range (LH25), around `anchor`: the reporting date, or today in
+ * the tenant zone. Each end is an ISO day.
+ */
+export function quickRanges(anchor: string): readonly QuickRange[] {
+  const day = dateOfDay(anchor);
+  const lastMonth = subMonths(day, 1);
+
+  return [
+    {
+      label: "This month",
+      from: dayOfDate(startOfMonth(day)),
+      to: dayOfDate(endOfMonth(day)),
+    },
+    {
+      label: "Last month",
+      from: dayOfDate(startOfMonth(lastMonth)),
+      to: dayOfDate(endOfMonth(lastMonth)),
+    },
+    { label: "Last 30 days", from: dayOfDate(subDays(day, 29)), to: anchor },
+    {
+      label: "This quarter",
+      from: dayOfDate(startOfQuarter(day)),
+      to: dayOfDate(endOfQuarter(day)),
+    },
+    { label: "Year to date", from: dayOfDate(startOfYear(day)), to: anchor },
+  ];
+}
 
 const rangeFormat = new Intl.DateTimeFormat("en-GB", {
   day: "numeric",

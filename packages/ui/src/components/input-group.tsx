@@ -103,18 +103,25 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
+// Inside the group's 1 px border, so the group is as high as a `filter` Button.
+const FILTER_SIZE = "h-10.5 min-h-10.5 lg:h-8.5 lg:min-h-8.5";
+
 // The bare primitive, not `Input`: the group draws the border, the fill and the focus ring.
+
 function InputGroupInput({
   className,
   size = "md",
   ...props
-}: Omit<InputPrimitive.Props, "size"> & { size?: keyof typeof inputSizes }) {
+}: Omit<InputPrimitive.Props, "size"> & {
+  /** `filter`: a 44 px group under 1024 px and 36 px in the desktop bar, for a list filter. */
+  size?: keyof typeof inputSizes | "filter";
+}) {
   return (
     <InputPrimitive
       data-slot="input-group-control"
       className={cn(
         "w-full min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed",
-        inputSizes[size],
+        size === "filter" ? FILTER_SIZE : inputSizes[size],
         className
       )}
       {...props}

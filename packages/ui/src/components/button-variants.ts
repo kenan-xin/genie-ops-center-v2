@@ -15,6 +15,10 @@ const buttonVariants = cva(
           "border-transparent bg-primary text-primary-foreground not-disabled:not-aria-disabled:hover:bg-primary/94 not-disabled:not-aria-disabled:active:bg-primary/80",
         "secondary":
           "border-input bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
+        // A filter control with a set value: tinted and semibold, where an empty one stays
+        // secondary (Spec 7 R-37a, czjw.65).
+        "filter-set":
+          "border-primary/40 bg-primary/8 font-semibold text-primary not-disabled:not-aria-disabled:hover:bg-primary/14 dark:text-brand-on-dark",
         "danger":
           "border-transparent bg-destructive text-white not-disabled:not-aria-disabled:hover:bg-destructive/94 not-disabled:not-aria-disabled:active:bg-destructive/80",
         // A destructive action beside others: the secondary outline with red text (DESIGN.md "Danger").
@@ -29,6 +33,8 @@ const buttonVariants = cva(
         "sm": `h-8 min-h-8 px-3 ${hitArea}`,
         "md": "h-10 min-h-10 px-4",
         "lg": "h-11 min-h-11 px-5",
+        // A list filter control: 44 px under 1024 px, 36 px in the desktop bar (R-37a).
+        "filter": "h-11 min-h-11 px-3 lg:h-9 lg:min-h-9",
         "icon": "size-11 lg:size-10",
         "icon-sm": `size-8 ${hitArea}`,
       },

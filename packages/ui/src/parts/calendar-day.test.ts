@@ -5,7 +5,29 @@ import {
   dayFromText,
   dayOfDate,
   formatDayRange,
+  quickRanges,
 } from "./calendar-day.ts";
+
+// The quick ranges of the list date range (LH25), from the reporting date or today.
+describe("quickRanges", () => {
+  it("gives the five ranges of the prototype", () => {
+    expect(quickRanges("2026-11-03")).toEqual([
+      { label: "This month", from: "2026-11-01", to: "2026-11-30" },
+      { label: "Last month", from: "2026-10-01", to: "2026-10-31" },
+      { label: "Last 30 days", from: "2026-10-05", to: "2026-11-03" },
+      { label: "This quarter", from: "2026-10-01", to: "2026-12-31" },
+      { label: "Year to date", from: "2026-01-01", to: "2026-11-03" },
+    ]);
+  });
+
+  it("takes last month from the year before in January", () => {
+    expect(quickRanges("2026-01-15")[1]).toEqual({
+      label: "Last month",
+      from: "2025-12-01",
+      to: "2025-12-31",
+    });
+  });
+});
 
 // Design review 4.4: the review writes days as "26 Oct 2026" and still takes the ISO day it read.
 describe("dayFromText", () => {

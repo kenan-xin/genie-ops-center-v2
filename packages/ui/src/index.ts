@@ -135,7 +135,44 @@ export {
   dayOfDate,
   formatDay,
   formatDayRange,
+  quickRanges,
 } from "./parts/calendar-day.ts";
+
+export type { QuickRange } from "./parts/calendar-day.ts";
+
+export type {
+  BuiltInFilterKind,
+  ListDefinition,
+  ListFilterDefinition,
+  ListOption,
+  ListParams,
+  ListSort,
+  ListSortKind,
+  ListTabDefinition,
+  ListTabsDefinition,
+} from "./list-header/definitions.ts";
+
+export {
+  dayRangeParam,
+  readDayRange,
+  readSort,
+  setFilterCount,
+  sortParam,
+  useListState,
+} from "./list-header/list-state.ts";
+
+export type { DayRangeValue, ListState } from "./list-header/list-state.ts";
+
+export { BUILT_IN_CONTROLS } from "./list-header/filter-controls.tsx";
+
+export type {
+  ListFilterControl,
+  ListFilterControlProps,
+} from "./list-header/filter-controls.tsx";
+
+export { FilterBar } from "./list-header/filter-bar.tsx";
+
+export { FilterSheet } from "./list-header/filter-sheet.tsx";
 
 export { Calendar } from "./components/calendar.tsx";
 
