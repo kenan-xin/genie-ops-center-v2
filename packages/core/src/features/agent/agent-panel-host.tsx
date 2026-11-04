@@ -185,7 +185,7 @@ export function AgentPanelHost(props: {
               pending={
                 outbox === null
                   ? undefined
-                  : { text: outbox, onSent: clearOutbox }
+                  : { text: outbox.text, onSent: clearOutbox }
               }
               onFinished={pageFinished}
             />

@@ -65,8 +65,10 @@ const onFinished = fn();
 
 /** A page that talks to the panel through the seam, as a dashboard does. */
 function TestPage() {
+  const [recordId, setRecordId] = useState("d1");
+
   const { send } = useAgentPage({
-    context: { recordType: "analytics-dashboard", recordId: "d1" },
+    context: { recordType: "analytics-dashboard", recordId },
     about: "Monthly review",
     onFinished,
   });
@@ -80,6 +82,9 @@ function TestPage() {
       </button>
       <button type="button" onClick={() => setRenders(renders + 1)}>
         Draw again ({renders})
+      </button>
+      <button type="button" onClick={() => setRecordId("d2")}>
+        Open the next dashboard
       </button>
     </div>
   );
@@ -249,5 +254,37 @@ export const APageTalksToThePanel: Story = {
     await expect(region).not.toHaveTextContent("About:");
     release();
     await expect(onFinished).toHaveBeenCalledTimes(1);
+  },
+};
+
+// A page's message waits while an answer streams. It goes for the record it was sent for, and is
+// dropped once the person opens another record, so it never changes the wrong one.
+export const AQueuedMessageKeepsItsRecord: Story = {
+  name: "A queued message keeps its record",
+  render: () => <Frame page />,
+  play: async ({ canvas }) => {
+    const add = canvas.getByRole("button", { name: "Add a chart" });
+
+    await userEvent.click(add);
+    await screen.findByText("Half an");
+
+    // Queued for d1 while the first answer streams; it goes once that answer ends.
+    await userEvent.click(add);
+    release();
+    await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(2));
+    await expect(sentBody(1).context).toEqual({
+      recordType: "analytics-dashboard",
+      recordId: "d1",
+    });
+
+    // Queued for d1, then the person opens d2: nothing goes.
+    await userEvent.click(add);
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Open the next dashboard" })
+    );
+    release();
+    await waitFor(() => expect(onFinished).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect(agentRoute).toHaveBeenCalledTimes(2);
   },
 };

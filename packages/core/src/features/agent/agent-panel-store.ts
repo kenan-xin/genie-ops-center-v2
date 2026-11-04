@@ -20,8 +20,8 @@ type AgentPanelState = {
   readonly working: boolean;
   /** The page that registered last, by the id of its hook; null on a page with none. */
   readonly page: (AgentPage & { readonly owner: string }) | null;
-  /** A message a page asked to send, until the chat sent it. */
-  readonly outbox: string | null;
+  /** A message a page asked to send, with the record it was sent for, until the chat sent it. */
+  readonly outbox: { readonly text: string; readonly record: string } | null;
   /** The Agent button that opened the panel, so Close gives it focus back. */
   readonly opener: HTMLElement | null;
 };
@@ -50,9 +50,34 @@ export function setPanelWorking(working: boolean): void {
   agentPanelStore.setState({ working });
 }
 
+/** The record a page shows, as one comparable key; "" beside a list or on no page. */
+function recordOf(page: AgentPage | null): string {
+  const context = page?.context;
+
+  return context === undefined
+    ? ""
+    : `${context.recordType}:${context.recordId}`;
+}
+
+/**
+ * Sets the page. A queued message waits while an answer streams; if the person moved to another
+ * record meanwhile, it is dropped, so it never changes a record it was not sent for.
+ */
+function setPage(page: AgentPanelState["page"]): void {
+  const { outbox } = agentPanelStore.getState();
+
+  agentPanelStore.setState(
+    outbox !== null && outbox.record !== recordOf(page)
+      ? { page, outbox: null }
+      : { page }
+  );
+}
+
 /** Opens the panel and sends `text` once the chat is free. */
 function sendToPanel(text: string): void {
-  agentPanelStore.setState({ open: true, outbox: text });
+  const record = recordOf(agentPanelStore.getState().page);
+
+  agentPanelStore.setState({ open: true, outbox: { text, record } });
 }
 
 export type AgentPageHandle = {
@@ -70,13 +95,13 @@ export function useAgentPage(page: AgentPage): AgentPageHandle {
   // Each render, so a new name, list or callback reaches the panel. The page reads only `open`,
   // so this write never draws the page again.
   useEffect(() => {
-    agentPanelStore.setState({ page: { ...page, owner } });
+    setPage({ ...page, owner });
   });
 
   useEffect(
     () => () => {
       if (agentPanelStore.getState().page?.owner === owner) {
-        agentPanelStore.setState({ page: null });
+        setPage(null);
       }
     },
     [owner]
