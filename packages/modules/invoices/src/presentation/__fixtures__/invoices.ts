@@ -242,6 +242,7 @@ export const partPaidInvoiceRecord: ShownInvoice = {
     },
   ],
   documentUrl: "https://example.test/api/files/download?token=fixture",
+  fields: [],
 };
 
 /** The same invoice for a reader without `invoices:write`. */
@@ -288,6 +289,7 @@ export const noDueDateInvoiceRecord: InvoiceRecordView = {
   allocations: [],
   history: [],
   documentUrl: null,
+  fields: [],
 };
 
 export const laterInvoiceRecord: InvoiceRecordView = {

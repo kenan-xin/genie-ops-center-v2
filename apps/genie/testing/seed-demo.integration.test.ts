@@ -138,7 +138,7 @@ describe("the demo seed command", () => {
       "1. Role assignments for the demo account: 6 to write, 0 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: blank -> 2026-10-27",
       "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
-      "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
+      "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
       "5. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
       "6. Receivables overview starter dashboard: 1 to write, 0 already present (dashboard row)",
       "Dry run: nothing written.",
@@ -155,7 +155,7 @@ describe("the demo seed command", () => {
       "1. Role assignments for the demo account: 3 to write, 0 already present (Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: blank -> 2026-10-27",
       "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
-      "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows)",
+      "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
       "5. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
     ]);
   });
@@ -192,6 +192,8 @@ describe("the demo seed command", () => {
       "public.payment": 30,
       "public.allocation": 30,
       "public.allocation_event": 30,
+      // One `extracted` row per field of each history reading, and one per payment's numbers.
+      "public.field_origin": 494,
       // The module writes the history rows as the demo account; the starter row has no actor.
       "public.audit_event": 103,
     });
@@ -261,7 +263,7 @@ describe("the demo seed command", () => {
       "1. Role assignments for the demo account: 0 to write, 6 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
       "2. Reporting date: 2026-10-27, already set",
       "3. Model connection: chat anthropic/claude-opus-5.5 and document openai/gpt-6.1-terra, already set",
-      "4. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows)",
+      "4. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows), 0 readings to store",
       "5. Demo pack history: 0 invoices and 0 payments to write, 36 and 30 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
       "6. Receivables overview starter dashboard: 0 to write, 1 already present (dashboard row)",
       "Already seeded: nothing to write.",

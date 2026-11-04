@@ -215,6 +215,7 @@ export const partAllocatedPaymentRecord: ShownPayment = {
     },
   ],
   documentUrl: "https://example.test/api/files/download?token=fixture",
+  fields: [],
 };
 
 /** The same payment for a reader without `invoices:write`. */

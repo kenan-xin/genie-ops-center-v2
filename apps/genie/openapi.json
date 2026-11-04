@@ -5040,6 +5040,67 @@
                             }
                           ]
                         },
+                        "fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "enum": [
+                                  "customer",
+                                  "number",
+                                  "date",
+                                  "dueDate",
+                                  "paymentTerms",
+                                  "currency",
+                                  "amount",
+                                  "reference",
+                                  "method",
+                                  "description",
+                                  "invoiceNumbers"
+                                ],
+                                "type": "string"
+                              },
+                              "origin": {
+                                "enum": [
+                                  "extracted",
+                                  "entered",
+                                  "corrected"
+                                ],
+                                "type": "string"
+                              },
+                              "quote": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "page": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "exclusiveMinimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "origin",
+                              "quote",
+                              "page"
+                            ]
+                          }
+                        },
                         "invoice": {
                           "type": "object",
                           "properties": {
@@ -5178,6 +5239,7 @@
                         "allocations",
                         "history",
                         "documentUrl",
+                        "fields",
                         "invoice"
                       ]
                     },
@@ -5507,6 +5569,67 @@
                             }
                           ]
                         },
+                        "fields": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "field": {
+                                "enum": [
+                                  "customer",
+                                  "number",
+                                  "date",
+                                  "dueDate",
+                                  "paymentTerms",
+                                  "currency",
+                                  "amount",
+                                  "reference",
+                                  "method",
+                                  "description",
+                                  "invoiceNumbers"
+                                ],
+                                "type": "string"
+                              },
+                              "origin": {
+                                "enum": [
+                                  "extracted",
+                                  "entered",
+                                  "corrected"
+                                ],
+                                "type": "string"
+                              },
+                              "quote": {
+                                "anyOf": [
+                                  {
+                                    "type": "string"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "page": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "exclusiveMinimum": 0
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "field",
+                              "origin",
+                              "quote",
+                              "page"
+                            ]
+                          }
+                        },
                         "payment": {
                           "type": "object",
                           "properties": {
@@ -5596,6 +5719,7 @@
                         "allocations",
                         "history",
                         "documentUrl",
+                        "fields",
                         "payment"
                       ]
                     },

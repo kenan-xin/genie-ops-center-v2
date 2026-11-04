@@ -6,17 +6,22 @@ import {
   queryDataset,
   type ResourceRef,
 } from "@genie/core";
-import { eq } from "drizzle-orm";
+import { asc, eq } from "drizzle-orm";
 import { z } from "zod";
 
-import { allocationRow, DUE_DATE_SOURCES } from "../../contract.ts";
+import {
+  allocationRow,
+  DUE_DATE_SOURCES,
+  type RecordField,
+  recordField,
+} from "../../contract.ts";
 import type {
   AllocationRow,
   InvoiceRecordView,
   PaymentRecordView,
 } from "../../presentation/views.ts";
 import { RECORD_TYPES } from "../../record-types.ts";
-import { invoice, payment, sourceDocument } from "../../schema.ts";
+import { fieldOrigin, invoice, payment, sourceDocument } from "../../schema.ts";
 import { allocationHistory } from "./history.ts";
 import {
   invoiceListRowOf,
@@ -75,6 +80,40 @@ async function documentUrlOf(
   });
 
   return link.url;
+}
+
+/** Where each field of the record's document came from, by field, and none for a hand record (R-38a). */
+async function fieldSourcesOf(
+  ctx: ModuleRPCContext,
+  documentId: string | null
+): Promise<RecordField[]> {
+  if (documentId === null) return [];
+
+  return ctx.tenant.db
+    .select({
+      field: fieldOrigin.field,
+      origin: fieldOrigin.origin,
+      quote: fieldOrigin.quote,
+      page: fieldOrigin.page,
+    })
+    .from(fieldOrigin)
+    .where(eq(fieldOrigin.documentId, documentId))
+    .orderBy(asc(fieldOrigin.field))
+    .then((rows) => rows.map((row) => recordField.parse(row)));
+}
+
+/** The source PDF link and the field sources of a record's document. */
+async function documentOf(
+  ctx: ModuleRPCContext,
+  ref: ResourceRef,
+  documentId: string | null
+): Promise<{ documentUrl: string | null; fields: RecordField[] }> {
+  const [documentUrl, fields] = await Promise.all([
+    documentUrlOf(ctx, ref, documentId),
+    fieldSourcesOf(ctx, documentId),
+  ]);
+
+  return { documentUrl, fields };
 }
 
 /**
@@ -148,7 +187,7 @@ export async function loadInvoiceRecord(
       allocationRow.parse(row)
     ),
     history,
-    documentUrl: await documentUrlOf(ctx, ref, own[0]?.documentId ?? null),
+    ...(await documentOf(ctx, ref, own[0]?.documentId ?? null)),
   };
 }
 
@@ -221,6 +260,6 @@ export async function loadPaymentRecord(
       allocationRow.parse(row)
     ),
     history,
-    documentUrl: await documentUrlOf(ctx, ref, own[0]?.documentId ?? null),
+    ...(await documentOf(ctx, ref, own[0]?.documentId ?? null)),
   };
 }

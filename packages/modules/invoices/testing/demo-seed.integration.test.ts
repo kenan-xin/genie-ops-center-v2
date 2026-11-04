@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
+import { basename } from "node:path";
 
 import {
   createTenantContext,
@@ -13,13 +14,18 @@ import {
   markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
-import { eq } from "drizzle-orm";
+import { count, eq } from "drizzle-orm";
 import { afterAll, describe, expect, it } from "vitest";
 
 import { invoicesModule } from "../src/module.ts";
-import { invoice, payment, sourceDocument } from "../src/schema.ts";
+import {
+  fieldOrigin,
+  invoice,
+  payment,
+  sourceDocument,
+} from "../src/schema.ts";
 import { DEMO_PACK, readDemoJson } from "./demo-pack.ts";
-import { seedDemoHistory } from "./demo-seed.ts";
+import { planDemoHistory, seedDemoHistory } from "./demo-seed.ts";
 import { insertDocument } from "./factories.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration setup and assertion pairs stay together. */
@@ -33,11 +39,74 @@ type PackRecord = { readonly source_pdf: string };
 
 // SAFETY: the pack's history file is read verbatim and this test reads only the fields it names.
 const PACK = readDemoJson("01_History_Datasets/history_seed.json") as {
-  readonly invoices: readonly (PackRecord & { readonly invoice_id: string })[];
-  readonly payments: readonly (PackRecord & {
-    readonly payment_reference: string;
+  readonly invoices: readonly (PackRecord & {
+    readonly invoice_id: string;
+    readonly document_due_date: string | null;
+    readonly description: string | null;
+    readonly payment_terms: string | null;
   })[];
+  readonly payments: readonly (PackRecord & {
+    readonly payment_id: string;
+    readonly payment_reference: string;
+    readonly method: string | null;
+  })[];
+  readonly payment_allocations: readonly { readonly payment_id: string }[];
 };
+
+/** The fields each history PDF's reading must hold, and its invoice numbers, by file name. */
+const EXPECTED_READINGS = new Map([
+  ...PACK.invoices.map(
+    (record) =>
+      [
+        basename(record.source_pdf),
+        {
+          fields: [
+            "customer",
+            "number",
+            "date",
+            "amount",
+            "currency",
+            ...(record.description === null ? [] : ["description"]),
+            ...(record.payment_terms === null ? [] : ["paymentTerms"]),
+            ...(record.document_due_date === null ? [] : ["dueDate"]),
+          ].toSorted(),
+          numbers: 0,
+        },
+      ] as const
+  ),
+  ...PACK.payments.map(
+    (record) =>
+      [
+        basename(record.source_pdf),
+        {
+          fields: [
+            "customer",
+            "date",
+            "amount",
+            "currency",
+            "reference",
+            ...(record.method === null ? [] : ["method"]),
+          ].toSorted(),
+          numbers: PACK.payment_allocations.filter(
+            (allocation) => allocation.payment_id === record.payment_id
+          ).length,
+        },
+      ] as const
+  ),
+]);
+
+async function originCount(tenant: TenantContext): Promise<number> {
+  const [row] = await tenant.db.select({ n: count() }).from(fieldOrigin);
+
+  return row?.n ?? 0;
+}
+
+async function recordCount(tenant: TenantContext): Promise<number> {
+  const [invoices] = await tenant.db.select({ n: count() }).from(invoice);
+  const [payments] = await tenant.db.select({ n: count() }).from(payment);
+
+  return (invoices?.n ?? 0) + (payments?.n ?? 0);
+}
 
 function pdfOf(record: PackRecord): Buffer {
   return readFileSync(new URL(record.source_pdf, DEMO_PACK));
@@ -186,4 +255,97 @@ describe("demo seed", () => {
     expect(documents).toEqual([{ id: document.id }]);
     expect(saved).toEqual({ documentId: document.id });
   }, 120000);
+
+  it("stores a checked reading for every history document, with nothing dropped", async () => {
+    const { tenant, userId } = await startDeployment();
+
+    await seedDemoHistory(tenant, { userId });
+
+    const documents = await tenant.db
+      .select({
+        id: sourceDocument.id,
+        fileName: sourceDocument.fileName,
+        reading: sourceDocument.reading,
+      })
+      .from(sourceDocument);
+    const origins = await tenant.db
+      .select({
+        documentId: fieldOrigin.documentId,
+        field: fieldOrigin.field,
+        origin: fieldOrigin.origin,
+      })
+      .from(fieldOrigin);
+
+    expect(documents).toHaveLength(66);
+
+    for (const document of documents) {
+      const expected = EXPECTED_READINGS.get(document.fileName ?? "");
+      const name = document.fileName ?? document.id;
+
+      expect(document.reading?.dropped, name).toEqual([]);
+      expect(
+        Object.keys(document.reading?.fields ?? {}).toSorted(),
+        name
+      ).toEqual(expected?.fields);
+      expect(document.reading?.invoiceNumbers, name).toHaveLength(
+        expected?.numbers ?? -1
+      );
+      expect(
+        origins
+          .filter((row) => row.documentId === document.id)
+          .map((row) => `${row.field} ${row.origin}`)
+          .toSorted(),
+        name
+      ).toEqual(
+        [
+          ...(expected?.fields ?? []),
+          ...(expected?.numbers ? ["invoiceNumbers"] : []),
+        ]
+          .toSorted()
+          .map((field) => `${field} extracted`)
+      );
+    }
+
+    const inv0903 = documents.find(
+      (document) => document.fileName === "INV-2026-09-03.pdf"
+    );
+
+    expect(inv0903?.reading?.fields.date).toEqual({
+      value: "2026-09-03",
+      quote: "Invoice date 2026-09-03",
+      page: 1,
+    });
+  }, 120000);
+
+  it("fills the readings of a history seeded before readings, once", async () => {
+    const { tenant, userId } = await startDeployment();
+
+    await seedDemoHistory(tenant, { userId });
+    // A history seeded before readings existed: no reading and no origin row.
+    await tenant.db.delete(fieldOrigin);
+    await tenant.db.update(sourceDocument).set({ reading: null });
+    const records = await recordCount(tenant);
+
+    expect((await planDemoHistory(tenant)).readings).toEqual({
+      toWrite: 66,
+      present: 0,
+    });
+
+    await seedDemoHistory(tenant, { userId });
+
+    const stored = await tenant.db
+      .select({ reading: sourceDocument.reading })
+      .from(sourceDocument);
+
+    expect(stored.filter((row) => row.reading !== null)).toHaveLength(66);
+    expect(await recordCount(tenant)).toBe(records);
+
+    const origins = await originCount(tenant);
+
+    expect((await planDemoHistory(tenant)).readings.toWrite).toBe(0);
+
+    await seedDemoHistory(tenant, { userId });
+
+    expect(await originCount(tenant)).toBe(origins);
+  }, 180000);
 });

@@ -16,10 +16,10 @@ import {
 } from "drizzle-orm/pg-core";
 
 import journal from "../drizzle/meta/_journal.json" with { type: "json" };
-import { DOCUMENT_KINDS, DUE_DATE_SOURCES } from "./contract.ts";
+import { DOCUMENT_KINDS, DUE_DATE_SOURCES, FIELD_ORIGINS } from "./contract.ts";
 import type { StoredReading } from "./services/reading/stored-reading.ts";
 
-export { DOCUMENT_KINDS };
+export { DOCUMENT_KINDS, FIELD_ORIGINS };
 
 export type DocumentKind = (typeof DOCUMENT_KINDS)[number];
 
@@ -38,8 +38,6 @@ export const READING_OUTCOMES = [
 ] as const;
 
 export type ReadingOutcome = (typeof READING_OUTCOMES)[number];
-
-export const FIELD_ORIGINS = ["extracted", "entered", "corrected"] as const;
 
 export const ALLOCATION_ACTIONS = ["linked", "changed", "unlinked"] as const;
 

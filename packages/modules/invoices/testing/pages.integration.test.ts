@@ -40,6 +40,8 @@ import {
 import {
   insertAllocation,
   insertCustomer,
+  insertDocument,
+  insertFieldOrigin,
   insertInvoice,
   insertPayment,
 } from "./factories.ts";
@@ -1023,5 +1025,69 @@ describe("invoice pages", () => {
     await expect(
       refused.getPaymentRecord({ id: payment.id })
     ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
+  it("the record answers where each field of its own document was read, and none for a record entered by hand", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    const [read, other] = await Promise.all([
+      insertDocument(t(), { kind: "invoice" }),
+      insertDocument(t(), { kind: "invoice" }),
+    ]);
+    const [invoice, , payment] = await Promise.all([
+      insertInvoice(t(), { customerId, documentId: read.id }),
+      insertInvoice(t(), { customerId, documentId: other.id }),
+      insertPayment(t(), { customerId, documentId: null }),
+    ]);
+    await Promise.all([
+      insertFieldOrigin(t(), {
+        documentId: read.id,
+        field: "customer",
+        quote: "Bill to: Harbor Foods",
+      }),
+      insertFieldOrigin(t(), {
+        documentId: read.id,
+        field: "amount",
+        origin: "corrected",
+        quote: "TOTAL (SGD) 7,200.00",
+      }),
+      insertFieldOrigin(t(), {
+        documentId: read.id,
+        field: "description",
+        origin: "entered",
+        quote: null,
+        page: null,
+      }),
+      insertFieldOrigin(t(), {
+        documentId: other.id,
+        field: "number",
+        quote: "Invoice number INV-OTHER",
+      }),
+    ]);
+    const { userId } = await insertPersonWith(t(), [...READER]);
+    const api = callProcedure(invoicesRouter, contextFor(userId));
+    const [invoiceView, paymentView] = await Promise.all([
+      api.getInvoiceRecord({ id: invoice.id }),
+      api.getPaymentRecord({ id: payment.id }),
+    ]);
+
+    if (invoiceView.kind !== "shown" || paymentView.kind !== "shown") {
+      throw new Error("a record answered the reporting-date note");
+    }
+    expect(invoiceView.fields).toEqual([
+      {
+        field: "amount",
+        origin: "corrected",
+        quote: "TOTAL (SGD) 7,200.00",
+        page: 1,
+      },
+      {
+        field: "customer",
+        origin: "extracted",
+        quote: "Bill to: Harbor Foods",
+        page: 1,
+      },
+      { field: "description", origin: "entered", quote: null, page: null },
+    ]);
+    expect(paymentView.fields).toEqual([]);
   });
 });

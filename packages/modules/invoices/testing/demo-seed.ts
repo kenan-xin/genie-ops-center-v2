@@ -9,7 +9,7 @@ import {
   withTransaction,
 } from "@genie/core";
 import { DemoSeedRefused } from "@genie/core/testing";
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 
 import { INVOICES_PERMISSIONS } from "../src/permissions.ts";
 import { invoicesRecordTypes } from "../src/record-types.ts";
@@ -17,10 +17,18 @@ import { invoicesRouter } from "../src/router.ts";
 import {
   allocationEvent,
   type DocumentKind,
+  fieldOrigin,
   invoice,
   payment,
   sourceDocument,
 } from "../src/schema.ts";
+import type { ModelReading } from "../src/services/reading/model-output.ts";
+import { extractedOrigins } from "../src/services/reading/origin-rows.ts";
+import {
+  centsText,
+  checkReading,
+} from "../src/services/reading/quote-check.ts";
+import { extractTextLayer } from "../src/services/reading/text-layer.ts";
 import {
   DEMO_PACK,
   type DemoHistoryIds,
@@ -38,6 +46,7 @@ type SeedInvoice = {
   readonly invoice_id: string;
   readonly customer_id: string;
   readonly invoice_date: string;
+  readonly document_due_date: string | null;
   readonly due_date: string | null;
   readonly due_date_source: "document" | "user" | "unspecified";
   readonly payment_terms: string | null;
@@ -81,6 +90,8 @@ export type DemoHistoryPlan = {
   readonly documents: DemoHistoryCount;
   readonly invoices: DemoHistoryCount;
   readonly payments: DemoHistoryCount;
+  /** The checked readings of the history PDFs, which the record pages pin (R-38a). */
+  readonly readings: DemoHistoryCount;
 };
 
 /** One history PDF, the pack record it backs, and what this deployment already holds of it. */
@@ -91,6 +102,7 @@ type Source = {
   readonly bytes: Buffer;
   readonly sha256: string;
   readonly documentId: string | undefined;
+  readonly hasReading: boolean;
   readonly record:
     | { readonly id: string; readonly customerId: string }
     | undefined;
@@ -160,6 +172,7 @@ async function readSources(
       id: sourceDocument.id,
       sha256: sourceDocument.sha256,
       kind: sourceDocument.kind,
+      hasReading: sql<boolean>`${sourceDocument.reading} is not null`,
       invoiceId: invoice.id,
       invoiceCustomerId: invoice.customerId,
       paymentId: payment.id,
@@ -181,7 +194,11 @@ async function readSources(
     const document = byHash.get(file.sha256);
 
     if (document === undefined) {
-      return Object.assign(file, { documentId: undefined, record: undefined });
+      return Object.assign(file, {
+        documentId: undefined,
+        hasReading: false,
+        record: undefined,
+      });
     }
 
     if (document.kind !== file.kind) {
@@ -196,6 +213,7 @@ async function readSources(
 
     return Object.assign(file, {
       documentId: document.id,
+      hasReading: document.hasReading,
       record:
         id === null || customerId === null ? undefined : { id, customerId },
     });
@@ -209,6 +227,10 @@ async function readSources(
       },
       invoices: count(sources.filter((source) => source.kind === "invoice")),
       payments: count(sources.filter((source) => source.kind === "payment")),
+      readings: {
+        toWrite: sources.filter((source) => !source.hasReading).length,
+        present: sources.filter((source) => source.hasReading).length,
+      },
     },
     sources,
   };
@@ -458,5 +480,166 @@ async function saveDemoHistory(
       )
   );
 
+  await storeHistoryReadings(tenant, seed, sources);
+
   return { plan, ids: { customers, invoices, payments } };
+}
+
+const MONEY = new Intl.NumberFormat("en-US", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+/** Every history PDF has one page. */
+const quoted = (value: string, quote = value) => ({ value, quote, page: 1 });
+
+/**
+ * The reading a model gives for a history PDF: the pack's values, each quoted with the label the
+ * PDF prints beside it, so a date never marks the invoice number line that holds the same date.
+ */
+function historyReadingOf(source: Source, seed: Seed): ModelReading {
+  const none = {
+    number: null,
+    dueDate: null,
+    paymentTerms: null,
+    reference: null,
+    method: null,
+    description: null,
+    invoiceNumbers: [],
+  };
+
+  const amountOf = (total: number, currency: string) => ({
+    amount: quoted(
+      centsText(toCents(total)),
+      `TOTAL (${currency}) ${MONEY.format(total)}`
+    ),
+    currency: quoted(currency, `Currency: ${currency}`),
+  });
+
+  const nameOf = (customerId: string) =>
+    saved(
+      new Map(seed.customers.map((row) => [row.customer_id, row])),
+      customerId,
+      "customer"
+    ).company_name;
+
+  if (source.kind === "invoice") {
+    const record = saved(
+      new Map(seed.invoices.map((row) => [row.invoice_id, row])),
+      source.packId,
+      "invoice"
+    );
+
+    const customer = nameOf(record.customer_id);
+
+    return {
+      ...none,
+      kind: "invoice",
+      customer: quoted(customer, `Bill to: ${customer}`),
+      number: quoted(record.invoice_id, `Invoice number ${record.invoice_id}`),
+      date: quoted(record.invoice_date, `Invoice date ${record.invoice_date}`),
+      dueDate:
+        record.document_due_date === null
+          ? null
+          : quoted(
+              record.document_due_date,
+              `Payment due date ${record.document_due_date}`
+            ),
+      description:
+        record.description === null ? null : quoted(record.description),
+      paymentTerms:
+        record.payment_terms === null ? null : quoted(record.payment_terms),
+      ...amountOf(record.total_amount, record.currency),
+    };
+  }
+
+  const record = saved(
+    new Map(seed.payments.map((row) => [row.payment_id, row])),
+    source.packId,
+    "payment"
+  );
+
+  return {
+    ...none,
+    kind: "payment",
+    customer: quoted(nameOf(record.customer_id)),
+    date: quoted(record.payment_date, `Payment date ${record.payment_date}`),
+    reference:
+      record.payment_reference === null
+        ? null
+        : quoted(
+            record.payment_reference,
+            `Payment reference ${record.payment_reference}`
+          ),
+    method:
+      record.method === null
+        ? null
+        : quoted(record.method, `Payment method ${record.method}`),
+    invoiceNumbers: seed.payment_allocations
+      .filter((allocation) => allocation.payment_id === record.payment_id)
+      .map((allocation) =>
+        quoted(
+          allocation.invoice_id,
+          `Invoice reference ${allocation.invoice_id}`
+        )
+      ),
+    ...amountOf(record.amount, record.currency),
+  };
+}
+
+/**
+ * Stores a checked reading, with its `extracted` origins, on every history document that has
+ * none (R-38a). It runs after every record, so the origin rows draw the last ids and every record
+ * keeps its id (xok3.39, DEC-55). `updated_at` stays, so the inbox order does not move.
+ */
+async function storeHistoryReadings(
+  tenant: TenantContext,
+  seed: Seed,
+  sources: readonly Source[]
+): Promise<void> {
+  const unread = await tenant.db
+    .select({ id: sourceDocument.id, sha256: sourceDocument.sha256 })
+    .from(sourceDocument)
+    .where(
+      and(
+        isNull(sourceDocument.reading),
+        inArray(
+          sourceDocument.sha256,
+          sources.map((source) => source.sha256)
+        )
+      )
+    )
+    // The origin rows draw their ids in this order, so a fresh database always gets the same ones.
+    .orderBy(sourceDocument.id);
+
+  const bySha = new Map(sources.map((source) => [source.sha256, source]));
+
+  for (const document of unread) {
+    const source = saved(bySha, document.sha256, "source");
+
+    // oxlint-disable-next-line no-await-in-loop -- one PDF at a time keeps the memory flat.
+    const { pages } = await extractTextLayer(source.bytes);
+    const reading = checkReading(historyReadingOf(source, seed), pages);
+
+    // oxlint-disable-next-line no-await-in-loop -- one transaction per document, in turn.
+    await withTransaction(tenant, async (tx) => {
+      const [stored] = await tx
+        .update(sourceDocument)
+        .set({ reading })
+        .where(
+          and(
+            eq(sourceDocument.id, document.id),
+            isNull(sourceDocument.reading)
+          )
+        )
+        .returning({ id: sourceDocument.id });
+
+      if (stored === undefined) return;
+
+      await tx
+        .insert(fieldOrigin)
+        .values(extractedOrigins(document.id, reading))
+        .onConflictDoNothing();
+    });
+  }
 }

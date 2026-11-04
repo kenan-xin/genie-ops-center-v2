@@ -60,6 +60,11 @@ export const READING_FIELDS = [
 
 export type ReadingField = (typeof READING_FIELDS)[number];
 
+/** Where a saved field's value came from: read and checked, typed by a person, or a read value a person replaced. */
+export const FIELD_ORIGINS = ["extracted", "entered", "corrected"] as const;
+
+export type FieldOrigin = (typeof FIELD_ORIGINS)[number];
+
 export const quotedValue = z.object({
   value: z.string(),
   quote: z.string(),
@@ -652,7 +657,20 @@ const afterReportingDate = z.object({
   label: z.string(),
 });
 
-/** `canWrite` is `invoices:write` on the record, which shows the link controls (R-32). */
+/** One `field_origin` row of a record's document: where the field was read, if it was (R-38a). */
+export const recordField = z.object({
+  field: z.enum([...READING_FIELDS, "invoiceNumbers"]),
+  origin: z.enum(FIELD_ORIGINS),
+  quote: z.string().nullable(),
+  page: z.number().int().positive().nullable(),
+});
+
+export type RecordField = z.infer<typeof recordField>;
+
+/**
+ * `canWrite` is `invoices:write` on the record, which shows the link controls (R-32). `fields`
+ * holds the field sources of the record's document, and none for a record entered by hand.
+ */
 const shownRecord = z.object({
   kind: z.literal("shown"),
   asOf: z.string(),
@@ -661,6 +679,7 @@ const shownRecord = z.object({
   allocations: z.array(allocationRow),
   history: z.array(historyRow),
   documentUrl: z.string().nullable(),
+  fields: z.array(recordField),
 });
 
 export const invoiceRecordView = z.discriminatedUnion("kind", [

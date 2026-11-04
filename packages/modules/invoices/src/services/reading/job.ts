@@ -20,6 +20,7 @@ import {
 import { assertCanWriteEverywhere } from "../ledger/access.ts";
 import type { ModelReading } from "./model-output.ts";
 import { readWithModel } from "./model-reading.ts";
+import { extractedOrigins } from "./origin-rows.ts";
 import { matchPaymentReading } from "./payment-draft.ts";
 import { checkReading } from "./quote-check.ts";
 import type { StoredReading } from "./stored-reading.ts";
@@ -85,25 +86,7 @@ async function storeReading(
   kind: ModelReading["kind"],
   reading: StoredReading
 ): Promise<void> {
-  const origins = Object.entries(reading.fields).map(([field, read]) => ({
-    documentId,
-    field,
-    origin: "extracted" as const,
-    quote: read.quote,
-    page: read.page,
-  }));
-
-  const [firstNumber] = reading.invoiceNumbers;
-
-  if (firstNumber !== undefined) {
-    origins.push({
-      documentId,
-      field: "invoiceNumbers",
-      origin: "extracted",
-      quote: firstNumber.quote,
-      page: firstNumber.page,
-    });
-  }
+  const origins = extractedOrigins(documentId, reading);
 
   await withTransaction(tenant, async (tx) => {
     const [stored] = await tx

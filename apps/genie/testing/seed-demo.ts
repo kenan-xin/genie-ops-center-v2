@@ -51,6 +51,7 @@ const NO_HISTORY: DemoHistoryPlan = {
   documents: { toWrite: 0, present: 0 },
   invoices: { toWrite: 0, present: 0 },
   payments: { toWrite: 0, present: 0 },
+  readings: { toWrite: 0, present: 0 },
 };
 
 /** Plans, prints the plan as report lines, and writes it unless `dryRun` or nothing is missing. */
@@ -110,7 +111,7 @@ export async function seedDemo(input: {
       modelsDiffer(access)
         ? `3. Model connection: chat ${models.from.chat ?? "blank"} -> ${models.to.chat}, document ${models.from.document ?? "blank"} -> ${models.to.document}, ${addedModels} allowed models to add`
         : `3. Model connection: chat ${models.to.chat} and document ${models.to.document}, already set`,
-      `4. History PDFs through FileStorage: ${history.documents.toWrite} to write, ${history.documents.present} already present (file, file_blob and document rows)`,
+      `4. History PDFs through FileStorage: ${history.documents.toWrite} to write, ${history.documents.present} already present (file, file_blob and document rows), ${history.readings.toWrite} readings to store`,
       `5. Demo pack history: ${history.invoices.toWrite} invoices and ${history.payments.toWrite} payments to write, ${history.invoices.present} and ${history.payments.present} already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)`,
       ...(withStarter
         ? [
@@ -126,6 +127,7 @@ export async function seedDemo(input: {
       history.documents.toWrite === 0 &&
       history.invoices.toWrite === 0 &&
       history.payments.toWrite === 0 &&
+      history.readings.toWrite === 0 &&
       starter.toWrite === 0;
 
     if (input.dryRun) return [...lines, "Dry run: nothing written."];
