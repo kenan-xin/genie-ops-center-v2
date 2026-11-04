@@ -4,6 +4,7 @@
  */
 export {
   type AgentPage,
+  resetAgentPanel,
   useAgentPage,
   useAgentPanel,
 } from "./agent-panel-store.ts";

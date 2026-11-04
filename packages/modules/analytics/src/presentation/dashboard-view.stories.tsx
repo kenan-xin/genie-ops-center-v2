@@ -1,3 +1,8 @@
+import {
+  AgentButton,
+  AgentPanelHost,
+  resetAgentPanel,
+} from "@genie/core/features/agent/panel";
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -55,7 +60,7 @@ function withQuery(Story: () => ReactNode) {
             panelData,
             filterValues,
           },
-          agent: { chart },
+          agent: { chart, messages: async () => [] },
         }}
       >
         <Story />
@@ -93,6 +98,23 @@ async function openRenameDashboard(canvas: ReturnType<typeof within>) {
   );
 }
 
+/** The shell's agent panel and its button beside the page, as the app mounts them. */
+function withAgentPanel(Story: () => ReactNode) {
+  return (
+    <>
+      <AgentButton />
+      <Story />
+      <AgentPanelHost
+        models={null}
+        labels={{ steps: {}, datasets: {} }}
+        suggestions={[]}
+        inbox={[]}
+        timeZone="UTC"
+      />
+    </>
+  );
+}
+
 /** The chat's request, held open, so a story sees what a starter chip sent without a model. */
 const agentFetch = fn(
   (_url: RequestInfo | URL, _init?: RequestInit) =>
@@ -111,6 +133,7 @@ function holdAgentRequests() {
 }
 
 function serve(page: DashboardPageView) {
+  resetAgentPanel();
   readDashboard.mockReset().mockResolvedValue(page.dashboard);
   changeDashboard.mockReset().mockResolvedValue(page.dashboard);
   undoDashboard.mockReset().mockResolvedValue(page.dashboard);
@@ -169,9 +192,11 @@ async function starterSends(canvas: ReturnType<typeof within>) {
     canvas.getByRole("button", { name: "Add a chart by month" })
   );
 
-  const chat = within(await screen.findByRole("region", { name: "Chat" }));
+  // The chip opens the shell's agent panel and sends through it.
+  const chat = within(await screen.findByRole("region", { name: "Agent" }));
 
-  const sent = await within(chat.getByRole("log")).findByText(
+  // The conversation loads in its own chunk once the panel opens.
+  const sent = await within(await chat.findByRole("log")).findByText(
     "Add a chart by month"
   );
 
@@ -186,6 +211,7 @@ async function starterSends(canvas: ReturnType<typeof within>) {
 export const Empty: Story = {
   args: { view: emptyDashboardPage },
   globals: desktop,
+  decorators: [withAgentPanel],
   beforeEach: () => {
     serve(emptyDashboardPage);
 
@@ -194,11 +220,12 @@ export const Empty: Story = {
   play: ({ canvas }) => starterSends(canvas),
 };
 
-/** Below 1280 px the chat is a closed sheet, so the chip opens it first. */
+/** Below 1280 px the panel is a closed sheet, so the chip opens it first. */
 export const EmptyOnPhone: Story = {
   name: "Empty on a phone",
   args: { view: emptyDashboardPage },
   globals: phone,
+  decorators: [withAgentPanel],
   beforeEach: () => {
     serve(emptyDashboardPage);
 
@@ -207,23 +234,47 @@ export const EmptyOnPhone: Story = {
   play: ({ canvas }) => starterSends(canvas),
 };
 
+/** The panel opens with the dashboard's name and its own suggestions (R-49, AG9). */
+const chatOnPlay: Story["play"] = async ({ canvas }) => {
+  await expect(screen.queryByRole("region", { name: "Agent" })).toBeNull();
+  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+  const chat = await screen.findByRole("region", { name: "Agent" });
+
+  await expect(chat).toHaveTextContent(
+    `About: ${chatOnDashboardPage.dashboard.name}`
+  );
+  // The sheet slides in on a phone, so the chip shows once it settles.
+  await waitFor(() =>
+    expect(
+      within(chat).getByRole("button", {
+        name: "Compare with the prior quarter",
+      })
+    ).toBeVisible()
+  );
+};
+
 /**
- * The dashboard's own chat, for a person who may ask while AI is on (R-49). From 1280 px it docks
- * open as a 400 px column; below that the "Open Chat" button opens it as a sheet. No message is
- * sent here; `dashboards.spec.ts` proves a chat change in a browser.
+ * The shell's agent panel beside the dashboard, for a person who may ask while AI is on (R-49).
+ * It starts closed; the Agent button opens it. No message is sent here; `dashboards.spec.ts`
+ * proves a chat change in a browser.
  */
 export const ChatOn: Story = {
   name: "Chat on",
   args: { view: chatOnDashboardPage },
   globals: desktop,
+  decorators: [withAgentPanel],
   beforeEach: () => serve(chatOnDashboardPage),
+  play: chatOnPlay,
 };
 
 export const ChatOnPhone: Story = {
   name: "Chat on a phone",
   args: { view: chatOnDashboardPage },
   globals: phone,
+  decorators: [withAgentPanel],
   beforeEach: () => serve(chatOnDashboardPage),
+  play: chatOnPlay,
 };
 
 /** AI is off for the deployment: a note in place of the chat, and hand editing still works. */

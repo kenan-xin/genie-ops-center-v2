@@ -237,8 +237,8 @@ export function ReviewCustomerRow(
 /**
  * Discard, Save and the reason Save waits for, in one bar that stays on screen (design review 4.6):
  * fixed at the bottom below `md`, where the shell keeps the page clear of it, and sticky at the end
- * of the fields card from `md`. The shell's scroll area pads its bottom by 7 rem (`pb-28`), and a
- * sticky box stops at that padding edge, so the bar sticks 7 rem lower to meet the window bottom,
+ * of the fields card from `md`. The shell's scroll area pads its bottom by 2 rem (`pb-8`), and a
+ * sticky box stops at that padding edge, so the bar sticks 2 rem lower to meet the window bottom,
  * as the prototype's bar does. Save is `aria-disabled` with its reason, never `disabled` (DESIGN.md).
  * The reason reads at Save's own size and color right before Save from `md`, and on its own
  * right-aligned line above the buttons below `md` (czjw.65, I7). With a reason, Discard sits at
@@ -256,7 +256,7 @@ export function ReviewSaveBar(props: {
   return (
     <div
       data-shell-bottom-bar=""
-      className="z-10 flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-28"
+      className="z-10 flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8"
     >
       <Button
         type="button"

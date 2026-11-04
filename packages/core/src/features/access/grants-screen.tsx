@@ -613,7 +613,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
           role="region"
           aria-label="Unsaved changes"
           data-shell-bottom-bar=""
-          className="z-10 flex flex-col gap-3 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-28 md:flex-row md:items-center md:justify-between md:gap-6 md:rounded-xl md:border md:px-5"
+          className="z-10 flex flex-col gap-3 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8 md:flex-row md:items-center md:justify-between md:gap-6 md:rounded-xl md:border md:px-5"
         >
           <div className="flex shrink-0 flex-col gap-0.5 text-sm">
             <p className="font-semibold">{plural(total, "unsaved change")}</p>

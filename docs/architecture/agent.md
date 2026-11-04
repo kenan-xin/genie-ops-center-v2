@@ -39,10 +39,15 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 - Each tool call writes one audit row with the tool, the dataset, the query and the row count, never the returned rows (R-47).
 - Only the owner of a chat can open it (R-41).
 
+## Built after wave 4
+
+- Artifacts: a chart or a table of an answer gets its own versions, stored in `agent_artifact` and `agent_artifact_version` (`DEC-56`). Ask's artifact panel shows them.
+- The agent panel: one full-height panel on the right of every signed-in page but Ask replaces the chat bubble and each page's own chat (Spec 7 R-42). The Agent button opens it. A page gives it a record, a line about the page, suggestions and a refresh through `useAgentPage` from `@genie/core/features/agent/panel`.
+
 ## Planned after wave 4
 
 These are decided but not built yet:
 
-- Artifacts: a chart, table, document or record list of an answer gets its own versions, stored in `agent_artifact` and `agent_artifact_version` (`DEC-56`).
-- A chat panel docked on the right of every page replaces the chat bubble, and a page tells the agent what it shows, by names and ids only (Spec 7 R-42).
+- A page tells the agent more of what it shows (tab, filters, search, sort, selection), by names and ids only (`czjw.77`).
+- Documents and record lists as artifacts, with their makers.
 - Long chats are summarized automatically, and full lists go to an artifact or a file instead of the chat.

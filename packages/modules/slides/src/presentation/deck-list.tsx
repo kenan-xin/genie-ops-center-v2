@@ -1,6 +1,6 @@
 "use client";
 
-import { AgentPanel, ChatDock, ChatPanel } from "@genie/core/features/agent";
+import { useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -128,14 +128,21 @@ export type DeckListProps = {
 };
 
 /**
- * The Slides list: the owner's own decks, with create and delete (R-52), and the page's own chat
- * that creates decks, docked from 1280 px (R-46, D12). Delete is the inverse of a chat create.
+ * The Slides list: the owner's own decks, with create and delete (R-52). The shell's agent panel
+ * creates decks beside it (R-46, D12). Delete is the inverse of a chat create.
  */
 export function DeckList(props: DeckListProps) {
   const { view } = props;
-  const { chat } = view;
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
+
+  // No record context: beside a list the chat has no open record. A chat create adds a deck,
+  // and the list reads it at once.
+  useAgentPage({
+    suggestions: view.canWrite ? CHAT_SUGGESTIONS : [],
+    onFinished: () =>
+      void queryClient.invalidateQueries({ queryKey: decksQueryKey() }),
+  });
   const [creating, setCreating] = useState(false);
 
   const [confirm, setConfirm] = useState<{ id: string; title: string } | null>(
@@ -246,27 +253,6 @@ export function DeckList(props: DeckListProps) {
           </InfoNote>
         ) : null}
       </div>
-      {chat.kind === "on" ? (
-        // The page's own chat, docked open from 1280 px; the shell hides its general chat.
-        <ChatDock label="Chat" page dockedByDefault>
-          {(close) => (
-            <ChatPanel title="Chat" about="About your decks" onClose={close}>
-              <AgentPanel
-                models={chat.models}
-                labels={chat.labels}
-                suggestions={view.canWrite ? CHAT_SUGGESTIONS : []}
-                timeZone={view.timeZone}
-                // A chat create adds a deck; the list reads it at once.
-                onFinished={() =>
-                  void queryClient.invalidateQueries({
-                    queryKey: decksQueryKey(),
-                  })
-                }
-              />
-            </ChatPanel>
-          )}
-        </ChatDock>
-      ) : null}
 
       <Dialog
         open={creating}

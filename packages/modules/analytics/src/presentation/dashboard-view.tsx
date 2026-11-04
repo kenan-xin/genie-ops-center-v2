@@ -1,6 +1,6 @@
 "use client";
 
-import { AgentPanel, ChatDock, ChatPanel } from "@genie/core/features/agent";
+import { useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader } from "@genie/core/features/shell";
 import {
   Button,
@@ -75,9 +75,6 @@ export function DashboardView(props: DashboardViewProps) {
 
   // The latest read of any panel, for the one "Figures as of" line (6.1).
   const [readAt, setReadAt] = useState<string | null>(null);
-
-  // A starter chip of the empty dashboard, until the chat sent it.
-  const [starter, setStarter] = useState<string | undefined>(undefined);
 
   function send(
     changes: readonly DashboardChange[],
@@ -164,8 +161,22 @@ export function DashboardView(props: DashboardViewProps) {
       <ChangeRefusal failure={failure} onReload={reload} />
     );
 
-  const chat = view.chat;
-  const chatOn = chat.kind === "on";
+  const chatOn = view.chat.kind === "on";
+
+  // The shell's agent panel works on this dashboard (AG9); a chat change saves a new version,
+  // which the page reads at once.
+  const agent = useAgentPage({
+    context: { recordType: "analytics-dashboard", recordId: dashboard.id },
+    about: dashboard.name,
+    suggestions: view.canWrite ? CHAT_SUGGESTIONS : [],
+    onFinished: () =>
+      void queryClient.invalidateQueries({
+        queryKey: dashboardQueryKey(dashboard.id),
+      }),
+  });
+
+  // Beside the open panel the grid has two columns, so a panel keeps useful width.
+  const narrow = chatOn && agent.open;
 
   // Only a person who may write gets the chat's write tools.
   const starters = chatOn && view.canWrite;
@@ -252,7 +263,7 @@ export function DashboardView(props: DashboardViewProps) {
                         key={text}
                         variant="secondary"
                         size="sm"
-                        onClick={() => setStarter(text)}
+                        onClick={() => agent.send(text)}
                       >
                         {text}
                       </Button>
@@ -263,9 +274,8 @@ export function DashboardView(props: DashboardViewProps) {
             />
           ) : (
             <div
-              className={`grid gap-4 md:grid-cols-4 ${chatOn ? "xl:grid-cols-2" : ""}`}
+              className={`grid gap-4 md:grid-cols-4 ${narrow ? "xl:grid-cols-2" : ""}`}
             >
-              {/* Beside the docked chat the grid has two columns, so a panel keeps useful width. */}
               {dashboard.panels.map((panel, index) => (
                 <PanelCard
                   key={panel.id}
@@ -275,7 +285,7 @@ export function DashboardView(props: DashboardViewProps) {
                   count={dashboard.panels.length}
                   timeZone={view.timeZone}
                   editing={editing}
-                  narrow={chatOn}
+                  narrow={narrow}
                   onRead={(at) =>
                     setReadAt((latest) =>
                       latest === null || at > latest ? at : latest
@@ -296,53 +306,12 @@ export function DashboardView(props: DashboardViewProps) {
             </div>
           )}
         </div>
-        {chat.kind === "off" ? (
+        {view.chat.kind === "off" ? (
           <InfoNote size="md" role="status">
             Chat is off. You can still change this dashboard by hand.
           </InfoNote>
         ) : null}
       </div>
-      {chat.kind === "on" ? (
-        // The page's own chat, docked open from 1280 px; the shell hides its general chat.
-        <ChatDock
-          label="Chat"
-          page
-          dockedByDefault
-          openRequested={starter !== undefined}
-        >
-          {(close) => (
-            <ChatPanel
-              title="Chat"
-              about={`About ${dashboard.name}`}
-              onClose={close}
-            >
-              {/* A new key per dashboard, so a move to another dashboard starts a new chat. */}
-              <AgentPanel
-                key={dashboard.id}
-                context={{
-                  recordType: "analytics-dashboard",
-                  recordId: dashboard.id,
-                }}
-                models={chat.models}
-                labels={chat.labels}
-                suggestions={view.canWrite ? CHAT_SUGGESTIONS : []}
-                timeZone={view.timeZone}
-                pending={
-                  starter === undefined
-                    ? undefined
-                    : { text: starter, onSent: () => setStarter(undefined) }
-                }
-                // A chat change saves a new version; the page reads it at once.
-                onFinished={() =>
-                  void queryClient.invalidateQueries({
-                    queryKey: dashboardQueryKey(dashboard.id),
-                  })
-                }
-              />
-            </ChatPanel>
-          )}
-        </ChatDock>
-      ) : null}
       <Dialog
         open={renaming !== null}
         onOpenChange={(open) => {

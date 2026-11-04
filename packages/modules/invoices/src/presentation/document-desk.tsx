@@ -223,7 +223,7 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
       <section
         aria-label={`Details of ${label}`}
         data-shell-bottom-bar=""
-        className="z-20 flex max-h-(--desk-sheet-height) flex-col rounded-t-2xl bg-card shadow-lg ring-1 ring-border max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-28 xl:hidden"
+        className="z-20 flex max-h-(--desk-sheet-height) flex-col rounded-t-2xl bg-card shadow-lg ring-1 ring-border max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8 xl:hidden"
       >
         <div className="flex shrink-0 flex-col gap-2 px-4 pt-2 pb-3">
           <span

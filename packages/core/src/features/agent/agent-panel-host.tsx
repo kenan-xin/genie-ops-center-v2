@@ -104,14 +104,15 @@ export function AgentPanelHost(props: {
     agentPanelStore.getState().opener?.focus();
   }, [open]);
 
-  if (shell?.agentPanel !== true) return null;
+  // Outside a shell (a module page's story) it draws; inside one, never on Ask.
+  if (shell !== null && !shell.agentPanel) return null;
 
   function close(): void {
     returnFocus.current = docked;
     setPanelOpen(false);
   }
 
-  const Anchor = linkFor(ASK_HREF, shell.linkComponent);
+  const Anchor = linkFor(ASK_HREF, shell?.linkComponent);
 
   const panel = (
     <section

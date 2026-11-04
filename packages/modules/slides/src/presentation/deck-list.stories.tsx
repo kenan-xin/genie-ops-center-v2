@@ -1,3 +1,8 @@
+import {
+  AgentButton,
+  AgentPanelHost,
+  resetAgentPanel,
+} from "@genie/core/features/agent/panel";
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -44,12 +49,29 @@ function withQuery(Story: () => ReactNode) {
       <ModuleClientProvider
         client={{
           slides: { listDecks, createDeck, deleteDeck },
-          agent: { chart },
+          agent: { chart, messages: async () => [] },
         }}
       >
         <Story />
       </ModuleClientProvider>
     </QueryClientProvider>
+  );
+}
+
+/** The shell's agent panel and its button beside the page, as the app mounts them. */
+function withAgentPanel(Story: () => ReactNode) {
+  return (
+    <>
+      <AgentButton />
+      <Story />
+      <AgentPanelHost
+        models={null}
+        labels={{ steps: {}, datasets: {} }}
+        suggestions={[]}
+        inbox={[]}
+        timeZone="UTC"
+      />
+    </>
   );
 }
 
@@ -75,6 +97,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function serve(view: DeckListView) {
+  resetAgentPanel();
   listDecks.mockReset().mockResolvedValue([...view.decks]);
   createDeck.mockReset();
   deleteDeck.mockReset().mockResolvedValue({ id: "deck-1" });
@@ -130,40 +153,43 @@ export const EmptyOnPhone: Story = {
   },
 };
 
+/** The panel opens with the list's own suggestions and no record line (R-46, D12). */
+const chatOnPlay: Story["play"] = async ({ canvas }) => {
+  await expect(screen.queryByRole("region", { name: "Agent" })).toBeNull();
+  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+  const chat = await screen.findByRole("region", { name: "Agent" });
+
+  // The sheet slides in on a phone, so the chip shows once its opening transition ends.
+  await waitFor(() =>
+    expect(
+      within(chat).getByRole("button", {
+        name: "Make a deck of this month's figures",
+      })
+    ).toBeVisible()
+  );
+  await expect(chat).not.toHaveTextContent("About:");
+};
+
 /**
- * The page's own chat, for a person who may ask while AI is on (R-46, D12). From 1280 px it docks
- * open as a 400 px column; below that the "Open Chat" button opens it full height. No message is
- * sent here; `slides.spec.ts` proves a chat create and the list refetch in a browser.
+ * The shell's agent panel beside the list, for a person who may ask while AI is on (R-46, D12).
+ * It starts closed; the Agent button opens it. No message is sent here; `slides.spec.ts` proves a
+ * chat create and the list refetch in a browser.
  */
 export const ChatOn: Story = {
   name: "Chat on",
   globals: desktop,
+  decorators: [withAgentPanel],
   beforeEach: () => serve(deckList),
-  play: async ({ canvas }) => {
-    const chat = await canvas.findByRole("region", { name: "Chat" });
-
-    await expect(
-      within(chat).getByRole("button", { name: "Send" })
-    ).toBeVisible();
-    await expect(chat.getBoundingClientRect().width).toBeLessThanOrEqual(400);
-  },
+  play: chatOnPlay,
 };
 
 export const ChatOnPhone: Story = {
   name: "Chat on a phone",
   globals: phone,
+  decorators: [withAgentPanel],
   beforeEach: () => serve(deckList),
-  play: async ({ canvas }) => {
-    await expect(canvas.queryByRole("region", { name: "Chat" })).toBeNull();
-    await userEvent.click(canvas.getByRole("button", { name: "Open Chat" }));
-
-    const chat = await screen.findByRole("region", { name: "Chat" });
-
-    // The sheet slides in, so Send shows once its opening transition ends.
-    await waitFor(() =>
-      expect(within(chat).getByRole("button", { name: "Send" })).toBeVisible()
-    );
-  },
+  play: chatOnPlay,
 };
 
 const chatOffPlay: Story["play"] = async ({ canvas }) => {

@@ -1,4 +1,8 @@
-import { isLimitedBreakGlass } from "@genie/core";
+import {
+  agentAccess,
+  isLimitedBreakGlass,
+  type ModuleRequestContext,
+} from "@genie/core";
 import {
   PageSkeleton,
   shellChrome,
@@ -10,9 +14,13 @@ import { getTranslations } from "next-intl/server";
 import { redirect } from "next/navigation.js";
 import type { ReactNode } from "react";
 
-import { AgentBubble } from "./agent-bubble.tsx";
+import { AgentPanelGate } from "./agent-panel-gate.tsx";
 import { requireContext } from "./context.ts";
-import { documentSessionState, requireSession } from "./document-session.ts";
+import {
+  documentPrincipal,
+  documentSessionState,
+  requireSession,
+} from "./document-session.ts";
 import { NextAppShell } from "./next-app-shell.tsx";
 import { SessionActivityMount } from "./session-activity-mount.tsx";
 import { shellModel } from "./shell-model.ts";
@@ -40,13 +48,27 @@ export async function ShellFrame(props: {
   readonly children: ReactNode;
 }): Promise<ReactNode> {
   const shell = await shellProps(props.chrome);
-  const settings = await requireContext().tenant.settings.get();
+
+  const ctx: ModuleRequestContext = {
+    tenant: requireContext().tenant,
+    caller: await documentPrincipal(),
+  };
+
+  const [settings, access] = await Promise.all([
+    ctx.tenant.settings.get(),
+    agentAccess(ctx),
+  ]);
+
+  // No host, so no Agent button, for anyone who may not use the agent now (R-42, P7).
+  const agentPanel =
+    access.permitted && access.ai === "on" ? (
+      <AgentPanelGate ctx={ctx} access={access} />
+    ) : undefined;
 
   return (
     <>
       <SessionActivityMount idleMinutes={settings.sessionIdleMinutes} />
-      {/* The shell's chat slot: it makes room for the docked column and steps aside on Ask. */}
-      <NextAppShell {...shell} chat={<AgentBubble />}>
+      <NextAppShell {...shell} agentPanel={agentPanel}>
         {props.children}
       </NextAppShell>
     </>
