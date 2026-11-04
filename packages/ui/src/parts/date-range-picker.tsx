@@ -38,13 +38,17 @@ export type DateRangePickerProps = {
   readonly "aria-describedby"?: string | undefined;
 };
 
-/** The first pick starts a range; the second ends it, in day order. */
+/**
+ * The first pick starts a range; the second ends it, in day order. A range with only one end, such
+ * as an end day from a list address, is completed by the next pick.
+ */
 function nextRange(range: DayRange, day: string): DayRange {
-  if (range.from === undefined || range.to !== undefined) return { from: day };
+  const end = range.from === undefined ? range.to : range.from;
 
-  return day < range.from
-    ? { from: day, to: range.from }
-    : { from: range.from, to: day };
+  if (end === undefined || (range.from !== undefined && range.to !== undefined))
+    return { from: day };
+
+  return day < end ? { from: day, to: end } : { from: end, to: day };
 }
 
 /**
@@ -68,19 +72,23 @@ export function DateRangePicker({
 
   const text =
     from === undefined
-      ? placeholder
+      ? to === undefined
+        ? placeholder
+        : `Until ${formatDay(to)}`
       : to === undefined
         ? `From ${formatDay(from)}`
         : formatDayRange(from, to);
 
   const footer =
     from === undefined
-      ? placeholder
+      ? "pick the start date"
       : to === undefined
         ? "pick the end date"
         : `${differenceInCalendarDays(dateOfDay(to), dateOfDay(from)) + 1} days`;
 
-  const start = from === undefined ? undefined : dateOfDay(from);
+  // An end-only range marks its one day, so the calendar opens on it.
+  const start = dateOfDay(from ?? to ?? "");
+  const known = from !== undefined || to !== undefined;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -106,7 +114,7 @@ export function DateRangePicker({
           mode="range"
           autoFocus
           numberOfMonths={wide ? 2 : 1}
-          {...(start && {
+          {...(known && {
             selected: {
               from: start,
               to: to === undefined ? undefined : dateOfDay(to),
@@ -122,13 +130,13 @@ export function DateRangePicker({
             className="flex-1 text-sm text-muted-foreground"
             aria-live="polite"
           >
-            {from === undefined ? (
-              footer
-            ) : (
+            {known ? (
               <>
                 <span className="font-semibold text-foreground">{text}</span>
                 {` · ${footer}`}
               </>
+            ) : (
+              placeholder
             )}
           </p>
           <Button variant="link" size="sm" onClick={() => onChange({})}>

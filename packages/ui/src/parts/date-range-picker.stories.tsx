@@ -117,6 +117,23 @@ export const PicksARange: Story = {
   },
 };
 
+// A stored filter can hold only an end day, for example from a list address; it must still show.
+export const EndOnlyShows: Story = {
+  args: { initial: { to: "2026-11-03" } },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Dates: Until 3 Nov 2026" })
+    );
+    await expect(footer()).toHaveTextContent(
+      "Until 3 Nov 2026 · pick the start date"
+    );
+    await expect(await dayButton("2026-11-03")).toHaveAttribute(
+      "data-range-end",
+      "true"
+    );
+  },
+};
+
 export const ClearEmptiesBoth: Story = {
   play: async ({ args, canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /^Dates:/u }));
