@@ -79,6 +79,8 @@ export const customer = pgTable(
   },
   (table) => [
     uniqueIndex("customer_name_key").on(sql`lower(btrim(${table.name}))`),
+    // The list sort indexes (LH4): one per sortable column.
+    index("customer_name_idx").on(table.name),
   ]
 );
 
@@ -120,6 +122,9 @@ export const sourceDocument = pgTable(
       "document_reading_outcome_check",
       oneOf(table.readingOutcome, READING_OUTCOMES)
     ),
+    // The inbox orders on the raw column and the id in one direction (LH4).
+    index("document_created_at_idx").on(table.createdAt, table.id),
+    index("document_updated_at_idx").on(table.updatedAt, table.id),
   ]
 );
 
@@ -161,6 +166,11 @@ export const invoice = pgTable(
       table.customerId,
       sql`upper(btrim(${table.number}))`
     ),
+    index("invoice_number_idx").on(table.number),
+    index("invoice_invoice_date_idx").on(table.invoiceDate),
+    index("invoice_due_date_idx").on(table.dueDate),
+    index("invoice_total_cents_idx").on(table.totalCents),
+    index("invoice_updated_at_idx").on(table.updatedAt),
   ]
 );
 
@@ -190,6 +200,10 @@ export const payment = pgTable(
     check("payment_currency_check", currencyCode(table.currency)),
     check("payment_amount_cents_check", sql`${table.amountCents} > 0`),
     index("payment_customer_date_idx").on(table.customerId, table.paymentDate),
+    index("payment_payment_date_idx").on(table.paymentDate),
+    index("payment_method_idx").on(table.method),
+    index("payment_amount_cents_idx").on(table.amountCents),
+    index("payment_updated_at_idx").on(table.updatedAt),
   ]
 );
 
@@ -306,6 +320,10 @@ const MIGRATION_FILES = {
   ),
   "0001_document-reading": new URL(
     "../drizzle/0001_document-reading.sql",
+    import.meta.url
+  ),
+  "0002_list-sort-indexes": new URL(
+    "../drizzle/0002_list-sort-indexes.sql",
     import.meta.url
   ),
 };

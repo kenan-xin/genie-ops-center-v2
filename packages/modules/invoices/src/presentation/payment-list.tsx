@@ -10,6 +10,7 @@ import {
   FigureStrip,
   ToggleGroup,
   ToggleGroupItem,
+  dayRangeParam,
 } from "@genie/ui";
 
 import {
@@ -143,7 +144,17 @@ export function PaymentList(props: PaymentListProps) {
     key: ["invoices", "payment-list", view.asOf, filters],
     // The server page is the unfiltered one; a filtered page one is read here.
     first: filtered ? undefined : view,
-    read: (after) => invoices.listPayments({ after, filters }),
+    // Task 7 moves this screen onto the list header; until then today's filters map to params.
+    read: (after) =>
+      invoices.listPayments({
+        after,
+        params: {
+          q: filters.search,
+          status: filters.link,
+          customer: filters.customerId,
+          date: dayRangeParam({ from: filters.from, to: filters.to }),
+        },
+      }),
   });
 
   const { search: _search, ...narrowing } = filters;
@@ -205,7 +216,7 @@ export function PaymentList(props: PaymentListProps) {
       ) : (
         <div className="flex flex-col gap-4">
           {list.first === undefined ? null : (
-            <SummaryStrips summary={list.first.summary} />
+            <SummaryStrips summary={list.first.summary ?? []} />
           )}
           <ListFilterBar
             searchLabel="Search reference or customer"

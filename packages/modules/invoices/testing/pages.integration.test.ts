@@ -1,6 +1,7 @@
 import {
   callProcedure,
   createTenantContext,
+  type DatasetCursor,
   type ModuleRPCContext,
   matchModulePage,
   modulePageAccess,
@@ -22,6 +23,10 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { invoicesModule } from "../src/module.ts";
+import {
+  invoiceListDefinition,
+  paymentListDefinition,
+} from "../src/presentation/list-definitions.ts";
 import type {
   InvoiceListView,
   InvoiceRecordView,
@@ -146,8 +151,55 @@ async function openRecord(
 
 const READER = ["invoices:use", "invoices:read"] as const;
 
+type ListPage<Row> = {
+  readonly rows: readonly Row[];
+  readonly next: DatasetCursor | null;
+};
+
+/** Every row of a list, page after page from each cursor, so the reads run one after another. */
+async function walkPages<Row>(
+  read: (after: DatasetCursor | null) => Promise<ListPage<Row>>,
+  after: DatasetCursor | null = null
+): Promise<Row[]> {
+  const page = await read(after);
+
+  return page.next === null
+    ? [...page.rows]
+    : [...page.rows, ...(await walkPages(read, page.next))];
+}
+
+type Comparable = string | number | null;
+
+/**
+ * The order a sort must answer: the column in its direction, nulls last ascending and first
+ * descending as Postgres orders them, then the id ascending in both directions (czjw.48).
+ */
+function expectedOrder<Row extends { readonly id: string }>(
+  rows: readonly Row[],
+  value: (row: Row) => Comparable,
+  direction: "asc" | "desc"
+): string[] {
+  const sign = direction === "asc" ? 1 : -1;
+
+  const compare = (left: Comparable, right: Comparable): number => {
+    if (left === right) return 0;
+    if (left === null) return sign;
+    if (right === null) return -sign;
+
+    return (left < right ? -1 : 1) * sign;
+  };
+
+  return rows
+    .toSorted(
+      (left, right) =>
+        compare(value(left), value(right)) ||
+        (left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+    )
+    .map(({ id }) => id);
+}
+
 describe("invoice pages", () => {
-  it("the invoice list procedure pages past 1,000 invoices with its cursor, and refuses a person without invoices:read", async () => {
+  it("the invoice list procedure pages 50 invoices at a time past 1,000 with its cursor, and refuses a person without invoices:read", async () => {
     const customer = await insertCustomer(t());
 
     if (customer === undefined) throw new Error("no customer");
@@ -167,17 +219,19 @@ describe("invoice pages", () => {
 
     const first = await reader.listInvoices({ after: null });
 
-    expect(first.rows).toHaveLength(1000);
+    expect(first.rows).toHaveLength(50);
     expect(first.truncated).toBe(true);
     expect(first.next).not.toBeNull();
 
     const second = await reader.listInvoices({ after: first.next });
 
-    expect(second.rows).toHaveLength(1);
-    expect(second.next).toBeNull();
-    expect(
-      new Set([...first.rows, ...second.rows].map((row) => row.id)).size
-    ).toBe(1001);
+    expect(second.rows).toHaveLength(50);
+    expect(second.counts).toBeNull();
+
+    const all = await walkPages((after) => reader.listInvoices({ after }));
+
+    expect(new Set(all.map((row) => row.id)).size).toBe(1001);
+    expect(all).toHaveLength(1001);
 
     const payments = await reader.listPayments({ after: null });
 
@@ -246,11 +300,11 @@ describe("invoice pages", () => {
     const { userId } = await insertPersonWith(t(), READER);
     const reader = callProcedure(invoicesRouter, contextFor(userId));
 
-    const numbers = async (filters: Record<string, string>) =>
+    const numbers = async (params: Record<string, string>) =>
       (
         await reader.listInvoices({
           after: null,
-          filters: { customerId: customer.id, ...filters },
+          params: { customer: customer.id, ...params },
         })
       ).rows
         .map((row) => row.invoiceNumber)
@@ -265,11 +319,11 @@ describe("invoice pages", () => {
     expect(await numbers({ status: "no-due-date" })).toEqual([
       noDueDate.number,
     ]);
-    expect(await numbers({ search: "flt-none" })).toEqual([
+    expect(await numbers({ q: "flt-none" })).toEqual([
       "FLT-NONE",
       "FLT-NONE-PAID",
     ]);
-    expect(await numbers({ from: "2026-09-01", to: "2026-09-30" })).toEqual([
+    expect(await numbers({ date: "2026-09-01..2026-09-30" })).toEqual([
       "FLT-LATE",
       "FLT-OPEN",
     ]);
@@ -277,7 +331,7 @@ describe("invoice pages", () => {
     // The customer name is searchable too, so a search alone finds this customer's five.
     const byName = await reader.listInvoices({
       after: null,
-      filters: { search: "filterLINE" },
+      params: { q: "filterLINE" },
     });
 
     expect(byName.rows).toHaveLength(5);
@@ -289,6 +343,8 @@ describe("invoice pages", () => {
         overdueCount: 1,
         invoicedCents: 500_000,
         count: 5,
+        unpaidCount: 3,
+        paidCount: 2,
       },
     ]);
   });
@@ -307,11 +363,11 @@ describe("invoice pages", () => {
 
     const { userId } = await insertPersonWith(t(), READER);
     const reader = callProcedure(invoicesRouter, contextFor(userId));
-    const filters = { customerId: customer.id, status: "overdue" } as const;
+    const params = { customer: customer.id, status: "overdue" } as const;
 
-    const first = await reader.listInvoices({ after: null, filters });
+    const first = await reader.listInvoices({ after: null, params });
 
-    expect(first.rows).toHaveLength(1000);
+    expect(first.rows).toHaveLength(50);
     expect(first.summary).toEqual([
       {
         currency: "SGD",
@@ -320,12 +376,16 @@ describe("invoice pages", () => {
         overdueCount: 1001,
         invoicedCents: 100_100,
         count: 1001,
+        unpaidCount: 1001,
+        paidCount: 0,
       },
     ]);
 
-    const second = await reader.listInvoices({ after: first.next, filters });
+    const second = await reader.listInvoices({ after: first.next, params });
 
-    expect(second.rows.map((row) => row.status.kind)).toEqual(["overdue"]);
+    expect(new Set(second.rows.map((row) => row.status.kind))).toEqual(
+      new Set(["overdue"])
+    );
   });
 
   it("the payment list filters by link, customer, payment date and text on the server", async () => {
@@ -370,30 +430,30 @@ describe("invoice pages", () => {
     const { userId } = await insertPersonWith(t(), READER);
     const reader = callProcedure(invoicesRouter, contextFor(userId));
 
-    const references = async (filters: Record<string, string>) =>
+    const references = async (params: Record<string, string>) =>
       (
         await reader.listPayments({
           after: null,
-          filters: { customerId: customer.id, ...filters },
+          params: { customer: customer.id, ...params },
         })
       ).rows
         .map((row) => row.reference)
         .toSorted();
 
-    expect(await references({ link: "linked" })).toEqual([linked.reference]);
-    expect(await references({ link: "not-linked" })).toEqual([
+    expect(await references({ status: "linked" })).toEqual([linked.reference]);
+    expect(await references({ status: "not-linked" })).toEqual([
       none.reference,
       part.reference,
     ]);
-    expect(await references({ search: "pfl-part" })).toEqual([part.reference]);
-    expect(await references({ from: "2026-08-15", to: "2026-09-30" })).toEqual([
+    expect(await references({ q: "pfl-part" })).toEqual([part.reference]);
+    expect(await references({ date: "2026-08-15..2026-09-30" })).toEqual([
       part.reference,
     ]);
 
     // The customer name is searchable too, so a search alone finds this customer's three.
     const byName = await reader.listPayments({
       after: null,
-      filters: { search: "payLANE" },
+      params: { q: "payLANE" },
     });
 
     expect(byName.rows.map((row) => row.reference).toSorted()).toEqual([
@@ -434,11 +494,11 @@ describe("invoice pages", () => {
     const { userId } = await insertPersonWith(t(), READER);
     const reader = callProcedure(invoicesRouter, contextFor(userId));
 
-    const summary = async (link?: "not-linked") =>
+    const summary = async (status: "all" | "not-linked" = "all") =>
       (
         await reader.listPayments({
           after: null,
-          filters: { customerId: customer.id, link },
+          params: { customer: customer.id, status },
         })
       ).summary;
 
@@ -448,6 +508,8 @@ describe("invoice pages", () => {
       allocatedCents: 0,
       unallocatedCents: 50_000,
       count: 1,
+      allocatedCount: 0,
+      notLinkedCount: 1,
     };
 
     expect(await summary()).toEqual([
@@ -457,6 +519,8 @@ describe("invoice pages", () => {
         allocatedCents: 140_000,
         unallocatedCents: 60_000,
         count: 2,
+        allocatedCount: 2,
+        notLinkedCount: 1,
       },
       usd,
     ]);
@@ -467,9 +531,276 @@ describe("invoice pages", () => {
         allocatedCents: 40_000,
         unallocatedCents: 60_000,
         count: 1,
+        allocatedCount: 1,
+        notLinkedCount: 1,
       },
       usd,
     ]);
+  });
+
+  it.each(
+    invoiceListDefinition.sorts.flatMap(({ column }) =>
+      (["asc", "desc"] as const).map((direction) => ({ column, direction }))
+    )
+  )(
+    "the invoice list walks every row once under $column $direction, ties by id",
+    async ({ column, direction }) => {
+      const customers = await Promise.all(
+        ["Alpha", "Beta", "Gamma"].map((name) =>
+          insertCustomer(t(), { name: `Srtx ${name} ${column} ${direction}` })
+        )
+      );
+      const tag = `SRTX${column}${direction}`.toUpperCase();
+
+      // 12 rows share one updated_at microsecond, 8 one total, 20 one invoice date, 6 no due date.
+      await t().db.$client.query(
+        `insert into invoice (customer_id, number, invoice_date, due_date, due_date_source, currency, total_cents, updated_at)
+         select ($1::uuid[])[1 + g % 3], $2 || '-' || lpad(g::text, 3, '0'),
+           case when g <= 20 then date '2026-05-01' else date '2026-05-01' + g end,
+           case when g % 9 = 0 then null else date '2026-06-01' + (g % 7) end,
+           case when g % 9 = 0 then 'unspecified' else 'document' end,
+           'SGD',
+           case when g <= 8 then 5000 else 1000 * g end,
+           case when g % 4 = 0 and g <= 48 then timestamptz '2026-10-20 08:00:00.123456+00'
+             else timestamptz '2026-10-20 08:00:00+00' + g * interval '1 second' + g * interval '7 microseconds' end
+         from generate_series(1, 55) as g`,
+        [customers.map(({ id }) => id), tag]
+      );
+
+      const { userId } = await insertPersonWith(t(), READER);
+      const reader = callProcedure(invoicesRouter, contextFor(userId));
+      const sort = `${column}.${direction}` as const;
+
+      const walked = await walkPages((after) =>
+        reader.listInvoices({ after, params: { q: tag, sort } })
+      );
+
+      const field = invoiceListDefinition.sorts.find(
+        (entry) => entry.column === column
+      )?.field;
+
+      if (field === undefined) throw new Error(`no field for ${column}`);
+
+      expect(walked).toHaveLength(55);
+      expect(walked.map(({ id }) => id)).toEqual(
+        expectedOrder(walked, (row) => row[field], direction)
+      );
+    }
+  );
+
+  it("the invoice list shows the invoice saved last first when no sort is set", async () => {
+    const customer = await insertCustomer(t(), { name: "Newline Traders" });
+
+    await t().db.$client.query(
+      "insert into invoice (customer_id, number, invoice_date, due_date, due_date_source, currency, total_cents, updated_at) select $1, 'NEWL-' || g, date '2026-10-01' - g, date '2026-12-31', 'document', 'SGD', 100, timestamptz '2026-10-01 00:00:00+00' + g * interval '1 hour' from generate_series(1, 3) as g",
+      [customer.id]
+    );
+
+    const latest = await insertInvoice(t(), {
+      customerId: customer.id,
+      number: "NEWL-SAVED",
+      invoiceDate: "2026-01-01",
+    });
+
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    const { rows } = await reader.listInvoices({
+      after: null,
+      params: { customer: customer.id },
+    });
+
+    expect(rows.map(({ invoiceNumber }) => invoiceNumber)).toEqual([
+      latest.number,
+      "NEWL-3",
+      "NEWL-2",
+      "NEWL-1",
+    ]);
+  });
+
+  it.each(
+    paymentListDefinition.sorts.flatMap(({ column }) =>
+      (["asc", "desc"] as const).map((direction) => ({ column, direction }))
+    )
+  )(
+    "the payment list walks every row once under $column $direction, ties by id",
+    async ({ column, direction }) => {
+      const customers = await Promise.all(
+        ["Alpha", "Beta", "Gamma"].map((name) =>
+          insertCustomer(t(), { name: `Prtx ${name} ${column} ${direction}` })
+        )
+      );
+      const tag = `PRTX${column}${direction}`.toUpperCase();
+
+      // 12 rows share one updated_at microsecond, 8 one amount, 20 one date, 9 no method.
+      await t().db.$client.query(
+        `insert into payment (customer_id, reference, payment_date, method, currency, amount_cents, updated_at)
+         select ($1::uuid[])[1 + g % 3], $2 || '-' || lpad(g::text, 3, '0'),
+           case when g <= 20 then date '2026-05-01' else date '2026-05-01' + g end,
+           case when g % 6 = 0 then null when g % 2 = 0 then 'BANK' else 'CARD' end,
+           'SGD',
+           case when g <= 8 then 5000 else 1000 * g end,
+           case when g % 4 = 0 and g <= 48 then timestamptz '2026-10-20 08:00:00.123456+00'
+             else timestamptz '2026-10-20 08:00:00+00' + g * interval '1 second' + g * interval '7 microseconds' end
+         from generate_series(1, 55) as g`,
+        [customers.map(({ id }) => id), tag]
+      );
+
+      const { userId } = await insertPersonWith(t(), READER);
+      const reader = callProcedure(invoicesRouter, contextFor(userId));
+      const sort = `${column}.${direction}` as const;
+
+      const walked = await walkPages((after) =>
+        reader.listPayments({ after, params: { q: tag, sort } })
+      );
+
+      const field = paymentListDefinition.sorts.find(
+        (entry) => entry.column === column
+      )?.field;
+
+      if (field === undefined) throw new Error(`no field for ${column}`);
+
+      expect(walked).toHaveLength(55);
+      expect(walked.map(({ id }) => id)).toEqual(
+        expectedOrder(walked, (row) => row[field], direction)
+      );
+    }
+  );
+
+  it("each invoice tab lists only its statuses, and the counts do not follow the tab", async () => {
+    const customer = await insertCustomer(t(), { name: "Tabline Works" });
+
+    const [paid, , , , paidNoDueDate] = await Promise.all([
+      insertInvoice(t(), { customerId: customer.id }),
+      insertInvoice(t(), { customerId: customer.id, dueDate: "2026-11-30" }),
+      insertInvoice(t(), { customerId: customer.id, dueDate: "2026-10-01" }),
+      insertInvoice(t(), { customerId: customer.id, dueDate: null }),
+      insertInvoice(t(), { customerId: customer.id, dueDate: null }),
+    ]);
+    const payment = await insertPayment(t(), {
+      customerId: customer.id,
+      amountCents: 200_000,
+    });
+
+    await insertAllocation(t(), {
+      invoiceId: paid.id,
+      paymentId: payment.id,
+      amountCents: 100_000,
+    });
+    await insertAllocation(t(), {
+      invoiceId: paidNoDueDate.id,
+      paymentId: payment.id,
+      amountCents: 100_000,
+    });
+
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    const tabs = await Promise.all(
+      invoiceListDefinition.tabs.items.map(async ({ value, statuses }) => {
+        const page = await reader.listInvoices({
+          after: null,
+          params: { customer: customer.id, status: value },
+        });
+        const kinds: readonly string[] = statuses;
+
+        return {
+          value,
+          counts: page.counts,
+          rows: page.rows.length,
+          outside: page.rows.filter(
+            (row) => kinds.length > 0 && !kinds.includes(row.status.kind)
+          ),
+        };
+      })
+    );
+
+    const counts = {
+      "all": 5,
+      "open": 1,
+      "overdue": 1,
+      "paid": 2,
+      "no-due-date": 1,
+    };
+
+    expect(tabs).toEqual(
+      tabs.map(({ value }) => ({
+        value,
+        counts,
+        rows: counts[value],
+        outside: [],
+      }))
+    );
+  });
+
+  it("each payment tab lists only its statuses, and the counts do not follow the tab", async () => {
+    const customer = await insertCustomer(t(), { name: "Tabpay Supplies" });
+    const invoice = await insertInvoice(t(), {
+      customerId: customer.id,
+      totalCents: 1_000_000,
+    });
+    const [linked, part] = await Promise.all([
+      insertPayment(t(), { customerId: customer.id, amountCents: 100_000 }),
+      insertPayment(t(), { customerId: customer.id, amountCents: 100_000 }),
+      insertPayment(t(), { customerId: customer.id, amountCents: 100_000 }),
+    ]);
+
+    await insertAllocation(t(), {
+      invoiceId: invoice.id,
+      paymentId: linked.id,
+      amountCents: 100_000,
+    });
+    await insertAllocation(t(), {
+      invoiceId: invoice.id,
+      paymentId: part.id,
+      amountCents: 40_000,
+    });
+
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    const tabs = await Promise.all(
+      paymentListDefinition.tabs.items.map(async ({ value, statuses }) => {
+        const page = await reader.listPayments({
+          after: null,
+          params: { customer: customer.id, status: value },
+        });
+        const kinds: readonly string[] = statuses;
+
+        return {
+          value,
+          counts: page.counts,
+          rows: page.rows.length,
+          outside: page.rows.filter(
+            (row) => kinds.length > 0 && !kinds.includes(row.status)
+          ),
+        };
+      })
+    );
+
+    const counts = { "all": 3, "linked": 1, "not-linked": 2 };
+
+    expect(tabs).toEqual(
+      tabs.map(({ value }) => ({
+        value,
+        counts,
+        rows: counts[value],
+        outside: [],
+      }))
+    );
+  });
+
+  it("the list procedures refuse a sort outside their list", async () => {
+    const { userId } = await insertPersonWith(t(), READER);
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    await expect(
+      reader.listInvoices({
+        after: null,
+        // SAFETY: deliberately outside the enum; the procedure must refuse it at the boundary.
+        params: { sort: "outstanding.desc" as "total.desc" },
+      })
+    ).rejects.toMatchObject({ status: 400 });
   });
 
   it("the lists answer only the customer a scoped reader may read", async () => {

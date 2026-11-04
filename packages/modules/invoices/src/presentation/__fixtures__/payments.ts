@@ -12,6 +12,9 @@ import type {
   PaymentRecordView,
 } from "../views.ts";
 
+/** The tab counts of the three rows below: they never follow the tab (LH17). */
+const PAYMENT_COUNTS = { "all": 3, "linked": 1, "not-linked": 2 };
+
 const ALLOCATED: PaymentListRow = {
   id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
   reference: "TRF-0921-118",
@@ -22,6 +25,7 @@ const ALLOCATED: PaymentListRow = {
   amountCents: 500_000,
   unallocatedCents: 0,
   status: "allocated",
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const PART_ALLOCATED: PaymentListRow = {
@@ -34,6 +38,7 @@ const PART_ALLOCATED: PaymentListRow = {
   amountCents: 500_000,
   unallocatedCents: 200_000,
   status: "part-allocated",
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const UNALLOCATED: PaymentListRow = {
@@ -46,6 +51,7 @@ const UNALLOCATED: PaymentListRow = {
   amountCents: 350_000,
   unallocatedCents: 350_000,
   status: "unallocated",
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const US_DOLLARS: PaymentListRow = {
@@ -58,13 +64,16 @@ const US_DOLLARS: PaymentListRow = {
   amountCents: 75_000,
   unallocatedCents: 75_000,
   status: "unallocated",
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 export const defaultPaymentList: PaymentListPageView = {
   asOf: "2026-10-27",
+  timeZone: "Asia/Singapore",
   rows: [ALLOCATED, PART_ALLOCATED, UNALLOCATED],
   truncated: false,
   next: null,
+  counts: PAYMENT_COUNTS,
   summary: [
     {
       currency: "SGD",
@@ -72,6 +81,8 @@ export const defaultPaymentList: PaymentListPageView = {
       allocatedCents: 800_000,
       unallocatedCents: 550_000,
       count: 3,
+      allocatedCount: 2,
+      notLinkedCount: 2,
     },
   ],
   customers: [ALLOCATED, PART_ALLOCATED, UNALLOCATED, US_DOLLARS].map(
@@ -85,14 +96,17 @@ export const defaultPaymentList: PaymentListPageView = {
 export const twoCurrencyPaymentList: PaymentListPageView = {
   ...defaultPaymentList,
   rows: [...defaultPaymentList.rows, US_DOLLARS],
+  counts: { ...PAYMENT_COUNTS, "all": 4, "not-linked": 3 },
   summary: [
-    ...defaultPaymentList.summary,
+    ...(defaultPaymentList.summary ?? []),
     {
       currency: "USD",
       collectedCents: 75_000,
       allocatedCents: 0,
       unallocatedCents: 75_000,
       count: 1,
+      allocatedCount: 0,
+      notLinkedCount: 1,
     },
   ],
 };
@@ -103,6 +117,7 @@ export const notLinkedPaymentPage: PaymentListView = {
   rows: [PART_ALLOCATED, UNALLOCATED],
   truncated: false,
   next: null,
+  counts: PAYMENT_COUNTS,
   summary: [
     {
       currency: "SGD",
@@ -110,6 +125,8 @@ export const notLinkedPaymentPage: PaymentListView = {
       allocatedCents: 300_000,
       unallocatedCents: 550_000,
       count: 2,
+      allocatedCount: 1,
+      notLinkedCount: 2,
     },
   ],
 };
@@ -120,6 +137,7 @@ export const linkedPaymentPage: PaymentListView = {
   rows: [ALLOCATED],
   truncated: false,
   next: null,
+  counts: PAYMENT_COUNTS,
   summary: [
     {
       currency: "SGD",
@@ -127,6 +145,8 @@ export const linkedPaymentPage: PaymentListView = {
       allocatedCents: 500_000,
       unallocatedCents: 0,
       count: 1,
+      allocatedCount: 1,
+      notLinkedCount: 0,
     },
   ],
 };

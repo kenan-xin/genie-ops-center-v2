@@ -22,11 +22,13 @@ export type {
   InboxStatus,
   InvoiceDetail,
   InvoiceListFilters,
+  InvoiceListParams,
   InvoiceListRow,
   InvoiceListSummary,
   InvoiceRecordView,
   InvoiceStatus,
   PaymentListFilters,
+  PaymentListParams,
   PaymentListRow,
   PaymentListSummary,
   PaymentRecordView,
@@ -44,16 +46,19 @@ export type InvoiceListView = {
   readonly truncated: boolean;
   /** Where the next page starts, when the list was cut (czjw.28). */
   readonly next: DatasetCursor | null;
-  /** One entry per currency, over every invoice the filters keep. */
-  readonly summary: readonly InvoiceListSummary[];
+  /** The rows of each tab under the other filters; page one only. */
+  readonly counts: Readonly<Record<string, number>> | null;
+  /** One entry per currency, over every invoice the filters and the tab keep; page one only. */
+  readonly summary: readonly InvoiceListSummary[] | null;
 };
 
 /** A customer the list's customer picker offers. */
 export type ListCustomer = { readonly id: string; readonly name: string };
 
-/** The unfiltered first page the server renders, and the customers of the picker. */
+/** The unfiltered first page the server renders, the customers of the picker, and the zone of Updated. */
 export type InvoiceListPageView = InvoiceListView & {
   readonly customers: readonly ListCustomer[];
+  readonly timeZone: string;
 };
 
 export type PaymentListView = {
@@ -62,11 +67,14 @@ export type PaymentListView = {
   readonly truncated: boolean;
   /** Where the next page starts, when the list was cut (czjw.28). */
   readonly next: DatasetCursor | null;
-  /** One entry per currency, over every payment the filters keep. */
-  readonly summary: readonly PaymentListSummary[];
+  /** The rows of each tab under the other filters; page one only. */
+  readonly counts: Readonly<Record<string, number>> | null;
+  /** One entry per currency, over every payment the filters and the tab keep; page one only. */
+  readonly summary: readonly PaymentListSummary[] | null;
 };
 
-/** The unfiltered first page the server renders, and the customers of the picker. */
+/** The unfiltered first page the server renders, the customers of the picker, and the zone of Updated. */
 export type PaymentListPageView = PaymentListView & {
   readonly customers: readonly ListCustomer[];
+  readonly timeZone: string;
 };

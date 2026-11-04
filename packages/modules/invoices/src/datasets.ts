@@ -77,6 +77,19 @@ const count = (description: string): DatasetField => ({
 
 const CURRENCY = text("The ISO currency code of the amounts on this row.");
 
+// The list fields stay hidden from the agent until the next recording refresh (LH1, DEC-55).
+const UPDATED_AT: DatasetField = {
+  kind: "dimension",
+  type: "instant",
+  description: "When the row last changed.",
+  hiddenFromAgent: true,
+};
+
+const listStatus = (description: string): DatasetField => ({
+  ...text(description),
+  hiddenFromAgent: true,
+});
+
 export const invoicesDataset: DatasetDeclaration = {
   name: "invoices.invoices",
   title: "Invoices",
@@ -124,6 +137,8 @@ export const invoicesDataset: DatasetDeclaration = {
     paidLate: flag(
       "True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate."
     ),
+    updatedAt: UPDATED_AT,
+    status: listStatus("paid, overdue, no-due-date or open."),
   },
   timeField: "invoiceDate",
   recordKey: { type: RECORD_TYPES.invoice, field: "id" },
@@ -169,6 +184,12 @@ export const invoicesDataset: DatasetDeclaration = {
           sql`case when ${settledWithDueDate(paid)} then ${paidLateOf(paid)} end`.as(
             "paidLate"
           ),
+        updatedAt: invoice.updatedAt,
+        // The one rule that names a list status: the badge and the tab read it (LH16).
+        status:
+          sql`case when ${outstanding} <= 0 then 'paid' when ${overdue} then 'overdue' when ${invoice.dueDate} is null then 'no-due-date' else 'open' end`.as(
+            "status"
+          ),
       })
       .from(invoice)
       .innerJoin(customer, eq(customer.id, invoice.customerId))
@@ -209,6 +230,8 @@ export const paymentsDataset: DatasetDeclaration = {
     unallocatedCents: money(
       "The amount minus the allocated cents: money received that lowers no invoice balance."
     ),
+    updatedAt: UPDATED_AT,
+    status: listStatus("allocated, part-allocated or unallocated."),
   },
   timeField: "paymentDate",
   recordKey: { type: RECORD_TYPES.payment, field: "id" },
@@ -246,6 +269,12 @@ export const paymentsDataset: DatasetDeclaration = {
         unallocatedCents: sql`${payment.amountCents} - ${allocated}`.as(
           "unallocatedCents"
         ),
+        updatedAt: payment.updatedAt,
+        // R-31 in one rule: the badge and the tab read it (LH16).
+        status:
+          sql`case when ${allocated} = 0 then 'unallocated' when ${allocated} = ${payment.amountCents} then 'allocated' else 'part-allocated' end`.as(
+            "status"
+          ),
       })
       .from(payment)
       .innerJoin(customer, eq(customer.id, payment.customerId))

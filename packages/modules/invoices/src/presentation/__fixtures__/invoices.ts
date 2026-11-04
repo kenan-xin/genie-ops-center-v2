@@ -11,6 +11,15 @@ import type {
   InvoiceRecordView,
 } from "../views.ts";
 
+/** The tab counts of the four rows below: they never follow the tab (LH17). */
+const INVOICE_COUNTS = {
+  "all": 4,
+  "open": 1,
+  "overdue": 1,
+  "paid": 1,
+  "no-due-date": 1,
+};
+
 const PAID: InvoiceListRow = {
   id: "11111111-1111-4111-8111-111111111111",
   invoiceNumber: "INV-2026-09-01",
@@ -21,6 +30,7 @@ const PAID: InvoiceListRow = {
   totalCents: 720_000,
   outstandingCents: 0,
   status: { kind: "paid" },
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const OPEN: InvoiceListRow = {
@@ -33,6 +43,7 @@ const OPEN: InvoiceListRow = {
   totalCents: 520_000,
   outstandingCents: 520_000,
   status: { kind: "open" },
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const OVERDUE: InvoiceListRow = {
@@ -45,6 +56,7 @@ const OVERDUE: InvoiceListRow = {
   totalCents: 500_000,
   outstandingCents: 300_000,
   status: { kind: "overdue", daysOverdue: 40 },
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const NO_DUE_DATE: InvoiceListRow = {
@@ -57,6 +69,7 @@ const NO_DUE_DATE: InvoiceListRow = {
   totalCents: 435_000,
   outstandingCents: 435_000,
   status: { kind: "no-due-date" },
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const US_DOLLARS: InvoiceListRow = {
@@ -69,6 +82,7 @@ const US_DOLLARS: InvoiceListRow = {
   totalCents: 125_000,
   outstandingCents: 125_000,
   status: { kind: "open" },
+  updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 
 const CUSTOMERS = [PAID, OPEN, OVERDUE, NO_DUE_DATE, US_DOLLARS].map(
@@ -80,9 +94,11 @@ const CUSTOMERS = [PAID, OPEN, OVERDUE, NO_DUE_DATE, US_DOLLARS].map(
 
 export const defaultInvoiceList: InvoiceListPageView = {
   asOf: "2026-10-27",
+  timeZone: "Asia/Singapore",
   rows: [PAID, OPEN, OVERDUE, NO_DUE_DATE],
   truncated: false,
   next: null,
+  counts: INVOICE_COUNTS,
   summary: [
     {
       currency: "SGD",
@@ -91,6 +107,8 @@ export const defaultInvoiceList: InvoiceListPageView = {
       overdueCount: 1,
       invoicedCents: 2_175_000,
       count: 4,
+      unpaidCount: 3,
+      paidCount: 1,
     },
   ],
   customers: CUSTOMERS,
@@ -99,8 +117,9 @@ export const defaultInvoiceList: InvoiceListPageView = {
 export const twoCurrencyInvoiceList: InvoiceListPageView = {
   ...defaultInvoiceList,
   rows: [...defaultInvoiceList.rows, US_DOLLARS],
+  counts: { ...INVOICE_COUNTS, all: 5, open: 2 },
   summary: [
-    ...defaultInvoiceList.summary,
+    ...(defaultInvoiceList.summary ?? []),
     {
       currency: "USD",
       outstandingCents: 125_000,
@@ -108,6 +127,8 @@ export const twoCurrencyInvoiceList: InvoiceListPageView = {
       overdueCount: 0,
       invoicedCents: 125_000,
       count: 1,
+      unpaidCount: 1,
+      paidCount: 0,
     },
   ],
 };
@@ -118,6 +139,7 @@ export const overdueInvoicePage: InvoiceListView = {
   rows: [OVERDUE],
   truncated: false,
   next: null,
+  counts: INVOICE_COUNTS,
   summary: [
     {
       currency: "SGD",
@@ -126,6 +148,8 @@ export const overdueInvoicePage: InvoiceListView = {
       overdueCount: 1,
       invoicedCents: 500_000,
       count: 1,
+      unpaidCount: 1,
+      paidCount: 0,
     },
   ],
 };
@@ -136,6 +160,7 @@ export const paidInvoicePage: InvoiceListView = {
   rows: [PAID],
   truncated: false,
   next: null,
+  counts: INVOICE_COUNTS,
   summary: [
     {
       currency: "SGD",
@@ -144,6 +169,8 @@ export const paidInvoicePage: InvoiceListView = {
       overdueCount: 0,
       invoicedCents: 720_000,
       count: 1,
+      unpaidCount: 0,
+      paidCount: 1,
     },
   ],
 };

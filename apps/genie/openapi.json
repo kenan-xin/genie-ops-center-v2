@@ -5043,6 +5043,9 @@
                                 }
                               ]
                             },
+                            "updatedAt": {
+                              "type": "string"
+                            },
                             "dueDateSource": {
                               "enum": [
                                 "document",
@@ -5087,6 +5090,7 @@
                             "totalCents",
                             "outstandingCents",
                             "status",
+                            "updatedAt",
                             "dueDateSource",
                             "paymentTerms",
                             "description",
@@ -5484,6 +5488,9 @@
                               ],
                               "type": "string"
                             },
+                            "updatedAt": {
+                              "type": "string"
+                            },
                             "allocatedCents": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -5503,6 +5510,7 @@
                             "amountCents",
                             "unallocatedCents",
                             "status",
+                            "updatedAt",
                             "allocatedCents",
                             "customerId"
                           ]
@@ -5597,19 +5605,20 @@
             "allowReserved": true
           },
           {
-            "name": "filters",
+            "name": "params",
             "in": "query",
             "required": false,
             "schema": {
               "type": "object",
               "properties": {
-                "search": {
+                "q": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 200
                 },
                 "status": {
                   "enum": [
+                    "all",
                     "open",
                     "overdue",
                     "paid",
@@ -5617,17 +5626,29 @@
                   ],
                   "type": "string"
                 },
-                "customerId": {
+                "customer": {
                   "type": "string",
                   "format": "uuid"
                 },
-                "from": {
-                  "type": "string",
-                  "format": "date"
+                "date": {
+                  "type": "string"
                 },
-                "to": {
-                  "type": "string",
-                  "format": "date"
+                "sort": {
+                  "enum": [
+                    "invoice.asc",
+                    "invoice.desc",
+                    "customer.asc",
+                    "customer.desc",
+                    "invoiceDate.asc",
+                    "invoiceDate.desc",
+                    "dueDate.asc",
+                    "dueDate.desc",
+                    "total.asc",
+                    "total.desc",
+                    "updated.asc",
+                    "updated.desc"
+                  ],
+                  "type": "string"
                 }
               }
             },
@@ -5724,6 +5745,9 @@
                                 ]
                               }
                             ]
+                          },
+                          "updatedAt": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -5735,7 +5759,8 @@
                           "currency",
                           "totalCents",
                           "outstandingCents",
-                          "status"
+                          "status",
+                          "updatedAt"
                         ]
                       }
                     },
@@ -5779,49 +5804,86 @@
                         }
                       ]
                     },
-                    "summary": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "currency": {
+                    "counts": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "propertyNames": {
                             "type": "string"
                           },
-                          "outstandingCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "overdueCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "overdueCount": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "invoicedCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "count": {
+                          "additionalProperties": {
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           }
                         },
-                        "required": [
-                          "currency",
-                          "outstandingCents",
-                          "overdueCents",
-                          "overdueCount",
-                          "invoicedCents",
-                          "count"
-                        ]
-                      }
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "summary": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "currency": {
+                                "type": "string"
+                              },
+                              "outstandingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "overdueCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "overdueCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "invoicedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unpaidCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "paidCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "currency",
+                              "outstandingCents",
+                              "overdueCents",
+                              "overdueCount",
+                              "invoicedCents",
+                              "count",
+                              "unpaidCount",
+                              "paidCount"
+                            ]
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -5829,6 +5891,7 @@
                     "rows",
                     "truncated",
                     "next",
+                    "counts",
                     "summary"
                   ]
                 }
@@ -5889,35 +5952,46 @@
             "allowReserved": true
           },
           {
-            "name": "filters",
+            "name": "params",
             "in": "query",
             "required": false,
             "schema": {
               "type": "object",
               "properties": {
-                "search": {
+                "q": {
                   "type": "string",
                   "minLength": 1,
                   "maxLength": 200
                 },
-                "link": {
+                "status": {
                   "enum": [
+                    "all",
                     "linked",
                     "not-linked"
                   ],
                   "type": "string"
                 },
-                "customerId": {
+                "customer": {
                   "type": "string",
                   "format": "uuid"
                 },
-                "from": {
-                  "type": "string",
-                  "format": "date"
+                "date": {
+                  "type": "string"
                 },
-                "to": {
-                  "type": "string",
-                  "format": "date"
+                "sort": {
+                  "enum": [
+                    "customer.asc",
+                    "customer.desc",
+                    "paymentDate.asc",
+                    "paymentDate.desc",
+                    "method.asc",
+                    "method.desc",
+                    "amount.asc",
+                    "amount.desc",
+                    "updated.asc",
+                    "updated.desc"
+                  ],
+                  "type": "string"
                 }
               }
             },
@@ -5992,6 +6066,9 @@
                               "unallocated"
                             ],
                             "type": "string"
+                          },
+                          "updatedAt": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -6003,7 +6080,8 @@
                           "currency",
                           "amountCents",
                           "unallocatedCents",
-                          "status"
+                          "status",
+                          "updatedAt"
                         ]
                       }
                     },
@@ -6047,43 +6125,80 @@
                         }
                       ]
                     },
-                    "summary": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "currency": {
+                    "counts": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "propertyNames": {
                             "type": "string"
                           },
-                          "collectedCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "allocatedCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "unallocatedCents": {
-                            "type": "integer",
-                            "minimum": -9007199254740991,
-                            "maximum": 9007199254740991
-                          },
-                          "count": {
+                          "additionalProperties": {
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
                           }
                         },
-                        "required": [
-                          "currency",
-                          "collectedCents",
-                          "allocatedCents",
-                          "unallocatedCents",
-                          "count"
-                        ]
-                      }
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "summary": {
+                      "anyOf": [
+                        {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "currency": {
+                                "type": "string"
+                              },
+                              "collectedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "allocatedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "unallocatedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "count": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "allocatedCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "notLinkedCount": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "currency",
+                              "collectedCents",
+                              "allocatedCents",
+                              "unallocatedCents",
+                              "count",
+                              "allocatedCount",
+                              "notLinkedCount"
+                            ]
+                          }
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
                     }
                   },
                   "required": [
@@ -6091,6 +6206,7 @@
                     "rows",
                     "truncated",
                     "next",
+                    "counts",
                     "summary"
                   ]
                 }

@@ -1,25 +1,39 @@
 import {
   type DatasetCursor,
   type DatasetFilter,
+  type DatasetListDefinition,
+  listQueryOf,
+  type ListQuery,
   type ModuleRequestContext,
   queryDataset,
 } from "@genie/core";
+import type { ListParams } from "@genie/ui";
 import { z } from "zod";
 
+import {
+  INVOICE_LIST_STATUSES,
+  type InvoiceListParams,
+  PAYMENT_STATUSES,
+  type PaymentListParams,
+} from "../../contract.ts";
+import {
+  invoiceListDefinition,
+  paymentListDefinition,
+} from "../../presentation/list-definitions.ts";
 import type {
-  InvoiceListFilters,
   InvoiceListPageView,
   InvoiceListRow,
   InvoiceListSummary,
   InvoiceListView,
   ListCustomer,
-  PaymentListFilters,
   PaymentListPageView,
   PaymentListRow,
   PaymentListSummary,
   PaymentListView,
 } from "../../presentation/views.ts";
-import { invoiceStatusOf, paymentStatusOf } from "./status.ts";
+
+/** The rows of one list page (LH6). Every other dataset read keeps the 1,000-row cap. */
+export const LIST_PAGE_SIZE = 50;
 
 /** The fields a list row reads from one `invoices.invoices` row, as the dataset answers them. */
 export const listRow = z.object({
@@ -31,147 +45,166 @@ export const listRow = z.object({
   currency: z.string(),
   totalCents: z.number().int(),
   outstandingCents: z.number().int(),
-  overdue: z.boolean(),
   daysOverdue: z.number().int().nullable(),
+  status: z.enum(INVOICE_LIST_STATUSES),
+  updatedAt: z.string(),
 });
 
 export const LIST_ROW_FIELDS = Object.keys(listRow.shape);
 
-/** One list row, its two overdue fields read into its status. */
+/** One list row, its status text and days overdue read into the badge's status (LH16). */
 export function invoiceListRowOf(row: z.infer<typeof listRow>): InvoiceListRow {
-  const { overdue: _overdue, daysOverdue: _days, ...value } = row;
+  const { daysOverdue, status, ...value } = row;
 
-  return { ...value, status: invoiceStatusOf(row) };
+  if (status !== "overdue") return { ...value, status: { kind: status } };
+
+  // The dataset answers days overdue exactly when its status is overdue.
+  if (daysOverdue === null)
+    throw new Error(`Invoice ${row.id} is overdue with no days.`);
+
+  return { ...value, status: { kind: "overdue", daysOverdue } };
 }
 
-/** Each status chip as dataset filters, the same four states `invoiceStatusOf` names. */
-const STATUS_FILTERS: Readonly<
-  Record<NonNullable<InvoiceListFilters["status"]>, readonly DatasetFilter[]>
-> = {
-  "paid": [{ field: "outstandingCents", op: "lte", value: 0 }],
-  "overdue": [{ field: "overdue", op: "eq", value: true }],
-  // A due date source other than unspecified always carries a date (`invoice_due_date_check`).
-  "open": [
-    { field: "outstandingCents", op: "gt", value: 0 },
-    { field: "overdue", op: "eq", value: false },
-    { field: "dueDateSource", op: "neq", value: "unspecified" },
-  ],
-  "no-due-date": [
-    { field: "outstandingCents", op: "gt", value: 0 },
-    { field: "dueDate", op: "isNull" },
-  ],
-};
-
-/** The customer and the date range of a list's filters, on the dataset's date field. */
-function customerAndDatesOf(
-  filters: Pick<InvoiceListFilters, "customerId" | "from" | "to">,
-  dateField: string
-): DatasetFilter[] {
-  return [
-    ...(filters.customerId === undefined
-      ? []
-      : [
-          { field: "customerId", op: "eq", value: filters.customerId } as const,
-        ]),
-    ...(filters.from === undefined
-      ? []
-      : [{ field: dateField, op: "gte", value: filters.from } as const]),
-    ...(filters.to === undefined
-      ? []
-      : [{ field: dateField, op: "lte", value: filters.to } as const]),
-  ];
+/** The parameters a procedure parsed, without the ones it left out. */
+function paramsOf(
+  params: Readonly<Record<string, string | undefined>>
+): ListParams {
+  return Object.fromEntries(
+    Object.entries(params).flatMap(([key, value]) =>
+      value === undefined ? [] : [[key, value]]
+    )
+  );
 }
 
-function invoiceFiltersOf(filters: InvoiceListFilters): DatasetFilter[] {
-  return [
-    ...(filters.status === undefined ? [] : STATUS_FILTERS[filters.status]),
-    ...customerAndDatesOf(filters, "invoiceDate"),
-  ];
+/** Whether a row of this status is in the active tab: every status without a tab filter. */
+function inTab(list: ListQuery, status: string): boolean {
+  return list.tab.every(
+    (filter) => filter.op === "in" && filter.values.includes(status)
+  );
 }
 
-const summaryRow = z.object({
+/** The rows of each tab, from the groups of every status under the other filters (LH17). */
+function countsOf(
+  definition: DatasetListDefinition,
+  groups: readonly { readonly status: string; readonly rows: number }[]
+): Record<string, number> {
+  return Object.fromEntries(
+    (definition.tabs?.items ?? []).map((item) => {
+      const statuses: readonly string[] = item.statuses;
+
+      return [
+        item.value,
+        groups
+          .filter(
+            (group) => statuses.length === 0 || statuses.includes(group.status)
+          )
+          .reduce((sum, group) => sum + group.rows, 0),
+      ];
+    })
+  );
+}
+
+const byCurrency = <Entry extends { readonly currency: string }>(
+  entries: Iterable<Entry>
+) =>
+  [...entries].toSorted((left, right) =>
+    left.currency.localeCompare(right.currency)
+  );
+
+const invoiceGroup = z.object({
   currency: z.string(),
-  overdue: z.boolean(),
+  status: z.enum(INVOICE_LIST_STATUSES),
   outstanding: z.number().int(),
   invoiced: z.number().int(),
-  invoices: z.number().int(),
+  rows: z.number().int(),
 });
 
-/** Outstanding, invoiced, the count, and overdue money and count, per currency over every kept row. */
-async function invoiceSummary(
+/** Per currency and status, under every filter but the tab: one read for the counts and the figures. */
+async function invoiceGroups(
   ctx: ModuleRequestContext,
   filters: readonly DatasetFilter[],
   search: string | undefined
-): Promise<InvoiceListSummary[]> {
+) {
   const result = await queryDataset(ctx, {
     dataset: "invoices.invoices",
     search,
     query: {
       filters,
-      groupBy: [{ field: "currency" }, { field: "overdue" }],
+      groupBy: [{ field: "currency" }, { field: "status" }],
       aggregates: [
         { fn: "sum", field: "outstandingCents", as: "outstanding" },
         { fn: "sum", field: "totalCents", as: "invoiced" },
-        { fn: "count", as: "invoices" },
+        { fn: "count", as: "rows" },
       ],
     },
   });
 
-  const byCurrency = new Map<string, InvoiceListSummary>();
+  return result.rows.map((entry) => invoiceGroup.parse(entry));
+}
 
-  for (const row of result.rows.map((entry) => summaryRow.parse(entry))) {
-    const total = byCurrency.get(row.currency) ?? {
-      currency: row.currency,
+/** The figures of each currency over the groups of the active tab (LH17). */
+function invoiceSummaryOf(
+  groups: readonly z.infer<typeof invoiceGroup>[]
+): InvoiceListSummary[] {
+  const totals = new Map<string, InvoiceListSummary>();
+
+  for (const group of groups) {
+    const total = totals.get(group.currency) ?? {
+      currency: group.currency,
       outstandingCents: 0,
       overdueCents: 0,
       overdueCount: 0,
       invoicedCents: 0,
       count: 0,
+      unpaidCount: 0,
+      paidCount: 0,
     };
 
-    byCurrency.set(row.currency, {
+    const overdue = group.status === "overdue";
+    const paid = group.status === "paid";
+
+    totals.set(group.currency, {
       ...total,
-      outstandingCents: total.outstandingCents + row.outstanding,
-      invoicedCents: total.invoicedCents + row.invoiced,
-      count: total.count + row.invoices,
-      overdueCents: total.overdueCents + (row.overdue ? row.outstanding : 0),
-      overdueCount: total.overdueCount + (row.overdue ? row.invoices : 0),
+      outstandingCents: total.outstandingCents + group.outstanding,
+      overdueCents: total.overdueCents + (overdue ? group.outstanding : 0),
+      overdueCount: total.overdueCount + (overdue ? group.rows : 0),
+      invoicedCents: total.invoicedCents + group.invoiced,
+      count: total.count + group.rows,
+      unpaidCount: total.unpaidCount + (paid ? 0 : group.rows),
+      paidCount: total.paidCount + (paid ? group.rows : 0),
     });
   }
 
-  return [...byCurrency.values()].toSorted((left, right) =>
-    left.currency.localeCompare(right.currency)
-  );
+  return byCurrency(totals.values());
 }
 
 /**
- * The Invoices list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
- * scoped person sees only the customers they may read (DEC-39, R-9, R-36). A page holds at most
- * 1,000 rows; `after` reads the page after a cut one (czjw.28). The filters run in the dataset
- * query, so they hold across pages, and the summary covers every row they keep (design review 1.4).
+ * The Invoices list as of the reporting date: `queryDataset` reads under `invoices:read`, so a
+ * scoped person sees only the customers they may read (DEC-39, R-9, R-36). A page holds 50 rows,
+ * sorted in the database on an allowed column and then the row key, and `after` reads the next one
+ * (czjw.28, czjw.71). Page one also answers the tab counts and the figures (LH16, LH17).
  */
 export async function loadInvoiceList(
   ctx: ModuleRequestContext,
   after: DatasetCursor | null = null,
-  filters: InvoiceListFilters = {}
+  params: InvoiceListParams = {}
 ): Promise<InvoiceListView> {
-  const conditions = invoiceFiltersOf(filters);
+  const list = listQueryOf(invoiceListDefinition, paramsOf(params));
+  const first = after === null;
 
-  const [result, summary] = await Promise.all([
+  const [result, groups] = await Promise.all([
     queryDataset(ctx, {
       dataset: "invoices.invoices",
       after: after ?? undefined,
-      search: filters.search,
+      search: list.search,
       query: {
         select: LIST_ROW_FIELDS,
-        filters: conditions,
-        orderBy: [
-          { column: "invoiceDate", direction: "desc" },
-          { column: "invoiceNumber", direction: "desc" },
-        ],
+        filters: [...list.filters, ...list.tab],
+        orderBy: list.orderBy,
+        limit: LIST_PAGE_SIZE,
       },
     }),
-    invoiceSummary(ctx, conditions, filters.search),
+    first ? invoiceGroups(ctx, list.filters, list.search) : null,
   ]);
 
   return {
@@ -179,7 +212,11 @@ export async function loadInvoiceList(
     rows: result.rows.map((row) => invoiceListRowOf(listRow.parse(row))),
     truncated: result.truncated,
     next: result.next ?? null,
-    summary,
+    counts: groups === null ? null : countsOf(invoiceListDefinition, groups),
+    summary:
+      groups === null
+        ? null
+        : invoiceSummaryOf(groups.filter(({ status }) => inTab(list, status))),
   };
 }
 
@@ -203,16 +240,17 @@ async function loadListCustomers(
   return customers.rows.map((row) => listCustomer.parse(row));
 }
 
-/** The Invoices page: its unfiltered first page and the customers of its picker. */
+/** The Invoices page: its first page with no filter, the customers of its picker, and the zone. */
 export async function loadInvoiceListPage(
   ctx: ModuleRequestContext
 ): Promise<InvoiceListPageView> {
-  const [list, customers] = await Promise.all([
+  const [list, customers, branding] = await Promise.all([
     loadInvoiceList(ctx),
     loadListCustomers(ctx),
+    ctx.tenant.branding.get(),
   ]);
 
-  return { ...list, customers };
+  return { ...list, customers, timeZone: branding.defaultTimeZone };
 }
 
 /** The fields a list row reads from one `invoices.payments` row, as the dataset answers them. */
@@ -225,56 +263,107 @@ export const paymentRow = z.object({
   currency: z.string(),
   amountCents: z.number().int(),
   unallocatedCents: z.number().int(),
+  status: z.enum(PAYMENT_STATUSES),
+  updatedAt: z.string(),
 });
 
 export const PAYMENT_ROW_FIELDS = Object.keys(paymentRow.shape);
 
-/** Each link chip as a dataset filter: Linked is Allocated, Not linked is Part allocated or Unallocated. */
-const LINK_FILTERS: Readonly<
-  Record<NonNullable<PaymentListFilters["link"]>, DatasetFilter>
-> = {
-  "linked": { field: "unallocatedCents", op: "lte", value: 0 },
-  "not-linked": { field: "unallocatedCents", op: "gt", value: 0 },
-};
-
-/** One payment list row, its unallocated money read into its status. */
+/** One payment list row: the dataset already names its status (LH16). */
 export function paymentListRowOf(
   row: z.infer<typeof paymentRow>
 ): PaymentListRow {
-  return { ...row, status: paymentStatusOf(row) };
+  return row;
 }
 
-/**
- * The Payments list as of the reporting date: one `queryDataset` read under `invoices:read`, so a
- * scoped person sees only the payments they may read (DEC-39, R-9). A page holds at most 1,000
- * rows; `after` reads the page after a cut one (czjw.28). The filters run in the dataset query, so
- * they hold across pages (design review 1.4).
- */
+const paymentGroup = z.object({
+  currency: z.string(),
+  status: z.enum(PAYMENT_STATUSES),
+  collected: z.number().int(),
+  unallocated: z.number().int(),
+  rows: z.number().int(),
+});
+
+/** Per currency and status, under every filter but the tab. */
+async function paymentGroups(
+  ctx: ModuleRequestContext,
+  filters: readonly DatasetFilter[],
+  search: string | undefined
+) {
+  const result = await queryDataset(ctx, {
+    dataset: "invoices.payments",
+    search,
+    query: {
+      filters,
+      groupBy: [{ field: "currency" }, { field: "status" }],
+      aggregates: [
+        { fn: "sum", field: "amountCents", as: "collected" },
+        { fn: "sum", field: "unallocatedCents", as: "unallocated" },
+        { fn: "count", as: "rows" },
+      ],
+    },
+  });
+
+  return result.rows.map((entry) => paymentGroup.parse(entry));
+}
+
+/** The figures of each currency over the groups of the active tab (LH17). */
+function paymentSummaryOf(
+  groups: readonly z.infer<typeof paymentGroup>[]
+): PaymentListSummary[] {
+  const totals = new Map<string, PaymentListSummary>();
+
+  for (const group of groups) {
+    const total = totals.get(group.currency) ?? {
+      currency: group.currency,
+      collectedCents: 0,
+      allocatedCents: 0,
+      unallocatedCents: 0,
+      count: 0,
+      allocatedCount: 0,
+      notLinkedCount: 0,
+    };
+
+    totals.set(group.currency, {
+      ...total,
+      collectedCents: total.collectedCents + group.collected,
+      allocatedCents:
+        total.allocatedCents + group.collected - group.unallocated,
+      unallocatedCents: total.unallocatedCents + group.unallocated,
+      count: total.count + group.rows,
+      allocatedCount:
+        total.allocatedCount +
+        (group.status === "unallocated" ? 0 : group.rows),
+      notLinkedCount:
+        total.notLinkedCount + (group.status === "allocated" ? 0 : group.rows),
+    });
+  }
+
+  return byCurrency(totals.values());
+}
+
+/** The Payments list, read as `loadInvoiceList` reads the Invoices list (DEC-39, R-9). */
 export async function loadPaymentList(
   ctx: ModuleRequestContext,
   after: DatasetCursor | null = null,
-  filters: PaymentListFilters = {}
+  params: PaymentListParams = {}
 ): Promise<PaymentListView> {
-  const conditions = [
-    ...(filters.link === undefined ? [] : [LINK_FILTERS[filters.link]]),
-    ...customerAndDatesOf(filters, "paymentDate"),
-  ];
+  const list = listQueryOf(paymentListDefinition, paramsOf(params));
+  const first = after === null;
 
-  const [result, summary] = await Promise.all([
+  const [result, groups] = await Promise.all([
     queryDataset(ctx, {
       dataset: "invoices.payments",
       after: after ?? undefined,
-      search: filters.search,
+      search: list.search,
       query: {
         select: PAYMENT_ROW_FIELDS,
-        filters: conditions,
-        orderBy: [
-          { column: "paymentDate", direction: "desc" },
-          { column: "reference", direction: "desc" },
-        ],
+        filters: [...list.filters, ...list.tab],
+        orderBy: list.orderBy,
+        limit: LIST_PAGE_SIZE,
       },
     }),
-    paymentSummary(ctx, conditions, filters.search),
+    first ? paymentGroups(ctx, list.filters, list.search) : null,
   ]);
 
   return {
@@ -282,57 +371,23 @@ export async function loadPaymentList(
     rows: result.rows.map((row) => paymentListRowOf(paymentRow.parse(row))),
     truncated: result.truncated,
     next: result.next ?? null,
-    summary,
+    counts: groups === null ? null : countsOf(paymentListDefinition, groups),
+    summary:
+      groups === null
+        ? null
+        : paymentSummaryOf(groups.filter(({ status }) => inTab(list, status))),
   };
 }
 
-const paymentSummaryRow = z.object({
-  currency: z.string(),
-  collected: z.number().int(),
-  unallocated: z.number().int(),
-  payments: z.number().int(),
-});
-
-/** Collected, allocated, unallocated and the count, per currency over every row the filters keep. */
-async function paymentSummary(
-  ctx: ModuleRequestContext,
-  filters: readonly DatasetFilter[],
-  search: string | undefined
-): Promise<PaymentListSummary[]> {
-  const result = await queryDataset(ctx, {
-    dataset: "invoices.payments",
-    search,
-    query: {
-      filters,
-      groupBy: [{ field: "currency" }],
-      aggregates: [
-        { fn: "sum", field: "amountCents", as: "collected" },
-        { fn: "sum", field: "unallocatedCents", as: "unallocated" },
-        { fn: "count", as: "payments" },
-      ],
-    },
-  });
-
-  return result.rows
-    .map((entry) => paymentSummaryRow.parse(entry))
-    .map((row) => ({
-      currency: row.currency,
-      collectedCents: row.collected,
-      allocatedCents: row.collected - row.unallocated,
-      unallocatedCents: row.unallocated,
-      count: row.payments,
-    }))
-    .toSorted((left, right) => left.currency.localeCompare(right.currency));
-}
-
-/** The Payments page: its unfiltered first page and the customers of its picker. */
+/** The Payments page: its first page with no filter, the customers of its picker, and the zone. */
 export async function loadPaymentListPage(
   ctx: ModuleRequestContext
 ): Promise<PaymentListPageView> {
-  const [list, customers] = await Promise.all([
+  const [list, customers, branding] = await Promise.all([
     loadPaymentList(ctx),
     loadListCustomers(ctx),
+    ctx.tenant.branding.get(),
   ]);
 
-  return { ...list, customers };
+  return { ...list, customers, timeZone: branding.defaultTimeZone };
 }

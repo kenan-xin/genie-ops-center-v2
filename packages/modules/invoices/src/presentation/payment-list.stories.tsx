@@ -90,7 +90,8 @@ const NEXT_PAGE: PaymentListView = {
       : [{ ...firstRow, id: "payment-4", reference: "TRF-0830-777" }],
   truncated: false,
   next: null,
-  summary: defaultPaymentList.summary,
+  counts: null,
+  summary: null,
 };
 
 async function showsMore(
@@ -290,8 +291,10 @@ export const Empty: Story = {
       rows: [],
       truncated: false,
       next: null,
+      counts: {},
       summary: [],
       customers: [],
+      timeZone: "Asia/Singapore",
     },
   },
 };

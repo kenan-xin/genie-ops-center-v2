@@ -94,14 +94,24 @@ export const invoicesRouter = os.router({
     discardDocument(context, input.id)
   ),
   listInvoices: os.listInvoices.handler(async ({ context, input }) => {
-    const view = await loadInvoiceList(context, input.after, input.filters);
+    const view = await loadInvoiceList(context, input.after, input.params);
 
-    return { ...view, rows: [...view.rows], summary: [...view.summary] };
+    return {
+      ...view,
+      rows: [...view.rows],
+      counts: view.counts === null ? null : { ...view.counts },
+      summary: view.summary === null ? null : [...view.summary],
+    };
   }),
   listPayments: os.listPayments.handler(async ({ context, input }) => {
-    const view = await loadPaymentList(context, input.after, input.filters);
+    const view = await loadPaymentList(context, input.after, input.params);
 
-    return { ...view, rows: [...view.rows], summary: [...view.summary] };
+    return {
+      ...view,
+      rows: [...view.rows],
+      counts: view.counts === null ? null : { ...view.counts },
+      summary: view.summary === null ? null : [...view.summary],
+    };
   }),
   listOpenInvoices: os.listOpenInvoices.handler(({ context, input }) =>
     listOpenInvoices(context, input)

@@ -15,6 +15,13 @@
       "when": 1793387739261,
       "tag": "0001_document-reading",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793784897321,
+      "tag": "0002_list-sort-indexes",
+      "breakpoints": true
     }
   ]
 }

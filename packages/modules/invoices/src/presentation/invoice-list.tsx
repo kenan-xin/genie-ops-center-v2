@@ -12,6 +12,7 @@ import {
   formatChartValue,
   ToggleGroup,
   ToggleGroupItem,
+  dayRangeParam,
 } from "@genie/ui";
 
 import {
@@ -184,7 +185,17 @@ export function InvoiceList(props: InvoiceListProps) {
     key: ["invoices", "invoice-list", view.asOf, filters],
     // The server page is the unfiltered one; a filtered page one is read here.
     first: filtered ? undefined : view,
-    read: (after) => invoices.listInvoices({ after, filters }),
+    // Task 7 moves this screen onto the list header; until then today's filters map to params.
+    read: (after) =>
+      invoices.listInvoices({
+        after,
+        params: {
+          q: filters.search,
+          status: filters.status,
+          customer: filters.customerId,
+          date: dayRangeParam({ from: filters.from, to: filters.to }),
+        },
+      }),
   });
 
   const { search: _search, ...narrowing } = filters;
@@ -242,7 +253,7 @@ export function InvoiceList(props: InvoiceListProps) {
       ) : (
         <div className="flex flex-col gap-4">
           {list.first === undefined ? null : (
-            <SummaryStrips summary={list.first.summary} />
+            <SummaryStrips summary={list.first.summary ?? []} />
           )}
           <ListFilterBar
             searchLabel="Search invoice number or customer"

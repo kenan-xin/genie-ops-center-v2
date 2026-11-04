@@ -442,6 +442,8 @@ export const invoiceListRow = z.object({
   totalCents: z.number().int(),
   outstandingCents: z.number().int(),
   status: invoiceStatus,
+  /** The row's last change, UTC ISO text with microseconds (`czjw.71`). */
+  updatedAt: z.string(),
 });
 
 export type InvoiceListRow = z.infer<typeof invoiceListRow>;
@@ -465,6 +467,78 @@ export const invoiceListFilters = z.object({
 
 export type InvoiceListFilters = z.infer<typeof invoiceListFilters>;
 
+/** A day range of a list address, `from..to`: each end an ISO day or empty, never both (LH14). */
+export const dayRange = z.string().refine((value) => {
+  const ends = value.split("..");
+
+  return (
+    ends.length === 2 &&
+    ends.some((end) => end !== "") &&
+    ends.every((end) => end === "" || isoDate.safeParse(end).success)
+  );
+}, "Write the range as from..to, each end an ISO day or empty.");
+
+/** The tabs and sortable columns of the two lists; `list-definitions.ts` names its items by them. */
+export const INVOICE_LIST_TABS = ["all", ...INVOICE_LIST_STATUSES] as const;
+
+/** Outstanding and Status never sort (owner, 2026-11-03, LH5). */
+export const INVOICE_LIST_SORTS = [
+  "invoice",
+  "customer",
+  "invoiceDate",
+  "dueDate",
+  "total",
+  "updated",
+] as const;
+
+export const PAYMENT_LIST_TABS = ["all", "linked", "not-linked"] as const;
+
+export const PAYMENT_LIST_SORTS = [
+  "customer",
+  "paymentDate",
+  "method",
+  "amount",
+  "updated",
+] as const;
+
+/** `<column>.<asc|desc>` over the columns, the only sorts a procedure takes. */
+function sortParam<const Column extends string>(
+  columns: readonly [Column, ...Column[]]
+) {
+  const [first, ...rest] = columns;
+
+  return z.enum([
+    `${first}.asc`,
+    `${first}.desc`,
+    ...rest.flatMap((column) => [`${column}.asc`, `${column}.desc`] as const),
+  ]);
+}
+
+/** The Invoices list address as its procedure takes it: the list header state (`czjw.73`). */
+export const invoiceListParams = z.object({
+  q: invoiceListFilters.shape.search,
+  status: z.enum(INVOICE_LIST_TABS).optional(),
+  customer: recordId.optional(),
+  date: dayRange.optional(),
+  sort: sortParam(INVOICE_LIST_SORTS).optional(),
+});
+
+export type InvoiceListParams = z.infer<typeof invoiceListParams>;
+
+/** The Payments list address as its procedure takes it. */
+export const paymentListParams = z.object({
+  q: invoiceListFilters.shape.search,
+  status: z.enum(PAYMENT_LIST_TABS).optional(),
+  customer: recordId.optional(),
+  date: dayRange.optional(),
+  sort: sortParam(PAYMENT_LIST_SORTS).optional(),
+});
+
+export type PaymentListParams = z.infer<typeof paymentListParams>;
+
+/** The rows of each tab under the other filters, never narrowed by the tab itself (LH17). */
+const tabCounts = z.record(z.string(), z.number().int());
+
 /** The totals of one currency over every invoice the filters keep, not only the loaded page. */
 export const invoiceListSummary = z.object({
   currency: z.string(),
@@ -473,6 +547,9 @@ export const invoiceListSummary = z.object({
   overdueCount: z.number().int(),
   invoicedCents: z.number().int(),
   count: z.number().int(),
+  /** The invoices not paid, under Outstanding. */
+  unpaidCount: z.number().int(),
+  paidCount: z.number().int(),
 });
 
 export type InvoiceListSummary = z.infer<typeof invoiceListSummary>;
@@ -484,6 +561,10 @@ export const paymentListSummary = z.object({
   allocatedCents: z.number().int(),
   unallocatedCents: z.number().int(),
   count: z.number().int(),
+  /** The payments allocated or part allocated, under Allocated. */
+  allocatedCount: z.number().int(),
+  /** The payments part allocated or unallocated. */
+  notLinkedCount: z.number().int(),
 });
 
 export type PaymentListSummary = z.infer<typeof paymentListSummary>;
@@ -517,6 +598,7 @@ export const paymentListRow = z.object({
   amountCents: z.number().int(),
   unallocatedCents: z.number().int(),
   status: z.enum(PAYMENT_STATUSES),
+  updatedAt: z.string(),
 });
 
 export type PaymentListRow = z.infer<typeof paymentListRow>;
@@ -634,15 +716,16 @@ export const invoicesContract = {
     .input(z.object({ id: recordId }))
     .output(z.object({ documentId: z.string() })),
   /**
-   * The Invoices list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28),
-   * with its filters and the summary of every invoice they keep.
+   * The Invoices list from a cursor on, 50 rows a page, sorted in the database (czjw.28, czjw.71).
+   * Page one also answers the tab counts and the summary of every invoice the filters and the tab
+   * keep; a later page answers null for both.
    */
   listInvoices: oc
     .route({ method: "GET", path: "/invoices/invoice-list" })
     .input(
       z.object({
         after: datasetCursorSchema.nullable(),
-        filters: invoiceListFilters.optional(),
+        params: invoiceListParams.optional(),
       })
     )
     .output(
@@ -651,19 +734,17 @@ export const invoicesContract = {
         rows: z.array(invoiceListRow),
         truncated: z.boolean(),
         next: datasetCursorSchema.nullable(),
-        summary: z.array(invoiceListSummary),
+        counts: tabCounts.nullable(),
+        summary: z.array(invoiceListSummary).nullable(),
       })
     ),
-  /**
-   * The Payments list from a cursor on, 1,000 rows a page, as the list page reads it (czjw.28),
-   * with its filters and the summary of every payment they keep.
-   */
+  /** The Payments list, as `listInvoices` reads the Invoices list. */
   listPayments: oc
     .route({ method: "GET", path: "/invoices/payment-list" })
     .input(
       z.object({
         after: datasetCursorSchema.nullable(),
-        filters: paymentListFilters.optional(),
+        params: paymentListParams.optional(),
       })
     )
     .output(
@@ -672,7 +753,8 @@ export const invoicesContract = {
         rows: z.array(paymentListRow),
         truncated: z.boolean(),
         next: datasetCursorSchema.nullable(),
-        summary: z.array(paymentListSummary),
+        counts: tabCounts.nullable(),
+        summary: z.array(paymentListSummary).nullable(),
       })
     ),
   /** A customer's open invoices in one currency, oldest first, for a reader of the customer. */

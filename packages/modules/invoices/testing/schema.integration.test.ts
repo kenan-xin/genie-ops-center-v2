@@ -42,7 +42,34 @@ async function aCustomerId() {
   return (await insertCustomer(t())).id;
 }
 
+/** One index per sortable list column (LH4), so a list sort never scans the table. */
+const LIST_SORT_INDEXES = [
+  "customer_name_idx",
+  "document_created_at_idx",
+  "document_updated_at_idx",
+  "invoice_due_date_idx",
+  "invoice_invoice_date_idx",
+  "invoice_number_idx",
+  "invoice_total_cents_idx",
+  "invoice_updated_at_idx",
+  "payment_amount_cents_idx",
+  "payment_method_idx",
+  "payment_payment_date_idx",
+  "payment_updated_at_idx",
+];
+
 describe("the invoices schema", () => {
+  it("holds the list sort indexes after the real migration history", async () => {
+    const { rows } = await t().db.$client.query<{ indexname: string }>(
+      "select indexname from pg_indexes where indexname = any($1)",
+      [LIST_SORT_INDEXES]
+    );
+
+    expect(rows.map(({ indexname }) => indexname).toSorted()).toEqual(
+      LIST_SORT_INDEXES
+    );
+  });
+
   it.each([
     [
       "a second document with the same hash",

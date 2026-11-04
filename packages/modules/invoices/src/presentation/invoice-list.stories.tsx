@@ -91,7 +91,8 @@ const NEXT_PAGE: InvoiceListView = {
       : [{ ...firstRow, id: "invoice-5", invoiceNumber: "INV-2026-08-30" }],
   truncated: false,
   next: null,
-  summary: defaultInvoiceList.summary,
+  counts: null,
+  summary: null,
 };
 
 async function showsMore(
@@ -327,8 +328,10 @@ export const Empty: Story = {
       rows: [],
       truncated: false,
       next: null,
+      counts: {},
       summary: [],
       customers: [],
+      timeZone: "Asia/Singapore",
     },
   },
 };
