@@ -116,7 +116,12 @@ export type ModelRecording = {
   };
   readonly response:
     | { readonly status: number; readonly body: JsonValue }
-    | { readonly status: number; readonly events: readonly JsonValue[] };
+    | {
+        readonly status: number;
+        readonly events: readonly JsonValue[];
+        /** Test harness only: the wait between events, so a test can watch a stream (AG14). */
+        readonly chunkDelayMs?: number | undefined;
+      };
 };
 
 const jsonValueSchema = z.json();
@@ -130,7 +135,11 @@ const recordingSchema = z.object({
   }),
   response: z.union([
     z.object({ status: z.number().int(), body: jsonValueSchema }),
-    z.object({ status: z.number().int(), events: z.array(jsonValueSchema) }),
+    z.object({
+      status: z.number().int(),
+      events: z.array(jsonValueSchema),
+      chunkDelayMs: z.number().int().min(0).optional(),
+    }),
   ]),
 });
 
@@ -177,6 +186,7 @@ export function responseFromRecording(recording: ModelRecording): Response {
 
   const stream = simulateReadableStream({
     chunks: [...recording.response.events],
+    chunkDelayInMs: recording.response.chunkDelayMs ?? 0,
   })
     .pipeThrough(new JsonToSseTransformStream())
     .pipeThrough(new TextEncoderStream());

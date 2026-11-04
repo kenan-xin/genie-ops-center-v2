@@ -255,7 +255,6 @@ export function DeckList(props: DeckListProps) {
                 models={chat.models}
                 labels={chat.labels}
                 suggestions={view.canWrite ? CHAT_SUGGESTIONS : []}
-                placeholder="Ask for a deck or a slide"
                 timeZone={view.timeZone}
                 newChatHref="/m/slides/decks"
                 // A chat create adds a deck; the list reads it at once.

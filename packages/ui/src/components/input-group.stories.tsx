@@ -10,6 +10,7 @@ import {
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
+  InputGroupTextarea,
 } from "../index.ts";
 
 const meta = {
@@ -20,7 +21,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shadcn Input Group (`@shadcn/input-group`): one bordered field that holds an `InputGroupInput` and an `InputGroupAddon` at `inline-start` or `inline-end`. The addon holds text, an icon or an `InputGroupButton` (ghost, `icon-sm` by default, 32 px with a 44 px hit area). The group shows the focus ring when its input has keyboard focus. Use it for a control inside a field, for example the password reveal.",
+          "The shadcn Input Group (`@shadcn/input-group`): one bordered field that holds an `InputGroupInput` and an `InputGroupAddon` at `inline-start` or `inline-end`. The addon holds text, an icon or an `InputGroupButton` (ghost, `icon-sm` by default, 32 px with a 44 px hit area). The group shows the focus ring when its input has keyboard focus. An `InputGroupTextarea` with an addon at `block-end` gives a multi-line field with a row of actions under it, as the agent composer uses. Use it for a control inside a field, for example the password reveal.",
       },
     },
   },
@@ -54,6 +55,24 @@ export const LeadingIcon: Story = {
         <InputGroupText>
           <SearchIcon aria-hidden="true" />
         </InputGroupText>
+      </InputGroupAddon>
+    </InputGroup>
+  ),
+};
+
+export const TextareaWithActions: Story = {
+  name: "Textarea with actions",
+  render: () => (
+    <InputGroup>
+      <InputGroupTextarea
+        aria-label="Note"
+        rows={2}
+        placeholder="Write a note"
+      />
+      <InputGroupAddon align="block-end">
+        <InputGroupButton aria-label="Search" className="ms-auto">
+          <SearchIcon aria-hidden="true" />
+        </InputGroupButton>
       </InputGroupAddon>
     </InputGroup>
   ),

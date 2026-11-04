@@ -81,6 +81,52 @@ const sendHeld = fn(async () => {
   });
 });
 
+/** The half sentence a held answer shows before the stream ends (I18). */
+const PARTIAL = "Three example rec";
+
+/** The abort signal of the last held send, so a play sees that Stop reached the transport. */
+let heldSignal: AbortSignal | undefined;
+
+/** An answer cut mid-word that stays open until the play releases it or Stop aborts it. */
+const sendPartial = fn(
+  async ({
+    abortSignal,
+  }: {
+    readonly abortSignal: AbortSignal | undefined;
+  }) => {
+    heldSignal = abortSignal;
+
+    const hold = new Promise<void>((resolve) => {
+      releaseHeld = resolve;
+      abortSignal?.addEventListener("abort", () => resolve());
+    });
+
+    return new ReadableStream<UIMessageChunk>({
+      async start(controller) {
+        controller.enqueue({ type: "start" });
+        controller.enqueue({ type: "text-start", id: "answer" });
+        controller.enqueue({
+          type: "text-delta",
+          id: "answer",
+          delta: `root = Answer([p])\np = Paragraph("${PARTIAL}`,
+        });
+        await hold;
+
+        if (abortSignal?.aborted) return;
+
+        controller.enqueue({
+          type: "text-delta",
+          id: "answer",
+          delta: 'ords.")',
+        });
+        controller.enqueue({ type: "text-end", id: "answer" });
+        controller.enqueue({ type: "finish" });
+        controller.close();
+      },
+    });
+  }
+);
+
 const sendPicked = fn(async () =>
   chunks(
     { type: "start" },
@@ -144,6 +190,7 @@ const meta = {
   },
   beforeEach: () => {
     releaseHeld = () => undefined;
+    heldSignal = undefined;
   },
 } satisfies Meta<typeof Conversation>;
 
@@ -154,7 +201,7 @@ type Story = StoryObj<typeof meta>;
 export const Streaming: Story = {
   args: { transport: transportOf(sendHeld) },
   play: async ({ canvas }) => {
-    const box = canvas.getByRole("textbox", { name: "Message Ask" });
+    const box = canvas.getByRole("textbox", { name: "Message" });
 
     // A suggestion chip sends its question.
     await userEvent.click(canvas.getByRole("button", { name: FIRST_QUESTION }));
@@ -172,19 +219,54 @@ export const Streaming: Story = {
     // While the answer streams, no chip offers a second send.
     await expect(suggestions()).toBeNull();
 
-    // A second Enter and a second press, while the answer streams, send nothing.
+    // A second Enter, while the answer streams, sends nothing: the button is Stop, not Send.
     await userEvent.type(box, "and again");
     await userEvent.keyboard("{Enter}");
-    await userEvent.click(canvas.getByRole("button", { name: "Send" }));
 
     await expect(sendHeld).toHaveBeenCalledTimes(1);
-
-    const send = canvas.getByRole("button", { name: "Send" });
-
-    await expect(send).toHaveAttribute("aria-busy", "true");
+    await expect(canvas.queryByRole("button", { name: "Send" })).toBeNull();
 
     releaseHeld();
-    await waitFor(() => expect(send).not.toHaveAttribute("aria-busy"));
+    await expect(
+      await canvas.findByRole("button", { name: "Send" })
+    ).toBeEnabled();
+  },
+};
+
+export const StreamsWordsBeforeTheEnd: Story = {
+  name: "Streams words before the answer ends",
+  args: { transport: transportOf(sendPartial) },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: FIRST_QUESTION }));
+
+    // Half a paragraph shows while the stream is still open (I18).
+    await expect(await canvas.findByText(PARTIAL)).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Stop the answer" })
+    ).toBeVisible();
+
+    releaseHeld();
+    await expect(await canvas.findByText(`${PARTIAL}ords.`)).toBeVisible();
+  },
+};
+
+export const StopKeepsTheAnswer: Story = {
+  name: "Stop keeps the answer so far",
+  args: { transport: transportOf(sendPartial) },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: FIRST_QUESTION }));
+    await canvas.findByText(PARTIAL);
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Stop the answer" })
+    );
+
+    // The words so far stay, the request is aborted, and the composer sends again.
+    await expect(
+      await canvas.findByRole("button", { name: "Send" })
+    ).toBeInTheDocument();
+    await expect(heldSignal?.aborted).toBe(true);
+    await expect(canvas.getByText(PARTIAL)).toBeVisible();
   },
 };
 
@@ -202,7 +284,7 @@ export const PickAModel: Story = {
       await screen.findByRole("option", { name: OTHER_MODEL })
     );
 
-    const box = canvas.getByRole("textbox", { name: "Message Ask" });
+    const box = canvas.getByRole("textbox", { name: "Message" });
 
     await userEvent.type(box, "What can you do?");
     await userEvent.click(canvas.getByRole("button", { name: "Send" }));
@@ -228,7 +310,7 @@ export const Refused: Story = {
       await screen.findByRole("option", { name: OTHER_MODEL })
     );
 
-    const box = canvas.getByRole("textbox", { name: "Message Ask" });
+    const box = canvas.getByRole("textbox", { name: "Message" });
 
     await userEvent.type(box, "Continue the chat");
     await userEvent.click(canvas.getByRole("button", { name: "Send" }));
@@ -240,9 +322,6 @@ export const Refused: Story = {
     await expect(
       canvas.getByRole("link", { name: "Start a new chat" })
     ).toHaveAttribute("href", "/ask");
-    await expect(
-      canvas.getByRole("button", { name: "Send" })
-    ).not.toHaveAttribute("aria-busy");
 
     // A refused first send stores no answer, so the chat is still new: the picker stays, and
     // the retry carries the same model instead of silently falling back to the default (R-18).

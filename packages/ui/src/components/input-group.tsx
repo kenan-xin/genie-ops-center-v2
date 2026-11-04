@@ -11,8 +11,8 @@ import { inputSizes } from "./input.tsx";
 /*
  * The shadcn Input Group (`@shadcn/input-group`, base style), fitted to this repository: the group
  * carries the border and the one focus ring of tokens.ts, the bare control keeps the Input sizes, and the
- * button keeps the Button sizes with their 44 px hit area. The textarea control and the block
- * addons are left out until a screen needs them.
+ * button keeps the Button sizes with their 44 px hit area. The textarea control and the
+ * `block-end` addon serve the agent composer; `block-start` stays out until a screen needs it.
  */
 
 function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
@@ -21,7 +21,7 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
       data-slot="input-group"
       role="group"
       className={cn(
-        "group/input-group relative flex w-full min-w-0 items-center rounded-lg border border-input bg-card motion-safe:transition-colors has-disabled:opacity-50 has-[[data-slot=input-group-control]:focus-visible]:ring-2 has-[[data-slot=input-group-control]:focus-visible]:ring-ring has-[[data-slot=input-group-control]:focus-visible]:ring-offset-2 has-[[data-slot=input-group-control]:focus-visible]:ring-offset-background has-[[data-slot][aria-invalid=true]]:border-destructive",
+        "group/input-group relative flex w-full min-w-0 items-center has-[>[data-align=block-end]]:flex-col has-[>[data-align=block-end]]:items-stretch rounded-lg border border-input bg-card motion-safe:transition-colors has-[[data-slot=input-group-control]:disabled]:opacity-50 has-[[data-slot=input-group-control]:focus-visible]:ring-2 has-[[data-slot=input-group-control]:focus-visible]:ring-ring has-[[data-slot=input-group-control]:focus-visible]:ring-offset-2 has-[[data-slot=input-group-control]:focus-visible]:ring-offset-background has-[[data-slot][aria-invalid=true]]:border-destructive",
         className
       )}
       {...props}
@@ -36,6 +36,7 @@ const inputGroupAddonVariants = cva(
       align: {
         "inline-start": "order-first pl-2 has-[>button]:-ml-0.5",
         "inline-end": "order-last pr-2 has-[>button]:-mr-0.5",
+        "block-end": "order-last w-full justify-start px-2 pb-2",
       },
     },
     defaultVariants: {
@@ -63,7 +64,9 @@ function InputGroupAddon({
         )
           return;
 
-        event.currentTarget.parentElement?.querySelector("input")?.focus();
+        event.currentTarget.parentElement
+          ?.querySelector<HTMLElement>("[data-slot=input-group-control]")
+          ?.focus();
       }}
       {...props}
     />
@@ -129,10 +132,28 @@ function InputGroupInput({
   );
 }
 
+// A bare textarea for the same reason: the group draws the border, the fill and the one ring.
+function InputGroupTextarea({
+  className,
+  ...props
+}: React.ComponentProps<"textarea">) {
+  return (
+    <textarea
+      data-slot="input-group-control"
+      className={cn(
+        "max-h-36 min-h-11 w-full min-w-0 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed",
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
 export {
   InputGroup,
   InputGroupAddon,
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
+  InputGroupTextarea,
 };

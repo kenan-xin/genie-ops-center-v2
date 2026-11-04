@@ -36,6 +36,7 @@ export {
   InputGroupButton,
   InputGroupInput,
   InputGroupText,
+  InputGroupTextarea,
 } from "./components/input-group.tsx";
 
 export {

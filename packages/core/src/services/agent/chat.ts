@@ -213,6 +213,9 @@ export async function handleAgentChat(
   });
 
   return createUIMessageStreamResponse({
+    // Next's gzip middleware holds a whole event stream until it ends unless the response says
+    // no-transform; measured on 2026-11-05: one chunk at the end, against one chunk per event.
+    headers: { "cache-control": "no-cache, no-transform" },
     stream: createUIMessageStream({
       originalMessages: history,
       generateId: () => randomUUID(),

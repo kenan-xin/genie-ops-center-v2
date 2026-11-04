@@ -625,6 +625,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent route refuses each bad request before the stream starts, and stores and sends nothing",
       "the agent route names the record of a valid context in the system text it sends",
       "the agent route answers the next message after a turn stored a tool call with no result",
+      "the agent route streams the first words before the model's answer ends",
+      "the agent route keeps the words of a stopped answer",
     ],
   },
   {

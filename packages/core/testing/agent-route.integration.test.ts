@@ -1,5 +1,8 @@
 import { randomUUID } from "node:crypto";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
+import { parseJsonEventStream, uiMessageChunkSchema } from "ai";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { AppError } from "../src/lib/errors/index.ts";
@@ -8,6 +11,7 @@ import {
   appendMessage,
   createOwnSession,
   handleAgentChat,
+  readOwnSession,
 } from "../src/services/agent/index.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import {
@@ -24,6 +28,7 @@ import {
   markSetupDone,
   readAgentReply,
   startDisposableDeployment,
+  useModelTransport,
   useRecordedModel,
   writeModelConnection,
 } from "./index.ts";
@@ -114,6 +119,74 @@ async function refusal(
     return error instanceof AppError
       ? error.code
       : `not an AppError: ${String(error)}`;
+  }
+}
+
+const sseLine = (event: JsonValue) => `data: ${JSON.stringify(event)}\n\n`;
+
+/**
+ * A model that sends the first event of the recorded "Hello!" stream at once and the rest only
+ * after `release`, so a test reads the route while the model still answers.
+ */
+function heldModel() {
+  const recording: { response: { events: readonly JsonValue[] } } = JSON.parse(
+    readFileSync(
+      join(CORE_MODEL_RECORDINGS, "hello-chat-default-stream.json"),
+      "utf8"
+    )
+  );
+
+  const [first, ...rest] = recording.response.events;
+
+  const { promise: held, resolve: release } = Promise.withResolvers<void>();
+
+  useModelTransport(deployment.context, {
+    transport: async (_input, init) =>
+      new Response(
+        new ReadableStream<string>({
+          async start(controller) {
+            controller.enqueue(sseLine(first ?? null));
+            await Promise.race([
+              held,
+              new Promise((resolve) =>
+                init?.signal?.addEventListener("abort", resolve)
+              ),
+            ]);
+
+            if (init?.signal?.aborted)
+              return controller.error(init.signal.reason);
+
+            for (const event of rest) controller.enqueue(sseLine(event));
+
+            controller.enqueue("data: [DONE]\n\n");
+            controller.close();
+          },
+        }).pipeThrough(new TextEncoderStream()),
+        { status: 200, headers: { "content-type": "text/event-stream" } }
+      ),
+  });
+
+  return { release: () => release() };
+}
+
+/** Reads the route's chunks up to the first word, and answers the reader to go on with. */
+async function readToFirstWord(response: Response) {
+  if (response.body === null) throw new Error("The agent reply has no body.");
+
+  const reader = parseJsonEventStream({
+    stream: response.body,
+    schema: uiMessageChunkSchema,
+  }).getReader();
+
+  for (;;) {
+    // oxlint-disable-next-line no-await-in-loop -- the chunks arrive one after another
+    const { done, value } = await reader.read();
+
+    if (done) throw new Error("The stream ended before its first word.");
+
+    if (value.success && value.value.type === "text-delta") {
+      return { reader, word: value.value.delta };
+    }
   }
 }
 
@@ -291,6 +364,75 @@ describe("the agent route", () => {
     expect(JSON.stringify(recorded.sent.at(-1)?.body)).toContain(
       "The person has the dashboard record d-1 open beside this chat."
     );
+  });
+
+  it("streams the first words before the model's answer ends", async () => {
+    const model = heldModel();
+
+    try {
+      const response = await handleAgentChat(
+        await asker(),
+        agentRequest(body({}, [{ type: "text", text: "Say hello." }])),
+        { logError: () => {} }
+      );
+
+      // Next's gzip holds a whole event stream unless the response says no-transform (AG13).
+      expect(response.headers.get("cache-control")).toContain("no-transform");
+
+      const { reader, word } = await readToFirstWord(response);
+
+      expect(word).toBe("Hello");
+
+      model.release();
+      await reader.cancel();
+    } finally {
+      model.release();
+      recorded = useRecordedModel(deployment.context, CORE_MODEL_RECORDINGS);
+    }
+  });
+
+  it("keeps the words of a stopped answer", async () => {
+    const model = heldModel();
+
+    const ctx = await asker();
+
+    const sessionId = randomUUID();
+
+    const stop = new AbortController();
+
+    try {
+      const response = await handleAgentChat(
+        ctx,
+        new Request(
+          agentRequest(
+            body({ sessionId }, [{ type: "text", text: "Say hello." }])
+          ),
+          { signal: stop.signal }
+        ),
+        { logError: () => {} }
+      );
+
+      const { reader } = await readToFirstWord(response);
+
+      // A browser's Stop: the request aborts and the response is no longer read.
+      stop.abort();
+      await reader.cancel();
+
+      await expect
+        .poll(
+          async () =>
+            (await readOwnSession(ctx, sessionId)).messages
+              .find((message) => message.role === "assistant")
+              ?.parts.filter((part) => part.type === "text")
+              .map((part) => part.text)
+              .join(""),
+          { timeout: 5000 }
+        )
+        .toBe("Hello");
+    } finally {
+      model.release();
+      recorded = useRecordedModel(deployment.context, CORE_MODEL_RECORDINGS);
+    }
   });
 
   it("answers the next message after a turn stored a tool call with no result", async () => {

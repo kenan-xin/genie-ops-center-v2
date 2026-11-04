@@ -37,6 +37,8 @@ const buttonVariants = cva(
         "filter": "h-11 min-h-11 px-3 lg:h-9 lg:min-h-9",
         "icon": "size-11 lg:size-10",
         "icon-sm": `size-8 ${hitArea}`,
+        // The round Send and Stop of the agent composer (agent-native rule 6).
+        "icon-round": `size-8 rounded-full ${hitArea}`,
       },
     },
     defaultVariants: {

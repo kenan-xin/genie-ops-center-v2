@@ -4,9 +4,6 @@ import { useChat } from "@ai-sdk/react";
 import {
   Bubble,
   BubbleContent,
-  Button,
-  Field,
-  FieldLabel,
   focusRing,
   Message,
   MessageContent,
@@ -15,31 +12,27 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Textarea,
 } from "@genie/ui";
 import type { ChatTransport } from "ai";
-import { ArrowUpIcon, SparklesIcon } from "lucide-react";
-import { useEffect, useId, useState, type ReactNode } from "react";
+import { SparklesIcon } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
+import { Composer } from "./composer.tsx";
 import { MessageParts } from "./message-parts.tsx";
 import { refusalOf } from "./transport.ts";
-
-const MESSAGE_LIMIT = 4000;
 
 const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
 const chipClass = `inline-flex min-h-8 items-center rounded-full border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground ${focusRing}`;
 
-const HINT = "Enter sends. Shift and Enter start a new line.";
-
 /**
  * One agent chat (R-40, R-18), laid out as a chat (Section 7 redesign, agent-native rules 2, 5
  * and 6): the person's message in a muted bubble at the right, the answer as plain text under a
- * small agent mark, suggestion chips, and a rounded composer with hint text and a round Send. The
- * picked model goes with the first message only, because the session keeps the model the first
- * message fixed (P4). While an answer streams, nothing sends again (B9.1).
+ * small agent mark, suggestion chips, and the `Composer`. The picked model goes with the first
+ * message only, because the session keeps the model the first message fixed (P4). While an answer
+ * streams, nothing sends again (B9.1), and Stop ends it with its words kept (I18).
  */
 export function Conversation(props: {
   readonly sessionId: string;
@@ -58,8 +51,6 @@ export function Conversation(props: {
   readonly labels: ChatLabels;
   /** Starter questions above the composer; hidden while an answer streams or after a refusal. */
   readonly suggestions: readonly string[];
-  /** The composer's hint text. */
-  readonly placeholder?: string | undefined;
   /** Shown above the composer while the chat has no message, for example a welcome line. */
   readonly empty?: ReactNode;
   /**
@@ -72,10 +63,6 @@ export function Conversation(props: {
   readonly onFinished?: (sessionId: string) => void;
 }): ReactNode {
   const [draft, setDraft] = useState("");
-
-  const pickerId = useId();
-
-  const hintId = useId();
 
   const [modelId, setModelId] = useState(
     props.models?.chatDefault ?? props.models?.allowed[0] ?? ""
@@ -194,28 +181,6 @@ export function Conversation(props: {
             </div>
           )}
 
-          {showPicker ? (
-            <Field>
-              <FieldLabel id={pickerId}>Model</FieldLabel>
-              <Select
-                items={modelItems}
-                value={modelId}
-                onValueChange={(value) => setModelId(value ?? "")}
-              >
-                <SelectTrigger aria-labelledby={pickerId}>
-                  <SelectValue placeholder="Default model" />
-                </SelectTrigger>
-                <SelectContent>
-                  {modelItems.map((item) => (
-                    <SelectItem key={item.value} value={item.value}>
-                      {item.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          ) : null}
-
           {showSuggestions ? (
             <div
               role="group"
@@ -235,42 +200,38 @@ export function Conversation(props: {
             </div>
           ) : null}
 
-          <div className="grid gap-1">
-            <div className="flex items-end gap-2 rounded-xl border border-input bg-background py-2 ps-3.5 pe-2 focus-within:ring-2 focus-within:ring-ring">
-              <Textarea
-                aria-label="Message Ask"
-                aria-describedby={hintId}
-                rows={1}
-                maxLength={MESSAGE_LIMIT}
-                placeholder={props.placeholder ?? "Ask a question"}
-                value={draft}
-                // oxlint-disable-next-line shadcn/no-restyle -- the composer box draws the border and the focus ring (agent-native rule 6)
-                className="max-h-36 min-h-8 resize-none border-0 bg-transparent p-0 shadow-none focus-visible:ring-0 dark:bg-transparent"
-                onChange={(event) => setDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && !event.shiftKey) {
-                    event.preventDefault();
-                    send(draft);
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                size="icon-sm"
-                aria-label="Send"
-                loading={busy}
-                disabled={busy || draft.trim() === ""}
-                // oxlint-disable-next-line shadcn/no-restyle -- the round Send of the redesign (agent-native rule 6)
-                className="rounded-full"
-                onClick={() => send(draft)}
-              >
-                <ArrowUpIcon aria-hidden="true" strokeWidth={1.75} />
-              </Button>
-            </div>
-            <p id={hintId} className="text-xs text-muted-foreground">
-              {HINT}
-            </p>
-          </div>
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            onSend={() => send(draft)}
+            onStop={() => void chat.stop()}
+            busy={busy}
+            picker={
+              showPicker ? (
+                <Select
+                  items={modelItems}
+                  value={modelId}
+                  onValueChange={(value) => setModelId(value ?? "")}
+                >
+                  <SelectTrigger
+                    aria-label="Model"
+                    size="sm"
+                    // oxlint-disable-next-line shadcn/no-restyle -- a compact picker inside the composer (variant B)
+                    className="w-auto max-w-56 border-0 bg-transparent max-lg:h-11"
+                  >
+                    <SelectValue placeholder="Default model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {modelItems.map((item) => (
+                      <SelectItem key={item.value} value={item.value}>
+                        {item.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : undefined
+            }
+          />
         </div>
       </div>
     </ChartCheckProvider>
