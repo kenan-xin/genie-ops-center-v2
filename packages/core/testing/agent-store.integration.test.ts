@@ -244,9 +244,10 @@ describe("the owner-only agent store against a real database", () => {
     expect(rows.every(({ message_id }) => message_id === answerId)).toBe(true);
 
     await expect(
+      // A second new artifact with a stored id fails after the first new one was written.
       appendMessage(personA, s1.id, answer("Again."), [
         pending(randomUUID(), 3, 1),
-        { ...pending(first, 1, 1), isNew: false },
+        pending(first, 4, 1),
       ])
     ).rejects.toThrow();
 
@@ -335,12 +336,71 @@ describe("the owner-only agent store against a real database", () => {
     expect((await storedArtifact(personA, s1.id, 2))?.id).toBe(low);
     expect(await storedArtifact(personA, s1.id, 3)).toBeUndefined();
     expect(await storedArtifactCount(personA, s1.id)).toBe(2);
+  });
 
-    await expect(
-      appendMessage(personA, s1.id, answer("Clash."), [
-        pending(randomUUID(), 2, 1),
-      ])
-    ).rejects.toThrow();
+  it("keeps an overlapping turn's answer and moves its artifacts after the stored ones", async () => {
+    const s1 = await session(personA, "Overlap");
+    const chart = randomUUID();
+    const other = randomUUID();
+
+    // Turn A stores artifact 1 and its version 2.
+    await appendMessage(personA, s1.id, answer("A."), [
+      pending(chart, 1, 1),
+      pending(chart, 1, 2),
+    ]);
+
+    // Turn B read the same empty chat: it also made number 1, and version 2 of the chart.
+    const parts: AgentMessage["parts"] = [
+      {
+        type: "tool-make-artifact",
+        toolCallId: "call_b_new",
+        state: "output-available",
+        input: {},
+        output: { artifact: 1, version: 1, title: "Quantity by record" },
+      },
+      {
+        type: "data-artifact",
+        id: "call_b_new",
+        data: { artifactId: other, version: 1 },
+      },
+      {
+        type: "tool-make-artifact",
+        toolCallId: "call_b_change",
+        state: "output-available",
+        input: {},
+        output: { artifact: 1, version: 2, title: "Quantity by record" },
+      },
+      {
+        type: "data-artifact",
+        id: "call_b_change",
+        data: { artifactId: chart, version: 2 },
+      },
+      { type: "text", text: "B." },
+    ];
+
+    await appendMessage(personA, s1.id, { role: "assistant", parts }, [
+      { ...pending(other, 1, 1), toolCallId: "call_b_new" },
+      { ...pending(chart, 1, 2), toolCallId: "call_b_change" },
+    ]);
+
+    const { messages } = await readOwnSession(personA, s1.id);
+
+    expect(messages).toHaveLength(2);
+    expect(messages[1]?.parts).toMatchObject([
+      { output: { artifact: 2, version: 1 } },
+      { data: { artifactId: other, version: 1 } },
+      { output: { artifact: 1, version: 3 } },
+      { data: { artifactId: chart, version: 3 } },
+      { type: "text", text: "B." },
+    ]);
+    expect(
+      (await listOwnArtifacts(personA, s1.id)).map(
+        ({ id, number, latestVersion }) => ({ id, number, latestVersion })
+      )
+    ).toEqual([
+      { id: chart, number: 1, latestVersion: 3 },
+      { id: other, number: 2, latestVersion: 1 },
+    ]);
   });
 
   it("refuses a kind outside the four", async () => {

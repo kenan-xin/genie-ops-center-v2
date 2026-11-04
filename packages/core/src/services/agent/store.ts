@@ -160,6 +160,96 @@ export async function readOwnSession(
   return { session: summary(row), messages };
 }
 
+/**
+ * The turn's versions numbered after what the chat stores now: a new artifact takes the next free
+ * number, and a change the next version of its artifact. Two overlapping turns of one chat read the
+ * same stored count, so without this the later answer would fail its unique check and be lost.
+ */
+async function settleVersions(
+  tx: TenantTransaction,
+  sessionId: string,
+  versions: readonly PendingVersion[]
+): Promise<readonly PendingVersion[]> {
+  if (versions.length === 0) return [];
+
+  const stored = await tx
+    .select({
+      id: agentArtifact.id,
+      number: agentArtifact.number,
+      latestVersion: agentArtifact.latestVersion,
+    })
+    .from(agentArtifact)
+    .where(eq(agentArtifact.sessionId, sessionId));
+
+  const numbers = new Map(stored.map(({ id, number }) => [id, number]));
+
+  const latest = new Map(
+    stored.map(({ id, latestVersion }) => [id, latestVersion])
+  );
+
+  let next = Math.max(0, ...stored.map(({ number }) => number)) + 1;
+
+  const settled: PendingVersion[] = [];
+
+  for (const pending of versions) {
+    const before = pending.isNew ? 0 : latest.get(pending.artifactId);
+
+    // A change names an artifact of this chat only; the tool found it through the owner's chat.
+    if (before === undefined) throw notFound();
+
+    const number = pending.isNew ? next++ : numbers.get(pending.artifactId);
+
+    if (number === undefined) throw notFound();
+
+    numbers.set(pending.artifactId, number);
+    latest.set(pending.artifactId, before + 1);
+    settled.push({ ...pending, number, version: before + 1 });
+  }
+
+  return settled;
+}
+
+/** The answer's tool outputs and card parts with the settled numbers and versions. */
+function withSettledArtifacts(
+  parts: AgentMessage["parts"],
+  settled: readonly PendingVersion[]
+): AgentMessage["parts"] {
+  const byCall = new Map(settled.map((entry) => [entry.toolCallId, entry]));
+
+  const result: AgentMessage["parts"] = [];
+
+  for (const part of parts) {
+    const call =
+      "toolCallId" in part
+        ? byCall.get(part.toolCallId)
+        : part.type === "data-artifact" && "id" in part
+          ? byCall.get(part.id ?? "")
+          : undefined;
+
+    if (call === undefined) {
+      result.push(part);
+    } else if (part.type === "data-artifact") {
+      result.push({
+        ...part,
+        data: { artifactId: call.artifactId, version: call.version },
+      });
+    } else if ("state" in part && part.state === "output-available") {
+      result.push({
+        ...part,
+        output: {
+          artifact: call.number,
+          version: call.version,
+          title: call.title,
+        },
+      });
+    } else {
+      result.push(part);
+    }
+  }
+
+  return result;
+}
+
 async function writeVersion(
   tx: TenantTransaction,
   sessionId: string,
@@ -226,6 +316,9 @@ export async function appendMessage(
 
     if (owned === undefined) throw notFound();
 
+    // Under the lock: an overlapping turn may have stored the numbers this turn read as free.
+    const settled = await settleVersions(tx, id, versions);
+
     const [inserted] = await tx
       .insert(agentMessage)
       .values({
@@ -233,7 +326,7 @@ export async function appendMessage(
         id: message.role === "assistant" ? message.id : undefined,
         sessionId: id,
         role: message.role,
-        parts: message.parts,
+        parts: withSettledArtifacts(message.parts, settled),
       })
       .returning({ id: agentMessage.id });
 
@@ -241,7 +334,7 @@ export async function appendMessage(
       throw new Error("the message insert returned no row");
     }
 
-    for (const pending of versions) {
+    for (const pending of settled) {
       // In order: a new artifact's row comes before its versions, and a version moves its latest.
       // oxlint-disable-next-line no-await-in-loop -- one transaction, written in the turn's order
       await writeVersion(tx, id, inserted.id, pending);
