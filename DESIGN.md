@@ -145,7 +145,7 @@ components:
 
 **Creative North Star: none, by design.** This file documents the fixed base token layer — what every tenant starts from and what no tenant can change. The layer deliberately carries no editorial personality: visual identity is each tenant's contribution through the one customizable brand color and the approved font list, so the fixed layer stays neutral enough to sit under any of them. The values shown here are reference defaults, not brand choices — `blue-600` stands in for the shadcn `--primary` variable that Branding fills per request.
 
-The voice is calm utility. A white page, a soft gray sidebar panel with rounded corners, hairline borders, rounded rows and pills, generous air between things. The work is the loudest element on screen; polish lives in precision (measured contrast values, one focus ring, one height scale) rather than decoration. Depth is conveyed by hairlines and tonal steps, not shadow. The system is thumb-first and forgiving: every screen is designed at phone width before any wider layout, controls keep 44px touch targets under 1024px, and phone flows use bottom sheets rather than shrunken desktops.
+The voice is calm utility. A white page, a soft gray sidebar panel flush with the left edge, hairline borders, rounded rows and pills, generous air between things. The work is the loudest element on screen; polish lives in precision (measured contrast values, one focus ring, one height scale) rather than decoration. Depth is conveyed by hairlines and tonal steps, not shadow. The system is thumb-first and forgiving: every screen is designed at phone width before any wider layout, controls keep 44px touch targets under 1024px, and phone flows use bottom sheets rather than shrunken desktops.
 
 Authority chain: `docs/design/design-system/tokens.md` is the source of truth for the fixed layer; where a reference component or capture disagrees, the token file wins. A binding product constraint rides along from PRODUCT.md: the fixed layer and the defaults of the customizable layer must look good and well designed on their own — tenant overrides sit on top of good defaults and never excuse them.
 
@@ -181,7 +181,7 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 ### Neutral
 
 - **Page** (#ffffff): the page canvas. In dark, the sidebar shares the page surface (gray-950) so the border, not a fill change, separates them.
-- **Panel** (#f9fafb, gray-50): the floating sidebar panel, table header rows, and row hover.
+- **Panel** (#f9fafb, gray-50): the sidebar panel, table header rows, and row hover.
 - **Tile** (#f3f4f6, gray-100): person avatars and mono chip backgrounds — tinted surfaces that stand for identity stay fixed neutral gray.
 - **Hairline** (#e5e7eb, gray-200): card edges, row dividers, and other decorative hairlines; decoration, so 1.4.11 does not reach it. Dark mirror #1f2937 (gray-800).
 - **Control border** (#d1d5db, gray-300): the secondary button border.
@@ -234,7 +234,7 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 
 ## Layout
 
-Sidebar shell. On desktop (1024px and up) a 240px sidebar sits left as a floating rounded-xl gray-50 panel inset in the white page, with the tenant identity block at its top, navigation in the middle, and the user footer pinned to the bottom; the content area scrolls independently. A 54px header above the content is not a bar but the page's own head: page title and a one-line description on the left, a reserved search slot and the actions on the right. Section 3 ships no search box. From roadmap Section 6 a bell with an unread count sits in the header of both chromes and links to the Notifications page. It has no dropdown, and there is no navigation entry for notifications. On phones (under 768px, the base design) the sidebar becomes a drawer capped at 84vw (max 320px) over a dimmed scrim, and a page's primary action moves into a sticky bottom bar.
+Sidebar shell. On desktop (1024px and up) a 240px gray-50 sidebar sits flush at the left edge, full height, with one hairline border on its right, with the tenant identity block at its top, navigation in the middle, and the user footer pinned to the bottom; the content area scrolls independently. A 54px header above the content is not a bar but the page's own head: page title and a one-line description on the left, a reserved search slot and the actions on the right. Section 3 ships no search box. From roadmap Section 6 a bell with an unread count sits in the header of both chromes and links to the Notifications page. It has no dropdown, and there is no navigation entry for notifications. On phones (under 768px, the base design) the sidebar becomes a drawer capped at 84vw (max 320px) over a dimmed scrim, and a page's primary action moves into a sticky bottom bar.
 
 Spacing rhythm: 4px base. Page gutters run 16px on phones, 24px on tablets, 32px on desktop (`px-4 md:px-6 lg:px-8`). Card padding is 20px, 24px on desktop. Table rows carry 12px vertical padding on desktop, 16px on phones.
 
@@ -255,7 +255,7 @@ Hairline-first and nearly flat. Resting surfaces are separated by borders (gray-
 
 ## Shapes
 
-Restrained rounding, on a four-step ladder: menus at 6px (`rounded-md`), controls and navigation rows at 8px (`rounded-lg`), cards, dialogs, sheets, and the sidebar panel at 12px (`rounded-xl`), pills at full radius. The tenant letter tile is 6px small / 8px medium; avatars are circles. Sharp corners, left-edge accent rules, and near-black fills are all rejected form language. Icon-only controls are squares of their height scale (40px md, 32px sm in dense toolbars).
+Restrained rounding, on a four-step ladder: menus at 6px (`rounded-md`), controls and navigation rows at 8px (`rounded-lg`), cards, dialogs and sheets at 12px (`rounded-xl`), pills at full radius. The sidebar has square corners. The tenant letter tile is 6px small / 8px medium; avatars are circles. Sharp corners, left-edge accent rules, and near-black fills are all rejected form language. Icon-only controls are squares of their height scale (40px md, 32px sm in dense toolbars).
 
 Radius refinement, 2026-09-18: reduce rounding without changing spacing, typography, control heights, hit areas, colors or behavior. The same values apply across light/dark themes and viewport sizes. Warning/info callouts use the 8px control radius. Preserve full rounding for badges, chips, switch tracks and circular avatars; these are not rectangular controls. Apply sheet radii only to exposed corners. Existing screenshots and reference components require a separate design-agent update; this document does not claim rendered verification.
 

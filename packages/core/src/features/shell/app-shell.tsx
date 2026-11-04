@@ -119,10 +119,11 @@ export function AppShell(props: AppShellProps) {
       className="flex h-dvh flex-col overflow-hidden bg-background text-foreground xl:has-[[data-chat-docked]]:pe-100 [&:has([data-page-chat])_[data-shell-chat]]:hidden"
     >
       <OfflineBar message={strings.offline} />
-      <div className="flex min-h-0 flex-1 flex-col lg:flex-row lg:gap-3 lg:p-3">
+      <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
+        {/* Flush, full height, one border on its right (I19). */}
         <aside
           aria-label={strings.navigation}
-          className="hidden w-60 shrink-0 flex-col rounded-xl border border-border bg-muted lg:flex"
+          className="hidden w-60 shrink-0 flex-col border-e border-border bg-muted lg:flex"
         >
           <Panel {...props} />
         </aside>

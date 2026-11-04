@@ -156,7 +156,7 @@ async function expectNoOverflow(root: HTMLElement) {
 
 export const WorkspaceDesktop: Story = {
   globals: desktop,
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const aside = canvas.getByRole("complementary", { name: "Navigation" });
     await expect(aside).toBeVisible();
     await expect(
@@ -179,6 +179,20 @@ export const WorkspaceDesktop: Story = {
 
     await expect(orders).toHaveAttribute("href", "/operations/orders");
     await expect(orders).not.toHaveAttribute("data-link-component");
+
+    // Flush, full height, one border on the right, no floating card (I19).
+    const shell = element(
+      canvasElement,
+      "[data-shell]"
+    ).getBoundingClientRect();
+
+    const edge = aside.getBoundingClientRect();
+
+    await expect(edge.left).toBe(shell.left);
+    await expect(edge.top).toBe(shell.top);
+    await expect(edge.height).toBe(shell.height);
+    await expect(getComputedStyle(aside).borderTopLeftRadius).toBe("0px");
+    await expect(getComputedStyle(aside).borderRightWidth).toBe("1px");
   },
 };
 
