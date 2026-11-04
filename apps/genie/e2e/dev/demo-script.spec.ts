@@ -29,9 +29,10 @@ import {
   resetChatDashboard,
 } from "./dashboard-support.ts";
 import {
-  allocationsOn,
   copyOf,
   DATABASE_URL,
+  expectBundleDesk,
+  expectPageDrawn,
   expectStatus,
   FIRST_PAINT,
   fact,
@@ -39,6 +40,7 @@ import {
   liveUpload,
   LOCK_WAIT,
   onPhone,
+  openDetails,
   openInbox,
   openReview,
   PUBLIC_URL,
@@ -259,23 +261,13 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await expect(
             page.getByRole("heading", { level: 1, name: "INV-2026-09-04" })
           ).toBeVisible(FIRST_PAINT);
+          // czjw.84: the PDF draws in the page.
+          await expectPageDrawn(page);
+          await openDetails(page);
           await expect(fact(page, "Due date")).toHaveText("30 Sept 2026");
           await expect(
             page.getByRole("region", { name: "Figures" })
           ).toContainText("Overdue · 27 days");
-
-          const href = await page
-            .getByRole("link", {
-              name: "Open the PDF (source document, opens in a new tab)",
-            })
-            .getAttribute("href");
-
-          const pdf = await page.request.get(
-            new URL(href ?? "", page.url()).toString()
-          );
-
-          expect(pdf.status()).toBe(200);
-          expect(pdf.headers()["content-type"]).toContain("application/pdf");
         });
 
         await test.step("3. upload 01, enter its due date and save it", async () => {
@@ -315,6 +307,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await expect(
             page.getByRole("heading", { level: 1, name: "INV-LIVE-001" })
           ).toBeVisible(FIRST_PAINT);
+          await openDetails(page);
           await expect(fact(page, "Due date")).toHaveText("25 Nov 2026");
 
           const figures = page.getByRole("region", { name: "Figures" });
@@ -362,18 +355,9 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await expect(
             page.getByRole("heading", { level: 1, name: "OR-AUG-SEP-BUNDLE" })
           ).toBeVisible(FIRST_PAINT);
+          await expectBundleDesk(page);
           await expect(fact(page, "Amount")).toHaveText(sgd(8250));
           await expect(fact(page, "Allocated")).toHaveText(sgd(8250));
-
-          const links = allocationsOn(page, "Invoices");
-
-          await expect(links).toHaveCount(2);
-          await expect(
-            links.filter({ hasText: "INV-2026-08-04" })
-          ).toContainText(sgd(4050));
-          await expect(
-            links.filter({ hasText: "INV-2026-09-04" })
-          ).toContainText(sgd(4200));
         });
 
         await test.step("6. upload 04, the same bytes as 02, which adds nothing", async () => {

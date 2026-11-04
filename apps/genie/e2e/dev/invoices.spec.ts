@@ -10,6 +10,9 @@ import {
   LEDGER_LOCK,
   LOCK_WAIT,
   onPhone,
+  openDetails,
+  expectPageDrawn,
+  expectPinsOnMarks,
   sgd,
   signIn,
 } from "./dev-support.ts";
@@ -342,8 +345,41 @@ test("INV-2026-09-03 opens from its row without a document load and shows its ba
       // oxlint-disable-next-line no-underscore-dangle -- the task brief names this marker.
       expect(await page.evaluate(() => window.__genieMarker)).toBe(1);
 
+      // E1 (czjw.84): the PDF draws in the page, with no click.
+      await expectPageDrawn(page);
+
+      if (onPhone(page)) {
+        // The closed sheet shows the status and the outstanding amount.
+        const sheet = page.getByRole("region", {
+          name: "Details of INV-2026-09-03",
+        });
+
+        await expect(sheet).toContainText("Overdue · 40 days");
+        await expect(sheet).toContainText(sgd(5200));
+        await openDetails(page);
+      } else {
+        await expectPinsOnMarks(page, [
+          "customer",
+          "number",
+          "date",
+          "dueDate",
+          "description",
+          "amount",
+          "paymentTerms",
+        ]);
+
+        const drawer = page.getByRole("complementary", {
+          name: "Payments and history",
+        });
+
+        await expect(drawer).toContainText("TXN-PAY-2026-026");
+        await expect(
+          drawer.getByRole("list", { name: "History" }).getByRole("listitem")
+        ).toHaveCount(1);
+      }
+
       await expect(fact(page, "Total")).toHaveText(sgd(7200));
-      await expect(fact(page, "Allocated")).toHaveText(sgd(2000));
+      await expect(fact(page, "Paid")).toHaveText(sgd(2000));
       await expect(fact(page, "Outstanding")).toHaveText(sgd(5200));
       // The status pill sits beside Outstanding in the header strip (2.3).
       await expect(page.getByRole("region", { name: "Figures" })).toContainText(
@@ -365,22 +401,17 @@ test("INV-2026-09-03 opens from its row without a document load and shows its ba
       await expect(history).toContainText("Payment TXN-PAY-2026-026 linked");
       await expect(history).toContainText(`for ${sgd(2000)}.`);
 
-      const pdf = page.getByRole("link", {
-        name: "Open the PDF (source document, opens in a new tab)",
-      });
-
-      const href = await pdf.getAttribute("href");
-
-      expect(href).toBeTruthy();
-
-      const response = await page.request.get(
-        new URL(href ?? "", page.url()).toString()
-      );
-
-      expect(response.status()).toBe(200);
-      expect(response.headers()["content-type"]).toContain("application/pdf");
-
       await expectNoAxeViolations(page, "invoice record page");
+
+      // Review Focus 5: the desk picks its layout by width, so a hard load must not mismatch.
+      const hydration: string[] = [];
+
+      page.on("console", (message) => {
+        if (/hydrat/i.test(message.text())) hydration.push(message.text());
+      });
+      await page.reload();
+      await expectPageDrawn(page);
+      expect(hydration).toEqual([]);
     },
     LOCK_WAIT
   );
@@ -453,6 +484,8 @@ test("the Payments list shows every seeded payment and the payment linked to INV
       await expect(
         page.getByRole("heading", { level: 1, name: reference ?? "" })
       ).toBeVisible(FIRST_PAINT);
+
+      await openDetails(page);
 
       const allocations = allocationsOn(page, "Invoices");
 

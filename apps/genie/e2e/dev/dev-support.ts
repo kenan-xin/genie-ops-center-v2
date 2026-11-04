@@ -93,16 +93,133 @@ export const fact = (page: Page, label: string) =>
     .filter({ visible: true });
 
 /**
- * The links of one record, read from whichever layout the viewport draws. The card names the other
- * side: "Payments" on an invoice, "Invoices" on a payment.
+ * The links of one record page. The desk draws them as a list in its drawer from 1280 px, and in
+ * its sheet below that (open the sheet first with `openDetails`). The list names the other side:
+ * "Payments" on an invoice, "Invoices" on a payment. Only the shown list counts as a role.
  */
 export function allocationsOn(page: Page, label: "Payments" | "Invoices") {
-  return onPhone(page)
-    ? page.getByRole("list", { name: label }).getByRole("listitem")
-    : page
-        .getByRole("table", { name: label })
-        .locator("tbody")
-        .getByRole("row");
+  return page.getByRole("list", { name: label }).getByRole("listitem");
+}
+
+/** Below 1280 px a record page shows its figures, links and history only in the opened sheet. */
+export async function openDetails(page: Page): Promise<void> {
+  if ((page.viewportSize()?.width ?? 0) >= 1280) return;
+
+  // The toggle reads "Hide details" once the sheet is open.
+  const details = page.getByRole("button", {
+    name: /^(Details|Hide details)$/,
+  });
+
+  // A press before hydration is lost, so it repeats until the sheet answers.
+  await expect(async () => {
+    if ((await details.getAttribute("aria-expanded")) !== "true") {
+      await details.click();
+    }
+
+    await expect(details).toHaveAttribute("aria-expanded", "true", {
+      timeout: 2_000,
+    });
+  }).toPass(FIRST_PAINT);
+}
+
+/** The record's PDF draws in the page (czjw.84); react-pdf sets the canvas width once it drew. */
+export async function expectPageDrawn(page: Page): Promise<void> {
+  await expect(
+    page.locator('[data-document-viewer] canvas[style*="width"]').first()
+  ).toBeVisible({ timeout: VIEWER_TIMEOUT });
+}
+
+/**
+ * The desk of payment OR-AUG-SEP-BUNDLE, saved from upload 03 (E2): the page drawn, then its two
+ * invoices and its history in the drawer with each read field pinned (desktop), or in the sheet.
+ */
+export async function expectBundleDesk(page: Page): Promise<void> {
+  await expectPageDrawn(page);
+
+  if (onPhone(page)) {
+    await expect(
+      page.getByRole("region", { name: "Details of OR-AUG-SEP-BUNDLE" })
+    ).toContainText(sgd(8250));
+    await openDetails(page);
+  } else {
+    await expectPinsOnMarks(page);
+    await expect(
+      page.getByRole("complementary", { name: "Invoices and history" })
+    ).toBeVisible();
+  }
+
+  const links = allocationsOn(page, "Invoices");
+
+  await expect(links).toHaveCount(2);
+  await expect(links.filter({ hasText: "INV-2026-08-04" })).toContainText(
+    sgd(4050)
+  );
+  await expect(links.filter({ hasText: "INV-2026-09-04" })).toContainText(
+    sgd(4200)
+  );
+  await expect(
+    page.getByRole("list", { name: "History" }).getByRole("listitem")
+  ).not.toHaveCount(0);
+}
+
+/**
+ * Each pin's dot sits on the line of its quote (czjw.84): the dot's middle is within 2 px of the
+ * middle of its field's marks. Desktop only: below 1280 px the desk draws no pins. With no `keys`,
+ * every drawn dot is checked, and at least one must be drawn.
+ */
+export async function expectPinsOnMarks(
+  page: Page,
+  keys?: readonly string[]
+): Promise<void> {
+  const dots = page.locator("[data-pin-dot]");
+
+  await expect(dots.first()).toBeAttached({ timeout: VIEWER_TIMEOUT });
+
+  const wanted =
+    keys ??
+    (await dots.evaluateAll((all) =>
+      all.map((dot) => dot.getAttribute("data-pin-dot") ?? "")
+    ));
+
+  expect(wanted.length).toBeGreaterThan(0);
+
+  await expect
+    .poll(async () => {
+      // In the page: `toJSON` turns each DOMRect into a plain object that crosses back.
+      const boxes = await page.evaluate(
+        (fieldKeys) =>
+          fieldKeys.map((key) => ({
+            key,
+            dot: [...document.querySelectorAll(`[data-pin-dot="${key}"]`)].map(
+              (element): Box => element.getBoundingClientRect().toJSON()
+            ),
+            marks: [
+              ...document.querySelectorAll(`mark[data-highlight="${key}"]`),
+            ].map((element): Box => element.getBoundingClientRect().toJSON()),
+          })),
+        wanted
+      );
+
+      return boxes
+        .filter(
+          ({ dot, marks }) => !(Math.abs(middleOf(dot) - middleOf(marks)) <= 2)
+        )
+        .map(({ key }) => key);
+    })
+    .toEqual([]);
+}
+
+type Box = { readonly top: number; readonly bottom: number };
+
+/** The middle of the boxes' joined height, or NaN when there is none. */
+function middleOf(boxes: readonly Box[]): number {
+  if (boxes.length === 0) return Number.NaN;
+
+  return (
+    (Math.min(...boxes.map((box) => box.top)) +
+      Math.max(...boxes.map((box) => box.bottom))) /
+    2
+  );
 }
 
 export type Upload = {
@@ -110,6 +227,9 @@ export type Upload = {
   readonly mimeType: string;
   readonly buffer: Buffer;
 };
+
+/** The pdf.js worker and its text layer compile once per `next dev` (B9.4). */
+export const VIEWER_TIMEOUT = 30_000;
 
 /** A cold route's reading, from the file selection to the settled row. Measured 4.0 s warm. */
 export const READING_TIMEOUT = 30_000;

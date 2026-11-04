@@ -24,6 +24,7 @@ import {
   allocationsOn,
   copyOf,
   DATABASE_URL,
+  expectBundleDesk,
   expectStatus,
   FIRST_PAINT,
   fact,
@@ -31,6 +32,7 @@ import {
   liveUpload,
   LOCK_WAIT,
   onPhone,
+  openDetails,
   openInbox,
   openReview,
   PUBLIC_URL,
@@ -40,6 +42,7 @@ import {
   type Upload,
   UPLOAD_TIMEOUT,
   uploadFiles,
+  VIEWER_TIMEOUT,
 } from "./dev-support.ts";
 import { DEMO_ACCOUNT_EMAIL, DEV_MODULES } from "./global-setup.ts";
 
@@ -66,9 +69,6 @@ const UPLOAD_PREFIX = "review-";
 
 /** A save or Undo answers after its transaction commits. Measured under 2 s; 30 s covers a cold RPC route. */
 const SAVE_TIMEOUT = 30_000;
-
-/** The pdf.js worker and its text layer compile once per `next dev` (B9.4). */
-const VIEWER_TIMEOUT = 30_000;
 
 /**
  * The body's budget. One upload's worst case is two UPLOAD_TIMEOUTs: the choice waits for its
@@ -342,12 +342,37 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await capture(page, testInfo, "review-payment", split.name);
         await showPane(page, "Fields");
 
-        await page.getByRole("button", { name: "Save the payment" }).click();
-        await expect(page.getByText(/^Payment saved:/)).toBeVisible({
-          timeout: SAVE_TIMEOUT,
+        // E2 (czjw.69): the invoices the payment names, then the customer's other open ones, folded.
+        const named = page.getByRole("region", {
+          name: "Named on this payment",
         });
 
+        await expect(named).toContainText("INV-2026-08-04");
+        await expect(named).toContainText("INV-2026-09-04");
+
+        const others = page.getByRole("button", {
+          name: "Other open invoices of Orchid Retail",
+        });
+
+        await expect(others).toHaveAttribute("aria-expanded", "false");
+        await expect(
+          page.locator(`#${await others.getAttribute("aria-controls")}`)
+        ).toContainText("INV-2026-10-04");
+
+        await page.getByRole("button", { name: "Save the payment" }).click();
+        // E2 (czjw.64): the saved card replaces both panes.
+        await expect(
+          page.getByText("Saved as payment OR-AUG-SEP-BUNDLE.", { exact: true })
+        ).toBeVisible({ timeout: SAVE_TIMEOUT });
+        await expect(page.getByText(/^Payment saved:/)).toBeVisible();
+
         await expectTotalsAfter("03_Payment_Covers_Two_Invoices.pdf");
+
+        await page.getByRole("link", { name: "Open the payment" }).click();
+        await expect(
+          page.getByRole("heading", { level: 1, name: "OR-AUG-SEP-BUNDLE" })
+        ).toBeVisible(FIRST_PAINT);
+        await expectBundleDesk(page);
 
         await openInbox(page);
 
@@ -406,6 +431,41 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await uploadFiles(page, [purchaseOrder]);
         await expectStatus(page, purchaseOrder, "Kept as a reference");
 
+        // E4 (czjw.64): Discard ends in a card, and Upload another reads 07 again in place.
+        await openReview(page, purchaseOrder, "Review the purchase order");
+        await page
+          .getByRole("button", { name: "Discard", exact: true })
+          .click();
+        await page
+          .getByRole("alertdialog")
+          .or(page.getByRole("dialog"))
+          .getByRole("button", { name: "Discard", exact: true })
+          .click();
+        await expect(
+          page.getByText(
+            `Discarded ${purchaseOrder.name}. Nothing was added.`,
+            {
+              exact: true,
+            }
+          )
+        ).toBeVisible({ timeout: SAVE_TIMEOUT });
+
+        const again = copyOf("07", label);
+
+        await page
+          .getByLabel("Choose a PDF file")
+          .setInputFiles([{ ...again }]);
+        await page
+          .getByRole("link", { name: `Review ${again.name}`, exact: true })
+          .click({ timeout: UPLOAD_TIMEOUT });
+        await expect(page).toHaveURL(/\/m\/invoices\/documents\/[^/?]+$/);
+        await expect(
+          page.getByRole("heading", { level: 1, name: /^Review the / })
+        ).toBeVisible(FIRST_PAINT);
+
+        await openInbox(page);
+        await expectStatus(page, again, "Kept as a reference");
+
         await expectTotalsAfter("07_Purchase_Order_Not_Proof_of_Payment.pdf");
 
         // B9.2: Undo of 02's automatic link returns 3,000.00 to the payment and 5,200.00 to the
@@ -425,6 +485,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await expect(
           page.getByRole("heading", { level: 1, name: "INV-2026-09-03" })
         ).toBeVisible(FIRST_PAINT);
+        await openDetails(page);
         await expect(fact(page, "Outstanding")).toHaveText(sgd(2200));
         await expect(
           allocationsOn(page, "Payments").filter({
