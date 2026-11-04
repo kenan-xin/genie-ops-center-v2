@@ -587,11 +587,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/agent-store.integration.test.ts",
     reason:
-      "Spec 7 R-41: core stores agent sessions and messages, tool results included, and only the owner lists, reads, appends to or claims a session",
+      "Spec 7 R-41: core stores agent sessions and messages, tool results included, and only the owner lists, reads, appends to or claims a session, and the artifacts of R-45a with their versions",
     cases: [
       "the owner-only agent store against a real database a person lists only their own sessions, latest message first",
       "the owner-only agent store against a real database another person's session answers not-found and stays unchanged",
       "the owner-only agent store against a real database messages keep their order and their parts",
+      "the owner-only agent store against a real database writes an answer's versions with the answer, and nothing when the write fails",
+      "the owner-only agent store against a real database lists only the owner's artifacts, each version with the question that asked for it",
+      "the owner-only agent store against a real database deletes a chat's artifacts and versions with the chat",
+      "the owner-only agent store against a real database keeps each artifact's number in its chat",
+      "the owner-only agent store against a real database refuses a kind outside the four",
     ],
   },
   {

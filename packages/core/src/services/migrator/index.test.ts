@@ -47,7 +47,7 @@ describe("the migration plan", () => {
     // the Ask user role of an existing deployment (Spec 2 R-33, A7), so the history holds all eleven.
     // The SQL still arrives as data read from a declared `new URL`, never as a folder path, which
     // is what keeps it in a production image.
-    expect(CORE_HISTORY.migrations).toHaveLength(11);
+    expect(CORE_HISTORY.migrations).toHaveLength(12);
 
     expect(CORE_HISTORY.migrations[0]?.sql.join("")).toContain(
       'CREATE TABLE "tenant_module"'

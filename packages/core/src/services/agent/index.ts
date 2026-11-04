@@ -10,6 +10,16 @@ export {
 } from "./store.ts";
 
 export {
+  type AgentArtifact,
+  ARTIFACT_KINDS,
+  type ArtifactKind,
+  listOwnArtifacts,
+  type PendingVersion,
+  storedArtifact,
+  storedArtifactCount,
+} from "./artifacts.ts";
+
+export {
   AGENT_TOOL_AUDIT_ACTION,
   agentToolSet,
   offersWriteTool,

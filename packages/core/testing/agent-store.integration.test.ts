@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
@@ -8,10 +9,15 @@ import {
   appendMessage,
   createOwnSession,
   findOwnSession,
+  listOwnArtifacts,
   listOwnSessions,
+  type PendingVersion,
   readOwnSession,
+  storedArtifact,
+  storedArtifactCount,
 } from "../src/services/agent/index.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
+import type { PanelConfig } from "../src/services/charts/panel-config.ts";
 import {
   type DisposableDeployment,
   insertPersonWith,
@@ -43,6 +49,55 @@ function text(value: string): AgentMessage["parts"] {
 
 async function session(ctx: ModuleRequestContext, title: string) {
   return createOwnSession(ctx, { id: randomUUID(), title, modelId: MODEL });
+}
+
+const barConfig: PanelConfig = {
+  type: "bar",
+  title: "Quantity by record",
+  series: [
+    {
+      name: "Quantity",
+      dataset: "placeholder.records",
+      query: { limit: 10 },
+      x: "label",
+      y: "quantity",
+    },
+  ],
+};
+
+function pending(
+  artifactId: string,
+  number: number,
+  version: number,
+  title = "Quantity by record"
+): PendingVersion {
+  return {
+    toolCallId: `call_${number}_${version}`,
+    artifactId,
+    number,
+    isNew: version === 1,
+    kind: "chart",
+    title,
+    version,
+    definition: barConfig,
+  };
+}
+
+function answer(value: string) {
+  return { role: "assistant", parts: text(value) } as const;
+}
+
+async function rowCount(table: string, sessionId: string): Promise<number> {
+  const where =
+    table === "agent_artifact"
+      ? sql`session_id = ${sessionId}`
+      : sql`artifact_id in (select id from agent_artifact where session_id = ${sessionId})`;
+
+  const { rows } = await deployment.context.db.execute<{ n: number }>(
+    sql`select count(*)::int as n from ${sql.identifier(table)} where ${where}`
+  );
+
+  return rows[0]?.n ?? -1;
 }
 
 beforeAll(async () => {
@@ -164,5 +219,139 @@ describe("the owner-only agent store against a real database", () => {
 
     expect(messages.map(({ role, parts }) => ({ role, parts }))).toEqual(sent);
     expect(messages[1]?.id).toBe(assistantId);
+  });
+
+  it("writes an answer's versions with the answer, and nothing when the write fails", async () => {
+    const s1 = await session(personA, "Two charts");
+    const first = randomUUID();
+    const second = randomUUID();
+
+    const answerId = await appendMessage(
+      personA,
+      s1.id,
+      answer("Two charts."),
+      [pending(first, 1, 1), pending(second, 2, 1)]
+    );
+
+    const { rows } = await deployment.context.db.execute<{
+      artifact_id: string;
+      message_id: string;
+    }>(
+      sql`select artifact_id, message_id from agent_artifact_version where artifact_id in (${first}, ${second}) order by artifact_id`
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows.every(({ message_id }) => message_id === answerId)).toBe(true);
+
+    await expect(
+      appendMessage(personA, s1.id, answer("Again."), [
+        pending(randomUUID(), 3, 1),
+        { ...pending(first, 1, 1), isNew: false },
+      ])
+    ).rejects.toThrow();
+
+    const { messages } = await readOwnSession(personA, s1.id);
+
+    expect(messages).toHaveLength(1);
+    expect(await rowCount("agent_artifact", s1.id)).toBe(2);
+  });
+
+  it("lists only the owner's artifacts, each version with the question that asked for it", async () => {
+    const s1 = await session(personA, "Quantity");
+    const artifactId = randomUUID();
+
+    await appendMessage(personA, s1.id, {
+      role: "user",
+      parts: text("Chart the quantity"),
+    });
+    await appendMessage(personA, s1.id, answer("Here it is."), [
+      pending(artifactId, 1, 1),
+    ]);
+    await appendMessage(personA, s1.id, {
+      role: "user",
+      parts: text("Show it as a line"),
+    });
+    await appendMessage(personA, s1.id, answer("Changed."), [
+      pending(artifactId, 1, 2, "Quantity by day"),
+    ]);
+
+    expect(await listOwnArtifacts(personA, s1.id)).toMatchObject([
+      {
+        id: artifactId,
+        number: 1,
+        kind: "chart",
+        title: "Quantity by day",
+        latestVersion: 2,
+        versions: [
+          { version: 1, request: "Chart the quantity", definition: barConfig },
+          { version: 2, request: "Show it as a line" },
+        ],
+      },
+    ]);
+    expect(await listOwnArtifacts(personB, s1.id)).toEqual([]);
+  });
+
+  it("deletes a chat's artifacts and versions with the chat", async () => {
+    const s1 = await session(personA, "Deleted");
+
+    await appendMessage(personA, s1.id, answer("A chart."), [
+      pending(randomUUID(), 1, 1),
+    ]);
+    expect(await rowCount("agent_artifact_version", s1.id)).toBe(1);
+
+    const { rows } = await deployment.context.db.execute<{ id: string }>(
+      sql`select a.id from agent_artifact a where a.session_id = ${s1.id}`
+    );
+
+    await deployment.context.db.execute(
+      sql`delete from agent_session where id = ${s1.id}`
+    );
+
+    expect(await rowCount("agent_artifact", s1.id)).toBe(0);
+
+    const left = await deployment.context.db.execute<{ n: number }>(
+      sql`select count(*)::int as n from agent_artifact_version where artifact_id = ${rows[0]?.id ?? ""}`
+    );
+
+    expect(left.rows[0]?.n).toBe(0);
+  });
+
+  it("keeps each artifact's number in its chat", async () => {
+    const s1 = await session(personA, "Numbered");
+    // The highest uuid gets number 1, so a lookup ordered by id answers the wrong row.
+    const high = "ffffffff-ffff-4fff-bfff-ffffffffffff";
+    const low = "00000000-0000-4000-8000-000000000002";
+
+    await appendMessage(personA, s1.id, answer("Two."), [
+      pending(high, 1, 1),
+      pending(low, 2, 1),
+    ]);
+
+    expect(await storedArtifact(personA, s1.id, 1)).toEqual({
+      id: high,
+      kind: "chart",
+      latestVersion: 1,
+    });
+    expect((await storedArtifact(personA, s1.id, 2))?.id).toBe(low);
+    expect(await storedArtifact(personA, s1.id, 3)).toBeUndefined();
+    expect(await storedArtifactCount(personA, s1.id)).toBe(2);
+
+    await expect(
+      appendMessage(personA, s1.id, answer("Clash."), [
+        pending(randomUUID(), 2, 1),
+      ])
+    ).rejects.toThrow();
+  });
+
+  it("refuses a kind outside the four", async () => {
+    const s1 = await session(personA, "Kinds");
+
+    await expect(
+      deployment.context.db.execute(
+        sql`insert into agent_artifact (id, session_id, number, kind, title, latest_version) values (${randomUUID()}, ${s1.id}, 1, 'deck', 'A deck', 1)`
+      )
+    ).rejects.toMatchObject({
+      cause: { constraint: "agent_artifact_kind_check" },
+    });
   });
 });

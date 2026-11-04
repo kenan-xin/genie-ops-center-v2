@@ -78,6 +78,13 @@
       "when": 1793702846081,
       "tag": "0010_ask_user_role",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1793819471653,
+      "tag": "0011_agent_artifacts",
+      "breakpoints": true
     }
   ]
 }

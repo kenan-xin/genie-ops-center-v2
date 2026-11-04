@@ -19,6 +19,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import type { PanelConfig } from "./services/charts/panel-config.ts";
+
 /**
  * Core's own tables. Section 0 creates none, so the deployment tables arrive with the Section 1
  * migration (R-1). The map below is the one known place a core table lands, and core's migration
@@ -594,6 +596,60 @@ export const agentMessage = pgTable(
   ]
 );
 
+/**
+ * A chart, table, document or record list that the agent made in a chat (`DEC-56`). `number` is
+ * its number in the chat, which the agent names it by, so no id reaches the model. No default id:
+ * the tool makes it while the answer streams. Deleted with its session.
+ */
+export const agentArtifact = pgTable(
+  "agent_artifact",
+  {
+    id: uuid("id").primaryKey(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => agentSession.id, { onDelete: "cascade" }),
+    number: integer("number").notNull(),
+    kind: text("kind", {
+      enum: ["chart", "table", "document", "record-list"],
+    }).notNull(),
+    title: text("title").notNull(),
+    latestVersion: integer("latest_version").notNull(),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("agent_artifact_session_number_unique").on(
+      table.sessionId,
+      table.number
+    ),
+    index("agent_artifact_session_created_idx").on(
+      table.sessionId,
+      table.createdAt
+    ),
+    check(
+      "agent_artifact_kind_check",
+      sql`${table.kind} in ('chart', 'table', 'document', 'record-list')`
+    ),
+  ]
+);
+
+/** One version of an artifact: its definition, never its figures, and the answer that made it. */
+export const agentArtifactVersion = pgTable(
+  "agent_artifact_version",
+  {
+    artifactId: uuid("artifact_id")
+      .notNull()
+      .references(() => agentArtifact.id, { onDelete: "cascade" }),
+    version: integer("version").notNull(),
+    definition: jsonb("definition").$type<PanelConfig>().notNull(),
+    messageId: uuid("message_id")
+      .notNull()
+      .references(() => agentMessage.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.artifactId, table.version] })]
+);
+
 /** Every core table by its SQL name, the one place a core table is registered. */
 export const coreTables = {
   tenant_module: tenantModule,
@@ -622,4 +678,6 @@ export const coreTables = {
   user_preference: userPreference,
   agent_session: agentSession,
   agent_message: agentMessage,
+  agent_artifact: agentArtifact,
+  agent_artifact_version: agentArtifactVersion,
 } satisfies Readonly<Record<string, PgTable>>;

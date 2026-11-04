@@ -4,8 +4,17 @@ import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
-import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { agentMessage, agentSession } from "../../schema.ts";
+import {
+  type TenantTransaction,
+  withTransaction,
+} from "../../lib/tenant-context/with-transaction.ts";
+import {
+  agentArtifact,
+  agentArtifactVersion,
+  agentMessage,
+  agentSession,
+} from "../../schema.ts";
+import type { PendingVersion } from "./artifacts.ts";
 
 /**
  * The owner-only store of boss-agent chats (Spec 7 R-41). Every function filters on the signed-in
@@ -39,7 +48,7 @@ function notFound(): AppError {
 }
 
 /** A malformed id answers not-found before any query, so a bad link never reaches Postgres. */
-function checkedId(id: string): string {
+export function checkedId(id: string): string {
   if (!uuid.safeParse(id).success) throw notFound();
 
   return id;
@@ -151,7 +160,50 @@ export async function readOwnSession(
   return { session: summary(row), messages };
 }
 
-/** Appends one message with a server-made id and moves `updated_at`, in one transaction; `not-found` when the session is not the caller's. */
+async function writeVersion(
+  tx: TenantTransaction,
+  sessionId: string,
+  messageId: string,
+  pending: PendingVersion
+): Promise<void> {
+  if (pending.isNew) {
+    await tx.insert(agentArtifact).values({
+      id: pending.artifactId,
+      sessionId,
+      number: pending.number,
+      kind: pending.kind,
+      title: pending.title,
+      latestVersion: pending.version,
+    });
+  } else {
+    await tx
+      .update(agentArtifact)
+      .set({
+        title: pending.title,
+        latestVersion: pending.version,
+        updatedAt: sql`now()`,
+      })
+      .where(
+        and(
+          eq(agentArtifact.id, pending.artifactId),
+          eq(agentArtifact.sessionId, sessionId)
+        )
+      );
+  }
+
+  await tx.insert(agentArtifactVersion).values({
+    artifactId: pending.artifactId,
+    version: pending.version,
+    definition: pending.definition,
+    messageId,
+  });
+}
+
+/**
+ * Appends one message with a server-made id and moves `updated_at`, in one transaction; `not-found`
+ * when the session is not the caller's. The answer's artifact versions go in the same transaction,
+ * so a failed write stores neither.
+ */
 export async function appendMessage(
   ctx: ModuleRequestContext,
   sessionId: string,
@@ -159,7 +211,8 @@ export async function appendMessage(
     readonly id?: string;
     readonly role: "user" | "assistant";
     readonly parts: AgentMessage["parts"];
-  }
+  },
+  versions: readonly PendingVersion[] = []
 ): Promise<string> {
   const id = checkedId(sessionId);
 
@@ -186,6 +239,12 @@ export async function appendMessage(
 
     if (inserted === undefined) {
       throw new Error("the message insert returned no row");
+    }
+
+    for (const pending of versions) {
+      // In order: a new artifact's row comes before its versions, and a version moves its latest.
+      // oxlint-disable-next-line no-await-in-loop -- one transaction, written in the turn's order
+      await writeVersion(tx, id, inserted.id, pending);
     }
 
     await tx
