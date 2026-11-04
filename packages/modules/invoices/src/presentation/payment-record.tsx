@@ -5,13 +5,15 @@ import { useModuleClient } from "@genie/core/rpc/client";
 import { Button, type Figure, FigureStrip } from "@genie/ui";
 import { useQuery } from "@tanstack/react-query";
 import { LinkIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { invoicesContract } from "../contract.ts";
+import { DocumentDesk } from "./document-desk.tsx";
 import { formatDay, formatMoney, paymentLabel } from "./format.ts";
 import { INVOICES_QUERY, LinkInvoiceDialog } from "./link-dialogs.tsx";
 import { PaymentStatusBadge } from "./payment-status-badge.tsx";
-import { Fact, OpenPdfLink, RecordBody } from "./record-parts.tsx";
+import { paymentDeskFields } from "./record-fields.ts";
+import { RecordSide } from "./record-parts.tsx";
 import type { PaymentRecordView } from "./views.ts";
 
 export type PaymentRecordProps = {
@@ -52,11 +54,26 @@ function ShownPayment(props: { readonly initial: ShownView }) {
   const invoices = useModuleClient(invoicesContract);
   const [linking, setLinking] = useState(false);
 
-  const { data: view } = useQuery({
+  const query = useQuery({
     queryKey: [...INVOICES_QUERY, "payment-record", id],
     queryFn: () => invoices.getPaymentRecord({ id }),
     initialData,
   });
+
+  const view = query.data;
+
+  // Memoised: a new array would draw the page's text layer again.
+  const fields = useMemo(
+    () =>
+      view.kind === "shown"
+        ? paymentDeskFields(
+            view.payment,
+            view.fields,
+            view.documentUrl !== null
+          )
+        : [],
+    [view]
+  );
 
   if (view.kind === "after-reporting-date") {
     return <AfterReportingDate view={view} />;
@@ -84,22 +101,64 @@ function ShownPayment(props: { readonly initial: ShownView }) {
         ]
       : [{ ...amount, lead: true, status }];
 
+  const unallocated = payment.unallocatedCents > 0;
+
+  const refreshUrl = async () => {
+    const answer = await query.refetch();
+
+    return answer.data?.kind === "shown" ? answer.data.documentUrl : null;
+  };
+
+  const linkAction = canLink ? (
+    <Button variant="secondary" size="sm" onClick={() => setLinking(true)}>
+      <LinkIcon aria-hidden="true" />
+      Link to an invoice
+    </Button>
+  ) : undefined;
+
   return (
-    <main className="flex flex-col gap-6">
-      <PageHeader
-        title={label}
-        meta={`${payment.customerName} · Amounts as of ${formatDay(view.asOf)}, the reporting date.`}
-        {...(view.documentUrl === null
-          ? {}
-          : { secondaryActions: <OpenPdfLink href={view.documentUrl} /> })}
-      />
-      <FigureStrip
-        label="Figures"
-        figures={[
-          ...lead,
-          { label: "Allocated", value: money(payment.allocatedCents) },
-          { label: "Payment date", value: formatDay(payment.paymentDate) },
-        ]}
+    <main>
+      <DocumentDesk
+        kind="payment"
+        label={label}
+        documentUrl={view.documentUrl}
+        refreshUrl={refreshUrl}
+        fields={fields}
+        header={
+          <PageHeader
+            title={label}
+            meta={`${payment.customerName} · Amounts as of ${formatDay(view.asOf)}, the reporting date.`}
+          />
+        }
+        figures={
+          <FigureStrip
+            label="Figures"
+            figures={[
+              ...lead,
+              { label: "Allocated", value: money(payment.allocatedCents) },
+              { label: "Payment date", value: formatDay(payment.paymentDate) },
+            ]}
+          />
+        }
+        peek={{
+          status,
+          caption: `${unallocated ? "Unallocated" : "Amount"} · ${payment.customerName}`,
+          amount: money(
+            unallocated ? payment.unallocatedCents : payment.amountCents
+          ),
+        }}
+        side={(place) => (
+          <RecordSide
+            id="payment"
+            other="invoice"
+            allocations={view.allocations}
+            history={view.history}
+            canWrite={view.canWrite}
+            timeZone={view.timeZone}
+            linkAction={linkAction}
+            layout={place === "drawer" ? "cards" : "auto"}
+          />
+        )}
       />
       {canLink ? (
         <LinkInvoiceDialog
@@ -115,34 +174,6 @@ function ShownPayment(props: { readonly initial: ShownView }) {
           onLinked={() => setLinking(false)}
         />
       ) : null}
-      <RecordBody
-        id="payment"
-        other="invoice"
-        allocations={view.allocations}
-        history={view.history}
-        canWrite={view.canWrite}
-        timeZone={view.timeZone}
-        linkAction={
-          canLink ? (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => setLinking(true)}
-            >
-              <LinkIcon aria-hidden="true" />
-              Link to an invoice
-            </Button>
-          ) : undefined
-        }
-        facts={
-          <>
-            <Fact label="Customer">{payment.customerName}</Fact>
-            <Fact label="Payment date">{formatDay(payment.paymentDate)}</Fact>
-            <Fact label="Reference">{payment.reference ?? "None"}</Fact>
-            <Fact label="Method">{payment.method ?? "None"}</Fact>
-          </>
-        }
-      />
     </main>
   );
 }

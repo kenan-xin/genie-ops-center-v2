@@ -126,6 +126,8 @@ export type DataTableProps<Row> = {
     readonly by: ListSort;
     readonly onChange: (sort: ListSort) => void;
   };
+  /** `cards` shows the card list at every width and no table, for a narrow column such as a drawer. */
+  readonly layout?: "auto" | "cards";
 };
 
 /** The header of a sortable column: a button that fills the cell, at least 44 px under 1024 px. */
@@ -225,14 +227,16 @@ export function DataTable<Row>({
   footer,
   onEndReached,
   sort,
+  layout = "auto",
 }: DataTableProps<Row>) {
   // A long list renders only the rows near the screen (czjw.70). Before hydration both layouts
   // render the first window, so the server and the client agree; after it only the shown one.
   const virtual = rows.length > VIRTUAL_FROM;
-  const wide = useMediaQuery("(min-width: 768px)", {});
+  const cards = layout === "cards";
+  const wide = useMediaQuery("(min-width: 768px)", {}) && !cards;
   const hydrated = useHydrated();
-  const showTable = !hydrated || wide;
-  const showList = !hydrated || !wide;
+  const showTable = !cards && (!hydrated || wide);
+  const showList = cards || !hydrated || !wide;
 
   const tableBody = useRef<HTMLTableSectionElement>(null);
   const cardList = useRef<HTMLUListElement>(null);
@@ -382,133 +386,135 @@ export function DataTable<Row>({
   const body = (
     <>
       {/* A bordered card holds the header band and the rows, so the band does not float (UI-1). */}
-      <div
-        data-slot="data-table"
-        className={`hidden overflow-hidden md:block ${frame}`}
-      >
-        <Table
-          aria-rowcount={rows.length + 1}
-          className={fixedWidths === undefined ? undefined : "table-fixed"}
+      {cards ? null : (
+        <div
+          data-slot="data-table"
+          className={`hidden overflow-hidden md:block ${frame}`}
         >
-          <TableCaption className="sr-only">{label}</TableCaption>
-          {fixedWidths === undefined ? null : (
-            <colgroup>
-              {fixedWidths.map((width, index) => (
-                <col
-                  key={index}
-                  className="w-(--column)"
-                  style={
-                    // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
-                    { "--column": `${width}%` } as CSSProperties
-                  }
-                />
-              ))}
-            </colgroup>
-          )}
-          <TableHeader>
-            <TableRow ref={headRow} aria-rowindex={1}>
-              {columns.map((column) => {
-                const active =
-                  sort !== undefined && sort.by.column === column.id
-                    ? sort.by.direction
-                    : undefined;
-
-                return (
-                  <TableHead
-                    key={column.id}
-                    aria-sort={
-                      active === undefined
-                        ? undefined
-                        : active === "asc"
-                          ? "ascending"
-                          : "descending"
+          <Table
+            aria-rowcount={rows.length + 1}
+            className={fixedWidths === undefined ? undefined : "table-fixed"}
+          >
+            <TableCaption className="sr-only">{label}</TableCaption>
+            {fixedWidths === undefined ? null : (
+              <colgroup>
+                {fixedWidths.map((width, index) => (
+                  <col
+                    key={index}
+                    className="w-(--column)"
+                    style={
+                      // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
+                      { "--column": `${width}%` } as CSSProperties
                     }
-                    className={
-                      column.align === "end" ? "text-right" : undefined
-                    }
-                  >
-                    {sort === undefined || column.sort === undefined ? (
-                      column.header
-                    ) : (
-                      <SortButton
-                        header={column.header}
-                        direction={active}
-                        onClick={() =>
-                          sort.onChange({
-                            column: column.id,
-                            direction: active === "desc" ? "asc" : "desc",
-                          })
-                        }
-                      />
-                    )}
-                  </TableHead>
-                );
-              })}
-              {status ? <TableHead>Status</TableHead> : null}
-              <TableHead>
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody ref={tableBody}>
-            {tableWindow.before > 0 ? (
-              <tr aria-hidden="true">
-                <td
-                  colSpan={columnCount}
-                  className="h-(--spacer) p-0"
-                  style={
-                    // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
-                    { "--spacer": `${tableWindow.before}px` } as CSSProperties
-                  }
-                />
-              </tr>
-            ) : null}
-            {rowsAt(tableWindow.indexes, showTable).map(({ index, row }) => (
-              <TableRow
-                key={rowKey(row)}
-                ref={virtual ? tableWindow.measure : undefined}
-                data-index={index}
-                aria-rowindex={index + 2}
-                className={rowLinks ? "relative" : undefined}
-              >
-                {columns.map((column) => (
-                  <TableCell
-                    key={column.id}
-                    className={
-                      column.align === "end" ? "text-right" : undefined
-                    }
-                  >
-                    {column === identityColumn
-                      ? identity(row, column.cell(row))
-                      : column.cell(row)}
-                  </TableCell>
+                  />
                 ))}
-                {status ? <TableCell>{status(row)}</TableCell> : null}
-                <TableCell className="relative z-10 text-right">
-                  {menu(row)}
-                </TableCell>
+              </colgroup>
+            )}
+            <TableHeader>
+              <TableRow ref={headRow} aria-rowindex={1}>
+                {columns.map((column) => {
+                  const active =
+                    sort !== undefined && sort.by.column === column.id
+                      ? sort.by.direction
+                      : undefined;
+
+                  return (
+                    <TableHead
+                      key={column.id}
+                      aria-sort={
+                        active === undefined
+                          ? undefined
+                          : active === "asc"
+                            ? "ascending"
+                            : "descending"
+                      }
+                      className={
+                        column.align === "end" ? "text-right" : undefined
+                      }
+                    >
+                      {sort === undefined || column.sort === undefined ? (
+                        column.header
+                      ) : (
+                        <SortButton
+                          header={column.header}
+                          direction={active}
+                          onClick={() =>
+                            sort.onChange({
+                              column: column.id,
+                              direction: active === "desc" ? "asc" : "desc",
+                            })
+                          }
+                        />
+                      )}
+                    </TableHead>
+                  );
+                })}
+                {status ? <TableHead>Status</TableHead> : null}
+                <TableHead>
+                  <span className="sr-only">Actions</span>
+                </TableHead>
               </TableRow>
-            ))}
-            {tableWindow.after > 0 ? (
-              <tr aria-hidden="true">
-                <td
-                  colSpan={columnCount}
-                  className="h-(--spacer) p-0"
-                  style={
-                    // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
-                    { "--spacer": `${tableWindow.after}px` } as CSSProperties
-                  }
-                />
-              </tr>
-            ) : null}
-          </TableBody>
-        </Table>
-      </div>
+            </TableHeader>
+            <TableBody ref={tableBody}>
+              {tableWindow.before > 0 ? (
+                <tr aria-hidden="true">
+                  <td
+                    colSpan={columnCount}
+                    className="h-(--spacer) p-0"
+                    style={
+                      // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
+                      { "--spacer": `${tableWindow.before}px` } as CSSProperties
+                    }
+                  />
+                </tr>
+              ) : null}
+              {rowsAt(tableWindow.indexes, showTable).map(({ index, row }) => (
+                <TableRow
+                  key={rowKey(row)}
+                  ref={virtual ? tableWindow.measure : undefined}
+                  data-index={index}
+                  aria-rowindex={index + 2}
+                  className={rowLinks ? "relative" : undefined}
+                >
+                  {columns.map((column) => (
+                    <TableCell
+                      key={column.id}
+                      className={
+                        column.align === "end" ? "text-right" : undefined
+                      }
+                    >
+                      {column === identityColumn
+                        ? identity(row, column.cell(row))
+                        : column.cell(row)}
+                    </TableCell>
+                  ))}
+                  {status ? <TableCell>{status(row)}</TableCell> : null}
+                  <TableCell className="relative z-10 text-right">
+                    {menu(row)}
+                  </TableCell>
+                </TableRow>
+              ))}
+              {tableWindow.after > 0 ? (
+                <tr aria-hidden="true">
+                  <td
+                    colSpan={columnCount}
+                    className="h-(--spacer) p-0"
+                    style={
+                      // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
+                      { "--spacer": `${tableWindow.after}px` } as CSSProperties
+                    }
+                  />
+                </tr>
+              ) : null}
+            </TableBody>
+          </Table>
+        </div>
+      )}
       <ul
         ref={cardList}
         role="list"
         aria-label={label}
-        className={`divide-y divide-border md:hidden ${frame}`}
+        className={`divide-y divide-border ${cards ? "" : "md:hidden"} ${frame}`}
       >
         {listWindow.before > 0 ? (
           <li

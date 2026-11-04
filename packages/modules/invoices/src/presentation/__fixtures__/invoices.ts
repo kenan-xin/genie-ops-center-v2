@@ -10,6 +10,8 @@ import type {
   InvoiceListView,
   InvoiceRecordView,
 } from "../views.ts";
+import { DEMO_PDF } from "./demo-pdfs.ts";
+import { RECORD_FIELDS_0903 } from "./desk.ts";
 
 /** The tab counts of the four rows below: they never follow the tab (LH17). */
 const INVOICE_COUNTS = {
@@ -241,8 +243,98 @@ export const partPaidInvoiceRecord: ShownInvoice = {
       amountAfterCents: 50_000,
     },
   ],
-  documentUrl: "https://example.test/api/files/download?token=fixture",
+  // The link stories load no file; `deskInvoiceRecord` shows the page.
+  documentUrl: null,
   fields: [],
+};
+
+const HARBOR_INVOICE = {
+  invoiceId: "34343434-3434-4343-8343-343434343434",
+  invoiceNumber: "INV-2026-09-03",
+  currency: "SGD",
+} as const;
+
+const TXN_026 = {
+  ...HARBOR_INVOICE,
+  paymentId: "35353535-3535-4353-8353-353535353535",
+  paymentReference: "TXN-PAY-2026-026",
+  paymentDate: "2026-10-05",
+  automatic: false,
+} as const;
+
+const HF_FINAL = {
+  ...HARBOR_INVOICE,
+  paymentId: "36363636-3636-4363-8363-363636363636",
+  paymentReference: "HF-SEP-FINAL-PART",
+  paymentDate: "2026-10-26",
+  automatic: true,
+} as const;
+
+/**
+ * The history invoice INV-2026-09-03 on the document desk (prototype variant C): part-paid by a
+ * person's link and an automatic one, overdue by 40 days, with its PDF and its field sources.
+ */
+export const deskInvoiceRecord: ShownInvoice = {
+  kind: "shown",
+  asOf: "2026-10-27",
+  timeZone: "Asia/Singapore",
+  canWrite: true,
+  invoice: {
+    id: HARBOR_INVOICE.invoiceId,
+    invoiceNumber: HARBOR_INVOICE.invoiceNumber,
+    customerName: "Harbor Foods",
+    invoiceDate: "2026-09-03",
+    dueDate: "2026-09-17",
+    currency: "SGD",
+    totalCents: 720_000,
+    outstandingCents: 220_000,
+    status: { kind: "overdue", daysOverdue: 40 },
+    updatedAt: "2026-10-26T04:00:00.000000Z",
+    dueDateSource: "document",
+    paymentTerms: "Payment due within 14 days of invoice date.",
+    description: "Operations support services - September 2026",
+    allocatedCents: 500_000,
+  },
+  allocations: [
+    {
+      ...TXN_026,
+      id: "37373737-3737-4373-8373-373737373737",
+      amountCents: 200_000,
+    },
+    {
+      ...HF_FINAL,
+      id: "38383838-3838-4383-8383-383838383838",
+      amountCents: 300_000,
+    },
+  ],
+  history: [
+    {
+      ...TXN_026,
+      id: "39393939-3939-4393-8393-393939393939",
+      action: "linked",
+      occurredAt: "2026-10-05T04:00:00.000Z",
+      amountBeforeCents: 0,
+      amountAfterCents: 150_000,
+    },
+    {
+      ...TXN_026,
+      id: "3a3a3a3a-3a3a-43a3-83a3-3a3a3a3a3a3a",
+      action: "changed",
+      occurredAt: "2026-10-06T02:30:00.000Z",
+      amountBeforeCents: 150_000,
+      amountAfterCents: 200_000,
+    },
+    {
+      ...HF_FINAL,
+      id: "3b3b3b3b-3b3b-43b3-83b3-3b3b3b3b3b3b",
+      action: "linked",
+      occurredAt: "2026-10-26T04:00:00.000Z",
+      amountBeforeCents: 0,
+      amountAfterCents: 300_000,
+    },
+  ],
+  documentUrl: DEMO_PDF.history0903,
+  fields: [...RECORD_FIELDS_0903],
 };
 
 /** The same invoice for a reader without `invoices:write`. */

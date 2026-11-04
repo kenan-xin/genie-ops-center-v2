@@ -590,6 +590,7 @@ export function RecordLinks(props: {
   readonly rows: readonly AllocationRow[];
   readonly other: LinkedRecord;
   readonly canWrite: boolean;
+  readonly layout?: "auto" | "cards";
 }): ReactNode {
   const { rows, other, canWrite } = props;
   const invoices = useModuleClient(invoicesContract);
@@ -638,6 +639,7 @@ export function RecordLinks(props: {
         <AllocationTable
           rows={rows}
           other={other}
+          layout={props.layout ?? "auto"}
           {...(canWrite
             ? {
                 actions: {

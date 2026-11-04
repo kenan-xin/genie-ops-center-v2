@@ -11,6 +11,7 @@ import type {
   PaymentListView,
   PaymentRecordView,
 } from "../views.ts";
+import { DEMO_PDF } from "./demo-pdfs.ts";
 
 /** The tab counts of the three rows below: they never follow the tab (LH17). */
 const PAYMENT_COUNTS = { "all": 3, "linked": 1, "not-linked": 2 };
@@ -214,8 +215,92 @@ export const partAllocatedPaymentRecord: ShownPayment = {
       amountAfterCents: 100_000,
     },
   ],
-  documentUrl: "https://example.test/api/files/download?token=fixture",
+  // The link stories load no file; `bundlePaymentRecord` shows the page.
+  documentUrl: null,
   fields: [],
+};
+
+const BUNDLE = {
+  paymentId: "3c3c3c3c-3c3c-43c3-83c3-3c3c3c3c3c3c",
+  paymentReference: "OR-AUG-SEP-BUNDLE",
+  paymentDate: "2026-10-27",
+  currency: "SGD",
+  automatic: false,
+} as const;
+
+/**
+ * The live payment 03 after its split was confirmed, on the document desk: one payment of
+ * 8,250.00 linked to two invoices, with its PDF and the field sources of its reading.
+ */
+export const bundlePaymentRecord: ShownPayment = {
+  kind: "shown",
+  asOf: "2026-10-27",
+  timeZone: "Asia/Singapore",
+  canWrite: true,
+  payment: {
+    id: BUNDLE.paymentId,
+    reference: BUNDLE.paymentReference,
+    customerName: "Orchid Retail",
+    paymentDate: BUNDLE.paymentDate,
+    method: "Bank transfer",
+    currency: "SGD",
+    amountCents: 825_000,
+    unallocatedCents: 0,
+    status: "allocated",
+    updatedAt: "2026-10-27T05:00:00.000000Z",
+    allocatedCents: 825_000,
+    customerId: "3d3d3d3d-3d3d-43d3-83d3-3d3d3d3d3d3d",
+  },
+  allocations: [
+    {
+      ...BUNDLE,
+      id: "3e3e3e3e-3e3e-43e3-83e3-3e3e3e3e3e3e",
+      invoiceId: "3f3f3f3f-3f3f-43f3-83f3-3f3f3f3f3f3f",
+      invoiceNumber: "INV-2026-08-04",
+      amountCents: 405_000,
+    },
+    {
+      ...BUNDLE,
+      id: "40404040-4040-4404-8404-404040404040",
+      invoiceId: "41414141-4141-4414-8414-414141414141",
+      invoiceNumber: "INV-2026-09-04",
+      amountCents: 420_000,
+    },
+  ],
+  history: [],
+  documentUrl: DEMO_PDF.payment03,
+  fields: [
+    {
+      field: "amount",
+      origin: "extracted",
+      quote: "TOTAL (SGD) 8,250.00",
+      page: 1,
+    },
+    {
+      field: "customer",
+      origin: "extracted",
+      quote: "Orchid Retail",
+      page: 1,
+    },
+    {
+      field: "date",
+      origin: "extracted",
+      quote: "Payment date 2026-10-27",
+      page: 1,
+    },
+    {
+      field: "method",
+      origin: "extracted",
+      quote: "Payment method Bank transfer",
+      page: 1,
+    },
+    {
+      field: "reference",
+      origin: "extracted",
+      quote: "Payment reference OR-AUG-SEP-BUNDLE",
+      page: 1,
+    },
+  ],
 };
 
 /** The same payment for a reader without `invoices:write`. */

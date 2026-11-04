@@ -56,6 +56,8 @@ export type AllocationTableProps = {
   readonly other: LinkedRecord;
   /** Without it the table shows no Undo and no action. */
   readonly actions?: LinkActions;
+  /** `cards` keeps the card list at every width, for the desk's drawer. */
+  readonly layout?: "auto" | "cards";
 };
 
 /** The links of one record, each opening the other record. */
@@ -103,6 +105,7 @@ export function AllocationTable(props: AllocationTableProps) {
   return (
     <DataTable
       label={LINKS_LABEL[other]}
+      layout={props.layout ?? "auto"}
       rows={rows}
       rowKey={(row) => row.id}
       rowLabel={(row) => labelOf(row, other)}

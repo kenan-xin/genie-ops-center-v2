@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
+  bundlePaymentRecord,
   laterPaymentRecord,
   openInvoicesOfPayment,
   partAllocatedPaymentRecord,
@@ -24,11 +25,18 @@ const listOpenInvoices = fn();
 
 const linkPayment = fn();
 
-const desktop = { viewport: { value: "desktop", isRotated: false } };
+const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
 const [automatic] = partAllocatedPaymentRecord.allocations;
+
+/** Below 1280 px the links sit in the record's sheet, so a phone story opens it first. */
+async function openDetails(canvas: ReturnType<typeof within>) {
+  const details = canvas.queryByRole("button", { name: "Details" });
+
+  if (details !== null) await userEvent.click(details);
+}
 
 const REFUSAL = "That amount is more than the open balance of the invoice.";
 
@@ -63,6 +71,7 @@ function refuseOnce() {
  * refusal. The read is not repeated after a refused change.
  */
 async function changeAndRefuse(canvas: ReturnType<typeof within>) {
+  await openDetails(canvas);
   await userEvent.click(
     canvas.getByRole("button", { name: "Actions for INV-2026-09-03" })
   );
@@ -114,6 +123,7 @@ const LINK_REFUSAL =
  * open amount and the payment's unallocated 2,000.00.
  */
 async function chooseInvoice(canvas: ReturnType<typeof within>) {
+  await openDetails(canvas);
   await userEvent.click(
     canvas.getByRole("button", { name: "Link to an invoice" })
   );
@@ -207,7 +217,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'One payment at `/m/invoices/payments/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The page header holds the customer and "Open the PDF" (a new tab, through a short-lived link). The Figures strip leads with Unallocated while money is unallocated, else with Amount (choice 11). The Invoices card is a table from 768 px and cards below it, each row opening the invoice, and holds Link to an invoice. History is one dated sentence per change, newest first. A writer of the payment gets Undo on an automatic link and Change amount and Remove link on every link; Change amount keeps a refusal inside its dialog. A writer of a payment with unallocated money gets Link to an invoice: the open invoices of its customer in its currency, with the lower of the open amount and the unallocated amount filled in (R-31, R-32, decision 10). After each change the page reads the payment again. A payment dated after the reporting date shows a note instead of a balance.',
+          "One payment at `/m/invoices/payments/:id`, read as of the reporting date, on the document desk (Spec 7 R-9, R-32, R-38a, R-59, R-60, decisions 4 and 9). The page header holds the customer. The Figures strip leads with Unallocated and its status, or with Amount when nothing is unallocated, then Allocated and the payment date. From 1280 px the PDF shows in the page with each read field pinned beside its line, and the invoices and their history sit in a drawer, as cards. Below 1280 px the page comes first and the record opens in a bottom sheet. A writer gets Undo on an automatic link, Change amount and Remove link on every link, and Link to an invoice while money is unallocated. A refusal stays inside the open dialog, and after each change the page reads the payment again.",
       },
     },
     a11y: { test: "error" },
@@ -227,8 +237,43 @@ const figureTerms = (canvas: ReturnType<typeof within>) =>
     .getAllByRole("term")
     .map((term) => term.textContent);
 
-// Choice 11: unallocated money leads the strip.
+// D19: the payment shows its PDF in the page and its invoices in the drawer; its figures stay.
 export const Default: Story = {
+  globals: desktop,
+  args: { view: bundlePaymentRecord },
+  beforeEach: () => serve(bundlePaymentRecord),
+  play: async ({ canvas, canvasElement }) => {
+    await waitFor(
+      () =>
+        expect(
+          canvasElement.querySelector("[data-document-viewer] canvas")
+        ).not.toBeNull(),
+      { timeout: 10000 }
+    );
+
+    const drawer = canvas.getByRole("complementary", {
+      name: "Invoices and history",
+    });
+
+    await expect(
+      within(within(drawer).getByRole("list", { name: "Invoices" }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual([
+      expect.stringContaining("INV-2026-08-04"),
+      expect.stringContaining("INV-2026-09-04"),
+    ]);
+    await expect(figureTerms(canvas)).toEqual([
+      "Amount",
+      "Allocated",
+      "Payment date",
+    ]);
+  },
+};
+
+// Choice 11: unallocated money leads the strip.
+export const PartAllocated: Story = {
+  name: "Part allocated",
   globals: desktop,
   play: async ({ canvas }) => {
     await expect(figureTerms(canvas)).toEqual([
@@ -362,6 +407,8 @@ export const ReadOnly: Story = {
   args: { view: readOnlyPaymentRecord },
   beforeEach: () => serve(readOnlyPaymentRecord),
   play: async ({ canvas }) => {
+    await openDetails(canvas);
+
     const list = canvas.getByRole("list", { name: "Invoices" });
 
     await expect(within(list).getByText(/Automatic/)).toBeVisible();

@@ -425,6 +425,24 @@ export const WithFooter: Story = {
   },
 };
 
+/**
+ * D14: `layout="cards"` keeps the card list at every width, for a narrow column such as the record
+ * desk's drawer, where a four-column table does not fit.
+ */
+export const CardLayout: Story = {
+  args: { layout: "cards" },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "People" });
+
+    await expect(list).toBeVisible();
+    await expect(within(list).getAllByRole("listitem")).toHaveLength(
+      people.length
+    );
+    await expect(canvas.queryByRole("table")).toBeNull();
+  },
+};
+
 export const WithFooterPhone: Story = {
   args: { footer: "3 of 3 people" },
   globals: { viewport: { value: "mobile1", isRotated: false } },

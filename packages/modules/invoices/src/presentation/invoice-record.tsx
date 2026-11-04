@@ -5,14 +5,23 @@ import { useModuleClient } from "@genie/core/rpc/client";
 import { Button, type Figure, FigureStrip } from "@genie/ui";
 import { useQuery } from "@tanstack/react-query";
 import { PencilIcon } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import { invoicesContract } from "../contract.ts";
+import { DocumentDesk } from "./document-desk.tsx";
 import { formatDay, formatMoney } from "./format.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
 import { CorrectTotalDialog, INVOICES_QUERY } from "./link-dialogs.tsx";
-import { Fact, OpenPdfLink, RecordBody } from "./record-parts.tsx";
-import type { InvoiceDetail, InvoiceRecordView } from "./views.ts";
+import { invoiceDeskFields } from "./record-fields.ts";
+import { RecordSide } from "./record-parts.tsx";
+import type { InvoiceDetail, InvoiceRecordView, RecordField } from "./views.ts";
+
+/** The note of a figure that a field backs: where its value came from (R-38a). */
+const ORIGIN_NOTE: Record<RecordField["origin"], string> = {
+  extracted: "Extracted",
+  corrected: "Corrected by you",
+  entered: "Entered by you",
+};
 
 const DUE_DATE_SOURCE: Record<
   Exclude<InvoiceDetail["dueDateSource"], "unspecified">,
@@ -70,11 +79,26 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
   const invoices = useModuleClient(invoicesContract);
   const [correcting, setCorrecting] = useState(false);
 
-  const { data: view } = useQuery({
+  const query = useQuery({
     queryKey: [...INVOICES_QUERY, "invoice-record", id],
     queryFn: () => invoices.getInvoiceRecord({ id }),
     initialData,
   });
+
+  const view = query.data;
+
+  // Memoised: a new array would draw the page's text layer again.
+  const fields = useMemo(
+    () =>
+      view.kind === "shown"
+        ? invoiceDeskFields(
+            view.invoice,
+            view.fields,
+            view.documentUrl !== null
+          )
+        : [],
+    [view]
+  );
 
   if (view.kind === "after-reporting-date") {
     return <AfterReportingDate view={view} />;
@@ -82,41 +106,84 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
 
   const { invoice } = view;
   const money = (cents: number) => formatMoney(cents, invoice.currency);
+  const status = <InvoiceStatusBadge status={invoice.status} />;
+  const linked = view.allocations.length;
+
+  const totalOrigin =
+    view.documentUrl === null
+      ? "entered"
+      : view.fields.find((row) => row.field === "amount")?.origin;
+
+  const refreshUrl = async () => {
+    const answer = await query.refetch();
+
+    return answer.data?.kind === "shown" ? answer.data.documentUrl : null;
+  };
 
   return (
-    <main className="flex flex-col gap-6">
-      <PageHeader
-        title={invoice.invoiceNumber}
-        meta={`${invoice.customerName} · Balances as of ${formatDay(view.asOf)}, the reporting date.`}
-        secondaryActions={
-          view.documentUrl === null && !view.canWrite ? undefined : (
-            <>
-              {view.documentUrl === null ? null : (
-                <OpenPdfLink href={view.documentUrl} />
-              )}
-              {view.canWrite ? (
+    <main>
+      <DocumentDesk
+        kind="invoice"
+        label={invoice.invoiceNumber}
+        documentUrl={view.documentUrl}
+        refreshUrl={refreshUrl}
+        fields={fields}
+        header={
+          <PageHeader
+            title={invoice.invoiceNumber}
+            meta={`${invoice.customerName} · Balances as of ${formatDay(view.asOf)}, the reporting date.`}
+            secondaryActions={
+              view.canWrite ? (
                 <Button variant="secondary" onClick={() => setCorrecting(true)}>
                   <PencilIcon aria-hidden="true" />
                   Correct the total
                 </Button>
-              ) : null}
-            </>
-          )
+              ) : undefined
+            }
+          />
         }
-      />
-      <FigureStrip
-        label="Figures"
-        figures={[
-          {
-            label: "Outstanding",
-            value: money(invoice.outstandingCents),
-            lead: true,
-            status: <InvoiceStatusBadge status={invoice.status} />,
-          },
-          { label: "Total", value: money(invoice.totalCents) },
-          { label: "Allocated", value: money(invoice.allocatedCents) },
-          dueDate(invoice),
-        ]}
+        figures={
+          <FigureStrip
+            label="Figures"
+            figures={[
+              {
+                label: "Outstanding",
+                value: money(invoice.outstandingCents),
+                lead: true,
+                status,
+              },
+              totalOrigin === undefined
+                ? { label: "Total", value: money(invoice.totalCents) }
+                : {
+                    label: "Total",
+                    value: money(invoice.totalCents),
+                    note: ORIGIN_NOTE[totalOrigin],
+                  },
+              {
+                label: "Paid",
+                value: money(invoice.allocatedCents),
+                note: `${linked} ${linked === 1 ? "payment" : "payments"} linked`,
+              },
+              dueDate(invoice),
+            ]}
+          />
+        }
+        peek={{
+          status,
+          caption: `Outstanding · ${invoice.customerName}`,
+          amount: money(invoice.outstandingCents),
+        }}
+        side={(place) => (
+          <RecordSide
+            id="invoice"
+            other="payment"
+            allocations={view.allocations}
+            history={view.history}
+            canWrite={view.canWrite}
+            timeZone={view.timeZone}
+            layout={place === "drawer" ? "cards" : "auto"}
+          />
+        )}
       />
       {view.canWrite ? (
         <CorrectTotalDialog
@@ -132,26 +199,6 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
           onCorrected={() => setCorrecting(false)}
         />
       ) : null}
-      <RecordBody
-        id="invoice"
-        other="payment"
-        allocations={view.allocations}
-        history={view.history}
-        canWrite={view.canWrite}
-        timeZone={view.timeZone}
-        facts={
-          <>
-            <Fact label="Customer">{invoice.customerName}</Fact>
-            <Fact label="Invoice date">{formatDay(invoice.invoiceDate)}</Fact>
-            <Fact label="Payment terms">
-              {invoice.paymentTerms ?? "None on the document"}
-            </Fact>
-            <Fact label="Description" wide>
-              {invoice.description ?? "None"}
-            </Fact>
-          </>
-        }
-      />
     </main>
   );
 }

@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Three variants of the invoice record page (INV-2026-09-03), switchable via ?variant=A|B|C, &width=desktop|phone, &state=default|no-pdf|paid|pdf-error.
+     Question (owner, 2026-11-03): "when I open the PDF, the user should be able to see the PDF preview in the page itself without having to open it". Redesign the page and adapt it for phones.
+     A: split view, record left, sticky document pane right. B: record first, a document card that expands inline to a full-width viewer. C: document desk, the page annotated with its fields, payments and history in a side drawer.
+     Also: &nav=rail|open (main menu as the 60px icon rail; C defaults to it), &panel=open (agent panel docked right), &pdf=native|rendered (A and B viewers: the real PDF in an <object>, or the drawn page; C's desk always uses the drawn page,
+     because pinned annotations need a text layer, as pdf.js would give the app), &chrome=0 hides the switcher bar.
+     The drawn page stands in for the app's own PDF renderer: field highlights show on it. Where the browser cannot show a PDF in <object> (headless, Android), the drawn page is the <object>'s fallback.
+     Keys: Left and Right cycle variants (not while typing), Escape closes a menu, editor, viewer or sheet.
+     World: the Ask prototype (ask-chat.prototype.html, variant B) and the agent panel (chat-bubble.prototype.html, variant B): same tokens, flush shell, lucide icons (ISC), light theme.
+     Data: the fictional demo pack, reporting date 27 Oct 2026; figures from the current page capture. In-memory state only, no network requests.
+     Placeholders: [upload time] (when the invoice was created from the document is not in the capture); the paid state's third payment is an [example payment] with a [date]. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PROTOTYPE: Invoice record, three variants</title>
+<style>
+  /* Token layer copied from the Ask prototype (tokens.md names). Only --primary is a tenant color. */
+  :root{
+    --background:#ffffff;--foreground:#111827;--card:#ffffff;--muted:#f9fafb;--muted-foreground:#4b5563;
+    --border:#e5e7eb;--input:#6b7280;--primary:#2563eb;--primary-foreground:#ffffff;--ring:var(--primary);
+    --tile:#f3f4f6;--body-2:#374151;--quiet:#6b7280;
+    --ok:#047857;--ok-bg:#ecfdf5;--dang:#b91c1c;--dang-bg:#fef2f2;--warn:#92400e;--warn-bg:#fffbeb;
+    --sel-bg:#eff6ff;--sel-line:#2563eb;--sel-fg:#1d4ed8;
+    --hl:#fde68a;--hl-line:#d97706;
+    --desk:#eceef2;
+    --font-sans:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --text-xs:max(12px,.8rem);--text-sm:.875rem;--text-base:1rem;--text-lg:1.125rem;--text-xl:1.25rem;--text-2xl:1.5rem;
+    --ease:cubic-bezier(.16,1,.3,1);
+  }
+  html{font-size:15px;scrollbar-color:#d1d5db transparent}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font-sans);font-size:var(--text-base);line-height:1.5;color:var(--foreground);background:#fff;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+  ::selection{background:#dbeafe;color:#1e3a8a}
+  :focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+  a{color:inherit;text-underline-offset:3px}
+  h1,h2,h3,p,dl,dd,ol,ul{margin:0}
+  ol,ul{padding:0;list-style:none}
+  [hidden]{display:none!important}
+  .num{font-variant-numeric:tabular-nums}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .ic{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+  /* Stage: the app fills the window on desktop; ?width=phone frames it at 390 x 844 on a wide window */
+  #stage{height:100vh;display:grid;place-items:center}
+  body.chrome #stage{height:calc(100vh - 60px);align-items:start}
+  body.framed #stage{align-items:center}
+  body.framed{background:#e5e7eb}
+  #app{position:relative;overflow:hidden;width:100%;height:100%;display:flex;background:#fff;--navw:240px}
+  #app.nav-rail{--navw:60px}
+  #app.framed{width:390px;height:min(844px,calc(100% - 24px));border-radius:28px;box-shadow:0 0 0 1px #d1d5db,0 24px 48px -16px rgb(17 24 39 / .35)}
+
+  /* Buttons (incumbent sizes) */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--input);border-radius:8px;background:#fff;color:#1f2937;font:inherit;font-size:var(--text-sm);font-weight:600;white-space:nowrap;cursor:pointer;text-decoration:none;transition:background-color .15s var(--ease)}
+  .btn:hover{background:var(--muted)}
+  .btn.pri{border-color:var(--primary);background:var(--primary);color:#fff} .btn.pri:hover{background:#1d4ed8}
+  .btn.ghost{border-color:transparent;background:none;color:var(--body-2)} .btn.ghost:hover{background:var(--tile)}
+  .btn.danger{border-color:var(--dang);background:var(--dang);color:#fff} .btn.danger:hover{background:#991b1b}
+  .btn.sm{height:30px;padding:0 10px;font-size:var(--text-xs)}
+  .btn .ic{width:15px;height:15px}
+  .ib{position:relative;flex:none;width:36px;height:36px;display:grid;place-items:center;padding:0;border:0;border-radius:8px;background:none;color:var(--body-2);cursor:pointer;text-decoration:none;transition:background-color .15s var(--ease)}
+  .ib:hover{background:var(--tile);color:var(--foreground)}
+  .ib:disabled{color:#c4c9d1;background:none;cursor:default}
+  .ib .ic{width:18px;height:18px}
+  .ph .ib{width:44px;height:44px}
+  .ph .btn{height:44px;padding:0 16px;font-size:var(--text-base)}
+  .ph .btn.sm{height:36px;padding:0 12px;font-size:var(--text-sm)}
+
+  /* Main menu: flush, full height, one border on its right. Collapses to a 60 px icon rail. */
+  .mnav{flex:none;width:var(--navw);display:flex;flex-direction:column;min-height:0;padding:10px 10px 0;background:var(--muted);border-right:1px solid var(--border);transition:width .22s var(--ease)}
+  .mn-h{display:flex;align-items:center;gap:10px;height:40px;padding-left:4px;margin-bottom:4px}
+  .tile{flex:none;width:30px;height:30px;border-radius:8px;background:var(--primary);color:var(--primary-foreground);display:grid;place-items:center;font-weight:700;font-size:var(--text-sm)}
+  .mn-name{flex:1;font-weight:700;letter-spacing:-.01em}
+  .mn-cap{margin:14px 10px 4px;font-size:var(--text-xs);font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--quiet);white-space:nowrap}
+  .mn-list{display:flex;flex-direction:column;gap:2px}
+  .mn-i{display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--body-2);font:inherit;font-size:var(--text-sm);font-weight:500;text-decoration:none;text-align:left;cursor:pointer;white-space:nowrap}
+  .mn-i:hover{background:var(--tile);color:var(--foreground)}
+  .mn-i[aria-current=page]{background:#fff;box-shadow:inset 0 0 0 1px var(--border);color:var(--primary);font-weight:600}
+  .mn-i .ic{width:18px;height:18px}
+  .mn-sub{margin-left:19px;padding-left:8px;border-left:1px solid var(--border)}
+  .mn-user{margin:auto -10px 0;display:flex;align-items:center;gap:10px;width:calc(100% + 20px);min-height:60px;padding:10px 14px;border:0;border-top:1px solid var(--border);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+  .mn-user .who{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+  .mn-user .who b{font-size:var(--text-sm);font-weight:600}
+  .mn-user .who span{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .avatar{flex:none;width:32px;height:32px;border-radius:999px;background:#e0e7ff;color:#3730a3;display:grid;place-items:center;font-size:var(--text-xs);font-weight:700}
+  .nav-rail .mn-h{flex-direction:column;height:auto;gap:6px;padding:0;margin-bottom:6px}
+  .nav-rail .mn-name,.nav-rail .mn-i>span,.nav-rail .mn-user .who{display:none}
+  .nav-rail .mn-cap{height:1px;width:24px;margin:10px auto;padding:0;background:var(--border);font-size:0;overflow:hidden}
+  .nav-rail .mn-list{align-items:center}
+  .nav-rail .mn-i{width:40px;height:40px;padding:0;justify-content:center}
+  .nav-rail .mn-sub{margin:0;padding:0;border:0}
+  .nav-rail .mn-user{justify-content:center;padding:12px 0}
+
+  /* Shell: top bar over the page and the docked agent panel */
+  .shell{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+  .topbar{flex:none;display:flex;align-items:center;gap:8px;height:56px;padding:0 12px 0 20px;border-bottom:1px solid var(--border);background:#fff}
+  .crumb{display:flex;align-items:center;gap:6px;min-width:0;font-size:var(--text-sm);color:var(--muted-foreground)}
+  .crumb a{text-decoration:none} .crumb a:hover{color:var(--foreground);text-decoration:underline}
+  .crumb b{color:var(--foreground);font-weight:600}
+  .crumb .ic{width:14px;height:14px;color:var(--quiet)}
+  .tb-sp{flex:1}
+  .abtn{display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:#fff;color:var(--foreground);font:inherit;font-size:var(--text-sm);font-weight:600;white-space:nowrap;cursor:pointer}
+  .abtn:hover{background:var(--muted)}
+  .abtn[aria-expanded=true]{background:var(--sel-bg);border-color:#bfdbfe;color:var(--sel-fg)}
+  .adot{flex:none;width:8px;height:8px;border-radius:50%;background:var(--ok)}
+  .work{flex:1;min-height:0;display:flex;position:relative}
+  .page{flex:1;min-width:0;min-height:0;position:relative;display:flex}
+  .ph .topbar{padding:0 6px;gap:4px}
+  .ph .tb-title{flex:1;min-width:0;font-weight:700;font-size:var(--text-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ph .abtn{height:40px}
+
+  /* Agent panel (chat-bubble variant B): 400 wide, one left border; phone is a full-screen sheet */
+  .agentp{flex:none;width:400px;display:flex;flex-direction:column;min-height:0;background:#fff;border-left:1px solid var(--border)}
+  .ph .agentp{position:absolute;inset:0;z-index:50;width:auto;border-left:0}
+  .bh{flex:none;display:flex;align-items:center;gap:2px;height:60px;padding:0 6px 0 16px;border-bottom:1px solid var(--border)}
+  .bh-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+  .bh-t h2{font-size:var(--text-base);font-weight:700}
+  .ctx{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .bs{flex:1;min-height:0;overflow-y:auto;padding:20px 16px;display:flex;flex-direction:column;gap:14px}
+  .bs p{font-size:var(--text-sm);color:var(--body-2)}
+  .chips{display:flex;flex-direction:column;align-items:flex-start;gap:6px}
+  .chip{display:inline-flex;align-items:center;min-height:32px;padding:4px 12px;border:1px solid var(--border);border-radius:999px;background:#fff;color:var(--body-2);font:inherit;font-size:var(--text-sm);text-align:left;cursor:pointer}
+  .chip:hover{background:var(--muted);border-color:#d1d5db;color:var(--foreground)}
+  .bd{flex:none;padding:8px 12px 12px}
+  .composer{display:flex;align-items:flex-end;gap:8px;padding:5px 5px 5px 16px;border:1px solid #cfd4dc;border-radius:24px;background:#fff;box-shadow:0 1px 2px rgb(17 24 39 / .04),0 10px 28px -14px rgb(17 24 39 / .22)}
+  .composer:has(textarea:focus){border-color:var(--ring);box-shadow:0 0 0 1px var(--ring),0 10px 28px -14px rgb(17 24 39 / .22)}
+  .composer textarea{flex:1;min-width:0;height:38px;padding:8px 0;border:0;outline:0;resize:none;background:none;color:var(--foreground);font:inherit;line-height:22px}
+  .composer textarea::placeholder{color:var(--quiet)}
+  .send{flex:none;width:38px;height:38px;border:0;border-radius:999px;display:grid;place-items:center;background:var(--primary);color:#fff;cursor:pointer}
+  .send .ic{width:18px;height:18px;stroke-width:2.1}
+
+  /* Shared record parts */
+  .pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font-size:var(--text-xs);font-weight:700;white-space:nowrap}
+  .pill.dang{background:var(--dang-bg);color:var(--dang);box-shadow:inset 0 0 0 1px #fecaca}
+  .pill.ok{background:var(--ok-bg);color:var(--ok);box-shadow:inset 0 0 0 1px #a7f3d0}
+  .pill .ic{width:13px;height:13px;stroke-width:2.2}
+  .meta{font-size:var(--text-sm);color:var(--muted-foreground)}
+  .h1{font-size:1.6rem;font-weight:800;letter-spacing:-.02em;line-height:1.15}
+  .h2{font-size:var(--text-base);font-weight:700;letter-spacing:-.01em}
+  .sec{display:flex;flex-direction:column;gap:10px}
+  .sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px}
+  .sec-h .meta{font-size:var(--text-xs)}
+
+  /* Origin tag: the field's provenance, quiet until it is a correction */
+  .otag{display:inline-flex;align-items:center;gap:4px;font-size:var(--text-xs);font-weight:600;color:var(--quiet);white-space:nowrap}
+  .otag .ic{width:12px;height:12px;stroke-width:2}
+  .otag.corrected{color:var(--sel-fg)}
+  .otag.entered{color:#5b21b6}
+
+  /* Fields: each row selectable; selecting highlights its source on the page */
+  .fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:2px 28px}
+  .fld{position:relative;display:flex;flex-direction:column;gap:2px;width:calc(100% + 20px);min-width:0;padding:8px 10px;margin:0 -10px;border:0;border-radius:8px;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer;transition:background-color .15s var(--ease)}
+  .fld:hover{background:var(--tile)}
+  .fld[aria-pressed=true]{background:#fffbeb;box-shadow:inset 0 0 0 1px var(--hl-line)}
+  .fld.wide{grid-column:1/-1}
+  .fld-l{display:flex;align-items:center;justify-content:space-between;gap:8px;font-size:var(--text-xs);font-weight:600;color:var(--muted-foreground)}
+  .fld-v{font-size:var(--text-sm);color:var(--foreground);overflow-wrap:anywhere}
+  .nodoc .fld{cursor:default} .nodoc .fld:hover{background:none}
+
+  /* Amounts strip */
+  .amts{display:flex;align-items:flex-end;gap:40px;flex-wrap:wrap}
+  .amt{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .amt-l{font-size:var(--text-xs);font-weight:600;color:var(--muted-foreground)}
+  .amt-v{font-size:var(--text-xl);font-weight:700;letter-spacing:-.01em}
+  .amt.lead .amt-v{font-size:2.1rem;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+  .amt.lead.overdue .amt-v{color:var(--dang)}
+  .amt-n{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .amt-n.dang{color:var(--dang);font-weight:600}
+
+  /* Payment composition bar: each linked payment, then what is still outstanding */
+  .pbar{display:flex;gap:2px;height:10px;border-radius:999px;overflow:hidden;background:var(--tile)}
+  .pbar i{display:block;flex:var(--f) 1 0;min-width:4px}
+  .p0{background:#2563eb} .p1{background:#60a5fa} .p2{background:#1e40af}
+  .rest{background:repeating-linear-gradient(135deg,#fca5a5 0 3px,#fee2e2 3px 6px)}
+  .pkey{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:var(--text-xs);color:var(--muted-foreground)}
+  .pkey span{display:inline-flex;align-items:center;gap:6px}
+  .pkey i{width:10px;height:10px;border-radius:3px}
+  .pkey b{color:var(--foreground);font-weight:600}
+
+  /* Payments */
+  table{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
+  thead th{padding:8px 12px;background:var(--muted);border-block:1px solid var(--border);color:var(--muted-foreground);font-size:var(--text-xs);font-weight:600;text-align:left;white-space:nowrap}
+  td{padding:10px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+  .r{text-align:right}
+  .ref{font-weight:600;color:var(--sel-fg);text-decoration:none;overflow-wrap:anywhere} .ref:hover{text-decoration:underline}
+  .how{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--body-2)}
+  .auto{display:inline-flex;align-items:center;gap:4px}
+  .auto .ic{width:13px;height:13px;color:var(--primary)}
+  .acts{position:relative;width:44px;text-align:right}
+  .menu{position:absolute;z-index:30;top:calc(100% - 4px);right:6px;min-width:180px;padding:6px;border:1px solid var(--border);border-radius:12px;background:#fff;box-shadow:0 2px 4px rgb(17 24 39 / .06),0 16px 36px -12px rgb(17 24 39 / .28);text-align:left}
+  .menu button{display:flex;align-items:center;gap:10px;width:100%;height:36px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--foreground);font:inherit;font-size:var(--text-sm);cursor:pointer}
+  .menu button:hover{background:var(--tile)}
+  .menu button.dang{color:var(--dang)}
+  .rowedit td{background:var(--sel-bg)}
+  .rowedit.rm td{background:var(--dang-bg)}
+  .inl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .inl p{font-size:var(--text-sm);color:var(--body-2);flex:1 1 16rem}
+  .money{display:inline-flex;align-items:center;height:36px;padding:0 10px;border:1px solid var(--input);border-radius:8px;background:#fff;gap:6px;font-size:var(--text-sm)}
+  .money:focus-within{border-color:var(--ring);box-shadow:0 0 0 1px var(--ring)}
+  .money span{color:var(--quiet);font-weight:600}
+  .money input{width:7.5rem;border:0;outline:0;background:none;font:inherit;font-variant-numeric:tabular-nums}
+  .ph .money{height:44px} .ph .money input{font-size:16px}
+  .err{font-size:var(--text-xs);font-weight:600;color:var(--dang)}
+  .pcards{display:flex;flex-direction:column;border-top:1px solid var(--border)}
+  .pcard{display:flex;flex-direction:column;gap:6px;padding:12px 0;border-bottom:1px solid var(--border)}
+  .pcard-t{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:36px}
+  .pcard-f{display:flex;flex-wrap:wrap;gap:4px 12px;font-size:var(--text-sm);color:var(--body-2)}
+  .pcard.edit{padding:12px;margin:0 -12px;border-radius:10px;background:var(--sel-bg)} .pcard.edit.rm{background:var(--dang-bg)}
+  .pcard.edit .inl{align-items:flex-start;flex-direction:column}
+  .pcard.edit .inl p{flex:none}
+  .empty-l{padding:14px 0;font-size:var(--text-sm);color:var(--muted-foreground);border-top:1px solid var(--border)}
+
+  /* History */
+  .hist li{display:grid;grid-template-columns:11rem minmax(0,1fr);gap:12px;padding:9px 0;border-top:1px solid var(--border);font-size:var(--text-sm)}
+  .hist li:last-child{border-bottom:1px solid var(--border)}
+  .hist time{color:var(--muted-foreground)}
+  .hist li.new span{font-weight:600}
+  .hist li.new time{color:var(--sel-fg);font-weight:600}
+  .ph .hist li{grid-template-columns:1fr;gap:2px}
+
+  /* Correct the total: an inline editor under the amounts, never a modal */
+  .fix{display:flex;flex-direction:column;gap:12px;padding:16px;border:1px solid #bfdbfe;border-radius:12px;background:var(--sel-bg)}
+  .fix h3{font-size:var(--text-sm);font-weight:700}
+  .fix fieldset{margin:0;padding:0;border:0;display:flex;flex-direction:column;gap:6px}
+  .fix legend{margin-bottom:6px;font-size:var(--text-sm);color:var(--body-2)}
+  .fix label.opt{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:#fff;font-size:var(--text-sm);cursor:pointer}
+  .fix label.opt:has(input:disabled){opacity:.55;cursor:default}
+  .fix label.opt:has(input:checked){border-color:var(--sel-line);box-shadow:0 0 0 1px var(--sel-line)}
+  .fix .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  /* The drawn page: a stand-in for the app's own PDF render (595 x 842 pt, A4), scaled with --s */
+  .pgwrap{position:relative;flex:none;width:calc(595px * var(--s,1));height:calc(842px * var(--s,1));background:#fff;box-shadow:0 1px 2px rgb(17 24 39 / .08),0 12px 32px -12px rgb(17 24 39 / .28);border-radius:2px;overflow:hidden}
+  .pgwrap object{display:block;width:100%;height:100%;border:0}
+  .pg{position:absolute;left:0;top:0;width:595px;height:842px;transform:scale(var(--s,1));transform-origin:0 0;font-family:Helvetica,Arial,sans-serif;color:#1e293b;background:#fff;text-align:left}
+  .pg *{position:absolute;margin:0;white-space:nowrap}
+  .pg .ban{left:0;top:0;width:595px;height:36px;background:#3557d6;color:#fff;font-size:9.5px;font-weight:700;line-height:36px;padding-left:48px}
+  .pg .tt{left:48px;top:60px;font-size:23px;font-weight:700;color:#1f2d3d}
+  .pg .co{left:48px;top:104px;font-size:10.5px;font-weight:700}
+  .pg .sy{left:48px;top:122px;font-size:8.5px;color:#64748b}
+  .pg .src{left:42px;width:511px;border-radius:4px;transition:background-color .2s var(--ease),box-shadow .2s var(--ease);cursor:pointer;z-index:0}
+  .pg .src.hl{background:rgb(253 230 138 / .8);box-shadow:0 0 0 2px var(--hl-line)}
+  .pg .kv{left:48px;width:499px;height:37px;border-bottom:1px solid #e2e8f0;pointer-events:none}
+  .pg .kv .k{left:0;top:13px;font-size:8.5px;color:#64748b}
+  .pg .kv .v{right:0;top:12px;font-size:9px;font-weight:700}
+  .pg .bill{left:48px;top:155px;font-size:9.5px;pointer-events:none}
+  .pg .dl{left:48px;top:391px;font-size:7.5px;font-weight:700;color:#64748b;letter-spacing:.04em}
+  .pg .ds{left:48px;top:414px;font-size:9.5px;pointer-events:none}
+  .pg .tot{left:48px;top:436px;width:499px;height:52px;border-radius:6px;background:rgb(224 231 255 / .7);pointer-events:none}
+  .pg .tot .k{left:16px;top:20px;font-size:9px;font-weight:700}
+  .pg .tot .v{right:16px;top:11px;font-size:22px;font-weight:700;color:#1f2d3d}
+  .pg .terms{left:48px;top:521px;font-size:8px;color:#64748b;pointer-events:none}
+  .pg .fl{left:48px;top:758px;width:499px;border-top:1px solid #e2e8f0}
+  .pg .f1{left:48px;top:770px;font-size:6.5px;color:#64748b}
+  .pg .f2{left:48px;top:784px;font-size:6.5px;color:#64748b}
+  .pg .f3{right:48px;top:784px;font-size:6.5px;color:#64748b}
+
+  /* Viewer chrome shared by A and B */
+  .vtools{flex:none;display:flex;align-items:center;gap:4px;height:48px;padding:0 8px 0 14px;border-bottom:1px solid var(--border);background:#fff}
+  .vname{flex:1;min-width:0;display:flex;align-items:center;gap:8px;font-size:var(--text-sm);font-weight:600}
+  .vname span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .vname small{font-size:var(--text-xs);font-weight:500;color:var(--quiet);white-space:nowrap}
+  .vtools .ib{width:32px;height:32px}
+  .zl{min-width:3.4rem;text-align:center;font-size:var(--text-xs);font-weight:600;color:var(--body-2)}
+  .vsep{width:1px;height:20px;margin:0 4px;background:var(--border)}
+  .vbody{flex:1;min-height:0;overflow:auto;background:var(--desk);display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px;touch-action:pan-x pan-y pinch-zoom}
+  .vbody>.pgwrap{margin:0 auto}
+  .srcchip{position:sticky;top:0;left:0;z-index:5;align-self:stretch;display:flex;align-items:center;gap:10px;padding:6px 6px 6px 12px;border-radius:10px;background:#111827;color:#f9fafb;font-size:var(--text-sm);box-shadow:0 8px 24px -10px rgb(17 24 39 / .5)}
+  .srcchip q{flex:1;min-width:0;quotes:none;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .srcchip .lbl{color:#9ca3af;white-space:nowrap}
+  .srcchip button{flex:none;width:28px;height:28px;display:grid;place-items:center;border:0;border-radius:6px;background:none;color:#d1d5db;cursor:pointer}
+  .srcchip button:hover{background:#1f2937;color:#fff}
+  .doc-err,.doc-none{align-self:stretch;margin:auto 0;display:flex;flex-direction:column;align-items:flex-start;gap:12px;padding:24px;border-radius:12px;background:#fff;border:1px solid var(--border)}
+  .doc-err>.ic,.doc-none>.ic{width:28px;height:28px}
+  .doc-err>.ic{color:var(--dang)} .doc-none>.ic{color:var(--quiet)}
+  .doc-err h3,.doc-none h3{font-size:var(--text-base);font-weight:700}
+  .doc-err p,.doc-none p{font-size:var(--text-sm);color:var(--muted-foreground);max-width:38ch}
+  .doc-err .row,.doc-none .row{display:flex;gap:8px;flex-wrap:wrap}
+  .pinch{position:sticky;bottom:4px;align-self:center;display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:999px;background:rgb(17 24 39 / .82);color:#f9fafb;font-size:var(--text-xs);font-weight:600;pointer-events:none}
+  .pinch .ic{width:14px;height:14px}
+
+  /* Full-screen viewer (desktop): covers the page and panel, Escape closes */
+  .fs{position:absolute;inset:0;z-index:45;display:flex;flex-direction:column;background:#fff}
+  .fs .vbody{padding:28px}
+
+  /* ---------- Variant A: split view ---------- */
+  .va{flex:1;min-width:0;display:flex}
+  .va-rec{flex:1;min-width:0;overflow-y:auto}
+  .va-in{max-width:760px;margin:0 auto;padding:28px 36px 64px;display:flex;flex-direction:column;gap:28px}
+  .va-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}
+  .va-title{display:flex;flex-direction:column;gap:6px;min-width:0}
+  .va-title .t{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+  .va-amts{padding:18px 0;border-block:1px solid var(--border)}
+  .va-amts .amts{gap:28px;justify-content:space-between}
+  .va-doc{flex:none;width:clamp(420px,40%,580px);display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--border)}
+  .nodoc-line{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:var(--text-sm);color:var(--muted-foreground)}
+  .nodoc-line>.ic{color:var(--quiet)}
+  .seg{display:flex;gap:4px;padding:4px;border-radius:12px;background:var(--tile)}
+  .seg button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;height:40px;border:0;border-radius:9px;background:none;color:var(--body-2);font:inherit;font-size:var(--text-sm);font-weight:600;cursor:pointer}
+  .seg button[aria-selected=true]{background:#fff;color:var(--foreground);box-shadow:0 1px 2px rgb(17 24 39 / .1),0 0 0 1px var(--border)}
+  .seg .dotx{width:7px;height:7px;border-radius:50%;background:var(--hl-line)}
+
+  /* Phone shell parts: sticky segmented control, thumb-reach action bar */
+  .ph .page{flex-direction:column}
+  .ph-scroll{flex:1;min-height:0;overflow-y:auto}
+  .ph-in{padding:16px 16px 28px;display:flex;flex-direction:column;gap:24px}
+  .ph-seg{flex:none;padding:8px 12px;border-bottom:1px solid var(--border);background:#fff}
+  .abar{flex:none;display:flex;gap:8px;padding:10px 12px calc(10px + env(safe-area-inset-bottom));border-top:1px solid var(--border);background:#fff}
+  .abar .btn{flex:1}
+  .ph .amts{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px}
+  .ph .amt.lead{grid-column:1/-1}
+  .ph .amt.lead .amt-v{font-size:2rem}
+  .ph .fields{grid-template-columns:1fr}
+  .ph .fld{padding:10px 12px;margin:0 -12px;width:calc(100% + 24px);min-height:44px}
+  .ph .h1{font-size:1.35rem}
+  .ph .va-head{flex-direction:column}
+  .ph .vbody{padding:12px}
+
+  /* ---------- Variant B: record first, document card expands inline ---------- */
+  .vb{flex:1;min-width:0;overflow-y:auto}
+  .vb-in{max-width:1120px;margin:0 auto;padding:28px 36px 72px;display:flex;flex-direction:column;gap:28px}
+  .vb-head{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;flex-wrap:wrap}
+  .vb-head .t{display:flex;flex-direction:column;gap:8px}
+  .vb-head .h1{font-size:2rem}
+  .vb-head .sub{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .vb-band{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.7fr);gap:32px;align-items:center;padding:22px 24px;border-radius:16px;background:var(--muted);box-shadow:inset 0 0 0 1px var(--border)}
+  .vb-band .amt.lead .amt-v{font-size:2.6rem}
+  .vb-bars{display:flex;flex-direction:column;gap:12px}
+  .vb-bars .amts{gap:32px}
+  .vb-grid{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:32px;align-items:start}
+  .dcard{display:flex;flex-direction:column;border:1px solid var(--border);border-radius:14px;background:#fff;overflow:hidden}
+  .dcard-h{display:flex;align-items:center;gap:10px;padding:10px 10px 10px 14px;border-bottom:1px solid var(--border)}
+  .dcard-h .fi{flex:none;width:32px;height:32px;border-radius:8px;background:var(--dang-bg);color:var(--dang);display:grid;place-items:center}
+  .dcard-h .nm{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.3}
+  .dcard-h .nm b{font-size:var(--text-sm);font-weight:600}
+  .dcard-h .nm span{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .peek{position:relative;display:block;width:100%;height:400px;padding:22px 0 0;border:0;background:var(--desk);overflow:hidden;cursor:zoom-in}
+  .peek .pgwrap{margin:0 auto}
+  .peek::after{content:"";position:absolute;inset:auto 0 0;height:110px;background:linear-gradient(rgb(236 238 242 / 0),var(--desk) 70%)}
+  .peek .go{position:absolute;z-index:2;left:50%;bottom:18px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;height:36px;padding:0 14px;border-radius:999px;background:#111827;color:#fff;font-size:var(--text-sm);font-weight:600;white-space:nowrap;box-shadow:0 8px 20px -8px rgb(17 24 39 / .6)}
+  .peek:hover .go{background:#000}
+  .vb-grid.expanded{grid-template-columns:minmax(0,1fr)}
+  .vb-grid.expanded .dcard .vbody{height:min(78vh,820px);flex:none}
+  .vb-grid.expanded .vb-side .fields{grid-template-columns:repeat(4,minmax(0,1fr))}
+  .vb-grid.expanded .vb-side .fld.wide{grid-column:span 2}
+  .vb-side{display:flex;flex-direction:column;gap:28px}
+  .ph .vb-band{grid-template-columns:1fr;gap:16px;padding:16px;border-radius:14px}
+  .ph .vb-band .amt.lead .amt-v{font-size:2.1rem}
+  .ph .vb-band .amts{display:flex;gap:28px}
+  .ph .vb-head .h1{font-size:1.5rem}
+  .ph .peek{height:230px;padding-top:16px}
+  .ph .peek .go{height:40px}
+
+  /* Full-screen document sheet (phones) */
+  .sheet{position:absolute;inset:0;z-index:46;display:flex;flex-direction:column;background:#fff;transform:translateY(100%);visibility:hidden;transition:transform .3s var(--ease),visibility 0s .3s}
+  .sheet.on{transform:none;visibility:visible;transition:transform .3s var(--ease)}
+  .sh-h{flex:none;display:flex;align-items:center;gap:4px;height:56px;padding:0 6px;border-bottom:1px solid var(--border)}
+  .sh-t{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+  .sh-t b{font-size:var(--text-base);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sh-t span{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .zbar{flex:none;display:flex;align-items:center;justify-content:center;gap:8px;padding:6px 12px calc(6px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
+
+  /* ---------- Variant C: document desk ---------- */
+  .vc{flex:1;min-width:0;display:flex;flex-direction:column;min-height:0}
+  .vc-band{flex:none;display:flex;align-items:center;gap:28px;padding:14px 20px 14px 24px;border-bottom:1px solid var(--border);background:#fff}
+  .vc-id{display:flex;flex-direction:column;gap:4px;min-width:0}
+  .vc-id .t{display:flex;align-items:center;gap:10px}
+  .vc-id .h1{font-size:1.3rem}
+  .vc-band .amts{flex:1;gap:28px;justify-content:flex-end}
+  .vc-band .amt.lead .amt-v{font-size:1.7rem}
+  .vc-band .amt-v{font-size:var(--text-lg)}
+  .vc-body{flex:1;min-height:0;display:flex}
+  .desk{flex:1;min-width:0;overflow:auto;background:var(--desk);position:relative;touch-action:pan-x pan-y pinch-zoom}
+  .desk-in{position:relative;display:flex;padding:76px 32px 56px;width:max-content;min-width:100%;justify-content:center}
+  .annos{position:relative;flex:none;width:260px;margin-left:56px}
+  .anno{position:absolute;left:0;width:260px;display:flex;flex-direction:column;gap:1px;padding:7px 12px;border:1px solid var(--border);border-radius:10px;background:#fff;color:inherit;font:inherit;text-align:left;cursor:pointer;box-shadow:0 1px 2px rgb(17 24 39 / .05);transition:border-color .15s var(--ease),box-shadow .15s var(--ease)}
+  .anno:hover{border-color:#cbd5e1}
+  .anno[aria-pressed=true]{border-color:var(--hl-line);background:#fffbeb;box-shadow:inset 0 0 0 1px var(--hl-line),0 6px 16px -8px rgb(17 24 39 / .25)}
+  .anno .fld-v{font-weight:600}
+  .lead-l{position:absolute;left:0;top:0;pointer-events:none;overflow:visible}
+  .lead-l path{fill:none;stroke:#94a3b8;stroke-width:1}
+  .lead-l path.on{stroke:var(--hl-line);stroke-width:1.75}
+  .lead-l circle{fill:#94a3b8} .lead-l circle.on{fill:var(--hl-line)}
+  .drawer{flex:none;width:400px;display:flex;flex-direction:column;min-height:0;border-left:1px solid var(--border);background:#fff}
+  .drawer-b{flex:1;min-height:0;overflow-y:auto;padding:20px 20px 48px;display:flex;flex-direction:column;gap:28px}
+  .drawer .hist li{grid-template-columns:1fr;gap:2px}
+  .drawer-h{flex:none;display:flex;align-items:center;gap:8px;height:48px;padding:0 8px 0 20px;border-bottom:1px solid var(--border)}
+  .drawer-h b{flex:1;font-size:var(--text-sm)}
+  .desk-tools{position:sticky;top:12px;left:12px;z-index:6;width:max-content;height:0;margin:0 0 0 12px}
+  .desk-tools>div{display:flex;align-items:center;gap:2px;padding:4px;border-radius:10px;background:#fff;box-shadow:0 0 0 1px var(--border),0 8px 20px -10px rgb(17 24 39 / .35);margin-top:12px}
+  .desk-tools .ib{width:32px;height:32px}
+  .ph .desk-tools .ib{width:40px;height:40px}
+  .vc .doc-err,.vc .doc-none{margin:0}
+  .ph .vc-band{display:none}
+  .ph .vc{position:relative}
+  .ph .desk-in{padding:68px 12px 150px;width:100%}
+  /* C on a phone: the page first, the record in a bottom sheet with a peek */
+  .bsheet{position:absolute;z-index:40;left:0;right:0;bottom:0;display:flex;flex-direction:column;max-height:86%;border-radius:20px 20px 0 0;background:#fff;box-shadow:0 -1px 0 var(--border),0 -18px 40px -18px rgb(17 24 39 / .45)}
+  .bsheet .grab{flex:none;display:flex;flex-direction:column;align-items:stretch;gap:8px;width:100%;padding:8px 16px calc(12px + env(safe-area-inset-bottom));border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+  .bsheet .grab::before{content:"";align-self:center;width:36px;height:4px;border-radius:999px;background:#d1d5db}
+  .bsheet .gt{display:flex;align-items:center;gap:8px}
+  .bsheet .pk{display:flex;align-items:flex-end;justify-content:space-between;gap:12px}
+  .bsheet .pk .amt.lead .amt-v{font-size:1.8rem}
+  .bsheet .more{display:inline-flex;align-items:center;gap:4px;min-height:44px;font-size:var(--text-sm);font-weight:600;color:var(--sel-fg)}
+  .bsheet-b{flex:1;min-height:0;overflow-y:auto;padding:16px 16px 24px;display:flex;flex-direction:column;gap:24px;border-top:1px solid var(--border)}
+  .bsheet.peek-only .bsheet-b{display:none}
+
+  /* Toast for prototype-only links */
+  .toast{position:absolute;z-index:80;top:14px;left:50%;transform:translate(-50%,-8px);max-width:calc(100% - 24px);padding:8px 14px;border-radius:999px;background:#111827;color:#f9fafb;font-size:var(--text-sm);opacity:0;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease);text-align:center}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  /* Review switcher, not part of the design */
+  #sw{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:6px;padding:5px;border-radius:999px;background:#0b0f19;color:#f9fafb;font-size:var(--text-xs);box-shadow:0 0 0 1px #374151,0 12px 32px -8px rgb(0 0 0 / .5);white-space:nowrap}
+  #sw button{height:30px;padding:0 10px;border:0;border-radius:999px;background:none;color:#d1d5db;font:inherit;font-size:var(--text-xs);font-weight:600;cursor:pointer}
+  #sw button:hover{background:#1f2937;color:#fff}
+  #sw button[aria-pressed=true]{background:#f9fafb;color:#0b0f19}
+  #sw .arr{width:30px;padding:0;display:grid;place-items:center}
+  #sw .name{min-width:17rem;text-align:center;font-weight:500;color:#e5e7eb}
+  #sw .name b{display:inline-grid;place-items:center;width:20px;height:20px;margin-right:6px;border-radius:6px;background:#facc15;color:#0b0f19;font-weight:800}
+  #sw .bar{width:1px;height:18px;background:#374151}
+  #sw .grp{display:flex;gap:2px}
+  #sw .tag{padding:0 4px 0 10px;color:#9ca3af;letter-spacing:.06em;font-weight:700;font-size:10px}
+  @media (max-width:900px){#sw .name{min-width:0} #sw .tag{display:none} #sw{max-width:calc(100vw - 16px);overflow-x:auto}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="app"></div></div>
+<div id="sw" role="toolbar" aria-label="Prototype switcher" hidden>
+  <span class="tag">PROTOTYPE</span>
+  <button type="button" class="arr" data-sw="prev" aria-label="Previous variant"></button>
+  <span class="name" aria-live="polite"></span>
+  <button type="button" class="arr" data-sw="next" aria-label="Next variant"></button>
+  <span class="bar"></span>
+  <div class="grp" role="group" aria-label="Width"><button type="button" data-w="desktop">Desktop</button><button type="button" data-w="phone">Phone</button></div>
+  <span class="bar"></span>
+  <div class="grp" role="group" aria-label="State"><button type="button" data-s="default">Default</button><button type="button" data-s="no-pdf">No PDF</button><button type="button" data-s="paid">Paid</button><button type="button" data-s="pdf-error">PDF error</button></div>
+</div>
+<script>
+// ---------- Icons: lucide (ISC), one stroke ----------
+const ICONS = {
+  receipt: '<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1Z"/><path d="M16 8h-6a2 2 0 1 0 0 4h4a2 2 0 1 1 0 4H8"/><path d="M12 17.5v-11"/>',
+  wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  inbox: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  ask: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  dashboard: '<rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/>',
+  slides: '<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>',
+  chevR: '<path d="m9 18 6-6-6-6"/>',
+  chevL: '<path d="m15 18-6-6 6-6"/>',
+  chevU: '<path d="m18 15-6-6-6 6"/>',
+  chevD: '<path d="m6 9 6 6 6-6"/>',
+  chevsL: '<path d="m11 17-5-5 5-5"/><path d="m18 17-5-5 5-5"/>',
+  chevsR: '<path d="m6 17 5-5-5-5"/><path d="m13 17 5-5-5-5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  arrowL: '<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>',
+  arrowUp: '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+  pen: '<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+  more: '<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  download: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
+  expand: '<path d="M15 3h6v6"/><path d="M9 21H3v-6"/><path d="M21 3l-7 7"/><path d="M3 21l7-7"/>',
+  shrink: '<path d="m15 15 6 6"/><path d="m15 9 6-6"/><path d="M21 16v5h-5"/><path d="M21 8V3h-5"/><path d="M3 16v5h5"/><path d="m3 21 6-6"/><path d="M3 8V3h5"/><path d="M9 9 3 3"/>',
+  zoomIn: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M11 8v6"/><path d="M8 11h6"/>',
+  zoomOut: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/><path d="M8 11h6"/>',
+  fit: '<path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  fileText: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+  fileX: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m14.5 12.5-5 5"/><path d="m9.5 12.5 5 5"/>',
+  filePlus: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/>',
+  scan: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8h8"/><path d="M7 12h10"/><path d="M7 16h6"/>',
+  userPen: '<path d="M11.5 15H7a4 4 0 0 0-4 4v2"/><path d="M21.378 16.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"/><circle cx="10" cy="7" r="4"/>',
+  zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',
+  trash: '<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
+  checkCircle: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  retry: '<path d="M3 12a9 9 0 0 1 15.5-6.2L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15.5 6.2L3 16"/><path d="M3 21v-5h5"/>',
+  hand: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>',
+  panelR: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/>',
+};
+const icon = (n, cls = "") => `<svg class="ic ${cls}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+// ---------- Content ----------
+const VARIANTS = { A: "Split view, sticky document pane", B: "Record first, document expands inline", C: "Document desk with pinned fields" };
+const STATES = ["default", "no-pdf", "paid", "pdf-error"];
+const PDF = "invoice-record-assets/INV-2026-09-03.pdf";
+const AS_OF = "27 Oct 2026";
+const DAYS_OVERDUE = 40;
+const ORIGIN = { extracted: ["scan", "Extracted"], entered: ["userPen", "Entered by you"], corrected: ["pen", "Corrected by you"] };
+// Each field: label, its source text on the page, and where that sits (page units, 595 x 842).
+const FIELD_DEFS = [
+  { k: "customer", label: "Customer", src: "Bill to: Harbor Foods", y: 150, h: 26 },
+  { k: "number", label: "Invoice number", src: "INV-2026-09-03", y: 188, h: 34 },
+  { k: "invDate", label: "Invoice date", src: "2026-09-03", y: 225, h: 34 },
+  { k: "due", label: "Due date", src: "2026-09-17", y: 262, h: 34 },
+  { k: "desc", label: "Description", src: "Operations support services - September 2026", y: 408, h: 24 },
+  { k: "total", label: "Total", src: "TOTAL (SGD) 7,200.00", y: 432, h: 60 },
+  { k: "terms", label: "Payment terms", src: "Payment due within 14 days of invoice date.", y: 515, h: 24, wide: true },
+];
+const WORKSPACE = [["ask", "Ask"], ["dashboard", "Dashboards"], ["slides", "Slides"]];
+const FINANCE = [["inbox", "Documents"], ["receipt", "Invoices", true], ["wallet", "Payments"]];
+const ASK = ["Why is this invoice overdue?", "Draft a reminder to Harbor Foods for SGD 2,200.00", "Which unallocated payments could close this balance?"];
+
+const money = (c) => `SGD ${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+const plain = (c) => (c / 100).toFixed(2);
+const now = () => { const d = new Date(); return `Today, ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+
+// ---------- State ----------
+const P = new URLSearchParams(location.search);
+const S = {
+  v: VARIANTS[P.get("variant")] ? P.get("variant") : "A",
+  w: P.get("width") === "phone" ? "phone" : "desktop",
+  state: STATES.includes(P.get("state")) ? P.get("state") : "default",
+  nav: P.get("nav"),
+  panel: P.get("panel") === "open",
+  pdf: P.get("pdf") === "rendered" ? "rendered" : "native",
+  chrome: P.get("chrome") !== "0",
+};
+function seed() {
+  const st = S.state;
+  S.doc = st === "no-pdf" ? "none" : st === "pdf-error" ? "error" : "ok";
+  S.total = 720000;
+  S.links = [
+    { id: "p1", ref: "TXN-PAY-2026-026", date: "10 Oct 2026", cents: 200000, auto: false },
+    { id: "p2", ref: "HF-SEP-FINAL-PART", date: "26 Oct 2026", cents: 300000, auto: true },
+  ];
+  S.hist = [
+    st === "no-pdf" ? { t: "[entry time]", s: "Entered by hand, with no document." } : { t: "[upload time]", s: "Created from the document INV-2026-09-03.pdf." },
+    { t: "10 Oct 2026, 12:00", s: "Payment TXN-PAY-2026-026 linked by a person for SGD 2,000.00." },
+    { t: "3 Nov 2026, 10:33", s: "Payment HF-SEP-FINAL-PART linked automatically for SGD 3,000.00." },
+  ];
+  if (st === "paid") {
+    S.links.push({ id: "p3", ref: "[example payment]", date: "[date]", cents: 220000, auto: false });
+    S.hist.push({ t: "[time]", s: "Payment [example payment] linked by a person for SGD 2,200.00." });
+  }
+  const o = st === "no-pdf" ? "entered" : "extracted";
+  S.origin = Object.fromEntries(FIELD_DEFS.map((f) => [f.k, o]));
+  S.sel = null; S.menu = null; endEdit(); S.fs = false; S.expanded = false; S.sheet = false; S.tab = "details";
+  S.peek = true; S.drawer = true; S.zoom = 100;
+}
+function endEdit() { S.edit = null; S.err = ""; S.fixVal = undefined; S.linkVal = undefined; S.reduce = undefined; }
+seed();
+const isPh = () => S.w === "phone";
+const navRail = () => (S.nav ? S.nav === "rail" : S.v === "C");
+const paid = () => S.links.reduce((a, l) => a + l.cents, 0);
+const outstanding = () => Math.max(0, S.total - paid());
+const status = () => (outstanding() === 0 ? "paid" : "overdue");
+const hasDoc = () => S.doc !== "none";
+function val(k) {
+  return { number: "INV-2026-09-03", customer: "Harbor Foods", invDate: "3 Sept 2026", due: "17 Sept 2026", total: money(S.total), terms: "Payment due within 14 days of invoice date.", desc: "Operations support services - September 2026" }[k];
+}
+function syncUrl() {
+  const u = new URLSearchParams({ variant: S.v, width: S.w, state: S.state });
+  if (S.nav) u.set("nav", S.nav);
+  if (S.panel) u.set("panel", "open");
+  if (S.pdf !== "native") u.set("pdf", S.pdf);
+  if (!S.chrome) u.set("chrome", "0");
+  history.replaceState(null, "", `${location.pathname}?${u}`);
+}
+
+// ---------- Shared markup ----------
+const otag = (k) => { const [ic, t] = ORIGIN[S.origin[k]]; return `<span class="otag ${S.origin[k]}">${icon(ic)}${t}</span>`; };
+function pill() {
+  return status() === "paid"
+    ? `<span class="pill ok">${icon("checkCircle")}Paid</span>`
+    : `<span class="pill dang">${icon("clock")}Overdue · ${DAYS_OVERDUE} days</span>`;
+}
+function dueNote() { return status() === "overdue" ? `<span class="amt-n dang">${DAYS_OVERDUE} days overdue</span>` : `<span class="amt-n">Settled</span>`; }
+function amounts() {
+  const od = status() === "overdue";
+  return `<div class="amts">
+    <div class="amt lead ${od ? "overdue" : ""}"><span class="amt-l">Outstanding</span><span class="amt-v num">${money(outstanding())}</span></div>
+    <div class="amt"><span class="amt-l">Total</span><span class="amt-v num">${money(S.total)}</span>${otag("total")}</div>
+    <div class="amt"><span class="amt-l">Paid</span><span class="amt-v num">${money(paid())}</span><span class="amt-n">${S.links.length} payment${S.links.length === 1 ? "" : "s"} linked</span></div>
+    <div class="amt"><span class="amt-l">Due date</span><span class="amt-v num">17 Sept 2026</span>${dueNote()}</div></div>`;
+}
+function payBar() {
+  const segs = S.links.map((l, i) => `<i class="p${i % 3}" style="--f:${l.cents}"></i>`).join("");
+  const rest = outstanding() ? `<i class="rest" style="--f:${outstanding()}"></i>` : "";
+  const key = S.links.map((l, i) => `<span><i class="p${i % 3}"></i>${esc(l.ref)} <b class="num">${money(l.cents)}</b></span>`).join("")
+    + (outstanding() ? `<span><i class="rest"></i>Outstanding <b class="num">${money(outstanding())}</b></span>` : "");
+  return `<div class="pbar" role="img" aria-label="${esc(`${money(paid())} paid of ${money(S.total)}`)}">${segs}${rest}</div><div class="pkey">${key}</div>`;
+}
+function fields() { return `<div class="fields ${hasDoc() ? "" : "nodoc"}">${FIELD_DEFS.map((f) => fieldBtn(f)).join("")}</div>`; }
+function fieldBtn(f, cls = "fld") {
+  const sel = S.sel === f.k, live = S.doc === "ok";
+  const attrs = live ? `type="button" data-act="sel" data-k="${f.k}" aria-pressed="${sel}" aria-label="${esc(`${f.label}: ${val(f.k)}. ${ORIGIN[S.origin[f.k]][1]}. Show it on the document`)}"` : "";
+  const tag = live ? "button" : "div";
+  const n = f.k === "total" || f.k === "due" || f.k === "invDate" ? "num" : "";
+  return `<${tag} class="${cls} ${f.wide && cls === "fld" ? "wide" : ""}" data-k="${f.k}" ${attrs}><span class="fld-l"><span>${f.label}</span>${otag(f.k)}</span><span class="fld-v ${n}">${esc(val(f.k))}</span></${tag}>`;
+}
+function fixEditor() {
+  if (S.edit !== "total") return "";
+  const raw = S.fixVal ?? plain(S.total);
+  const n = Math.round(parseFloat(raw) * 100);
+  const over = Number.isFinite(n) && n > 0 && n < paid() ? paid() - n : 0;
+  const opts = over ? `<fieldset><legend>The linked payments add up to <b class="num">${money(paid())}</b>, more than the new total. Reduce which link by <b class="num">${money(over)}</b>?</legend>
+    ${S.links.map((l) => { const can = l.cents >= over; return `<label class="opt"><input type="radio" name="reduce" value="${l.id}" ${can ? "" : "disabled"} ${S.reduce === l.id ? "checked" : ""}><span><b>${esc(l.ref)}</b> <span class="num">${money(l.cents)} to ${can ? money(l.cents - over) : "too small to reduce"}</span></span></label>`; }).join("")}</fieldset>` : "";
+  return `<form class="fix" id="fix" aria-labelledby="fix-t"><h3 id="fix-t">Correct the total</h3>
+    <div class="row"><label class="sr" for="fix-in">New total in SGD</label><span class="money"><span>SGD</span><input id="fix-in" inputmode="decimal" value="${esc(raw)}" autocomplete="off"></span>
+    <span class="meta">Now ${money(S.total)}, ${ORIGIN[S.origin.total][1].toLowerCase()}</span></div>
+    ${opts}${S.err ? `<p class="err" role="alert">${esc(S.err)}</p>` : ""}
+    <div class="row"><button type="submit" class="btn pri">Save the correction</button><button type="button" class="btn ghost" data-act="cancel">Cancel</button></div></form>`;
+}
+function linkEditor(l) {
+  if (S.edit === `rm:${l.id}`) return `<div class="inl"><p>Remove the link to <b>${esc(l.ref)}</b>? <span class="num">${money(l.cents)}</span> returns to the payment as unallocated.</p><button type="button" class="btn danger sm" data-act="confirm-rm" data-id="${l.id}">Remove the link</button><button type="button" class="btn ghost sm" data-act="cancel">Cancel</button></div>`;
+  const max = S.total - paid() + l.cents;
+  return `<form class="inl" id="lf" data-id="${l.id}"><p>Change the amount linked from <b>${esc(l.ref)}</b>, up to <span class="num">${money(max)}</span>.</p>
+    <label class="sr" for="lf-in">Amount in SGD</label><span class="money"><span>SGD</span><input id="lf-in" inputmode="decimal" value="${esc(S.linkVal ?? plain(l.cents))}" autocomplete="off"></span>
+    <span style="display:flex;gap:8px"><button type="submit" class="btn pri sm">Save</button><button type="button" class="btn ghost sm" data-act="cancel">Cancel</button></span>${S.err ? `<span class="err" role="alert">${esc(S.err)}</span>` : ""}</form>`;
+}
+const editing = (l) => S.edit === `rm:${l.id}` || S.edit === `link:${l.id}`;
+function howCell(l) {
+  return `<span class="how">${l.auto ? `<span class="auto">${icon("zap")}Automatic</span><button type="button" class="btn sm" data-act="undo" data-id="${l.id}" aria-label="Undo the automatic link to ${esc(l.ref)}">${icon("undo")}Undo</button>` : "By a person"}</span>`;
+}
+function menuBtn(l) {
+  return `<button type="button" class="ib" data-act="menu" data-id="${l.id}" aria-label="More for ${esc(l.ref)}" aria-haspopup="menu" aria-expanded="${S.menu === l.id}">${icon("more")}</button>
+    ${S.menu === l.id ? `<div class="menu" role="menu"><button type="button" role="menuitem" data-act="change" data-id="${l.id}">${icon("pen")}Change amount</button><button type="button" role="menuitem" class="dang" data-act="remove" data-id="${l.id}">${icon("trash")}Remove link</button></div>` : ""}`;
+}
+function payments(compact) {
+  const head = `<div class="sec-h"><h2 class="h2">Payments</h2><span class="meta num">${S.links.length} linked · ${money(paid())}</span></div>`;
+  if (!S.links.length) return `<section class="sec">${head}<p class="empty-l">No payment is linked. The full total is outstanding.</p></section>`;
+  if (compact || isPh()) {
+    return `<section class="sec">${head}<ul class="pcards">${S.links.map((l) => editing(l)
+      ? `<li class="pcard edit ${S.edit.startsWith("rm") ? "rm" : ""}">${linkEditor(l)}</li>`
+      : `<li class="pcard"><div class="pcard-t"><a class="ref" href="#" data-act="toast" data-msg="Opens payment ${esc(l.ref)}">${esc(l.ref)}</a><span class="acts">${menuBtn(l)}</span></div>
+        <div class="pcard-f"><span class="num">${l.date}</span><b class="num">${money(l.cents)}</b></div>${howCell(l)}</li>`).join("")}</ul></section>`;
+  }
+  return `<section class="sec">${head}<table><caption class="sr">Linked payments</caption><thead><tr><th scope="col">Payment</th><th scope="col">Date</th><th scope="col" class="r">Amount</th><th scope="col">How</th><th scope="col"><span class="sr">Actions</span></th></tr></thead><tbody>
+    ${S.links.map((l) => editing(l)
+      ? `<tr class="rowedit ${S.edit.startsWith("rm") ? "rm" : ""}"><td colspan="5">${linkEditor(l)}</td></tr>`
+      : `<tr><td><a class="ref" href="#" data-act="toast" data-msg="Opens payment ${esc(l.ref)}">${esc(l.ref)}</a></td><td class="num">${l.date}</td><td class="r num">${money(l.cents)}</td><td>${howCell(l)}</td><td class="acts">${menuBtn(l)}</td></tr>`).join("")}
+  </tbody></table></section>`;
+}
+function historyList() {
+  return `<section class="sec"><h2 class="h2">History</h2><ol class="hist" aria-label="History">${S.hist.toReversed().map((h) => `<li class="${h.fresh ? "new" : ""}"><time class="num">${esc(h.t)}</time><span>${esc(h.s)}</span></li>`).join("")}</ol></section>`;
+}
+
+// The drawn page. Highlights follow the selected field; selecting a line selects its field.
+function drawnPage() {
+  const src = FIELD_DEFS.map((f) => `<span class="src ${S.sel === f.k ? "hl" : ""}" data-act="sel" data-k="${f.k}" style="top:${f.y}px;height:${f.h}px"></span>`).join("");
+  const kv = (y, k, v) => `<div class="kv" style="top:${y}px"><span class="k">${k}</span><span class="v">${v}</span></div>`;
+  return `<div class="pg">
+    <div class="ban">FICTIONAL DEMO DOCUMENT - NOT VALID FOR PAYMENT</div>
+    <p class="tt">CUSTOMER INVOICE</p><p class="co">GENIE (DEMO)</p><p class="sy">Synthetic business record | Singapore | Currency: SGD</p>${src}
+    <p class="bill">Bill to: Harbor Foods</p>
+    ${kv(185, "Invoice number", "INV-2026-09-03")}${kv(222, "Invoice date", "2026-09-03")}${kv(259, "Payment due date", "2026-09-17")}${kv(296, "Subtotal", "SGD 7,200.00")}${kv(333, "Tax", "SGD 0.00")}
+    <p class="dl">DESCRIPTION</p><p class="ds">Operations support services - September 2026</p>
+    <div class="tot"><span class="k">TOTAL (SGD)</span><span class="v">7,200.00</span></div>
+    <p class="terms">Payment due within 14 days of invoice date.</p>
+    <div class="fl"></div><p class="f1">All names, references and amounts are fabricated for software demonstration.</p><p class="f2">No real bank account or payment destination is provided.</p><p class="f3">1 / 1</p></div>`;
+}
+// A page box sized by --s. Native: the real PDF in an <object>, the drawn page as its fallback.
+function pageBox(fit, native = S.pdf === "native") {
+  const inner = native
+    ? `<object data="${PDF}#toolbar=0&navpanes=0&view=FitH" type="application/pdf" aria-label="INV-2026-09-03.pdf, page 1 of 1">${drawnPage()}</object>`
+    : `${drawnPage()}`;
+  return `<div class="pgwrap" data-fit="${fit}" role="img" aria-label="INV-2026-09-03.pdf, page 1 of 1">${inner}</div>`;
+}
+function srcChip() {
+  if (!S.sel || S.doc !== "ok") return "";
+  const f = FIELD_DEFS.find((d) => d.k === S.sel);
+  return `<div class="srcchip" role="status"><span class="lbl">${esc(f.label)} on the page</span><q>${esc(f.src)}</q><button type="button" data-act="sel" data-k="${f.k}" aria-label="Clear the highlight">${icon("x")}</button></div>`;
+}
+function docError() {
+  return `<div class="doc-err" role="alert">${icon("fileX")}<h3>The preview could not load</h3><p>The file is stored and unchanged. Download it to read it, or try the preview again.</p>
+    <div class="row"><a class="btn" href="${PDF}" download>${icon("download")}Download the PDF</a><button type="button" class="btn ghost" data-act="retry">${icon("retry")}Try again</button></div></div>`;
+}
+function docNone() {
+  return `<div class="doc-none">${icon("fileText")}<h3>No document</h3><p>This invoice was entered by hand. Attach its PDF to keep the source beside the record.</p>
+    <div class="row"><button type="button" class="btn" data-act="toast" data-msg="Opens the file picker to attach a PDF">${icon("filePlus")}Attach a PDF</button></div></div>`;
+}
+function viewerBody(fit, extra = "") {
+  if (S.doc === "error") return `<div class="vbody">${docError()}</div>`;
+  if (S.doc === "none") return `<div class="vbody">${docNone()}</div>`;
+  return `<div class="vbody">${srcChip()}${pageBox(fit)}${extra}</div>`;
+}
+function zoomTools() {
+  const off = S.doc !== "ok";
+  return `<button type="button" class="ib" data-act="zout" aria-label="Zoom out" ${off || S.zoom <= 50 ? "disabled" : ""}>${icon("zoomOut")}</button><span class="zl num" aria-live="polite">${off ? "–" : `${S.zoom}%`}</span><button type="button" class="ib" data-act="zin" aria-label="Zoom in" ${off || S.zoom >= 250 ? "disabled" : ""}>${icon("zoomIn")}</button><button type="button" class="ib" data-act="zfit" aria-label="Fit to width" ${off ? "disabled" : ""}>${icon("fit")}</button>`;
+}
+function vtools(extraRight) {
+  return `<div class="vtools"><span class="vname">${icon("fileText")}<span>INV-2026-09-03.pdf</span><small>1 page</small></span>
+    ${zoomTools()}<span class="vsep"></span>${extraRight}<a class="ib" href="${PDF}" download aria-label="Download the PDF">${icon("download")}</a></div>`;
+}
+
+function mainNav() {
+  const it = ([ic, l, cur]) => `<a class="mn-i" href="#" data-act="toast" data-msg="Opens ${l}" ${cur ? 'aria-current="page"' : ""} aria-label="${l}">${icon(ic)}<span>${l}</span></a>`;
+  return `<nav class="mnav" aria-label="Main"><div class="mn-h"><span class="tile">G</span><span class="mn-name">Genie</span><button type="button" class="ib" data-act="nav" aria-label="${navRail() ? "Expand the main menu" : "Collapse the main menu"}">${icon(navRail() ? "chevsR" : "chevsL")}</button></div>
+    <p class="mn-cap">Workspace</p><div class="mn-list">${WORKSPACE.map(it).join("")}</div>
+    <p class="mn-cap">Finance</p><div class="mn-list mn-sub">${FINANCE.map(it).join("")}</div>
+    <button type="button" class="mn-user" data-act="toast" data-msg="Account menu" aria-label="Account: geniestudio001, Administrator"><span class="avatar">GS</span><span class="who"><b>geniestudio001</b><span>Administrator</span></span></button></nav>`;
+}
+function topbar() {
+  const agent = `<button type="button" class="abtn" data-act="panel" aria-controls="agentp" aria-expanded="${S.panel}"><span class="adot" aria-hidden="true"></span>Agent</button>`;
+  if (isPh()) return `<header class="topbar"><button type="button" class="ib" data-act="toast" data-msg="Back to Invoices" aria-label="Back to Invoices">${icon("chevL")}</button><span class="tb-title">INV-2026-09-03</span>${agent}</header>`;
+  return `<header class="topbar"><nav class="crumb" aria-label="Breadcrumb"><a href="#" data-act="toast" data-msg="Back to Invoices">Invoices</a>${icon("chevR")}<b aria-current="page">INV-2026-09-03</b></nav><span class="tb-sp"></span>${agent}</header>`;
+}
+function agentPanel() {
+  if (!S.panel) return "";
+  return `<section class="agentp" id="agentp" aria-label="Agent"><header class="bh"><div class="bh-t"><h2>Agent</h2><p class="ctx">About: INV-2026-09-03, Harbor Foods</p></div>
+    <button type="button" class="ib" data-act="panel" aria-label="Close the agent panel">${icon("x")}</button></header>
+    <div class="bs"><p>Ask about this invoice. Answers come from the records you can see.</p><div class="chips">${ASK.map((q) => `<button type="button" class="chip" data-act="toast" data-msg="Asks: ${esc(q)}">${esc(q)}</button>`).join("")}</div></div>
+    <div class="bd"><form class="composer"><label class="sr" for="msg">Message the agent</label><textarea id="msg" rows="1" placeholder="Ask about this invoice"></textarea><button type="submit" class="send" aria-label="Send">${icon("arrowUp")}</button></form></div></section>`;
+}
+const attachLine = () => `<p class="nodoc-line">${icon("fileText")}No document: entered by hand.<button type="button" class="btn sm" data-act="toast" data-msg="Opens the file picker to attach a PDF">${icon("filePlus")}Attach a PDF</button></p>`;
+
+// ---------- Variant A: split view ----------
+function variantA() {
+  const ph = isPh();
+  const head = `<div class="va-head"><div class="va-title"><div class="t"><h1 class="h1 num">INV-2026-09-03</h1>${pill()}</div><p class="meta">Harbor Foods · Balances as of ${AS_OF}, the reporting date.</p>${hasDoc() ? "" : attachLine()}</div>
+    ${ph ? "" : `<button type="button" class="btn" data-act="correct">${icon("pen")}Correct the total</button>`}</div>`;
+  const hint = S.doc === "ok" ? `<span class="meta">Select a field to find it on the document</span>` : "";
+  const rec = `${head}<div class="va-amts">${amounts()}</div>${fixEditor()}
+    <section class="sec"><div class="sec-h"><h2 class="h2">Details</h2>${hint}</div>${fields()}</section>${payments()}${historyList()}`;
+  if (ph) {
+    const docTab = hasDoc() && S.tab === "document";
+    const seg = hasDoc() ? `<div class="ph-seg"><div class="seg" role="tablist" aria-label="View"><button type="button" role="tab" aria-selected="${!docTab}" data-act="tab" data-t="details">Details</button><button type="button" role="tab" aria-selected="${docTab}" data-act="tab" data-t="document">${icon("fileText")}Document${S.sel ? '<span class="dotx" aria-hidden="true"></span>' : ""}</button></div></div>` : "";
+    const body = docTab
+      ? `<div class="ph-scroll" style="display:flex;flex-direction:column">${viewerBody("w", S.doc === "ok" ? `<span class="pinch">${icon("hand")}Pinch to zoom</span>` : "")}</div>`
+      : `<div class="ph-scroll"><div class="ph-in">${rec}</div></div>`;
+    const bar = docTab
+      ? `<div class="abar"><a class="btn" href="${PDF}" download>${icon("download")}Download</a><button type="button" class="btn pri" data-act="tab" data-t="details">Back to details</button></div>`
+      : `<div class="abar"><button type="button" class="btn" data-act="correct">${icon("pen")}Correct total</button>${hasDoc() ? `<button type="button" class="btn pri" data-act="tab" data-t="document">${icon("fileText")}Document</button>` : ""}</div>`;
+    return `${seg}${body}${bar}`;
+  }
+  const pane = hasDoc() ? `<aside class="va-doc" aria-label="Document">${vtools(`<button type="button" class="ib" data-act="fs" aria-label="Open full screen" ${S.doc === "ok" ? "" : "disabled"}>${icon("expand")}</button>`)}${viewerBody("w")}</aside>` : "";
+  return `<div class="va"><div class="va-rec"><div class="va-in">${rec}</div></div>${pane}</div>`;
+}
+
+// ---------- Variant B: record first, document card expands inline ----------
+function variantB() {
+  const ph = isPh(), od = status() === "overdue";
+  const head = `<div class="vb-head"><div class="t"><h1 class="h1 num">INV-2026-09-03</h1><div class="sub">${pill()}<span class="meta">Harbor Foods · Balances as of ${AS_OF}</span></div></div>
+    ${ph ? "" : `<div style="display:flex;gap:8px">${S.doc === "ok" ? `<a class="btn" href="${PDF}" download>${icon("download")}Download PDF</a>` : ""}<button type="button" class="btn" data-act="correct">${icon("pen")}Correct the total</button></div>`}</div>`;
+  const band = `<div class="vb-band"><div class="amt lead ${od ? "overdue" : ""}"><span class="amt-l">Outstanding</span><span class="amt-v num">${money(outstanding())}</span><span class="amt-n ${od ? "dang" : ""}">${od ? `Due 17 Sept 2026 · ${DAYS_OVERDUE} days overdue` : "Fully paid · was due 17 Sept 2026"}</span></div>
+    <div class="vb-bars"><div class="amts"><div class="amt"><span class="amt-l">Total</span><span class="amt-v num">${money(S.total)}</span>${otag("total")}</div><div class="amt"><span class="amt-l">Paid</span><span class="amt-v num">${money(paid())}</span><span class="amt-n">${S.links.length} payment${S.links.length === 1 ? "" : "s"} linked</span></div></div>${payBar()}</div></div>`;
+  const fileHead = (right) => `<div class="dcard-h"><span class="fi">${icon("fileText")}</span><span class="nm"><b>INV-2026-09-03.pdf</b><span>Source document · 1 page</span></span>${right}</div>`;
+  let card;
+  if (S.doc === "none") card = `<section class="dcard" aria-label="Document"><div class="vbody" style="background:var(--muted)">${docNone()}</div></section>`;
+  else if (S.doc === "error") card = `<section class="dcard" aria-label="Document">${fileHead(`<a class="ib" href="${PDF}" download aria-label="Download the PDF">${icon("download")}</a>`)}<div class="vbody">${docError()}</div></section>`;
+  else if (S.expanded && !ph) card = `<section class="dcard" aria-label="Document">${vtools(`<button type="button" class="btn sm" data-act="expand" aria-expanded="true">${icon("shrink")}Collapse</button>`)}${viewerBody("w")}</section>`;
+  else card = `<section class="dcard" aria-label="Document">${fileHead(ph ? "" : `<button type="button" class="btn sm" data-act="expand" aria-expanded="false">${icon("expand")}Expand</button>`)}
+    <button type="button" class="peek" data-act="${ph ? "sheet" : "expand"}" aria-label="Open the document preview">${pageBox(ph ? "peek-ph" : "peek", false)}<span class="go">${icon("expand")}${ph ? "Open the document" : "Expand the preview"}</span></button></section>`;
+  const details = `<section class="sec"><div class="sec-h"><h2 class="h2">Details</h2>${S.doc === "ok" && !ph ? `<span class="meta">Select a field to see it on the page</span>` : ""}</div>${fields()}</section>`;
+  if (ph) {
+    const sheet = S.doc === "ok" ? `<section class="sheet ${S.sheet ? "on" : ""}" aria-label="Document" ${S.sheet ? "" : 'aria-hidden="true" inert'}>
+      <header class="sh-h"><button type="button" class="ib" data-act="sheet" aria-label="Back to the invoice">${icon("arrowL")}</button><span class="sh-t"><b>INV-2026-09-03.pdf</b><span>Page 1 of 1</span></span><a class="ib" href="${PDF}" download aria-label="Download the PDF">${icon("download")}</a></header>
+      ${S.sheet ? viewerBody("w", `<span class="pinch">${icon("hand")}Pinch to zoom</span>`) : ""}<div class="zbar">${zoomTools()}</div></section>` : "";
+    return `<div class="ph-scroll"><div class="ph-in">${head}${band}${fixEditor()}${card}${details}${payments()}${historyList()}</div></div>
+      <div class="abar"><button type="button" class="btn" data-act="correct">${icon("pen")}Correct total</button>${S.doc === "ok" ? `<button type="button" class="btn pri" data-act="sheet">${icon("fileText")}Document</button>` : ""}</div>${sheet}`;
+  }
+  return `<div class="vb"><div class="vb-in">${head}${band}${fixEditor()}<div class="vb-grid ${S.expanded && S.doc === "ok" ? "expanded" : ""}">${card}<div class="vb-side">${details}</div></div>
+    ${payments()}${historyList()}</div></div>`;
+}
+
+// ---------- Variant C: document desk with pinned fields ----------
+function variantC() {
+  const ph = isPh();
+  const annos = S.doc === "ok" && !ph ? `<div class="annos" id="annos">${FIELD_DEFS.map((f) => fieldBtn(f, "anno")).join("")}</div><svg class="lead-l" id="leads" aria-hidden="true"></svg>` : "";
+  const deskPage = S.doc === "ok"
+    ? `<div>${pageBox("c", false)}</div>${annos}`
+    : `<div style="display:flex;flex-direction:column;gap:20px;width:${ph ? "100%" : "620px"}">${S.doc === "error" ? docError() : docNone()}
+      <section class="sec dcard" style="padding:16px 18px"><div class="sec-h"><h2 class="h2">Fields</h2><span class="meta">${S.doc === "error" ? "Read from the document" : "Entered by hand"}</span></div>${fields()}</section></div>`;
+  const tools = S.doc === "ok" ? `<div class="desk-tools"><div>${zoomTools()}<span class="vsep"></span><button type="button" class="ib" data-act="fs" aria-label="Open the original PDF full screen">${icon("expand")}</button><a class="ib" href="${PDF}" download aria-label="Download the PDF">${icon("download")}</a>${ph || S.drawer ? "" : `<span class="vsep"></span><button type="button" class="btn sm" data-act="drawer" aria-expanded="false">${icon("panelR")}Payments and history</button>`}</div></div>` : "";
+  const desk = `<div class="desk" id="desk">${tools}<div class="desk-in">${deskPage}</div></div>`;
+  const side = `${payments(true)}${historyList()}`;
+  if (ph) {
+    return `<div class="vc" style="flex:1;min-height:0">${desk}${fsViewer(true)}</div><section class="bsheet ${S.peek ? "peek-only" : ""}" aria-label="Invoice record">
+      <button type="button" class="grab" data-act="peek" aria-expanded="${!S.peek}"><span class="gt"><b class="num">INV-2026-09-03</b>${pill()}</span>
+        <span class="pk"><span class="amt lead ${status() === "overdue" ? "overdue" : ""}"><span class="amt-l">Outstanding · Harbor Foods</span><span class="amt-v num">${money(outstanding())}</span></span><span class="more">${S.peek ? "Details" : "Hide"}${icon(S.peek ? "chevU" : "chevD")}</span></span></button>
+      <div class="bsheet-b">${amounts()}${fixEditor()}${S.edit === "total" ? "" : `<button type="button" class="btn" data-act="correct">${icon("pen")}Correct the total</button>`}
+        ${S.doc === "ok" ? `<section class="sec"><div class="sec-h"><h2 class="h2">Fields on the page</h2><span class="meta">Tap one to find it</span></div>${fields()}</section>` : ""}${side}</div></section>`;
+  }
+  const band = `<div class="vc-band"><div class="vc-id"><div class="t"><h1 class="h1 num">INV-2026-09-03</h1>${pill()}</div><p class="meta">Harbor Foods · as of ${AS_OF}</p></div>${amounts()}
+    <button type="button" class="btn" data-act="correct">${icon("pen")}Correct the total</button></div>`;
+  const drawer = S.drawer || S.doc !== "ok" || S.edit === "total" ? `<aside class="drawer" aria-label="Payments and history"><div class="drawer-h"><b>Payments and history</b>${S.doc === "ok" ? `<button type="button" class="ib" data-act="drawer" aria-label="Hide payments and history">${icon("x")}</button>` : ""}</div><div class="drawer-b">${fixEditor()}${side}</div></aside>` : "";
+  return `<div class="vc">${band}<div class="vc-body">${desk}${drawer}</div></div>`;
+}
+
+// Full-screen viewer: the original PDF (or its drawn fallback), covering the page and panel
+function fsViewer(inPhone) {
+  if (!S.fs || (isPh() && !inPhone)) return "";
+  return `<section class="fs" role="dialog" aria-modal="true" aria-label="INV-2026-09-03.pdf, full screen">${vtools(`<button type="button" class="btn sm" data-act="fs">${icon("shrink")}Exit full screen</button>`)}<div class="vbody">${srcChip()}${pageBox("fs")}</div></section>`;
+}
+
+// ---------- Render ----------
+const app = document.getElementById("app");
+function render() {
+  const ph = isPh(), framed = ph && innerWidth > 480;
+  const keepScroll = [...app.querySelectorAll(".va-rec,.vb,.ph-scroll,.desk,.drawer-b,.bsheet-b")].map((n) => [n.className, n.scrollTop, n.scrollLeft]);
+  document.body.classList.toggle("framed", framed);
+  document.body.classList.toggle("chrome", S.chrome);
+  app.className = `v-${S.v} ${ph ? "ph" : "dt"} ${framed ? "framed" : ""} ${navRail() ? "nav-rail" : ""}`;
+  const page = { A: variantA, B: variantB, C: variantC }[S.v]();
+  app.innerHTML = `${ph ? "" : mainNav()}<div class="shell">${topbar()}<div class="work"><main class="page" aria-label="Invoice INV-2026-09-03">${page}</main>${agentPanel()}${ph ? "" : fsViewer()}</div></div><div class="toast" role="status"></div>`;
+  if (!S.reset) keepScroll.forEach(([c, t, l]) => { const n = app.getElementsByClassName(c.split(" ")[0])[0]; if (n && n.className === c) { n.scrollTop = t; n.scrollLeft = l; } });
+  S.reset = false;
+  fit(); syncSwitcher(); syncUrl();
+  if (S.focus) { app.querySelector(S.focus)?.focus(); S.focus = null; }
+  if (S.scrollTo) { app.querySelector(S.scrollTo)?.scrollIntoView({ block: "center" }); S.scrollTo = null; }
+}
+// Size every page box: fit its container's width, times the zoom; C fits the desk beside the pinned fields.
+function fit() {
+  app.querySelectorAll(".pgwrap").forEach((w) => {
+    const mode = w.dataset.fit, host = w.closest(".vbody,.desk,.peek") || w.parentElement;
+    let s;
+    if (mode === "peek") s = Math.min(0.78, (host.clientWidth - 64) / 595);
+    else if (mode === "peek-ph") s = Math.min(0.5, (host.clientWidth - 48) / 595);
+    else if (mode === "c") {
+      const room = host.clientWidth - (isPh() ? 24 : 64 + 316);
+      s = Math.max(0.45, Math.min(isPh() ? 1 : 1.2, room / 595)) * S.zoom / 100;
+    } else {
+      const pad = isPh() ? 24 : mode === "fs" ? 56 : 40;
+      s = Math.max(0.3, (host.clientWidth - pad) / 595);
+      if (mode === "fs") s = Math.min(s, (host.clientHeight - 56) / 842);
+      s *= S.zoom / 100;
+    }
+    w.style.setProperty("--s", s.toFixed(4));
+  });
+  placeAnnos();
+}
+// C: pin each field card beside its line, pushing down on collision, and draw the leader lines.
+function placeAnnos() {
+  const box = document.getElementById("annos"), svg = document.getElementById("leads");
+  if (!box || !svg) return;
+  const pg = app.querySelector(".desk .pgwrap"), s = parseFloat(pg.style.getPropertyValue("--s"));
+  const host = box.parentElement;
+  const items = [...box.children].map((el) => { const f = FIELD_DEFS.find((d) => d.k === el.dataset.k); return { el, f, cy: (f.y + f.h / 2) * s }; }).sort((a, b) => a.cy - b.cy);
+  let bottom = -Infinity;
+  items.forEach((it) => { it.h = it.el.offsetHeight; it.top = Math.max(it.cy - it.h / 2, bottom + 8); it.el.style.top = `${it.top}px`; bottom = it.top + it.h; });
+  box.style.height = `${Math.max(bottom, 842 * s)}px`;
+  const ox = pg.offsetLeft, oy = pg.offsetTop, x0 = ox + pg.offsetWidth, bx = box.offsetLeft, by = box.offsetTop;
+  svg.setAttribute("width", host.scrollWidth); svg.setAttribute("height", host.scrollHeight);
+  svg.innerHTML = items.map((it) => {
+    const on = S.sel === it.f.k ? "on" : "", ya = oy + it.cy, yb = by + it.top + it.h / 2, xs = x0 - 8, xm = x0 + 18;
+    return `<path class="${on}" d="M${xs} ${ya} H${xm} L${bx - 14} ${yb} H${bx}"/><circle class="${on}" cx="${xs}" cy="${ya}" r="2.5"/>`;
+  }).join("");
+}
+
+// ---------- Actions ----------
+let toastT;
+function toast(msg) {
+  const t = app.querySelector(".toast"); if (!t) return;
+  t.textContent = msg; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("on"), 2600);
+}
+function addHist(s) { S.hist.forEach((h) => (h.fresh = false)); S.hist.push({ t: now(), s, fresh: true }); }
+function unlink(id, msg) {
+  const l = S.links.find((x) => x.id === id);
+  S.links = S.links.filter((x) => x.id !== id);
+  addHist(`Payment ${l.ref} unlinked. ${money(l.cents)} returns to the payment as unallocated.`);
+  return msg(l);
+}
+const ACT = {
+  nav: () => { S.nav = navRail() ? "open" : "rail"; },
+  panel: () => { S.panel = !S.panel; },
+  sel: (d) => {
+    S.sel = S.sel === d.k ? null : d.k;
+    if (!S.sel) return;
+    if (isPh() && S.v === "A") S.tab = "document";
+    if (isPh() && S.v === "B") S.sheet = true;
+    if (isPh() && S.v === "C") { S.peek = true; S.scrollTo = ".desk .src.hl"; }
+    if (!isPh() && S.v === "B") S.expanded = true;
+  },
+  tab: (d) => { S.tab = d.t; S.reset = true; },
+  zin: () => { S.zoom = Math.min(250, S.zoom + 25); },
+  zout: () => { S.zoom = Math.max(50, S.zoom - 25); },
+  zfit: () => { S.zoom = 100; },
+  fs: () => { S.fs = !S.fs; S.zoom = 100; },
+  expand: () => { S.expanded = !S.expanded; S.zoom = 100; },
+  sheet: () => { S.sheet = !S.sheet; S.zoom = 100; },
+  peek: () => { S.peek = !S.peek; },
+  drawer: () => { S.drawer = !S.drawer; },
+  retry: () => { S.doc = "ok"; S.toastMsg = "The preview loaded"; },
+  correct: () => { endEdit(); S.edit = "total"; S.menu = null; if (isPh() && S.v === "C") S.peek = false; if (isPh() && S.v === "A") S.tab = "details"; S.focus = "#fix-in"; },
+  cancel: () => { endEdit(); },
+  menu: (d) => { S.menu = S.menu === d.id ? null : d.id; },
+  change: (d) => { endEdit(); S.menu = null; S.edit = `link:${d.id}`; S.focus = "#lf-in"; },
+  remove: (d) => { endEdit(); S.menu = null; S.edit = `rm:${d.id}`; },
+  "confirm-rm": (d) => { S.toastMsg = unlink(d.id, (l) => `Link removed. ${money(l.cents)} returns to ${l.ref} as unallocated.`); endEdit(); },
+  undo: (d) => { S.toastMsg = unlink(d.id, (l) => `Automatic link undone. ${money(l.cents)} returns to ${l.ref}.`); },
+  toast: (d) => { S.toastMsg = d.msg; return "norender"; },
+};
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el || !app.contains(el)) { if (S.menu && !e.target.closest(".menu")) { S.menu = null; render(); } return; }
+  if (el.tagName === "A") e.preventDefault();
+  const act = el.dataset.act;
+  if (!["menu", "change", "remove"].includes(act)) S.menu = null;
+  const r = ACT[act]?.(el.dataset);
+  if (r !== "norender") render();
+  if (S.toastMsg) { toast(S.toastMsg); S.toastMsg = null; }
+});
+document.addEventListener("input", (e) => {
+  if (e.target.id === "fix-in") { S.fixVal = e.target.value; S.err = ""; const pos = e.target.selectionStart; render(); const i = document.getElementById("fix-in"); i.focus(); i.setSelectionRange(pos, pos); }
+  if (e.target.id === "lf-in") S.linkVal = e.target.value;
+});
+document.addEventListener("change", (e) => { if (e.target.name === "reduce") S.reduce = e.target.value; });
+document.addEventListener("submit", (e) => {
+  e.preventDefault();
+  if (e.target.id === "fix") {
+    const n = Math.round(parseFloat(S.fixVal ?? plain(S.total)) * 100);
+    if (!Number.isFinite(n) || n <= 0) { S.err = "Enter the total as an amount above zero, such as 7200.00."; return render(); }
+    if (n === S.total) { endEdit(); return render(); }
+    const over = n < paid() ? paid() - n : 0;
+    if (over) {
+      const l = S.links.find((x) => x.id === S.reduce);
+      if (!l) { S.err = "Choose the link to reduce."; return render(); }
+      const before = l.cents; l.cents -= over;
+      addHist(`Link to payment ${l.ref} changed from ${money(before)} to ${money(l.cents)}.`);
+    }
+    addHist(`Total corrected from ${money(S.total)} to ${money(n)}.`);
+    S.total = n; S.origin.total = "corrected"; endEdit(); render(); toast(`Total corrected to ${money(n)}`); return;
+  }
+  if (e.target.id === "lf") {
+    const l = S.links.find((x) => x.id === e.target.dataset.id);
+    const n = Math.round(parseFloat(S.linkVal ?? plain(l.cents)) * 100), max = S.total - paid() + l.cents;
+    if (!Number.isFinite(n) || n <= 0 || n > max) { S.err = `Enter an amount from 0.01 to ${plain(max)}.`; render(); return; }
+    if (n !== l.cents) addHist(`Link to payment ${l.ref} changed from ${money(l.cents)} to ${money(n)}.`);
+    l.cents = n; endEdit(); render(); toast(`Link set to ${money(n)}`); return;
+  }
+  toast("Sends the question to the agent");
+});
+const typing = (t) => t && (t.tagName === "INPUT" || t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.isContentEditable);
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") {
+    if (S.menu) S.menu = null; else if (S.edit) endEdit(); else if (S.fs) S.fs = false; else if (S.sheet) S.sheet = false; else if (S.expanded) S.expanded = false; else if (S.sel) S.sel = null; else return;
+    return render();
+  }
+  if (typing(e.target) || e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+  if (e.key === "ArrowLeft" || e.key === "ArrowRight") cycle(e.key === "ArrowRight" ? 1 : -1);
+});
+function cycle(d) { const ks = Object.keys(VARIANTS); S.v = ks[(ks.indexOf(S.v) + d + ks.length) % ks.length]; seed(); S.reset = true; render(); }
+let rz; addEventListener("resize", () => { cancelAnimationFrame(rz); rz = requestAnimationFrame(render); });
+
+// ---------- Switcher ----------
+const sw = document.getElementById("sw");
+sw.querySelector('[data-sw="prev"]').innerHTML = icon("chevL");
+sw.querySelector('[data-sw="next"]').innerHTML = icon("chevR");
+sw.addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  if (b.dataset.sw) return cycle(b.dataset.sw === "next" ? 1 : -1);
+  if (b.dataset.w) S.w = b.dataset.w;
+  if (b.dataset.s) S.state = b.dataset.s;
+  seed(); S.reset = true; render();
+});
+function syncSwitcher() {
+  sw.hidden = !S.chrome;
+  sw.querySelector(".name").innerHTML = `<b>${S.v}</b>${VARIANTS[S.v]}`;
+  sw.querySelectorAll("[data-w]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.w === S.w));
+  sw.querySelectorAll("[data-s]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.s === S.state));
+}
+render();
+</script>
+</body>
+</html>

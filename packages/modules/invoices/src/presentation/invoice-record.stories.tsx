@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { DEMO_PDF } from "./__fixtures__/demo-pdfs.ts";
 import {
+  deskInvoiceRecord,
   laterInvoiceRecord,
   linkedInFullInvoiceRecord,
   noDueDateInvoiceRecord,
@@ -22,13 +24,36 @@ const changeAllocation = fn();
 
 const correctInvoiceTotal = fn();
 
-const desktop = { viewport: { value: "desktop", isRotated: false } };
+const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
 const [automatic, byAPerson] = partPaidInvoiceRecord.allocations;
 
 let releaseUnlink: (() => void) | null = null;
+
+/** Below 1280 px the links sit in the record's sheet, so a phone story opens it first. */
+async function openDetails(canvas: ReturnType<typeof within>) {
+  const details = canvas.queryByRole("button", { name: "Details" });
+
+  if (details !== null) await userEvent.click(details);
+}
+
+/** The page has drawn: react-pdf gave its canvas a width. */
+async function pageDrawn(root: HTMLElement) {
+  await waitFor(
+    () => {
+      const canvas = root.querySelector<HTMLCanvasElement>(
+        "[data-document-viewer] canvas"
+      );
+
+      if (canvas === null || canvas.style.width === "") {
+        throw new Error("The page has not drawn yet.");
+      }
+    },
+    { timeout: 10000 }
+  );
+}
 
 function serve(view: InvoiceRecordView) {
   releaseUnlink = null;
@@ -84,7 +109,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'One invoice at `/m/invoices/invoices/:id`, read as of the reporting date (Spec 7 R-9, R-32, R-59, R-60, decisions 4 and 9). The page header holds the customer, "Open the PDF" (a new tab, through a short-lived link) and Correct the total. The Figures strip leads with Outstanding and its status, then Total, Allocated and the due date with where it came from. Details holds the other fields. The Payments card is a table from 768 px and cards below it, each row opening the payment. History is one dated sentence per change, newest first (Section 7 redesign, findings 2.1 to 2.5). A writer of the invoice gets Undo on an automatic link, without a confirmation, and Change amount and Remove link on every link; Remove link asks first. A writer also gets Correct the total; a new total below the links answers `choose-links`, and the dialog asks for the new amount of each link and sends the lowered ones (R-32, decision 13). A refusal stays inside the open dialog. After each change the page reads the invoice again. An invoice dated after the reporting date shows a note instead of a balance.',
+          "One invoice at `/m/invoices/invoices/:id`, read as of the reporting date, on the document desk (Spec 7 R-9, R-32, R-38a, R-59, R-60, decisions 4 and 9). The page header holds the customer and Correct the total. The Figures strip leads with Outstanding and its status, then Total with its origin, Paid with the count of linked payments, and the due date with where it came from. From 1280 px the PDF shows in the page with each read field pinned beside its line, and the payments and their history sit in a drawer, as cards. Below 1280 px the page comes first and the record opens in a bottom sheet. A writer of the invoice gets Undo on an automatic link, without a confirmation, and Change amount and Remove link on every link; Remove link asks first. A writer also gets Correct the total; a new total below the links answers `choose-links`, and the dialog asks for the new amount of each link and sends the lowered ones (R-32, decision 13). A refusal stays inside the open dialog. After each change the page reads the invoice again, and the page does not load again. An invoice dated after the reporting date shows a note instead of a balance.",
       },
     },
     a11y: { test: "error" },
@@ -98,18 +123,41 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// 2.3 and 2.4: the strip leads with Outstanding and its pill; both actions sit in the page header.
+// D18: the desk shows the PDF in the page, the figures of R-38a, and the payments and history in the drawer.
 export const Default: Story = {
   globals: desktop,
-  play: async ({ canvas }) => {
+  args: { view: deskInvoiceRecord },
+  beforeEach: () => serve(deskInvoiceRecord),
+  play: async ({ canvas, canvasElement }) => {
     const figures = canvas.getByRole("region", { name: "Figures" });
 
     await expect(
       within(figures)
         .getAllByRole("term")
         .map((term) => term.textContent)
-    ).toEqual(["Outstanding", "Total", "Allocated", "Due date"]);
+    ).toEqual(["Outstanding", "Total", "Paid", "Due date"]);
     await expect(within(figures).getByText(/^Overdue/)).toBeVisible();
+    await expect(within(figures).getByText("2 payments linked")).toBeVisible();
+
+    const drawer = canvas.getByRole("complementary", {
+      name: "Payments and history",
+    });
+
+    await expect(
+      within(within(drawer).getByRole("list", { name: "Payments" }))
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual([
+      expect.stringContaining("TXN-PAY-2026-026"),
+      expect.stringContaining("HF-SEP-FINAL-PART"),
+    ]);
+    await expect(
+      within(drawer).getByRole("list", { name: "History" })
+    ).toBeVisible();
+    await pageDrawn(canvasElement);
+    await expect(
+      canvas.queryByRole("link", { name: /Open the PDF/ })
+    ).toBeNull();
 
     const header = canvas
       .getByRole("heading", { level: 1, name: "INV-2026-09-03" })
@@ -122,12 +170,47 @@ export const Default: Story = {
         name: "Correct the total",
       })
     ).toBeVisible();
-    await expect(
-      within(header).getByRole("link", {
-        name: "Open the PDF (source document, opens in a new tab)",
-      })
-    ).toBeVisible();
   },
+};
+
+/** The record again after a link change: the same invoice, with a fresh file link. */
+const refreshedDeskInvoice: InvoiceRecordView = {
+  ...deskInvoiceRecord,
+  documentUrl: `${DEMO_PDF.history0903}?fresh=1`,
+};
+
+// D20: Undo reads the record again with a new file link, and the page keeps the first one.
+export const UndoKeepsThePage: Story = {
+  name: "Undo keeps the page",
+  globals: desktop,
+  args: { view: deskInvoiceRecord },
+  beforeEach: () => serve(refreshedDeskInvoice),
+  play: async ({ canvas, canvasElement }) => {
+    await pageDrawn(canvasElement);
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Undo the automatic link to HF-SEP-FINAL-PART",
+      })
+    );
+    await waitFor(() => expect(refetchedAfter(unlinkAllocation)).toBe(true));
+    await expect(
+      canvasElement.querySelector("[data-document-viewer]")
+    ).toHaveAttribute("data-document-url", DEMO_PDF.history0903);
+  },
+};
+
+// The paid state of the desk at both widths, for the captures; its figures follow Default's rule.
+export const Paid: Story = {
+  globals: desktop,
+  args: { view: linkedInFullInvoiceRecord },
+  beforeEach: () => serve(linkedInFullInvoiceRecord),
+};
+
+export const PaidOnPhone: Story = {
+  name: "Paid on a phone",
+  globals: phone,
+  args: { view: linkedInFullInvoiceRecord },
+  beforeEach: () => serve(linkedInFullInvoiceRecord),
 };
 
 export const NoDueDate: Story = {
@@ -160,8 +243,8 @@ export const AutomaticLink: Story = {
       undo.map((button) => button.getAttribute("aria-label"))
     ).toEqual(["Undo the automatic link to TRF-0921-118"]);
     await expect(
-      within(canvas.getByRole("table", { name: "Payments" })).getByText(
-        "By a person"
+      within(canvas.getByRole("list", { name: "Payments" })).getByText(
+        /By a person/
       )
     ).toBeVisible();
 
@@ -191,6 +274,8 @@ export const AutomaticLinkOnPhone: Story = {
   name: "Automatic link on a phone",
   globals: phone,
   play: async ({ canvas }) => {
+    await openDetails(canvas);
+
     const list = canvas.getByRole("list", { name: "Payments" });
 
     await expect(
@@ -211,6 +296,7 @@ export const AutomaticLinkOnPhone: Story = {
 
 /** Opens Remove link for the person's link, and answers the open confirmation with Cancel focused. */
 async function openRemove(canvas: ReturnType<typeof within>) {
+  await openDetails(canvas);
   await userEvent.click(
     canvas.getByRole("button", { name: "Actions for TRF-0930-140" })
   );
@@ -458,8 +544,8 @@ export const ReadOnly: Story = {
   beforeEach: () => serve(readOnlyInvoiceRecord),
   play: async ({ canvas }) => {
     await expect(
-      within(canvas.getByRole("table", { name: "Payments" })).getByText(
-        "Automatic"
+      within(canvas.getByRole("list", { name: "Payments" })).getByText(
+        /Automatic/
       )
     ).toBeVisible();
     await expect(canvas.queryAllByRole("button", { name: /Undo/ })).toEqual([]);
