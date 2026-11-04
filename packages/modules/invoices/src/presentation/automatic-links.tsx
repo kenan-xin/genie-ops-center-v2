@@ -1,6 +1,5 @@
 "use client";
 
-import { PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import { Button } from "@genie/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -24,12 +23,11 @@ function linkPaymentLabel(link: AutomaticLink): string {
   });
 }
 
-/** The records saved from the document, and Undo for each automatic link (R-32). */
-export function ReviewSaved(props: {
+/** The links the save made by itself, each with Undo (R-32). The result card names the records. */
+export function AutomaticLinks(props: {
   readonly view: DocumentReviewView;
-  readonly message: string | null;
 }): ReactNode {
-  const { view, message } = props;
+  const { view } = props;
   const saved = view.saved;
   const invoices = useModuleClient(invoicesContract);
   const queryClient = useQueryClient();
@@ -54,25 +52,15 @@ export function ReviewSaved(props: {
 
   if (saved === null) return null;
 
+  if (
+    saved.automaticLinks.length === 0 &&
+    feedback === null &&
+    failure === null
+  )
+    return null;
+
   return (
-    <div className="flex flex-col gap-3 px-4 py-3 text-sm">
-      {message === null ? null : <p role="status">{message}</p>}
-      {saved.invoice === null ? null : (
-        <p>
-          {`Saved as invoice ${saved.invoice.number}. `}
-          <PageLink href={`/m/invoices/invoices/${saved.invoice.id}`}>
-            Open the invoice
-          </PageLink>
-        </p>
-      )}
-      {saved.payment === null ? null : (
-        <p>
-          {`Saved as payment ${paymentLabel(saved.payment)}. `}
-          <PageLink href={`/m/invoices/payments/${saved.payment.id}`}>
-            Open the payment
-          </PageLink>
-        </p>
-      )}
+    <div className="flex flex-col gap-3 text-sm">
       {saved.automaticLinks.length === 0 ? null : (
         <div className="flex flex-col gap-2">
           <h2 className="text-sm font-semibold">Linked automatically</h2>

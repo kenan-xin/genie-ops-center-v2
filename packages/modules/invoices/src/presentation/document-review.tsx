@@ -14,12 +14,12 @@ import {
   SelectValue,
   ToggleGroup,
   ToggleGroupItem,
-  WarningNote,
 } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
+import { AutomaticLinks } from "./automatic-links.tsx";
 import { type DocumentKind, kindText } from "./document-kind.ts";
 import { LazyDocumentViewer } from "./document-viewer-lazy.tsx";
 import { shortName } from "./format.ts";
@@ -30,7 +30,7 @@ import {
   type ReviewFieldKey,
   sourcesOf,
 } from "./review-fields.tsx";
-import { ReviewSaved } from "./review-saved.tsx";
+import { linkButton, ReviewResult, savedTitle } from "./review-result.tsx";
 import type { DocumentReviewView } from "./views.ts";
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
@@ -146,20 +146,66 @@ export function DocumentReview(props: {
     return (
       <main>
         <PageHeader title={title} breadcrumb={TRAIL} />
-        <p className="mt-6">Discarded. Nothing was added.</p>
-        <PageLink href={DOCUMENTS_HREF}>Back to Documents</PageLink>
+        <ReviewResult
+          tone="discarded"
+          title={`Discarded ${label}. Nothing was added.`}
+          canUpload={data.canWrite}
+        />
+      </main>
+    );
+  }
+
+  const saved = data.saved;
+
+  if (saved !== null) {
+    return (
+      <main>
+        <PageHeader
+          title={title}
+          breadcrumb={TRAIL}
+          meta={<span title={label}>{shortName(label)}</span>}
+        />
+        <ReviewResult
+          tone="saved"
+          title={savedTitle(saved)}
+          {...(savedMessage === null ? {} : { detail: savedMessage })}
+          records={
+            <>
+              {saved.invoice === null ? null : (
+                <PageLink
+                  href={`/m/invoices/invoices/${saved.invoice.id}`}
+                  className={linkButton("primary")}
+                >
+                  Open the invoice
+                </PageLink>
+              )}
+              {saved.payment === null ? null : (
+                <PageLink
+                  href={`/m/invoices/payments/${saved.payment.id}`}
+                  // One primary per card: a paid receipt leads with its invoice.
+                  className={linkButton(
+                    saved.invoice === null ? "primary" : "secondary"
+                  )}
+                >
+                  Open the payment
+                </PageLink>
+              )}
+            </>
+          }
+          canUpload={data.canWrite}
+        >
+          <AutomaticLinks view={data} />
+        </ReviewResult>
       </main>
     );
   }
 
   // A Could not read document takes a type too, so a person enters it by hand (R-26).
-  const showType =
-    data.canWrite && data.saved === null && data.document.status !== "reading";
+  const showType = data.canWrite && data.document.status !== "reading";
 
   const couldNotRead = data.document.status === "could-not-read";
 
-  const showDiscard =
-    data.canWrite && data.saved === null && data.document.status !== "reading";
+  const showDiscard = showType;
 
   let body: ReactNode;
 
@@ -175,8 +221,6 @@ export function DocumentReview(props: {
         Choose the type of this document to fill in its fields.
       </p>
     );
-  } else if (data.saved !== null) {
-    body = <ReviewSaved view={data} message={savedMessage} />;
   } else if (kind === "purchase-order") {
     body = (
       <div className="flex flex-col gap-3 py-3">
@@ -230,7 +274,6 @@ export function DocumentReview(props: {
   // A save form carries Discard in its own bar; every other body shows it under the card.
   const formBody =
     data.canWrite &&
-    data.saved === null &&
     data.document.status !== "reading" &&
     kind !== null &&
     kind !== "purchase-order";
@@ -238,6 +281,16 @@ export function DocumentReview(props: {
   return (
     <main>
       <PageHeader title={title} breadcrumb={TRAIL} meta={meta} />
+      {couldNotRead ? (
+        <div className="mb-4">
+          <ReviewResult
+            tone="unread"
+            title="The document could not be read."
+            detail="Retry it from Documents, or choose its type and fill in the fields by hand."
+            canUpload={false}
+          />
+        </div>
+      ) : null}
       <ToggleGroup
         aria-label="Show"
         className="mb-4 lg:hidden"
@@ -300,15 +353,6 @@ export function DocumentReview(props: {
                     {`${label} was not changed. ${changeKind.error.message}`}
                   </p>
                 )}
-              </div>
-            ) : null}
-            {couldNotRead ? (
-              <div className="flex flex-col gap-3 px-4 pt-3">
-                <WarningNote>
-                  The document could not be read. Retry it from Documents, or
-                  choose its type and fill in the fields by hand.
-                </WarningNote>
-                <PageLink href={DOCUMENTS_HREF}>Back to Documents</PageLink>
               </div>
             ) : null}
             {body}

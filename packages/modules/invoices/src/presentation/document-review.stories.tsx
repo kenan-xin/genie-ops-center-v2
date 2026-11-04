@@ -13,6 +13,7 @@ import {
   purchaseOrderReview,
   readOnlyReview,
   readingReview,
+  receiptReview,
 } from "./__fixtures__/review.ts";
 import { DocumentReview } from "./document-review.tsx";
 import type { DocumentReviewView } from "./views.ts";
@@ -23,11 +24,15 @@ const setDocumentKind = fn();
 
 const discardDocument = fn();
 
+const uploadDocument = fn();
+
 let releaseKind: (() => void) | null = null;
 
 let releaseDiscard: (() => void) | null = null;
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
+
+const desktop1440 = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
@@ -44,7 +49,12 @@ function withQuery(Story: () => ReactNode) {
     <QueryClientProvider client={client}>
       <ModuleClientProvider
         client={{
-          invoices: { getDocumentReview, setDocumentKind, discardDocument },
+          invoices: {
+            getDocumentReview,
+            setDocumentKind,
+            discardDocument,
+            uploadDocument,
+          },
         }}
       >
         <Story />
@@ -93,7 +103,16 @@ function serve(view: DocumentReviewView) {
   discardDocument
     .mockReset()
     .mockResolvedValue({ documentId: view.document.id });
+  uploadDocument
+    .mockReset()
+    .mockResolvedValue({ outcome: "uploaded", documentId: UPLOADED_ID });
 }
+
+const UPLOADED_ID = "10000000-0000-4000-8000-000000000105";
+
+/** The review page after the person leaves it: no viewer is left on the page. */
+const noViewer = (canvasElement: HTMLElement) =>
+  expect(canvasElement.querySelector("[data-document-viewer]")).toBeNull();
 
 /** Every mark on the page as one string without whitespace, whichever text items they came from. */
 function marksText(element: HTMLElement): string {
@@ -345,7 +364,7 @@ export const Discard: Story = {
         })
     );
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Discard" }));
 
     const first = await screen.findByRole("dialog");
@@ -375,17 +394,118 @@ export const Discard: Story = {
       canvas.getByRole("button", { name: "Discard" })
     ).toHaveAttribute("aria-busy", "true");
     releaseDiscard?.();
+    // czjw.64: the result card says what happened and offers the next step.
     await expect(
-      await canvas.findByText("Discarded. Nothing was added.")
+      await canvas.findByText(
+        "Discarded 01_Invoice_Missing_Due_Date.pdf. Nothing was added."
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Upload another" })
     ).toBeVisible();
     await expect(
       canvas.getByRole("link", { name: "Back to Documents" })
     ).toHaveAttribute("href", "/m/invoices/documents");
+    noViewer(canvasElement);
   },
 };
 
+/** Upload 06 saved as a paid receipt: one invoice and one payment. */
+const savedPaidReceipt: DocumentReviewView = {
+  ...receiptReview,
+  document: { ...receiptReview.document, status: "saved" },
+  saved: {
+    invoice: {
+      id: "30000000-0000-4000-8000-000000000006",
+      number: "RCPT-LIVE-001",
+    },
+    payment: {
+      id: "40000000-0000-4000-8000-000000000006",
+      reference: "LD-PURCHASE-1800",
+      paymentDate: "2026-10-27",
+    },
+    automaticLinks: [],
+  },
+};
+
+// czjw.64: a paid receipt names both records it made, each with its link, and the PDF is gone.
+export const SavedAsPaidReceipt: Story = {
+  name: "Saved as a paid receipt",
+  args: { view: savedPaidReceipt },
+  globals: desktop1440,
+  beforeEach: () => serve(savedPaidReceipt),
+  play: async ({ canvas, canvasElement }) => {
+    await expect(
+      canvas.getByText(
+        "Saved as a paid receipt: invoice RCPT-LIVE-001 and payment LD-PURCHASE-1800."
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Open the invoice" })
+    ).toHaveAttribute(
+      "href",
+      "/m/invoices/invoices/30000000-0000-4000-8000-000000000006"
+    );
+    await expect(
+      canvas.getByRole("link", { name: "Open the payment" })
+    ).toHaveAttribute(
+      "href",
+      "/m/invoices/payments/40000000-0000-4000-8000-000000000006"
+    );
+    noViewer(canvasElement);
+  },
+};
+
+// czjw.64: Upload another sends one PDF in place, then links to its review; a copy says so.
+export const UploadAnother: Story = {
+  name: "Upload another",
+  args: { view: savedPaidReceipt },
+  globals: desktop1440,
+  beforeEach: () => serve(savedPaidReceipt),
+  play: async ({ canvas }) => {
+    const input = canvas.getByLabelText("Choose a PDF file");
+
+    await userEvent.upload(
+      input,
+      new File(["%PDF-1.4"], "05_Payment_Unmatched.pdf", {
+        type: "application/pdf",
+      })
+    );
+
+    await waitFor(() => expect(uploadDocument).toHaveBeenCalledTimes(1));
+    await expect(
+      await canvas.findByText(
+        "Uploaded 05_Payment_Unmatched.pdf. It is being read now."
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Review 05_Payment_Unmatched.pdf" })
+    ).toHaveAttribute("href", `/m/invoices/documents/${UPLOADED_ID}`);
+
+    uploadDocument.mockResolvedValue({
+      outcome: "duplicate",
+      documentId: UPLOADED_ID,
+      label: "05_Payment_Unmatched.pdf",
+    });
+    await userEvent.upload(
+      input,
+      new File(["%PDF-1.4"], "05_copy.pdf", { type: "application/pdf" })
+    );
+    await expect(
+      await canvas.findByText(
+        "05_copy.pdf is the same file as 05_Payment_Unmatched.pdf. Nothing was added."
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Open 05_Payment_Unmatched.pdf" })
+    ).toHaveAttribute("href", `/m/invoices/documents/${UPLOADED_ID}`);
+  },
+};
+
+const COULD_NOT_READ_TITLE = "The document could not be read.";
+
 const COULD_NOT_READ_NOTE =
-  "The document could not be read. Retry it from Documents, or choose its type and fill in the fields by hand.";
+  "Retry it from Documents, or choose its type and fill in the fields by hand.";
 
 // R-26: a Could not read document keeps Retry and offers the type select for hand entry.
 export const CouldNotRead: Story = {
@@ -393,8 +513,32 @@ export const CouldNotRead: Story = {
   args: { view: couldNotReadReview },
   globals: desktop,
   beforeEach: () => serve(couldNotReadReview),
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
+    const title = canvas.getByText(COULD_NOT_READ_TITLE);
+
+    await expect(title).toBeVisible();
     await expect(canvas.getByText(COULD_NOT_READ_NOTE)).toBeVisible();
+    // czjw.64: the card sits above both panes, and hand entry stays (R-26).
+    const { viewer } = await columns(canvasElement);
+
+    const fields = canvas
+      .getByRole("combobox", { name: "Type" })
+      .closest('[data-slot="card"]');
+
+    for (const pane of [viewer, fields]) {
+      // oxlint-disable-next-line no-await-in-loop -- one pane per check.
+      await expect(
+        pane !== null &&
+          (title.compareDocumentPosition(pane) &
+            Node.DOCUMENT_POSITION_FOLLOWING) !==
+            0 &&
+          !pane.contains(title)
+      ).toBe(true);
+    }
+
+    await expect(
+      canvas.queryByRole("button", { name: "Upload another" })
+    ).toBeNull();
     await expect(canvas.getByRole("combobox", { name: "Type" })).toBeEnabled();
     await expect(
       canvas.getByRole("link", { name: "Back to Documents" })
@@ -506,6 +650,12 @@ export const ChangeTypeOnPhone: Story = {
 export const DiscardOnPhone: Story = {
   ...Discard,
   name: "Discard on a phone",
+  globals: phone,
+};
+
+export const SavedAsPaidReceiptOnPhone: Story = {
+  ...SavedAsPaidReceipt,
+  name: "Saved as a paid receipt on a phone",
   globals: phone,
 };
 
