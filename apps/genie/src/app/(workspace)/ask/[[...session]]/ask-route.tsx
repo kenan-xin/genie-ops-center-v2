@@ -44,7 +44,7 @@ export function AskRoute(props: {
   });
 
   // The browser makes the id of a new chat (P3), and one id lasts for this mount.
-  const [newId] = useState(() => crypto.randomUUID());
+  const [newId, setNewId] = useState(() => crypto.randomUUID());
   const sessionId = props.currentId ?? newId;
 
   return (
@@ -72,7 +72,11 @@ export function AskRoute(props: {
             href: (ref) => `/ask/${sessionId}?artifact=${ref.artifactId}`,
           }}
           headingLevel={2}
-          onNewChat={() => router.push("/ask")}
+          // A fresh id remounts the chat, also when the address is already /ask.
+          onNewChat={() => {
+            setNewId(crypto.randomUUID());
+            router.push("/ask");
+          }}
           onFinished={(id) => {
             void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
 
