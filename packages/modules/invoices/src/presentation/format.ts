@@ -1,4 +1,9 @@
-import { type ChartColumn, formatChartValue } from "@genie/ui";
+import {
+  type ChartColumn,
+  dayFromText,
+  formatChartValue,
+  formatDay,
+} from "@genie/ui";
 
 import { centsOf } from "../services/reading/quote-check.ts";
 
@@ -10,61 +15,12 @@ const MONEY: ChartColumn = {
   currencyKey: "currency",
 };
 
-const DAY: ChartColumn = { key: "day", label: "Day", type: "date" };
+// The day helpers live with the date picker; the pages keep importing them from here.
+export { dayFromText, formatDay };
 
 /** Cents in their own currency, never another row's (Review Focus 1). */
 export const formatMoney = (cents: number, currency: string) =>
   formatChartValue(MONEY, cents, { row: { currency } });
-
-export const formatDay = (day: string) => formatChartValue(DAY, day);
-
-const MONTHS = [
-  "jan",
-  "feb",
-  "mar",
-  "apr",
-  "may",
-  "jun",
-  "jul",
-  "aug",
-  "sep",
-  "oct",
-  "nov",
-  "dec",
-] as const;
-
-/**
- * The ISO day of a typed day: "26 Oct 2026" (any case, the month's name whole or cut, "Sept" too)
- * or the ISO day itself. A day that does not exist, such as 31 Feb, is null (design review 4.4).
- */
-export function dayFromText(text: string): string | null {
-  const value = text.trim();
-  const iso = /^(\d{4})-(\d{2})-(\d{2})$/u.exec(value);
-  const written = /^(\d{1,2})\s+([a-z]{3})[a-z]*\s+(\d{4})$/iu.exec(value);
-
-  const parts = iso
-    ? [Number(iso[1]), Number(iso[2]), Number(iso[3])]
-    : written
-      ? [
-          Number(written[3]),
-          MONTHS.findIndex((month) => month === written[2]?.toLowerCase()) + 1,
-          Number(written[1]),
-        ]
-      : null;
-
-  if (parts === null) return null;
-
-  const [year = 0, month = 0, day = 0] = parts;
-  const date = new Date(Date.UTC(year, month - 1, day));
-
-  // Date rolls an impossible day into the next month, so the parts must come back unchanged.
-  return month > 0 &&
-    date.getUTCFullYear() === year &&
-    date.getUTCMonth() === month - 1 &&
-    date.getUTCDate() === day
-    ? date.toISOString().slice(0, 10)
-    : null;
-}
 
 /** A typed day in the app's format once it reads, else the text as typed. */
 export function dayText(text: string): string {

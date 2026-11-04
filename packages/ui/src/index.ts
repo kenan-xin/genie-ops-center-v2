@@ -129,6 +129,27 @@ export type {
 
 export { formatChartValue, formatReadTime } from "./parts/chart-data.ts";
 
+export {
+  dateOfDay,
+  dayFromText,
+  dayOfDate,
+  formatDay,
+  formatDayRange,
+} from "./parts/calendar-day.ts";
+
+export { Calendar } from "./components/calendar.tsx";
+
+export { DatePicker } from "./parts/date-picker.tsx";
+
+export type { DatePickerProps } from "./parts/date-picker.tsx";
+
+export { DateRangePicker } from "./parts/date-range-picker.tsx";
+
+export type {
+  DateRangePickerProps,
+  DayRange,
+} from "./parts/date-range-picker.tsx";
+
 export type {
   ChartColumn,
   ChartData,

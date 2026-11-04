@@ -66,6 +66,8 @@ const config: StorybookConfig = {
           "@tanstack/react-query",
           "@openuidev/react-lang",
           "react-pdf",
+          "react-day-picker",
+          "date-fns",
           "recharts",
         ],
       },
