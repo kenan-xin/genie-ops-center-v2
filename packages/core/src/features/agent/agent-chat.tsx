@@ -68,9 +68,14 @@ export function AgentChat(props: {
     queryFn: () => agent.messages({ id: props.sessionId }),
     enabled: props.initialMessages === undefined,
     gcTime: 0,
+    // The app's default stale time (30 s) would answer a quick reopen from the first open's read.
+    staleTime: 0,
   });
 
-  const messages = props.initialMessages ?? saved.data;
+  // `Conversation` takes its messages once, so it waits for this mount's own read.
+  const messages =
+    props.initialMessages ??
+    (saved.isFetchedAfterMount ? saved.data : undefined);
 
   if (messages === undefined) {
     return saved.isError ? (
