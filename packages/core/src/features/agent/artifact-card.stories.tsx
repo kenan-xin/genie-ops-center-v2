@@ -67,9 +67,7 @@ export const WhileTheAnswerStreams: Story = {
   name: "While the answer streams",
   args: { ready: false },
   play: async ({ canvas }) => {
-    const card = canvas.getByRole("button", {
-      name: "Open Quantity by record",
-    });
+    const card = canvas.getByRole("button", { name: /^Quantity by record/ });
 
     await expect(card).toBeDisabled();
     await expect(card).toHaveTextContent("Ready when the answer ends");

@@ -339,7 +339,7 @@ export const ArtifactCardsInAsk: Story = {
     ).toBeTruthy();
 
     const shown = within(cards).getByRole("button", {
-      name: "Open Quantity by record",
+      name: /^Quantity by record/,
     });
 
     await expect(shown).toHaveAttribute("aria-pressed", "true");
@@ -347,7 +347,7 @@ export const ArtifactCardsInAsk: Story = {
     await expect(shown).toHaveTextContent("Chart · v1");
 
     await userEvent.click(
-      within(cards).getByRole("button", { name: "Open Records" })
+      within(cards).getByRole("button", { name: /^Records/ })
     );
     await expect(openArtifact).toHaveBeenCalledWith({
       artifactId: TABLE_ID,
@@ -367,7 +367,7 @@ export const ArtifactCardsInThePanel: Story = {
   },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("link", { name: "Open Quantity by record in Ask" })
+      canvas.getByRole("link", { name: /^Quantity by record.*Open in Ask$/ })
     ).toHaveAttribute("href", `/ask/chat-1?artifact=${CHART_ID}`);
   },
 };

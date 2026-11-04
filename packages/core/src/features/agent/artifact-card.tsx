@@ -55,7 +55,10 @@ function Body(props: {
   );
 }
 
-/** One artifact an answer made (R-45a): its kind, title and version, and where it opens. */
+/**
+ * One artifact an answer made (R-45a): its kind, title and version, and where it opens. Its visible
+ * text is its name, so a person who speaks what they see reaches it (WCAG 2.5.3).
+ */
 export function ArtifactCard(props: {
   readonly artifact: CardArtifact;
   readonly action: ArtifactCardAction;
@@ -71,7 +74,6 @@ export function ArtifactCard(props: {
       <button
         type="button"
         disabled
-        aria-label={`Open ${artifact.title}`}
         className={`${cardClass} cursor-not-allowed opacity-70`}
       >
         <Body artifact={artifact} end="Ready when the answer ends" />
@@ -81,11 +83,7 @@ export function ArtifactCard(props: {
 
   if (action.kind === "link") {
     return (
-      <a
-        href={action.href(ref)}
-        aria-label={`Open ${artifact.title} in Ask`}
-        className={`${cardClass} hover:bg-muted`}
-      >
+      <a href={action.href(ref)} className={`${cardClass} hover:bg-muted`}>
         <Body artifact={artifact} end="Open in Ask" />
       </a>
     );
@@ -98,7 +96,6 @@ export function ArtifactCard(props: {
   return (
     <button
       type="button"
-      aria-label={`Open ${artifact.title}`}
       aria-pressed={shown}
       className={`${cardClass} hover:bg-muted aria-pressed:border-primary`}
       onClick={() => action.onOpen(ref)}
