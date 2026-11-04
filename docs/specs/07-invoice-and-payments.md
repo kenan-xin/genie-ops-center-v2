@@ -4,7 +4,7 @@ Confidence: 7.4/10
 
 Reasoning: the product behavior is settled one decision at a time with the owner, and two cold critiques tested the plan and the tickets against the code. The score is lower than earlier sections for three reasons. Four new parts must land in about five weeks with no slip order. The model calls depend on an outside service (OpenRouter) and on models that change. Several core seams are new (datasets, the chart gate, the agent runtime, the typed key store), and none of them exists in code yet.
 
-Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day. Amended 2026-11-01 with the owner rulings of wave 3: R-15, R-26, R-46, R-49 and R-52. Amended 2026-11-03 with the owner rulings of the Ask review in the wave 4 dry run: R-41, R-42, R-42a, R-45a and AC-8 (`DEC-56`), and later that day R-42 and R-42a again (agent panel, collapsed history, step timeline). Amended 2026-11-03 with the owner rulings of the wave 4 review: R-35, R-37, R-37a, R-38a, R-44, R-44a, AC-7 and AC-8.
+Status: Approved by the owner, 2026-10-27. The owner approved the ticket breakdown on the same day. Amended 2026-11-01 with the owner rulings of wave 3: R-15, R-26, R-46, R-49 and R-52. Amended 2026-11-03 with the owner rulings of the Ask review in the wave 4 dry run: R-41, R-42, R-42a, R-45a and AC-8 (`DEC-56`), and later that day R-42 and R-42a again (agent panel, collapsed history, step timeline). Amended 2026-11-03 with the owner rulings of the wave 4 review: R-35, R-37, R-37a, R-38a, R-44, R-44a, AC-7 and AC-8. Amended 2026-11-04: R-28 (`czjw.72`).
 
 ## Goal and scope
 
@@ -103,7 +103,7 @@ R-26. The reading job retries twice with backoff and is idempotent per document.
 
 R-27. The model classifies each document as an invoice, payment evidence, a paid receipt or a purchase order. The person can change the type in the review.
 
-R-28. A missing due date blocks saving until the person enters a date or marks it unspecified. Missing payment terms stay blank. The system never fills either. A due date has a source: document, person or unspecified.
+R-28. A missing due date blocks saving until the person enters a date or marks it unspecified. A paid receipt is the exception: it is paid in full at once, so its review asks no due date, keeps a due date that the document states, and saves a missing one as unspecified (`czjw.72`). Missing payment terms stay blank. The system never fills either. A due date has a source: document, person or unspecified.
 
 R-29. An invoice saves as unpaid and joins outstanding at once. An unspecified due date is never overdue.
 

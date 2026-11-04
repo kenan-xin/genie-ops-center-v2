@@ -119,6 +119,28 @@ function initialDue(reading: StoredReading | null): DueChoice {
     : { kind: "kept", value: dayText(dueDate) };
 }
 
+/**
+ * A paid receipt is paid in full at once, so its review asks no due date (R-28, czjw.72): a read
+ * due date stays the document's, and a missing one saves as unspecified. It is derived, never held
+ * in the form, so a switch of the type to Invoice brings back the person's own choice.
+ */
+function receiptDue(reading: StoredReading | null): DueChoice {
+  const dueDate = reading?.fields.dueDate?.value;
+
+  return dueDate === undefined
+    ? { kind: "unspecified" }
+    : { kind: "kept", value: dayText(dueDate) };
+}
+
+/** The due choice that a save of this kind sends. */
+function dueChoiceOf(
+  kind: "invoice" | "paid-receipt",
+  reading: StoredReading | null,
+  due: DueChoice
+): DueChoice {
+  return kind === "paid-receipt" ? receiptDue(reading) : due;
+}
+
 function dueOf(due: DueChoice): DueInput {
   switch (due.kind) {
     case "kept":
@@ -170,7 +192,7 @@ function buildInput(
   values: FormValues,
   keep: boolean
 ): SaveDraft {
-  const choice = dueOf(values.due);
+  const choice = dueOf(dueChoiceOf(kind, view.reading, values.due));
 
   const common = {
     documentId: view.document.id,
@@ -332,10 +354,12 @@ export function InvoiceReviewForm(props: {
     }
   }
 
-  const dueTyped = dueText(values.due)?.trim() ?? "";
+  const sentDue = dueChoiceOf(kind, reading, values.due);
+
+  const dueTyped = dueText(sentDue)?.trim() ?? "";
 
   const dueOk =
-    values.due.kind === "unspecified" || dayFromText(dueTyped) !== null;
+    sentDue.kind === "unspecified" || dayFromText(dueTyped) !== null;
 
   const customerReady = customerChoiceOf(values.customer) !== undefined;
 
@@ -359,6 +383,16 @@ export function InvoiceReviewForm(props: {
     onChange: (due: DueChoice) => void
   ): ReactNode => {
     const readDue = reading?.fields.dueDate;
+
+    if (kind === "paid-receipt") {
+      return (
+        <p className="py-2 text-sm text-foreground">
+          {readDue === undefined
+            ? "None, paid in full"
+            : formatDay(readDue.value)}
+        </p>
+      );
+    }
 
     // The read day typed back stays the document's.
     if (readDue !== undefined) {
@@ -495,7 +529,7 @@ export function InvoiceReviewForm(props: {
                     tag={liveTagOf(
                       reading,
                       field,
-                      dueTagValue(item.state.value)
+                      dueTagValue(dueChoiceOf(kind, reading, item.state.value))
                     )}
                     sources={sourcesOf(reading, field)}
                     unread={reading === null}

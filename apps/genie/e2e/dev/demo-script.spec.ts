@@ -411,9 +411,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           const savePaid = page.getByRole("button", { name: "Save as paid" });
 
-          await page
-            .getByRole("radio", { name: "Mark as unspecified" })
-            .click();
+          // czjw.72: a receipt paid in full asks no due date.
           await expect(savePaid).not.toHaveAttribute("aria-disabled", "true");
           await savePaid.click();
           await expect(page.getByText(/saved as a paid receipt/)).toBeVisible({

@@ -476,15 +476,24 @@ export const SaveRefused: Story = {
 };
 
 // B5.7: Save as paid calls savePaidReceipt with the receipt's number, date, cents, reference and method.
-export const Receipt: Story = {
+// D34 (czjw.72): a receipt paid in full asks no due date; a missing one saves as unspecified.
+export const PaidReceiptWithoutDueDate: Story = {
+  name: "Paid receipt without a due date",
   args: { view: receiptReview },
   globals: desktop,
   beforeEach: () => serve(receiptReview),
-  play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
-    await userEvent.click(saveButton(canvas, "Save as paid"));
+  play: async ({ canvas, canvasElement }) => {
+    await expect(
+      canvas.queryByRole("radiogroup", { name: "Due date choice" })
+    ).toBeNull();
+    await expect(
+      fieldRow(canvasElement, "dueDate").getByText("None, paid in full")
+    ).toBeVisible();
+
+    const save = saveButton(canvas, "Save as paid");
+
+    await expect(save).not.toHaveAttribute("aria-disabled");
+    await userEvent.click(save);
 
     await waitFor(() =>
       expect(savePaidReceipt).toHaveBeenCalledWith(
@@ -496,6 +505,44 @@ export const Receipt: Story = {
           method: "Card",
           dueDate: null,
           dueDateSource: "unspecified",
+        })
+      )
+    );
+    await expect(savePaidReceipt).toHaveBeenCalledTimes(1);
+  },
+};
+
+const receiptWithDueDateReview: DocumentReviewView = {
+  ...receiptReview,
+  reading:
+    receiptReview.reading === null
+      ? null
+      : {
+          ...receiptReview.reading,
+          fields: {
+            ...receiptReview.reading.fields,
+            dueDate: { value: "2026-11-30", quote: "Due 2026-11-30", page: 1 },
+          },
+        },
+};
+
+// D34 (czjw.72): a due date that the receipt states stays the document's, read-only.
+export const PaidReceiptWithDueDate: Story = {
+  name: "Paid receipt with a due date",
+  args: { view: receiptWithDueDateReview },
+  globals: desktop,
+  beforeEach: () => serve(receiptWithDueDateReview),
+  play: async ({ canvas, canvasElement }) => {
+    await expect(
+      fieldRow(canvasElement, "dueDate").getByText("30 Nov 2026")
+    ).toBeVisible();
+    await userEvent.click(saveButton(canvas, "Save as paid"));
+
+    await waitFor(() =>
+      expect(savePaidReceipt).toHaveBeenCalledWith(
+        expect.objectContaining({
+          dueDate: "2026-11-30",
+          dueDateSource: "document",
         })
       )
     );
@@ -714,8 +761,8 @@ export const SaveRefusedOnPhone: Story = {
 };
 
 export const ReceiptOnPhone: Story = {
-  ...Receipt,
-  name: "Receipt on a phone",
+  ...PaidReceiptWithoutDueDate,
+  name: "Paid receipt without a due date on a phone",
   globals: phone,
 };
 
