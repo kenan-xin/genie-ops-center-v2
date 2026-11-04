@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   chartCaption,
+  chartRows,
   formatChartValue,
   isChartEmpty,
   kpiChange,
@@ -24,6 +25,27 @@ const month: ChartColumn = { ...date, bucket: "month" };
 const week: ChartColumn = { ...date, bucket: "week" };
 
 const boolean: ChartColumn = { key: "paid", label: "Paid", type: "boolean" };
+
+describe("chartRows", () => {
+  it("turns a chart's data into labelled rows as the chart shows them", () => {
+    expect(
+      chartRows({
+        x: month,
+        columns: [money("EUR"), number],
+        rows: [
+          { x: "2026-09-01", amount: 650_000, n: 1200 },
+          { x: "2026-10-01", amount: null, n: 3 },
+        ],
+      })
+    ).toEqual({
+      header: ["Day", "Amount", "Count"],
+      rows: [
+        ["Sept 2026", "6,500.00", "1,200"],
+        ["Oct 2026", "", "3"],
+      ],
+    });
+  });
+});
 
 describe("formatChartValue", () => {
   it.each([

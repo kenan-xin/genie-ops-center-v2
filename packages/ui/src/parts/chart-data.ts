@@ -230,6 +230,31 @@ export function kpiChange(
   };
 }
 
+/**
+ * The chart's values as labelled text rows, for Copy and Download (AG21): the x column first, then
+ * each column, every value as the chart shows it, money of a column's one currency without its code.
+ */
+export type ChartTextRows = {
+  readonly header: readonly string[];
+  readonly rows: readonly (readonly string[])[];
+};
+
+export function chartRows(
+  data: Pick<ChartData, "x" | "columns" | "rows">
+): ChartTextRows {
+  const columns =
+    data.x === undefined ? data.columns : [data.x, ...data.columns];
+
+  return {
+    header: columns.map((column) => column.label),
+    rows: data.rows.map((row) =>
+      columns.map((column) =>
+        formatChartValue(column, row[column.key] ?? null, { row, bare: true })
+      )
+    ),
+  };
+}
+
 /** No figure to draw: no rows, or only missing values, or a donut with no part above 0. */
 export function isChartEmpty(
   data: Pick<ChartData, "kind" | "columns" | "rows">
