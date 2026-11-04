@@ -152,12 +152,22 @@ export async function readOwnSession(
       id: agentMessage.id,
       role: agentMessage.role,
       parts: agentMessage.parts,
+      createdAt: agentMessage.createdAt,
     })
     .from(agentMessage)
     .where(eq(agentMessage.sessionId, row.id))
     .orderBy(asc(agentMessage.seq));
 
-  return { session: summary(row), messages };
+  // The time lets a stored answer show how long it took; the model never reads metadata.
+  return {
+    session: summary(row),
+    messages: messages.map((message) => ({
+      id: message.id,
+      role: message.role,
+      parts: message.parts,
+      metadata: { createdAt: message.createdAt.toISOString() },
+    })),
+  };
 }
 
 /**

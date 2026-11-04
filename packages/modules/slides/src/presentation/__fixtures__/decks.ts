@@ -309,7 +309,16 @@ export const deckList: DeckListView = {
   chat: {
     kind: "on",
     models: null,
-    labels: { steps: { "slides-create-deck": "Made a deck" }, datasets: {} },
+    labels: {
+      steps: {
+        "slides-create-deck": {
+          active: "Making a deck",
+          done: "Made a deck",
+          failed: "Could not make a deck",
+        },
+      },
+      datasets: {},
+    },
     suggestions: [],
   },
 };

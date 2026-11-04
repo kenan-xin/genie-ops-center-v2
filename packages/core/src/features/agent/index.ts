@@ -14,7 +14,7 @@ export { ChatDock } from "./chat-dock.tsx";
 
 export { ChatPanel } from "./chat-panel.tsx";
 
-export { type StepLine, stepLine } from "./step-line.ts";
+export { StepTimeline } from "./step-timeline.tsx";
 
 export {
   AGENT_ROUTE,

@@ -15,13 +15,44 @@ import {
 } from "@genie/ui";
 import type { ChatTransport } from "ai";
 import { SparklesIcon } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { z } from "zod";
 
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
 import { Composer } from "./composer.tsx";
 import { MessageParts } from "./message-parts.tsx";
 import { refusalOf } from "./transport.ts";
+
+const storedTime = z.object({ createdAt: z.iso.datetime({ offset: true }) });
+
+/** A stored answer's time: its own time minus its question's (AG16). */
+function storedDuration(
+  messages: readonly AgentMessage[],
+  index: number
+): number | undefined {
+  const answer = storedTime.safeParse(messages[index]?.metadata);
+
+  const question = storedTime.safeParse(messages[index - 1]?.metadata);
+
+  return answer.success && question.success
+    ? Date.parse(answer.data.createdAt) - Date.parse(question.data.createdAt)
+    : undefined;
+}
+
+/** The text of the question before an answer, which Try again sends again (AG17). */
+function questionBefore(
+  messages: readonly AgentMessage[],
+  index: number
+): string | undefined {
+  const question = messages[index - 1];
+
+  if (question?.role !== "user") return undefined;
+
+  return question.parts
+    .map((part) => (part.type === "text" ? part.text : ""))
+    .join("");
+}
 
 const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
@@ -64,6 +95,13 @@ export function Conversation(props: {
 }): ReactNode {
   const [draft, setDraft] = useState("");
 
+  // A live answer's time, from the send to its end, by message id.
+  const [liveTimes, setLiveTimes] = useState<Readonly<Record<string, number>>>(
+    {}
+  );
+
+  const sentAt = useRef(0);
+
   const [modelId, setModelId] = useState(
     props.models?.chatDefault ?? props.models?.allowed[0] ?? ""
   );
@@ -73,7 +111,12 @@ export function Conversation(props: {
     messages: [...props.initialMessages],
     transport: props.transport,
     // A refusal stores no answer, so it earns no list refresh or navigation (B9.4).
-    onFinish: ({ isError }) => {
+    onFinish: ({ isError, message }) => {
+      setLiveTimes((times) => ({
+        ...times,
+        [message.id]: Date.now() - sentAt.current,
+      }));
+
       if (!isError) props.onFinished?.(props.sessionId);
     },
   });
@@ -99,6 +142,8 @@ export function Conversation(props: {
     if (text === "" || busy) return;
 
     setDraft("");
+
+    sentAt.current = Date.now();
 
     void chat.sendMessage(
       { text },
@@ -159,6 +204,15 @@ export function Conversation(props: {
                     message={message}
                     labels={props.labels}
                     streaming={busy && index === chat.messages.length - 1}
+                    durationMs={
+                      liveTimes[message.id] ??
+                      storedDuration(chat.messages, index)
+                    }
+                    onTryAgain={() => {
+                      const question = questionBefore(chat.messages, index);
+
+                      if (question !== undefined) send(question);
+                    }}
                   />
                 </MessageContent>
               </Message>

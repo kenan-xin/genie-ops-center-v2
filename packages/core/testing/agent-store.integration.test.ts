@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
 import {
@@ -219,6 +220,15 @@ describe("the owner-only agent store against a real database", () => {
 
     expect(messages.map(({ role, parts }) => ({ role, parts }))).toEqual(sent);
     expect(messages[1]?.id).toBe(assistantId);
+
+    // Each message carries its time, so a reload can still say how long an answer took.
+    const times = messages.map(({ metadata }) =>
+      z.object({ createdAt: z.iso.datetime({ offset: true }) }).parse(metadata)
+    );
+
+    expect(Date.parse(times[1]?.createdAt ?? "")).toBeGreaterThanOrEqual(
+      Date.parse(times[0]?.createdAt ?? "")
+    );
   });
 
   it("writes an answer's versions with the answer, and nothing when the write fails", async () => {

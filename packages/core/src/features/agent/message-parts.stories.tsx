@@ -139,7 +139,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One message of an agent chat. User text renders as text. An answer renders each text part through the OpenUI catalog, each tool call as one muted line, and skips step markers. The Chart view draws nothing until the answer finished streaming, then asks the chart gate as the viewer.",
+          "One message of an agent chat. User text renders as text. An answer renders its tool calls as the step timeline above it, and each text part through the OpenUI catalog. The Chart view draws nothing until the answer finished streaming, then asks the chart gate as the viewer.",
       },
     },
     a11y: { test: "error" },
@@ -289,7 +289,7 @@ export const StreamingToolCall: Story = {
   decorators: [withChartCheck(resolveKpi)],
   play: async ({ canvas }) => {
     // A live model streams a tool's input after its name, so the call first shows without input.
-    await expect(await canvas.findByText("Read the data")).toBeVisible();
+    await expect(await canvas.findByText("Reading the data")).toBeVisible();
   },
 };
 

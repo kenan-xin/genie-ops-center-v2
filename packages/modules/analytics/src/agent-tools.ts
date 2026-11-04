@@ -25,7 +25,11 @@ const summaryOf = (panels: readonly StoredPanel[]) =>
 
 const listDashboardsTool = defineAgentTool({
   name: "analytics-list-dashboards",
-  step: "Looked up the dashboards",
+  step: {
+    active: "Looking up the dashboards",
+    done: "Looked up the dashboards",
+    failed: "Could not look up the dashboards",
+  },
   description:
     "Lists this person's own dashboards: each one's id, name, version and panels, with each panel's id, chart type and title.",
   input: z.strictObject({}),
@@ -46,7 +50,11 @@ const listDashboardsTool = defineAgentTool({
 
 const readDashboardTool = defineAgentTool({
   name: "analytics-read-dashboard",
-  step: "Read the dashboard",
+  step: {
+    active: "Reading the dashboard",
+    done: "Read the dashboard",
+    failed: "Could not read the dashboard",
+  },
   description:
     "Reads one of this person's own dashboards by id: its name, version, filters and panels, with each panel's id, layout and chart config.",
   input: z.strictObject({ dashboardId }),
@@ -76,7 +84,11 @@ const readDashboardTool = defineAgentTool({
 
 const createDashboardTool = defineAgentTool({
   name: "analytics-create-dashboard",
-  step: "Made a dashboard",
+  step: {
+    active: "Making a dashboard",
+    done: "Made a dashboard",
+    failed: "Could not make a dashboard",
+  },
   description:
     "Creates an empty dashboard with the given name for this person and answers its id. The name is unique among this person's dashboards.",
   input: z.strictObject({ name: dashboardName }),
@@ -101,7 +113,11 @@ const createDashboardTool = defineAgentTool({
 /** Goes through the store, so the gate, owner-only access, Undo and the audit run as for a hand save. */
 const changeDashboardTool = defineAgentTool({
   name: "analytics-change-dashboard",
-  step: "Changed the dashboard",
+  step: {
+    active: "Changing the dashboard",
+    done: "Changed the dashboard",
+    failed: "Could not change the dashboard",
+  },
   description:
     "Saves one change to one of this person's own dashboards: a list of steps, each add-panel, change-panel, remove-panel, move-panel, rename or set-filters. Every added or changed panel passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the dashboard.",
   input: z.strictObject({ dashboardId, changes: dashboardChanges }),

@@ -1,102 +1,28 @@
 "use client";
 
-import {
-  Button,
-  Marker,
-  MarkerContent,
-  MarkerIcon,
-  Spinner,
-  focusRing,
-} from "@genie/ui";
+import { Button, focusRing } from "@genie/ui";
 import {
   Renderer,
   type OpenUIError,
   type ParseResult,
 } from "@openuidev/react-lang";
-import {
-  CheckIcon,
-  ChevronRightIcon,
-  CircleSlashIcon,
-  CopyIcon,
-  DatabaseIcon,
-} from "lucide-react";
+import { ChevronRightIcon, CopyIcon, DatabaseIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
 import { methodLines, sourceTitles } from "./answer-sources.ts";
-import { stepLine, toolNameOf } from "./step-line.ts";
+import { StepTimeline } from "./step-timeline.tsx";
 
 /**
  * The one message-part renderer (Spec 7 R-45, DEC-29). A user message is plain text. An assistant
- * message draws each text part through the answer catalog, one tool call as one human step line
- * with its object in bold (agent-native rule 3, design review 6.3), and skips step markers. A part
- * the parser cannot read shows its text as a paragraph; a part that failed shows what it could draw
- * and one repair line.
+ * message draws its tool calls as the step timeline (czjw.81) above the answer, and each text part
+ * through the answer catalog. A part the parser cannot read shows its text as a paragraph; a part
+ * that failed shows what it could draw and one repair line.
  */
 
-type MessagePart = AgentMessage["parts"][number];
-
 const NO_LABELS: ChatLabels = { steps: {}, datasets: {} };
-
-const chipClass = `inline-flex min-h-8 cursor-pointer list-none items-center rounded-full border border-border bg-muted px-2.5 text-xs font-semibold text-muted-foreground hover:text-foreground ${focusRing}`;
-
-function stepIcon(part: MessagePart, streaming: boolean): ReactNode {
-  if (!("state" in part)) return null;
-
-  if (part.state === "output-available")
-    return <CheckIcon strokeWidth={1.75} />;
-
-  if (part.state === "output-error") {
-    return <CircleSlashIcon strokeWidth={1.75} />;
-  }
-
-  return streaming ? <Spinner label="Working" /> : null;
-}
-
-/** One tool call: a human line, and the query behind a chip that opens on demand (rule 3). */
-function ToolStep(props: {
-  readonly part: MessagePart;
-  readonly name: string;
-  readonly labels: ChatLabels;
-  readonly streaming: boolean;
-}): ReactNode {
-  const line = stepLine(props.part, props.labels);
-
-  const input =
-    props.name === "query-dataset" &&
-    "input" in props.part &&
-    props.part.input !== undefined
-      ? props.part.input
-      : undefined;
-
-  return (
-    <div className="grid gap-1">
-      <Marker>
-        <MarkerIcon>{stepIcon(props.part, props.streaming)}</MarkerIcon>
-        <MarkerContent>
-          {line.text}
-          {line.object === undefined ? null : (
-            <>
-              {" "}
-              <b className="font-semibold text-foreground">{line.object}</b>
-            </>
-          )}
-          {line.refused ? " (refused)" : null}
-        </MarkerContent>
-      </Marker>
-      {input === undefined ? null : (
-        <details className="ps-6 text-sm">
-          <summary className={chipClass}>Query used</summary>
-          <pre className="mt-2 overflow-x-auto rounded-md bg-muted p-2 text-xs">
-            {JSON.stringify(input, null, 2)}
-          </pre>
-        </details>
-      )}
-    </div>
-  );
-}
 
 type ChartNode = {
   readonly typeName?: string;
@@ -162,31 +88,6 @@ function AnswerText(props: {
         </p>
       ) : null}
     </div>
-  );
-}
-
-function assistantPart(
-  part: MessagePart,
-  index: number,
-  streaming: boolean,
-  labels: ChatLabels
-): ReactNode {
-  if (part.type === "text") {
-    return <AnswerText key={index} text={part.text} streaming={streaming} />;
-  }
-
-  if (part.type === "step-start") return null;
-
-  const name = toolNameOf(part);
-
-  return name === null ? null : (
-    <ToolStep
-      key={index}
-      part={part}
-      name={name}
-      labels={labels}
-      streaming={streaming}
-    />
   );
 }
 
@@ -271,6 +172,10 @@ export function MessageParts(props: {
   readonly streaming: boolean;
   /** The words for module tools and dataset titles; without them a step reads "Used a tool". */
   readonly labels?: ChatLabels;
+  /** A finished answer's time for the steps strip. */
+  readonly durationMs?: number | undefined;
+  /** Sends the question again after a final refusal. */
+  readonly onTryAgain?: (() => void) | undefined;
 }): ReactNode {
   const body = useRef<HTMLDivElement>(null);
 
@@ -295,10 +200,22 @@ export function MessageParts(props: {
     props.message.parts.some((part) => part.type === "text");
 
   return (
-    <div className="grid gap-3">
-      <div ref={body} className="grid gap-3">
+    <StepTimeline
+      parts={props.message.parts}
+      labels={labels}
+      streaming={props.streaming}
+      durationMs={props.durationMs}
+      onTryAgain={props.onTryAgain}
+    >
+      <div ref={body} className="grid gap-3 empty:hidden">
         {props.message.parts.map((part, index) =>
-          assistantPart(part, index, props.streaming, labels)
+          part.type === "text" ? (
+            <AnswerText
+              key={index}
+              text={part.text}
+              streaming={props.streaming}
+            />
+          ) : null
         )}
       </div>
       {answered ? (
@@ -308,6 +225,6 @@ export function MessageParts(props: {
           answer={() => body.current?.innerText ?? ""}
         />
       ) : null}
-    </div>
+    </StepTimeline>
   );
 }

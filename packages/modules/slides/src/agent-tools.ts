@@ -32,7 +32,11 @@ const titleOf = ([first]: readonly StoredElement[]) =>
 
 const listDecksTool = defineAgentTool({
   name: "slides-list-decks",
-  step: "Looked up the decks",
+  step: {
+    active: "Looking up the decks",
+    done: "Looked up the decks",
+    failed: "Could not look up the decks",
+  },
   description:
     "Lists this person's own decks: each one's id, title, figures date and slide count.",
   input: z.strictObject({}),
@@ -54,7 +58,11 @@ const listDecksTool = defineAgentTool({
 
 const readDeckTool = defineAgentTool({
   name: "slides-read-deck",
-  step: "Read the deck",
+  step: {
+    active: "Reading the deck",
+    done: "Read the deck",
+    failed: "Could not read the deck",
+  },
   description:
     "Reads one of this person's own decks by id: its title, figures date and slides, with each element's kind, text and chart config.",
   input: z.strictObject({ deckId }),
@@ -93,7 +101,11 @@ const slideRules = [
 /** Goes through the store, so the gate, the owner, the frozen date and the audit run as for a hand create. */
 const createDeckTool = defineAgentTool({
   name: "slides-create-deck",
-  step: "Made a deck",
+  step: {
+    active: "Making a deck",
+    done: "Made a deck",
+    failed: "Could not make a deck",
+  },
   description: `Creates a deck for this person from a title and its slides. Each slide starts with a title element that states its finding, then at most one text or bullet list, and at most two figures (KPI), charts (bar, line, area or donut) or tables, each with a chart config. A slide holds at most one table, beside one text or one other figure, chart or image, not both. ${DATA_LIMIT_MESSAGES.table} ${DATA_LIMIT_MESSAGES.chart} Every chart passes the chart check first, and a refused chart saves nothing. The figures are frozen as of the reporting date. The person can remove the deck with Delete in the Slides list.`,
   input: z.strictObject({
     title: deckTitle,

@@ -84,7 +84,13 @@ const CHAT_ON = {
   kind: "on",
   models: { allowed: [], chatDefault: null },
   labels: {
-    steps: { "analytics-change-dashboard": "Changed the dashboard" },
+    steps: {
+      "analytics-change-dashboard": {
+        active: "Changing the dashboard",
+        done: "Changed the dashboard",
+        failed: "Could not change the dashboard",
+      },
+    },
     datasets: { "invoices.invoices": "Invoices" },
   },
   suggestions: [],

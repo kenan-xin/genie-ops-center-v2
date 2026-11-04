@@ -1,11 +1,12 @@
+import type { StepWords } from "../../../contracts/index.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { listDatasets } from "../datasets/index.ts";
 import { offeredModuleTools } from "./tools.ts";
 
 /** The words a chat shows for a tool call and a dataset, so it never prints an internal name. */
 export type ChatLabels = {
-  /** A module tool's name to its `step` line. */
-  readonly steps: Readonly<Record<string, string>>;
+  /** A module tool's name to its `step` lines. */
+  readonly steps: Readonly<Record<string, StepWords>>;
   /** A dataset's name to its `title`. */
   readonly datasets: Readonly<Record<string, string>>;
 };

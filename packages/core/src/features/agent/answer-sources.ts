@@ -2,7 +2,7 @@ import { z } from "zod";
 
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
 import { fmtDate } from "../audit/helpers.ts";
-import { toolNameOf } from "./step-line.ts";
+import { toolNameOf } from "./step-model.ts";
 
 type MessagePart = AgentMessage["parts"][number];
 

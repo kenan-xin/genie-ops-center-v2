@@ -97,6 +97,12 @@ describe("agentAccess on the placeholder", () => {
   });
 });
 
+const COUNT_STEP = {
+  active: "Counting the records",
+  done: "Counted the records",
+  failed: "Could not count the records",
+};
+
 async function labelsOf(permissions: readonly string[]) {
   const userId = await personWith(permissions);
   const tenant = deployment.context;
@@ -120,14 +126,14 @@ describe("chatLabels on the placeholder", () => {
     }).toEqual({
       reader: {
         labels: {
-          steps: { "placeholder-count-records": "Counted the records" },
+          steps: { "placeholder-count-records": COUNT_STEP },
           datasets: { "placeholder.records": "Placeholder records" },
         },
         suggestions: [],
       },
       other: {
         labels: {
-          steps: { "placeholder-count-records": "Counted the records" },
+          steps: { "placeholder-count-records": COUNT_STEP },
           datasets: {},
         },
         suggestions: [],

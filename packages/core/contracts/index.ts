@@ -74,6 +74,13 @@ export type AgentToolResult = {
   readonly dataset?: string;
 };
 
+/** A step's three lines in the chat: while it runs, once it ran, and when it was refused. */
+export type StepWords = {
+  readonly active: string;
+  readonly done: string;
+  readonly failed: string;
+};
+
 /**
  * One tool for the boss agent (R-43). It runs only through `can()` and `scopesFor()` as
  * `ctx.caller`, the person who asks (DEC-29), and core writes its audit row.
@@ -88,10 +95,11 @@ export type AgentTool<TInput> = {
   /** The tool changes data: it names a permission and gives its change an Undo (R-46). */
   readonly writes?: true;
   /**
-   * The line a chat shows for one call, in the past tense, for example "Changed the dashboard".
-   * The chat only; the model never reads it, so a change needs no new recording.
+   * The lines a chat shows for one call, for example "Changing the dashboard", "Changed the
+   * dashboard" and "Could not change the dashboard". The chat only; the model never reads them,
+   * so a change needs no new recording.
    */
-  readonly step?: string;
+  readonly step?: StepWords;
   run(ctx: ModuleRequestContext, input: TInput): Promise<AgentToolResult>;
 };
 
@@ -102,7 +110,7 @@ export type AnyAgentTool = {
   readonly input: ZodType;
   readonly permission?: PermissionKey;
   readonly writes?: true;
-  readonly step?: string;
+  readonly step?: StepWords;
   run(ctx: ModuleRequestContext, input: never): Promise<AgentToolResult>;
 };
 
