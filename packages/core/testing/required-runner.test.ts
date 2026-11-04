@@ -433,12 +433,15 @@ describe("the core integration runner command line", () => {
   });
 
   // The reviewed negative control, against the real configuration: a filter
-  // that matches nothing anywhere skips every file, so no container starts and
-  // the run must fail here rather than report green. The stderr assertion is
-  // the point: exit 1 alone would also come from a missing config or a
-  // collection error, which would not prove the skip path.
+  // that matches nothing skips every case, so no container starts and the run
+  // must fail here rather than report green. The stderr assertion is the
+  // point: exit 1 alone would also come from a missing config or a collection
+  // error, which would not prove the skip path. The file filter collects only
+  // the migrator file, because collecting every integration file beside the
+  // outer run took 88 to 136 s on CI and passed the 120 s limit.
   it("exits nonzero for a filtered run of the real config, naming the skipped case", () => {
     const result = runRunner(resolve(import.meta.dirname, ".."), [
+      migrator.file,
       "-t",
       "__review_no_case_matches__",
     ]);

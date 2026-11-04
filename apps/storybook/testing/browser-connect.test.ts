@@ -19,5 +19,6 @@ describe("the browser connect timeout", () => {
     // Develop run 35883152097 hit the default while an image build and a
     // Next build shared the 4-vCPU runner with the nested story run.
     expect(vitestConfig.browser.connectTimeout).toBe(120_000);
-  });
+    // Loading the whole Storybook config takes 5 to 6 s on a busy CI runner.
+  }, 30_000);
 });
