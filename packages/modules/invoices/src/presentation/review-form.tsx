@@ -176,7 +176,7 @@ export function ReviewTextRow(
           <DatePicker
             id={id}
             aria-label={label}
-            placeholder="26 Oct 2026"
+            placeholder="DD Mon YYYY"
             pickLabel={`Choose the ${label.toLowerCase()}`}
             value={props.value}
             aria-invalid={control["aria-invalid"]}

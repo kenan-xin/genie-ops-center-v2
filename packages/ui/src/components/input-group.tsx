@@ -120,7 +120,7 @@ function InputGroupInput({
     <InputPrimitive
       data-slot="input-group-control"
       className={cn(
-        "w-full min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed",
+        "w-full min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed",
         size === "filter" ? FILTER_SIZE : inputSizes[size],
         className
       )}

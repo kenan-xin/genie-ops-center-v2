@@ -137,6 +137,9 @@ export const MissingDueDate: Story = {
 
     const due = canvas.getByLabelText("Due date");
 
+    // czjw.65 (I6): a format hint, never a realistic date that reads as filled in.
+    await expect(due).toHaveAttribute("placeholder", "DD Mon YYYY");
+
     await userEvent.type(due, "25/11/2026");
     await expect(
       canvas.getByText("Write the due date as 25 Nov 2026 to save.")

@@ -17,6 +17,7 @@
   --color-card: var(--card);
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+  --color-placeholder: var(--placeholder);
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
@@ -79,6 +80,8 @@
     --card: #ffffff;
     --muted: #f9fafb;
     --muted-foreground: #4b5563;
+    /* czjw.65: placeholder text, lighter than muted text and still 4.83:1 on white. */
+    --placeholder: #6b7280;
     --border: #e5e7eb;
     --input: #6b7280;
     --ring: var(--primary);
@@ -121,6 +124,7 @@
     --card: #111827;
     --muted: #111827;
     --muted-foreground: #9ca3af;
+    --placeholder: #9ca3af;
     --border: #1f2937;
     --ring: var(--brand-on-dark);
     --category-session-bg: #083344;

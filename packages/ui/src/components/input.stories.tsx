@@ -9,6 +9,12 @@ import {
   FieldError,
   FieldLabel,
   Input,
+  InputGroup,
+  InputGroupInput,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  Textarea,
 } from "../index.ts";
 
 const meta = {
@@ -88,6 +94,40 @@ export const Sizes: Story = {
       .map((input) => input.getBoundingClientRect().height);
 
     await expect(heights).toEqual([32, 40, 44]);
+  },
+};
+
+// czjw.65 (I6): every control shows its placeholder in the placeholder role, gray-500 in light,
+// so a hint never reads as a value the person entered.
+export const Placeholders: Story = {
+  render: (args) => (
+    <div className="flex flex-col gap-4">
+      <Input {...args} aria-label="Input" placeholder="Search" />
+      <Textarea aria-label="Textarea" placeholder="Add a note" />
+      <InputGroup>
+        <InputGroupInput aria-label="Input group" placeholder="DD Mon YYYY" />
+      </InputGroup>
+      <Select>
+        <SelectTrigger aria-label="Select">
+          <SelectValue placeholder="Choose the type" />
+        </SelectTrigger>
+      </Select>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const gray500 = "rgb(107, 114, 128)";
+
+    for (const name of ["Input", "Textarea", "Input group"]) {
+      // oxlint-disable-next-line no-await-in-loop -- one control per check.
+      await expect(
+        getComputedStyle(canvas.getByRole("textbox", { name }), "::placeholder")
+          .color
+      ).toBe(gray500);
+    }
+
+    await expect(
+      getComputedStyle(canvas.getByRole("combobox", { name: "Select" })).color
+    ).toBe(gray500);
   },
 };
 

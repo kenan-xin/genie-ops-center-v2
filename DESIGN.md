@@ -289,6 +289,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 ### Inputs / Fields
 
 - **Style:** 40px height, 8px radius, 1px gray-500 border (`--input`, 4.89:1 on white, because the border is a component boundary under 1.4.11), white background, 12px horizontal padding.
+- **Placeholder:** gray-500, dark gray-400 (`--placeholder`), regular. A format hint such as `DD Mon YYYY`, never a realistic value, so an empty field never reads as filled in.
 - **Focus:** the border takes the `--ring` color, plus the shared ring.
 - **Labels / Helper / Error:** label above the control (semibold small gray-800), helper text below in small gray-600, field error below in small red-700 with `aria-describedby`. Form-level error block carries `role="alert"`; informational notice block `role="status"`. A changed field carries a small blue dot on its label while unsaved; required fields are marked in the label.
 

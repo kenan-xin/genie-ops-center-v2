@@ -18,7 +18,7 @@ function Input({
     <InputPrimitive
       data-slot="input"
       className={cn(
-        "w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground motion-safe:transition-colors file:inline-flex file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive",
+        "w-full min-w-0 rounded-lg border border-input bg-card px-3 text-sm text-foreground motion-safe:transition-colors file:inline-flex file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-placeholder disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive",
         inputSizes[size],
         focusRing,
         className

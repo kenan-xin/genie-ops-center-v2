@@ -14,6 +14,7 @@ export type ColorRole =
   | "card"
   | "muted"
   | "muted-foreground"
+  | "placeholder"
   | "border"
   | "input"
   | "ring"
@@ -29,6 +30,8 @@ const lightRoles = {
   "card": "#ffffff",
   "muted": "#f9fafb",
   "muted-foreground": "#4b5563",
+  // czjw.65: lighter than muted text, so a hint never reads as an entered value.
+  "placeholder": "#6b7280",
   "border": "#e5e7eb",
   "input": "#6b7280",
   "ring": "var(--primary)",
@@ -51,6 +54,7 @@ export const colorRoles: Readonly<
     "card": "#111827",
     "muted": "#111827",
     "muted-foreground": "#9ca3af",
+    "placeholder": "#9ca3af",
     "border": "#1f2937",
     "ring": "var(--brand-on-dark)",
   },

@@ -156,7 +156,7 @@ function dueDateInput(value: string, set: (value: string) => void): ReactNode {
     <DatePicker
       id="review-due-date"
       aria-label="Due date"
-      placeholder="25 Nov 2026"
+      placeholder="DD Mon YYYY"
       pickLabel="Choose the due date"
       value={value}
       onValueChange={set}

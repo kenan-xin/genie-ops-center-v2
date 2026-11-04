@@ -115,6 +115,7 @@ describe("the fixed token layer against tokens.md", () => {
         "card": "#ffffff",
         "muted": "#f9fafb",
         "muted-foreground": "#4b5563",
+        "placeholder": "#6b7280",
         "border": "#e5e7eb",
         "input": "#6b7280",
         "ring": "var(--primary)",
@@ -130,6 +131,7 @@ describe("the fixed token layer against tokens.md", () => {
         "card": "#111827",
         "muted": "#111827",
         "muted-foreground": "#9ca3af",
+        "placeholder": "#9ca3af",
         "border": "#1f2937",
         "input": "#6b7280",
         "ring": "var(--brand-on-dark)",
@@ -140,6 +142,21 @@ describe("the fixed token layer against tokens.md", () => {
         "destructive-on-dark": "#f87171",
       },
     });
+  });
+
+  // czjw.65 (I6): a placeholder must read, but never as a value the person entered.
+  it("keeps the placeholder readable on the card and apart from the value text", () => {
+    for (const theme of ["light", "dark"] as const) {
+      const roles = colorRoles[theme];
+
+      expect(
+        contrastRatio(roles.placeholder, roles.card)
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+
+    expect(
+      contrastRatio(colorRoles.light.foreground, colorRoles.light.placeholder)
+    ).toBeGreaterThanOrEqual(3);
   });
 
   it("offers the compact, default and large root sizes, with 15 px the default", () => {
