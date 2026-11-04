@@ -173,6 +173,8 @@ export const MultiOptionCounts: Story = {
     );
     await waitFor(() => expect(param("customer")).toBe("c-1,c-3"));
     await userEvent.keyboard("{Escape}");
+    // The popup's focus guards stay until it has closed; axe runs after the play function.
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
     await expect(
       canvas.getByLabelText("Customer: 2 customers")
     ).toBeInTheDocument();
