@@ -1,5 +1,5 @@
 import { mintDevSession } from "@genie/core/testing";
-import type { Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 import { TEST_AUTH_ENV } from "../../testing/auth-env.ts";
 import { FIRST_PAINT } from "./dev-support.ts";
@@ -37,16 +37,44 @@ export async function askQuestion(page: Page, text: string): Promise<string> {
       request.url().endsWith("/api/agent") && request.method() === "POST"
   );
 
-  await page.getByRole("textbox", { name: "Message Ask" }).fill(text);
+  await page.getByRole("textbox", { name: "Message", exact: true }).fill(text);
   await page.getByRole("button", { name: "Send" }).click();
 
-  // SAFETY: the bubble and Ask send the route's JSON body, whose `sessionId` is a string (P3).
+  // SAFETY: the agent panel and Ask send the route's JSON body, whose `sessionId` is a string (P3).
   const { sessionId } = (await sent).postDataJSON() as { sessionId: string };
 
   return sessionId;
 }
 
-/** Keeps the development widgets off the bubble and the sheet's Send. Call before the first page. */
+/**
+ * Clicks `trigger` until `target` shows, as `openNavigation` does: a click before hydration does
+ * nothing, and each retry clicks only while the target is hidden, so it never toggles one shut.
+ */
+export async function openUntilVisible(
+  trigger: Locator,
+  target: Locator
+): Promise<void> {
+  // FIRST_PAINT, not 15 s: after a source change a cold `next dev` compile hydrated later than that.
+  await expect(async () => {
+    if (!(await target.isVisible())) await trigger.click();
+
+    await expect(target).toBeVisible({ timeout: 1000 });
+  }).toPass(FIRST_PAINT);
+}
+
+/** Opens the agent panel with the Agent button: a column from 1280 px, a sheet below (AG11). */
+export async function openAgentPanel(page: Page): Promise<Locator> {
+  const panel = page.getByRole("region", { name: "Agent", exact: true });
+
+  await openUntilVisible(
+    page.getByRole("button", { name: "Agent", exact: true }),
+    panel
+  );
+
+  return panel;
+}
+
+/** Keeps the development widgets off the agent panel's Send. Call before the first page. */
 export async function hideDevelopmentWidgets(page: Page): Promise<void> {
   await page.addInitScript(() => {
     // P11: react-lang mounts its Inspect widget in development unless this flag is already set.
