@@ -7,6 +7,9 @@ import {
 } from "react";
 import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { AgentClientStub } from "../agent/__fixtures__/agent-client.tsx";
+import { AgentPanelHost } from "../agent/agent-panel-host.tsx";
+import { resetAgentPanel } from "../agent/agent-panel-store.ts";
 import { ChatDock } from "../agent/chat-dock.tsx";
 import { ChatPanel } from "../agent/chat-panel.tsx";
 import { AppShell, type AppShellProps } from "./app-shell.tsx";
@@ -868,6 +871,86 @@ export const AccountPageTitle: Story = {
 export const LongDrawerDark: Story = {
   ...LongDrawerScrollsOnlyTheEntries,
   globals: { ...phone, theme: "dark" },
+};
+
+/** The app's host, with no model picker; the stub client loads no saved messages. */
+const agentPanel = (
+  <AgentPanelHost
+    models={null}
+    labels={{ steps: {}, datasets: {} }}
+    suggestions={[]}
+    inbox={[]}
+    timeZone="UTC"
+  />
+);
+
+const withAgent: NonNullable<Meta["decorators"]> = [
+  (Story) => (
+    <AgentClientStub>
+      <Story />
+    </AgentClientStub>
+  ),
+];
+
+const wide = { viewport: { value: "desktop1440", isRotated: false } };
+
+// FR1: the Agent button opens the panel; Close and Escape close it, and focus goes back (R-42).
+export const OpensAndClosesTheAgentPanel: Story = {
+  name: "Opens and closes the agent panel",
+  globals: wide,
+  decorators: withAgent,
+  beforeEach: resetAgentPanel,
+  args: { agentPanel },
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole("button", { name: "Agent" });
+
+    await expect(button).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(button);
+
+    const region = await canvas.findByRole("region", { name: "Agent" });
+
+    await expect(
+      within(region).getByRole("heading", { level: 2, name: "Agent" })
+    ).toBeVisible();
+    await expect(button).toHaveAttribute("aria-expanded", "true");
+
+    await userEvent.click(
+      within(region).getByRole("button", { name: "Close the agent panel" })
+    );
+    await waitFor(() =>
+      expect(canvas.queryByRole("region", { name: "Agent" })).toBeNull()
+    );
+    await expect(button).toHaveFocus();
+
+    await userEvent.click(button);
+    await userEvent.click(
+      await within(
+        await canvas.findByRole("region", { name: "Agent" })
+      ).findByRole("button", { name: "New chat" })
+    );
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(canvas.queryByRole("region", { name: "Agent" })).toBeNull()
+    );
+    await expect(button).toHaveFocus();
+  },
+};
+
+// FR7: Ask is the agent's full page, so it gets no Agent button and no panel beside it.
+export const NoAgentOnAsk: Story = {
+  name: "No agent on Ask",
+  globals: wide,
+  decorators: withAgent,
+  beforeEach: resetAgentPanel,
+  args: { agentPanel, currentPath: "/ask" },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.queryByRole("button", { name: "Agent", hidden: true })
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole("region", { name: "Agent", hidden: true })
+    ).toBeNull();
+  },
 };
 
 const examplePanel = (title: string) => (close: () => void) => (

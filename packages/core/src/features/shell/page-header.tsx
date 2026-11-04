@@ -13,6 +13,7 @@ import {
 import { ChevronLeft } from "lucide-react";
 import { use, type ReactNode } from "react";
 
+import { AgentButton } from "../agent/agent-button.tsx";
 import { PageTrailContext } from "./page-trail.tsx";
 import { ShellContext } from "./shell-context.ts";
 import { linkFor } from "./shell-link.ts";
@@ -58,6 +59,7 @@ function PageTopBar(props: {
   readonly name: string;
   readonly backTo: string;
   readonly Anchor: ReturnType<typeof linkFor>;
+  readonly agent: boolean;
 }) {
   const { crumb, Anchor } = props;
 
@@ -81,6 +83,7 @@ function PageTopBar(props: {
       >
         {props.name}
       </p>
+      {props.agent ? <AgentButton /> : null}
     </div>
   );
 }
@@ -163,6 +166,7 @@ export function PageHeader(props: PageHeaderProps) {
           backTo={shell.backTo}
           name={crumb.current ?? props.title}
           Anchor={Anchor}
+          agent={shell.agentPanel}
         />
       ) : null}
       <header
@@ -202,6 +206,12 @@ export function PageHeader(props: PageHeaderProps) {
                 {props.actions}
               </div>
             )}
+            {/* At the right end from 1024 px, where the shell spec puts the bell (AG10). */}
+            {shell.agentPanel ? (
+              <div className="hidden lg:block">
+                <AgentButton />
+              </div>
+            ) : null}
           </div>
         ) : props.actions === undefined &&
           props.secondaryActions === undefined ? null : (

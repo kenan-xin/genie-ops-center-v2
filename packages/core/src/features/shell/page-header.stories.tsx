@@ -26,7 +26,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const inShell: Decorator = (Story) => (
-  <ShellContext.Provider value={{ chrome: "admin", backTo: "Back to {page}" }}>
+  <ShellContext.Provider
+    value={{ chrome: "admin", backTo: "Back to {page}", agentPanel: false }}
+  >
     <Story />
   </ShellContext.Provider>
 );

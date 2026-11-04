@@ -22,6 +22,7 @@ import {
   type ReactNode,
 } from "react";
 
+import { AgentButton } from "../agent/agent-button.tsx";
 import { activeHref, isAskPath, shellLinks } from "./active-link.ts";
 import { IdentityBlock, TenantMark } from "./identity-block.tsx";
 import { deviceStorage, NavigationRail } from "./navigation-rail.tsx";
@@ -52,6 +53,8 @@ export type AppShellProps = {
   readonly linkComponent?: ShellLinkComponent;
   /** The general chat of every page, usually a `ChatDock`; it steps aside for a page's own chat. */
   readonly chat?: ReactNode;
+  /** The agent panel host; the app passes it only for a person who may use the agent. */
+  readonly agentPanel?: ReactNode;
 };
 
 const iconButton = `flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-border/60 motion-safe:transition-colors ${focusRing}`;
@@ -232,6 +235,16 @@ export function AppShell(props: AppShellProps) {
 
   const active = activeHref(props.navigation, props.currentPath);
 
+  // Ask is the agent's own page, so it gets no panel and no Agent button (FR7).
+  const agentOn = props.agentPanel !== undefined && !onAsk;
+
+  const shellContext = {
+    chrome: props.chrome,
+    backTo: strings.backTo,
+    linkComponent: props.linkComponent,
+    agentPanel: agentOn,
+  };
+
   const title =
     props.title ??
     shellLinks(props.navigation).find((link) => link.href === active)?.label ??
@@ -284,6 +297,7 @@ export function AppShell(props: AppShellProps) {
               {title}
             </p>
             <div data-shell-slot="search" aria-hidden="true" />
+            {agentOn ? <AgentButton /> : null}
           </header>
           {/* Focusable, so a keyboard scrolls a page that holds no control of its own (6wz1.70).
               A group, not a region: a named region is a landmark, and the page's <main> must not
@@ -300,17 +314,17 @@ export function AppShell(props: AppShellProps) {
             // so its own parts scroll and its composer stays at the bottom (agent-native rule 1).
             className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-28 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 ${focusRing} focus-visible:ring-inset`}
           >
-            <ShellContext.Provider
-              value={{
-                chrome: props.chrome,
-                backTo: strings.backTo,
-                linkComponent: props.linkComponent,
-              }}
-            >
+            <ShellContext.Provider value={shellContext}>
               {props.children}
             </ShellContext.Provider>
           </div>
         </div>
+        {/* The last item of the row: from 1280 px the open panel narrows the page (AG11). */}
+        {props.agentPanel === undefined ? null : (
+          <ShellContext.Provider value={shellContext}>
+            {props.agentPanel}
+          </ShellContext.Provider>
+        )}
       </div>
       {props.chat === undefined ? null : (
         <div data-shell-chat="">{props.chat}</div>

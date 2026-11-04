@@ -10,4 +10,6 @@ export const ShellContext = createContext<{
   readonly linkComponent?: ShellLinkComponent | undefined;
   /** `ShellStrings.backTo`, for the page header's phone back link. */
   readonly backTo: string;
+  /** The app passed an agent panel host, and the page is not Ask: the Agent button shows. */
+  readonly agentPanel: boolean;
 } | null>(null);
