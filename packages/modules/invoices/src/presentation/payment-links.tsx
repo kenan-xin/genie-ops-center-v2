@@ -4,8 +4,10 @@ import {
   Badge,
   Button,
   Checkbox,
+  Disclosure,
   FieldError,
   FieldLabel,
+  HelpDisclosure,
   InputGroup,
   InputGroupInput,
 } from "@genie/ui";
@@ -17,7 +19,12 @@ import {
   type PaymentMatch,
 } from "../contract.ts";
 import { formatMoney, moneyText } from "./format.ts";
-import { checkLinks, fillOf, type LinkDraft } from "./payment-links.ts";
+import {
+  checkLinks,
+  fillOf,
+  type LinkDraft,
+  splitGroupsOf,
+} from "./payment-links.ts";
 import { SaveFailure } from "./review-alerts.tsx";
 import { AMOUNT_MESSAGE, CurrencyAddon } from "./review-form.tsx";
 
@@ -76,6 +83,21 @@ function copyOf(
   }
 }
 
+const NAMED_HINT =
+  "Invoices that this payment names. Their amounts are filled in for you.";
+
+const OTHERS_HINT =
+  "Open invoices of this customer that the payment does not name. Link one only if the payment named the wrong invoice.";
+
+/** An info icon beside a group title: hover, focus and a tap show its one sentence (DEC-25). */
+function GroupInfo(props: { readonly label: string; readonly hint: string }) {
+  return (
+    <HelpDisclosure iconOnly icon="info" label={props.label} hint={props.hint}>
+      <p>{props.hint}</p>
+    </HelpDisclosure>
+  );
+}
+
 /** The person's links of a payment to the open invoices of its customer; nothing links by itself (R-30, R-31). */
 export function LinksEditor(props: {
   readonly proposal: PaymentMatch;
@@ -86,6 +108,9 @@ export function LinksEditor(props: {
   /** The payment amount in cents, undefined while it does not parse. */
   readonly amountCents: number | undefined;
   readonly currency: string;
+  /** The invoice numbers the payment names, as the form holds them now. */
+  readonly namedNumbers: readonly string[];
+  readonly customerName: string;
   readonly onChange: (drafts: readonly LinkDraft[]) => void;
 }): ReactNode {
   const { proposal, status, open, drafts, amountCents, onChange } = props;
@@ -97,6 +122,102 @@ export function LinksEditor(props: {
 
   const others = (invoiceId: string) =>
     drafts.filter((draft) => draft.invoiceId !== invoiceId);
+
+  const groups = splitGroupsOf(open, props.namedNumbers);
+
+  // One compact row per invoice: the link and its open balance, the amount beside them (4.7).
+  const rowOf = (row: OpenInvoiceRow) => {
+    const draft = drafts.find((item) => item.invoiceId === row.invoiceId);
+
+    const id = `link-${row.invoiceId}`;
+
+    const message = check.unreadable.includes(row.invoiceId)
+      ? AMOUNT_MESSAGE
+      : check.aboveOpen.includes(row.invoiceId)
+        ? `More than the open balance of ${row.number}.`
+        : undefined;
+
+    const setAmount = (amountText: string) =>
+      onChange(
+        drafts.map((item) =>
+          item.invoiceId === row.invoiceId
+            ? { invoiceId: row.invoiceId, amountText }
+            : item
+        )
+      );
+
+    return (
+      <li
+        key={row.invoiceId}
+        className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2"
+      >
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+          <FieldLabel className="items-center">
+            <Checkbox
+              checked={draft !== undefined}
+              onCheckedChange={(checked) =>
+                onChange(
+                  checked
+                    ? [
+                        ...others(row.invoiceId),
+                        {
+                          invoiceId: row.invoiceId,
+                          amountText: fillOf(
+                            amountCents,
+                            others(row.invoiceId),
+                            row
+                          ),
+                        },
+                      ]
+                    : others(row.invoiceId)
+                )
+              }
+            />
+            <span className="ml-2">{`Link to ${row.number}`}</span>
+          </FieldLabel>
+          {suggested(row.invoiceId) ? (
+            <Badge variant="neutral">Same amount</Badge>
+          ) : null}
+          <span className="text-muted-foreground">
+            {`Open ${formatMoney(row.openCents, row.currency)}`}
+          </span>
+        </div>
+        <InputGroup className="w-36 shrink-0">
+          {/* An unchecked row's input is disabled and faded; its currency would fail contrast. */}
+          {draft === undefined ? null : (
+            <CurrencyAddon currency={row.currency} />
+          )}
+          <InputGroupInput
+            id={id}
+            aria-label={`Amount for ${row.number}`}
+            inputMode="decimal"
+            disabled={draft === undefined}
+            value={draft?.amountText ?? ""}
+            aria-invalid={message === undefined ? undefined : true}
+            aria-describedby={message === undefined ? undefined : `${id}-error`}
+            onChange={(event) => setAmount(event.target.value)}
+            onBlur={() => {
+              const shown = moneyText(draft?.amountText ?? "");
+
+              if (draft !== undefined && shown !== draft.amountText)
+                setAmount(shown);
+            }}
+          />
+        </InputGroup>
+        {message === undefined ? null : (
+          <FieldError id={`${id}-error`} className="basis-full">
+            {message}
+          </FieldError>
+        )}
+      </li>
+    );
+  };
+
+  const listOf = (rows: readonly OpenInvoiceRow[]) => (
+    <ul className="flex flex-col divide-y divide-border">{rows.map(rowOf)}</ul>
+  );
+
+  const othersTitle = `Other open invoices of ${props.customerName}`;
 
   return (
     <section
@@ -129,99 +250,46 @@ export function LinksEditor(props: {
           This customer has no open invoice in this currency.
         </p>
       ) : (
-        <ul className="flex flex-col divide-y divide-border">
-          {open.map((row) => {
-            const draft = drafts.find(
-              (item) => item.invoiceId === row.invoiceId
-            );
-
-            const id = `link-${row.invoiceId}`;
-
-            const message = check.unreadable.includes(row.invoiceId)
-              ? AMOUNT_MESSAGE
-              : check.aboveOpen.includes(row.invoiceId)
-                ? `More than the open balance of ${row.number}.`
-                : undefined;
-
-            const setAmount = (amountText: string) =>
-              onChange(
-                drafts.map((item) =>
-                  item.invoiceId === row.invoiceId
-                    ? { invoiceId: row.invoiceId, amountText }
-                    : item
-                )
-              );
-
-            // One compact row per invoice: the link and its open balance, the amount beside them (4.7).
-            return (
-              <li
-                key={row.invoiceId}
-                className="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-2"
-              >
-                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-                  <FieldLabel className="items-center">
-                    <Checkbox
-                      checked={draft !== undefined}
-                      onCheckedChange={(checked) =>
-                        onChange(
-                          checked
-                            ? [
-                                ...others(row.invoiceId),
-                                {
-                                  invoiceId: row.invoiceId,
-                                  amountText: fillOf(
-                                    amountCents,
-                                    others(row.invoiceId),
-                                    row
-                                  ),
-                                },
-                              ]
-                            : others(row.invoiceId)
-                        )
-                      }
-                    />
-                    <span className="ml-2">{`Link to ${row.number}`}</span>
-                  </FieldLabel>
-                  {suggested(row.invoiceId) ? (
-                    <Badge variant="neutral">Same amount</Badge>
-                  ) : null}
-                  <span className="text-muted-foreground">
-                    {`Open ${formatMoney(row.openCents, row.currency)}`}
-                  </span>
-                </div>
-                <InputGroup className="w-36 shrink-0">
-                  {/* An unchecked row's input is disabled and faded; its currency would fail contrast. */}
-                  {draft === undefined ? null : (
-                    <CurrencyAddon currency={row.currency} />
-                  )}
-                  <InputGroupInput
-                    id={id}
-                    aria-label={`Amount for ${row.number}`}
-                    inputMode="decimal"
-                    disabled={draft === undefined}
-                    value={draft?.amountText ?? ""}
-                    aria-invalid={message === undefined ? undefined : true}
-                    aria-describedby={
-                      message === undefined ? undefined : `${id}-error`
-                    }
-                    onChange={(event) => setAmount(event.target.value)}
-                    onBlur={() => {
-                      const shown = moneyText(draft?.amountText ?? "");
-
-                      if (draft !== undefined && shown !== draft.amountText)
-                        setAmount(shown);
-                    }}
-                  />
-                </InputGroup>
-                {message === undefined ? null : (
-                  <FieldError id={`${id}-error`} className="basis-full">
-                    {message}
-                  </FieldError>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+        <div className="flex flex-col gap-3">
+          <section
+            aria-labelledby="payment-links-named"
+            className="flex flex-col gap-1"
+          >
+            <div className="flex items-center gap-1">
+              <h3 id="payment-links-named" className="font-medium">
+                Named on this payment
+              </h3>
+              <GroupInfo
+                label="About Named on this payment"
+                hint={NAMED_HINT}
+              />
+            </div>
+            {groups.named.length === 0 ? (
+              <p className="text-muted-foreground">
+                {`The payment names no open invoice of ${props.customerName}.`}
+              </p>
+            ) : (
+              listOf(groups.named)
+            )}
+          </section>
+          {groups.others.length === 0 ? null : (
+            // Folded while the payment names an invoice; open when it names none, so suggestions show.
+            // The key starts it again when an edit of the invoice numbers changes which case holds.
+            <Disclosure
+              key={groups.named.length === 0 ? "open" : "folded"}
+              summary={othersTitle}
+              defaultOpen={groups.named.length === 0}
+              aside={
+                <GroupInfo
+                  label="About Other open invoices"
+                  hint={OTHERS_HINT}
+                />
+              }
+            >
+              {listOf(groups.others)}
+            </Disclosure>
+          )}
+        </div>
       )}
       {amountCents === undefined ||
       !currencyCode.safeParse(props.currency).success ? null : (

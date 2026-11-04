@@ -1,7 +1,7 @@
 "use client";
 
 import { useMediaQuery } from "@base-ui/react/unstable-use-media-query";
-import { CircleHelpIcon } from "lucide-react";
+import { CircleHelpIcon, InfoIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import { Button } from "../components/button.tsx";
@@ -21,6 +21,7 @@ import {
  * on a press. Escape, a click outside and Close shut it, and focus returns to the button. Under
  * 640 px the callout leaves the button and keeps 16 px from each viewport side. `iconOnly` is the
  * toolbar form: the label moves to `aria-label` and to a tooltip on hover and keyboard focus.
+ * With `hint`, that tooltip shows the hint instead, so an info icon explains itself on hover.
  */
 export function HelpDisclosure(props: {
   readonly label: string;
@@ -28,8 +29,12 @@ export function HelpDisclosure(props: {
   /** The edge of the button the callout lines up with from 640 px. */
   readonly align?: "start" | "end";
   readonly iconOnly?: boolean;
+  /** With `iconOnly`: the sentence the tooltip shows in place of the label. */
+  readonly hint?: string;
+  readonly icon?: "help" | "info";
 }) {
   const [open, setOpen] = useState(false);
+  const Icon = props.icon === "info" ? InfoIcon : CircleHelpIcon;
   const phone = useMediaQuery("(max-width: 639px)", { noSsr: true });
 
   return (
@@ -51,9 +56,9 @@ export function HelpDisclosure(props: {
               />
             }
           >
-            <CircleHelpIcon aria-hidden="true" />
+            <Icon aria-hidden="true" />
           </TooltipTrigger>
-          <TooltipContent>{props.label}</TooltipContent>
+          <TooltipContent>{props.hint ?? props.label}</TooltipContent>
         </Tooltip>
       ) : (
         <PopoverTrigger
@@ -62,7 +67,7 @@ export function HelpDisclosure(props: {
             <Button variant="ghost" className="w-fit justify-self-start" />
           }
         >
-          <CircleHelpIcon aria-hidden="true" />
+          <Icon aria-hidden="true" />
           {props.label}
         </PopoverTrigger>
       )}

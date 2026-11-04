@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, screen, userEvent, waitFor } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   Button,
@@ -159,6 +159,41 @@ export const IconOnly: Story = {
     await waitFor(() => expect(tip).toBeVisible());
     await expect(trigger.getBoundingClientRect().height).toBe(40);
     await expect(trigger.getBoundingClientRect().width).toBe(40);
+  },
+};
+
+const HINT = "Invoices that this payment names.";
+
+/** An info icon beside a title: hover and keyboard focus show its one sentence, a press (a tap) opens it. */
+export const Hint: Story = {
+  args: {
+    iconOnly: true,
+    icon: "info",
+    label: "About Named on this payment",
+    hint: HINT,
+    children: <p>{HINT}</p>,
+  },
+  parameters: OPEN_CALLOUT_A11Y,
+  play: async ({ canvas }) => {
+    const trigger = canvas.getByRole("button", {
+      name: "About Named on this payment",
+    });
+
+    await userEvent.hover(trigger);
+    await waitFor(() => expect(screen.getByText(HINT)).toBeVisible());
+    await userEvent.unhover(trigger);
+    await waitFor(() => expect(screen.queryByText(HINT)).toBeNull());
+
+    await userEvent.tab();
+    await expect(trigger).toHaveFocus();
+    await waitFor(() => expect(screen.getByText(HINT)).toBeVisible());
+
+    const { panel } = await open("About Named on this payment");
+
+    await waitFor(() => expect(within(panel).getByText(HINT)).toBeVisible());
+    await expect(
+      within(panel).getByRole("button", { name: "Close" })
+    ).toBeVisible();
   },
 };
 

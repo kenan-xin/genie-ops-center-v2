@@ -130,7 +130,6 @@ export const Split: Story = {
     await expect(canvas.getByText("Confirm the split")).toBeVisible();
     await expect(linkBox(canvas, "INV-2026-08-04")).toBeChecked();
     await expect(linkBox(canvas, "INV-2026-09-04")).toBeChecked();
-    await expect(linkBox(canvas, "INV-2026-10-04")).not.toBeChecked();
     await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4,050.00");
     await expect(amountFor(canvas, "INV-2026-09-04")).toHaveValue("4,200.00");
     await expect(
@@ -157,6 +156,43 @@ export const Split: Story = {
   },
 };
 
+const desktop1440 = { viewport: { value: "desktop1440", isRotated: false } };
+
+// czjw.69: the invoices the payment names sit apart; the customer's other open invoices fold away.
+export const SplitGroups: Story = {
+  name: "Split groups",
+  globals: desktop1440,
+  beforeEach: () => serve(splitPaymentReview),
+  play: async ({ canvas }) => {
+    const named = canvas.getByRole("region", { name: "Named on this payment" });
+
+    await expect(
+      within(named).getByRole("checkbox", { name: "Link to INV-2026-08-04" })
+    ).toBeChecked();
+    await expect(
+      within(named).getByRole("checkbox", { name: "Link to INV-2026-09-04" })
+    ).toBeChecked();
+
+    const fold = canvas.getByRole("button", {
+      name: "Other open invoices of Orchid Retail",
+    });
+
+    await expect(fold).toHaveAttribute("aria-expanded", "false");
+    await expect(
+      canvas.queryByRole("checkbox", { name: "Link to INV-2026-10-04" })
+    ).toBeNull();
+
+    await userEvent.click(fold);
+    await expect(linkBox(canvas, "INV-2026-10-04")).not.toBeChecked();
+    await expect(
+      canvas.getByRole("button", { name: "About Named on this payment" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "About Other open invoices" })
+    ).toBeVisible();
+  },
+};
+
 // B6.3: nothing links until the person checks the suggestion, which fills the full amount.
 export const Suggestions: Story = {
   args: { view: suggestionsPaymentReview },
@@ -164,6 +200,12 @@ export const Suggestions: Story = {
   beforeEach: () => serve(suggestionsPaymentReview),
   play: async ({ canvas }) => {
     await expect(canvas.getByText("Possible matches")).toBeVisible();
+    // czjw.69: a payment that names no invoice keeps the suggestions in sight.
+    await expect(
+      canvas.getByRole("button", {
+        name: "Other open invoices of Orchid Retail",
+      })
+    ).toHaveAttribute("aria-expanded", "true");
 
     await expect(canvas.queryAllByRole("checkbox", { checked: true })).toEqual(
       []
@@ -211,6 +253,11 @@ export const Overpayment: Story = {
       )
     ).toBeVisible();
     await expect(linkBox(canvas, "INV-2026-08-04")).toBeChecked();
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Other open invoices of Orchid Retail",
+      })
+    );
     await expect(linkBox(canvas, "INV-2026-09-04")).not.toBeChecked();
     await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4,050.00");
     await expect(
@@ -416,6 +463,12 @@ export const PossibleDuplicate: Story = {
 export const SplitOnPhone: Story = {
   ...Split,
   name: "Split on a phone",
+  globals: phone,
+};
+
+export const SplitGroupsOnPhone: Story = {
+  ...SplitGroups,
+  name: "Split groups on a phone",
   globals: phone,
 };
 

@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import type { OpenInvoiceRow } from "../contract.ts";
-import { checkLinks, draftsOfProposal } from "./payment-links.ts";
+import {
+  checkLinks,
+  draftsOfProposal,
+  splitGroupsOf,
+} from "./payment-links.ts";
 
 const AUG = "30000000-0000-4000-8000-000000000804";
 
@@ -27,6 +31,15 @@ const OPEN: readonly OpenInvoiceRow[] = [
 ];
 
 const PAYMENT_CENTS = 825_000;
+
+const OCT: OpenInvoiceRow = {
+  invoiceId: "30000000-0000-4000-8000-000000001004",
+  number: "INV-2026-10-04",
+  invoiceDate: "2026-10-04",
+  dueDate: "2026-11-03",
+  currency: "SGD",
+  openCents: 435_000,
+};
 
 describe("the links of a payment under review", () => {
   // B6.1: integer cents, a link above its open amount, links above the payment, an unreadable amount.
@@ -81,6 +94,13 @@ describe("the links of a payment under review", () => {
       aboveOpen: [],
       unreadable: [SEP],
     });
+  });
+
+  // czjw.69: a number typed in another case or with a space still names its invoice.
+  it("keeps the invoices that the payment names apart from the other open invoices, by normalized number", () => {
+    expect(
+      splitGroupsOf([...OPEN, OCT], [" inv-2026-08-04", "INV-2026-09-04"])
+    ).toEqual({ named: OPEN, others: [OCT] });
   });
 
   // Design review 4.5: the fill shows separators like the lists.

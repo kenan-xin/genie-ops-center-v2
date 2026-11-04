@@ -1,4 +1,5 @@
 import type { OpenInvoiceRow, PaymentMatch } from "../contract.ts";
+import { normalizeInvoiceNumber } from "../services/matching/decide.ts";
 import { amountText, centsOfText } from "./format.ts";
 
 /** One link the person keeps checked: the invoice and the amount as typed. */
@@ -52,6 +53,28 @@ export function checkLinks(
     abovePayment: allocatedCents > amountCents,
     aboveOpen,
     unreadable,
+  };
+}
+
+/** The open invoices that the payment names, apart from the customer's other open invoices (czjw.69). */
+export type SplitGroups = {
+  readonly named: readonly OpenInvoiceRow[];
+  readonly others: readonly OpenInvoiceRow[];
+};
+
+/** Splits `open` by the numbers the payment names, as the matcher compares them, keeping its order. */
+export function splitGroupsOf(
+  open: readonly OpenInvoiceRow[],
+  namedNumbers: readonly string[]
+): SplitGroups {
+  const named = new Set(namedNumbers.map(normalizeInvoiceNumber));
+
+  const isNamed = (row: OpenInvoiceRow) =>
+    named.has(normalizeInvoiceNumber(row.number));
+
+  return {
+    named: open.filter(isNamed),
+    others: open.filter((row) => !isNamed(row)),
   };
 }
 

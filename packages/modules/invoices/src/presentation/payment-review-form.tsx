@@ -360,6 +360,10 @@ export function PaymentReviewForm(props: {
           drafts={links}
           amountCents={amountCents}
           currency={currency}
+          namedNumbers={numbersOf(values.invoiceNumbers)}
+          customerName={
+            values.customer.kind === "none" ? "" : values.customer.name
+          }
           onChange={(next) => form.setFieldValue("links", next)}
         />
       </div>
