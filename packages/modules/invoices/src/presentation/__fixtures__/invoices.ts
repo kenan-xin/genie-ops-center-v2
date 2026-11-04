@@ -30,7 +30,7 @@ const PAID: InvoiceListRow = {
   totalCents: 720_000,
   outstandingCents: 0,
   status: { kind: "paid" },
-  updatedAt: "2026-10-27T01:06:00.000000Z",
+  updatedAt: "2026-11-02T08:40:00.000000Z",
 };
 
 const OPEN: InvoiceListRow = {
@@ -106,9 +106,9 @@ export const defaultInvoiceList: InvoiceListPageView = {
       overdueCents: 300_000,
       overdueCount: 1,
       invoicedCents: 2_175_000,
-      count: 4,
-      unpaidCount: 3,
-      paidCount: 1,
+      count: 36,
+      unpaidCount: 7,
+      paidCount: 29,
     },
   ],
   customers: CUSTOMERS,

@@ -460,16 +460,8 @@ export const INVOICE_LIST_STATUSES = [
   "no-due-date",
 ] as const;
 
-/** The filters of the Invoices list, as its address and its procedure carry them (design review 1.4). */
-export const invoiceListFilters = z.object({
-  search: z.string().trim().min(1).max(200).optional(),
-  status: z.enum(INVOICE_LIST_STATUSES).optional(),
-  customerId: recordId.optional(),
-  from: isoDate.optional(),
-  to: isoDate.optional(),
-});
-
-export type InvoiceListFilters = z.infer<typeof invoiceListFilters>;
+/** The search of a list address, the `q` parameter of the three lists. */
+const listSearch = z.string().trim().min(1).max(200).optional();
 
 /** A day range of a list address, `from..to`: each end an ISO day or empty, never both (LH14). */
 export const dayRange = z.string().refine((value) => {
@@ -520,7 +512,7 @@ function sortParam<const Column extends string>(
 
 /** The Invoices list address as its procedure takes it: the list header state (`czjw.73`). */
 export const invoiceListParams = z.object({
-  q: invoiceListFilters.shape.search,
+  q: listSearch,
   status: z.enum(INVOICE_LIST_TABS).optional(),
   customer: recordId.optional(),
   date: dayRange.optional(),
@@ -531,7 +523,7 @@ export type InvoiceListParams = z.infer<typeof invoiceListParams>;
 
 /** The Payments list address as its procedure takes it. */
 export const paymentListParams = z.object({
-  q: invoiceListFilters.shape.search,
+  q: listSearch,
   status: z.enum(PAYMENT_LIST_TABS).optional(),
   customer: recordId.optional(),
   date: dayRange.optional(),
@@ -552,7 +544,7 @@ export const DOCUMENT_LIST_SORTS = ["uploaded", "updated"] as const;
 
 /** The Documents inbox address as its procedure takes it (LH24). */
 export const documentListParams = z.object({
-  q: invoiceListFilters.shape.search,
+  q: listSearch,
   status: z.enum(DOCUMENT_LIST_TABS).optional(),
   type: z.enum(DOCUMENT_KINDS).optional(),
   uploaded: dayRange.optional(),
@@ -627,20 +619,6 @@ export const paymentListRow = z.object({
 });
 
 export type PaymentListRow = z.infer<typeof paymentListRow>;
-
-/** The link chips of the Payments list; no link means All. Not linked keeps any unlinked money. */
-export const PAYMENT_LIST_LINKS = ["linked", "not-linked"] as const;
-
-/** The filters of the Payments list, as its address and its procedure carry them (design review 1.4). */
-export const paymentListFilters = z.object({
-  search: invoiceListFilters.shape.search,
-  link: z.enum(PAYMENT_LIST_LINKS).optional(),
-  customerId: recordId.optional(),
-  from: isoDate.optional(),
-  to: isoDate.optional(),
-});
-
-export type PaymentListFilters = z.infer<typeof paymentListFilters>;
 
 /** One link of a payment to an invoice, as `invoices.allocations` answers it. */
 export const allocationRow = z.object({

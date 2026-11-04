@@ -2,6 +2,14 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-04
+
+### Added, the list filter header prototype, variant C
+
+- One prototype for the list header of Invoices, Payments and the Documents inbox: status tabs with counts on the table card, a compact filter bar, an aligned figure card, Updated newest first, and a phone Filters sheet (`czjw.73`). The owner picked variant C at the dry run of 2026-11-03.
+- Eight variant C captures at 1440 and 390.
+- Files: `prototypes/list-filters.prototype.html` and `sections/invoices-and-payments/list-header/`. Record: `imports/2026-11-04-list-header.md`.
+
 ## 2026-11-03
 
 ### Changed, the Access design to the role-per-row model

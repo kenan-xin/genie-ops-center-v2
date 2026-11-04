@@ -25,7 +25,7 @@ const ALLOCATED: PaymentListRow = {
   amountCents: 500_000,
   unallocatedCents: 0,
   status: "allocated",
-  updatedAt: "2026-10-27T01:06:00.000000Z",
+  updatedAt: "2026-11-02T08:40:00.000000Z",
 };
 
 const PART_ALLOCATED: PaymentListRow = {

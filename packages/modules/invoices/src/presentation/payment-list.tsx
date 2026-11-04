@@ -3,201 +3,155 @@
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
-  Button,
-  DataTable,
   type DataTableColumn,
   EmptyState,
-  FigureStrip,
-  ToggleGroup,
-  ToggleGroupItem,
-  dayRangeParam,
+  ListHeader,
+  useListState,
 } from "@genie/ui";
+import { useMemo } from "react";
 
+import { invoicesContract, paymentListParams } from "../contract.ts";
 import {
-  invoicesContract,
-  PAYMENT_LIST_LINKS,
-  paymentListFilters,
-} from "../contract.ts";
-import { formatDay, formatMoney, paymentLabel } from "./format.ts";
-import {
-  CustomerFilter,
-  DateRangeFilter,
-  ListFilterBar,
-} from "./list-filters.tsx";
+  formatDay,
+  formatInstant,
+  formatMoney,
+  paymentLabel,
+  rangeNote,
+} from "./format.ts";
+import { paymentListDefinition } from "./list-definitions.ts";
 import { PaymentStatusBadge } from "./payment-status-badge.tsx";
-import { type AddressPatch, useAddressFilters } from "./use-address-filters.ts";
-import { useListPages } from "./use-list-pages.ts";
+import {
+  procedureParams,
+  useListPages,
+  withOptions,
+} from "./use-list-pages.ts";
 import type {
-  PaymentListFilters,
   PaymentListPageView,
   PaymentListRow,
   PaymentListSummary,
   PaymentListView,
 } from "./views.ts";
 
-/** Each filter's query parameter in the page address. */
-const ADDRESS = {
-  search: "q",
-  link: "link",
-  customerId: "customer",
-  from: "from",
-  to: "to",
-} as const;
-
-const ALL = "all";
-
-const LINK_CHIPS = [
-  { value: ALL, label: "All" },
-  { value: "linked", label: "Linked" },
-  { value: "not-linked", label: "Not linked" },
-] as const;
-
-/** One figure strip per currency, so no figure adds two currencies (Review Focus 1). */
-function SummaryStrips(props: {
-  readonly summary: readonly PaymentListSummary[];
-}) {
-  return props.summary.map((entry) => (
-    <FigureStrip
-      key={entry.currency}
-      label={`Totals in ${entry.currency}`}
-      figures={[
-        {
-          label: "Collected",
-          value: formatMoney(entry.collectedCents, entry.currency),
-          lead: true,
-        },
-        {
-          label: "Allocated",
-          value: formatMoney(entry.allocatedCents, entry.currency),
-        },
-        {
-          label: "Unallocated",
-          value: formatMoney(entry.unallocatedCents, entry.currency),
-        },
-        { label: "Payments", value: String(entry.count) },
-      ]}
-    />
-  ));
-}
-
-/** The link chips, the customer picker and the payment-date range. */
-function PaymentFilters(props: {
-  readonly customers: PaymentListPageView["customers"];
-  readonly filters: PaymentListFilters;
-  readonly update: (patch: AddressPatch<keyof PaymentListFilters>) => void;
-}) {
-  const { filters, update } = props;
-
-  return (
-    <>
-      <ToggleGroup
-        aria-label="Link"
-        value={[filters.link ?? ALL]}
-        onValueChange={(value) => {
-          const [chosen] = value;
-
-          // A click on the pressed chip answers no chip; the list keeps its link filter.
-          if (chosen === undefined) return;
-
-          update({ link: PAYMENT_LIST_LINKS.find((link) => link === chosen) });
-        }}
-      >
-        {LINK_CHIPS.map((chip) => (
-          <ToggleGroupItem key={chip.value} value={chip.value}>
-            {chip.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <CustomerFilter
-        customers={props.customers}
-        value={filters.customerId}
-        onChange={(customerId) => update({ customerId })}
-      />
-      <DateRangeFilter
-        label="Payment date"
-        from={filters.from}
-        to={filters.to}
-        onChange={(range) => update(range)}
-      />
-    </>
-  );
-}
+const paymentCount = (count: number) =>
+  `${count} ${count === 1 ? "payment" : "payments"}`;
 
 const recordHref = (row: PaymentListRow) => `/m/invoices/payments/${row.id}`;
+
+const recordLink = (row: PaymentListRow) => (
+  <PageLink href={recordHref(row)} className="after:absolute after:inset-0">
+    {paymentLabel(row)}
+  </PageLink>
+);
+
+/** One figure card per currency, so no figure adds two currencies (LH17). */
+const figuresOf = (summary: readonly PaymentListSummary[], collected: string) =>
+  summary.map((entry) => ({
+    label: `Totals in ${entry.currency}`,
+    figures: [
+      {
+        label: "Collected",
+        value: formatMoney(entry.collectedCents, entry.currency),
+        note: collected,
+        lead: true as const,
+      },
+      {
+        label: "Allocated",
+        value: formatMoney(entry.allocatedCents, entry.currency),
+        note: `In ${paymentCount(entry.allocatedCount)}`,
+      },
+      {
+        label: "Unallocated",
+        value: formatMoney(entry.unallocatedCents, entry.currency),
+        note: `In ${paymentCount(entry.notLinkedCount)}`,
+      },
+      {
+        label: "Payments",
+        value: String(entry.count),
+        note: `${entry.notLinkedCount} not linked`,
+      },
+    ],
+  }));
 
 export type PaymentListProps = {
   readonly view: PaymentListPageView;
 };
 
 /**
- * The Payments list: a table from 768 px, the same rows as cards below it. Its search, link,
- * customer and payment-date filters live in the page address and run on the server, so they hold
- * across pages (design review 1.4).
+ * The Payments list on the list header (variant C, `czjw.73`): the figures, the link tabs, the
+ * search, customer and payment-date filters, and the table, with every part in the page address
+ * and run on the server. The server page is the default one, so the first paint matches it.
  */
 export function PaymentList(props: PaymentListProps) {
   const { view } = props;
   const invoices = useModuleClient(invoicesContract);
-  const { filters, update } = useAddressFilters(paymentListFilters, ADDRESS);
-  const filtered = Object.keys(filters).length > 0;
+
+  const definition = useMemo(
+    () =>
+      withOptions(
+        paymentListDefinition,
+        "customer",
+        view.customers.map((customer) => ({
+          value: customer.id,
+          label: customer.name,
+        }))
+      ),
+    [view.customers]
+  );
+
+  const state = useListState(definition);
+  const params = procedureParams(paymentListParams, state.params);
+  const filtered = Object.keys(params).length > 0;
 
   const list = useListPages<PaymentListView>({
-    key: ["invoices", "payment-list", view.asOf, filters],
-    // The server page is the unfiltered one; a filtered page one is read here.
+    key: ["invoices", "payment-list", view.asOf, params],
     first: filtered ? undefined : view,
-    // Task 7 moves this screen onto the list header; until then today's filters map to params.
-    read: (after) =>
-      invoices.listPayments({
-        after,
-        params: {
-          q: filters.search,
-          status: filters.link,
-          customer: filters.customerId,
-          date: dayRangeParam({ from: filters.from, to: filters.to }),
-        },
-      }),
+    read: (after) => invoices.listPayments({ after, params }),
   });
 
-  const { search: _search, ...narrowing } = filters;
-
-  const clear = () =>
-    update({
-      link: undefined,
-      customerId: undefined,
-      from: undefined,
-      to: undefined,
-    });
-
+  // LH29: the Payment column already shows the reference, and Unallocated is the figure acted on.
   const columns: readonly DataTableColumn<PaymentListRow>[] = [
+    { id: "payment", header: "Payment", cell: recordLink },
     {
-      id: "payment",
-      header: "Payment",
-      cell: (row) => (
-        <PageLink
-          href={recordHref(row)}
-          className="after:absolute after:inset-0"
-        >
-          {paymentLabel(row)}
-        </PageLink>
-      ),
+      id: "customer",
+      header: "Customer",
+      cell: (row) => row.customerName,
+      sort: "text",
     },
-    { id: "customer", header: "Customer", cell: (row) => row.customerName },
     {
       id: "paymentDate",
       header: "Date",
       cell: (row) => formatDay(row.paymentDate),
+      sort: "date",
     },
-    { id: "method", header: "Method", cell: (row) => row.method ?? "None" },
+    {
+      id: "method",
+      header: "Method",
+      cell: (row) => row.method ?? "None",
+      sort: "text",
+    },
     {
       id: "amount",
       header: "Amount",
       cell: (row) => formatMoney(row.amountCents, row.currency),
       align: "end",
+      sort: "number",
     },
     {
       id: "unallocated",
       header: "Unallocated",
       cell: (row) => formatMoney(row.unallocatedCents, row.currency),
       align: "end",
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => <PaymentStatusBadge status={row.status} />,
+    },
+    {
+      id: "updated",
+      header: "Updated",
+      cell: (row) => formatInstant(row.updatedAt, view.timeZone),
+      sort: "date",
     },
   ];
 
@@ -215,81 +169,49 @@ export function PaymentList(props: PaymentListProps) {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          {list.first === undefined ? null : (
-            <SummaryStrips summary={list.first.summary ?? []} />
-          )}
-          <ListFilterBar
-            searchLabel="Search reference or customer"
-            search={filters.search}
-            onSearch={(search) => update({ search })}
-            count={Object.keys(narrowing).length}
-            onClear={clear}
-            filters={() => (
-              <PaymentFilters
-                customers={view.customers}
-                filters={filters}
-                update={update}
-              />
-            )}
-          />
-          {list.pending ? <p role="status">Loading payments…</p> : null}
           {list.broken ? (
             <p role="alert">
               The payments could not be read. Change a filter to try again.
             </p>
           ) : null}
-          {!list.pending && !list.broken && list.rows.length === 0 ? (
-            <EmptyState
-              variant="framed"
-              title="No payments match"
-              description="Change or clear the filters to see more payments."
-            />
-          ) : null}
-          {list.rows.length === 0 ? null : (
-            <DataTable
-              label="Payments"
-              rows={list.rows}
-              rowKey={(row) => row.id}
-              rowLabel={paymentLabel}
-              columns={columns}
-              rowLinks
-              status={(row) => <PaymentStatusBadge status={row.status} />}
-              card={{
-                title: (row) => (
-                  <PageLink
-                    href={recordHref(row)}
-                    className="after:absolute after:inset-0"
-                  >
-                    {paymentLabel(row)}
-                  </PageLink>
-                ),
+          <ListHeader
+            definition={definition}
+            state={state}
+            counts={list.first?.counts ?? undefined}
+            figures={figuresOf(
+              list.first?.summary ?? [],
+              rangeNote(params.date, "All payment dates")
+            )}
+            anchorDay={view.asOf}
+            table={{
+              rows: list.rows,
+              rowKey: (row) => row.id,
+              rowLabel: paymentLabel,
+              columns,
+              rowLinks: true,
+              card: {
+                title: recordLink,
                 badge: (row) => <PaymentStatusBadge status={row.status} />,
                 detail: (row) => row.customerName,
                 facts: (row) => [
-                  formatDay(row.paymentDate),
-                  `Amount ${formatMoney(row.amountCents, row.currency)}`,
+                  `${formatMoney(row.amountCents, row.currency)} paid ${formatDay(row.paymentDate)}`,
                   `Unallocated ${formatMoney(row.unallocatedCents, row.currency)}`,
+                  `Updated ${formatInstant(row.updatedAt, view.timeZone)}`,
                 ],
-              }}
-            />
-          )}
-          {list.more ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <p>Showing the first {list.rows.length} payments.</p>
-              <Button
-                variant="secondary"
-                disabled={list.loading}
-                onClick={list.showMore}
-              >
-                {list.loading ? "Loading more…" : "Show more"}
-              </Button>
-            </div>
-          ) : null}
-          {list.failed ? (
-            <p role="alert">
-              More payments could not be read. Try Show more again.
-            </p>
-          ) : null}
+              },
+            }}
+            page={{
+              loaded: list.rows.length,
+              more: list.more,
+              loading: list.pending || list.loading,
+              failed: list.failed,
+              onMore: list.showMore,
+            }}
+            empty={{
+              title: "No payment matches these filters.",
+              description: "Change a filter, or clear them all.",
+            }}
+          />
         </div>
       )}
     </main>

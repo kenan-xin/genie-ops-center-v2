@@ -3,6 +3,8 @@ import {
   dayFromText,
   formatChartValue,
   formatDay,
+  formatDayRange,
+  readDayRange,
 } from "@genie/ui";
 
 import { centsOf } from "../services/reading/quote-check.ts";
@@ -64,6 +66,19 @@ export function paymentLabel(row: {
   readonly paymentDate: string;
 }): string {
   return row.reference ?? formatDay(row.paymentDate);
+}
+
+/** A list's date range address value as a figure note, or `all` with no range (LH17). */
+export function rangeNote(value: string | undefined, all: string): string {
+  const { from, to } = readDayRange(value);
+
+  if (from !== undefined && to !== undefined) return formatDayRange(from, to);
+
+  if (from !== undefined) return `From ${formatDay(from)}`;
+
+  if (to !== undefined) return `Until ${formatDay(to)}`;
+
+  return all;
 }
 
 /** An instant in the tenant's time zone (P10). */

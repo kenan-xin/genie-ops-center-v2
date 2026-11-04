@@ -1,7 +1,39 @@
 "use client";
 
 import type { DatasetCursor } from "@genie/core/rpc";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import type { ListDefinition, ListOption, ListParams } from "@genie/ui";
+import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import type { z } from "zod";
+
+/** A definition with the options of one filter, which the page reads from its view. */
+export const withOptions = (
+  definition: ListDefinition,
+  id: string,
+  options: readonly ListOption[]
+): ListDefinition => ({
+  ...definition,
+  filters: definition.filters.map((filter) =>
+    filter.id === id ? { ...filter, options } : filter
+  ),
+});
+
+/**
+ * The address parameters that a list procedure takes. One that its schema refuses, such as a
+ * hand-edited value, is left out, so an old address reads as the default (Review Focus 4).
+ */
+export function procedureParams<
+  Fields extends Readonly<Record<string, z.ZodType>>,
+>(
+  schema: z.ZodObject<Fields>,
+  params: ListParams
+): z.infer<z.ZodObject<Fields>> {
+  const entries = Object.entries(params).filter(
+    ([name, value]) => schema.shape[name]?.safeParse(value).success === true
+  );
+
+  // SAFETY: each entry passed its own field of the schema, and every field is optional.
+  return Object.fromEntries(entries) as z.infer<z.ZodObject<Fields>>;
+}
 
 /** One page of a list as its loader and its procedure answer it. */
 type ListPage = {
@@ -30,6 +62,8 @@ export function useListPages<Page extends ListPage>(input: {
     getNextPageParam: (last) => last.next,
     initialData: () =>
       first === undefined ? undefined : { pages: [first], pageParams: [null] },
+    // A new filter keeps the old rows on screen until its page one arrives.
+    placeholderData: keepPreviousData,
     // The first page came with the request; a page read now would only repeat it.
     staleTime: Number.POSITIVE_INFINITY,
     // Each visit brings a fresh first page; a cached one would hide a save made on another screen.

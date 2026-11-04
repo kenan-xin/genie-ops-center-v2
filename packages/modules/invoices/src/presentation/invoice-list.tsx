@@ -3,135 +3,33 @@
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
-  Button,
   type ChartColumn,
-  DataTable,
   type DataTableColumn,
   EmptyState,
-  FigureStrip,
   formatChartValue,
-  ToggleGroup,
-  ToggleGroupItem,
-  dayRangeParam,
+  ListHeader,
+  useListState,
 } from "@genie/ui";
+import { useMemo } from "react";
 
-import {
-  INVOICE_LIST_STATUSES,
-  invoiceListFilters,
-  invoicesContract,
-} from "../contract.ts";
-import { formatDay, formatMoney } from "./format.ts";
+import { invoiceListParams, invoicesContract } from "../contract.ts";
+import { formatDay, formatInstant, rangeNote } from "./format.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
+import { invoiceListDefinition } from "./list-definitions.ts";
 import {
-  CustomerFilter,
-  DateRangeFilter,
-  ListFilterBar,
-} from "./list-filters.tsx";
-import { type AddressPatch, useAddressFilters } from "./use-address-filters.ts";
-import { useListPages } from "./use-list-pages.ts";
+  procedureParams,
+  useListPages,
+  withOptions,
+} from "./use-list-pages.ts";
 import type {
-  InvoiceListFilters,
   InvoiceListPageView,
   InvoiceListRow,
   InvoiceListSummary,
   InvoiceListView,
 } from "./views.ts";
 
-/** Each filter's query parameter in the page address. */
-const ADDRESS = {
-  search: "q",
-  status: "status",
-  customerId: "customer",
-  from: "from",
-  to: "to",
-} as const;
-
-const ALL = "all";
-
-const STATUS_CHIPS = [
-  { value: ALL, label: "All" },
-  { value: "open", label: "Open" },
-  { value: "overdue", label: "Overdue" },
-  { value: "paid", label: "Paid" },
-  { value: "no-due-date", label: "No due date" },
-] as const;
-
 const invoiceCount = (count: number) =>
   `${count} ${count === 1 ? "invoice" : "invoices"}`;
-
-/** One figure strip per currency, so no figure adds two currencies (Review Focus 1). */
-function SummaryStrips(props: {
-  readonly summary: readonly InvoiceListSummary[];
-}) {
-  return props.summary.map((entry) => (
-    <FigureStrip
-      key={entry.currency}
-      label={`Totals in ${entry.currency}`}
-      figures={[
-        {
-          label: "Outstanding",
-          value: formatMoney(entry.outstandingCents, entry.currency),
-          lead: true,
-        },
-        {
-          label: "Overdue",
-          value: formatMoney(entry.overdueCents, entry.currency),
-          note: `In ${invoiceCount(entry.overdueCount)}`,
-        },
-        {
-          label: "Invoiced",
-          value: formatMoney(entry.invoicedCents, entry.currency),
-        },
-        { label: "Invoices", value: String(entry.count) },
-      ]}
-    />
-  ));
-}
-
-/** The status chips, the customer picker and the invoice-date range. */
-function InvoiceFilters(props: {
-  readonly customers: InvoiceListPageView["customers"];
-  readonly filters: InvoiceListFilters;
-  readonly update: (patch: AddressPatch<keyof InvoiceListFilters>) => void;
-}) {
-  const { filters, update } = props;
-
-  return (
-    <>
-      <ToggleGroup
-        aria-label="Status"
-        value={[filters.status ?? ALL]}
-        onValueChange={(value) => {
-          const [chosen] = value;
-
-          // A click on the pressed chip answers no chip; the list keeps its status.
-          if (chosen === undefined) return;
-
-          update({
-            status: INVOICE_LIST_STATUSES.find((status) => status === chosen),
-          });
-        }}
-      >
-        {STATUS_CHIPS.map((chip) => (
-          <ToggleGroupItem key={chip.value} value={chip.value}>
-            {chip.label}
-          </ToggleGroupItem>
-        ))}
-      </ToggleGroup>
-      <CustomerFilter
-        customers={props.customers}
-        value={filters.customerId}
-        onChange={(customerId) => update({ customerId })}
-      />
-      <DateRangeFilter
-        label="Invoice date"
-        from={filters.from}
-        to={filters.to}
-        onChange={(range) => update(range)}
-      />
-    </>
-  );
-}
 
 const AMOUNT: ChartColumn = {
   key: "amount",
@@ -152,9 +50,9 @@ const DUE_DATE: ChartColumn = {
   type: "date",
 };
 
-/** Every amount is read and shown in its own row's currency (Review Focus 1). */
-const money = (row: InvoiceListRow, cents: number) =>
-  formatChartValue(AMOUNT, cents, { row: { currency: row.currency } });
+/** Every amount is read and shown in its own currency (Review Focus 1). */
+const money = (currency: string, cents: number) =>
+  formatChartValue(AMOUNT, cents, { row: { currency } });
 
 const invoiceDate = (row: InvoiceListRow) =>
   formatChartValue(INVOICE_DATE, row.invoiceDate);
@@ -166,75 +64,115 @@ const dueDate = (row: InvoiceListRow) =>
 
 const recordHref = (row: InvoiceListRow) => `/m/invoices/invoices/${row.id}`;
 
+const recordLink = (row: InvoiceListRow) => (
+  <PageLink href={recordHref(row)} className="after:absolute after:inset-0">
+    {row.invoiceNumber}
+  </PageLink>
+);
+
+/** One figure card per currency, so no figure adds two currencies (LH17). */
+const figuresOf = (summary: readonly InvoiceListSummary[], invoiced: string) =>
+  summary.map((entry) => ({
+    label: `Totals in ${entry.currency}`,
+    figures: [
+      {
+        label: "Outstanding",
+        value: money(entry.currency, entry.outstandingCents),
+        note: `In ${invoiceCount(entry.unpaidCount)}`,
+        lead: true as const,
+      },
+      {
+        label: "Overdue",
+        value: money(entry.currency, entry.overdueCents),
+        note: `In ${invoiceCount(entry.overdueCount)}`,
+      },
+      {
+        label: "Invoiced",
+        value: money(entry.currency, entry.invoicedCents),
+        note: invoiced,
+      },
+      {
+        label: "Invoices",
+        value: String(entry.count),
+        note: `${entry.paidCount} paid`,
+      },
+    ],
+  }));
+
 export type InvoiceListProps = {
   readonly view: InvoiceListPageView;
 };
 
 /**
- * The Invoices list: a table from 768 px, the same rows as cards below it. Its search, status,
- * customer and invoice-date filters live in the page address and run on the server, so they hold
- * across pages, and the summary covers every invoice they keep (design review 1.4).
+ * The Invoices list on the list header (variant C, `czjw.73`): the figures, the status tabs, the
+ * search, customer and invoice-date filters, and the table, with every part in the page address
+ * and run on the server. The server page is the default one, so the first paint matches it.
  */
 export function InvoiceList(props: InvoiceListProps) {
   const { view } = props;
   const invoices = useModuleClient(invoicesContract);
-  const { filters, update } = useAddressFilters(invoiceListFilters, ADDRESS);
-  const filtered = Object.keys(filters).length > 0;
+
+  const definition = useMemo(
+    () =>
+      withOptions(
+        invoiceListDefinition,
+        "customer",
+        view.customers.map((customer) => ({
+          value: customer.id,
+          label: customer.name,
+        }))
+      ),
+    [view.customers]
+  );
+
+  const state = useListState(definition);
+  const params = procedureParams(invoiceListParams, state.params);
+  const filtered = Object.keys(params).length > 0;
 
   const list = useListPages<InvoiceListView>({
-    key: ["invoices", "invoice-list", view.asOf, filters],
-    // The server page is the unfiltered one; a filtered page one is read here.
+    key: ["invoices", "invoice-list", view.asOf, params],
     first: filtered ? undefined : view,
-    // Task 7 moves this screen onto the list header; until then today's filters map to params.
-    read: (after) =>
-      invoices.listInvoices({
-        after,
-        params: {
-          q: filters.search,
-          status: filters.status,
-          customer: filters.customerId,
-          date: dayRangeParam({ from: filters.from, to: filters.to }),
-        },
-      }),
+    read: (after) => invoices.listInvoices({ after, params }),
   });
 
-  const { search: _search, ...narrowing } = filters;
-
-  const clear = () =>
-    update({
-      status: undefined,
-      customerId: undefined,
-      from: undefined,
-      to: undefined,
-    });
-
   const columns: readonly DataTableColumn<InvoiceListRow>[] = [
+    { id: "invoice", header: "Invoice", cell: recordLink, sort: "text" },
     {
-      id: "invoice",
-      header: "Invoice",
-      cell: (row) => (
-        <PageLink
-          href={recordHref(row)}
-          className="after:absolute after:inset-0"
-        >
-          {row.invoiceNumber}
-        </PageLink>
-      ),
+      id: "customer",
+      header: "Customer",
+      cell: (row) => row.customerName,
+      sort: "text",
     },
-    { id: "customer", header: "Customer", cell: (row) => row.customerName },
-    { id: "invoiceDate", header: "Invoice date", cell: invoiceDate },
-    { id: "dueDate", header: "Due date", cell: dueDate },
+    {
+      id: "invoiceDate",
+      header: "Invoice date",
+      cell: invoiceDate,
+      sort: "date",
+    },
+    { id: "dueDate", header: "Due date", cell: dueDate, sort: "date" },
     {
       id: "total",
       header: "Total",
-      cell: (row) => money(row, row.totalCents),
+      cell: (row) => money(row.currency, row.totalCents),
       align: "end",
+      sort: "number",
     },
     {
       id: "outstanding",
       header: "Outstanding",
-      cell: (row) => money(row, row.outstandingCents),
+      cell: (row) => money(row.currency, row.outstandingCents),
       align: "end",
+    },
+    {
+      id: "status",
+      header: "Status",
+      cell: (row) => <InvoiceStatusBadge status={row.status} />,
+    },
+    {
+      id: "updated",
+      header: "Updated",
+      cell: (row) => formatInstant(row.updatedAt, view.timeZone),
+      sort: "date",
     },
   ];
 
@@ -252,80 +190,53 @@ export function InvoiceList(props: InvoiceListProps) {
         />
       ) : (
         <div className="flex flex-col gap-4">
-          {list.first === undefined ? null : (
-            <SummaryStrips summary={list.first.summary ?? []} />
-          )}
-          <ListFilterBar
-            searchLabel="Search invoice number or customer"
-            search={filters.search}
-            onSearch={(search) => update({ search })}
-            count={Object.keys(narrowing).length}
-            onClear={clear}
-            filters={() => (
-              <InvoiceFilters
-                customers={view.customers}
-                filters={filters}
-                update={update}
-              />
-            )}
-          />
-          {list.pending ? <p role="status">Loading invoices…</p> : null}
           {list.broken ? (
             <p role="alert">
               The invoices could not be read. Change a filter to try again.
             </p>
           ) : null}
-          {!list.pending && !list.broken && list.rows.length === 0 ? (
-            <EmptyState
-              variant="framed"
-              title="No invoices match"
-              description="Change or clear the filters to see more invoices."
-            />
-          ) : null}
-          {list.rows.length === 0 ? null : (
-            <DataTable
-              label="Invoices"
-              rows={list.rows}
-              rowKey={(row) => row.id}
-              rowLabel={(row) => row.invoiceNumber}
-              columns={columns}
-              rowLinks
-              status={(row) => <InvoiceStatusBadge status={row.status} />}
-              card={{
-                title: (row) => (
-                  <PageLink
-                    href={recordHref(row)}
-                    className="after:absolute after:inset-0"
-                  >
-                    {row.invoiceNumber}
-                  </PageLink>
-                ),
+          <ListHeader
+            definition={definition}
+            state={state}
+            counts={list.first?.counts ?? undefined}
+            figures={figuresOf(
+              list.first?.summary ?? [],
+              rangeNote(params.date, "All invoice dates")
+            )}
+            anchorDay={view.asOf}
+            table={{
+              rows: list.rows,
+              rowKey: (row) => row.id,
+              rowLabel: (row) => row.invoiceNumber,
+              columns,
+              rowLinks: true,
+              card: {
+                title: recordLink,
                 badge: (row) => <InvoiceStatusBadge status={row.status} />,
                 detail: (row) => row.customerName,
                 facts: (row) => [
-                  invoiceDate(row),
-                  `Outstanding ${money(row, row.outstandingCents)}`,
+                  row.outstandingCents === 0
+                    ? `${money(row.currency, row.totalCents)} paid`
+                    : `${money(row.currency, row.outstandingCents)} outstanding`,
+                  row.dueDate === null
+                    ? "No due date"
+                    : `Due ${formatDay(row.dueDate)}`,
+                  `Updated ${formatInstant(row.updatedAt, view.timeZone)}`,
                 ],
-              }}
-            />
-          )}
-          {list.more ? (
-            <div className="flex flex-wrap items-center gap-3">
-              <p>Showing the first {list.rows.length} invoices.</p>
-              <Button
-                variant="secondary"
-                disabled={list.loading}
-                onClick={list.showMore}
-              >
-                {list.loading ? "Loading more…" : "Show more"}
-              </Button>
-            </div>
-          ) : null}
-          {list.failed ? (
-            <p role="alert">
-              More invoices could not be read. Try Show more again.
-            </p>
-          ) : null}
+              },
+            }}
+            page={{
+              loaded: list.rows.length,
+              more: list.more,
+              loading: list.pending || list.loading,
+              failed: list.failed,
+              onMore: list.showMore,
+            }}
+            empty={{
+              title: "No invoice matches these filters.",
+              description: "Change a filter, or clear them all.",
+            }}
+          />
         </div>
       )}
     </main>
