@@ -407,6 +407,8 @@ export type DatasetField = {
   readonly kind: "dimension" | "measure";
   /** A money field holds integer minor units (cents) of the row's currency. */
   readonly type: DatasetFieldType;
+  /** The name a person reads for this field: a chart column or a file header. Never sent to the model. */
+  readonly label?: string;
   readonly description: string;
   /** A text field that a query's `search` matches, case-insensitively, as a substring. */
   readonly searchable?: true;

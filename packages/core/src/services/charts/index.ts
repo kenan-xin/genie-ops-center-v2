@@ -1,5 +1,5 @@
 import type { ChartColumn, ChartData, ChartRow } from "@genie/ui";
-import { lowerCase, uniq, upperFirst } from "es-toolkit";
+import { uniq } from "es-toolkit";
 
 import {
   AppError,
@@ -10,10 +10,13 @@ import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import {
   type DatasetColumn,
   type DatasetResult,
+  type DatasetSummary,
   listDatasets,
   queryDataset,
   queryDatasetSeries,
 } from "../datasets/index.ts";
+import type { DatasetQuery } from "../datasets/query.ts";
+import { columnLabel } from "./labels.ts";
 import {
   type CartesianSeries,
   checkPanelConfig,
@@ -34,14 +37,8 @@ function refuse(issues: readonly AppErrorIssue[]): never {
   throw new AppError(CORE_ERRORS["chart-invalid"], { issues });
 }
 
-/** "recordedOn" reads "Recorded on", and a money "amountCents" reads "Amount". */
-function labelOf(column: DatasetColumn): string {
-  const words = lowerCase(column.name);
-
-  return upperFirst(
-    column.type === "money" ? words.replace(/ cents$/, "") : words
-  );
-}
+/** The fields and currency field of a dataset the gate already found readable. */
+type DatasetFacts = Pick<DatasetSummary, "fields" | "currencyField">;
 
 function chartColumn(
   column: DatasetColumn,
@@ -60,14 +57,17 @@ function chartColumn(
 }
 
 /**
- * The columns of a table read: each dataset column with its label, and a money column without its
- * own currency keyed to the dataset's currency field, when the read selected it. The chart gate and
- * a chat's list file use it.
+ * The columns of a table read: each dataset column with its plain label, and a money column without
+ * its own currency keyed to the dataset's currency field, when the read selected it. The chart gate
+ * and a chat's list file use it.
  */
 export function tableColumns(
   result: Pick<DatasetResult, "columns">,
-  currencyField: string | undefined
+  dataset: DatasetFacts,
+  aggregates?: DatasetQuery["aggregates"]
 ): readonly ChartColumn[] {
+  const { currencyField } = dataset;
+
   const currencyKey =
     currencyField !== undefined &&
     result.columns.some((column) => column.name === currencyField)
@@ -75,7 +75,11 @@ export function tableColumns(
       : undefined;
 
   return result.columns.map((column) => {
-    const chart = chartColumn(column, column.name, labelOf(column));
+    const chart = chartColumn(
+      column,
+      column.name,
+      columnLabel(column, dataset.fields, aggregates)
+    );
 
     // A selected amount carries no currency; each row names its own.
     return column.type === "money" &&
@@ -150,19 +154,17 @@ function rethrow(
 
 async function cartesianData(
   ctx: ModuleRequestContext,
-  series: readonly CartesianSeries[]
+  series: readonly CartesianSeries[],
+  fieldsOf: (dataset: string) => DatasetSummary["fields"]
 ): Promise<Omit<ChartData, "kind" | "title" | "datasets">> {
   const [only] = series;
 
   if (only !== undefined && series.length === 1) {
     const result = await runOne(ctx, only);
+    const x = columnNamed(result, only.x);
 
     return {
-      x: chartColumn(
-        columnNamed(result, only.x),
-        "x",
-        labelOf(columnNamed(result, only.x))
-      ),
+      x: chartColumn(x, "x", columnLabel(x, fieldsOf(only.dataset))),
       columns: [chartColumn(columnNamed(result, only.y), only.name, only.name)],
       rows: result.rows.map((row): ChartRow => ({
         x: row[only.x] ?? null,
@@ -185,7 +187,10 @@ async function cartesianData(
     x: chartColumn(
       result.x,
       "x",
-      labelOf({ ...result.x, name: only?.x ?? result.x.name })
+      columnLabel(
+        { ...result.x, name: only?.x ?? result.x.name },
+        only === undefined ? {} : fieldsOf(only.dataset)
+      )
     ),
     columns: result.series.map((entry) =>
       chartColumn(entry.column, entry.name, entry.name)
@@ -199,8 +204,13 @@ async function cartesianData(
 async function chartData(
   ctx: ModuleRequestContext,
   config: PanelConfig,
-  currencyFields: ReadonlyMap<string, string | undefined>
+  datasets: ReadonlyMap<string, DatasetFacts>
 ): Promise<ChartData> {
+  const facts = (name: string): DatasetFacts =>
+    datasets.get(name) ?? { fields: {} };
+
+  const fieldsOf = (name: string) => facts(name).fields;
+
   const shared = {
     kind: config.type,
     title: config.title,
@@ -213,7 +223,7 @@ async function chartData(
     case "area":
       return {
         ...shared,
-        ...(await cartesianData(ctx, config.series)),
+        ...(await cartesianData(ctx, config.series, fieldsOf)),
       };
 
     case "donut": {
@@ -223,7 +233,11 @@ async function chartData(
 
       return {
         ...shared,
-        x: chartColumn(category, "x", labelOf(category)),
+        x: chartColumn(
+          category,
+          "x",
+          columnLabel(category, fieldsOf(series.dataset))
+        ),
         columns: [
           chartColumn(
             columnNamed(result, series.value),
@@ -267,7 +281,11 @@ async function chartData(
 
       return {
         ...shared,
-        columns: tableColumns(result, currencyFields.get(series.dataset)),
+        columns: tableColumns(
+          result,
+          facts(series.dataset),
+          series.query.aggregates
+        ),
         rows: result.rows,
         readAt: result.readAt,
         truncated: result.truncated,
@@ -296,9 +314,7 @@ export async function checkChart(
 
   const datasets = await listDatasets(ctx);
 
-  const readable = new Map(
-    datasets.map((dataset) => [dataset.name, dataset.currencyField])
-  );
+  const readable = new Map(datasets.map((dataset) => [dataset.name, dataset]));
 
   const titles = new Map(
     datasets.map((dataset) => [dataset.name, dataset.title ?? dataset.name])

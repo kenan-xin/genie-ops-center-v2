@@ -78,7 +78,7 @@ export async function readEveryRow(
 
   if (first === undefined) throw new Error("The read answered no page.");
 
-  const columns = tableColumns(first, declaration.currencyField);
+  const columns = tableColumns(first, declaration, query.aggregates);
   const key = declaration.recordKey.field;
 
   if (columns.length < 2 || !columns.some((column) => column.key === key)) {

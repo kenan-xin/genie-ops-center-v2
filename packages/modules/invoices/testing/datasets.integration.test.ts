@@ -1,4 +1,5 @@
 import {
+  checkChart,
   createTenantContext,
   type DatasetCursor,
   type DatasetQuery,
@@ -461,5 +462,37 @@ describe("invoice datasets", () => {
       path: `/m/invoices/invoices/${id}`,
     });
     expect(await route(reader)).toBeNull();
+  });
+
+  it("a table of invoices reads the plain labels the module declares as its headers", async () => {
+    const { id: customerId } = await insertCustomer(t());
+    await insertInvoice(t(), { customerId });
+
+    const { data } = await checkChart(contextFor(reader), {
+      type: "table",
+      title: "Invoices",
+      series: [
+        {
+          name: "Invoices",
+          dataset: "invoices.invoices",
+          query: {
+            select: [
+              "invoiceNumber",
+              "customerName",
+              "outstandingCents",
+              "currency",
+            ],
+            filters: [ofCustomer(customerId)],
+          },
+        },
+      ],
+    });
+
+    expect(data.columns.map(({ label }) => label)).toEqual([
+      "Invoice",
+      "Customer",
+      "Outstanding",
+      "Currency",
+    ]);
   });
 });

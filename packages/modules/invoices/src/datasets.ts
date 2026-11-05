@@ -45,48 +45,58 @@ const settledWithDueDate = (paid: Paid) =>
 const paidLateOf = (paid: Paid) =>
   sql`${paid.lastPaymentDate} > ${invoice.dueDate}`;
 
-const text = (description: string): DatasetField => ({
+// Each helper takes the label a person reads (D33) and the description the agent reads.
+const text = (label: string, description: string): DatasetField => ({
   kind: "dimension",
   type: "text",
+  label,
   description,
 });
 
-const date = (description: string): DatasetField => ({
+const date = (label: string, description: string): DatasetField => ({
   kind: "dimension",
   type: "date",
+  label,
   description,
 });
 
-const flag = (description: string): DatasetField => ({
+const flag = (label: string, description: string): DatasetField => ({
   kind: "dimension",
   type: "boolean",
+  label,
   description,
 });
 
-const money = (description: string): DatasetField => ({
+const money = (label: string, description: string): DatasetField => ({
   kind: "measure",
   type: "money",
+  label,
   description,
 });
 
-const count = (description: string): DatasetField => ({
+const count = (label: string, description: string): DatasetField => ({
   kind: "measure",
   type: "number",
+  label,
   description,
 });
 
-const CURRENCY = text("The ISO currency code of the amounts on this row.");
+const CURRENCY = text(
+  "Currency",
+  "The ISO currency code of the amounts on this row."
+);
 
 // The list fields stay hidden from the agent until the next recording refresh (LH1, DEC-55).
 const UPDATED_AT: DatasetField = {
   kind: "dimension",
   type: "instant",
+  label: "Updated",
   description: "When the row last changed.",
   hiddenFromAgent: true,
 };
 
 const listStatus = (description: string): DatasetField => ({
-  ...text(description),
+  ...text("Status", description),
   hiddenFromAgent: true,
 });
 
@@ -98,43 +108,60 @@ export const invoicesDataset: DatasetDeclaration = {
     "The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.",
   permission: "invoices:read",
   fields: {
-    id: text("The invoice id."),
+    id: text("Invoice id", "The invoice id."),
     invoiceNumber: {
-      ...text("The invoice number as printed on the invoice."),
+      ...text("Invoice", "The invoice number as printed on the invoice."),
       searchable: true,
     },
-    customerId: text("The id of the invoiced customer."),
+    customerId: text("Customer id", "The id of the invoiced customer."),
     customerName: {
-      ...text("The name of the invoiced customer."),
+      ...text("Customer", "The name of the invoiced customer."),
       searchable: true,
     },
-    invoiceDate: date("The invoice date, by which invoiced sales are counted."),
-    dueDate: date("The due date, null when the invoice states none."),
+    invoiceDate: date(
+      "Invoice date",
+      "The invoice date, by which invoiced sales are counted."
+    ),
+    dueDate: date(
+      "Due date",
+      "The due date, null when the invoice states none."
+    ),
     dueDateSource: text(
+      "Due date from",
       "Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none)."
     ),
-    paymentTerms: text("The payment terms, null when blank."),
-    description: text("The invoice description, null when blank."),
+    paymentTerms: text("Payment terms", "The payment terms, null when blank."),
+    description: text(
+      "Description",
+      "The invoice description, null when blank."
+    ),
     currency: CURRENCY,
     totalCents: money(
+      "Total",
       "The invoice total in cents, which summed by invoice date is invoiced sales."
     ),
     allocatedCents: money(
+      "Paid",
       "The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment."
     ),
     outstandingCents: money(
+      "Outstanding",
       "The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it."
     ),
     overdue: flag(
+      "Overdue",
       "True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue."
     ),
     daysOverdue: count(
+      "Days overdue",
       "The days from the due date to the reporting date when overdue, else null."
     ),
     settledOn: date(
+      "Settled on",
       "The date of the last linked payment when nothing is outstanding, else null."
     ),
     paidLate: flag(
+      "Paid late",
       "True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate."
     ),
     updatedAt: UPDATED_AT,
@@ -209,26 +236,32 @@ export const paymentsDataset: DatasetDeclaration = {
     "The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.",
   permission: "invoices:read",
   fields: {
-    id: text("The payment id."),
-    customerId: text("The id of the paying customer."),
+    id: text("Payment id", "The payment id."),
+    customerId: text("Customer id", "The id of the paying customer."),
     customerName: {
-      ...text("The name of the paying customer."),
+      ...text("Customer", "The name of the paying customer."),
       searchable: true,
     },
     reference: {
-      ...text("The payment reference, null when none."),
+      ...text("Reference", "The payment reference, null when none."),
       searchable: true,
     },
-    method: text("The payment method, null when none."),
-    paymentDate: date("The payment date, by which collections are counted."),
+    method: text("Method", "The payment method, null when none."),
+    paymentDate: date(
+      "Payment date",
+      "The payment date, by which collections are counted."
+    ),
     currency: CURRENCY,
     amountCents: money(
+      "Amount",
       "The payment amount in cents, which summed by payment date is collections."
     ),
     allocatedCents: money(
+      "Linked",
       "The cents of this payment linked to invoices dated on or before the reporting date."
     ),
     unallocatedCents: money(
+      "Unallocated",
       "The amount minus the allocated cents: money received that lowers no invoice balance."
     ),
     updatedAt: UPDATED_AT,
@@ -293,16 +326,19 @@ export const customersDataset: DatasetDeclaration = {
     "Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.",
   permission: "invoices:read",
   fields: {
-    id: text("The customer id."),
-    name: text("The customer name."),
-    email: text("The customer email, null when none."),
+    id: text("Customer id", "The customer id."),
+    name: text("Customer", "The customer name."),
+    email: text("Email", "The customer email, null when none."),
     firstInvoiceDate: date(
+      "First invoice",
       "The date of the customer's earliest invoice on or before the reporting date, null when none."
     ),
     settledWithDueDateCount: count(
+      "Settled with a due date",
       "The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices."
     ),
     paidLateCount: count(
+      "Paid late",
       "Of the settled invoices with a known due date, those whose last payment came after the due date."
     ),
   },
@@ -364,19 +400,24 @@ export const allocationsDataset: DatasetDeclaration = {
     "One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.",
   permission: "invoices:read",
   fields: {
-    id: text("The allocation id."),
-    invoiceId: text("The id of the linked invoice."),
-    invoiceNumber: text("The number of the linked invoice."),
-    paymentId: text("The id of the linked payment."),
+    id: text("Link id", "The allocation id."),
+    invoiceId: text("Invoice id", "The id of the linked invoice."),
+    invoiceNumber: text("Invoice", "The number of the linked invoice."),
+    paymentId: text("Payment id", "The id of the linked payment."),
     paymentReference: text(
+      "Payment reference",
       "The reference of the linked payment, null when none."
     ),
-    customerId: text("The id of the customer of both records."),
-    customerName: text("The name of the customer of both records."),
-    paymentDate: date("The date of the linked payment."),
+    customerId: text("Customer id", "The id of the customer of both records."),
+    customerName: text("Customer", "The name of the customer of both records."),
+    paymentDate: date("Payment date", "The date of the linked payment."),
     currency: CURRENCY,
-    amountCents: money("The cents of the payment applied to the invoice."),
+    amountCents: money(
+      "Amount",
+      "The cents of the payment applied to the invoice."
+    ),
     automatic: flag(
+      "Linked automatically",
       "True when the link was made automatically and no person changed it."
     ),
   },

@@ -271,6 +271,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a link to an invoice dated after the reporting date leaves its payment unallocated and has no allocation row",
       "a person reading one customer sees only its rows in all four datasets",
       "recordRoute opens an invoice only for a person with invoices:use",
+      "a table of invoices reads the plain labels the module declares as its headers",
     ].map((row) => `invoice datasets ${row}`),
   },
   {
