@@ -170,6 +170,7 @@ describe("the analytics agent tools", () => {
       "query-dataset",
       "open-record",
       "make-artifact",
+      "make-file",
     ];
 
     const read = ["analytics-list-dashboards", "analytics-read-dashboard"];

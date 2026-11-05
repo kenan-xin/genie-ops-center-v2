@@ -1,9 +1,12 @@
+import { randomUUID } from "node:crypto";
+
 import {
   agentToolSet,
   artifactTool,
   artifactTurn,
   type ArtifactCardPart,
   type ArtifactTurn,
+  createOwnSession,
   createTenantContext,
   moduleInstructionLines,
   principalFor,
@@ -107,10 +110,11 @@ async function scopedReader(): Promise<string> {
 async function call(
   ctx: ModuleRequestContext,
   name: string,
-  input: AgentToolValue
+  input: AgentToolValue,
+  sessionId = SESSION_ID
 ): Promise<AgentToolValue> {
   const execute = (
-    await agentToolSet(ctx, { id: SESSION_ID }, artifactTurn(SESSION_ID, 0))
+    await agentToolSet(ctx, { id: sessionId }, artifactTurn(sessionId, 0))
   )[name]?.execute;
 
   if (execute === undefined) throw new Error(`No tool "${name}".`);
@@ -626,4 +630,123 @@ describe("the agent tools on the placeholder", () => {
         .toSorted()
     ).toEqual([2, 3]);
   });
+
+  it("make-file queues one file job as the person and answers without an id", async () => {
+    const person = await reader();
+    const ctx = contextFor(person);
+    const sessionId = await ownSession(ctx);
+
+    const input = {
+      title: "All records",
+      format: "xlsx",
+      dataset: RECORDS,
+      query: { select: ["id", "label"] },
+    };
+
+    expect(await call(ctx, "make-file", input, sessionId)).toEqual({
+      title: "All records",
+      format: "xlsx",
+      state: "making",
+    });
+
+    const files = await filesOf(sessionId);
+
+    expect(files).toEqual([
+      {
+        id: expect.any(String),
+        tool_call_id: "call-make-file",
+        state: "queued",
+      },
+    ]);
+
+    // The job still waits: no worker runs in this test, so the call did not wait for it.
+    expect(await jobsFor(files[0]?.id ?? "")).toEqual([
+      {
+        state: "created",
+        data: { "agentFileId": files[0]?.id, "genie:startedBy": person },
+      },
+    ]);
+
+    expect((await toolRows(person))[0]?.metadata).toMatchObject({
+      sessionId,
+      tool: "make-file",
+      dataset: RECORDS,
+      query: input,
+      outcome: "queued",
+    });
+  });
+
+  it("make-file refuses an unreadable dataset and a bad query, and queues nothing", async () => {
+    const outsiderCtx = contextFor(await outsider());
+    const readerCtx = contextFor(await reader());
+
+    const refused = [
+      {
+        ctx: outsiderCtx,
+        query: { select: ["id"] },
+        text: "You may not do that.",
+      },
+      {
+        ctx: readerCtx,
+        query: { select: ["colour"] },
+        text: "colour",
+      },
+    ];
+
+    await Promise.all(
+      refused.map(async ({ ctx, query, text }) => {
+        const sessionId = await ownSession(ctx);
+
+        await expect(
+          call(
+            ctx,
+            "make-file",
+            { title: "Records", format: "csv", dataset: RECORDS, query },
+            sessionId
+          )
+        ).rejects.toThrow(text);
+
+        expect(await filesOf(sessionId)).toEqual([]);
+      })
+    );
+
+    const { rows } = await deployment.context.db.$client.query(
+      "select j.id from pgboss.job j left join agent_file a on a.id::text = j.data->>'agentFileId' where j.name = 'core.agent-file' and a.id is null"
+    );
+
+    expect(rows).toEqual([]);
+  });
 });
+
+/** A new chat of the person, so a file row has a session to belong to. */
+async function ownSession(ctx: ModuleRequestContext): Promise<string> {
+  const id = randomUUID();
+
+  await createOwnSession(ctx, { id, title: "Files", modelId: "test-model" });
+
+  return id;
+}
+
+async function filesOf(sessionId: string) {
+  const { rows } = await deployment.context.db.$client.query<{
+    id: string;
+    tool_call_id: string;
+    state: string;
+  }>("select id, tool_call_id, state from agent_file where session_id = $1", [
+    sessionId,
+  ]);
+
+  return rows;
+}
+
+async function jobsFor(agentFileId: string) {
+  const { rows } = await deployment.context.db.$client.query<{
+    state: string;
+    data: AgentToolValue;
+  }>(
+    "select state, data from pgboss.job where name = 'core.agent-file' and data->>'agentFileId' = $1",
+    [agentFileId]
+  );
+
+  return rows;
+}

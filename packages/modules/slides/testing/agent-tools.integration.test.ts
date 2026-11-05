@@ -287,6 +287,7 @@ describe("the slides agent tools", () => {
       "query-dataset",
       "open-record",
       "make-artifact",
+      "make-file",
     ];
 
     const read = ["slides-list-decks", "slides-read-deck"];

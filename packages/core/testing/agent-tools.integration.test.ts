@@ -97,6 +97,7 @@ describe("the agent's module tools against a real database", () => {
         "query-dataset",
         "open-record",
         "make-artifact",
+        "make-file",
       ];
 
       await expect(offered(await person(["core:ask:use"]))).resolves.toEqual({

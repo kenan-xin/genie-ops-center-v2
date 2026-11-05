@@ -267,6 +267,7 @@ describe("the invoice answers through the agent", () => {
       "query-dataset",
       "open-record",
       "make-artifact",
+      "make-file",
       "invoices-read-document",
       "placeholder-count-records",
     ]);

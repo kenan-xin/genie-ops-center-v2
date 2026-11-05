@@ -507,6 +507,7 @@ export {
   type AgentFileState,
   createAgentFile,
   AGENT_FILE_JOB,
+  MAKE_FILE,
   type ArtifactCardPart,
   artifactTool,
   artifactTurn,

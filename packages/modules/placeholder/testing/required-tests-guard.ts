@@ -114,6 +114,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent tools on the placeholder refuses a config the chart gate refuses, with the gate's fix",
       "the agent tools on the placeholder refuses a change that turns a chart into a table",
       "the agent tools on the placeholder numbers two new artifacts of one step apart, after the chat's stored ones",
+      "the agent tools on the placeholder make-file queues one file job as the person and answers without an id",
+      "the agent tools on the placeholder make-file refuses an unreadable dataset and a bad query, and queues nothing",
     ],
   },
   {

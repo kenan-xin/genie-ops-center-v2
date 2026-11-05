@@ -26,6 +26,7 @@ import {
   type ArtifactTurn,
   MAKE_ARTIFACT,
 } from "./artifact-tool.ts";
+import { fileTool, MAKE_FILE } from "./file-tool.ts";
 
 export const AGENT_TOOL_AUDIT_ACTION: AuditAction = "core:agent_tool_called";
 
@@ -303,7 +304,7 @@ export async function offersWriteTool(
   return (await offeredModuleTools(ctx)).some(({ writes }) => writes === true);
 }
 
-/** The model's tools for one request: the four core tools, then the offered module tools in registration order. */
+/** The model's tools for one request: the five core tools, then the offered module tools in registration order. */
 export async function agentToolSet(
   ctx: ModuleRequestContext,
   session: { readonly id: string },
@@ -317,6 +318,7 @@ export async function agentToolSet(
       audited(ctx, session, entry, true),
     ]),
     [MAKE_ARTIFACT, artifactTool(ctx, session, turn)],
+    [MAKE_FILE, fileTool(ctx, session)],
     ...moduleTools.map((entry) => [
       entry.name,
       audited(ctx, session, entry, false),

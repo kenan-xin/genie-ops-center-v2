@@ -25,6 +25,13 @@ reads back no id, so a recorded request stays the same on every run. The tool wr
 answer with its pending versions in one transaction when the stream ends, also after Stop. The
 model never reads a `data-*` part.
 
+`make-file` checks the read as the person (`checkDatasetRead`), records an `agent_file` row and
+queues the core job `core.agent-file` with the person as its starter, then answers at once, so
+the chat goes on. The job reads every page as the person with the grants of the run, writes the
+bytes through `FileStorage` and marks the row `ready` or `failed`. The tool's output is only
+`{ title, format, state }`, with no row, file or job id: the next turn's request holds every tool
+output, and a recording matches the whole request.
+
 The `chart` procedure draws an answer's chart through the chart gate as the viewer. A table whose
 query selects its dataset's record key field opens each row's record through the record route,
 and the key column is not drawn.

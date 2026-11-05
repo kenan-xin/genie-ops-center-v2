@@ -30,6 +30,8 @@ export {
 
 export { AGENT_FILE_JOB, readEveryRow } from "./file-job.ts";
 
+export { fileTool, MAKE_FILE } from "./file-tool.ts";
+
 export {
   type ArtifactCardPart,
   artifactTool,
