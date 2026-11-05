@@ -116,6 +116,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent tools on the placeholder numbers two new artifacts of one step apart, after the chat's stored ones",
       "the agent tools on the placeholder make-file queues one file job as the person and answers without an id",
       "the agent tools on the placeholder make-file refuses an unreadable dataset and a bad query, and queues nothing",
+      "make-file when the job queue fails leaves no queued file and tells the model it could not run",
     ],
   },
   {

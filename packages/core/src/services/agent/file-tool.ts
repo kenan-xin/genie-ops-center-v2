@@ -9,7 +9,7 @@ import { datasetQuerySchema } from "../datasets/query.ts";
 import { enqueueJob } from "../job-queue/module-jobs.ts";
 import { AGENT_FILE_JOB } from "./file-job.ts";
 import { FILE_FORMATS } from "./file-kinds.ts";
-import { createAgentFile } from "./files.ts";
+import { createAgentFile, deleteAgentFile } from "./files.ts";
 import { COULD_NOT_RUN, refusalText, writeToolAudit } from "./tools.ts";
 
 /**
@@ -94,7 +94,14 @@ export function fileTool(
           query: checked.query,
         });
 
-        await enqueueJob(ctx, AGENT_FILE_JOB, { agentFileId });
+        try {
+          await enqueueJob(ctx, AGENT_FILE_JOB, { agentFileId });
+        } catch (error) {
+          // No job will ever make this row, so it goes; otherwise the chat shows "Making" forever.
+          await deleteAgentFile(ctx, agentFileId);
+
+          throw error;
+        }
       } catch (error) {
         if (error instanceof AppError) {
           await record(error.code);

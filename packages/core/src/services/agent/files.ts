@@ -65,6 +65,14 @@ export async function createAgentFile(
   return row.id;
 }
 
+/** Deletes a file row that no job will make, such as one whose job could not be queued. */
+export async function deleteAgentFile(
+  ctx: ModuleRequestContext,
+  id: string
+): Promise<void> {
+  await ctx.tenant.db.delete(agentFile).where(eq(agentFile.id, id));
+}
+
 function ownFile(ctx: ModuleRequestContext) {
   return eq(agentSession.userId, ctx.caller.userId);
 }

@@ -718,6 +718,42 @@ describe("the agent tools on the placeholder", () => {
   });
 });
 
+describe("make-file when the job queue fails", () => {
+  it("leaves no queued file and tells the model it could not run", async () => {
+    const person = contextFor(await reader());
+
+    const sessionId = await ownSession(person);
+
+    // A queue that no worker reads: the send throws, as when pg-boss cannot be reached.
+    const ctx: ModuleRequestContext = {
+      ...person,
+      tenant: {
+        ...deployment.context,
+        jobQueue: {
+          enqueue: async () => null,
+          schedule: async () => {},
+        },
+      },
+    };
+
+    await expect(
+      call(
+        ctx,
+        "make-file",
+        {
+          title: "Records",
+          format: "csv",
+          dataset: RECORDS,
+          query: { select: ["id"] },
+        },
+        sessionId
+      )
+    ).rejects.toThrow("The tool could not run.");
+
+    expect(await filesOf(sessionId)).toEqual([]);
+  });
+});
+
 /** A new chat of the person, so a file row has a session to belong to. */
 async function ownSession(ctx: ModuleRequestContext): Promise<string> {
   const id = randomUUID();
