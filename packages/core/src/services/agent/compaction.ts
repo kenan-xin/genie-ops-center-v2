@@ -64,7 +64,14 @@ function keptStart(history: OwnHistory): number {
 
 /** Whether this turn summarizes, and where the cut goes (LC1, LC2). */
 export function compactionPlan(history: OwnHistory): CompactionPlan {
-  const start = keptStart(history);
+  let start = keptStart(history);
+
+  // The cut ends on an answer: an unanswered question before the start stays kept, because the
+  // browser holds its own id for a sent question and could not place the summary line after it.
+  while (start > 0 && history.messages[start - 1]?.message.role === "user") {
+    start -= 1;
+  }
+
   const through = history.messages[start - 1];
 
   // A start at 0 would summarize nothing.

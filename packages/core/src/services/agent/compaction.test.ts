@@ -77,6 +77,21 @@ describe("when a chat summarizes", () => {
     expect(compactionPlan(history(0, COMPACTION_INPUT_TOKENS))).toEqual({
       compact: false,
     });
+
+    // A turn that stored no answer leaves two questions in a row; the cut still ends on an answer.
+    const unanswered = history(6, COMPACTION_INPUT_TOKENS);
+
+    expect(
+      compactionPlan({
+        ...unanswered,
+        messages: [...unanswered.messages, { seq: 200, message: user(7) }],
+      })
+    ).toMatchObject({
+      compact: true,
+      kept: [user(6), user(7)],
+      throughSeq: 111,
+      throughMessageId: "a5",
+    });
   });
 });
 
