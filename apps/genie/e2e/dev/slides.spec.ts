@@ -10,6 +10,13 @@ import {
 } from "@playwright/test";
 
 import {
+  SLIDES_CHANGE_DECK_ID,
+  SLIDES_CHANGE_DECK_TITLE,
+  SLIDES_CHANGE_MESSAGE,
+  SLIDES_CHANGE_NEW_TITLE,
+  SLIDES_CHANGE_OLD_TITLE,
+} from "../../testing/slides-change.ts";
+import {
   MONTHLY_DECK,
   SLIDES_CHAT_MESSAGE,
 } from "../../testing/slides-chat.ts";
@@ -26,6 +33,7 @@ import { DEV_MODULES, SLIDES_PEOPLE } from "./global-setup.ts";
 import {
   closeSlidesDatabase,
   removeOwnDecks,
+  resetChangeDeck,
   slideOverflowFailures,
 } from "./slides-support.ts";
 
@@ -268,6 +276,92 @@ test("a deck created by chat is presented and exports native charts", async ({
           ).toBeTruthy();
         }
         /* eslint-enable no-await-in-loop */
+      } finally {
+        await removeOwnDecks(SLIDES_PEOPLE.chat);
+      }
+    },
+    LOCK_WAIT
+  );
+});
+
+test("the agent panel on the deck editor changes the shown slide, and Undo restores it", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await resetChangeDeck(SLIDES_PEOPLE.chat);
+
+      try {
+        await signInAs(page, SLIDES_PEOPLE.chat);
+        await page.goto(`/m/slides/decks/${SLIDES_CHANGE_DECK_ID}`);
+
+        await expect(
+          page.getByRole("heading", {
+            level: 1,
+            name: SLIDES_CHANGE_DECK_TITLE,
+          })
+        ).toBeVisible(FIRST_PAINT);
+
+        await activate(page, railButton(page, 2));
+        await expect(railButton(page, 2)).toHaveAttribute(
+          "aria-current",
+          "true",
+          { timeout: FIRST_PAINT.timeout }
+        );
+
+        const title = (text: string) =>
+          deckCanvas(page).getByText(text, { exact: true });
+
+        await expect(title(SLIDES_CHANGE_OLD_TITLE)).toBeVisible();
+
+        const chat = await openAgentPanel(page);
+
+        // The page names the open deck and the shown slide (D21).
+        await expect(
+          chat.getByText(`About: ${SLIDES_CHANGE_DECK_TITLE}, slide 2`, {
+            exact: true,
+          })
+        ).toBeVisible();
+
+        await chat
+          .getByRole("textbox", { name: "Message", exact: true })
+          .fill(SLIDES_CHANGE_MESSAGE);
+
+        const send = chat.getByRole("button", { name: "Send" });
+
+        const answer = page.waitForResponse(
+          (response) =>
+            response.url().endsWith("/api/agent") &&
+            response.request().method() === "POST"
+        );
+
+        if (onPhone(page)) {
+          await send.tap({ timeout: 15_000 });
+          // The sheet covers the phone screen, so close it to see the slide; it keeps streaming.
+          await chat
+            .getByRole("button", { name: "Close the agent panel" })
+            .tap();
+        } else {
+          await send.click({ timeout: 15_000 });
+        }
+
+        await (await answer).finished();
+
+        // The page reads the deck again when the answer ends. 5 s stays under the 10 s poll of
+        // `useDeck`, so a page that waits for the poll fails here.
+        await expect(title(SLIDES_CHANGE_NEW_TITLE)).toBeVisible({
+          timeout: 5000,
+        });
+
+        await expectNoAxeViolations(page, "deck editor after the chat change");
+        await screenshot(page, testInfo, "change");
+
+        await activate(page, page.getByRole("button", { name: "Undo" }));
+
+        await expect(title(SLIDES_CHANGE_OLD_TITLE)).toBeVisible(FIRST_PAINT);
       } finally {
         await removeOwnDecks(SLIDES_PEOPLE.chat);
       }

@@ -4,8 +4,15 @@ import {
   withTransaction,
 } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
+import { insertDeck } from "@genie/module-slides/testing";
 
 import { selectedModuleIds } from "../../src/modules.ts";
+import {
+  SLIDES_CHANGE_CONTENT,
+  SLIDES_CHANGE_DECK_ID,
+  SLIDES_CHANGE_DECK_TITLE,
+  SLIDES_CHANGE_FROZEN_ON,
+} from "../../testing/slides-change.ts";
 import { DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
 
 /**
@@ -82,6 +89,36 @@ export function slideOverflowFailures(canvas: HTMLElement): readonly string[] {
   }
 
   return failures;
+}
+
+/**
+ * Puts the fixed deck of `slides-change.ts` back for this person, whatever a killed run left, so
+ * the recorded requests of the deck editor's chat match (D12). Call it under the ledger lock.
+ */
+export async function resetChangeDeck(email: string): Promise<void> {
+  const tenant = context();
+
+  const { rows } = await tenant.db.$client.query<{ id: string }>(
+    'select id from "user" where email = $1',
+    [email]
+  );
+
+  const ownerUserId = rows[0]?.id;
+
+  if (ownerUserId === undefined)
+    throw new Error(`no person matches ${JSON.stringify({ email })}`);
+
+  await tenant.db.$client.query("delete from deck where id = $1", [
+    SLIDES_CHANGE_DECK_ID,
+  ]);
+  await insertDeck(tenant, {
+    ownerUserId,
+    id: SLIDES_CHANGE_DECK_ID,
+    title: SLIDES_CHANGE_DECK_TITLE,
+    // SAFETY: the fixture holds the stored deck shape; the store's parse refuses any other.
+    content: SLIDES_CHANGE_CONTENT as never,
+    frozenOn: SLIDES_CHANGE_FROZEN_ON,
+  });
 }
 
 /**
