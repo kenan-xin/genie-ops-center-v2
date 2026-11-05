@@ -1,7 +1,7 @@
 /**
  * The chat change on a dashboard that the app integration test and the dev e2e share (Spec 7
- * R-46, R-49, D12). The recorded model requests hold these values, so a change here re-records
- * `analytics-add-collections-1.json` to `-4.json`.
+ * R-46, R-49, D12) and demo step 9. The recorded model requests hold these values, so a change
+ * here records the dashboard chat again, live.
  */
 
 /** The keys of the person who chats beside the dashboard. */
@@ -21,10 +21,27 @@ export const ANALYTICS_CHAT_DASHBOARD = {
   name: "Collections watch",
 } as const;
 
+// The Receivables overview starter already has a Collections KPI, so the demo asks for one it
+// lacks (`czjw.75`).
 export const ANALYTICS_CHAT_MESSAGE =
-  "Add a KPI panel named Collections that shows the total of all payments.";
+  "Add a KPI panel named Unallocated payments that shows the total of payments not yet linked to an invoice.";
 
-/** The panel the recorded tool call adds. */
+/**
+ * The panel that the chat adds, as a `toMatchObject` pattern: the series name and the aggregate's
+ * alias are the model's choice.
+ */
+export const UNALLOCATED_PANEL = {
+  type: "kpi",
+  title: "Unallocated payments",
+  series: [
+    {
+      dataset: "invoices.payments",
+      query: { aggregates: [{ fn: "sum", field: "unallocatedCents" }] },
+    },
+  ],
+} as const;
+
+/** The collections figure of slide `s2` in `slides-change.ts`. */
 export const COLLECTIONS_PANEL = {
   type: "kpi",
   title: "Collections",

@@ -25,7 +25,7 @@ import {
   ANALYTICS_CHAT_DASHBOARD,
   ANALYTICS_CHAT_KEYS,
   ANALYTICS_CHAT_MESSAGE,
-  COLLECTIONS_PANEL,
+  UNALLOCATED_PANEL,
 } from "./analytics-chat.ts";
 import { APP_AGENT_RECORDINGS } from "./model-replay.ts";
 
@@ -127,27 +127,29 @@ describe("the analytics chat beside a dashboard", () => {
 
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
-    expect(await rowOf()).toEqual({
+    // One panel: `toMatchObject` keeps an array's length.
+    expect(await rowOf()).toMatchObject({
       config: {
         filters: { dateRange: { preset: "all" }, field: null },
         panels: [
           {
             id: "p1",
             layout: { columns: 1, rows: 1 },
-            config: COLLECTIONS_PANEL,
+            config: UNALLOCATED_PANEL,
           },
         ],
       },
       undo: 1,
       version: 2,
     });
-    // The recorded live model reads the datasets and the dashboard before its one change.
-    expect(await toolCalls()).toEqual([
-      { tool: "list-datasets", outcome: "answered" },
-      { tool: "analytics-read-dashboard", outcome: "answered" },
-      { tool: "query-dataset", outcome: "answered" },
-      { tool: "analytics-change-dashboard", outcome: "answered" },
-    ]);
+
+    // The model reads as it likes before its one change; the read order is its choice.
+    const calls = await toolCalls();
+
+    expect(calls.filter(({ outcome }) => outcome !== "answered")).toEqual([]);
+    expect(
+      calls.filter(({ tool }) => tool === "analytics-change-dashboard")
+    ).toHaveLength(1);
 
     await callProcedure(analyticsRouter, asker).undoDashboard({
       id: ANALYTICS_CHAT_DASHBOARD.id,

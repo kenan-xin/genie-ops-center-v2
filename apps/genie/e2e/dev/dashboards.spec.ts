@@ -164,11 +164,12 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
           await send.click({ timeout: 15_000 });
         }
 
-        // The panel grid comes before the chat, so the dashboard's own figure is the first.
-        const collections = figure(page, "Collections").first();
+        // The panel grid comes before the chat, so the dashboard's own figure is the first. The
+        // baseline ledger links every payment, so nothing is unallocated yet.
+        const unallocated = figure(page, "Unallocated payments").first();
 
         await expect(
-          collections.getByText(sgd(195_200), { exact: true })
+          unallocated.getByText(sgd(0), { exact: true })
         ).toBeVisible(FIRST_PAINT);
 
         const saved = await page.request.post("/api/rpc/invoices/savePayment", {
@@ -194,21 +195,23 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
 
         expect(saved.ok(), await saved.text()).toBe(true);
 
+        // The saved payment has no link, so all of it is unallocated.
         await expect(
-          collections.getByText(sgd(196_434), { exact: true })
+          unallocated.getByText(sgd(1_234), { exact: true })
         ).toBeVisible({ timeout: 15_000 });
 
         // oxlint-disable-next-line no-underscore-dangle -- the task brief names this marker.
         expect(await page.evaluate(() => window.__genieMarker)).toBe(1);
 
         // A value the card cuts off still passes `toBeVisible`, so measure the card itself.
-        const overflow = await collections
+        const overflow = await unallocated
           .locator("xpath=ancestor::*[@data-slot='card'][1]")
           .evaluate((element) => element.scrollWidth - element.clientWidth);
 
-        expect(overflow, "the Collections KPI is clipped").toBeLessThanOrEqual(
-          0
-        );
+        expect(
+          overflow,
+          "the Unallocated payments KPI is clipped"
+        ).toBeLessThanOrEqual(0);
 
         await expectNoAxeViolations(page, "dashboard after the chat change");
         await screenshot(page, testInfo, `chat-${testInfo.project.name}`);

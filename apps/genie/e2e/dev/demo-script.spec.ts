@@ -508,7 +508,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           ).toBeVisible(FIRST_PAINT);
         });
 
-        await test.step("9. add a collections panel to a dashboard by chat", async () => {
+        await test.step("9. add an unallocated payments panel to a dashboard by chat", async () => {
           await resetChatDashboard();
           await signInAs(page, ANALYTICS_PEOPLE.chat);
           await page.goto(
@@ -520,12 +520,13 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           await sendInPageChat(page, ANALYTICS_CHAT_MESSAGE);
 
-          // The panel reads the baseline ledger: step 7 removed the uploads.
+          // The panel reads the baseline ledger: step 7 removed the uploads, and the baseline
+          // links every payment, so no payment is unallocated. The starter has no such panel.
           await expect(
             page
-              .getByRole("figure", { name: "Collections" })
+              .getByRole("figure", { name: "Unallocated payments" })
               .first()
-              .getByText(sgd(195_200), { exact: true })
+              .getByText(sgd(0), { exact: true })
           ).toBeVisible(FIRST_PAINT);
         });
 
