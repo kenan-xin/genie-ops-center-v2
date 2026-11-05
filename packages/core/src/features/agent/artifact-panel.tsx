@@ -6,6 +6,7 @@ import {
   DropdownMenuItem,
   DropdownMenuContent,
   DropdownMenuTrigger,
+  focusRing,
 } from "@genie/ui";
 import { chartRows, type ChartTextRows } from "@genie/ui/chart-data";
 import {
@@ -214,7 +215,13 @@ export function ArtifactPanel(props: {
             </span>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-auto p-4">
+          {/* Focusable, so a keyboard scrolls a long list that holds no link (WCAG 2.1.1). */}
+          <div
+            role="group"
+            aria-label={artifact.title}
+            tabIndex={0}
+            className={`min-h-0 flex-1 overflow-auto p-4 ${focusRing}`}
+          >
             {view === undefined ? (
               <p className="text-sm text-muted-foreground">
                 This artifact cannot be shown here yet.
