@@ -27,19 +27,31 @@ export const deckTitle = z
 /** The hex sha256 the database computes over the title and content (D2). */
 export const contentHash = z.string().regex(/^[0-9a-f]{64}$/);
 
+/** The text limits of one slide, shared by the schemas and the deck tool descriptions (czjw.79). */
+export const TITLE_CHARACTERS = 90;
+
+export const TEXT_CHARACTERS = 280;
+
+export const BULLET_CHARACTERS = 80;
+
+export const BULLET_ITEMS = 5;
+
 export const titleElement = z.strictObject({
   kind: z.literal("title"),
-  text: z.string().trim().min(1).max(90),
+  text: z.string().trim().min(1).max(TITLE_CHARACTERS),
 });
 
 export const textElement = z.strictObject({
   kind: z.literal("text"),
-  text: z.string().trim().min(1).max(280),
+  text: z.string().trim().min(1).max(TEXT_CHARACTERS),
 });
 
 export const bulletsElement = z.strictObject({
   kind: z.literal("bullets"),
-  items: z.array(z.string().trim().min(1).max(80)).min(1).max(5),
+  items: z
+    .array(z.string().trim().min(1).max(BULLET_CHARACTERS))
+    .min(1)
+    .max(BULLET_ITEMS),
 });
 
 export const imageElement = z.strictObject({

@@ -8,6 +8,7 @@ import {
 import { z } from "zod";
 
 import { panelConfigSchema } from "../../services/charts/panel-config.ts";
+import { CHART_PROMPT_RULES } from "../../services/charts/prompt-rules.ts";
 
 /**
  * The catalog of an answer (Spec 7 R-45, DEC-29): one root and four blocks. The prompt the model
@@ -94,6 +95,7 @@ export const ANSWER_PROMPT_OPTIONS: PromptOptions = {
   additionalRules: [
     "Put each figure in a Chart of type kpi. Make every other chart and every table with make-artifact. The answer shows it as a card. Never type the values of a figure, a chart or a table.",
     "Write prose only with Heading, Paragraph and List.",
+    ...CHART_PROMPT_RULES,
   ],
   examples: [
     [

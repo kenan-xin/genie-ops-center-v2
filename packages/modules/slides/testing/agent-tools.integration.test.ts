@@ -14,10 +14,12 @@ import {
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { SLIDES_AGENT_TOOLS } from "../src/agent-tools.ts";
 import type { ElementInput } from "../src/contract.ts";
 import { slidesModule } from "../src/module.ts";
+import { changeDeck } from "../src/services/decks/store.ts";
 import { insertDeck } from "./factories.ts";
 
 /**
@@ -97,6 +99,32 @@ const deckCount = async (userId: string) =>
       [userId]
     )
   ).rows[0].n;
+
+const TWO_SLIDES = {
+  slides: [
+    { id: "s1", elements: [title("Collections are on track for October.")] },
+    {
+      id: "s2",
+      elements: [title("Collections grew every month from July to October.")],
+    },
+  ],
+};
+
+/** The content hash that `slides-read-deck` answers. */
+const hashIn = ({ output }: { output: AgentToolValue }) =>
+  z.object({ contentHash: z.string() }).parse(output).contentHash;
+
+/** The deck's stored title, content, undo length and the actions of its audit rows. */
+async function deckState(id: string) {
+  const { rows } = await deployment.context.db.$client.query(
+    `select title, content, jsonb_array_length(undo) as undo,
+       (select coalesce(array_agg(action order by occurred_at), '{}') from audit_event where target_id = $1) as audit
+     from deck where id::text = $1`,
+    [id]
+  );
+
+  return rows[0];
+}
 
 /** The issue messages the create tool's input answers for one slide. */
 function inputIssues(elements: readonly ElementInput[]): string[] {
@@ -180,7 +208,80 @@ describe("the slides agent tools", () => {
     ]);
   });
 
-  it("offers a reader the two read tools, a writer all three, and no slides key none; the rules reach only a writer", async () => {
+  it("slides-change-deck changes a slide with the hash slides-read-deck answers, with one Undo entry and one audit row, and answers no hash", async () => {
+    const owner = await personWith(EDITOR);
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      title: "Collections review",
+      content: TWO_SLIDES,
+    });
+
+    const read = await runTool(owner, "slides-read-deck", { deckId: id });
+
+    const changed = await runTool(owner, "slides-change-deck", {
+      deckId: id,
+      expectedHash: hashIn(read),
+      changes: [
+        {
+          op: "change-slide",
+          slideId: "s2",
+          slide: { elements: [title("Collections grew every month.")] },
+        },
+      ],
+    });
+
+    expect(changed).toEqual({
+      output: {
+        deckId: id,
+        slides: [
+          {
+            number: 1,
+            id: "s1",
+            title: "Collections are on track for October.",
+          },
+          { number: 2, id: "s2", title: "Collections grew every month." },
+        ],
+      },
+      rowCount: 2,
+    });
+    expect(await deckState(id)).toMatchObject({
+      undo: 1,
+      audit: ["slides:deck-changed"],
+    });
+  });
+
+  it("slides-change-deck refuses a hash read before a hand change with deck-changed and saves nothing", async () => {
+    const owner = await personWith(EDITOR);
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      title: "Collections review",
+      content: TWO_SLIDES,
+    });
+
+    const read = await runTool(owner, "slides-read-deck", { deckId: id });
+
+    await changeDeck(owner, {
+      id,
+      changes: [{ op: "rename", title: "Hand save" }],
+    });
+
+    const before = await deckState(id);
+
+    await expect(
+      runTool(owner, "slides-change-deck", {
+        deckId: id,
+        expectedHash: hashIn(read),
+        changes: [{ op: "rename", title: "Agent save" }],
+      })
+    ).rejects.toMatchObject({ code: "slides:deck-changed" });
+
+    expect(await deckState(id)).toEqual(before);
+    expect(before).toMatchObject({ title: "Hand save", undo: 1 });
+  });
+
+  it("offers a reader the two read tools, a writer all four, and no slides key none; the rules reach only a writer", async () => {
     const core = [
       "list-datasets",
       "query-dataset",
@@ -199,7 +300,10 @@ describe("the slides agent tools", () => {
     ).toEqual([
       { tools: core, rules: 0 },
       { tools: [...core, ...read], rules: 0 },
-      { tools: [...core, ...read, "slides-create-deck"], rules: 4 },
+      {
+        tools: [...core, ...read, "slides-create-deck", "slides-change-deck"],
+        rules: 5,
+      },
     ]);
   });
 });
