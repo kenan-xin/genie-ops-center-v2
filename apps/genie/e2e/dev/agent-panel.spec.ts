@@ -6,7 +6,17 @@ import {
   type TestInfo,
 } from "@playwright/test";
 
+import {
+  DOCUMENT_REVIEW_CHAT_ID,
+  DOCUMENT_REVIEW_CHAT_MESSAGE,
+} from "../../testing/document-review-chat.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
+import { withDeploymentLock } from "../support/lock.ts";
+import {
+  closeAgentPanelDatabase,
+  removeReviewDocument,
+  resetReviewDocument,
+} from "./agent-panel-support.ts";
 import {
   askQuestion,
   FIRST_PAINT,
@@ -14,7 +24,8 @@ import {
   openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
-import { ASK_PEOPLE, DEV_MODULES } from "./global-setup.ts";
+import { LEDGER_LOCK, LOCK_WAIT } from "./dev-support.ts";
+import { ASK_PEOPLE, DEV_MODULES, INVOICE_ASK_PEOPLE } from "./global-setup.ts";
 
 test.skip(
   !DEV_MODULES.has("placeholder"),
@@ -42,6 +53,16 @@ const THIRD_PARAGRAPH = "You can ask me to count the records";
 const CHART = "Quantity by record";
 
 const CHANGED = "Quantity by day";
+
+/** Asked on the Invoices list's Overdue tab, where "these" are the overdue invoices. */
+const OVERDUE_QUESTION = "Which of these is largest?";
+
+/**
+ * The answer of `invoices-overdue-2.json`, from the one row that its query read: the largest
+ * outstanding amount of the seeded overdue invoices.
+ */
+const OVERDUE_ANSWER =
+  "INV-2026-10-03 from Harbor Foods has the largest outstanding amount.";
 
 const onPhone = (testInfo: TestInfo) => testInfo.project.name === "phone";
 
@@ -84,6 +105,31 @@ const conversationOf = (scope: Page | Locator) =>
   scope.getByRole("log", { name: "Conversation" });
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
+
+test.afterAll(() => closeAgentPanelDatabase());
+
+/** Opens `path` as this project's invoice person, so the two projects never share a chat list. */
+async function startAsInvoicePerson(
+  page: Page,
+  testInfo: TestInfo,
+  path: string
+) {
+  await signInAs(
+    page,
+    onPhone(testInfo) ? INVOICE_ASK_PEOPLE.phone : INVOICE_ASK_PEOPLE.desktop
+  );
+  await page.goto(path);
+}
+
+/** The task's evidence, at the viewport the project runs. */
+async function screenshot(page: Page, testInfo: TestInfo, name: string) {
+  await page.screenshot({
+    path: testInfo.outputPath(
+      `agent-panel-${name}-${testInfo.project.name}.png`
+    ),
+    fullPage: true,
+  });
+}
 
 test("the Agent button opens the panel, which pushes the page on a desktop and fills a phone", async ({
   page,
@@ -224,6 +270,86 @@ test("a change makes version 2, the panel steps back to version 1, and a phone o
     );
     await expectNoAxeViolations(page, "Ask with the artifact column");
   }
+});
+
+test("on the Overdue tab, the agent answers about the overdue invoices only", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !DEV_MODULES.has("invoices"),
+    "The answer reads the seeded invoices."
+  );
+  // Before the lock, because the wait for the lock counts toward the test's time.
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await startAsInvoicePerson(
+        page,
+        testInfo,
+        "/m/invoices/invoices?status=overdue"
+      );
+
+      const panel = await openAgentPanel(page);
+
+      // The list names its dataset and tab filter to the agent, never its rows (I20).
+      await expect(
+        panel.getByText("About: Invoices, Overdue", { exact: true })
+      ).toBeVisible();
+
+      await askQuestion(page, OVERDUE_QUESTION);
+
+      await expect(conversationOf(panel).getByText(OVERDUE_ANSWER)).toBeVisible(
+        FIRST_PAINT
+      );
+      await expectNoAxeViolations(page, "The answer about the Overdue tab");
+      await screenshot(page, testInfo, "overdue");
+    },
+    LOCK_WAIT
+  );
+});
+
+test("on a document's review page, the agent answers about that document", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !DEV_MODULES.has("invoices"),
+    "The answer reads an invoices document."
+  );
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  // The fixed document is shared by both projects and shows in the inbox counts of other specs.
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await resetReviewDocument();
+
+      try {
+        await startAsInvoicePerson(
+          page,
+          testInfo,
+          `/m/invoices/documents/${DOCUMENT_REVIEW_CHAT_ID}`
+        );
+
+        const panel = await openAgentPanel(page);
+
+        await askQuestion(page, DOCUMENT_REVIEW_CHAT_MESSAGE);
+
+        // The answer of `document-review-2.json`, which only a read of this document reaches.
+        await expect(
+          conversationOf(panel).getByText(
+            "Add the due date on this review page, then save the invoice."
+          )
+        ).toBeVisible(FIRST_PAINT);
+        await expectNoAxeViolations(page, "The answer on the review page");
+        await screenshot(page, testInfo, "review");
+      } finally {
+        await removeReviewDocument();
+      }
+    },
+    LOCK_WAIT
+  );
 });
 
 test("Open in Ask continues the panel's chat, with its artifact", async ({

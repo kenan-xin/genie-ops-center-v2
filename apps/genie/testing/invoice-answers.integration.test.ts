@@ -44,7 +44,8 @@ let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 let recorded: ReturnType<typeof useRecordedModel>;
 
-const MODULES = [placeholderModule, invoicesModule];
+// The order of the app's generated selection, so the recorded tool list is the one the dev e2e sends.
+const MODULES = [invoicesModule, placeholderModule];
 
 const errors: unknown[] = [];
 
@@ -82,7 +83,7 @@ beforeAll(async () => {
     document: "anthropic/claude-opus-5.5",
     reportingDate: "2026-10-27",
   });
-  await enableModules(deployment.context, ["placeholder", "invoices"]);
+  await enableModules(deployment.context, ["invoices", "placeholder"]);
   registerModuleRuntime(deployment.context, MODULES);
 
   const seeder = await insertPersonWith(deployment.context, [
@@ -266,8 +267,8 @@ describe("the invoice answers through the agent", () => {
       "query-dataset",
       "open-record",
       "make-artifact",
-      "placeholder-count-records",
       "invoices-read-document",
+      "placeholder-count-records",
     ]);
     expect(errors).toEqual([]);
   });
