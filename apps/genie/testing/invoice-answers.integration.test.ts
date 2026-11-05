@@ -247,12 +247,15 @@ describe("the invoice answers through the agent", () => {
         .map((chart) => chart.data)
         .filter((chart) => chart.recordPaths !== undefined);
 
-      expect(records.length).toBeGreaterThan(0);
+      expect(
+        records.flatMap((chart) => chart.recordPaths ?? []).some(Boolean)
+      ).toBe(true);
 
       for (const chart of records) {
         expect(chart.recordPaths).toHaveLength(chart.rows.length);
 
-        for (const path of chart.recordPaths ?? []) {
+        // A row with no page answers null, as a customers table does (record-paths.ts).
+        for (const path of chart.recordPaths?.filter((p) => p !== null) ?? []) {
           // A payments table, as in the monthly answer, opens payment pages.
           expect(path).toMatch(
             /^\/m\/invoices\/(invoices|payments)\/[0-9a-f-]{36}$/
