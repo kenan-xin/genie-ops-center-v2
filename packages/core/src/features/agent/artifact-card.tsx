@@ -1,10 +1,12 @@
 "use client";
 
-import { focusRing } from "@genie/ui";
+import { focusRing, Skeleton } from "@genie/ui";
 import { ChartColumnIcon, TableIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { ArtifactRef, CardArtifact } from "./artifact-refs.ts";
+import { useGatedChart } from "./gated-chart.tsx";
+import { moreText, SHORT_LIST_ROWS, ShortListRows } from "./short-list.tsx";
 
 /**
  * What a card does (AG12): in Ask it opens the artifact panel beside the chat and marks the shown
@@ -18,7 +20,75 @@ export type ArtifactCardAction =
     }
   | { readonly kind: "link"; readonly href: (ref: ArtifactRef) => string };
 
-const cardClass = `flex min-h-14 w-full items-center gap-3 rounded-lg border border-border bg-card px-3 py-2 text-start ${focusRing}`;
+const frameClass = "rounded-lg border border-border bg-card";
+
+const controlClass = `flex min-h-14 w-full items-center gap-3 rounded-lg px-3 py-2 text-start ${focusRing}`;
+
+const cardClass = `${frameClass} ${controlClass}`;
+
+const moreClass = `inline-flex min-h-11 items-center rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline lg:min-h-8 ${focusRing}`;
+
+type PreviewOpen =
+  | { readonly kind: "button"; readonly onOpen: () => void }
+  | { readonly kind: "link"; readonly href: string };
+
+/**
+ * The first rows of a table card and how many more (R-44a, FL1). It reads the gate as the viewer
+ * with the panel's query key, so opening the panel reads nothing twice. A refused read shows no
+ * preview, and the card still opens the panel, which shows the refusal.
+ */
+export function TablePreview(props: {
+  // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the model's raw panel config; the gate is its parser
+  readonly config: unknown;
+  readonly open: PreviewOpen;
+}): ReactNode {
+  const { config, query } = useGatedChart(props.config);
+
+  if (config === undefined || query.isError) return null;
+
+  if (query.isPending) {
+    return (
+      <div aria-hidden="true" className="grid gap-1.5 py-1">
+        <div className="grid h-4">
+          <Skeleton className="w-full" />
+        </div>
+        <div className="grid h-4">
+          <Skeleton className="w-2/3" />
+        </div>
+      </div>
+    );
+  }
+
+  const { data } = query.data;
+
+  const hidden = data.rows.length - SHORT_LIST_ROWS;
+
+  const label = (
+    <>
+      {moreText(hidden, data.truncated)}
+      <span className="sr-only"> rows, open the full list</span>
+    </>
+  );
+
+  return (
+    <div className="grid min-w-0 gap-1">
+      <ShortListRows data={data} />
+      {hidden <= 0 ? null : props.open.kind === "link" ? (
+        <a href={props.open.href} className={`${moreClass} justify-self-start`}>
+          {label}
+        </a>
+      ) : (
+        <button
+          type="button"
+          className={`${moreClass} justify-self-start`}
+          onClick={props.open.onOpen}
+        >
+          {label}
+        </button>
+      )}
+    </div>
+  );
+}
 
 function KindIcon(props: { readonly kind: CardArtifact["kind"] }): ReactNode {
   const Icon = props.kind === "table" ? TableIcon : ChartColumnIcon;
@@ -81,26 +151,54 @@ export function ArtifactCard(props: {
     );
   }
 
+  const table = artifact.kind === "table";
+
+  // A table card's frame holds the control and the preview, so no control sits inside another.
+  const ownFrame = table ? controlClass : cardClass;
+
+  let control: ReactNode;
+
+  let open: PreviewOpen;
+
   if (action.kind === "link") {
-    return (
-      <a href={action.href(ref)} className={`${cardClass} hover:bg-muted`}>
+    const href = action.href(ref);
+
+    open = { kind: "link", href };
+
+    control = (
+      <a href={href} className={`${ownFrame} hover:bg-muted`}>
         <Body artifact={artifact} end="Open in Ask" />
       </a>
     );
+  } else {
+    const shown =
+      action.shown?.artifactId === ref.artifactId &&
+      action.shown.version === ref.version;
+
+    open = { kind: "button", onOpen: () => action.onOpen(ref) };
+
+    control = (
+      <button
+        type="button"
+        aria-pressed={shown}
+        className={`${ownFrame} hover:bg-muted aria-pressed:border-primary`}
+        onClick={() => action.onOpen(ref)}
+      >
+        <Body artifact={artifact} end={shown ? "Showing" : "Open"} />
+      </button>
+    );
   }
 
-  const shown =
-    action.shown?.artifactId === ref.artifactId &&
-    action.shown.version === ref.version;
+  if (!table) return control;
 
   return (
-    <button
-      type="button"
-      aria-pressed={shown}
-      className={`${cardClass} hover:bg-muted aria-pressed:border-primary`}
-      onClick={() => action.onOpen(ref)}
+    <div
+      className={`${frameClass} grid has-[[aria-pressed=true]]:border-primary`}
     >
-      <Body artifact={artifact} end={shown ? "Showing" : "Open"} />
-    </button>
+      {control}
+      <div className="min-w-0 ps-14 pe-3 pb-2">
+        <TablePreview config={artifact.config} open={open} />
+      </div>
+    </div>
   );
 }

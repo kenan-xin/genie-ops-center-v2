@@ -8,6 +8,7 @@ import { Fragment } from "react";
 
 import type { AnswerViews } from "./catalog.ts";
 import { GatedChart } from "./gated-chart.tsx";
+import { SHORT_LIST_ROWS } from "./short-list.tsx";
 
 /**
  * The views of the answer catalog (Spec 7 R-45, P10). The catalog's type takes untyped renderers,
@@ -71,7 +72,13 @@ function ListView({ props }: ViewProps) {
 function ChartView({ props }: ViewProps) {
   const streaming = useIsStreaming();
 
-  return <GatedChart config={props.config} streaming={streaming} />;
+  return (
+    <GatedChart
+      config={props.config}
+      streaming={streaming}
+      limit={SHORT_LIST_ROWS}
+    />
+  );
 }
 
 export const ANSWER_VIEWS = {

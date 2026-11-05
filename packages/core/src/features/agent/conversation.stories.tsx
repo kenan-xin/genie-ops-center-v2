@@ -3,6 +3,7 @@ import type { ChatTransport, UIMessageChunk } from "ai";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { AgentMessage } from "../../services/agent/index.ts";
+import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
 import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
 import { refusalFromResponse } from "./transport.ts";
@@ -275,6 +276,14 @@ const meta = {
     },
     a11y: { test: "error" },
   },
+  // A table card reads its first rows through TanStack Query, as in the app.
+  decorators: [
+    (Story) => (
+      <AgentClientStub>
+        <Story />
+      </AgentClientStub>
+    ),
+  ],
   args: {
     sessionId: "00000000-0000-4000-8000-000000000001",
     initialMessages: NO_MESSAGES,

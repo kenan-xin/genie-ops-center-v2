@@ -10,6 +10,7 @@ import { appErrorData } from "../../lib/rpc/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { PageLink } from "../shell/page-link.tsx";
 import { useChartCheck } from "./chart-check.tsx";
+import { moreText } from "./short-list.tsx";
 
 /**
  * A panel config drawn through the S7-04 gate as the viewer (R-45): the inline `Chart` of an answer
@@ -95,6 +96,8 @@ export function GatedChart(props: {
   readonly streaming?: boolean;
   /** `source` drops the read time from the caption, where the frame names it once. */
   readonly caption?: "full" | "source";
+  /** A table with more rows draws only its first `limit`, then how many more (R-44a). */
+  readonly limit?: number;
 }): ReactNode {
   const { timeZone, datasetTitles } = useChartCheck();
   const streaming = props.streaming === true;
@@ -120,18 +123,32 @@ export function GatedChart(props: {
     );
   }
 
+  const { data } = query.data;
+
+  const limit = props.limit;
+
+  const hidden =
+    limit === undefined || data.kind !== "table" ? 0 : data.rows.length - limit;
+
+  // The record paths go by row index, and the first rows keep their index.
+  const rows = hidden > 0 ? data.rows.slice(0, limit) : data.rows;
+
   return (
     // oxlint-disable-next-line shadcn/no-unknown-classes -- Typeset's opt-out class arrives with typeset.css (Task 10)
-    <div className="not-typeset">
+    <div className="not-typeset grid gap-2">
       <Chart
-        {...query.data.data}
-        datasets={query.data.data.datasets.map(
-          (name) => datasetTitles[name] ?? name
-        )}
+        {...data}
+        rows={rows}
+        datasets={data.datasets.map((name) => datasetTitles[name] ?? name)}
         timeZone={timeZone}
         linkComponent={PageLink}
         {...(props.caption === undefined ? {} : { caption: props.caption })}
       />
+      {hidden > 0 ? (
+        <p className="text-sm text-muted-foreground">
+          {moreText(hidden, data.truncated)}. Ask for the full list.
+        </p>
+      ) : null}
     </div>
   );
 }

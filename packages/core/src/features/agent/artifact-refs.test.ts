@@ -57,6 +57,7 @@ describe("artifactRefsOf", () => {
         toolCallId: "call-b",
         kind: "table",
         title: "Records",
+        config: { type: "table", title: "Records", series: [] },
       },
       {
         artifactId: FIRST,
@@ -64,6 +65,7 @@ describe("artifactRefsOf", () => {
         toolCallId: "call-a",
         kind: "chart",
         title: "Quantity by record",
+        config: { type: "bar", title: "Quantity by record", series: [] },
       },
     ]);
   });

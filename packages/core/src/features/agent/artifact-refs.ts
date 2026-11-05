@@ -17,6 +17,8 @@ export type CardArtifact = ArtifactRef & {
   readonly toolCallId: string;
   readonly kind: "chart" | "table";
   readonly title: string;
+  /** The call's raw panel config, which the gate parses when a table card reads its first rows. */
+  readonly config: unknown;
 };
 
 /** The latest version of one artifact of the chat, or null when the chat has no such artifact. */
@@ -37,7 +39,8 @@ const cardData = z.object({
 });
 
 const callInput = z.object({
-  config: z.object({ type: z.string(), title: z.string() }),
+  // Loose, so the series stay on the config that a table card sends to the gate.
+  config: z.looseObject({ type: z.string(), title: z.string() }),
 });
 
 export function artifactRefsOf(message: AgentMessage): readonly CardArtifact[] {
@@ -68,6 +71,7 @@ export function artifactRefsOf(message: AgentMessage): readonly CardArtifact[] {
         toolCallId: part.id,
         kind: config.type === "table" ? ("table" as const) : ("chart" as const),
         title: config.title,
+        config,
       },
     ];
   });

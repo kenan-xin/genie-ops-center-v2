@@ -1,7 +1,8 @@
+import type { ChartData } from "@genie/ui/chart-data";
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { expect, fn, userEvent, waitFor } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { AgentMessage } from "../../services/agent/index.ts";
@@ -81,6 +82,22 @@ const checkRefused = fn(refuseMissing);
 const checkForbidden = fn(refuseForbidden);
 
 const checkRich = fn(resolveAny);
+
+const LONG_TABLE_DATA: ChartData = {
+  ...TABLE_DATA,
+  rows: Array.from({ length: 13 }, (_, index) => ({
+    name: `Record ${index + 1}`,
+  })),
+};
+
+/** The rich answer, with a table of 13 rows from the gate. */
+const resolveLongTable: CheckChart = async (config) => {
+  const { config: parsed } = checkPanelConfig(config);
+
+  return parsed?.type === "table"
+    ? { config: TABLE_CONFIG, data: LONG_TABLE_DATA }
+    : { config: parsed ?? KPI_CONFIG, data: KPI_DATA };
+};
 
 function FirstFrame(props: { readonly children: ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -266,6 +283,25 @@ export const HeadingsListsTableChart: Story = {
     await expect(getComputedStyle(heading).marginBlockStart).not.toBe("0px");
     // Typeset would give a figure in prose a flow margin; the chart keeps its own layout.
     await expect(getComputedStyle(figure).marginBlockStart).toBe("0px");
+  },
+};
+
+export const LongInlineTable: Story = {
+  name: "Long inline table",
+  args: { message: answer(RICH_ANSWER) },
+  decorators: [withChartCheck(resolveLongTable)],
+  play: async ({ canvas }) => {
+    // A large row count never renders in the chat (R-44a): 5 rows, then how many more.
+    const figure = await canvas.findByRole("figure", { name: "Records" });
+
+    // The table draws a desktop table and phone cards, so each row shows twice in the DOM.
+    await expect(within(figure).getAllByText("Record 5")).toHaveLength(2);
+    await expect(within(figure).queryAllByText("Record 6")).toHaveLength(0);
+    await expect(
+      canvas.getByText("8 more. Ask for the full list.")
+    ).toBeVisible();
+    // The KPI chart of the same answer draws as before.
+    await expect(await canvas.findByText("42")).toBeVisible();
   },
 };
 
