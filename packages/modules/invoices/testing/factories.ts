@@ -60,6 +60,8 @@ export async function insertCustomer(
 export async function insertDocument(
   tenant: TenantContext,
   values: {
+    /** A fixed id, for a fixture that a recorded request names. */
+    id?: string;
     kind?: DocumentKind | null;
     sha256?: string;
     fileId?: string;
@@ -74,6 +76,8 @@ export async function insertDocument(
     await tenant.db
       .insert(sourceDocument)
       .values({
+        // Undefined leaves the column default.
+        id: values.id,
         kind: values.kind === undefined ? "payment" : values.kind,
         sha256: values.sha256 ?? randomBytes(32).toString("hex"),
         fileId: values.fileId ?? randomUUID(),

@@ -2137,6 +2137,26 @@
         {
           "type": "function",
           "function": {
+            "name": "invoices-read-document",
+            "description": "Reads one document of the Documents inbox by id: its name, type and inbox status, the reason when it needs input, the fields read from it and the invoice numbers it names. needs-input means a person must complete the fields and save it. confirm-split, no-match and possible-duplicate mean a person must decide how to link the payment. could-not-read means the reading failed, and the reason says why.",
+            "parameters": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "properties": {
+                "documentId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                }
+              },
+              "required": ["documentId"],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
             "name": "placeholder-count-records",
             "description": "Counts the placeholder records this person may read, as of the reporting date.",
             "parameters": {

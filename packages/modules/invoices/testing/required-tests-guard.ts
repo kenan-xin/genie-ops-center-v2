@@ -327,4 +327,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       ),
     ],
   },
+  {
+    file: "testing/agent-tools.integration.test.ts",
+    reason:
+      "Spec 7 S7-31 and R-46: the agent reads one inbox document by value, only for a tenant-wide reader",
+    cases: [
+      "invoices-read-document reads a needs-input invoice document by value, with no quote, page or file link",
+      "invoices-read-document refuses a reader scoped to one customer, so a forged page context reads no document",
+    ],
+  },
 ];

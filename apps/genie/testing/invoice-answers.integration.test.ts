@@ -267,6 +267,7 @@ describe("the invoice answers through the agent", () => {
       "open-record",
       "make-artifact",
       "placeholder-count-records",
+      "invoices-read-document",
     ]);
     expect(errors).toEqual([]);
   });

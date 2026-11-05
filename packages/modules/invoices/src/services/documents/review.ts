@@ -6,11 +6,17 @@ import {
 } from "@genie/core";
 import { and, eq, or } from "drizzle-orm";
 
-import type { DocumentReviewView, StoredReading } from "../../contract.ts";
+import type {
+  DocumentReviewView,
+  InboxStatus,
+  ReadingField,
+  StoredReading,
+} from "../../contract.ts";
 import { RECORD_TYPES } from "../../record-types.ts";
 import {
   allocation,
   customer,
+  type DocumentKind,
   invoice,
   payment,
   sourceDocument,
@@ -114,6 +120,55 @@ async function automaticLinksOf(ctx: ModuleRequestContext, documentId: string) {
       )
     )
     .orderBy(invoice.number, allocation.id);
+}
+
+/** What the agent reads of one document: values only, never a quote, a page or a file link (PC9). */
+export type DocumentFacts = {
+  readonly id: string;
+  readonly label: string;
+  readonly kind: DocumentKind | null;
+  readonly status: InboxStatus;
+  readonly reason: "ai-off" | "no-text-layer" | null;
+  /** Each field that the stored reading holds, by its value only. */
+  readonly fields: Readonly<Partial<Record<ReadingField, string>>>;
+  readonly invoiceNumbers: readonly string[];
+};
+
+/**
+ * One document's facts for the agent (S7-31): as the review reads them, under the same
+ * tenant-wide `invoices:read`, with no file link and no customer list.
+ */
+export async function readDocumentFacts(
+  ctx: ModuleRequestContext,
+  id: string
+): Promise<DocumentFacts> {
+  await assertCanReadEverywhere(ctx.caller);
+
+  const [document] = await ctx.tenant.db
+    .select({ ...documentState, reading: sourceDocument.reading })
+    .from(sourceDocument)
+    .leftJoin(invoice, eq(invoice.documentId, sourceDocument.id))
+    .leftJoin(payment, eq(payment.documentId, sourceDocument.id))
+    .where(eq(sourceDocument.id, id));
+
+  if (document === undefined) throw new AppError(CORE_ERRORS["not-found"]);
+
+  const reading = document.reading;
+
+  return {
+    id,
+    label: document.label,
+    kind: document.kind,
+    status: document.status,
+    reason: reasonOf(document.readingOutcome),
+    fields: Object.fromEntries(
+      Object.entries(reading?.fields ?? {}).map(([field, quoted]) => [
+        field,
+        quoted.value,
+      ])
+    ),
+    invoiceNumbers: (reading?.invoiceNumbers ?? []).map(({ value }) => value),
+  };
 }
 
 /**

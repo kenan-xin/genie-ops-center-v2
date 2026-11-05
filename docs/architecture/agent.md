@@ -18,7 +18,7 @@ Core also owns four general tools (Spec 7 R-43, R-45a):
 A module adds to the agent only through the module contract (`module-contract.md`):
 
 - Datasets. A module describes its data as datasets: fields, measures, a time field and a record key. Each dataset filters its own rows with `scopesFor()`, so a person sees only their rows. Core reads module data only through these datasets, never from a module table.
-- Agent tools. A module that needs the agent to do something, such as making a deck, declares its own tools through the `agent-tools` capability. Slides does this. Invoices declares no tool, because the agent never writes invoices (R-46); it gives only prompt rules.
+- Agent tools. A module that needs the agent to do something, such as making a deck, declares its own tools through the `agent-tools` capability. Slides does this. Invoices declares one read tool, `invoices-read-document`, so the agent can answer about the document on its review page; it declares no write tool, because the agent never writes invoices (R-46).
 - Prompt rules. A module can add short rules to the prompt through the same capability.
 
 Core finds these at startup in the modules that are switched on. A switched-off module's datasets and tools are not offered. Core never names a module tool. So a future healthcare, legal or CRM module joins the agent the same way, with no change to core.
