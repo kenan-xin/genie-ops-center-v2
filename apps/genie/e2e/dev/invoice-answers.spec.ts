@@ -188,7 +188,11 @@ test("the late payer answer shows the counts per customer without links and ever
 
       const paidLate = figure(page, "Invoices paid late").getByRole("link");
 
-      await expect(paidLate).toHaveCount(13, FIRST_PAINT);
+      // An inline table shows its first 5 rows and how many more (FL2).
+      await expect(paidLate).toHaveCount(5, FIRST_PAINT);
+      await expect(
+        page.getByText("8 more. Ask for the full list.", { exact: true })
+      ).toBeVisible();
       expect(await paidLate.first().getAttribute("href")).toMatch(RECORD_PATH);
       await expect(
         page.getByText(
@@ -229,7 +233,10 @@ test("the monthly answer draws invoiced sales and collections from two datasets 
       await expect(may).toContainText(amount(31300));
       await expect(
         figure(page, "Invoices with money outstanding").getByRole("link")
-      ).toHaveCount(7, FIRST_PAINT);
+      ).toHaveCount(5, FIRST_PAINT);
+      await expect(
+        page.getByText("2 more. Ask for the full list.", { exact: true })
+      ).toBeVisible();
       await capture(page, testInfo, "ask-monthly-invoiced-and-collected");
     },
     LOCK_WAIT
