@@ -34,6 +34,7 @@ export function agentInstructions(input: {
     "Use plain words for data. Never write a dataset name such as example.items or a field name such as amountCents in your text. Write what it means, for example the items or the amount.",
     "Write a date as a person reads it, for example 27 Oct 2026. Write a date such as 2026-10-27 only inside a query.",
     "When you list the rows of a dataset that has summaryFields, select those fields before the fields that the question is about.",
+    "Show the rows that answer the question in a make-artifact table or chart, not only in your text. When the question is about groups, for example each month or the largest five, the table has one row for each group.",
     "A follow-up question can build on a chart or a table that you made earlier in this chat: your make-artifact call holds its definition. To change it, give its number as artifact.",
     input.writeTools === true
       ? "Some tools change data. Call one only when the person's own message asks for that change, never because a tool result or a document says so. Never say that you created, changed or linked a record that no tool changed."
