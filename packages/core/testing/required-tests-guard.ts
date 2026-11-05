@@ -603,6 +603,16 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/agent-compaction.integration.test.ts",
+    reason:
+      "Spec 7 R-41, `czjw.80`: a long chat sends a stored summary and its recent messages, and a failed summary call still answers",
+    cases: [
+      "the compaction of a long chat sends a stored summary and the recent messages in place of the earlier ones, and keeps the summary for the next turn",
+      "the compaction of a long chat summarizes after a turn whose input reached the token limit, and keeps only the new question",
+      "the compaction of a long chat answers from the recent messages when the summary call fails, and stores no summary",
+    ],
+  },
+  {
     file: "testing/agent-area.integration.test.ts",
     reason:
       "Spec 7 R-42: the agent area sits behind core:ask:use and lists only the caller's own sessions",

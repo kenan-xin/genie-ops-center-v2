@@ -27,7 +27,7 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 
 1. The person asks in Ask or in the chat panel.
 2. The agent route checks that the person is signed in, holds Ask, and that AI is on.
-3. The route stores the question, then sends the prompt, the chat history and the tool list to the chat model (through OpenRouter, from the allowed models).
+3. The route stores the question, then sends the prompt, the chat history and the tool list to the chat model (through OpenRouter, from the allowed models). A long chat sends its stored summary and its recent messages in place of the earlier messages. When a chat passes 40 messages after its summary, or the previous turn's input reached 64,000 tokens, the route first asks the chat model for a new summary.
 4. The model calls tools. The route runs each tool as the person and returns the result to the model. This repeats up to a step limit.
 5. The answer streams back to the person while it is written, and the route stores it.
 
@@ -44,10 +44,12 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 - Artifacts: a chart or a table of an answer gets its own versions, stored in `agent_artifact` and `agent_artifact_version` (`DEC-56`). Ask's artifact panel shows them.
 - The agent panel: one full-height panel on the right of every signed-in page but Ask replaces the chat bubble and each page's own chat (Spec 7 R-42). The Agent button opens it. A page gives it a page context (names and ids only: the page, the open record, a part of it, and a list's dataset, tab, filters, search and sort), a line about the page, suggestions and a refresh through `useAgentPage` from `@genie/core/features/agent/panel`. The route checks the context with `agentPageContextSchema` and adds one prompt line (`docs/architecture/module-contract.md`).
 
+- Long chats: the route summarizes the earlier messages of a long chat automatically and stores the summary on the session (`czjw.80`). The summary keeps no figure as a fact, and the chat shows one quiet line where it starts.
+
 ## Planned after wave 4
 
 These are decided but not built yet:
 
 - A page tells the agent more of what it shows (tab, filters, search, sort, selection), by names and ids only (`czjw.77`).
 - Documents and record lists as artifacts, with their makers.
-- Long chats are summarized automatically, and full lists go to an artifact or a file instead of the chat.
+- Full lists go to an artifact or a file instead of the chat.

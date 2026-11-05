@@ -22,20 +22,29 @@ import { reportingDate } from "../settings/reporting-date.ts";
 import { agentAccess } from "./access.ts";
 import { artifactTurn } from "./artifact-tool.ts";
 import { storedArtifactCount } from "./artifacts.ts";
+import {
+  compactionPlan,
+  SUMMARIZE_CHAT,
+  summarizeChat,
+  summaryMessage,
+} from "./compaction.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { agentPageContextSchema } from "./page-context.ts";
 import { agentInstructions } from "./prompt.ts";
 import {
+  type AgentMessage,
   appendMessage,
   createOwnSession,
   findOwnSession,
-  readOwnSession,
+  readOwnHistory,
+  saveSummary,
 } from "./store.ts";
 import {
   agentToolSet,
   auditRefusedToolCall,
   offersWriteTool,
+  writeToolAudit,
 } from "./tools.ts";
 
 /** The route's limits (P8): one bounded turn per request, never retried. */
@@ -170,7 +179,64 @@ export async function handleAgentChat(
     parts: [{ type: "text", text }],
   });
 
-  const history = [...(await readOwnSession(ctx, sessionId)).messages];
+  // One signal for both model calls: Stop and the turn limit end the summary call too (LC5).
+  const abortSignal = AbortSignal.any([
+    request.signal,
+    AbortSignal.timeout(AGENT_LIMITS.turnMs),
+  ]);
+
+  const history = await readOwnHistory(ctx, sessionId);
+
+  const plan = compactionPlan(history);
+
+  let summary = history.summary;
+
+  let sent: readonly AgentMessage[] = trimHistory(
+    history.messages.map((entry) => entry.message)
+  );
+
+  let summarized: { throughMessageId: string; summary: string } | null = null;
+
+  if (plan.compact) {
+    const audit = (outcome: string) =>
+      writeToolAudit(
+        ctx,
+        { id: sessionId },
+        {
+          tool: SUMMARIZE_CHAT,
+          query: { messages: plan.covered.length, throughSeq: plan.throughSeq },
+          outcome,
+          rowCount: plan.covered.length,
+          dataset: null,
+        }
+      );
+
+    try {
+      const written = await summarizeChat({
+        model,
+        previous: history.summary,
+        covered: plan.covered,
+        abortSignal,
+      });
+
+      await saveSummary(ctx, sessionId, {
+        summary: written,
+        throughSeq: plan.throughSeq,
+      });
+
+      summary = written;
+      sent = plan.kept;
+      summarized = {
+        throughMessageId: plan.throughMessageId,
+        summary: written,
+      };
+      await audit("answered");
+    } catch (cause) {
+      // A failed summary stores nothing; this turn answers from the plain window, the next tries again (LC6).
+      hooks.logError(cause);
+      await audit("failed");
+    }
+  }
 
   const turn = artifactTurn(
     sessionId,
@@ -178,6 +244,8 @@ export async function handleAgentChat(
   );
 
   const tools = await agentToolSet(ctx, { id: sessionId }, turn);
+
+  let largestInput = 0;
 
   const result = streamText({
     model,
@@ -188,20 +256,22 @@ export async function handleAgentChat(
       page: context,
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
-    messages: await convertToModelMessages([...trimHistory(history)], {
-      tools,
-      ignoreIncompleteToolCalls: true,
-    }),
+    messages: await convertToModelMessages(
+      summary === null ? [...sent] : [summaryMessage(summary), ...sent],
+      { tools, ignoreIncompleteToolCalls: true }
+    ),
     tools,
     // A call the SDK refuses before `execute` leaves one refused audit row (czjw.31).
     repairToolCall: auditRefusedToolCall(ctx, { id: sessionId }),
-    stopWhen: isStepCount(AGENT_LIMITS.steps),
+    // The summary call takes one of the turn's steps, also when it failed (LC5).
+    stopWhen: isStepCount(AGENT_LIMITS.steps - (plan.compact ? 1 : 0)),
+    // The largest step input decides the next turn's token trigger; `usage` sums all steps (LC1).
+    onStepEnd: ({ usage }) => {
+      largestInput = Math.max(largestInput, usage.inputTokens ?? 0);
+    },
     maxRetries: 0,
     // A client disconnect stops the model call too; `onEnd` still stores what streamed.
-    abortSignal: AbortSignal.any([
-      request.signal,
-      AbortSignal.timeout(AGENT_LIMITS.turnMs),
-    ]),
+    abortSignal,
   });
 
   return createUIMessageStreamResponse({
@@ -209,10 +279,19 @@ export async function handleAgentChat(
     // no-transform; measured on 2026-11-05: one chunk at the end, against one chunk per event.
     headers: { "cache-control": "no-cache, no-transform" },
     stream: createUIMessageStream({
-      originalMessages: history,
+      originalMessages: [...sent],
       generateId: () => randomUUID(),
       // The tool writes each artifact's card part into this stream while the answer streams.
       execute: ({ writer }) => {
+        // Transient: the chat moves its summary line now, and the stored answer never holds it (LC7).
+        if (summarized !== null) {
+          writer.write({
+            type: "data-summary",
+            data: summarized,
+            transient: true,
+          });
+        }
+
         turn.write = (part) => writer.write(part);
         writer.merge(
           toUIMessageStream({
@@ -236,7 +315,8 @@ export async function handleAgentChat(
             role: "assistant",
             parts: responseMessage.parts,
           },
-          turn.pending
+          turn.pending,
+          largestInput > 0 ? { inputTokens: largestInput } : {}
         ).catch((cause: unknown) => {
           hooks.logError(cause);
 

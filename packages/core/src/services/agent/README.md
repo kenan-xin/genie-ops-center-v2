@@ -46,8 +46,16 @@ type of at most 64 characters and an id of 1 to 64 letters, digits or hyphens (`
 one for an existing session (`model-not-allowed`). Only then does it create the session, store
 the message and stream the answer, which it stores when the stream ends.
 
-The model gets at most the last 40 stored messages of a session, starting at a user message, so a
-long chat does not grow each prompt. The session still stores and shows every message.
+A long chat summarizes its earlier messages (S7-34, `compaction.ts`). A turn summarizes when more
+than 40 messages follow the stored summary, or when the largest step input of the previous turn
+reached 64,000 tokens. The message trigger keeps the last 10 messages from a user message on, and
+the token trigger keeps only the new question. The summary call reads a plain transcript with no
+read result, takes one of the turn's steps and its abort signal, and writes one `summarize-chat`
+audit row with no text. The session stores the summary and the last `seq` it covers, and later
+calls send the summary as a user message after the system text, then the messages after it. If
+the summary call fails, the turn answers from the stored summary and the last 40 messages after
+it (`trimHistory`), and the next turn tries again. The session still stores and shows every
+message.
 
 ## What must not go here
 

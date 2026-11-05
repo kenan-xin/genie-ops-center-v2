@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import type { StepWords } from "../../../contracts/index.ts";
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
+import { toolNameOf } from "../../services/agent/tool-parts.ts";
 
 /**
  * An answer's tool calls as the step timeline shows them (czjw.81, AG16): reads of one dataset in
@@ -80,11 +81,7 @@ function artifactWords(kind: "chart" | "table"): StepWords {
 }
 
 /** The tool a part calls, or null for a part that is not a tool call. */
-export function toolNameOf(part: MessagePart): string | null {
-  if (part.type === "dynamic-tool") return part.toolName;
-
-  return part.type.startsWith("tool-") ? part.type.slice("tool-".length) : null;
-}
+export { toolNameOf };
 
 /** The dataset a read names, or undefined while its input still streams. */
 function datasetOf(part: MessagePart): string | undefined {
