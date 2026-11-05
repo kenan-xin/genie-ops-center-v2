@@ -1,7 +1,7 @@
 "use client";
 
 import { focusRing } from "@genie/ui";
-import { SparklesIcon } from "lucide-react";
+import { ChevronRightIcon, SparklesIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import type { InboxLink } from "../../services/agent/index.ts";
@@ -22,6 +22,31 @@ export function AgentMark(): ReactNode {
     >
       <SparklesIcon className="size-3.5" strokeWidth={1.75} />
     </span>
+  );
+}
+
+/**
+ * A muted fold under an answer or a divider: a chevron that turns and a label. 44 px high under
+ * 1024 px, so a finger reaches it (FL15).
+ */
+export function QuietFold(props: {
+  readonly label: string;
+  readonly children: ReactNode;
+}): ReactNode {
+  return (
+    <details className="group text-sm">
+      <summary
+        className={`inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md font-medium text-muted-foreground hover:text-foreground lg:min-h-8 ${focusRing}`}
+      >
+        <ChevronRightIcon
+          aria-hidden="true"
+          className="size-4 group-open:rotate-90 motion-safe:transition-transform"
+          strokeWidth={1.75}
+        />
+        {props.label}
+      </summary>
+      {props.children}
+    </details>
   );
 }
 

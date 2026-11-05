@@ -14,7 +14,7 @@ import {
   SelectValue,
 } from "@genie/ui";
 import type { ChatTransport } from "ai";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 
 import type {
@@ -27,6 +27,12 @@ import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
 import { AgentMark, ChatEmpty, pillClass } from "./chat-parts.tsx";
 import { Composer } from "./composer.tsx";
 import { MessageParts } from "./message-parts.tsx";
+import { SummaryLine } from "./summary-line.tsx";
+import {
+  type LiveSummary,
+  liveSummarySchema,
+  summaryBoundary,
+} from "./summary.ts";
 import { refusalOf } from "./transport.ts";
 
 const storedTime = z.object({ createdAt: z.iso.datetime({ offset: true }) });
@@ -111,6 +117,9 @@ export function Conversation(props: {
 
   const sentAt = useRef(0);
 
+  // The summary this session's latest turn made, which the stored messages carry only after a load.
+  const [liveSummary, setLiveSummary] = useState<LiveSummary | null>(null);
+
   const [modelId, setModelId] = useState(
     props.models?.chatDefault ?? props.models?.allowed[0] ?? ""
   );
@@ -119,6 +128,13 @@ export function Conversation(props: {
     id: props.sessionId,
     messages: [...props.initialMessages],
     transport: props.transport,
+    onData: (part) => {
+      if (part.type !== "data-summary") return;
+
+      const parsed = liveSummarySchema.safeParse(part.data);
+
+      if (parsed.success) setLiveSummary(parsed.data);
+    },
     // A refusal stores no answer, so it earns no list refresh or navigation (B9.4).
     onFinish: ({ isError, message }) => {
       setLiveTimes((times) => ({
@@ -178,6 +194,8 @@ export function Conversation(props: {
 
   const isNew = chat.messages.length === 0;
 
+  const boundary = summaryBoundary(chat.messages, liveSummary);
+
   // A new chat offers its starters in the empty state; later they sit above the composer.
   const showSuggestions =
     !isNew && !busy && refusal === null && props.suggestions.length > 0;
@@ -211,40 +229,48 @@ export function Conversation(props: {
           {/* No wrapper in an empty log, so it stays empty for a reader and a test. */}
           {chat.messages.length === 0 ? null : (
             <div className={`flex flex-col gap-6 ${column}`}>
-              {chat.messages.map((message, index) =>
-                message.role === "user" ? (
-                  <Message key={message.id} align="end">
-                    <Bubble variant="muted" align="end">
-                      <BubbleContent>
-                        <span className="sr-only">You: </span>
-                        <MessageParts message={message} streaming={false} />
-                      </BubbleContent>
-                    </Bubble>
-                  </Message>
-                ) : (
-                  <Message key={message.id}>
-                    <AgentMark />
-                    <MessageContent className="max-w-prose">
-                      <span className="sr-only">Answer:</span>
-                      <MessageParts
-                        message={message}
-                        labels={props.labels}
-                        streaming={busy && index === chat.messages.length - 1}
-                        durationMs={
-                          liveTimes[message.id] ??
-                          storedDuration(chat.messages, index)
-                        }
-                        onTryAgain={() => {
-                          const question = questionBefore(chat.messages, index);
+              {chat.messages.map((message, index) => (
+                <Fragment key={message.id}>
+                  {message.role === "user" ? (
+                    <Message align="end">
+                      <Bubble variant="muted" align="end">
+                        <BubbleContent>
+                          <span className="sr-only">You: </span>
+                          <MessageParts message={message} streaming={false} />
+                        </BubbleContent>
+                      </Bubble>
+                    </Message>
+                  ) : (
+                    <Message>
+                      <AgentMark />
+                      <MessageContent className="max-w-prose">
+                        <span className="sr-only">Answer:</span>
+                        <MessageParts
+                          message={message}
+                          labels={props.labels}
+                          streaming={busy && index === chat.messages.length - 1}
+                          durationMs={
+                            liveTimes[message.id] ??
+                            storedDuration(chat.messages, index)
+                          }
+                          onTryAgain={() => {
+                            const question = questionBefore(
+                              chat.messages,
+                              index
+                            );
 
-                          if (question !== undefined) send(question);
-                        }}
-                        artifacts={props.artifacts}
-                      />
-                    </MessageContent>
-                  </Message>
-                )
-              )}
+                            if (question !== undefined) send(question);
+                          }}
+                          artifacts={props.artifacts}
+                        />
+                      </MessageContent>
+                    </Message>
+                  )}
+                  {boundary?.messageId === message.id ? (
+                    <SummaryLine summary={boundary.summary} />
+                  ) : null}
+                </Fragment>
+              ))}
             </div>
           )}
         </div>

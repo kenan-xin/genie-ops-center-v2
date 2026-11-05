@@ -1,12 +1,12 @@
 "use client";
 
-import { Button, focusRing } from "@genie/ui";
+import { Button } from "@genie/ui";
 import {
   Renderer,
   type OpenUIError,
   type ParseResult,
 } from "@openuidev/react-lang";
-import { ChevronRightIcon, CopyIcon, DatabaseIcon } from "lucide-react";
+import { CopyIcon, DatabaseIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
@@ -15,6 +15,7 @@ import { ANSWER_LIBRARY } from "./answer-library.tsx";
 import { methodLines, sourceTitles } from "./answer-sources.ts";
 import { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 import { artifactRefsOf } from "./artifact-refs.ts";
+import { QuietFold } from "./chat-parts.tsx";
 import { StepTimeline } from "./step-timeline.tsx";
 
 /**
@@ -146,23 +147,13 @@ function AnswerFooter(props: {
         </Button>
       </div>
       {method.length === 0 ? null : (
-        <details className="group text-sm">
-          <summary
-            className={`inline-flex min-h-8 cursor-pointer list-none items-center gap-1 rounded-md font-medium text-muted-foreground hover:text-foreground ${focusRing}`}
-          >
-            <ChevronRightIcon
-              aria-hidden="true"
-              className="size-4 transition-transform group-open:rotate-90 motion-reduce:transition-none"
-              strokeWidth={1.75}
-            />
-            How this was counted
-          </summary>
+        <QuietFold label="How this was counted">
           <ul className="grid gap-0.5 ps-5 text-muted-foreground">
             {method.map((line, index) => (
               <li key={index}>{line}</li>
             ))}
           </ul>
-        </details>
+        </QuietFold>
       )}
     </div>
   );

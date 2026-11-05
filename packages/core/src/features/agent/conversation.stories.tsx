@@ -187,6 +187,58 @@ const ARTIFACT_CHAT: readonly AgentMessage[] = [
 
 const openArtifact = fn();
 
+const SUMMARY_LINE = "Earlier messages were summarized";
+
+const STORED_SUMMARY = "The person asked about records 1 and 2.";
+
+const LIVE_SUMMARY = "The person asked about records 1, 2 and 3.";
+
+function paragraph(text: string): AgentMessage["parts"] {
+  return [
+    { type: "text", text: `root = Answer([p])\np = Paragraph("${text}")` },
+  ];
+}
+
+/** Three turns; the route summarized through the second answer, message 4 (S7-34). */
+const SUMMARIZED_CHAT: readonly AgentMessage[] = [1, 2, 3].flatMap((turn) => [
+  {
+    id: `q${turn}`,
+    role: "user" as const,
+    parts: [{ type: "text" as const, text: `Question ${turn}` }],
+  },
+  {
+    id: `a${turn}`,
+    role: "assistant" as const,
+    parts: paragraph(`Answer ${turn}.`),
+    metadata: turn === 2 ? { summary: STORED_SUMMARY } : undefined,
+  },
+]);
+
+/** Whether `first` comes before `second` in the document. */
+const before = (first: Node, second: Node) =>
+  (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !==
+  0;
+
+/** A turn that summarized through answer 3 before it answers, as the route streams it. */
+const sendSummarized = fn(async () =>
+  chunks(
+    {
+      type: "data-summary",
+      data: { throughMessageId: "a3", summary: LIVE_SUMMARY },
+      transient: true,
+    },
+    { type: "start" },
+    { type: "text-start", id: "answer" },
+    {
+      type: "text-delta",
+      id: "answer",
+      delta: 'root = Answer([p])\np = Paragraph("Answer 4.")',
+    },
+    { type: "text-end", id: "answer" },
+    { type: "finish" }
+  )
+);
+
 /** The route's own 400 body, so the story proves the refusal mapping it ships with. */
 const sendRefused = fn(async () => {
   throw await refusalFromResponse(
@@ -369,6 +421,61 @@ export const ArtifactCardsInThePanel: Story = {
     await expect(
       canvas.getByRole("link", { name: /^Quantity by record.*Open in Ask$/ })
     ).toHaveAttribute("href", `/ask/chat-1?artifact=${CHART_ID}`);
+  },
+};
+
+export const SummarizedChat: Story = {
+  name: "Summarized chat",
+  args: { initialMessages: SUMMARIZED_CHAT, models: null },
+  play: async ({ canvas }) => {
+    const lines = canvas.getAllByText(SUMMARY_LINE);
+
+    // One quiet line, between the last summarized answer and the next question.
+    await expect(lines).toHaveLength(1);
+
+    const [line] = lines;
+
+    if (line === undefined) throw new Error("no summary line");
+
+    await expect(before(canvas.getByText("Answer 2."), line)).toBe(true);
+    await expect(before(line, canvas.getByText("Question 3"))).toBe(true);
+    await expect(canvas.getByText(STORED_SUMMARY)).not.toBeVisible();
+
+    await userEvent.click(line);
+    await expect(canvas.getByText(STORED_SUMMARY)).toBeVisible();
+  },
+};
+
+export const SummarizedWhileYouChat: Story = {
+  name: "Summarized while you chat",
+  args: {
+    initialMessages: SUMMARIZED_CHAT,
+    models: null,
+    transport: transportOf(sendSummarized),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Message" }),
+      "Question 4"
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Send" }));
+    await canvas.findByText("Answer 4.");
+
+    // The line moves to the new boundary at once, and the old one is gone.
+    const lines = canvas.getAllByText(SUMMARY_LINE);
+
+    await expect(lines).toHaveLength(1);
+
+    const [line] = lines;
+
+    if (line === undefined) throw new Error("no summary line");
+
+    await expect(before(canvas.getByText("Answer 3."), line)).toBe(true);
+    await expect(before(line, canvas.getByText("Question 4"))).toBe(true);
+
+    await userEvent.click(line);
+    await expect(canvas.getByText(LIVE_SUMMARY)).toBeVisible();
+    await expect(canvas.queryByText(STORED_SUMMARY)).toBeNull();
   },
 };
 
