@@ -1,5 +1,6 @@
 "use client";
 
+import { useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import { Button, type Figure, FigureStrip } from "@genie/ui";
@@ -7,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { PencilIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { invoicesContract } from "../contract.ts";
+import { invoicesContract, RECORD_TYPES } from "../contract.ts";
 import { DocumentDesk } from "./document-desk.tsx";
 import { formatDay, formatMoney } from "./format.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
@@ -86,6 +87,11 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
   });
 
   const view = query.data;
+
+  useAgentPage({
+    context: { page: "Invoice", record: { type: RECORD_TYPES.invoice, id } },
+    about: view.kind === "shown" ? view.invoice.invoiceNumber : "Invoice",
+  });
 
   // Memoised: a new array would draw the page's text layer again.
   const fields = useMemo(

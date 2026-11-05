@@ -1,5 +1,6 @@
 "use client";
 
+import { useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { appCodeOf, useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -52,6 +53,8 @@ export function DashboardList(props: DashboardListProps) {
   const nameErrorId = useId();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+
+  useAgentPage({ context: { page: "Dashboards" } });
 
   const [confirm, setConfirm] = useState<{ id: string; name: string } | null>(
     null

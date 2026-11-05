@@ -1,5 +1,6 @@
 "use client";
 
+import { listAgentPage, useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -10,7 +11,11 @@ import {
 } from "@genie/ui";
 import { useMemo } from "react";
 
-import { invoicesContract, paymentListParams } from "../contract.ts";
+import {
+  INVOICE_DATASET_NAMES,
+  invoicesContract,
+  paymentListParams,
+} from "../contract.ts";
 import {
   formatDay,
   formatInstant,
@@ -100,6 +105,15 @@ export function PaymentList(props: PaymentListProps) {
 
   const state = useListState(definition);
   const params = procedureParams(paymentListParams, state.params);
+
+  // The agent panel gets the tab, filters and sort as dataset terms, never the rows (I20).
+  useAgentPage(
+    listAgentPage({
+      definition: paymentListDefinition,
+      params: state.params,
+      dataset: INVOICE_DATASET_NAMES.payments,
+    })
+  );
   const filtered = Object.keys(params).length > 0;
 
   const list = useListPages<PaymentListView>({

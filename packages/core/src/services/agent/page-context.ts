@@ -32,7 +32,7 @@ const filter = z.union([
   z.strictObject({
     field: fieldName,
     op: z.literal("in"),
-    values: z.array(filterValue).min(1).max(50),
+    values: z.array(filterValue).min(1).max(50).readonly(),
   }),
   z.strictObject({
     field: fieldName,
@@ -56,7 +56,7 @@ const list = z
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*\.[a-z0-9]+(?:-[a-z0-9]+)*$/)
       .optional(),
     tab: typeName(64).optional(),
-    filters: z.array(filter).min(1).max(20).optional(),
+    filters: z.array(filter).min(1).max(20).readonly().optional(),
     search: z
       .string()
       .trim()
@@ -64,8 +64,8 @@ const list = z
       .max(200)
       .regex(/^[^\p{Cc}]+$/u)
       .optional(),
-    orderBy: z.array(order).min(1).max(3).optional(),
-    selected: z.array(recordId).min(1).max(50).optional(),
+    orderBy: z.array(order).min(1).max(3).readonly().optional(),
+    selected: z.array(recordId).min(1).max(50).readonly().optional(),
   })
   .refine(
     (value) =>

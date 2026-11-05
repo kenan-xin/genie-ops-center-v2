@@ -8,6 +8,20 @@ import { z } from "zod";
  * the module id.
  */
 
+/** The module's record types, one name for the server declarations and the pages' context. */
+export const RECORD_TYPES = {
+  invoice: "invoices-invoice",
+  payment: "invoices-payment",
+  customer: "invoices-customer",
+  document: "invoices-document",
+} as const;
+
+/** The datasets that the Invoices and Payments lists show, as their pages name them to the agent. */
+export const INVOICE_DATASET_NAMES = {
+  invoices: "invoices.invoices",
+  payments: "invoices.payments",
+} as const;
+
 /** Where an invoice's due date came from. `unspecified` has no due date and is never overdue (R-29). */
 export const DUE_DATE_SOURCES = ["document", "person", "unspecified"] as const;
 

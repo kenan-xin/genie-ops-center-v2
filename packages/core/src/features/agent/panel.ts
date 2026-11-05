@@ -15,3 +15,7 @@ export {
 } from "./agent-panel-host.tsx";
 
 export { AgentButton } from "./agent-button.tsx";
+
+export { type ListAgentPage, listAgentPage } from "./page-context.ts";
+
+export type { AgentPageContext } from "../../services/agent/page-context.ts";

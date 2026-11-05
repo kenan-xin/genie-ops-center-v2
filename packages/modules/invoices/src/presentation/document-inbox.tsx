@@ -1,5 +1,6 @@
 "use client";
 
+import { listAgentPage, useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -170,6 +171,11 @@ export function DocumentInbox(props: DocumentInboxProps) {
   // The tab, the filters and the sort live in the address; the server page is the default one.
   const state = useListState(DEFINITION);
   const params = procedureParams(documentListParams, state.params);
+
+  // The inbox is no dataset, so the agent panel gets its tab and search only (czjw.89).
+  useAgentPage(
+    listAgentPage({ definition: documentListDefinition, params: state.params })
+  );
   const filtered = Object.keys(params).length > 0;
 
   // The list reads one page at a time from the cursor (czjw.49).

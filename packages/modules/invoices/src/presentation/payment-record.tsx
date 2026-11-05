@@ -1,5 +1,6 @@
 "use client";
 
+import { useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import { Button, type Figure, FigureStrip } from "@genie/ui";
@@ -7,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { LinkIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 
-import { invoicesContract } from "../contract.ts";
+import { invoicesContract, RECORD_TYPES } from "../contract.ts";
 import { DocumentDesk } from "./document-desk.tsx";
 import { formatDay, formatMoney, paymentLabel } from "./format.ts";
 import { INVOICES_QUERY, LinkInvoiceDialog } from "./link-dialogs.tsx";
@@ -61,6 +62,11 @@ function ShownPayment(props: { readonly initial: ShownView }) {
   });
 
   const view = query.data;
+
+  useAgentPage({
+    context: { page: "Payment", record: { type: RECORD_TYPES.payment, id } },
+    about: view.kind === "shown" ? paymentLabel(view.payment) : "Payment",
+  });
 
   // Memoised: a new array would draw the page's text layer again.
   const fields = useMemo(

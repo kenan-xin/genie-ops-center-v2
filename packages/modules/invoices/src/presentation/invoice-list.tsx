@@ -1,5 +1,6 @@
 "use client";
 
+import { listAgentPage, useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -12,7 +13,11 @@ import {
 } from "@genie/ui";
 import { useMemo } from "react";
 
-import { invoiceListParams, invoicesContract } from "../contract.ts";
+import {
+  INVOICE_DATASET_NAMES,
+  invoiceListParams,
+  invoicesContract,
+} from "../contract.ts";
 import { formatDay, formatInstant, rangeNote } from "./format.ts";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
 import { invoiceListDefinition } from "./list-definitions.ts";
@@ -127,6 +132,15 @@ export function InvoiceList(props: InvoiceListProps) {
 
   const state = useListState(definition);
   const params = procedureParams(invoiceListParams, state.params);
+
+  // The agent panel gets the tab, filters and sort as dataset terms, never the rows (I20).
+  useAgentPage(
+    listAgentPage({
+      definition: invoiceListDefinition,
+      params: state.params,
+      dataset: INVOICE_DATASET_NAMES.invoices,
+    })
+  );
   const filtered = Object.keys(params).length > 0;
 
   const list = useListPages<InvoiceListView>({

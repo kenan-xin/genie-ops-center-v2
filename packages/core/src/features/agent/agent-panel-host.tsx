@@ -24,6 +24,9 @@ import { ShellContext } from "../shell/shell-context.ts";
 import { linkFor } from "../shell/shell-link.ts";
 import {
   agentPanelStore,
+  leaveOutPage,
+  pageLeftOut,
+  sentPageContext,
   setPanelOpen,
   setPanelWorking,
 } from "./agent-panel-store.ts";
@@ -53,8 +56,6 @@ const LazyAgentChat = lazy(async () => ({
 
 const clearOutbox = () => agentPanelStore.setState({ outbox: null });
 
-const pageContext = () => agentPanelStore.getState().page?.context;
-
 const pageFinished = () => agentPanelStore.getState().page?.onFinished?.();
 
 const openInAsk = "Open in Ask";
@@ -82,6 +83,7 @@ export function AgentPanelHost(props: {
   const working = useStore(agentPanelStore, (state) => state.working);
   const page = useStore(agentPanelStore, (state) => state.page);
   const outbox = useStore(agentPanelStore, (state) => state.outbox);
+  const leftOut = useStore(agentPanelStore, pageLeftOut);
   const docked = useMediaQuery(DOCKED, {});
 
   const sessionKey = `${AGENT_PANEL_SESSION_KEY}:${props.person}`;
@@ -143,6 +145,9 @@ export function AgentPanelHost(props: {
 
   const Anchor = linkFor(askHref, shell?.linkComponent);
 
+  // The line names the page the next message goes with; a left-out page shows none.
+  const about = leftOut ? undefined : (page?.about ?? page?.context?.page);
+
   const panel = (
     <section
       aria-label="Agent"
@@ -157,13 +162,25 @@ export function AgentPanelHost(props: {
             />
             Agent
           </h2>
-          {page?.about === undefined ? null : (
-            <p
-              title={page.about}
-              className="truncate text-xs text-muted-foreground"
-            >
-              About: {page.about}
-            </p>
+          {about === undefined ? null : (
+            <div className="flex min-w-0 items-center gap-1">
+              <p
+                title={about}
+                className="min-w-0 truncate text-xs text-muted-foreground"
+              >
+                About: {about}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Leave this page out of the chat"
+                title="Leave this page out of the chat"
+                onClick={leaveOutPage}
+              >
+                <XIcon aria-hidden="true" strokeWidth={1.75} />
+              </Button>
+            </div>
           )}
         </div>
         <Button
@@ -211,7 +228,7 @@ export function AgentPanelHost(props: {
             <LazyAgentChat
               key={`${sessionId}:${loads}`}
               sessionId={sessionId}
-              context={pageContext}
+              context={sentPageContext}
               models={props.models}
               labels={props.labels}
               suggestions={page?.suggestions ?? props.suggestions}

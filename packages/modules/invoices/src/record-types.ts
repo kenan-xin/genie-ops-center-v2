@@ -1,15 +1,11 @@
 import type { Module } from "@genie/core";
 import { eq, sql } from "drizzle-orm";
 
+import { RECORD_TYPES } from "./contract.ts";
 import { customer, invoice, payment, sourceDocument } from "./schema.ts";
 import { documentLabel } from "./services/documents/label.ts";
 
-export const RECORD_TYPES = {
-  invoice: "invoices-invoice",
-  payment: "invoices-payment",
-  customer: "invoices-customer",
-  document: "invoices-document",
-} as const;
+export { RECORD_TYPES } from "./contract.ts";
 
 /**
  * The module's record types. An invoice and a payment name their customer as parent, so a grant

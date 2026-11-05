@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  type AgentPageContext,
+  useAgentPage,
+} from "@genie/core/features/agent/panel";
 import { PageHeader } from "@genie/core/features/shell";
 import {
   Button,
@@ -420,6 +424,21 @@ export function DeckView(props: DeckViewProps) {
   const index = Math.min(shown, Math.max(deck.slides.length - 1, 0));
 
   const current = deck.slides[index];
+
+  // The panel names the open deck and its shown slide (D21); a chat change reads the deck again.
+  const context: AgentPageContext = {
+    page: "Deck",
+    record: { type: "slides-deck", id: deck.id },
+  };
+
+  if (current !== undefined) context.part = { type: "slide", id: current.id };
+
+  useAgentPage({
+    context,
+    about:
+      current === undefined ? deck.title : `${deck.title}, slide ${index + 1}`,
+    onFinished: () => void deckQuery.refetch(),
+  });
 
   // The open slide can go while the sheet is open. Its snapshot stays, and a reload is the way out.
   useEffect(() => {

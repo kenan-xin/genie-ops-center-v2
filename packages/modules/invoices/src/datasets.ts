@@ -6,7 +6,7 @@ import {
 } from "@genie/core";
 import { and, eq, lte, sql } from "drizzle-orm";
 
-import { RECORD_TYPES } from "./record-types.ts";
+import { INVOICE_DATASET_NAMES, RECORD_TYPES } from "./contract.ts";
 import { allocation, customer, invoice, payment } from "./schema.ts";
 import { customerScope, invoiceScope, paymentScope } from "./scope.ts";
 
@@ -91,7 +91,7 @@ const listStatus = (description: string): DatasetField => ({
 });
 
 export const invoicesDataset: DatasetDeclaration = {
-  name: "invoices.invoices",
+  name: INVOICE_DATASET_NAMES.invoices,
   title: "Invoices",
   questions: ["Who owes us the most?", "Which invoices are overdue?"],
   description:
@@ -201,7 +201,7 @@ export const invoicesDataset: DatasetDeclaration = {
 };
 
 export const paymentsDataset: DatasetDeclaration = {
-  name: "invoices.payments",
+  name: INVOICE_DATASET_NAMES.payments,
   title: "Payments",
   questions: ["How much did we collect this month?"],
   description:

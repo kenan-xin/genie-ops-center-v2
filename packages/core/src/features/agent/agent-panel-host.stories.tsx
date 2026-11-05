@@ -381,6 +381,52 @@ export const APageTalksToThePanel: Story = {
   },
 };
 
+// PL1, PL2: the person leaves the page out of the chat. The line goes, and the next message sends
+// no context; once the page shows another record, the line and the context come back.
+export const ThePersonLeavesThePageOut: Story = {
+  name: "The person leaves the page out",
+  render: () => <Frame page />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add a chart" }));
+
+    const region = await panel();
+
+    await expect(region).toHaveTextContent("About: Monthly review");
+    await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(1));
+    release();
+    await screen.findByText("Half an answer.");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Leave this page out of the chat" })
+    );
+    await expect(region).not.toHaveTextContent("About:");
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Message" }),
+      "And in general?{Enter}"
+    );
+    await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(2));
+    await expect(sentBody(1).context).toBeUndefined();
+    release();
+    await waitFor(() => expect(onFinished).toHaveBeenCalledTimes(2));
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Open the next dashboard" })
+    );
+    await expect(region).toHaveTextContent("About: Monthly review");
+
+    await userEvent.type(
+      screen.getByRole("textbox", { name: "Message" }),
+      "And this one?{Enter}"
+    );
+    await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(3));
+    await expect(sentBody(2).context).toEqual({
+      page: "Dashboard",
+      record: { type: "analytics-dashboard", id: "d2" },
+    });
+  },
+};
+
 // A page's message waits while an answer streams. It goes for the record it was sent for, and is
 // dropped once the person opens another record, so it never changes the wrong one.
 export const AQueuedMessageKeepsItsRecord: Story = {

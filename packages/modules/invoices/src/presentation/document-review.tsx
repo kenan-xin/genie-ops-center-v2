@@ -1,5 +1,6 @@
 "use client";
 
+import { useAgentPage } from "@genie/core/features/agent/panel";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -18,7 +19,7 @@ import {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, type ReactNode } from "react";
 
-import { invoicesContract } from "../contract.ts";
+import { invoicesContract, RECORD_TYPES } from "../contract.ts";
 import { AutomaticLinks } from "./automatic-links.tsx";
 import { type DocumentKind, kindText } from "./document-kind.ts";
 import { LazyDocumentViewer } from "./document-viewer-lazy.tsx";
@@ -107,6 +108,14 @@ export function DocumentReview(props: {
   const data = review.data;
   const kind = data.document.kind;
   const label = data.document.label;
+
+  useAgentPage({
+    context: {
+      page: "Document review",
+      record: { type: RECORD_TYPES.document, id },
+    },
+    about: label,
+  });
 
   // Memoised: DocumentViewer recomputes its quote ranges on a new array.
   const highlights = useMemo(
