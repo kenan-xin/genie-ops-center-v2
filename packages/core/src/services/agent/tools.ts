@@ -38,12 +38,13 @@ type DatasetListing = {
   timeField: string;
   recordKeyField: string;
   currencyField?: string;
+  summaryFields?: readonly string[];
 };
 
 const listDatasetsTool = defineAgentTool({
   name: "list-datasets",
   description:
-    "Lists the datasets this person may read: each dataset's name and description first, then its fields with their kind, type and description, its time field, its record key field and its currency field.",
+    "Lists the datasets this person may read: each dataset's name and description first, then its fields with their kind, type and description, its time field, its record key field, its currency field and its summaryFields, the fields that every list of its rows shows.",
   input: z.strictObject({}),
   run: async (ctx) => {
     const datasets = (await listDatasets(ctx)).map((dataset) => {
@@ -65,6 +66,10 @@ const listDatasetsTool = defineAgentTool({
 
       if (dataset.currencyField !== undefined) {
         entry.currencyField = dataset.currencyField;
+      }
+
+      if (dataset.summaryFields !== undefined) {
+        entry.summaryFields = dataset.summaryFields;
       }
 
       return entry;

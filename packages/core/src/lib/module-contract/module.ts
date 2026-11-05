@@ -441,6 +441,11 @@ export type DatasetDeclaration = {
    */
   readonly rowKeyField?: string;
   readonly currencyField?: string;
+  /**
+   * Declared field names that every list of the dataset's rows shows. `list-datasets` answers them,
+   * and the agent selects them first (Spec 7 R-44).
+   */
+  readonly summaryFields?: readonly string[];
   source(ctx: ModuleRequestContext, asOf: string): Promise<DatasetSource>;
 };
 

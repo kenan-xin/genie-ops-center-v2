@@ -468,6 +468,14 @@ export function validateModule(module: Module): readonly string[] {
       );
     }
 
+    for (const field of dataset.summaryFields ?? []) {
+      if (dataset.fields[field] === undefined) {
+        problems.push(
+          `Dataset "${name}" names summary field "${field}", which is not a declared field.`
+        );
+      }
+    }
+
     for (const [fieldName, field] of Object.entries(dataset.fields)) {
       if (field.searchable === true && field.type !== "text") {
         problems.push(

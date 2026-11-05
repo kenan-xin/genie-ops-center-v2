@@ -1312,6 +1312,10 @@ describe("validateModule", () => {
         'Dataset "fixture.records" names row key field "amountCents", which is not a declared text field.',
       ],
       [
+        [{ ...validDataset, summaryFields: ["label", "missing"] }],
+        'Dataset "fixture.records" names summary field "missing", which is not a declared field.',
+      ],
+      [
         [
           {
             ...validDataset,

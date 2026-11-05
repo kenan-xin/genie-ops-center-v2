@@ -1,4 +1,6 @@
 import {
+  agentToolSet,
+  artifactTurn,
   type ModuleRequestContext,
   principalFor,
   registerModuleRuntime,
@@ -11,6 +13,7 @@ import {
   startDisposableDeployment,
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import { readDocumentTool } from "../src/agent-tools.ts";
 import type { StoredReading } from "../src/contract.ts";
@@ -122,5 +125,44 @@ describe("invoices-read-document", () => {
     await expect(read(userId, id)).rejects.toMatchObject({
       code: "forbidden",
     });
+  });
+});
+
+describe("invoices-list-datasets", () => {
+  it("answers the invoice summary fields, and no person-facing title or label", async () => {
+    const sessionId = "00000000-0000-4000-8000-00000000c0de";
+    const { userId } = await insertPersonWith(t(), [
+      "core:ask:use",
+      "invoices:read",
+    ]);
+    const execute = (
+      await agentToolSet(
+        as(userId),
+        { id: sessionId },
+        artifactTurn(sessionId, 0)
+      )
+    )["list-datasets"]?.execute;
+
+    if (execute === undefined) throw new Error('No tool "list-datasets".');
+
+    const output = await execute(
+      {},
+      { toolCallId: "call-list-datasets", messages: [], context: {} }
+    );
+    const { datasets } = z
+      .object({
+        datasets: z.array(
+          z.object({
+            name: z.string(),
+            summaryFields: z.array(z.string()).optional(),
+          })
+        ),
+      })
+      .parse(output);
+
+    expect(
+      datasets.find(({ name }) => name === "invoices.invoices")?.summaryFields
+    ).toEqual(["invoiceNumber", "customerName", "outstandingCents"]);
+    expect(JSON.stringify(output)).not.toMatch(/"(label|title)"/);
   });
 });

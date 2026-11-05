@@ -334,6 +334,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     cases: [
       "invoices-read-document reads a needs-input invoice document by value, with no quote, page or file link",
       "invoices-read-document refuses a reader scoped to one customer, so a forged page context reads no document",
+      "invoices-list-datasets answers the invoice summary fields, and no person-facing title or label",
     ],
   },
 ];

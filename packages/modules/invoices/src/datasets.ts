@@ -143,6 +143,7 @@ export const invoicesDataset: DatasetDeclaration = {
   timeField: "invoiceDate",
   recordKey: { type: RECORD_TYPES.invoice, field: "id" },
   currencyField: "currency",
+  summaryFields: ["invoiceNumber", "customerName", "outstandingCents"],
   source: async (ctx, asOf) => {
     const scope = invoiceScope(await scopesFor(ctx.caller, "invoices:read"));
     const paid = paidAsOf(ctx.tenant.db, asOf);
