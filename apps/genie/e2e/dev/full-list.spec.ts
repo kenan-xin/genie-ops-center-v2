@@ -136,6 +136,8 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
       const download = card.getByRole("button", { name: "Download" });
 
       await expect(download).toBeVisible(FIRST_PAINT);
+      await card.scrollIntoViewIfNeeded();
+      await shot(page, testInfo, "file-card");
 
       const file = page.waitForEvent("download");
 
