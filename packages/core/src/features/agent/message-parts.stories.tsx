@@ -2,10 +2,10 @@ import type { ChartData } from "@genie/ui/chart-data";
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
-import type { AgentMessage } from "../../services/agent/index.ts";
+import type { AgentFile, AgentMessage } from "../../services/agent/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import {
   BROKEN_ANSWER,
@@ -376,6 +376,126 @@ export const SourcesAndMethod: Story = {
     await expect(method).not.toBeVisible();
     await userEvent.click(canvas.getByText("How this was counted"));
     await expect(method).toBeVisible();
+  },
+};
+
+const FILE_CALL: AgentMessage = {
+  id: "file-answer",
+  role: "assistant",
+  parts: [
+    {
+      type: "tool-make-file",
+      toolCallId: "call-file",
+      state: "output-available",
+      input: {
+        title: "All invoices",
+        format: "xlsx",
+        dataset: "ledger.invoices",
+        query: { select: ["number"] },
+      },
+      output: { title: "All invoices", format: "xlsx", state: "making" },
+    },
+    { type: "text", text: PROSE_ANSWER },
+  ],
+};
+
+const agentFile = (
+  state: "queued" | "running" | "ready" | "failed"
+): AgentFile => ({
+  id: "00000000-0000-4000-8000-0000000000f1",
+  toolCallId: "call-file",
+  title: "All invoices",
+  format: "xlsx",
+  state,
+  rowCount: state === "ready" ? 42 : null,
+});
+
+const FILE_URL = "https://example.invalid/api/files/download?token=t";
+
+const fileLink = fn(async () => FILE_URL);
+
+/** A file the agent queued (R-44a): its card shows the job's state, and Download only when made. */
+export const FileBeingMade: Story = {
+  name: "File being made",
+  args: {
+    message: FILE_CALL,
+    files: [agentFile("running")],
+    onDownload: fileLink,
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    const card = await canvas.findByRole("group", { name: "All invoices" });
+
+    await expect(within(card).getByText("Excel file")).toBeVisible();
+    await expect(within(card).getByText("Making")).toBeVisible();
+    await expect(
+      within(card).queryByRole("button", { name: /Download/ })
+    ).toBeNull();
+  },
+};
+
+export const FileReady: Story = {
+  name: "File ready",
+  args: {
+    message: FILE_CALL,
+    files: [agentFile("ready")],
+    onDownload: fileLink,
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  beforeEach: () => {
+    fileLink.mockClear();
+  },
+  play: async ({ canvas }) => {
+    const card = await canvas.findByRole("group", { name: "All invoices" });
+
+    await expect(within(card).getByText("Excel file · 42 rows")).toBeVisible();
+
+    // The browser would leave the story to download; the click is caught and read instead.
+    const followed: HTMLAnchorElement[] = [];
+
+    const click = spyOn(
+      HTMLAnchorElement.prototype,
+      "click"
+    ).mockImplementation(function (this: HTMLAnchorElement) {
+      followed.push(this);
+    });
+
+    try {
+      await userEvent.click(
+        within(card).getByRole("button", { name: /Download/ })
+      );
+      await waitFor(() => expect(followed).toHaveLength(1));
+    } finally {
+      click.mockRestore();
+    }
+
+    await expect(fileLink).toHaveBeenCalledTimes(1);
+    await expect(fileLink).toHaveBeenCalledWith(agentFile("ready").id);
+    await expect(followed[0]?.href).toBe(FILE_URL);
+    await expect(followed[0]?.hasAttribute("download")).toBe(true);
+  },
+};
+
+export const FileNotMade: Story = {
+  name: "File not made",
+  args: {
+    message: FILE_CALL,
+    files: [agentFile("failed")],
+    onDownload: fileLink,
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    const card = await canvas.findByRole("group", { name: "All invoices" });
+
+    await expect(within(card).getByText("Not made")).toBeVisible();
+    await expect(
+      within(card).getByText(
+        "The file could not be made. Ask again in a moment."
+      )
+    ).toBeVisible();
+    await expect(
+      within(card).queryByRole("button", { name: /Download/ })
+    ).toBeNull();
   },
 };
 

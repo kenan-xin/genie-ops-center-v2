@@ -26,6 +26,8 @@ export {
   type AgentFile,
   type AgentFileState,
   createAgentFile,
+  listOwnFiles,
+  ownFileLink,
 } from "./files.ts";
 
 export { AGENT_FILE_JOB, readEveryRow } from "./file-job.ts";

@@ -2,10 +2,12 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { ModuleClientProvider } from "../../../lib/rpc/module-client.tsx";
-import type { AgentMessage } from "../../../services/agent/index.ts";
+import type { AgentFile, AgentMessage } from "../../../services/agent/index.ts";
 import type { CheckChart } from "../chart-check.tsx";
 
 const NO_MESSAGES: readonly AgentMessage[] = [];
+
+const NO_FILES: readonly AgentFile[] = [];
 
 const noChart: CheckChart = async () => {
   throw new Error("This story draws no chart.");
@@ -20,6 +22,12 @@ export function AgentClientStub(props: {
     readonly id: string;
   }) => Promise<readonly AgentMessage[]>;
   readonly chart?: CheckChart;
+  readonly files?: (input: {
+    readonly id: string;
+  }) => Promise<readonly AgentFile[]>;
+  readonly fileLink?: (input: {
+    readonly id: string;
+  }) => Promise<{ readonly url: string }>;
   readonly children: ReactNode;
 }): ReactNode {
   const [client] = useState(
@@ -31,6 +39,12 @@ export function AgentClientStub(props: {
     chart: ({ config }: { readonly config: unknown }) =>
       (props.chart ?? noChart)(config),
     sessions: async () => [],
+    files: props.files ?? (async () => NO_FILES),
+    fileLink:
+      props.fileLink ??
+      (async () => {
+        throw new Error("This story downloads no file.");
+      }),
   };
 
   return (

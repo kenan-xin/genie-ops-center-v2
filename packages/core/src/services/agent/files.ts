@@ -1,8 +1,9 @@
-import { and, eq } from "drizzle-orm";
+import { and, asc, eq } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { agentFile, agentSession } from "../../schema.ts";
+import { ASK_PERMISSION } from "../authorization/roles.ts";
 import type { DatasetQuery } from "../datasets/query.ts";
 import type { FileFormat } from "./file-kinds.ts";
 import { checkedId } from "./store.ts";
@@ -62,4 +63,61 @@ export async function createAgentFile(
   if (row === undefined) throw new Error("The insert returned no row.");
 
   return row.id;
+}
+
+function ownFile(ctx: ModuleRequestContext) {
+  return eq(agentSession.userId, ctx.caller.userId);
+}
+
+/** The files of the caller's chat, oldest first; another person's chat answers none. */
+export async function listOwnFiles(
+  ctx: ModuleRequestContext,
+  sessionId: string
+): Promise<readonly AgentFile[]> {
+  return ctx.tenant.db
+    .select({
+      id: agentFile.id,
+      toolCallId: agentFile.toolCallId,
+      title: agentFile.title,
+      format: agentFile.format,
+      state: agentFile.state,
+      rowCount: agentFile.rowCount,
+    })
+    .from(agentFile)
+    .innerJoin(agentSession, eq(agentSession.id, agentFile.sessionId))
+    .where(and(eq(agentFile.sessionId, checkedId(sessionId)), ownFile(ctx)))
+    .orderBy(asc(agentFile.createdAt), asc(agentFile.id));
+}
+
+/**
+ * A download link for the caller's own made file, which only they open (R-41). A file of another
+ * person, or one still being made, is `not-found`.
+ */
+export async function ownFileLink(
+  ctx: ModuleRequestContext,
+  id: string
+): Promise<{ readonly url: string }> {
+  const [row] = await ctx.tenant.db
+    .select({ fileId: agentFile.fileId })
+    .from(agentFile)
+    .innerJoin(agentSession, eq(agentSession.id, agentFile.sessionId))
+    .where(
+      and(
+        eq(agentFile.id, checkedId(id)),
+        eq(agentFile.state, "ready"),
+        ownFile(ctx)
+      )
+    );
+
+  if (row?.fileId === null || row === undefined) {
+    throw new AppError(CORE_ERRORS["not-found"]);
+  }
+
+  const { url } = await ctx.tenant.fileStorage.createOwnerLink({
+    fileId: row.fileId,
+    principal: ctx.caller,
+    permission: ASK_PERMISSION,
+  });
+
+  return { url };
 }

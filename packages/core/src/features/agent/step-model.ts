@@ -1,7 +1,12 @@
 import { z } from "zod";
 
 import type { StepWords } from "../../../contracts/index.ts";
-import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
+import { FILE_FORMATS } from "../../services/agent/file-kinds.ts";
+import type {
+  AgentFileState,
+  AgentMessage,
+  ChatLabels,
+} from "../../services/agent/index.ts";
 import { toolNameOf } from "../../services/agent/tool-parts.ts";
 
 /**
@@ -66,6 +71,15 @@ const readInput = z.object({ dataset: z.string() });
 
 const artifactInput = z.object({ config: z.object({ type: z.string() }) });
 
+const fileInput = z.object({ format: z.enum(FILE_FORMATS) });
+
+const FILE_NOUNS = {
+  csv: "a CSV file",
+  xlsx: "an Excel file",
+  md: "a Markdown file",
+  pdf: "a PDF file",
+} as const;
+
 const UNKNOWN_WORDS: StepWords = {
   active: "Using a tool",
   done: "Used a tool",
@@ -99,6 +113,19 @@ function artifactKindOf(part: MessagePart): "chart" | "table" {
   return type === "table" ? "table" : "chart";
 }
 
+function fileWords(part: MessagePart): StepWords {
+  const format =
+    "input" in part ? fileInput.safeParse(part.input).data?.format : undefined;
+
+  const noun = format === undefined ? "a file" : FILE_NOUNS[format];
+
+  return {
+    active: `Making ${noun}`,
+    done: `Made ${noun}`,
+    failed: `Could not make ${noun}`,
+  };
+}
+
 function stateOf(part: MessagePart): "active" | "done" | "failed" {
   if (!("state" in part)) return "active";
 
@@ -107,12 +134,30 @@ function stateOf(part: MessagePart): "active" | "done" | "failed" {
   return part.state === "output-error" ? "failed" : "active";
 }
 
+/** A `make-file` call follows its job: done only when the file is ready (R-44a). */
+function fileStateOf(
+  part: MessagePart,
+  files: Readonly<Record<string, AgentFileState>>
+): "active" | "done" | "failed" {
+  const state = stateOf(part);
+
+  if (state !== "done" || !("toolCallId" in part)) return state;
+
+  const job = files[part.toolCallId];
+
+  if (job === "ready") return "done";
+
+  return job === "failed" ? "failed" : "active";
+}
+
 function wordsFor(
   name: string,
   part: MessagePart,
   labels: ChatLabels
 ): StepWords {
   if (name === "make-artifact") return artifactWords(artifactKindOf(part));
+
+  if (name === "make-file") return fileWords(part);
 
   return CORE_WORDS.get(name) ?? labels.steps[name] ?? UNKNOWN_WORDS;
 }
@@ -126,6 +171,8 @@ type Draft = {
   name: string;
   dataset: string | undefined;
   state: "active" | "done" | "failed";
+  /** The last call was refused (`output-error`); a failed file job is not a refusal. */
+  refused: boolean;
   count: number;
   fixes: number;
   last: MessagePart;
@@ -172,7 +219,8 @@ export function rowText(row: TimelineRow): string {
 export function stepTimeline(
   parts: readonly MessagePart[],
   labels: ChatLabels,
-  streaming: boolean
+  streaming: boolean,
+  files: Readonly<Record<string, AgentFileState>> = {}
 ): Timeline {
   const drafts: Draft[] = [];
 
@@ -181,16 +229,20 @@ export function stepTimeline(
 
     if (name === null) continue;
 
-    const state = stateOf(part);
+    const state =
+      name === "make-file" ? fileStateOf(part, files) : stateOf(part);
+
+    const refused = stateOf(part) === "failed";
 
     const dataset = name === "query-dataset" ? datasetOf(part) : undefined;
 
     const open = drafts.at(-1);
 
     // A call after a refused call of the same tool is its fix: one row (czjw.79).
-    if (open !== undefined && open.name === name && open.state === "failed") {
+    if (open !== undefined && open.name === name && open.refused) {
       open.fixes += 1;
       open.state = state;
+      open.refused = refused;
       open.last = part;
       open.dataset = dataset ?? open.dataset;
       open.parts.push(part);
@@ -221,6 +273,7 @@ export function stepTimeline(
       name,
       dataset,
       state,
+      refused,
       count: 1,
       fixes: 0,
       last: part,
@@ -232,6 +285,9 @@ export function stepTimeline(
 
   const last = rows.at(-1);
 
+  // Only a refused last call fails the answer; a file job that failed says so on its own row.
+  const lastRefused = drafts.at(-1)?.refused === true;
+
   const answered = parts.some(
     (part) => part.type === "text" && part.text.trim() !== ""
   );
@@ -239,7 +295,7 @@ export function stepTimeline(
   return {
     rows,
     thinking: streaming && rows.length === 0 && !answered,
-    failed: !streaming && last?.state === "failed" ? last : null,
+    failed: !streaming && lastRefused && last !== undefined ? last : null,
   };
 }
 

@@ -239,6 +239,32 @@ export const Failed: Story = {
   },
 };
 
+const fileCall: MessagePart = {
+  type: "tool-make-file",
+  toolCallId: "f1",
+  state: "output-available",
+  input: { title: "All invoices", format: "xlsx", dataset: "ledger.invoices" },
+  output: { title: "All invoices", format: "xlsx", state: "making" },
+};
+
+/** The answer ended, and its file job still runs: the strip, then the running row with its step. */
+export const FileStillMaking: Story = {
+  name: "File still being made",
+  args: {
+    parts: [listed, read("r1", "ledger.invoices"), fileCall, answer],
+    files: { f1: "running" },
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(/^Used 3 steps/)).toBeVisible();
+
+    const list = canvas.getByRole("list", { name: "Steps" });
+
+    await expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    await expect(within(list).getByText("Making an Excel file")).toBeVisible();
+    await expect(within(list).getByText(/^Step 3/)).toBeVisible();
+  },
+};
+
 export const ThinkingInAsk: Story = {
   ...Thinking,
   name: "Thinking in Ask",

@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import type { ChatLabels } from "../../services/agent/index.ts";
+import type { AgentFileState, ChatLabels } from "../../services/agent/index.ts";
 import {
   durationLabel,
   elapsedLabel,
@@ -199,8 +199,15 @@ export function StepTimeline(props: {
   readonly onTryAgain?: (() => void) | undefined;
   /** The answer, drawn between the steps and the failure box. */
   readonly children?: ReactNode;
+  /** The state of each file job by its `make-file` call id. */
+  readonly files?: Readonly<Record<string, AgentFileState>> | undefined;
 }): ReactNode {
-  const timeline = stepTimeline(props.parts, props.labels, props.streaming);
+  const timeline = stepTimeline(
+    props.parts,
+    props.labels,
+    props.streaming,
+    props.files
+  );
 
   const [open, setOpen] = useState(false);
 
@@ -211,6 +218,26 @@ export function StepTimeline(props: {
   const { rows, failed } = timeline;
 
   let stepsView: ReactNode = null;
+
+  const activeRow = (row: TimelineRow) => {
+    const ms = elapsed(row.key);
+
+    const time = elapsedLabel(ms);
+
+    const step = `Step ${rows.indexOf(row) + 1}`;
+
+    return (
+      <Row
+        key={row.key}
+        row={row}
+        meta={time === null ? step : `${step} · ${time}`}
+        slow={isSlow(ms)}
+      />
+    );
+  };
+
+  // A finished answer whose file job still runs keeps that row in sight under the strip (R-44a).
+  const stillRunning = rows.filter((row) => row.state === "active");
 
   if (timeline.thinking) {
     stepsView = (
@@ -235,24 +262,13 @@ export function StepTimeline(props: {
           </button>
         )}
         <Rows>
-          {shown.map((row) => {
-            if (row.state !== "active") return <Row key={row.key} row={row} />;
-
-            const ms = elapsed(row.key);
-
-            const time = elapsedLabel(ms);
-
-            const step = `Step ${rows.indexOf(row) + 1}`;
-
-            return (
-              <Row
-                key={row.key}
-                row={row}
-                meta={time === null ? step : `${step} · ${time}`}
-                slow={isSlow(ms)}
-              />
-            );
-          })}
+          {shown.map((row) =>
+            row.state === "active" ? (
+              activeRow(row)
+            ) : (
+              <Row key={row.key} row={row} />
+            )
+          )}
         </Rows>
       </div>
     );
@@ -289,10 +305,16 @@ export function StepTimeline(props: {
         </button>
         {open ? (
           <Rows>
-            {rows.map((row) => (
-              <Row key={row.key} row={row} />
-            ))}
+            {rows.map((row) =>
+              row.state === "active" ? (
+                activeRow(row)
+              ) : (
+                <Row key={row.key} row={row} />
+              )
+            )}
           </Rows>
+        ) : stillRunning.length > 0 ? (
+          <Rows>{stillRunning.map(activeRow)}</Rows>
         ) : null}
       </div>
     );

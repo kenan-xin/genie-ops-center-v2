@@ -59,6 +59,48 @@
         }
       }
     },
+    "/agent/sessions/{id}/files": {
+      "get": {
+        "operationId": "agent.files",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/agent/files/{id}/link": {
+      "post": {
+        "operationId": "agent.fileLink",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/agent/chart": {
       "post": {
         "operationId": "agent.chart",

@@ -18,6 +18,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 
 import type {
+  AgentFile,
   AgentMessage,
   ChatLabels,
   InboxLink,
@@ -107,6 +108,10 @@ export function Conversation(props: {
     | { readonly text: string; readonly onSent: () => void }
     | undefined;
   readonly onFinished?: ((sessionId: string) => void) | undefined;
+  /** The chat's list files, for the file cards and the timeline (R-44a). */
+  readonly files?: readonly AgentFile[] | undefined;
+  /** Answers a download link for a file id; undefined shows no file card. */
+  readonly onDownload?: ((id: string) => Promise<string>) | undefined;
 }): ReactNode {
   const [draft, setDraft] = useState("");
 
@@ -262,6 +267,8 @@ export function Conversation(props: {
                             if (question !== undefined) send(question);
                           }}
                           artifacts={props.artifacts}
+                          files={props.files}
+                          onDownload={props.onDownload}
                         />
                       </MessageContent>
                     </Message>

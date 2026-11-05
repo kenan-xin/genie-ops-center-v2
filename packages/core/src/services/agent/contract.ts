@@ -3,6 +3,7 @@ import { z } from "zod";
 import { oc } from "../../lib/rpc/index.ts";
 import type { CheckedChart } from "../charts/index.ts";
 import type { AgentArtifact } from "./artifacts.ts";
+import type { AgentFile } from "./files.ts";
 import type { AgentMessage, AgentSessionSummary } from "./store.ts";
 
 /**
@@ -24,6 +25,16 @@ export const agentContract = {
     .route({ method: "GET", path: "/agent/sessions/{id}/artifacts" })
     .input(z.object({ id: z.string() }))
     .output(z.custom<readonly AgentArtifact[]>()),
+  // The list files of one of the caller's own sessions, oldest first (R-44a).
+  files: oc
+    .route({ method: "GET", path: "/agent/sessions/{id}/files" })
+    .input(z.object({ id: z.string() }))
+    .output(z.custom<readonly AgentFile[]>()),
+  // A short-lived link to the caller's own made file, which only they open.
+  fileLink: oc
+    .route({ method: "POST", path: "/agent/files/{id}/link" })
+    .input(z.object({ id: z.string() }))
+    .output(z.custom<{ readonly url: string }>()),
   // The config is the model's raw panel config; the S7-04 gate is its parser.
   chart: oc
     .route({ method: "POST", path: "/agent/chart" })

@@ -4,6 +4,7 @@ import { ASK_PERMISSION } from "../authorization/roles.ts";
 import { checkChart } from "../charts/index.ts";
 import { listOwnArtifacts } from "./artifacts.ts";
 import { agentContract } from "./contract.ts";
+import { listOwnFiles, ownFileLink } from "./files.ts";
 import { withRecordPaths } from "./record-paths.ts";
 import { listOwnSessions, readOwnSession } from "./store.ts";
 
@@ -49,6 +50,19 @@ export function createAgentRouter() {
         throw cause;
       }
     }),
+    // A malformed id or another person's chat answers no files, as `artifacts` does.
+    files: os.files.handler(async ({ context, input }) => {
+      try {
+        return await listOwnFiles(context, input.id);
+      } catch (cause) {
+        if (cause instanceof AppError && cause.code === "not-found") return [];
+
+        throw cause;
+      }
+    }),
+    fileLink: os.fileLink.handler(async ({ context, input }) =>
+      ownFileLink(context, input.id)
+    ),
     chart: os.chart.handler(async ({ context, input }) =>
       withRecordPaths(context, await checkChart(context, input.config))
     ),

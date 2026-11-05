@@ -9,13 +9,19 @@ import {
 import { CopyIcon, DatabaseIcon } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
-import type { AgentMessage, ChatLabels } from "../../services/agent/index.ts";
+import type {
+  AgentFile,
+  AgentMessage,
+  ChatLabels,
+} from "../../services/agent/index.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
 import { methodLines, sourceTitles } from "./answer-sources.ts";
 import { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 import { artifactRefsOf } from "./artifact-refs.ts";
 import { QuietFold } from "./chat-parts.tsx";
+import { FileCard } from "./file-card.tsx";
+import { fileCallsOf } from "./file-refs.ts";
 import { StepTimeline } from "./step-timeline.tsx";
 
 /**
@@ -26,6 +32,8 @@ import { StepTimeline } from "./step-timeline.tsx";
  */
 
 const NO_LABELS: ChatLabels = { steps: {}, datasets: {} };
+
+const NO_FILES: readonly AgentFile[] = [];
 
 type ChartNode = {
   readonly typeName?: string;
@@ -184,6 +192,34 @@ function ArtifactCards(props: {
   );
 }
 
+/** The files an answer asked for, after its artifacts (R-44a). */
+function FileCards(props: {
+  readonly message: AgentMessage;
+  readonly files: readonly AgentFile[];
+  readonly onDownload: (id: string) => Promise<string>;
+}): ReactNode {
+  const calls = fileCallsOf(props.message);
+
+  if (calls.length === 0) return null;
+
+  return (
+    <ul aria-label="Files" className="grid gap-2">
+      {calls.map((call) => (
+        <li key={call.toolCallId}>
+          <FileCard
+            title={call.title}
+            format={call.format}
+            file={props.files.find(
+              ({ toolCallId }) => toolCallId === call.toolCallId
+            )}
+            onDownload={props.onDownload}
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** One message of an agent chat. */
 export function MessageParts(props: {
   readonly message: AgentMessage;
@@ -196,6 +232,10 @@ export function MessageParts(props: {
   readonly onTryAgain?: (() => void) | undefined;
   /** What an artifact card does; undefined shows no card. */
   readonly artifacts?: ArtifactCardAction | undefined;
+  /** The chat's list files; a `make-file` call shows its file's card and job state. */
+  readonly files?: readonly AgentFile[] | undefined;
+  /** Answers a download link for a file id; undefined shows no file card. */
+  readonly onDownload?: ((id: string) => Promise<string>) | undefined;
 }): ReactNode {
   const body = useRef<HTMLDivElement>(null);
 
@@ -219,6 +259,8 @@ export function MessageParts(props: {
     !props.streaming &&
     props.message.parts.some((part) => part.type === "text");
 
+  const files = props.files ?? NO_FILES;
+
   return (
     <StepTimeline
       parts={props.message.parts}
@@ -226,6 +268,9 @@ export function MessageParts(props: {
       streaming={props.streaming}
       durationMs={props.durationMs}
       onTryAgain={props.onTryAgain}
+      files={Object.fromEntries(
+        files.map(({ toolCallId, state }) => [toolCallId, state])
+      )}
     >
       <div ref={body} className="grid gap-3 empty:hidden">
         {props.message.parts.map((part, index) =>
@@ -243,6 +288,13 @@ export function MessageParts(props: {
           message={props.message}
           action={props.artifacts}
           ready={!props.streaming}
+        />
+      )}
+      {props.onDownload === undefined ? null : (
+        <FileCards
+          message={props.message}
+          files={files}
+          onDownload={props.onDownload}
         />
       )}
       {answered ? (

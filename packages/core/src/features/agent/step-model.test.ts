@@ -108,6 +108,54 @@ describe("stepTimeline", () => {
     ).toBeNull();
   });
 
+  it("follows a file's job: making while queued or running, made when ready, and a failed job is no refusal", () => {
+    const call: MessagePart = {
+      type: "tool-make-file",
+      toolCallId: "call-file",
+      state: "output-available",
+      input: { title: "All invoices", format: "xlsx", dataset: "x", query: {} },
+      output: { title: "All invoices", format: "xlsx", state: "making" },
+    };
+
+    const timeline = (state: "queued" | "running" | "ready" | "failed") =>
+      stepTimeline([call, answerText], LABELS, false, { "call-file": state });
+
+    expect(
+      (["queued", "running", "ready", "failed"] as const).map((state) => {
+        const {
+          rows: [row],
+          failed,
+        } = timeline(state);
+
+        return [row && rowText(row), row?.state, failed];
+      })
+    ).toEqual([
+      ["Making an Excel file", "active", null],
+      ["Making an Excel file", "active", null],
+      ["Made an Excel file", "done", null],
+      ["Could not make an Excel file", "failed", null],
+    ]);
+
+    const refused = stepTimeline(
+      [
+        {
+          type: "tool-make-file",
+          toolCallId: "call-refused",
+          state: "output-error",
+          input: { format: "csv" },
+          errorText: "You may not do that.",
+        },
+        answerText,
+      ],
+      LABELS,
+      false
+    ).failed;
+
+    expect(refused === null ? null : rowText(refused)).toBe(
+      "Could not make a CSV file"
+    );
+  });
+
   it("thinks only while an answer streams with no step and no text", () => {
     expect(stepTimeline([], LABELS, true).thinking).toBe(true);
     expect(stepTimeline([], LABELS, false).thinking).toBe(false);

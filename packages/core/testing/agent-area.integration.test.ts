@@ -1,10 +1,14 @@
 import { randomUUID } from "node:crypto";
 
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { callProcedure } from "../src/lib/rpc/call-procedure.ts";
+import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
+import { agentFile } from "../src/schema.ts";
 import {
   appendMessage,
+  createAgentFile,
   createAgentRouter,
   createOwnSession,
 } from "../src/services/agent/index.ts";
@@ -63,6 +67,12 @@ describe("the agent area", () => {
     ).rejects.toMatchObject({ code: "forbidden" });
     await expect(
       outsider.agent.chart({ config: { kind: "not-a-chart" } })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      outsider.agent.files({ id: randomUUID() })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      outsider.agent.fileLink({ id: randomUUID() })
     ).rejects.toMatchObject({ code: "forbidden" });
 
     const holder = await personWith(["core:ask:use"]);
@@ -137,6 +147,88 @@ describe("the agent area", () => {
     ]);
     expect(await other.agent.artifacts({ id })).toEqual([]);
     expect(await owner.agent.artifacts({ id: "not-a-uuid" })).toEqual([]);
+  });
+
+  it("answers the caller's files of a chat, and a download link for the caller's own finished file only", async () => {
+    const owner = await personWith(["core:ask:use"]);
+    const other = await personWith(["core:ask:use"]);
+    const id = randomUUID();
+    const tenant = deployment.context;
+
+    await createOwnSession(owner.ctx, {
+      id,
+      title: "Files",
+      modelId: "openai/gpt-6.1-terra",
+    });
+
+    const queued = (toolCallId: string, title: string) =>
+      createAgentFile(owner.ctx, {
+        sessionId: id,
+        toolCallId,
+        title,
+        format: "csv",
+        dataset: "placeholder.records",
+        query: { select: ["label"] },
+      });
+
+    const made = await queued("call_made", "Made");
+    const making = await queued("call_making", "Making");
+
+    // The job's end state, written here because this deployment has no dataset to read.
+    await withTransaction(tenant, async (tx) => {
+      const stored = await tenant.fileStorage.store(
+        {
+          fileName: "Made.csv",
+          mimeType: "text/csv",
+          bytes: Buffer.from("Label\nAlpha\n"),
+          uploadedByUserId: owner.ctx.caller.userId,
+        },
+        tx
+      );
+
+      await tx
+        .update(agentFile)
+        .set({ state: "ready", fileId: stored.id, rowCount: 1 })
+        .where(eq(agentFile.id, made));
+    });
+
+    expect(await owner.agent.files({ id })).toEqual([
+      {
+        id: made,
+        toolCallId: "call_made",
+        title: "Made",
+        format: "csv",
+        state: "ready",
+        rowCount: 1,
+      },
+      {
+        id: making,
+        toolCallId: "call_making",
+        title: "Making",
+        format: "csv",
+        state: "queued",
+        rowCount: null,
+      },
+    ]);
+    expect(await other.agent.files({ id })).toEqual([]);
+    expect(await owner.agent.files({ id: "not-a-uuid" })).toEqual([]);
+
+    const { url } = await owner.agent.fileLink({ id: made });
+    const token = new URL(url).searchParams.get("token") ?? "";
+
+    const fetched = await tenant.fileStorage.fetchLink({
+      token,
+      principal: owner.ctx.caller,
+    });
+
+    expect(fetched.bytes.toString()).toBe("Label\nAlpha\n");
+
+    await expect(other.agent.fileLink({ id: made })).rejects.toMatchObject({
+      code: "not-found",
+    });
+    await expect(owner.agent.fileLink({ id: making })).rejects.toMatchObject({
+      code: "not-found",
+    });
   });
 
   it("refuses the break-glass account, which bypasses the key check (P7)", async () => {

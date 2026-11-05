@@ -16,6 +16,8 @@ import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
 import { AGENT_ROUTE, agentTransport } from "./transport.ts";
 
+const FILE_POLL_MS = 2000;
+
 /**
  * The one wiring of an agent chat (duplicates 2 and 7): the route's transport with the page's
  * context read at send time, the chart gate and the saved messages through the app's `agent`
@@ -69,6 +71,18 @@ export function AgentChat(props: {
     staleTime: 0,
   });
 
+  // The chat's list files: read again when an answer ends, and every 2 s while one is being made.
+  const files = useQuery({
+    queryKey: ["agent", "files", props.sessionId],
+    queryFn: () => agent.files({ id: props.sessionId }),
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        ({ state }) => state === "queued" || state === "running"
+      ) === true
+        ? FILE_POLL_MS
+        : false,
+  });
+
   // `Conversation` takes its messages once, so it waits for this mount's own read.
   const messages =
     props.initialMessages ??
@@ -99,7 +113,12 @@ export function AgentChat(props: {
       onNewChat={props.onNewChat}
       onWorking={props.onWorking}
       pending={props.pending}
-      onFinished={props.onFinished}
+      onFinished={(sessionId) => {
+        void files.refetch();
+        props.onFinished?.(sessionId);
+      }}
+      files={files.data}
+      onDownload={async (id) => (await agent.fileLink({ id })).url}
     />
   );
 }
