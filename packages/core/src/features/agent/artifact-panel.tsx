@@ -17,30 +17,17 @@ import {
   DownloadIcon,
   XIcon,
 } from "lucide-react";
-import { unparse } from "papaparse";
 import { useState, type ReactNode } from "react";
 
+import { delimitedText } from "../../services/agent/delimited.ts";
 import type { AgentArtifact } from "../../services/agent/index.ts";
 import { ARTIFACT_VIEWS } from "./artifact-kinds.tsx";
 import type { ArtifactRef } from "./artifact-refs.ts";
 import { useGatedChart } from "./gated-chart.tsx";
 
-/**
- * A cell that a spreadsheet would run as a formula gets a leading `'` (CSV injection). A plain
- * number such as "-6,500.00" stays as it is, which papaparse's default pattern would also mark.
- */
-const FORMULA = /^[=+\-@\t\r](?![\d.,]*$)/;
-
-function delimited(rows: ChartTextRows, delimiter: "," | "\t"): string {
-  return unparse(
-    { fields: [...rows.header], data: rows.rows.map((row) => [...row]) },
-    { delimiter, escapeFormulae: FORMULA }
-  );
-}
-
 function download(title: string, rows: ChartTextRows): void {
   const url = URL.createObjectURL(
-    new Blob([delimited(rows, ",")], { type: "text/csv;charset=utf-8" })
+    new Blob([delimitedText(rows, ",")], { type: "text/csv;charset=utf-8" })
   );
 
   const link = document.createElement("a");
@@ -207,7 +194,7 @@ export function ArtifactPanel(props: {
                   if (rows === null) return;
 
                   void navigator.clipboard
-                    .writeText(delimited(rows, "\t"))
+                    .writeText(delimitedText(rows, "\t"))
                     .then(() => setCopied(true));
                 }}
               >

@@ -59,6 +59,33 @@ function chartColumn(
   };
 }
 
+/**
+ * The columns of a table read: each dataset column with its label, and a money column without its
+ * own currency keyed to the dataset's currency field, when the read selected it. The chart gate and
+ * a chat's list file use it.
+ */
+export function tableColumns(
+  result: Pick<DatasetResult, "columns">,
+  currencyField: string | undefined
+): readonly ChartColumn[] {
+  const currencyKey =
+    currencyField !== undefined &&
+    result.columns.some((column) => column.name === currencyField)
+      ? currencyField
+      : undefined;
+
+  return result.columns.map((column) => {
+    const chart = chartColumn(column, column.name, labelOf(column));
+
+    // A selected amount carries no currency; each row names its own.
+    return column.type === "money" &&
+      column.currency === undefined &&
+      currencyKey !== undefined
+      ? { ...chart, currencyKey }
+      : chart;
+  });
+}
+
 function columnNamed(result: DatasetResult, name: string): DatasetColumn {
   const column = result.columns.find((entry) => entry.name === name);
 
@@ -237,26 +264,10 @@ async function chartData(
     case "table": {
       const [series] = config.series;
       const result = await runOne(ctx, series);
-      const currencyField = currencyFields.get(series.dataset);
-
-      const currencyKey =
-        currencyField !== undefined &&
-        result.columns.some((column) => column.name === currencyField)
-          ? currencyField
-          : undefined;
 
       return {
         ...shared,
-        columns: result.columns.map((column) => {
-          const chart = chartColumn(column, column.name, labelOf(column));
-
-          // A selected amount carries no currency; each row names its own.
-          return column.type === "money" &&
-            column.currency === undefined &&
-            currencyKey !== undefined
-            ? { ...chart, currencyKey }
-            : chart;
-        }),
+        columns: tableColumns(result, currencyFields.get(series.dataset)),
         rows: result.rows,
         readAt: result.readAt,
         truncated: result.truncated,

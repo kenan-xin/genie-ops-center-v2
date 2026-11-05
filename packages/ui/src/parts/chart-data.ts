@@ -59,6 +59,23 @@ const monthFormat = new Intl.DateTimeFormat(LOCALE, {
   timeZone: "UTC",
 });
 
+/**
+ * The minor unit digits of a currency: 2 for SGD, 0 for JPY. The standard formatter knows them, and
+ * a compact one reports 0. A code that Intl refuses counts 2, as `formatMoney` shows it.
+ */
+export function currencyDigits(currency: string): number {
+  try {
+    return (
+      new Intl.NumberFormat(LOCALE, {
+        style: "currency",
+        currency,
+      }).resolvedOptions().maximumFractionDigits ?? 2
+    );
+  } catch {
+    return 2;
+  }
+}
+
 function formatMoney(
   minorUnits: number,
   currency: string,
@@ -66,12 +83,7 @@ function formatMoney(
   bare: boolean
 ): string {
   try {
-    // The standard formatter knows the minor unit digits; a compact one reports 0.
-    const digits =
-      new Intl.NumberFormat(LOCALE, {
-        style: "currency",
-        currency,
-      }).resolvedOptions().maximumFractionDigits ?? 2;
+    const digits = currencyDigits(currency);
 
     if (bare) {
       return new Intl.NumberFormat(LOCALE, {
