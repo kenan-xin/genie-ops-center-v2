@@ -1,5 +1,7 @@
 import {
+  asSchema,
   type InvalidToolInputError,
+  jsonSchema,
   NoSuchToolError,
   tool,
   type ToolSet,
@@ -11,7 +13,7 @@ import {
   type AnyAgentTool,
   defineAgentTool,
 } from "../../../contracts/index.ts";
-import { AppError } from "../../lib/errors/index.ts";
+import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import type { AuditAction } from "../audit/actions.ts";
 import type { AuditMetadataValue } from "../audit/index.ts";
@@ -163,9 +165,9 @@ export async function writeToolAudit(
 
 /**
  * The `repairToolCall` hook of the agent route (`czjw.31`): the AI SDK calls it once for each tool
- * call it refuses before `execute` (an unknown tool, or input its schema refuses). It writes one
- * refused audit row with the raw input text and repairs nothing, so the model still gets the
- * SDK's tool error.
+ * call it refuses before `execute`: an unknown tool, or input that is not JSON. A module tool's
+ * schema refusal reaches `audited` instead (`czjw.79`). It writes one refused audit row with the
+ * raw input text and repairs nothing, so the model still gets the SDK's tool error.
  */
 export function auditRefusedToolCall(
   ctx: ModuleRequestContext,
@@ -195,6 +197,11 @@ export function auditRefusedToolCall(
 /**
  * One tool as the model gets it. `execute` runs the tool as `ctx.caller` and writes one audit row
  * per call with the input and the row count, never the returned values (R-47, DEC-29).
+ *
+ * The SDK gets the tool's own JSON schema with a validate that accepts every value, and `execute`
+ * parses the input with the zod schema. So a refused input answers the model, the stored part and
+ * the audit row with its field messages, as a chart gate refusal does, and not with the generic
+ * error that the SDK raises for a schema refusal (`czjw.79`, I21 cause 1).
  */
 function audited(
   ctx: ModuleRequestContext,
@@ -204,11 +211,18 @@ function audited(
 ) {
   return tool({
     description: agentTool.description,
-    inputSchema: agentTool.input,
+    inputSchema: jsonSchema(() => asSchema(agentTool.input).jsonSchema, {
+      validate: (value) => ({ success: true, value }),
+    }),
     execute: async (input) => {
-      // SAFETY: the AI SDK parsed the input from the model's JSON with the tool's own schema, so
-      // it is a JSON value.
-      const query = input as AuditMetadataValue;
+      const parsed = agentTool.input.safeParse(input);
+
+      // SAFETY: the AI SDK parsed the input from the model's JSON text, and the tool's schema
+      // answers JSON values, so either is a JSON value.
+      const query = (
+        parsed.success ? parsed.data : input
+      ) as AuditMetadataValue;
+
       const named = core ? datasetIn(query) : null;
 
       const record = (
@@ -227,9 +241,18 @@ function audited(
       let result: Awaited<ReturnType<AnyAgentTool["run"]>>;
 
       try {
-        // SAFETY: validateModule checked the provision, and the AI SDK parsed the input with this
-        // tool's own schema, so the input is the type its `run` was defined against.
-        result = await agentTool.run(ctx, input as never);
+        if (!parsed.success) {
+          throw new AppError(CORE_ERRORS["invalid-input"], {
+            issues: parsed.error.issues.map(({ path, message }) => ({
+              path: path.join("."),
+              message,
+            })),
+          });
+        }
+
+        // SAFETY: validateModule checked the provision, and `parsed` is this tool's own schema's
+        // answer, so the input is the type its `run` was defined against.
+        result = await agentTool.run(ctx, parsed.data as never);
       } catch (error) {
         if (error instanceof AppError) {
           await record(error.code, 0, named);
