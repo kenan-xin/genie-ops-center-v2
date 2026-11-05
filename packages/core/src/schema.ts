@@ -566,6 +566,11 @@ export const agentSession = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
     modelId: text("model_id").notNull(),
+    /** The summary of the messages up to `summary_through_seq`, sent in their place (S7-34). */
+    summary: text("summary"),
+    summaryThroughSeq: bigint("summary_through_seq", { mode: "number" }),
+    /** The largest input of a step of the latest turn, in tokens; a summary clears it. */
+    lastInputTokens: integer("last_input_tokens"),
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },

@@ -13,7 +13,9 @@ import {
   listOwnArtifacts,
   listOwnSessions,
   type PendingVersion,
+  readOwnHistory,
   readOwnSession,
+  saveSummary,
   storedArtifact,
   storedArtifactCount,
 } from "../src/services/agent/index.ts";
@@ -411,6 +413,77 @@ describe("the owner-only agent store against a real database", () => {
       { id: chart, number: 1, latestVersion: 3 },
       { id: other, number: 2, latestVersion: 1 },
     ]);
+  });
+
+  it("marks only the last summarized message with the summary, and moves the mark with a later summary", async () => {
+    const s1 = await session(personA, "Summarized");
+
+    for (const i of [1, 2, 3, 4, 5, 6]) {
+      // oxlint-disable-next-line no-await-in-loop -- the order is the point
+      await appendMessage(personA, s1.id, {
+        role: i % 2 === 1 ? "user" : "assistant",
+        parts: text(`Message ${i}`),
+      });
+    }
+
+    const { messages: seeded } = await readOwnHistory(personA, s1.id);
+    const seqOf = (i: number) => seeded[i - 1]?.seq ?? -1;
+
+    const marked = async () =>
+      (await readOwnSession(personA, s1.id)).messages.flatMap((message, i) => {
+        const { summary } = z
+          .object({ summary: z.string().optional() })
+          .parse(message.metadata);
+
+        return summary === undefined ? [] : [{ message: i + 1, summary }];
+      });
+
+    await saveSummary(personA, s1.id, {
+      summary: "First",
+      throughSeq: seqOf(4),
+    });
+
+    expect(await marked()).toEqual([{ message: 4, summary: "First" }]);
+
+    await saveSummary(personA, s1.id, {
+      summary: "Second",
+      throughSeq: seqOf(6),
+    });
+
+    expect(await marked()).toEqual([{ message: 6, summary: "Second" }]);
+  });
+
+  it("keeps a later summary when an older one is saved after it", async () => {
+    const s1 = await session(personA, "Overlapping summaries");
+
+    for (const i of [1, 2, 3, 4, 5, 6]) {
+      // oxlint-disable-next-line no-await-in-loop -- the order is the point
+      await appendMessage(personA, s1.id, {
+        role: i % 2 === 1 ? "user" : "assistant",
+        parts: text(`Message ${i}`),
+      });
+    }
+
+    const { messages: seeded } = await readOwnHistory(personA, s1.id);
+    const sixth = seeded[5]?.seq ?? -1;
+
+    expect(
+      await saveSummary(personA, s1.id, { summary: "Later", throughSeq: sixth })
+    ).toBe(true);
+    expect(
+      await saveSummary(personA, s1.id, {
+        summary: "Older",
+        throughSeq: seeded[3]?.seq ?? -1,
+      })
+    ).toBe(false);
+
+    const history = await readOwnHistory(personA, s1.id);
+
+    expect({
+      summary: history.summary,
+      through: history.summaryThroughSeq,
+      messages: history.messages,
+    }).toEqual({ summary: "Later", through: sixth, messages: [] });
   });
 
   it("refuses a kind outside the four", async () => {

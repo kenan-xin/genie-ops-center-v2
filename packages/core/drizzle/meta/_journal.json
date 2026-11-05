@@ -85,6 +85,13 @@
       "when": 1793819471653,
       "tag": "0011_agent_artifacts",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1793857832817,
+      "tag": "0012_agent_session_summary",
+      "breakpoints": true
     }
   ]
 }

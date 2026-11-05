@@ -598,6 +598,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the owner-only agent store against a real database keeps each artifact's number in its chat",
       "the owner-only agent store against a real database refuses a kind outside the four",
       "the owner-only agent store against a real database keeps an overlapping turn's answer and moves its artifacts after the stored ones",
+      "the owner-only agent store against a real database marks only the last summarized message with the summary, and moves the mark with a later summary",
+      "the owner-only agent store against a real database keeps a later summary when an older one is saved after it",
     ],
   },
   {

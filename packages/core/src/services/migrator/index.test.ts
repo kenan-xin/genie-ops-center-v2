@@ -44,10 +44,11 @@ describe("the migration plan", () => {
     // reader's keyset index (R-67), the Section 3 navigation tables (R-86a), the SSO email
     // domains column (R-58a), the reporting date (Spec 7 R-9), the integration key store
     // (Spec 7 R-17, DEC-53), the model settings (Spec 7 R-18), the agent tables (Spec 7 R-41) and
-    // the Ask user role of an existing deployment (Spec 2 R-33, A7), so the history holds all eleven.
+    // the Ask user role of an existing deployment (Spec 2 R-33, A7), the agent artifacts (DEC-56)
+    // and the chat summary (S7-34), so the history holds all thirteen.
     // The SQL still arrives as data read from a declared `new URL`, never as a folder path, which
     // is what keeps it in a production image.
-    expect(CORE_HISTORY.migrations).toHaveLength(12);
+    expect(CORE_HISTORY.migrations).toHaveLength(13);
 
     expect(CORE_HISTORY.migrations[0]?.sql.join("")).toContain(
       'CREATE TABLE "tenant_module"'

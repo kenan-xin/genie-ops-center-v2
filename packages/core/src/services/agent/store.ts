@@ -1,5 +1,5 @@
 import type { UIMessage } from "ai";
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
@@ -65,6 +65,37 @@ function summary(row: {
     title: row.title,
     modelId: row.modelId,
     updatedAt: row.updatedAt.toISOString(),
+  };
+}
+
+const messageColumns = {
+  id: agentMessage.id,
+  seq: agentMessage.seq,
+  role: agentMessage.role,
+  parts: agentMessage.parts,
+  createdAt: agentMessage.createdAt,
+};
+
+// The time lets a stored answer show how long it took; the model never reads metadata.
+function storedMessage(
+  row: {
+    readonly id: string;
+    readonly role: AgentMessage["role"];
+    readonly parts: AgentMessage["parts"];
+    readonly createdAt: Date;
+  },
+  summaryText: string | null
+): AgentMessage {
+  const createdAt = row.createdAt.toISOString();
+
+  return {
+    id: row.id,
+    role: row.role,
+    parts: row.parts,
+    metadata:
+      summaryText === null
+        ? { createdAt }
+        : { createdAt, summary: summaryText },
   };
 }
 
@@ -141,33 +172,115 @@ export async function readOwnSession(
   readonly messages: readonly AgentMessage[];
 }> {
   const [row] = await ctx.tenant.db
-    .select(summaryColumns)
+    .select({
+      ...summaryColumns,
+      summary: agentSession.summary,
+      summaryThroughSeq: agentSession.summaryThroughSeq,
+    })
     .from(agentSession)
     .where(ownedBy(ctx, checkedId(id)));
 
   if (row === undefined) throw notFound();
 
   const messages = await ctx.tenant.db
-    .select({
-      id: agentMessage.id,
-      role: agentMessage.role,
-      parts: agentMessage.parts,
-      createdAt: agentMessage.createdAt,
-    })
+    .select(messageColumns)
     .from(agentMessage)
     .where(eq(agentMessage.sessionId, row.id))
     .orderBy(asc(agentMessage.seq));
 
-  // The time lets a stored answer show how long it took; the model never reads metadata.
   return {
     session: summary(row),
+    messages: messages.map((message) =>
+      storedMessage(
+        message,
+        // Only the last summarized message carries the summary, so the chat draws its line once.
+        message.seq === row.summaryThroughSeq ? row.summary : null
+      )
+    ),
+  };
+}
+
+/** What the model reads of a session: its summary, and only the messages after the summary. */
+export type OwnHistory = {
+  readonly summary: string | null;
+  readonly summaryThroughSeq: number | null;
+  readonly lastInputTokens: number | null;
+  readonly messages: readonly {
+    readonly seq: number;
+    readonly message: AgentMessage;
+  }[];
+};
+
+/** The caller's session summary and the messages after it, in order; `not-found` otherwise. */
+export async function readOwnHistory(
+  ctx: ModuleRequestContext,
+  id: string
+): Promise<OwnHistory> {
+  const [row] = await ctx.tenant.db
+    .select({
+      id: agentSession.id,
+      summary: agentSession.summary,
+      summaryThroughSeq: agentSession.summaryThroughSeq,
+      lastInputTokens: agentSession.lastInputTokens,
+    })
+    .from(agentSession)
+    .where(ownedBy(ctx, checkedId(id)));
+
+  if (row === undefined) throw notFound();
+
+  const messages = await ctx.tenant.db
+    .select(messageColumns)
+    .from(agentMessage)
+    .where(
+      and(
+        eq(agentMessage.sessionId, row.id),
+        row.summaryThroughSeq === null
+          ? undefined
+          : gt(agentMessage.seq, row.summaryThroughSeq)
+      )
+    )
+    .orderBy(asc(agentMessage.seq));
+
+  return {
+    summary: row.summary,
+    summaryThroughSeq: row.summaryThroughSeq,
+    lastInputTokens: row.lastInputTokens,
     messages: messages.map((message) => ({
-      id: message.id,
-      role: message.role,
-      parts: message.parts,
-      metadata: { createdAt: message.createdAt.toISOString() },
+      seq: message.seq,
+      message: storedMessage(message, null),
     })),
   };
+}
+
+/**
+ * Stores the summary of the messages up to `throughSeq` and clears the stored input size, which
+ * measured the prompt before the summary. Only a later cut replaces a summary, so an overlapping
+ * turn never puts back an older one. Answers whether the session changed.
+ */
+export async function saveSummary(
+  ctx: ModuleRequestContext,
+  id: string,
+  input: { readonly summary: string; readonly throughSeq: number }
+): Promise<boolean> {
+  const changed = await ctx.tenant.db
+    .update(agentSession)
+    .set({
+      summary: input.summary,
+      summaryThroughSeq: input.throughSeq,
+      lastInputTokens: null,
+    })
+    .where(
+      and(
+        ownedBy(ctx, checkedId(id)),
+        or(
+          isNull(agentSession.summaryThroughSeq),
+          lt(agentSession.summaryThroughSeq, input.throughSeq)
+        )
+      )
+    )
+    .returning({ id: agentSession.id });
+
+  return changed.length > 0;
 }
 
 /**
@@ -312,7 +425,8 @@ export async function appendMessage(
     readonly role: "user" | "assistant";
     readonly parts: AgentMessage["parts"];
   },
-  versions: readonly PendingVersion[] = []
+  versions: readonly PendingVersion[] = [],
+  turn: { readonly inputTokens?: number } = {}
 ): Promise<string> {
   const id = checkedId(sessionId);
 
@@ -352,7 +466,11 @@ export async function appendMessage(
 
     await tx
       .update(agentSession)
-      .set({ updatedAt: sql`now()` })
+      .set(
+        turn.inputTokens === undefined
+          ? { updatedAt: sql`now()` }
+          : { updatedAt: sql`now()`, lastInputTokens: turn.inputTokens }
+      )
       .where(eq(agentSession.id, id));
 
     return inserted.id;

@@ -6,7 +6,10 @@ export {
   createOwnSession,
   findOwnSession,
   listOwnSessions,
+  type OwnHistory,
+  readOwnHistory,
   readOwnSession,
+  saveSummary,
 } from "./store.ts";
 
 export {
