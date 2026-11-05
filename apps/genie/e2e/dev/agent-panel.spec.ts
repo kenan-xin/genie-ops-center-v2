@@ -62,7 +62,7 @@ const OVERDUE_QUESTION = "Which of these is largest?";
  * outstanding amount of the seeded overdue invoices.
  */
 const OVERDUE_ANSWER =
-  "INV-2026-10-03 from Harbor Foods has the largest outstanding amount.";
+  "INV-2026-10-03 from Harbor Foods has the largest amount still owed of the overdue invoices on this page, SGD 7,400.00.";
 
 const onPhone = (testInfo: TestInfo) => testInfo.project.name === "phone";
 

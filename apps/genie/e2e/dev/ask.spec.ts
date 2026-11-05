@@ -30,7 +30,7 @@ test.skip(
 /**
  * Ask and the agent panel in `next dev` with the model stand-in (Spec 7 AC-8 line 4, R-42, P13).
  * The stand-in replays the placeholder's recordings, so every question here is exactly the one
- * they hold, and the KPI's 3 comes from the chart gate over the three seeded records.
+ * they hold, and the count of 3 comes from the module's count tool over the three seeded records.
  */
 
 const QUESTION = "How many placeholder records are there?";
@@ -40,9 +40,9 @@ const CHART_QUESTION = "Chart the quantity of each placeholder record.";
 
 const CHANGE_QUESTION = "Show it as a line by day instead.";
 
-/** The answer is one KPI that the chart gate draws. */
+/** The answer's first sentence, as `agent-route.integration.test.ts` pins it (S1_ANSWER). */
 const answerOf = (scope: Page | Locator) =>
-  scope.getByRole("figure", { name: "Placeholder records" });
+  scope.getByText("There are 3 placeholder records.", { exact: true });
 
 /** Each project asks as its own person, so the two viewports never share a session list. */
 const asker = (testInfo: TestInfo) =>
@@ -51,11 +51,9 @@ const asker = (testInfo: TestInfo) =>
 /** Asks the question in an open conversation and answers the session id the browser sent. */
 const ask = (page: Page) => askQuestion(page, QUESTION);
 
-/** The KPI that the gate drew. */
+/** The count answer. */
 async function expectAnswer(page: Page): Promise<void> {
-  await expect(answerOf(page).getByText("3", { exact: true })).toBeVisible(
-    FIRST_PAINT
-  );
+  await expect(answerOf(page)).toBeVisible(FIRST_PAINT);
 }
 
 /** Ask's chat history: a column from 1024 px, and below that a sheet that "Show chats" opens. */
@@ -175,9 +173,7 @@ test("a reopened agent panel shows the earlier message after a link and a reload
       .getByRole("log", { name: "Conversation" })
       .getByText(QUESTION, { exact: true })
   ).toBeVisible(FIRST_PAINT);
-  await expect(answerOf(reopened).getByText("3", { exact: true })).toBeVisible(
-    FIRST_PAINT
-  );
+  await expect(answerOf(reopened)).toBeVisible(FIRST_PAINT);
 });
 
 /**

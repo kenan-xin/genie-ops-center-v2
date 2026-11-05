@@ -44,8 +44,8 @@ import { APP_AGENT_RECORDINGS } from "./model-replay.ts";
  * The nine read questions of the invoice demo through the agent with the recorded model (Spec 7
  * AC-8, R-44, R-46), on the app's module selection. Each recorded answer is drawn through the agent
  * area as the asker and gives the rows of `expected-answers.json`, and its records open their
- * invoices. `partial-payments-1` to `-4` are a live recording. The other eight answers stay
- * hand-written (S7-11): the live model's answers to them did not meet the expected answers.
+ * invoices, and its prose keeps the answer rules (`answerIssues`). Every answer is a live recording
+ * on the answer rules, `<question-id>-<n>.json` in request order (`czjw.59`, `czjw.62`).
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -268,7 +268,7 @@ describe("the invoice answers through the agent", () => {
   it("sends the invoices rules and only the read tools to the model for a person with invoices:read", () => {
     const prompt = question("overdue-invoices").prompt;
 
-    // SAFETY: a sent chat body; the recorded bodies hold this shape (`live-0720f24606a9.json`).
+    // SAFETY: a sent chat body; the recorded bodies hold this shape (`overdue-invoices-1.json`).
     const bodies = recorded.sent.map(
       ({ body }) =>
         body as {

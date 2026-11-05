@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { DEMO_PACK } from "@genie/module-invoices/testing";
 import { expect, test, type Page, type TestInfo } from "@playwright/test";
+import { escapeRegExp } from "es-toolkit";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { withDeploymentLock } from "../support/lock.ts";
@@ -10,13 +11,7 @@ import {
   hideDevelopmentWidgets,
   signInAs,
 } from "./ask-support.ts";
-import {
-  FIRST_PAINT,
-  LEDGER_LOCK,
-  LOCK_WAIT,
-  onPhone,
-  sgd,
-} from "./dev-support.ts";
+import { FIRST_PAINT, LEDGER_LOCK, LOCK_WAIT, onPhone } from "./dev-support.ts";
 import { DEV_MODULES, INVOICE_ASK_PEOPLE } from "./global-setup.ts";
 
 test.skip(
@@ -33,8 +28,9 @@ declare global {
 
 /**
  * The invoice answers in Ask at the phone and the desktop viewport (Spec 7 AC-8, R-44, DEC-25),
- * in `next dev` with the model stand-in. The stand-in replays the app's hand-written answers, and
- * every figure and row comes from the chart gate over the seeded demo history.
+ * in `next dev` with the model stand-in. The stand-in replays the app's live answer recordings
+ * (`<question-id>-<n>.json`), and every row comes from the chart gate over the seeded demo history.
+ * Each answer opens with its result, and its tables are cards that show their first rows.
  */
 
 // SAFETY: the module's expected-answers file is read verbatim, and this spec owns its shape.
@@ -51,6 +47,8 @@ const QUESTIONS = (
 
 const RECORD_PATH = /^\/m\/invoices\/invoices\/[0-9a-f-]{36}$/;
 
+const MORE = /^\d+ more rows, open the full list$/;
+
 /** The cold route compiles plus the answer, with room for the lock to wait for the queue. */
 const TEST_TIMEOUT = LOCK_WAIT + FIRST_PAINT.timeout + 60_000;
 
@@ -65,11 +63,33 @@ test.beforeEach(({ page }) => {
   page.on("pageerror", (error) => pageErrors.push(error.message));
 });
 
-const figure = (page: Page, title: string) =>
-  page.getByRole("figure", { name: title });
+/** The card of an answer's artifact: a button named by the artifact's title. */
+const card = (page: Page, title: string) =>
+  page.getByRole("button", { name: new RegExp(`^${escapeRegExp(title)}`) });
+
+/** The first rows of the answer's `index`th table card, in the order the answer made them. */
+const firstRows = (page: Page, index: number) =>
+  page
+    .getByRole("list", { name: "First rows" })
+    .nth(index)
+    .getByRole("listitem");
+
+/** Opens a card in the artifact panel and answers the panel's table of that title. */
+async function openCard(page: Page, title: string) {
+  await card(page, title).click();
+
+  return page
+    .getByRole("region", { name: "Artifact", exact: true })
+    .getByRole("group", { name: title, exact: true });
+}
 
 /** Asks the question of `id` on Ask as this project's own person, so no two runs share a list. */
-async function askOnAsk(page: Page, testInfo: TestInfo, id: string) {
+async function askOnAsk(
+  page: Page,
+  testInfo: TestInfo,
+  id: string,
+  result: string
+) {
   const prompt = QUESTIONS.find((question) => question.id === id)?.prompt;
 
   if (prompt === undefined) throw new Error(`No expected answer ${id}.`);
@@ -98,9 +118,10 @@ async function askOnAsk(page: Page, testInfo: TestInfo, id: string) {
   await mounted;
 
   await askQuestion(page, prompt);
-  await expect(
-    page.getByText("As of 27 October 2026, the reporting date.")
-  ).toBeVisible(FIRST_PAINT);
+  // The result comes first (R-44).
+  await expect(page.getByText(result, { exact: true })).toBeVisible(
+    FIRST_PAINT
+  );
 }
 
 /** The viewport of the project, no page error, axe, and a full-page capture as evidence. */
@@ -119,7 +140,7 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-test("the overdue invoices answer shows its date, rule, total and records, and a record opens in the app", async ({
+test("the overdue invoices answer gives its total first, shows its records card, and a record opens in the app", async ({
   page,
 }, testInfo) => {
   test.setTimeout(TEST_TIMEOUT);
@@ -127,17 +148,23 @@ test("the overdue invoices answer shows its date, rule, total and records, and a
   await withDeploymentLock(
     LEDGER_LOCK,
     async () => {
-      await askOnAsk(page, testInfo, "overdue-invoices");
+      await askOnAsk(
+        page,
+        testInfo,
+        "overdue-invoices",
+        "Five overdue invoices from three customers have SGD 27,350.00 unpaid in all."
+      );
 
-      await expect(page.getByText(/^An invoice is overdue when/)).toBeVisible();
-      await expect(
-        figure(page, "Overdue total")
-          .getByText(sgd(27350))
-          .filter({ visible: true })
-      ).toBeVisible(FIRST_PAINT);
-      await expect(
-        figure(page, "Overdue invoices").getByRole("link")
-      ).toHaveText(
+      const title = "Overdue invoices and their sources";
+
+      // Five overdue invoices fit the card, so it shows them all and no "more".
+      await expect(firstRows(page, 0)).toHaveCount(5, FIRST_PAINT);
+      await expect(firstRows(page, 0).first()).toContainText("INV-2026-08-04");
+      await capture(page, testInfo, "ask-overdue-invoices");
+
+      const table = await openCard(page, title);
+
+      await expect(table.getByRole("link")).toHaveText(
         [
           "INV-2026-08-04",
           "INV-2026-09-03",
@@ -147,7 +174,6 @@ test("the overdue invoices answer shows its date, rule, total and records, and a
         ],
         FIRST_PAINT
       );
-      await capture(page, testInfo, "ask-overdue-invoices");
 
       // A click before hydration would make a full document load, so the marker is written after.
       await page.waitForLoadState("networkidle");
@@ -155,7 +181,7 @@ test("the overdue invoices answer shows its date, rule, total and records, and a
         // oxlint-disable-next-line no-underscore-dangle -- the marker `invoices.spec.ts` uses.
         window.__genieMarker = 1;
       });
-      await figure(page, "Overdue invoices")
+      await table
         .getByRole("link", { name: "INV-2026-08-04", exact: true })
         .click();
       await expect(
@@ -169,7 +195,7 @@ test("the overdue invoices answer shows its date, rule, total and records, and a
   );
 });
 
-test("the late payer answer shows the counts per customer without links and every invoice paid late as a link", async ({
+test("the late payer answer shows the counts per customer without links and the settled invoices as links", async ({
   page,
 }, testInfo) => {
   test.setTimeout(TEST_TIMEOUT);
@@ -177,36 +203,64 @@ test("the late payer answer shows the counts per customer without links and ever
   await withDeploymentLock(
     LEDGER_LOCK,
     async () => {
-      await askOnAsk(page, testInfo, "repeated-late-payers");
+      await askOnAsk(
+        page,
+        testInfo,
+        "repeated-late-payers",
+        "Three customers repeatedly pay late."
+      );
 
-      const counts = figure(page, "Late payment by customer");
+      await expect(firstRows(page, 0)).toHaveCount(3, FIRST_PAINT);
+
+      // Two customers are late 4 times, so their order is the database's.
+      await Promise.all(
+        ["ABC Trading", "Harbor Foods", "Orchid Retail"].map((name) =>
+          expect(
+            page.getByRole("list", { name: "First rows" }).first()
+          ).toContainText(name)
+        )
+      );
+
+      // A table card shows its first 5 rows and how many more (FL2).
+      await expect(firstRows(page, 1)).toHaveCount(5);
+      await expect(
+        page
+          .getByRole("link", { name: MORE })
+          .or(page.getByRole("button", { name: MORE }))
+      ).toBeVisible();
+      await capture(page, testInfo, "ask-repeated-late-payers");
+
+      // A customer has no page, so its row opens nothing.
+      const counts = await openCard(page, "Customers who repeatedly pay late");
 
       await expect(
-        counts.getByText("ABC Trading").filter({ visible: true })
+        counts
+          .getByText("ABC Trading", { exact: true })
+          .filter({ visible: true })
       ).toBeVisible(FIRST_PAINT);
       await expect(counts.getByRole("link")).toHaveCount(0);
 
-      const paidLate = figure(page, "Invoices paid late").getByRole("link");
+      // A phone opens the artifact as a sheet over the chat, so it closes before the next card.
+      await page
+        .getByRole("button", {
+          name: onPhone(page) ? "Back to the chat" : "Close the artifact",
+        })
+        .click();
 
-      // An inline table shows its first 5 rows and how many more (FL2).
-      await expect(paidLate).toHaveCount(5, FIRST_PAINT);
-      await expect(
-        page.getByText("8 more. Ask for the full list.", { exact: true })
-      ).toBeVisible();
-      expect(await paidLate.first().getAttribute("href")).toMatch(RECORD_PATH);
-      await expect(
-        page.getByText(
-          "By that rule, ABC Trading, Harbor Foods and Orchid Retail pay late repeatedly.",
-          { exact: false }
-        )
-      ).toBeVisible();
-      await capture(page, testInfo, "ask-repeated-late-payers");
+      const settled = await openCard(
+        page,
+        "Settled invoices with known due dates for these customers"
+      );
+
+      expect(
+        await settled.getByRole("link").first().getAttribute("href")
+      ).toMatch(RECORD_PATH);
     },
     LOCK_WAIT
   );
 });
 
-test("the monthly answer draws invoiced sales and collections from two datasets in one chart, with the open invoices as links", async ({
+test("the monthly answer states both totals first and shows the chart and the invoices behind it", async ({
   page,
 }, testInfo) => {
   test.setTimeout(TEST_TIMEOUT);
@@ -214,30 +268,24 @@ test("the monthly answer draws invoiced sales and collections from two datasets 
   await withDeploymentLock(
     LEDGER_LOCK,
     async () => {
-      await askOnAsk(page, testInfo, "monthly-invoiced-and-collected");
+      await askOnAsk(
+        page,
+        testInfo,
+        "monthly-invoiced-and-collected",
+        "From May to October, SGD 236,400.00 was invoiced and SGD 195,200.00 was collected."
+      );
 
-      const months = figure(page, "Invoiced sales and collections by month");
-
-      await months.getByRole("tab", { name: "Table" }).click(FIRST_PAINT);
-
-      // The table row on a desktop, the card on a phone: only one of the two is shown.
-      const may = months
-        .locator("tr, li")
-        .filter({ visible: true, hasText: "May 2026" });
-
-      // A phone card names the one currency once above the list, so its amounts are bare (5.5).
-      const amount = (dollars: number) =>
-        onPhone(page) ? sgd(dollars).replace(/^SGD\s*/, "") : sgd(dollars);
-
-      await expect(may).toContainText(amount(34900));
-      await expect(may).toContainText(amount(31300));
       await expect(
-        figure(page, "Invoices with money outstanding").getByRole("link")
-      ).toHaveCount(5, FIRST_PAINT);
-      await expect(
-        page.getByText("2 more. Ask for the full list.", { exact: true })
-      ).toBeVisible();
+        card(page, "Invoiced and collected by month, May–October 2026")
+      ).toBeVisible(FIRST_PAINT);
+      await expect(firstRows(page, 0)).toHaveCount(5);
       await capture(page, testInfo, "ask-monthly-invoiced-and-collected");
+
+      const invoices = await openCard(page, "Invoices dated May–October 2026");
+
+      expect(
+        await invoices.getByRole("link").first().getAttribute("href")
+      ).toMatch(RECORD_PATH);
     },
     LOCK_WAIT
   );

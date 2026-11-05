@@ -40,10 +40,10 @@ const errors: unknown[] = [];
 const hooks = { logError: (cause: unknown) => errors.push(cause) };
 
 const WHAT_CAN_YOU_DO = [
-  "root = Answer([intro, capabilities, scope])",
-  'intro = Paragraph("I can answer questions using workspace records you have permission to read.")',
-  'capabilities = List(["Find and summarize records and their fields.", "Calculate counts, totals, averages and other aggregates; filter or group results.", "Present results in charts or tables and find links to record pages."])',
-  'scope = Paragraph("Currently, I can access placeholder records, including their labels, dates, amounts, currencies and quantities. Results are as of October 27, 2026. I can’t create or change records.")',
+  "root = Answer([intro, options, scope])",
+  'intro = Paragraph("I can help you explore the records you can read.")',
+  'options = List(["Count records and summarize amounts or quantities.", "Compare results by date or other available details.", "Show results in tables or charts, and prepare downloads.", "Find a record’s page when you can open it."])',
+  'scope = Paragraph("The available data contains placeholder records. Figures are as of 27 Oct 2026.")',
 ].join("\n");
 
 const RECORDS = "placeholder.records";
@@ -52,8 +52,9 @@ const RECORDS = "placeholder.records";
 const S1_QUESTION = "How many placeholder records are there?";
 
 const S1_ANSWER = [
-  "root = Answer([count])",
-  'count = Chart({type: "kpi", title: "Placeholder records", series: [{name: "Records", dataset: "placeholder.records", query: {aggregates: [{fn: "count", as: "record_count"}]}, value: "record_count"}]})',
+  "root = Answer([result, method])",
+  'result = Paragraph("There are 3 placeholder records.")',
+  'method = Paragraph("This counts the records you can read as of 27 Oct 2026.")',
 ].join("\n");
 
 /**
@@ -64,10 +65,8 @@ const S3_QUESTION =
   "How many placeholder records are there? Read placeholder.records.";
 
 const S3_ANSWER = [
-  "root = Answer([message])",
-  'message = Paragraph("I can’t determine the number of placeholder records because you don’t have access to the count.")',
-  // The live answer ends with a line break.
-  "",
+  "root = Answer([result])",
+  'result = Paragraph("I can’t count the placeholder records because you don’t have access to them.")',
 ].join("\n");
 
 /** AC-8: a chart artifact, then a change that makes its version 2. */
@@ -224,7 +223,8 @@ describe("the agent route on the placeholder", () => {
     expect(errors).toEqual([]);
   });
 
-  it("answers a reader's count through list-datasets and query-dataset, stores both results, and audits both calls as the reader", async () => {
+  // Live, the model counts with the module's count tool; `agent-tools` proves query-dataset.
+  it("answers a reader's count through list-datasets and the module's count tool, stores both results, and audits both calls as the reader", async () => {
     const ctx = await reader();
 
     const sessionId = randomUUID();
@@ -244,16 +244,20 @@ describe("the agent route on the placeholder", () => {
         },
       },
       {
-        type: "tool-query-dataset",
+        type: "tool-placeholder-count-records",
         state: "output-available",
-        output: { dataset: RECORDS, rows: [{ record_count: 3 }] },
+        output: { records: 3, asOf: "2026-10-27" },
       },
       { type: "text", text: S1_ANSWER },
     ]);
     expect(await toolRows(ctx.caller.userId)).toMatchObject([
       {
         actor: { id: ctx.caller.userId },
-        metadata: { sessionId, tool: "query-dataset", outcome: "answered" },
+        metadata: {
+          sessionId,
+          tool: "placeholder-count-records",
+          outcome: "answered",
+        },
       },
       {
         actor: { id: ctx.caller.userId },

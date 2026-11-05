@@ -60,7 +60,8 @@ const config: DashboardConfig = {
     {
       id: "p5",
       layout: { columns: 4, rows: 2 },
-      // The Chart of the recorded answer `model-recordings/monthly-invoiced-and-collected.json`.
+      // The chart of the earlier hand-written monthly answer; the live answer now draws its own
+      // (`model-recordings/monthly-invoiced-and-collected-3.json`).
       config: {
         type: "bar",
         title: "Invoiced sales and collections by month",

@@ -475,18 +475,27 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await mounted;
           await askQuestion(page, OVERDUE_QUESTION);
 
+          // The result first, with the total (R-44), from `overdue-invoices-*.json`.
           await expect(
-            page.getByText("As of 27 October 2026, the reporting date.")
-          ).toBeVisible(FIRST_PAINT);
-          await expect(
-            page
-              .getByRole("figure", { name: "Overdue total" })
-              .getByText(sgd(27_350))
-              .filter({ visible: true })
+            page.getByText(
+              "Five overdue invoices from three customers have SGD 27,350.00 unpaid in all.",
+              { exact: true }
+            )
           ).toBeVisible(FIRST_PAINT);
 
+          // The records card opens its table in the artifact panel.
+          await page
+            .getByRole("button", {
+              name: /^Overdue invoices and their sources/,
+            })
+            .click();
+
           const sources = page
-            .getByRole("figure", { name: "Overdue invoices" })
+            .getByRole("region", { name: "Artifact", exact: true })
+            .getByRole("group", {
+              name: "Overdue invoices and their sources",
+              exact: true,
+            })
             .getByRole("link");
 
           await expect(sources).toHaveText(
