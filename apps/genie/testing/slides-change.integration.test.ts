@@ -1,4 +1,5 @@
 import {
+  callProcedure,
   handleAgentChat,
   type ModuleRequestContext,
   principalFor,
@@ -18,7 +19,7 @@ import { analyticsModule } from "@genie/module-analytics";
 import { invoicesModule } from "@genie/module-invoices";
 import { seedDemoHistory } from "@genie/module-invoices/testing";
 import { placeholderModule } from "@genie/module-placeholder";
-import { slidesModule } from "@genie/module-slides";
+import { slidesModule, slidesRouter } from "@genie/module-slides";
 import { insertDeck } from "@genie/module-slides/testing";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -29,9 +30,13 @@ import {
   SLIDES_CHANGE_CONTEXT,
   SLIDES_CHANGE_DECK_ID,
   SLIDES_CHANGE_DECK_TITLE,
+  SLIDES_CHANGE_FIGURE,
   SLIDES_CHANGE_FIX_MESSAGE,
   SLIDES_CHANGE_FIX_TITLE,
   SLIDES_CHANGE_FROZEN_ON,
+  SLIDES_CHANGE_MESSAGE,
+  SLIDES_CHANGE_NEW_TITLE,
+  SLIDES_CHANGE_OLD_TITLE,
 } from "./slides-change.ts";
 import { SLIDES_CHAT_KEYS } from "./slides-chat.ts";
 
@@ -172,6 +177,66 @@ const answerParts = async (sessionId: string) =>
   ).rows.flatMap(({ parts }) => parts);
 
 describe("the agent panel on the deck editor", () => {
+  it("changes the open slide by chat with one Undo entry, keeps its figure, and Undo restores it", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0006";
+
+    await insertFixedDeck(asker.caller.userId);
+    await chat(session, SLIDES_CHANGE_MESSAGE);
+
+    // First, so a recording miss prints the body the model was sent.
+    expect(errors).toEqual([]);
+    expect(await toolCalls(session)).toEqual([
+      { tool: "slides-read-deck", outcome: "answered" },
+      { tool: "slides-change-deck", outcome: "answered" },
+    ]);
+
+    const changed = await fixedDeck();
+
+    expect(changed).toMatchObject({
+      s2: [
+        { kind: "title", text: SLIDES_CHANGE_NEW_TITLE },
+        { kind: "figure" },
+      ],
+      undo: 1,
+    });
+    // The figure came back with its chart as read, so it kept its frozen data (R-54).
+    expect(changed?.s2[1]?.data).toEqual(SLIDES_CHANGE_FIGURE.data);
+
+    await callProcedure(slidesRouter, asker).undoDeck({
+      id: SLIDES_CHANGE_DECK_ID,
+      expectedHash: changed?.content_hash ?? "",
+    });
+
+    expect(await fixedDeck()).toMatchObject({
+      s2: [
+        { kind: "title", text: SLIDES_CHANGE_OLD_TITLE },
+        { kind: "figure" },
+      ],
+      undo: 0,
+    });
+  });
+
+  it("refuses another person's deck named by the page context, and changes nothing", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0007";
+
+    const other = await insertPersonWith(deployment.context, [
+      ...SLIDES_CHAT_KEYS,
+    ]);
+
+    await insertFixedDeck(other.userId);
+
+    const before = await fixedDeck();
+
+    await chat(session, SLIDES_CHANGE_MESSAGE);
+
+    // First, so a recording miss prints the body the model was sent.
+    expect(errors).toEqual([]);
+    expect(await toolCalls(session)).toEqual([
+      { tool: "slides-read-deck", outcome: "not-found" },
+    ]);
+    expect(await fixedDeck()).toEqual(before);
+  });
+
   it("returns a slide title over the limit to the model as its field message, and the fixed call saves one change", async () => {
     const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0005";
 
