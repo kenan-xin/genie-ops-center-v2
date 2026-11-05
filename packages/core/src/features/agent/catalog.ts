@@ -93,16 +93,16 @@ export function answerLibrary(views: AnswerViews): Library {
 /** What the catalog prompt adds to the fixed rules (R-45). */
 export const ANSWER_PROMPT_OPTIONS: PromptOptions = {
   additionalRules: [
-    "Put each figure in a Chart of type kpi. Make every other chart and every table with make-artifact. The answer shows it as a card. Never type the values of a figure, a chart or a table.",
+    "Make every chart and every table with make-artifact. The answer shows it as a card with its first rows. A single figure can also go in a Chart of type kpi. Never type the rows of a chart or a table.",
     "Write prose only with Heading, Paragraph and List.",
     ...CHART_PROMPT_RULES,
   ],
   examples: [
     [
-      "root = Answer([heading, summary, figures])",
-      'heading = Heading("Example totals", 2)',
-      'summary = Paragraph("Figures from the example.items dataset.")',
-      'figures = Chart({type: "kpi", title: "Items", series: [{name: "Items", dataset: "example.items", query: {aggregates: [{fn: "count", as: "items"}]}, value: "items"}]})',
+      "root = Answer([result, method, figure])",
+      'result = Paragraph("12 open items, SGD 4,200.00 in all.")',
+      'method = Paragraph("This counts the open items as of 27 Oct 2026.")',
+      'figure = Chart({type: "kpi", title: "Open items", series: [{name: "Open items", dataset: "example.items", query: {aggregates: [{fn: "count", as: "items"}]}, value: "items"}]})',
     ].join("\n"),
   ],
 };

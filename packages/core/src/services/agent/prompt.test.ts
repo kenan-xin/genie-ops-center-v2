@@ -3,6 +3,14 @@ import { describe, expect, it } from "vitest";
 import { agentInstructions } from "./prompt.ts";
 
 describe("agentInstructions", () => {
+  it("states the reporting date as a person reads it, and its ISO form only for a query", () => {
+    expect(
+      agentInstructions({ reportingDate: "2026-10-27" }).split("\n")
+    ).toContain(
+      "The reporting date is 27 Oct 2026 (2026-10-27 in a query). Every figure is as of this date."
+    );
+  });
+
   it("puts module lines after core's rules and before the blank line that opens the answer catalog", () => {
     const lines = agentInstructions({
       reportingDate: "2026-10-27",

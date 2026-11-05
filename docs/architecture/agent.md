@@ -32,6 +32,19 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 4. The model calls tools. The route runs each tool as the person and returns the result to the model. This repeats up to a step limit.
 5. The answer streams back to the person while it is written, and the route stores it.
 
+## How an answer reads
+
+Core owns the answer rules, in `packages/core/src/services/agent/prompt.ts` (Spec 7 R-44, amended 2026-11-03):
+
+- The answer is short and in simple English. It starts with the result in one short sentence.
+- A money answer states the total with its currency and two decimals in the first sentence, then shows the rows.
+- One or two short sentences after the result say how the figure was counted, in plain words.
+- The text names no dataset and no field. It writes a date as a person reads it (27 Oct 2026), and the ISO form only inside a query.
+- A list of a dataset's rows selects the dataset's `summaryFields` first.
+- A follow-up can change an earlier chart or table of the chat by its number.
+
+A module adds only rules about its own records, such as its measures and its record tables. Column headers read each field's `label`, which the model never sees.
+
 ## What keeps it safe
 
 - Every tool runs as the person who asks. `can()` decides which tools the person gets, and each dataset filters rows with `scopesFor()` (`DEC-39`).
@@ -46,11 +59,11 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 - The agent panel: one full-height panel on the right of every signed-in page but Ask replaces the chat bubble and each page's own chat (Spec 7 R-42). The Agent button opens it. A page gives it a page context (names and ids only: the page, the open record, a part of it, and a list's dataset, tab, filters, search and sort), a line about the page, suggestions and a refresh through `useAgentPage` from `@genie/core/features/agent/panel`. The route checks the context with `agentPageContextSchema` and adds one prompt line (`docs/architecture/module-contract.md`).
 
 - Long chats: the route summarizes the earlier messages of a long chat automatically and stores the summary on the session (`czjw.80`). The summary keeps no figure as a fact, and the chat shows one quiet line where it starts.
+- Page context: a page tells the agent what it shows (tab, filters, search, sort), by names and ids only (`czjw.77`).
+- Full lists: a full list goes to a table artifact or a file instead of the chat. The chat shows the first rows and how many more.
 
 ## Planned after wave 4
 
 These are decided but not built yet:
 
-- A page tells the agent more of what it shows (tab, filters, search, sort, selection), by names and ids only (`czjw.77`).
 - Documents and record lists as artifacts, with their makers.
-- Full lists go to an artifact or a file instead of the chat.
