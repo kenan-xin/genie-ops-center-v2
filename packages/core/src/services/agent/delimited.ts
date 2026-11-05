@@ -1,5 +1,6 @@
 import type { ChartTextRows } from "@genie/ui/chart-data";
-import { unparse } from "papaparse";
+// papaparse is CommonJS, so plain Node (the worker, the ops command) reads it only as a default import.
+import Papa from "papaparse";
 
 /**
  * A cell that a spreadsheet would run as a formula gets a leading `'` (CSV injection). A plain
@@ -12,7 +13,7 @@ export function delimitedText(
   rows: ChartTextRows,
   delimiter: "," | "\t"
 ): string {
-  return unparse(
+  return Papa.unparse(
     { fields: [...rows.header], data: rows.rows.map((row) => [...row]) },
     { delimiter, escapeFormulae: FORMULA }
   );
