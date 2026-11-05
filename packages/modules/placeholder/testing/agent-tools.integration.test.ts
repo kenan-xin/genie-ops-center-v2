@@ -614,7 +614,37 @@ describe("the agent tools on the placeholder", () => {
   });
 
   it("numbers two new artifacts of one step apart, after the chat's stored ones", async () => {
-    const ctx = contextFor(await reader());
+    let reads = 0;
+
+    // The first read of the dataset waits, so without call order the second call numbers first.
+    const slowFirst = {
+      ...placeholderModule,
+      datasets: [
+        {
+          ...recordsDataset,
+          source: async (...args: Parameters<typeof recordsDataset.source>) => {
+            reads += 1;
+
+            if (reads === 1) await new Promise((done) => setTimeout(done, 300));
+
+            return recordsDataset.source(...args);
+          },
+        },
+      ],
+    };
+
+    const tenant = createTenantContext(
+      {
+        DATABASE_URL: deployment.context.env.databaseUrl,
+        PUBLIC_URL: deployment.context.env.publicUrl,
+      },
+      { error: () => {}, info: () => {}, debug: () => {} },
+      ["placeholder"]
+    );
+
+    registerModuleRuntime(tenant, [slowFirst]);
+
+    const ctx = contextFor(await reader(), tenant);
     const { turn } = recordingTurn(1);
 
     const outputs = await Promise.all([
@@ -623,12 +653,14 @@ describe("the agent tools on the placeholder", () => {
     ]);
 
     expect(
-      outputs
-        .map(
-          (output) => z.object({ artifact: z.number() }).parse(output).artifact
-        )
-        .toSorted()
+      outputs.map(
+        (output) => z.object({ artifact: z.number() }).parse(output).artifact
+      )
     ).toEqual([2, 3]);
+    expect(turn.pending.map(({ toolCallId }) => toolCallId)).toEqual([
+      "call-a",
+      "call-b",
+    ]);
   });
 
   it("make-file queues one file job as the person and answers without an id", async () => {

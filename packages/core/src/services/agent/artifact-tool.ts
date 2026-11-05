@@ -74,6 +74,21 @@ const inputSchema = z.strictObject({
   config: panelConfigSchema,
 });
 
+// Each turn's last queued call: a call checks and numbers only after the calls made before it, so
+// the numbers follow the model's call order and a replayed request matches its recording.
+const queues = new WeakMap<ArtifactTurn, Promise<unknown>>();
+
+function inCallOrder<T>(turn: ArtifactTurn, run: () => Promise<T>): Promise<T> {
+  const result = (queues.get(turn) ?? Promise.resolve()).then(run);
+
+  queues.set(
+    turn,
+    result.catch(() => undefined)
+  );
+
+  return result;
+}
+
 function invalid(path: string, message: string): AppError {
   return new AppError(CORE_ERRORS["invalid-input"], {
     issues: [{ path, message }],
@@ -113,7 +128,9 @@ export function artifactTool(
       };
 
       try {
-        made = await nextVersion(ctx, turn, input, toolCallId);
+        made = await inCallOrder(turn, () =>
+          nextVersion(ctx, turn, input, toolCallId)
+        );
       } catch (error) {
         if (error instanceof AppError) {
           await record(error.code, 0, null);
