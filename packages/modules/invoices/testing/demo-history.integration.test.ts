@@ -417,14 +417,17 @@ describe("demo history", () => {
             select: ["name", "settledWithDueDateCount", "paidLateCount"],
             orderBy: [{ column: "name", direction: "asc" }],
           })
-        ).map((row) => ({
-          customerName: row.name ?? null,
-          settledWithDueDateCount: row.settledWithDueDateCount ?? null,
-          paidLateCount: row.paidLateCount ?? null,
-          // Repeatedly means late on more than half of the settled invoices.
-          repeatedLatePayer:
-            Number(row.paidLateCount) * 2 > Number(row.settledWithDueDateCount),
-        })),
+        )
+          .map((row) => ({
+            customerName: row.name ?? null,
+            settledWithDueDateCount: row.settledWithDueDateCount ?? null,
+            paidLateCount: row.paidLateCount ?? null,
+            // Repeatedly means late on more than half of the settled invoices.
+            repeatedLatePayer:
+              Number(row.paidLateCount) * 2 >
+              Number(row.settledWithDueDateCount),
+          }))
+          .filter((row) => row.repeatedLatePayer),
     ],
     [
       "overdue-balances",
@@ -455,6 +458,8 @@ describe("demo history", () => {
           groupBy: [{ field: "customerName" }],
           aggregates: [{ fn: "sum", field: "totalCents", as: "invoicedCents" }],
           orderBy: [{ column: "invoicedCents", direction: "desc" }],
+          // Decision 17: top means the three largest by invoiced sales.
+          limit: 3,
         }),
     ],
     [
@@ -506,7 +511,12 @@ describe("demo history", () => {
       "manual-due-dates",
       () =>
         rows("invoices.invoices", {
-          select: ["invoiceNumber", "customerName", "dueDate"],
+          select: [
+            "invoiceNumber",
+            "customerName",
+            "dueDate",
+            "outstandingCents",
+          ],
           filters: [{ field: "dueDateSource", op: "eq", value: "person" }],
         }),
     ],

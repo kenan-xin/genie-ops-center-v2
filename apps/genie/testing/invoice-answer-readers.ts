@@ -5,10 +5,14 @@ import {
   type ChartType,
   createAgentRouter,
   type DatasetQuery,
+  type DatasetSummary,
   type ModuleRequestContext,
   type PanelConfig,
 } from "@genie/core";
+import type { AnswerBlock } from "@genie/core/testing";
 import { DEMO_PACK } from "@genie/module-invoices/testing";
+import { formatChartValue } from "@genie/ui/chart-data";
+import { escapeRegExp } from "es-toolkit";
 
 /**
  * The nine read questions of the invoice demo and how each answer's checked charts read back into
@@ -23,11 +27,11 @@ export type Question = {
 };
 
 // SAFETY: the module's expected-answers file is read verbatim, and these readers own its shape.
-export const QUESTIONS = (
-  JSON.parse(
-    readFileSync(new URL("../expected-answers.json", DEMO_PACK), "utf8")
-  ) as { readonly questions: readonly Question[] }
-).questions;
+const EXPECTED = JSON.parse(
+  readFileSync(new URL("../expected-answers.json", DEMO_PACK), "utf8")
+) as { readonly currency: string; readonly questions: readonly Question[] };
+
+export const QUESTIONS = EXPECTED.questions;
 
 /** The pack's chatbot prompts: a follow-up shares its session with the question before it. */
 export const SESSIONS: readonly (readonly string[])[] = [
@@ -62,10 +66,89 @@ export type AnswerChart = {
   readonly data: { readonly rows: readonly Row[] };
 };
 
-export type Answered = {
-  readonly rows: unknown;
-  readonly totalCents?: unknown;
-};
+export type Answered = { readonly rows: unknown };
+
+/**
+ * The charts that a turn of a session can read: its own first, then those of the earlier turns,
+ * newest first, so a follow-up builds on an earlier chart or table (`czjw.59` ruling 4).
+ */
+export function sessionCharts<T>(
+  turns: readonly (readonly T[])[]
+): readonly T[] {
+  return turns.toReversed().flat();
+}
+
+/** Each dataset name, and each field name that a person would not write (it holds a capital). */
+export function internalNamesOf(
+  datasets: readonly DatasetSummary[]
+): readonly string[] {
+  return [
+    ...new Set(
+      datasets.flatMap(({ name, fields }) => [
+        name,
+        ...Object.keys(fields).filter((field) => /[A-Z]/.test(field)),
+      ])
+    ),
+  ];
+}
+
+// The digits inside a record number such as INV-2026-10-03 are no date.
+const ISO_DATE = /(?<![A-Za-z0-9-])\d{4}-\d{2}-\d{2}(?![0-9-])/g;
+
+/**
+ * What breaks the answer rules (Spec 7 R-44): the answer opens with a sentence, a money answer
+ * states its total in that first sentence, and the text names no dataset or field and writes no
+ * ISO date (I17). No issue is an empty list.
+ */
+export function answerIssues(input: {
+  readonly questionId: string;
+  readonly blocks: readonly AnswerBlock[];
+  readonly internalNames: readonly string[];
+}): readonly string[] {
+  const [first] = input.blocks;
+  const opening = first?.kind === "Paragraph" ? first.text : undefined;
+  const issues: string[] = [];
+
+  if (opening === undefined) {
+    issues.push("The answer does not open with a sentence.");
+  }
+
+  const { totalCents } = question(input.questionId);
+
+  if (totalCents !== undefined) {
+    const amount = formatChartValue(
+      {
+        key: "total",
+        label: "Total",
+        type: "money",
+        currency: EXPECTED.currency,
+      },
+      totalCents,
+      { bare: true }
+    );
+
+    // A sentence ends at a stop before a space, so the stop inside 27,350.00 ends none.
+    const [sentence = ""] = (opening ?? "").split(/(?<=[.!?])\s/);
+
+    if (!sentence.includes(amount)) {
+      issues.push(`The first sentence does not state the total ${amount}.`);
+    }
+  }
+
+  const prose = input.blocks.map(({ text }) => text).join("\n");
+
+  for (const name of input.internalNames) {
+    if (new RegExp(`\\b${escapeRegExp(name)}\\b`).test(prose)) {
+      issues.push(`The text names ${name}.`);
+    }
+  }
+
+  for (const date of new Set(prose.match(ISO_DATE))) {
+    issues.push(`The text writes the date ${date}.`);
+  }
+
+  return issues;
+}
 
 /**
  * A chart that an answer must hold (`czjw.56`): one of `types`, with a series of `dataset` that
@@ -190,12 +273,6 @@ export const CHARTS = {
       "daysOverdue"
     ),
   },
-  overdueTotal: {
-    title: "Overdue total",
-    types: ["kpi"],
-    dataset: INVOICES,
-    columns: { totalCents: "sum(outstandingCents)" },
-  },
   latePayment: {
     title: "Late payment by customer",
     types: TABLE,
@@ -247,7 +324,12 @@ export const CHARTS = {
     title: "Due dates entered by a person",
     types: TABLE,
     dataset: INVOICES,
-    columns: same("invoiceNumber", "customerName", "dueDate"),
+    columns: same(
+      "invoiceNumber",
+      "customerName",
+      "dueDate",
+      "outstandingCents"
+    ),
   },
   partialPayments: {
     title: "Invoices with partial payments",
@@ -274,32 +356,31 @@ export const CHARTS = {
   },
 } satisfies Record<string, ChartSpec>;
 
-const totalOf = (charts: readonly AnswerChart[]) =>
-  read(charts, CHARTS.overdueTotal)[0]?.["totalCents"] ?? null;
+// Top means the three largest by invoiced sales (`expected-answers.json`), so a full ranking
+// and a top-three table read the same.
+const topSales = (charts: readonly AnswerChart[]) =>
+  read(charts, CHARTS.salesByCustomer).slice(0, 3);
 
 /** Each answer's checked charts in the shape of its question in `expected-answers.json`. */
 export type Reader = (charts: readonly AnswerChart[]) => Answered;
 
 export const READERS = new Map<string, Reader>(
   Object.entries({
-    "overdue-invoices": (c) => ({
-      rows: read(c, CHARTS.overdueInvoices),
-      totalCents: totalOf(c),
-    }),
+    "overdue-invoices": (c) => ({ rows: read(c, CHARTS.overdueInvoices) }),
     "repeated-late-payers": (c) => ({
-      rows: read(c, CHARTS.latePayment).map((row) =>
-        Object.assign(row, {
-          // The README definition: late on more than half of the settled invoices with a due date.
-          repeatedLatePayer:
-            Number(row["paidLateCount"]) * 2 >
-            Number(row["settledWithDueDateCount"]),
-        })
-      ),
+      // The qualifying customers, so a table of all of them and one of these read the same.
+      rows: read(c, CHARTS.latePayment)
+        .map((row) =>
+          Object.assign(row, {
+            // The README definition: late on more than half of the settled invoices with a due date.
+            repeatedLatePayer:
+              Number(row["paidLateCount"]) * 2 >
+              Number(row["settledWithDueDateCount"]),
+          })
+        )
+        .filter((row) => row["repeatedLatePayer"] === true),
     }),
-    "overdue-balances": (c) => ({
-      rows: read(c, CHARTS.overdueBalances),
-      totalCents: totalOf(c),
-    }),
+    "overdue-balances": (c) => ({ rows: read(c, CHARTS.overdueBalances) }),
     "monthly-invoiced-and-collected": (c) => {
       // Core answers a month bucket as its first day; the file names the month. A model can draw
       // both series in one chart or in two.
@@ -334,9 +415,7 @@ export const READERS = new Map<string, Reader>(
           })),
       };
     },
-    "top-customers-by-sales": (c) => ({
-      rows: read(c, CHARTS.salesByCustomer),
-    }),
+    "top-customers-by-sales": (c) => ({ rows: topSales(c) }),
     "top-customers-overdue": (c) => {
       const overdue = new Map(
         read(c, CHARTS.overdueBalances).map((row) => [
@@ -346,7 +425,7 @@ export const READERS = new Map<string, Reader>(
       );
 
       return {
-        rows: read(c, CHARTS.salesByCustomer).map((row) =>
+        rows: topSales(c).map((row) =>
           Object.assign(row, {
             overdueCents: overdue.get(row["customerName"] ?? null) ?? 0,
           })
@@ -386,10 +465,8 @@ export const CHART_CASES: readonly (ChartSpec & {
   readonly questionId: string;
 })[] = [
   { questionId: "overdue-invoices", ...CHARTS.overdueInvoices },
-  { questionId: "overdue-invoices", ...CHARTS.overdueTotal },
   { questionId: "repeated-late-payers", ...CHARTS.latePayment },
   { questionId: "overdue-balances", ...CHARTS.overdueBalances },
-  { questionId: "overdue-balances", ...CHARTS.overdueTotal },
   { questionId: "monthly-invoiced-and-collected", ...CHARTS.invoicedByMonth },
   { questionId: "monthly-invoiced-and-collected", ...CHARTS.collectedByMonth },
   { questionId: "top-customers-by-sales", ...CHARTS.salesByCustomer },

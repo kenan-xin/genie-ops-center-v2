@@ -1,9 +1,11 @@
 import { isDeepStrictEqual } from "node:util";
 
 import { AppError, panelConfigSchema } from "@genie/core";
+import type { AnswerBlock } from "@genie/core/testing";
 
 import {
   type AnswerChart,
+  answerIssues,
   CHART_CASES,
   question,
   READERS,
@@ -32,32 +34,40 @@ export function refusalCode(error: unknown): string {
 }
 
 /**
- * Scores one answer exactly (R-58): its checked charts, read back by the question's reader, equal
- * the question's rows in `expected-answers.json`, and its total where the file has one.
+ * Scores one answer exactly (R-58): the checked charts of its session, read back by the question's
+ * reader, equal the question's rows in `expected-answers.json`, and its prose keeps the answer
+ * rules (R-44): it opens with a sentence, states a money total first, and names no internal name
+ * and no ISO date.
  */
 export function scoreAnswer(
   questionId: string,
-  charts: readonly AnswerChart[]
+  answer: {
+    readonly charts: readonly AnswerChart[];
+    readonly blocks: readonly AnswerBlock[];
+    readonly internalNames: readonly string[];
+  }
 ): CaseScore {
   const reader = READERS.get(questionId);
 
   if (reader === undefined) throw new Error(`No reader for ${questionId}.`);
 
-  const { rows, totalCents } = question(questionId);
-
   let answered: unknown;
 
   try {
-    answered = reader(charts);
+    answered = reader(answer.charts);
   } catch (error) {
     return { pass: false, reason: String(error).replace(/^Error: /, "") };
   }
 
-  const expected = totalCents === undefined ? { rows } : { rows, totalCents };
+  if (!isDeepStrictEqual(answered, { rows: question(questionId).rows })) {
+    return { pass: false, reason: "wrong-answer" };
+  }
 
-  return isDeepStrictEqual(answered, expected)
+  const issues = answerIssues({ questionId, ...answer });
+
+  return issues.length === 0
     ? { pass: true }
-    : { pass: false, reason: "wrong-answer" };
+    : { pass: false, reason: issues.join("; ") };
 }
 
 /**

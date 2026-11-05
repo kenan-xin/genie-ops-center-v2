@@ -58,28 +58,10 @@
           "repeatedLatePayer": true
         },
         {
-          "customerName": "Apex Digital",
-          "settledWithDueDateCount": 6,
-          "paidLateCount": 0,
-          "repeatedLatePayer": false
-        },
-        {
           "customerName": "Harbor Foods",
           "settledWithDueDateCount": 4,
           "paidLateCount": 4,
           "repeatedLatePayer": true
-        },
-        {
-          "customerName": "Lumi Design",
-          "settledWithDueDateCount": 6,
-          "paidLateCount": 0,
-          "repeatedLatePayer": false
-        },
-        {
-          "customerName": "Meridian Labs",
-          "settledWithDueDateCount": 5,
-          "paidLateCount": 2,
-          "repeatedLatePayer": false
         },
         {
           "customerName": "Orchid Retail",
@@ -88,7 +70,7 @@
           "repeatedLatePayer": true
         }
       ],
-      "note": "Repeatedly means late on more than half of the settled invoices with a known due date. A part-paid invoice is not in the denominator."
+      "note": "Repeatedly means late on more than half of the settled invoices with a known due date. A part-paid invoice is not in the denominator. The rows are the customers that pay late repeatedly."
     },
     {
       "id": "overdue-balances",
@@ -122,10 +104,7 @@
       "rows": [
         { "customerName": "Apex Digital", "invoicedCents": 5670000 },
         { "customerName": "Meridian Labs", "invoicedCents": 5100000 },
-        { "customerName": "Harbor Foods", "invoicedCents": 4140000 },
-        { "customerName": "ABC Trading", "invoicedCents": 3450000 },
-        { "customerName": "Lumi Design", "invoicedCents": 2895000 },
-        { "customerName": "Orchid Retail", "invoicedCents": 2385000 }
+        { "customerName": "Harbor Foods", "invoicedCents": 4140000 }
       ]
     },
     {
@@ -172,7 +151,8 @@
         {
           "invoiceNumber": "INV-2026-09-04",
           "customerName": "Orchid Retail",
-          "dueDate": "2026-09-30"
+          "dueDate": "2026-09-30",
+          "outstandingCents": 420000
         }
       ]
     },

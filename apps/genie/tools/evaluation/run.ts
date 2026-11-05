@@ -18,6 +18,7 @@ import { performance } from "node:perf_hooks";
 
 import {
   handleAgentChat,
+  listDatasets,
   type ModuleRequestContext,
   principalFor,
   readOwnSession,
@@ -26,6 +27,9 @@ import {
 } from "@genie/core";
 import {
   agentRequest,
+  answerArtifactConfigs,
+  type AnswerBlock,
+  answerBlocks,
   answerChartConfigs,
   enableModules,
   insertPersonWith,
@@ -50,7 +54,9 @@ import { placeholderModule } from "@genie/module-placeholder";
 import {
   agentFor,
   type AnswerChart,
+  internalNamesOf,
   question,
+  sessionCharts,
 } from "../../testing/invoice-answer-readers.ts";
 import { APP_AGENT_RECORDINGS } from "../../testing/model-replay.ts";
 import type { CaseResult } from "./case-result.ts";
@@ -67,7 +73,9 @@ import {
 import { scoreExtraction } from "./score-extraction.ts";
 import { costMeter, liveTransport } from "./transport.ts";
 
-const MODULES = [placeholderModule, invoicesModule];
+// The app's order, so the recorded tool list is the one the app sends and a recorded run replays
+// the app's answer recordings (the recorded proof before a live run).
+const MODULES = [invoicesModule, placeholderModule];
 
 async function personWith(
   tenant: TenantContext,
@@ -104,7 +112,7 @@ async function evaluateModel(
       document: model,
       reportingDate: "2026-10-27",
     });
-    await enableModules(tenant, ["placeholder", "invoices"]);
+    await enableModules(tenant, ["invoices", "placeholder"]);
     registerModuleRuntime(tenant, MODULES);
 
     const seeder = await insertPersonWith(tenant, [
@@ -133,6 +141,7 @@ async function evaluateModel(
     ]);
 
     const agent = agentFor(asker, "req-evaluation");
+    const internalNames = internalNamesOf(await listDatasets(asker));
 
     /* oxlint-disable no-await-in-loop -- one model request at a time, so each case gets its own time and cost. */
     for (let run = 1; run <= options.runs; run += 1) {
@@ -165,6 +174,9 @@ async function evaluateModel(
       for (const session of cases.answers) {
         const sessionId = randomUUID();
 
+        // The checked charts of each asked turn, so a follow-up reads the earlier ones too.
+        const turns: (AnswerChart | RefusedChart)[][] = [];
+
         // The question that broke the session and its reason; the later questions are not asked.
         let broken:
           | { readonly id: string; readonly reason: string }
@@ -175,6 +187,7 @@ async function evaluateModel(
           const before = send.mark();
           const errors: unknown[] = [];
           let checked: (AnswerChart | RefusedChart)[] = [];
+          let blocks: readonly AnswerBlock[] = [];
 
           if (broken === undefined) {
             const reply = await handleAgentChat(
@@ -206,13 +219,21 @@ async function evaluateModel(
             } else {
               const { messages } = await readOwnSession(asker, sessionId);
 
-              const text = (messages.at(-1)?.parts ?? [])
+              const last = messages.at(-1);
+
+              const text = (last?.parts ?? [])
                 .flatMap((part) => (part.type === "text" ? [part.text] : []))
                 .join("");
 
+              // The answer's inline charts, then its artifact cards (make-artifact).
               const configs = (() => {
                 try {
-                  return answerChartConfigs(text);
+                  blocks = answerBlocks(text);
+
+                  return [
+                    ...answerChartConfigs(text),
+                    ...(last === undefined ? [] : answerArtifactConfigs(last)),
+                  ];
                 } catch (error) {
                   broken = { id, reason: String(error) };
 
@@ -235,14 +256,19 @@ async function evaluateModel(
           const ms = performance.now() - started;
           const costUsd = send.since(before);
 
+          turns.push(checked);
+
+          const readable = sessionCharts(turns);
+
           const answer =
             broken === undefined
-              ? scoreAnswer(
-                  id,
-                  checked.filter(
+              ? scoreAnswer(id, {
+                  charts: readable.filter(
                     (chart): chart is AnswerChart => !("refused" in chart)
-                  )
-                )
+                  ),
+                  blocks,
+                  internalNames,
+                })
               : {
                   pass: false,
                   reason:
@@ -262,7 +288,7 @@ async function evaluateModel(
           });
 
           for (const chart of broken === undefined
-            ? scoreCharts(id, checked)
+            ? scoreCharts(id, readable)
             : CHART_CASES.filter((item) => item.questionId === id).map(
                 // The answer case of this question carries the reason once.
                 ({ title }) => ({ title, pass: false, reason: "no-answer" })

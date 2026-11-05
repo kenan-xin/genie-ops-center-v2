@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 
 import {
   handleAgentChat,
+  listDatasets,
   moduleInstructionLines,
   type ModuleRequestContext,
   panelConfigSchema,
@@ -11,6 +12,9 @@ import {
 } from "@genie/core";
 import {
   agentRequest,
+  answerArtifactConfigs,
+  type AnswerBlock,
+  answerBlocks,
   answerChartConfigs,
   enableModules,
   insertPersonWith,
@@ -27,8 +31,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   agentFor as agentAs,
+  answerIssues,
+  internalNamesOf,
   question,
   READERS,
+  sessionCharts,
   SESSIONS,
 } from "./invoice-answer-readers.ts";
 import { APP_AGENT_RECORDINGS } from "./model-replay.ts";
@@ -51,8 +58,19 @@ const errors: unknown[] = [];
 
 const hooks = { logError: (cause: unknown) => errors.push(cause) };
 
-/** Each asked question's chart configs, from the answer text the session stored. */
-const answered = new Map<string, readonly unknown[]>();
+/**
+ * Each asked question's answer as the session stored it: the chart configs of each turn of its
+ * session up to this one (inline charts, then artifact cards), and the answer's blocks.
+ */
+const answered = new Map<
+  string,
+  {
+    readonly turns: readonly (readonly unknown[])[];
+    readonly blocks: readonly AnswerBlock[];
+  }
+>();
+
+let internalNames: readonly string[] = [];
 
 async function personWith(
   permissions: readonly string[]
@@ -95,9 +113,11 @@ beforeAll(async () => {
   await seedDemoHistory(deployment.context, { userId: seeder.userId });
   recorded = useRecordedModel(deployment.context, APP_AGENT_RECORDINGS);
   asker = await personWith(["core:ask:use", "invoices:read", "invoices:use"]);
+  internalNames = internalNamesOf(await listDatasets(asker));
 
   for (const session of SESSIONS) {
     const sessionId = randomUUID();
+    const turns: (readonly unknown[])[] = [];
 
     for (const id of session) {
       const logged = errors.length;
@@ -129,15 +149,17 @@ beforeAll(async () => {
 
       // oxlint-disable-next-line no-await-in-loop -- the stored answer of this turn.
       const { messages } = await readOwnSession(asker, sessionId);
+      const last = messages.at(-1);
 
-      answered.set(
-        id,
-        answerChartConfigs(
-          (messages.at(-1)?.parts ?? [])
-            .flatMap((part) => (part.type === "text" ? [part.text] : []))
-            .join("")
-        )
-      );
+      const text = (last?.parts ?? [])
+        .flatMap((part) => (part.type === "text" ? [part.text] : []))
+        .join("");
+
+      turns.push([
+        ...answerChartConfigs(text),
+        ...(last === undefined ? [] : answerArtifactConfigs(last)),
+      ]);
+      answered.set(id, { turns: [...turns], blocks: answerBlocks(text) });
     }
   }
 }, 240000);
@@ -186,27 +208,35 @@ describe("the invoice answers through the agent", () => {
       expect(errors).toEqual([]);
 
       const agent = agentFor(asker);
+      const { turns = [], blocks = [] } = answered.get(id) ?? {};
 
-      const charts = await Promise.all(
-        (answered.get(id) ?? []).map((config) => agent.chart({ config }))
-      );
+      // Each turn's configs through the gate, so a follow-up reads the earlier turns' charts too.
+      const checked = (rename: boolean) =>
+        Promise.all(
+          turns.map((configs) =>
+            Promise.all(
+              configs.map((config) =>
+                agent.chart({ config: rename ? renamed(config) : config })
+              )
+            )
+          )
+        ).then(sessionCharts);
 
-      const { rows, totalCents } = question(id);
+      const charts = await checked(false);
+
       const reader = READERS.get(id);
 
       if (reader === undefined) throw new Error(`No reader for ${id}.`);
 
-      const expected =
-        totalCents === undefined ? { rows } : { rows, totalCents };
+      const expected = { rows: question(id).rows };
 
       expect(reader(charts)).toEqual(expected);
+      expect(answerIssues({ questionId: id, blocks, internalNames })).toEqual(
+        []
+      );
 
       // The same charts under other names read the same through the real gate's row keys.
-      const others = await Promise.all(
-        (answered.get(id) ?? []).map((config) =>
-          agent.chart({ config: renamed(config) })
-        )
-      );
+      const others = await checked(true);
 
       expect(others.map((chart) => chart.config.title)).not.toContain(
         charts[0]?.config.title
@@ -292,7 +322,9 @@ describe("the invoice answers through the agent", () => {
 
     const agent = agentFor(await personWith(["core:ask:use"]));
 
-    const configs = ORDERED.flatMap((id) => answered.get(id) ?? []);
+    const configs = ORDERED.flatMap(
+      (id) => answered.get(id)?.turns.at(-1) ?? []
+    );
 
     expect(configs.length).toBeGreaterThan(0);
 

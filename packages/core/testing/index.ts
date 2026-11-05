@@ -16,6 +16,9 @@ export { enableModules } from "./enable-modules.ts";
 
 export {
   agentRequest,
+  answerArtifactConfigs,
+  type AnswerBlock,
+  answerBlocks,
   answerChartConfigs,
   readAgentReply,
   writeModelConnection,

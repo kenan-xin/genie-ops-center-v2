@@ -84,7 +84,7 @@ function entityValues(text: string): string[] {
 }
 
 describe("the evaluation cases", () => {
-  it("holds the seven live uploads, the nine questions in six sessions and fourteen chart cases", () => {
+  it("holds the seven live uploads, the nine questions in six sessions and twelve chart cases", () => {
     expect(EXTRACTION_CASES.map((item) => item.id)).toEqual([
       "01",
       "02",
@@ -98,7 +98,7 @@ describe("the evaluation cases", () => {
     expect(ANSWER_CASES.flat().toSorted()).toEqual(
       QUESTIONS.map((item) => item.id).toSorted()
     );
-    expect(CHART_CASES).toHaveLength(14);
+    expect(CHART_CASES).toHaveLength(12);
   });
 
   it("keeps the first cases of each track under a limit, with whole earlier session turns", () => {

@@ -8,6 +8,7 @@ import {
 } from "ai";
 import { z } from "zod";
 
+import { artifactRefsOf } from "../src/features/agent/artifact-refs.ts";
 import { PROMPT_VIEWS } from "../src/features/agent/catalog-prompt.ts";
 import { answerLibrary } from "../src/features/agent/catalog.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
@@ -51,6 +52,55 @@ export async function writeModelConnection(
  * broken answer fails its test instead of losing a chart.
  */
 export function answerChartConfigs(text: string): readonly unknown[] {
+  return answerChildren(text).flatMap(({ typeName, props }) =>
+    typeName === "Chart" ? [props["config"]] : []
+  );
+}
+
+/** One block of an answer's root: its component and the text a person reads (a Chart has none). */
+export type AnswerBlock = {
+  readonly kind: "Heading" | "Paragraph" | "List" | "Chart";
+  readonly text: string;
+};
+
+const BLOCK = z.discriminatedUnion("typeName", [
+  z.object({
+    typeName: z.enum(["Heading", "Paragraph"]),
+    props: z.object({ text: z.string() }),
+  }),
+  z.object({
+    typeName: z.literal("List"),
+    props: z.object({ items: z.array(z.string()) }),
+  }),
+  z.object({ typeName: z.literal("Chart") }),
+]);
+
+/**
+ * Every block of an answer's root in reading order, parsed as `answerChartConfigs` parses it. A
+ * List's items are joined with a line break. Throws as `answerChartConfigs` does.
+ */
+export function answerBlocks(text: string): readonly AnswerBlock[] {
+  return answerChildren(text).map((child) => {
+    const block = BLOCK.parse(child);
+
+    if (block.typeName === "Chart") return { kind: "Chart", text: "" };
+
+    if (block.typeName === "List") {
+      return { kind: "List", text: block.props.items.join("\n") };
+    }
+
+    return { kind: block.typeName, text: block.props.text };
+  });
+}
+
+/** The config of each artifact card of a stored answer. A refused call has no card. */
+export function answerArtifactConfigs(
+  message: AgentMessage
+): readonly unknown[] {
+  return artifactRefsOf(message).map(({ config }) => config);
+}
+
+function answerChildren(text: string) {
   const { root, meta } = createParser(
     answerLibrary(PROMPT_VIEWS).toJSONSchema(),
     "Answer"
@@ -62,9 +112,7 @@ export function answerChartConfigs(text: string): readonly unknown[] {
     );
   }
 
-  return ANSWER_CHILDREN.parse(root.props["children"]).flatMap(
-    ({ typeName, props }) => (typeName === "Chart" ? [props["config"]] : [])
-  );
+  return ANSWER_CHILDREN.parse(root.props["children"]);
 }
 
 /** The children of a parsed root: element nodes, each with its component name and props. */

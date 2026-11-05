@@ -30,7 +30,8 @@ unset MODEL_RECORDING_KEY
 ```
 
 - Models: `anthropic/claude-opus-5.5`, `openai/gpt-6.1-terra`, `deepseek/deepseek-v4.1-flash-1017`. Three runs per case. `--model <id>` (repeatable) and `--runs <n>` narrow a run. `--limit <n>` (1 to 100) keeps the first `n` extraction and answer cases for a smoke run, with the chart cases of the kept answers, and the report states the limit.
-- Calls: at least (7 extraction + 9 answer cases) x 3 runs x 3 models = 144 model requests, plus one more request for each tool call inside an answer. The 14 chart cases reuse the answers' calls.
+- Calls: at least (7 extraction + 9 answer cases) x 3 runs x 3 models = 144 model requests, plus one more request for each tool call inside an answer. The 12 chart cases reuse the answers' calls.
+- Scoring: an answer case reads the charts and the `make-artifact` tables of its turn, then those of the earlier turns of its session, and compares the rows to `expected-answers.json`. It also fails when the answer does not open with a sentence, when a money answer does not state its total in the first sentence, or when the text names a dataset or a field or writes an ISO date. The reason names each issue.
 - Output: `results.json`, `report.json` and `report.md` in the `--out` folder.
 - `results.json` is a list with one entry per model, case and run: `track` (`extraction`, `answers` or `charts`), `caseId`, `model`, `run`, `pass`, `reason` (only on a failure), `ms` and `costUsd` (`null` when the provider gives no cost). The runner writes it again after each model, so a run that stops keeps the models before it. It holds each failure reason in full; `report.md` cuts a reason at 300 characters.
 - The key goes only on the request headers. The runner prints model names, case ids and pass or fail, never the key.
@@ -39,4 +40,4 @@ After the live run, the owner:
 
 1. Commits `report.md` and `report.json` in `docs/modules/invoices-and-payments/evaluation/` (AC-11).
 2. Writes the recommended chat and document models into the seed's model connection.
-3. Refreshes the hand-written recordings that the tests replay (`packages/core/testing/README.md`).
+3. Records again the answer recordings that the tests replay, if the answer rules or the expected answers changed (`packages/core/testing/README.md`).
