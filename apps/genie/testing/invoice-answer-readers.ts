@@ -12,7 +12,7 @@ import {
 import type { AnswerBlock } from "@genie/core/testing";
 import { DEMO_PACK } from "@genie/module-invoices/testing";
 import { formatChartValue } from "@genie/ui/chart-data";
-import { escapeRegExp } from "es-toolkit";
+import { escapeRegExp, isEqual } from "es-toolkit";
 
 /**
  * The nine read questions of the invoice demo and how each answer's checked charts read back into
@@ -314,16 +314,12 @@ export const CHARTS = {
     dataset: INVOICES,
     columns: { customerName: "customerName", invoicedCents: "sum(totalCents)" },
   },
+  // The summary fields: the question asks for no other column (R-44).
   noDueDate: {
     title: "Invoices with no due date",
     types: TABLE,
     dataset: INVOICES,
-    columns: same(
-      "invoiceNumber",
-      "customerName",
-      "totalCents",
-      "outstandingCents"
-    ),
+    columns: same("invoiceNumber", "customerName", "outstandingCents"),
   },
   manualDueDates: {
     title: "Due dates entered by a person",
@@ -361,6 +357,26 @@ export const CHARTS = {
   },
 } satisfies Record<string, ChartSpec>;
 
+/**
+ * The rows in the order of the question's rows in `expected-answers.json`, for a question that asks
+ * for no order. Each expected row takes the first equal row once; a wrong or extra row stays after
+ * them, so the answer still differs.
+ */
+function inFileOrder(id: string, rows: readonly Row[]): Row[] {
+  const left = [...rows];
+
+  // SAFETY: every question of `expected-answers.json` holds its rows as an array.
+  const expected = question(id).rows as readonly unknown[];
+
+  const matched = expected.flatMap((want) => {
+    const at = left.findIndex((row) => isEqual(row, want));
+
+    return at === -1 ? [] : left.splice(at, 1);
+  });
+
+  return [...matched, ...left];
+}
+
 // Top means the three largest by invoiced sales (`expected-answers.json`), so a full ranking
 // and a top-three table read the same.
 const topSales = (charts: readonly AnswerChart[]) =>
@@ -371,21 +387,28 @@ export type Reader = (charts: readonly AnswerChart[]) => Answered;
 
 export const READERS = new Map<string, Reader>(
   Object.entries({
-    "overdue-invoices": (c) => ({ rows: read(c, CHARTS.overdueInvoices) }),
+    "overdue-invoices": (c) => ({
+      rows: inFileOrder("overdue-invoices", read(c, CHARTS.overdueInvoices)),
+    }),
     "repeated-late-payers": (c) => ({
       // The qualifying customers, so a table of all of them and one of these read the same.
-      rows: read(c, CHARTS.latePayment)
-        .map((row) =>
-          Object.assign(row, {
-            // The README definition: late on more than half of the settled invoices with a due date.
-            repeatedLatePayer:
-              Number(row["paidLateCount"]) * 2 >
-              Number(row["settledWithDueDateCount"]),
-          })
-        )
-        .filter((row) => row["repeatedLatePayer"] === true),
+      rows: inFileOrder(
+        "repeated-late-payers",
+        read(c, CHARTS.latePayment)
+          .map((row) =>
+            Object.assign(row, {
+              // The README definition: late on more than half of the settled invoices with a due date.
+              repeatedLatePayer:
+                Number(row["paidLateCount"]) * 2 >
+                Number(row["settledWithDueDateCount"]),
+            })
+          )
+          .filter((row) => row["repeatedLatePayer"] === true)
+      ),
     }),
-    "overdue-balances": (c) => ({ rows: read(c, CHARTS.overdueBalances) }),
+    "overdue-balances": (c) => ({
+      rows: inFileOrder("overdue-balances", read(c, CHARTS.overdueBalances)),
+    }),
     "monthly-invoiced-and-collected": (c) => {
       // Core answers a month bucket as its first day; the file names the month. A model can draw
       // both series in one chart or in two.

@@ -253,7 +253,10 @@ describe("the invoice answers through the agent", () => {
         expect(chart.recordPaths).toHaveLength(chart.rows.length);
 
         for (const path of chart.recordPaths ?? []) {
-          expect(path).toMatch(/^\/m\/invoices\/invoices\/[0-9a-f-]{36}$/);
+          // A payments table, as in the monthly answer, opens payment pages.
+          expect(path).toMatch(
+            /^\/m\/invoices\/(invoices|payments)\/[0-9a-f-]{36}$/
+          );
         }
       }
     }

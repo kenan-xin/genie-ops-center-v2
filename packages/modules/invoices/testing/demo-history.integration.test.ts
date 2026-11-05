@@ -498,12 +498,7 @@ describe("demo history", () => {
       "invoices-without-due-date",
       () =>
         rows("invoices.invoices", {
-          select: [
-            "invoiceNumber",
-            "customerName",
-            "totalCents",
-            "outstandingCents",
-          ],
+          select: ["invoiceNumber", "customerName", "outstandingCents"],
           filters: [{ field: "dueDate", op: "isNull" }],
         }),
     ],

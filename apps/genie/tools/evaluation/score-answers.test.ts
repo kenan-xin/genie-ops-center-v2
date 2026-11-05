@@ -313,6 +313,31 @@ describe("the answer scorer", () => {
     }
   });
 
+  it("reads rows in any order when the question asks for none, and still fails a wrong row", () => {
+    const table = balances();
+    const rowsBack = table.data.rows.toReversed();
+
+    const reversed = { ...table, data: { rows: rowsBack } };
+
+    const [first, ...rest] = rowsBack;
+
+    const wrong = {
+      ...table,
+      data: { rows: [{ ...first, overdueCents: 1 }, ...rest] },
+    };
+
+    expect(scoreAnswer("overdue-balances", answer([reversed]))).toEqual({
+      pass: true,
+    });
+    expect(
+      scoreAnswer("repeated-late-payers", answer([late(LATE.toReversed())]))
+    ).toEqual({ pass: true });
+    expect(scoreAnswer("overdue-balances", answer([wrong]))).toEqual({
+      pass: false,
+      reason: "wrong-answer",
+    });
+  });
+
   it("scores a follow-up on the sales table that the earlier turn made", () => {
     const charts = sessionCharts([[sales(SALES)], [balances()]]);
 
