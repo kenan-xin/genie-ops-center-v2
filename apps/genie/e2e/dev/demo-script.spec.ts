@@ -482,6 +482,9 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
               { exact: true }
             )
           ).toBeVisible(FIRST_PAINT);
+          // The ended answer moves Ask to the chat's own page, and that route change closes a panel
+          // opened before it.
+          await expect(page).toHaveURL(/\/ask\/[0-9a-f-]{36}$/, FIRST_PAINT);
 
           // The records card opens its table in the artifact panel.
           await page
