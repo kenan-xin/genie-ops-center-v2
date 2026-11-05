@@ -289,7 +289,12 @@ describe("the agent route", () => {
         send: () =>
           refusal(
             holder,
-            body({ context: { recordType: "Dashboard", recordId: "d-1" } })
+            body({
+              context: {
+                page: "Dashboard",
+                record: { type: "Dashboard", id: "d-1" },
+              },
+            })
           ),
         code: "invalid-input",
       },
@@ -298,7 +303,26 @@ describe("the agent route", () => {
         send: () =>
           refusal(
             holder,
-            body({ context: { recordType: "dashboard", recordId: "d 1" } })
+            body({
+              context: {
+                page: "Dashboard",
+                record: { type: "dashboard", id: "d 1" },
+              },
+            })
+          ),
+        code: "invalid-input",
+      },
+      {
+        why: "a context that carries the page's rows",
+        send: () =>
+          refusal(
+            holder,
+            body({
+              context: {
+                page: "Invoices",
+                list: { rows: [{ invoiceNumber: "INV-1" }] },
+              },
+            })
           ),
         code: "invalid-input",
       },
@@ -346,7 +370,7 @@ describe("the agent route", () => {
     expect(recorded.sent).toEqual([]);
   });
 
-  it("names the record of a valid context in the system text it sends", async () => {
+  it("names the page of a valid context in the system text it sends", async () => {
     const sent = recorded.sent.length;
 
     // No recording answers this request, so the stream ends in an error after the send.
@@ -354,7 +378,12 @@ describe("the agent route", () => {
       await handleAgentChat(
         await asker(),
         agentRequest(
-          body({ context: { recordType: "dashboard", recordId: "d-1" } })
+          body({
+            context: {
+              page: "Dashboard",
+              record: { type: "dashboard", id: "d-1" },
+            },
+          })
         ),
         { logError: () => {} }
       )
@@ -362,7 +391,7 @@ describe("the agent route", () => {
 
     expect(recorded.sent).toHaveLength(sent + 1);
     expect(JSON.stringify(recorded.sent.at(-1)?.body)).toContain(
-      "The person has the dashboard record d-1 open beside this chat."
+      "The person is on the Dashboard page. The person has the dashboard record d-1 open beside this chat. When the message says this or here, it means that record."
     );
   });
 

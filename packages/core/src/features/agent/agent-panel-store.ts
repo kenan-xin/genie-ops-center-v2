@@ -4,11 +4,11 @@ import { useEffect, useId } from "react";
 import { useStore } from "zustand";
 import { createStore } from "zustand/vanilla";
 
-import type { AgentChatContext } from "./transport.ts";
+import type { AgentPageContext } from "../../services/agent/page-context.ts";
 
-/** What a page tells the agent panel (AG9): the first shape of the page context seam. */
+/** What a page tells the agent panel (AG9): its page context, names and ids only (I20). */
 export type AgentPage = {
-  readonly context?: AgentChatContext;
+  readonly context?: AgentPageContext;
   readonly about?: string;
   readonly suggestions?: readonly string[];
   readonly onFinished?: () => void;
@@ -52,11 +52,9 @@ export function setPanelWorking(working: boolean): void {
 
 /** The record a page shows, as one comparable key; "" beside a list or on no page. */
 function recordOf(page: AgentPage | null): string {
-  const context = page?.context;
+  const record = page?.context?.record;
 
-  return context === undefined
-    ? ""
-    : `${context.recordType}:${context.recordId}`;
+  return record === undefined ? "" : `${record.type}:${record.id}`;
 }
 
 /**

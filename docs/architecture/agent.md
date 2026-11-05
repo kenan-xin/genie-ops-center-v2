@@ -42,7 +42,7 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 ## Built after wave 4
 
 - Artifacts: a chart or a table of an answer gets its own versions, stored in `agent_artifact` and `agent_artifact_version` (`DEC-56`). Ask's artifact panel shows them.
-- The agent panel: one full-height panel on the right of every signed-in page but Ask replaces the chat bubble and each page's own chat (Spec 7 R-42). The Agent button opens it. A page gives it a record, a line about the page, suggestions and a refresh through `useAgentPage` from `@genie/core/features/agent/panel`.
+- The agent panel: one full-height panel on the right of every signed-in page but Ask replaces the chat bubble and each page's own chat (Spec 7 R-42). The Agent button opens it. A page gives it a page context (names and ids only: the page, the open record, a part of it, and a list's dataset, tab, filters, search and sort), a line about the page, suggestions and a refresh through `useAgentPage` from `@genie/core/features/agent/panel`. The route checks the context with `agentPageContextSchema` and adds one prompt line (`docs/architecture/module-contract.md`).
 
 ## Planned after wave 4
 

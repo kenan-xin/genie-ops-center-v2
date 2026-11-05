@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import type { AgentMessage } from "../../services/agent/index.ts";
+import type { AgentPageContext } from "../../services/agent/page-context.ts";
 import { AgentRefusal, agentTransport } from "./transport.ts";
 
 const API = "/api/agent";
@@ -25,9 +26,7 @@ const sentBodySchema = z.object({
     parts: z.array(z.object({ type: z.string(), text: z.string() })),
   }),
   modelId: z.string().optional(),
-  context: z
-    .object({ recordType: z.string(), recordId: z.string() })
-    .optional(),
+  context: z.unknown().optional(),
 });
 
 /** One send of the route's transport, with the body a picker would add. */
@@ -96,24 +95,29 @@ describe("the agent route's transport", () => {
     });
   });
 
-  it("sends the context that the page holds when the message goes", async () => {
+  it("sends the page context with the message, and leaves out a context the schema refuses", async () => {
     const fetchMock = fetchStub();
 
     vi.stubGlobal("fetch", fetchMock);
 
-    const context = { recordType: "dashboard", recordId: "d-1" };
+    const context: AgentPageContext = {
+      page: "Documents",
+      list: { tab: "needs-you", search: "harbor" },
+    };
 
-    // The page holds a record for the first message and none for the second.
-    let held: typeof context | undefined = context;
+    // A page state the person did not type: a search longer than the schema takes.
+    let held: AgentPageContext | undefined = context;
 
     const transport = agentTransport(API, { context: () => held });
 
     await send(transport, undefined);
+    held = { page: "Documents", list: { search: "h".repeat(201) } };
+    await send(transport, undefined);
     held = undefined;
     await send(transport, undefined);
 
-    const [withContext, without] = fetchMock.mock.calls.map(([, init]) =>
-      sentBodySchema.parse(JSON.parse(String(init?.body)))
+    const [withContext, refused, without] = fetchMock.mock.calls.map(
+      ([, init]) => sentBodySchema.parse(JSON.parse(String(init?.body)))
     );
 
     expect(withContext).toEqual({
@@ -121,6 +125,8 @@ describe("the agent route's transport", () => {
       message: MESSAGE,
       context,
     });
+    // The message still goes, without the context the route would refuse.
+    expect(refused).toEqual({ sessionId: SESSION_ID, message: MESSAGE });
     // A body without the key keeps every recorded Ask request the same.
     expect(without).toEqual({ sessionId: SESSION_ID, message: MESSAGE });
   });

@@ -16,7 +16,6 @@ import {
   GENERIC_ERROR_CODE,
   safeMessageFor,
 } from "../../lib/errors/index.ts";
-import { AGENT_TOOL_NAME } from "../../lib/module-contract/agent-tools.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { modelFor } from "../models/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
@@ -25,6 +24,7 @@ import { artifactTurn } from "./artifact-tool.ts";
 import { storedArtifactCount } from "./artifacts.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
+import { agentPageContextSchema } from "./page-context.ts";
 import { agentInstructions } from "./prompt.ts";
 import {
   appendMessage,
@@ -62,13 +62,8 @@ const chatRequestSchema = z.strictObject({
       }),
     ]),
   }),
-  // The record open beside the chat. Checked by pattern only, because the prompt names it as text.
-  context: z
-    .strictObject({
-      recordType: z.string().max(64).regex(AGENT_TOOL_NAME),
-      recordId: z.string().regex(/^[A-Za-z0-9-]{1,64}$/),
-    })
-    .optional(),
+  // The page beside the chat, names and ids only (I20). The prompt names it as text.
+  context: agentPageContextSchema.optional(),
 });
 
 function tooLarge(): AppError {
@@ -190,10 +185,7 @@ export async function handleAgentChat(
       reportingDate: await reportingDate(ctx.tenant),
       moduleLines: await moduleInstructionLines(ctx),
       writeTools: await offersWriteTool(ctx),
-      openRecord:
-        context === undefined
-          ? undefined
-          : { type: context.recordType, id: context.recordId },
+      page: context,
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
     messages: await convertToModelMessages([...trimHistory(history)], {

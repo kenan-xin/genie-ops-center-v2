@@ -49,6 +49,12 @@ export { type AgentRouter, createAgentRouter } from "./router.ts";
 
 export { agentInstructions } from "./prompt.ts";
 
+export {
+  type AgentPageContext,
+  agentPageContextSchema,
+  pageContextLine,
+} from "./page-context.ts";
+
 export { moduleInstructionLines } from "./instructions.ts";
 
 export { AGENT_LIMITS, handleAgentChat } from "./chat.ts";

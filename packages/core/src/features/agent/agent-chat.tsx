@@ -10,14 +10,11 @@ import type {
   ChatLabels,
   InboxLink,
 } from "../../services/agent/index.ts";
+import type { AgentPageContext } from "../../services/agent/page-context.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
-import {
-  AGENT_ROUTE,
-  type AgentChatContext,
-  agentTransport,
-} from "./transport.ts";
+import { AGENT_ROUTE, agentTransport } from "./transport.ts";
 
 /**
  * The one wiring of an agent chat (duplicates 2 and 7): the route's transport with the page's
@@ -29,7 +26,7 @@ export function AgentChat(props: {
   readonly sessionId: string;
   /** Ask passes the server's messages; the panel leaves it out, and AgentChat loads them (`agent.messages`). */
   readonly initialMessages?: readonly AgentMessage[];
-  readonly context?: () => AgentChatContext | undefined;
+  readonly context?: () => AgentPageContext | undefined;
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;

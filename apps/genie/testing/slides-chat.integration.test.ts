@@ -96,7 +96,7 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
-/** Sends the chat message with no record context, as the panel beside the Slides list does. */
+/** Sends the chat message with the page name only, as the panel beside the Slides list does. */
 async function chat(sessionId: string): Promise<void> {
   const reply = await handleAgentChat(
     asker,
@@ -107,6 +107,7 @@ async function chat(sessionId: string): Promise<void> {
         role: "user",
         parts: [{ type: "text", text: SLIDES_CHAT_MESSAGE }],
       },
+      context: { page: "Slides" },
     }),
     { logError: (cause: unknown) => errors.push(cause) }
   );

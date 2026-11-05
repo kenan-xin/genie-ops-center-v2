@@ -136,9 +136,10 @@ export function DeckList(props: DeckListProps) {
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
 
-  // No record context: beside a list the chat has no open record. A chat create adds a deck,
+  // The page name only: beside a list the chat has no open record. A chat create adds a deck,
   // and the list reads it at once.
   useAgentPage({
+    context: { page: "Slides" },
     suggestions: view.canWrite ? CHAT_SUGGESTIONS : [],
     onFinished: () =>
       void queryClient.invalidateQueries({ queryKey: decksQueryKey() }),

@@ -57,9 +57,7 @@ const agentRoute = fn(
 
 /** The body of the n-th request to the route. */
 const routeBody = z.object({
-  context: z
-    .object({ recordType: z.string(), recordId: z.string() })
-    .optional(),
+  context: z.unknown().optional(),
   message: z.object({
     parts: z.array(z.object({ type: z.string(), text: z.string() })),
   }),
@@ -78,7 +76,10 @@ function TestPage() {
   const [recordId, setRecordId] = useState("d1");
 
   const { send } = useAgentPage({
-    context: { recordType: "analytics-dashboard", recordId },
+    context: {
+      page: "Dashboard",
+      record: { type: "analytics-dashboard", id: recordId },
+    },
     about: "Monthly review",
     onFinished,
   });
@@ -348,7 +349,10 @@ export const APageTalksToThePanel: Story = {
     await expect(region).toHaveTextContent("About: Monthly review");
     await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(1));
     await expect(sentBody(0)).toEqual({
-      context: { recordType: "analytics-dashboard", recordId: "d1" },
+      context: {
+        page: "Dashboard",
+        record: { type: "analytics-dashboard", id: "d1" },
+      },
       message: { parts: [{ type: "text", text: "Add a chart" }] },
     });
 
@@ -393,8 +397,8 @@ export const AQueuedMessageKeepsItsRecord: Story = {
     release();
     await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(2));
     await expect(sentBody(1).context).toEqual({
-      recordType: "analytics-dashboard",
-      recordId: "d1",
+      page: "Dashboard",
+      record: { type: "analytics-dashboard", id: "d1" },
     });
 
     // Queued for d1, then the person opens d2: nothing goes.

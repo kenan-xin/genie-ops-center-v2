@@ -112,8 +112,11 @@ describe("the analytics chat beside a dashboard", () => {
           parts: [{ type: "text", text: ANALYTICS_CHAT_MESSAGE }],
         },
         context: {
-          recordType: "analytics-dashboard",
-          recordId: ANALYTICS_CHAT_DASHBOARD.id,
+          page: "Dashboard",
+          record: {
+            type: "analytics-dashboard",
+            id: ANALYTICS_CHAT_DASHBOARD.id,
+          },
         },
       }),
       { logError: (cause: unknown) => errors.push(cause) }

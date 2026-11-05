@@ -12,7 +12,6 @@ export { StepTimeline } from "./step-timeline.tsx";
 
 export {
   AGENT_ROUTE,
-  type AgentChatContext,
   AgentRefusal,
   agentTransport,
   type ChatRefusal,

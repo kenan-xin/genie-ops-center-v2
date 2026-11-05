@@ -2,22 +2,20 @@ import { type ChatTransport, DefaultChatTransport } from "ai";
 import { z } from "zod";
 
 import type { AgentMessage } from "../../services/agent/index.ts";
+import {
+  type AgentPageContext,
+  agentPageContextSchema,
+} from "../../services/agent/page-context.ts";
 
 /**
  * The browser side of the agent route's body, `{ sessionId, message, modelId?, context? }` (Task
  * 5's `chatRequestSchema`). The AI SDK's default body carries the whole history under its own
  * shape; the route reads one message, so this transport sends the last one, the picked model and
- * the record context only. The message keeps the client-made id, which the route accepts.
+ * the page context only. The message keeps the client-made id, which the route accepts.
  */
 
 /** The agent route the app mounts. */
 export const AGENT_ROUTE = "/api/agent";
-
-/** The record open beside a chat, which the prompt names (S7-12, S7-13). */
-export type AgentChatContext = {
-  readonly recordType: string;
-  readonly recordId: string;
-};
 
 /** A refusal the route answered before the stream started, as a person reads it. */
 export class AgentRefusal extends Error {
@@ -78,17 +76,17 @@ type AgentRouteBody = {
   sessionId: string;
   message: AgentMessage | undefined;
   modelId?: string;
-  context?: AgentChatContext;
+  context?: AgentPageContext;
 };
 
 /**
  * The route's transport: one message to one session. A refusal before the stream starts becomes
  * the person-facing message the chat shows, not the route's JSON body. `context` is read when a
- * message goes, so the record of the page the person is on goes with it (AG9).
+ * message goes, so the page the person is on goes with it (AG9, I20).
  */
 export function agentTransport(
   api: string,
-  options?: { readonly context?: () => AgentChatContext | undefined }
+  options?: { readonly context?: () => AgentPageContext | undefined }
 ): ChatTransport<AgentMessage> {
   return new DefaultChatTransport<AgentMessage>({
     api,
@@ -108,10 +106,11 @@ export function agentTransport(
         sent.modelId = picked.data.modelId;
       }
 
-      const context = options?.context?.();
+      const context = agentPageContextSchema.safeParse(options?.context?.());
 
-      // No `context` key without a context, so every recorded Ask request stays the same.
-      if (context !== undefined) sent.context = context;
+      // No `context` key without a context, so every recorded Ask request stays the same. A page
+      // state the route would refuse is left out, so it never blocks the person's message.
+      if (context.success) sent.context = context.data;
 
       return { body: sent };
     },

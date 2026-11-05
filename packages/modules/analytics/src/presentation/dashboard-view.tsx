@@ -166,7 +166,10 @@ export function DashboardView(props: DashboardViewProps) {
   // The shell's agent panel works on this dashboard (AG9); a chat change saves a new version,
   // which the page reads at once.
   const agent = useAgentPage({
-    context: { recordType: "analytics-dashboard", recordId: dashboard.id },
+    context: {
+      page: "Dashboard",
+      record: { type: "analytics-dashboard", id: dashboard.id },
+    },
     about: dashboard.name,
     suggestions: view.canWrite ? CHAT_SUGGESTIONS : [],
     onFinished: () =>
