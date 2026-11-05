@@ -237,12 +237,18 @@ describe("the answer scorer", () => {
 
     const rounded = [paragraph("3 customers owe SGD 27,350 in all.")];
 
+    const larger = [paragraph("3 customers owe SGD 127,350.00 in all.")];
+
+    const otherCurrency = [paragraph("3 customers owe USD 27,350.00 in all.")];
+
+    const noCurrency = [paragraph("3 customers owe 27,350.00 in all.")];
+
     const heading: AnswerBlock[] = [
       { kind: "Heading", text: "Overdue balances" },
       ...TOTAL_FIRST,
     ];
 
-    for (const blocks of [later, rounded]) {
+    for (const blocks of [later, rounded, larger, otherCurrency, noCurrency]) {
       expect(
         scoreAnswer("overdue-balances", answer([balances()], blocks))
       ).toEqual({

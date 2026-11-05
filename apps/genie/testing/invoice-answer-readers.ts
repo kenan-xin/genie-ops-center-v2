@@ -130,7 +130,12 @@ export function answerIssues(input: {
     // A sentence ends at a stop before a space, so the stop inside 27,350.00 ends none.
     const [sentence = ""] = (opening ?? "").split(/(?<=[.!?])\s/);
 
-    if (!sentence.includes(amount)) {
+    // The currency, then exactly this amount: no digit before or after it, and no other code.
+    const stated = new RegExp(
+      `\\b${EXPECTED.currency}\\s?${escapeRegExp(amount)}(?![\\d.,]*\\d)`
+    );
+
+    if (!stated.test(sentence)) {
       issues.push(`The first sentence does not state the total ${amount}.`);
     }
   }
