@@ -5,6 +5,7 @@ import {
   principalFor,
   readOwnHistory,
   saveSummary,
+  type TenantContext,
 } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 
@@ -13,6 +14,17 @@ import { DATABASE_URL, PUBLIC_URL } from "./dev-support.ts";
 
 /** The chat model of the seeded model connection, so the route keeps the session's model. */
 const CHAT_MODEL = "openai/gpt-6.1-terra";
+
+/** A tenant context on the dev e2e database, built as `global-setup.ts` builds one. End its pool. */
+export function devTenant(): TenantContext {
+  return createTenantContext(
+    { DATABASE_URL, PUBLIC_URL },
+    silentLogger(),
+    selectedModuleIds,
+    undefined,
+    "core"
+  );
+}
 
 export type SeededTurn = { readonly question: string; readonly answer: string };
 
@@ -31,13 +43,7 @@ export async function seedChat(input: {
   readonly turns: readonly SeededTurn[];
   readonly summary?: { readonly text: string; readonly throughTurn: number };
 }): Promise<{ readonly userId: string }> {
-  const tenant = createTenantContext(
-    { DATABASE_URL, PUBLIC_URL },
-    silentLogger(),
-    selectedModuleIds,
-    undefined,
-    "core"
-  );
+  const tenant = devTenant();
 
   try {
     const { rows } = await tenant.db.$client.query<{ id: string }>(

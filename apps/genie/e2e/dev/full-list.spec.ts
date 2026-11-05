@@ -10,6 +10,7 @@ import {
   hideDevelopmentWidgets,
   signInAs,
 } from "./ask-support.ts";
+import { devTenant } from "./chat-seed.ts";
 import { FIRST_PAINT, LEDGER_LOCK, LOCK_WAIT } from "./dev-support.ts";
 import { DEV_MODULES, INVOICE_ASK_PEOPLE } from "./global-setup.ts";
 
@@ -42,6 +43,38 @@ const shot = (page: Page, testInfo: TestInfo, screen: string) =>
 /** The lines of a CSV file: no selected field holds a line break. */
 const csvLines = (path: string) =>
   readFileSync(path, "utf8").trimEnd().split(/\r?\n/);
+
+/** The numbers of every invoice the dataset holds, read from the database, not from the UI. */
+async function seededInvoiceNumbers(): Promise<readonly string[]> {
+  const tenant = devTenant();
+
+  try {
+    const { rows } = await tenant.db.$client.query<{ number: string }>(
+      "select i.number from invoice i, tenant_settings s where i.invoice_date <= s.reporting_date"
+    );
+
+    return rows.map((row) => row.number).toSorted();
+  } finally {
+    await tenant.db.$client.end();
+  }
+}
+
+/**
+ * Holds every `file` insert until the answer returns, so the file job stays pending: its store
+ * waits on this lock, while reads go on. Answers the release.
+ */
+async function holdFileWrites(): Promise<() => Promise<void>> {
+  const tenant = devTenant();
+  const client = await tenant.db.$client.connect();
+
+  await client.query('begin; lock table "file" in share mode');
+
+  return async () => {
+    await client.query("rollback");
+    client.release();
+    await tenant.db.$client.end();
+  };
+}
 
 test("a list answer shows 5 rows and how many more, opens the full list, and makes an Excel file while the chat goes on", async ({
   page,
@@ -82,10 +115,11 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
 
       await expect(more).toBeVisible();
 
-      const name = (await more.textContent()) ?? "";
-      const hidden = Number(/^(\d+)/.exec(name)?.[1] ?? 0);
+      const invoices = await seededInvoiceNumbers();
 
-      expect(hidden).toBeGreaterThan(0);
+      await expect(more).toHaveAccessibleName(
+        `${invoices.length - 5} more rows, open the full list`
+      );
       await expectNoAxeViolations(page, "Ask with a short list");
       await more.scrollIntoViewIfNeeded();
       await shot(page, testInfo, "short-list");
@@ -105,7 +139,13 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
 
       const rowsFile = await (await rows).path();
 
-      expect(csvLines(rowsFile)).toHaveLength(1 + 5 + hidden);
+      // The first column is the invoice number; no number holds a comma or a quote.
+      expect(
+        csvLines(rowsFile)
+          .slice(1)
+          .map((line) => line.split(",")[0])
+          .toSorted()
+      ).toEqual(invoices);
       await expectNoAxeViolations(page, "The table artifact");
       await shot(page, testInfo, "table-artifact");
       await panel
@@ -117,20 +157,26 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
         })
         .click();
 
-      // 3. A file of the same list, made by a background job.
-      await askQuestion(page, "Make an Excel file of all invoices.");
+      // 3. A file of the same list, made by a background job that waits on the lock.
+      const release = await holdFileWrites();
 
       const card = page.getByRole("group", { name: "All invoices" });
 
-      await expect(card.getByText("Excel file", { exact: false })).toBeVisible(
-        FIRST_PAINT
-      );
+      try {
+        await askQuestion(page, "Make an Excel file of all invoices.");
+        await expect(card.getByText("Making", { exact: true })).toBeVisible(
+          FIRST_PAINT
+        );
 
-      // 4. The chat goes on while the job runs, whatever its state.
-      await askQuestion(page, "Thank you.");
-      await expect(
-        page.getByText("You are welcome.", { exact: true })
-      ).toBeVisible(FIRST_PAINT);
+        // 4. The chat answers while the job is still pending.
+        await askQuestion(page, "Thank you.");
+        await expect(
+          page.getByText("You are welcome.", { exact: true })
+        ).toBeVisible(FIRST_PAINT);
+        await expect(card.getByText("Making", { exact: true })).toBeVisible();
+      } finally {
+        await release();
+      }
 
       // 5. The file holds every row.
       const download = card.getByRole("button", { name: "Download" });
@@ -146,9 +192,9 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
       const saved = await file;
 
       expect(saved.suggestedFilename()).toBe("All invoices.xlsx");
-      expect(await readSheet(readFileSync(await saved.path()))).toHaveLength(
-        1 + 5 + hidden
-      );
+      const [, ...sheet] = await readSheet(readFileSync(await saved.path()));
+
+      expect(sheet.map((row) => String(row[0])).toSorted()).toEqual(invoices);
     },
     LOCK_WAIT
   );
