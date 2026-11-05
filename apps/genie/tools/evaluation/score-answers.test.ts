@@ -4,7 +4,7 @@ import {
   type DatasetQuery,
   type PanelConfig,
 } from "@genie/core";
-import type { AnswerBlock } from "@genie/core/testing";
+import { type AnswerBlock, answerBlocks } from "@genie/core/testing";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
@@ -189,6 +189,28 @@ const collectedMonthly = () =>
   monthly("invoices.payments", "amountCents", "paymentDate", "collectedCents");
 
 describe("the answer scorer", () => {
+  it("reads every block of an answer in reading order", () => {
+    const text = [
+      "root = Answer([title, result, method, rows, figure])",
+      'title = Heading("Open items")',
+      'result = Paragraph("12 open items, SGD 4,200.00 in all.")',
+      'method = Paragraph("This counts the open items as of 27 Oct 2026.")',
+      'rows = List(["First item", "Second item"])',
+      'figure = Chart({type: "kpi", title: "Open items", series: [{name: "Open items", dataset: "example.items", query: {aggregates: [{fn: "count", as: "items"}]}, value: "items"}]})',
+    ].join("\n");
+
+    expect(answerBlocks(text)).toEqual([
+      { kind: "Heading", text: "Open items" },
+      { kind: "Paragraph", text: "12 open items, SGD 4,200.00 in all." },
+      {
+        kind: "Paragraph",
+        text: "This counts the open items as of 27 Oct 2026.",
+      },
+      { kind: "List", text: "First item\nSecond item" },
+      { kind: "Chart", text: "" },
+    ]);
+  });
+
   it("passes the exact answer", () => {
     expect(scoreAnswer("overdue-balances", answer([balances()]))).toEqual({
       pass: true,
