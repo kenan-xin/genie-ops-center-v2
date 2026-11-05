@@ -307,6 +307,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the core pg-boss worker retries a failed lazy pg-boss start after the database query recovers",
       "the core pg-boss worker does not refresh the heartbeat when declaration schedule reconciliation fails",
       "the core pg-boss worker settles an abandoned handler job and ignores its late result",
+      "the core pg-boss worker runs a queued agent file job as its starter",
     ],
   },
   {

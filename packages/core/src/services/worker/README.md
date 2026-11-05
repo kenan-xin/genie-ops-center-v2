@@ -6,6 +6,8 @@ The worker process: `runWorker`.
 
 The worker start (one tenant context, the migrator run, then pg-boss), the per-queue loop that
 checks module entitlement before it fetches a job, and the core heartbeat job (D-10, D-11).
+The core job queues, such as the agent's list files, run as their starter with no entitlement
+gate, because core owns them.
 
 ## What must not go here
 

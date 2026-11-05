@@ -92,6 +92,13 @@
       "when": 1793857832817,
       "tag": "0012_agent_session_summary",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1793861019908,
+      "tag": "0013_agent_files",
+      "breakpoints": true
     }
   ]
 }

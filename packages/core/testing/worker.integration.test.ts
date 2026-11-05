@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { createServer, connect, type AddressInfo } from "node:net";
 
 import { PgBoss } from "pg-boss";
@@ -11,7 +12,10 @@ import {
   createTenantContext,
   type TenantContext,
 } from "../src/lib/tenant-context/index.ts";
+import { AGENT_FILE_JOB } from "../src/services/agent/file-job.ts";
+import { principalFor } from "../src/services/authorization/index.ts";
 import { stopJobQueue } from "../src/services/job-queue/index.ts";
+import { enqueueJob } from "../src/services/job-queue/module-jobs.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import {
   MIGRATION_LOCK_KEY,
@@ -20,6 +24,7 @@ import {
   runMigrations,
 } from "../src/services/migrator/index.ts";
 import { runWorker } from "../src/services/worker/index.ts";
+import { insertUser } from "./access-fixtures.ts";
 import { startDisposablePostgres } from "./index.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- the cases keep setup/assertion pairs together. */
@@ -319,6 +324,92 @@ describe("the core pg-boss worker", () => {
 
     controller.abort();
     await worker;
+  });
+
+  it("runs a queued agent file job as its starter", async () => {
+    const database = await disposablePostgres();
+    const context = createTenantContext(
+      source(database.url),
+      silentLogger(),
+      []
+    );
+    cleanups.push(() => context.db.$client.end());
+    cleanups.push(() => stopJobQueue(context.jobQueue));
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: [],
+    });
+
+    const userId = await insertUser(context);
+    const sessionId = randomUUID();
+
+    await context.db.$client.query(
+      "insert into agent_session (id, user_id, title, model_id) values ($1, $2, 'Chat', 'test-model')",
+      [sessionId, userId]
+    );
+
+    const { rows } = await context.db.$client.query<{ id: string }>(
+      `insert into agent_file (session_id, tool_call_id, title, format, dataset, query)
+       values ($1, 'call-make-file', 'All records', 'csv', 'missing.records', '{"select":["id"]}')
+       returning id`,
+      [sessionId]
+    );
+    const agentFileId = rows[0]?.id ?? "";
+
+    const queue = await boss(context);
+    await queue.createQueue(AGENT_FILE_JOB.name);
+    await enqueueJob(
+      {
+        tenant: context,
+        caller: principalFor({
+          tenant: context,
+          modules: [],
+          userId,
+          authenticated: true,
+        }),
+      },
+      AGENT_FILE_JOB,
+      { agentFileId }
+    );
+
+    const controller = new AbortController();
+    const worker = runWorker({
+      source: source(database.url),
+      modules: [],
+      histories: [],
+      ...OUTPUT,
+      signal: controller.signal,
+      heartbeat: {
+        cron: "* * * * *",
+        path: "/tmp/worker-heartbeat",
+        staleAfterMs: 180000,
+      },
+    });
+
+    await waitUntil(async () => {
+      const state = await context.db.$client.query<{ state: string }>(
+        "select state from agent_file where id = $1",
+        [agentFileId]
+      );
+
+      return state.rows[0]?.state === "failed";
+    });
+    controller.abort();
+    await worker;
+
+    const audit = await context.db.$client.query<{
+      actor_user_id: string;
+      outcome: string;
+    }>(
+      "select actor_user_id, metadata->>'outcome' as outcome from audit_event where action = 'core:agent_file_made'"
+    );
+
+    expect(audit.rows).toEqual([
+      { actor_user_id: userId, outcome: "not-found" },
+    ]);
   });
 
   it("skips a job of a compiled module with no tenant_module row", async () => {

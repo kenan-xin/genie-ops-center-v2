@@ -77,6 +77,47 @@ export async function listDatasets(
     .toSorted((left, right) => left.name.localeCompare(right.name));
 }
 
+/** The dataset, the permission, then the query against the declared fields, with its issues. */
+async function readCheck(
+  ctx: ModuleRequestContext,
+  input: { readonly dataset: string; readonly query: DatasetQuery }
+) {
+  const found = await findDataset(ctx, input.dataset);
+
+  if (found === undefined) throw new AppError(CORE_ERRORS["not-found"]);
+
+  const { declaration } = found;
+
+  if (!(await can(ctx.caller, declaration.permission))) {
+    throw new AppError(CORE_ERRORS.forbidden);
+  }
+
+  return {
+    declaration,
+    ...checkDatasetQuery(declaration.fields, input.query),
+  };
+}
+
+/**
+ * The checks of `queryDataset` before it reads: `not-found`, `forbidden` and
+ * `dataset-query-invalid`. A caller that reads later, a file job, refuses a bad call at once.
+ */
+export async function checkDatasetRead(
+  ctx: ModuleRequestContext,
+  input: { readonly dataset: string; readonly query: DatasetQuery }
+): Promise<{
+  readonly declaration: DatasetDeclaration;
+  readonly query: DatasetQuery;
+}> {
+  const { declaration, query, issues } = await readCheck(ctx, input);
+
+  if (query === undefined || issues.length > 0) {
+    throw new AppError(CORE_ERRORS["dataset-query-invalid"], { issues });
+  }
+
+  return { declaration, query };
+}
+
 /**
  * One generic query over a dataset (DEC-54, R-6 to R-9): the permission first, then the shape
  * and the declared fields, then the module's `source()` as of the reporting date.
@@ -92,17 +133,7 @@ export async function queryDataset(
     readonly search?: string | undefined;
   }
 ): Promise<DatasetResult> {
-  const found = await findDataset(ctx, input.dataset);
-
-  if (found === undefined) throw new AppError(CORE_ERRORS["not-found"]);
-
-  const { declaration } = found;
-
-  if (!(await can(ctx.caller, declaration.permission))) {
-    throw new AppError(CORE_ERRORS.forbidden);
-  }
-
-  const { query, issues } = checkDatasetQuery(declaration.fields, input.query);
+  const { declaration, query, issues } = await readCheck(ctx, input);
 
   const afterIssues =
     query === undefined || input.after === undefined

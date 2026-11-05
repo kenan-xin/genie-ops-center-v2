@@ -96,6 +96,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0012_agent_session_summary.sql",
     import.meta.url
   ),
+  "0013_agent_files": new URL(
+    "../../../drizzle/0013_agent_files.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */

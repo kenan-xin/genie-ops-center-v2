@@ -20,6 +20,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import type { PanelConfig } from "./services/charts/panel-config.ts";
+import type { DatasetQuery } from "./services/datasets/query.ts";
 
 /**
  * Core's own tables. Section 0 creates none, so the deployment tables arrive with the Section 1
@@ -655,6 +656,51 @@ export const agentArtifactVersion = pgTable(
   (table) => [primaryKey({ columns: [table.artifactId, table.version] })]
 );
 
+/**
+ * A list file that the agent queued in a chat (R-44a, S7-35). A core job makes it as the person
+ * who asked, and `file_id` names the stored bytes once it is ready. Deleted with its session; the
+ * `file` row it names is not, so the erase command deletes it through `FileStorage`.
+ */
+export const agentFile = pgTable(
+  "agent_file",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    sessionId: uuid("session_id")
+      .notNull()
+      .references(() => agentSession.id, { onDelete: "cascade" }),
+    toolCallId: text("tool_call_id").notNull(),
+    title: text("title").notNull(),
+    format: text("format", { enum: ["csv", "xlsx", "md", "pdf"] }).notNull(),
+    dataset: text("dataset").notNull(),
+    query: jsonb("query").$type<DatasetQuery>().notNull(),
+    state: text("state", { enum: ["queued", "running", "ready", "failed"] })
+      .notNull()
+      .default("queued"),
+    fileId: uuid("file_id").references(() => file.id, { onDelete: "set null" }),
+    rowCount: integer("row_count"),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [
+    unique("agent_file_session_tool_call_unique").on(
+      table.sessionId,
+      table.toolCallId
+    ),
+    index("agent_file_session_created_idx").on(
+      table.sessionId,
+      table.createdAt
+    ),
+    check(
+      "agent_file_format_check",
+      sql`${table.format} in ('csv', 'xlsx', 'md', 'pdf')`
+    ),
+    check(
+      "agent_file_state_check",
+      sql`${table.state} in ('queued', 'running', 'ready', 'failed')`
+    ),
+  ]
+);
+
 /** Every core table by its SQL name, the one place a core table is registered. */
 export const coreTables = {
   tenant_module: tenantModule,
@@ -685,4 +731,5 @@ export const coreTables = {
   agent_message: agentMessage,
   agent_artifact: agentArtifact,
   agent_artifact_version: agentArtifactVersion,
+  agent_file: agentFile,
 } satisfies Readonly<Record<string, PgTable>>;

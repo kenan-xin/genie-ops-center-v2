@@ -117,6 +117,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/agent-files.integration.test.ts",
+    reason:
+      "Spec 7 R-44a, R-12: a file job reads as its starter, every page, and only the rows that person may read",
+    cases: [
+      "the agent file job on the placeholder writes every record a full reader may read as CSV and Excel, once, with one audit row",
+      "the agent file job on the placeholder writes only the records a scoped reader may read",
+      "the agent file job on the placeholder fails without a retry and stores no file when the starter lost the read key",
+      "the agent file job on the placeholder pages past 1,000 rows",
+    ],
+  },
+  {
     file: "testing/agent-chart.integration.test.ts",
     reason:
       "Spec 7 R-44 and S7-11 D3: a records table of an answer opens each row's record through the record route, for a person who may open it",

@@ -48,7 +48,7 @@ describe("the migration plan", () => {
     // and the chat summary (S7-34), so the history holds all thirteen.
     // The SQL still arrives as data read from a declared `new URL`, never as a folder path, which
     // is what keeps it in a production image.
-    expect(CORE_HISTORY.migrations).toHaveLength(13);
+    expect(CORE_HISTORY.migrations).toHaveLength(14);
 
     expect(CORE_HISTORY.migrations[0]?.sql.join("")).toContain(
       'CREATE TABLE "tenant_module"'

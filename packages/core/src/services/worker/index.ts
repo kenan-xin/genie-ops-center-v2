@@ -18,6 +18,7 @@ import {
   type TenantContext,
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
+import { AGENT_FILE_JOB } from "../agent/file-job.ts";
 import { principalFor } from "../authorization/index.ts";
 import {
   durableEventQueues,
@@ -49,6 +50,9 @@ export const DEFAULT_WORKER_HEARTBEAT_PATH = "/tmp/genie-worker-heartbeat";
 
 /** The core queue whose job writes the heartbeat. Core owns it, so no entitlement gates it. */
 export const HEARTBEAT_JOB = "core.worker-heartbeat";
+
+/** The jobs core declares: they run as their starter, with no module entitlement. */
+const CORE_JOBS: readonly JobDeclaration[] = [AGENT_FILE_JOB];
 
 /** Every minute, so a health check that allows three minutes tolerates two missed passes. */
 const HEARTBEAT_CRON = "* * * * *";
@@ -529,7 +533,7 @@ async function serve(
     boss.createQueue(HEARTBEAT_JOB),
     // `createQueue` ignores its options on a queue that exists, so the declared retry policy is
     // written by `updateQueue` on every start, and a changed declaration reaches the queue.
-    ...jobs.map(async ({ job }) => {
+    ...[...CORE_JOBS, ...jobs.map(({ job }) => job)].map(async (job) => {
       await boss.createQueue(job.name);
       await boss.updateQueue(job.name, jobRetryOptions(job));
     }),
@@ -550,33 +554,42 @@ async function serve(
   await boss.schedule(HEARTBEAT_JOB, options.heartbeat?.cron ?? HEARTBEAT_CRON);
   await boss.send(HEARTBEAT_JOB, {});
 
+  // The starter's principal is built once per run, so the job reads their grants as they are now,
+  // not as they were at enqueue (R-12, DEC-48). A run without one, a schedule, has none.
+  const jobLoop = (
+    job: JobDeclaration,
+    mayRun: QueueLoop["mayRun"]
+  ): QueueLoop => ({
+    name: job.name,
+    mayRun,
+    run: async (data) => {
+      const { data: payload, startedBy } = splitJobStarter(data);
+
+      const ctx =
+        startedBy === undefined
+          ? { tenant: context }
+          : {
+              tenant: context,
+              caller: principalFor({
+                tenant: context,
+                modules: options.modules,
+                userId: startedBy,
+                authenticated: true,
+              }),
+            };
+
+      // SAFETY: a queue carries only the data its own owner enqueued under this job name.
+      await job.handler(ctx, payload as never);
+    },
+  });
+
   const jobLoops = [
     heartbeatLoop(boss, context, jobs, options),
-    ...jobs.map(({ moduleId, job }): QueueLoop => ({
-      name: job.name,
-      mayRun: async () => context.entitlements.isEnabled(moduleId),
-      // The starter's principal is built once per run, so the job reads their grants as they are
-      // now, not as they were at enqueue (R-12, DEC-48). A run without one, a schedule, has none.
-      run: async (data) => {
-        const { data: payload, startedBy } = splitJobStarter(data);
-
-        const ctx =
-          startedBy === undefined
-            ? { tenant: context }
-            : {
-                tenant: context,
-                caller: principalFor({
-                  tenant: context,
-                  modules: options.modules,
-                  userId: startedBy,
-                  authenticated: true,
-                }),
-              };
-
-        // SAFETY: a queue carries only the data its own module enqueued under this job name.
-        await job.handler(ctx, payload as never);
-      },
-    })),
+    // Core owns its jobs, so no entitlement gates them.
+    ...CORE_JOBS.map((job) => jobLoop(job, async () => true)),
+    ...jobs.map(({ moduleId, job }) =>
+      jobLoop(job, async () => context.entitlements.isEnabled(moduleId))
+    ),
   ];
 
   // A durable event handler runs under its owning module's entitlement, like a declared job, and

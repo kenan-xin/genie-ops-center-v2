@@ -26,8 +26,11 @@
   "devDependencies": {
     "@genie/config": "workspace:*",
     "@storybook/nextjs-vite": "10.6.3",
+    "@types/papaparse": "5.5.2",
     "@types/react": "19.3.0",
     "oxlint": "1.89.0",
+    "papaparse": "5.7.0",
+    "read-excel-file": "9.3.14",
     "storybook": "10.6.3",
     "vitest": "5.0.5"
   },
