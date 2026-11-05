@@ -5,7 +5,7 @@ it as the fixed member `context.fileStorage`; nothing else builds or holds one (
 
 ## What belongs here
 
-- `store`, `fetch`, `remove`, `createLink`, `createBrandingMarkLink` and `fetchLink`, and the upload rules that run before a byte is
+- `store`, `fetch`, `remove`, `createLink`, `createOwnerLink`, `createBrandingMarkLink` and `fetchLink`, and the upload rules that run before a byte is
   stored: the `FILE_MAX_BYTES` limit, the type allow-list, and the SVG sanitizer (R-35–R-37).
 - The token that a download link carries, signed over its scope and the expiry (R-38).
 - `adapters/`, one byte store per `FILE_STORAGE_ADAPTER`. This section ships the `postgres` adapter
@@ -52,8 +52,16 @@ is refused:
   `clean` or `skipped`. It takes no file id. `fetchLink` serves it to any authenticated principal,
   because a person with no grants holds no permission key to check, yet must see the shell's mark
   (Spec 3 R-39, D3-7).
+- `owner`: `{ fileId, userId, permission, expiresAt }`. Only `createOwnerLink` signs one, and only
+  for the signed-in person whose id is the file's `uploaded_by_user_id`, while `can(principal,
+  permission)` passes. `fetchLink` serves it only to a signed-in principal with the token's
+  `userId` who still passes `can(principal, permission)`. It is the link of a file that a person's
+  agent chat made (R-41, `DEC-29`, files owned by the user). A `record` link on `core:ask:use`
+  does not fit: `can()` passes a tenant-wide key for any resource, so every Ask holder with the
+  address could read another person's rows. The kind adds a check to `can()` and bypasses
+  nothing.
 
-The app serves both kinds at `/api/files/download?token=...`, which answers an empty 404 for every
+The app serves every kind at `/api/files/download?token=...`, which answers an empty 404 for every
 refusal.
 
 Section 1's environment contract has no file-link secret, and R-27 keeps

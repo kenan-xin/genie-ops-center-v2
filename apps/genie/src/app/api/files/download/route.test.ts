@@ -46,6 +46,7 @@ const fileStorage: FileStorage = {
   fetch: unused,
   remove: unused,
   createLink: unused,
+  createOwnerLink: unused,
   createBrandingMarkLink: unused,
   fetchLink: () => served(),
 };

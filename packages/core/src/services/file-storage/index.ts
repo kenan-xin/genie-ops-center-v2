@@ -135,6 +135,14 @@ export type FileStorage = {
     tx: TenantTransaction
   ) => Promise<void>;
   readonly createLink: (input: FileLinkInput) => Promise<TokenizedFileLink>;
+  /**
+   * A link that only the person who made the file opens, while they pass `can(principal,
+   * permission)`: a chat's export file (R-41, DEC-29). A tenant-wide key passes `can()` for any resource, so a `record` link on
+   * it would serve any holder; this kind also checks the file's uploader at issue and at fetch.
+   */
+  readonly createOwnerLink: (
+    input: Omit<FileLinkInput, "resource">
+  ) => Promise<TokenizedFileLink>;
   readonly createBrandingMarkLink: (input: {
     readonly principal: RequestPrincipal;
     readonly slot?: BrandingImageSlot;
@@ -205,7 +213,7 @@ function createBlobStore(
 async function assertCan(
   principal: RequestPrincipal,
   permission: PermissionKey,
-  resource: ResourceRef
+  resource?: ResourceRef
 ): Promise<void> {
   const allowed = await can(principal, permission, resource);
 
@@ -232,6 +240,25 @@ export function createFileStorage(
     const token = signFileLink(scope, expiresAt, secret);
 
     return { token, url: publicUrl(FILE_DOWNLOAD_PATH, { token }), expiresAt };
+  }
+
+  /** Refuses an owner link to anyone but the signed-in person who made the file. */
+  async function assertOwner(
+    principal: RequestPrincipal,
+    fileId: string
+  ): Promise<void> {
+    const [row] = await db
+      .select({ uploadedByUserId: file.uploadedByUserId })
+      .from(file)
+      .where(eq(file.id, fileId));
+
+    if (
+      !principal.authenticated ||
+      row?.uploadedByUserId == null ||
+      row.uploadedByUserId !== principal.userId
+    ) {
+      throw new FileLinkRefusedError("Permission denied for this file link.");
+    }
   }
 
   async function fetch(fileId: string): Promise<FetchedFile> {
@@ -305,6 +332,17 @@ export function createFileStorage(
         resource: input.resource,
       });
     },
+    async createOwnerLink(input) {
+      await assertOwner(input.principal, input.fileId);
+      await assertCan(input.principal, input.permission);
+
+      return linkFor({
+        kind: "owner",
+        fileId: input.fileId,
+        userId: input.principal.userId,
+        permission: input.permission,
+      });
+    },
     async createBrandingMarkLink({ principal, slot = "logoMark" }) {
       if (!principal.authenticated) return undefined;
 
@@ -333,6 +371,17 @@ export function createFileStorage(
             "Permission denied for this file link."
           );
         }
+      } else if (scope.kind === "owner") {
+        if (
+          !input.principal.authenticated ||
+          input.principal.userId !== scope.userId
+        ) {
+          throw new FileLinkRefusedError(
+            "Permission denied for this file link."
+          );
+        }
+
+        await assertCan(input.principal, scope.permission);
       } else {
         await assertCan(input.principal, scope.permission, scope.resource);
       }

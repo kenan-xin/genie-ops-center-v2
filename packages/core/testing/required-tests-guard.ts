@@ -103,6 +103,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "FileStorage against a real Postgres deployment serves a valid tokenized link and refuses the same link after its expiry",
       "FileStorage against a real Postgres deployment binds the permission and resource to the token rather than fetchLink input",
       "FileStorage against a real Postgres deployment checks permissions through can() before issuing and serving a link",
+      "FileStorage against a real Postgres deployment serves an owner link to the file's owner and refuses another holder of the same key",
+      "FileStorage against a real Postgres deployment refuses an owner link to a person who did not make the file, and to an owner who lost the key",
       "FileStorage against a real Postgres deployment refuses a forged link before reading the principal grants",
       "FileStorage against a real Postgres deployment writes metadata and bytes in the caller transaction so rollback leaves neither",
       "FileStorage against a real Postgres deployment removes a file's row and bytes in the caller transaction, so a rollback keeps both",

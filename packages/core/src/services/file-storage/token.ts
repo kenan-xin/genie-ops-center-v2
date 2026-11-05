@@ -11,7 +11,9 @@ import type {
  * What a download token binds. A `record` link binds the file, the permission and the owning record
  * the `can()` check ran against; `fetchLink` reads them back from the verified token, so a caller
  * cannot widen a link after it was issued (R-38). A `branding` link binds only the file the
- * branding row names, which any signed-in person may fetch (Spec 3 R-39, D3-7).
+ * branding row names, which any signed-in person may fetch (Spec 3 R-39, D3-7). An `owner` link
+ * binds the file, the person who made it and the permission, so only that person, while they hold
+ * the permission, may fetch it: a chat's export file (R-41, DEC-29, files owned by the user).
  */
 export type FileLinkScope =
   | {
@@ -20,7 +22,13 @@ export type FileLinkScope =
       readonly permission: PermissionKey;
       readonly resource: ResourceRef;
     }
-  | { readonly kind: "branding"; readonly fileId: string };
+  | { readonly kind: "branding"; readonly fileId: string }
+  | {
+      readonly kind: "owner";
+      readonly fileId: string;
+      readonly userId: string;
+      readonly permission: PermissionKey;
+    };
 
 /** The signed payload. `z.number()` is finite, so a `NaN` or infinite expiry is refused. */
 const payloadSchema = z.discriminatedUnion("kind", [
@@ -35,6 +43,13 @@ const payloadSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("branding"),
     fileId: z.string(),
+    expiresAt: z.number(),
+  }),
+  z.object({
+    kind: z.literal("owner"),
+    fileId: z.string(),
+    userId: z.string(),
+    permission: z.string(),
     expiresAt: z.number(),
   }),
 ]);
@@ -84,7 +99,7 @@ export function signFileLink(
           resourceType: scope.resource.type,
           resourceId: scope.resource.id,
         }
-      : { kind: scope.kind, fileId: scope.fileId };
+      : scope;
 
   const payload = Buffer.from(
     JSON.stringify({ ...body, expiresAt: expiresAt.getTime() }),
@@ -135,6 +150,16 @@ export function readFileLink(token: string, secret: Buffer): FileLinkScope {
   if (Date.now() > data.expiresAt) throw invalidToken();
 
   if (data.kind === "branding") return { kind: data.kind, fileId: data.fileId };
+
+  if (data.kind === "owner") {
+    return {
+      kind: data.kind,
+      fileId: data.fileId,
+      userId: data.userId,
+      // SAFETY: as below, the HMAC proves signFileLink signed a PermissionKey.
+      permission: data.permission as PermissionKey,
+    };
+  }
 
   return {
     kind: data.kind,

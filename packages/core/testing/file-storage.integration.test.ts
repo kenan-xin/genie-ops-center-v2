@@ -9,17 +9,24 @@ import {
   vi,
 } from "vitest";
 
-import { withTransaction } from "../src/index.ts";
+import {
+  principalFor,
+  removeAssignment,
+  seedRoles,
+  withTransaction,
+} from "../src/index.ts";
 import type { TenantTransaction } from "../src/index.ts";
 import type {
   PermissionKey,
   ResourceRef,
 } from "../src/lib/module-contract/keys.ts";
+import { TENANT_ADMINISTRATOR_ROLE } from "../src/lib/module-contract/system-roles.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
-import { file, fileBlob, tenantBranding } from "../src/schema.ts";
+import { file, fileBlob, role, tenantBranding } from "../src/schema.ts";
 import type { RequestPrincipal } from "../src/services/authorization/index.ts";
 import { createRequestPrincipal } from "../src/services/authorization/index.ts";
 import type { PermissionGrants } from "../src/services/authorization/index.ts";
+import { assignRole, insertPersonWith, insertUser } from "./access-fixtures.ts";
 import { databaseClient } from "./database-client.ts";
 import {
   type DisposableDeployment,
@@ -70,6 +77,7 @@ type FileStorageContract = {
   store(input: StoreInput, tx: TenantTransaction): Promise<StoredFile>;
   fetch(fileId: string): Promise<FetchedFile>;
   createLink(input: LinkInput): Promise<TokenizedLink>;
+  createOwnerLink(input: Omit<LinkInput, "resource">): Promise<TokenizedLink>;
   fetchLink(input: {
     readonly token: string;
     readonly principal: RequestPrincipal;
@@ -106,6 +114,19 @@ function principalWithGrant(
     { userId: "u1", groups: [], authenticated: true },
     () => Promise.resolve(grants)
   );
+}
+
+/** The key an agent file link is issued under. */
+const ASK_KEY: PermissionKey = "core:ask:use";
+
+/** A signed-in person whose grants come from their real role assignments, read per request. */
+function personPrincipal(userId: string): RequestPrincipal {
+  return principalFor({
+    tenant: deployment.context,
+    modules: [],
+    userId,
+    authenticated: true,
+  });
 }
 
 function storageFor(context: TenantContext): FileStorageContract {
@@ -366,6 +387,105 @@ describe("FileStorage against a real Postgres deployment", () => {
       storage.fetchLink({
         token: link.token,
         principal: principalWithGrant(deniedPermission, denied),
+      })
+    ).rejects.toThrow(/permission|forbidden|authoriz/i);
+  });
+
+  it("serves an owner link to the file's owner and refuses another holder of the same key", async () => {
+    const { context } = deployment;
+
+    const storage = storageFor(context);
+
+    const owner = await insertPersonWith(context, [ASK_KEY]);
+    const other = await insertPersonWith(context, [ASK_KEY]);
+
+    const fileId = await withTransaction(context, async (tx) => {
+      const stored = await storage.store(
+        { ...upload(), uploadedByUserId: owner.userId },
+        tx
+      );
+
+      return stored.id;
+    });
+
+    const link = await storage.createOwnerLink({
+      fileId,
+      principal: personPrincipal(owner.userId),
+      permission: ASK_KEY,
+    });
+
+    await expect(
+      storage.fetchLink({
+        token: link.token,
+        principal: personPrincipal(owner.userId),
+      })
+    ).resolves.toMatchObject({ fileName: "pixel.png" });
+
+    // The other person holds the same tenant-wide key, so can() alone would serve them.
+    await expect(
+      storage.fetchLink({
+        token: link.token,
+        principal: personPrincipal(other.userId),
+      })
+    ).rejects.toThrow(/permission|forbidden|authoriz/i);
+  });
+
+  it("refuses an owner link to a person who did not make the file, and to an owner who lost the key", async () => {
+    const { context } = deployment;
+
+    const storage = storageFor(context);
+
+    const owner = await insertPersonWith(context, [ASK_KEY]);
+    const other = await insertPersonWith(context, [ASK_KEY]);
+
+    const fileId = await withTransaction(context, async (tx) => {
+      const stored = await storage.store(
+        { ...upload(), uploadedByUserId: owner.userId },
+        tx
+      );
+
+      return stored.id;
+    });
+
+    await expect(
+      storage.createOwnerLink({
+        fileId,
+        principal: personPrincipal(other.userId),
+        permission: ASK_KEY,
+      })
+    ).rejects.toThrow(/permission|forbidden|authoriz/i);
+
+    const link = await storage.createOwnerLink({
+      fileId,
+      principal: personPrincipal(owner.userId),
+      permission: ASK_KEY,
+    });
+
+    // removeAssignment keeps one tenant administrator, so one exists and acts.
+    await seedRoles(context, []);
+
+    const administrator = await insertUser(context);
+
+    const [administratorRole] = await context.db
+      .select({ id: role.id })
+      .from(role)
+      .where(eq(role.name, TENANT_ADMINISTRATOR_ROLE));
+
+    await assignRole(context, {
+      roleId: administratorRole!.id,
+      principal: { type: "user", id: administrator },
+    });
+
+    await removeAssignment({
+      tenant: context,
+      actorUserId: administrator,
+      assignmentId: owner.assignmentId,
+    });
+
+    await expect(
+      storage.fetchLink({
+        token: link.token,
+        principal: personPrincipal(owner.userId),
       })
     ).rejects.toThrow(/permission|forbidden|authoriz/i);
   });
