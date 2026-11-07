@@ -371,12 +371,15 @@ export const StopKeepsTheAnswer: Story = {
       canvas.getByRole("button", { name: "Stop the answer" })
     );
 
-    // The words so far stay, the request is aborted, and the composer sends again.
+    // The words so far stay with a Stopped line, the request is aborted, and the composer sends again.
     await expect(
       await canvas.findByRole("button", { name: "Send" })
     ).toBeInTheDocument();
     await expect(heldSignal?.aborted).toBe(true);
     await expect(canvas.getByText(PARTIAL)).toBeVisible();
+    await expect(
+      await canvas.findByText("Stopped. Ask again when you are ready.")
+    ).toBeVisible();
   },
 };
 

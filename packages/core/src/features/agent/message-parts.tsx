@@ -14,6 +14,7 @@ import type {
   AgentMessage,
   ChatLabels,
 } from "../../services/agent/index.ts";
+import { isStopped } from "../../services/agent/stopped-turn.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
 import { methodLines, sourceTitles } from "./answer-sources.ts";
@@ -297,6 +298,11 @@ export function MessageParts(props: {
           onDownload={props.onDownload}
         />
       )}
+      {isStopped(props.message) ? (
+        <p className="text-sm text-muted-foreground">
+          Stopped. Ask again when you are ready.
+        </p>
+      ) : null}
       {answered ? (
         <AnswerFooter
           parts={props.message.parts}

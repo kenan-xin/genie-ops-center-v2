@@ -379,6 +379,51 @@ export const SourcesAndMethod: Story = {
   },
 };
 
+/** A stored answer that Stop ended after one finished read (czjw.110). */
+export const StoppedAnswer: Story = {
+  name: "Stopped answer",
+  args: {
+    message: {
+      id: "stopped",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-query-dataset",
+          toolCallId: "call-items",
+          state: "output-available",
+          input: { dataset: "example.items", query: {} },
+          output: {
+            dataset: "example.items",
+            asOf: "2026-10-27",
+            columns: [],
+            rows: [{}, {}],
+            truncated: false,
+          },
+        },
+        {
+          type: "text",
+          text: 'root = Answer([p1])\np1 = Paragraph("Example records are fictional")',
+        },
+        { type: "data-stopped", data: {} },
+      ],
+    },
+    labels: { steps: {}, datasets: TITLES },
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    // After a reload the kept words, the finished step and the Stopped line all show.
+    await expect(
+      await canvas.findByText("Example records are fictional")
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Stopped. Ask again when you are ready.")
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: /^Used 1 step/ })
+    ).toBeVisible();
+  },
+};
+
 const FILE_CALL: AgentMessage = {
   id: "file-answer",
   role: "assistant",

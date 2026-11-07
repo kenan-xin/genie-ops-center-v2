@@ -23,6 +23,7 @@ import type {
   ChatLabels,
   InboxLink,
 } from "../../services/agent/index.ts";
+import { keptOnStop } from "../../services/agent/stopped-turn.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
 import { AgentMark, ChatEmpty, pillClass } from "./chat-parts.tsx";
@@ -141,11 +142,22 @@ export function Conversation(props: {
       if (parsed.success) setLiveSummary(parsed.data);
     },
     // A refusal stores no answer, so it earns no list refresh or navigation (B9.4).
-    onFinish: ({ isError, message }) => {
+    onFinish: ({ isAbort, isError, message }) => {
       setLiveTimes((times) => ({
         ...times,
         [message.id]: Date.now() - sentAt.current,
       }));
+
+      // Stop keeps what the server stores: the finished steps and words, and the Stopped line (P03-2).
+      if (isAbort && message.role === "assistant" && message.parts.length > 0) {
+        chat.setMessages((messages) =>
+          messages.map((each) =>
+            each.id === message.id
+              ? { ...each, parts: keptOnStop(each.parts, []).parts }
+              : each
+          )
+        );
+      }
 
       if (!isError) props.onFinished?.(props.sessionId);
     },

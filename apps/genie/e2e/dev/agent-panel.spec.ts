@@ -49,6 +49,9 @@ const FIRST_WORDS = "Placeholder records are fictional";
 
 const THIRD_PARAGRAPH = "You can ask me to count the records";
 
+/** The line under an answer that Stop ended (czjw.110). */
+const STOPPED_LINE = "Stopped. Ask again when you are ready.";
+
 /** The chart the first answer makes, and its title after the change. */
 const CHART = "Quantity by record";
 
@@ -174,6 +177,7 @@ test("an answer streams word by word, and Stop keeps the words so far", async ({
   await stop.click();
   await expect(panel.getByRole("button", { name: "Send" })).toBeVisible();
   await expect(log.getByText(FIRST_WORDS)).toBeVisible();
+  await expect(log.getByText(STOPPED_LINE)).toBeVisible();
 
   // The server stores what streamed up to Stop; a reload reads it back. It can hold a word or two
   // more than the screen showed, so the test checks the words seen and the missing end only.
@@ -186,6 +190,9 @@ test("an answer streams word by word, and Stop keeps the words so far", async ({
       timeout: 5000,
     });
     await expect(reopened.getByText(FIRST_WORDS)).toBeVisible({
+      timeout: 5000,
+    });
+    await expect(reopened.getByText(STOPPED_LINE)).toBeVisible({
       timeout: 5000,
     });
   }).toPass(FIRST_PAINT);
