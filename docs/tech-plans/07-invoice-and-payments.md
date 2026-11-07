@@ -28,9 +28,9 @@ Follow-up of the wave 4 review (owner, 2026-11-03). The phases run one after ano
 | P2-7 | Answer rules, the expected-answers file, live re-recording, demo step 9 | S7-36 to S7-39 |
 | P2-8 | Dry run, signed off by the owner | none |
 
-## Wave 5: surface agents, slide styles, speaker notes, dashboard filters (draft, 2026-11-08)
+## Wave 5: surface agents, slide styles, speaker notes, dashboard filters (approved, 2026-11-08)
 
-The owner settled these decisions one at a time on 2026-11-08, after the follow-up 9 dry run. They govern S7-40 to S7-47 and the spec 7 amendment of the same date (R-42b, R-46a, R-49a, R-52a, R-55a). They wait for owner approval at gate G1 of follow-up 11. The analysis sandbox (`czjw.95`) is deferred and is not part of this wave.
+The owner settled these decisions one at a time on 2026-11-08, after the follow-up 9 dry run. They govern S7-40 to S7-47 and the spec 7 amendment of the same date (R-42b, R-46a, R-49a, R-52a, R-55a). The owner approved them on 2026-11-08 (gate G1 of follow-up 11). The analysis sandbox (`czjw.95`) is deferred and is not part of this wave.
 
 | Phase | Work | Tickets |
 | --- | --- | --- |

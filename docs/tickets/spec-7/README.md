@@ -120,9 +120,9 @@ S7-16 to S7-39 come from the owner review of wave 4 on 2026-11-03: the dry run, 
 
 Only P2-7 and the P2-8 dry run call a live model. Every other test uses the recorded test model.
 
-## Wave 5 tickets (draft, 2026-11-08)
+## Wave 5 tickets (approved by the owner, 2026-11-08)
 
-S7-40 to S7-47 build the wave 5 amendment of the spec (R-42b, R-46a, R-49a, R-52a, R-55a) from the decisions in the [technical plan](../../tech-plans/07-invoice-and-payments.md), wave 5. They run in the follow-up 11 run, after the owner approves the amendment and this breakdown at gate G1. The other follow-up 11 beads (bug fixes and polish) run as beads with no ticket folder, because they add no requirement. The analysis step (`czjw.95`) is deferred and has no ticket. A cold critique (GPT Astra, 2026-11-08) split the runtime from the handoff and closed nine gaps before owner review. Until R1 re-records live, wave 5 tests use synthetic scripted model fixtures, marked as such.
+S7-40 to S7-47 build the wave 5 amendment of the spec (R-42b, R-46a, R-49a, R-52a, R-55a) from the decisions in the [technical plan](../../tech-plans/07-invoice-and-payments.md), wave 5. They run in the follow-up 11 run, The owner approved the amendment and this breakdown on 2026-11-08, which closes gate G1. The other follow-up 11 beads (bug fixes and polish) run as beads with no ticket folder, because they add no requirement. The analysis step (`czjw.95`) is deferred and has no ticket. A cold critique (GPT Astra, 2026-11-08) split the runtime from the handoff and closed nine gaps before owner review. Until R1 re-records live, wave 5 tests use synthetic scripted model fixtures, marked as such.
 
 ```mermaid
 graph LR
