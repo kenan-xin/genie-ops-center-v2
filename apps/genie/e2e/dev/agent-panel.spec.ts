@@ -20,9 +20,13 @@ import {
 import {
   askQuestion,
   FIRST_PAINT,
+  FIRST_WORDS,
   hideDevelopmentWidgets,
   openAgentPanel,
   signInAs,
+  SLOW_QUESTION,
+  STOPPED_LINE,
+  THIRD_PARAGRAPH,
 } from "./ask-support.ts";
 import { LEDGER_LOCK, LOCK_WAIT } from "./dev-support.ts";
 import { ASK_PEOPLE, DEV_MODULES, INVOICE_ASK_PEOPLE } from "./global-setup.ts";
@@ -42,13 +46,6 @@ const CHART_QUESTION = "Chart the quantity of each placeholder record.";
 
 const CHANGE_QUESTION = "Show it as a line by day instead.";
 
-/** `stream-slow-1` answers it in three paragraphs, one event every 150 ms. */
-const SLOW_QUESTION = "Describe each placeholder record.";
-
-const FIRST_WORDS = "Placeholder records are fictional";
-
-const THIRD_PARAGRAPH = "You can ask me to count the records";
-
 /**
  * `synthetic-step-note-1` and `-2` answer it: a note about the next step, a read, then the answer
  * (czjw.105, dry run H2).
@@ -59,9 +56,6 @@ const STEP_NOTE_QUESTION = "Which data can you read for me?";
 const STEP_NOTE_ANSWER = "I can read one set of data: the placeholder records.";
 
 const STEP_NOTE = "Check the records.";
-
-/** The line under an answer that Stop ended (czjw.110). */
-const STOPPED_LINE = "Stopped. Ask again when you are ready.";
 
 /** The chart the first answer makes, and its title after the change. */
 const CHART = "Quantity by record";
@@ -270,8 +264,7 @@ test("a change makes version 2, the panel steps back to version 1, and a phone o
   const log = conversationOf(page);
   const sessionId = await askQuestion(page, CHART_QUESTION);
 
-  // The first answer moves Ask to the chat's address, which draws the chat again, so the next
-  // question waits for that and for the stored card.
+  // The first answer moves Ask to the chat's address; the next question waits for the stored card.
   await expect(page).toHaveURL(`/ask/${sessionId}`, FIRST_PAINT);
   await expect(log.getByRole("button", { name: CHART })).toBeEnabled(
     FIRST_PAINT

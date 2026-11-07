@@ -11,6 +11,16 @@ export { FIRST_PAINT };
 
 export const PUBLIC_URL = `http://127.0.0.1:${DEV_PORT}`;
 
+/** `stream-slow-1` answers it in three paragraphs, one event every 150 ms. */
+export const SLOW_QUESTION = "Describe each placeholder record.";
+
+export const FIRST_WORDS = "Placeholder records are fictional";
+
+export const THIRD_PARAGRAPH = "You can ask me to count the records";
+
+/** The line under an answer that Stop ended (czjw.110). */
+export const STOPPED_LINE = "Stopped. Ask again when you are ready.";
+
 export function devSession(email: string) {
   return mintDevSession({
     databaseUrl: `postgres://genie:genie@127.0.0.1:${DEV_DB_PORT}/genie`,

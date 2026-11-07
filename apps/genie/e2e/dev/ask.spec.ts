@@ -14,11 +14,15 @@ import {
   askQuestion,
   devSession,
   FIRST_PAINT,
+  FIRST_WORDS,
   hideDevelopmentWidgets,
   openAgentPanel,
   openUntilVisible,
   PUBLIC_URL,
   signInAs as signIn,
+  SLOW_QUESTION,
+  STOPPED_LINE,
+  THIRD_PARAGRAPH,
 } from "./ask-support.ts";
 import { ASK_PEOPLE, DEV_MODULES } from "./global-setup.ts";
 
@@ -75,6 +79,63 @@ const agentButton = (page: Page) =>
   page.getByRole("button", { name: "Agent", exact: true });
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
+
+const CHAT_ADDRESS = /\/ask\/[0-9a-f-]{36}$/;
+
+/** czjw.87: the first answer names the chat in the address without drawing the chat again. */
+test("a question typed while the first answer streams stays in the composer when Ask names the chat", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/ask");
+
+  const log = page.getByRole("log", { name: "Conversation" });
+  const message = page.getByRole("textbox", { name: "Message", exact: true });
+
+  await askQuestion(page, SLOW_QUESTION);
+  await expect(log.getByText(FIRST_WORDS)).toBeVisible(FIRST_PAINT);
+  await message.fill(QUESTION);
+
+  await expect(log.getByText(THIRD_PARAGRAPH)).toBeVisible(FIRST_PAINT);
+  await expect(page).toHaveURL(CHAT_ADDRESS, FIRST_PAINT);
+  await expect(message).toHaveValue(QUESTION);
+
+  // New chat in the history starts a fresh chat, also after the address changed without a load.
+  await (await historyOf(page)).getByRole("link", { name: "New chat" }).click();
+  await expect(page).toHaveURL(/\/ask$/, FIRST_PAINT);
+  await expect(log).toBeEmpty();
+});
+
+test("Stop on Ask's first answer keeps the words so far with a Stopped line, also after a reload", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/ask");
+
+  const log = page.getByRole("log", { name: "Conversation" });
+
+  await askQuestion(page, SLOW_QUESTION);
+  await expect(log.getByText(FIRST_WORDS)).toBeVisible(FIRST_PAINT);
+  await page.getByRole("button", { name: "Stop the answer" }).click();
+
+  await expect(page).toHaveURL(CHAT_ADDRESS, FIRST_PAINT);
+  await expect(log.getByText(FIRST_WORDS)).toBeVisible();
+  await expect(log.getByText(STOPPED_LINE)).toBeVisible();
+
+  // The server stores the stopped turn after the abort, so a reload can come first; read again.
+  await expect(async () => {
+    await page.reload();
+    await expect(log.getByText(SLOW_QUESTION)).toBeVisible({ timeout: 5000 });
+    await expect(log.getByText(FIRST_WORDS)).toBeVisible({ timeout: 5000 });
+    await expect(log.getByText(STOPPED_LINE)).toBeVisible({ timeout: 5000 });
+  }).toPass(FIRST_PAINT);
+
+  await expect(log.getByText(THIRD_PARAGRAPH)).toHaveCount(0);
+});
 
 test("the agent panel and Ask share a chat, and only New chat starts another", async ({
   page,
