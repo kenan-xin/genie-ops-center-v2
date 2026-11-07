@@ -96,15 +96,7 @@ describe("when a chat summarizes", () => {
 });
 
 describe("the transcript the summary call reads", () => {
-  it("holds the asks, the tool inputs and what was made or opened, and no read result", () => {
-    const read = {
-      type: "tool-query-dataset",
-      toolCallId: "c1",
-      state: "output-available",
-      input: { dataset: "invoices.invoices", query: { limit: 5 } },
-      output: { rows: [{ total: 4812.5 }] },
-    } as const;
-
+  it("writes each step in the timeline's words, names a dataset by its title, and holds no read result", () => {
     const covered: AgentMessage[] = [
       user(1),
       {
@@ -117,36 +109,52 @@ describe("the transcript the summary call reads", () => {
             toolCallId: "c0",
             state: "output-available",
             input: {},
-            output: [{ name: "invoices.invoices", rows: 1234 }],
+            output: [{ name: "example.items", rows: 1234 }],
           },
-          read,
+          {
+            type: "tool-query-dataset",
+            toolCallId: "c1",
+            state: "output-available",
+            input: {
+              dataset: "example.items",
+              query: { select: ["amountCents"], limit: 5 },
+            },
+            output: { rows: [{ amountCents: 481_250 }] },
+          },
           {
             type: "tool-make-artifact",
             toolCallId: "c2",
             state: "output-available",
-            input: { kind: "table" },
-            output: { artifact: 2, version: 1, title: "Open invoices" },
+            input: { config: { type: "table" } },
+            output: { artifact: 2, version: 1, title: "Open items" },
           },
           {
             type: "tool-open-record",
             toolCallId: "c3",
             state: "output-available",
-            input: { dataset: "invoices.invoices", id: "INV-7" },
-            output: { label: "INV-7", path: "/invoices/7" },
+            input: { dataset: "example.items", id: "ITEM-7" },
+            output: { label: "ITEM-7", path: "/items/7" },
           },
           {
-            type: "tool-invoices-change-status",
+            type: "tool-example-change-status",
             toolCallId: "c4",
             state: "output-error",
-            input: { id: "INV-7" },
+            input: { id: "ITEM-7" },
             errorText: "Not allowed 999.",
           },
           {
-            type: "tool-invoices-aging",
+            type: "tool-example-aging",
             toolCallId: "c5",
             state: "output-available",
             input: {},
             output: { overdue: 777 },
+          },
+          {
+            type: "tool-make-file",
+            toolCallId: "c6",
+            state: "output-available",
+            input: { format: "csv" },
+            output: { file: "f1" },
           },
           { type: "data-artifact", data: { artifactId: "x", version: 1 } },
           { type: "text", text: "Here they are." },
@@ -154,23 +162,47 @@ describe("the transcript the summary call reads", () => {
       },
     ];
 
-    expect(
-      chatTranscript({ previous: "They asked for invoices.", covered })
-    ).toBe(
+    const transcript = chatTranscript({
+      previous: "They asked for items.",
+      covered,
+      labels: {
+        steps: {
+          "example-change-status": {
+            active: "Changing the status",
+            done: "Changed the status",
+            failed: "Could not change the status",
+          },
+        },
+        datasets: { "example.items": "Example items" },
+      },
+    });
+
+    expect(transcript).toBe(
       [
         "Summary of the messages before these:",
-        "They asked for invoices.",
+        "They asked for items.",
         "",
         "Messages:",
         "Person: Question 1",
-        "Assistant used list-datasets with {}.",
-        `Assistant used query-dataset with ${JSON.stringify(read.input)}.`,
-        'Assistant used make-artifact with {"kind":"table"}: made artifact 2, version 1, "Open invoices".',
-        'Assistant used open-record with {"dataset":"invoices.invoices","id":"INV-7"}: opened "INV-7".',
-        'Assistant used invoices-change-status with {"id":"INV-7"}: refused.',
-        "Assistant used invoices-aging with {}.",
+        "Assistant step: Looked up the data.",
+        "Assistant step: Read Example items.",
+        'Assistant step: Made a table: artifact 2, version 1, "Open items".',
+        'Assistant step: Opened a record: "ITEM-7".',
+        "Assistant step: Could not change the status.",
+        "Assistant step: Used a tool.",
+        "Assistant step: Made a CSV file.",
         "Assistant: Here they are.",
       ].join("\n")
     );
+
+    for (const name of [
+      "example.items",
+      "amountCents",
+      "query-dataset",
+      "make-artifact",
+      "481250",
+    ]) {
+      expect(transcript).not.toContain(name);
+    }
   });
 });

@@ -1,7 +1,9 @@
 import { generateText, type LanguageModel } from "ai";
 import { z } from "zod";
 
+import { rowText, stepTimeline } from "../../features/agent/step-model.ts";
 import { HISTORY_MESSAGES } from "./history.ts";
+import type { ChatLabels } from "./labels.ts";
 import type { AgentMessage, OwnHistory } from "./store.ts";
 import { toolNameOf } from "./tool-parts.ts";
 
@@ -94,10 +96,14 @@ const artifactOutput = z.object({
 
 const recordOutput = z.object({ label: z.string() });
 
-/** One part's line; a read result never reaches the summary, so no figure does (LC3). */
+/**
+ * One part's line; a read result never reaches the summary, so no figure does (LC3). A step reads
+ * as the step timeline words it, so no tool, dataset or field name reaches the fold (`czjw.114`).
+ */
 function partLine(
   role: AgentMessage["role"],
-  part: AgentMessage["parts"][number]
+  part: AgentMessage["parts"][number],
+  labels: ChatLabels
 ): string | null {
   if (part.type === "text") {
     return `${role === "user" ? "Person" : "Assistant"}: ${part.text}`;
@@ -105,12 +111,18 @@ function partLine(
 
   const tool = toolNameOf(part);
 
-  if (tool === null || !("state" in part)) return null;
+  if (tool === null || !("state" in part) || !("toolCallId" in part)) {
+    return null;
+  }
 
-  const input = "input" in part ? part.input : undefined;
-  const used = `Assistant used ${tool} with ${JSON.stringify(input)}`;
+  // The transcript knows no file job, so a finished `make-file` call reads as made.
+  const row = stepTimeline([part], labels, false, {
+    [part.toolCallId]: "ready",
+  }).rows[0];
 
-  if (part.state === "output-error") return `${used}: refused.`;
+  if (row === undefined) return null;
+
+  const used = `Assistant step: ${rowText(row)}`;
 
   if (part.state === "output-available") {
     const artifact =
@@ -119,14 +131,14 @@ function partLine(
     if (artifact?.success === true) {
       const { artifact: number, version, title } = artifact.data;
 
-      return `${used}: made artifact ${number}, version ${version}, "${title}".`;
+      return `${used}: artifact ${number}, version ${version}, "${title}".`;
     }
 
     const record =
       tool === "open-record" ? recordOutput.safeParse(part.output) : null;
 
     if (record?.success === true) {
-      return `${used}: opened "${record.data.label}".`;
+      return `${used}: "${record.data.label}".`;
     }
   }
 
@@ -137,9 +149,10 @@ function partLine(
 export function chatTranscript(input: {
   readonly previous: string | null;
   readonly covered: readonly AgentMessage[];
+  readonly labels: ChatLabels;
 }): string {
   const lines = input.covered.flatMap(({ role, parts }) =>
-    parts.flatMap((part) => partLine(role, part) ?? [])
+    parts.flatMap((part) => partLine(role, part, input.labels) ?? [])
   );
 
   const messages = ["Messages:", ...lines].join("\n");
@@ -166,6 +179,7 @@ export async function summarizeChat(input: {
   readonly model: LanguageModel;
   readonly previous: string | null;
   readonly covered: readonly AgentMessage[];
+  readonly labels: ChatLabels;
   readonly abortSignal: AbortSignal;
 }): Promise<string> {
   const { text } = await generateText({

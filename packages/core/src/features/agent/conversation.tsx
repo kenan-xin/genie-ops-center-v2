@@ -291,7 +291,10 @@ export function Conversation(props: {
                     </Message>
                   )}
                   {boundary?.messageId === message.id ? (
-                    <SummaryLine summary={boundary.summary} />
+                    <SummaryLine
+                      summary={boundary.summary}
+                      datasetTitles={props.labels.datasets}
+                    />
                   ) : null}
                 </Fragment>
               ))}

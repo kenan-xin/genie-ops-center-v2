@@ -30,6 +30,7 @@ import {
 } from "./compaction.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
+import { chatLabels } from "./labels.ts";
 import { agentPageContextSchema } from "./page-context.ts";
 import { agentInstructions } from "./prompt.ts";
 import { keptOnStop, STOPPED_PART } from "./stopped-turn.ts";
@@ -213,10 +214,13 @@ export async function handleAgentChat(
       );
 
     try {
+      const { labels } = await chatLabels(ctx);
+
       const written = await summarizeChat({
         model,
         previous: history.summary,
         covered: plan.covered,
+        labels,
         abortSignal,
       });
 
