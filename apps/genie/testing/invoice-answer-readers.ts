@@ -95,10 +95,24 @@ export function internalNamesOf(
 // The digits inside a record number such as INV-2026-10-03 are no date.
 const ISO_DATE = /(?<![A-Za-z0-9-])\d{4}-\d{2}-\d{2}(?![0-9-])/g;
 
+// A sentence ends at a stop before a space, so the stop inside 27,350.00 ends none.
+const SENTENCE_END = /(?<=[.!?])\s/;
+
+// The prompt's cap (`czjw.121`): the rows go in a card, so an answer needs no more.
+const MAX_SENTENCES = 5;
+
+/** The sentences of the Paragraph and Heading text; a List does not count (P03-5). */
+function sentenceCount(blocks: readonly AnswerBlock[]): number {
+  return blocks
+    .filter(({ kind }) => kind === "Paragraph" || kind === "Heading")
+    .flatMap(({ text }) => text.split(SENTENCE_END))
+    .filter((sentence) => sentence.trim() !== "").length;
+}
+
 /**
  * What breaks the answer rules (Spec 7 R-44): the answer opens with a sentence, a money answer
- * states its total in that first sentence, and the text names no dataset or field and writes no
- * ISO date (I17). No issue is an empty list.
+ * states its total in that first sentence, the answer holds at most five sentences, and the text
+ * names no dataset or field and writes no ISO date (I17). No issue is an empty list.
  */
 export function answerIssues(input: {
   readonly questionId: string;
@@ -127,8 +141,7 @@ export function answerIssues(input: {
       { bare: true }
     );
 
-    // A sentence ends at a stop before a space, so the stop inside 27,350.00 ends none.
-    const [sentence = ""] = (opening ?? "").split(/(?<=[.!?])\s/);
+    const [sentence = ""] = (opening ?? "").split(SENTENCE_END);
 
     // The currency, then exactly this amount: no digit before or after it, and no other code.
     const stated = new RegExp(
@@ -138,6 +151,14 @@ export function answerIssues(input: {
     if (!stated.test(sentence)) {
       issues.push(`The first sentence does not state the total ${amount}.`);
     }
+  }
+
+  const sentences = sentenceCount(input.blocks);
+
+  if (sentences > MAX_SENTENCES) {
+    issues.push(
+      `The answer has ${sentences} sentences; at most ${MAX_SENTENCES}.`
+    );
   }
 
   const prose = input.blocks.map(({ text }) => text).join("\n");

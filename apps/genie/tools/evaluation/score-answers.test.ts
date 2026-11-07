@@ -65,6 +65,28 @@ const paragraphIssues = (text: string) =>
     internalNames: NAMES,
   });
 
+// The shapes of two long answers of the follow-up 9 dry run (H8, row 8), with test-data figures.
+const LONG_PROJECTION: readonly AnswerBlock[] = [
+  "November invoicing will likely land near SGD 41,000.00.",
+  "This projection uses the six months from May to October 2026.",
+  "Invoiced sales grew in four of those six months.",
+  "The average monthly growth was about 3 percent.",
+  "October runs only through 27 Oct 2026, so its figure is low.",
+  "Two large invoices in September lift the trend.",
+  "Collections lag invoicing by about one month.",
+  "A cautious figure for November is SGD 38,000.00.",
+  "Note: this projection is an estimate, not a figure from the records. It assumes that no large customer stops ordering. It also assumes that prices stay the same.",
+].map(paragraph);
+
+const OVERDUE_IN_PROSE: readonly AnswerBlock[] = [
+  "Three customers have overdue invoices: 5 invoices, SGD 27,350.00 unpaid in all.",
+  "Harbor Foods owes SGD 9,600.00 on two invoices. The oldest was due on 17 Oct 2026 and is 10 days overdue.",
+  "ABC Trading owes SGD 6,500.00 on one invoice that is 12 days overdue.",
+  "The third customer owes the rest on two invoices.",
+  "The table beside the chat lists each invoice with its due date and its source.",
+  "Overdue means an unpaid balance after the due date, as of 27 Oct 2026.",
+].map(paragraph);
+
 /** A chart the gate accepted: the config as the model wrote it and the rows the gate answered. */
 function drawn(config: PanelConfig, answered: readonly Row[]): AnswerChart {
   return { config, data: { rows: answered } };
@@ -287,6 +309,26 @@ describe("the answer scorer", () => {
         "INV-2026-10-03 is part paid as of 27 Oct 2026, by TXN-PAY-2026-026."
       )
     ).toEqual([]);
+  });
+
+  it("fails an answer of eight paragraphs and a long note, the shape of the dry run's H8 answer", () => {
+    expect(
+      answerIssues({
+        questionId: "monthly-invoiced-and-collected",
+        blocks: LONG_PROJECTION,
+        internalNames: [],
+      })
+    ).toContain("The answer has 11 sentences; at most 5.");
+  });
+
+  it("fails an answer that lists each overdue invoice in prose, the shape of the dry run's row 8 answer", () => {
+    expect(
+      answerIssues({
+        questionId: "overdue-invoices",
+        blocks: OVERDUE_IN_PROSE,
+        internalNames: [],
+      })
+    ).toContain("The answer has 7 sentences; at most 5.");
   });
 
   it("reads the top three customers from a full ranking and from a top-three table", () => {
