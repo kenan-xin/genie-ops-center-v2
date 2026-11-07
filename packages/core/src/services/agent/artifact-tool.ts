@@ -57,7 +57,7 @@ export function artifactTurn(
 
 // The chart gate's rules join the description, so the model reads them before its first call (czjw.59 ruling 5).
 const DESCRIPTION = [
-  "Makes a chart or a table that the person can open beside the chat, from a checked panel config. Use type table for rows, or bar, line, area or donut for a chart. donut and table take a list of exactly one series. A donut series has name, dataset, query, category and value. A table series has name, dataset and query only. A table holds every row of its query, so leave out limit unless the person asks for the first rows. The chat shows the first 5 rows of a table and how many more. bar, line and area take one to eight series with x and y.",
+  "Makes a chart or a table that shows as a card under your answer, from a checked panel config. Use type table for rows, or bar, line, area or donut for a chart. donut and table take a list of exactly one series. A donut series has name, dataset, query, category and value. A table series has name, dataset and query only. A table holds every row of its query, so leave out limit unless the person asks for the first rows. The chat shows the first 5 rows of a table and how many more. bar, line and area take one to eight series with x and y.",
   ...CHART_PROMPT_RULES,
   "To change an artifact of this chat, give its number as artifact: the change makes its next version. An artifact keeps its kind. Answers the artifact's number, its version and its title.",
 ].join(" ");

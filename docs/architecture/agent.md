@@ -36,11 +36,14 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 
 Core owns the answer rules, in `packages/core/src/services/agent/prompt.ts` (Spec 7 R-44, amended 2026-11-03):
 
-- The answer is short and in simple English. It starts with the result in one short sentence.
+- The answer is short and in simple English: at most five sentences, counted over its paragraphs and headings. It starts with the result in one short sentence and says each figure once.
 - A money answer states the total with its currency and two decimals in the first sentence, then shows the rows.
 - One or two short sentences after the result say how the figure was counted, in plain words.
 - The text names no dataset and no field. It writes a date as a person reads it (27 Oct 2026), and the ISO form only inside a query.
 - A list of a dataset's rows selects the dataset's `summaryFields` first.
+- The rows that answer the question go in a table or chart, never in the text.
+- A table or chart shows as a card under the answer, and the artifact panel opens only from that card (Spec 7 R-45a). The answer names the card, for example "Open the chart card to see each month", and never says that the chart is beside the chat.
+- The answer holds no notes about the plan or the steps. The model writes text only after its last tool call.
 - A follow-up can change an earlier chart or table of the chat by its number.
 
 A module adds only rules about its own records, such as its measures and its record tables. Column headers read each field's `label`, which the model never sees.
