@@ -383,6 +383,39 @@ export const StopKeepsTheAnswer: Story = {
   },
 };
 
+/** An answer that the server's turn limit ends: its words, the stopped mark, then the abort. */
+const sendServerStopped = fn(
+  async () =>
+    new ReadableStream<UIMessageChunk>({
+      start(controller) {
+        controller.enqueue({ type: "start" });
+        controller.enqueue({ type: "text-start", id: "answer" });
+        controller.enqueue({
+          type: "text-delta",
+          id: "answer",
+          delta: `root = Answer([p])\np = Paragraph("${PARTIAL}`,
+        });
+        controller.enqueue({ type: "data-stopped", data: {} });
+        controller.enqueue({ type: "abort" });
+        controller.close();
+      },
+    })
+);
+
+export const ServerEndsTheAnswer: Story = {
+  name: "The turn limit ends the answer",
+  args: { transport: transportOf(sendServerStopped) },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: FIRST_QUESTION }));
+
+    // The words stay with the Stopped line, without a reload (czjw.110).
+    await expect(await canvas.findByText(PARTIAL)).toBeVisible();
+    await expect(
+      await canvas.findByText("Stopped. Ask again when you are ready.")
+    ).toBeVisible();
+  },
+};
+
 export const ArtifactCardsInAsk: Story = {
   name: "Artifact cards in Ask",
   args: {

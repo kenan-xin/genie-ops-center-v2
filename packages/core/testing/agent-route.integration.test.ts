@@ -577,10 +577,19 @@ describe("the agent route", () => {
       // The turn limit aborts the model call while the response is still read to its end.
       stop.abort();
 
+      const live: string[] = [];
+
       for (;;) {
         // oxlint-disable-next-line no-await-in-loop -- the chunks arrive one after another
-        if ((await reader.read()).done) break;
+        const { done, value } = await reader.read();
+
+        if (done) break;
+
+        if (value.success) live.push(value.value.type);
       }
+
+      // The page reads the stopped mark from the stream, as a reload reads it from the store.
+      expect(live).toContain(STOPPED_PART.type);
 
       await expect
         .poll(() => storedAnswer(ctx, sessionId), { timeout: 5000 })

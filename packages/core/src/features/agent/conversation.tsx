@@ -23,7 +23,7 @@ import type {
   ChatLabels,
   InboxLink,
 } from "../../services/agent/index.ts";
-import { keptOnStop } from "../../services/agent/stopped-turn.ts";
+import { isStopped, keptOnStop } from "../../services/agent/stopped-turn.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
 import { AgentMark, ChatEmpty, pillClass } from "./chat-parts.tsx";
@@ -148,8 +148,13 @@ export function Conversation(props: {
         [message.id]: Date.now() - sentAt.current,
       }));
 
-      // Stop keeps what the server stores: the finished steps and words, and the Stopped line (P03-2).
-      if (isAbort && message.role === "assistant" && message.parts.length > 0) {
+      // Stop, or the server's turn limit, keeps what the server stores: the finished steps and
+      // words, and the Stopped line (P03-2).
+      if (
+        (isAbort || isStopped(message)) &&
+        message.role === "assistant" &&
+        message.parts.length > 0
+      ) {
         chat.setMessages((messages) =>
           messages.map((each) =>
             each.id === message.id

@@ -32,7 +32,7 @@ import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { agentPageContextSchema } from "./page-context.ts";
 import { agentInstructions } from "./prompt.ts";
-import { keptOnStop } from "./stopped-turn.ts";
+import { keptOnStop, STOPPED_PART } from "./stopped-turn.ts";
 import {
   type AgentMessage,
   appendMessage,
@@ -299,7 +299,17 @@ export async function handleAgentChat(
             stream: result.stream,
             tools,
             onError: (error) => streamErrorText(error, hooks.logError),
-          })
+          }).pipeThrough(
+            // The browser ignores the abort chunk, so a turn that the server aborts (the turn
+            // limit) also sends the stopped mark that the store keeps (P03-1).
+            new TransformStream({
+              transform(chunk, controller) {
+                if (chunk.type === "abort") controller.enqueue(STOPPED_PART);
+
+                controller.enqueue(chunk);
+              },
+            })
+          )
         );
       },
       // The library awaits this in the stream's flush, so the response closes after the answer
