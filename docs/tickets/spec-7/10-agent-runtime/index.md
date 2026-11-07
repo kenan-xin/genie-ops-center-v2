@@ -15,7 +15,7 @@ Depends on: [S7-03](../03-module-contract-additions/index.md), [S7-04](../04-cha
 
 - The agent route handler in core, mounted by the app.
 - Core tables `agent_session` and `agent_message`, owner-only.
-- The Ask page, the chat bubble, links to the Documents inbox, and the Ask permission seeded into the administrator role.
+- The Ask page, the chat bubble, links to the Documents inbox, and the Ask permission seeded into the administrator role. R-42 was amended 2026-11-08 (`czjw.120`): the inbox lines show only in an empty new chat and name no module in core's own words.
 - The `agent-tools` interface in `packages/core/contracts`, read through the list form.
 - Tools `list-datasets`, `query-dataset`, `open-record`.
 - OpenUI: install `@openuidev/react-lang` only, register our components as its catalog, deny `@openuidev/lang-core` in `allowBuilds`, set `OPENUI_TELEMETRY_DISABLED=1`, never install `@openuidev/react-ui` or `@openuidev/react-headless`. Check whether `lucide-react` from `@openuidev/devtools` adds a second copy, and whether `devtools` reaches the production bundle.
