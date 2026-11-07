@@ -32,6 +32,7 @@ import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { agentPageContextSchema } from "./page-context.ts";
 import { agentInstructions } from "./prompt.ts";
+import { keptOnStop } from "./stopped-turn.ts";
 import {
   type AgentMessage,
   appendMessage,
@@ -302,20 +303,22 @@ export async function handleAgentChat(
         );
       },
       // The library awaits this in the stream's flush, so the response closes after the answer
-      // is stored. A cancelled stream stores what streamed, with its artifact versions (P8).
-      onEnd: async ({ responseMessage }) => {
+      // is stored. Stop cancels the stream, the turn limit aborts it: either one stores what
+      // finished before it, with a stopped mark (P8, P03-1, P03-2).
+      onEnd: async ({ responseMessage, isAborted, isCancelled }) => {
         if (responseMessage.parts.length === 0) return;
+
+        const { parts, versions } =
+          isAborted || isCancelled === true
+            ? keptOnStop(responseMessage.parts, turn.pending)
+            : { parts: responseMessage.parts, versions: turn.pending };
 
         // A failed store errors the stream; log it, because no onError sees a flush failure.
         await appendMessage(
           ctx,
           sessionId,
-          {
-            id: responseMessage.id,
-            role: "assistant",
-            parts: responseMessage.parts,
-          },
-          turn.pending,
+          { id: responseMessage.id, role: "assistant", parts },
+          versions,
           largestInput > 0 ? { inputTokens: largestInput } : {}
         ).catch((cause: unknown) => {
           hooks.logError(cause);

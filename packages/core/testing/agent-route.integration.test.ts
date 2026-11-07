@@ -13,6 +13,7 @@ import {
   handleAgentChat,
   readOwnSession,
 } from "../src/services/agent/index.ts";
+import { STOPPED_PART } from "../src/services/agent/stopped-turn.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import {
   removeIntegrationKey,
@@ -124,25 +125,46 @@ async function refusal(
 
 const sseLine = (event: JsonValue) => `data: ${JSON.stringify(event)}\n\n`;
 
-/**
- * A model that sends the first event of the recorded "Hello!" stream at once and the rest only
- * after `release`, so a test reads the route while the model still answers.
- */
-function heldModel() {
+/** The model events of one core recording. */
+function recordedEvents(name: string): readonly JsonValue[] {
   const recording: { response: { events: readonly JsonValue[] } } = JSON.parse(
-    readFileSync(
-      join(CORE_MODEL_RECORDINGS, "hello-chat-default-stream.json"),
-      "utf8"
-    )
+    readFileSync(join(CORE_MODEL_RECORDINGS, `${name}.json`), "utf8")
   );
 
-  const [first, ...rest] = recording.response.events;
+  return recording.response.events;
+}
+
+/** A whole model answer of `events`, sent at once. */
+const eventResponse = (events: readonly JsonValue[]) =>
+  new Response(`${events.map(sseLine).join("")}data: [DONE]\n\n`, {
+    status: 200,
+    headers: { "content-type": "text/event-stream" },
+  });
+
+/**
+ * A model that sends the first event of the recorded "Hello!" stream at once and the rest only
+ * after `release`, so a test reads the route while the model still answers. With `firstStep`,
+ * the first call answers those events whole and the second call is the held one. `signals` holds
+ * each call's abort signal.
+ */
+function heldModel(
+  options: { readonly firstStep?: readonly JsonValue[] } = {}
+) {
+  const [first, ...rest] = recordedEvents("hello-chat-default-stream");
 
   const { promise: held, resolve: release } = Promise.withResolvers<void>();
 
+  const signals: (AbortSignal | undefined)[] = [];
+
   useModelTransport(deployment.context, {
-    transport: async (_input, init) =>
-      new Response(
+    transport: async (_input, init) => {
+      signals.push(init?.signal ?? undefined);
+
+      if (options.firstStep !== undefined && signals.length === 1) {
+        return eventResponse(options.firstStep);
+      }
+
+      return new Response(
         new ReadableStream<string>({
           async start(controller) {
             controller.enqueue(sseLine(first ?? null));
@@ -163,10 +185,43 @@ function heldModel() {
           },
         }).pipeThrough(new TextEncoderStream()),
         { status: 200, headers: { "content-type": "text/event-stream" } }
-      ),
+      );
+    },
   });
 
-  return { release: () => release() };
+  return { release: () => release(), signals };
+}
+
+/** The parts of the session's last stored answer, without its step marks. */
+async function storedAnswer(ctx: ModuleRequestContext, sessionId: string) {
+  return (await readOwnSession(ctx, sessionId)).messages
+    .findLast((message) => message.role === "assistant")
+    ?.parts.filter((part) => part.type !== "step-start");
+}
+
+/** The text of the session's last stored answer. */
+async function storedText(ctx: ModuleRequestContext, sessionId: string) {
+  return (await storedAnswer(ctx, sessionId))
+    ?.map((part) => (part.type === "text" ? part.text : ""))
+    .join("");
+}
+
+/** Asks "Say hello." in `sessionId` and reads the answer to its first word. */
+async function askToFirstWord(
+  ctx: ModuleRequestContext,
+  sessionId: string,
+  signal: AbortSignal
+) {
+  const response = await handleAgentChat(
+    ctx,
+    new Request(
+      agentRequest(body({ sessionId }, [{ type: "text", text: "Say hello." }])),
+      { signal }
+    ),
+    { logError: () => {} }
+  );
+
+  return readToFirstWord(response);
 }
 
 /** Reads the route's chunks up to the first word, and answers the reader to go on with. */
@@ -420,7 +475,7 @@ describe("the agent route", () => {
     }
   });
 
-  it("keeps the words of a stopped answer", async () => {
+  it("Stop aborts the model call and stores the words so far as a stopped answer", async () => {
     const model = heldModel();
 
     const ctx = await asker();
@@ -430,34 +485,109 @@ describe("the agent route", () => {
     const stop = new AbortController();
 
     try {
-      const response = await handleAgentChat(
-        ctx,
-        new Request(
-          agentRequest(
-            body({ sessionId }, [{ type: "text", text: "Say hello." }])
-          ),
-          { signal: stop.signal }
-        ),
-        { logError: () => {} }
-      );
-
-      const { reader } = await readToFirstWord(response);
+      const { reader } = await askToFirstWord(ctx, sessionId, stop.signal);
 
       // A browser's Stop: the request aborts and the response is no longer read.
       stop.abort();
       await reader.cancel();
 
+      await expect.poll(() => model.signals[0]?.aborted).toBe(true);
       await expect
-        .poll(
-          async () =>
-            (await readOwnSession(ctx, sessionId)).messages
-              .find((message) => message.role === "assistant")
-              ?.parts.filter((part) => part.type === "text")
-              .map((part) => part.text)
-              .join(""),
-          { timeout: 5000 }
-        )
+        .poll(() => storedText(ctx, sessionId), { timeout: 5000 })
         .toBe("Hello");
+      expect((await storedAnswer(ctx, sessionId))?.at(-1)).toEqual(
+        STOPPED_PART
+      );
+
+      // The next question in the stopped chat streams its answer, and the stopped mark stays out of the model's history.
+      const bodies: string[] = [];
+
+      useModelTransport(deployment.context, {
+        transport: async (_input, init) => {
+          bodies.push(String(init?.body ?? ""));
+
+          return eventResponse(recordedEvents("hello-chat-default-stream"));
+        },
+      });
+
+      await readAgentReply(
+        await handleAgentChat(
+          ctx,
+          agentRequest(
+            body({ sessionId }, [{ type: "text", text: "Say hello again." }])
+          ),
+          { logError: () => {} }
+        )
+      );
+
+      expect(await storedText(ctx, sessionId)).toContain("Hello!");
+      expect(bodies).toHaveLength(1);
+      expect(bodies.join("")).not.toContain("data-stopped");
+    } finally {
+      model.release();
+      recorded = useRecordedModel(deployment.context, CORE_MODEL_RECORDINGS);
+    }
+  });
+
+  it("Stop during a later step aborts that step's model call and starts no other", async () => {
+    const model = heldModel({ firstStep: recordedEvents("live-e32fa7188483") });
+
+    const ctx = await asker();
+
+    const sessionId = randomUUID();
+
+    const stop = new AbortController();
+
+    try {
+      const { reader } = await askToFirstWord(ctx, sessionId, stop.signal);
+
+      stop.abort();
+      await reader.cancel();
+
+      await expect.poll(() => model.signals[1]?.aborted).toBe(true);
+      await expect
+        .poll(() => storedAnswer(ctx, sessionId), { timeout: 5000 })
+        .toEqual([
+          expect.objectContaining({
+            type: "tool-list-datasets",
+            state: "output-available",
+          }),
+          expect.objectContaining({ type: "text", text: "Hello" }),
+          STOPPED_PART,
+        ]);
+      expect(model.signals).toHaveLength(2);
+    } finally {
+      model.release();
+      recorded = useRecordedModel(deployment.context, CORE_MODEL_RECORDINGS);
+    }
+  });
+
+  it("a turn that the server aborts stores its words as a stopped answer", async () => {
+    const model = heldModel();
+
+    const ctx = await asker();
+
+    const sessionId = randomUUID();
+
+    const stop = new AbortController();
+
+    try {
+      const { reader } = await askToFirstWord(ctx, sessionId, stop.signal);
+
+      // The turn limit aborts the model call while the response is still read to its end.
+      stop.abort();
+
+      for (;;) {
+        // oxlint-disable-next-line no-await-in-loop -- the chunks arrive one after another
+        if ((await reader.read()).done) break;
+      }
+
+      await expect
+        .poll(() => storedAnswer(ctx, sessionId), { timeout: 5000 })
+        .toEqual([
+          expect.objectContaining({ type: "text", text: "Hello" }),
+          STOPPED_PART,
+        ]);
     } finally {
       model.release();
       recorded = useRecordedModel(deployment.context, CORE_MODEL_RECORDINGS);
