@@ -210,6 +210,20 @@ Trade-off: the document generation libraries enter every image, and every module
 
 Designed in: the seams, now. Implemented: none; the agent needs its own specification before work starts. Revisit if a customer needs the agent to act without a signed-in user, for example on a schedule. That needs its own decision on whose rights it uses.
 
+Amended 2026-11-07 (owner): surface agents and the Ask handoff. Ask, Slides and Dashboards shared one chat session. A request in Ask to build a deck or a dashboard ran with every module tool in the same chat, and the deck and dashboard pages showed Ask's history. From this amendment, a module page that builds something has its own agent surface, and Ask hands the work over to it.
+
+- One runtime, still core. Core owns the agent route, the base prompt, the sessions, the renderer and the model connection. A module does not run its own agent. A module may declare an agent surface in its contract: a name, the tools of that surface, its instructions, and whether it accepts a handoff. Core runs every surface.
+- A session belongs to one surface. `agent_session` gains `surface` (`core:ask` or the module id), an optional `record_id` (the deck or the dashboard; the surface names its type), and `handed_from_session_id`. Each surface lists only its own sessions: Ask shows Ask chats, and the deck page shows the Slides chats, with the chats of the open deck first.
+- The handoff. Ask has one core tool, `hand-over`. It runs only when the person's own message asks to make a deck or a dashboard (R-46). It writes a brief: the goal, the facts from this chat with their sources and dates, the datasets, and what it did not pass. It creates a session on the target surface with the brief as its first message, starts the run on the server, and opens the target page. The rest of the Ask chat is never passed. Ask keeps a handoff card with the live status and a link.
+- The run continues on the server. If the person leaves the page, the work goes on, and the card and the target page show its status. Stop on the target page aborts the run, as `czjw.110` requires for every run.
+- Rights do not change. Every tool call of every surface runs as the signed-in person, through `can()` and `scopesFor()`. The handoff writes one audit row that names both sessions. Erasing a person deletes the sessions of every surface, as the 2026-10-30 amendment says.
+- No network agent protocol. Both agents run in one deployment and one runtime, so the handoff is a database row and a server call, not an agent-to-agent protocol such as A2A.
+- Helper agents stay deferred. A handoff passes one task to one surface. Parallel helper agents for parts of one question are still not built.
+
+Trade-off: a task now has two chats, and the brief can miss something from the Ask chat. The brief shows what was passed and links back to the Ask chat, so the person can add it. In return, each surface has a short history, focused tools and instructions (for example, the dashboard agent offers to add a panel and does not make a chat artifact, `czjw.96`), and the person watches the work being built.
+
+Revisit if one task needs two surfaces at once, for example a deck built from a dashboard. Revisit also if an agent outside the deployment must take part, which is the case that needs a network protocol.
+
 ## DEC-30. Chat endpoint is a per-solution setting
 
 Solutions module decision. The full record is in `../modules/solutions/README.md` under Decisions. The platform side, the operator variable `GENIE_CHAT_API_ALLOWED_ORIGINS`, stays in `../architecture/environment-contract.md`.

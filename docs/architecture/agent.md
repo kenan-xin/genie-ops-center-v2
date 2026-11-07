@@ -4,7 +4,7 @@ This page explains how the agent works: who owns which part, and how a module ad
 
 ## One agent, owned by core
 
-The application has one agent (`DEC-29`). Core owns all of it: the agent route, the prompt, the chat sessions, the Ask page and the chat panel. No module has its own agent, and no module changes how the agent runs.
+The application has one agent (`DEC-29`). Core owns all of it: the agent route, the prompt, the chat sessions, the Ask page and the chat panel. A module may declare an agent surface (tools, instructions, and whether it accepts a handoff), and core runs it; no module runs an agent of its own or changes how the runtime works.
 
 Core also owns five general tools (Spec 7 R-43, R-44a, R-45a):
 
@@ -52,6 +52,15 @@ A module adds only rules about its own records, such as its measures and its rec
 - A write tool runs only when the person asks for the change in their own message, and it gives an Undo.
 - Each tool call writes one audit row with the tool, the dataset, the query and the row count, never the returned rows (R-47).
 - Only the owner of a chat can open it (R-41).
+
+## Surfaces and the handoff
+
+A module page that builds something has its own agent surface (`DEC-29`, amended 2026-11-07). Core runs every surface with the one runtime. Ask is the core surface.
+
+- A session belongs to one surface. Each surface lists only its own sessions. Ask shows Ask chats, and a module page shows the chats of its surface, with the chats of the open record first.
+- Ask has one core tool, `hand-over`. It runs only when the person's own message asks to build something on a surface that accepts a handoff (R-46). It writes a brief: the goal, the facts from the chat with their sources and dates, the datasets, and what it did not pass. It creates a session on the target surface with the brief as its first message, starts the run on the server, and opens the target page. The rest of the Ask chat is never passed. Ask keeps a handoff card with the live status and a link.
+- The run continues on the server. If the person leaves the page, the work goes on, and the card and the target page show its status. Stop on the target page aborts the run.
+- Rights do not change. Every tool call of every surface runs as the signed-in person, through `can()` and `scopesFor()`. The handoff writes one audit row that names both sessions.
 
 ## Built after wave 4
 
