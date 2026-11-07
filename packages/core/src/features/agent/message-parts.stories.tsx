@@ -379,6 +379,92 @@ export const SourcesAndMethod: Story = {
   },
 };
 
+const STEP_NOTE = "Check the records.";
+
+const COUNT_ANSWER =
+  'root = Answer([result])\nresult = Paragraph("There are 12 example records.")';
+
+const READ_STEP: AgentMessage["parts"][number] = {
+  type: "tool-list-datasets",
+  toolCallId: "call-read",
+  state: "output-available",
+  input: {},
+  output: { datasets: [] },
+};
+
+/** A model wrote a note about its next step before a tool call (czjw.105, dry run H2). */
+export const StepNoteBeforeATool: Story = {
+  name: "Step note before a tool",
+  args: {
+    message: {
+      id: "step-note",
+      role: "assistant",
+      parts: [
+        { type: "text", text: STEP_NOTE },
+        READ_STEP,
+        { type: "text", text: COUNT_ANSWER },
+      ],
+    },
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText("There are 12 example records.")
+    ).toBeVisible();
+    // The note is no part of the answer, so the person never reads it.
+    await expect(canvas.queryByText(STEP_NOTE)).toBeNull();
+  },
+};
+
+/** An answer written before a tool call of the same step is the answer, not a note. */
+export const AnswerBeforeAToolCall: Story = {
+  name: "Answer before a tool call",
+  args: {
+    message: {
+      id: "answer-first",
+      role: "assistant",
+      parts: [
+        { type: "text", text: COUNT_ANSWER },
+        {
+          type: "tool-make-artifact",
+          toolCallId: "call-table",
+          state: "output-available",
+          input: { config: TABLE_CONFIG },
+          output: { artifact: 1 },
+        },
+      ],
+    },
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText("There are 12 example records.")
+    ).toBeVisible();
+  },
+};
+
+/** Stop came after a step note, and Stop dropped the tool call that followed it. */
+export const StoppedAfterAStepNote: Story = {
+  name: "Stopped after a step note",
+  args: {
+    message: {
+      id: "stopped-note",
+      role: "assistant",
+      parts: [
+        { type: "text", text: STEP_NOTE },
+        { type: "data-stopped", data: {} },
+      ],
+    },
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText("Stopped. Ask again when you are ready.")
+    ).toBeVisible();
+    await expect(canvas.queryByText(STEP_NOTE)).toBeNull();
+  },
+};
+
 /** A stored answer that Stop ended after one finished read (czjw.110). */
 export const StoppedAnswer: Story = {
   name: "Stopped answer",

@@ -43,7 +43,7 @@ Core owns the answer rules, in `packages/core/src/services/agent/prompt.ts` (Spe
 - A list of a dataset's rows selects the dataset's `summaryFields` first.
 - The rows that answer the question go in a table or chart, never in the text.
 - A table or chart shows as a card under the answer, and the artifact panel opens only from that card (Spec 7 R-45a). The answer names the card, for example "Open the chart card to see each month", and never says that the chart is beside the chat.
-- The answer holds no notes about the plan or the steps. The model writes text only after its last tool call.
+- The answer holds no notes about the plan or the steps. The model writes text only after its last tool call, and the chat does not draw a note that a tool call follows.
 - A follow-up can change an earlier chart or table of the chat by its number.
 
 A module adds only rules about its own records, such as its measures and its record tables. Column headers read each field's `label`, which the model never sees.

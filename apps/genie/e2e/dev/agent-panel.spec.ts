@@ -49,6 +49,17 @@ const FIRST_WORDS = "Placeholder records are fictional";
 
 const THIRD_PARAGRAPH = "You can ask me to count the records";
 
+/**
+ * `synthetic-step-note-1` and `-2` answer it: a note about the next step, a read, then the answer
+ * (czjw.105, dry run H2).
+ */
+const STEP_NOTE_QUESTION = "Which data can you read for me?";
+
+/** What the read of `synthetic-step-note-1` answers: the datasets that the person may read. */
+const STEP_NOTE_ANSWER = "I can read one set of data: the placeholder records.";
+
+const STEP_NOTE = "Check the records.";
+
 /** The line under an answer that Stop ended (czjw.110). */
 const STOPPED_LINE = "Stopped. Ask again when you are ready.";
 
@@ -199,6 +210,28 @@ test("an answer streams word by word, and Stop keeps the words so far", async ({
 
   await expect(page.getByText(THIRD_PARAGRAPH)).toHaveCount(0);
   await expectNoAxeViolations(page, "A stopped answer");
+});
+
+test("an answer leaves out a step note that came before a tool call", async ({
+  page,
+}, testInfo) => {
+  // `next dev` shows each console error as an issue badge; H2 showed an OpenUI stream error.
+  const errors: string[] = [];
+
+  page.on("console", (message) => {
+    if (message.type() === "error") errors.push(message.text());
+  });
+  page.on("pageerror", (error) => errors.push(error.message));
+
+  await start(page, testInfo, "/account");
+
+  const log = conversationOf(await openAgentPanel(page));
+
+  await askQuestion(page, STEP_NOTE_QUESTION);
+
+  await expect(log.getByText(STEP_NOTE_ANSWER)).toBeVisible(FIRST_PAINT);
+  await expect(log.getByText(STEP_NOTE)).toHaveCount(0);
+  expect(errors).toEqual([]);
 });
 
 test("the timeline groups reads and folds one fixed step", async ({

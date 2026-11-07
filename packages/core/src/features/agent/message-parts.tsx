@@ -36,6 +36,29 @@ const NO_LABELS: ChatLabels = { steps: {}, datasets: {} };
 
 const NO_FILES: readonly AgentFile[] = [];
 
+// An OpenUI answer opens with a statement such as `root = Answer(...)`.
+const OPENUI_START = /^\s*[A-Za-z_]\w*\s*=/;
+
+/**
+ * The text parts that are notes about the model's next step, not its answer (P03-7, `czjw.105`):
+ * text that opens with no OpenUI statement, before a tool call or in a stopped answer. A note never
+ * reaches the OpenUI parser, so it neither shows nor counts as a stream error.
+ */
+function stepNotes(message: AgentMessage): ReadonlySet<number> {
+  const stopped = isStopped(message);
+
+  return new Set(
+    message.parts.flatMap((part, index) =>
+      part.type === "text" &&
+      !OPENUI_START.test(part.text) &&
+      (stopped ||
+        message.parts.slice(index + 1).some((later) => "toolCallId" in later))
+        ? [index]
+        : []
+    )
+  );
+}
+
 type ChartNode = {
   readonly typeName?: string;
   readonly props?: { readonly config?: unknown };
@@ -256,9 +279,13 @@ export function MessageParts(props: {
 
   const labels = props.labels ?? NO_LABELS;
 
+  const notes = stepNotes(props.message);
+
   const answered =
     !props.streaming &&
-    props.message.parts.some((part) => part.type === "text");
+    props.message.parts.some(
+      (part, index) => part.type === "text" && !notes.has(index)
+    );
 
   const files = props.files ?? NO_FILES;
 
@@ -275,7 +302,7 @@ export function MessageParts(props: {
     >
       <div ref={body} className="grid gap-3 empty:hidden">
         {props.message.parts.map((part, index) =>
-          part.type === "text" ? (
+          part.type === "text" && !notes.has(index) ? (
             <AnswerText
               key={index}
               text={part.text}
