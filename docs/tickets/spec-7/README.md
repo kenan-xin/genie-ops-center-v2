@@ -58,6 +58,14 @@ Owner decision, 2026-10-27: full scope for the November 2026 festival, with no s
 | [S7-37](37-result-first-answers/index.md) | `czjw.62` | S7-29 | none | Result first, method after |
 | [S7-38](38-plain-labels-in-answers/index.md) | `czjw.74` | S7-29 | none | Plain labels and dates in answers |
 | [S7-39](39-demo-script-step-9/index.md) | `czjw.75` | none | none | Demo script step 9 asks for a new panel |
+| [S7-40](40-surface-runtime/index.md) | `czjw.113` | `cvij.6`, `czjw.110` | none | Core surface runtime: contract, sessions and the durable run |
+| [S7-41](41-ask-handoff/index.md) | `czjw.122` | S7-40, `czjw.120` | none | The Ask handoff: tool, brief, card and target panel |
+| [S7-42](42-slides-and-dashboards-surfaces/index.md) | `czjw.96` | S7-41 | none | Slides and Dashboards surfaces, slide by slide, and add as a panel |
+| [S7-43](43-slide-position-and-style/index.md) | `czjw.103` | S7-42, gate G2 | none | Position and style per slide element |
+| [S7-44](44-what-the-agent-can-change/index.md) | `czjw.104` | S7-43 | none | The agent names what it can change |
+| [S7-45](45-speaker-notes-and-presenter-view/index.md) | `czjw.115` | S7-43, S7-44, gate G2 | none | Speaker notes and the presenter view |
+| [S7-46](46-dashboard-filters-in-the-url/index.md) | `czjw.116` | S7-42, S7-44, `czjw.101`, `czjw.102`, gate G2 | none | Dashboard filters, several at once, in the page address |
+| [S7-47](47-dashboard-saved-views/index.md) | `czjw.117` | S7-46 | none | Saved views of a dashboard, with one default |
 | `6wz1.89`, no folder, owned by the Spec 3 epic `6wz1` | `6wz1.89` | none | none | Collapsible, edge-to-edge app sidebar (icon rail) |
 | `xok3.49`, no folder, owned by the Maintenance epic `xok3` | `xok3.49` | none | none | Polish the idle sign-out warning dialog |
 
@@ -112,6 +120,28 @@ S7-16 to S7-39 come from the owner review of wave 4 on 2026-11-03: the dry run, 
 
 Only P2-7 and the P2-8 dry run call a live model. Every other test uses the recorded test model.
 
+## Wave 5 tickets (draft, 2026-11-08)
+
+S7-40 to S7-47 build the wave 5 amendment of the spec (R-42b, R-46a, R-49a, R-52a, R-55a) from the decisions in the [technical plan](../../tech-plans/07-invoice-and-payments.md), wave 5. They run in the follow-up 11 run, after the owner approves the amendment and this breakdown at gate G1. The other follow-up 11 beads (bug fixes and polish) run as beads with no ticket folder, because they add no requirement. The analysis step (`czjw.95`) is deferred and has no ticket. A cold critique (GPT Astra, 2026-11-08) split the runtime from the handoff and closed nine gaps before owner review. Until R1 re-records live, wave 5 tests use synthetic scripted model fixtures, marked as such.
+
+```mermaid
+graph LR
+  D0[cvij.6 decision docs] --> S40[S7-40 surface runtime]
+  F1[czjw.110 Stop] --> S40
+  F6[czjw.120 chat parts] --> S41
+  S40 --> S41[S7-41 Ask handoff]
+  S41 --> S42[S7-42 Slides and Dashboards surfaces]
+  S42 --> S43[S7-43 position and style]
+  G2[gate G2 three design prototypes] --> S43
+  S43 --> S44[S7-44 what I can change]
+  S44 --> S45[S7-45 speaker notes]
+  G2 --> S45
+  S42 --> S46[S7-46 dashboard filters]
+  S44 --> S46
+  G2 --> S46
+  S46 --> S47[S7-47 saved views]
+```
+
 ## Design sections and amendments that Spec 7 owns
 
 Checked on 2026-11-03 under the breakdown rule of `CLAUDE.md`. Spec 7 owns one design section, `../../design/sections/invoices-and-payments/`: the variant D review capture and the 25 captures of the Section 7 redesign prototype. The round table in `../../design/README.md` has no row for it, and the section holds no `spec.md` yet, as its import record says. Every screen of the section has a numbered requirement and a ticket. None was raised to the owner as unmapped.
@@ -129,6 +159,18 @@ Checked on 2026-11-03 under the breakdown rule of `CLAUDE.md`. Spec 7 owns one d
 | `invoices-and-payments`, Dashboards with chat (`dashboards`) | R-42 (the panel replaces the page chat), R-48 to R-51 | S7-12, S7-28, S7-39 |
 | `invoices-and-payments`, Slides editor and present mode (`slides`, `slides-present`) | R-42, R-46, R-52 to R-57 | S7-13, S7-28, S7-32, S7-33 |
 | `invoices-and-payments`, phone menu (`phone-menu`) | Spec 3, the shell | `6wz1.89` |
+
+Wave 5 check, 2026-11-08. The same section is the only one Spec 7 owns. Its Ask, Dashboards and Slides screens gain wave 5 requirements, and every new screen state maps to a requirement and a ticket:
+
+| Screen or state | Requirement | Ticket | Design |
+| --- | --- | --- | --- |
+| Ask, handoff card and header chip (`ask`) | R-42b | S7-41 | `agent-handoff.prototype.html`, variant A, design workspace |
+| Deck and dashboard pages, surface agent panel with the brief card and live steps (`slides`, `dashboards`) | R-42, R-42b | S7-41, S7-42 | the same prototype |
+| Slides editor, position and style controls (`slides`) | R-52a | S7-43 | the W3a slide editor prototype, picked at gate G2 |
+| Slides editor notes field and presenter window (`slides`, `slides-present`) | R-55a | S7-45 | the W3a presenter prototype, picked at gate G2 (owner, 2026-11-08) |
+| Dashboards filter bar and view menu (`dashboards`) | R-49, R-49a | S7-46, S7-47 | the W3a filter bar prototype, picked at gate G2 (owner, 2026-11-08); it starts from the list header variant A |
+
+No open amendment file under `../../design/` touches wave 5.
 
 The four prototypes that the owner chose on 2026-11-03 sit in the design workspace, not under `../../design/`: list filters variant C, invoice record variant C, Ask variant B and agent panel variant B. Each ticket names its prototype, and the phase that builds a screen imports its prototype under `../../design/` with an import record.
 
