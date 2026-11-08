@@ -567,6 +567,41 @@ test("Role detail links back to Roles through the page header trail", async ({
   await expect(page).toHaveURL(/\/admin\/roles$/);
 });
 
+// d8l5.48: the e2e database stored no description for Placeholder user, so the line comes from the
+// module's declaration, and the pill names the module by its display name.
+test("a module role shows its declared line and its module's name", async ({
+  page,
+}, testInfo) => {
+  const line = "Open the placeholder workspace only.";
+
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("groups", testInfo.project.name),
+  });
+  await page.goto("/admin/roles");
+  await expect(
+    page
+      .getByRole("main")
+      .getByText(line, { exact: true })
+      .filter({ visible: true })
+  ).toBeVisible();
+
+  await page
+    .getByRole("button", { name: /^Placeholder user\b/ })
+    .filter({ visible: true })
+    .click();
+
+  const header = page.locator("section").filter({
+    has: page.getByRole("heading", { level: 2, name: "Placeholder user" }),
+  });
+
+  // Exact, because a plain text match ignores case and would pass the lower-case module id.
+  await expect(
+    header.getByText("System · Placeholder", { exact: true })
+  ).toBeVisible();
+  await expect(header.getByText(line, { exact: true })).toBeVisible();
+  await expectNoAxeViolations(page, "Role detail of a module role");
+});
+
 // Owner, 2026-10-27: the help beside each search is an icon, named by its topic.
 test("the help buttons on People, Roles and Groups are icons named by their topic", async ({
   page,
