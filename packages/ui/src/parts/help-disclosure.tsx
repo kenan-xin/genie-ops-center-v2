@@ -88,7 +88,8 @@ export function HelpDisclosure(props: {
         <Button
           variant="link"
           size="sm"
-          className="self-start"
+          // Hangs the padding and border, so the word lines up with the text; the hit area stays 44 px.
+          className="-ms-3.25 self-start"
           onClick={() => setOpen(false)}
         >
           Close

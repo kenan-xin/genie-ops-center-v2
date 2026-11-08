@@ -80,6 +80,27 @@ async function open(name: string): Promise<{
   return { trigger, panel };
 }
 
+/** The left edge of an element's text, without the padding around it. */
+function textLeft(element: HTMLElement): number {
+  const range = document.createRange();
+
+  range.selectNodeContents(element);
+
+  return range.getBoundingClientRect().left;
+}
+
+/** Close is a link in the text column: its word starts where the paragraphs start (6wz1.90). */
+async function closeIsFlushWithTheText(panel: HTMLElement): Promise<void> {
+  const close = within(panel).getByRole("button", { name: "Close" });
+
+  await expect(textLeft(close)).toBeCloseTo(
+    within(panel)
+      .getByText(/^Access adds up/)
+      .getBoundingClientRect().left,
+    0
+  );
+}
+
 export const Default: Story = {
   play: async ({ canvas }) => {
     const trigger = canvas.getByRole("button", { name: "How access works" });
@@ -98,6 +119,7 @@ export const Default: Story = {
       )
     );
     await expect(panel.getBoundingClientRect().width).toBe(320);
+    await closeIsFlushWithTheText(panel);
 
     // The Close link at the foot is the one control, for touch.
     await userEvent.click(await screen.findByRole("button", { name: "Close" }));
@@ -141,6 +163,7 @@ export const Phone: Story = {
       window.innerWidth - 16,
       0
     );
+    await closeIsFlushWithTheText(panel);
   },
 };
 
