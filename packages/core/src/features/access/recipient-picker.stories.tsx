@@ -66,6 +66,10 @@ export const Groups: Story = {
         id: "g-finance",
       })
     );
+    // axe runs after play, and a closing popup still holds its focus guards.
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    );
   },
 };
 
@@ -92,5 +96,8 @@ export const People: Story = {
     await expect(
       canvas.getByRole("combobox", { name: "Choose a person" })
     ).toHaveTextContent("Alex Morgan · a.morgan@example.com");
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument()
+    );
   },
 };
