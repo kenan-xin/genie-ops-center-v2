@@ -141,10 +141,13 @@ function TriggerText(props: {
         <Icon aria-hidden="true" className="size-4 shrink-0" />
       )}
       {/* In the bar, the muted label and a semibold value (variant A, czjw.102). */}
+      {/* The space keeps the visible text inside the accessible name (axe label-content-name-mismatch). */}
       {props.place === "bar" ? (
-        <span className="shrink-0 font-normal text-muted-foreground">
-          {props.filter.label}
-        </span>
+        <>
+          <span className="shrink-0 font-normal text-muted-foreground">
+            {props.filter.label}
+          </span>{" "}
+        </>
       ) : null}
       {/* Elsewhere the empty text is muted and regular (R-37a, czjw.65). */}
       <span

@@ -127,7 +127,7 @@ export function DateRangePicker({
           <>
             <span className="shrink-0 font-normal text-muted-foreground">
               {label}
-            </span>
+            </span>{" "}
             <span className="flex-1 truncate text-left font-semibold">
               {text}
             </span>
