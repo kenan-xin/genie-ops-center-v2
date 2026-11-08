@@ -58,6 +58,8 @@ export type RoleRow = {
   readonly description: string;
   readonly kind: "system" | "custom";
   readonly moduleId: string | null;
+  /** The module's display name, its id when this image does not compile it, null for core (d8l5.48). */
+  readonly moduleName: string | null;
   readonly permissions: readonly string[];
   readonly assignmentCount: number;
   /** R-31: keys appended automatically when a module was entitled (Tenant administrator only). */
@@ -154,22 +156,44 @@ function unavailableKeysOf(
   );
 }
 
+/**
+ * The line a system role shows while its stored description is empty: the core line, or the line
+ * its module declares (d8l5.48). Seeding never rewrites a role (R-33a), so an older row shows the
+ * line without a write.
+ */
+function declaredDescription(
+  raw: RawRole,
+  module: RolesModule | undefined
+): string {
+  if (!raw.isSystem) return "";
+
+  if (raw.moduleId === null) return CORE_ROLE_DESCRIPTIONS.get(raw.name) ?? "";
+
+  return (
+    module?.defaultRoles.find((entry) => entry.name === raw.name)
+      ?.description ?? ""
+  );
+}
+
 function toRoleRow(
   raw: RawRole,
+  modules: readonly RolesModule[],
   adminKeys: ReadonlySet<string>,
   unavailableKeys: readonly UnavailableKey[]
 ): RoleRow {
   const permissions = [...raw.permissions];
+  const module = modules.find((entry) => entry.identity.id === raw.moduleId);
 
   return {
     id: raw.id,
     name: raw.name,
     description:
-      raw.description === "" && raw.isSystem && raw.moduleId === null
-        ? (CORE_ROLE_DESCRIPTIONS.get(raw.name) ?? "")
+      raw.description === ""
+        ? declaredDescription(raw, module)
         : raw.description,
     kind: raw.isSystem ? "system" : "custom",
     moduleId: raw.moduleId,
+    moduleName: module?.identity.displayName ?? raw.moduleId,
     permissions,
     assignmentCount: Number(raw.assignmentCount),
     entitlementAdded:
@@ -208,6 +232,7 @@ export async function listRoles(
   return (result.rows as readonly RawRole[]).map((row) =>
     toRoleRow(
       row,
+      modules,
       adminKeys,
       unavailableKeysOf(row.permissions, modules, entitled)
     )
@@ -285,6 +310,7 @@ export async function readRole(
   return {
     ...toRoleRow(
       raw,
+      modules,
       adminKeys,
       unavailableKeysOf(raw.permissions, modules, entitled)
     ),

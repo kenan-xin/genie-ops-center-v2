@@ -307,22 +307,13 @@ function deleteDescription(assignmentCount: number): string {
 }
 
 /** "System · <module name>" or "Custom"; the phone card says only "System" (mockups). */
-function kindPill(
-  role: Role,
-  catalogue: readonly RolePermissionGroup[],
-  compact = false
-) {
+function kindPill(role: Role, compact = false) {
   if (role.kind !== "system") return <LabelPill>Custom</LabelPill>;
 
   if (compact) return <LabelPill>System</LabelPill>;
 
-  const moduleName =
-    role.moduleId === null
-      ? "Core"
-      : (catalogue.find((group) => group.moduleId === role.moduleId)
-          ?.moduleName ?? role.moduleId);
-
-  return <LabelPill>System · {moduleName}</LabelPill>;
+  // The read names the module, also one that is switched off and so not in the catalogue (d8l5.48).
+  return <LabelPill>System · {role.moduleName ?? "Core"}</LabelPill>;
 }
 
 const HOLDERS_SHOWN = 10;
@@ -460,7 +451,7 @@ function RoleDetailView(props: {
             <h2 className="text-xl font-semibold text-foreground">
               {detail.name}
             </h2>
-            {kindPill(detail, props.catalogue)}
+            {kindPill(detail)}
           </div>
           {detail.description === "" ? null : (
             <p className="mt-1 text-sm text-muted-foreground">
@@ -844,7 +835,7 @@ export function RolesScreen(props: RolesScreenProps) {
               {
                 id: "kind",
                 header: "Kind",
-                cell: (role) => kindPill(role, props.catalogue),
+                cell: (role) => kindPill(role),
               },
               {
                 id: "permissions",
@@ -866,7 +857,7 @@ export function RolesScreen(props: RolesScreenProps) {
                 </IconTile>
               ),
               title: (role) => role.name,
-              badge: (role) => kindPill(role, props.catalogue, true),
+              badge: (role) => kindPill(role, true),
               detail: (role) =>
                 role.description === "" ? null : role.description,
               facts: (role) => [

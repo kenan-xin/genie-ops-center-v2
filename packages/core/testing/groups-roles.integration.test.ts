@@ -8,7 +8,9 @@ import {
   createGroupsRouter,
   createPeopleRouter,
   createRolesRouter,
+  listRoles,
   principalFor,
+  readRole,
   readOwnGroups,
   removeAssignment,
   type ModuleHistorySource,
@@ -817,6 +819,59 @@ describe("the R-38 self-protection rule", () => {
 });
 
 describe("the roles router against a real database", () => {
+  it("shows a module role's declared line and its module's name while the module is off (d8l5.48)", async () => {
+    const declared = {
+      ...dormantModule,
+      defaultRoles: [
+        {
+          name: "Dormant reader",
+          description: "Read dormant records.",
+          permissions: ["dormant:use" as const],
+        },
+      ],
+    };
+
+    // An older row, seeded before roles carried a line: no description.
+    const roleId = await insertRole(deployment.context, {
+      name: "Dormant reader",
+      moduleId: "dormant",
+      isSystem: true,
+      permissions: ["dormant:use"],
+    });
+
+    const stored = await insertRole(deployment.context, {
+      name: `Dormant kept ${randomUUID()}`,
+      moduleId: "dormant",
+      isSystem: true,
+      permissions: ["dormant:use"],
+    });
+
+    await deployment.context.db.$client.query(
+      "update role set description = 'Kept line.' where id = $1",
+      [stored]
+    );
+
+    const list = [fixtureModule, declared, enableLaterModule];
+
+    const rows = await listRoles(deployment.context, list);
+    expect(rows.find((row) => row.id === roleId)).toMatchObject({
+      description: "Read dormant records.",
+      moduleName: "Dormant",
+    });
+    expect(rows.find((row) => row.id === stored)?.description).toBe(
+      "Kept line."
+    );
+    expect(
+      (await readRole(deployment.context, roleId, list))?.description
+    ).toBe("Read dormant records.");
+
+    // The file shares one deployment, so a later case that lists every role sees none of these.
+    await deployment.context.db.$client.query(
+      "delete from role where id = any($1::uuid[])",
+      [[roleId, stored]]
+    );
+  });
+
   it("refuses a caller without core:roles:manage", async () => {
     const { userId } = await insertPersonWith(deployment.context, [
       "fixture:use",

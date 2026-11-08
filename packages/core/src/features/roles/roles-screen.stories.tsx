@@ -199,6 +199,15 @@ export const KindNamesTheModule: Story = {
         id: "r-fixture-user",
         name: "Fixture user",
         moduleId: "fixture",
+        moduleName: "Fixture",
+      },
+      // A switched-off module is not in the catalogue, so the row carries its name (d8l5.48).
+      {
+        ...FIXTURE_SYSTEM_ROLE,
+        id: "r-dormant-user",
+        name: "Dormant user",
+        moduleId: "dormant",
+        moduleName: "Dormant",
       },
     ],
   },
@@ -206,6 +215,7 @@ export const KindNamesTheModule: Story = {
     const table = within(canvas.getByRole("table", { name: "Roles" }));
 
     await expect(table.getByText("System · Fixture")).toBeVisible();
+    await expect(table.getByText("System · Dormant")).toBeVisible();
   },
 };
 

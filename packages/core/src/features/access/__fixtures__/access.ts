@@ -496,6 +496,7 @@ const roleRow = (
   description: "",
   kind: "system",
   moduleId,
+  moduleName: moduleId,
   permissions: [],
   assignmentCount: 0,
   entitlementAdded: [],
