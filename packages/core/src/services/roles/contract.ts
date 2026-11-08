@@ -124,7 +124,7 @@ export const rolesContract = {
     .input(
       z.object({
         subject: z.object({
-          type: z.enum(["user", "group", "module"]),
+          type: z.enum(["user", "group", "module", "role"]),
           id: z.string().min(1).max(200),
         }),
         query: z.string().max(200).optional(),

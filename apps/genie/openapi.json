@@ -1862,7 +1862,8 @@
                   "enum": [
                     "user",
                     "group",
-                    "module"
+                    "module",
+                    "role"
                   ],
                   "type": "string"
                 },

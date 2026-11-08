@@ -43,10 +43,11 @@ export type AccessRecipient = {
   readonly id: string;
 };
 
-/** What Overview pages by: a person, a group, or a module (D8). */
+/** What Overview pages by: a person, a group, a module (D8), or a role (`d8l5.46`). */
 export type AccessSubject =
   | AccessRecipient
-  | { readonly type: "module"; readonly id: string };
+  | { readonly type: "module"; readonly id: string }
+  | { readonly type: "role"; readonly id: string };
 
 export type AccessCursor = {
   readonly addedAt: string;
@@ -119,6 +120,8 @@ const RECIPIENT_FILTER = {
   group: `(a.principal_type = 'group' and a.principal_id = $1)`,
   // D8: every role that opens the module, whatever its `module_id`, as `readHolders` reads it.
   module: `(($1 || ':use') = any(r.permissions))`,
+  // A text compare, so a malformed id from a typed link matches nothing and never casts.
+  role: `(r.id::text = $1)`,
 } as const;
 
 const ORDER_SQL = `order by a.created_at desc, a.id desc`;
@@ -249,8 +252,9 @@ export async function readAccessBySubject(input: {
 
   const { subject } = input;
 
+  // `recipientDisabled` answers `not-found` for a module or a role.
   const personDisabled =
-    subject.type === "module"
+    subject.type === "module" || subject.type === "role"
       ? false
       : await recipientDisabled(input.tenant, subject);
 

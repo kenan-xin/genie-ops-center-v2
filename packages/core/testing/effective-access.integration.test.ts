@@ -351,6 +351,41 @@ describe("the paged effective-access read by subject", () => {
     );
   });
 
+  it("reads every holder of one role, a core role included, and a malformed role id as no holder", async () => {
+    const auditorLike = await insertRole(deployment.context, {
+      name: "Auditor like",
+      permissions: ["core:audit:read"],
+      isSystem: true,
+    });
+
+    const person = await insertUser(deployment.context);
+    const team = await insertGroup(deployment.context, [person]);
+
+    await grant(auditorLike, { type: "user", id: person });
+    await grant(auditorLike, { type: "group", id: team });
+    await grant(viewerRoleId, { type: "user", id: person });
+
+    const page = await roles(adminId).accessBySubject({
+      subject: { type: "role", id: auditorLike },
+    });
+
+    expect(page.paths.map((path) => path.role.id)).toEqual([
+      auditorLike,
+      auditorLike,
+    ]);
+    expect(page.paths.map((path) => path.holder.type).toSorted()).toEqual([
+      "group",
+      "user",
+    ]);
+    expect(page.total).toBe(2);
+
+    expect(
+      await roles(adminId).accessBySubject({
+        subject: { type: "role", id: "not-a-uuid" },
+      })
+    ).toEqual({ paths: [], total: 0, nextCursor: null });
+  });
+
   it("pages paths written in one statement without a skip or a repeat, and counts them on the first page", async () => {
     const pagingUser = await insertRole(deployment.context, {
       name: "Paging user",
