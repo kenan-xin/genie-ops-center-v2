@@ -40,11 +40,13 @@ export type ViewerHighlight = {
   readonly tinted?: false;
 };
 
-/** Where the marks of one key sit, in px from the top of the viewer region. */
+/** The union of the marks of one key, in px from the top left corner of the viewer region. */
 export type MarkPlace = {
   readonly key: string;
   readonly top: number;
   readonly bottom: number;
+  readonly left: number;
+  readonly right: number;
 };
 
 export type DocumentViewerProps = {
@@ -197,7 +199,7 @@ function placesOf(
   region: HTMLElement,
   marks: readonly HTMLElement[]
 ): MarkPlace[] {
-  const origin = region.getBoundingClientRect().top;
+  const origin = region.getBoundingClientRect();
   const byKey = new Map<string, MarkPlace>();
 
   for (const mark of marks) {
@@ -207,13 +209,17 @@ function placesOf(
     if (key === undefined || box.height === 0) continue;
 
     const seen = byKey.get(key);
-    const top = box.top - origin;
-    const bottom = box.bottom - origin;
+    const top = box.top - origin.top;
+    const bottom = box.bottom - origin.top;
+    const left = box.left - origin.left;
+    const right = box.right - origin.left;
 
     byKey.set(key, {
       key,
       top: seen === undefined ? top : Math.min(seen.top, top),
       bottom: seen === undefined ? bottom : Math.max(seen.bottom, bottom),
+      left: seen === undefined ? left : Math.min(seen.left, left),
+      right: seen === undefined ? right : Math.max(seen.right, right),
     });
   }
 

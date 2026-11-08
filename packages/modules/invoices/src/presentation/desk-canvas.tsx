@@ -54,20 +54,13 @@ const PIN_ROOM = 316;
 const CANVAS_PADDING = 64;
 
 /** A field: its label, its origin tag and its value. A card, not a button (DK7). */
-export function FieldCard(props: {
-  readonly field: DeskField;
-  readonly className?: string;
-  readonly style?: CssVars;
-  readonly cardRef?: (element: HTMLDivElement | null) => void;
-}): ReactNode {
+export function FieldCard(props: { readonly field: DeskField }): ReactNode {
   const { field } = props;
 
   return (
     <div
-      ref={props.cardRef}
       data-pin={field.key}
-      style={props.style}
-      className={`flex flex-col gap-0.5 rounded-lg border border-border bg-card px-3 py-2 shadow-xs ${props.className ?? ""}`}
+      className="flex flex-col gap-0.5 rounded-lg border border-border bg-card px-3 py-2 shadow-xs"
     >
       <span className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
         <span>{field.label}</span>
@@ -153,16 +146,35 @@ const samePlaces = (
       other !== undefined &&
       other.key === place.key &&
       Math.round(other.top) === Math.round(place.top) &&
-      Math.round(other.bottom) === Math.round(place.bottom)
+      Math.round(other.bottom) === Math.round(place.bottom) &&
+      Math.round(other.left) === Math.round(place.left) &&
+      Math.round(other.right) === Math.round(place.right)
     );
   });
+
+/** One card beside the page and the quotes it pins to; no quote gives a card with no pin. */
+export type DeskPin = {
+  readonly key: string;
+  readonly sources: readonly {
+    readonly page: number;
+    readonly quote: string;
+  }[];
+};
 
 export type DeskCanvasProps = {
   readonly label: string;
   readonly url: string;
-  readonly fields: readonly DeskField[];
-  /** From 1280 px the fields pin beside the page; below it the record opens in the sheet. */
+  /** The cards beside the page, in list order. */
+  readonly pins: readonly DeskPin[];
+  readonly renderCard: (key: string) => ReactNode;
+  /** From 1280 px the cards pin beside the page; below it the page shows alone. */
   readonly wide: boolean;
+  /** The key whose line is boxed as selected. */
+  readonly selected?: string | null;
+  /** The key whose line and card light under the pointer (prototype variant B). */
+  readonly hovered?: string | null;
+  /** The pointer entered a card or a marked line (its key), or left it (null). */
+  readonly onHover?: (key: string | null) => void;
   readonly onLoadError: () => void;
   readonly onDownload: () => void;
   /** The control that opens the hidden drawer, or null while it shows. */
@@ -174,7 +186,7 @@ export type DeskCanvasProps = {
  * its source line by a leader line (R-38a, prototype variant C).
  */
 export function DeskCanvas(props: DeskCanvasProps): ReactNode {
-  const { fields, wide } = props;
+  const { pins, wide, onHover } = props;
   const canvas = useRef<HTMLDivElement>(null);
   const pageBox = useRef<HTMLDivElement>(null);
   const column = useRef<HTMLDivElement>(null);
@@ -185,6 +197,19 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   const [geometry, setGeometry] = useState<Geometry | null>(null);
   const [canFullScreen, setCanFullScreen] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
+  // Bumped when a card changes height, so the pins are placed again ("Read as", an error).
+  const [resized, setResized] = useState(0);
+  const pinKeys = pins.map((pin) => pin.key).join(" ");
+
+  useEffect(() => {
+    if (!wide) return;
+
+    const observer = new ResizeObserver(() => setResized((last) => last + 1));
+
+    for (const card of cards.current.values()) observer.observe(card);
+
+    return () => observer.disconnect();
+  }, [wide, pinKeys]);
 
   useEffect(() => {
     const element = canvas.current;
@@ -222,19 +247,15 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   // Memoised: a new array would draw the text layer again, which reports places again.
   const highlights = useMemo(
     () =>
-      fields.flatMap((field): ViewerHighlight[] =>
-        field.source === null
-          ? []
-          : [
-              {
-                page: field.source.page,
-                quote: field.source.quote,
-                key: field.key,
-                tinted: false,
-              },
-            ]
+      pins.flatMap((pin) =>
+        pin.sources.map((source): ViewerHighlight => ({
+          page: source.page,
+          quote: source.quote,
+          key: pin.key,
+          tinted: false,
+        }))
       ),
-    [fields]
+    [pins]
   );
 
   const keepPlaces = useCallback(
@@ -245,9 +266,9 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
 
   useLayoutEffect(() => {
     const page = pageBox.current;
-    const pins = column.current;
+    const pinColumn = column.current;
 
-    if (!wide || page === null || pins === null) {
+    if (!wide || page === null || pinColumn === null) {
       setGeometry(null);
 
       return;
@@ -258,40 +279,82 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
     );
 
     const tops = placePins(
-      fields.map((field) => ({
-        key: field.key,
-        lineY: lineOf.get(field.key) ?? null,
-        height: cards.current.get(field.key)?.offsetHeight ?? 0,
+      pins.map((pin) => ({
+        key: pin.key,
+        lineY: lineOf.get(pin.key) ?? null,
+        height: cards.current.get(pin.key)?.offsetHeight ?? 0,
       })),
       PIN_GAP
     );
 
     const bottom = Math.max(
       page.offsetHeight,
-      ...fields.map(
-        (field) =>
-          (tops.get(field.key) ?? 0) +
-          (cards.current.get(field.key)?.offsetHeight ?? 0)
+      ...pins.map(
+        (pin) =>
+          (tops.get(pin.key) ?? 0) +
+          (cards.current.get(pin.key)?.offsetHeight ?? 0)
       )
     );
 
     setGeometry({
       pins: new Map(
-        fields.map((field) => [
-          field.key,
+        pins.map((pin) => [
+          pin.key,
           {
-            top: tops.get(field.key) ?? 0,
-            line: lineOf.get(field.key) ?? null,
+            top: tops.get(pin.key) ?? 0,
+            line: lineOf.get(pin.key) ?? null,
           },
         ])
       ),
       dotX: page.offsetLeft + page.offsetWidth - 8,
       pageTop: page.offsetTop,
-      cardX: pins.offsetLeft,
-      columnTop: pins.offsetTop,
+      cardX: pinColumn.offsetLeft,
+      columnTop: pinColumn.offsetTop,
       height: bottom,
     });
-  }, [fields, places, wide, pageWidth]);
+  }, [pins, places, wide, pageWidth, resized]);
+
+  const litOf = (key: string) =>
+    props.selected === key
+      ? "selected"
+      : props.hovered === key
+        ? "hovered"
+        : undefined;
+
+  const litKeys = new Set(
+    [props.selected, props.hovered].filter((key) => key != null)
+  );
+
+  // The marks are untinted, so the lit line gets a box over them (4 px wider, 3 px taller each side).
+  const lineBoxes = places
+    .filter((place) => litKeys.has(place.key))
+    .map((place) => {
+      const boxStyle: CssVars = {
+        "--box-top": `${place.top - 3}px`,
+        "--box-left": `${place.left - 4}px`,
+        "--box-width": `${place.right - place.left + 8}px`,
+        "--box-height": `${place.bottom - place.top + 6}px`,
+      };
+
+      return (
+        <div
+          key={`${place.key}-${place.top}`}
+          aria-hidden
+          data-line-box={place.key}
+          data-lit={litOf(place.key)}
+          className="pointer-events-none absolute top-(--box-top) left-(--box-left) h-(--box-height) w-(--box-width) rounded-sm border border-ring data-[lit=hovered]:bg-primary/10 data-[lit=selected]:bg-primary/25"
+          style={boxStyle}
+        />
+      );
+    });
+
+  const hoverMark = (target: EventTarget) =>
+    onHover?.(
+      target instanceof Element
+        ? (target.closest<HTMLElement>("mark[data-highlight]")?.dataset
+            .highlight ?? null)
+        : null
+    );
 
   const pageStyle: CssVars = {
     "--desk-page-width": pageWidth === 0 ? "100%" : `${pageWidth}px`,
@@ -380,8 +443,16 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
       >
         <div
           ref={pageBox}
-          className="w-(--desk-page-width) shrink-0 bg-white shadow-md"
+          className="relative w-(--desk-page-width) shrink-0 bg-white shadow-md"
           style={pageStyle}
+          onPointerOver={
+            onHover === undefined
+              ? undefined
+              : (event) => hoverMark(event.target)
+          }
+          onPointerLeave={
+            onHover === undefined ? undefined : () => onHover(null)
+          }
         >
           <LazyDocumentViewer
             url={props.url}
@@ -390,6 +461,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
             onPlaces={keepPlaces}
             onLoadError={props.onLoadError}
           />
+          {lineBoxes}
         </div>
         {wide ? (
           <>
@@ -398,20 +470,33 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
               className="relative ml-14 h-(--pin-column-height) w-65 shrink-0"
               style={columnStyle}
             >
-              {fields.map((field) => (
-                <FieldCard
-                  key={field.key}
-                  field={field}
-                  className="absolute top-(--pin-top) left-0 w-65"
-                  style={{
-                    "--pin-top": `${geometry?.pins.get(field.key)?.top ?? 0}px`,
-                  }}
-                  cardRef={(element) => {
-                    if (element === null) cards.current.delete(field.key);
-                    else cards.current.set(field.key, element);
-                  }}
-                />
-              ))}
+              {pins.map((pin) => {
+                const pinStyle: CssVars = {
+                  "--pin-top": `${geometry?.pins.get(pin.key)?.top ?? 0}px`,
+                };
+
+                return (
+                  <div
+                    key={pin.key}
+                    data-pin-card={pin.key}
+                    data-lit={litOf(pin.key)}
+                    className="absolute top-(--pin-top) left-0 w-65"
+                    style={pinStyle}
+                    ref={(element) => {
+                      if (element === null) cards.current.delete(pin.key);
+                      else cards.current.set(pin.key, element);
+                    }}
+                    onPointerEnter={
+                      onHover === undefined ? undefined : () => onHover(pin.key)
+                    }
+                    onPointerLeave={
+                      onHover === undefined ? undefined : () => onHover(null)
+                    }
+                  >
+                    {props.renderCard(pin.key)}
+                  </div>
+                );
+              })}
             </div>
             {geometry === null ? null : (
               <svg
@@ -420,19 +505,20 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
                 width="1"
                 height="1"
               >
-                {fields.map((field) => {
-                  const pin = geometry.pins.get(field.key);
-                  const height = cards.current.get(field.key)?.offsetHeight;
+                {pins.map(({ key }) => {
+                  const pin = geometry.pins.get(key);
+                  const height = cards.current.get(key)?.offsetHeight;
 
                   if (pin?.line == null || height === undefined) return null;
 
                   const lineY = geometry.pageTop + pin.line;
 
                   return (
-                    <g key={field.key}>
+                    <g key={key}>
                       <path
-                        data-pin-line={field.key}
-                        className="fill-none stroke-muted-foreground/60"
+                        data-pin-line={key}
+                        data-lit={litOf(key)}
+                        className="fill-none stroke-muted-foreground/60 data-lit:stroke-ring"
                         d={leaderPath({
                           dotX: geometry.dotX,
                           lineY,
@@ -441,8 +527,9 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
                         })}
                       />
                       <circle
-                        data-pin-dot={field.key}
-                        className="fill-muted-foreground"
+                        data-pin-dot={key}
+                        data-lit={litOf(key)}
+                        className="fill-muted-foreground data-lit:fill-ring"
                         cx={geometry.dotX}
                         cy={lineY}
                         r={2.5}

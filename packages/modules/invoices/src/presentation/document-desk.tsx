@@ -10,6 +10,7 @@ import {
 import {
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -121,6 +122,16 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
 
   const fileName = `${label}.pdf`;
 
+  // Memoised: new pins would draw the text layer again (`DeskCanvas` highlights).
+  const pins = useMemo(
+    () =>
+      props.fields.map((field) => ({
+        key: field.key,
+        sources: field.source === null ? [] : [field.source],
+      })),
+    [props.fields]
+  );
+
   const deskStyle: CssVars = {
     "--desk-height": fillHeight === undefined ? "auto" : `${fillHeight}px`,
     "--desk-sheet-height": "86dvh",
@@ -163,7 +174,12 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
         key={attempt}
         label={label}
         url={url}
-        fields={props.fields}
+        pins={pins}
+        renderCard={(key) => {
+          const field = props.fields.find((item) => item.key === key);
+
+          return field === undefined ? null : <FieldCard field={field} />;
+        }}
         wide={wide}
         onLoadError={() => setFailed(true)}
         onDownload={() => void downloadFresh()}
