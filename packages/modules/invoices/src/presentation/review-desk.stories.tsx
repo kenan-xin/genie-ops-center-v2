@@ -2,7 +2,7 @@ import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { DEMO_PDF } from "./__fixtures__/demo-pdfs.ts";
 import {
@@ -443,20 +443,23 @@ const drawn = (root: Element, selector: string, what: string) =>
     return found;
   }, PAGE_TIMEOUT);
 
+/** The first request answers the reading document, the poll after it the read invoice. */
+function serveReadingThenRead() {
+  serve(readingReview);
+  let calls = 0;
+
+  getDocumentReview.mockImplementation(async () => {
+    calls += 1;
+
+    return calls === 1 ? readingReview : invoiceAfterReading;
+  });
+}
+
 // T6.1, T6.2 (B4.4): the page reads under a scan with no Discard; the sweep then shows each card,
 // and the PDF loads once from its first link.
 export const Reading: Story = {
   args: { view: readingReview },
-  beforeEach: () => {
-    serve(readingReview);
-    let calls = 0;
-
-    getDocumentReview.mockImplementation(async () => {
-      calls += 1;
-
-      return calls === 1 ? readingReview : invoiceAfterReading;
-    });
-  },
+  beforeEach: serveReadingThenRead,
   play: async ({ canvas, canvasElement }) => {
     await drawn(canvasElement, '[data-scan="loop"]', "The scan");
     await expect(
@@ -620,8 +623,21 @@ async function next(canvas: Canvas, label: string, times = 1) {
   }
 }
 
+/** The All fields title, once the sheet has faded in. */
+const listTitle = (text: string) =>
+  waitFor(() => expect(screen.getByText(text)).toBeVisible());
+
+/** Opens All fields and presses the row whose name starts with `row`. */
+async function pickField(canvas: Canvas, row: string) {
+  await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
+  await userEvent.click(
+    await screen.findByRole("button", { name: new RegExp(`^${row}`, "u") })
+  );
+}
+
 // T8.1, T8.2, T8.5: one field per step in list order, the next label follows the tag, and the
-// summary lists every field with Save and its reason.
+// summary lists every field with Save and its reason. T9.1, T9.2: All fields counts the steps
+// done and opens a step; a blocked Save goes to the step that blocks it.
 export const InvoiceOnPhone: Story = {
   globals: phone390,
   beforeEach: () => serve(invoiceReview),
@@ -630,10 +646,27 @@ export const InvoiceOnPhone: Story = {
     card(canvasElement, "customer");
     await drawn(canvasElement, "[data-lens-spot]", "The lens spot");
 
+    // T9.2: the list counts nothing yet, and its Due date row opens step 7.
+    await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
+    await listTitle("All fields · 0 of 9 done");
+    await userEvent.click(screen.getByRole("button", { name: /^Due date/u }));
+    await onStep(canvas, 7, 9);
+    card(canvasElement, "dueDate");
+    await pickField(canvas, "Customer");
+    await onStep(canvas, 1, 9);
+
     // T8.1: forward one step and back.
     await next(canvas, "Looks right");
     await onStep(canvas, 2, 9);
     card(canvasElement, "number");
+
+    // T9.2: the step passed with Looks right counts as done.
+    await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
+    await listTitle("All fields · 1 of 9 done");
+    await userEvent.click(
+      screen.getByRole("button", { name: /^Invoice number/u })
+    );
+    await onStep(canvas, 2, 9);
     await userEvent.click(
       canvas.getByRole("button", { name: "Previous field" })
     );
@@ -671,9 +704,111 @@ export const InvoiceOnPhone: Story = {
     await expect(
       canvas.getByText("Choose a due date or mark it unspecified to save.")
     ).toBeVisible();
+    const save = canvas.getByRole("button", { name: "Save as unpaid" });
+
+    await expect(save).toHaveAttribute("aria-disabled", "true");
+
+    // T9.1: Save goes to the due date step and focuses its choice.
+    await userEvent.click(save);
+    await onStep(canvas, 7, 9);
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("radio", { name: "Enter a due date" })
+      ).toHaveFocus()
+    );
+    await expect(saveInvoice).not.toHaveBeenCalled();
+  },
+};
+
+// T9.3: while the job reads, the lens shows the page with no step and no bottom bar; when the
+// reading lands, step 1 shows in the same lens.
+export const ReadingOnPhone: Story = {
+  globals: phone390,
+  args: { view: readingReview },
+  beforeEach: serveReadingThenRead,
+  play: async ({ canvas, canvasElement }) => {
     await expect(
+      await canvas.findByRole("heading", { name: "Reading the document" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(
+        "You check the fields one at a time when the reading finishes."
+      )
+    ).toBeVisible();
+    await expect(canvas.getByText("Reading the page")).toBeVisible();
+    await expect(
+      canvasElement.querySelector("[data-shell-bottom-bar]")
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: "All fields" })
+    ).toBeNull();
+
+    const viewer = await drawn(
+      canvasElement,
+      "[data-document-viewer]",
+      "The viewer"
+    );
+
+    const page = await drawn(viewer, "canvas", "The document");
+
+    await onStep(canvas, 1, 9);
+    await expect(page.isConnected).toBe(true);
+    await expect(
+      canvasElement.querySelector("[data-shell-bottom-bar]")
+    ).not.toBeNull();
+  },
+};
+
+// T9.4: a save on a phone shows the result and the summary read only, with no bottom bar.
+export const SavedOnPhone: Story = {
+  globals: phone390,
+  beforeEach: () => {
+    serve(invoiceReview);
+    saveInvoice.mockImplementation(async () => {
+      getDocumentReview.mockResolvedValue(savedInvoiceReview);
+
+      return ENVELOPE;
+    });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await onStep(canvas, 1, 9);
+    await pickField(canvas, "Due date");
+    await onStep(canvas, 7, 9);
+    await userEvent.click(
+      canvas.getByRole("radio", { name: "Mark as unspecified" })
+    );
+    await pickField(canvas, "Save as unpaid");
+    await onStep(canvas, 9, 9);
+    await userEvent.click(
       canvas.getByRole("button", { name: "Save as unpaid" })
-    ).toHaveAttribute("aria-disabled", "true");
+    );
+
+    await expect(
+      await canvas.findByText(
+        "Saved as invoice INV-LIVE-001.",
+        {},
+        PAGE_TIMEOUT
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "Open the invoice" })
+    ).toBeVisible();
+
+    const summary = await drawn(
+      canvasElement,
+      "[data-review-summary]",
+      "The summary"
+    );
+
+    await expect(within(summary).getByText("Unspecified")).toBeVisible();
+    // The result card keeps Upload another, whose file input is not a field.
+    await expect(canvasElement.querySelector("[data-field]")).toBeNull();
+    await expect(
+      summary.querySelectorAll("input, textarea, [role=combobox]")
+    ).toHaveLength(0);
+    await expect(
+      canvasElement.querySelector("[data-shell-bottom-bar]")
+    ).toBeNull();
   },
 };
 

@@ -1,12 +1,25 @@
 "use client";
 
 import { PageHeader } from "@genie/core/features/shell";
-import { Button, useMediaQuery } from "@genie/ui";
+import {
+  Button,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+  useMediaQuery,
+} from "@genie/ui";
 import {
   ArrowRightIcon,
   ChevronLeftIcon,
+  CircleAlertIcon,
+  CircleCheckIcon,
+  CircleIcon,
   FileTextIcon,
   FileXIcon,
+  ListIcon,
+  Loader2Icon,
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
@@ -95,6 +108,8 @@ function PageLens(props: {
   /** The line to show; null shows the top of the page. */
   readonly place: MarkPlace | null;
   readonly chip: ReactNode;
+  /** The chip announces a change, such as the reading that runs. */
+  readonly chipStatus?: boolean;
   readonly onPlaces: (places: readonly MarkPlace[]) => void;
   readonly onLoadError: () => void;
 }): ReactNode {
@@ -140,7 +155,7 @@ function PageLens(props: {
       <div
         ref={scroller}
         data-review-lens=""
-        className="h-68 overflow-hidden"
+        className="h-68 overflow-hidden md:h-96"
         style={LENS_PAGE}
       >
         <div className="relative w-(--lens-page-width)">
@@ -162,7 +177,10 @@ function PageLens(props: {
         </div>
       </div>
       {props.chip === null ? null : (
-        <span className="absolute top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-xs font-semibold whitespace-nowrap text-background shadow-md [&_svg]:size-3.5">
+        <span
+          role={props.chipStatus === true ? "status" : undefined}
+          className="absolute top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-xs font-semibold whitespace-nowrap text-background shadow-md [&_svg]:size-3.5"
+        >
           {props.chip}
         </span>
       )}
@@ -186,7 +204,11 @@ function Summary(props: { readonly model: ReviewModel }): ReactNode {
           </dt>
           <dd className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span className="min-w-0 break-words">{item.display}</span>
-            <OriginTag tag={item.tag} />
+            {/* These tags only restate the value, so the row says it once. */}
+            {item.tag === "unspecified" ||
+            item.tag === "paid-in-full" ? null : (
+              <OriginTag tag={item.tag} />
+            )}
           </dd>
         </div>
       ))}
@@ -202,6 +224,58 @@ function Summary(props: { readonly model: ReviewModel }): ReactNode {
   );
 }
 
+/** One row of All fields: what the step holds, and whether it is done or needs the person. */
+function FieldRow(props: {
+  readonly label: string;
+  readonly detail: string;
+  readonly state: "done" | "attention" | "open";
+  readonly onPick: () => void;
+}): ReactNode {
+  const Icon =
+    props.state === "done"
+      ? CircleCheckIcon
+      : props.state === "attention"
+        ? CircleAlertIcon
+        : CircleIcon;
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={props.onPick}
+        className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring"
+      >
+        <Icon
+          aria-hidden
+          className={`size-4 shrink-0 ${props.state === "done" ? "text-success" : "text-muted-foreground"}`}
+        />
+        <span className="shrink-0 text-sm font-semibold">{props.label}</span>
+        <span className="ml-auto min-w-0 truncate text-sm text-muted-foreground">
+          {props.detail}
+        </span>
+      </button>
+    </li>
+  );
+}
+
+/** A group of rows in All fields, with its title. */
+function FieldGroup(props: {
+  readonly title: string;
+  readonly children: ReactNode;
+}): ReactNode {
+  return (
+    <section aria-label={props.title} className="flex flex-col gap-1">
+      <h3 className="px-3 text-xs font-semibold text-muted-foreground">
+        {props.title}
+      </h3>
+      <ul className="flex flex-col">{props.children}</ul>
+    </section>
+  );
+}
+
+const READING_NOTE =
+  "You check the fields one at a time when the reading finishes.";
+
 /**
  * The review on a phone, one field at a time (R-38, czjw.98, prototype variant C): the source
  * line of the field in a lens, its card, then the split as its own step, then a summary with Save.
@@ -213,8 +287,13 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
   const [at, setAt] = useState<string | null>(null);
   // The control to focus once the step that holds it renders (a blocked Save, a held split).
   const [focusId, setFocusId] = useState<string | null>(null);
+  // The steps passed with the next button, for the count of All fields.
+  const [passed, setPassed] = useState<ReadonlySet<string>>(new Set());
+  const [listOpen, setListOpen] = useState(false);
+  const saved = frame.saved !== null;
 
-  const steps = stepsOf(model);
+  // Once saved, the page shows the result and the summary, with no steps.
+  const steps = saved ? [] : stepsOf(model);
   const found = steps.findIndex((step) => step.key === at);
   const index = found === -1 ? 0 : found;
   const step = steps[index];
@@ -282,11 +361,127 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
       return;
     }
 
+    if (step !== undefined) setPassed((last) => new Set(last).add(step.key));
+
     go(index + 1);
   };
 
+  const doneOf = (candidate: Step) =>
+    passed.has(candidate.key) ||
+    candidate.item?.tag === "corrected" ||
+    candidate.item?.tag === "entered";
+
+  const pick = (key: string) => {
+    setAt(key);
+    setListOpen(false);
+  };
+
+  const rowOf = (candidate: Step): ReactNode => {
+    const field = candidate.item;
+
+    if (field === null) return null;
+
+    const attention =
+      field.tag === "needs-input"
+        ? "Needs your input"
+        : field.tag === "check-this"
+          ? "Check this"
+          : null;
+
+    return (
+      <FieldRow
+        key={candidate.key}
+        label={field.label}
+        detail={attention ?? field.display}
+        state={
+          doneOf(candidate) ? "done" : attention === null ? "open" : "attention"
+        }
+        onPick={() => pick(candidate.key)}
+      />
+    );
+  };
+
+  const fieldList =
+    model === null ? null : (
+      <Sheet open={listOpen} onOpenChange={setListOpen}>
+        <SheetTrigger
+          render={<Button type="button" variant="secondary" size="sm" />}
+        >
+          <ListIcon />
+          All fields
+        </SheetTrigger>
+        <SheetContent side="bottom">
+          <SheetHeader>
+            <SheetTitle>
+              {`All fields · ${steps.filter(doneOf).length} of ${steps.length} done`}
+            </SheetTitle>
+          </SheetHeader>
+          <div className="flex max-h-120 flex-col gap-4 overflow-y-auto px-1 pb-6">
+            <FieldGroup title="On the page">
+              {steps
+                .filter(
+                  (candidate) => (candidate.item?.sources.length ?? 0) > 0
+                )
+                .map(rowOf)}
+            </FieldGroup>
+            {steps.some((candidate) => candidate.item?.sources.length === 0) ? (
+              <FieldGroup title="Not on the page">
+                {steps
+                  .filter((candidate) => candidate.item?.sources.length === 0)
+                  .map(rowOf)}
+              </FieldGroup>
+            ) : null}
+            <FieldGroup title="Finish">
+              {model.split === null ? null : (
+                <FieldRow
+                  label="Confirm the split"
+                  detail={
+                    model.splitSummary === null
+                      ? ""
+                      : `Linked ${model.splitSummary.linked}`
+                  }
+                  state={
+                    passed.has("split")
+                      ? "done"
+                      : model.blocker?.key === "split"
+                        ? "attention"
+                        : "open"
+                  }
+                  onPick={() => pick("split")}
+                />
+              )}
+              <FieldRow
+                label={model.saveLabel}
+                detail=""
+                state="open"
+                onPick={() => pick("summary")}
+              />
+            </FieldGroup>
+          </div>
+        </SheetContent>
+      </Sheet>
+    );
+
   const body = (() => {
-    if (model === null || step === undefined) return null;
+    if (model === null) {
+      return (
+        <>
+          <h2 className="text-lg font-semibold">Reading the document</h2>
+          <p className="text-sm text-muted-foreground">{READING_NOTE}</p>
+        </>
+      );
+    }
+
+    if (saved) {
+      return (
+        <>
+          {frame.saved}
+          <Summary model={model} />
+        </>
+      );
+    }
+
+    if (step === undefined) return null;
 
     if (item !== null) {
       return (
@@ -341,26 +536,38 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
             highlights={highlights}
             place={place}
             chip={
-              lost ? (
+              model === null ? (
+                <>
+                  <Loader2Icon
+                    aria-hidden
+                    className="motion-safe:animate-spin"
+                  />
+                  Reading the page
+                </>
+              ) : lost ? (
                 <>
                   <FileXIcon aria-hidden />
                   Not found on the page
                 </>
               ) : null
             }
+            chipStatus={model === null}
             onPlaces={setPlaces}
             onLoadError={file.fail}
           />
         )}
-        {step === undefined ? null : (
-          <section className="flex flex-col gap-4">
-            <p className="text-sm font-semibold text-muted-foreground">
-              {`Step ${index + 1} of ${steps.length}`}
-            </p>
-            {frame.notice}
-            {body}
-          </section>
-        )}
+        <section className="flex flex-col gap-4">
+          {step === undefined ? null : (
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-sm font-semibold text-muted-foreground">
+                {`Step ${index + 1} of ${steps.length}`}
+              </p>
+              {fieldList}
+            </div>
+          )}
+          {frame.notice}
+          {body}
+        </section>
       </div>
       {model === null || step === undefined ? null : step.key === "summary" ? (
         <ReviewSaveBar
