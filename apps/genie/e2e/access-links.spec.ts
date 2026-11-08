@@ -131,6 +131,8 @@ test("the Modules link opens Access with the module staged for the chosen person
     .filter({ visible: true })
     .click();
   await expect(page).toHaveURL(/\/admin\/access\?module=placeholder$/);
+  // The phone band loads Access as a document, and a click before hydration is lost.
+  await page.waitForLoadState("networkidle");
 
   await page.getByRole("button", { name: "People", exact: true }).click();
   await pickRecipient(page, "user", e2eAccessLinksMemberEmail(project));
