@@ -4,7 +4,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { DEMO_PDF } from "./__fixtures__/demo-pdfs.ts";
 import {
   aiOffReview,
   couldNotReadReview,
@@ -12,7 +11,6 @@ import {
   invoiceReview,
   purchaseOrderReview,
   readOnlyReview,
-  readingReview,
   receiptReview,
 } from "./__fixtures__/review.ts";
 import { DocumentReview } from "./document-review.tsx";
@@ -83,15 +81,6 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
-
-/** The invoice after the reading, with a fresh file link for the refetch test. */
-const invoiceAfterReading: DocumentReviewView = {
-  ...invoiceReview,
-  document: {
-    ...invoiceReview.document,
-    fileUrl: `${DEMO_PDF.invoice01}?v=2`,
-  },
-};
 
 function serve(view: DocumentReviewView) {
   releaseKind = null;
@@ -198,60 +187,6 @@ export const Tags: Story = {
     await expect(
       fieldRow(canvasElement, "paymentTerms").getByText("None")
     ).toBeVisible();
-  },
-};
-
-// B4.4, T4.8: a reading document shows its page and note, then its fields, and its PDF loads once.
-export const Reading: Story = {
-  args: { view: readingReview },
-  globals: desktop,
-  beforeEach: () => {
-    serve(readingReview);
-    let calls = 0;
-
-    getDocumentReview.mockImplementation(async () => {
-      calls += 1;
-
-      return calls === 1 ? readingReview : invoiceAfterReading;
-    });
-  },
-  play: async ({ canvas, canvasElement }) => {
-    await expect(
-      canvas.getByText(
-        "Reading the document. Fields that are not on the page, and the split of a payment, show here when the reading finishes."
-      )
-    ).toBeVisible();
-
-    const viewer = await waitFor(() => {
-      const found = canvasElement.querySelector("[data-document-viewer]");
-
-      if (found === null) throw new Error("The viewer has not drawn yet.");
-
-      return found;
-    });
-
-    const firstLink = `${DEMO_PDF.invoice01}?v=1`;
-
-    await expect(viewer).toHaveAttribute("data-document-url", firstLink);
-
-    const drawn = await waitFor(() => {
-      const found = viewer.querySelector("canvas");
-
-      if (found === null) throw new Error("The document has not drawn yet.");
-
-      return found;
-    });
-
-    await expect(
-      await canvas.findByText("Customer", {}, { timeout: 8_000 })
-    ).toBeVisible();
-
-    // The refetch's ?v=2 never reaches the viewer, and its PDF stays drawn.
-    await expect(viewer).toHaveAttribute("data-document-url", firstLink);
-    await expect(viewer.getAttribute("data-document-url")).not.toContain(
-      "?v=2"
-    );
-    await expect(viewer.contains(drawn)).toBe(true);
   },
 };
 
@@ -611,13 +546,6 @@ export const Dark: Story = {
 export const TagsOnPhone: Story = {
   ...Tags,
   name: "Tags on a phone",
-  globals: phone,
-};
-
-// B4.4 at 390: until the pager (Task 8), the desk stacks the page and the panel, so the play is shared.
-export const ReadingOnPhone: Story = {
-  ...Reading,
-  name: "Reading on a phone",
   globals: phone,
 };
 

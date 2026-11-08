@@ -63,7 +63,9 @@ export function ReviewWorkspace(props: {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        model?.submit();
+
+        // The panel says to wait until the sweep shows the cards.
+        if (!frame.sweep) model?.submit();
       }}
     >
       {hydrated ? (

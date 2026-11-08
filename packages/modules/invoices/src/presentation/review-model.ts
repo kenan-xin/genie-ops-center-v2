@@ -49,6 +49,9 @@ export type ReviewFrame = {
   readonly typeSelect: ReactNode | null;
   /** The Could not read card. */
   readonly notice: ReactNode | null;
+  /** The reading landed on this page and its sweep has not played yet (P09-2). */
+  readonly sweep: boolean;
+  readonly onSweepEnd: () => void;
 };
 
 export type ReviewLayoutProps = {

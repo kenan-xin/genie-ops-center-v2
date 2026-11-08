@@ -4,11 +4,14 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
+import { DEMO_PDF } from "./__fixtures__/demo-pdfs.ts";
 import {
+  invoiceAfterReading,
   invoiceReview,
   lostQuoteInvoiceReview,
   meridianOpenInvoices,
   noQuoteInvoiceReview,
+  readingReview,
   splitPaymentReview,
 } from "./__fixtures__/review.ts";
 import { DocumentReview } from "./document-review.tsx";
@@ -424,5 +427,100 @@ export const PreviewFailedReview: Story = {
     ).toEqual([]);
 
     await expect(canvasElement.querySelector("[data-pin-card]")).toBeNull();
+  },
+};
+
+/** The one element that matches, once it is drawn. */
+const drawn = (root: Element, selector: string, what: string) =>
+  waitFor(() => {
+    const found = root.querySelector(selector);
+
+    if (found === null) throw new Error(`${what} has not drawn yet.`);
+
+    return found;
+  }, PAGE_TIMEOUT);
+
+// T6.1, T6.2 (B4.4): the page reads under a scan with no Discard; the sweep then shows each card,
+// and the PDF loads once from its first link.
+export const Reading: Story = {
+  args: { view: readingReview },
+  beforeEach: () => {
+    serve(readingReview);
+    let calls = 0;
+
+    getDocumentReview.mockImplementation(async () => {
+      calls += 1;
+
+      return calls === 1 ? readingReview : invoiceAfterReading;
+    });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await drawn(canvasElement, '[data-scan="loop"]', "The scan");
+    await expect(
+      canvas.getByText("Reading. Fields appear as each line is read.")
+    ).toHaveAttribute("role", "status");
+    await expect(
+      canvasElement.querySelectorAll("[data-skeleton-card]")
+    ).toHaveLength(1);
+
+    const side = panel(canvasElement);
+
+    await expect(
+      side.getByText(
+        "Reading the document. Fields that are not on the page, and the split of a payment, show here when the reading finishes."
+      )
+    ).toBeVisible();
+    await expect(
+      side.getByText("Wait for the reading to finish.")
+    ).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: "Discard" })).toBeNull();
+
+    const type = canvas.getByRole("combobox", { name: "Type" });
+
+    await expect(type).toBeDisabled();
+    await expect(type).toHaveTextContent("Not classified yet");
+
+    const viewer = await drawn(
+      canvasElement,
+      "[data-document-viewer]",
+      "The viewer"
+    );
+
+    const firstLink = `${DEMO_PDF.invoice01}?v=1`;
+
+    await expect(viewer).toHaveAttribute("data-document-url", firstLink);
+
+    const page = await drawn(viewer, "canvas", "The document");
+
+    // T6.2: the poll answers the read invoice; the sweep plays once and shows every card.
+    await waitFor(
+      () => expect(canvasElement.querySelector("[data-scan]")).toBeNull(),
+      PAGE_TIMEOUT
+    );
+    await pinned(canvasElement, READ_KEYS);
+
+    // `invisible` keeps a hidden card in the layout, so visibility is what the reveal changes.
+    await expect(
+      READ_KEYS.filter(
+        (key) =>
+          !canvasElement
+            .querySelector(`[data-pin-card="${key}"]`)
+            ?.hasAttribute("data-revealed") ||
+          getComputedStyle(card(canvasElement, key)).visibility !== "visible"
+      )
+    ).toEqual([]);
+
+    await expect(
+      canvasElement.querySelector("[data-skeleton-card]")
+    ).toBeNull();
+    await expect(
+      panel(canvasElement).getByText(
+        "Choose a due date or mark it unspecified to save."
+      )
+    ).toBeVisible();
+
+    // The refetch's ?v=2 never reaches the viewer, and its PDF stays drawn.
+    await expect(viewer).toHaveAttribute("data-document-url", firstLink);
+    await expect(page.isConnected).toBe(true);
   },
 };

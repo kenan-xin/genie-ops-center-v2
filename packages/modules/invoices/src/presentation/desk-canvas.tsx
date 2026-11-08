@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Card, CardContent } from "@genie/ui";
+import { Button, Card, CardContent, Skeleton, useMediaQuery } from "@genie/ui";
 import {
   DownloadIcon,
   FileTextIcon,
@@ -52,6 +52,15 @@ const ZOOM = { min: 50, max: 250, step: 25, fit: 100 } as const;
 const PIN_ROOM = 316;
 
 const CANVAS_PADDING = 64;
+
+/** The scan line goes down the page once in this time when the reading lands (czjw.98, P09-2). */
+export const SWEEP_MS = 900;
+
+/** One pass of the scan line while the job reads. */
+const LOOP_MS = 2_400;
+
+/** The scan line starts at the top; the sweep then moves it without a render. */
+const SCAN_START: CssVars = { "--scan-top": "0px" };
 
 /** A field: its label, its origin tag and its value. A card, not a button (DK7). */
 export function FieldCard(props: { readonly field: DeskField }): ReactNode {
@@ -179,6 +188,13 @@ export type DeskCanvasProps = {
   readonly onDownload: () => void;
   /** The control that opens the hidden drawer, or null while it shows. */
   readonly drawerButton: ReactNode;
+  /**
+   * "loop" while the job reads; "sweep" once, when the reading lands: each card shows as the line
+   * passes its line.
+   */
+  readonly scan?: "loop" | "sweep" | null;
+  /** The sweep reached the bottom of the page, or ended at once under reduced motion. */
+  readonly onSweepEnd?: () => void;
 };
 
 /**
@@ -187,6 +203,7 @@ export type DeskCanvasProps = {
  */
 export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   const { pins, wide, onHover } = props;
+  const scan = props.scan ?? null;
   const canvas = useRef<HTMLDivElement>(null);
   const pageBox = useRef<HTMLDivElement>(null);
   const column = useRef<HTMLDivElement>(null);
@@ -200,6 +217,78 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   // Bumped when a card changes height, so the pins are placed again ("Read as", an error).
   const [resized, setResized] = useState(0);
   const pinKeys = pins.map((pin) => pin.key).join(" ");
+
+  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)", {
+    noSsr: true,
+  });
+
+  // The keys whose line the sweep passed; a card shows once its key is here.
+  const [revealed, setRevealed] = useState<ReadonlySet<string>>(new Set());
+
+  // The sweep reads the places and the end callback as they are now, not as they were at its start.
+  const latest = useRef({ places, onSweepEnd: props.onSweepEnd });
+
+  useLayoutEffect(() => {
+    latest.current = { places, onSweepEnd: props.onSweepEnd };
+  });
+
+  useEffect(() => {
+    const root = canvas.current;
+    const page = pageBox.current;
+
+    if (scan === null) return;
+
+    if (scan === "sweep" && (reducedMotion || root === null || page === null)) {
+      latest.current.onSweepEnd?.();
+
+      return;
+    }
+
+    if (root === null || page === null || reducedMotion) return;
+
+    // The line moves through a custom property, so no frame renders the canvas again.
+    const start = performance.now();
+    const shown = new Set<string>();
+    let frame = 0;
+
+    const tick = (now: number) => {
+      const height = page.offsetHeight;
+
+      if (scan === "loop") {
+        root.style.setProperty(
+          "--scan-top",
+          `${(((now - start) % LOOP_MS) / LOOP_MS) * height}px`
+        );
+        frame = requestAnimationFrame(tick);
+
+        return;
+      }
+
+      const done = Math.min(1, (now - start) / SWEEP_MS);
+      const lineY = done * height;
+
+      root.style.setProperty("--scan-top", `${lineY}px`);
+
+      const passed = latest.current.places.filter(
+        (place) =>
+          !shown.has(place.key) && (place.top + place.bottom) / 2 <= lineY
+      );
+
+      for (const place of passed) shown.add(place.key);
+
+      if (passed.length > 0) setRevealed(new Set(shown));
+
+      if (done < 1) frame = requestAnimationFrame(tick);
+      else latest.current.onSweepEnd?.();
+    };
+
+    frame = requestAnimationFrame(tick);
+
+    return () => cancelAnimationFrame(frame);
+  }, [scan, reducedMotion]);
+
+  // A card with no place on the page shows when the sweep ends.
+  const shownOf = (key: string) => scan !== "sweep" || revealed.has(key);
 
   useEffect(() => {
     if (!wide) return;
@@ -376,6 +465,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
     <div
       ref={canvas}
       className="relative min-w-0 flex-1 overflow-auto bg-muted max-xl:rounded-xl xl:h-full"
+      style={SCAN_START}
     >
       <div className="sticky top-3 left-3 z-10 h-0 w-max">
         <div
@@ -436,6 +526,14 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
           </Button>
           {props.drawerButton}
         </div>
+        {scan === null ? null : (
+          <p
+            role="status"
+            className="mt-2 ml-3 w-max rounded-lg bg-card px-3 py-1.5 text-sm text-muted-foreground shadow-md ring-1 ring-border"
+          >
+            Reading. Fields appear as each line is read.
+          </p>
+        )}
       </div>
       <div
         data-desk-content=""
@@ -462,6 +560,14 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
             onLoadError={props.onLoadError}
           />
           {lineBoxes}
+          {scan === null ? null : (
+            // The unread part of the page stays veiled below the scan line (prototype variant A).
+            <div
+              aria-hidden
+              data-scan={scan}
+              className="pointer-events-none absolute inset-x-0 top-(--scan-top) bottom-0 border-t-2 border-primary bg-muted/60"
+            />
+          )}
         </div>
         {wide ? (
           <>
@@ -470,6 +576,16 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
               className="relative ml-14 h-(--pin-column-height) w-65 shrink-0"
               style={columnStyle}
             >
+              {scan === null ? null : (
+                <div
+                  data-skeleton-card=""
+                  aria-hidden
+                  className={`absolute left-0 flex w-65 flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2.5 shadow-xs ${scan === "sweep" ? "top-(--scan-top)" : "top-0"}`}
+                >
+                  <Skeleton className="w-1/3" />
+                  <Skeleton className="w-full" />
+                </div>
+              )}
               {pins.map((pin) => {
                 const pinStyle: CssVars = {
                   "--pin-top": `${geometry?.pins.get(pin.key)?.top ?? 0}px`,
@@ -480,7 +596,9 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
                     key={pin.key}
                     data-pin-card={pin.key}
                     data-lit={litOf(pin.key)}
-                    className="absolute top-(--pin-top) left-0 w-65"
+                    data-revealed={shownOf(pin.key) ? "" : undefined}
+                    // Invisible, not hidden, so a card keeps its height and no card moves.
+                    className={`absolute top-(--pin-top) left-0 w-65 ${shownOf(pin.key) ? "" : "invisible"}`}
                     style={pinStyle}
                     ref={(element) => {
                       if (element === null) cards.current.delete(pin.key);
@@ -509,7 +627,12 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
                   const pin = geometry.pins.get(key);
                   const height = cards.current.get(key)?.offsetHeight;
 
-                  if (pin?.line == null || height === undefined) return null;
+                  if (
+                    pin?.line == null ||
+                    height === undefined ||
+                    !shownOf(key)
+                  )
+                    return null;
 
                   const lineY = geometry.pageTop + pin.line;
 

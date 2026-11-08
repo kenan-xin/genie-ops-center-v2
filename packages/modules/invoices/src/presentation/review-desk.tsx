@@ -15,6 +15,7 @@ import { DocumentStatusBadge } from "./document-status-badge.tsx";
 import { ReviewCard } from "./review-card.tsx";
 import { ReviewSaveBar } from "./review-form.tsx";
 import type {
+  ReviewFrame,
   ReviewItem,
   ReviewLayoutProps,
   ReviewModel,
@@ -22,8 +23,11 @@ import type {
 
 export type ReviewStatus = "reading" | "blocked" | "ready";
 
-export function reviewStatusOf(model: ReviewModel | null): ReviewStatus {
-  if (model === null) return "reading";
+export function reviewStatusOf(
+  model: ReviewModel | null,
+  frame: ReviewFrame
+): ReviewStatus {
+  if (model === null || frame.sweep) return "reading";
 
   return model.blocker === null ? "ready" : "blocked";
 }
@@ -87,6 +91,16 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
   const [failed, setFailed] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+
+  // The sweep plays on the page, so a page that did not load ends it at once.
+  const sweeping = frame.sweep && !failed;
+
+  // While the job reads and while the sweep plays, the panel waits (P09-2).
+  const reading = model === null || sweeping;
+
+  useEffect(() => {
+    if (frame.sweep && failed) frame.onSweepEnd();
+  }, [frame, failed]);
 
   const items = model?.items ?? [];
   const pinsShown = wide && !failed;
@@ -164,7 +178,7 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
     <>
       <PageHeader
         title={frame.title}
-        status={<StatusPill status={reviewStatusOf(model)} />}
+        status={<StatusPill status={reviewStatusOf(model, frame)} />}
         meta={frame.meta}
         breadcrumb={frame.breadcrumb}
         {...(frame.typeSelect === null
@@ -199,6 +213,8 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
             onLoadError={() => setFailed(true)}
             onDownload={() => void downloadFresh()}
             drawerButton={null}
+            scan={model === null ? "loop" : sweeping ? "sweep" : null}
+            onSweepEnd={frame.onSweepEnd}
           />
         )}
         <aside
@@ -210,13 +226,13 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
             {frame.notice}
-            {model === null ? (
+            {reading ? (
               <p className="text-sm text-muted-foreground">{READING_NOTE}</p>
             ) : null}
-            {onPage.length === 0 ? null : (
+            {reading || onPage.length === 0 ? null : (
               <CardGroup title="On the page">{onPage.map(cardOf)}</CardGroup>
             )}
-            {model === null ? null : offPage.length > 0 ? (
+            {reading ? null : offPage.length > 0 ? (
               <CardGroup
                 title="Not on the page"
                 count={countText(offPage.length)}
@@ -226,14 +242,14 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
             ) : pinsShown ? (
               <p className="text-sm text-muted-foreground">{ALL_FOUND}</p>
             ) : null}
-            {model?.split == null ? null : (
+            {reading || model?.split == null ? null : (
               <div data-review-split="">{model.split}</div>
             )}
             {model?.notices}
           </div>
           <ReviewSaveBar
             reason={
-              model === null
+              reading
                 ? "Wait for the reading to finish."
                 : (model.blocker?.reason ?? null)
             }

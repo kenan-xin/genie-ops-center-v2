@@ -115,6 +115,15 @@ export const readingReview: DocumentReviewView = {
   saved: null,
 };
 
+/** Upload 01 once its reading lands, with a fresh file link: the page must keep its first link. */
+export const invoiceAfterReading: DocumentReviewView = {
+  ...invoiceReview,
+  document: {
+    ...invoiceReview.document,
+    fileUrl: `${DEMO_PDF.invoice01}?v=2`,
+  },
+};
+
 /** Upload 01, whose reading could not finish. */
 export const couldNotReadReview: DocumentReviewView = {
   ...readingReview,

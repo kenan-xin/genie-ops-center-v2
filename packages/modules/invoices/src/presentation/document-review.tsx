@@ -97,6 +97,8 @@ export function DocumentReview(props: {
   const [firstFileUrl] = useState(view.document.fileUrl);
   const [discardOpen, setDiscardOpen] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  // The sweep plays once, when a reading lands on this page, never after a type change (P09-2).
+  const [sweep, setSweep] = useState(view.document.status === "reading");
   // Below `lg` one pane shows at a time; from `lg` both sit side by side (choice 14).
   const [pane, setPane] = useState<"fields" | "document">("fields");
 
@@ -312,6 +314,8 @@ export function DocumentReview(props: {
                   {discardError}
                 </>
               ),
+            sweep: sweep && !reading,
+            onSweepEnd: () => setSweep(false),
           }}
           discarding={discard.isPending}
           onDiscard={reading ? null : () => setDiscardOpen(true)}
