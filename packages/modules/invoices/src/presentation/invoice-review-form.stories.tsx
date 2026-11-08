@@ -1,6 +1,7 @@
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { omit } from "es-toolkit";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -661,96 +662,71 @@ export const SaveReasonBesideSave: Story = {
   play: async ({ canvas }) => reasonAboveSave(canvas),
 };
 
-// D33 (czjw.65, I7): on a phone the reason takes its own line, right above the buttons.
+// Every form state at the phone width too, so axe checks each at 390 x 844. A writable review
+// shows the pager there, so its copy drops the desk play (`omit`); the pager stories of
+// `review-desk.stories.tsx` test the phone, and `InvoiceOnPhone` the reason with Save.
 export const SaveReasonBesideSaveOnPhone: Story = {
   name: "Save reason beside Save on a phone",
   globals: phone,
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas }) => reasonAboveSave(canvas),
 };
 
-// Every form state at the phone width too, so axe checks each at 390 x 844.
-// Design review 4.6: at 390 the reason and Save stay on screen, not below the fold.
 export const MissingDueDateOnPhone: Story = {
-  ...MissingDueDate,
+  ...omit(MissingDueDate, ["play"]),
   name: "Missing due date on a phone",
   globals: phone,
-  play: async (context) => {
-    const { canvas } = context;
-
-    for (const element of [
-      saveButton(canvas, "Save as unpaid"),
-      canvas.getByText("Choose a due date or mark it unspecified to save."),
-    ]) {
-      const box = element.getBoundingClientRect();
-
-      // oxlint-disable-next-line no-await-in-loop -- one element per check.
-      await expect(box.top).toBeGreaterThanOrEqual(0);
-      // oxlint-disable-next-line no-await-in-loop -- one element per check.
-      await expect(box.bottom).toBeLessThanOrEqual(window.innerHeight);
-    }
-
-    // The label stacks above the input on a narrow pane, so a value such as INV-LIVE-001 reads whole.
-    await expect(
-      canvas
-        .getByRole("textbox", { name: "Invoice number" })
-        .getBoundingClientRect().width
-    ).toBeGreaterThanOrEqual(160);
-
-    await MissingDueDate.play?.(context);
-  },
 };
 
 export const AmountFormattedOnPhone: Story = {
-  ...AmountFormatted,
+  ...omit(AmountFormatted, ["play"]),
   name: "Amount formatted on a phone",
   globals: phone,
 };
 
 export const DueDateSourcesOnPhone: Story = {
-  ...DueDateSources,
+  ...omit(DueDateSources, ["play"]),
   name: "Due date sources: typed on a phone",
   globals: phone,
 };
 
 export const DueDateSourcesUnspecifiedOnPhone: Story = {
-  ...DueDateSourcesUnspecified,
+  ...omit(DueDateSourcesUnspecified, ["play"]),
   name: "Due date sources: unspecified on a phone",
   globals: phone,
 };
 
 export const DueDateSourcesKeptOnPhone: Story = {
-  ...DueDateSourcesKept,
+  ...omit(DueDateSourcesKept, ["play"]),
   name: "Due date sources: kept on a phone",
   globals: phone,
 };
 
 export const TagsOnPhone: Story = {
-  ...Tags,
+  ...omit(Tags, ["play"]),
   name: "Tags on a phone",
   globals: phone,
 };
 
 export const NewCustomerOnPhone: Story = {
-  ...NewCustomer,
+  ...omit(NewCustomer, ["play"]),
   name: "New customer on a phone",
   globals: phone,
 };
 
 export const PossibleDuplicateOnPhone: Story = {
-  ...PossibleDuplicate,
+  ...omit(PossibleDuplicate, ["play"]),
   name: "Possible duplicate on a phone",
   globals: phone,
 };
 
 export const SaveRefusedOnPhone: Story = {
-  ...SaveRefused,
+  ...omit(SaveRefused, ["play"]),
   name: "Save refused on a phone",
   globals: phone,
 };
 
 export const ReceiptOnPhone: Story = {
-  ...PaidReceiptWithoutDueDate,
+  ...omit(PaidReceiptWithoutDueDate, ["play"]),
   name: "Paid receipt without a due date on a phone",
   globals: phone,
 };
@@ -774,7 +750,7 @@ export const SavedReadOnlyOnPhone: Story = {
 };
 
 export const ReadDueDateClearedOnPhone: Story = {
-  ...ReadDueDateCleared,
+  ...omit(ReadDueDateCleared, ["play"]),
   name: "Due date: read date cleared on a phone",
   globals: phone,
 };

@@ -34,7 +34,9 @@ export function reviewStatusOf(
   return model.blocker === null ? "ready" : "blocked";
 }
 
-function StatusPill(props: { readonly status: ReviewStatus }): ReactNode {
+export function StatusPill(props: {
+  readonly status: ReviewStatus;
+}): ReactNode {
   switch (props.status) {
     case "reading":
       return <DocumentStatusBadge status="reading" />;
@@ -77,22 +79,54 @@ function CardGroup(props: {
   );
 }
 
-/**
- * The review as a document desk (R-38, czjw.98, prototype variant A with variant B's hover link):
- * from 1280 px each field read from the page is an editable card beside its line; the Before you
- * save panel holds the other fields, the split and Save. From 1024 px to 1279 px the panel lists
- * every card, with no leader line.
- */
-export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
-  const { frame, model, revealRef } = props;
-  const desk = useMediaQuery("(min-width: 1024px)", { noSsr: true });
-  const wide = useMediaQuery("(min-width: 1280px)", { noSsr: true });
-  const body = useRef<HTMLDivElement>(null);
-  const fillHeight = useFillHeight(body, desk);
+/** The file of the page: its first link, a failed load, and Download and Try again with a fresh link. */
+export function usePageFile(
+  props: Pick<ReviewLayoutProps, "fileUrl" | "refreshUrl" | "label">
+) {
   // The first link lasts the page's life; only Try again replaces it.
   const [url, setUrl] = useState(props.fileUrl);
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
+
+  const downloadFresh = async () => {
+    const fresh = await props.refreshUrl();
+
+    if (fresh !== null) download(fresh, props.label);
+  };
+
+  const retry = async () => {
+    const fresh = await props.refreshUrl();
+
+    if (fresh === null) return;
+
+    setUrl(fresh);
+    setFailed(false);
+    setAttempt((last) => last + 1);
+  };
+
+  return {
+    url,
+    attempt,
+    failed,
+    fail: () => setFailed(true),
+    download: () => void downloadFresh(),
+    retry: () => void retry(),
+  };
+}
+
+/**
+ * The review as a document desk (R-38, czjw.98, prototype variant A with variant B's hover link):
+ * from 1280 px each field read from the page is an editable card beside its line; the Before you
+ * save panel holds the other fields, the split and Save. From 1024 px to 1279 px the panel lists
+ * every card, with no leader line. Below 1024 px the workspace shows the pager instead.
+ */
+export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
+  const { frame, model, revealRef } = props;
+  const wide = useMediaQuery("(min-width: 1280px)", { noSsr: true });
+  const body = useRef<HTMLDivElement>(null);
+  const fillHeight = useFillHeight(body, true);
+  const file = usePageFile(props);
+  const { failed } = file;
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
 
@@ -158,22 +192,6 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
     </div>
   );
 
-  const downloadFresh = async () => {
-    const fresh = await props.refreshUrl();
-
-    if (fresh !== null) download(fresh, props.label);
-  };
-
-  const retry = async () => {
-    const fresh = await props.refreshUrl();
-
-    if (fresh === null) return;
-
-    setUrl(fresh);
-    setFailed(false);
-    setAttempt((last) => last + 1);
-  };
-
   const panelTitle = frame.saved === null ? PANEL_TITLE : "Saved";
 
   const deskStyle: CssVars = {
@@ -193,19 +211,16 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
       />
       <div
         ref={body}
-        className="flex min-w-0 flex-col gap-4 lg:h-(--desk-height) lg:flex-row lg:gap-0"
+        className="flex h-(--desk-height) min-w-0 flex-row"
         style={deskStyle}
       >
         {failed ? (
-          <PreviewFailed
-            onDownload={() => void downloadFresh()}
-            onRetry={() => void retry()}
-          />
+          <PreviewFailed onDownload={file.download} onRetry={file.retry} />
         ) : (
           <DeskCanvas
-            key={attempt}
+            key={file.attempt}
             label={props.label}
-            url={url}
+            url={file.url}
             pins={pins}
             renderCard={(key) => {
               const item = items.find((candidate) => candidate.key === key);
@@ -216,8 +231,8 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
             selected={selected}
             hovered={hovered}
             onHover={setHovered}
-            onLoadError={() => setFailed(true)}
-            onDownload={() => void downloadFresh()}
+            onLoadError={file.fail}
+            onDownload={file.download}
             drawerButton={null}
             scan={model === null ? "loop" : sweeping ? "sweep" : null}
             onSweepEnd={frame.onSweepEnd}
@@ -225,7 +240,7 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
         )}
         <aside
           aria-label={panelTitle}
-          className="flex shrink-0 flex-col rounded-xl border border-border bg-card lg:w-100 lg:rounded-none lg:border-y-0 lg:border-r-0"
+          className="flex w-100 shrink-0 flex-col border-l border-border bg-card"
         >
           <div className="flex h-12 shrink-0 items-center border-b border-border px-5">
             <h2 className="text-sm font-semibold">{panelTitle}</h2>

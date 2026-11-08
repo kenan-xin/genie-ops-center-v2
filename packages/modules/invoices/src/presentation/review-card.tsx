@@ -12,7 +12,7 @@ import type { ReviewItem } from "./review-model.ts";
  */
 export function ReviewCard(props: {
   readonly item: ReviewItem;
-  /** "step" is the pager's: the label is an h2. */
+  /** "step" is the pager's: the label is an h2, with no card frame around the field. */
   readonly size?: "card" | "step";
   readonly selected?: boolean;
   readonly hovered?: boolean;
@@ -31,11 +31,16 @@ export function ReviewCard(props: {
       data-field={item.key}
       data-selected={props.selected === true ? "" : undefined}
       data-hovered={props.hovered === true ? "" : undefined}
-      className={`flex flex-col gap-2 rounded-lg border bg-card px-3 py-2.5 shadow-xs data-hovered:border-ring/60 data-selected:border-ring data-selected:ring-2 data-selected:ring-ring/30 ${size === "step" ? "border-border p-4" : "border-border"}`}
+      className={
+        size === "step"
+          ? "flex flex-col gap-3"
+          : "flex flex-col gap-2 rounded-lg border border-border bg-card px-3 py-2.5 shadow-xs data-hovered:border-ring/60 data-selected:border-ring data-selected:ring-2 data-selected:ring-ring/30"
+      }
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         {size === "step" ? (
-          <h2 className="text-base font-semibold">{label}</h2>
+          // The label is the step's heading, so the heading sets its size.
+          <h2 className="[&_[data-slot=field-label]]:text-lg">{label}</h2>
         ) : (
           label
         )}

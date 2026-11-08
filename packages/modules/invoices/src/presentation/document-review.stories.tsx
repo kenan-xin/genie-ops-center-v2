@@ -1,6 +1,7 @@
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { omit } from "es-toolkit";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -69,7 +70,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). The document sits on the left, its fields on the right; below 1024 px a Fields and Document switch shows one at a time. The file name shows once, shortened, in the line under the title. A person opens the review from the inbox, changes the type, discards an unsaved document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
+          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). A read invoice, paid receipt or payment opens on the review desk, and below 1024 px on the pager (`czjw.98`); the type choice, a purchase order and a reader keep the document on the left and its fields on the right. The file name shows once, shortened, in the line under the title. A person opens the review from the inbox, changes the type, discards an unsaved document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
       },
     },
     a11y: { test: "error" },
@@ -141,8 +142,7 @@ export const InvoiceRead: Story = {
     ).toBeVisible();
 
     // The lazy viewer loads its chunk, fetches the PDF and draws the text layer first. The 1 s
-    // default missed it at 1.3 s three times under gate:merge load; the Reading story's lazy
-    // viewer budget is 8 s.
+    // default missed it at 1.3 s three times under gate:merge load.
     await waitFor(
       () => expect(marksText(canvasElement)).toContain("5,000.00"),
       { timeout: 8_000 }
@@ -160,7 +160,7 @@ export const InvoiceRead: Story = {
   },
 };
 
-// At 390 for axe; the pager of Task 8 replaces the choice 14 switch, so this story has no play.
+// At 390 for axe; the pager stories of `review-desk.stories.tsx` test the phone, so no play.
 export const InvoiceReadOnPhone: Story = {
   name: "Invoice read on a phone",
   globals: phone,
@@ -542,7 +542,9 @@ export const Dark: Story = {
   beforeEach: () => serve(invoiceReview),
 };
 
-// Every review state at the phone width too, so axe checks each at 390 x 844.
+// Every review state at the phone width too, so axe checks each at 390 x 844. A writable invoice,
+// paid receipt or payment shows the pager there, so its copy drops the desk play (`omit`); the
+// pager stories of `review-desk.stories.tsx` test the phone.
 export const TagsOnPhone: Story = {
   ...Tags,
   name: "Tags on a phone",
@@ -556,13 +558,13 @@ export const ReadOnlyOnPhone: Story = {
 };
 
 export const ChangeTypeOnPhone: Story = {
-  ...ChangeType,
+  ...omit(ChangeType, ["play"]),
   name: "Change type on a phone",
   globals: phone,
 };
 
 export const DiscardOnPhone: Story = {
-  ...Discard,
+  ...omit(Discard, ["play"]),
   name: "Discard on a phone",
   globals: phone,
 };
@@ -580,7 +582,7 @@ export const CouldNotReadOnPhone: Story = {
 };
 
 export const CouldNotReadTypedOnPhone: Story = {
-  ...CouldNotReadTyped,
+  ...omit(CouldNotReadTyped, ["play"]),
   name: "Could not read, entered by hand, on a phone",
   globals: phone,
 };

@@ -38,6 +38,8 @@ const SGD = (cents: number) => formatMoney(cents, "SGD").replace(/\s/gu, " ");
 
 const desktop1440 = { viewport: { value: "desktop1440", isRotated: false } };
 
+const phone390 = { viewport: { value: "phone390", isRotated: false } };
+
 /** A fresh query cache per story, with no retries so a refused call reports at once. */
 function withQuery(Story: () => ReactNode) {
   const [client] = useState(
@@ -598,5 +600,133 @@ export const Saved: Story = {
       canvas.queryByRole("button", { name: "Save as unpaid" })
     ).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Discard" })).toBeNull();
+  },
+};
+
+type Canvas = ReturnType<typeof within>;
+
+/** The pager shows this step line once its step renders. */
+const onStep = (canvas: Canvas, step: number, of: number) =>
+  waitFor(
+    () => expect(canvas.getByText(`Step ${step} of ${of}`)).toBeVisible(),
+    PAGE_TIMEOUT
+  );
+
+/** Presses the next button of the pager, under the label it carries now, the given times. */
+async function next(canvas: Canvas, label: string, times = 1) {
+  for (let pressed = 0; pressed < times; pressed += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- each press waits for the step it opens.
+    await userEvent.click(canvas.getByRole("button", { name: label }));
+  }
+}
+
+// T8.1, T8.2, T8.5: one field per step in list order, the next label follows the tag, and the
+// summary lists every field with Save and its reason.
+export const InvoiceOnPhone: Story = {
+  globals: phone390,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await onStep(canvas, 1, 9);
+    card(canvasElement, "customer");
+    await drawn(canvasElement, "[data-lens-spot]", "The lens spot");
+
+    // T8.1: forward one step and back.
+    await next(canvas, "Looks right");
+    await onStep(canvas, 2, 9);
+    card(canvasElement, "number");
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Previous field" })
+    );
+    await onStep(canvas, 1, 9);
+    card(canvasElement, "customer");
+
+    // T8.2: the due date, which the page does not state, asks to Continue.
+    await next(canvas, "Looks right", 6);
+    await onStep(canvas, 7, 9);
+    await expect(
+      within(card(canvasElement, "dueDate")).getByText("Needs your input")
+    ).toBeVisible();
+    await expect(canvas.getByText("Not found on the page")).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "Looks right" })
+    ).toBeNull();
+
+    // T8.5: the summary lists the eight fields, and Save states its reason.
+    await next(canvas, "Continue");
+    await onStep(canvas, 8, 9);
+    await next(canvas, "Looks right");
+    await onStep(canvas, 9, 9);
+    await expect(
+      canvas.getByRole("heading", { name: "Check and save" })
+    ).toBeVisible();
+
+    const summary = within(
+      canvasElement.querySelector<HTMLElement>("[data-review-summary]") ??
+        canvasElement
+    );
+
+    await expect(summary.getAllByRole("term")).toHaveLength(8);
+    await expect(summary.getByText("INV-LIVE-001")).toBeVisible();
+    await expect(summary.getByText("Needs your input")).toBeVisible();
+    await expect(
+      canvas.getByText("Choose a due date or mark it unspecified to save.")
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Save as unpaid" })
+    ).toHaveAttribute("aria-disabled", "true");
+  },
+};
+
+// T8.3: an edit shows the read value, and the next button keeps the edit.
+export const EditedOnPhone: Story = {
+  globals: phone390,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await onStep(canvas, 1, 9);
+    await next(canvas, "Looks right", 5);
+    await onStep(canvas, 6, 9);
+
+    const row = within(card(canvasElement, "description"));
+
+    await userEvent.type(canvas.getByLabelText("Description"), " and support");
+    await expect(
+      row.getByText("Read as “Additional consulting project - October 2026”")
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Keep and continue" })
+    ).toBeVisible();
+  },
+};
+
+// A field whose quote failed, at 390 for axe.
+export const NoQuoteOnPhone: Story = {
+  globals: phone390,
+  args: { view: noQuoteInvoiceReview },
+  beforeEach: () => serve(noQuoteInvoiceReview),
+  play: async ({ canvas }) => onStep(canvas, 1, 9),
+};
+
+// T8.4: the split is its own step, and a refused split holds the next button on its link.
+export const PaymentSplitOnPhone: Story = {
+  globals: phone390,
+  args: { view: splitPaymentReview },
+  beforeEach: () => serve(splitPaymentReview),
+  play: async ({ canvas }) => {
+    await onStep(canvas, 1, 9);
+    await next(canvas, "Looks right", 7);
+    await onStep(canvas, 8, 9);
+    await expect(canvas.getByText("Confirm the split")).toBeVisible();
+
+    const sep = canvas.getByLabelText("Amount for INV-2026-09-04");
+
+    await userEvent.clear(sep);
+    await userEvent.type(sep, "4,300.00");
+
+    const looksRight = canvas.getByRole("button", { name: "Looks right" });
+
+    await expect(looksRight).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(looksRight);
+    await expect(sep).toHaveFocus();
+    await expect(canvas.getByText("Step 8 of 9")).toBeVisible();
   },
 };

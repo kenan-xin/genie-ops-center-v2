@@ -2,7 +2,7 @@
 
 import { PageHeader, PageSkeleton } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
-import { useHydrated } from "@genie/ui";
+import { useHydrated, useMediaQuery } from "@genie/ui";
 import { useRef, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
@@ -10,7 +10,12 @@ import { useInvoiceReview } from "./invoice-review-form.tsx";
 import { usePaymentReview } from "./payment-review-form.tsx";
 import type { Blocker } from "./review-blocker.ts";
 import { ReviewDesk } from "./review-desk.tsx";
-import type { ReviewFrame, ReviewModel } from "./review-model.ts";
+import type {
+  ReviewFrame,
+  ReviewLayoutProps,
+  ReviewModel,
+} from "./review-model.ts";
+import { ReviewPager } from "./review-pager.tsx";
 import type { DocumentReviewView } from "./views.ts";
 
 /**
@@ -53,6 +58,8 @@ export function ReviewWorkspace(props: {
   // The first link lasts the page's life, so a refetch never loads the PDF again.
   const [fileUrl] = useState(view.document.fileUrl);
   const hydrated = useHydrated();
+  // The desk from 1024 px, the pager below (P09-3).
+  const desk = useMediaQuery("(min-width: 1024px)", { noSsr: true });
   const kind = view.document.kind;
 
   const invoice = useInvoiceReview({
@@ -83,6 +90,18 @@ export function ReviewWorkspace(props: {
     (await invoices.getDocumentReview({ id: view.document.id })).document
       .fileUrl;
 
+  const layout: ReviewLayoutProps = {
+    frame,
+    model,
+    fileUrl,
+    refreshUrl,
+    revealRef,
+    label: view.document.label,
+    unread: view.reading === null,
+    discarding: props.discarding,
+    onDiscard,
+  };
+
   return (
     <form
       noValidate
@@ -93,22 +112,15 @@ export function ReviewWorkspace(props: {
         if (!frame.sweep && frame.saved === null) model?.submit();
       }}
     >
-      {hydrated ? (
-        <ReviewDesk
-          frame={frame}
-          model={model}
-          fileUrl={fileUrl}
-          refreshUrl={refreshUrl}
-          revealRef={revealRef}
-          label={view.document.label}
-          discarding={props.discarding}
-          onDiscard={onDiscard}
-        />
-      ) : (
+      {!hydrated ? (
         <>
           <PageHeader title={frame.title} breadcrumb={frame.breadcrumb} />
           <PageSkeleton label={frame.title} />
         </>
+      ) : desk ? (
+        <ReviewDesk {...layout} />
+      ) : (
+        <ReviewPager {...layout} />
       )}
     </form>
   );

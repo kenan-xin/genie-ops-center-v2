@@ -549,6 +549,7 @@ export function useInvoiceReview(input: {
   return {
     items,
     split: null,
+    splitSummary: null,
     blocker,
     notices:
       duplicate === null && saveError === null ? null : (

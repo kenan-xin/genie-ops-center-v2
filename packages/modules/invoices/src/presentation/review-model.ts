@@ -31,6 +31,11 @@ export type ReviewModel = {
   readonly items: readonly ReviewItem[];
   /** The split section of a payment; null for an invoice or once saved. */
   readonly split: ReactNode | null;
+  /** The linked total and the number of links, for the pager summary; null for an invoice. */
+  readonly splitSummary: {
+    readonly linked: string;
+    readonly count: number;
+  } | null;
   readonly blocker: Blocker | null;
   /** DuplicateNotice and SaveFailure, or null. */
   readonly notices: ReactNode;
@@ -66,6 +71,8 @@ export type ReviewLayoutProps = {
   readonly refreshUrl: () => Promise<string | null>;
   readonly revealRef: RefObject<((blocker: Blocker) => void) | null>;
   readonly label: string;
+  /** The document has no reading (Could not read, or AI off), so no field quotes the page. */
+  readonly unread: boolean;
   readonly discarding: boolean;
   /** Null hides Discard: while the job reads, and once saved. */
   readonly onDiscard: (() => void) | null;

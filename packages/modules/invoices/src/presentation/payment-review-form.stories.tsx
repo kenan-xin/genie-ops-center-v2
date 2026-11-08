@@ -1,6 +1,7 @@
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { omit } from "es-toolkit";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -459,57 +460,59 @@ export const PossibleDuplicate: Story = {
   },
 };
 
-// Every story at the phone width too, so axe checks each at 390 x 844.
+// Every story at the phone width too, so axe checks each at 390 x 844. A payment shows the pager
+// there, so each copy drops the desk play (`omit`); `PaymentSplitOnPhone` of
+// `review-desk.stories.tsx` tests the split step.
 export const SplitOnPhone: Story = {
-  ...Split,
+  ...omit(Split, ["play"]),
   name: "Split on a phone",
   globals: phone,
 };
 
 export const SplitGroupsOnPhone: Story = {
-  ...SplitGroups,
+  ...omit(SplitGroups, ["play"]),
   name: "Split groups on a phone",
   globals: phone,
 };
 
 export const SuggestionsOnPhone: Story = {
-  ...Suggestions,
+  ...omit(Suggestions, ["play"]),
   name: "Suggestions on a phone",
   globals: phone,
 };
 
 export const OverpaymentOnPhone: Story = {
-  ...Overpayment,
+  ...omit(Overpayment, ["play"]),
   name: "Overpayment on a phone",
   globals: phone,
 };
 
 export const NoMatchOnPhone: Story = {
-  ...NoMatch,
+  ...omit(NoMatch, ["play"]),
   name: "No match on a phone",
   globals: phone,
 };
 
 export const CustomerChangeOnPhone: Story = {
-  ...CustomerChange,
+  ...omit(CustomerChange, ["play"]),
   name: "Customer change on a phone",
   globals: phone,
 };
 
 export const OpenInvoicesFailedOnPhone: Story = {
-  ...OpenInvoicesFailed,
+  ...omit(OpenInvoicesFailed, ["play"]),
   name: "Open invoices failed on a phone",
   globals: phone,
 };
 
 export const PossibleDuplicateOnPhone: Story = {
-  ...PossibleDuplicate,
+  ...omit(PossibleDuplicate, ["play"]),
   name: "Possible duplicate on a phone",
   globals: phone,
 };
 
 export const TooManyLinksOnPhone: Story = {
-  ...TooManyLinks,
+  ...omit(TooManyLinks, ["play"]),
   name: "Too many links on a phone",
   globals: phone,
 };

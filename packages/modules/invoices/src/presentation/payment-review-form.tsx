@@ -395,6 +395,10 @@ export function usePaymentReview(input: {
         onChange={(next) => form.setFieldValue("links", next)}
       />
     ),
+    splitSummary: {
+      linked: formatMoney(check.allocatedCents, currency),
+      count: links.length,
+    },
     blocker,
     notices:
       duplicate === null && saveError === null ? null : (
