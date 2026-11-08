@@ -38,12 +38,15 @@ import {
   sourcesOf,
 } from "./review-fields.tsx";
 import {
+  customerItemOf,
+  focusSoon,
   inputTextOf,
   issuesOf,
   optionalText,
   readingTextOf,
   ReviewCustomerInput,
   ReviewTextInput,
+  textItemOf,
 } from "./review-form.tsx";
 import type { ReviewItem, ReviewModel } from "./review-model.ts";
 import type { DocumentReviewView } from "./views.ts";
@@ -267,21 +270,6 @@ function savedMessage(
     : `${saved.number} saved as unpaid, due ${formatDay(saved.dueDate)}.`;
 }
 
-export const CHECK_NOTE =
-  "The quote read for this field is not in the page text, so its value was dropped. Enter it from the page.";
-
-export const BLANK_NOTE =
-  "Not on the document. It stays blank unless you add it.";
-
-export const BLANK_PLACEHOLDER = "Not stated. Leave blank or add it.";
-
-const OPTIONAL_FIELDS: ReadonlySet<ReadingField> = new Set([
-  "paymentTerms",
-  "description",
-  "reference",
-  "method",
-]);
-
 /** The due date's origin tag: a paid receipt's own, or the person's choice of an invoice (czjw.98). */
 export function dueTagOf(
   kind: "invoice" | "paid-receipt",
@@ -339,11 +327,6 @@ function dueCheck(reading: StoredReading | null, due: DueChoice): FieldCheck {
     issue: "Enter a due date to save.",
     focusId: "review-due-date",
   };
-}
-
-/** Moves the focus to a control once the change that draws it has rendered. */
-function focusSoon(id: string): void {
-  requestAnimationFrame(() => document.getElementById(id)?.focus());
 }
 
 /**
@@ -424,43 +407,24 @@ export function useInvoiceReview(input: {
   const issues = formIssues(kind, view, values);
   const first = initialValues(view);
 
-  const customerItem = (label: string): ReviewItem => {
-    const value = values.customer;
-    const readName = reading?.fields.customer?.value ?? null;
-
-    const tag = liveTagOf(
-      reading,
-      "customer",
-      value.kind === "none" ? null : value.name
-    );
-
-    return {
-      key: "customer",
-      label,
-      tag,
-      sources: sourcesOf(reading, "customer"),
-      control: (
-        <form.Field name="customer">
-          {(field) => (
-            <ReviewCustomerInput
-              view={view}
-              value={field.state.value}
-              attempted={attempted}
-              onChange={(next) => field.handleChange(next)}
-            />
-          )}
-        </form.Field>
-      ),
-      controlId: "review-customer",
-      display: value.kind === "none" ? "None" : value.name,
-      readAs: tag === "corrected" ? readName : null,
-      onUndo: () => {
-        form.setFieldValue("customer", first.customer);
-        focusSoon("review-customer");
-      },
-      note: tag === "check-this" ? CHECK_NOTE : null,
-    };
-  };
+  const customer = customerItemOf({
+    reading,
+    label: FIELDS_OF[kind][0].label,
+    value: values.customer,
+    control: (
+      <form.Field name="customer">
+        {(field) => (
+          <ReviewCustomerInput
+            view={view}
+            value={field.state.value}
+            attempted={attempted}
+            onChange={(next) => field.handleChange(next)}
+          />
+        )}
+      </form.Field>
+    ),
+    onUndo: () => form.setFieldValue("customer", first.customer),
+  });
 
   const dueItem = (label: string): ReviewItem => {
     const readDue = reading?.fields.dueDate;
@@ -511,21 +475,16 @@ export function useInvoiceReview(input: {
   };
 
   const textItem = (field: TextField, label: string): ReviewItem => {
-    const value = values[field];
     const read = reading?.fields[field]?.value;
-    const tag = liveTagOf(reading, field, readingTextOf(field, value));
 
-    const blank =
-      tag === "not-on-document" &&
-      value.trim() === "" &&
-      OPTIONAL_FIELDS.has(field);
-
-    return {
-      key: field,
+    return textItemOf({
+      reading,
+      field,
       label,
-      tag,
-      sources: sourcesOf(reading, field),
-      control: (
+      value: values[field],
+      tagValue: readingTextOf(field, values[field]),
+      readText: read === undefined ? undefined : inputTextOf(field, read),
+      control: (placeholder) => (
         <form.Field name={field}>
           {(item) => (
             <ReviewTextInput
@@ -538,30 +497,20 @@ export function useInvoiceReview(input: {
                   : undefined
               }
               currency={values.currency}
-              {...(blank ? { placeholder: BLANK_PLACEHOLDER } : {})}
+              {...(placeholder === undefined ? {} : { placeholder })}
               onChange={(next) => item.handleChange(next)}
               onBlur={item.handleBlur}
             />
           )}
         </form.Field>
       ),
-      controlId: `review-${field}`,
-      display: value.trim() === "" ? "None" : value,
-      readAs:
-        tag === "corrected" && read !== undefined
-          ? inputTextOf(field, read)
-          : null,
-      onUndo: () => {
-        form.setFieldValue(field, first[field]);
-        focusSoon(`review-${field}`);
-      },
-      note: tag === "check-this" ? CHECK_NOTE : blank ? BLANK_NOTE : null,
-    };
+      onUndo: () => form.setFieldValue(field, first[field]),
+    });
   };
 
   const items = FIELDS_OF[kind].map(({ field, label }) =>
     field === "customer"
-      ? customerItem(label)
+      ? customer.item
       : field === "dueDate"
         ? dueItem(label)
         : textItem(field, label)
@@ -569,23 +518,7 @@ export function useInvoiceReview(input: {
 
   const checks: FieldCheck[] = FIELDS_OF[kind].flatMap(
     ({ field, label }): FieldCheck[] => {
-      if (field === "customer") {
-        const value = values.customer;
-
-        return [
-          {
-            key: field,
-            label,
-            empty: false,
-            issue:
-              value.kind === "none"
-                ? "Choose a customer to save."
-                : value.kind === "new" && !value.confirmed
-                  ? "Confirm the new customer to save."
-                  : undefined,
-          },
-        ];
-      }
+      if (field === "customer") return [customer.check];
 
       if (field === "dueDate")
         return kind === "invoice" ? [dueCheck(reading, values.due)] : [];

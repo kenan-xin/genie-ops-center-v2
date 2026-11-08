@@ -268,7 +268,14 @@ export const ReadOnly: Story = {
   },
 };
 
+/** Upload 01 once its type is Payment evidence. */
+const invoiceAsPayment: DocumentReviewView = {
+  ...invoiceReview,
+  document: { ...invoiceReview.document, kind: "payment" },
+};
+
 // B4.6: choosing another type calls setDocumentKind and then reads the document again.
+// T5.4: the review stays mounted through the change, so the PDF canvas is the same element.
 export const ChangeType: Story = {
   name: "Change type",
   globals: desktop,
@@ -277,12 +284,27 @@ export const ChangeType: Story = {
     setDocumentKind.mockImplementation(
       () =>
         new Promise((resolve) => {
-          releaseKind = () =>
+          releaseKind = () => {
+            getDocumentReview.mockResolvedValue(invoiceAsPayment);
             resolve({ documentId: invoiceReview.document.id, kind: "payment" });
+          };
         })
     );
   },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
+    const drawn = await waitFor(
+      () => {
+        const found = canvasElement.querySelector(
+          "[data-document-viewer] canvas"
+        );
+
+        if (found === null) throw new Error("The document has not drawn yet.");
+
+        return found;
+      },
+      { timeout: 8_000 }
+    );
+
     await userEvent.click(canvas.getByRole("combobox", { name: "Type" }));
     await userEvent.click(
       await screen.findByRole("option", { name: "Invoice" })
@@ -313,6 +335,14 @@ export const ChangeType: Story = {
         )
       ).toBe(true);
     });
+
+    await expect(
+      await canvas.findByRole("button", { name: "Save as unallocated" })
+    ).toBeVisible();
+    await expect(drawn.isConnected).toBe(true);
+    await expect(
+      canvasElement.querySelector("[data-document-viewer] canvas")
+    ).toBe(drawn);
   },
 };
 

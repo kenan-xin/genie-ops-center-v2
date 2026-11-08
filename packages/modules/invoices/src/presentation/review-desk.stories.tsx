@@ -7,9 +7,12 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import {
   invoiceReview,
   lostQuoteInvoiceReview,
+  meridianOpenInvoices,
   noQuoteInvoiceReview,
+  splitPaymentReview,
 } from "./__fixtures__/review.ts";
 import { DocumentReview } from "./document-review.tsx";
+import { formatMoney } from "./format.ts";
 import type { DocumentReviewView } from "./views.ts";
 
 const getDocumentReview = fn();
@@ -21,6 +24,13 @@ const savePaidReceipt = fn();
 const discardDocument = fn();
 
 const setDocumentKind = fn();
+
+const savePayment = fn();
+
+const listOpenInvoices = fn();
+
+/** Money as the page shows it, with a plain space. */
+const SGD = (cents: number) => formatMoney(cents, "SGD").replace(/\s/gu, " ");
 
 const desktop1440 = { viewport: { value: "desktop1440", isRotated: false } };
 
@@ -43,6 +53,8 @@ function withQuery(Story: () => ReactNode) {
             savePaidReceipt,
             discardDocument,
             setDocumentKind,
+            savePayment,
+            listOpenInvoices,
           },
         }}
       >
@@ -86,6 +98,10 @@ function serve(view: DocumentReviewView) {
   savePaidReceipt.mockReset();
   discardDocument.mockReset();
   setDocumentKind.mockReset();
+  savePayment.mockReset();
+  listOpenInvoices
+    .mockReset()
+    .mockResolvedValue({ rows: meridianOpenInvoices, truncated: false });
 }
 
 const PAGE_TIMEOUT = { timeout: 10_000 };
@@ -286,6 +302,99 @@ export const LostQuote: Story = {
     await expect(saveInvoice).toHaveBeenCalledWith(
       expect.objectContaining({ currency: "SGD" })
     );
+  },
+};
+
+const middle = (box: DOMRect) => (box.top + box.bottom) / 2;
+
+const marksOf = (root: HTMLElement, key: string) =>
+  Array.from(root.querySelectorAll(`mark[data-highlight="${key}"]`))
+    .map((mark) => mark.getBoundingClientRect())
+    .toSorted((a, b) => a.top - b.top);
+
+// T5.1 to T5.3: the split sits in the panel with live Linked and Unallocated; Save names and
+// focuses the link that blocks it; Invoice numbers pins between its two lines.
+export const PaymentSplit: Story = {
+  args: { view: splitPaymentReview },
+  beforeEach: () => serve(splitPaymentReview),
+  play: async ({ canvas, canvasElement }) => {
+    await pinned(canvasElement, [
+      "customer",
+      "date",
+      "amount",
+      "currency",
+      "reference",
+      "method",
+      "invoiceNumbers",
+    ]);
+
+    const side = panel(canvasElement);
+
+    await expect(
+      side.getByText(
+        "Every field was found on the page. Select a card to see its line."
+      )
+    ).toBeVisible();
+
+    const splitElement = aside(canvasElement).querySelector<HTMLElement>(
+      "[data-review-split]"
+    );
+
+    if (splitElement === null) throw new Error("The panel has no split.");
+
+    const split = within(splitElement);
+
+    await expect(
+      split.getByRole("region", { name: "Named on this payment" })
+    ).toBeVisible();
+    await expect(
+      split.getByRole("button", {
+        name: "Other open invoices of Orchid Retail",
+      })
+    ).toBeVisible();
+
+    // T5.1: an edit of one link moves Unallocated at once.
+    const sep = canvas.getByLabelText("Amount for INV-2026-09-04");
+
+    await userEvent.clear(sep);
+    await userEvent.type(sep, "4,000.00");
+    await expect(
+      split.getByText(`Linked ${SGD(805000)}. Unallocated ${SGD(20000)}.`)
+    ).toBeVisible();
+
+    // T5.2: a link above its open amount, then a link of 0.00, each named and focused by Save.
+    const save = canvas.getByRole("button", { name: "Save the payment" });
+
+    await userEvent.clear(sep);
+    await userEvent.type(sep, "4,300.00");
+    await expect(
+      side.getByText(
+        `The link to INV-2026-09-04 is more than its open ${SGD(420000)}.`
+      )
+    ).toBeVisible();
+    await userEvent.click(save);
+    await expect(sep).toHaveFocus();
+
+    await userEvent.clear(sep);
+    await userEvent.type(sep, "0.00");
+    await expect(
+      side.getByText("Enter the amount for INV-2026-09-04.")
+    ).toBeVisible();
+    await userEvent.click(save);
+    await expect(sep).toHaveFocus();
+    await expect(savePayment).not.toHaveBeenCalled();
+
+    // T5.3: two quotes pin to the middle of both lines, not to the first.
+    const quotes = marksOf(canvasElement, "invoiceNumbers");
+
+    const dot = middle(
+      canvasElement
+        .querySelector('[data-pin-dot="invoiceNumbers"]')
+        ?.getBoundingClientRect() ?? new DOMRect()
+    );
+
+    await expect(dot).toBeGreaterThan(middle(quotes[0] ?? new DOMRect()) + 2);
+    await expect(dot).toBeLessThan(middle(quotes.at(-1) ?? new DOMRect()) - 2);
   },
 };
 

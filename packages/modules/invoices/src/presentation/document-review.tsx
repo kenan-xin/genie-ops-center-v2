@@ -24,7 +24,6 @@ import { AutomaticLinks } from "./automatic-links.tsx";
 import { type DocumentKind, kindText } from "./document-kind.ts";
 import { LazyDocumentViewer } from "./document-viewer-lazy.tsx";
 import { shortName } from "./format.ts";
-import { PaymentReviewForm } from "./payment-review-form.tsx";
 import {
   ReviewFieldList,
   type ReviewFieldKey,
@@ -285,7 +284,8 @@ export function DocumentReview(props: {
 
   if (
     reading ||
-    (data.canWrite && (kind === "invoice" || kind === "paid-receipt"))
+    (data.canWrite &&
+      (kind === "invoice" || kind === "paid-receipt" || kind === "payment"))
   ) {
     const deskAbout = reading
       ? "not classified yet"
@@ -350,17 +350,6 @@ export function DocumentReview(props: {
         />
       </div>
     );
-  } else if (data.canWrite && kind === "payment") {
-    body = (
-      <PaymentReviewForm
-        view={data}
-        selected={selected}
-        onSelect={setSelected}
-        onSaved={setSavedMessage}
-        onDiscard={() => setDiscardOpen(true)}
-        discarding={discard.isPending}
-      />
-    );
   } else {
     body = (
       <ReviewFieldList
@@ -371,9 +360,6 @@ export function DocumentReview(props: {
       />
     );
   }
-
-  // A save form carries Discard in its own bar; every other body shows it under the card.
-  const formBody = data.canWrite && kind === "payment";
 
   return (
     <main>
@@ -417,22 +403,18 @@ export function DocumentReview(props: {
             {body}
             {showDiscard ? (
               <>
-                {formBody && discardError === null ? null : (
-                  <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-                    {discardError}
-                    {formBody ? null : (
-                      <div className="flex justify-end">
-                        <Button
-                          variant="secondary"
-                          loading={discard.isPending}
-                          onClick={() => setDiscardOpen(true)}
-                        >
-                          Discard
-                        </Button>
-                      </div>
-                    )}
+                <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+                  {discardError}
+                  <div className="flex justify-end">
+                    <Button
+                      variant="secondary"
+                      loading={discard.isPending}
+                      onClick={() => setDiscardOpen(true)}
+                    >
+                      Discard
+                    </Button>
                   </div>
-                )}
+                </div>
                 {discardDialog}
               </>
             ) : null}

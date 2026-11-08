@@ -12,16 +12,17 @@ import {
 import { CheckIcon, InfoIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { currencyCode, type ReadingField } from "../contract.ts";
+import {
+  currencyCode,
+  type ReadingField,
+  type StoredReading,
+} from "../contract.ts";
 import { centsText } from "../services/reading/quote-check.ts";
 import { CustomerField, type CustomerValue } from "./customer-field.tsx";
 import { centsOfText, dayFromText, dayText, moneyText } from "./format.ts";
-import {
-  liveTagOf,
-  ReviewFieldRow,
-  type ReviewFieldKey,
-  sourcesOf,
-} from "./review-fields.tsx";
+import type { FieldCheck } from "./review-blocker.ts";
+import { liveTagOf, sourcesOf } from "./review-fields.tsx";
+import type { ReviewItem } from "./review-model.ts";
 import type { DocumentReviewView } from "./views.ts";
 
 /** The parts both review forms share: messages, the text and customer rows, the save bar. */
@@ -100,15 +101,123 @@ export function issuesOf<F extends string>(
   return messages;
 }
 
-type RowSelection = {
-  readonly view: DocumentReviewView;
-  readonly selected: ReviewFieldKey | null;
-  readonly onSelect: (field: ReviewFieldKey) => void;
-};
-
-type TextField =
+export type TextField =
   | Exclude<ReadingField, "customer" | "dueDate">
   | "invoiceNumbers";
+
+export const CHECK_NOTE =
+  "The quote read for this field is not in the page text, so its value was dropped. Enter it from the page.";
+
+const BLANK_NOTE = "Not on the document. It stays blank unless you add it.";
+
+const BLANK_PLACEHOLDER = "Not stated. Leave blank or add it.";
+
+const OPTIONAL_FIELDS: ReadonlySet<TextField> = new Set([
+  "paymentTerms",
+  "description",
+  "reference",
+  "method",
+]);
+
+/** Moves the focus to a control once the change that draws it has rendered. */
+export function focusSoon(id: string): void {
+  requestAnimationFrame(() => document.getElementById(id)?.focus());
+}
+
+/** One text field as a review card: its tag, its value read before an edit, Undo and its note (czjw.98). */
+export function textItemOf(input: {
+  readonly reading: StoredReading | null;
+  readonly field: TextField;
+  readonly label: string;
+  readonly value: string;
+  /** The value the tag compares with the reading. */
+  readonly tagValue: string | readonly string[];
+  /** The read value as the input shows it; undefined when nothing was read. */
+  readonly readText: string | undefined;
+  /** The control, with the placeholder of a blank optional field. */
+  readonly control: (placeholder: string | undefined) => ReactNode;
+  readonly onUndo: () => void;
+}): ReviewItem {
+  const { reading, field, value } = input;
+  const tag = liveTagOf(reading, field, input.tagValue);
+
+  const blank =
+    tag === "not-on-document" &&
+    value.trim() === "" &&
+    OPTIONAL_FIELDS.has(field);
+
+  return {
+    key: field,
+    label: input.label,
+    tag,
+    sources: sourcesOf(reading, field),
+    control: input.control(blank ? BLANK_PLACEHOLDER : undefined),
+    controlId: `review-${field}`,
+    display: value.trim() === "" ? "None" : value,
+    readAs:
+      tag === "corrected" && input.readText !== undefined
+        ? input.readText
+        : null,
+    onUndo: () => {
+      input.onUndo();
+      focusSoon(`review-${field}`);
+    },
+    note: tag === "check-this" ? CHECK_NOTE : blank ? BLANK_NOTE : null,
+  };
+}
+
+/** The customer's card, and what blocks its save. */
+export type CustomerReview = {
+  readonly item: ReviewItem;
+  readonly check: FieldCheck;
+};
+
+/** The customer as a review card, and what blocks its save (R-33, czjw.98). */
+export function customerItemOf(input: {
+  readonly reading: StoredReading | null;
+  readonly label: string;
+  readonly value: CustomerValue;
+  readonly control: ReactNode;
+  readonly onUndo: () => void;
+}): CustomerReview {
+  const { reading, label, value } = input;
+
+  const tag = liveTagOf(
+    reading,
+    "customer",
+    value.kind === "none" ? null : value.name
+  );
+
+  return {
+    item: {
+      key: "customer",
+      label,
+      tag,
+      sources: sourcesOf(reading, "customer"),
+      control: input.control,
+      controlId: "review-customer",
+      display: value.kind === "none" ? "None" : value.name,
+      readAs:
+        tag === "corrected" ? (reading?.fields.customer?.value ?? null) : null,
+      onUndo: () => {
+        input.onUndo();
+        focusSoon("review-customer");
+      },
+      note: tag === "check-this" ? CHECK_NOTE : null,
+    },
+    check: {
+      key: "customer",
+      label,
+      empty: false,
+      issue:
+        value.kind === "none"
+          ? "Choose a customer to save."
+          : value.kind === "new" && !value.confirmed
+            ? "Confirm the new customer to save."
+            : undefined,
+    },
+  };
+}
 
 type TextInputProps = {
   readonly field: TextField;
@@ -179,39 +288,6 @@ export function ReviewTextInput(props: TextInputProps): ReactNode {
   );
 }
 
-/** One editable text field with its live origin tag and its error (R-38, czjw.27). */
-export function ReviewTextRow(
-  props: RowSelection &
-    TextInputProps & {
-      /** The value the tag compares with the reading, when it differs from the text. */
-      readonly tagValue?: string | readonly string[];
-    }
-): ReactNode {
-  const { field, label } = props;
-  const reading = props.view.reading;
-
-  return (
-    <ReviewFieldRow
-      field={field}
-      label={label}
-      tag={liveTagOf(
-        reading,
-        field,
-        props.tagValue ??
-          (field === "invoiceNumbers"
-            ? props.value
-            : readingTextOf(field, props.value))
-      )}
-      sources={sourcesOf(reading, field)}
-      unread={reading === null}
-      selected={props.selected === field}
-      onSelect={() => props.onSelect(field)}
-    >
-      <ReviewTextInput {...props} />
-    </ReviewFieldRow>
-  );
-}
-
 type CustomerInputProps = {
   readonly view: DocumentReviewView;
   readonly value: CustomerValue;
@@ -232,31 +308,6 @@ export function ReviewCustomerInput(props: CustomerInputProps): ReactNode {
         <FieldError>Choose a customer to save.</FieldError>
       ) : null}
     </div>
-  );
-}
-
-/** The customer field with its live origin tag (R-33). */
-export function ReviewCustomerRow(
-  props: RowSelection & CustomerInputProps & { readonly label: string }
-): ReactNode {
-  const { view, value } = props;
-
-  return (
-    <ReviewFieldRow
-      field="customer"
-      label={props.label}
-      tag={liveTagOf(
-        view.reading,
-        "customer",
-        value.kind === "none" ? null : value.name
-      )}
-      sources={sourcesOf(view.reading, "customer")}
-      unread={view.reading === null}
-      selected={props.selected === "customer"}
-      onSelect={() => props.onSelect("customer")}
-    >
-      <ReviewCustomerInput {...props} />
-    </ReviewFieldRow>
   );
 }
 

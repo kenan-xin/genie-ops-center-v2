@@ -3,12 +3,11 @@
 import { useModuleClient } from "@genie/core/rpc/client";
 import { useForm, useSelector } from "@tanstack/react-form";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useState, type RefObject } from "react";
 
 import {
   currencyCode,
   invoicesContract,
-  MAX_PAYMENT_LINKS,
   type PaymentMatch,
   type ReadingField,
   savePaymentInput,
@@ -26,16 +25,25 @@ import {
 } from "./payment-links.ts";
 import { LinksEditor, type OpenStatus } from "./payment-links.tsx";
 import { DuplicateNotice, SaveFailure } from "./review-alerts.tsx";
-import { FIELDS_OF, type ReviewFieldKey } from "./review-fields.tsx";
 import {
+  type Blocker,
+  FALLBACK_REASON,
+  type FieldCheck,
+  firstFieldBlocker,
+  splitBlocker,
+} from "./review-blocker.ts";
+import { FIELDS_OF } from "./review-fields.tsx";
+import {
+  customerItemOf,
   inputTextOf,
   issuesOf,
   optionalText,
   readingTextOf,
-  ReviewCustomerRow,
-  ReviewSaveBar,
-  ReviewTextRow,
+  ReviewCustomerInput,
+  ReviewTextInput,
+  textItemOf,
 } from "./review-form.tsx";
+import type { ReviewItem, ReviewModel } from "./review-model.ts";
 import type { DocumentReviewView } from "./views.ts";
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
@@ -127,52 +135,42 @@ function buildInput(
   };
 }
 
-/** The payment review: its fields, then the links the person confirms (R-30, R-31, R-33). */
-export function PaymentReviewForm(props: {
+/**
+ * The payment review as a model of cards, the split and Save (R-30, R-31, R-33, R-38, czjw.98).
+ * The form keeps values and touched state only; each render parses the values and checks the links.
+ */
+export function usePaymentReview(input: {
   readonly view: DocumentReviewView;
-  readonly selected: ReviewFieldKey | null;
-  readonly onSelect: (field: ReviewFieldKey) => void;
+  /** False: the document is not a payment, so no open-invoice request runs. */
+  readonly active: boolean;
+  readonly revealRef: RefObject<((blocker: Blocker) => void) | null>;
   readonly onSaved: (message: string) => void;
   readonly onDiscard: () => void;
-  readonly discarding: boolean;
-}): ReactNode {
-  const { view } = props;
+}): ReviewModel {
+  const { view } = input;
+  const reading = view.reading;
   const invoices = useModuleClient(invoicesContract);
   const queryClient = useQueryClient();
 
   const [attempted, setAttempted] = useState(false);
   const [pending, setPending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // Undefined until a save answers, so a type change to payment still shows the stored duplicate.
+  const [answered, setAnswered] = useState<string | null>();
 
-  const [duplicate, setDuplicate] = useState<string | null>(
-    view.payment?.possibleDuplicateOf ?? null
-  );
+  const duplicate =
+    answered === undefined
+      ? (view.payment?.possibleDuplicateOf ?? null)
+      : answered;
 
   const form = useForm({
     defaultValues: initialValues(view),
-    validators: {
-      // Links are checked by `checkLinks`, so the schema checks the payment's own fields.
-      onMount: ({ value }) => validate(value),
-      onChange: ({ value }) => validate(value),
-    },
     // The Keep choice rides on one submit only, so a refused Keep never reaches the next save.
     onSubmitMeta: { keep: false },
-    onSubmitInvalid: () => setAttempted(true),
-    onSubmit: ({ value, meta }) => submit(value, meta.keep),
+    onSubmit: ({ value, meta }) => send(value, meta.keep),
   });
 
-  function validate(value: FormValues) {
-    const parsed = savePaymentInput.safeParse(
-      buildInput(view, value, [], false)
-    );
-
-    return parsed.success
-      ? undefined
-      : { fields: issuesOf(parsed.error.issues, formFieldOf) };
-  }
-
   const values = useSelector(form.store, (state) => state.values);
-  const canSubmit = useSelector(form.store, (state) => state.canSubmit);
 
   const customerId =
     values.customer.kind === "existing" ? values.customer.id : null;
@@ -183,10 +181,13 @@ export function PaymentReviewForm(props: {
   const asRead =
     customerId !== null &&
     customerId === view.customerMatch?.id &&
-    currency === view.reading?.fields.currency?.value;
+    currency === reading?.fields.currency?.value;
 
   const asked =
-    customerId !== null && !asRead && currencyCode.safeParse(currency).success;
+    input.active &&
+    customerId !== null &&
+    !asRead &&
+    currencyCode.safeParse(currency).success;
 
   const openQuery = useQuery({
     queryKey: ["invoices", "open-invoices", customerId, currency],
@@ -223,39 +224,21 @@ export function PaymentReviewForm(props: {
   const amountCents = centsOfText(values.amount);
   const check = checkLinks(amountCents ?? 0, links, open);
 
-  const tooManyLinks = links.length > MAX_PAYMENT_LINKS;
+  // Links are checked by `splitBlocker`, so the schema checks the payment's own fields.
+  const parsed = savePaymentInput.safeParse(
+    buildInput(view, values, [], false)
+  );
 
-  const linksOk =
-    !tooManyLinks &&
-    !check.abovePayment &&
-    check.aboveOpen.length === 0 &&
-    check.unreadable.length === 0;
+  const issues = parsed.success
+    ? {}
+    : issuesOf(parsed.error.issues, formFieldOf);
 
-  const canSave =
-    canSubmit &&
-    linksOk &&
-    status.kind === "ready" &&
-    customerChoiceOf(values.customer) !== undefined;
-
-  const helper =
-    values.customer.kind === "new" && !values.customer.confirmed
-      ? "Confirm the new customer to save."
-      : status.kind === "loading"
-        ? "Save waits for the open invoices to load."
-        : status.kind === "failed"
-          ? "The open invoices did not load. Press Load again to save."
-          : tooManyLinks
-            ? `Link at most ${MAX_PAYMENT_LINKS} invoices in one save.`
-            : canSave
-              ? undefined
-              : "Fix the fields marked above to save.";
-
-  async function submit(value: FormValues, keep: boolean) {
-    const parsed = savePaymentInput.safeParse(
+  async function send(value: FormValues, keep: boolean) {
+    const sent = savePaymentInput.safeParse(
       buildInput(view, value, links, keep)
     );
 
-    if (!parsed.success || !linksOk || status.kind !== "ready") {
+    if (!sent.success) {
       setAttempted(true);
 
       return;
@@ -265,24 +248,24 @@ export function PaymentReviewForm(props: {
     setSaveError(null);
 
     try {
-      const answer = await invoices.savePayment(parsed.data);
+      const answer = await invoices.savePayment(sent.data);
 
       if (answer.outcome === "possible-duplicate") {
-        setDuplicate(answer.duplicateOf);
+        setAnswered(answer.duplicateOf);
 
         return;
       }
 
-      setDuplicate(null);
+      setAnswered(null);
 
       const linked = check.allocatedCents;
 
-      props.onSaved(
-        `Payment saved: ${formatMoney(linked, parsed.data.currency)} linked, ${formatMoney(parsed.data.amountCents - linked, parsed.data.currency)} unallocated.`
+      input.onSaved(
+        `Payment saved: ${formatMoney(linked, sent.data.currency)} linked, ${formatMoney(sent.data.amountCents - linked, sent.data.currency)} unallocated.`
       );
       await queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY });
     } catch (error) {
-      setDuplicate(null);
+      setAnswered(null);
 
       const message =
         error instanceof Error ? error.message : "The save failed.";
@@ -294,99 +277,144 @@ export function PaymentReviewForm(props: {
     }
   }
 
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
-      <div className="flex flex-col divide-y divide-border">
-        {FIELDS_OF.payment.map(({ field, label }) =>
-          field === "customer" ? (
-            <form.Field key={field} name="customer">
-              {(item) => (
-                <ReviewCustomerRow
-                  view={view}
-                  selected={props.selected}
-                  onSelect={props.onSelect}
-                  label={label}
-                  value={item.state.value}
-                  attempted={attempted}
-                  onChange={(next) => item.handleChange(next)}
-                />
-              )}
-            </form.Field>
-          ) : (
-            <form.Field key={field} name={field}>
-              {(item) => {
-                // SAFETY: this form's validator stores one plain message string per field.
-                const issue = item.state.meta.errors[0] as string | undefined;
+  const first = initialValues(view);
 
-                return (
-                  <ReviewTextRow
-                    view={view}
-                    selected={props.selected}
-                    onSelect={props.onSelect}
-                    field={field}
-                    label={label}
-                    value={item.state.value}
-                    {...(field === "invoiceNumbers"
-                      ? { tagValue: numbersOf(item.state.value) }
-                      : {})}
-                    message={
-                      field === "amount" ||
-                      attempted ||
-                      item.state.meta.isTouched
-                        ? issue
-                        : undefined
-                    }
-                    currency={values.currency}
-                    onChange={(next) => item.handleChange(next)}
-                    onBlur={item.handleBlur}
-                  />
-                );
-              }}
-            </form.Field>
-          )
+  const customer = customerItemOf({
+    reading,
+    label: FIELDS_OF.payment[0].label,
+    value: values.customer,
+    control: (
+      <form.Field name="customer">
+        {(field) => (
+          <ReviewCustomerInput
+            view={view}
+            value={field.state.value}
+            attempted={attempted}
+            onChange={(next) => field.handleChange(next)}
+          />
         )}
-      </div>
-      <div className="border-t border-border">
-        <LinksEditor
-          proposal={proposal}
-          status={status}
-          onRetry={() => void openQuery.refetch()}
-          open={open}
-          drafts={links}
-          amountCents={amountCents}
-          currency={currency}
-          namedNumbers={numbersOf(values.invoiceNumbers)}
-          customerName={
-            values.customer.kind === "none" ? "" : values.customer.name
-          }
-          onChange={(next) => form.setFieldValue("links", next)}
-        />
-      </div>
-      {duplicate === null && saveError === null ? null : (
-        <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+      </form.Field>
+    ),
+    onUndo: () => form.setFieldValue("customer", first.customer),
+  });
+
+  const textItem = (field: TextField, label: string): ReviewItem => {
+    const read =
+      field === "invoiceNumbers"
+        ? reading?.invoiceNumbers.length
+          ? reading.invoiceNumbers.map(({ value }) => value).join(", ")
+          : undefined
+        : reading?.fields[field]?.value;
+
+    return textItemOf({
+      reading,
+      field,
+      label,
+      value: values[field],
+      tagValue:
+        field === "invoiceNumbers"
+          ? numbersOf(values[field])
+          : readingTextOf(field, values[field]),
+      readText:
+        read === undefined || field === "invoiceNumbers"
+          ? read
+          : inputTextOf(field, read),
+      control: (placeholder) => (
+        <form.Field name={field}>
+          {(item) => (
+            <ReviewTextInput
+              field={field}
+              label={label}
+              value={item.state.value}
+              message={
+                field === "amount" || attempted || item.state.meta.isTouched
+                  ? issues[field]
+                  : undefined
+              }
+              currency={values.currency}
+              {...(placeholder === undefined ? {} : { placeholder })}
+              onChange={(next) => item.handleChange(next)}
+              onBlur={item.handleBlur}
+            />
+          )}
+        </form.Field>
+      ),
+      onUndo: () => form.setFieldValue(field, first[field]),
+    });
+  };
+
+  const items = FIELDS_OF.payment.map(({ field, label }) =>
+    field === "customer" ? customer.item : textItem(field, label)
+  );
+
+  const checks: FieldCheck[] = FIELDS_OF.payment.map(({ field, label }) =>
+    field === "customer"
+      ? customer.check
+      : {
+          key: field,
+          label,
+          issue: issues[field],
+          empty: values[field].trim() === "",
+        }
+  );
+
+  const blocker =
+    firstFieldBlocker(checks) ??
+    splitBlocker({
+      status,
+      drafts: links,
+      open,
+      amountCents: amountCents ?? 0,
+      currency,
+    }) ??
+    (parsed.success
+      ? null
+      : { key: "customer" as const, reason: FALLBACK_REASON, focusId: null });
+
+  return {
+    items,
+    split: (
+      <LinksEditor
+        proposal={proposal}
+        status={status}
+        onRetry={() => void openQuery.refetch()}
+        open={open}
+        drafts={links}
+        amountCents={amountCents}
+        currency={currency}
+        namedNumbers={numbersOf(values.invoiceNumbers)}
+        customerName={
+          values.customer.kind === "none" ? "" : values.customer.name
+        }
+        onChange={(next) => form.setFieldValue("links", next)}
+      />
+    ),
+    blocker,
+    notices:
+      duplicate === null && saveError === null ? null : (
+        <div className="flex flex-col gap-2">
           {duplicate === null ? null : (
             <DuplicateNotice
               href={`/m/invoices/payments/${duplicate}`}
               pending={pending}
               onKeep={() => void form.handleSubmit({ keep: true })}
-              onDiscard={() => props.onDiscard()}
+              onDiscard={input.onDiscard}
             />
           )}
           <SaveFailure message={saveError} />
         </div>
-      )}
-      <ReviewSaveBar
-        reason={helper ?? null}
-        pending={pending}
-        label={links.length > 0 ? "Save the payment" : "Save as unallocated"}
-        discarding={props.discarding}
-        onDiscard={props.onDiscard}
-      />
-    </form>
-  );
+      ),
+    saveLabel: links.length > 0 ? "Save the payment" : "Save as unallocated",
+    pending,
+    submit: () => {
+      if (blocker === null) {
+        void form.handleSubmit();
+
+        return;
+      }
+
+      setAttempted(true);
+      input.revealRef.current?.(blocker);
+    },
+  };
 }

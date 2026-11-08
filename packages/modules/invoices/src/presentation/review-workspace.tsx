@@ -7,6 +7,7 @@ import { useRef, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
 import { useInvoiceReview } from "./invoice-review-form.tsx";
+import { usePaymentReview } from "./payment-review-form.tsx";
 import type { Blocker } from "./review-blocker.ts";
 import { ReviewDesk } from "./review-desk.tsx";
 import type { ReviewFrame } from "./review-model.ts";
@@ -40,7 +41,18 @@ export function ReviewWorkspace(props: {
     onDiscard: () => onDiscard?.(),
   });
 
-  const model = view.document.status === "reading" ? null : invoice;
+  const reading = view.document.status === "reading";
+
+  // Both hooks run on every render, so a type change keeps the workspace and its PDF (T5.4).
+  const payment = usePaymentReview({
+    view,
+    active: !reading && kind === "payment",
+    revealRef,
+    onSaved: props.onSaved,
+    onDiscard: () => onDiscard?.(),
+  });
+
+  const model = reading ? null : kind === "payment" ? payment : invoice;
 
   const refreshUrl = async () =>
     (await invoices.getDocumentReview({ id: view.document.id })).document
