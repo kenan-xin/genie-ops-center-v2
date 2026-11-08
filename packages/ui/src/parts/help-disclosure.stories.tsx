@@ -208,15 +208,19 @@ export const IconOnlyOnPhone: Story = {
   },
 };
 
+// The button hangs its padding, so its icon starts on the column's text edge (6wz1.93).
 const keepsItsWidthAtTheStart: Story["play"] = async ({ canvas }) => {
   const column = canvas.getByTestId("column").getBoundingClientRect();
+  const button = canvas.getByRole("button", { name: "How access works" });
+  const icon = button.querySelector("svg")!.getBoundingClientRect();
 
-  const trigger = canvas
-    .getByRole("button", { name: "How access works" })
-    .getBoundingClientRect();
-
-  await expect(trigger.left).toBe(column.left);
-  await expect(trigger.width).toBeLessThan(column.width / 2);
+  await expect(icon.left).toBe(
+    canvas.getByText(/^(The table|5 to 480)/).getBoundingClientRect().left
+  );
+  await expect(icon.left).toBe(column.left);
+  await expect(button.getBoundingClientRect().width).toBeLessThan(
+    column.width / 2
+  );
 };
 
 /** A page puts the button in a grid column; it keeps its own width at the start of the row. */

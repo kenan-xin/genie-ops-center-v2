@@ -62,9 +62,13 @@ export function HelpDisclosure(props: {
         </Tooltip>
       ) : (
         <PopoverTrigger
-          // A grid or flex-column parent would stretch the button and center its label.
+          // A grid or flex-column parent would stretch the button and center its label. The negative
+          // margin hangs the padding and the 1 px border, so the icon starts on the text column.
           render={
-            <Button variant="ghost" className="w-fit justify-self-start" />
+            <Button
+              variant="ghost"
+              className="-ms-4.25 w-fit justify-self-start"
+            />
           }
         >
           <Icon aria-hidden="true" />

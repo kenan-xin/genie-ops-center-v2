@@ -370,7 +370,8 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
           </div>
         );
       })}
-      <div className="mt-4 border-t border-border pt-2">
+      {/* px-3 puts the help icon on the nav rows' text edge. */}
+      <div className="mt-4 border-t border-border px-3 pt-2">
         <HelpDisclosure label="Which modules appear here">
           <p>
             A module appears here only when it declares settings. Switching a
