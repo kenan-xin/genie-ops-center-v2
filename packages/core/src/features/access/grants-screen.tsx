@@ -4,7 +4,9 @@ import {
   Button,
   ConfirmDialog,
   EmptyState,
+  focusRing,
   FormActionBar,
+  LabelPill,
   StatusPill,
   ToggleGroup,
   ToggleGroupItem,
@@ -45,6 +47,8 @@ import {
 import {
   grantsView,
   type GrantsView,
+  type InheritedRowView,
+  type InheritedSource,
   linkDraft,
   linkedRecipient,
   moduleNameOf,
@@ -149,15 +153,84 @@ function notShownLabel(
 /** A transfer row while it is built, so each optional field is added only when present. */
 type DraftItem = { -readonly [K in keyof TransferItem]: TransferItem[K] };
 
-/** The transfer rows: the catalogue in order, each with its staged state (P2, P3). */
+const inheritedId = (entry: InheritedRowView) =>
+  `inherited:${entry.path.assignmentId}:${entry.row.id}`;
+
+/**
+ * One read-only Granted row for a path that is not the editable one (d8l5.42): "Through <group>"
+ * opens the group on Grants, "Included in <role>" opens Advanced access.
+ */
+function inheritedItem(
+  entry: InheritedRowView,
+  input: {
+    readonly recordLabels: ReadonlyMap<string, string>;
+    readonly onOpenSource: (source: InheritedSource) => void;
+  }
+): TransferItem {
+  const { row, path, source } = entry;
+
+  const record =
+    path.scope === null
+      ? null
+      : (input.recordLabels.get(scopeKey(path.scope)) ?? path.scope.id);
+
+  const item: DraftItem = {
+    id: inheritedId(entry),
+    label: row.name,
+    group: row.group === "core" ? "Core" : "Modules",
+    countKey: row.id,
+    readOnly: true,
+    note: (
+      <>
+        {source.kind === "group" ? "Through " : "Included in "}
+        <button
+          type="button"
+          className={`font-medium text-foreground underline ${focusRing}`}
+          onClick={() => input.onOpenSource(source)}
+        >
+          {source.name}
+        </button>
+      </>
+    ),
+    pills: (
+      <>
+        {row.enabled ? null : <StatusPill tone="warning">Inactive</StatusPill>}
+        {record === null ? null : (
+          <LabelPill>
+            <span className="wrap-anywhere">{`One record · ${record}`}</span>
+          </LabelPill>
+        )}
+      </>
+    ),
+  };
+
+  const description = row.enabled
+    ? row.description
+    : `Inactive, the ${row.name} module is off`;
+
+  if (description !== null) item.description = description;
+
+  // A group path also names its role. A role source already names it in the note.
+  if (source.kind === "group") {
+    item.control = (
+      <span className="text-sm text-muted-foreground">{path.role.name}</span>
+    );
+  }
+
+  return item;
+}
+
+/** The transfer rows: the catalogue in order, each with its staged state (P2, P3), then its read-only paths. */
 function itemsOf(input: {
   readonly catalogue: readonly GrantRow[];
   readonly view: GrantsView;
   readonly draft: GrantsDraft;
   readonly granted: ReadonlySet<string>;
   readonly setRole: (row: string, roleId: string, saved?: string) => void;
+  readonly recordLabels: ReadonlyMap<string, string>;
+  readonly onOpenSource: (source: InheritedSource) => void;
 }): TransferItem[] {
-  return input.catalogue.map((row) => {
+  return input.catalogue.flatMap((row) => {
     const shown = input.view.granted.find((entry) => entry.row.id === row.id);
 
     const also =
@@ -216,7 +289,12 @@ function itemsOf(input: {
       item.note = `Also through ${also.join(", ")}`;
     }
 
-    return item;
+    return [
+      item,
+      ...input.view.inherited
+        .filter((entry) => entry.row.id === row.id)
+        .map((entry) => inheritedItem(entry, input)),
+    ];
   });
 }
 
@@ -396,6 +474,22 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     });
   };
 
+  /** A read-only row's source: the group opens on Grants, behind the unsaved-changes confirm. */
+  const openSource = (source: InheritedSource) => {
+    if (source.kind === "role") {
+      setAdvancedOpen(true);
+
+      return;
+    }
+
+    guardSwitch(source.name, () => {
+      clear();
+      closeAdvanced();
+      setKind("group");
+      props.onRecipientChange({ type: "group", id: source.id });
+    });
+  };
+
   const removals = (): RowRemoval[] =>
     props.recipient === null || props.paths === undefined
       ? []
@@ -447,6 +541,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
       .map((entry) => entry.row.id)
       .filter((row) => !draft.remove.includes(row)),
     ...Object.keys(draft.add),
+    // Read-only rows always sit in Granted, and nothing moves them.
+    ...(view?.inherited ?? []).map(inheritedId),
   ]);
 
   return (
@@ -549,6 +645,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                     granted,
                     setRole: (row, roleId, saved) =>
                       store.getState().setRole(row, roleId, saved),
+                    recordLabels: props.recordLabels,
+                    onOpenSource: openSource,
                   })}
                   granted={granted}
                   onMove={(ids, to) => {

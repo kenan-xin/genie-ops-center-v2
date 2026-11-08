@@ -25,6 +25,7 @@ type Args = {
   readonly refusal?: string;
   readonly onSave: (changes: GrantChanges) => Promise<void>;
   readonly onSaveAdvanced: (changes: AdvancedChanges) => Promise<void>;
+  readonly onRecipientChange?: (next: AccessRecipient | null) => void;
 };
 
 /** Holds the recipient the way the route does, and answers each recipient's paths at once. */
@@ -36,7 +37,10 @@ function Harness(args: Args) {
       catalogue={FIXTURE_ROWS}
       recipients={FIXTURE_RECIPIENTS}
       recipient={recipient}
-      onRecipientChange={setRecipient}
+      onRecipientChange={(next) => {
+        args.onRecipientChange?.(next);
+        setRecipient(next);
+      }}
       paths={recipient === null ? undefined : fixturePaths(recipient.id)}
       {...(args.link === undefined ? {} : { link: args.link })}
       onSave={async (changes) => {
@@ -270,6 +274,110 @@ export const CoreAsk: Story = {
         "Not shown here: Tenant administrator (Core administration, whole tenant)"
       )
     ).toBeVisible();
+  },
+};
+
+const desktop = { viewport: { value: "desktop", isRotated: false } };
+
+const grantedPane = () =>
+  within(screen.getByRole("group", { name: "Granted" }));
+
+/**
+ * d8l5.42: Riley Park gets Invoices and the switched-off Analytics through Finance team. Both show
+ * in Granted, read-only, with the group as their source. A direct Invoices role added on top shows
+ * both paths, and the module still counts once.
+ */
+export const ThroughGroupIsReadOnly: Story = {
+  args: { initial: person("p-riley"), onRecipientChange: fn() },
+  globals: desktop,
+  play: async ({ args, canvas }) => {
+    await expect(
+      await canvas.findByRole("heading", { name: "Granted · 3" })
+    ).toBeVisible();
+    await expect(
+      grantedPane().getAllByRole("button", { name: "Finance team" })
+    ).toHaveLength(2);
+    await expect(
+      grantedPane().queryByRole("checkbox", { name: "Invoices" })
+    ).toBeNull();
+    await expect(grantedPane().getByText("Inactive")).toBeVisible();
+
+    const catalog = within(canvas.getByRole("group", { name: "Catalog" }));
+
+    await userEvent.click(catalog.getByRole("checkbox", { name: "Invoices" }));
+    await userEvent.click(catalog.getByRole("button", { name: "Add 1" }));
+
+    await expect(
+      grantedPane().getByRole("checkbox", { name: "Invoices" })
+    ).toBeVisible();
+    await expect(grantedPane().getByText("Pending")).toBeVisible();
+    await expect(
+      grantedPane().getAllByRole("button", { name: "Finance team" })
+    ).toHaveLength(2);
+    await expect(
+      canvas.getByRole("heading", { name: "Granted · 3" })
+    ).toBeVisible();
+
+    await userEvent.click(
+      grantedPane().getAllByRole("button", { name: "Finance team" })[0]!
+    );
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: "Discard 1 unsaved change?" })
+      ).getByRole("button", { name: "Discard" })
+    );
+
+    await expect(args.onRecipientChange).toHaveBeenLastCalledWith({
+      type: "group",
+      id: "g-finance",
+    });
+    await expect(
+      canvas.getByRole("button", { name: "Groups" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      canvas.getByRole("combobox", { name: "Choose a group" })
+    ).toHaveTextContent("Finance team");
+  },
+};
+
+/** A12: the phone roster keeps the source line and its link. */
+export const ThroughGroupIsReadOnlyPhone: Story = {
+  args: { initial: person("p-riley") },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async () => {
+    await expect(
+      (await screen.findAllByRole("button", { name: "Finance team" }))[0]
+    ).toBeVisible();
+    await expect(
+      grantedPane().getAllByRole("button", { name: "Finance team" })
+    ).toHaveLength(2);
+  },
+};
+
+/** d8l5.42: Genie Administrators reaches Ask only through Tenant administrator, which opens Advanced access. */
+export const ThroughCoreRoleIsReadOnly: Story = {
+  args: { initial: group("g-admins") },
+  globals: desktop,
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("heading", { name: "Granted · 1" })
+    ).toBeVisible();
+    await expect(grantedPane().getByText(/Included in/)).toBeVisible();
+    await expect(
+      within(canvas.getByRole("group", { name: "Catalog" })).getByText(
+        "Also through Tenant administrator"
+      )
+    ).toBeVisible();
+
+    await userEvent.click(
+      grantedPane().getByRole("button", { name: "Tenant administrator" })
+    );
+
+    const sheet = await advancedSheet();
+
+    await waitFor(() =>
+      expect(sheet.getAllByText("Tenant administrator")[0]).toBeVisible()
+    );
   },
 };
 

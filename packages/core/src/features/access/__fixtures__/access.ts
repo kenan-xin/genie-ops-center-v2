@@ -119,6 +119,8 @@ const holder = {
   sales: { type: "group", id: "g-sales", name: "Sales desk" },
   jamie: { type: "user", id: "p-jamie", name: "Jamie Chen" },
   sam: { type: "user", id: "p-sam", name: "Sam Rivera" },
+  admins: { type: "group", id: "g-admins", name: "Genie Administrators" },
+  riley: { type: "user", id: "p-riley", name: "Riley Park" },
 } as const;
 
 const role = (id: string) => {
@@ -135,6 +137,25 @@ const held = (id: string, by: AccessPath["holder"], roleId: string) =>
   fixturePath({ id, holder: by, ...role(roleId) });
 
 const financeInvoices = held("a-fin-1", holder.finance, "r-invoices-finance");
+
+const financeAnalytics = held("a-fin-2", holder.finance, "r-analytics-viewer");
+
+/** Tenant administrator, which includes Ask (core:ask:use). */
+const tenantAdminOf = (id: string, by: AccessPath["holder"]): AccessPath => ({
+  ...fixturePath({
+    id,
+    holder: by,
+    role: { id: "r-tenant-admin", name: "Tenant administrator" },
+    moduleId: "core",
+  }),
+  role: {
+    id: "r-tenant-admin",
+    name: "Tenant administrator",
+    kind: "system",
+    moduleId: null,
+    permissions: ["core:ask:use", "core:roles:manage"],
+  },
+});
 
 const leadership = {
   type: "group",
@@ -266,7 +287,9 @@ export const searchFixtureRecords = async (
 /**
  * The paths of the S2-19 read for each sample recipient, as the prototype states draw them:
  * Operations (role choice, and two advanced roles), Leadership (the only administrator path), Jamie Chen (a group path stays), Sam Rivera (no path stays),
- * Finance team (Analytics is off), and Sales desk (Ask, with Tenant administrator not shown).
+ * Finance team (Analytics is off), Sales desk (Ask, with Tenant administrator not shown),
+ * Genie Administrators (Ask only through Tenant administrator), and Riley Park (Invoices and the
+ * switched-off Analytics only through Finance team).
  */
 const PATHS = {
   "g-ops": [
@@ -276,27 +299,16 @@ const PATHS = {
     ...ADVANCED_PATHS["g-ops"],
   ],
   "g-leads": ADVANCED_PATHS["g-leads"],
-  "g-finance": [
-    financeInvoices,
-    held("a-fin-2", holder.finance, "r-analytics-viewer"),
-  ],
+  "g-finance": [financeInvoices, financeAnalytics],
   "g-sales": [
     held("a-sales-1", holder.sales, "r-ask-user"),
-    {
-      ...fixturePath({
-        id: "a-sales-2",
-        holder: holder.sales,
-        role: { id: "r-tenant-admin", name: "Tenant administrator" },
-        moduleId: "core",
-      }),
-      role: {
-        id: "r-tenant-admin",
-        name: "Tenant administrator",
-        kind: "system",
-        moduleId: null,
-        permissions: ["core:ask:use", "core:roles:manage"],
-      },
-    },
+    tenantAdminOf("a-sales-2", holder.sales),
+  ],
+  "g-admins": [tenantAdminOf("a-admins-1", holder.admins)],
+  "p-riley": [
+    held("a-riley-1", holder.riley, "r-slides-editor"),
+    financeInvoices,
+    financeAnalytics,
   ],
   "p-jamie": [
     held("a-jamie-1", holder.jamie, "r-invoices-viewer"),
@@ -486,6 +498,7 @@ export const FIXTURE_RECIPIENTS: GrantRecipients = {
   groups: [
     { id: "g-analysts", name: "Analysts", memberCount: 8 },
     { id: "g-finance", name: "Finance team", memberCount: 12 },
+    { id: "g-admins", name: "Genie Administrators", memberCount: 2 },
     { id: "g-leads", name: "Leadership", memberCount: 3 },
     { id: "g-ops", name: "Operations", memberCount: 40 },
     { id: "g-pmo", name: "Project office", memberCount: 6 },
@@ -497,6 +510,7 @@ export const FIXTURE_RECIPIENTS: GrantRecipients = {
     { id: "p-casey", name: "Casey Park", email: "casey.park@example.com" },
     { id: "p-jamie", name: "Jamie Chen", email: "jamie.chen@example.com" },
     { id: "p-jordan", name: "Jordan Lee", email: "jordan.lee@example.com" },
+    { id: "p-riley", name: "Riley Park", email: "riley.park@example.com" },
     { id: "p-sam", name: "Sam Rivera", email: "sam.rivera@example.com" },
   ],
 };
