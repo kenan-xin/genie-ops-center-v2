@@ -267,7 +267,6 @@ export {
   deleteRole,
   listRoles,
   readRole,
-  type RoleAssignmentRow as AdminRoleAssignmentRow,
   type RoleDetail,
   type RolePermissionGroup,
   type RolePermissionKey,

@@ -1,5 +1,6 @@
+import type { AccessPath } from "../../services/roles/effective-access.ts";
+import type { GrantRecipients } from "../../services/roles/grants.ts";
 import type {
-  RoleAssignmentRow as RoleAssignment,
   RoleDetail,
   RolePermissionGroup,
   RolePermissionKey,
@@ -16,7 +17,6 @@ import type { NoMatchCopy } from "../admin/no-match.tsx";
  */
 export type {
   Role,
-  RoleAssignment,
   RoleDetail,
   RolePermissionGroup,
   RolePermissionKey,
@@ -25,6 +25,16 @@ export type {
 };
 
 export type RoleKind = Role["kind"];
+
+/** Who holds the selected role, from the effective-access read by role (R-37d, `d8l5.47`). */
+export type RoleHolders = {
+  /** Up to 100 paths of the role. */
+  readonly paths: readonly AccessPath[];
+  /** Every path of the role: the n of "See all <n> in Access". */
+  readonly total: number;
+  /** The member count of each group holder. */
+  readonly recipients: GrantRecipients;
+};
 
 export type RolesViewer = {
   readonly id: string;
@@ -51,8 +61,12 @@ export type RolesScreenProps = {
   readonly catalogue: readonly RolePermissionGroup[];
   readonly selectedRoleId: string | null;
   readonly onSelectRole: (roleId: string | null) => void;
-  /** The selected role's grouped permissions and holders, loaded by the host on selection. */
+  /** The selected role's grouped permissions, loaded by the host on selection. */
   readonly detail?: RoleDetail | undefined;
+  /** Who holds the selected role; undefined while it loads, or for a viewer who may not read it. */
+  readonly holders?: RoleHolders | undefined;
+  /** The address of a holder's person or group; without it a holder name is plain text. */
+  readonly holderHref?: ((holder: AccessPath["holder"]) => string) | undefined;
   readonly error?: string | undefined;
   readonly loading?: boolean | undefined;
   /** A write is running, so every button that writes shows the loading state (tokens.md "Buttons"). */

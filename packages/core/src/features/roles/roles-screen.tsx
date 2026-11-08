@@ -25,11 +25,15 @@ import {
   StatusPill,
   StickyActionBar,
   Textarea,
+  focusRing,
 } from "@genie/ui";
+import { UserIcon, UsersIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { TENANT_ADMINISTRATOR_ROLE } from "../../lib/module-contract/system-roles.ts";
+import { accessHref } from "../access/access-link.ts";
+import { overviewRows } from "../access/overview-view.ts";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   CopyIcon,
@@ -42,10 +46,11 @@ import {
   WarningIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
-import { holdersSentence } from "./role-holders.ts";
+import { PageLink } from "../shell/page-link.tsx";
 import type {
   Role,
   RoleDetail,
+  RoleHolders,
   RoleInput,
   RolePermissionGroup,
   RolesScreenProps,
@@ -320,9 +325,115 @@ function kindPill(
   return <LabelPill>System · {moduleName}</LabelPill>;
 }
 
+const HOLDERS_SHOWN = 10;
+
+/**
+ * Who holds the role (`d8l5.47`, which reverses LK8): the first ten paths of the effective-access
+ * read by role, groups first, then by name, in the Overview's words.
+ */
+function HolderList(props: {
+  readonly roleId: string;
+  readonly holders: RoleHolders | undefined;
+  readonly holderHref?: RolesScreenProps["holderHref"];
+  readonly labelledBy: string;
+}) {
+  if (props.holders === undefined) {
+    return (
+      <p role="status" className="mt-1 text-sm text-muted-foreground">
+        Loading the holders…
+      </p>
+    );
+  }
+
+  const rows = overviewRows({
+    subject: { type: "role", id: props.roleId },
+    paths: props.holders.paths,
+    personPaths: undefined,
+    catalogue: [],
+    recipients: props.holders.recipients,
+    recordLabels: new Map(),
+  })
+    .toSorted(
+      (a, b) =>
+        Number(a.holder.type === "user") - Number(b.holder.type === "user") ||
+        a.holder.name.localeCompare(b.holder.name, undefined, {
+          sensitivity: "base",
+        })
+    )
+    .slice(0, HOLDERS_SHOWN);
+
+  if (rows.length === 0) {
+    return (
+      <p className="mt-1 text-sm text-foreground">
+        Nobody holds this role yet.
+      </p>
+    );
+  }
+
+  return (
+    <>
+      <ul
+        aria-labelledby={props.labelledBy}
+        className="mt-2 divide-y divide-border"
+      >
+        {rows.map((row) => {
+          const Icon = row.holder.type === "user" ? UserIcon : UsersIcon;
+          const href = props.holderHref?.(row.holder);
+
+          return (
+            <li key={row.key} className="flex items-start gap-2 py-2 text-sm">
+              <Icon
+                aria-hidden="true"
+                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+              />
+              <span className="flex min-w-0 flex-col gap-0.5">
+                <span className="flex flex-wrap items-center gap-2">
+                  {href === undefined ? (
+                    <span className="font-medium text-foreground wrap-anywhere">
+                      {row.holder.name}
+                    </span>
+                  ) : (
+                    <PageLink
+                      href={href}
+                      className={`font-medium text-foreground underline wrap-anywhere ${focusRing}`}
+                    >
+                      {row.holder.name}
+                    </PageLink>
+                  )}
+                  {row.record === null ? null : (
+                    <LabelPill>
+                      <span className="wrap-anywhere">{`One record · ${row.record}`}</span>
+                    </LabelPill>
+                  )}
+                  {row.notInEffect.length === 0 ? null : (
+                    <StatusPill tone="neutral">Not in effect</StatusPill>
+                  )}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {row.path}
+                </span>
+              </span>
+            </li>
+          );
+        })}
+      </ul>
+      {props.holders.total > HOLDERS_SHOWN ? (
+        <PageLink
+          href={accessHref({ role: props.roleId })}
+          className={`mt-2 inline-block text-sm font-medium text-foreground underline ${focusRing}`}
+        >
+          See all {props.holders.total} in Access
+        </PageLink>
+      ) : null}
+    </>
+  );
+}
+
 /** The role detail: header actions, permission groups with the entitlement state, and holders. */
 function RoleDetailView(props: {
   readonly detail: RoleDetail;
+  readonly holders: RoleHolders | undefined;
+  readonly holderHref?: RolesScreenProps["holderHref"];
   readonly catalogue: readonly RolePermissionGroup[];
   readonly onEdit: () => void;
   readonly onCopy: () => void;
@@ -333,6 +444,7 @@ function RoleDetailView(props: {
 }) {
   const { detail } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const holdersHeadingId = useId();
 
   const keyCount = detail.permissionGroups.reduce(
     (total, group) => total + group.keys.length,
@@ -469,7 +581,10 @@ function RoleDetailView(props: {
 
         <section className="rounded-xl border border-border bg-card p-4 md:p-5">
           <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3 className="text-base font-semibold text-foreground">
+            <h3
+              id={holdersHeadingId}
+              className="text-base font-semibold text-foreground"
+            >
               Who holds this role
             </h3>
             {props.onOpenInAccess === undefined ? null : (
@@ -481,9 +596,12 @@ function RoleDetailView(props: {
           <p className="text-sm text-muted-foreground">
             A role held through a group changes for every member of that group.
           </p>
-          <p className="mt-1 text-sm text-foreground">
-            {holdersSentence(detail.assignments)}
-          </p>
+          <HolderList
+            roleId={detail.id}
+            holders={props.holders}
+            holderHref={props.holderHref}
+            labelledBy={holdersHeadingId}
+          />
         </section>
       </div>
 
@@ -602,6 +720,8 @@ export function RolesScreen(props: RolesScreenProps) {
       <div>
         <RoleDetailView
           detail={props.detail}
+          holders={props.holders}
+          holderHref={props.holderHref}
           catalogue={props.catalogue}
           pending={props.pending}
           onEdit={() =>

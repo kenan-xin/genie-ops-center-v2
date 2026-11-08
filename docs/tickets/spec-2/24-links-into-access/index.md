@@ -23,6 +23,8 @@ Depends on: S2-21.
 
 Changed 2026-11-08 (`d8l5.46`): the Modules and Roles links open the Overview with the module or role chosen.
 
+Changed 2026-11-08 (`d8l5.47`): item 3 lists the holders by name, the first 10, not a count.
+
 ## Acceptance
 
 At a phone and a desktop viewport, each link opens Access with its subject chosen. A person without `core:roles:manage` sees no link. Spec 3 AC-11 still passes for the Modules page. The shared definition of done in the [index](../README.md) also applies.

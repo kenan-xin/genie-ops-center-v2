@@ -397,7 +397,9 @@ describe("the groups router against a real database", () => {
 
     const people = await peopleCaller(actor).list();
 
-    const role = await rolesCaller(actor).get({ roleId });
+    const role = await rolesCaller(actor).accessBySubject({
+      subject: { type: "role", id: roleId },
+    });
 
     const holders = await readHolders(deployment.context, modules, [
       "fixture:use",
@@ -410,7 +412,7 @@ describe("the groups router against a real database", () => {
     expect(
       people.find((person) => person.id === member)?.groups.map((g) => g.label)
     ).toEqual(["Pilot finance"]);
-    expect(role.assignments.map((a) => a.principalLabel)).toEqual([
+    expect(role.paths.map((path) => path.holder.name)).toEqual([
       "Pilot finance",
     ]);
     expect(
@@ -625,7 +627,11 @@ describe("the groups router against a real database", () => {
 
     const role = await rolesCaller(actor).get({ roleId });
 
-    expect(role.assignments.map((row) => row.principalId)).toEqual([ordinary]);
+    const holders = await rolesCaller(actor).accessBySubject({
+      subject: { type: "role", id: roleId },
+    });
+
+    expect(holders.paths.map((path) => path.holder.id)).toEqual([ordinary]);
     expect(role.assignmentCount).toBe(1);
 
     const roles = await rolesCaller(actor).list();

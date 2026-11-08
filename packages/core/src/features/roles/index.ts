@@ -7,8 +7,8 @@ export { RolePermissionList, RolesScreen } from "./roles-screen.tsx";
 
 export {
   type Role,
-  type RoleAssignment,
   type RoleDetail,
+  type RoleHolders,
   type RoleInput,
   type RoleKind,
   type RolePermissionGroup,

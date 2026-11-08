@@ -15,7 +15,6 @@ import {
   CORE_PERMISSION_LABELS,
   CORE_ROLE_DESCRIPTIONS,
 } from "../authorization/roles.ts";
-import { groupLabelSql } from "../groups/label.ts";
 
 /** The role catalogue entries a screen may offer, and what it can say about each module. */
 export type RolesModule = Pick<
@@ -67,18 +66,9 @@ export type RoleRow = {
   readonly unavailableKeys: readonly UnavailableKey[];
 };
 
-export type RoleAssignmentRow = {
-  readonly id: string;
-  readonly principalType: "user" | "group";
-  readonly principalId: string;
-  readonly principalLabel: string;
-  readonly scopeType: string | null;
-  readonly scopeId: string | null;
-};
-
+/** Who holds a role is read through the effective-access read by role (R-37d, `d8l5.47`). */
 export type RoleDetail = RoleRow & {
   readonly permissionGroups: readonly RolePermissionGroup[];
-  readonly assignments: readonly RoleAssignmentRow[];
 };
 
 type RawRole = {
@@ -272,7 +262,7 @@ function permissionGroups(
   }));
 }
 
-/** One role with its permission groups and the principals that hold it, for the detail page. */
+/** One role with its permission groups, for the detail page. */
 export async function readRole(
   tenant: TenantContext,
   roleId: string,
@@ -292,21 +282,6 @@ export async function readRole(
 
   if (raw === undefined) return undefined;
 
-  const assignments = await tenant.db.$client.query(
-    `select a.id::text as id, a.principal_type as "principalType",
-            a.principal_id as "principalId",
-            coalesce(u.name, ${groupLabelSql("g")}, 'Unknown') as "principalLabel",
-            a.scope_type as "scopeType", a.scope_id as "scopeId"
-       from role_assignment a
-       left join "user" u on a.principal_type = 'user' and u.id = a.principal_id
-       left join "group" g on a.principal_type = 'group' and g.id = a.principal_id::uuid
-      where a.role_id = $1::uuid
-        -- R-39: the break-glass account appears only in the audit log.
-        and coalesce(u.is_break_glass, false) = false
-      order by a.principal_type, lower(coalesce(u.name, ${groupLabelSql("g")}))`,
-    [roleId]
-  );
-
   return {
     ...toRoleRow(
       raw,
@@ -319,8 +294,6 @@ export async function readRole(
       available,
       entitled
     ),
-    // SAFETY: the statement selects exactly the assignment columns.
-    assignments: assignments.rows as readonly RoleAssignmentRow[],
   };
 }
 

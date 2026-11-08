@@ -11,6 +11,9 @@ import {
   FIXTURE_SYSTEM_DETAIL,
   FIXTURE_TWO_UNAVAILABLE_DETAIL,
   FIXTURE_VIEWER,
+  HOLDERS_NONE,
+  HOLDERS_THREE,
+  HOLDERS_TWELVE,
 } from "./__fixtures__/roles.ts";
 import { RolesScreen } from "./roles-screen.tsx";
 import type { RolesScreenProps } from "./types.ts";
@@ -324,22 +327,100 @@ export const SystemRoleIsReadOnlyAndCopyable: Story = {
   },
 };
 
-/** R-29b, R-37a: the holders show only as a count, and "Manage in Access" opens Access on the role. */
+/** R-37a: "Manage in Access" opens Access on the role. */
 export const ManageInAccessWhenTheHostPassesIt: Story = {
   args: {
     selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
     detail: FIXTURE_CUSTOM_DETAIL,
+    holders: HOLDERS_THREE,
     onOpenInAccess: fn(),
   },
   play: async ({ args, canvas }) => {
-    await expect(canvas.getByText("1 group holds this role.")).toBeVisible();
-    await expect(canvas.queryByText("Operations")).toBeNull();
     await userEvent.click(
       canvas.getByRole("button", { name: "Manage in Access" })
     );
     await expect(args.onOpenInAccess).toHaveBeenCalledWith(
       FIXTURE_CUSTOM_DETAIL.id
     );
+  },
+};
+
+const holderHref = (holder: { readonly type: string; readonly id: string }) =>
+  `/admin/${holder.type === "group" ? "groups" : "people"}?selected=${holder.id}`;
+
+/** `d8l5.47`: a role nobody holds keeps the empty sentence and Manage in Access. */
+export const HoldersNone: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    holders: HOLDERS_NONE,
+    holderHref,
+    onOpenInAccess: fn(),
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText("Nobody holds this role yet.")
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Manage in Access" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("list", { name: "Who holds this role" })
+    ).toBeNull();
+  },
+};
+
+/** `d8l5.47`: the holders by name and path, groups first, each a link. */
+export const HoldersListed: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    holders: HOLDERS_THREE,
+    holderHref,
+  },
+  play: async ({ canvas }) => {
+    const list = await canvas.findByRole("list", {
+      name: "Who holds this role",
+    });
+
+    const items = within(list).getAllByRole("listitem");
+
+    await expect(items.map((item) => item.textContent)).toEqual([
+      "Dry runGroup, 1 member",
+      "Ada LovelaceDirect assignment",
+      "Zoe BrandtDirect assignment",
+    ]);
+    await expect(
+      within(list).getByRole("link", { name: "Dry run" })
+    ).toHaveAttribute("href", "/admin/groups?selected=g-solo");
+    await expect(
+      within(list).getByRole("link", { name: "Ada Lovelace" })
+    ).toHaveAttribute("href", "/admin/people?selected=p-ada");
+    await expect(canvas.queryByRole("link", { name: /See all/ })).toBeNull();
+  },
+};
+
+/** `d8l5.47`: past ten, the first ten show, groups first, and "See all" opens Access by role. */
+export const HoldersPastTen: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    holders: HOLDERS_TWELVE,
+    holderHref,
+  },
+  play: async ({ canvas }) => {
+    const list = await canvas.findByRole("list", {
+      name: "Who holds this role",
+    });
+
+    const items = within(list).getAllByRole("listitem");
+
+    await expect(items).toHaveLength(10);
+    await expect(items[0]).toHaveTextContent("Finance teamGroup, 12 members");
+    await expect(items[1]).toHaveTextContent("OperationsGroup, 40 members");
+    await expect(
+      canvas.getByRole("link", { name: "See all 12 in Access" })
+    ).toHaveAttribute("href", `/admin/access?role=${FIXTURE_CUSTOM_DETAIL.id}`);
   },
 };
 

@@ -49,6 +49,25 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     enabled: selectedRoleId !== null,
   });
 
+  // Who holds the role, from the effective-access read by role (R-37d, `d8l5.47`). The keys sit
+  // under ["access"], so every Access save refreshes them.
+  // shortcut: the first ten come from the newest 100 paths; give the read a holder order if a role passes 100 paths.
+  const holders = useQuery({
+    queryKey: ["access", "role-holders", selectedRoleId],
+    queryFn: () =>
+      rpc.roles.accessBySubject({
+        subject: { type: "role", id: selectedRoleId ?? "" },
+        limit: 100,
+      }),
+    enabled: selectedRoleId !== null,
+  });
+
+  const recipients = useQuery({
+    queryKey: ["access", "recipients"],
+    queryFn: () => rpc.roles.grantRecipients(),
+    enabled: selectedRoleId !== null,
+  });
+
   // The declared permission catalogue the role form picks from (R-33).
   const catalogue = useQuery({
     queryKey: ["roles", "catalogue"],
@@ -116,6 +135,18 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
         selectedRoleId={selectedRoleId}
         onSelectRole={selectRole}
         detail={detail.data}
+        holders={
+          holders.data === undefined || recipients.data === undefined
+            ? undefined
+            : {
+                paths: holders.data.paths,
+                total: holders.data.total ?? holders.data.paths.length,
+                recipients: recipients.data,
+              }
+        }
+        holderHref={(holder) =>
+          `/admin/${holder.type === "group" ? "groups" : "people"}?selected=${encodeURIComponent(holder.id)}`
+        }
         loading={list.isPending}
         pending={action.isPending || save.isPending}
         error={
@@ -123,7 +154,9 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
             ? "The roles could not be read."
             : detail.isError
               ? "The role could not be read."
-              : undefined
+              : holders.isError || recipients.isError
+                ? "The holders could not be read."
+                : undefined
         }
         onCreateRole={(input) => saveRole(null, input)}
         onUpdateRole={(roleId, input) => saveRole(roleId, input)}

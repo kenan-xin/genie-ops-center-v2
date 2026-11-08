@@ -1,6 +1,7 @@
 import type {
   Role,
   RoleDetail,
+  RoleHolders,
   RolePermissionGroup,
   RolesViewer,
 } from "../types.ts";
@@ -103,24 +104,6 @@ export const FIXTURE_SYSTEM_DETAIL: RoleDetail = {
       ],
     },
   ],
-  assignments: [
-    {
-      id: "a-1",
-      principalType: "user",
-      principalId: "p-1",
-      principalLabel: "Ada Lovelace",
-      scopeType: null,
-      scopeId: null,
-    },
-    {
-      id: "a-2",
-      principalType: "group",
-      principalId: "g-1",
-      principalLabel: "Finance managers",
-      scopeType: null,
-      scopeId: null,
-    },
-  ],
 };
 
 export const FIXTURE_CUSTOM_DETAIL: RoleDetail = {
@@ -139,16 +122,6 @@ export const FIXTURE_CUSTOM_DETAIL: RoleDetail = {
       moduleName: "retired",
       entitled: false,
       keys: [{ key: "retired:key", label: "retired:key", unavailable: true }],
-    },
-  ],
-  assignments: [
-    {
-      id: "a-3",
-      principalType: "group",
-      principalId: "g-2",
-      principalLabel: "Operations",
-      scopeType: null,
-      scopeId: null,
     },
   ],
 };
@@ -196,7 +169,6 @@ export const FIXTURE_TWO_UNAVAILABLE_DETAIL: RoleDetail = {
       ],
     },
   ],
-  assignments: [],
 };
 
 /**
@@ -236,5 +208,64 @@ export const FIXTURE_DISABLED_MODULE_DETAIL: RoleDetail = {
       ],
     },
   ],
-  assignments: [],
 };
+
+type Holder = RoleHolders["paths"][number]["holder"];
+
+/** One whole-tenant path of `FIXTURE_CUSTOM_DETAIL`, as the effective-access read returns it. */
+const holderPath = (holder: Holder): RoleHolders["paths"][number] => ({
+  assignmentId: `a-${holder.id}`,
+  holder,
+  role: {
+    id: FIXTURE_CUSTOM_DETAIL.id,
+    name: FIXTURE_CUSTOM_DETAIL.name,
+    kind: FIXTURE_CUSTOM_DETAIL.kind,
+    moduleId: FIXTURE_CUSTOM_DETAIL.moduleId,
+    permissions: FIXTURE_CUSTOM_DETAIL.permissions,
+  },
+  scope: null,
+  addedBy: null,
+  addedAt: "2026-11-01T09:00:00.000000Z",
+  notInEffect: [],
+});
+
+const HOLDER_GROUPS = [
+  { id: "g-ops", name: "Operations", memberCount: 40 },
+  { id: "g-solo", name: "Dry run", memberCount: 1 },
+  { id: "g-finance", name: "Finance team", memberCount: 12 },
+] as const;
+
+const holders = (people: readonly Holder[], groups: readonly Holder[]) => ({
+  // Read order is newest first, so a group can come after the people.
+  paths: [...people, ...groups].map(holderPath),
+  total: people.length + groups.length,
+  recipients: { groups: HOLDER_GROUPS, people: [] },
+});
+
+const person = (id: string, name: string): Holder => ({
+  type: "user",
+  id,
+  name,
+});
+
+const group = (index: number): Holder => ({
+  type: "group",
+  id: HOLDER_GROUPS[index]!.id,
+  name: HOLDER_GROUPS[index]!.name,
+});
+
+export const HOLDERS_NONE: RoleHolders = holders([], []);
+
+/** One group and two people, the people in read order Zoe then Ada. */
+export const HOLDERS_THREE: RoleHolders = holders(
+  [person("p-zoe", "Zoe Brandt"), person("p-ada", "Ada Lovelace")],
+  [group(1)]
+);
+
+/** Ten people, then two groups in read order: past ten, the groups still come first. */
+export const HOLDERS_TWELVE: RoleHolders = holders(
+  Array.from({ length: 10 }, (_, index) =>
+    person(`p-${index}`, `Person ${String(index + 1).padStart(2, "0")}`)
+  ),
+  [group(0), group(2)]
+);
