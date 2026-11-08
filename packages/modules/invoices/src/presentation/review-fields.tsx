@@ -22,7 +22,10 @@ export type OriginTagKind =
   | "entered"
   | "corrected"
   | "check-this"
-  | "not-on-document";
+  | "not-on-document"
+  | "needs-input"
+  | "unspecified"
+  | "paid-in-full";
 
 /** The rows of one document type, in the order the review shows them (R-27, R-38). */
 export const FIELDS_OF = {
@@ -158,6 +161,12 @@ export function OriginTag(props: { readonly tag: OriginTagKind }): ReactNode {
       return <Badge variant="warning">Check this</Badge>;
     case "not-on-document":
       return <Badge variant="neutral">Unspecified</Badge>;
+    case "needs-input":
+      return <Badge variant="warning">Needs your input</Badge>;
+    case "unspecified":
+      return <Badge variant="neutral">Unspecified</Badge>;
+    case "paid-in-full":
+      return <Badge variant="neutral">None, paid in full</Badge>;
   }
 }
 

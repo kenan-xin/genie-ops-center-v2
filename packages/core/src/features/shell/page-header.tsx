@@ -30,6 +30,8 @@ export type PageBreadcrumb = {
 
 export type PageHeaderProps = {
   readonly title: string;
+  /** A status pill beside the title, such as "Needs your input"; it hides with the title below `lg` in a shell. */
+  readonly status?: ReactNode;
   readonly description?: string;
   /** A short line under the title, for example the customer and the issue date. Every width. */
   readonly meta?: ReactNode;
@@ -177,7 +179,16 @@ export function PageHeader(props: PageHeaderProps) {
           {crumb === undefined || Anchor === undefined ? null : (
             <Trail crumb={crumb} Anchor={Anchor} inShell={inShell} />
           )}
-          <h1 className={`text-xl font-bold ${hideBelowLg}`}>{props.title}</h1>
+          {props.status === undefined ? (
+            <h1 className={`text-xl font-bold ${hideBelowLg}`}>
+              {props.title}
+            </h1>
+          ) : (
+            <div className={`flex items-center gap-2 ${hideBelowLg}`}>
+              <h1 className="text-xl font-bold">{props.title}</h1>
+              {props.status}
+            </div>
+          )}
           {props.description === undefined ? null : (
             <p className={`text-sm text-muted-foreground ${hideBelowLg}`}>
               {props.description}

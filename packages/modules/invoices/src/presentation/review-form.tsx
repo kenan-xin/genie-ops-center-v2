@@ -106,25 +106,25 @@ type RowSelection = {
   readonly onSelect: (field: ReviewFieldKey) => void;
 };
 
-/** One editable text field with its live origin tag and its error (R-38, czjw.27). */
-export function ReviewTextRow(
-  props: RowSelection & {
-    readonly field:
-      | Exclude<ReadingField, "customer" | "dueDate">
-      | "invoiceNumbers";
-    readonly label: string;
-    readonly value: string;
-    /** The value the tag compares with the reading, when it differs from the text. */
-    readonly tagValue?: string | readonly string[];
-    readonly message: string | undefined;
-    /** The currency the amount input shows beside its figure. */
-    readonly currency?: string;
-    readonly onChange: (value: string) => void;
-    readonly onBlur: () => void;
-  }
-): ReactNode {
+type TextField =
+  | Exclude<ReadingField, "customer" | "dueDate">
+  | "invoiceNumbers";
+
+type TextInputProps = {
+  readonly field: TextField;
+  readonly label: string;
+  readonly value: string;
+  readonly message: string | undefined;
+  /** The currency the amount input shows beside its figure. */
+  readonly currency?: string;
+  readonly placeholder?: string;
+  readonly onChange: (value: string) => void;
+  readonly onBlur: () => void;
+};
+
+/** The control of one text field and its error: a date picker, an amount with its currency, or text. */
+export function ReviewTextInput(props: TextInputProps): ReactNode {
   const { field, label, message } = props;
-  const reading = props.view.reading;
   const id = `review-${field}`;
 
   const control = {
@@ -133,6 +133,7 @@ export function ReviewTextRow(
     "type": "text",
     "inputMode": field === "amount" ? ("decimal" as const) : ("text" as const),
     "value": props.value,
+    "placeholder": props.placeholder,
     "aria-invalid": message === undefined ? undefined : true,
     "aria-describedby": message === undefined ? undefined : `${id}-error`,
     "onChange": (event: { readonly target: { readonly value: string } }) =>
@@ -148,6 +149,46 @@ export function ReviewTextRow(
       props.onBlur();
     },
   };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      {field === "amount" ? (
+        <InputGroup>
+          <CurrencyAddon currency={props.currency ?? ""} />
+          <InputGroupInput {...control} />
+        </InputGroup>
+      ) : field === "date" ? (
+        <DatePicker
+          id={id}
+          aria-label={label}
+          placeholder="DD Mon YYYY"
+          pickLabel={`Choose the ${label.toLowerCase()}`}
+          value={props.value}
+          aria-invalid={control["aria-invalid"]}
+          aria-describedby={control["aria-describedby"]}
+          onValueChange={props.onChange}
+          onBlur={props.onBlur}
+        />
+      ) : (
+        <Input {...control} />
+      )}
+      {message === undefined ? null : (
+        <FieldError id={`${id}-error`}>{message}</FieldError>
+      )}
+    </div>
+  );
+}
+
+/** One editable text field with its live origin tag and its error (R-38, czjw.27). */
+export function ReviewTextRow(
+  props: RowSelection &
+    TextInputProps & {
+      /** The value the tag compares with the reading, when it differs from the text. */
+      readonly tagValue?: string | readonly string[];
+    }
+): ReactNode {
+  const { field, label } = props;
+  const reading = props.view.reading;
 
   return (
     <ReviewFieldRow
@@ -166,43 +207,37 @@ export function ReviewTextRow(
       selected={props.selected === field}
       onSelect={() => props.onSelect(field)}
     >
-      <div className="flex flex-col gap-1.5">
-        {field === "amount" ? (
-          <InputGroup>
-            <CurrencyAddon currency={props.currency ?? ""} />
-            <InputGroupInput {...control} />
-          </InputGroup>
-        ) : field === "date" ? (
-          <DatePicker
-            id={id}
-            aria-label={label}
-            placeholder="DD Mon YYYY"
-            pickLabel={`Choose the ${label.toLowerCase()}`}
-            value={props.value}
-            aria-invalid={control["aria-invalid"]}
-            aria-describedby={control["aria-describedby"]}
-            onValueChange={props.onChange}
-            onBlur={props.onBlur}
-          />
-        ) : (
-          <Input {...control} />
-        )}
-        {message === undefined ? null : (
-          <FieldError id={`${id}-error`}>{message}</FieldError>
-        )}
-      </div>
+      <ReviewTextInput {...props} />
     </ReviewFieldRow>
   );
 }
 
-/** The customer field: a stored customer or a confirmed new one (R-33). */
+type CustomerInputProps = {
+  readonly view: DocumentReviewView;
+  readonly value: CustomerValue;
+  readonly attempted: boolean;
+  readonly onChange: (value: CustomerValue) => void;
+};
+
+/** The customer control and its error: a stored customer or a confirmed new one (R-33). */
+export function ReviewCustomerInput(props: CustomerInputProps): ReactNode {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <CustomerField
+        customers={props.view.customers}
+        value={props.value}
+        onChange={props.onChange}
+      />
+      {props.attempted && props.value.kind === "none" ? (
+        <FieldError>Choose a customer to save.</FieldError>
+      ) : null}
+    </div>
+  );
+}
+
+/** The customer field with its live origin tag (R-33). */
 export function ReviewCustomerRow(
-  props: RowSelection & {
-    readonly label: string;
-    readonly value: CustomerValue;
-    readonly attempted: boolean;
-    readonly onChange: (value: CustomerValue) => void;
-  }
+  props: RowSelection & CustomerInputProps & { readonly label: string }
 ): ReactNode {
   const { view, value } = props;
 
@@ -220,16 +255,7 @@ export function ReviewCustomerRow(
       selected={props.selected === "customer"}
       onSelect={() => props.onSelect("customer")}
     >
-      <div className="flex flex-col gap-1.5">
-        <CustomerField
-          customers={view.customers}
-          value={value}
-          onChange={props.onChange}
-        />
-        {props.attempted && value.kind === "none" ? (
-          <FieldError>Choose a customer to save.</FieldError>
-        ) : null}
-      </div>
+      <ReviewCustomerInput {...props} />
     </ReviewFieldRow>
   );
 }

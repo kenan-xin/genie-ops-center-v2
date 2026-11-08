@@ -1,4 +1,4 @@
-import { Button } from "@genie/ui";
+import { Badge, Button } from "@genie/ui";
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
 
@@ -50,6 +50,14 @@ export const Standalone: Story = {
     await expect(
       canvasElement.querySelector("[data-shell-bottom-bar]")
     ).toBeNull();
+  },
+};
+
+/** A status pill beside the title, as the review of a document shows it (czjw.98). */
+export const WithStatus: Story = {
+  args: {
+    title: "INV-LIVE-001.pdf",
+    status: <Badge variant="warning">Needs your input</Badge>,
   },
 };
 
