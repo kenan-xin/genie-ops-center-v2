@@ -326,12 +326,18 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
     <ChartContainer fill={props.slide === true}>
       <Plot data={data} title={props.title} margin={{ left: 8, right: 8 }}>
         <CartesianGrid vertical={false} />
+        {/* Recharts' default `preserveEnd` hid any label that overlapped its neighbor, so a
+            panel or phone chart lost months at random (czjw.106). Every label shows when the
+            compact labels fit, and an even step from the first one when they do not. */}
         <XAxis
           dataKey="x"
           tickLine={false}
           axisLine={false}
+          interval="equidistantPreserveStart"
           tickFormatter={(value: string | number | null) =>
-            value === null ? "No value" : formatChartValue(x, value)
+            value === null
+              ? "No value"
+              : formatChartValue(x, value, { compact: true })
           }
         />
         {/* The 60 px default cut a slide's base-size "SGD 60k". Off a slide, auto width measures

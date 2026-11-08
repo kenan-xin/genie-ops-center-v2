@@ -69,6 +69,13 @@ describe("formatChartValue", () => {
     ["a compact number", number, 1500, { compact: true }, "1.5k"],
     ["a date", date, "2026-01-05", {}, "5 Jan 2026"],
     ["a week bucket", week, "2026-01-05", {}, "Week of 5 Jan 2026"],
+    [
+      "a compact month, the axis label",
+      month,
+      "2026-09-01",
+      { compact: true },
+      "Sept 26",
+    ],
     ["a boolean", boolean, true, {}, "Yes"],
     ["a missing value, never 0", money("EUR"), null, {}, ""],
   ] as const)("formats %s", (_, column, value, options, expected) =>

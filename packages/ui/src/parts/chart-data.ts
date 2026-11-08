@@ -59,6 +59,13 @@ const monthFormat = new Intl.DateTimeFormat(LOCALE, {
   timeZone: "UTC",
 });
 
+// An axis label, short enough that every month of a panel or phone chart keeps its label.
+const compactMonthFormat = new Intl.DateTimeFormat(LOCALE, {
+  month: "short",
+  year: "2-digit",
+  timeZone: "UTC",
+});
+
 /**
  * The minor unit digits of a currency: 2 for SGD, 0 for JPY. The standard formatter knows them, and
  * a compact one reports 0. A code that Intl refuses counts 2, as `formatMoney` shows it.
@@ -103,12 +110,16 @@ function formatMoney(
   }
 }
 
-function formatDate(column: ChartColumn, value: string): string {
+function formatDate(
+  column: ChartColumn,
+  value: string,
+  compact: boolean
+): string {
   // A date is a calendar day, so it is read and shown in UTC and never moves a day.
   const day = new Date(`${value}T00:00:00Z`);
 
   if (column.bucket === "month") {
-    return monthFormat.format(day);
+    return (compact ? compactMonthFormat : monthFormat).format(day);
   }
 
   return column.bucket === "week"
@@ -139,11 +150,11 @@ export function formatChartValue(
     return String(value);
   }
 
-  if (column.type === "date") {
-    return formatDate(column, String(value));
-  }
-
   const compact = options.compact ?? false;
+
+  if (column.type === "date") {
+    return formatDate(column, String(value), compact);
+  }
 
   const currency =
     column.currency ??

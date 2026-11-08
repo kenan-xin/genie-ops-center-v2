@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { chartColors, type ThemeName } from "../theme/tokens.ts";
+import { formatChartValue } from "./chart-data.ts";
 import { Chart, type ChartProps } from "./chart.tsx";
 
 const invoiced = {
@@ -227,7 +228,8 @@ const linePlay: Story["play"] = async ({ canvas, canvasElement, globals }) => {
   await expect(getComputedStyle(curve).stroke).toBe(
     slotColor(themeOf(globals["theme"]), 1)
   );
-  await expect(canvas.getByText("Jan 2026")).toBeVisible();
+  // The axis label is the compact month; the tooltip and the table keep "Jan 2026".
+  await expect(canvas.getByText("Jan 26")).toBeVisible();
 };
 
 export const Line: Story = {
@@ -625,6 +627,113 @@ export const SlideChartOnPhone: Story = {
     await slideChartPlay(context);
     await noPageScroll();
   },
+};
+
+/** Monthly SGD sales from `from` (an ISO month), as the Ask panel draws them (czjw.106). */
+function monthlySales(from: string, count: number): ChartProps {
+  const start = new Date(`${from}-01T00:00:00Z`);
+
+  return {
+    ...sgdSlideChart,
+    slide: false,
+    title: "Invoiced sales by month (SGD)",
+    rows: Array.from({ length: count }, (_, index) => {
+      const month = new Date(start);
+
+      month.setUTCMonth(start.getUTCMonth() + index);
+
+      return {
+        x: month.toISOString().slice(0, 10),
+        Invoiced: 12_345_600 + index * 1_250_000,
+      };
+    }),
+  };
+}
+
+/** The x-axis labels that the chart draws, left to right. */
+function monthLabels(canvasElement: HTMLElement) {
+  return waitFor(() => {
+    const labels = [
+      ...canvasElement.querySelectorAll(
+        ".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value"
+      ),
+    ];
+
+    expect(labels.length).toBeGreaterThan(0);
+
+    return labels;
+  });
+}
+
+/**
+ * Every month keeps its label, or the labels step evenly from the first month, and no two labels
+ * overlap. Recharts kept the last label and hid any that overlapped, so "May 2026" and "Sep 2026"
+ * went missing at random on a phone (czjw.106).
+ */
+const everyMonthPlay =
+  (count: number, step: number): NonNullable<Story["play"]> =>
+  async ({ args, canvasElement }) => {
+    const labels = await monthLabels(canvasElement);
+
+    const texts = labels.map((label) => label.textContent);
+
+    // The months, as the axis names them, at the step the story expects.
+    const months = args.rows
+      .map((row) =>
+        formatChartValue(args.x!, row["x"] ?? null, { compact: true })
+      )
+      .filter((_, index) => index % step === 0);
+
+    await expect(months).toHaveLength(Math.ceil(count / step));
+    await expect(texts).toEqual(months);
+
+    const boxes = labels.map((label) => label.getBoundingClientRect());
+
+    // The gap from each label to the one before it.
+    const gaps = boxes
+      .slice(1)
+      .map((box, index) => box.left - boxes[index]!.right);
+
+    await expect(Math.min(...gaps)).toBeGreaterThanOrEqual(0);
+
+    await noPageScroll();
+  };
+
+// The Ask artifact panel's body: `w-120` less its 1 px border and `p-4`, in 16 px rem units.
+const panelFrame = (args: ChartProps) => (
+  <div style={{ width: 447 }}>
+    <Chart {...args} />
+  </div>
+);
+
+export const SixMonthsInThePanel: Story = {
+  name: "Six months in the Ask panel",
+  args: monthlySales("2026-05", 6),
+  globals: desktop,
+  render: panelFrame,
+  play: everyMonthPlay(6, 1),
+};
+
+export const SixMonthsOnPhone: Story = {
+  name: "Six months on a phone",
+  args: monthlySales("2026-05", 6),
+  globals: phone,
+  play: everyMonthPlay(6, 1),
+};
+
+export const TwelveMonthsInThePanel: Story = {
+  name: "Twelve months in the Ask panel",
+  args: monthlySales("2025-11", 12),
+  globals: desktop,
+  render: panelFrame,
+  play: everyMonthPlay(12, 2),
+};
+
+export const TwelveMonthsOnPhone: Story = {
+  name: "Twelve months on a phone",
+  args: monthlySales("2025-11", 12),
+  globals: phone,
+  play: everyMonthPlay(12, 2),
 };
 
 const slideTable = { ...records, slide: true } as const satisfies ChartProps;
