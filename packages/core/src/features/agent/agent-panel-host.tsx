@@ -162,26 +162,6 @@ export function AgentPanelHost(props: {
             />
             Agent
           </h2>
-          {about === undefined ? null : (
-            <div className="flex min-w-0 items-center gap-1">
-              <p
-                title={about}
-                className="min-w-0 truncate text-xs text-muted-foreground"
-              >
-                About: {about}
-              </p>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Leave this page out of the chat"
-                title="Leave this page out of the chat"
-                onClick={leaveOutPage}
-              >
-                <XIcon aria-hidden="true" strokeWidth={1.75} />
-              </Button>
-            </div>
-          )}
         </div>
         <Button
           type="button"
@@ -222,6 +202,29 @@ export function AgentPanelHost(props: {
           <XIcon aria-hidden="true" strokeWidth={1.75} />
         </Button>
       </header>
+      {/* The page the chat is about, on its own row so its filter shows in full (czjw.111). */}
+      {about === undefined ? null : (
+        <div className="shrink-0 border-b border-border px-4 py-2">
+          <div className="inline-flex max-w-full items-start gap-1 rounded-lg bg-tile py-1 ps-2.5 pe-1 text-xs text-muted-foreground">
+            <p
+              title={about}
+              className="line-clamp-2 min-w-0 self-center wrap-break-word"
+            >
+              About: {about}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Leave this page out of the chat"
+              title="Leave this page out of the chat"
+              onClick={leaveOutPage}
+            >
+              <XIcon aria-hidden="true" strokeWidth={1.75} />
+            </Button>
+          </div>
+        </div>
+      )}
       <div className="flex min-h-0 flex-1 flex-col">
         {used ? (
           <Suspense fallback={null}>

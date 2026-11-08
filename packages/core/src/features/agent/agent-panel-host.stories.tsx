@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { createUIMessageStreamResponse, type UIMessageChunk } from "ai";
 import { useState } from "react";
-import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { z } from "zod";
 
 import { ShellContext } from "../shell/shell-context.ts";
@@ -72,7 +72,7 @@ function sentBody(index: number): z.infer<typeof routeBody> {
 const onFinished = fn();
 
 /** A page that talks to the panel through the seam, as a dashboard does. */
-function TestPage() {
+function TestPage(props: { readonly about?: string | undefined }) {
   const [recordId, setRecordId] = useState("d1");
 
   const { send } = useAgentPage({
@@ -80,7 +80,7 @@ function TestPage() {
       page: "Dashboard",
       record: { type: "analytics-dashboard", id: recordId },
     },
-    about: "Monthly review",
+    about: props.about ?? "Monthly review",
     onFinished,
   });
 
@@ -102,7 +102,11 @@ function TestPage() {
 }
 
 /** The shell's row as the host sees it: the page, then the panel. */
-function Frame(props: { readonly page: boolean; readonly person?: string }) {
+function Frame(props: {
+  readonly page: boolean;
+  readonly person?: string;
+  readonly about?: string;
+}) {
   const [page, setPage] = useState(props.page);
 
   return (
@@ -119,7 +123,7 @@ function Frame(props: { readonly page: boolean; readonly person?: string }) {
           <AgentButton />
           {page ? (
             <>
-              <TestPage />
+              <TestPage about={props.about} />
               <button type="button" onClick={() => setPage(false)}>
                 Leave the page
               </button>
@@ -378,6 +382,38 @@ export const APageTalksToThePanel: Story = {
     await expect(region).not.toHaveTextContent("About:");
     release();
     await expect(onFinished).toHaveBeenCalledTimes(1);
+  },
+};
+
+const LONG_ABOUT = "Records, Overdue, Customer Example Trading Company";
+
+/** M1: the About line shows its whole text on its own row, in at most two lines (czjw.111). */
+async function expectWholeAbout(): Promise<void> {
+  const region = await panel();
+
+  const line = await within(region).findByText(`About: ${LONG_ABOUT}`);
+
+  await expect(line).toHaveAttribute("title", LONG_ABOUT);
+  await expect(line.scrollWidth).toBe(line.clientWidth);
+  await expect(line.scrollHeight).toBe(line.clientHeight);
+}
+
+export const ALongAboutLine: Story = {
+  name: "A long About line in the docked panel",
+  render: () => <Frame page about={LONG_ABOUT} />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add a chart" }));
+    await expectWholeAbout();
+  },
+};
+
+export const ALongAboutLineOnAPhone: Story = {
+  name: "A long About line on a phone",
+  render: () => <Frame page about={LONG_ABOUT} />,
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add a chart" }));
+    await expectWholeAbout();
   },
 };
 
