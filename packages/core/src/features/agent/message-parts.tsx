@@ -154,7 +154,7 @@ function AnswerText(props: {
   );
 }
 
-const rowsLinkClass = `inline-flex min-h-11 items-center gap-1.5 rounded-md font-semibold text-primary underline-offset-4 hover:underline lg:min-h-8 ${focusRing}`;
+const rowsLinkClass = `inline-flex min-h-11 items-center gap-1.5 rounded-md font-semibold text-primary underline-offset-4 hover:underline lg:min-h-8 dark:text-brand-on-dark ${focusRing}`;
 
 /** "See the 6 rows": the rows view beside the chat in Ask, a link to it in the agent panel. */
 function RowsLink(props: {

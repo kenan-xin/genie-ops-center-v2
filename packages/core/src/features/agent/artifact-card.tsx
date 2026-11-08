@@ -40,7 +40,7 @@ const cardClass = `${frameClass} ${controlClass}`;
 // A table card's header sits on a hairline over its rows (czjw.118 items 1 and 2).
 const headerClass = `${controlClass} rounded-b-none border-b border-border`;
 
-const moreClass = `inline-flex min-h-11 items-center rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline lg:min-h-8 ${focusRing}`;
+const moreClass = `inline-flex min-h-11 items-center rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline lg:min-h-8 dark:text-brand-on-dark ${focusRing}`;
 
 type PreviewOpen =
   | { readonly kind: "button"; readonly onOpen: () => void }
