@@ -67,6 +67,12 @@ export function AskRoute(props: {
   const title =
     sessions.data.find(({ id }) => id === currentId)?.title ?? props.title;
 
+  // A new chat's model: the header menu sets it below 1024 px, the composer from there (czjw.120
+  // item 12), and the first message carries it.
+  const [model, setModel] = useState(
+    props.models?.chatDefault ?? props.models?.allowed[0] ?? ""
+  );
+
   const artifactsKey = ["agent", "artifacts", sessionId];
 
   // Read again on each visit and when an answer ends: the panel can add versions to this chat
@@ -122,6 +128,15 @@ export function AskRoute(props: {
     }
   }, [pathname, named]);
 
+  // A fresh id remounts the chat, also when the address is already /ask.
+  const startNewChat = () => {
+    setNamed(false);
+    setNewId(crypto.randomUUID());
+    setShownOnly(null);
+    setRows(null);
+    router.push("/ask");
+  };
+
   return (
     <AskScreen
       sessions={sessions.data}
@@ -137,6 +152,18 @@ export function AskRoute(props: {
       onShow={setShown}
       rows={rows}
       onRows={showRows}
+      models={
+        currentId === undefined && props.models !== null
+          ? { allowed: props.models.allowed, value: model, onChange: setModel }
+          : null
+      }
+      onRenamed={() =>
+        void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY })
+      }
+      onDeleted={() => {
+        void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
+        startNewChat();
+      }}
     >
       {props.aiOn ? (
         <AgentChat
@@ -144,6 +171,7 @@ export function AskRoute(props: {
           sessionId={sessionId}
           initialMessages={props.initialMessages}
           models={props.models}
+          model={{ value: model, onChange: setModel }}
           labels={props.labels}
           suggestions={props.suggestions}
           // A new chat says where documents go in, in Ask as in the panel (czjw.120 item 20).
@@ -156,14 +184,7 @@ export function AskRoute(props: {
             onOpenRows: showRows,
           }}
           headingLevel={2}
-          // A fresh id remounts the chat, also when the address is already /ask.
-          onNewChat={() => {
-            setNamed(false);
-            setNewId(crypto.randomUUID());
-            setShownOnly(null);
-            setRows(null);
-            router.push("/ask");
-          }}
+          onNewChat={startNewChat}
           onFinished={(id) => {
             void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
             void queryClient.invalidateQueries({

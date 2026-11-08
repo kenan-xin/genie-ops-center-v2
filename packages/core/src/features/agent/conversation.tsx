@@ -12,6 +12,7 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  useMediaQuery,
 } from "@genie/ui";
 import type { ChatTransport } from "ai";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
@@ -109,6 +110,13 @@ export function Conversation(props: {
     | { readonly text: string; readonly onSent: () => void }
     | undefined;
   readonly onFinished?: ((sessionId: string) => void) | undefined;
+  /**
+   * A frame that shows the model choice itself below 1024 px passes the chosen model; the composer
+   * then shows its picker only from 1024 px (czjw.120 item 12).
+   */
+  readonly model?:
+    | { readonly value: string; readonly onChange: (model: string) => void }
+    | undefined;
   /** The chat's list files, for the file cards and the timeline (R-44a). */
   readonly files?: readonly AgentFile[] | undefined;
   /** Answers a download link for a file id; undefined shows no file card. */
@@ -126,9 +134,15 @@ export function Conversation(props: {
   // The summary this session's latest turn made, which the stored messages carry only after a load.
   const [liveSummary, setLiveSummary] = useState<LiveSummary | null>(null);
 
-  const [modelId, setModelId] = useState(
+  const [ownModel, setOwnModel] = useState(
     props.models?.chatDefault ?? props.models?.allowed[0] ?? ""
   );
+
+  const modelId = props.model?.value ?? ownModel;
+
+  const setModelId = props.model?.onChange ?? setOwnModel;
+
+  const wide = useMediaQuery("(min-width: 1024px)", {});
 
   const chat = useChat<AgentMessage>({
     id: props.sessionId,
@@ -177,7 +191,10 @@ export function Conversation(props: {
     (message) => message.role === "assistant"
   );
 
-  const showPicker = props.models !== null && !answered;
+  // The first message of a new chat carries the model, wherever the person picked it.
+  const isNewChat = props.models !== null && !answered;
+
+  const showPicker = isNewChat && (props.model === undefined || wide);
 
   const modelItems =
     props.models?.allowed.map((model) => ({ value: model, label: model })) ??
@@ -194,7 +211,7 @@ export function Conversation(props: {
 
     void chat.sendMessage(
       { text },
-      showPicker && modelId !== "" ? { body: { modelId } } : undefined
+      isNewChat && modelId !== "" ? { body: { modelId } } : undefined
     );
   }
 

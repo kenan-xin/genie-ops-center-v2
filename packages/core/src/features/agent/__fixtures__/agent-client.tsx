@@ -2,7 +2,11 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { ModuleClientProvider } from "../../../lib/rpc/module-client.tsx";
-import type { AgentFile, AgentMessage } from "../../../services/agent/index.ts";
+import type {
+  AgentFile,
+  AgentMessage,
+  AgentSessionSummary,
+} from "../../../services/agent/index.ts";
 import type { CheckChart } from "../chart-check.tsx";
 
 const NO_MESSAGES: readonly AgentMessage[] = [];
@@ -28,6 +32,11 @@ export function AgentClientStub(props: {
   readonly fileLink?: (input: {
     readonly id: string;
   }) => Promise<{ readonly url: string }>;
+  readonly rename?: (input: {
+    readonly id: string;
+    readonly title: string;
+  }) => Promise<AgentSessionSummary>;
+  readonly remove?: (input: { readonly id: string }) => Promise<void>;
   readonly children: ReactNode;
 }): ReactNode {
   const [client] = useState(
@@ -44,6 +53,16 @@ export function AgentClientStub(props: {
       props.fileLink ??
       (async () => {
         throw new Error("This story downloads no file.");
+      }),
+    rename:
+      props.rename ??
+      (async () => {
+        throw new Error("This story renames no chat.");
+      }),
+    remove:
+      props.remove ??
+      (async () => {
+        throw new Error("This story deletes no chat.");
       }),
   };
 

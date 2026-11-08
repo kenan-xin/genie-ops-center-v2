@@ -3,17 +3,43 @@
 import {
   Button,
   buttonVariants,
+  ConfirmDialog,
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+  Field,
+  FieldError,
+  FieldLabel,
+  Input,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   useMediaQuery,
 } from "@genie/ui";
-import { PanelLeftIcon, SquarePenIcon } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useForm } from "@tanstack/react-form";
+import { useMutation } from "@tanstack/react-query";
+import {
+  EllipsisIcon,
+  HistoryIcon,
+  PanelLeftIcon,
+  SquarePenIcon,
+} from "lucide-react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 
 import { useModuleClient } from "../../lib/rpc/module-client.tsx";
-import { agentContract } from "../../services/agent/contract.ts";
+import {
+  agentContract,
+  chatTitleSchema,
+} from "../../services/agent/contract.ts";
 import type {
   AgentArtifact,
   AgentSessionSummary,
@@ -29,11 +55,107 @@ import { ReadRowsPanel } from "./read-rows-panel.tsx";
 /** From this width an open artifact sits in a column beside the chat (AG22). */
 const ARTIFACT_DOCKED = "(min-width: 1280px)";
 
+/** The rename dialog, mounted only while open, so each open starts from the chat's title. */
+function RenameChat(props: {
+  readonly id: string;
+  readonly title: string;
+  readonly onClose: () => void;
+  readonly onRenamed: () => void;
+}): ReactNode {
+  const agent = useModuleClient(agentContract);
+  const nameId = useId();
+
+  const rename = useMutation({
+    mutationFn: (title: string) => agent.rename({ id: props.id, title }),
+    onSuccess: () => {
+      props.onRenamed();
+      props.onClose();
+    },
+  });
+
+  const form = useForm({
+    defaultValues: { title: props.title },
+    onSubmit: ({ value }) => rename.mutate(value.title),
+  });
+
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) props.onClose();
+      }}
+    >
+      <DialogContent>
+        <form
+          noValidate
+          className="grid gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Rename this chat</DialogTitle>
+          </DialogHeader>
+          <form.Field
+            name="title"
+            validators={{
+              onChange: chatTitleSchema,
+              onSubmit: chatTitleSchema,
+            }}
+          >
+            {(field) => {
+              const issue: { message?: string } | undefined =
+                field.state.meta.errors[0];
+
+              const message = issue?.message;
+
+              return (
+                <Field>
+                  <FieldLabel htmlFor={nameId}>Name</FieldLabel>
+                  <Input
+                    id={nameId}
+                    value={field.state.value}
+                    aria-invalid={message === undefined ? undefined : true}
+                    aria-describedby={
+                      message === undefined ? undefined : `${nameId}-error`
+                    }
+                    onBlur={field.handleBlur}
+                    onChange={(event) => field.handleChange(event.target.value)}
+                  />
+                  {message === undefined ? null : (
+                    <FieldError id={`${nameId}-error`}>{message}</FieldError>
+                  )}
+                </Field>
+              );
+            }}
+          </form.Field>
+          {rename.isError ? (
+            <p role="alert" className="text-sm text-destructive">
+              The name could not be saved. Try again.
+            </p>
+          ) : null}
+          <DialogFooter>
+            <Button type="button" variant="secondary" onClick={props.onClose}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={rename.isPending}>
+              Save
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /**
  * The Ask frame (R-42, R-42a, R-45a, AG22): the chat history as a 272 px column from 1024 px that
  * hides fully on its own toggle, and a left sheet below; the chat in the middle; and the artifact
  * panel, a 480 px column from 1280 px and a sheet below, open only when the person opens a card.
  * A read's rows (czjw.108) take the same place. The chat itself is the shared `AgentChat`, passed as `children`; only this frame is Ask's own.
+ * One 56 px header holds the title and Chat actions: Rename and Delete for a saved chat, and below
+ * 1024 px the model of a new chat (czjw.120 items 12 and 13).
  */
 export function AskScreen(props: {
   readonly sessions: readonly AgentSessionSummary[];
@@ -53,23 +175,85 @@ export function AskScreen(props: {
   /** The read whose rows show in the artifact's place; the route keeps it apart from `shown`. */
   readonly rows: Read | null;
   readonly onRows: (read: Read | null) => void;
+  /** A new chat's model, which the header menu offers below 1024 px; null for a saved chat. */
+  readonly models: {
+    readonly allowed: readonly string[];
+    readonly value: string;
+    readonly onChange: (model: string) => void;
+  } | null;
+  readonly onRenamed: () => void;
+  readonly onDeleted: () => void;
   readonly children: ReactNode;
 }): ReactNode {
   const agent = useModuleClient(agentContract);
   const docked = useMediaQuery(ARTIFACT_DOCKED, {});
   const [historyOpen, setHistoryOpen] = useState(true);
   const [historySheet, setHistorySheet] = useState(false);
+  const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
+
+  const { currentId, models } = props;
+
+  const remove = useMutation({
+    mutationFn: (id: string) => agent.remove({ id }),
+    onSuccess: () => {
+      setDialog(null);
+      props.onDeleted();
+    },
+  });
 
   // The rail, its phone sheet and the phone header each start a chat with the pencil.
-  const newChat = (
+  const newChat = (extra = "") => (
     <a
       href={props.newChatHref}
       aria-label="New chat"
-      className={buttonVariants({ variant: "ghost", size: "icon" })}
+      className={`${buttonVariants({ variant: "ghost", size: "icon" })} ${extra}`}
     >
       <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
     </a>
   );
+
+  // A saved chat has its actions at every width; a new chat has only its model, below 1024 px.
+  const chatActions =
+    currentId === undefined && models === null ? null : (
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Chat actions"
+              className={currentId === undefined ? "lg:hidden" : undefined}
+            />
+          }
+        >
+          <EllipsisIcon aria-hidden="true" strokeWidth={1.75} />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {currentId !== undefined ? (
+            <>
+              <DropdownMenuItem onClick={() => setDialog("rename")}>
+                Rename
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setDialog("delete")}>
+                Delete
+              </DropdownMenuItem>
+            </>
+          ) : models === null ? null : (
+            <DropdownMenuRadioGroup
+              aria-label="Model"
+              value={models.value}
+              onValueChange={(value: string) => models.onChange(value)}
+            >
+              {models.allowed.map((model) => (
+                <DropdownMenuRadioItem key={model} value={model}>
+                  {model}
+                </DropdownMenuRadioItem>
+              ))}
+            </DropdownMenuRadioGroup>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
 
   // The toggle moves between the column and the top bar, so focus follows it.
   const hideButton = useRef<HTMLButtonElement>(null);
@@ -138,7 +322,7 @@ export function AskScreen(props: {
         >
           <div className="flex h-14 shrink-0 items-center gap-1 ps-6 pe-3">
             <h2 className="flex-1 text-sm font-bold">Chats</h2>
-            {newChat}
+            {newChat()}
             <Button
               ref={hideButton}
               type="button"
@@ -155,7 +339,18 @@ export function AskScreen(props: {
       ) : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="hidden h-14 shrink-0 items-center gap-2 border-b border-border px-4 lg:flex">
+        {/* One header at every width; below 1024 px it sits under the shell's top bar. */}
+        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2 lg:ps-6 lg:pe-3">
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Show chats"
+            className="lg:hidden"
+            onClick={() => setHistorySheet(true)}
+          >
+            <HistoryIcon aria-hidden="true" strokeWidth={1.75} />
+          </Button>
           {historyOpen ? null : (
             <Button
               ref={showButton}
@@ -163,29 +358,20 @@ export function AskScreen(props: {
               variant="ghost"
               size="icon"
               aria-label="Show chats"
+              className="max-lg:hidden"
               onClick={() => toggleHistory(true)}
             >
               <PanelLeftIcon aria-hidden="true" strokeWidth={1.75} />
             </Button>
           )}
-          <p className="truncate text-sm font-semibold">{props.title}</p>
-        </div>
-
-        {/* Below 1024 px the shell's top bar keeps the main menu; this bar sits under it. */}
-        <div className="flex min-h-13 shrink-0 items-center gap-1 border-b border-border px-2 lg:hidden">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label="Show chats"
-            onClick={() => setHistorySheet(true)}
+          <p
+            title={props.title}
+            className="min-w-0 flex-1 truncate text-sm font-semibold"
           >
-            <PanelLeftIcon aria-hidden="true" strokeWidth={1.75} />
-          </Button>
-          <p className="min-w-0 flex-1 truncate text-sm font-semibold">
             {props.title}
           </p>
-          {newChat}
+          {newChat("lg:hidden")}
+          {chatActions}
         </div>
 
         <section
@@ -244,12 +430,42 @@ export function AskScreen(props: {
               <div className="flex-1">
                 <SheetTitle>Chats</SheetTitle>
               </div>
-              {newChat}
+              {newChat()}
             </div>
           </SheetHeader>
           {history}
         </SheetContent>
       </Sheet>
+
+      {dialog === "rename" && currentId !== undefined ? (
+        <RenameChat
+          id={currentId}
+          title={props.title}
+          onClose={() => setDialog(null)}
+          onRenamed={props.onRenamed}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={dialog === "delete"}
+        title="Delete this chat?"
+        description="This deletes the chat, its tables and charts, and the files it made. You cannot undo this."
+        confirmLabel="Delete chat"
+        danger
+        onConfirm={() => {
+          if (currentId !== undefined) remove.mutate(currentId);
+        }}
+        onClose={() => {
+          setDialog(null);
+          remove.reset();
+        }}
+      >
+        {remove.isError ? (
+          <p role="alert" className="text-sm text-destructive">
+            The chat could not be deleted. Try again.
+          </p>
+        ) : null}
+      </ConfirmDialog>
     </div>
   );
 }

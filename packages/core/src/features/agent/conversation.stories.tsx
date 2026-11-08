@@ -633,6 +633,33 @@ export const PickAModel: Story = {
   },
 };
 
+// H4 (czjw.120 item 12): below 1024 px Ask's header menu holds the pick, so the composer shows no
+// picker, and the first send still carries the frame's model.
+export const PickAModelFromTheFrame: Story = {
+  name: "Pick a model from the frame",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  args: {
+    transport: transportOf(sendPicked),
+    model: { value: OTHER_MODEL, onChange: fn() },
+  },
+  play: async ({ canvas }) => {
+    sendPicked.mockClear();
+
+    await expect(canvas.queryByRole("combobox", { name: "Model" })).toBeNull();
+
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Message" }),
+      "What can you do?"
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Send" }));
+
+    await waitFor(() => expect(sendPicked).toHaveBeenCalledTimes(1));
+    await expect(sendPicked).toHaveBeenCalledWith(
+      expect.objectContaining({ body: { modelId: OTHER_MODEL } })
+    );
+  },
+};
+
 export const Refused: Story = {
   args: { transport: transportOf(sendRefused) },
   play: async ({ args, canvas }) => {

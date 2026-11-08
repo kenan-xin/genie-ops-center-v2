@@ -24,6 +24,7 @@ import {
   STOPPED_LINE,
   THIRD_PARAGRAPH,
 } from "./ask-support.ts";
+import { seedChat } from "./chat-seed.ts";
 import { ASK_PEOPLE, DEV_MODULES } from "./global-setup.ts";
 
 test.skip(
@@ -362,6 +363,60 @@ test("Ask's new chat says where documents go in", async ({ page }) => {
     await expect(history).toBeVisible();
     await expect(history.getByText(/^To add documents, use/)).toHaveCount(0);
   }
+});
+
+// H6 (czjw.120 item 13): Rename and Delete in the header menu reach the server.
+test("the chat header menu renames a chat and deletes it", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  const sessionId = randomUUID();
+  const renamed = `Quarter review ${sessionId.slice(0, 8)}`;
+
+  await seedChat({
+    email: asker(testInfo),
+    sessionId,
+    turns: [{ question: "A chat to rename", answer: "Here it is." }],
+  });
+  await signIn(page, asker(testInfo));
+  await page.goto(`/ask/${sessionId}`);
+
+  const actions = page.getByRole("button", { name: "Chat actions" });
+
+  await openUntilVisible(actions, page.getByRole("menu"));
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+
+  const rename = page.getByRole("dialog", { name: "Rename this chat" });
+
+  await rename.getByRole("textbox", { name: "Name" }).fill(renamed);
+  await rename.getByRole("button", { name: "Save" }).click();
+  await expect(rename).toBeHidden();
+
+  await page.reload();
+  await expect(page.locator(`p[title="${renamed}"]`)).toBeVisible(FIRST_PAINT);
+
+  const listed = (await historyOf(page)).locator(`a[href="/ask/${sessionId}"]`);
+
+  await expect(listed).toContainText(renamed);
+
+  if (!atLg(page)) await page.keyboard.press("Escape");
+
+  await openUntilVisible(actions, page.getByRole("menu"));
+  await page.getByRole("menuitem", { name: "Delete" }).click();
+  await page
+    .getByRole("dialog", { name: "Delete this chat?" })
+    .getByRole("button", { name: "Delete chat" })
+    .click();
+
+  await expect(page).toHaveURL(/\/ask$/, FIRST_PAINT);
+  await expect(
+    (await historyOf(page)).locator(`a[href="/ask/${sessionId}"]`)
+  ).toHaveCount(0);
+
+  const response = await page.goto(`/ask/${sessionId}`);
+
+  expect(response?.status()).toBe(404);
 });
 
 test("a person without Ask gets no Agent button and the denied page on Ask", async ({

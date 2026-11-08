@@ -43,6 +43,10 @@ export function AgentChat(props: {
   readonly onNewChat: () => void;
   readonly onFinished?: ((sessionId: string) => void) | undefined;
   readonly onWorking?: ((working: boolean) => void) | undefined;
+  /** The model a frame chooses itself; see `Conversation`. */
+  readonly model?:
+    | { readonly value: string; readonly onChange: (model: string) => void }
+    | undefined;
   /** A message the page sends from outside the chat, once; see `Conversation`. */
   readonly pending?:
     | { readonly text: string; readonly onSent: () => void }
@@ -113,6 +117,7 @@ export function AgentChat(props: {
       onNewChat={props.onNewChat}
       onWorking={props.onWorking}
       pending={props.pending}
+      model={props.model}
       onFinished={(sessionId) => {
         void files.refetch();
         props.onFinished?.(sessionId);

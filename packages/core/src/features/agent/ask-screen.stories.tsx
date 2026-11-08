@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import type { ChatTransport, UIMessageChunk } from "ai";
 import { useState, type ComponentProps } from "react";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type {
   AgentArtifact,
@@ -136,6 +136,16 @@ const sendCard: ChatTransport<AgentMessage> = {
   reconnectToStream: async () => null,
 };
 
+/** The `agent.rename` and `agent.remove` stubs, which the header menu calls (czjw.120 item 13). */
+const renameChat = fn(
+  async (input: { readonly id: string; readonly title: string }) => ({
+    ...SESSIONS[0]!,
+    ...input,
+  })
+);
+
+const removeChat = fn(async (_input: { readonly id: string }) => undefined);
+
 type AskProps = ComponentProps<typeof AskScreen>;
 
 /** Ask as the route composes it: the screen keeps no artifact state, the route does. */
@@ -144,7 +154,7 @@ function Framed(props: AskProps) {
   const [rows, setRows] = useState<Read | null>(props.rows);
 
   return (
-    <AgentClientStub chart={draw}>
+    <AgentClientStub chart={draw} rename={renameChat} remove={removeChat}>
       <div style={{ height: "100dvh" }} className="flex flex-col">
         <AskScreen
           {...props}
@@ -195,7 +205,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 272 px gray column with Chats, New chat and Hide chats in its top row, then Search chats and the groups Today and Earlier; a long title ends with an ellipsis. Hide chats removes it fully, and the top bar then holds only Show chats and the title. Below 1024 px a bar under the shell's top bar holds Show chats, the title and New chat, and the history opens as a left sheet. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
+          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 272 px gray column with Chats, New chat and Hide chats in its top row, then Search chats and the groups Today and Earlier; a long title ends with an ellipsis. Hide chats removes it fully, and the header then gains Show chats. One 56 px header holds the title, which ends with an ellipsis, and Chat actions: Rename and Delete for a saved chat, each behind its dialog. Below 1024 px the header also holds Show chats, which opens the history as a left sheet, and New chat, and the menu offers a new chat's model. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
       },
     },
     a11y: { test: "error" },
@@ -216,6 +226,9 @@ const meta = {
     onShow: () => undefined,
     rows: null,
     onRows: () => undefined,
+    models: null,
+    onRenamed: fn(),
+    onDeleted: fn(),
     children: null,
   },
 } satisfies Meta<typeof AskScreen>;
@@ -506,6 +519,150 @@ export const ChatHistoryOnAPhone: Story = {
     await expect(
       within(sheet).getByRole("searchbox", { name: "Search chats" })
     ).toBeVisible();
+  },
+};
+
+const openChatActions = async (root: HTMLElement) => {
+  await userEvent.click(
+    within(root).getByRole("button", { name: "Chat actions" })
+  );
+};
+
+// H1, H3 (czjw.120 item 13): Rename sends the new name, and refuses a name of spaces.
+export const RenameAChat: Story = {
+  name: "Rename a chat",
+  play: async ({ args, canvasElement }) => {
+    renameChat.mockClear();
+
+    await openChatActions(canvasElement);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Rename" })
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Rename this chat",
+    });
+
+    const name = within(dialog).getByRole("textbox", { name: "Name" });
+
+    await expect(name).toHaveValue(OVERDUE);
+
+    await userEvent.clear(name);
+    await userEvent.type(name, "   ");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await expect(within(dialog).getByText("Enter a name.")).toBeVisible();
+    await expect(renameChat).not.toHaveBeenCalled();
+
+    await userEvent.clear(name);
+    await userEvent.type(name, "Quarter review");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(renameChat).toHaveBeenCalledWith({
+        id: SESSIONS[0]?.id,
+        title: "Quarter review",
+      })
+    );
+    await waitFor(() => expect(args.onRenamed).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Rename this chat" })
+      ).toBeNull()
+    );
+  },
+};
+
+// H2: Delete asks first; Cancel deletes nothing.
+export const DeleteAsksFirst: Story = {
+  name: "Delete asks first",
+  play: async ({ args, canvasElement }) => {
+    removeChat.mockClear();
+
+    await openChatActions(canvasElement);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" })
+    );
+
+    let dialog = await screen.findByRole("dialog", {
+      name: "Delete this chat?",
+    });
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Delete this chat?" })
+      ).toBeNull()
+    );
+    await expect(removeChat).not.toHaveBeenCalled();
+
+    await openChatActions(canvasElement);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" })
+    );
+    dialog = await screen.findByRole("dialog", { name: "Delete this chat?" });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete chat" })
+    );
+
+    await waitFor(() =>
+      expect(removeChat).toHaveBeenCalledWith({ id: SESSIONS[0]?.id })
+    );
+    await waitFor(() => expect(args.onDeleted).toHaveBeenCalledTimes(1));
+  },
+};
+
+// H4 (czjw.120 item 12): on a phone, a new chat picks its model in the header menu.
+export const ModelInTheMenuOnAPhone: Story = {
+  name: "Model in the menu on a phone",
+  globals: phone,
+  args: {
+    currentId: undefined,
+    title: "New chat",
+    models: {
+      allowed: ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"],
+      value: "openai/gpt-6.1-terra",
+      onChange: fn(),
+    },
+  },
+  play: async ({ args, canvasElement }) => {
+    await openChatActions(canvasElement);
+
+    const group = await screen.findByRole("group", { name: "Model" });
+
+    await expect(
+      within(group)
+        .getAllByRole("menuitemradio")
+        .map((item) => item.textContent)
+    ).toEqual(["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"]);
+
+    await userEvent.click(
+      within(group).getByRole("menuitemradio", {
+        name: "anthropic/claude-opus-5.5",
+      })
+    );
+    await expect(args.models?.onChange).toHaveBeenCalledWith(
+      "anthropic/claude-opus-5.5"
+    );
+  },
+};
+
+// H5: a long title ends with an ellipsis, and the menu button stays in view.
+export const ALongTitleOnAPhone: Story = {
+  name: "A long title on a phone",
+  globals: phone,
+  args: { title: LONG_TITLE },
+  play: async ({ canvas }) => {
+    const title = canvas.getByText(LONG_TITLE);
+
+    await expect(title).toHaveAttribute("title", LONG_TITLE);
+    await expect(title.scrollWidth).toBeGreaterThan(title.clientWidth);
+    await expect(
+      canvas
+        .getByRole("button", { name: "Chat actions" })
+        .getBoundingClientRect().right
+    ).toBeLessThanOrEqual(390);
   },
 };
 
