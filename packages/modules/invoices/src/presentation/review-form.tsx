@@ -9,7 +9,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
 } from "@genie/ui";
-import { InfoIcon } from "lucide-react";
+import { CheckIcon, InfoIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { currencyCode, type ReadingField } from "../contract.ts";
@@ -261,56 +261,64 @@ export function ReviewCustomerRow(
 }
 
 /**
- * Discard, Save and the reason Save waits for, in one bar that stays on screen (design review 4.6):
- * fixed at the bottom below `md`, where the shell keeps the page clear of it, and sticky at the end
- * of the fields card from `md`. The shell's scroll area pads its bottom by 2 rem (`pb-8`), and a
- * sticky box stops at that padding edge, so the bar sticks 2 rem lower to meet the window bottom,
- * as the prototype's bar does. Save is `aria-disabled` with its reason, never `disabled` (DESIGN.md).
- * The reason reads at Save's own size and color right before Save from `md`, and on its own
- * right-aligned line above the buttons below `md` (czjw.65, I7). With a reason, Discard sits at
- * the start of the bar from `md`, so the reason ends next to the button it explains.
+ * The reason Save waits for, or "Ready to save", on its own line right above Discard and Save, in
+ * one bar that stays on screen (design review 4.6, czjw.98): fixed at the bottom below `md`, where
+ * the shell keeps the page clear of it, and sticky from `md`. The shell's scroll area pads its
+ * bottom by 2 rem (`pb-8`), and a sticky box stops at that padding edge, so the bar sticks 2 rem
+ * lower to meet the window bottom. Save is `aria-disabled` with its reason, never `disabled`
+ * (DESIGN.md), and the reason reads at Save's own size and color (czjw.65).
  */
 export function ReviewSaveBar(props: {
-  readonly helper: string | undefined;
+  /** Null shows "Ready to save". */
+  readonly reason: string | null;
   readonly pending: boolean;
   readonly label: string;
   readonly discarding: boolean;
-  readonly onDiscard: () => void;
+  /** Null hides Discard. */
+  readonly onDiscard: (() => void) | null;
 }): ReactNode {
-  const { helper } = props;
+  const { reason } = props;
 
   return (
     <div
       data-shell-bottom-bar=""
-      className="z-10 flex flex-wrap items-center gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8"
+      className="z-10 flex flex-col gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8"
     >
-      <Button
-        type="button"
-        variant="secondary"
-        className="max-md:ml-auto"
-        loading={props.discarding}
-        onClick={props.onDiscard}
-      >
-        Discard
-      </Button>
-      {helper === undefined ? null : (
+      {reason === null ? (
+        <p className="flex items-center gap-1.5 text-sm text-success">
+          <CheckIcon aria-hidden className="size-4 shrink-0" />
+          Ready to save
+        </p>
+      ) : (
         <p
           id={SAVE_HELPER_ID}
-          className="order-first flex min-w-0 basis-full items-start justify-end gap-1.5 text-right text-sm text-foreground md:order-none md:flex-1 md:basis-0"
+          className="flex min-w-0 items-start gap-1.5 text-sm text-foreground"
         >
           <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
-          <span>{helper}</span>
+          <span>{reason}</span>
         </p>
       )}
-      <Button
-        type="submit"
-        className="md:ml-auto"
-        aria-disabled={helper === undefined ? undefined : true}
-        aria-describedby={helper === undefined ? undefined : SAVE_HELPER_ID}
-        loading={props.pending}
-      >
-        {props.label}
-      </Button>
+      <div className="flex items-center gap-2">
+        {props.onDiscard === null ? null : (
+          <Button
+            type="button"
+            variant="secondary"
+            loading={props.discarding}
+            onClick={props.onDiscard}
+          >
+            Discard
+          </Button>
+        )}
+        <Button
+          type="submit"
+          className="ml-auto"
+          aria-disabled={reason === null ? undefined : true}
+          aria-describedby={reason === null ? undefined : SAVE_HELPER_ID}
+          loading={props.pending}
+        >
+          {props.label}
+        </Button>
+      </div>
     </div>
   );
 }

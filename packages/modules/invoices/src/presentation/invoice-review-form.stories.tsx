@@ -25,7 +25,7 @@ const unlinkAllocation = fn();
 
 const discardDocument = fn();
 
-const desktop = { viewport: { value: "desktop", isRotated: false } };
+const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
@@ -166,9 +166,7 @@ export const DueDateAfterAnotherField: Story = {
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Show Total on the document" })
-    );
+    await userEvent.click(canvas.getByLabelText("Total"));
     await userEvent.click(
       canvas.getByRole("radio", { name: "Enter a due date" })
     );
@@ -180,19 +178,16 @@ export const DueDateAfterAnotherField: Story = {
   },
 };
 
-// B5.8: Tab focus inside a row selects it, so a keyboard user sees its source (Task 4, R-38).
+// B5.8: Tab focus inside a card selects it, so a keyboard user sees its line (R-38, czjw.98).
 export const RowSelectedByTab: Story = {
   name: "Row: Tab focus selects it",
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const radio = canvas.getByRole("radio", { name: "Enter a due date" });
+    const source = canvasElement.querySelector('[data-field="dueDate"]');
 
-    const source = canvas.getByRole("button", {
-      name: "Show Due date on the document",
-    });
-
-    await expect(source).toHaveAttribute("aria-pressed", "false");
+    await expect(source).not.toHaveAttribute("data-selected");
 
     for (let tab = 0; tab < 30 && !radio.matches(":focus"); tab += 1) {
       // oxlint-disable-next-line no-await-in-loop -- each Tab moves focus for the next check.
@@ -200,7 +195,7 @@ export const RowSelectedByTab: Story = {
     }
 
     await expect(radio).toHaveFocus();
-    await expect(source).toHaveAttribute("aria-pressed", "true");
+    await expect(source).toHaveAttribute("data-selected");
   },
 };
 
@@ -650,20 +645,20 @@ async function reasonAndSave(canvas: ReturnType<typeof within>) {
   };
 }
 
-// D32 (czjw.65, I7): from 768 px the reason sits on Save's row and ends just before Save.
+/** The reason ends right above Discard and Save: at most 12 px between them (czjw.98). */
+async function reasonAboveSave(canvas: ReturnType<typeof within>) {
+  const { reason, save } = await reasonAndSave(canvas);
+
+  await expect(save.top - reason.bottom).toBeGreaterThanOrEqual(0);
+  await expect(save.top - reason.bottom).toBeLessThanOrEqual(12);
+}
+
+// D32 (czjw.65, czjw.98): in the Before you save panel the reason sits right above Discard and Save.
 export const SaveReasonBesideSave: Story = {
   name: "Save reason beside Save",
   globals: { viewport: { value: "desktop1440", isRotated: false } },
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas }) => {
-    const { reason, save } = await reasonAndSave(canvas);
-    const middle = (reason.top + reason.bottom) / 2;
-
-    await expect(middle).toBeGreaterThan(save.top);
-    await expect(middle).toBeLessThan(save.bottom);
-    await expect(save.left - reason.right).toBeGreaterThanOrEqual(0);
-    await expect(save.left - reason.right).toBeLessThanOrEqual(16);
-  },
+  play: async ({ canvas }) => reasonAboveSave(canvas),
 };
 
 // D33 (czjw.65, I7): on a phone the reason takes its own line, right above the buttons.
@@ -671,13 +666,7 @@ export const SaveReasonBesideSaveOnPhone: Story = {
   name: "Save reason beside Save on a phone",
   globals: phone,
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas }) => {
-    const { reason, save } = await reasonAndSave(canvas);
-
-    await expect(save.top - reason.bottom).toBeGreaterThanOrEqual(0);
-    await expect(save.top - reason.bottom).toBeLessThanOrEqual(12);
-    await expect(Math.abs(save.right - reason.right)).toBeLessThanOrEqual(16);
-  },
+  play: async ({ canvas }) => reasonAboveSave(canvas),
 };
 
 // Every form state at the phone width too, so axe checks each at 390 x 844.

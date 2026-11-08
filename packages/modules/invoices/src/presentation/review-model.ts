@@ -1,6 +1,8 @@
-import type { ReactNode } from "react";
+import type { PageBreadcrumb } from "@genie/core/features/shell";
+import type { ReactNode, RefObject } from "react";
 
 import type { ViewerHighlight } from "./document-viewer.tsx";
+import type { Blocker } from "./review-blocker.ts";
 import type { OriginTagKind, ReviewFieldKey } from "./review-fields.tsx";
 
 /** One field of a review as the desk card, the pager step and the summary show it (czjw.98). */
@@ -22,4 +24,44 @@ export type ReviewItem = {
   readonly onUndo: (() => void) | null;
   /** One card note of the product copy, or null. */
   readonly note: string | null;
+};
+
+/** What one kind of review gives its layout: the cards, the split, Save and what blocks it. */
+export type ReviewModel = {
+  readonly items: readonly ReviewItem[];
+  /** The split section of a payment; null for an invoice or once saved. */
+  readonly split: ReactNode | null;
+  readonly blocker: Blocker | null;
+  /** DuplicateNotice and SaveFailure, or null. */
+  readonly notices: ReactNode;
+  readonly saveLabel: string;
+  readonly pending: boolean;
+  /** Saves, or shows the blocker (Save and Enter). */
+  readonly submit: () => void;
+};
+
+/** The parts of the page around the fields, which the review page builds once for both layouts. */
+export type ReviewFrame = {
+  readonly title: string;
+  readonly meta: ReactNode;
+  readonly breadcrumb: PageBreadcrumb;
+  /** The Type select and its error; null for a reader. */
+  readonly typeSelect: ReactNode | null;
+  /** The Could not read card. */
+  readonly notice: ReactNode | null;
+};
+
+export type ReviewLayoutProps = {
+  readonly frame: ReviewFrame;
+  /** Null while the job reads. */
+  readonly model: ReviewModel | null;
+  /** The first file link of the page. */
+  readonly fileUrl: string;
+  /** A fresh file link for Download and Try again, because a link lives 5 minutes. */
+  readonly refreshUrl: () => Promise<string | null>;
+  readonly revealRef: RefObject<((blocker: Blocker) => void) | null>;
+  readonly label: string;
+  readonly discarding: boolean;
+  /** Null hides Discard: while the job reads, and once saved. */
+  readonly onDiscard: (() => void) | null;
 };

@@ -170,7 +170,8 @@ function SortButton(props: {
 const subscribeNothing = () => () => undefined;
 
 // The server and the hydration render answer `false`, every later render `true`.
-const useHydrated = () =>
+/** False on the server and in the first client render, then true: one layout before hydration. */
+export const useHydrated = () =>
   useSyncExternalStore(
     subscribeNothing,
     () => true,

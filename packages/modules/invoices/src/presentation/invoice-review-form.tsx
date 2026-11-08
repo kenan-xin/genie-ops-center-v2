@@ -4,7 +4,7 @@ import { useModuleClient } from "@genie/core/rpc/client";
 import { DatePicker, RadioGroup, RadioGroupItem, WarningNote } from "@genie/ui";
 import { useForm, useSelector } from "@tanstack/react-form";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type RefObject } from "react";
 
 import {
   invoicesContract,
@@ -26,26 +26,31 @@ import {
 import { centsOfText, dayFromText, dayText, formatDay } from "./format.ts";
 import { DuplicateNotice, SaveFailure } from "./review-alerts.tsx";
 import {
+  type Blocker,
+  FALLBACK_REASON,
+  type FieldCheck,
+  firstFieldBlocker,
+} from "./review-blocker.ts";
+import {
   FIELDS_OF,
   liveTagOf,
-  ReviewFieldRow,
+  type OriginTagKind,
   sourcesOf,
-  type ReviewFieldKey,
 } from "./review-fields.tsx";
 import {
   inputTextOf,
   issuesOf,
   optionalText,
   readingTextOf,
-  ReviewCustomerRow,
-  ReviewSaveBar,
-  ReviewTextRow,
+  ReviewCustomerInput,
+  ReviewTextInput,
 } from "./review-form.tsx";
+import type { ReviewItem, ReviewModel } from "./review-model.ts";
 import type { DocumentReviewView } from "./views.ts";
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
 
-type DueChoice =
+export type DueChoice =
   | { readonly kind: "kept"; readonly value: string }
   | { readonly kind: "person"; readonly value: string }
   | { readonly kind: "unspecified" }
@@ -165,13 +170,6 @@ function dueText(due: DueChoice): string | null {
   return due.kind === "kept" || due.kind === "person" ? due.value : null;
 }
 
-/** The due date as the reading stores it, for the origin tag. */
-function dueTagValue(due: DueChoice): string | null {
-  const text = dueText(due);
-
-  return text === null ? null : readingTextOf("dueDate", text);
-}
-
 /** The due date picker; a day that reads takes the app's format when the person leaves it (4.4, I8). */
 function dueDateInput(value: string, set: (value: string) => void): ReactNode {
   return (
@@ -242,24 +240,18 @@ function formFieldOf(key: string): (typeof FORM_FIELDS)[number] | undefined {
   return isFormField(key) ? key : undefined;
 }
 
-/** The form's own validation: the save schema over the values the form holds (R-28, R-33). */
-function formValidator(
+/** One message per field from the save schema over the current values (R-28, R-33). */
+function formIssues(
   kind: "invoice" | "paid-receipt",
-  view: DocumentReviewView
-): (props: {
-  readonly value: FormValues;
-}) => { fields: FormIssues } | undefined {
+  view: DocumentReviewView,
+  values: FormValues
+): { readonly ok: boolean; readonly fields: FormIssues } {
   const schema = kind === "invoice" ? saveInvoiceInput : savePaidReceiptInput;
+  const parsed = schema.safeParse(buildInput(kind, view, values, false));
 
-  return ({ value }) => {
-    const parsed = schema.safeParse(buildInput(kind, view, value, false));
-
-    if (parsed.success) return undefined;
-
-    const fields: FormIssues = issuesOf(parsed.error.issues, formFieldOf);
-
-    return { fields };
-  };
+  return parsed.success
+    ? { ok: true, fields: {} }
+    : { ok: false, fields: issuesOf(parsed.error.issues, formFieldOf) };
 }
 
 function savedMessage(
@@ -275,17 +267,98 @@ function savedMessage(
     : `${saved.number} saved as unpaid, due ${formatDay(saved.dueDate)}.`;
 }
 
-/** The invoice or paid-receipt review: the reading's texts as a save form (R-28, R-33, R-38). */
-export function InvoiceReviewForm(props: {
+export const CHECK_NOTE =
+  "The quote read for this field is not in the page text, so its value was dropped. Enter it from the page.";
+
+export const BLANK_NOTE =
+  "Not on the document. It stays blank unless you add it.";
+
+export const BLANK_PLACEHOLDER = "Not stated. Leave blank or add it.";
+
+const OPTIONAL_FIELDS: ReadonlySet<ReadingField> = new Set([
+  "paymentTerms",
+  "description",
+  "reference",
+  "method",
+]);
+
+/** The due date's origin tag: a paid receipt's own, or the person's choice of an invoice (czjw.98). */
+export function dueTagOf(
+  kind: "invoice" | "paid-receipt",
+  reading: StoredReading | null,
+  due: DueChoice
+): OriginTagKind {
+  if (kind === "paid-receipt") {
+    const read = reading?.fields.dueDate;
+
+    return read === undefined
+      ? "paid-in-full"
+      : liveTagOf(reading, "dueDate", read.value);
+  }
+
+  if (due.kind === "unspecified") return "unspecified";
+
+  const day = dayFromText(dueText(due)?.trim() ?? "");
+
+  return day === null ? "needs-input" : liveTagOf(reading, "dueDate", day);
+}
+
+function dueDisplay(kind: "invoice" | "paid-receipt", due: DueChoice): string {
+  if (due.kind === "unspecified")
+    return kind === "paid-receipt" ? "None, paid in full" : "Unspecified";
+
+  const day = dayFromText(dueText(due)?.trim() ?? "");
+
+  return day === null ? "Not set" : formatDay(day);
+}
+
+/** What blocks the due date of an invoice, and the control Save focuses (czjw.65, P09-11). */
+function dueCheck(reading: StoredReading | null, due: DueChoice): FieldCheck {
+  const typed = dueText(due)?.trim() ?? "";
+  const base = { key: "dueDate", label: "Due date", empty: false } as const;
+
+  if (due.kind === "unspecified" || dayFromText(typed) !== null)
+    return { ...base, issue: undefined };
+
+  if (typed !== "")
+    return {
+      ...base,
+      issue: "Write the due date as 25 Nov 2026 to save.",
+      focusId: "review-due-date",
+    };
+
+  if (reading?.fields.dueDate === undefined)
+    return {
+      ...base,
+      issue: "Choose a due date or mark it unspecified to save.",
+      focusId: due.kind === "person" ? "review-due-date" : "review-due-person",
+    };
+
+  return {
+    ...base,
+    issue: "Enter a due date to save.",
+    focusId: "review-due-date",
+  };
+}
+
+/** Moves the focus to a control once the change that draws it has rendered. */
+function focusSoon(id: string): void {
+  requestAnimationFrame(() => document.getElementById(id)?.focus());
+}
+
+/**
+ * The invoice or paid-receipt review as a model of cards, Save and what blocks it (R-28, R-33,
+ * R-38, czjw.98). The form keeps values and touched state only; each render parses the values, so
+ * a reading that lands later fills the fields and no message goes stale.
+ */
+export function useInvoiceReview(input: {
   readonly view: DocumentReviewView;
   readonly kind: "invoice" | "paid-receipt";
-  readonly selected: ReviewFieldKey | null;
-  readonly onSelect: (field: ReviewFieldKey) => void;
+  readonly revealRef: RefObject<((blocker: Blocker) => void) | null>;
   readonly onSaved: (message: string) => void;
   readonly onDiscard: () => void;
-  readonly discarding: boolean;
-}): ReactNode {
-  const { view, kind } = props;
+}): ReviewModel {
+  const { view, kind } = input;
   const reading = view.reading;
   const invoices = useModuleClient(invoicesContract);
   const queryClient = useQueryClient();
@@ -297,20 +370,14 @@ export function InvoiceReviewForm(props: {
 
   const form = useForm({
     defaultValues: initialValues(view),
-    validators: {
-      onMount: formValidator(kind, view),
-      onChange: formValidator(kind, view),
-    },
     // The Keep choice rides on one submit only, so a refused Keep never reaches the next save.
     onSubmitMeta: { keep: false },
-    onSubmitInvalid: () => setAttempted(true),
-    onSubmit: ({ value, meta }) => submit(value, meta.keep),
+    onSubmit: ({ value, meta }) => send(value, meta.keep),
   });
 
   const values = useSelector(form.store, (state) => state.values);
-  const canSubmit = useSelector(form.store, (state) => state.canSubmit);
 
-  async function submit(value: FormValues, keep: boolean) {
+  async function send(value: FormValues, keep: boolean) {
     const parsed =
       kind === "invoice"
         ? saveInvoiceInput.safeParse(buildInput(kind, view, value, keep))
@@ -339,7 +406,7 @@ export function InvoiceReviewForm(props: {
       }
 
       setDuplicate(null);
-      props.onSaved(savedMessage(kind, parsed.data));
+      input.onSaved(savedMessage(kind, parsed.data));
       await queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY });
     } catch (error) {
       setDuplicate(null);
@@ -354,220 +421,303 @@ export function InvoiceReviewForm(props: {
     }
   }
 
-  const sentDue = dueChoiceOf(kind, reading, values.due);
+  const issues = formIssues(kind, view, values);
+  const first = initialValues(view);
 
-  const dueTyped = dueText(sentDue)?.trim() ?? "";
+  const customerItem = (label: string): ReviewItem => {
+    const value = values.customer;
+    const readName = reading?.fields.customer?.value ?? null;
 
-  const dueOk =
-    sentDue.kind === "unspecified" || dayFromText(dueTyped) !== null;
-
-  const customerReady = customerChoiceOf(values.customer) !== undefined;
-
-  const canSave = canSubmit && dueOk && customerReady;
-
-  // A read due date offers no Mark as unspecified, so its helper names only the date.
-  const helper = !dueOk
-    ? dueTyped !== ""
-      ? "Write the due date as 25 Nov 2026 to save."
-      : reading?.fields.dueDate === undefined
-        ? "Choose a due date or mark it unspecified to save."
-        : "Enter a due date to save."
-    : values.customer.kind === "new" && !values.customer.confirmed
-      ? "Confirm the new customer to save."
-      : canSave
-        ? undefined
-        : "Fix the fields marked above to save.";
-
-  const dueRow = (
-    due: DueChoice,
-    onChange: (due: DueChoice) => void
-  ): ReactNode => {
-    const readDue = reading?.fields.dueDate;
-
-    if (kind === "paid-receipt") {
-      return (
-        <p className="py-2 text-sm text-foreground">
-          {readDue === undefined
-            ? "None, paid in full"
-            : formatDay(readDue.value)}
-        </p>
-      );
-    }
-
-    // The read day typed back stays the document's.
-    if (readDue !== undefined) {
-      return dueDateInput(dueText(due) ?? "", (value) =>
-        onChange(
-          dayFromText(value) === readDue.value
-            ? { kind: "kept", value }
-            : { kind: "person", value }
-        )
-      );
-    }
-
-    const warning =
-      reading === null
-        ? "Choose one:"
-        : reading.fields.paymentTerms === undefined
-          ? "The document states no due date and no payment terms. Choose one:"
-          : "The document states no due date. Choose one:";
-
-    return (
-      <div className="flex flex-col gap-2">
-        <WarningNote>{warning}</WarningNote>
-        <RadioGroup
-          aria-label="Due date choice"
-          value={
-            due.kind === "person"
-              ? "person"
-              : due.kind === "unspecified"
-                ? "unspecified"
-                : null
-          }
-          onValueChange={(next) =>
-            onChange(
-              next === "person"
-                ? {
-                    kind: "person",
-                    value: due.kind === "person" ? due.value : "",
-                  }
-                : { kind: "unspecified" }
-            )
-          }
-        >
-          <div className="flex items-center gap-2">
-            <RadioGroupItem value="person" aria-label="Enter a due date" />
-            <span>Enter a due date</span>
-          </div>
-          {due.kind === "person"
-            ? dueDateInput(due.value, (value) =>
-                onChange({ kind: "person", value })
-              )
-            : null}
-          <div className="flex items-start gap-2">
-            <RadioGroupItem
-              value="unspecified"
-              aria-label="Mark as unspecified"
-            />
-            <span>
-              Mark as unspecified{" "}
-              <span className="text-muted-foreground">
-                (counts in outstanding, never overdue)
-              </span>
-            </span>
-          </div>
-        </RadioGroup>
-      </div>
+    const tag = liveTagOf(
+      reading,
+      "customer",
+      value.kind === "none" ? null : value.name
     );
+
+    return {
+      key: "customer",
+      label,
+      tag,
+      sources: sourcesOf(reading, "customer"),
+      control: (
+        <form.Field name="customer">
+          {(field) => (
+            <ReviewCustomerInput
+              view={view}
+              value={field.state.value}
+              attempted={attempted}
+              onChange={(next) => field.handleChange(next)}
+            />
+          )}
+        </form.Field>
+      ),
+      controlId: "review-customer",
+      display: value.kind === "none" ? "None" : value.name,
+      readAs: tag === "corrected" ? readName : null,
+      onUndo: () => {
+        form.setFieldValue("customer", first.customer);
+        focusSoon("review-customer");
+      },
+      note: tag === "check-this" ? CHECK_NOTE : null,
+    };
   };
 
-  const textRow = (
-    field: Exclude<ReadingField, "customer" | "dueDate">,
-    label: string
-  ): ReactNode => (
-    <form.Field key={field} name={field}>
-      {(item) => {
-        // SAFETY: this form's validator stores one plain message string per field.
-        const issue = item.state.meta.errors[0] as string | undefined;
+  const dueItem = (label: string): ReviewItem => {
+    const readDue = reading?.fields.dueDate;
+    const sent = dueChoiceOf(kind, reading, values.due);
+    const tag = dueTagOf(kind, reading, sent);
 
-        return (
-          <ReviewTextRow
-            view={view}
-            selected={props.selected}
-            onSelect={props.onSelect}
-            field={field}
-            label={label}
-            value={item.state.value}
-            message={
-              field === "amount" || attempted || item.state.meta.isTouched
-                ? issue
-                : undefined
-            }
-            currency={values.currency}
-            onChange={(next) => item.handleChange(next)}
-            onBlur={item.handleBlur}
-          />
+    let control: ReactNode;
+
+    // A receipt paid in full says so once, in its tag; a due date it states shows read-only.
+    if (kind === "paid-receipt") {
+      control =
+        readDue === undefined ? null : (
+          <p className="text-sm text-foreground">{formatDay(readDue.value)}</p>
         );
-      }}
-    </form.Field>
+    } else {
+      control = (
+        <form.Field name="due">
+          {(field) => (
+            <DueControl
+              reading={reading}
+              due={field.state.value}
+              onChange={(next) => field.handleChange(next)}
+            />
+          )}
+        </form.Field>
+      );
+    }
+
+    return {
+      key: "dueDate",
+      label,
+      tag,
+      sources: sourcesOf(reading, "dueDate"),
+      control,
+      controlId:
+        kind === "invoice" && readDue !== undefined ? "review-due-date" : null,
+      display: dueDisplay(kind, sent),
+      readAs:
+        tag === "corrected" && readDue !== undefined
+          ? dayText(readDue.value)
+          : null,
+      onUndo: () => {
+        form.setFieldValue("due", first.due);
+        focusSoon("review-due-date");
+      },
+      note: null,
+    };
+  };
+
+  const textItem = (field: TextField, label: string): ReviewItem => {
+    const value = values[field];
+    const read = reading?.fields[field]?.value;
+    const tag = liveTagOf(reading, field, readingTextOf(field, value));
+
+    const blank =
+      tag === "not-on-document" &&
+      value.trim() === "" &&
+      OPTIONAL_FIELDS.has(field);
+
+    return {
+      key: field,
+      label,
+      tag,
+      sources: sourcesOf(reading, field),
+      control: (
+        <form.Field name={field}>
+          {(item) => (
+            <ReviewTextInput
+              field={field}
+              label={label}
+              value={item.state.value}
+              message={
+                field === "amount" || attempted || item.state.meta.isTouched
+                  ? issues.fields[field]
+                  : undefined
+              }
+              currency={values.currency}
+              {...(blank ? { placeholder: BLANK_PLACEHOLDER } : {})}
+              onChange={(next) => item.handleChange(next)}
+              onBlur={item.handleBlur}
+            />
+          )}
+        </form.Field>
+      ),
+      controlId: `review-${field}`,
+      display: value.trim() === "" ? "None" : value,
+      readAs:
+        tag === "corrected" && read !== undefined
+          ? inputTextOf(field, read)
+          : null,
+      onUndo: () => {
+        form.setFieldValue(field, first[field]);
+        focusSoon(`review-${field}`);
+      },
+      note: tag === "check-this" ? CHECK_NOTE : blank ? BLANK_NOTE : null,
+    };
+  };
+
+  const items = FIELDS_OF[kind].map(({ field, label }) =>
+    field === "customer"
+      ? customerItem(label)
+      : field === "dueDate"
+        ? dueItem(label)
+        : textItem(field, label)
   );
 
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
-      <div className="flex flex-col divide-y divide-border">
-        {FIELDS_OF[kind].map(({ field, label }) => {
-          if (field === "customer") {
-            return (
-              <form.Field key={field} name="customer">
-                {(item) => (
-                  <ReviewCustomerRow
-                    view={view}
-                    selected={props.selected}
-                    onSelect={props.onSelect}
-                    label={label}
-                    value={item.state.value}
-                    attempted={attempted}
-                    onChange={(next) => item.handleChange(next)}
-                  />
-                )}
-              </form.Field>
-            );
-          }
+  const checks: FieldCheck[] = FIELDS_OF[kind].flatMap(
+    ({ field, label }): FieldCheck[] => {
+      if (field === "customer") {
+        const value = values.customer;
 
-          if (field === "dueDate") {
-            return (
-              <form.Field key={field} name="due">
-                {(item) => (
-                  <ReviewFieldRow
-                    field={field}
-                    label={label}
-                    tag={liveTagOf(
-                      reading,
-                      field,
-                      dueTagValue(dueChoiceOf(kind, reading, item.state.value))
-                    )}
-                    sources={sourcesOf(reading, field)}
-                    unread={reading === null}
-                    selected={props.selected === field}
-                    onSelect={() => props.onSelect(field)}
-                  >
-                    {dueRow(item.state.value, (next) =>
-                      item.handleChange(next)
-                    )}
-                  </ReviewFieldRow>
-                )}
-              </form.Field>
-            );
-          }
+        return [
+          {
+            key: field,
+            label,
+            empty: false,
+            issue:
+              value.kind === "none"
+                ? "Choose a customer to save."
+                : value.kind === "new" && !value.confirmed
+                  ? "Confirm the new customer to save."
+                  : undefined,
+          },
+        ];
+      }
 
-          return textRow(field, label);
-        })}
-      </div>
-      {duplicate === null && saveError === null ? null : (
-        <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
+      if (field === "dueDate")
+        return kind === "invoice" ? [dueCheck(reading, values.due)] : [];
+
+      return [
+        {
+          key: field,
+          label,
+          issue: issues.fields[field],
+          empty: values[field].trim() === "",
+        },
+      ];
+    }
+  );
+
+  const blocker =
+    firstFieldBlocker(checks) ??
+    (issues.ok
+      ? null
+      : { key: "customer" as const, reason: FALLBACK_REASON, focusId: null });
+
+  return {
+    items,
+    split: null,
+    blocker,
+    notices:
+      duplicate === null && saveError === null ? null : (
+        <div className="flex flex-col gap-2">
           {duplicate === null ? null : (
             <DuplicateNotice
               href={`/m/invoices/invoices/${duplicate}`}
               pending={pending}
               onKeep={() => void form.handleSubmit({ keep: true })}
-              onDiscard={() => props.onDiscard()}
+              onDiscard={input.onDiscard}
             />
           )}
           <SaveFailure message={saveError} />
         </div>
-      )}
-      <ReviewSaveBar
-        helper={helper}
-        pending={pending}
-        label={kind === "invoice" ? "Save as unpaid" : "Save as paid"}
-        discarding={props.discarding}
-        onDiscard={props.onDiscard}
-      />
-    </form>
+      ),
+    saveLabel: kind === "invoice" ? "Save as unpaid" : "Save as paid",
+    pending,
+    submit: () => {
+      if (blocker === null) {
+        void form.handleSubmit();
+
+        return;
+      }
+
+      setAttempted(true);
+      input.revealRef.current?.(blocker);
+    },
+  };
+}
+
+type TextField = Exclude<ReadingField, "customer" | "dueDate">;
+
+/** The due choice of an invoice: the read day, or the person's day or unspecified (R-28). */
+function DueControl(props: {
+  readonly reading: StoredReading | null;
+  readonly due: DueChoice;
+  readonly onChange: (due: DueChoice) => void;
+}): ReactNode {
+  const { reading, due, onChange } = props;
+  const readDue = reading?.fields.dueDate;
+
+  // The read day typed back stays the document's.
+  if (readDue !== undefined) {
+    return dueDateInput(dueText(due) ?? "", (value) =>
+      onChange(
+        dayFromText(value) === readDue.value
+          ? { kind: "kept", value }
+          : { kind: "person", value }
+      )
+    );
+  }
+
+  const warning =
+    reading === null
+      ? "Choose one:"
+      : reading.fields.paymentTerms === undefined
+        ? "The document states no due date and no payment terms. Choose one:"
+        : "The document states no due date. Choose one:";
+
+  return (
+    <div className="flex flex-col gap-2">
+      <WarningNote>{warning}</WarningNote>
+      <RadioGroup
+        aria-label="Due date choice"
+        value={
+          due.kind === "person"
+            ? "person"
+            : due.kind === "unspecified"
+              ? "unspecified"
+              : null
+        }
+        onValueChange={(next) =>
+          onChange(
+            next === "person"
+              ? {
+                  kind: "person",
+                  value: due.kind === "person" ? due.value : "",
+                }
+              : { kind: "unspecified" }
+          )
+        }
+      >
+        <div className="flex items-center gap-2">
+          <RadioGroupItem
+            id="review-due-person"
+            value="person"
+            aria-label="Enter a due date"
+          />
+          <span>Enter a due date</span>
+        </div>
+        {due.kind === "person"
+          ? dueDateInput(due.value, (value) =>
+              onChange({ kind: "person", value })
+            )
+          : null}
+        <div className="flex items-start gap-2">
+          <RadioGroupItem
+            value="unspecified"
+            aria-label="Mark as unspecified"
+          />
+          <span>
+            Mark as unspecified{" "}
+            <span className="text-muted-foreground">
+              (counts in outstanding, never overdue)
+            </span>
+          </span>
+        </div>
+      </RadioGroup>
+    </div>
   );
 }

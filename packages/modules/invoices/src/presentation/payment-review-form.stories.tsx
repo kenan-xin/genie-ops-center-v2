@@ -24,7 +24,7 @@ const listOpenInvoices = fn();
 
 const discardDocument = fn();
 
-const desktop = { viewport: { value: "desktop", isRotated: false } };
+const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 

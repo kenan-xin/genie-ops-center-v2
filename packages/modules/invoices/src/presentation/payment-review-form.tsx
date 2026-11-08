@@ -381,7 +381,7 @@ export function PaymentReviewForm(props: {
         </div>
       )}
       <ReviewSaveBar
-        helper={helper}
+        reason={helper ?? null}
         pending={pending}
         label={links.length > 0 ? "Save the payment" : "Save as unallocated"}
         discarding={props.discarding}

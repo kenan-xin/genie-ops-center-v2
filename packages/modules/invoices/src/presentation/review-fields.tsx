@@ -160,7 +160,7 @@ export function OriginTag(props: { readonly tag: OriginTagKind }): ReactNode {
     case "check-this":
       return <Badge variant="warning">Check this</Badge>;
     case "not-on-document":
-      return <Badge variant="neutral">Unspecified</Badge>;
+      return <Badge variant="neutral">Not on the document</Badge>;
     case "needs-input":
       return <Badge variant="warning">Needs your input</Badge>;
     case "unspecified":
@@ -175,17 +175,17 @@ function valueText(
   reading: StoredReading | null,
   field: ReviewFieldKey
 ): string {
-  if (reading === null) return "Not on the document";
+  if (reading === null) return "None";
 
   if (field === "invoiceNumbers") {
     const numbers = reading.invoiceNumbers.map(({ value }) => value);
 
-    return numbers.length === 0 ? "Not on the document" : numbers.join(", ");
+    return numbers.length === 0 ? "None" : numbers.join(", ");
   }
 
   const quoted = reading.fields[field];
 
-  if (quoted === undefined) return "Not on the document";
+  if (quoted === undefined) return "None";
 
   if (field === "amount") {
     const cents = centsOf(quoted.value);

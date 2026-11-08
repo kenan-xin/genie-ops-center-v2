@@ -119,7 +119,7 @@ export type { ToastTone } from "./parts/toast.tsx";
 
 export { ConfirmDialog } from "./parts/confirm-dialog.tsx";
 
-export { DataTable } from "./parts/data-table.tsx";
+export { DataTable, useHydrated } from "./parts/data-table.tsx";
 
 export { TransferList } from "./parts/transfer-list.tsx";
 

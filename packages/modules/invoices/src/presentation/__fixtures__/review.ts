@@ -1,3 +1,5 @@
+import { omit } from "es-toolkit";
+
 /**
  * Deterministic English fixtures for the document review stories.
  *
@@ -71,6 +73,28 @@ export const invoiceReview: DocumentReviewView = {
   customerMatch: ABC_TRADING,
   payment: null,
   saved: null,
+};
+
+/** Upload 01 whose invoice date failed the quote check, so the reading holds no date (czjw.98). */
+export const noQuoteInvoiceReview: DocumentReviewView = {
+  ...invoiceReview,
+  reading: {
+    ...INVOICE_READING,
+    fields: omit(INVOICE_READING.fields, ["date"]),
+    dropped: ["date"],
+  },
+};
+
+/** Upload 01 with a currency quote that the page text does not hold, so its card has no line. */
+export const lostQuoteInvoiceReview: DocumentReviewView = {
+  ...invoiceReview,
+  reading: {
+    ...INVOICE_READING,
+    fields: {
+      ...INVOICE_READING.fields,
+      currency: { value: "SGD", quote: "Currency: XXX", page: 1 },
+    },
+  },
 };
 
 /** Upload 01 while its reading job still runs. */

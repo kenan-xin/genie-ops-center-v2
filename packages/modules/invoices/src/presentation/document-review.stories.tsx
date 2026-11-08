@@ -30,7 +30,7 @@ let releaseKind: (() => void) | null = null;
 
 let releaseDiscard: (() => void) | null = null;
 
-const desktop = { viewport: { value: "desktop", isRotated: false } };
+const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const desktop1440 = { viewport: { value: "desktop1440", isRotated: false } };
 
@@ -122,23 +122,6 @@ function marksText(element: HTMLElement): string {
     .replaceAll(/\s+/gu, "");
 }
 
-/** The document and the fields card, once the lazy viewer has drawn. */
-async function columns(canvasElement: HTMLElement) {
-  const viewer = await waitFor(() => {
-    const found = canvasElement.querySelector("[data-document-viewer]");
-
-    if (found === null) throw new Error("The viewer has not drawn yet.");
-
-    return found;
-  });
-
-  const card = canvasElement.querySelector('[data-slot="card"]');
-
-  if (card === null) throw new Error("The fields card has not drawn yet.");
-
-  return { card, viewer };
-}
-
 /** One field row by its key, for a tag or value inside it. */
 function fieldRow(canvasElement: HTMLElement, field: string) {
   const row = canvasElement.querySelector(`[data-field="${field}"]`);
@@ -149,7 +132,7 @@ function fieldRow(canvasElement: HTMLElement, field: string) {
   return within(row);
 }
 
-// B4.1: the selected field's source line names its page and quote, and the text layer marks the quote.
+// B4.1: focus in a field selects its card and boxes its quote, which the text layer marks (czjw.98).
 export const InvoiceRead: Story = {
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
@@ -168,15 +151,6 @@ export const InvoiceRead: Story = {
       )
     ).toBeVisible();
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Show Total on the document" })
-    );
-
-    await expect(
-      canvas.getByText(
-        "Found on page 1, highlighted on the document: “TOTAL (SGD) 5,000.00”"
-      )
-    ).toBeVisible();
     // The lazy viewer loads its chunk, fetches the PDF and draws the text layer first. The 1 s
     // default missed it at 1.3 s three times under gate:merge load; the Reading story's lazy
     // viewer budget is 8 s.
@@ -185,35 +159,23 @@ export const InvoiceRead: Story = {
       { timeout: 8_000 }
     );
 
-    // B4.3 at 1440: both columns start at the same top.
-    const { card, viewer } = await columns(canvasElement);
-
+    await userEvent.click(canvas.getByLabelText("Total"));
     await expect(
-      Math.abs(
-        card.getBoundingClientRect().top - viewer.getBoundingClientRect().top
-      )
-    ).toBeLessThanOrEqual(1);
+      canvasElement.querySelector('[data-field="amount"]')
+    ).toHaveAttribute("data-selected");
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector('[data-line-box="amount"]')
+      ).toHaveAttribute("data-lit", "selected")
+    );
   },
 };
 
-// Choice 14 at 390: Fields shows first, and the Document switch shows the document in its place.
+// At 390 for axe; the pager of Task 8 replaces the choice 14 switch, so this story has no play.
 export const InvoiceReadOnPhone: Story = {
   name: "Invoice read on a phone",
   globals: phone,
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas, canvasElement }) => {
-    const { card, viewer } = await columns(canvasElement);
-
-    await expect(card).toBeVisible();
-    await expect(viewer).not.toBeVisible();
-
-    await userEvent.click(canvas.getByRole("button", { name: "Document" }));
-    await expect(viewer).toBeVisible();
-    await expect(card).not.toBeVisible();
-
-    await userEvent.click(canvas.getByRole("button", { name: "Fields" }));
-    await expect(card).toBeVisible();
-  },
 };
 
 // B4.2: an extracted field, a dropped field and a field the document does not state.
@@ -232,13 +194,14 @@ export const Tags: Story = {
     await expect(
       fieldRow(canvasElement, "paymentTerms").getByText("Not on the document")
     ).toBeVisible();
+    // T4.9: the value reads None, so the row does not say "not on the document" twice.
     await expect(
-      fieldRow(canvasElement, "paymentTerms").getByText("Unspecified")
+      fieldRow(canvasElement, "paymentTerms").getByText("None")
     ).toBeVisible();
   },
 };
 
-// B4.4: a reading document shows its note, then its fields, and its PDF loads once.
+// B4.4, T4.8: a reading document shows its page and note, then its fields, and its PDF loads once.
 export const Reading: Story = {
   args: { view: readingReview },
   globals: desktop,
@@ -254,7 +217,9 @@ export const Reading: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await expect(
-      canvas.getByText("Reading the document. The fields show when it is read.")
+      canvas.getByText(
+        "Reading the document. Fields that are not on the page, and the split of a payment, show here when the reading finishes."
+      )
     ).toBeVisible();
 
     const viewer = await waitFor(() => {
@@ -529,8 +494,15 @@ export const CouldNotRead: Story = {
 
     await expect(title).toBeVisible();
     await expect(canvas.getByText(COULD_NOT_READ_NOTE)).toBeVisible();
+
     // czjw.64: the card sits above both panes, and hand entry stays (R-26).
-    const { viewer } = await columns(canvasElement);
+    const viewer = await waitFor(() => {
+      const found = canvasElement.querySelector("[data-document-viewer]");
+
+      if (found === null) throw new Error("The viewer has not drawn yet.");
+
+      return found;
+    });
 
     const fields = canvas
       .getByRole("combobox", { name: "Type" })
@@ -612,38 +584,11 @@ export const TagsOnPhone: Story = {
   globals: phone,
 };
 
-// B4.4 at 390 (choice 14): the PDF draws on the Document pane and stays drawn while Fields shows.
+// B4.4 at 390: until the pager (Task 8), the desk stacks the page and the panel, so the play is shared.
 export const ReadingOnPhone: Story = {
   ...Reading,
   name: "Reading on a phone",
   globals: phone,
-  play: async ({ canvas, canvasElement }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Document" }));
-
-    const drawn = await waitFor(
-      () => {
-        const found = canvasElement.querySelector(
-          "[data-document-viewer] canvas"
-        );
-
-        if (found === null) throw new Error("The document has not drawn yet.");
-
-        return found;
-      },
-      { timeout: 8_000 }
-    );
-
-    await userEvent.click(canvas.getByRole("button", { name: "Fields" }));
-    await expect(
-      await canvas.findByText("Customer", {}, { timeout: 8_000 })
-    ).toBeVisible();
-
-    await userEvent.click(canvas.getByRole("button", { name: "Document" }));
-    await expect(drawn).toBeVisible();
-    await expect(
-      canvasElement.querySelector("[data-document-viewer]")
-    ).toHaveAttribute("data-document-url", `${DEMO_PDF.invoice01}?v=1`);
-  },
 };
 
 export const ReadOnlyOnPhone: Story = {

@@ -59,7 +59,7 @@ export type DocumentDeskProps = {
 };
 
 /** The canvas and drawer fill the window below their top edge, from 1280 px, each with its own scroll. */
-function useFillHeight(
+export function useFillHeight(
   element: RefObject<HTMLElement | null>,
   wide: boolean
 ): number | undefined {
@@ -88,7 +88,7 @@ function useFillHeight(
 }
 
 /** Opens a file link as a download, without leaving the page. */
-function download(url: string, fileName: string): void {
+export function download(url: string, fileName: string): void {
   const anchor = document.createElement("a");
 
   anchor.href = url;

@@ -24,7 +24,6 @@ import { AutomaticLinks } from "./automatic-links.tsx";
 import { type DocumentKind, kindText } from "./document-kind.ts";
 import { LazyDocumentViewer } from "./document-viewer-lazy.tsx";
 import { shortName } from "./format.ts";
-import { InvoiceReviewForm } from "./invoice-review-form.tsx";
 import { PaymentReviewForm } from "./payment-review-form.tsx";
 import {
   ReviewFieldList,
@@ -32,6 +31,7 @@ import {
   sourcesOf,
 } from "./review-fields.tsx";
 import { linkButton, ReviewResult, savedTitle } from "./review-result.tsx";
+import { ReviewWorkspace } from "./review-workspace.tsx";
 import type { DocumentReviewView } from "./views.ts";
 
 const DOCUMENTS_QUERY = ["invoices", "documents"] as const;
@@ -81,7 +81,11 @@ function reasonSentence(reason: "ai-off" | "no-text-layer" | null): string {
   return "";
 }
 
-/** One document's full-page review: the document on the left, its fields on the right (R-38). */
+/**
+ * One document's full-page review (R-38). A writable invoice, paid receipt or payment, and every
+ * document that is still read, is reviewed on the desk (czjw.98); a document with no type, a
+ * purchase order and a reader keep the document beside its fields (P09-4).
+ */
 export function DocumentReview(props: {
   readonly view: DocumentReviewView;
 }): ReactNode {
@@ -209,22 +213,122 @@ export function DocumentReview(props: {
     );
   }
 
-  // A Could not read document takes a type too, so a person enters it by hand (R-26).
-  const showType = data.canWrite && data.document.status !== "reading";
+  const reading = data.document.status === "reading";
 
   const couldNotRead = data.document.status === "could-not-read";
+
+  // A Could not read document takes a type too, so a person enters it by hand (R-26).
+  const typeSelect = data.canWrite ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <span id="document-kind-label" className="text-sm text-muted-foreground">
+        Type
+      </span>
+      <Select
+        items={KIND_ITEMS}
+        value={kind}
+        disabled={reading || changeKind.isPending}
+        onValueChange={(next) => {
+          if (next !== null && next !== kind) changeKind.mutate(next);
+        }}
+      >
+        <SelectTrigger aria-labelledby="document-kind-label">
+          <SelectValue
+            placeholder={reading ? "Not classified yet" : "Choose the type"}
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {KIND_ITEMS.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {changeKind.error === null ? null : (
+        <p role="alert" className="basis-full text-sm text-destructive">
+          {`${label} was not changed. ${changeKind.error.message}`}
+        </p>
+      )}
+    </div>
+  ) : null;
+
+  const unreadCard = couldNotRead ? (
+    <ReviewResult
+      tone="unread"
+      title="The document could not be read."
+      detail="Retry it from Documents, or choose its type and fill in the fields by hand."
+      canUpload={false}
+    />
+  ) : null;
+
+  const discardError =
+    discard.error === null ? null : (
+      <p role="alert" className="text-sm text-destructive">
+        {`${label} was not discarded. ${discard.error.message}`}
+      </p>
+    );
+
+  const discardDialog = (
+    <ConfirmDialog
+      open={discardOpen}
+      title={`Discard ${label}?`}
+      description="The file is removed and nothing is added. You can upload it again later."
+      confirmLabel="Discard"
+      danger
+      onConfirm={() => {
+        setDiscardOpen(false);
+        discard.mutate();
+      }}
+      onClose={() => setDiscardOpen(false)}
+    />
+  );
+
+  if (
+    reading ||
+    (data.canWrite && (kind === "invoice" || kind === "paid-receipt"))
+  ) {
+    const deskAbout = reading
+      ? "not classified yet"
+      : `classified as ${kindText(kind ?? "invoice")}`;
+
+    return (
+      <main>
+        <ReviewWorkspace
+          view={data}
+          frame={{
+            title,
+            meta: (
+              <>
+                <span title={label}>{shortName(label)}</span>
+                {` · ${deskAbout} · select a field to see its line on the page`}
+              </>
+            ),
+            breadcrumb: TRAIL,
+            typeSelect,
+            notice:
+              unreadCard === null && discardError === null ? null : (
+                <>
+                  {unreadCard}
+                  {discardError}
+                </>
+              ),
+          }}
+          discarding={discard.isPending}
+          onDiscard={reading ? null : () => setDiscardOpen(true)}
+          onSaved={setSavedMessage}
+        />
+        {discardDialog}
+      </main>
+    );
+  }
+
+  const showType = typeSelect !== null;
 
   const showDiscard = showType;
 
   let body: ReactNode;
 
-  if (data.document.status === "reading") {
-    body = (
-      <p className="px-4 py-3 text-sm">
-        Reading the document. The fields show when it is read.
-      </p>
-    );
-  } else if (kind === null) {
+  if (kind === null) {
     body = (
       <p className="px-4 py-3 text-sm">
         Choose the type of this document to fill in its fields.
@@ -245,18 +349,6 @@ export function DocumentReview(props: {
           onSelect={setSelected}
         />
       </div>
-    );
-  } else if (data.canWrite && (kind === "invoice" || kind === "paid-receipt")) {
-    body = (
-      <InvoiceReviewForm
-        view={data}
-        kind={kind}
-        selected={selected}
-        onSelect={setSelected}
-        onSaved={setSavedMessage}
-        onDiscard={() => setDiscardOpen(true)}
-        discarding={discard.isPending}
-      />
     );
   } else if (data.canWrite && kind === "payment") {
     body = (
@@ -281,25 +373,12 @@ export function DocumentReview(props: {
   }
 
   // A save form carries Discard in its own bar; every other body shows it under the card.
-  const formBody =
-    data.canWrite &&
-    data.document.status !== "reading" &&
-    kind !== null &&
-    kind !== "purchase-order";
+  const formBody = data.canWrite && kind === "payment";
 
   return (
     <main>
       <PageHeader title={title} breadcrumb={TRAIL} meta={meta} />
-      {couldNotRead ? (
-        <div className="mb-4">
-          <ReviewResult
-            tone="unread"
-            title="The document could not be read."
-            detail="Retry it from Documents, or choose its type and fill in the fields by hand."
-            canUpload={false}
-          />
-        </div>
-      ) : null}
+      {unreadCard === null ? null : <div className="mb-4">{unreadCard}</div>}
       <ToggleGroup
         aria-label="Show"
         className="mb-4 lg:hidden"
@@ -331,49 +410,16 @@ export function DocumentReview(props: {
         >
           <div className="flex flex-col">
             {showType ? (
-              <div className="flex flex-col gap-1 border-b border-border px-4 py-3">
-                <span
-                  id="document-kind-label"
-                  className="text-sm text-muted-foreground"
-                >
-                  Type
-                </span>
-                <Select
-                  items={KIND_ITEMS}
-                  value={kind}
-                  disabled={changeKind.isPending}
-                  onValueChange={(next) => {
-                    if (next !== null && next !== kind) changeKind.mutate(next);
-                  }}
-                >
-                  <SelectTrigger aria-labelledby="document-kind-label">
-                    <SelectValue placeholder="Choose the type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {KIND_ITEMS.map((item) => (
-                      <SelectItem key={item.value} value={item.value}>
-                        {item.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {changeKind.error === null ? null : (
-                  <p role="alert" className="text-sm text-destructive">
-                    {`${label} was not changed. ${changeKind.error.message}`}
-                  </p>
-                )}
+              <div className="border-b border-border px-4 py-3">
+                {typeSelect}
               </div>
             ) : null}
             {body}
             {showDiscard ? (
               <>
-                {formBody && discard.error === null ? null : (
+                {formBody && discardError === null ? null : (
                   <div className="flex flex-col gap-2 border-t border-border px-4 py-3">
-                    {discard.error === null ? null : (
-                      <p role="alert" className="text-sm text-destructive">
-                        {`${label} was not discarded. ${discard.error.message}`}
-                      </p>
-                    )}
+                    {discardError}
                     {formBody ? null : (
                       <div className="flex justify-end">
                         <Button
@@ -387,18 +433,7 @@ export function DocumentReview(props: {
                     )}
                   </div>
                 )}
-                <ConfirmDialog
-                  open={discardOpen}
-                  title={`Discard ${label}?`}
-                  description="The file is removed and nothing is added. You can upload it again later."
-                  confirmLabel="Discard"
-                  danger
-                  onConfirm={() => {
-                    setDiscardOpen(false);
-                    discard.mutate();
-                  }}
-                  onClose={() => setDiscardOpen(false)}
-                />
+                {discardDialog}
               </>
             ) : null}
           </div>

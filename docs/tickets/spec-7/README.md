@@ -153,7 +153,7 @@ Checked on 2026-11-03 under the breakdown rule of `CLAUDE.md`. Spec 7 owns one d
 | `invoices-and-payments`, Documents inbox (`inbox`) | R-23, R-37, R-37a | S7-08, S7-19, S7-20, S7-21, S7-22 |
 | `invoices-and-payments`, invoice record (`invoice`) | R-32, R-38a | S7-07, S7-23 |
 | `invoices-and-payments`, payment record (`payment`) | R-30 to R-32, R-38a | S7-07, S7-23 |
-| `invoices-and-payments`, review (`review-invoice`, `review-payment`, variant D) | R-24 to R-31, R-33, R-38 | S7-09, S7-16, S7-24, S7-25, S7-26, S7-27 |
+| `invoices-and-payments`, review (`review-invoice`, `review-payment`, review desk, `czjw.98`) | R-24 to R-31, R-33, R-38 | S7-09, S7-16, S7-24, S7-25, S7-26, S7-27, `czjw.98` |
 | `invoices-and-payments`, Ask (`ask`) | R-41, R-42, R-42a, R-44, R-44a, R-45a | S7-10, S7-11, S7-29, S7-30, S7-34 to S7-38 |
 | `invoices-and-payments`, chat bubble (`bubble`) | R-42: replaced by the agent panel | S7-28, S7-31 |
 | `invoices-and-payments`, Dashboards with chat (`dashboards`) | R-42 (the panel replaces the page chat), R-48 to R-51 | S7-12, S7-28, S7-39 |

@@ -565,7 +565,8 @@ export function NoDocument(props: {
 
 /** The canvas when the page does not load: the file is safe, Download and Try again (R-38a). */
 export function PreviewFailed(props: {
-  readonly fields: readonly DeskField[];
+  /** The record's fields; the review shows its cards in its own panel. */
+  readonly fields?: readonly DeskField[];
   readonly onDownload: () => void;
   readonly onRetry: () => void;
 }): ReactNode {
@@ -588,7 +589,9 @@ export function PreviewFailed(props: {
           </Button>
         </div>
       </StateCard>
-      <FieldsCard fields={props.fields} caption="Read from the document" />
+      {props.fields === undefined ? null : (
+        <FieldsCard fields={props.fields} caption="Read from the document" />
+      )}
     </div>
   );
 }
