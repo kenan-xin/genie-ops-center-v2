@@ -231,8 +231,8 @@ function PersonConfirms(props: {
 
 /**
  * The person inspector: header, Profile, Groups, Access and Sessions tabs (R-37). The Access tab
- * shows only when the host passes the access read, so a viewer without the Roles key sees none
- * (LK4). Disable and
+ * shows only when the host passes the access read. The app passes it to every viewer of People,
+ * read-only, and passes Manage in Access only with the Roles key (LK4, `d8l5.43`). Disable and
  * Remove confirm inside the sheet, so that one Escape closes only the confirm (PD-8);
  * `onDisable` and `onRemove` fire once confirmed.
  */
@@ -250,7 +250,7 @@ export function PersonInspector(props: {
   readonly onResendInvitation: () => void;
   readonly onRevokeSession: (sessionId: string) => void;
   readonly onRevokeAllSessions: () => void;
-  /** The person's access from the S2-19 read; undefined hides the Access tab (LK4). */
+  /** The person's access from the S2-19 read; undefined hides the Access tab. */
   readonly access?: InspectorAccess | undefined;
   readonly onManageAccess?: (() => void) | undefined;
   /** Opens the group a role comes through; without it the group name is plain text. */

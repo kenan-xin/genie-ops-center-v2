@@ -14,14 +14,15 @@ import { useState } from "react";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { type Refusal, rpc } from "../../../rpc/client.ts";
-import { useInspectorAccess } from "../access/use-inspector-access.ts";
+import { usePersonAccess } from "../access/use-inspector-access.ts";
 
 /**
  * The browser half of the People route. The server has already refused a caller without
  * `core:people:manage` before this mounts, and every procedure re-checks it, so the screen holds
  * no denied state. It owns the selection, the writes and the refusal message, and reloads the list
- * and the open detail through TanStack Query after each one. Only a viewer with
- * `core:roles:manage` reads the person's access and gets the link into Access (LK4, LK5).
+ * and the open detail through TanStack Query after each one. Every viewer reads the person's
+ * access, read-only, through the People read, and only a viewer with `core:roles:manage` gets the
+ * link into Access (LK4, changed by the owner on 2026-11-07, `d8l5.43`).
  */
 export function PeopleRoute(props: {
   readonly viewer: PeopleViewer;
@@ -62,10 +63,10 @@ export function PeopleRoute(props: {
 
   const canManageGroups = capabilities.data?.canManageGroups === true;
 
-  const access = useInspectorAccess({
-    canManageAccess: props.canManageAccess,
-    recipient: selectedId === null ? null : { type: "user", id: selectedId },
+  const access = usePersonAccess({
+    personId: selectedId,
     open,
+    canManageAccess: props.canManageAccess,
   });
 
   // The local groups the person's Add to group offers, read only for a caller who manages groups.
