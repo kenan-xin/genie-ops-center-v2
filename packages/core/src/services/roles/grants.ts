@@ -121,15 +121,23 @@ export async function readGrantCatalogue(input: {
 }): Promise<readonly GrantRow[]> {
   await assertManagesAllRoles(input.caller);
 
-  const listed = input.modules
+  return grantRows(input.tenant, input.modules);
+}
+
+/** The Grants rows, as `readGrantCatalogue` says. The caller checked the key (DEC-39). */
+export async function grantRows(
+  tenant: TenantContext,
+  modules: readonly RolesModule[]
+): Promise<readonly GrantRow[]> {
+  const listed = modules
     .filter((module) => module.defaultAccessRole !== undefined)
     .toSorted((a, b) =>
       a.identity.displayName.localeCompare(b.identity.displayName)
     );
 
-  const entitled = await entitlementByModule(input.tenant, input.modules);
+  const entitled = await entitlementByModule(tenant, modules);
 
-  const result = await input.tenant.db.$client.query<RawRole>(
+  const result = await tenant.db.$client.query<RawRole>(
     `select r.id::text as id, r.name, r.is_system as "isSystem", r.module_id as "moduleId"
        from role r
       where r.module_id = any($1::text[])

@@ -133,7 +133,7 @@ describe("the core area implementer", () => {
   it("gates each area on its own key", async () => {
     await expect(
       callProcedure(
-        createPeopleRouter(),
+        createPeopleRouter([]),
         contextFor(["core:groups:manage"])
       ).list()
     ).rejects.toMatchObject({ code: "forbidden" });

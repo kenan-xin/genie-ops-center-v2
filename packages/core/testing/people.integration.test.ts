@@ -591,7 +591,7 @@ describe("the People reads", () => {
 
 describe("the People router", () => {
   it("refuses an anonymous caller unauthenticated and a caller without the key forbidden", async () => {
-    const anonymous = callProcedure(createPeopleRouter(), {
+    const anonymous = callProcedure(createPeopleRouter([]), {
       tenant: deployment.context,
       caller: request(undefined),
     });
@@ -605,7 +605,7 @@ describe("the People router", () => {
       "fixture:use",
     ]);
 
-    const unpermitted = callProcedure(createPeopleRouter(), {
+    const unpermitted = callProcedure(createPeopleRouter([]), {
       tenant: deployment.context,
       caller: request(userId),
     });
@@ -938,7 +938,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
       "core:people:manage",
     ]);
 
-    const caller = callProcedure(createPeopleRouter(), {
+    const caller = callProcedure(createPeopleRouter([]), {
       tenant: deployment.context,
       caller: request(userId),
     });
@@ -977,7 +977,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
     ]);
 
     const capabilitiesOf = (userId: string) =>
-      callProcedure(createPeopleRouter(), {
+      callProcedure(createPeopleRouter([]), {
         tenant: deployment.context,
         caller: request(userId),
       }).capabilities();
@@ -992,7 +992,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
       "core:roles:manage",
     ]);
 
-    const caller = callProcedure(createPeopleRouter(), {
+    const caller = callProcedure(createPeopleRouter([]), {
       tenant: deployment.context,
       caller: request(userId),
     });
@@ -1029,7 +1029,7 @@ async function auditRowCount(): Promise<number> {
 
 describe("Add person on a recorded SSO domain (R-40b)", () => {
   it("refuses a local account on the domain and its subdomain through the router, and accepts another domain and a brokered account", async () => {
-    const caller = callProcedure(createPeopleRouter(), {
+    const caller = callProcedure(createPeopleRouter([]), {
       tenant: deployment.context,
       caller: request(await manager()),
     });

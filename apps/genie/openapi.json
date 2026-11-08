@@ -1293,6 +1293,28 @@
         }
       }
     },
+    "/people/{personId}/access": {
+      "get": {
+        "operationId": "people.access",
+        "parameters": [
+          {
+            "name": "personId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/people/assignable-roles": {
       "get": {
         "operationId": "people.assignableRoles",

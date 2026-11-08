@@ -52,7 +52,7 @@ export function createAppRouter(modules: readonly Module[]): AppRouter {
     ...modules.map((module) => [module.identity.id, module.router] as const),
     ["audit", createAuditRouter(modules)],
     ["groups", createGroupsRouter()],
-    ["people", createPeopleRouter()],
+    ["people", createPeopleRouter(modules)],
     ["roles", createRolesRouter(modules)],
     ["modules", createModulesRouter(modules)],
     ["categories", createCategoriesRouter(modules)],

@@ -4,6 +4,8 @@ import {
   implementCoreArea,
 } from "../../lib/rpc/implement-core-area.ts";
 import { can } from "../authorization/index.ts";
+import type { RolesModule } from "../roles/index.ts";
+import { readPersonAccess } from "../roles/person-access.ts";
 import { peopleContract } from "./contract.ts";
 import {
   addPerson,
@@ -47,9 +49,18 @@ const picker = gatedArea(peopleContract, "core:groups:manage");
  * writes only through it. Every writer re-checks R-38 on the server through the one administrator
  * guard, and every role assignment goes through the one role-assignment service (DEC-39, R-40).
  */
-export function createPeopleRouter() {
+export function createPeopleRouter(modules: readonly RolesModule[]) {
   return os.router({
     list: managed.list.handler(({ context }) => listPeople(context.tenant)),
+
+    access: managed.access.handler(({ context, input }) =>
+      readPersonAccess({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        personId: input.personId,
+      })
+    ),
 
     active: picker.active.handler(({ context }) =>
       listActivePeople(context.tenant)

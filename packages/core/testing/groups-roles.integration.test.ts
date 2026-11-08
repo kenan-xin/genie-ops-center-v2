@@ -167,7 +167,7 @@ function rolesCaller(userId: string) {
 
 /** The People router caller; `active` is the narrow picker read behind `core:groups:manage`. */
 function peopleCaller(userId: string) {
-  return callProcedure(createPeopleRouter(), {
+  return callProcedure(createPeopleRouter([]), {
     tenant: deployment.context,
     caller: request(userId),
   });

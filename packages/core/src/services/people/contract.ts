@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
+import type { PersonAccess } from "../roles/person-access.ts";
 import type {
   AddPersonResult,
   AssignablePerson,
@@ -31,6 +32,12 @@ export const peopleContract = {
     .route({ method: "GET", path: "/people/{personId}" })
     .input(personId)
     .output(z.custom<PersonDetail>()),
+
+  // One person's access, read-only, for the inspector's Access tab (LK4, `d8l5.43`).
+  access: oc
+    .route({ method: "GET", path: "/people/{personId}/access" })
+    .input(personId)
+    .output(z.custom<PersonAccess>()),
 
   // The roles Add person may assign now, from the same catalogue the Roles screen reads.
   assignableRoles: oc

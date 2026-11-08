@@ -4,6 +4,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import {
   callProcedure,
   createGroupsRouter,
+  createPeopleRouter,
   createRolesRouter,
   principalFor,
   type ModuleHistorySource,
@@ -117,6 +118,13 @@ function roles(userId: string) {
   });
 }
 
+function peopleRpc(userId: string) {
+  return callProcedure(createPeopleRouter(modules), {
+    tenant: deployment.context,
+    caller: caller(userId),
+  });
+}
+
 function groups(userId: string) {
   return callProcedure(createGroupsRouter(), {
     tenant: deployment.context,
@@ -141,6 +149,58 @@ function grant(
 function readOf(principalType: "user" | "group", principalId: string) {
   return roles(adminId).recipientAccess({ principalType, principalId });
 }
+
+describe("the person read of the People inspector", () => {
+  it("lets core:people:manage alone read one person's paths and the catalogue, and nothing else of Access", async () => {
+    const managerRoleId = await insertRole(deployment.context, {
+      name: `People manager ${Date.now()}`,
+      permissions: ["core:people:manage"],
+    });
+
+    const manager = await insertUser(deployment.context);
+
+    await grant(managerRoleId, { type: "user", id: manager });
+
+    const person = await insertUser(deployment.context);
+    const team = await insertGroup(deployment.context, [person]);
+
+    await grant(viewerRoleId, { type: "user", id: person });
+    await grant(viewerRoleId, { type: "group", id: team });
+
+    const access = await peopleRpc(manager).access({ personId: person });
+
+    expect(access.paths.map((path) => path.holder.type).toSorted()).toEqual([
+      "group",
+      "user",
+    ]);
+    expect(access.catalogue).toEqual(await roles(adminId).grantCatalogue());
+
+    await expect(
+      roles(manager).accessBySubject({
+        subject: { type: "module", id: "fixture" },
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      roles(manager).recipientAccess({
+        principalType: "user",
+        principalId: person,
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    await expect(
+      roles(manager).saveGrants({
+        principalType: "user",
+        principalId: person,
+        add: [],
+        change: [],
+        remove: [{ row: "fixture" }],
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    // The Roles key alone does not open the person read.
+    await expect(
+      peopleRpc(adminId).access({ personId: person })
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+});
 
 describe("the effective-access read of one recipient", () => {
   it("returns the direct path and the path of each group of a person, with role, module, scope and adder", async () => {

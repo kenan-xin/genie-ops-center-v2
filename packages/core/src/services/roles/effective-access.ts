@@ -216,13 +216,22 @@ export async function readRecipientAccess(input: {
 }): Promise<readonly AccessPath[]> {
   await assertManagesAllRoles(input.caller);
 
-  const personDisabled = await recipientDisabled(input.tenant, input.recipient);
+  return recipientPaths(input.tenant, input.modules, input.recipient);
+}
 
-  const entitled = await entitlementByModule(input.tenant, input.modules);
+/** The paths of one recipient, as `readRecipientAccess` says. The caller checked the key (DEC-39). */
+export async function recipientPaths(
+  tenant: TenantContext,
+  modules: readonly RolesModule[],
+  target: AccessRecipient
+): Promise<readonly AccessPath[]> {
+  const personDisabled = await recipientDisabled(tenant, target);
 
-  const result = await input.tenant.db.$client.query<RawPath>(
-    `${PATHS_SQL} and ${RECIPIENT_FILTER[input.recipient.type]} ${ORDER_SQL}`,
-    [input.recipient.id]
+  const entitled = await entitlementByModule(tenant, modules);
+
+  const result = await tenant.db.$client.query<RawPath>(
+    `${PATHS_SQL} and ${RECIPIENT_FILTER[target.type]} ${ORDER_SQL}`,
+    [target.id]
   );
 
   return result.rows.map((raw) =>
