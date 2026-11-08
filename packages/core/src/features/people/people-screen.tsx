@@ -78,6 +78,7 @@ import {
 import { GroupName } from "../groups/group-name.tsx";
 import type {
   AccountType,
+  AddedPerson,
   NewPersonInput,
   PeopleScreenProps,
   PeopleViewer,
@@ -1129,9 +1130,21 @@ export function PeopleScreen(props: PeopleScreenProps) {
           setAdding(false);
         }}
         onSubmit={(input) => {
+          let added: AddedPerson | void;
+
+          // Access opens in `onSaved`, which an answer after Cancel never reaches, and only after
+          // a full add: a partial add stays here for Resend (P06-14).
           void addForm.submit(
-            () => props.onAddPerson?.(input),
-            () => setAdding(false)
+            async () => {
+              added = await props.onAddPerson?.(input);
+            },
+            () => {
+              setAdding(false);
+
+              if (input.openInAccess === true && added?.emailSent === true) {
+                props.onManageAccess?.(added.id);
+              }
+            }
           );
         }}
       />

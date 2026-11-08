@@ -13,6 +13,7 @@ export {
 
 export type {
   AccountType,
+  AddedPerson,
   NewPersonInput,
   PeopleScreenProps,
   PeopleSettings,

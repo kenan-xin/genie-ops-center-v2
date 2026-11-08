@@ -18,7 +18,11 @@ import {
   PeopleScreen,
   SELF_REASON,
 } from "./people-screen.tsx";
-import type { PeopleScreenProps } from "./types.ts";
+import type {
+  AddedPerson,
+  NewPersonInput,
+  PeopleScreenProps,
+} from "./types.ts";
 
 const onAddPerson = fn();
 
@@ -1318,6 +1322,81 @@ export const AddPersonLateRefusalAfterCancelIsDropped: Story = {
     // Wait past the late answer, then the new open holds no refusal.
     await new Promise((resolve) => setTimeout(resolve, 500));
     await expect(reopened.queryByRole("alert")).toBeNull();
+  },
+};
+
+/** F5: Access opens after a full add only; a partial add stays on People for Resend (P06-14). */
+export const AddPersonOpensAccessAfterAFullAdd: Story = {
+  args: {
+    // The first add's email fails, the second's goes out. Storybook resets mocks before a story,
+    // so the answer comes from the input, not from queued `mockResolvedValueOnce` values.
+    onAddPerson: fn(async (input: NewPersonInput): Promise<AddedPerson> =>
+      input.email === "new@example.com"
+        ? { id: "u-new", emailSent: true }
+        : { id: "u-partial", emailSent: false }
+    ),
+    onManageAccess: fn(),
+  },
+  play: async ({ args, canvas }) => {
+    for (const email of ["partial@example.com", "new@example.com"]) {
+      // oxlint-disable-next-line no-await-in-loop
+      const dialog = await openAddPerson(canvas);
+
+      // oxlint-disable-next-line no-await-in-loop
+      await userEvent.type(dialog.getByLabelText("Work email"), email);
+      // oxlint-disable-next-line no-await-in-loop
+      await userEvent.click(
+        dialog.getByRole("checkbox", { name: "Open in Access after adding" })
+      );
+      // oxlint-disable-next-line no-await-in-loop
+      await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+      // oxlint-disable-next-line no-await-in-loop
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    }
+
+    await expect(args.onManageAccess).toHaveBeenCalledTimes(1);
+    await expect(args.onManageAccess).toHaveBeenCalledWith("u-new");
+  },
+};
+
+/** F5: an add that answers after Cancel opens nothing and keeps the form opened since. */
+export const LateAddAfterCancelKeepsTheReopenedForm: Story = {
+  args: {
+    onAddPerson: fn(
+      () =>
+        new Promise<AddedPerson>((resolve) =>
+          setTimeout(() => resolve({ id: "u-late", emailSent: true }), 300)
+        )
+    ),
+    onManageAccess: fn(),
+  },
+  play: async ({ args, canvas }) => {
+    const dialog = await openAddPerson(canvas);
+
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "late@example.com"
+    );
+    await userEvent.click(
+      dialog.getByRole("checkbox", { name: "Open in Access after adding" })
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+
+    const reopened = await openAddPerson(canvas);
+
+    await userEvent.type(
+      reopened.getByLabelText("Work email"),
+      "next@example.com"
+    );
+    // Wait past the late answer.
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    await expect(args.onManageAccess).not.toHaveBeenCalled();
+    await expect(reopened.getByLabelText("Work email")).toHaveValue(
+      "next@example.com"
+    );
   },
 };
 

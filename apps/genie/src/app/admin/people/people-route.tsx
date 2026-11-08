@@ -3,6 +3,7 @@
 import { accessHref } from "@genie/core/features/access";
 import {
   PeopleScreen,
+  type AddedPerson,
   type NewPersonInput,
   type PeopleSettings,
   type PeopleViewer,
@@ -118,21 +119,20 @@ export function PeopleRoute(props: {
   };
 
   // Add person resolves only on success, so the dialog stays open on a refusal and shows it. A
-  // partial success closes the dialog and shows the notice, and stays on People for Resend; only a
-  // full success follows "Open in Access after adding" (P06-14).
+  // partial success closes the dialog and shows the notice. The screen follows "Open in Access
+  // after adding" through `onManageAccess`, after a full add of the dialog still open (P06-14).
   const addPerson = ({
-    openInAccess,
+    openInAccess: _screenOnly,
     ...input
-  }: NewPersonInput): Promise<void> => {
+  }: NewPersonInput): Promise<AddedPerson> => {
     setError(undefined);
     setNotice(undefined);
 
     return add.mutateAsync(input).then((result) => {
-      if (result.emailSent === false) {
+      if (result.emailSent === false)
         setNotice("Person added; the email was not sent. Use Resend.");
-      } else if (openInAccess === true) {
-        router.push(accessHref({ recipient: result.id }));
-      }
+
+      return result;
     });
   };
 

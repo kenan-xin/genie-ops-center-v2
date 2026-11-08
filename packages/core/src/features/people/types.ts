@@ -52,8 +52,14 @@ export type NewPersonInput = {
   readonly accountType?: AccountType | undefined;
   /** Brokered accounts only; the checkbox is checked by default (R-40a). */
   readonly sendInvitation?: boolean | undefined;
-  /** Open Access for the new person after a full success (d8l5.44). The host acts on it. */
+  /** Open Access for the new person after a full add, through `onManageAccess` (d8l5.44). */
   readonly openInAccess?: boolean | undefined;
+};
+
+/** What a host's add answers: the person, and whether the expected email went out (N1). */
+export type AddedPerson = {
+  readonly id: string;
+  readonly emailSent: boolean;
 };
 
 export type PeopleScreenProps = {
@@ -92,7 +98,9 @@ export type PeopleScreenProps = {
    * Adds a person. The dialog stays open until this resolves; a refusal rejects with the copy to
    * show as its `message`, and the dialog stays open with it (U-1).
    */
-  readonly onAddPerson?: (input: NewPersonInput) => Promise<void> | void;
+  readonly onAddPerson?: (
+    input: NewPersonInput
+  ) => Promise<AddedPerson | void> | AddedPerson | void;
   readonly onDisablePerson?: (personId: string) => void;
   readonly onEnablePerson?: (personId: string) => void;
   readonly onRemovePerson?: (personId: string) => void;
