@@ -526,15 +526,22 @@ export const Reading: Story = {
   },
 };
 
+let releaseSave: (() => void) | null = null;
+
 // T7.1: a save made on this page keeps the desk, read only, with the result in the panel.
+// T7.2: a field typed while the save is pending is not shown as saved.
 export const Saved: Story = {
   beforeEach: () => {
     serve(invoiceReview);
-    saveInvoice.mockImplementation(async () => {
-      getDocumentReview.mockResolvedValue(savedInvoiceReview);
-
-      return ENVELOPE;
-    });
+    saveInvoice.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          releaseSave = () => {
+            getDocumentReview.mockResolvedValue(savedInvoiceReview);
+            resolve(ENVELOPE);
+          };
+        })
+    );
   },
   play: async ({ canvas, canvasElement }) => {
     await pinned(canvasElement, READ_KEYS);
@@ -545,6 +552,9 @@ export const Saved: Story = {
     await userEvent.click(
       canvas.getByRole("button", { name: "Save as unpaid" })
     );
+    await waitFor(() => expect(saveInvoice).toHaveBeenCalledTimes(1));
+    await userEvent.type(canvas.getByLabelText("Description"), " late");
+    releaseSave?.();
 
     const done = await drawn(
       canvasElement,
@@ -569,6 +579,12 @@ export const Saved: Story = {
     const description = within(card(canvasElement, "description"));
 
     await expect(description.getByText("Corrected by you")).toBeVisible();
+    await expect(
+      description.getByText(
+        "Additional consulting project - October 2026 and support",
+        { exact: true }
+      )
+    ).toBeVisible();
     await expect(
       description.getByText(
         "Read as “Additional consulting project - October 2026”"

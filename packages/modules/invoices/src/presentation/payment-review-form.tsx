@@ -170,7 +170,12 @@ export function usePaymentReview(input: {
     onSubmit: ({ value, meta }) => send(value, meta.keep),
   });
 
-  const values = useSelector(form.store, (state) => state.values);
+  const live = useSelector(form.store, (state) => state.values);
+
+  // Once saved, the cards show what was sent, not a field typed while the save was pending.
+  const [savedValues, setSavedValues] = useState<FormValues | null>(null);
+
+  const values = savedValues ?? live;
 
   const customerId =
     values.customer.kind === "existing" ? values.customer.id : null;
@@ -257,6 +262,7 @@ export function usePaymentReview(input: {
       }
 
       setAnswered(null);
+      setSavedValues(value);
 
       const linked = check.allocatedCents;
 

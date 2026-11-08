@@ -358,7 +358,12 @@ export function useInvoiceReview(input: {
     onSubmit: ({ value, meta }) => send(value, meta.keep),
   });
 
-  const values = useSelector(form.store, (state) => state.values);
+  const live = useSelector(form.store, (state) => state.values);
+
+  // Once saved, the cards show what was sent, not a field typed while the save was pending.
+  const [savedValues, setSavedValues] = useState<FormValues | null>(null);
+
+  const values = savedValues ?? live;
 
   async function send(value: FormValues, keep: boolean) {
     const parsed =
@@ -389,6 +394,7 @@ export function useInvoiceReview(input: {
       }
 
       setDuplicate(null);
+      setSavedValues(value);
       input.onSaved(savedMessage(kind, parsed.data));
       await queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY });
     } catch (error) {
