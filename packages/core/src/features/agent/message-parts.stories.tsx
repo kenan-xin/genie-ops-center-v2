@@ -392,6 +392,35 @@ const READ_STEP: AgentMessage["parts"][number] = {
   output: { datasets: [] },
 };
 
+const LEAD = "12 open items, SGD 4,200.00 in all.";
+
+const LINE = "All of them are in SGD.";
+
+/**
+ * The result first (czjw.120 items 3 and 4): the finished steps pill with the mark and the check,
+ * the lead sentence in a larger weight, and one quiet supporting line. A look, so no play test.
+ */
+export const ResultFirst: Story = {
+  name: "Result first",
+  args: {
+    message: {
+      id: "result-first",
+      role: "assistant",
+      parts: [
+        READ_STEP,
+        { ...READ_STEP, toolCallId: "call-read-2" },
+        { ...READ_STEP, toolCallId: "call-read-3" },
+        {
+          type: "text",
+          text: `root = Answer([result, line])\nresult = Paragraph("${LEAD}")\nline = Paragraph("${LINE}")`,
+        },
+      ],
+    },
+    durationMs: 12_000,
+  },
+  decorators: [withChartCheck(resolveKpi)],
+};
+
 /** A model wrote a note about its next step before a tool call (czjw.105, dry run H2). */
 export const StepNoteBeforeATool: Story = {
   name: "Step note before a tool",

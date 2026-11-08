@@ -73,6 +73,7 @@ The export carries these roles as the shadcn variables the platform code already
 | `--muted` | gray-50 | gray-900 |
 | `--muted-foreground` | gray-600 | gray-400 |
 | `--tile` | gray-100: a neutral gray tile (DESIGN.md "Tile"), such as the person's chat message (`czjw.120`) | gray-800 |
+| `--success` | emerald-700: a success icon or text, such as the done mark of the chat's steps pill (`czjw.120`) | emerald-300 |
 | `--placeholder` | gray-500: placeholder text in an input, 4.83:1 on white and 3.58:1 under the gray-900 value | gray-400 |
 | `--border` | gray-200 | gray-800 |
 | `--input` | gray-500 | gray-500 |

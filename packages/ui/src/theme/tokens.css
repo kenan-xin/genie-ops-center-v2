@@ -18,6 +18,7 @@
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
   --color-tile: var(--tile);
+  --color-success: var(--success);
   --color-placeholder: var(--placeholder);
   --color-border: var(--border);
   --color-input: var(--input);
@@ -84,6 +85,8 @@
     --muted-foreground: #4b5563;
     /* DESIGN.md "Tile": a neutral gray tile, such as the person's chat message (czjw.120). */
     --tile: #f3f4f6;
+    /* tokens.md "Status is semantic": emerald success as an icon or text, such as a done mark. */
+    --success: #047857;
     /* czjw.65: placeholder text, lighter than muted text and still 4.83:1 on white. */
     --placeholder: #6b7280;
     --border: #e5e7eb;
@@ -130,6 +133,7 @@
     --muted: #111827;
     --muted-foreground: #9ca3af;
     --tile: #1f2937;
+    --success: #6ee7b7;
     --placeholder: #9ca3af;
     --border: #1f2937;
     --control: #374151;

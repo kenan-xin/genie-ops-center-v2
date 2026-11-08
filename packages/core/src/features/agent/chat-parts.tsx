@@ -1,6 +1,6 @@
 "use client";
 
-import { focusRing } from "@genie/ui";
+import { focusRing, infoTint } from "@genie/ui";
 import { ChevronRightIcon, SparklesIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -13,14 +13,17 @@ export const linkClass = `text-sm font-medium text-foreground underline-offset-4
 /** A suggestion chip. */
 export const pillClass = `inline-flex min-h-11 items-center rounded-full border border-border bg-background px-3 text-sm text-muted-foreground hover:bg-muted hover:text-foreground lg:min-h-8 ${focusRing}`;
 
-/** The agent's mark beside an answer and in the empty state. */
+/** The agent's mark: a 22 px blue-tint tile in the finished steps pill and the empty state. */
 export function AgentMark(): ReactNode {
   return (
     <span
       aria-hidden="true"
-      className="grid size-6 shrink-0 place-items-center self-start rounded-md border border-border bg-muted"
+      className={`grid size-5.5 shrink-0 place-items-center rounded-md ${infoTint}`}
     >
-      <SparklesIcon className="size-3.5" strokeWidth={1.75} />
+      <SparklesIcon
+        className="size-3.5 text-primary dark:text-brand-on-dark"
+        strokeWidth={1.75}
+      />
     </span>
   );
 }

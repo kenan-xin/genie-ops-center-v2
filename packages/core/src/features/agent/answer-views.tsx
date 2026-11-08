@@ -24,7 +24,9 @@ function AnswerView({ props, renderNode }: ViewProps) {
   const { children } = props as { readonly children: readonly unknown[] };
 
   return (
-    <div className="grid gap-3">
+    // The result first: the first paragraph is the lead, later ones the quiet supporting lines
+    // (czjw.120 item 4). renderNode gives no class hook, so the child selectors style them.
+    <div className="grid gap-3 [&>p:first-child]:text-lg [&>p:first-child]:leading-snug [&>p:first-child]:font-semibold [&>p:not(:first-child)]:text-muted-foreground">
       {children.map((child, index) => (
         <Fragment key={index}>{renderNode(child)}</Fragment>
       ))}

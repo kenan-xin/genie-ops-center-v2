@@ -15,6 +15,7 @@ export type ColorRole =
   | "muted"
   | "muted-foreground"
   | "tile"
+  | "success"
   | "placeholder"
   | "border"
   | "input"
@@ -34,6 +35,8 @@ const lightRoles = {
   "muted-foreground": "#4b5563",
   // DESIGN.md "Tile": a neutral gray tile, such as the person's chat message (czjw.120).
   "tile": "#f3f4f6",
+  // tokens.md "Status is semantic": emerald success, such as the done mark of the steps pill.
+  "success": "#047857",
   // czjw.65: lighter than muted text, so a hint never reads as an entered value.
   "placeholder": "#6b7280",
   "border": "#e5e7eb",
@@ -61,6 +64,7 @@ export const colorRoles: Readonly<
     "muted": "#111827",
     "muted-foreground": "#9ca3af",
     "tile": "#1f2937",
+    "success": "#6ee7b7",
     "placeholder": "#9ca3af",
     "border": "#1f2937",
     "control": "#374151",

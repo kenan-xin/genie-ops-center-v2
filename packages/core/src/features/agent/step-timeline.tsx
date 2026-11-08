@@ -11,6 +11,7 @@ import {
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { AgentFileState, ChatLabels } from "../../services/agent/index.ts";
+import { AgentMark } from "./chat-parts.tsx";
 import {
   durationLabel,
   elapsedLabel,
@@ -283,17 +284,17 @@ export function StepTimeline(props: {
         <button
           type="button"
           aria-expanded={open}
-          className={`flex min-h-8 items-center gap-2 justify-self-start rounded-md text-sm ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
+          className={`flex h-7 items-center gap-2 justify-self-start rounded-full ps-1 pe-2.5 text-xs font-medium hover:bg-tile max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
           onClick={() => setOpen(!open)}
         >
-          <span aria-hidden="true" className="flex items-center gap-1">
-            {rows.map((row) => (
-              <span
-                key={row.key}
-                className={`size-1.5 rounded-full ${row.state === "failed" ? "bg-destructive" : "bg-muted-foreground"}`}
-              />
-            ))}
-          </span>
+          <AgentMark />
+          {failed === null ? (
+            <CheckIcon
+              aria-hidden="true"
+              className="size-3.5 text-success"
+              strokeWidth={2.5}
+            />
+          ) : null}
           {failed === null
             ? `Used ${steps(rows.length)}${time}`
             : `${rowText(failed)} · ${steps(rows.length)}${time}`}
