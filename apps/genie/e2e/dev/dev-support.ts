@@ -46,6 +46,32 @@ export const sgd = (dollars: number) => MONEY.format(dollars);
 /** Below Tailwind's `md`, `DataTable` draws its card list instead of the table. */
 export const onPhone = (page: Page) => (page.viewportSize()?.width ?? 0) < 768;
 
+/** Below 1024 px a review shows its pager, one field at a time; from 1024 px its desk (czjw.98). */
+export const onPager = (page: Page) => (page.viewportSize()?.width ?? 0) < 1024;
+
+/**
+ * On the pager, opens the step of one field, or a Finish row such as the save, through All fields.
+ * The row's name is its label, then its value. The desk shows every field, so it does nothing.
+ */
+export async function goToField(page: Page, label: string): Promise<void> {
+  if (!onPager(page)) return;
+
+  await page.getByRole("button", { name: "All fields" }).click();
+
+  const sheet = page.getByRole("dialog");
+
+  // The labels are plain words, so they need no escape.
+  await sheet.getByRole("button", { name: new RegExp(`^${label}`) }).click();
+  await expect(sheet).toBeHidden();
+}
+
+/** The Save button of a review. The pager shows it only on its summary step, so it goes there. */
+export async function saveButton(page: Page, saveLabel: string) {
+  await goToField(page, saveLabel);
+
+  return page.getByRole("button", { name: saveLabel, exact: true });
+}
+
 /** The demonstration account's session, minted directly (no realm in this run). */
 export async function signIn(page: Page): Promise<void> {
   const { name, value, url, httpOnly, sameSite, expires } =
