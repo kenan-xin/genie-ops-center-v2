@@ -1,3 +1,4 @@
+import { readDemoJson } from "@genie/module-invoices/testing";
 import { expect, test, type Page } from "@playwright/test";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
@@ -34,6 +35,15 @@ test.skip(
  * The lock's queue, one upload's two UPLOAD_TIMEOUTs (request, then response) and the body.
  */
 const TEST_TIMEOUT = LOCK_WAIT + UPLOAD_TIMEOUT * 2 + 60_000;
+
+// SAFETY: the demo pack's history file is read verbatim; only the two list lengths are used.
+const HISTORY = readDemoJson("01_History_Datasets/history_seed.json") as {
+  readonly invoices: readonly unknown[];
+  readonly payments: readonly unknown[];
+};
+
+/** Every seeded history document has its record, so it stays Done whatever the run uploads. */
+const HISTORY_DOCUMENTS = HISTORY.invoices.length + HISTORY.payments.length;
 
 type ShownRow = {
   /** The badge's text, which is the status on both layouts. */
@@ -163,7 +173,7 @@ test("Done reads its first page, and a scroll to the end reads the rest", async 
       // The mount ping means no dev-server reload can replace the list during the scroll.
       await openInbox(page, "done");
 
-      // The 66 seeded history documents are Done, so Done holds more than one page of 50 (LH6).
+      // The seeded history documents are Done, so Done holds more than one page of 50 (LH6).
       // A phone shows the count above the cards and in the footer; the hidden layout is skipped.
       const first = page
         .getByText(/^Showing 50 of \d+ documents$/)
@@ -176,8 +186,8 @@ test("Done reads its first page, and a scroll to the end reads the rest", async 
         /of (\d+)/.exec((await first.textContent()) ?? "")?.[1]
       );
 
-      // More than one page, not exactly 66: the count follows what the run's other tests did.
-      expect(total).toBeGreaterThan(50);
+      // At least the history, not exactly: uploads the run kept as Done add to it (czjw.86).
+      expect(total).toBeGreaterThanOrEqual(HISTORY_DOCUMENTS);
 
       // No click on Show more: reaching the end of the list reads the next page (czjw.70).
       await page
