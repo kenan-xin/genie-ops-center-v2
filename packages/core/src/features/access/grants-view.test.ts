@@ -28,7 +28,10 @@ const holders = {
   finance: { type: "group", id: "g-finance", name: "Finance team" },
   analysts: { type: "group", id: "g-analysts", name: "Analysts" },
   ops: { type: "group", id: "g-ops", name: "Operations" },
+  admins: { type: "group", id: "g-admins", name: "Genie Administrators" },
 } as const;
+
+const admins: AccessRecipient = { type: "group", id: "g-admins" };
 
 describe("linkedRecipient", () => {
   it.each([
@@ -85,6 +88,19 @@ const ids = (rows: readonly { readonly row: { readonly id: string } }[]) =>
 
 const view = (paths: readonly AccessPath[], recipient = jamie) =>
   grantsView({ catalogue: FIXTURE_ROWS, paths, recipient });
+
+const tenantAdmin = (holder: AccessPath["holder"]) =>
+  path({
+    holder,
+    roleId: "r-tenant-admin",
+    moduleId: null,
+    permissions: ["core:ask:use", "core:roles:manage"],
+  });
+
+const alsoOf = (result: ReturnType<typeof view>) =>
+  Object.fromEntries(
+    result.catalog.map((row) => [row.row.id, row.alsoThrough])
+  );
 
 describe("grantsView", () => {
   it("V1: grants a row by a direct whole-tenant role only", () => {
@@ -181,6 +197,75 @@ describe("grantsView", () => {
     expect(group.catalog.every((row) => row.alsoThrough.length === 0)).toBe(
       true
     );
+  });
+
+  it("V8: shows a group path and a core role as read-only rows, and keeps the core role in notShown", () => {
+    const admin = tenantAdmin(holders.jamie);
+
+    const result = view([
+      path({ holder: holders.jamie, roleId: "r-invoices-viewer" }),
+      admin,
+      path({ holder: holders.finance, roleId: "r-invoices-finance" }),
+    ]);
+
+    expect(ids(result.granted)).toEqual(["invoices"]);
+    expect(result.inherited.map((row) => [row.row.id, row.source])).toEqual([
+      ["invoices", { kind: "group", id: "g-finance", name: "Finance team" }],
+      [
+        "core:ask",
+        { kind: "role", id: "r-tenant-admin", name: "r-tenant-admin" },
+      ],
+    ]);
+    expect(alsoOf(result)["core:ask"]).toEqual(["r-tenant-admin"]);
+    expect(result.notShown.map((shown) => shown.assignmentId)).toEqual([
+      admin.assignmentId,
+    ]);
+  });
+
+  it("V9: gives one read-only row per live group path, and none for an archived group", () => {
+    const result = view([
+      path({ holder: holders.finance, roleId: "r-invoices-finance" }),
+      path({ holder: holders.ops, roleId: "r-invoices-viewer" }),
+      path({
+        holder: holders.analysts,
+        roleId: "r-invoices-viewer",
+        notInEffect: ["group-archived"],
+      }),
+    ]);
+
+    expect(result.inherited.map((row) => [row.row.id, row.source.id])).toEqual([
+      ["invoices", "g-finance"],
+      ["invoices", "g-ops"],
+    ]);
+    expect(alsoOf(result)["invoices"]).toEqual(["Finance team", "Operations"]);
+  });
+
+  it("V10: shows a group's own core role as a read-only row", () => {
+    const result = view([tenantAdmin(holders.admins)], admins);
+
+    expect(result.granted).toEqual([]);
+    expect(result.inherited.map((row) => [row.row.id, row.source])).toEqual([
+      [
+        "core:ask",
+        { kind: "role", id: "r-tenant-admin", name: "r-tenant-admin" },
+      ],
+    ]);
+    expect(alsoOf(result)["core:ask"]).toEqual(["r-tenant-admin"]);
+  });
+
+  it("V11: shows a one-record path read-only, with no Catalog note", () => {
+    const result = view([
+      path({
+        holder: holders.jamie,
+        roleId: "r-invoices-viewer",
+        record: true,
+      }),
+    ]);
+
+    expect(result.inherited.map((row) => [row.row.id, row.path.scope])).toEqual(
+      [["invoices", { type: "invoice", id: "inv-1" }]]
+    );
+    expect(alsoOf(result)["invoices"]).toEqual([]);
   });
 });
 

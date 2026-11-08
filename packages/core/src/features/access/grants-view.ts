@@ -24,8 +24,20 @@ export type CatalogRowView = {
   readonly alsoThrough: readonly string[];
 };
 
+export type InheritedSource =
+  | { readonly kind: "group"; readonly id: string; readonly name: string }
+  | { readonly kind: "role"; readonly id: string; readonly name: string };
+
+export type InheritedRowView = {
+  readonly row: GrantRow;
+  readonly path: AccessPath;
+  readonly source: InheritedSource;
+};
+
 export type GrantsView = {
   readonly granted: readonly GrantedRowView[];
+  /** Every other live path that opens a row, read-only (d8l5.42). */
+  readonly inherited: readonly InheritedRowView[];
   readonly catalog: readonly CatalogRowView[];
   readonly notShown: readonly AccessPath[];
 };
@@ -66,7 +78,9 @@ export function moduleNameOf(
 /**
  * Splits the catalogue for one recipient (P4, P6). A row is Granted when the recipient holds one
  * of its roles directly at whole-tenant scope, and shows the first such role in choice order. Every
- * other direct assignment is "Not shown here", so nothing the recipient holds is hidden.
+ * other live path that opens a row is a read-only row, through a group or included in a role
+ * (d8l5.42). Every direct assignment that no editable row shows stays in `notShown` for Advanced
+ * access, so nothing the recipient holds is hidden.
  */
 export function grantsView(input: {
   readonly catalogue: readonly GrantRow[];
@@ -77,6 +91,8 @@ export function grantsView(input: {
 
   const granted: GrantedRowView[] = [];
 
+  const inherited: InheritedRowView[] = [];
+
   const catalog: CatalogRowView[] = [];
 
   for (const row of input.catalogue) {
@@ -86,22 +102,27 @@ export function grantsView(input: {
       )
       .find((path) => path !== undefined);
 
+    const others = input.paths
+      .filter((path) => path !== shown && opens(row, path))
+      .map((path): InheritedRowView => {
+        const source: InheritedSource = isDirect(path, input.recipient)
+          ? { kind: "role", id: path.role.id, name: path.role.name }
+          : { kind: "group", id: path.holder.id, name: path.holder.name };
+
+        return { row, path, source };
+      });
+
+    inherited.push(...others);
+
     if (shown !== undefined) {
       granted.push({ row, shown });
       continue;
     }
 
-    const alsoThrough =
-      input.recipient.type === "user"
-        ? input.paths
-            .filter(
-              (path) =>
-                path.holder.type === "group" &&
-                path.scope === null &&
-                opens(row, path)
-            )
-            .map((path) => path.holder.name)
-        : [];
+    // A one-record path does not open the whole module, so it gets no note (P05-4).
+    const alsoThrough = others
+      .filter((other) => other.path.scope === null)
+      .map((other) => other.source.name);
 
     catalog.push({ row, alsoThrough: [...new Set(alsoThrough)] });
   }
@@ -110,6 +131,7 @@ export function grantsView(input: {
 
   return {
     granted,
+    inherited,
     catalog,
     notShown: direct.filter((path) => !shownIds.has(path.assignmentId)),
   };

@@ -389,6 +389,40 @@ describe("the Grants writer", () => {
     );
   });
 
+  it("keeps a member group's path out of a person's save", async () => {
+    const person: Principal = {
+      type: "user",
+      id: await insertUser(deployment.context),
+    };
+
+    const team: Principal = {
+      type: "group",
+      id: await insertGroup(deployment.context, [person.id]),
+    };
+
+    const teamPath = await grantTo("Fixture viewer", team);
+
+    await grantTo("Fixture editor", person);
+
+    const paths = await roles(adaId).recipientAccess({
+      principalType: "user",
+      principalId: person.id,
+    });
+
+    expect(paths.map((path) => path.holder.type).toSorted()).toEqual([
+      "group",
+      "user",
+    ]);
+    await expect(
+      save(person, {
+        change: [
+          { row: "fixture", assignmentId: teamPath, roleId: fixtureEditorId },
+        ],
+      })
+    ).rejects.toMatchObject({ code: "not-found" });
+    expect(await namesOf(team)).toEqual(["Fixture viewer"]);
+  });
+
   it("refuses a change outside its row and writes nothing", async () => {
     const person: Principal = {
       type: "user",
