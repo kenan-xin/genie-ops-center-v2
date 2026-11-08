@@ -1,40 +1,36 @@
 "use client";
 
 import {
-  buttonVariants,
   focusRing,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
   InputGroupText,
 } from "@genie/ui";
-import { SearchIcon, SquarePenIcon } from "lucide-react";
+import { SearchIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
-import type {
-  AgentSessionSummary,
-  InboxLink,
-} from "../../services/agent/index.ts";
-import { InboxLines } from "./chat-parts.tsx";
+import type { AgentSessionSummary } from "../../services/agent/index.ts";
 import { sessionGroups } from "./session-groups.ts";
 
 function sessionClass(current: boolean): string {
-  return `block min-h-11 truncate rounded-md px-2.5 py-2.5 text-sm lg:min-h-9 lg:py-2 ${
-    current ? "bg-muted font-semibold text-foreground" : "hover:bg-muted"
+  return `flex h-11 min-w-0 items-center rounded-lg px-3 text-sm lg:h-9 ${
+    current
+      ? "bg-background font-semibold text-foreground ring-1 ring-border ring-inset"
+      : "text-muted-foreground hover:bg-tile hover:text-foreground"
   } ${focusRing}`;
 }
 
 /**
- * Ask's chat history (R-42a, AG22): New chat, a search over the listed titles, the chats grouped
- * into Today and Earlier in the tenant's zone, and where documents go in. Ask's column and its
- * phone sheet both hold it; the frame gives the heading.
+ * Ask's chat history (R-42a, AG22): a search over the listed titles and the chats grouped into
+ * Today and Earlier in the tenant's zone. A long title ends with an ellipsis and keeps its full
+ * text on hover (czjw.107). Ask's column and its phone sheet both hold it; the frame gives the
+ * heading and New chat, and Ask's empty chat says where documents go in (czjw.120 item 20).
  */
 export function ChatHistory(props: {
   readonly sessions: readonly AgentSessionSummary[];
   readonly currentId: string | undefined;
   readonly sessionHref: (id: string) => string;
-  readonly newChatHref: string;
-  readonly inbox: readonly InboxLink[];
   readonly timeZone: string;
 }): ReactNode {
   const [query, setQuery] = useState("");
@@ -48,18 +44,8 @@ export function ChatHistory(props: {
   const groups = sessionGroups(matches, props.timeZone, new Date());
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <div className="grid gap-2 px-3">
-        <a
-          href={props.newChatHref}
-          className={buttonVariants({
-            variant: "ghost",
-            className: "justify-start",
-          })}
-        >
-          <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
-          New chat
-        </a>
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="mx-3 mb-1">
         <InputGroup>
           <InputGroupInput
             type="search"
@@ -76,24 +62,27 @@ export function ChatHistory(props: {
         </InputGroup>
       </div>
 
-      <nav aria-label="Chats" className="min-h-0 flex-1 overflow-y-auto px-3">
+      {/* Block and flex parents only: a grid track sized to the widest title kept the rail
+          scrolling sideways (czjw.107). */}
+      <nav
+        aria-label="Chats"
+        className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto px-3 pb-3"
+      >
         {props.sessions.length === 0 ? (
-          <p className="px-2.5 text-sm text-muted-foreground">No chats yet.</p>
+          <p className="px-3 pt-4 text-sm text-muted-foreground">
+            No chats yet.
+          </p>
         ) : groups.length === 0 ? (
-          <p className="px-2.5 text-sm text-muted-foreground">
+          <p className="px-3 pt-4 text-sm text-muted-foreground">
             No chats match.
           </p>
         ) : (
           groups.map((group) => (
-            <section
-              key={group.label}
-              aria-label={group.label}
-              className="grid gap-0.5 pb-3"
-            >
-              <h3 className="px-2.5 py-1 text-xs font-semibold text-muted-foreground">
+            <section key={group.label} aria-label={group.label}>
+              <h3 className="px-3 pt-4 pb-1.5 text-xs font-semibold text-muted-foreground">
                 {group.label}
               </h3>
-              <ul className="grid gap-0.5">
+              <ul className="flex flex-col gap-0.5">
                 {group.sessions.map((session) => {
                   const current = session.id === props.currentId;
 
@@ -105,7 +94,9 @@ export function ChatHistory(props: {
                         aria-current={current ? "page" : undefined}
                         className={sessionClass(current)}
                       >
-                        {session.title}
+                        <span className="min-w-0 truncate">
+                          {session.title}
+                        </span>
                       </a>
                     </li>
                   );
@@ -115,12 +106,6 @@ export function ChatHistory(props: {
           ))
         )}
       </nav>
-
-      {props.inbox.length === 0 ? null : (
-        <div className="grid gap-1 border-t border-border px-5 py-3">
-          <InboxLines inbox={props.inbox} />
-        </div>
-      )}
     </div>
   );
 }

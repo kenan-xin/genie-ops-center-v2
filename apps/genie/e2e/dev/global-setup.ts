@@ -105,6 +105,8 @@ export const ASK_PEOPLE = {
   other: "e2e.ask.other@example.invalid",
   /** Reads the placeholder but may not ask. */
   noAsk: "e2e.no-ask@example.invalid",
+  /** Holds the invoices inbox key, so Ask's new chat shows where documents go in; made only with invoices. */
+  inbox: "e2e.ask.inbox@example.invalid",
 } as const;
 
 /** The people the invoice answer spec asks as, one per project; made only when invoices is selected. */
@@ -137,9 +139,15 @@ const PERMISSIONS_OF = new Map<string, readonly string[]>([
   [ASK_PEOPLE.noAsk, ["placeholder:use"]],
   // The invoices keys exist only when the module is compiled in.
   ...(DEV_MODULES.has("invoices")
-    ? Object.values(INVOICE_ASK_PEOPLE).map(
-        (email) => [email, INVOICE_ASK_KEYS] as const
-      )
+    ? [
+        ...Object.values(INVOICE_ASK_PEOPLE).map(
+          (email) => [email, INVOICE_ASK_KEYS] as const
+        ),
+        [
+          ASK_PEOPLE.inbox,
+          ["core:ask:use", "invoices:read", "invoices:write"],
+        ] as const,
+      ]
     : []),
   // The chat needs the analytics and invoices tools of the recorded default selection.
   ...(DEV_MODULES.has("analytics") && DEV_MODULES.has("invoices")

@@ -20,8 +20,6 @@ import { rpc } from "../../../../rpc/client.ts";
 
 const SESSION_LIST_KEY = ["agent", "sessions"];
 
-const NO_INBOX: readonly InboxLink[] = [];
-
 /**
  * The browser half of Ask (R-42, R-42a, R-45a, R-18, R-20). The server has read the list, the
  * current session and its artifacts, and refused an unpermitted visitor before this mounts; the
@@ -103,7 +101,6 @@ export function AskRoute(props: {
       title={title}
       sessionHref={(id) => `/ask/${id}`}
       newChatHref="/ask"
-      inbox={props.inbox}
       aiOn={props.aiOn}
       timeZone={props.timeZone}
       datasetTitles={props.labels.datasets}
@@ -119,8 +116,8 @@ export function AskRoute(props: {
           models={props.models}
           labels={props.labels}
           suggestions={props.suggestions}
-          // The chat history holds the inbox lines on Ask.
-          inbox={NO_INBOX}
+          // A new chat says where documents go in, in Ask as in the panel (czjw.120 item 20).
+          inbox={props.inbox}
           timeZone={props.timeZone}
           artifacts={{ kind: "panel", shown, onOpen: setShown }}
           headingLevel={2}

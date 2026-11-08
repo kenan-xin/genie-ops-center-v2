@@ -17,7 +17,6 @@ import { agentContract } from "../../services/agent/contract.ts";
 import type {
   AgentArtifact,
   AgentSessionSummary,
-  InboxLink,
 } from "../../services/agent/index.ts";
 import { ArtifactPanel } from "./artifact-panel.tsx";
 import type { ArtifactRef } from "./artifact-refs.ts";
@@ -28,7 +27,7 @@ import { ChatHistory } from "./chat-history.tsx";
 const ARTIFACT_DOCKED = "(min-width: 1280px)";
 
 /**
- * The Ask frame (R-42, R-42a, R-45a, AG22): the chat history as a 264 px column from 1024 px that
+ * The Ask frame (R-42, R-42a, R-45a, AG22): the chat history as a 272 px column from 1024 px that
  * hides fully on its own toggle, and a left sheet below; the chat in the middle; and the artifact
  * panel, a 480 px column from 1280 px and a sheet below, open only when the person opens a card.
  * The chat itself is the shared `AgentChat`, passed as `children`; only this frame is Ask's own.
@@ -40,7 +39,6 @@ export function AskScreen(props: {
   readonly title: string;
   readonly sessionHref: (id: string) => string;
   readonly newChatHref: string;
-  readonly inbox: readonly InboxLink[];
   readonly aiOn: boolean;
   /** The tenant's zone for each chat's day. */
   readonly timeZone: string;
@@ -78,8 +76,6 @@ export function AskScreen(props: {
       sessions={props.sessions}
       currentId={props.currentId}
       sessionHref={props.sessionHref}
-      newChatHref={props.newChatHref}
-      inbox={props.inbox}
       timeZone={props.timeZone}
     />
   );
@@ -106,10 +102,17 @@ export function AskScreen(props: {
       {historyOpen ? (
         <aside
           aria-label="Chat history"
-          className="hidden w-66 shrink-0 flex-col border-e border-border lg:flex"
+          className="hidden w-68 shrink-0 flex-col border-e border-border bg-muted lg:flex"
         >
-          <div className="flex h-14 shrink-0 items-center justify-between ps-5 pe-2">
-            <h2 className="text-base font-semibold">Chats</h2>
+          <div className="flex h-14 shrink-0 items-center gap-1 ps-6 pe-3">
+            <h2 className="flex-1 text-sm font-bold">Chats</h2>
+            <a
+              href={props.newChatHref}
+              aria-label="New chat"
+              className={buttonVariants({ variant: "ghost", size: "icon" })}
+            >
+              <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
+            </a>
             <Button
               ref={hideButton}
               type="button"

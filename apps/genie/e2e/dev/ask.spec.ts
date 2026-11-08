@@ -339,6 +339,31 @@ test("Ask hides its chat history fully and shows it again", async ({
   await expectNoAxeViolations(page, "Ask's chat history");
 });
 
+// C3 (czjw.120 item 20): the inbox line left the rail; Ask's new chat says where documents go in.
+test("Ask's new chat says where documents go in", async ({ page }) => {
+  test.skip(
+    !DEV_MODULES.has("invoices"),
+    "The one document inbox is the invoices module's."
+  );
+  test.setTimeout(180_000);
+
+  await signIn(page, ASK_PEOPLE.inbox);
+  await page.goto("/ask");
+
+  await expect(
+    page
+      .getByRole("region", { name: "Conversation" })
+      .getByText(/^To add documents, use/)
+  ).toBeVisible(FIRST_PAINT);
+
+  if (atLg(page)) {
+    const history = page.getByRole("complementary", { name: "Chat history" });
+
+    await expect(history).toBeVisible();
+    await expect(history.getByText(/^To add documents, use/)).toHaveCount(0);
+  }
+});
+
 test("a person without Ask gets no Agent button and the denied page on Ask", async ({
   page,
 }) => {

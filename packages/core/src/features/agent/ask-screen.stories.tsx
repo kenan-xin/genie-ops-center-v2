@@ -153,7 +153,7 @@ function Framed(props: AskProps) {
             suggestions={[]}
             checkChart={draw}
             timeZone="UTC"
-            inbox={[]}
+            inbox={INBOX}
             artifacts={{ kind: "panel", shown, onOpen: setShown }}
             headingLevel={2}
             onNewChat={() => undefined}
@@ -181,7 +181,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 264 px column with New chat, Search chats, the groups Today and Earlier and the inbox lines; Hide chats removes it fully, and the top bar then holds only Show chats and the title. Below 1024 px a bar under the shell's top bar holds Show chats, the title and New chat, and the history opens as a left sheet. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
+          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 272 px gray column with Chats, New chat and Hide chats in its top row, then Search chats and the groups Today and Earlier; a long title ends with an ellipsis. Hide chats removes it fully, and the top bar then holds only Show chats and the title. Below 1024 px a bar under the shell's top bar holds Show chats, the title and New chat, and the history opens as a left sheet. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
       },
     },
     a11y: { test: "error" },
@@ -194,7 +194,6 @@ const meta = {
     title: OVERDUE,
     sessionHref: (id: string) => `/ask/${id}`,
     newChatHref: "/ask",
-    inbox: INBOX,
     aiOn: true,
     timeZone: "Asia/Singapore",
     datasetTitles: {},
@@ -226,8 +225,15 @@ export const HideTheChatHistory: Story = {
     await expect(
       within(column).getByRole("link", { name: OVERDUE })
     ).toHaveAttribute("aria-current", "page");
+    // The inbox line sits in the new chat, not in the rail (czjw.120 item 20).
     await expect(
-      within(column).getByRole("link", { name: "Documents" })
+      within(column).queryByRole("link", { name: "Documents" })
+    ).toBeNull();
+    await expect(
+      within(canvas.getByRole("region", { name: "Conversation" })).getByRole(
+        "link",
+        { name: "Documents" }
+      )
     ).toBeVisible();
 
     await userEvent.click(canvas.getByRole("button", { name: "Hide chats" }));
@@ -299,6 +305,107 @@ export const SearchChats: Story = {
 };
 
 const artifactPanel = () => screen.queryByRole("region", { name: "Artifact" });
+
+const LONG_TITLE =
+  "Which customers with overdue items in the north region also paid late last quarter, and by how many days on average?";
+
+const LONG_SESSIONS: readonly AgentSessionSummary[] = [
+  {
+    ...SESSIONS[1]!,
+    id: "00000000-0000-4000-8000-000000000009",
+    title: LONG_TITLE,
+  },
+  ...SESSIONS,
+];
+
+/** C1: the long title ends with an ellipsis, keeps its full text on hover, and nothing scrolls sideways. */
+async function expectEllipsis(root: HTMLElement): Promise<void> {
+  const nav = within(root).getByRole("navigation", { name: "Chats" });
+
+  const link = within(nav).getByRole("link", { name: LONG_TITLE });
+
+  const text = link.querySelector("span") ?? link;
+
+  await expect(link).toHaveAttribute("title", LONG_TITLE);
+  await expect(text.scrollWidth).toBeGreaterThan(text.clientWidth);
+  await expect(nav.scrollWidth).toBe(nav.clientWidth);
+}
+
+// C1 (czjw.107): a grid track sized to the widest title kept the rail scrolling sideways.
+export const ALongChatTitle: Story = {
+  name: "A long chat title",
+  args: { sessions: LONG_SESSIONS },
+  play: async () => {
+    const column = history();
+
+    if (column === null) throw new Error("No chat history column.");
+
+    await expectEllipsis(column);
+  },
+};
+
+export const ALongChatTitleOnAPhone: Story = {
+  name: "A long chat title on a phone",
+  args: { sessions: LONG_SESSIONS },
+  globals: phone,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Show chats" }));
+
+    const sheet = await screen.findByRole("dialog", { name: "Chats" });
+
+    await waitFor(() =>
+      expect(
+        within(sheet).getByRole("link", { name: LONG_TITLE })
+      ).toBeVisible()
+    );
+    await expectEllipsis(sheet);
+  },
+};
+
+// C2 (czjw.120 item 19): the search box and the rows share both edges, Hide chats ends on that
+// edge, and the row text starts under the heading.
+export const RailEdges: Story = {
+  name: "Rail edges",
+  play: async () => {
+    const column = history();
+
+    if (column === null) throw new Error("No chat history column.");
+
+    const rail = within(column);
+
+    const search = rail
+      .getByRole("searchbox", { name: "Search chats" })
+      .closest('[data-slot="input-group"]')
+      ?.getBoundingClientRect();
+
+    const link = rail.getByRole("link", { name: OVERDUE });
+
+    const row = link.getBoundingClientRect();
+
+    const rowText = (
+      link.querySelector("span") ?? link
+    ).getBoundingClientRect();
+
+    const hide = rail
+      .getByRole("button", { name: "Hide chats" })
+      .getBoundingClientRect();
+
+    const heading = rail
+      .getByRole("heading", { level: 2, name: "Chats" })
+      .getBoundingClientRect();
+
+    if (search === undefined) throw new Error("No search box.");
+
+    await expect(
+      Math.max(
+        Math.abs(search.left - row.left),
+        Math.abs(search.right - row.right),
+        Math.abs(hide.right - search.right),
+        Math.abs(rowText.left - heading.left)
+      )
+    ).toBeLessThan(1);
+  },
+};
 
 // AK4: an answer's card does not open the panel by itself; pressing it does (R-45a).
 export const AnArtifactOpensOnlyWhenAsked: Story = {
