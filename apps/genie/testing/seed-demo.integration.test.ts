@@ -493,7 +493,8 @@ describe("the demo seed command on a database that is not ready", () => {
         "no person has the address in DEMO_ACCOUNT_EMAIL. The demo account signs in once, then you run the seed again.",
     },
     {
-      name: "a planned role the deployment does not hold",
+      // Under 40 characters: Vitest shortens a longer $name with "…", and the guard misses it.
+      name: "a missing planned role",
       deployment: () => ready,
       enabled: true,
       roles: true,
