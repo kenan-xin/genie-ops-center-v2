@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
-import type { AssignableRole, GroupDetail, GroupRow } from "./index.ts";
+import type { GroupDetail, GroupRow } from "./index.ts";
 
 const groupId = z.object({ groupId: z.uuid() });
 
@@ -28,11 +28,6 @@ export const groupsContract = {
     .route({ method: "GET", path: "/groups/{groupId}" })
     .input(groupId)
     .output(z.custom<GroupDetail>()),
-
-  // The roles a group can be given, for the inspector's assign step (R-24b).
-  assignableRoles: oc
-    .route({ method: "GET", path: "/groups/assignable-roles" })
-    .output(z.custom<readonly AssignableRole[]>()),
 
   assignRole: oc
     .route({ method: "POST", path: "/groups/{groupId}/assignments" })

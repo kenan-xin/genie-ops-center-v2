@@ -2,7 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
   callProcedure,
+  createGroupsRouter,
   createPeopleRouter,
+  createRolesRouter,
   principalFor,
   seedRoles,
   type ModuleHistorySource,
@@ -15,7 +17,9 @@ import {
 import {
   assignRole,
   enableModules,
+  insertGroup,
   insertPersonWith,
+  insertRole,
   insertUser,
   markSetupDone,
   startDisposableDeployment,
@@ -88,6 +92,8 @@ const roleIds = new Map<string, string>();
 
 let actorId: string;
 
+let groupId: string;
+
 beforeAll(async () => {
   deployment = await startDisposableDeployment(historySources);
   await markSetupDone(deployment.context);
@@ -102,6 +108,19 @@ beforeAll(async () => {
 
   for (const row of seeded.rows) roleIds.set(row.name, row.id);
 
+  // A system role of a module that this image does not compile, so no entitlement row exists.
+  roleIds.set(
+    "Gone user",
+    await insertRole(deployment.context, {
+      name: "Gone user",
+      moduleId: "gone",
+      isSystem: true,
+      permissions: ["gone:use"],
+    })
+  );
+
+  groupId = await insertGroup(deployment.context, []);
+
   // One active administrator, so that a removal passes the R-38 check.
   await assignRole(deployment.context, {
     roleId: roleId(TENANT_ADMINISTRATOR_ROLE),
@@ -111,6 +130,7 @@ beforeAll(async () => {
   ({ userId: actorId } = await insertPersonWith(deployment.context, [
     "core:people:manage",
     "core:roles:manage",
+    "core:groups:manage",
   ]));
 }, 180000);
 
@@ -126,8 +146,8 @@ function roleId(name: string): string {
   return id;
 }
 
-function people() {
-  return callProcedure(createPeopleRouter(modules), {
+function caller() {
+  return {
     tenant: deployment.context,
     caller: principalFor({
       tenant: deployment.context,
@@ -135,7 +155,39 @@ function people() {
       userId: actorId,
       authenticated: true,
     }),
-  });
+  };
+}
+
+function people() {
+  return callProcedure(createPeopleRouter(modules), caller());
+}
+
+function roles() {
+  return callProcedure(createRolesRouter(modules), caller());
+}
+
+/** One grant through each of the two writers that `d8l5.39` names. */
+function grant(writer: string, roleIdToGrant: string) {
+  return writer === "roles.assign"
+    ? roles().assign({
+        roleId: roleIdToGrant,
+        principalType: "user",
+        principalId: actorId,
+      })
+    : callProcedure(createGroupsRouter(), caller()).assignRole({
+        groupId,
+        roleId: roleIdToGrant,
+      });
+}
+
+async function assignmentCount(roleIdToCount: string): Promise<number> {
+  const result = await deployment.context.db.$client.query<{
+    readonly count: number;
+  }>(`select count(*)::int as count from role_assignment where role_id = $1`, [
+    roleIdToCount,
+  ]);
+
+  return result.rows[0]?.count ?? 0;
 }
 
 async function roleNamesOf(personId: string): Promise<readonly string[]> {
@@ -206,5 +258,34 @@ describe("Add person against the Grants rows", () => {
       people().add({ email, roleIds: picks(), sendInvitation: false })
     ).rejects.toMatchObject({ code });
     expect(await personCount(email)).toBe(0);
+  });
+});
+
+describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
+  it.each([
+    ["roles.assign", "Off user"],
+    ["roles.assign", "Gone user"],
+    ["the Groups assignRole", "Off user"],
+    ["the Groups assignRole", "Gone user"],
+  ])(
+    "%s refuses %s with module-disabled and writes no assignment",
+    async (writer, roleName) => {
+      await expect(grant(writer, roleId(roleName))).rejects.toMatchObject({
+        code: "module-disabled",
+      });
+      expect(await assignmentCount(roleId(roleName))).toBe(0);
+    }
+  );
+
+  it("removes an existing grant of a switched-off module's role (R-33d)", async () => {
+    // A fixture insert, as a grant made before the module was switched off.
+    const assignmentId = await assignRole(deployment.context, {
+      roleId: roleId("Off user"),
+      principal: { type: "user", id: await insertUser(deployment.context) },
+    });
+
+    await roles().unassign({ assignmentId });
+
+    expect(await assignmentCount(roleId("Off user"))).toBe(0);
   });
 });

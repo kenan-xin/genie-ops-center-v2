@@ -1,5 +1,4 @@
 import type {
-  AssignableRole,
   GroupAssignmentRow as GroupAssignment,
   GroupMemberRow as GroupMember,
   GroupRow as Group,
@@ -13,13 +12,7 @@ import type { NoMatchCopy } from "../admin/no-match.tsx";
  * services through type-only imports, which the browser-safety guard skips. The source name, the
  * viewer and the screen and inspector props are screen-only.
  */
-export type {
-  AssignableRole,
-  Group,
-  GroupAssignment,
-  GroupMember,
-  PersonOption,
-};
+export type { Group, GroupAssignment, GroupMember, PersonOption };
 
 export type GroupSource = Group["source"];
 

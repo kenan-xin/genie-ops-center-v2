@@ -13,7 +13,6 @@ import {
   createLocalGroup,
   deleteDirectoryGroup,
   deleteLocalGroup,
-  listAssignableRoles,
   listGroups,
   readGroup,
   removeAllLocalGroupMembers,
@@ -63,10 +62,6 @@ export function createGroupsRouter() {
 
       return found;
     }),
-
-    assignableRoles: managed.assignableRoles.handler(({ context }) =>
-      listAssignableRoles(context.tenant)
-    ),
 
     // Assignment goes through the one role-assignment service, so the R-38 guard and the
     // core:role:granted event have one writer (DEC-39, R-47). It needs core:roles:manage, and the

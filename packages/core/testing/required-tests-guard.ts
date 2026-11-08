@@ -660,12 +660,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/role-writers.integration.test.ts",
     reason:
-      "Spec 2 R-40 and R-37a: Add person gives at most one role per Grants row, never an administration role and never a role of a switched-off module, and refuses before it writes a person (d8l5.44)",
+      "Spec 2 R-40 and R-37a: Add person gives at most one role per Grants row, never an administration role and never a role of a switched-off module, and refuses before it writes a person (d8l5.44); the one writer refuses a new grant of a switched-off or uncompiled module's role for every caller, and Remove stays open (d8l5.39, R-33d)",
     cases: [
       "Add person against the Grants rows adds a person with one role of a switched-on module and Ask user, each through the one writer",
       "Add person against the Grants rows refuses two roles of one module and writes no person",
       "Add person against the Grants rows refuses an administration role and writes no person",
       "Add person against the Grants rows refuses a role of a switched-off module and writes no person",
+      "the one writer and a switched-off module (R-37a, d8l5.39) roles.assign refuses Off user with module-disabled and writes no assignment",
+      "the one writer and a switched-off module (R-37a, d8l5.39) roles.assign refuses Gone user with module-disabled and writes no assignment",
+      "the one writer and a switched-off module (R-37a, d8l5.39) the Groups assignRole refuses Off user with module-disabled and writes no assignment",
+      "the one writer and a switched-off module (R-37a, d8l5.39) the Groups assignRole refuses Gone user with module-disabled and writes no assignment",
+      "the one writer and a switched-off module (R-37a, d8l5.39) removes an existing grant of a switched-off module's role (R-33d)",
     ],
   },
 ];

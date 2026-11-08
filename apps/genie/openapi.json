@@ -541,17 +541,6 @@
         }
       }
     },
-    "/groups/assignable-roles": {
-      "get": {
-        "operationId": "groups.assignableRoles",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {}
-          }
-        }
-      }
-    },
     "/groups/{groupId}/assignments": {
       "post": {
         "operationId": "groups.assignRole",

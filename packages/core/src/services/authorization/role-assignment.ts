@@ -44,25 +44,32 @@ type AffectedPerson = {
   readonly name: string;
 };
 
-async function roleNameOf(
+async function roleOf(
   tx: TenantTransaction,
   roleId: string
-): Promise<string> {
+): Promise<{ readonly name: string; readonly moduleId: string | null }> {
   const rows = await tx
-    .select({ name: role.name })
+    .select({ name: role.name, moduleId: role.moduleId })
     .from(role)
     .where(eq(role.id, roleId))
     .limit(1);
 
-  const name = rows[0]?.name;
+  const found = rows[0];
 
-  if (name === undefined) {
+  if (found === undefined) {
     throw new AppError(CORE_ERRORS["not-found"], {
       cause: new Error(`No role ${roleId}`),
     });
   }
 
-  return name;
+  return found;
+}
+
+async function roleNameOf(
+  tx: TenantTransaction,
+  roleId: string
+): Promise<string> {
+  return (await roleOf(tx, roleId)).name;
 }
 
 /**
@@ -125,7 +132,13 @@ export async function assignRoleInTransaction(
 ): Promise<{ readonly id: string }> {
   await lockAdministratorGuard(tx);
 
-  const roleName = await roleNameOf(tx, input.roleId);
+  const { name: roleName, moduleId } = await roleOf(tx, input.roleId);
+
+  // R-37a: a switched-off module takes no new grant, from any caller. A module this image does not
+  // compile has no entitlement, so it is refused the same way. Removal stays open (R-33d).
+  if (moduleId !== null && !(await tenant.entitlements.isEnabled(moduleId))) {
+    throw new AppError(CORE_ERRORS["module-disabled"]);
+  }
 
   const [row] = await tx
     .insert(roleAssignment)
