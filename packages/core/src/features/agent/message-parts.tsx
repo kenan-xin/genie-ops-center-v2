@@ -17,7 +17,7 @@ import type {
 import { isStopped } from "../../services/agent/stopped-turn.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
-import { methodLines, sourceTitles } from "./answer-sources.ts";
+import { readSentence, readsOf, sourceTitles } from "./answer-sources.ts";
 import { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 import { artifactRefsOf } from "./artifact-refs.ts";
 import { QuietFold } from "./chat-parts.tsx";
@@ -32,7 +32,7 @@ import { StepTimeline } from "./step-timeline.tsx";
  * that failed shows what it could draw and one repair line.
  */
 
-const NO_LABELS: ChatLabels = { steps: {}, datasets: {} };
+const NO_LABELS: ChatLabels = { steps: {}, datasets: {}, fields: {} };
 
 const NO_FILES: readonly AgentFile[] = [];
 
@@ -138,7 +138,13 @@ function AnswerFooter(props: {
   const [copied, setCopied] = useState(false);
 
   const sources = sourceTitles(props.parts, props.labels);
-  const method = methodLines(props.parts, props.labels);
+
+  // shortcut: the plain sentence of each read until the method panel of plan Task 6 replaces this fold.
+  const method = readsOf(props.parts).map((read) =>
+    readSentence(read, props.labels)
+      .map((part) => part.text)
+      .join("")
+  );
 
   return (
     <div className="grid gap-2">

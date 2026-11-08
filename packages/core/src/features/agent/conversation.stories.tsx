@@ -289,7 +289,7 @@ const meta = {
     initialMessages: NO_MESSAGES,
     transport: transportOf(sendPicked),
     models: MODELS,
-    labels: { steps: {}, datasets: { "example.items": "Items" } },
+    labels: { steps: {}, datasets: { "example.items": "Items" }, fields: {} },
     suggestions: SUGGESTIONS,
     checkChart,
     timeZone: "UTC",

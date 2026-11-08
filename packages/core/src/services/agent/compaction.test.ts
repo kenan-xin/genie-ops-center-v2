@@ -174,6 +174,7 @@ describe("the transcript the summary call reads", () => {
           },
         },
         datasets: { "example.items": "Example items" },
+        fields: {},
       },
     });
 

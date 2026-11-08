@@ -890,7 +890,7 @@ const agentPanel = (
   <AgentPanelHost
     person="person-1"
     models={null}
-    labels={{ steps: {}, datasets: {} }}
+    labels={{ steps: {}, datasets: {}, fields: {} }}
     suggestions={[]}
     inbox={[]}
     timeZone="UTC"

@@ -358,7 +358,7 @@ export const SourcesAndMethod: Story = {
         { type: "text", text: CHART_ANSWER },
       ],
     },
-    labels: { steps: {}, datasets: TITLES },
+    labels: { steps: {}, datasets: TITLES, fields: {} },
   },
   decorators: [withChartCheck(checkSourced)],
   play: async ({ canvas }) => {
@@ -370,7 +370,7 @@ export const SourcesAndMethod: Story = {
     await expect(sources).toHaveTextContent("Source: Items");
     await expect(canvas.getByRole("button", { name: "Copy" })).toBeVisible();
 
-    const method = canvas.getByText("Items: 2 rows, as of 27 Oct 2026");
+    const method = canvas.getByText("Listed the items.");
 
     // The method waits in a closed fold, so the result reads first.
     await expect(method).not.toBeVisible();
@@ -522,7 +522,7 @@ export const StoppedAnswer: Story = {
         { type: "data-stopped", data: {} },
       ],
     },
-    labels: { steps: {}, datasets: TITLES },
+    labels: { steps: {}, datasets: TITLES, fields: {} },
   },
   decorators: [withChartCheck(resolveKpi)],
   play: async ({ canvas }) => {

@@ -318,6 +318,7 @@ export const deckList: DeckListView = {
         },
       },
       datasets: {},
+      fields: {},
     },
     suggestions: [],
   },

@@ -11,6 +11,7 @@ const LABELS = {
     "ledger.payments": "Payments",
     "ledger.customers": "Customers",
   },
+  fields: {},
 };
 
 function read(id: string, dataset: string): MessagePart {

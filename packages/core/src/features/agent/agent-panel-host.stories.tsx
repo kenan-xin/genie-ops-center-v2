@@ -129,7 +129,7 @@ function Frame(props: { readonly page: boolean; readonly person?: string }) {
         <AgentPanelHost
           person={props.person ?? PERSON}
           models={null}
-          labels={{ steps: {}, datasets: {} }}
+          labels={{ steps: {}, datasets: {}, fields: {} }}
           suggestions={[]}
           inbox={[]}
           timeZone="UTC"
@@ -187,7 +187,7 @@ const meta = {
   args: {
     person: PERSON,
     models: null,
-    labels: { steps: {}, datasets: {} },
+    labels: { steps: {}, datasets: {}, fields: {} },
     suggestions: [],
     inbox: [],
     timeZone: "UTC",

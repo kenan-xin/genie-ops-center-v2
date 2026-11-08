@@ -149,7 +149,7 @@ function Framed(props: AskProps) {
             initialMessages={NO_MESSAGES}
             transport={sendCard}
             models={null}
-            labels={{ steps: {}, datasets: {} }}
+            labels={{ steps: {}, datasets: {}, fields: {} }}
             suggestions={[]}
             checkChart={draw}
             timeZone="UTC"

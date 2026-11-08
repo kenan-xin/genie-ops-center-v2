@@ -92,6 +92,7 @@ const CHAT_ON = {
       },
     },
     datasets: { "invoices.invoices": "Invoices" },
+    fields: {},
   },
   suggestions: [],
 } as const;

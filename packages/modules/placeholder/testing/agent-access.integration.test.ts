@@ -128,6 +128,8 @@ describe("chatLabels on the placeholder", () => {
         labels: {
           steps: { "placeholder-count-records": COUNT_STEP },
           datasets: { "placeholder.records": "Placeholder records" },
+          // The placeholder labels no field, so its readable dataset holds none.
+          fields: { "placeholder.records": {} },
         },
         suggestions: [],
       },
@@ -135,6 +137,7 @@ describe("chatLabels on the placeholder", () => {
         labels: {
           steps: { "placeholder-count-records": COUNT_STEP },
           datasets: {},
+          fields: {},
         },
         suggestions: [],
       },

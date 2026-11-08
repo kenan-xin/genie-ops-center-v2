@@ -47,7 +47,7 @@ const meta = {
   args: {
     sessionId: "00000000-0000-4000-8000-000000000009",
     models: null,
-    labels: { steps: {}, datasets: {} },
+    labels: { steps: {}, datasets: {}, fields: {} },
     suggestions: [],
     inbox: [],
     timeZone: "UTC",

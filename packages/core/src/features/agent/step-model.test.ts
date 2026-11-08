@@ -12,6 +12,7 @@ import {
 const LABELS = {
   steps: {},
   datasets: { "ledger.invoices": "Invoices", "ledger.payments": "Payments" },
+  fields: {},
 };
 
 let calls = 0;
