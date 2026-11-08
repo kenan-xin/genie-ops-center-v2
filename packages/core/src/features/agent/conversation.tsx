@@ -302,7 +302,8 @@ export function Conversation(props: {
           )}
         </div>
 
-        <div className="shrink-0 border-t border-border bg-background py-3 md:pb-4">
+        {/* The dock sits on the page white with no hairline (czjw.120 item 9). */}
+        <div className="shrink-0 bg-background pt-2 pb-3 md:pb-3.5">
           <div className={`grid gap-3 ${column}`}>
             {refusal === null ? null : (
               <div
@@ -348,6 +349,7 @@ export function Conversation(props: {
               onSend={() => send(draft)}
               onStop={() => void chat.stop()}
               busy={busy}
+              datasetTitles={Object.values(props.labels.datasets)}
               picker={
                 showPicker ? (
                   <Select

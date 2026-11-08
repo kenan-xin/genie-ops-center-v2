@@ -42,8 +42,8 @@ const buttonVariants = cva(
         "filter": `${fieldHeight} px-3`,
         "icon": "size-11 lg:size-10",
         "icon-sm": `size-8 ${hitArea}`,
-        // The round Send and Stop of the agent composer (agent-native rule 6).
-        "icon-round": `size-8 rounded-full ${hitArea}`,
+        // The 36 px Send and Stop of the agent composer (czjw.120 item 10).
+        "icon-send": `size-9 ${hitArea}`,
       },
     },
     defaultVariants: {

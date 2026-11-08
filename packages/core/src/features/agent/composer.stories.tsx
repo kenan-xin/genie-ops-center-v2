@@ -25,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The agent composer (I18, AG20). The group draws the one focus ring; the textbox draws none. Send is disabled until the text holds more than spaces, and Enter sends. While `busy`, the round button is "Stop the answer". A `picker` sits inside the composer, left of the button.',
+          'The agent composer (I18, AG20). The group draws the one focus ring; the textbox draws none. Send is disabled until the text holds more than spaces, and Enter sends. While `busy`, the button is "Stop the answer". A `picker` sits in the tools row, left of the button. The keyboard hint is the textbox\'s description only. From 768 px the placeholder names up to three `datasetTitles` (czjw.120 items 9 to 12).',
       },
     },
     a11y: { test: "error" },
@@ -43,6 +43,7 @@ const meta = {
       onStop={args.onStop}
       busy={args.busy}
       picker={args.picker}
+      datasetTitles={args.datasetTitles}
     />
   ),
 } satisfies Meta<typeof Composer>;
@@ -57,6 +58,12 @@ export const SendNeedsText: Story = {
     const box = canvas.getByRole("textbox", { name: "Message" });
 
     const send = canvas.getByRole("button", { name: "Send" });
+
+    // The keyboard hint leaves the screen but stays the textbox's description (czjw.120 item 11).
+    const hint = "Enter sends. Shift and Enter start a new line.";
+
+    await expect(box).toHaveAccessibleDescription(hint);
+    await expect(canvas.queryByText(hint)).not.toBeVisible();
 
     await expect(send).toBeDisabled();
 
@@ -93,6 +100,30 @@ export const OneFocusRing: Story = {
     await expect(group).not.toBeNull();
     // SAFETY: the line above proved that the group exists.
     await expect(getComputedStyle(group as Element).boxShadow).not.toBe("none");
+  },
+};
+
+const titles = ["Items", "Orders", "Places", "Notes"];
+
+export const PlaceholderNamesTheDatasets: Story = {
+  name: "Placeholder names the datasets",
+  args: { datasetTitles: titles },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("textbox", { name: "Message" })
+    ).toHaveAttribute("placeholder", "Ask about your items, orders or places");
+  },
+};
+
+export const PlaceholderOnAPhone: Story = {
+  name: "Placeholder on a phone",
+  args: { datasetTitles: titles },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("textbox", { name: "Message" })
+    ).toHaveAttribute("placeholder", "Ask a question");
   },
 };
 
