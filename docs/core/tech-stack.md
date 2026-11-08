@@ -108,6 +108,7 @@ The oRPC and TanStack Query setup lives in `apps/genie/src/rpc/` and these rules
 | Excel read-back in tests | read-excel-file (MIT) | 9.3.14 exactly | Reads back the workbook of a list file in core's unit tests, so a test checks each cell's type, and the downloaded file in the app's full-list end-to-end test. Same author as write-excel-file. A development dependency of `packages/core` and `apps/genie`. |
 | PDF list files | pdfmake (MIT), with `@types/pdfmake` for its types | pdfmake 0.3.13 and @types/pdfmake 0.3.3, pinned | Writes the PDF of a chat's list file: a title and a table whose header repeats on each page (R-44a). It embeds the Roboto that it bundles as code (`build/vfs_fonts.js`), so a Greek or accented name prints, which the standard PDF fonts (ANSI only) drop, and the image carries no loose font file. Its URL and local file access policies refuse everything. Chosen over jsPDF (browser first). In `packages/core` only, server side. |
 | Generative answers | `@openuidev/react-lang` | 1.0.2 exactly | Parses OpenUI Lang and renders it with our own catalog (R-45). In `packages/core` only. `react-ui` and `react-headless` are never installed; the `lang-core` install script is denied in `allowBuilds` and `OPENUI_TELEMETRY_DISABLED=1` is set where installs run. Its devtools load only in development. |
+| Chat scroll | use-stick-to-bottom | 1.1.6 exactly | Keeps the chat log at its end while an answer streams, stops when the person scrolls up, and scrolls back on request (Spec 7 R-42a, czjw.119). MIT, no dependencies. |
 
 ## Quality
 

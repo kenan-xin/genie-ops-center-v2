@@ -775,6 +775,161 @@ export const PickAModelFromTheFrame: Story = {
   },
 };
 
+const LONG_TEXT =
+  "This answer runs long, so that the chat must scroll to show its end. ";
+
+/** Twelve finished turns, taller than the 480 px frame of the scroll stories. */
+const LONG_CHAT: readonly AgentMessage[] = Array.from(
+  { length: 12 },
+  (_, turn) => [
+    {
+      id: `lq${turn}`,
+      role: "user" as const,
+      parts: [{ type: "text" as const, text: `Question ${turn + 1}` }],
+    },
+    {
+      id: `la${turn}`,
+      role: "assistant" as const,
+      parts: paragraph(`Answer ${turn + 1}. ${LONG_TEXT.repeat(3)}`),
+    },
+  ]
+).flat();
+
+const LONG_END = "The end of the long answer.";
+
+/** An answer that grows by a long paragraph only after the play releases the hold. */
+const sendHeldLong = fn(async () => {
+  const hold = new Promise<void>((resolve) => {
+    releaseHeld = resolve;
+  });
+
+  return new ReadableStream<UIMessageChunk>({
+    async start(controller) {
+      controller.enqueue({ type: "start" });
+      controller.enqueue({ type: "text-start", id: "answer" });
+      controller.enqueue({
+        type: "text-delta",
+        id: "answer",
+        delta:
+          'root = Answer([lead, body])\nlead = Paragraph("Working on it.")\nbody = Paragraph("',
+      });
+      await hold;
+      controller.enqueue({
+        type: "text-delta",
+        id: "answer",
+        delta: `${LONG_TEXT.repeat(30)}${LONG_END}")`,
+      });
+      controller.enqueue({ type: "text-end", id: "answer" });
+      controller.enqueue({ type: "finish" });
+      controller.close();
+    },
+  });
+});
+
+/** The smooth scroll settled within 2 px after about 1,055 ms when measured, past the 1 s default. */
+const SETTLE = { timeout: 3000 };
+
+const logOf = (root: HTMLElement) =>
+  within(root).getByRole("log", { name: "Conversation" });
+
+/** How far the log is from its end, in px. */
+const fromEnd = (log: HTMLElement) =>
+  log.scrollHeight - log.scrollTop - log.clientHeight;
+
+/** The person scrolls the log up to its top with the wheel. */
+async function scrollToTop(log: HTMLElement): Promise<void> {
+  log.dispatchEvent(
+    new WheelEvent("wheel", { deltaY: -5000, bubbles: true, cancelable: true })
+  );
+  log.scrollTop = 0;
+  log.dispatchEvent(new Event("scroll"));
+  await waitFor(() => expect(log.scrollTop).toBe(0));
+}
+
+const scrollFrame: NonNullable<Story["decorators"]> = [
+  (Story) => (
+    <div className="flex h-120 flex-col">
+      <Story />
+    </div>
+  ),
+];
+
+// L4: a saved chat opens at its latest message (czjw.119 item 4).
+export const OpensAtTheEnd: Story = {
+  args: { initialMessages: LONG_CHAT, models: null },
+  decorators: scrollFrame,
+  play: async ({ canvasElement }) => {
+    const log = logOf(canvasElement);
+
+    await expect(log.scrollHeight).toBeGreaterThan(log.clientHeight * 2);
+    await waitFor(() => expect(fromEnd(log)).toBeLessThan(2));
+  },
+};
+
+// L1: while the person is at the end, the log follows a streamed answer (czjw.119 item 1).
+export const FollowsTheAnswer: Story = {
+  args: {
+    initialMessages: LONG_CHAT,
+    models: null,
+    transport: transportOf(sendHeldLong),
+  },
+  decorators: scrollFrame,
+  play: async ({ canvas, canvasElement }) => {
+    const log = logOf(canvasElement);
+
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Message" }),
+      "Tell me more{Enter}"
+    );
+    await canvas.findByText("Working on it.");
+    releaseHeld();
+    await canvas.findByText(new RegExp(LONG_END));
+
+    await waitFor(() => expect(fromEnd(log)).toBeLessThan(2), SETTLE);
+  },
+};
+
+// L2, L3, L6: scrolling up stops the follow, Jump returns, and a send always goes to the end.
+export const StopsWhenYouScrollUp: Story = {
+  args: {
+    initialMessages: LONG_CHAT,
+    models: null,
+    transport: transportOf(sendHeldLong),
+  },
+  decorators: scrollFrame,
+  play: async ({ canvas, canvasElement }) => {
+    const log = logOf(canvasElement);
+
+    const box = canvas.getByRole("textbox", { name: "Message" });
+
+    await userEvent.type(box, "Tell me more{Enter}");
+    await canvas.findByText("Working on it.");
+
+    await scrollToTop(log);
+    releaseHeld();
+    await canvas.findByText(new RegExp(LONG_END));
+
+    // The log keeps the person's place, and the button names the new answer.
+    await expect(log.scrollTop).toBeLessThan(50);
+
+    const jump = await canvas.findByRole("button", {
+      name: "Jump to the new answer",
+    });
+
+    await userEvent.click(jump);
+    await waitFor(() => expect(fromEnd(log)).toBeLessThan(2), SETTLE);
+    await waitFor(() =>
+      expect(canvas.queryByRole("button", { name: /^Jump to/ })).toBeNull()
+    );
+
+    // A send while scrolled up goes to the end.
+    await scrollToTop(log);
+    await userEvent.type(box, "And the next one{Enter}");
+    await waitFor(() => expect(fromEnd(log)).toBeLessThan(2), SETTLE);
+    releaseHeld();
+  },
+};
+
 export const Refused: Story = {
   args: { transport: transportOf(sendRefused) },
   play: async ({ args, canvas }) => {

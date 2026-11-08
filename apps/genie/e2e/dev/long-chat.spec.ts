@@ -92,6 +92,25 @@ async function expectLineAfterTurn(
   return line;
 }
 
+/** The element lies inside the visible box of the chat log, so the chat followed it (czjw.119). */
+async function expectInsideLog(page: Page, element: Locator): Promise<void> {
+  const log = page.getByRole("log", { name: "Conversation" });
+
+  await expect(async () => {
+    const [box, inner] = await Promise.all([
+      log.boundingBox(),
+      element.boundingBox(),
+    ]);
+
+    expect(box).not.toBeNull();
+    expect(inner).not.toBeNull();
+    expect(inner!.y).toBeGreaterThanOrEqual(box!.y - 1);
+    expect(inner!.y + inner!.height).toBeLessThanOrEqual(
+      box!.y + box!.height + 1
+    );
+  }).toPass();
+}
+
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
 test("a long chat sends a summary, says so once, and still answers about an early turn", async ({
@@ -119,9 +138,14 @@ test("a long chat sends a summary, says so once, and still answers about an earl
   await expect(page.getByText(LINE, { exact: true })).toHaveCount(0);
 
   await askQuestion(page, "What is the project code?");
-  await expect(
-    page.getByText("The project code is Harbor.", { exact: true })
-  ).toBeVisible(FIRST_PAINT);
+
+  const answer = page.getByText("The project code is Harbor.", {
+    exact: true,
+  });
+
+  await expect(answer).toBeVisible(FIRST_PAINT);
+  // The log followed the answer to the end of a chat taller than the screen (czjw.119).
+  await expectInsideLog(page, answer);
 
   // Of the 41 messages the last 10 start at the answer of turn 16, so the kept part starts at the
   // question of turn 17, and the line sits after the answer of turn 16.

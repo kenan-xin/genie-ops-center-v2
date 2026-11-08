@@ -71,6 +71,7 @@ const config: StorybookConfig = {
           "react-day-picker",
           "date-fns",
           "recharts",
+          "use-stick-to-bottom",
         ],
       },
       plugins: [

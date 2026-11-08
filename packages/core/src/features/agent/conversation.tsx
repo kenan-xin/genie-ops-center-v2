@@ -15,7 +15,9 @@ import {
   useMediaQuery,
 } from "@genie/ui";
 import type { ChatTransport } from "ai";
+import { ArrowDownIcon } from "lucide-react";
 import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
+import { useStickToBottom } from "use-stick-to-bottom";
 import { z } from "zod";
 
 import type {
@@ -144,6 +146,18 @@ export function Conversation(props: {
 
   const wide = useMediaQuery("(min-width: 1024px)", {});
 
+  const reduced = useMediaQuery("(prefers-reduced-motion: reduce)", {});
+
+  // The log follows new content while the person is at its end, and stops when they scroll up
+  // (czjw.119, P08-14). A saved chat opens at its end.
+  const stick = useStickToBottom({
+    initial: "instant",
+    resize: reduced ? "instant" : "smooth",
+  });
+
+  // Whether an answer streamed while the person was away from the end, for the button's name.
+  const [missed, setMissed] = useState(false);
+
   const chat = useChat<AgentMessage>({
     id: props.sessionId,
     messages: [...props.initialMessages],
@@ -213,6 +227,9 @@ export function Conversation(props: {
       { text },
       isNewChat && modelId !== "" ? { body: { modelId } } : undefined
     );
+
+    // A send always shows the question and its answer (czjw.119 item 5).
+    void stick.scrollToBottom(reduced ? "instant" : "smooth");
   }
 
   const { pending } = props;
@@ -230,6 +247,11 @@ export function Conversation(props: {
   useEffect(() => {
     onWorking?.(busy);
   }, [busy, onWorking]);
+
+  useEffect(() => {
+    if (stick.isAtBottom) setMissed(false);
+    else if (busy) setMissed(true);
+  }, [stick.isAtBottom, busy]);
 
   const isNew = chat.messages.length === 0;
 
@@ -256,69 +278,92 @@ export function Conversation(props: {
             />
           </div>
         ) : null}
-        <div
-          role="log"
-          aria-live="polite"
-          aria-label="Conversation"
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
-        >
-          {/* No wrapper in an empty log, so it stays empty for a reader and a test. */}
-          {chat.messages.length === 0 ? null : (
-            <div className={`flex flex-col gap-6 pt-5 pb-2 md:pt-7 ${column}`}>
-              {chat.messages.map((message, index) => (
-                <Fragment key={message.id}>
-                  {message.role === "user" ? (
-                    <Message align="end">
-                      <Bubble variant="muted" align="end">
-                        <BubbleContent>
-                          <span className="sr-only">You: </span>
-                          <MessageParts message={message} streaming={false} />
-                        </BubbleContent>
-                      </Bubble>
-                    </Message>
-                  ) : (
-                    <Message>
-                      <MessageContent>
-                        <span className="sr-only">Answer:</span>
-                        <MessageParts
-                          message={message}
-                          labels={props.labels}
-                          streaming={busy && index === chat.messages.length - 1}
-                          durationMs={
-                            liveTimes[message.id] ??
-                            storedDuration(chat.messages, index)
-                          }
-                          onAsk={
-                            !busy &&
-                            refusal === null &&
-                            index === chat.messages.length - 1
-                              ? send
-                              : undefined
-                          }
-                          onTryAgain={() => {
-                            const question = questionBefore(
-                              chat.messages,
-                              index
-                            );
+        <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            ref={stick.scrollRef}
+            role="log"
+            aria-live="polite"
+            aria-label="Conversation"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+          >
+            {/* No wrapper in an empty log, so it stays empty for a reader and a test. */}
+            {chat.messages.length === 0 ? null : (
+              <div
+                ref={stick.contentRef}
+                className={`flex flex-col gap-6 pt-5 pb-2 md:pt-7 ${column}`}
+              >
+                {chat.messages.map((message, index) => (
+                  <Fragment key={message.id}>
+                    {message.role === "user" ? (
+                      <Message align="end">
+                        <Bubble variant="muted" align="end">
+                          <BubbleContent>
+                            <span className="sr-only">You: </span>
+                            <MessageParts message={message} streaming={false} />
+                          </BubbleContent>
+                        </Bubble>
+                      </Message>
+                    ) : (
+                      <Message>
+                        <MessageContent>
+                          <span className="sr-only">Answer:</span>
+                          <MessageParts
+                            message={message}
+                            labels={props.labels}
+                            streaming={
+                              busy && index === chat.messages.length - 1
+                            }
+                            durationMs={
+                              liveTimes[message.id] ??
+                              storedDuration(chat.messages, index)
+                            }
+                            onAsk={
+                              !busy &&
+                              refusal === null &&
+                              index === chat.messages.length - 1
+                                ? send
+                                : undefined
+                            }
+                            onTryAgain={() => {
+                              const question = questionBefore(
+                                chat.messages,
+                                index
+                              );
 
-                            if (question !== undefined) send(question);
-                          }}
-                          artifacts={props.artifacts}
-                          files={props.files}
-                          onDownload={props.onDownload}
-                        />
-                      </MessageContent>
-                    </Message>
-                  )}
-                  {boundary?.messageId === message.id ? (
-                    <SummaryLine
-                      summary={boundary.summary}
-                      datasetTitles={props.labels.datasets}
-                    />
-                  ) : null}
-                </Fragment>
-              ))}
-            </div>
+                              if (question !== undefined) send(question);
+                            }}
+                            artifacts={props.artifacts}
+                            files={props.files}
+                            onDownload={props.onDownload}
+                          />
+                        </MessageContent>
+                      </Message>
+                    )}
+                    {boundary?.messageId === message.id ? (
+                      <SummaryLine
+                        summary={boundary.summary}
+                        datasetTitles={props.labels.datasets}
+                      />
+                    ) : null}
+                  </Fragment>
+                ))}
+              </div>
+            )}
+          </div>
+          {stick.isAtBottom || chat.messages.length === 0 ? null : (
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              // oxlint-disable-next-line shadcn/no-restyle -- floats over the log's bottom edge (czjw.119 item 3)
+              className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full shadow-md"
+              onClick={() =>
+                void stick.scrollToBottom(reduced ? "instant" : "smooth")
+              }
+            >
+              <ArrowDownIcon aria-hidden="true" strokeWidth={1.75} />
+              {busy || missed ? "Jump to the new answer" : "Jump to latest"}
+            </Button>
           )}
         </div>
 
