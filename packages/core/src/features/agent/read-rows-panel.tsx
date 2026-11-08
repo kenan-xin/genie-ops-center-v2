@@ -16,7 +16,16 @@ import { columnLabel, type Read, rowsText } from "./answer-sources.ts";
  * `tableColumns` does.
  */
 function rowsData(read: Read, labels: ChatLabels): ChartData {
-  const fields = labels.fields[read.dataset] ?? {};
+  // Each labelled money field names the dataset's currency field; an aggregate's alias is no field.
+  const currencyField = Object.values(labels.fields[read.dataset] ?? {}).find(
+    (field) => field.currencyKey !== undefined
+  )?.currencyKey;
+
+  const currencyKey =
+    currencyField !== undefined &&
+    read.columns.some((entry) => entry.name === currencyField)
+      ? currencyField
+      : undefined;
 
   const columns = read.columns.map((column): ChartColumn => {
     const { name, ...facts } = column;
@@ -29,14 +38,11 @@ function rowsData(read: Read, labels: ChatLabels): ChartData {
       label: columnLabel(read, name, labels),
     };
 
-    const currencyKey = Object.hasOwn(fields, name)
-      ? fields[name]?.currencyKey
-      : undefined;
-
+    // A money column without its own currency, such as a sum grouped by currency, reads each
+    // row's currency.
     return column.type === "money" &&
       column.currency === undefined &&
-      currencyKey !== undefined &&
-      read.columns.some((entry) => entry.name === currencyKey)
+      currencyKey !== undefined
       ? { ...chart, currencyKey }
       : chart;
   });

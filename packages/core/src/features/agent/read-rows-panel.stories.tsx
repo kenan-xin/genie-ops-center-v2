@@ -1,7 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent, within } from "storybook/test";
 
-import { GROUPED_READ, READ_LABELS } from "./__fixtures__/reads.ts";
+import {
+  GROUPED_READ,
+  PER_CURRENCY_READ,
+  READ_LABELS,
+} from "./__fixtures__/reads.ts";
 import { readsOf } from "./answer-sources.ts";
 import { ChartCheckProvider } from "./chart-check.tsx";
 import { ReadRowsPanel } from "./read-rows-panel.tsx";
@@ -88,6 +92,20 @@ export const RowsOfAGroupedRead: Story = {
       canvas.getByRole("button", { name: "Close the rows" })
     );
     await expect(close).toHaveBeenCalled();
+  },
+};
+
+/** A sum grouped by currency shows each row's amount in that row's currency, as the gate does. */
+export const RowsOfASumPerCurrency: Story = {
+  name: "Rows of a sum per currency",
+  args: { read: readsOf([PER_CURRENCY_READ])[0] ?? READ },
+  play: async ({ canvas }) => {
+    const table = canvas.getByRole("table");
+
+    await expect(within(table).getByText(/SGD\s1,200\.00/)).toBeVisible();
+    await expect(
+      within(table).getByText(/€500\.00|EUR\s500\.00/)
+    ).toBeVisible();
   },
 };
 

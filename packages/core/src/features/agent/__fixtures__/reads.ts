@@ -10,7 +10,12 @@ export const READ_LABELS: ChatLabels = {
   fields: {
     "example.items": {
       createdOn: { label: "Created on", type: "date" },
-      amountCents: { label: "Amount", type: "money" },
+      amountCents: {
+        label: "Amount",
+        type: "money",
+        currencyKey: "currency",
+      },
+      currency: { label: "Currency", type: "text" },
     },
   },
 };
@@ -48,6 +53,37 @@ export const GROUPED_READ: AgentMessage["parts"][number] = {
       createdOn: `2026-${month}-01`,
       total: 100_000 * (index + 1),
     })),
+    truncated: false,
+  },
+};
+
+/**
+ * A sum grouped by month and by currency: the runner gives the sum no currency, because each row
+ * names its own in the currency column.
+ */
+export const PER_CURRENCY_READ: AgentMessage["parts"][number] = {
+  type: "tool-query-dataset",
+  toolCallId: "call-per-currency",
+  state: "output-available",
+  input: {
+    dataset: "example.items",
+    query: {
+      groupBy: [{ field: "createdOn", bucket: "month" }, { field: "currency" }],
+      aggregates: [{ fn: "sum", field: "amountCents", as: "total" }],
+    },
+  },
+  output: {
+    dataset: "example.items",
+    asOf: "2026-10-27",
+    columns: [
+      { name: "createdOn", type: "date", bucket: "month" },
+      { name: "currency", type: "text" },
+      { name: "total", type: "money" },
+    ],
+    rows: [
+      { createdOn: "2026-10-01", currency: "SGD", total: 120_000 },
+      { createdOn: "2026-10-01", currency: "EUR", total: 50_000 },
+    ],
     truncated: false,
   },
 };
