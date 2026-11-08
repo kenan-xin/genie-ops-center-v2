@@ -453,6 +453,77 @@ export const ArtifactCardsInAsk: Story = {
   },
 };
 
+function rectOf(element: Element | null): DOMRect {
+  if (element === null) throw new Error("A row of the chat is missing.");
+
+  return element.getBoundingClientRect();
+}
+
+/** The largest distance of the edges from where they belong, in px. */
+const drift = (pairs: readonly (readonly [number, number])[]) =>
+  Math.max(...pairs.map(([edge, at]) => Math.abs(edge - at)));
+
+/** The boxes of the rows of a finished answer, its question and the composer. */
+function rowEdges(root: HTMLElement) {
+  const canvas = within(root);
+
+  return {
+    steps: rectOf(canvas.getByRole("button", { name: /^Used \d+ steps?/ })),
+    prose: rectOf(canvas.getByText(PROSE)),
+    cards: rectOf(canvas.getByRole("list", { name: "Artifacts" })),
+    question: rectOf(
+      canvas
+        .getByText("Chart the quantity and list the records")
+        .closest('[data-slot="bubble-content"]')
+    ),
+    composer: rectOf(root.querySelector('[data-slot="input-group"]')),
+  };
+}
+
+// A2: the steps line, the answer, its cards and the composer share one left edge (czjw.120 item 1).
+export const OneEdgeOnADesktop: Story = {
+  name: "One edge on a desktop",
+  args: { initialMessages: ARTIFACT_CHAT, models: null },
+  parameters: { layout: "fullscreen" },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const { steps, prose, cards, question, composer } = rowEdges(canvasElement);
+
+    await expect(
+      drift([
+        [steps.left, composer.left],
+        [prose.left, composer.left],
+        [cards.left, composer.left],
+        [question.right, composer.right],
+      ])
+    ).toBeLessThan(1);
+  },
+};
+
+// A1: on a phone every row sits between one 16 px gutter on each side (czjw.109).
+export const OneEdgeOnAPhone: Story = {
+  name: "One edge on a phone",
+  args: { initialMessages: ARTIFACT_CHAT, models: null },
+  parameters: { layout: "fullscreen" },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const { steps, prose, cards, question, composer } = rowEdges(canvasElement);
+
+    const end = canvasElement.ownerDocument.documentElement.clientWidth - 16;
+
+    await expect(
+      drift([
+        ...[steps, prose, cards, composer].map(
+          (row) => [row.left, 16] as const
+        ),
+        ...[prose, cards, composer, question].map(
+          (row) => [row.right, end] as const
+        ),
+      ])
+    ).toBeLessThan(1);
+  },
+};
+
 export const ArtifactCardsInThePanel: Story = {
   name: "Artifact cards in the panel",
   args: {

@@ -26,7 +26,7 @@ import type {
 import { isStopped, keptOnStop } from "../../services/agent/stopped-turn.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
-import { AgentMark, ChatEmpty, pillClass } from "./chat-parts.tsx";
+import { ChatEmpty, pillClass } from "./chat-parts.tsx";
 import { Composer } from "./composer.tsx";
 import { MessageParts } from "./message-parts.tsx";
 import { SummaryLine } from "./summary-line.tsx";
@@ -70,7 +70,7 @@ function questionBefore(
 /**
  * One agent chat (R-40, R-18), laid out as a chat (Section 7 redesign, agent-native rules 2, 5
  * and 6): the empty state of a new chat, the person's message in a muted bubble at the right, the
- * answer as plain text under a small agent mark with its steps and artifact cards, suggestion
+ * answer as plain text on the same left edge with its steps and artifact cards, suggestion
  * chips, and the `Composer`. The frame (the panel or Ask) gives what a card does and New chat. The picked model goes with the first
  * message only, because the session keeps the model the first message fixed (P4). While an answer
  * streams, nothing sends again (B9.1), and Stop ends it with its words kept (I18).
@@ -222,8 +222,9 @@ export function Conversation(props: {
   const showSuggestions =
     !isNew && !busy && refusal === null && props.suggestions.length > 0;
 
-  // On a wide frame the chat keeps a centered reading column (variant B).
-  const column = "mx-auto w-full max-w-3xl";
+  // One centered 720 px column with its gutter, so every row shares one left edge (czjw.120 item 1,
+  // czjw.109).
+  const column = "mx-auto w-full max-w-180 px-4 md:px-6";
 
   return (
     <ChartCheckProvider
@@ -233,7 +234,7 @@ export function Conversation(props: {
     >
       <div className="flex min-h-0 flex-1 flex-col">
         {isNew ? (
-          <div className={`p-4 md:p-5 ${column}`}>
+          <div className={`py-4 md:py-5 ${column}`}>
             <ChatEmpty
               headingLevel={props.headingLevel}
               inbox={props.inbox}
@@ -246,11 +247,11 @@ export function Conversation(props: {
           role="log"
           aria-live="polite"
           aria-label="Conversation"
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain p-4 md:p-5"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
         >
           {/* No wrapper in an empty log, so it stays empty for a reader and a test. */}
           {chat.messages.length === 0 ? null : (
-            <div className={`flex flex-col gap-6 ${column}`}>
+            <div className={`flex flex-col gap-6 pt-5 pb-2 md:pt-7 ${column}`}>
               {chat.messages.map((message, index) => (
                 <Fragment key={message.id}>
                   {message.role === "user" ? (
@@ -264,8 +265,7 @@ export function Conversation(props: {
                     </Message>
                   ) : (
                     <Message>
-                      <AgentMark />
-                      <MessageContent className="max-w-prose">
+                      <MessageContent>
                         <span className="sr-only">Answer:</span>
                         <MessageParts
                           message={message}
@@ -302,7 +302,7 @@ export function Conversation(props: {
           )}
         </div>
 
-        <div className="shrink-0 border-t border-border bg-background p-3 md:px-4 md:pb-4">
+        <div className="shrink-0 border-t border-border bg-background py-3 md:pb-4">
           <div className={`grid gap-3 ${column}`}>
             {refusal === null ? null : (
               <div

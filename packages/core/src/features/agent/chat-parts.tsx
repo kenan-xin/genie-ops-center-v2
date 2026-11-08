@@ -75,36 +75,36 @@ export function ChatEmpty(props: {
   const Heading = props.headingLevel === 2 ? "h2" : "h3";
 
   return (
-    <div className="flex gap-3">
-      <AgentMark />
-      <div className="grid gap-2">
+    <div className="grid gap-2">
+      <div className="flex items-center gap-3">
+        <AgentMark />
         <Heading className="text-base font-semibold">
           What would you like to know?
         </Heading>
-        <p className="text-sm text-muted-foreground">
-          I answer from the records you can see, and show where each figure
-          comes from.
-        </p>
-        <InboxLines inbox={props.inbox} />
-        {props.suggestions.length === 0 ? null : (
-          <div
-            role="group"
-            aria-label="Suggestions"
-            className="flex flex-wrap gap-1.5 pt-1"
-          >
-            {props.suggestions.map((question) => (
-              <button
-                key={question}
-                type="button"
-                className={pillClass}
-                onClick={() => props.onPick(question)}
-              >
-                {question}
-              </button>
-            ))}
-          </div>
-        )}
       </div>
+      <p className="text-sm text-muted-foreground">
+        I answer from the records you can see, and show where each figure comes
+        from.
+      </p>
+      <InboxLines inbox={props.inbox} />
+      {props.suggestions.length === 0 ? null : (
+        <div
+          role="group"
+          aria-label="Suggestions"
+          className="flex flex-wrap gap-1.5 pt-1"
+        >
+          {props.suggestions.map((question) => (
+            <button
+              key={question}
+              type="button"
+              className={pillClass}
+              onClick={() => props.onPick(question)}
+            >
+              {question}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

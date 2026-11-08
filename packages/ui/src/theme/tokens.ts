@@ -14,6 +14,7 @@ export type ColorRole =
   | "card"
   | "muted"
   | "muted-foreground"
+  | "tile"
   | "placeholder"
   | "border"
   | "input"
@@ -31,6 +32,8 @@ const lightRoles = {
   "card": "#ffffff",
   "muted": "#f9fafb",
   "muted-foreground": "#4b5563",
+  // DESIGN.md "Tile": a neutral gray tile, such as the person's chat message (czjw.120).
+  "tile": "#f3f4f6",
   // czjw.65: lighter than muted text, so a hint never reads as an entered value.
   "placeholder": "#6b7280",
   "border": "#e5e7eb",
@@ -57,6 +60,7 @@ export const colorRoles: Readonly<
     "card": "#111827",
     "muted": "#111827",
     "muted-foreground": "#9ca3af",
+    "tile": "#1f2937",
     "placeholder": "#9ca3af",
     "border": "#1f2937",
     "control": "#374151",
