@@ -1,6 +1,6 @@
 "use client";
 
-import { LabelPill, Tooltip, TooltipContent, TooltipTrigger } from "@genie/ui";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@genie/ui";
 import { type ReactNode, useCallback, useState } from "react";
 
 import type { ShellChrome, ShellIdentity } from "./types.ts";
@@ -107,7 +107,7 @@ function IdentityRow(props: {
 
 /**
  * The top of the rail (R-39, DR-03): the light logo in light theme and the dark logo in dark theme,
- * else the mark and the company, then the product or the Admin portal pill.
+ * else the mark and the company, then the product name or the plain Admin portal label.
  */
 export function IdentityBlock(props: {
   readonly chrome: ShellChrome;
@@ -127,14 +127,8 @@ export function IdentityBlock(props: {
 
   const secondLine =
     props.chrome === "admin" ? (
-      <span className="mt-0.5 flex">
-        <LabelPill>
-          <span
-            aria-hidden="true"
-            className="size-1.5 rounded-full bg-muted-foreground"
-          />
-          {props.adminPortalLabel}
-        </LabelPill>
+      <span className="block truncate text-xs text-muted-foreground">
+        {props.adminPortalLabel}
       </span>
     ) : (
       <Tooltip>

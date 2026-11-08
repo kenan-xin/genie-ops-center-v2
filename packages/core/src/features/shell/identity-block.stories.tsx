@@ -40,7 +40,7 @@ const showsImage = (root: HTMLElement, src: string) =>
 
 /**
  * The shell's identity block (R-39, DR-03): in light theme the published light logo, in dark theme
- * the dark logo, each above the product name or the Admin portal pill. Without a logo for the
+ * the dark logo, each above the product name or the Admin portal label. Without a logo for the
  * theme, or when it fails to load, the square mark beside the company and product names; without
  * a mark, the Ops Center icon.
  */
@@ -141,12 +141,36 @@ export const MarkOnlyDark: Story = {
   globals: { theme: "dark" },
 };
 
+/** Where an element's content starts: a pill's padding or a dot moves it right of the box. */
+function contentLeft(element: HTMLElement) {
+  const range = document.createRange();
+
+  range.selectNodeContents(element);
+
+  return range.getBoundingClientRect().left;
+}
+
+// Plain text under the company name (6wz1.91): no pill, no dot, same left edge.
 export const AdminPortal: Story = {
   args: { chrome: "admin" },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText("Admin portal")).toBeVisible();
+    const label = canvas.getByText("Admin portal");
+
+    await expect(label).toBeVisible();
     await expect(canvas.queryByText("Genie Ops Center")).toBeNull();
+    await expect(contentLeft(label)).toBeCloseTo(
+      contentLeft(canvas.getByText("Acme Health")),
+      0
+    );
+    await expect(getComputedStyle(label).backgroundColor).toBe(
+      "rgba(0, 0, 0, 0)"
+    );
   },
+};
+
+export const AdminPortalDark: Story = {
+  ...AdminPortal,
+  globals: { theme: "dark" },
 };
 
 // SVG is an allowed upload; a viewBox-only SVG has no intrinsic width, yet it is a good mark.
