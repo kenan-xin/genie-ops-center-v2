@@ -98,15 +98,64 @@ test("the navigation entry and Manage in Access open Access with the person chos
   await expect(page).toHaveURL(
     new RegExp(`/admin/access\\?recipient=${memberId}$`)
   );
+  await expectRecipientChosen(page, "People", name);
+  await page.reload();
+  await expect(page).toHaveURL(
+    new RegExp(`/admin/access\\?recipient=${memberId}$`)
+  );
+  await expectRecipientChosen(page, "People", name);
+});
+
+/** Grants with the recipient's segment pressed and the recipient in its picker. */
+async function expectRecipientChosen(
+  page: Page,
+  segment: "People" | "Groups",
+  name: string
+): Promise<void> {
   await expect(
     page.getByRole("group", { name: "Granted", exact: true })
   ).toBeVisible();
   await expect(
-    page.getByRole("button", { name: "People", exact: true })
+    page.getByRole("button", { name: segment, exact: true })
   ).toHaveAttribute("aria-pressed", "true");
   await expect(
-    page.getByRole("combobox", { name: "Choose a person" })
+    page.getByRole("combobox", {
+      name: segment === "People" ? "Choose a person" : "Choose a group",
+    })
   ).toContainText(name);
+}
+
+test("the Groups link opens Grants with the group chosen", async ({
+  page,
+}, testInfo) => {
+  const group = "Genie Administrators";
+
+  const [groupId] = await queryDatabase(
+    `select id from "group" where name = '${group}'`
+  );
+
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("access-links", testInfo.project.name),
+  });
+  await page.goto("/admin/groups");
+  await page
+    .getByRole("main")
+    .getByRole("button", { name: new RegExp(`^${group}`) })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await page
+    .getByRole("dialog", { name: group, exact: true })
+    .getByRole("button", { name: "Open in Access" })
+    .click();
+
+  const address = new RegExp(`/admin/access\\?recipient=${groupId}$`);
+
+  await expect(page).toHaveURL(address);
+  await expectRecipientChosen(page, "Groups", group);
+  await page.reload();
+  await expect(page).toHaveURL(address);
+  await expectRecipientChosen(page, "Groups", group);
 });
 
 test("the Modules link opens the Overview with the module chosen", async ({
@@ -135,6 +184,86 @@ test("the Modules link opens the Overview with the module chosen", async ({
   await expectModuleChosen(page);
   await page.reload();
   await expectModuleChosen(page);
+});
+
+test("the Roles link opens the Overview with the role chosen", async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+
+  await setUp(project);
+
+  const [roleId] = await queryDatabase(
+    "select id from role where name = 'E2E links limited'"
+  );
+
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("access-links", project),
+  });
+  await page.goto("/admin/roles");
+  await page
+    .getByRole("button", { name: /^E2E links limited\b/ })
+    .filter({ visible: true })
+    .first()
+    .click();
+  await page.getByRole("button", { name: "Manage in Access" }).click();
+
+  // d8l5.46: a role is no recipient, so the link lands on the Overview by role, also after a reload.
+  await expectRoleChosen(page, roleId, memberName(project));
+  await page.reload();
+  await expectRoleChosen(page, roleId, memberName(project));
+});
+
+async function expectRoleChosen(
+  page: Page,
+  roleId: string | undefined,
+  holder: string
+): Promise<void> {
+  await expect(page).toHaveURL(
+    new RegExp(`/admin/access/overview\\?role=${roleId}$`)
+  );
+  await expect(page.getByRole("button", { name: "By role" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  await expect(
+    page.getByRole("combobox", { name: "Choose a role" })
+  ).toContainText("E2E links limited");
+  await expect(
+    page
+      .getByRole("region", { name: "Results" })
+      .getByText(holder)
+      .filter({ visible: true })
+      .first()
+  ).toBeVisible();
+}
+
+test("an unknown role link shows the empty Overview", async ({
+  page,
+}, testInfo) => {
+  const reads: string[] = [];
+
+  page.on("request", (request) => {
+    if (request.url().includes("/api/rpc/roles/accessBySubject")) {
+      reads.push(request.url());
+    }
+  });
+
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("access-links", testInfo.project.name),
+  });
+
+  // The link is checked against the roles list, so the test waits for that list before it counts.
+  const listed = page.waitForResponse((answer) =>
+    answer.url().includes("/api/rpc/roles/list")
+  );
+
+  await page.goto("/admin/access/overview?role=not-a-role");
+  await listed;
+  await expect(
+    page.getByRole("heading", { name: "Choose what to look up" })
+  ).toBeVisible();
+  expect(reads).toEqual([]);
 });
 
 async function expectModuleChosen(page: Page): Promise<void> {

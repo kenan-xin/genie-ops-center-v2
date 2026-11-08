@@ -132,6 +132,10 @@ test("the Overview shows a person's two group paths, who added a path, and a mod
   await expect(pager).toHaveText(/^11–20 of \d+$/);
   await page.getByLabel("Search these results").fill(`E2E overview ${project}`);
   await expect(pager).toHaveText("1–2 of 2");
+  // d8l5.45: the header counts the matches of the search against all holders.
+  await expect(
+    page.getByRole("status").filter({ hasText: /holders of Placeholder/ })
+  ).toHaveText(/^2 of \d+ holders of Placeholder$/);
 
   const holders = resultRows(page, "Holders of Placeholder");
 

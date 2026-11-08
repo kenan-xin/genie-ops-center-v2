@@ -199,3 +199,51 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
     await memberContext.close();
   }
 });
+
+// d8l5.42: Granted shows every path. The seeded group reaches Ask only through Tenant administrator,
+// and its seeded member only through the group. Neither row offers a change. The test writes nothing.
+test("Granted shows inherited access read-only, with its source", async ({
+  page,
+}, testInfo) => {
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("access", testInfo.project.name),
+  });
+  await page.goto("/admin/access");
+
+  const granted = page.getByRole("group", { name: "Granted", exact: true });
+
+  await pickRecipient(page, "group", "Genie Administrators");
+  await expect(granted.getByText(/Included in/).first()).toBeVisible();
+  await expect(granted.getByRole("checkbox", { name: "Ask" })).toHaveCount(0);
+  await expect(
+    page
+      .getByRole("group", { name: "Catalog", exact: true })
+      .getByText("Also through Tenant administrator")
+  ).toBeVisible();
+  await granted
+    .getByRole("button", { name: "Tenant administrator" })
+    .first()
+    .click();
+
+  const sheet = page.getByRole("dialog", { name: "Advanced access" });
+
+  await expect(sheet).toContainText("Tenant administrator");
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+
+  await page.getByRole("button", { name: "People", exact: true }).click();
+  await pickRecipient(page, "user", "e2e.baseline-admin@example.invalid");
+  await expect(granted.getByText(/Through/).first()).toBeVisible();
+  await expect(granted.getByRole("checkbox", { name: "Ask" })).toHaveCount(0);
+  await expectNoAxeViolations(page, "Grants with inherited rows");
+  await granted
+    .getByRole("button", { name: "Genie Administrators" })
+    .first()
+    .click();
+  await expect(
+    page.getByRole("button", { name: "Groups", exact: true })
+  ).toHaveAttribute("aria-pressed", "true");
+  await expect(
+    page.getByRole("combobox", { name: "Choose a group" })
+  ).toContainText("Genie Administrators");
+});

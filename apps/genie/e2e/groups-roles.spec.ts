@@ -484,6 +484,22 @@ test("a client navigation gives the new page its own title, and the route announ
 test("Role detail links back to Roles through the page header trail", async ({
   page,
 }, testInfo) => {
+  const project = testInfo.project.name;
+  const holder = `E2E auditor ${project}`;
+  const holderEmail = `e2e.auditor-holder.${project}@example.com`;
+
+  // d8l5.47: one person holds Auditor directly, so role detail has a line to show.
+  await queryDatabase(
+    [
+      `insert into "user" (id, name, email, email_verified, status, is_break_glass) values (gen_random_uuid()::text, '${holder}', '${holderEmail}', true, 'active', false) on conflict (email) do nothing`,
+      `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'Auditor' and u.email = '${holderEmail}' and not exists (select 1 from role_assignment a where a.role_id = r.id and a.principal_type = 'user' and a.principal_id = u.id)`,
+    ].join("; ")
+  );
+
+  const [holderId] = await queryDatabase(
+    `select id from "user" where email = '${holderEmail}'`
+  );
+
   await signInThroughKeycloak(page, {
     email: e2eReaderEmail("groups", testInfo.project.name),
   });
@@ -506,9 +522,14 @@ test("Role detail links back to Roles through the page header trail", async ({
     "select id from role where name = 'Auditor'"
   );
 
-  await expect(
-    page.getByRole("heading", { name: "Who holds this role" })
-  ).toBeVisible();
+  const holders = page.getByRole("list", { name: "Who holds this role" });
+  const line = holders.getByRole("listitem").filter({ hasText: holder });
+
+  await expect(line).toContainText("Direct assignment");
+  await expect(line.getByRole("link", { name: holder })).toHaveAttribute(
+    "href",
+    `/admin/people?selected=${holderId}`
+  );
   await page.getByRole("button", { name: "Manage in Access" }).click();
   await expect(page).toHaveURL(
     new RegExp(`/admin/access/overview\\?role=${auditorId}$`)
@@ -517,6 +538,20 @@ test("Role detail links back to Roles through the page header trail", async ({
   await expect(
     page.getByRole("heading", { name: "Who holds this role" })
   ).toBeVisible();
+
+  // Tenant administrator: the seeded group, with its member count, and no "See all" under ten.
+  await page.goto("/admin/roles");
+  await page
+    .getByRole("button", { name: /^Tenant administrator\b/ })
+    .filter({ visible: true })
+    .click();
+  await expect(
+    holders.getByRole("listitem").filter({ hasText: "Genie Administrators" })
+  ).toContainText(/Group, \d+ members?/);
+  await expect(holders.getByRole("listitem").first()).toContainText(
+    "Genie Administrators"
+  );
+  await expect(page.getByRole("link", { name: /^See all/ })).toHaveCount(0);
 
   const toRoles = page
     .getByRole("main")
