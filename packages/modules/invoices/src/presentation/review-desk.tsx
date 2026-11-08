@@ -21,12 +21,14 @@ import type {
   ReviewModel,
 } from "./review-model.ts";
 
-export type ReviewStatus = "reading" | "blocked" | "ready";
+export type ReviewStatus = "reading" | "blocked" | "ready" | "saved";
 
 export function reviewStatusOf(
   model: ReviewModel | null,
   frame: ReviewFrame
 ): ReviewStatus {
+  if (frame.saved !== null) return "saved";
+
   if (model === null || frame.sweep) return "reading";
 
   return model.blocker === null ? "ready" : "blocked";
@@ -40,6 +42,8 @@ function StatusPill(props: { readonly status: ReviewStatus }): ReactNode {
       return <DocumentStatusBadge status="needs-input" />;
     case "ready":
       return <Badge variant="success">Ready to save</Badge>;
+    case "saved":
+      return <DocumentStatusBadge status="saved" />;
   }
 }
 
@@ -170,6 +174,8 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
     setAttempt((last) => last + 1);
   };
 
+  const panelTitle = frame.saved === null ? PANEL_TITLE : "Saved";
+
   const deskStyle: CssVars = {
     "--desk-height": fillHeight === undefined ? "auto" : `${fillHeight}px`,
   };
@@ -218,13 +224,14 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
           />
         )}
         <aside
-          aria-label={PANEL_TITLE}
+          aria-label={panelTitle}
           className="flex shrink-0 flex-col rounded-xl border border-border bg-card lg:w-100 lg:rounded-none lg:border-y-0 lg:border-r-0"
         >
           <div className="flex h-12 shrink-0 items-center border-b border-border px-5">
-            <h2 className="text-sm font-semibold">{PANEL_TITLE}</h2>
+            <h2 className="text-sm font-semibold">{panelTitle}</h2>
           </div>
           <div className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto px-5 py-5">
+            {frame.saved}
             {frame.notice}
             {reading ? (
               <p className="text-sm text-muted-foreground">{READING_NOTE}</p>
@@ -247,17 +254,19 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
             )}
             {model?.notices}
           </div>
-          <ReviewSaveBar
-            reason={
-              reading
-                ? "Wait for the reading to finish."
-                : (model.blocker?.reason ?? null)
-            }
-            pending={model?.pending ?? false}
-            label={model?.saveLabel ?? "Save"}
-            discarding={props.discarding}
-            onDiscard={props.onDiscard}
-          />
+          {frame.saved === null ? (
+            <ReviewSaveBar
+              reason={
+                reading
+                  ? "Wait for the reading to finish."
+                  : (model.blocker?.reason ?? null)
+              }
+              pending={model?.pending ?? false}
+              label={model?.saveLabel ?? "Save"}
+              discarding={props.discarding}
+              onDiscard={props.onDiscard}
+            />
+          ) : null}
         </aside>
       </div>
     </>

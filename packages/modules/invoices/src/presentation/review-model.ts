@@ -52,6 +52,8 @@ export type ReviewFrame = {
   /** The reading landed on this page and its sweep has not played yet (P09-2). */
   readonly sweep: boolean;
   readonly onSweepEnd: () => void;
+  /** The result card of a save made on this page; the cards then show their values read only. */
+  readonly saved: ReactNode | null;
 };
 
 export type ReviewLayoutProps = {

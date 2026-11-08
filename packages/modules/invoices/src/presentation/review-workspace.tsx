@@ -10,8 +10,30 @@ import { useInvoiceReview } from "./invoice-review-form.tsx";
 import { usePaymentReview } from "./payment-review-form.tsx";
 import type { Blocker } from "./review-blocker.ts";
 import { ReviewDesk } from "./review-desk.tsx";
-import type { ReviewFrame } from "./review-model.ts";
+import type { ReviewFrame, ReviewModel } from "./review-model.ts";
 import type { DocumentReviewView } from "./views.ts";
+
+/**
+ * The model after a save on this page (P09-9): each card shows its value as text and keeps "Read
+ * as" without Undo; the result card states the split, so the split goes.
+ */
+function savedModel(model: ReviewModel): ReviewModel {
+  return {
+    ...model,
+    items: model.items.map((item) => ({
+      ...item,
+      control: (
+        <p className="text-sm font-semibold break-words">{item.display}</p>
+      ),
+      controlId: null,
+      onUndo: null,
+    })),
+    split: null,
+    blocker: null,
+    notices: null,
+    submit: () => {},
+  };
+}
 
 /**
  * One review state from the reading to the save and across a type change (czjw.98, P09-10): it
@@ -46,13 +68,16 @@ export function ReviewWorkspace(props: {
   // Both hooks run on every render, so a type change keeps the workspace and its PDF (T5.4).
   const payment = usePaymentReview({
     view,
-    active: !reading && kind === "payment",
+    active: !reading && kind === "payment" && frame.saved === null,
     revealRef,
     onSaved: props.onSaved,
     onDiscard: () => onDiscard?.(),
   });
 
-  const model = reading ? null : kind === "payment" ? payment : invoice;
+  const active = reading ? null : kind === "payment" ? payment : invoice;
+
+  const model =
+    active === null || frame.saved === null ? active : savedModel(active);
 
   const refreshUrl = async () =>
     (await invoices.getDocumentReview({ id: view.document.id })).document
@@ -64,8 +89,8 @@ export function ReviewWorkspace(props: {
       onSubmit={(event) => {
         event.preventDefault();
 
-        // The panel says to wait until the sweep shows the cards.
-        if (!frame.sweep) model?.submit();
+        // The panel says to wait until the sweep shows the cards; a saved review has no Save.
+        if (!frame.sweep && frame.saved === null) model?.submit();
       }}
     >
       {hydrated ? (

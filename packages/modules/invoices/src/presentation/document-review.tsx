@@ -171,7 +171,43 @@ export function DocumentReview(props: {
 
   const saved = data.saved;
 
-  if (saved !== null) {
+  const savedCard =
+    saved === null ? null : (
+      <ReviewResult
+        tone="saved"
+        title={savedTitle(saved)}
+        {...(savedMessage === null ? {} : { detail: savedMessage })}
+        records={
+          <>
+            {saved.invoice === null ? null : (
+              <PageLink
+                href={`/m/invoices/invoices/${saved.invoice.id}`}
+                className={linkButton("primary")}
+              >
+                Open the invoice
+              </PageLink>
+            )}
+            {saved.payment === null ? null : (
+              <PageLink
+                href={`/m/invoices/payments/${saved.payment.id}`}
+                // One primary per card: a paid receipt leads with its invoice.
+                className={linkButton(
+                  saved.invoice === null ? "primary" : "secondary"
+                )}
+              >
+                Open the payment
+              </PageLink>
+            )}
+          </>
+        }
+        canUpload={data.canWrite}
+      >
+        <AutomaticLinks view={data} />
+      </ReviewResult>
+    );
+
+  // A document opened after its save keeps the result page; a save on this page keeps the desk.
+  if (savedCard !== null && savedMessage === null) {
     return (
       <main>
         <PageHeader
@@ -179,37 +215,7 @@ export function DocumentReview(props: {
           breadcrumb={TRAIL}
           meta={<span title={label}>{shortName(label)}</span>}
         />
-        <ReviewResult
-          tone="saved"
-          title={savedTitle(saved)}
-          {...(savedMessage === null ? {} : { detail: savedMessage })}
-          records={
-            <>
-              {saved.invoice === null ? null : (
-                <PageLink
-                  href={`/m/invoices/invoices/${saved.invoice.id}`}
-                  className={linkButton("primary")}
-                >
-                  Open the invoice
-                </PageLink>
-              )}
-              {saved.payment === null ? null : (
-                <PageLink
-                  href={`/m/invoices/payments/${saved.payment.id}`}
-                  // One primary per card: a paid receipt leads with its invoice.
-                  className={linkButton(
-                    saved.invoice === null ? "primary" : "secondary"
-                  )}
-                >
-                  Open the payment
-                </PageLink>
-              )}
-            </>
-          }
-          canUpload={data.canWrite}
-        >
-          <AutomaticLinks view={data} />
-        </ReviewResult>
+        {savedCard}
       </main>
     );
   }
@@ -227,7 +233,7 @@ export function DocumentReview(props: {
       <Select
         items={KIND_ITEMS}
         value={kind}
-        disabled={reading || changeKind.isPending}
+        disabled={reading || saved !== null || changeKind.isPending}
         onValueChange={(next) => {
           if (next !== null && next !== kind) changeKind.mutate(next);
         }}
@@ -316,9 +322,12 @@ export function DocumentReview(props: {
               ),
             sweep: sweep && !reading,
             onSweepEnd: () => setSweep(false),
+            saved: savedCard,
           }}
           discarding={discard.isPending}
-          onDiscard={reading ? null : () => setDiscardOpen(true)}
+          onDiscard={
+            reading || saved !== null ? null : () => setDiscardOpen(true)
+          }
           onSaved={setSavedMessage}
         />
         {discardDialog}

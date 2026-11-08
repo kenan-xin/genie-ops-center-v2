@@ -12,6 +12,7 @@ import {
   meridianOpenInvoices,
   noQuoteInvoiceReview,
   readingReview,
+  savedInvoiceReview,
   splitPaymentReview,
 } from "./__fixtures__/review.ts";
 import { DocumentReview } from "./document-review.tsx";
@@ -433,7 +434,7 @@ export const PreviewFailedReview: Story = {
 /** The one element that matches, once it is drawn. */
 const drawn = (root: Element, selector: string, what: string) =>
   waitFor(() => {
-    const found = root.querySelector(selector);
+    const found = root.querySelector<HTMLElement>(selector);
 
     if (found === null) throw new Error(`${what} has not drawn yet.`);
 
@@ -522,5 +523,64 @@ export const Reading: Story = {
     // The refetch's ?v=2 never reaches the viewer, and its PDF stays drawn.
     await expect(viewer).toHaveAttribute("data-document-url", firstLink);
     await expect(page.isConnected).toBe(true);
+  },
+};
+
+// T7.1: a save made on this page keeps the desk, read only, with the result in the panel.
+export const Saved: Story = {
+  beforeEach: () => {
+    serve(invoiceReview);
+    saveInvoice.mockImplementation(async () => {
+      getDocumentReview.mockResolvedValue(savedInvoiceReview);
+
+      return ENVELOPE;
+    });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await pinned(canvasElement, READ_KEYS);
+    await userEvent.type(canvas.getByLabelText("Description"), " and support");
+    await userEvent.click(
+      canvas.getByRole("radio", { name: "Mark as unspecified" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Save as unpaid" })
+    );
+
+    const done = await drawn(
+      canvasElement,
+      'aside[aria-label="Saved"]',
+      "The saved panel"
+    );
+
+    const side = within(done);
+
+    await expect(
+      side.getByText("Saved as invoice INV-LIVE-001.")
+    ).toBeVisible();
+    await expect(
+      side.getByRole("link", { name: "Open the invoice" })
+    ).toBeVisible();
+    await expect(
+      canvasElement.querySelectorAll(
+        "[data-field] input, [data-field] textarea, [data-field] [role=combobox]"
+      )
+    ).toHaveLength(0);
+
+    const description = within(card(canvasElement, "description"));
+
+    await expect(description.getByText("Corrected by you")).toBeVisible();
+    await expect(
+      description.getByText(
+        "Read as “Additional consulting project - October 2026”"
+      )
+    ).toBeVisible();
+    await expect(
+      description.queryByRole("button", { name: "Undo Description" })
+    ).toBeNull();
+    await expect(canvas.getByRole("combobox", { name: "Type" })).toBeDisabled();
+    await expect(
+      canvas.queryByRole("button", { name: "Save as unpaid" })
+    ).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Discard" })).toBeNull();
   },
 };
