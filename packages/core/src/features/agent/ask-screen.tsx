@@ -54,6 +54,17 @@ export function AskScreen(props: {
   const [historyOpen, setHistoryOpen] = useState(true);
   const [historySheet, setHistorySheet] = useState(false);
 
+  // The rail, its phone sheet and the phone header each start a chat with the pencil.
+  const newChat = (
+    <a
+      href={props.newChatHref}
+      aria-label="New chat"
+      className={buttonVariants({ variant: "ghost", size: "icon" })}
+    >
+      <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
+    </a>
+  );
+
   // The toggle moves between the column and the top bar, so focus follows it.
   const hideButton = useRef<HTMLButtonElement>(null);
   const showButton = useRef<HTMLButtonElement>(null);
@@ -106,13 +117,7 @@ export function AskScreen(props: {
         >
           <div className="flex h-14 shrink-0 items-center gap-1 ps-6 pe-3">
             <h2 className="flex-1 text-sm font-bold">Chats</h2>
-            <a
-              href={props.newChatHref}
-              aria-label="New chat"
-              className={buttonVariants({ variant: "ghost", size: "icon" })}
-            >
-              <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
-            </a>
+            {newChat}
             <Button
               ref={hideButton}
               type="button"
@@ -159,13 +164,7 @@ export function AskScreen(props: {
           <p className="min-w-0 flex-1 truncate text-sm font-semibold">
             {props.title}
           </p>
-          <a
-            href={props.newChatHref}
-            aria-label="New chat"
-            className={buttonVariants({ variant: "ghost", size: "icon" })}
-          >
-            <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
-          </a>
+          {newChat}
         </div>
 
         <section
@@ -220,7 +219,12 @@ export function AskScreen(props: {
       <Sheet open={historySheet} onOpenChange={setHistorySheet}>
         <SheetContent side="left">
           <SheetHeader>
-            <SheetTitle>Chats</SheetTitle>
+            <div className="flex items-center gap-1">
+              <div className="flex-1">
+                <SheetTitle>Chats</SheetTitle>
+              </div>
+              {newChat}
+            </div>
           </SheetHeader>
           {history}
         </SheetContent>
