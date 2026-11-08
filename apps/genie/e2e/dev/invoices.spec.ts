@@ -176,7 +176,7 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
   );
 });
 
-test("the Overdue tab keeps only the overdue invoices, in the address and in the figure strip", async ({
+test("the Overdue tab keeps only the overdue invoices, and the figure strip keeps the ledger", async ({
   page,
 }) => {
   test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
@@ -198,6 +198,18 @@ test("the Overdue tab keeps only the overdue invoices, in the address and in the
 
       expect(overdue.length).toBeGreaterThan(1);
 
+      // The strip reads the whole ledger, so the tab must leave it as it is (R-37a, czjw.112).
+      const ledger = () =>
+        Promise.all(
+          ["Invoiced", "Outstanding", "Overdue", "Invoices"].map((label) =>
+            fact(page, label).textContent()
+          )
+        );
+
+      await expect(fact(page, "Invoices")).toHaveText(/^\d+$/);
+
+      const before = await ledger();
+
       const tab = `Overdue ${overdue.length}`;
 
       // On a phone the status is a radio in the Filters sheet; the tabs show from 768 px.
@@ -213,14 +225,20 @@ test("the Overdue tab keeps only the overdue invoices, in the address and in the
         await expect(page).toHaveURL(/[?&]status=overdue(&|$)/);
       }
 
-      // The server answers the filter, and the figure strip counts every overdue invoice.
-      await expect(fact(page, "Overdue")).toHaveText(sgd(overdueAmount));
-      await expect(fact(page, "Invoices")).toHaveText(String(overdue.length));
+      // The server answers the filter.
       await expect
         .poll(async () =>
           (await shownRows(page, "Invoices")).map((row) => row.label).toSorted()
         )
         .toEqual(overdue.map((invoice) => invoice.invoice_id).toSorted());
+
+      // The rows and the strip come in one answer, and the old page shows until it lands, so the
+      // strip is read only after the rows: it still holds every overdue invoice and the whole ledger.
+      expect(await ledger()).toEqual(before);
+      await expect(fact(page, "Overdue")).toHaveText(sgd(overdueAmount));
+      await expect(fact(page, "Outstanding")).not.toHaveText(
+        sgd(overdueAmount)
+      );
 
       await expectNoAxeViolations(page, "invoices list filtered");
     },
