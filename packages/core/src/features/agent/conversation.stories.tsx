@@ -340,6 +340,121 @@ export const Streaming: Story = {
     await expect(
       await canvas.findByRole("button", { name: "Send" })
     ).toBeEnabled();
+
+    // After an answer the dock offers no generic chips: Ask next follows the answer (czjw.120 item 8).
+    await expect(suggestions()).toBeNull();
+  },
+};
+
+const SAVED_NEXT = "Which records are old?";
+
+const NEW_NEXT = [
+  "Which records are overdue?",
+  "Show the records by month",
+] as const;
+
+/** A finished turn whose answer proposed what to ask next. */
+const ANSWERED_WITH_NEXT: readonly AgentMessage[] = [
+  {
+    id: "q1",
+    role: "user",
+    parts: [{ type: "text", text: "How many records are new?" }],
+  },
+  {
+    id: "a1",
+    role: "assistant",
+    parts: [
+      {
+        type: "text",
+        text: `root = Answer([p], next)\np = Paragraph("Two new records.")\nnext = ["${SAVED_NEXT}"]`,
+      },
+    ],
+  },
+];
+
+/** An answer whose `next` arrives only after the play releases the hold. */
+const sendHeldNext = fn(async () => {
+  const hold = new Promise<void>((resolve) => {
+    releaseHeld = resolve;
+  });
+
+  return new ReadableStream<UIMessageChunk>({
+    async start(controller) {
+      controller.enqueue({ type: "start" });
+      controller.enqueue({ type: "text-start", id: "answer" });
+      controller.enqueue({
+        type: "text-delta",
+        id: "answer",
+        delta: `root = Answer([p], next)\np = Paragraph("Three example records.")\nnext = ["${NEW_NEXT[0]}"`,
+      });
+      await hold;
+      controller.enqueue({
+        type: "text-delta",
+        id: "answer",
+        delta: `, "${NEW_NEXT[1]}"]`,
+      });
+      controller.enqueue({ type: "text-end", id: "answer" });
+      controller.enqueue({ type: "finish" });
+      controller.close();
+    },
+  });
+});
+
+/**
+ * Ask next (czjw.120 item 8): the questions the last finished answer proposed, under that answer
+ * only. A streaming answer shows none, and an earlier answer loses its group.
+ */
+export const AskNext: Story = {
+  args: {
+    initialMessages: ANSWERED_WITH_NEXT,
+    transport: transportOf(sendHeldNext),
+  },
+  play: async ({ canvas }) => {
+    const askNext = () => canvas.queryAllByRole("group", { name: "Ask next" });
+
+    // The saved chat's last answer offers its question.
+    await expect(
+      within(await canvas.findByRole("group", { name: "Ask next" })).getByRole(
+        "button",
+        { name: SAVED_NEXT }
+      )
+    ).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: SAVED_NEXT }));
+    await expect(
+      await canvas.findByText("Three example records.")
+    ).toBeVisible();
+    await expect(sendHeldNext).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({
+            parts: [{ type: "text", text: SAVED_NEXT }],
+          }),
+        ]),
+      })
+    );
+
+    // While the new answer streams, no answer offers a question.
+    await expect(askNext()).toHaveLength(0);
+
+    releaseHeld();
+
+    // Once it ends, one group, under the new answer, with both of its questions.
+    await waitFor(() => expect(askNext()).toHaveLength(1));
+    const group = askNext()[0]!;
+    const answers = canvas.getAllByText(/^Answer:$/);
+    await expect(answers.at(-1)!.parentElement).toContainElement(group);
+    await expect(
+      within(group)
+        .getAllByRole("button")
+        .map((button) => button.textContent)
+    ).toEqual(NEW_NEXT);
+
+    await userEvent.click(
+      within(group).getByRole("button", { name: NEW_NEXT[1] })
+    );
+    await waitFor(() => expect(sendHeldNext).toHaveBeenCalledTimes(2));
+    releaseHeld();
   },
 };
 

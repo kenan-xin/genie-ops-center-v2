@@ -27,7 +27,7 @@ import type {
 import { isStopped, keptOnStop } from "../../services/agent/stopped-turn.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
-import { ChatEmpty, pillClass } from "./chat-parts.tsx";
+import { ChatEmpty } from "./chat-parts.tsx";
 import { Composer } from "./composer.tsx";
 import { MessageParts } from "./message-parts.tsx";
 import { SummaryLine } from "./summary-line.tsx";
@@ -71,8 +71,8 @@ function questionBefore(
 /**
  * One agent chat (R-40, R-18), laid out as a chat (Section 7 redesign, agent-native rules 2, 5
  * and 6): the empty state of a new chat, the person's message in a muted bubble at the right, the
- * answer as plain text on the same left edge with its steps and artifact cards, suggestion
- * chips, and the `Composer`. The frame (the panel or Ask) gives what a card does and New chat. The picked model goes with the first
+ * answer as plain text on the same left edge with its steps and artifact cards, Ask next under
+ * the last answer, and the `Composer`. The frame (the panel or Ask) gives what a card does and New chat. The picked model goes with the first
  * message only, because the session keeps the model the first message fixed (P4). While an answer
  * streams, nothing sends again (B9.1), and Stop ends it with its words kept (I18).
  */
@@ -90,7 +90,7 @@ export function Conversation(props: {
   readonly timeZone: string;
   /** The words for tool steps and dataset titles, so no internal name shows (6.3). */
   readonly labels: ChatLabels;
-  /** Starter questions; hidden while an answer streams or after a refusal. */
+  /** Starter questions of a new chat; hidden after a refusal. */
   readonly suggestions: readonly string[];
   /** The inbox lines of a new chat's empty state (R-42). */
   readonly inbox: readonly InboxLink[];
@@ -235,10 +235,6 @@ export function Conversation(props: {
 
   const boundary = summaryBoundary(chat.messages, liveSummary);
 
-  // A new chat offers its starters in the empty state; later they sit above the composer.
-  const showSuggestions =
-    !isNew && !busy && refusal === null && props.suggestions.length > 0;
-
   // One centered 720 px column with its gutter, so every row shares one left edge (czjw.120 item 1,
   // czjw.109).
   const column = "mx-auto w-full max-w-180 px-4 md:px-6";
@@ -292,6 +288,13 @@ export function Conversation(props: {
                             liveTimes[message.id] ??
                             storedDuration(chat.messages, index)
                           }
+                          onAsk={
+                            !busy &&
+                            refusal === null &&
+                            index === chat.messages.length - 1
+                              ? send
+                              : undefined
+                          }
                           onTryAgain={() => {
                             const question = questionBefore(
                               chat.messages,
@@ -340,25 +343,6 @@ export function Conversation(props: {
                 ) : null}
               </div>
             )}
-
-            {showSuggestions ? (
-              <div
-                role="group"
-                aria-label="Suggestions"
-                className="flex flex-wrap gap-1.5"
-              >
-                {props.suggestions.map((question) => (
-                  <button
-                    key={question}
-                    type="button"
-                    className={pillClass}
-                    onClick={() => send(question)}
-                  >
-                    {question}
-                  </button>
-                ))}
-              </div>
-            ) : null}
 
             <Composer
               value={draft}

@@ -80,6 +80,12 @@ export function answerLibrary(views: AnswerViews): Library {
       children: z
         .array(z.union([Heading.ref, Paragraph.ref, List.ref, Chart.ref]))
         .describe("The blocks of the answer, in reading order."),
+      next: z
+        .array(z.string())
+        .optional()
+        .describe(
+          "Two or three short questions the person can ask next. Each one follows from this answer."
+        ),
     }),
     component: views.Answer,
   });
@@ -95,14 +101,16 @@ export const ANSWER_PROMPT_OPTIONS: PromptOptions = {
   additionalRules: [
     "Make every chart and every table with make-artifact. The answer shows it as a card with its first rows. A single figure can also go in a Chart of type kpi. Never type the rows of a chart or a table.",
     "Write prose only with Heading, Paragraph and List.",
+    "End with next: two or three short questions that the person can ask next. Each one follows from this answer, has at most eight words, and names no figure that the answer does not show.",
     ...CHART_PROMPT_RULES,
   ],
   examples: [
     [
-      "root = Answer([result, method, figure])",
+      "root = Answer([result, line, figure], next)",
       'result = Paragraph("12 open items, SGD 4,200.00 in all.")',
-      'method = Paragraph("This counts the open items as of 27 Oct 2026.")',
+      'line = Paragraph("All of them are in SGD.")',
       'figure = Chart({type: "kpi", title: "Open items", series: [{name: "Open items", dataset: "example.items", query: {aggregates: [{fn: "count", as: "items"}]}, value: "items"}]})',
+      'next = ["Which items are overdue?", "Show the open items by month"]',
     ].join("\n"),
   ],
 };

@@ -2,12 +2,14 @@
 
 import { Button, focusRing } from "@genie/ui";
 import {
+  createParser,
   Renderer,
   type OpenUIError,
   type ParseResult,
 } from "@openuidev/react-lang";
 import { CopyIcon, DatabaseIcon, InfoIcon, TableIcon } from "lucide-react";
-import { useId, useRef, useState, type ReactNode } from "react";
+import { useId, useMemo, useRef, useState, type ReactNode } from "react";
+import { z } from "zod";
 
 import type {
   AgentFile,
@@ -28,6 +30,7 @@ import {
 } from "./answer-sources.ts";
 import { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 import { artifactRefsOf } from "./artifact-refs.ts";
+import { QuestionPills } from "./chat-parts.tsx";
 import { FileCard } from "./file-card.tsx";
 import { fileCallsOf } from "./file-refs.ts";
 import { StepTimeline } from "./step-timeline.tsx";
@@ -89,6 +92,24 @@ function hasUnreadableChart(result: ParseResult | null | undefined): boolean {
       checkPanelConfig(node.props?.config).config === undefined
     );
   });
+}
+
+const answerParser = createParser(ANSWER_LIBRARY.toJSONSchema());
+
+const nextSchema = z.array(z.string());
+
+/**
+ * The questions a finished answer's root proposes in `next` (czjw.120 item 8). It parses the whole
+ * text, because the renderer's last streaming result can hold half the list.
+ */
+function nextOf(text: string | undefined): readonly string[] {
+  if (text === undefined) return [];
+
+  const next = nextSchema.safeParse(
+    answerParser.parse(text).root?.props["next"]
+  );
+
+  return next.success ? next.data.slice(0, 3) : [];
 }
 
 function AnswerText(props: {
@@ -390,6 +411,11 @@ export function MessageParts(props: {
   readonly durationMs?: number | undefined;
   /** Sends the question again after a final refusal. */
   readonly onTryAgain?: (() => void) | undefined;
+  /**
+   * Sends a question of Ask next. Conversation sets it only on the last answer, after it ended,
+   * while no refusal shows.
+   */
+  readonly onAsk?: ((question: string) => void) | undefined;
   /** What an artifact card does; undefined shows no card. */
   readonly artifacts?: ArtifactCardAction | undefined;
   /** The chat's list files; a `make-file` call shows its file's card and job state. */
@@ -398,6 +424,22 @@ export function MessageParts(props: {
   readonly onDownload?: ((id: string) => Promise<string>) | undefined;
 }): ReactNode {
   const body = useRef<HTMLDivElement>(null);
+
+  const { message, streaming } = props;
+
+  // The last answer text proposes what to ask next; none while it streams.
+  const next = useMemo(() => {
+    if (streaming || message.role === "user") return [];
+
+    const notes = stepNotes(message);
+
+    return nextOf(
+      message.parts.findLast(
+        (part, index): part is Extract<typeof part, { type: "text" }> =>
+          part.type === "text" && !notes.has(index)
+      )?.text
+    );
+  }, [message, streaming]);
 
   if (props.message.role === "user") {
     return (
@@ -473,6 +515,18 @@ export function MessageParts(props: {
           action={props.artifacts}
           answer={() => body.current?.innerText ?? ""}
         />
+      ) : null}
+      {answered && props.onAsk !== undefined && next.length > 0 ? (
+        <div className="mt-2 grid gap-2">
+          <p className="text-xs font-semibold tracking-wide text-muted-foreground uppercase">
+            Ask next
+          </p>
+          <QuestionPills
+            label="Ask next"
+            questions={next}
+            onPick={props.onAsk}
+          />
+        </div>
       ) : null}
     </StepTimeline>
   );

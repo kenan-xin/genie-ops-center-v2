@@ -38,7 +38,8 @@ Core owns the answer rules, in `packages/core/src/services/agent/prompt.ts` (Spe
 
 - The answer is short and in simple English: at most five sentences, counted over its paragraphs and headings. It starts with the result in one short sentence and says each figure once.
 - A money answer states the total with its currency and two decimals in the first sentence, then shows the rows.
-- One or two short sentences after the result say how the figure was counted, in plain words.
+- At most one short sentence after the result helps to read it. How the figure was counted shows under the answer, from the queries.
+- The answer ends with two or three questions to ask next, which the chat shows under the last answer.
 - The text names no dataset and no field. It writes a date as a person reads it (27 Oct 2026), and the ISO form only inside a query.
 - A list of a dataset's rows selects the dataset's `summaryFields` first.
 - The rows that answer the question go in a table or chart, never in the text.
