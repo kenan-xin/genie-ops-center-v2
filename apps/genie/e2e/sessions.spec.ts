@@ -52,6 +52,11 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
 
   const current = await currentSessionId(page, email);
 
+  // Earlier tests of this person leave live rows, and the dialog below counts them (repeat runs).
+  await queryDatabase(
+    `delete from session where id <> '${current}' and user_id = (select id from "user" where email = '${email}')`
+  );
+
   const other = await insertOtherSession(email, {
     userAgent: WINDOWS_CHROME_UA,
     address: "192.0.2.50",
