@@ -572,6 +572,68 @@ export const RenameAChat: Story = {
   },
 };
 
+// H7 (stop-time review): a rename that answers after its dialog closed must not close the dialog
+// that the person opened again, with their new draft in it.
+const noAnswer = () => undefined;
+
+export const ALateRenameKeepsANewDraft: Story = {
+  name: "A late rename keeps a new draft",
+  play: async ({ canvasElement }) => {
+    let answer: () => void = noAnswer;
+
+    renameChat.mockImplementationOnce(
+      (input) =>
+        new Promise((resolve) => {
+          answer = () => resolve({ ...SESSIONS[0]!, ...input });
+        })
+    );
+
+    const openRename = async () => {
+      await openChatActions(canvasElement);
+      await userEvent.click(
+        await screen.findByRole("menuitem", { name: "Rename" })
+      );
+
+      return screen.findByRole("dialog", { name: "Rename this chat" });
+    };
+
+    let dialog = await openRename();
+
+    await userEvent.clear(
+      within(dialog).getByRole("textbox", { name: "Name" })
+    );
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Name" }),
+      "First name"
+    );
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("dialog", { name: "Rename this chat" })
+      ).toBeNull()
+    );
+
+    dialog = await openRename();
+
+    const name = within(dialog).getByRole("textbox", { name: "Name" });
+
+    await userEvent.clear(name);
+    await userEvent.type(name, "Second draft");
+
+    answer();
+    // Give the late answer time to land before checking that nothing closed.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    await expect(
+      screen.getByRole("dialog", { name: "Rename this chat" })
+    ).toBeVisible();
+    await expect(name).toHaveValue("Second draft");
+  },
+};
+
 // H2: Delete asks first; Cancel deletes nothing.
 export const DeleteAsksFirst: Story = {
   name: "Delete asks first",

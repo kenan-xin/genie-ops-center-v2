@@ -65,17 +65,17 @@ function RenameChat(props: {
   const agent = useModuleClient(agentContract);
   const nameId = useId();
 
+  // The list refresh runs for every saved rename; the close is this dialog's own, so a late
+  // answer after Cancel cannot close a dialog opened again (the per-call callback skips it).
   const rename = useMutation({
     mutationFn: (title: string) => agent.rename({ id: props.id, title }),
-    onSuccess: () => {
-      props.onRenamed();
-      props.onClose();
-    },
+    onSuccess: props.onRenamed,
   });
 
   const form = useForm({
     defaultValues: { title: props.title },
-    onSubmit: ({ value }) => rename.mutate(value.title),
+    onSubmit: ({ value }) =>
+      rename.mutate(value.title, { onSuccess: props.onClose }),
   });
 
   return (
