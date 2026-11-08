@@ -108,7 +108,7 @@ components:
     backgroundColor: "{colors.page}"
     textColor: "{colors.heading}"
     rounded: "{rounded.control}"
-    height: "40px"
+    height: "36px"
     padding: "0 12px"
     typography: "{typography.body}"
   card:
@@ -155,7 +155,7 @@ Authority chain: `docs/design/design-system/tokens.md` is the source of truth fo
 - One tenant accent, used sparingly: primary button, count pill, active nav row, and the light-theme focus ring. Nothing else takes it.
 - Hairline borders over shadows; only menus and overlays cast shadows
 - Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE). These are the only two faces that ship for now.
-- Thumb-first controls: one height scale (32/40/44px), 44px minimum touch targets under 1024px
+- Thumb-first controls: one height scale (buttons 32/40/44px, fields 36px on desktop), 44px minimum touch targets under 1024px
 - Motion is 150–220ms ease-out, no bounce, no scale, always `motion-safe:` gated
 - WCAG 2.1 AA with measured contrast pinned in the token file (default ring 5.17:1 on white, dark ring 7.92:1 on gray-950, input border 4.89:1)
 
@@ -288,7 +288,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 
 ### Inputs / Fields
 
-- **Style:** 40px height, 8px radius, 1px gray-500 border (`--input`, 4.89:1 on white, because the border is a component boundary under 1.4.11), white background, 12px horizontal padding.
+- **Style:** one field height for every input, input group, select, combobox and date field: 36px on desktop (from 1024px) and 44px under it, border included (the `fieldHeight` class). A field beside a 40px button keeps its own height and the row aligns centers. 8px radius, 1px gray-500 border (`--input`, 4.89:1 on white, because the border is a component boundary under 1.4.11), white background, 12px horizontal padding.
 - **Placeholder:** gray-500, dark gray-400 (`--placeholder`), regular. A format hint such as `DD Mon YYYY`, never a realistic value, so an empty field never reads as filled in.
 - **Focus:** the border takes the `--ring` color, plus the shared ring.
 - **Labels / Helper / Error:** label above the control (semibold small gray-800), helper text below in small gray-600, field error below in small red-700 with `aria-describedby`. Form-level error block carries `role="alert"`; informational notice block `role="status"`. A changed field carries a small blue dot on its label while unsaved; required fields are marked in the label.

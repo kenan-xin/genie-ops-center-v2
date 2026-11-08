@@ -1,11 +1,11 @@
 import { Input as InputPrimitive } from "@base-ui/react/input";
 import { cn } from "cn";
 
-import { focusRing } from "../theme/tokens.ts";
+import { fieldHeight, focusRing } from "../theme/tokens.ts";
 
 const inputSizes = {
   sm: "h-8 min-h-8",
-  md: "h-10 min-h-10",
+  md: fieldHeight,
   lg: "h-11 min-h-11 text-base",
 } as const;
 
@@ -28,4 +28,4 @@ function Input({
   );
 }
 
-export { Input, inputSizes };
+export { Input };

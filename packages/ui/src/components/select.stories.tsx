@@ -62,8 +62,6 @@ export const Default: Story = {
   play: async ({ args, canvas }) => {
     const trigger = canvas.getByRole("combobox", { name: "Role" });
 
-    await expect(trigger.getBoundingClientRect().height).toBe(40);
-
     await userEvent.tab();
     await expect(trigger).toHaveFocus();
     await expect(getComputedStyle(trigger).boxShadow).toContain(

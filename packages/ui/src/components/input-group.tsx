@@ -6,11 +6,10 @@ import { cn } from "cn";
 import type * as React from "react";
 
 import { Button } from "./button.tsx";
-import { inputSizes } from "./input.tsx";
 
 /*
  * The shadcn Input Group (`@shadcn/input-group`, base style), fitted to this repository: the group
- * carries the border and the one focus ring of tokens.ts, the bare control keeps the Input sizes, and the
+ * carries the border and the one focus ring of tokens.ts, the bare control fills it to the Input sizes, and the
  * button keeps the Button sizes with their 44 px hit area. The textarea control and the
  * `block-end` addon serve the agent composer; `block-start` stays out until a screen needs it.
  */
@@ -30,13 +29,14 @@ function InputGroup({ className, ...props }: React.ComponentProps<"div">) {
 }
 
 const inputGroupAddonVariants = cva(
-  "flex h-auto cursor-text items-center justify-center gap-2 py-1.5 text-sm font-medium text-muted-foreground select-none [&>svg:not([class*='size-'])]:size-4",
+  // No vertical padding on an inline addon: the control alone sets the group's height (6wz1.94).
+  "flex h-auto cursor-text items-center justify-center gap-2 text-sm font-medium text-muted-foreground select-none [&>svg:not([class*='size-'])]:size-4",
   {
     variants: {
       align: {
         "inline-start": "order-first pl-2 has-[>button]:-ml-0.5",
         "inline-end": "order-last pr-2 has-[>button]:-mr-0.5",
-        "block-end": "order-last w-full justify-start px-2 pb-2",
+        "block-end": "order-last w-full justify-start px-2 pt-1.5 pb-2",
       },
     },
     defaultVariants: {
@@ -106,8 +106,13 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
-// Inside the group's 1 px border, so the group is as high as a `filter` Button.
-const FILTER_SIZE = "h-10.5 min-h-10.5 lg:h-8.5 lg:min-h-8.5";
+// The Input sizes less the group's two 1 px borders, so the group is as high as an Input:
+// md the field height (tokens.ts `fieldHeight`), sm 32 px, lg 44 px.
+const groupInputSizes = {
+  sm: "h-7.5 min-h-7.5",
+  md: "h-10.5 min-h-10.5 lg:h-8.5 lg:min-h-8.5",
+  lg: "h-10.5 min-h-10.5 text-base",
+} as const;
 
 // The bare primitive, not `Input`: the group draws the border, the fill and the focus ring.
 
@@ -116,15 +121,14 @@ function InputGroupInput({
   size = "md",
   ...props
 }: Omit<InputPrimitive.Props, "size"> & {
-  /** `filter`: a 44 px group under 1024 px and 36 px in the desktop bar, for a list filter. */
-  size?: keyof typeof inputSizes | "filter";
+  size?: keyof typeof groupInputSizes;
 }) {
   return (
     <InputPrimitive
       data-slot="input-group-control"
       className={cn(
         "w-full min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed",
-        size === "filter" ? FILTER_SIZE : inputSizes[size],
+        groupInputSizes[size],
         className
       )}
       {...props}

@@ -5,7 +5,7 @@ import { cn } from "cn";
 import { ChevronDownIcon, CheckIcon, ChevronUpIcon } from "lucide-react";
 import * as React from "react";
 
-import { focusRing } from "../theme/tokens.ts";
+import { fieldHeight, focusRing } from "../theme/tokens.ts";
 
 const Select = SelectPrimitive.Root;
 
@@ -42,7 +42,8 @@ function SelectTrigger({
       data-slot="select-trigger"
       data-size={size}
       className={cn(
-        "flex w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-sm whitespace-nowrap text-foreground motion-safe:transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-placeholder:text-placeholder data-[size=lg]:h-11 data-[size=lg]:min-h-11 data-[size=lg]:text-base data-[size=md]:h-10 data-[size=md]:min-h-10 data-[size=sm]:h-8 data-[size=sm]:min-h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-sm whitespace-nowrap text-foreground motion-safe:transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-placeholder:text-placeholder data-[size=lg]:h-11 data-[size=lg]:min-h-11 data-[size=lg]:text-base data-[size=sm]:h-8 data-[size=sm]:min-h-8 *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        size === "md" && fieldHeight,
         focusRing,
         className
       )}

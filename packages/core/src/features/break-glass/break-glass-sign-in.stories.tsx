@@ -150,11 +150,10 @@ export const PasswordReveal: Story = {
     await expect(
       heightOf(canvas.getByLabelText("Email"))
     ).toBeGreaterThanOrEqual(44);
-    await expect(heightOf(password)).toBeGreaterThanOrEqual(44);
     await expect(
       heightOf(canvas.getByRole("button", { name: "Sign in" }))
     ).toBeGreaterThanOrEqual(44);
-    // The eye sits inside the field (Input Group) and keeps a 44 px hit area.
+    // The eye sits inside the field (Input Group), and the group is the 44 px field box (6wz1.94).
     const group = password.closest("[data-slot=input-group]");
 
     await expect(group?.contains(toggle)).toBe(true);

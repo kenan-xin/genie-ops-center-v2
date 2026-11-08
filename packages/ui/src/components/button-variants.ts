@@ -1,6 +1,8 @@
 // No "use client": server components (the app home page) call this too.
 import { cva } from "class-variance-authority";
 
+import { fieldHeight } from "../theme/tokens.ts";
+
 // A 32 px control owns an invisible 44 px hit area (tokens.md, "Buttons").
 const hitArea = "relative after:absolute after:-inset-1.5";
 
@@ -33,8 +35,8 @@ const buttonVariants = cva(
         "sm": `h-8 min-h-8 px-3 ${hitArea}`,
         "md": "h-10 min-h-10 px-4",
         "lg": "h-11 min-h-11 px-5",
-        // A list filter control: 44 px under 1024 px, 36 px in the desktop bar (R-37a).
-        "filter": "h-11 min-h-11 px-3 lg:h-9 lg:min-h-9",
+        // A button that sits among fields, as a list filter control: the field height (R-37a).
+        "filter": `${fieldHeight} px-3`,
         "icon": "size-11 lg:size-10",
         "icon-sm": `size-8 ${hitArea}`,
         // The round Send and Stop of the agent composer (agent-native rule 6).

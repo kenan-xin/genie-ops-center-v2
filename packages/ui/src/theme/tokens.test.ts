@@ -8,6 +8,8 @@ import {
   colorRoles,
   controlHeightsPx,
   defaultControlHeight,
+  fieldHeight,
+  fieldHeightPx,
   defaultFont,
   defaultFontSizePreset,
   focusRing,
@@ -92,6 +94,15 @@ describe("the fixed token layer against tokens.md", () => {
     expect(Object.values(controlHeightsPx).map((px) => px / spacingPx)).toEqual(
       [8, 10, 11]
     );
+  });
+
+  it("gives every field 36 px from lg and 44 px under it, in the class it ships", () => {
+    const { desktop, touch } = fieldHeightPx;
+
+    expect(fieldHeight).toBe(
+      `h-${touch / spacingPx} min-h-${touch / spacingPx} lg:h-${desktop / spacingPx} lg:min-h-${desktop / spacingPx}`
+    );
+    expect(fieldHeightPx).toEqual({ desktop: 36, touch: 44 });
   });
 
   it("rounds menus at 6 px, controls at 8 px and cards at 12 px", () => {

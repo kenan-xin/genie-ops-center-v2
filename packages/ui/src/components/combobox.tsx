@@ -7,7 +7,7 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
 import { ChevronDownIcon } from "lucide-react";
 
-import { focusRing } from "../theme/tokens.ts";
+import { fieldHeight, focusRing } from "../theme/tokens.ts";
 import { Input } from "./input.tsx";
 
 const Combobox = ComboboxPrimitive.Root;
@@ -25,26 +25,23 @@ function ComboboxInput(props: ComboboxPrimitive.Input.Props) {
 
 /**
  * The button that opens the list, for the search-inside-the-popup form. It takes the shape of the
- * md `SelectTrigger`, and its text is the current choice or the prompt.
+ * md `SelectTrigger`, the field height, and its text is the current choice or the prompt.
  */
 function ComboboxTrigger({
   className,
   children,
   variant = "default",
-  size = "md",
   ...props
 }: ComboboxPrimitive.Trigger.Props & {
   /** `filter-set` tints a list filter that holds a value: tinted and semibold (R-37a, czjw.65). */
   readonly variant?: "default" | "filter-set";
-  /** `filter`: 44 px under 1024 px, 36 px in the desktop bar, as the Button `filter` size. */
-  readonly size?: "md" | "filter";
 }) {
   return (
     <ComboboxPrimitive.Trigger
       data-slot="combobox-trigger"
       className={cn(
         "flex w-full items-center justify-between gap-2 rounded-lg border px-3 text-sm whitespace-nowrap motion-safe:transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50",
-        size === "filter" ? "h-11 min-h-11 lg:h-9 lg:min-h-9" : "h-10 min-h-10",
+        fieldHeight,
         variant === "filter-set"
           ? "border-primary/40 bg-primary/8 font-semibold text-primary dark:text-brand-on-dark"
           : "border-input bg-card text-foreground",

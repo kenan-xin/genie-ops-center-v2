@@ -101,7 +101,6 @@ function SearchControl({
   return (
     <InputGroup className={place === "sheet" ? "w-full" : "w-64 shrink-0"}>
       <InputGroupInput
-        size="filter"
         type="search"
         value={text}
         aria-label={filter.label}
@@ -191,7 +190,6 @@ function OptionControl({
       <ComboboxTrigger
         aria-label={`${filter.label}: ${text}`}
         variant={set ? "filter-set" : "default"}
-        size="filter"
         className={place === "sheet" ? "w-full" : "w-44 shrink-0"}
       >
         <TriggerText filter={filter} text={text} set={set} />
@@ -231,7 +229,6 @@ function MultiOptionControl({
       <ComboboxTrigger
         aria-label={`${filter.label}: ${text}`}
         variant={selected.length > 0 ? "filter-set" : "default"}
-        size="filter"
         className={place === "sheet" ? "w-full" : "w-44 shrink-0"}
       >
         <TriggerText filter={filter} text={text} set={selected.length > 0} />
@@ -260,7 +257,6 @@ function DateRangeControl({
       onChange={(next) => onChange(dayRangeParam(next))}
       presets={anchorDay === undefined ? undefined : quickRanges(anchorDay)}
       variant={set ? "filter-set" : "secondary"}
-      size="filter"
       className={place === "sheet" ? "w-full" : "w-56 shrink-0"}
     />
   );

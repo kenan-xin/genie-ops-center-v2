@@ -4,13 +4,16 @@ import { expect, userEvent } from "storybook/test";
 // The package entry, not ./input.tsx, so that the stories prove what an app
 // can import.
 import {
+  DatePicker,
   Field,
   FieldDescription,
   FieldError,
   FieldLabel,
   Input,
   InputGroup,
+  InputGroupAddon,
   InputGroupInput,
+  InputGroupText,
   Select,
   SelectTrigger,
   SelectValue,
@@ -25,7 +28,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shadcn Input on the Base UI primitive (`@base-ui/react/input`), fitted to the tokens.md scale: sm 32 px, md 40 px (default), lg 44 px, a `border-input` boundary and one focus ring. Pair it with `Field` and `FieldLabel htmlFor`; `aria-invalid` turns the boundary red and `aria-describedby` points at a `FieldError`.",
+          "The shadcn Input on the Base UI primitive (`@base-ui/react/input`), fitted to the tokens.md scale: sm 32 px, md (default) the field height of 36 px from `lg` and 44 px under it, lg 44 px, a `border-input` boundary and one focus ring. Pair it with `Field` and `FieldLabel htmlFor`; `aria-invalid` turns the boundary red and `aria-describedby` points at a `FieldError`.",
       },
     },
   },
@@ -45,8 +48,6 @@ export const Default: Story = {
   ),
   play: async ({ canvas }) => {
     const input = canvas.getByRole("textbox", { name: "Email" });
-
-    await expect(input.getBoundingClientRect().height).toBe(40);
 
     await userEvent.tab();
     await expect(input).toHaveFocus();
@@ -93,7 +94,61 @@ export const Sizes: Story = {
       .getAllByRole("textbox")
       .map((input) => input.getBoundingClientRect().height);
 
-    await expect(heights).toEqual([32, 40, 44]);
+    await expect(heights).toEqual([32, 36, 44]);
+  },
+};
+
+// 6wz1.94: every field kind is one box of the field height, border included, so a form row of
+// mixed fields lines up. A group must not add its border, nor an addon its padding.
+const fieldKinds = (
+  <div className="flex flex-col gap-4">
+    <Input aria-label="Name" />
+    <InputGroup data-testid="amount">
+      <InputGroupInput aria-label="Amount" />
+      <InputGroupAddon>
+        <InputGroupText>SGD</InputGroupText>
+      </InputGroupAddon>
+    </InputGroup>
+    <DatePicker
+      aria-label="Due date"
+      pickLabel="Choose the due date"
+      value=""
+      onValueChange={() => {}}
+    />
+    <Select>
+      <SelectTrigger aria-label="Type">
+        <SelectValue placeholder="Choose the type" />
+      </SelectTrigger>
+    </Select>
+  </div>
+);
+
+const fieldHeights = (canvasElement: HTMLElement) =>
+  [
+    "[data-slot=input]",
+    "[data-testid=amount]",
+    "[data-slot=input-group]:not([data-testid])",
+    "[data-slot=select-trigger]",
+  ].map(
+    (selector) =>
+      canvasElement.querySelector(selector)?.getBoundingClientRect().height
+  );
+
+export const OneFieldHeightDesktop: Story = {
+  name: "One field height, desktop",
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: () => fieldKinds,
+  play: async ({ canvasElement }) => {
+    await expect(fieldHeights(canvasElement)).toEqual([36, 36, 36, 36]);
+  },
+};
+
+export const OneFieldHeightPhone: Story = {
+  name: "One field height, phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  render: () => fieldKinds,
+  play: async ({ canvasElement }) => {
+    await expect(fieldHeights(canvasElement)).toEqual([44, 44, 44, 44]);
   },
 };
 

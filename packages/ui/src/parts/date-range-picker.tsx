@@ -39,12 +39,10 @@ export type DateRangePickerProps = {
   readonly "aria-describedby"?: string | undefined;
   /** Ranges one click sets, for example `quickRanges(today)` (LH25). */
   readonly "presets"?: readonly QuickRange[] | undefined;
-  /** Classes of the trigger: its width and its height. */
+  /** Classes of the trigger, for its width. Its height is the field height. */
   readonly "className"?: string | undefined;
   /** `filter-set` tints a list filter that holds a range (R-37a). */
   readonly "variant"?: "secondary" | "filter-set" | undefined;
-  /** `filter`: the height of a list filter control. */
-  readonly "size"?: "md" | "filter" | undefined;
 };
 
 /**
@@ -76,7 +74,6 @@ export function DateRangePicker({
   presets,
   className,
   variant = "secondary",
-  size = "md",
   ...aria
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
@@ -113,7 +110,8 @@ export function DateRangePicker({
         render={
           <Button
             variant={variant}
-            size={size}
+            // The field height, as every field beside it (6wz1.94).
+            size="filter"
             className={`w-full ${className ?? ""}`}
           />
         }

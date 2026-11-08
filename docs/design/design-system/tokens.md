@@ -23,9 +23,13 @@ The tenant font size preset (set by the branding seed until the Branding Typogra
 
 ## Control heights
 
-One scale: sm 32px (`h-8`), md 40px (`h-10`), lg 44px (`h-11`); no other height class on a control. Every row that mixes controls (search, select, segmented, button) renders all of them at md. Icon-only buttons are 40px square (md) or 32px (sm) in dense toolbars. Touch targets are at least 44 by 44 px; a 32px control gets invisible padding to reach it.
+Buttons use one scale: sm 32px (`h-8`), md 40px (`h-10`), lg 44px (`h-11`). Icon-only buttons are 40px square (md) or 32px (sm) in dense toolbars. Touch targets are at least 44 by 44 px; a 32px control gets invisible padding to reach it.
 
-A control that grows with `flex-1` also carries its height as a minimum, `h-10 min-h-10`. A toolbar that stacks into a column under `sm` turns `flex-1` into a height rule, and a control with only `h-10` collapses to its content, which measured 22px on a phone. The pair keeps the control at md in a row and in a column.
+Inputs: every field has one height, the field height. A field is a text input, an input group, a select trigger, a combobox, a date picker or a date range trigger. The field height is 36px from the `lg` breakpoint (`lg:h-9`) and 44px under it (`h-11`), the touch rule. It is the outer box, border included: an input group's control fills the group, and an addon adds no vertical padding. One shared class holds it, `fieldHeight` in `packages/ui/src/theme/tokens.ts`, and no screen writes its own field height. The sm (32px) and lg (44px) field sizes stay as explicit choices, for example lg on the sign-in form beside its lg button (6wz1.94, owner 2026-11-07).
+
+No other height class on a control. A field beside a button in a form row keeps its own height, and the row aligns centers. A list filter bar sets its buttons to the field height (Button size `filter`), so the bar reads as one row.
+
+A control that grows with `flex-1` also carries its height as a minimum, for example `h-10 min-h-10`. A toolbar that stacks into a column under `sm` turns `flex-1` into a height rule, and a control with only `h-10` collapses to its content, which measured 22px on a phone. The pair keeps the control at its height in a row and in a column.
 
 A search field that grows with `flex-1` also carries a width floor of 192px (`min-w-48`) and a cap of 384px (`sm:max-w-sm`). It is the only flexible control in a toolbar, so without the floor every select beside it takes its intrinsic width first and the field absorbs the whole shortfall. Measured on the Solutions admin toolbar before the floor: four selects claimed about 625px of a 960px content column and the field fell to about 110px, narrow enough to cut its own placeholder. With the floor the field wraps to its own line instead of shrinking to nothing.
 

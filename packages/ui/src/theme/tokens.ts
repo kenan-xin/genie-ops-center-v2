@@ -88,6 +88,15 @@ export const controlHeightsPx = { sm: 32, md: 40, lg: 44 } as const;
 
 export const defaultControlHeight = "md";
 
+/**
+ * 6wz1.94: one height for every field (input, input group, select, combobox, date fields), the
+ * outer box with its border: 36 px from `lg`, 44 px touch under it. Buttons keep `controlHeightsPx`.
+ */
+export const fieldHeightPx = { desktop: 36, touch: 44 } as const;
+
+/** The class of `fieldHeightPx`. */
+export const fieldHeight = "h-11 min-h-11 lg:h-9 lg:min-h-9";
+
 export const radiusPx = { menu: 6, control: 8, card: 12 } as const;
 
 export const motion = {
