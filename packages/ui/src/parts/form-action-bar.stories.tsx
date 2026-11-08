@@ -195,6 +195,16 @@ export const DialogBarStaysInView: Story = {
     await expect(save.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       window.innerHeight
     );
+
+    // The bar reaches the dialog's bottom edge, so no scrolled line shows below it.
+    const bar = save.parentElement?.parentElement;
+
+    await expect(
+      Math.abs(
+        (bar?.getBoundingClientRect().bottom ?? 0) -
+          dialog.getBoundingClientRect().bottom
+      )
+    ).toBeLessThanOrEqual(1);
   },
 };
 

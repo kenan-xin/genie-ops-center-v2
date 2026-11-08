@@ -34,10 +34,11 @@ export function FormActionBar(props: {
     <div
       className={cn(
         "flex flex-col gap-3 md:flex-row md:items-center md:justify-between",
-        // The last child of `DialogContent`, which scrolls: it sticks to the bottom, and the
-        // negative margins match the dialog padding so no content shows beside or below it.
+        // The last child of `DialogContent`, which scrolls: it sticks to the bottom. A sticky box
+        // stops at the container's padding, so the offset and the margins are minus that padding,
+        // and no content shows beside or below the bar.
         props.placement === "dialog" &&
-          "sticky bottom-0 z-10 -mx-4 -mb-4 border-t border-border bg-card px-4 py-4 md:-mx-6 md:-mb-6 md:px-6 md:pb-6",
+          "sticky -bottom-4 z-10 -mx-4 -mb-4 border-t border-border bg-card px-4 py-4 md:-bottom-6 md:-mx-6 md:-mb-6 md:px-6 md:pb-6",
         // Sticky within its card: the card must clip, not scroll (`overflow-clip`, not `-hidden`).
         props.placement === "section" &&
           "border-t border-border bg-card px-5 py-3 max-md:sticky max-md:bottom-0 max-md:z-10"
