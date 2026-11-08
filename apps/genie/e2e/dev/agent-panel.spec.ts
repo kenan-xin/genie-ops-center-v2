@@ -338,6 +338,18 @@ test("on the Overdue tab, the agent answers about the overdue invoices only", as
       );
       await expectNoAxeViolations(page, "The answer about the Overdue tab");
       await screenshot(page, testInfo, "overdue");
+
+      // czjw.108: the method says in words what the read counted, and its rows open in Ask.
+      const log = conversationOf(panel);
+
+      await log.getByRole("button", { name: "How this was counted" }).click();
+      await expect(
+        log.getByText(/^(Added up|Counted|Listed|Took) /)
+      ).toBeVisible();
+      await log.getByRole("link", { name: "See the 1 row" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Rows read from Invoices" })
+      ).toBeVisible(FIRST_PAINT);
     },
     LOCK_WAIT
   );

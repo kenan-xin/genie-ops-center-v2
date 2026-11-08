@@ -21,9 +21,13 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   readonly params: Promise<{ readonly session?: string[] }>;
-  /** `artifact` names the artifact a card in the agent panel opens (AG12). */
+  /**
+   * `artifact` names the artifact a card in the agent panel opens (AG12), and `rows` the read whose
+   * rows its "See the rows" link opens, by tool call id (czjw.108).
+   */
   readonly searchParams: Promise<{
     readonly artifact?: string | string[];
+    readonly rows?: string | string[];
   }>;
 };
 
@@ -52,7 +56,7 @@ async function currentSession(ctx: ModuleRequestContext, id: string) {
  */
 export default async function AskPage(props: Props) {
   const { session = [] } = await props.params;
-  const { artifact } = await props.searchParams;
+  const { artifact, rows } = await props.searchParams;
 
   if (session.length > 1) notFound();
 
@@ -98,6 +102,7 @@ export default async function AskPage(props: Props) {
           initialArtifacts={artifacts}
           // A repeated parameter names its first value.
           initialShown={latestRef(artifacts, [artifact].flat()[0])}
+          rowsCallId={[rows].flat()[0]}
           // Only a person who manages the settings picks the model (design review 7.1).
           models={
             aiOn && access.canPickModel

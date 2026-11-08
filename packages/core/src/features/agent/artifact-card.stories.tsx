@@ -107,7 +107,7 @@ const meta = {
   ],
   args: {
     artifact: ARTIFACT,
-    action: { kind: "panel", shown: null, onOpen: fn() },
+    action: { kind: "panel", shown: null, onOpen: fn(), onOpenRows: fn() },
     ready: true,
   },
 } satisfies Meta<typeof ArtifactCard>;
@@ -133,13 +133,20 @@ export const Showing: Story = {
       kind: "panel",
       shown: { artifactId: ARTIFACT.artifactId, version: 2 },
       onOpen: fn(),
+      onOpenRows: fn(),
     },
   },
 };
 
 export const InThePanel: Story = {
   name: "In the panel",
-  args: { action: { kind: "link", href: () => "/ask/chat-1" } },
+  args: {
+    action: {
+      kind: "link",
+      href: () => "/ask/chat-1",
+      rowsHref: () => "/ask/chat-1?rows=call-1",
+    },
+  },
 };
 
 export const WhileTheAnswerStreams: Story = {
@@ -157,7 +164,7 @@ export const TableInAsk: Story = {
   name: "Table in Ask, 12 rows",
   args: {
     artifact: TABLE_ARTIFACT,
-    action: { kind: "panel", shown: null, onOpen: openTable },
+    action: { kind: "panel", shown: null, onOpen: openTable, onOpenRows: fn() },
   },
   beforeEach: () => {
     openTable.mockClear();
@@ -200,7 +207,7 @@ export const CutTable: Story = {
   name: "Table cut at 1,000 rows",
   args: {
     artifact: TABLE_ARTIFACT,
-    action: { kind: "panel", shown: null, onOpen: openTable },
+    action: { kind: "panel", shown: null, onOpen: openTable, onOpenRows: fn() },
   },
   decorators: [withChartCheck(answering(tableOf(1000, true)))],
   beforeEach: () => {
@@ -243,7 +250,11 @@ export const TableInThePanel: Story = {
   name: "Table in the panel",
   args: {
     artifact: TABLE_ARTIFACT,
-    action: { kind: "link", href: () => "/ask/chat-1?artifact=2" },
+    action: {
+      kind: "link",
+      href: () => "/ask/chat-1?artifact=2",
+      rowsHref: () => "/ask/chat-1?rows=call-1",
+    },
   },
   play: async ({ canvas }) => {
     const more = await canvas.findByRole("link", {

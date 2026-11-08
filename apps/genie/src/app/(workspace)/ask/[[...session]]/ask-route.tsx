@@ -11,6 +11,8 @@ import {
   AgentChat,
   type ArtifactRef,
   AskScreen,
+  type Read,
+  readsOf,
 } from "@genie/core/features/agent";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation.js";
@@ -33,6 +35,8 @@ export function AskRoute(props: {
   readonly initialArtifacts: readonly AgentArtifact[];
   /** The artifact the address names, at its latest version (AG12). */
   readonly initialShown: ArtifactRef | null;
+  /** The read whose rows the address names (`?rows=`, czjw.108), by its tool call id. */
+  readonly rowsCallId?: string | undefined;
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
@@ -75,7 +79,30 @@ export function AskRoute(props: {
     staleTime: 0,
   });
 
-  const [shown, setShown] = useState(props.initialShown);
+  // The rows a panel link names come from the stored answer, so they need no read. The artifact
+  // and the rows share one place, so opening one closes the other.
+  const [rows, setRows] = useState<Read | null>(
+    () =>
+      readsOf(props.initialMessages.flatMap(({ parts }) => parts)).find(
+        ({ toolCallId }) => toolCallId === props.rowsCallId
+      ) ?? null
+  );
+
+  const [shown, setShownOnly] = useState(
+    rows === null ? props.initialShown : null
+  );
+
+  const setShown = (ref: ArtifactRef | null) => {
+    setShownOnly(ref);
+
+    if (ref !== null) setRows(null);
+  };
+
+  const showRows = (read: Read | null) => {
+    setRows(read);
+
+    if (read !== null) setShownOnly(null);
+  };
 
   // The rail's New chat is a link to /ask, which can keep this mount after the address named the
   // chat. Compare with the last path: the render that sets `named` can still read /ask.
@@ -90,7 +117,8 @@ export function AskRoute(props: {
     if (changed && pathname === "/ask" && named) {
       setNamed(false);
       setNewId(crypto.randomUUID());
-      setShown(null);
+      setShownOnly(null);
+      setRows(null);
     }
   }, [pathname, named]);
 
@@ -103,10 +131,12 @@ export function AskRoute(props: {
       newChatHref="/ask"
       aiOn={props.aiOn}
       timeZone={props.timeZone}
-      datasetTitles={props.labels.datasets}
+      labels={props.labels}
       artifacts={artifacts.data}
       shown={shown}
       onShow={setShown}
+      rows={rows}
+      onRows={showRows}
     >
       {props.aiOn ? (
         <AgentChat
@@ -119,13 +149,19 @@ export function AskRoute(props: {
           // A new chat says where documents go in, in Ask as in the panel (czjw.120 item 20).
           inbox={props.inbox}
           timeZone={props.timeZone}
-          artifacts={{ kind: "panel", shown, onOpen: setShown }}
+          artifacts={{
+            kind: "panel",
+            shown,
+            onOpen: setShown,
+            onOpenRows: showRows,
+          }}
           headingLevel={2}
           // A fresh id remounts the chat, also when the address is already /ask.
           onNewChat={() => {
             setNamed(false);
             setNewId(crypto.randomUUID());
-            setShown(null);
+            setShownOnly(null);
+            setRows(null);
             router.push("/ask");
           }}
           onFinished={(id) => {

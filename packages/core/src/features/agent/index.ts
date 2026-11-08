@@ -21,6 +21,10 @@ export { AgentChat } from "./agent-chat.tsx";
 
 export { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 
+export { type Read, readsOf } from "./answer-sources.ts";
+
+export { ReadRowsPanel } from "./read-rows-panel.tsx";
+
 export { ArtifactPanel } from "./artifact-panel.tsx";
 
 export { ARTIFACT_VIEWS, type ArtifactKindView } from "./artifact-kinds.tsx";

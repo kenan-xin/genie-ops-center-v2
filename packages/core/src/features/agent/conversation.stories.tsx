@@ -294,7 +294,7 @@ const meta = {
     checkChart,
     timeZone: "UTC",
     inbox: [{ label: "Documents", href: "/m/example" }],
-    artifacts: { kind: "panel", shown: null, onOpen: fn() },
+    artifacts: { kind: "panel", shown: null, onOpen: fn(), onOpenRows: fn() },
     headingLevel: 2,
     onNewChat: fn(),
   },
@@ -424,6 +424,7 @@ export const ArtifactCardsInAsk: Story = {
       kind: "panel",
       shown: { artifactId: CHART_ID, version: 1 },
       onOpen: openArtifact,
+      onOpenRows: fn(),
     },
   },
   play: async ({ canvas }) => {
@@ -531,6 +532,7 @@ export const ArtifactCardsInThePanel: Story = {
     artifacts: {
       kind: "link",
       href: (ref) => `/ask/chat-1?artifact=${ref.artifactId}`,
+      rowsHref: (id) => `/ask/chat-1?rows=${id}`,
     },
   },
   play: async ({ canvas }) => {

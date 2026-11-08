@@ -17,11 +17,14 @@ import { agentContract } from "../../services/agent/contract.ts";
 import type {
   AgentArtifact,
   AgentSessionSummary,
+  ChatLabels,
 } from "../../services/agent/index.ts";
+import type { Read } from "./answer-sources.ts";
 import { ArtifactPanel } from "./artifact-panel.tsx";
 import type { ArtifactRef } from "./artifact-refs.ts";
 import { ChartCheckProvider } from "./chart-check.tsx";
 import { ChatHistory } from "./chat-history.tsx";
+import { ReadRowsPanel } from "./read-rows-panel.tsx";
 
 /** From this width an open artifact sits in a column beside the chat (AG22). */
 const ARTIFACT_DOCKED = "(min-width: 1280px)";
@@ -30,7 +33,7 @@ const ARTIFACT_DOCKED = "(min-width: 1280px)";
  * The Ask frame (R-42, R-42a, R-45a, AG22): the chat history as a 272 px column from 1024 px that
  * hides fully on its own toggle, and a left sheet below; the chat in the middle; and the artifact
  * panel, a 480 px column from 1280 px and a sheet below, open only when the person opens a card.
- * The chat itself is the shared `AgentChat`, passed as `children`; only this frame is Ask's own.
+ * A read's rows (czjw.108) take the same place. The chat itself is the shared `AgentChat`, passed as `children`; only this frame is Ask's own.
  */
 export function AskScreen(props: {
   readonly sessions: readonly AgentSessionSummary[];
@@ -42,11 +45,14 @@ export function AskScreen(props: {
   readonly aiOn: boolean;
   /** The tenant's zone for each chat's day. */
   readonly timeZone: string;
-  /** Dataset titles by name, for the artifact's source caption. */
-  readonly datasetTitles: Readonly<Record<string, string>>;
+  /** Dataset titles and field labels, for the artifact's caption and a read's rows. */
+  readonly labels: ChatLabels;
   readonly artifacts: readonly AgentArtifact[];
   readonly shown: ArtifactRef | null;
   readonly onShow: (ref: ArtifactRef | null) => void;
+  /** The read whose rows show in the artifact's place; the route keeps it apart from `shown`. */
+  readonly rows: Read | null;
+  readonly onRows: (read: Read | null) => void;
   readonly children: ReactNode;
 }): ReactNode {
   const agent = useModuleClient(agentContract);
@@ -91,12 +97,27 @@ export function AskScreen(props: {
     />
   );
 
+  const slotOpen = props.shown !== null || props.rows !== null;
+
+  const closeSlot = () => {
+    props.onShow(null);
+    props.onRows(null);
+  };
+
   const artifact = (variant: "column" | "sheet") =>
-    props.shown === null ? null : (
+    props.rows !== null ? (
+      <ReadRowsPanel
+        read={props.rows}
+        labels={props.labels}
+        variant={variant}
+        timeZone={props.timeZone}
+        onClose={closeSlot}
+      />
+    ) : props.shown === null ? null : (
       <ChartCheckProvider
         check={(config) => agent.chart({ config })}
         timeZone={props.timeZone}
-        datasetTitles={props.datasetTitles}
+        datasetTitles={props.labels.datasets}
       >
         <ArtifactPanel
           artifacts={props.artifacts}
@@ -189,7 +210,7 @@ export function AskScreen(props: {
       </div>
 
       {docked ? (
-        props.shown === null ? null : (
+        !slotOpen ? null : (
           <aside
             aria-label="Artifact panel"
             className="flex w-120 shrink-0 flex-col border-s border-border"
@@ -199,15 +220,15 @@ export function AskScreen(props: {
         )
       ) : (
         <Sheet
-          open={props.shown !== null}
+          open={slotOpen}
           onOpenChange={(open) => {
-            if (!open) props.onShow(null);
+            if (!open) closeSlot();
           }}
         >
           <SheetContent
             side="right"
             showCloseButton={false}
-            aria-label="Artifact"
+            aria-label={props.rows === null ? "Artifact" : "Rows"}
             // oxlint-disable-next-line shadcn/no-restyle -- the panel brings its own header and padding
             className="gap-0 overflow-hidden p-0"
           >

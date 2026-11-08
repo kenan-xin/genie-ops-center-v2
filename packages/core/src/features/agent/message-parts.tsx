@@ -1,13 +1,13 @@
 "use client";
 
-import { Button } from "@genie/ui";
+import { Button, focusRing } from "@genie/ui";
 import {
   Renderer,
   type OpenUIError,
   type ParseResult,
 } from "@openuidev/react-lang";
-import { CopyIcon, DatabaseIcon } from "lucide-react";
-import { useRef, useState, type ReactNode } from "react";
+import { CopyIcon, DatabaseIcon, InfoIcon, TableIcon } from "lucide-react";
+import { useId, useRef, useState, type ReactNode } from "react";
 
 import type {
   AgentFile,
@@ -16,11 +16,18 @@ import type {
 } from "../../services/agent/index.ts";
 import { isStopped } from "../../services/agent/stopped-turn.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
+import { fmtDate } from "../audit/helpers.ts";
 import { ANSWER_LIBRARY } from "./answer-library.tsx";
-import { readSentence, readsOf, sourceTitles } from "./answer-sources.ts";
+import {
+  type Read,
+  readSentence,
+  readsOf,
+  refusedReads,
+  rowsText,
+  sourceTitles,
+} from "./answer-sources.ts";
 import { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 import { artifactRefsOf } from "./artifact-refs.ts";
-import { QuietFold } from "./chat-parts.tsx";
 import { FileCard } from "./file-card.tsx";
 import { fileCallsOf } from "./file-refs.ts";
 import { StepTimeline } from "./step-timeline.tsx";
@@ -126,35 +133,144 @@ function AnswerText(props: {
   );
 }
 
+const rowsLinkClass = `inline-flex min-h-11 items-center gap-1.5 rounded-md font-semibold text-primary underline-offset-4 hover:underline lg:min-h-8 ${focusRing}`;
+
+/** "See the 6 rows": the rows view beside the chat in Ask, a link to it in the agent panel. */
+function RowsLink(props: {
+  readonly read: Read;
+  readonly action: ArtifactCardAction;
+}): ReactNode {
+  const { read, action } = props;
+
+  const label = (
+    <>
+      <TableIcon aria-hidden="true" className="size-4" strokeWidth={1.75} />
+      See the {rowsText(read.rows.length, read.truncated)}
+    </>
+  );
+
+  if (action.kind === "link") {
+    return (
+      <a href={action.rowsHref(read.toolCallId)} className={rowsLinkClass}>
+        {label}
+      </a>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      className={rowsLinkClass}
+      onClick={() => action.onOpenRows(read)}
+    >
+      {label}
+    </button>
+  );
+}
+
 /**
- * Under a finished answer (design review 5.1, 5.2): the datasets it read by title, Copy, and how
- * it counted in a closed fold, so the result reads first.
+ * How an answer counted (czjw.108, method-fold variant A): one plain sentence per read with its
+ * key words in bold, then its rows and its date; with two reads, each gets a "Read n" label. A
+ * read that matched nothing and a refused read say so.
  */
-function AnswerFooter(props: {
+function MethodPanel(props: {
+  readonly id: string;
+  readonly reads: readonly Read[];
+  readonly refused: readonly string[];
+  readonly labels: ChatLabels;
+  readonly action: ArtifactCardAction | undefined;
+}): ReactNode {
+  const { reads, labels } = props;
+
+  return (
+    <div
+      id={props.id}
+      className="mt-1.5 grid gap-3 rounded-lg bg-muted px-3.5 py-3 text-sm text-muted-foreground"
+    >
+      {reads.map((read, index) => {
+        const title = labels.datasets[read.dataset] ?? read.dataset;
+
+        return (
+          <div key={read.toolCallId} className="grid gap-1">
+            {reads.length > 1 ? (
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
+                <DatabaseIcon
+                  aria-hidden="true"
+                  className="size-3.5"
+                  strokeWidth={1.75}
+                />
+                Read {index + 1}: {title}
+              </p>
+            ) : null}
+            <p>
+              {readSentence(read, labels).map((part, at) =>
+                part.strong ? (
+                  <b key={at} className="font-semibold text-foreground">
+                    {part.text}
+                  </b>
+                ) : (
+                  part.text
+                )
+              )}
+            </p>
+            <div className="flex flex-wrap items-center gap-x-3">
+              {read.rows.length === 0 ? (
+                <span>No rows matched.</span>
+              ) : props.action === undefined ? null : (
+                <RowsLink read={read} action={props.action} />
+              )}
+              <span className="text-xs">
+                {title} as of {fmtDate(read.asOf, "UTC")}
+              </span>
+            </div>
+          </div>
+        );
+      })}
+      {props.refused.map((title) => (
+        <p key={title}>
+          {title}: this read was refused, so it counted nothing.
+        </p>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * One row under a finished answer (czjw.120 item 6): the datasets it read by title, the reporting
+ * date, "How this was counted" and Copy. The method opens in a quiet panel under the row, so the
+ * result reads first.
+ */
+function AnswerMeta(props: {
   readonly parts: AgentMessage["parts"];
   readonly labels: ChatLabels;
+  readonly action: ArtifactCardAction | undefined;
   readonly answer: () => string;
 }): ReactNode {
   const [copied, setCopied] = useState(false);
+  const [open, setOpen] = useState(false);
+  const panelId = useId();
 
+  const reads = readsOf(props.parts);
+  const refused = refusedReads(props.parts, props.labels);
   const sources = sourceTitles(props.parts, props.labels);
 
-  // shortcut: the plain sentence of each read until the method panel of plan Task 6 replaces this fold.
-  const method = readsOf(props.parts).map((read) =>
-    readSentence(read, props.labels)
-      .map((part) => part.text)
-      .join("")
-  );
+  // The latest reporting date of the reads; a calendar day, so it is shown in UTC.
+  const asOf = reads
+    .map((read) => read.asOf)
+    .toSorted()
+    .at(-1);
+
+  const counted = reads.length > 0 || refused.length > 0;
 
   return (
-    <div className="grid gap-2">
-      <div className="flex flex-wrap items-center gap-1.5">
+    <div className="grid">
+      <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
         {sources.length === 0 ? null : (
           <ul aria-label="Sources" className="flex flex-wrap gap-1.5">
             {sources.map((title) => (
               <li
                 key={title}
-                className="inline-flex h-7 items-center gap-1.5 rounded-full border border-border bg-muted px-2.5 text-xs font-medium text-muted-foreground"
+                className="inline-flex h-7 items-center gap-1.5 rounded-full bg-tile px-2.5 font-semibold"
               >
                 <DatabaseIcon
                   aria-hidden="true"
@@ -167,32 +283,46 @@ function AnswerFooter(props: {
             ))}
           </ul>
         )}
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          // oxlint-disable-next-line shadcn/no-restyle -- Copy sits at the end of the source row (prototype `.srcs`)
-          className="ms-auto"
-          onClick={() => {
-            void navigator.clipboard.writeText(props.answer()).then(() => {
-              setCopied(true);
-              setTimeout(() => setCopied(false), 1500);
-            });
-          }}
-        >
-          <CopyIcon aria-hidden="true" strokeWidth={1.75} />
-          {copied ? "Copied" : "Copy"}
-        </Button>
+        {asOf === undefined ? null : <span>as of {fmtDate(asOf, "UTC")}</span>}
+        <span className="ms-auto flex items-center gap-1">
+          {counted ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              aria-expanded={open}
+              aria-controls={open ? panelId : undefined}
+              onClick={() => setOpen(!open)}
+            >
+              <InfoIcon aria-hidden="true" strokeWidth={1.75} />
+              How this was counted
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              void navigator.clipboard.writeText(props.answer()).then(() => {
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              });
+            }}
+          >
+            <CopyIcon aria-hidden="true" strokeWidth={1.75} />
+            {copied ? "Copied" : "Copy"}
+          </Button>
+        </span>
       </div>
-      {method.length === 0 ? null : (
-        <QuietFold label="How this was counted">
-          <ul className="grid gap-0.5 ps-5 text-muted-foreground">
-            {method.map((line, index) => (
-              <li key={index}>{line}</li>
-            ))}
-          </ul>
-        </QuietFold>
-      )}
+      {open ? (
+        <MethodPanel
+          id={panelId}
+          reads={reads}
+          refused={refused}
+          labels={props.labels}
+          action={props.action}
+        />
+      ) : null}
     </div>
   );
 }
@@ -337,9 +467,10 @@ export function MessageParts(props: {
         </p>
       ) : null}
       {answered ? (
-        <AnswerFooter
+        <AnswerMeta
           parts={props.message.parts}
           labels={labels}
+          action={props.artifacts}
           answer={() => body.current?.innerText ?? ""}
         />
       ) : null}

@@ -237,6 +237,8 @@ export function AgentPanelHost(props: {
               artifacts={{
                 kind: "link",
                 href: (ref) => `/ask/${sessionId}?artifact=${ref.artifactId}`,
+                rowsHref: (toolCallId) =>
+                  `/ask/${sessionId}?rows=${toolCallId}`,
               }}
               headingLevel={3}
               onNewChat={() => setSessionId(crypto.randomUUID())}

@@ -31,9 +31,9 @@ function fieldLabels(
 ): Readonly<Record<string, ChatFieldLabel>> {
   return Object.fromEntries(
     Object.entries(dataset.fields).flatMap(([name, field]) => {
-      if (field.label === undefined || field.hiddenFromAgent === true) {
-        return [];
-      }
+      // A field hidden from the agent's dataset list still reaches a query through the page's
+      // context, such as a list's status tab, and labels never reach the model.
+      if (field.label === undefined) return [];
 
       const entry: ChatFieldLabel =
         field.type === "money" && dataset.currencyField !== undefined

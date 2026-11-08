@@ -11,6 +11,8 @@ import type {
 } from "../../services/agent/index.ts";
 import type { PanelConfig } from "../../services/charts/panel-config.ts";
 import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
+import { GROUPED_READ, READ_LABELS } from "./__fixtures__/reads.ts";
+import { type Read, readsOf } from "./answer-sources.ts";
 import { latestRef, type ArtifactRef } from "./artifact-refs.ts";
 import { AskScreen } from "./ask-screen.tsx";
 import type { CheckChart } from "./chart-check.tsx";
@@ -139,11 +141,18 @@ type AskProps = ComponentProps<typeof AskScreen>;
 /** Ask as the route composes it: the screen keeps no artifact state, the route does. */
 function Framed(props: AskProps) {
   const [shown, setShown] = useState<ArtifactRef | null>(props.shown);
+  const [rows, setRows] = useState<Read | null>(props.rows);
 
   return (
     <AgentClientStub chart={draw}>
       <div style={{ height: "100dvh" }} className="flex flex-col">
-        <AskScreen {...props} shown={shown} onShow={setShown}>
+        <AskScreen
+          {...props}
+          shown={shown}
+          onShow={setShown}
+          rows={rows}
+          onRows={setRows}
+        >
           <Conversation
             sessionId="00000000-0000-4000-8000-000000000003"
             initialMessages={NO_MESSAGES}
@@ -154,7 +163,12 @@ function Framed(props: AskProps) {
             checkChart={draw}
             timeZone="UTC"
             inbox={INBOX}
-            artifacts={{ kind: "panel", shown, onOpen: setShown }}
+            artifacts={{
+              kind: "panel",
+              shown,
+              onOpen: setShown,
+              onOpenRows: setRows,
+            }}
             headingLevel={2}
             onNewChat={() => undefined}
           />
@@ -196,10 +210,12 @@ const meta = {
     newChatHref: "/ask",
     aiOn: true,
     timeZone: "Asia/Singapore",
-    datasetTitles: {},
+    labels: READ_LABELS,
     artifacts: ARTIFACTS,
     shown: null,
     onShow: () => undefined,
+    rows: null,
+    onRows: () => undefined,
     children: null,
   },
 } satisfies Meta<typeof AskScreen>;
@@ -447,6 +463,28 @@ export const OpensOnTheArtifactItWasSentTo: Story = {
       within(panel).getByRole("heading", { level: 2, name: "Balances" })
     ).toBeVisible();
     await expect(within(panel).getByText("Version 2 of 2")).toBeVisible();
+  },
+};
+
+/** A read's rows take the artifact's place beside the chat, and Close the rows gives it back. */
+export const RowsOpenBesideTheChat: Story = {
+  name: "Rows open beside the chat",
+  args: { rows: readsOf([GROUPED_READ])[0] ?? null },
+  play: async () => {
+    const slot = await screen.findByRole("complementary", {
+      name: "Artifact panel",
+    });
+
+    await expect(
+      within(slot).getByRole("heading", { name: "Rows read from Items" })
+    ).toBeVisible();
+
+    await userEvent.click(
+      within(slot).getByRole("button", { name: "Close the rows" })
+    );
+    await expect(
+      screen.queryByRole("complementary", { name: "Artifact panel" })
+    ).toBeNull();
   },
 };
 

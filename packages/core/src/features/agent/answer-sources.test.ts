@@ -59,6 +59,29 @@ function read(
   };
 }
 
+/** A read the gate marked cut, with the query's own limit or none. */
+function cut(limit: number | undefined, rows: number): Part {
+  return {
+    type: "tool-query-dataset",
+    toolCallId: `call-${limit}`,
+    state: "output-available",
+    input: {
+      dataset: "example.items",
+      query:
+        limit === undefined
+          ? { select: ["status"] }
+          : { select: ["status"], limit },
+    },
+    output: {
+      dataset: "example.items",
+      asOf: "2026-10-27",
+      columns: [],
+      rows: Array.from({ length: rows }, () => ({})),
+      truncated: true,
+    },
+  };
+}
+
 const refused: Part = {
   type: "tool-query-dataset",
   toolCallId: "call-refused",
@@ -123,6 +146,14 @@ describe("the sources of an answer", () => {
     ["an untitled dataset", [read("example.other", 0)], ["example.other"]],
   ])("%s", (_, parts, sources) => {
     expect(sourceTitles(parts, LABELS)).toEqual(sources);
+  });
+
+  it("counts a read cut by its own limit as whole, and one cut by the row cap as a floor", () => {
+    expect(
+      readsOf([cut(1, 1), cut(undefined, 1000), cut(5000, 1000)]).map(
+        (entry) => entry.truncated
+      )
+    ).toEqual([false, true, true]);
   });
 
   it("counts no refused and no running read", () => {

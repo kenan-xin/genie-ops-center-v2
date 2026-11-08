@@ -4,7 +4,7 @@ import { focusRing, Skeleton } from "@genie/ui";
 import { ChartColumnIcon, TableIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { rowsText } from "./answer-sources.ts";
+import { type Read, rowsText } from "./answer-sources.ts";
 import type { ArtifactRef, CardArtifact } from "./artifact-refs.ts";
 import { useGatedChart } from "./gated-chart.tsx";
 import {
@@ -15,16 +15,21 @@ import {
 } from "./short-list.tsx";
 
 /**
- * What a card does (AG12): in Ask it opens the artifact panel beside the chat and marks the shown
- * version; in the agent panel it links to the artifact in Ask.
+ * What a card and a rows link do in this frame (AG12, czjw.108): in Ask they open the artifact or a
+ * read's rows beside the chat and mark the shown version; in the agent panel they link to Ask.
  */
 export type ArtifactCardAction =
   | {
       readonly kind: "panel";
       readonly shown: ArtifactRef | null;
       readonly onOpen: (ref: ArtifactRef) => void;
+      readonly onOpenRows: (read: Read) => void;
     }
-  | { readonly kind: "link"; readonly href: (ref: ArtifactRef) => string };
+  | {
+      readonly kind: "link";
+      readonly href: (ref: ArtifactRef) => string;
+      readonly rowsHref: (toolCallId: string) => string;
+    };
 
 const frameClass = "rounded-lg border border-border bg-card";
 

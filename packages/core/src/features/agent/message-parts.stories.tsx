@@ -20,6 +20,11 @@ import {
   TABLE_DATA,
   TOOL_PARTS,
 } from "./__fixtures__/answers.ts";
+import {
+  GROUPED_READ,
+  GROUPED_SENTENCE,
+  READ_LABELS,
+} from "./__fixtures__/reads.ts";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
 import { MessageParts } from "./message-parts.tsx";
 
@@ -335,47 +340,118 @@ const checkSourced = fn(resolveKpi);
  * A finished answer names its source by the dataset's title, beside Copy, and says how it counted
  * in a closed fold (design review 5.1, 5.2). The chart's caption names the title too.
  */
-export const SourcesAndMethod: Story = {
-  name: "Sources and method",
+const openRows = fn();
+
+/** The sentence's paragraph: its key words sit in their own `b` elements. */
+const sentence = (_: string, element: Element | null) =>
+  element?.tagName === "P" && element.textContent === GROUPED_SENTENCE;
+
+/**
+ * One meta row under the answer: the source, the reporting date, "How this was counted" and Copy.
+ * The method panel says what the read counted, and "See the 6 rows" opens its rows (czjw.108).
+ */
+export const HowThisWasCounted: Story = {
+  name: "How this was counted",
   args: {
     message: {
       id: "sourced",
       role: "assistant",
+      parts: [GROUPED_READ, { type: "text", text: CHART_ANSWER }],
+    },
+    labels: READ_LABELS,
+    artifacts: {
+      kind: "panel",
+      shown: null,
+      onOpen: fn(),
+      onOpenRows: openRows,
+    },
+  },
+  decorators: [withChartCheck(checkSourced)],
+  beforeEach: () => {
+    openRows.mockClear();
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("42")).toBeVisible();
+    await expect(
+      canvas.getByRole("list", { name: "Sources" })
+    ).toHaveTextContent("Source: Items");
+    await expect(canvas.getByText("as of 27 Oct 2026")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Copy" })).toBeVisible();
+
+    const how = canvas.getByRole("button", { name: "How this was counted" });
+
+    // The method waits closed, so the result reads first.
+    await expect(how).toHaveAttribute("aria-expanded", "false");
+    await expect(canvas.queryByText(sentence)).toBeNull();
+
+    await userEvent.click(how);
+    await expect(how).toHaveAttribute("aria-expanded", "true");
+    await expect(canvas.getByText(sentence)).toBeVisible();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "See the 6 rows" })
+    );
+    await expect(openRows).toHaveBeenCalledWith(
+      expect.objectContaining({ toolCallId: "call-by-month" })
+    );
+
+    await userEvent.click(how);
+    await expect(canvas.queryByText(sentence)).toBeNull();
+  },
+};
+
+/** A read that matched nothing and a refused read say so, never "See the 0 rows" (czjw.108). */
+export const EmptyAndRefusedReads: Story = {
+  name: "Empty and refused reads",
+  args: {
+    message: {
+      id: "empty",
+      role: "assistant",
       parts: [
         {
           type: "tool-query-dataset",
-          toolCallId: "call-items",
+          toolCallId: "call-none",
           state: "output-available",
-          input: { dataset: "example.items", query: {} },
+          input: { dataset: "example.items", query: { select: ["createdOn"] } },
           output: {
             dataset: "example.items",
             asOf: "2026-10-27",
-            columns: [],
-            rows: [{}, {}],
+            columns: [{ name: "createdOn", type: "date" }],
+            rows: [],
             truncated: false,
           },
         },
-        { type: "text", text: CHART_ANSWER },
+        {
+          type: "tool-query-dataset",
+          toolCallId: "call-secret",
+          state: "output-error",
+          input: { dataset: "example.secret", query: { select: ["name"] } },
+          errorText: "You may not do that.",
+        },
+        { type: "text", text: PROSE_ANSWER },
       ],
     },
-    labels: { steps: {}, datasets: TITLES, fields: {} },
+    labels: READ_LABELS,
+    artifacts: {
+      kind: "panel",
+      shown: null,
+      onOpen: fn(),
+      onOpenRows: fn(),
+    },
   },
-  decorators: [withChartCheck(checkSourced)],
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("42")).toBeVisible();
-    await expect(canvas.getByText(/^Source: Items · Read /)).toBeVisible();
-
-    const sources = canvas.getByRole("list", { name: "Sources" });
-
-    await expect(sources).toHaveTextContent("Source: Items");
-    await expect(canvas.getByRole("button", { name: "Copy" })).toBeVisible();
-
-    const method = canvas.getByText("Listed the items.");
-
-    // The method waits in a closed fold, so the result reads first.
-    await expect(method).not.toBeVisible();
-    await userEvent.click(canvas.getByText("How this was counted"));
-    await expect(method).toBeVisible();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "How this was counted" })
+    );
+    await expect(canvas.getByText("No rows matched.")).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: /^See the \d/ })
+    ).toBeNull();
+    await expect(
+      canvas.getByText(
+        "Secret items: this read was refused, so it counted nothing."
+      )
+    ).toBeVisible();
   },
 };
 

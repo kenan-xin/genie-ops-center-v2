@@ -65,6 +65,7 @@ export type Read = {
   readonly query: DatasetQuery;
   readonly columns: readonly DatasetColumn[];
   readonly rows: readonly Readonly<Record<string, DatasetValue>>[];
+  /** The row cap cut the read, so its count is a floor. A query's own `limit` does not count. */
   readonly truncated: boolean;
 };
 
@@ -86,15 +87,23 @@ export function readsOf(parts: readonly MessagePart[]): readonly Read[] {
 
     if (!output.success) return [];
 
-    const query = datasetQuerySchema.safeParse(
+    const parsed = datasetQuerySchema.safeParse(
       readInput.safeParse(part.input).data?.query
     );
+
+    const query = parsed.success ? parsed.data : {};
+
+    // The gate marks a read cut when more rows matched than it returned, also at the query's own
+    // limit, as for "the largest one"; only the row cap leaves the count a floor.
+    const limited =
+      query.limit !== undefined && output.data.rows.length >= query.limit;
 
     return [
       {
         ...output.data,
         toolCallId: part.toolCallId,
-        query: query.success ? query.data : {},
+        query,
+        truncated: output.data.truncated && !limited,
       },
     ];
   });

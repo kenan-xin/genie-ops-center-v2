@@ -51,7 +51,7 @@ const meta = {
     suggestions: [],
     inbox: [],
     timeZone: "UTC",
-    artifacts: { kind: "link", href: () => "/ask" },
+    artifacts: { kind: "link", href: () => "/ask", rowsHref: () => "/ask" },
     headingLevel: 3,
     onNewChat: fn(),
   },
