@@ -60,8 +60,8 @@ beforeAll(async () => {
   deployment = await startDisposableDeployment([invoicesModule]);
   await enableModules(deployment.context, ["invoices"]);
   await seedRoles(deployment.context, [invoicesModule]);
-  viewerUserId = await personWithSeededRole("Viewer");
-  financeUserId = await personWithSeededRole("Finance");
+  viewerUserId = await personWithSeededRole("Invoices and Payments viewer");
+  financeUserId = await personWithSeededRole("Invoices and Payments editor");
 }, 120000);
 
 afterAll(async () => {
@@ -261,7 +261,7 @@ function anInvoice(customerId: string) {
 
 describe("invoices write access", () => {
   it.each(WRITES)(
-    "the seeded Viewer is refused $name and changes nothing, and Finance is allowed",
+    "the seeded Invoices and Payments viewer is refused $name and changes nothing, and the Invoices and Payments editor is allowed",
     async ({ call }) => {
       const write = await call();
       const before = await ledgerState();

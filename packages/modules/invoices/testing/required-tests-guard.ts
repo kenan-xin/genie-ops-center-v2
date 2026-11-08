@@ -77,12 +77,20 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ].map((row) => `payment readings ${row}`),
   },
   {
+    file: "testing/roles.integration.test.ts",
+    reason:
+      "Spec 7 R-39 and R-33c: the role rename keeps ids, assignments and access (czjw.100)",
+    cases: [
+      "invoices roles on an existing deployment renames Finance and Viewer, keeping their ids, assignments and access",
+    ],
+  },
+  {
     file: "testing/inbox.integration.test.ts",
     reason:
       "Spec 7 R-37 and DEC-39: the inbox lists every document with its status, for a tenant-wide reader",
     cases: [
       "lists every document newest first with its label, kind, status and what was found",
-      "refuses a reader scoped to one customer, and offers no upload to a Viewer",
+      "refuses a reader scoped to one customer, and offers no upload to an Invoices and Payments viewer",
       "Ask links to Documents for a holder of invoices:write only",
     ].map((row) => `the documents inbox ${row}`),
   },
@@ -92,7 +100,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "Spec 7 R-30, R-38 and DEC-39: the review reads a document, its file, its customer and its proposal, for a tenant-wide reader",
     cases: [
       "answers a read invoice document with its reading, a link to its own bytes and the customer it names",
-      "refuses a reader scoped to one customer, gives a Viewer no write, and lists open invoices only to a reader of the customer",
+      "refuses a reader scoped to one customer, gives an Invoices and Payments viewer no write, and lists open invoices only to a reader of the customer",
       ...[
         "two named invoices split",
         "no number suggests by amount",
@@ -180,7 +188,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         "correctInvoiceTotal",
       ].map(
         (name) =>
-          `the seeded Viewer is refused ${name} and changes nothing, and Finance is allowed`
+          `the seeded Invoices and Payments viewer is refused ${name} and changes nothing, and the Invoices and Payments editor is allowed`
       ),
       "a writer scoped to one customer links its records and is refused on another customer's",
       "a writer scoped to one customer is refused uploadDocument",
@@ -285,7 +293,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the record answers link, change and unlink as three history rows in order, with no allocation left",
       "an invoice dated after the reporting date answers the note with its number",
       "a person with only invoices:use is refused the record page, its label and its loader",
-      "the record procedures answer canWrite for Finance only, and refuse a person with only invoices:use",
+      "the record procedures answer canWrite for the Invoices and Payments editor only, and refuse a person with only invoices:use",
     ].map((row) => `invoice pages ${row}`),
   },
   {

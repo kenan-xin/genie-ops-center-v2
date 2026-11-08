@@ -987,15 +987,15 @@ describe("invoice pages", () => {
     ).rejects.toMatchObject({ code: "forbidden" });
   });
 
-  it("the record procedures answer canWrite for Finance only, and refuse a person with only invoices:use", async () => {
+  it("the record procedures answer canWrite for the Invoices and Payments editor only, and refuse a person with only invoices:use", async () => {
     const { id: customerId } = await insertCustomer(t());
     const [invoice, payment] = await Promise.all([
       insertInvoice(t(), { customerId }),
       insertPayment(t(), { customerId }),
     ]);
     const [finance, viewer, user] = await Promise.all([
-      personWithSeededRole("Finance"),
-      personWithSeededRole("Viewer"),
+      personWithSeededRole("Invoices and Payments editor"),
+      personWithSeededRole("Invoices and Payments viewer"),
       insertPersonWith(t(), ["invoices:use"]),
     ]);
 

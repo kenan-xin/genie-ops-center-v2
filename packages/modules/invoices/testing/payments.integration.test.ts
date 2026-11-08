@@ -41,7 +41,7 @@ let financeUserId: string;
 beforeAll(async () => {
   deployment = await startDisposableDeployment([invoicesModule]);
   await enableModules(deployment.context, ["invoices"]);
-  // The write key of the Finance role, tenant-wide.
+  // The write key of the Invoices and Payments editor role, tenant-wide.
   ({ userId: financeUserId } = await insertPersonWith(deployment.context, [
     "invoices:write",
   ]));

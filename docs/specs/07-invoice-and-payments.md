@@ -129,7 +129,7 @@ R-38. Opening a document shows the full-page review of variant D: the document o
 
 R-38a. The invoice record page and the payment record page show the document desk, variant C of `invoice-record.prototype.html` in the design workspace (owner, 2026-11-03, `czjw.84`). The PDF page shows inside the record page without a click. On a desktop the page sits in the center, and each read field is pinned beside its source line by a leader line, placed by the same text-layer match as the highlights of R-38. Links and history sit in a side drawer. The status and the amounts sit above the page, with Outstanding the largest, then Total, Paid and the due date. On a phone the page comes first, and the record opens in a bottom sheet that peeks with the status and the outstanding amount. Each field keeps its origin tag, and the link actions of R-32 stay (Undo, Change amount, Remove link, the total correction). A field with no quote, or a PDF with no text layer, gets no pin and is listed beside the page. A record entered by hand has no page and shows the record full width. A PDF that fails to load offers Download and Try again.
 
-R-39. The module declares `invoices:read` and `invoices:write` and default roles Finance (both) and Viewer (read).
+R-39. The module declares `invoices:read` and `invoices:write` and default roles Invoices and Payments editor (both) and Invoices and Payments viewer (read). Renamed 2026-11-08 from Finance and Viewer, with their ids and assignments (`czjw.100`).
 
 ### Boss agent (`DEC-29`)
 

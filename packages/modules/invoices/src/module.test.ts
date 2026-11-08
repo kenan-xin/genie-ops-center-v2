@@ -8,9 +8,11 @@ describe("the invoices module declaration", () => {
     expect(validateModule(invoicesModule)).toEqual([]);
   });
 
-  it("adds Viewer on Access, the owner's default access role (A6)", () => {
-    // Finance changes shared money records, so an administrator picks it on purpose (owner, 2026-11-02).
-    expect(invoicesModule.defaultAccessRole).toBe("Viewer");
+  it("adds Invoices and Payments viewer on Access, the owner's default access role (A6)", () => {
+    // The editor changes shared money records, so an administrator picks it on purpose (owner, 2026-11-02).
+    expect(invoicesModule.defaultAccessRole).toBe(
+      "Invoices and Payments viewer"
+    );
   });
 
   it("contributes no frame origin until it frames something", async () => {

@@ -48,7 +48,7 @@ beforeAll(async () => {
   });
   useRecordedModel(t(), INVOICES_READING_RECORDINGS);
   await enableModules(t(), ["invoices"]);
-  // The Finance person: tenant-wide use, read and write.
+  // The editor: tenant-wide use, read and write.
   ({ userId: uploaderId } = await insertPersonWith(t(), [
     "invoices:use",
     "invoices:read",
@@ -106,7 +106,7 @@ const live = (upload: string) =>
     `03_Live_Upload_Documents/${LIVE_UPLOADS.find((name) => name.startsWith(upload))}`
   );
 
-/** Uploads the bytes as the Finance person and answers the document id. */
+/** Uploads the bytes as the editor and answers the document id. */
 async function uploaded(bytes: Buffer): Promise<string> {
   const answer = await uploadDocument(
     as(uploaderId),

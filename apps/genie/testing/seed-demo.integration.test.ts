@@ -135,7 +135,7 @@ describe("the demo seed command", () => {
     expect(lines.slice(1)).toEqual([
       `Demo account: user ${demoId}`,
       "Modules: invoices, analytics",
-      "1. Role assignments for the demo account: 6 to write, 0 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
+      "1. Role assignments for the demo account: 6 to write, 0 already present (Analytics editor, Analytics user, Analytics viewer, Invoices and Payments editor, Invoices and Payments user, Invoices and Payments viewer)",
       "2. Reporting date: blank -> 2026-10-27",
       "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
       "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
@@ -152,7 +152,7 @@ describe("the demo seed command", () => {
 
     expect(lines.slice(2, -1)).toEqual([
       "Modules: invoices",
-      "1. Role assignments for the demo account: 3 to write, 0 already present (Finance, Invoices and Payments user, Viewer)",
+      "1. Role assignments for the demo account: 3 to write, 0 already present (Invoices and Payments editor, Invoices and Payments user, Invoices and Payments viewer)",
       "2. Reporting date: blank -> 2026-10-27",
       "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
       "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
@@ -218,7 +218,11 @@ describe("the demo seed command", () => {
        where r.module_id = 'invoices' order by r.name`
     );
     expect(grants).toEqual(
-      ["Finance", "Invoices and Payments user", "Viewer"].map((name) => ({
+      [
+        "Invoices and Payments editor",
+        "Invoices and Payments user",
+        "Invoices and Payments viewer",
+      ].map((name) => ({
         name,
         principal_type: "user",
         principal_id: demoId,
@@ -260,7 +264,7 @@ describe("the demo seed command", () => {
     const lines = await run(false);
 
     expect(lines.slice(3)).toEqual([
-      "1. Role assignments for the demo account: 0 to write, 6 already present (Analytics editor, Analytics user, Analytics viewer, Finance, Invoices and Payments user, Viewer)",
+      "1. Role assignments for the demo account: 0 to write, 6 already present (Analytics editor, Analytics user, Analytics viewer, Invoices and Payments editor, Invoices and Payments user, Invoices and Payments viewer)",
       "2. Reporting date: 2026-10-27, already set",
       "3. Model connection: chat anthropic/claude-opus-5.5 and document openai/gpt-6.1-terra, already set",
       "4. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows), 0 readings to store",

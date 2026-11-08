@@ -242,7 +242,7 @@ describe("the documents inbox", () => {
       amountCents: 1000,
     });
 
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
 
     // A saved document shows its record (czjw.82): the customer, the amount and the invoices.
     const recordOf = (invoiceNumber: string) => ({
@@ -314,7 +314,7 @@ describe("the documents inbox", () => {
         updatedAt: new Date("2026-10-27T01:09:30.000Z"),
       })
       .where(eq(sourceDocument.id, document.id));
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
 
     const { rows } = await callProcedure(
       invoicesRouter,
@@ -332,7 +332,7 @@ describe("the documents inbox", () => {
       "insert into document (kind, sha256, file_id, file_name, reading_status) select 'payment', md5(g::text) || md5('b' || g::text), gen_random_uuid(), 'paged-' || g || '.pdf', 'read' from generate_series(1, 1001) as g"
     );
 
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
     const reader = callProcedure(invoicesRouter, as(finance));
 
     const [counted] = (
@@ -461,7 +461,9 @@ describe("the documents inbox", () => {
         );
       }
 
-      const finance = await personWithSeededRole("Finance");
+      const finance = await personWithSeededRole(
+        "Invoices and Payments editor"
+      );
       const reader = callProcedure(invoicesRouter, as(finance));
       const listed = await reader.listDocuments({
         after: null,
@@ -494,7 +496,7 @@ describe("the documents inbox", () => {
       insertDocument(t(), { kind: "purchase-order", fileName: "tabdoc-e.pdf" }),
     ]);
     await insertInvoice(t(), { customerId, documentId: saved.id });
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
     const reader = callProcedure(invoicesRouter, as(finance));
 
     const tabsUnder = (params: Record<string, string>) =>
@@ -548,7 +550,7 @@ describe("the documents inbox", () => {
     });
     const percent = await insertDocument(t(), { fileName: "srch 50% off.pdf" });
     await insertDocument(t(), { fileName: "srch 50x off.pdf" });
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
 
     const found = async (q: string) =>
       (await walkInbox(finance, { status: "all", q }))
@@ -576,7 +578,7 @@ describe("the documents inbox", () => {
       "update document set created_at = timestamptz '2026-11-02T17:30:00Z' where id = $1",
       [late.id]
     );
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
 
     const kept = async (uploaded: string) =>
       (
@@ -607,7 +609,9 @@ describe("the documents inbox", () => {
          from generate_series(1, 55) as g`,
         [tag]
       );
-      const finance = await personWithSeededRole("Finance");
+      const finance = await personWithSeededRole(
+        "Invoices and Payments editor"
+      );
 
       const walks = await Promise.all(
         (["asc", "desc"] as const).map(async (direction) => {
@@ -645,7 +649,7 @@ describe("the documents inbox", () => {
       "update document set updated_at = timestamptz '2026-01-01T00:00:00Z' where id = $1",
       [document.id]
     );
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
     const reader = callProcedure(invoicesRouter, as(finance));
 
     await reader.saveInvoice({
@@ -704,7 +708,7 @@ describe("the documents inbox", () => {
       paymentId: paid.id,
       amountCents: 150_000,
     });
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
 
     const rows = await walkInbox(finance, {
       status: "all",
@@ -738,7 +742,7 @@ describe("the documents inbox", () => {
       fileName: "other.pdf",
       readingStatus: "reading",
     });
-    const finance = await personWithSeededRole("Finance");
+    const finance = await personWithSeededRole("Invoices and Payments editor");
 
     await expect(
       callProcedure(invoicesRouter, as(finance)).documentStatus({
@@ -763,7 +767,7 @@ describe("the documents inbox", () => {
     ).rejects.toMatchObject({ code: "forbidden" });
   });
 
-  it("refuses a reader scoped to one customer, and offers no upload to a Viewer", async () => {
+  it("refuses a reader scoped to one customer, and offers no upload to an Invoices and Payments viewer", async () => {
     const { id: customerId } = await insertCustomer(t());
     const { userId: scoped } = await insertPersonWith(
       t(),
@@ -778,7 +782,7 @@ describe("the documents inbox", () => {
       code: "forbidden",
     });
 
-    const viewer = await personWithSeededRole("Viewer");
+    const viewer = await personWithSeededRole("Invoices and Payments viewer");
 
     await expect(
       callProcedure(invoicesRouter, as(viewer)).listDocuments({ after: null })
@@ -786,8 +790,12 @@ describe("the documents inbox", () => {
   });
 
   it("Ask links to Documents for a holder of invoices:write only", async () => {
-    const finance = await personWithSeededRole("Finance", ["core:ask:use"]);
-    const viewer = await personWithSeededRole("Viewer", ["core:ask:use"]);
+    const finance = await personWithSeededRole("Invoices and Payments editor", [
+      "core:ask:use",
+    ]);
+    const viewer = await personWithSeededRole("Invoices and Payments viewer", [
+      "core:ask:use",
+    ]);
 
     expect(await inboxOf(finance)).toEqual([
       { label: "Documents", href: "/m/invoices/documents" },

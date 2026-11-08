@@ -115,13 +115,39 @@ export const invoicesModule = {
   defaultRoles: [
     { name: "Invoices and Payments user", permissions: ["invoices:use"] },
     {
-      name: "Finance",
+      name: "Invoices and Payments editor",
       permissions: ["invoices:use", "invoices:read", "invoices:write"],
     },
-    { name: "Viewer", permissions: ["invoices:use", "invoices:read"] },
+    {
+      name: "Invoices and Payments viewer",
+      permissions: ["invoices:use", "invoices:read"],
+    },
   ],
-  // Finance changes shared money records, so an administrator picks it on purpose (A6).
-  defaultAccessRole: "Viewer",
+  // The editor changes shared money records, so an administrator picks it on purpose (A6).
+  defaultAccessRole: "Invoices and Payments viewer",
+  // R-33c: display renames of the module's own system roles, ids and assignments kept (czjw.100).
+  permissionTransformations: [
+    {
+      id: "0001-finance-to-editor",
+      release: "0.0.0",
+      description: "Rename Finance to Invoices and Payments editor",
+      change: {
+        kind: "rename-role",
+        from: "Finance",
+        to: "Invoices and Payments editor",
+      },
+    },
+    {
+      id: "0002-viewer-to-viewer",
+      release: "0.0.0",
+      description: "Rename Viewer to Invoices and Payments viewer",
+      change: {
+        kind: "rename-role",
+        from: "Viewer",
+        to: "Invoices and Payments viewer",
+      },
+    },
+  ],
 
   navigation: {
     pinned: [],

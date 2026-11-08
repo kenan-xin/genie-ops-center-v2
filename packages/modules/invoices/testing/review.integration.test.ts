@@ -62,7 +62,7 @@ beforeAll(async () => {
   await enableModules(t(), ["invoices"]);
   await seedRoles(t(), [invoicesModule]);
   registerModuleRuntime(t(), [invoicesModule]);
-  finance = await personWithSeededRole("Finance");
+  finance = await personWithSeededRole("Invoices and Payments editor");
 }, 120000);
 
 afterAll(async () => {
@@ -181,7 +181,7 @@ describe("the document review", () => {
     });
   });
 
-  it("refuses a reader scoped to one customer, gives a Viewer no write, and lists open invoices only to a reader of the customer", async () => {
+  it("refuses a reader scoped to one customer, gives an Invoices and Payments viewer no write, and lists open invoices only to a reader of the customer", async () => {
     const { id: customerA } = await insertCustomer(t());
     const { id: customerB } = await insertCustomer(t());
     const open = await insertInvoice(t(), {
@@ -218,7 +218,7 @@ describe("the document review", () => {
       api(scoped).listOpenInvoices({ customerId: customerB, currency: "SGD" })
     ).rejects.toMatchObject({ code: "forbidden" });
 
-    const viewer = await personWithSeededRole("Viewer");
+    const viewer = await personWithSeededRole("Invoices and Payments viewer");
 
     await expect(api(viewer).getDocumentReview({ id })).resolves.toMatchObject({
       canWrite: false,
