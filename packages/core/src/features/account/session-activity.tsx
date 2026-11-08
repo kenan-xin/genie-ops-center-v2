@@ -2,6 +2,7 @@ import { useThrottler } from "@tanstack/react-pacer";
 import { useEffect, useRef, useState } from "react";
 import type { JSX } from "react";
 import { useIdleTimer } from "react-idle-timer";
+import { z } from "zod";
 
 import {
   activityThrottleWaitMs,
@@ -11,15 +12,20 @@ import { IdleWarningDialog } from "./idle-warning-dialog.tsx";
 import type { IdleWarningStrings } from "./idle-warning-dialog.tsx";
 
 /**
- * What one activity call answered: the live session slid (R-15), or the unauthenticated answer
- * that lands the browser on the session-expired banner (R-14, R-17a).
+ * What one activity call answered: the live session slid (R-15), with the tenant's current idle
+ * window, or the unauthenticated answer that lands the browser on the session-expired banner
+ * (R-14, R-17a).
  */
 export type SessionActivityResult =
-  | { readonly kind: "active" }
+  | { readonly kind: "active"; readonly idleMinutes: number }
   | { readonly kind: "unauthenticated" };
 
 export type SessionActivityProps = {
-  /** The tenant's idle window; the throttle wait is half of it (R-15). */
+  /**
+   * The tenant's idle window when the page loaded. Each live activity answer replaces it in every
+   * tab, so a window an administrator changes reaches the tabs that are already open (`6wz1.92`).
+   * The throttle wait is half of it (R-15).
+   */
   readonly idleMinutes: number;
   /**
    * The transport, injected so the Storybook host asserts the call pattern without a network:
@@ -40,6 +46,12 @@ export type SessionActivityProps = {
 const CLOCK_STEP_MS = 1_000;
 
 /**
+ * The tenant's current idle window: the body of a live activity answer, and the message one tab
+ * sends the others after its answer.
+ */
+export const idleWindow = z.object({ idleMinutes: z.number().positive() });
+
+/**
  * The browser half of the idle rule (R-15, R-15a). The browser counts the idle window from the
  * last pointer, keyboard, or touch input on its own clock, and one count serves every tab of the
  * browser. Input slides the server session through one activity call, throttled to half the
@@ -53,6 +65,11 @@ const CLOCK_STEP_MS = 1_000;
  *
  * Both libraries measure time with `Date.now()`, so a changed wall clock reads as idle time or as
  * no time at all. The clock check restarts the count after such a step instead.
+ *
+ * The shared count warns and ends only when every tab agrees, so every tab must count the same
+ * window. Each live activity answer carries the tenant's current window, and the tab sends it to
+ * the other tabs. A changed window restarts the shared count, which is right, because the answer
+ * just slid the server session.
  */
 export function SessionActivity(props: SessionActivityProps): JSX.Element {
   // The latest transport and navigation, read through refs by handlers that outlive a render.
@@ -72,6 +89,8 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
 
   const [failed, setFailed] = useState(false);
 
+  const [idleMinutes, setIdleMinutes] = useState(props.idleMinutes);
+
   // When this tab opened the warning, on the monotonic clock; undefined while it is closed.
   const promptedAt = useRef<number | undefined>(undefined);
 
@@ -83,12 +102,21 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
 
   const postIdleSignOut = () => idleForm.current?.requestSubmit();
 
-  const leadMs = warningLeadMs(props.idleMinutes);
+  const leadMs = warningLeadMs(idleMinutes);
 
   const send = async (): Promise<SessionActivityResult["kind"]> => {
     if (unauthenticated.current) return "unauthenticated";
 
-    const { kind } = await transport.current();
+    const result = await transport.current();
+
+    const { kind } = result;
+
+    if (result.kind === "active") {
+      setIdleMinutes(result.idleMinutes);
+      // Every answer, not only a change: this tab can hold the new window since its load while
+      // an older tab still counts the old one.
+      message({ idleMinutes: result.idleMinutes });
+    }
 
     // One navigation, ever: the activity route clears the session cookie on its side, and a
     // repeat would reload the page the browser is already on.
@@ -116,11 +144,11 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
     () => {
       send().catch(() => undefined);
     },
-    { wait: activityThrottleWaitMs(props.idleMinutes) }
+    { wait: activityThrottleWaitMs(idleMinutes) }
   );
 
-  const { activate, isPrompted, reset } = useIdleTimer({
-    timeout: props.idleMinutes * 60_000,
+  const { activate, isPrompted, message, reset } = useIdleTimer({
+    timeout: idleMinutes * 60_000,
     promptBeforeIdle: leadMs,
     crossTab: true,
     syncTimers: 200,
@@ -134,6 +162,11 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
       setRemainingMs(leadMs);
       setFailed(false);
       setOpen(true);
+    },
+    onMessage: (data) => {
+      const sent = idleWindow.safeParse(data);
+
+      if (sent.success) setIdleMinutes(sent.data.idleMinutes);
     },
     onActive: () => {
       promptedAt.current = undefined;

@@ -1,12 +1,13 @@
 "use client";
 
-import { SessionActivity } from "@genie/core/features/account";
+import { idleWindow, SessionActivity } from "@genie/core/features/account";
 import type { SessionActivityResult } from "@genie/core/features/account";
 import { useTranslations } from "next-intl";
 
 /**
  * The application's wiring of the activity client (R-15): the transport posts the real activity
- * route and classifies its status, and an unauthenticated answer lands the browser on the
+ * route and classifies its status, a live answer carries the tenant's current idle window, and
+ * an unauthenticated answer lands the browser on the
  * sign-in page's session-expired state (R-14, R-17a). The route clears the session cookie on
  * that answer, so the navigation cannot loop.
  */
@@ -15,7 +16,7 @@ async function postActivity(): Promise<SessionActivityResult> {
 
   // Read to the end: Chromium keeps a fetch open while its chunked body is unread, and the open
   // request holds a keep-alive connection.
-  await response.arrayBuffer();
+  const body = await response.text();
 
   if (response.status === 401) return { kind: "unauthenticated" };
 
@@ -25,7 +26,7 @@ async function postActivity(): Promise<SessionActivityResult> {
     throw new Error(`the activity call was refused (${response.status}).`);
   }
 
-  return { kind: "active" };
+  return { kind: "active", ...idleWindow.parse(JSON.parse(body)) };
 }
 
 /**

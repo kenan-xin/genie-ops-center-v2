@@ -6,6 +6,7 @@
 export { AccountPage } from "./account-page.tsx";
 
 export {
+  idleWindow,
   SessionActivity,
   type SessionActivityResult,
   type SessionActivityProps,

@@ -18,8 +18,16 @@ const IDLE_SIGN_OUT = /\/api\/auth\/sign-out\?idle=1$/;
 const STAY_FAILED =
   "We could not reach the server. Check your connection and try again.";
 
+/** The stories' window, 7.5 seconds. */
+const IDLE_MINUTES = 0.125;
+
 const callActive = fn((): Promise<SessionActivityResult> =>
-  Promise.resolve({ kind: "active" })
+  Promise.resolve({ kind: "active", idleMinutes: IDLE_MINUTES })
+);
+
+/** The administrator halved the window after the page loaded: 3.75 seconds. */
+const callLowered = fn((): Promise<SessionActivityResult> =>
+  Promise.resolve({ kind: "active", idleMinutes: IDLE_MINUTES / 2 })
 );
 
 const callExpired = fn((): Promise<SessionActivityResult> =>
@@ -63,7 +71,7 @@ const meta = {
     a11y: { test: "error" },
   },
   args: {
-    idleMinutes: 0.125,
+    idleMinutes: IDLE_MINUTES,
     call: callActive,
     onUnauthenticated,
     warning: {
@@ -245,6 +253,18 @@ export const ClockBackWhileOpen: Story = {
   },
 };
 
+export const AdoptsTheAnsweredWindow: Story = {
+  name: "Warns on the window the activity call answers, not the one the page loaded with",
+  args: { call: callLowered },
+  play: async () => {
+    await waitFor(() => expect(callLowered).toHaveBeenCalledTimes(1));
+
+    // The answered 3.75 second window warns at 1.875 seconds; the loaded one would wait to 3.75.
+    await openWarning(2_750);
+    await expect(screen.getByRole("timer")).toHaveTextContent(/^0:0[0-2]$/);
+  },
+};
+
 export const ThrottlesWithATrailingCall: Story = {
   name: "Throttles input to half the window, with a trailing call",
   play: async () => {
@@ -348,7 +368,10 @@ export const StaySignedInAfterTheSessionEnded: Story = {
   name: "Stay signed in after the session ended elsewhere lands once, without an error",
   args: { call: callEndsAfterMount },
   beforeEach: () => {
-    callEndsAfterMount.mockResolvedValueOnce({ kind: "active" });
+    callEndsAfterMount.mockResolvedValueOnce({
+      kind: "active",
+      idleMinutes: IDLE_MINUTES,
+    });
   },
   play: async () => {
     const dialog = await openWarning(4_750);
