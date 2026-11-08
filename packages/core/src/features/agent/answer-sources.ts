@@ -323,7 +323,8 @@ export function readSentence(
   const first = aggregates[0];
   const sentence: SentencePart[] = [...joined(measures)];
 
-  if (first !== undefined && first.fn !== "count") {
+  // A count already names the records, so "of the items" would say them twice.
+  if (first !== undefined && aggregates.every(({ fn }) => fn !== "count")) {
     sentence.push({ text: ` of the ${things}`, strong: false });
   }
 
@@ -344,15 +345,13 @@ export function readSentence(
 
     return labelled === undefined
       ? []
-      : [{ text: groupText(group, labelled), strong: true }];
+      : [[{ text: groupText(group, labelled), strong: true }]];
   });
 
   if (groupRuns.length > 0) {
     sentence.push(
       { text: ", grouped by ", strong: false },
-      ...groupRuns.flatMap((run, index) =>
-        index === 0 ? [run] : [{ text: " and ", strong: false }, run]
-      )
+      ...joined(groupRuns)
     );
   }
 

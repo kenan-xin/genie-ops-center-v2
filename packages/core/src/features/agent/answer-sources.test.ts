@@ -250,6 +250,25 @@ describe("the sentence of a read", () => {
     ).toBe("Counted the items, grouped by Region, top 5 by Count.");
   });
 
+  it("names the records once beside a count, and lists three groups with commas", () => {
+    expect(
+      text({
+        filters: [{ field: "paid", op: "eq", value: false }],
+        groupBy: [
+          { field: "region" },
+          { field: "status" },
+          { field: "createdOn" },
+        ],
+        aggregates: [
+          { fn: "sum", field: "amountCents", as: "total" },
+          { fn: "count", as: "items" },
+        ],
+      })
+    ).toBe(
+      "Added up Amount and counted the items with Paid no, grouped by Region, Status and Created on."
+    );
+  });
+
   it("falls back to the row count when a field has no label", () => {
     expect(
       readSentence(
