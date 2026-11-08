@@ -21,8 +21,8 @@ let deployment: DisposableDeployment;
 
 const ALLOWED = ["openai/gpt-6.1-terra", "anthropic/claude-opus-5.5"];
 
-/** This deployment has no module, so no tool step and no dataset title. */
-const NO_LABELS = { steps: {}, datasets: {} };
+/** This deployment has no module, so no tool step, no dataset title and no field label. */
+const NO_LABELS = { steps: {}, datasets: {}, fields: {} };
 
 beforeAll(async () => {
   deployment = await startDisposableDeployment([]);
