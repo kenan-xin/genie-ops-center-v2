@@ -135,25 +135,14 @@ export const twoCurrencyInvoiceList: InvoiceListPageView = {
   ],
 };
 
-/** Page one under the Overdue chip, as `listInvoices` answers it. */
+/** Page one under the Overdue chip, as `listInvoices` answers it: the figures stay the ledger's. */
 export const overdueInvoicePage: InvoiceListView = {
   asOf: "2026-10-27",
   rows: [OVERDUE],
   truncated: false,
   next: null,
   counts: INVOICE_COUNTS,
-  summary: [
-    {
-      currency: "SGD",
-      outstandingCents: 300_000,
-      overdueCents: 300_000,
-      overdueCount: 1,
-      invoicedCents: 500_000,
-      count: 1,
-      unpaidCount: 1,
-      paidCount: 0,
-    },
-  ],
+  summary: defaultInvoiceList.summary,
 };
 
 /** Page one under the Paid chip and a search, as `listInvoices` answers it. */
@@ -163,18 +152,7 @@ export const paidInvoicePage: InvoiceListView = {
   truncated: false,
   next: null,
   counts: INVOICE_COUNTS,
-  summary: [
-    {
-      currency: "SGD",
-      outstandingCents: 0,
-      overdueCents: 0,
-      overdueCount: 0,
-      invoicedCents: 720_000,
-      count: 1,
-      unpaidCount: 0,
-      paidCount: 1,
-    },
-  ],
+  summary: defaultInvoiceList.summary,
 };
 
 const PAYMENT = {

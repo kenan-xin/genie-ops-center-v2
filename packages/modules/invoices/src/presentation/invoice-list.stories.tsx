@@ -170,7 +170,7 @@ async function updatedAndFigures(
     "29 paid"
   );
   await expect(note(canvasElement, "SGD", "Invoiced")).toHaveTextContent(
-    "All invoice dates"
+    "In 36 invoices"
   );
   await expect(canvas.queryByRole("button", { name: "Show more" })).toBeNull();
 }
@@ -250,12 +250,12 @@ export const FilterByStatus: Story = {
       canvas.getByRole("tab", { name: "Overdue 1" })
     ).toHaveAttribute("aria-selected", "true");
     await expect(listAddress()).toEqual(["status=overdue"]);
-    // The strip is the filtered page's: one invoice, not the four of the unfiltered page.
+    // The strip stays the whole ledger's on every tab (czjw.112).
     await expect(figure(canvasElement, "SGD", "Invoices")).toHaveTextContent(
-      /^1$/
+      /^36$/
     );
-    await expect(figure(canvasElement, "SGD", "Overdue")).toHaveTextContent(
-      /^SGD\s?3,000\.00$/
+    await expect(figure(canvasElement, "SGD", "Outstanding")).toHaveTextContent(
+      /^SGD\s?12,550\.00$/
     );
   },
 };

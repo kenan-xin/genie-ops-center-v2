@@ -337,21 +337,67 @@ describe("invoice pages", () => {
     });
 
     expect(byName.rows).toHaveLength(5);
-    expect(byName.summary).toEqual([
+  });
+
+  it("the invoice figures read the whole ledger a scoped reader may read, on every tab and filter", async () => {
+    const [mine, other] = await Promise.all([
+      insertCustomer(t()),
+      insertCustomer(t()),
+    ]);
+
+    await Promise.all([
+      insertInvoice(t(), {
+        customerId: mine.id,
+        number: "FIG-LATE",
+        invoiceDate: "2026-09-01",
+        dueDate: "2026-10-01",
+        totalCents: 100_000,
+      }),
+      insertInvoice(t(), {
+        customerId: mine.id,
+        invoiceDate: "2026-10-15",
+        dueDate: "2026-12-31",
+        totalCents: 200_000,
+      }),
+      insertInvoice(t(), { customerId: other.id, totalCents: 900_000 }),
+    ]);
+
+    const { userId } = await insertPersonWith(t(), READER, {
+      type: "invoices-customer",
+      id: mine.id,
+    });
+    const reader = callProcedure(invoicesRouter, contextFor(userId));
+
+    // czjw.112: on Overdue, Outstanding stays the ledger's, not the Overdue figure again.
+    const ledger = [
       {
         currency: "SGD",
         outstandingCents: 300_000,
         overdueCents: 100_000,
         overdueCount: 1,
-        invoicedCents: 500_000,
-        count: 5,
-        unpaidCount: 3,
-        paidCount: 2,
+        invoicedCents: 300_000,
+        count: 2,
+        unpaidCount: 2,
+        paidCount: 0,
       },
-    ]);
+    ];
+
+    const pages = await Promise.all(
+      (
+        [
+          {},
+          { status: "overdue" },
+          { customer: mine.id },
+          { date: "2026-09-01..2026-09-30" },
+          { q: "FIG-LATE" },
+        ] as const
+      ).map((params) => reader.listInvoices({ after: null, params }))
+    );
+
+    expect(pages.map((page) => page.summary)).toEqual(pages.map(() => ledger));
   });
 
-  it("the invoice list summary covers the whole filter, and the next page keeps the filter", async () => {
+  it("the invoice tab counts cover the whole filter, and the next page keeps the filter", async () => {
     const customer = await insertCustomer(t());
 
     await t().db.$client.query(
@@ -370,18 +416,7 @@ describe("invoice pages", () => {
     const first = await reader.listInvoices({ after: null, params });
 
     expect(first.rows).toHaveLength(50);
-    expect(first.summary).toEqual([
-      {
-        currency: "SGD",
-        outstandingCents: 100_100,
-        overdueCents: 100_100,
-        overdueCount: 1001,
-        invoicedCents: 100_100,
-        count: 1001,
-        unpaidCount: 1001,
-        paidCount: 0,
-      },
-    ]);
+    expect(first.counts).toMatchObject({ all: 1002, overdue: 1001 });
 
     const second = await reader.listInvoices({ after: first.next, params });
 
@@ -465,8 +500,13 @@ describe("invoice pages", () => {
     ]);
   });
 
-  it("the payment list summary keeps each currency apart and covers only what the filters keep", async () => {
-    const customer = await insertCustomer(t());
+  it("the payment figures keep each currency apart and read the whole ledger on every tab and filter", async () => {
+    const [customer, other] = await Promise.all([
+      insertCustomer(t()),
+      insertCustomer(t()),
+    ]);
+
+    await insertPayment(t(), { customerId: other.id, amountCents: 900_000 });
     const invoice = await insertInvoice(t(), {
       customerId: customer.id,
       totalCents: 1_000_000,
@@ -493,28 +533,13 @@ describe("invoice pages", () => {
       amountCents: 40_000,
     });
 
-    const { userId } = await insertPersonWith(t(), READER);
+    const { userId } = await insertPersonWith(t(), READER, {
+      type: "invoices-customer",
+      id: customer.id,
+    });
     const reader = callProcedure(invoicesRouter, contextFor(userId));
 
-    const summary = async (status: "all" | "not-linked" = "all") =>
-      (
-        await reader.listPayments({
-          after: null,
-          params: { customer: customer.id, status },
-        })
-      ).summary;
-
-    const usd = {
-      currency: "USD",
-      collectedCents: 50_000,
-      allocatedCents: 0,
-      unallocatedCents: 50_000,
-      count: 1,
-      allocatedCount: 0,
-      notLinkedCount: 1,
-    };
-
-    expect(await summary()).toEqual([
+    const ledger = [
       {
         currency: "SGD",
         collectedCents: 200_000,
@@ -524,20 +549,29 @@ describe("invoice pages", () => {
         allocatedCount: 2,
         notLinkedCount: 1,
       },
-      usd,
-    ]);
-    expect(await summary("not-linked")).toEqual([
       {
-        currency: "SGD",
-        collectedCents: 100_000,
-        allocatedCents: 40_000,
-        unallocatedCents: 60_000,
+        currency: "USD",
+        collectedCents: 50_000,
+        allocatedCents: 0,
+        unallocatedCents: 50_000,
         count: 1,
-        allocatedCount: 1,
+        allocatedCount: 0,
         notLinkedCount: 1,
       },
-      usd,
-    ]);
+    ];
+
+    const pages = await Promise.all(
+      (
+        [
+          {},
+          { status: "not-linked" },
+          { customer: customer.id },
+          { date: "2026-01-01..2026-01-31" },
+        ] as const
+      ).map((params) => reader.listPayments({ after: null, params }))
+    );
+
+    expect(pages.map((page) => page.summary)).toEqual(pages.map(() => ledger));
   });
 
   it.each(

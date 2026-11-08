@@ -106,7 +106,7 @@ const invoiceFigures = [
         lead: true as const,
       },
       { label: "Overdue", value: "SGD 9,870.00", note: "In 3 invoices" },
-      { label: "Invoiced", value: "SGD 152,400.00", note: "All invoice dates" },
+      { label: "Invoiced", value: "SGD 152,400.00", note: "In 36 invoices" },
       { label: "Invoices", value: "36", note: "21 paid" },
     ],
   },

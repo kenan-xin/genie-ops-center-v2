@@ -18,7 +18,7 @@ import {
   invoiceListParams,
   invoicesContract,
 } from "../contract.ts";
-import { formatDay, formatInstant, rangeNote } from "./format.ts";
+import { formatDay, formatInstant } from "./format.ts";
 import { InstantCell } from "./instant-cell.tsx";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
 import { invoiceListDefinition } from "./list-definitions.ts";
@@ -80,8 +80,11 @@ const recordLink = (row: InvoiceListRow) => (
   </PageLink>
 );
 
-/** One figure card per currency, so no figure adds two currencies (LH17). */
-const figuresOf = (summary: readonly InvoiceListSummary[], invoiced: string) =>
+/**
+ * One figure card per currency, so no figure adds two currencies (LH17). The figures are the whole
+ * ledger's, so no note names a tab or a filter (czjw.112).
+ */
+const figuresOf = (summary: readonly InvoiceListSummary[]) =>
   summary.map((entry) => ({
     label: `Totals in ${entry.currency}`,
     figures: [
@@ -99,7 +102,7 @@ const figuresOf = (summary: readonly InvoiceListSummary[], invoiced: string) =>
       {
         label: "Invoiced",
         value: money(entry.currency, entry.invoicedCents),
-        note: invoiced,
+        note: `In ${invoiceCount(entry.count)}`,
       },
       {
         label: "Invoices",
@@ -220,10 +223,7 @@ export function InvoiceList(props: InvoiceListProps) {
             definition={definition}
             state={state}
             counts={list.first?.counts ?? undefined}
-            figures={figuresOf(
-              list.first?.summary ?? [],
-              rangeNote(params.date, "All invoice dates")
-            )}
+            figures={figuresOf(list.first?.summary ?? [])}
             anchorDay={view.asOf}
             table={{
               rows: list.rows,

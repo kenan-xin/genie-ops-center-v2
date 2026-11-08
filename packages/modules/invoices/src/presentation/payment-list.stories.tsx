@@ -134,7 +134,7 @@ async function updatedAndFigures(
   await expect(time).toHaveLength(1);
   await expect(time[0]!.parentElement).toHaveTextContent("2 Nov 2026");
   await expect(note(canvasElement, "SGD", "Collected")).toHaveTextContent(
-    "All payment dates"
+    "In 3 payments"
   );
   await expect(note(canvasElement, "SGD", "Allocated")).toHaveTextContent(
     "In 2 payments"
@@ -241,12 +241,12 @@ export const FilterByLink: Story = {
       canvas.getByRole("tab", { name: "Not linked 2" })
     ).toHaveAttribute("aria-selected", "true");
     await expect(listAddress()).toEqual(["status=not-linked"]);
-    // The strip is the filtered page's: two payments, not the three of the unfiltered page.
+    // The strip stays the whole ledger's on every tab (czjw.112).
     await expect(figure(canvasElement, "SGD", "Payments")).toHaveTextContent(
-      /^2$/
+      /^3$/
     );
     await expect(figure(canvasElement, "SGD", "Collected")).toHaveTextContent(
-      /^SGD\s?8,500\.00$/
+      /^SGD\s?13,500\.00$/
     );
   },
 };

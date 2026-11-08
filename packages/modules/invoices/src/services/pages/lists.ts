@@ -76,12 +76,9 @@ function paramsOf(
   );
 }
 
-/** Whether a row of this status is in the active tab: every status without a tab filter. */
-function inTab(list: ListQuery, status: string): boolean {
-  return list.tab.every(
-    (filter) => filter.op === "in" && filter.values.includes(status)
-  );
-}
+/** Whether the list reads less than the whole ledger the person can see, before the tab. */
+const narrowed = (list: ListQuery) =>
+  list.filters.length > 0 || list.search !== undefined;
 
 /** The rows of each tab, from the groups of every status under the other filters (LH17). */
 export function countsOf(
@@ -142,7 +139,7 @@ async function invoiceGroups(
   return result.rows.map((entry) => invoiceGroup.parse(entry));
 }
 
-/** The figures of each currency over the groups of the active tab (LH17). */
+/** The figures of each currency over the whole ledger (LH17, czjw.112). */
 function invoiceSummaryOf(
   groups: readonly z.infer<typeof invoiceGroup>[]
 ): InvoiceListSummary[] {
@@ -182,7 +179,8 @@ function invoiceSummaryOf(
  * The Invoices list as of the reporting date: `queryDataset` reads under `invoices:read`, so a
  * scoped person sees only the customers they may read (DEC-39, R-9, R-36). A page holds 50 rows,
  * sorted in the database on an allowed column and then the row key, and `after` reads the next one
- * (czjw.28, czjw.71). Page one also answers the tab counts and the figures (LH16, LH17).
+ * (czjw.28, czjw.71). Page one also answers the tab counts under the filters, and the figures of the
+ * whole ledger the person can see, whatever the tab, search and filters (LH16, LH17, czjw.112).
  */
 export async function loadInvoiceList(
   ctx: ModuleRequestContext,
@@ -192,7 +190,7 @@ export async function loadInvoiceList(
   const list = listQueryOf(invoiceListDefinition, paramsOf(params));
   const first = after === null;
 
-  const [result, groups] = await Promise.all([
+  const [result, groups, ledger] = await Promise.all([
     queryDataset(ctx, {
       dataset: "invoices.invoices",
       after: after ?? undefined,
@@ -205,6 +203,7 @@ export async function loadInvoiceList(
       },
     }),
     first ? invoiceGroups(ctx, list.filters, list.search) : null,
+    first && narrowed(list) ? invoiceGroups(ctx, [], undefined) : null,
   ]);
 
   return {
@@ -213,10 +212,7 @@ export async function loadInvoiceList(
     truncated: result.truncated,
     next: result.next ?? null,
     counts: groups === null ? null : countsOf(invoiceListDefinition, groups),
-    summary:
-      groups === null
-        ? null
-        : invoiceSummaryOf(groups.filter(({ status }) => inTab(list, status))),
+    summary: groups === null ? null : invoiceSummaryOf(ledger ?? groups),
   };
 }
 
@@ -307,7 +303,7 @@ async function paymentGroups(
   return result.rows.map((entry) => paymentGroup.parse(entry));
 }
 
-/** The figures of each currency over the groups of the active tab (LH17). */
+/** The figures of each currency over the whole ledger (LH17, czjw.112). */
 function paymentSummaryOf(
   groups: readonly z.infer<typeof paymentGroup>[]
 ): PaymentListSummary[] {
@@ -351,7 +347,7 @@ export async function loadPaymentList(
   const list = listQueryOf(paymentListDefinition, paramsOf(params));
   const first = after === null;
 
-  const [result, groups] = await Promise.all([
+  const [result, groups, ledger] = await Promise.all([
     queryDataset(ctx, {
       dataset: "invoices.payments",
       after: after ?? undefined,
@@ -364,6 +360,7 @@ export async function loadPaymentList(
       },
     }),
     first ? paymentGroups(ctx, list.filters, list.search) : null,
+    first && narrowed(list) ? paymentGroups(ctx, [], undefined) : null,
   ]);
 
   return {
@@ -372,10 +369,7 @@ export async function loadPaymentList(
     truncated: result.truncated,
     next: result.next ?? null,
     counts: groups === null ? null : countsOf(paymentListDefinition, groups),
-    summary:
-      groups === null
-        ? null
-        : paymentSummaryOf(groups.filter(({ status }) => inTab(list, status))),
+    summary: groups === null ? null : paymentSummaryOf(ledger ?? groups),
   };
 }
 

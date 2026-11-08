@@ -112,24 +112,14 @@ export const twoCurrencyPaymentList: PaymentListPageView = {
   ],
 };
 
-/** Page one under the Not linked chip, as `listPayments` answers it. */
+/** Page one under the Not linked chip, as `listPayments` answers it: the figures stay the ledger's. */
 export const notLinkedPaymentPage: PaymentListView = {
   asOf: "2026-10-27",
   rows: [PART_ALLOCATED, UNALLOCATED],
   truncated: false,
   next: null,
   counts: PAYMENT_COUNTS,
-  summary: [
-    {
-      currency: "SGD",
-      collectedCents: 850_000,
-      allocatedCents: 300_000,
-      unallocatedCents: 550_000,
-      count: 2,
-      allocatedCount: 1,
-      notLinkedCount: 2,
-    },
-  ],
+  summary: defaultPaymentList.summary,
 };
 
 /** Page one under the Linked chip and a search, as `listPayments` answers it. */
@@ -139,17 +129,7 @@ export const linkedPaymentPage: PaymentListView = {
   truncated: false,
   next: null,
   counts: PAYMENT_COUNTS,
-  summary: [
-    {
-      currency: "SGD",
-      collectedCents: 500_000,
-      allocatedCents: 500_000,
-      unallocatedCents: 0,
-      count: 1,
-      allocatedCount: 1,
-      notLinkedCount: 0,
-    },
-  ],
+  summary: defaultPaymentList.summary,
 };
 
 const LINK = {
