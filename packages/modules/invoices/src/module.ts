@@ -113,13 +113,20 @@ export const invoicesModule = {
 
   // Final now: `seedRoles` never rewrites a seeded role, so a key added later would not reach it.
   defaultRoles: [
-    { name: "Invoices and Payments user", permissions: ["invoices:use"] },
+    {
+      name: "Invoices and Payments user",
+      description: "Open the Invoices and Payments workspace only.",
+      permissions: ["invoices:use"],
+    },
     {
       name: "Invoices and Payments editor",
+      description:
+        "Read and save invoices and payments, and change their links.",
       permissions: ["invoices:use", "invoices:read", "invoices:write"],
     },
     {
       name: "Invoices and Payments viewer",
+      description: "Read invoices, payments and customers.",
       permissions: ["invoices:use", "invoices:read"],
     },
   ],

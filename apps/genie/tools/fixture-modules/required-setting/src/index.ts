@@ -36,6 +36,7 @@ const requiredSettingModule = {
   defaultRoles: [
     {
       name: "Required setting fixture user",
+      description: "Use the fixture.",
       permissions: ["required-setting:use"],
     },
   ],

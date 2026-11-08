@@ -856,14 +856,22 @@ describe("validateModule", () => {
     {
       name: "Fixture user",
       defaultRoles: [
-        { name: "Fixture user", permissions: ["fixture:read" as const] },
+        {
+          name: "Fixture user",
+          description: "Use the fixture.",
+          permissions: ["fixture:read" as const],
+        },
       ],
     },
     {
       name: "Fixture reader",
       defaultRoles: [
         ...validModule.defaultRoles,
-        { name: "Fixture reader", permissions: ["fixture:read" as const] },
+        {
+          name: "Fixture reader",
+          description: "Use the fixture.",
+          permissions: ["fixture:read" as const],
+        },
       ],
     },
   ])(
@@ -871,6 +879,19 @@ describe("validateModule", () => {
     ({ name, defaultRoles }) => {
       expect(validateModule({ ...validModule, defaultRoles })).toContain(
         `Default role "${name}" must carry "fixture:use" (A6).`
+      );
+    }
+  );
+
+  it.each(["", "   ", "Reads records.\nAnd more."])(
+    "refuses a default role with the description %j (d8l5.48)",
+    (description) => {
+      const role = { ...validModule.defaultRoles[0]!, description };
+
+      expect(
+        validateRegistry([{ ...validModule, defaultRoles: [role] }])
+      ).toContain(
+        `Default role "${role.name}" needs a description of one line.`
       );
     }
   );
@@ -901,7 +922,11 @@ describe("validateModule", () => {
     const ok = {
       ...withoutAccessRole,
       defaultRoles: [
-        { name: "Fixture admin", permissions: ["fixture:admin" as const] },
+        {
+          name: "Fixture admin",
+          description: "Use the fixture.",
+          permissions: ["fixture:admin" as const],
+        },
       ],
       navigation: { pinned: adminOnly, entries: adminOnly },
     };
@@ -1219,7 +1244,11 @@ describe("validateModule", () => {
     const broken = {
       ...validModule,
       defaultRoles: [
-        { name: "Fixture user", permissions: ["other:read" as const] },
+        {
+          name: "Fixture user",
+          description: "Use the fixture.",
+          permissions: ["other:read" as const],
+        },
       ],
     };
 
@@ -1496,7 +1525,11 @@ describe("validateRegistry", () => {
   });
 
   it("rejects one default role name from two modules, naming both and the role", () => {
-    const viewer = { name: "Viewer", permissions: ["fixture:use" as const] };
+    const viewer = {
+      name: "Viewer",
+      description: "Use the fixture.",
+      permissions: ["fixture:use" as const],
+    };
 
     const first = {
       ...validModule,

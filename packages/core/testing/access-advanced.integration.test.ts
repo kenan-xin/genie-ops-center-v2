@@ -66,8 +66,16 @@ const modules: readonly FixtureModule[] = [
       },
     ],
     defaultRoles: [
-      { name: "Fixture viewer", permissions: ["fixture:use", "fixture:read"] },
-      { name: "Fixture editor", permissions: ["fixture:use", "fixture:read"] },
+      {
+        name: "Fixture viewer",
+        description: "Use the fixture.",
+        permissions: ["fixture:use", "fixture:read"],
+      },
+      {
+        name: "Fixture editor",
+        description: "Use the fixture.",
+        permissions: ["fixture:use", "fixture:read"],
+      },
     ],
     defaultAccessRole: "Fixture viewer",
   },
@@ -87,7 +95,13 @@ const modules: readonly FixtureModule[] = [
         search: async () => ["p2"],
       },
     ],
-    defaultRoles: [{ name: "Pair user", permissions: ["pair:use"] }],
+    defaultRoles: [
+      {
+        name: "Pair user",
+        description: "Use the fixture.",
+        permissions: ["pair:use"],
+      },
+    ],
     defaultAccessRole: "Pair user",
   },
   {
@@ -101,7 +115,13 @@ const modules: readonly FixtureModule[] = [
         search: async () => ["d1"],
       },
     ],
-    defaultRoles: [{ name: "Dormant user", permissions: ["dormant:use"] }],
+    defaultRoles: [
+      {
+        name: "Dormant user",
+        description: "Use the fixture.",
+        permissions: ["dormant:use"],
+      },
+    ],
     defaultAccessRole: "Dormant user",
   },
   {
@@ -111,7 +131,13 @@ const modules: readonly FixtureModule[] = [
     recordTypes: [
       { type: "plain-note", resolve: async () => ({ label: "Note" }) },
     ],
-    defaultRoles: [{ name: "Plain user", permissions: ["plain:use"] }],
+    defaultRoles: [
+      {
+        name: "Plain user",
+        description: "Use the fixture.",
+        permissions: ["plain:use"],
+      },
+    ],
     defaultAccessRole: "Plain user",
   },
 ];

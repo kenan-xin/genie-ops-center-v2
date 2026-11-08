@@ -377,7 +377,10 @@ describe("the display name guard", () => {
     const module = rendered.get("packages/modules/demo/src/module.ts") ?? "";
 
     expect(module).toContain('displayName: "Contrats (UE) & Cœur",');
-    expect(module).toContain('{ name: "Contrats (UE) & Cœur user"');
+    expect(module).toContain('name: "Contrats (UE) & Cœur user",');
+    expect(module).toContain(
+      'description: "Open the Contrats (UE) & Cœur workspace only.",'
+    );
     expect(module).toContain('defaultAccessRole: "Contrats (UE) & Cœur user",');
 
     // A name is never written into a pattern, so its punctuation cannot change

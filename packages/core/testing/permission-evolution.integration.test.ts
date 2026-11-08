@@ -131,12 +131,26 @@ function other(
 
 const v1 = evo({
   actions: ["read", "use", "admin"],
-  defaultRoles: [{ name: "Evo user", permissions: ["evo:use"] }],
+  defaultRoles: [
+    {
+      name: "Evo user",
+      description: "Use the fixture.",
+      permissions: ["evo:use"],
+    },
+  ],
 });
 
 const v2Roles = [
-  { name: "Evo user", permissions: ["evo:use"] },
-  { name: "Evo approver", permissions: ["evo:approve"] },
+  {
+    name: "Evo user",
+    description: "Use the fixture.",
+    permissions: ["evo:use"],
+  },
+  {
+    name: "Evo approver",
+    description: "Use the fixture.",
+    permissions: ["evo:approve"],
+  },
 ] as const;
 
 const v2 = evo({
@@ -145,8 +159,16 @@ const v2 = evo({
 });
 
 const v3Roles = [
-  { name: "Evo member", permissions: ["evo:use"] },
-  { name: "Evo approver", permissions: ["evo:approve"] },
+  {
+    name: "Evo member",
+    description: "Use the fixture.",
+    permissions: ["evo:use"],
+  },
+  {
+    name: "Evo approver",
+    description: "Use the fixture.",
+    permissions: ["evo:approve"],
+  },
 ] as const;
 
 const v3 = evo({
@@ -164,8 +186,16 @@ const v4 = evo({
 const v5 = evo({
   actions: ["view", "use", "admin", "approve"],
   defaultRoles: [
-    { name: "Evo member", permissions: ["evo:use", "evo:approve"] },
-    { name: "Evo approver", permissions: ["evo:approve"] },
+    {
+      name: "Evo member",
+      description: "Use the fixture.",
+      permissions: ["evo:use", "evo:approve"],
+    },
+    {
+      name: "Evo approver",
+      description: "Use the fixture.",
+      permissions: ["evo:approve"],
+    },
   ],
   transformations: [T.renameUserRole, T.readToView],
 });
@@ -178,7 +208,13 @@ const v6 = evo({
 
 const v8 = evo({
   actions: ["view", "work", "admin"],
-  defaultRoles: [{ name: "Evo member", permissions: ["evo:work"] }],
+  defaultRoles: [
+    {
+      name: "Evo member",
+      description: "Use the fixture.",
+      permissions: ["evo:work"],
+    },
+  ],
   transformations: [
     T.renameUserRole,
     T.readToView,

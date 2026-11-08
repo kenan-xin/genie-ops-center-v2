@@ -55,10 +55,19 @@ export const slidesModule = {
   // Final now: `seedRoles` never rewrites a seeded role, so a key added later would not reach it.
   // No name another module declares, or seeding keeps only one of the two (czjw.26, DEC-50).
   defaultRoles: [
-    { name: "Slides user", permissions: ["slides:use"] },
-    { name: "Slides viewer", permissions: ["slides:use", "slides:read"] },
+    {
+      name: "Slides user",
+      description: "Open the Slides workspace only.",
+      permissions: ["slides:use"],
+    },
+    {
+      name: "Slides viewer",
+      description: "Open your own decks.",
+      permissions: ["slides:use", "slides:read"],
+    },
     {
       name: "Slides editor",
+      description: "Make and change your own decks.",
       permissions: ["slides:use", "slides:read", "slides:write"],
     },
   ],

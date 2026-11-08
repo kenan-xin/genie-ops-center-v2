@@ -85,6 +85,7 @@ function disabledModule(): Module {
     defaultRoles: [
       {
         name: "Disabled fixture user",
+        description: "Use the fixture.",
         permissions: ["disabled-fixture:use"],
       },
     ],

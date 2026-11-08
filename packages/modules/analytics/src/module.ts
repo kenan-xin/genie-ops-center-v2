@@ -61,13 +61,19 @@ export const analyticsModule = {
   // Final now: `seedRoles` never rewrites a seeded role, so a key added later would not reach it.
   // No name another module declares, or seeding keeps only one of the two (R-33a).
   defaultRoles: [
-    { name: "Analytics user", permissions: ["analytics:use"] },
+    {
+      name: "Analytics user",
+      description: "Open the Analytics workspace only.",
+      permissions: ["analytics:use"],
+    },
     {
       name: "Analytics viewer",
+      description: "Open your own dashboards.",
       permissions: ["analytics:use", "analytics:read"],
     },
     {
       name: "Analytics editor",
+      description: "Build and change your own dashboards.",
       permissions: ["analytics:use", "analytics:read", "analytics:write"],
     },
   ],

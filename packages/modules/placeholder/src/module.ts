@@ -194,7 +194,11 @@ export const placeholderModule = {
   ],
 
   defaultRoles: [
-    { name: "Placeholder user", permissions: ["placeholder:use"] },
+    {
+      name: "Placeholder user",
+      description: "Open the placeholder workspace only.",
+      permissions: ["placeholder:use"],
+    },
   ],
   defaultAccessRole: "Placeholder user",
 

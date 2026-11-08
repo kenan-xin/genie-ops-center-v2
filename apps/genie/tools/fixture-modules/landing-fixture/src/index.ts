@@ -43,7 +43,11 @@ const landingFixtureModule = {
   recordTypes: [],
 
   defaultRoles: [
-    { name: "Landing fixture user", permissions: ["landing-fixture:use"] },
+    {
+      name: "Landing fixture user",
+      description: "Use the fixture.",
+      permissions: ["landing-fixture:use"],
+    },
   ],
   defaultAccessRole: "Landing fixture user",
 

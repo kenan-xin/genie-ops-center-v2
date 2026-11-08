@@ -47,8 +47,16 @@ const modules: readonly FixtureModule[] = [
     ],
     recordTypes: [],
     defaultRoles: [
-      { name: "Fixture viewer", permissions: ["fixture:use"] },
-      { name: "Fixture editor", permissions: ["fixture:use", "fixture:edit"] },
+      {
+        name: "Fixture viewer",
+        description: "Use the fixture.",
+        permissions: ["fixture:use"],
+      },
+      {
+        name: "Fixture editor",
+        description: "Use the fixture.",
+        permissions: ["fixture:use", "fixture:edit"],
+      },
     ],
     defaultAccessRole: "Fixture editor",
   },
@@ -58,8 +66,16 @@ const modules: readonly FixtureModule[] = [
     permissions: [{ key: "dormant:use", label: "Use" }],
     recordTypes: [],
     defaultRoles: [
-      { name: "Dormant user", permissions: ["dormant:use"] },
-      { name: "Dormant viewer", permissions: ["dormant:use"] },
+      {
+        name: "Dormant user",
+        description: "Use the fixture.",
+        permissions: ["dormant:use"],
+      },
+      {
+        name: "Dormant viewer",
+        description: "Use the fixture.",
+        permissions: ["dormant:use"],
+      },
     ],
     defaultAccessRole: "Dormant user",
   },
@@ -68,7 +84,13 @@ const modules: readonly FixtureModule[] = [
     identity: { id: "headless", displayName: "Headless", version: "0.0.0" },
     permissions: [{ key: "headless:admin", label: "Administer" }],
     recordTypes: [],
-    defaultRoles: [{ name: "Headless admin", permissions: ["headless:admin"] }],
+    defaultRoles: [
+      {
+        name: "Headless admin",
+        description: "Use the fixture.",
+        permissions: ["headless:admin"],
+      },
+    ],
   },
 ];
 

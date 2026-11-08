@@ -62,7 +62,13 @@ function fixture(id: string, extra: Partial<Module> = {}): Module {
       { key: `${id}:admin`, label: "Administer" },
     ],
     recordTypes: [],
-    defaultRoles: [{ name: `${id} user`, permissions: [`${id}:use`] }],
+    defaultRoles: [
+      {
+        name: `${id} user`,
+        description: "Use the fixture.",
+        permissions: [`${id}:use`],
+      },
+    ],
     navigation: {
       pinned: [],
       entries: [

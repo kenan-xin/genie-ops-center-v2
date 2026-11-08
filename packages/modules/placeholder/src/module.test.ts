@@ -24,7 +24,11 @@ describe("the placeholder module declaration", () => {
     ]);
 
     expect(placeholderModule.defaultRoles).toEqual([
-      { name: "Placeholder user", permissions: ["placeholder:use"] },
+      {
+        name: "Placeholder user",
+        description: "Open the placeholder workspace only.",
+        permissions: ["placeholder:use"],
+      },
     ]);
 
     expect(placeholderModule.defaultAccessRole).toBe("Placeholder user");

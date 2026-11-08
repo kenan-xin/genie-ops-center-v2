@@ -155,8 +155,16 @@ const compiledPlaceholderModule: Module = {
 const upgradeModule: Module = {
   ...validModule,
   defaultRoles: [
-    { name: "Fixture user", permissions: ["fixture:use"] },
-    { name: "Fixture reader", permissions: ["fixture:read", "fixture:use"] },
+    {
+      name: "Fixture user",
+      description: "Use the fixture.",
+      permissions: ["fixture:use"],
+    },
+    {
+      name: "Fixture reader",
+      description: "Use the fixture.",
+      permissions: ["fixture:read", "fixture:use"],
+    },
   ],
 };
 

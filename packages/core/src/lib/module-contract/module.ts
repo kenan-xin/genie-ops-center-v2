@@ -91,6 +91,8 @@ export type RecordTypeDeclaration = {
 /** 6. Default roles. Declared in Section 0, seeded in Section 2. */
 export type DefaultRole = {
   readonly name: string;
+  /** One line the Roles page shows under the name (d8l5.48). */
+  readonly description: string;
   readonly permissions: readonly PermissionKey[];
 };
 

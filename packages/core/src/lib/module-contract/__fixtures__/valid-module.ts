@@ -76,7 +76,13 @@ export const validModule = {
     },
   ],
 
-  defaultRoles: [{ name: "Fixture user", permissions: ["fixture:use"] }],
+  defaultRoles: [
+    {
+      name: "Fixture user",
+      description: "Use the fixture.",
+      permissions: ["fixture:use"],
+    },
+  ],
   defaultAccessRole: "Fixture user",
 
   navigation: {

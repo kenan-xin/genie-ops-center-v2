@@ -145,6 +145,11 @@ function isWhole(value: number | undefined): boolean {
   return value !== undefined && Number.isInteger(value) && value >= 0;
 }
 
+/** One line of text. A missing value is not one: a JavaScript module can omit a typed field. */
+function isOneLine(value: string | undefined): boolean {
+  return value !== undefined && value.trim() !== "" && !/[\r\n]/.test(value);
+}
+
 function keysWithin(
   schema: z.infer<typeof jsonKeywords>,
   allowed: ReadonlySet<string>
@@ -560,6 +565,13 @@ export function validateModule(module: Module): readonly string[] {
   // Seeding a default role creates missing permission definitions, never a
   // privilege in another module (docs/architecture/permission-evolution.md).
   for (const role of module.defaultRoles) {
+    // The Roles page shows this line under the name, as for a core role (d8l5.48).
+    if (!isOneLine(role.description)) {
+      problems.push(
+        `Default role "${role.name}" needs a description of one line.`
+      );
+    }
+
     for (const key of role.permissions) {
       if (!declared.has(key)) {
         problems.push(

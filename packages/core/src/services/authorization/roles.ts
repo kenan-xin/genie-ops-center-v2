@@ -156,6 +156,7 @@ export function defaultRoleRows(
 ) {
   return module.defaultRoles.map((entry) => ({
     name: entry.name,
+    description: entry.description,
     permissions: [...entry.permissions],
     moduleId: module.identity.id,
     isSystem: true,
