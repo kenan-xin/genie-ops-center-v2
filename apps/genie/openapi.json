@@ -1315,17 +1315,6 @@
         }
       }
     },
-    "/people/assignable-roles": {
-      "get": {
-        "operationId": "people.assignableRoles",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {}
-          }
-        }
-      }
-    },
     "/people/capabilities": {
       "get": {
         "operationId": "people.capabilities",

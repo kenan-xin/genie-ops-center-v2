@@ -1,6 +1,5 @@
 import type {
   AccountType,
-  AssignableRole,
   PersonAssignmentRow as PersonAssignment,
   PersonDetail as PersonDetailRow,
   PersonGroupChipRow as PersonGroupChip,
@@ -9,6 +8,7 @@ import type {
   PersonSessionRow as PersonSession,
   PersonStatus,
 } from "../../services/people/index.ts";
+import type { GrantRow } from "../../services/roles/grants.ts";
 import type { InspectorAccess } from "../access/access-path-list.tsx";
 import type { NoMatchCopy } from "../admin/no-match.tsx";
 
@@ -20,7 +20,6 @@ import type { NoMatchCopy } from "../admin/no-match.tsx";
  */
 export type {
   AccountType,
-  AssignableRole,
   Person,
   PersonAssignment,
   PersonGroup,
@@ -53,6 +52,8 @@ export type NewPersonInput = {
   readonly accountType?: AccountType | undefined;
   /** Brokered accounts only; the checkbox is checked by default (R-40a). */
   readonly sendInvitation?: boolean | undefined;
+  /** Open Access for the new person after a full success (d8l5.44). The host acts on it. */
+  readonly openInAccess?: boolean | undefined;
 };
 
 export type PeopleScreenProps = {
@@ -63,10 +64,11 @@ export type PeopleScreenProps = {
   readonly searchLabel: string;
   /** The copy when the search and filters match nobody. */
   readonly noMatch: NoMatchCopy;
-  readonly roles: readonly AssignableRole[];
+  /** The Grants rows of R-37a that Add person offers, one role choice each. */
+  readonly grantRows: readonly GrantRow[];
   /**
-   * Whether the caller may pick roles in Add person. False hides the picker; the server refuses
-   * roles in the input for a holder of `core:people:manage` alone (DEC-39). Defaults to true.
+   * Whether the caller may pick roles in Add person: `core:roles:manage` tenant-wide. False hides
+   * the picker; the server refuses roles in the input (DEC-39, R-40). Defaults to true.
    */
   readonly canAssignRoles?: boolean | undefined;
   /** Per-person detail the host loads on selection, for the inspector. */

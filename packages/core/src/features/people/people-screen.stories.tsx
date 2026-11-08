@@ -6,9 +6,10 @@ import { FIXTURE_ROWS, fixturePath } from "../access/__fixtures__/access.ts";
 import {
   FIXTURE_DETAILS,
   FIXTURE_JIT_SETTINGS,
+  FIXTURE_MANY_ROWS,
   FIXTURE_PEOPLE,
-  FIXTURE_ROLES,
   FIXTURE_SETTINGS,
+  FIXTURE_SIX_ROWS,
   FIXTURE_SOLE_ADMIN_PERSON_ID,
   FIXTURE_VIEWER,
 } from "./__fixtures__/people.ts";
@@ -60,7 +61,8 @@ const meta = {
     people: FIXTURE_PEOPLE,
     viewer: FIXTURE_VIEWER,
     settings: FIXTURE_SETTINGS,
-    roles: FIXTURE_ROLES,
+    // Harbor Point: Analytics off; Invoices, Placeholder, Slides and Ask on.
+    grantRows: FIXTURE_ROWS,
     details: FIXTURE_DETAILS,
     lastAdministratorPersonIds: [],
     onAddPerson,
@@ -684,31 +686,194 @@ export const ErrorState: Story = {
   },
 };
 
+type Canvas = Parameters<NonNullable<Story["play"]>>[0]["canvas"];
+
+const openAddPerson = async (canvas: Canvas) => {
+  await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+
+  const dialog = await screen.findByRole("dialog", { name: "Add person" });
+
+  // The popup fades in, so wait until it paints.
+  await waitFor(() => expect(dialog).toBeVisible());
+
+  return within(dialog);
+};
+
+type DialogQueries = Awaited<ReturnType<typeof openAddPerson>>;
+
+/** Picks one role in a row, as the Access stories pick: the select by its label, then the option. */
+const pickRole = async (dialog: DialogQueries, row: string, role: string) => {
+  await userEvent.click(
+    dialog.getByRole("combobox", { name: `Role for ${row}` })
+  );
+  await userEvent.click(await screen.findByRole("option", { name: role }));
+};
+
+/** The footer line, whose names sit in `<strong>`, read as one text. */
+const footerLine = (dialog: DialogQueries, text: string) =>
+  dialog.getByText(
+    (_, element) => element?.tagName === "P" && element.textContent === text
+  );
+
+/** F1: every row starts at No access, a switched-off module is only named, the default is first. */
+export const AddPersonStartsAtNoAccess: Story = {
+  play: async ({ canvas }) => {
+    const dialog = await openAddPerson(canvas);
+
+    const access = within(dialog.getByRole("group", { name: /^Access now/ }));
+
+    await expect(
+      access.getByText(
+        "One role per module. Each module starts at No access; the first role listed is the module's default."
+      )
+    ).toBeVisible();
+    await expect(access.getByText("Modules · 3")).toBeVisible();
+    await expect(access.getByText("Core · 1")).toBeVisible();
+
+    for (const row of ["Invoices", "Placeholder", "Slides", "Ask"]) {
+      // oxlint-disable-next-line no-await-in-loop
+      await expect(
+        access.getByRole("combobox", { name: `Role for ${row}` })
+      ).toHaveTextContent("No access");
+    }
+
+    await expect(
+      access.queryByRole("combobox", { name: "Role for Analytics" })
+    ).toBeNull();
+    await expect(
+      access.getByText(
+        "Switched off: Analytics. Switch a module on in Modules before you give access to it."
+      )
+    ).toBeVisible();
+    await expect(
+      access.getByText(
+        "Administration roles (Tenant administrator, Auditor) are added in Access."
+      )
+    ).toBeVisible();
+    await expect(
+      access.getByRole("checkbox", { name: "Open in Access after adding" })
+    ).not.toBeChecked();
+    await expect(footerLine(dialog, "No access yet")).toBeVisible();
+
+    await userEvent.click(
+      access.getByRole("combobox", { name: "Role for Invoices" })
+    );
+
+    const options = await screen.findAllByRole("option");
+
+    await expect(options.map((option) => option.textContent)).toEqual([
+      "No access",
+      "Viewer (default)",
+      "Invoices and Payments user",
+      "Finance",
+      "Invoice auditor",
+    ]);
+
+    await userEvent.keyboard("{Escape}");
+  },
+};
+
+/** F2: one role per row, a second pick replaces the first, and the footer names what they get. */
+export const AddPersonGivesOneRolePerModule: Story = {
+  play: async ({ canvas }) => {
+    onAddPerson.mockClear();
+
+    const dialog = await openAddPerson(canvas);
+
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "new@example.com"
+    );
+    await pickRole(dialog, "Invoices", "Viewer (default)");
+    await pickRole(dialog, "Invoices", "Finance");
+    await pickRole(dialog, "Slides", "Slides editor (default)");
+    await pickRole(dialog, "Ask", "Ask user (default)");
+
+    await expect(
+      dialog.getByRole("combobox", { name: "Role for Invoices" })
+    ).toHaveTextContent("Finance");
+    await expect(
+      footerLine(dialog, "Access to Invoices, Slides and Ask")
+    ).toBeVisible();
+
+    await userEvent.click(
+      dialog.getByRole("checkbox", { name: "Open in Access after adding" })
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+
+    await expect(onAddPerson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "new@example.com",
+        roleIds: ["r-invoices-finance", "r-slides-editor", "r-ask-user"],
+        openInAccess: true,
+      })
+    );
+  },
+};
+
+/** F3: six switched-on modules are one short of the finder. */
+export const SixModulesShowNoFinder: Story = {
+  args: { grantRows: FIXTURE_SIX_ROWS },
+  play: async ({ canvas }) => {
+    const dialog = await openAddPerson(canvas);
+
+    await expect(dialog.getByText("Modules · 6")).toBeVisible();
+    await expect(
+      dialog.queryByRole("searchbox", { name: "Find a module" })
+    ).toBeNull();
+  },
+};
+
+/** F3: past six modules a finder narrows the rows, and more than three picks read as a count. */
+export const ManyModulesFindAModule: Story = {
+  args: { grantRows: FIXTURE_MANY_ROWS },
+  play: async ({ canvas }) => {
+    const dialog = await openAddPerson(canvas);
+
+    await expect(dialog.getByText("Modules · 10")).toBeVisible();
+    await expect(
+      dialog.getByText(
+        "Switched off: Travel, Fleet. Switch a module on in Modules before you give access to it."
+      )
+    ).toBeVisible();
+
+    const finder = dialog.getByRole("searchbox", { name: "Find a module" });
+
+    await userEvent.type(finder, "PAY");
+    await expect(
+      dialog.getByRole("combobox", { name: "Role for Payroll" })
+    ).toBeVisible();
+    await expect(
+      dialog.queryByRole("combobox", { name: "Role for Contracts" })
+    ).toBeNull();
+
+    await userEvent.clear(finder);
+    await userEvent.type(finder, "zzz");
+    await expect(dialog.getByText("No module matches “zzz”.")).toBeVisible();
+
+    await userEvent.clear(finder);
+
+    for (const name of ["Contracts", "Approvals", "Assets"]) {
+      // oxlint-disable-next-line no-await-in-loop
+      await pickRole(dialog, name, `${name} viewer`);
+    }
+
+    await pickRole(dialog, "Ask", "Ask user (default)");
+    await expect(footerLine(dialog, "Access to 4 modules")).toBeVisible();
+  },
+};
+
 export const AddPersonSendsTheInvitationByDefault: Story = {
   play: async ({ canvas }) => {
     onAddPerson.mockClear();
 
-    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
-
-    const dialog = within(
-      await screen.findByRole("dialog", { name: "Add person" })
-    );
+    const dialog = await openAddPerson(canvas);
 
     await userEvent.type(
       dialog.getByLabelText("Work email"),
       "new@example.com"
     );
     await userEvent.type(dialog.getByLabelText("Display name"), "New Person");
-    // G47: the roles are chips, each one pressed or not, as the mockup draws them.
-    const roles = within(dialog.getByRole("group", { name: "Roles now" }));
-
-    await userEvent.click(roles.getByRole("button", { name: "E2E reader" }));
-    await expect(
-      roles.getByRole("button", { name: "E2E reader" })
-    ).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      roles.getByRole("button", { name: "Tenant administrator" })
-    ).toHaveAttribute("aria-pressed", "false");
 
     // R-40a: the invitation checkbox is checked by default.
     const invitation = dialog.getByRole("checkbox", {
@@ -722,7 +887,8 @@ export const AddPersonSendsTheInvitationByDefault: Story = {
     expect(onAddPerson).toHaveBeenCalledWith({
       email: "new@example.com",
       name: "New Person",
-      roleIds: ["r-reader"],
+      roleIds: [],
+      openInAccess: false,
       accountType: "brokered",
       sendInvitation: true,
     });
@@ -1163,15 +1329,29 @@ export const AddPersonPartialSuccessNotice: Story = {
   },
 };
 
+/** F4: without the tenant-wide Roles key, no access is offered and none is sent. */
 export const RolePickerHiddenWithoutTheRolesPermission: Story = {
   args: { canAssignRoles: false },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+    onAddPerson.mockClear();
 
-    const dialog = within(
-      await screen.findByRole("dialog", { name: "Add person" })
+    const dialog = await openAddPerson(canvas);
+
+    await expect(
+      dialog.queryByRole("group", { name: /^Access now/ })
+    ).toBeNull();
+    await expect(
+      dialog.queryByRole("checkbox", { name: "Open in Access after adding" })
+    ).toBeNull();
+
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "manager@example.com"
     );
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
 
-    await expect(dialog.queryByLabelText("Roles")).not.toBeInTheDocument();
+    await expect(onAddPerson).toHaveBeenCalledWith(
+      expect.objectContaining({ roleIds: [], openInAccess: false })
+    );
   },
 };

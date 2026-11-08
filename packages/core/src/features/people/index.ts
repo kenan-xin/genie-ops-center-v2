@@ -13,7 +13,6 @@ export {
 
 export type {
   AccountType,
-  AssignableRole,
   NewPersonInput,
   PeopleScreenProps,
   PeopleSettings,

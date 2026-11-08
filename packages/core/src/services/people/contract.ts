@@ -5,7 +5,6 @@ import type { PersonAccess } from "../roles/person-access.ts";
 import type {
   AddPersonResult,
   AssignablePerson,
-  AssignableRole,
   PersonDetail,
   PersonRow,
 } from "./index.ts";
@@ -38,11 +37,6 @@ export const peopleContract = {
     .route({ method: "GET", path: "/people/{personId}/access" })
     .input(personId)
     .output(z.custom<PersonAccess>()),
-
-  // The roles Add person may assign now, from the same catalogue the Roles screen reads.
-  assignableRoles: oc
-    .route({ method: "GET", path: "/people/assignable-roles" })
-    .output(z.custom<readonly AssignableRole[]>()),
 
   // What the screen may show this caller.
   capabilities: oc

@@ -13,7 +13,6 @@ import {
   disablePerson,
   enablePerson,
   listActivePeople,
-  listAssignableRoles,
   listPeople,
   readPerson,
   removePerson,
@@ -76,10 +75,6 @@ export function createPeopleRouter(modules: readonly RolesModule[]) {
 
       return found;
     }),
-
-    assignableRoles: managed.assignableRoles.handler(({ context }) =>
-      listAssignableRoles(context.tenant)
-    ),
 
     // `canAssignRoles` hides the Add person role picker for a holder of `core:people:manage`
     // alone, matching the server's refusal (DEC-39).

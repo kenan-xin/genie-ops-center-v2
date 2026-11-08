@@ -1,5 +1,6 @@
+import type { GrantRow } from "../../../services/roles/grants.ts";
+import { FIXTURE_ROWS } from "../../access/__fixtures__/access.ts";
 import type {
-  AssignableRole,
   PeopleSettings,
   PeopleViewer,
   Person,
@@ -28,9 +29,63 @@ export const FIXTURE_JIT_SETTINGS: PeopleSettings = {
   localAccountsEnabled: false,
 };
 
-export const FIXTURE_ROLES: readonly AssignableRole[] = [
-  { id: "r-admin", name: "Tenant administrator", moduleId: "core" },
-  { id: "r-reader", name: "E2E reader", moduleId: "e2e" },
+const ASK_ROW = FIXTURE_ROWS.filter((row) => row.group === "core");
+
+/**
+ * The twelve modules of the prototype's long list (`add-person.prototype.html`, `MANY`), in its
+ * order, with Travel and Fleet switched off, then Ask. Each module has six roles, its user role the
+ * default and first, as the Grants catalogue orders them.
+ */
+export const FIXTURE_MANY_ROWS: readonly GrantRow[] = [
+  ...(
+    [
+      ["Contracts", "Agreements, renewals and obligations"],
+      ["Approvals", "Requests that need a sign-off"],
+      ["Procurement", "Purchase requests and orders"],
+      ["Assets", "Equipment and who holds it"],
+      ["Timesheets", "Hours worked per project"],
+      ["Travel", "Trips, bookings and claims"],
+      ["Learning", "Courses and certificates"],
+      ["Helpdesk", "Tickets from staff"],
+      ["Inventory", "Stock levels per site"],
+      ["Fleet", "Vehicles and their bookings"],
+      ["Recruiting", "Openings and candidates"],
+      ["Payroll", "Pay runs and payslips"],
+    ] as const
+  ).map(([name, description]): GrantRow => {
+    const id = name.toLowerCase();
+
+    return {
+      id,
+      name,
+      description,
+      group: "modules",
+      enabled: name !== "Travel" && name !== "Fleet",
+      useKey: `${id}:use`,
+      roles: [
+        "user",
+        "viewer",
+        "editor",
+        "approver",
+        "manager",
+        "administrator",
+      ].map((level) => ({
+        id: `r-${id}-${level}`,
+        name: `${name} ${level}`,
+        kind: "system",
+      })),
+      defaultRoleId: `r-${id}-user`,
+    };
+  }),
+  ...ASK_ROW,
+];
+
+/** The first six switched-on modules of the long list, then Ask: one short of the finder. */
+export const FIXTURE_SIX_ROWS: readonly GrantRow[] = [
+  ...FIXTURE_MANY_ROWS.filter(
+    (row) => row.group === "modules" && row.enabled
+  ).slice(0, 6),
+  ...ASK_ROW,
 ];
 
 export const FIXTURE_PEOPLE: readonly Person[] = [

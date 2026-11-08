@@ -1049,23 +1049,3 @@ export async function resendInvitation(
     resend: true,
   });
 }
-
-/** The roles a person may be given in Add person, system first then by name. */
-export type AssignableRole = {
-  readonly id: string;
-  readonly name: string;
-  readonly moduleId: string | null;
-};
-
-export async function listAssignableRoles(
-  tenant: TenantContext
-): Promise<readonly AssignableRole[]> {
-  const result = await tenant.db.$client.query(
-    `select r.id::text as id, r.name, r.module_id as "moduleId"
-       from role r
-      order by r.is_system desc, lower(r.name)`
-  );
-
-  // SAFETY: the statement selects exactly these three columns.
-  return result.rows as readonly AssignableRole[];
-}

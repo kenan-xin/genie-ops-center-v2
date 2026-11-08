@@ -51,14 +51,17 @@ export function PeopleRoute(props: {
     enabled: selectedId !== null && open,
   });
 
-  const roles = useQuery({
-    queryKey: ["people", "assignable-roles"],
-    queryFn: () => rpc.people.assignableRoles(),
-  });
-
   const capabilities = useQuery({
     queryKey: ["people", "capabilities"],
     queryFn: () => rpc.people.capabilities(),
+  });
+
+  // Add person offers the Grants rows, the read of the Access routes (R-40, d8l5.44). It needs
+  // `core:roles:manage` tenant-wide, which `canAssignRoles` answers.
+  const catalogue = useQuery({
+    queryKey: ["access", "catalogue"],
+    queryFn: () => rpc.roles.grantCatalogue(),
+    enabled: capabilities.data?.canAssignRoles === true,
   });
 
   const canManageGroups = capabilities.data?.canManageGroups === true;
@@ -115,14 +118,21 @@ export function PeopleRoute(props: {
   };
 
   // Add person resolves only on success, so the dialog stays open on a refusal and shows it. A
-  // partial success closes the dialog and shows the notice.
-  const addPerson = (input: NewPersonInput): Promise<void> => {
+  // partial success closes the dialog and shows the notice, and stays on People for Resend; only a
+  // full success follows "Open in Access after adding" (P06-14).
+  const addPerson = ({
+    openInAccess,
+    ...input
+  }: NewPersonInput): Promise<void> => {
     setError(undefined);
     setNotice(undefined);
 
     return add.mutateAsync(input).then((result) => {
-      if (result.emailSent === false)
+      if (result.emailSent === false) {
         setNotice("Person added; the email was not sent. Use Resend.");
+      } else if (openInAccess === true) {
+        router.push(accessHref({ recipient: result.id }));
+      }
     });
   };
 
@@ -137,7 +147,7 @@ export function PeopleRoute(props: {
         description: t("people.noMatch.description"),
         clearLabel: tNoMatch("clear"),
       }}
-      roles={roles.data ?? []}
+      grantRows={catalogue.data ?? []}
       canAssignRoles={capabilities.data?.canAssignRoles ?? true}
       loading={list.isPending}
       pending={action.isPending || add.isPending}
