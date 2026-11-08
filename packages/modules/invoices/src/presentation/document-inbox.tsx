@@ -34,6 +34,7 @@ import type { DocumentStatus } from "../contract.ts";
 import { kindText } from "./document-kind.ts";
 import { DocumentStatusBadge } from "./document-status-badge.tsx";
 import { formatInstant, formatMoney } from "./format.ts";
+import { InstantCell } from "./instant-cell.tsx";
 import { documentListDefinition } from "./list-definitions.ts";
 import {
   procedureParams,
@@ -374,7 +375,12 @@ export function DocumentInbox(props: DocumentInboxProps) {
     row.status === "duplicate" ? (
       row.label
     ) : (
-      <PageLink href={`/m/invoices/documents/${row.id}`} title={row.label}>
+      // A long name ends with an ellipsis and keeps its full name in the title (czjw.102).
+      <PageLink
+        href={`/m/invoices/documents/${row.id}`}
+        title={row.label}
+        className="block max-w-xs truncate"
+      >
         {row.label}
       </PageLink>
     );
@@ -389,18 +395,28 @@ export function DocumentInbox(props: DocumentInboxProps) {
     { id: "document", header: "Document", cell: documentLabel },
     { id: "type", header: "Type", cell: (row) => kindText(row.kind) },
     { id: "found", header: "What we found", cell: (row) => foundText(row) },
-    { id: "uploaded", header: "Uploaded", cell: uploaded, sort: "date" },
+    {
+      id: "uploaded",
+      header: "Uploaded",
+      cell: (row) => (
+        <InstantCell instant={row.uploadedAt} timeZone={data.timeZone} />
+      ),
+      sort: "date",
+    },
+    {
+      id: "updated",
+      header: "Updated",
+      cell: (row) => (
+        <InstantCell instant={row.updatedAt} timeZone={data.timeZone} />
+      ),
+      sort: "date",
+    },
+    // The status sits beside its action, which takes the last column (variant A, czjw.102).
     {
       id: "status",
       header: "Status",
-      cell: (row) => (
-        <span className="flex flex-wrap items-center gap-2">
-          <DocumentStatusBadge status={row.status} />
-          {rowAction(row)}
-        </span>
-      ),
+      cell: (row) => <DocumentStatusBadge status={row.status} />,
     },
-    { id: "updated", header: "Updated", cell: updated, sort: "date" },
   ];
 
   // The quick ranges of Uploaded count from today in the tenant's zone (LH25).
@@ -538,6 +554,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 rowKey: (row) => row.id,
                 rowLabel: (row) => row.label,
                 columns,
+                rowAction,
                 card: {
                   title: documentLabel,
                   badge: (row) => <DocumentStatusBadge status={row.status} />,
@@ -547,8 +564,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
                     kindText(row.kind),
                     `uploaded ${uploaded(row)}`,
                   ],
+                  // The action ends line 1, beside the status, so Updated stays the last line.
                   note: (row) => `Updated ${updated(row)}`,
-                  content: rowAction,
                 },
               }}
               page={{

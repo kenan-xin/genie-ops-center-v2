@@ -213,15 +213,15 @@ export const InvoicesLike: Story = {
       ).queryByRole("button")
     ).toBeNull();
 
-    // H8: the actions part follows Clear filters.
-    const clear = canvas.getAllByRole("button", { name: "Clear filters" })[0]!;
+    // H8: the actions part sits after the last control, at the end of the bar.
+    const last = canvas.getByLabelText("Invoice date: Any invoice date");
 
     const action = canvas
       .getAllByRole("button", { name: "Upload" })
       .find((button) => button.checkVisibility())!;
 
     await expect(action.getBoundingClientRect().left).toBeGreaterThan(
-      clear.getBoundingClientRect().right
+      last.getBoundingClientRect().right
     );
   },
 };
@@ -267,6 +267,11 @@ export const InvoicesLikePhone: Story = {
       canvas.getByRole("button", { name: "Filters" }).getBoundingClientRect()
         .height
     ).toBe(44);
+
+    // The count shows once on a phone: in the line above the cards, not again under them (czjw.102).
+    await expect(
+      canvas.getAllByText("6 invoices").filter((text) => text.checkVisibility())
+    ).toHaveLength(1);
   },
 };
 

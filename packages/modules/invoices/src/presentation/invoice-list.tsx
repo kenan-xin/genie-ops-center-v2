@@ -19,6 +19,7 @@ import {
   invoicesContract,
 } from "../contract.ts";
 import { formatDay, formatInstant, rangeNote } from "./format.ts";
+import { InstantCell } from "./instant-cell.tsx";
 import { InvoiceStatusBadge } from "./invoice-status-badge.tsx";
 import { invoiceListDefinition } from "./list-definitions.ts";
 import {
@@ -70,7 +71,11 @@ const dueDate = (row: InvoiceListRow) =>
 const recordHref = (row: InvoiceListRow) => `/m/invoices/invoices/${row.id}`;
 
 const recordLink = (row: InvoiceListRow) => (
-  <PageLink href={recordHref(row)} className="after:absolute after:inset-0">
+  // An invoice number never wraps; its column takes its width (czjw.102).
+  <PageLink
+    href={recordHref(row)}
+    className="whitespace-nowrap after:absolute after:inset-0"
+  >
     {row.invoiceNumber}
   </PageLink>
 );
@@ -185,7 +190,9 @@ export function InvoiceList(props: InvoiceListProps) {
     {
       id: "updated",
       header: "Updated",
-      cell: (row) => formatInstant(row.updatedAt, view.timeZone),
+      cell: (row) => (
+        <InstantCell instant={row.updatedAt} timeZone={view.timeZone} />
+      ),
       sort: "date",
     },
   ];

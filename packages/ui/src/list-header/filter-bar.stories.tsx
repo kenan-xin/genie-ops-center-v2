@@ -42,7 +42,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The compact filter bar of a list card (Spec 7 R-37a, variant C). Each control has a fixed width and one height. A placeholder is muted and regular, a set value tinted and semibold. The controls that do not fit move into More filters, in definition order. Every change writes the page address at once.",
+          "The filter bar of a list card (Spec 7 R-37a, variant A of czjw.102). Each control has a fixed width and the field height. A trigger shows its label muted and its value semibold, and a set value tints it. Clear filters shows only while a filter is set. The controls that do not fit move into More filters, in definition order. Every change writes the page address at once.",
       },
     },
   },
@@ -61,14 +61,20 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** S1: a placeholder is muted and regular, a set value tinted and semibold, and the placeholder item clears it. */
+/**
+ * S1: in the bar a muted label and a semibold value (variant A, czjw.102), a set value tints the
+ * control, and the placeholder item clears it.
+ */
 export const OptionPlaceholderAndSet: Story = {
   play: async ({ canvas }) => {
     const empty = canvas.getByLabelText("Customer: All customers");
-    const emptyText = within(empty).getByText("All customers");
+    const label = within(empty).getByText("Customer");
 
-    await expect(emptyText).toHaveClass("text-muted-foreground");
-    await expect(getComputedStyle(emptyText).fontWeight).toBe("400");
+    await expect(label).toHaveClass("text-muted-foreground");
+    await expect(getComputedStyle(label).fontWeight).toBe("400");
+    await expect(
+      getComputedStyle(within(empty).getByText("All customers")).fontWeight
+    ).toBe("600");
 
     const emptyFill = getComputedStyle(empty).backgroundColor;
 
@@ -204,17 +210,28 @@ export const ClearBeatsPendingSearch: Story = {
   },
 };
 
-/** Clear filters stays off until something is set, and then clears the filters and the search. */
+/**
+ * Clear filters shows only while something is set, right after the last control (variant A,
+ * czjw.102), and clears the filters and the search.
+ */
 export const ClearFilters: Story = {
   play: async ({ canvas }) => {
-    const clear = canvas.getByRole("button", { name: "Clear filters" });
+    const clearButton = () =>
+      canvas.queryByRole("button", { name: "Clear filters" });
 
-    await expect(clear).toBeDisabled();
+    await expect(clearButton()).toBeNull();
     await userEvent.type(canvas.getByLabelText("Search invoices"), "harbor");
     await waitFor(() => expect(param("q")).toBe("harbor"));
-    await waitFor(() => expect(clear).toBeEnabled());
+
+    const clear = await canvas.findByRole("button", { name: "Clear filters" });
+    const last = canvas.getByLabelText("Invoice date: Any invoice date");
+
+    await expect(
+      clear.getBoundingClientRect().left - last.getBoundingClientRect().right
+    ).toBeLessThanOrEqual(10);
     await userEvent.click(clear);
     await waitFor(() => expect(param("q")).toBeNull());
     await expect(canvas.getByLabelText("Search invoices")).toHaveValue("");
+    await waitFor(() => expect(clearButton()).toBeNull());
   },
 };

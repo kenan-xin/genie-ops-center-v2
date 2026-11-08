@@ -18,7 +18,17 @@ function Tabs({ className, ...props }: TabsPrimitive.Root.Props) {
   );
 }
 
-function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
+function TabsList({
+  className,
+  variant = "default",
+  ...props
+}: TabsPrimitive.List.Props & {
+  /**
+   * `card-top` is the tab row on the top edge of a list card: 44 px tabs and an 8 px inset, so the
+   * labels start on the card's 20 px edge with the 12 px tab padding (czjw.102).
+   */
+  readonly variant?: "default" | "card-top";
+}) {
   return (
     <TabsPrimitive.List
       data-slot="tabs-list"
@@ -26,6 +36,8 @@ function TabsList({ className, ...props }: TabsPrimitive.List.Props) {
         // Tighter below sm, so four tabs with counts fit a 390 px sheet. A scrolling row would clip
         // the active underline, which sits 1 px under the trigger.
         "inline-flex w-fit items-center gap-0 border-b sm:gap-1 border-border data-[orientation=vertical]:flex-col data-[orientation=vertical]:border-b-0",
+        variant === "card-top" &&
+          "px-2 *:data-[slot=tabs-trigger]:h-11 *:data-[slot=tabs-trigger]:min-h-11",
         className
       )}
       {...props}

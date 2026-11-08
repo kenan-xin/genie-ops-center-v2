@@ -23,6 +23,7 @@ import {
   paymentLabel,
   rangeNote,
 } from "./format.ts";
+import { InstantCell } from "./instant-cell.tsx";
 import { paymentListDefinition } from "./list-definitions.ts";
 import { PaymentStatusBadge } from "./payment-status-badge.tsx";
 import {
@@ -164,7 +165,9 @@ export function PaymentList(props: PaymentListProps) {
     {
       id: "updated",
       header: "Updated",
-      cell: (row) => formatInstant(row.updatedAt, view.timeZone),
+      cell: (row) => (
+        <InstantCell instant={row.updatedAt} timeZone={view.timeZone} />
+      ),
       sort: "date",
     },
   ];

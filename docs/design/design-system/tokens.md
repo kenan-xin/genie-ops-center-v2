@@ -75,6 +75,7 @@ The export carries these roles as the shadcn variables the platform code already
 | `--placeholder` | gray-500: placeholder text in an input, 4.83:1 on white and 3.58:1 under the gray-900 value | gray-400 |
 | `--border` | gray-200 | gray-800 |
 | `--input` | gray-500 | gray-500 |
+| `--control` | gray-300: the border of a list filter trigger, a button that its text names (`czjw.102`) | gray-700 |
 | `--ring` | `var(--primary)` | `var(--brand-on-dark)` |
 | `--primary` | tenant color, default blue-600 | same as light |
 | `--primary-foreground` | stored tenant foreground, default white | same as light |
@@ -97,7 +98,7 @@ The theme is a `data-theme` attribute on `<html>`. The server writes it from the
 
 ## Tables and card lists
 
-Header row small semibold gray-600 on gray-50; body rows body size with 12px vertical padding on desktop, 16px on phones; hover gray-50; hairline row dividers. In the dark theme the body rows sit on the page color (`--background`, gray-950) and the header row is the lighter `--muted` band (gray-900) (owner, 2026-10-27, L273). A clickable row opens from a button in its identity cell. That button is reachable by keyboard and takes the shared focus ring, so the row itself carries no `tabindex` and no `role` (amended 2026-10-25, S3-03 plan decision PD-5). A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
+Header row small semibold gray-600 on gray-50, 36px high; body rows body size with 14px vertical padding on desktop (`czjw.102`), 16px on phones; hover gray-50; hairline row dividers. In the dark theme the body rows sit on the page color (`--background`, gray-950) and the header row is the lighter `--muted` band (gray-900) (owner, 2026-10-27, L273). A clickable row opens from a button in its identity cell. That button is reachable by keyboard and takes the shared focus ring, so the row itself carries no `tabindex` and no `role` (amended 2026-10-25, S3-03 plan decision PD-5). A row that holds its own buttons keeps them in the tab order after the row itself. Under 768px every table becomes a card list: one card per row with identity, status pill, and one or two scan facts, actions in an overflow menu. No horizontal scrolling.
 
 ## Category colors
 

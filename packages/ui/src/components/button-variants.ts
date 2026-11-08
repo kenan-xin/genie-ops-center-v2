@@ -17,6 +17,9 @@ const buttonVariants = cva(
           "border-transparent bg-primary text-primary-foreground not-disabled:not-aria-disabled:hover:bg-primary/94 not-disabled:not-aria-disabled:active:bg-primary/80",
         "secondary":
           "border-input bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
+        // An empty list filter in the bar: the gray-300 control border, because its text names it (czjw.102).
+        "filter":
+          "border-control bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
         // A filter control with a set value: tinted and semibold, where an empty one stays
         // secondary (Spec 7 R-37a, czjw.65).
         "filter-set":

@@ -158,10 +158,11 @@ async function updatedAndFigures(
   await expect(
     canvas.getByText("Balances as of 27 Oct 2026, the reporting date.")
   ).toBeVisible();
-  // 08:40 UTC is 16:40 in Asia/Singapore (Review Focus 5).
-  await expect(
-    canvas.getAllByText(/2 Nov 2026, 16:40/).filter(isVisible)
-  ).toHaveLength(1);
+  // 08:40 UTC is 16:40 in Asia/Singapore (Review Focus 5), the time under its day (czjw.102).
+  const time = canvas.getAllByText(/16:40$/).filter(isVisible);
+
+  await expect(time).toHaveLength(1);
+  await expect(time[0]!.parentElement).toHaveTextContent("2 Nov 2026");
   await expect(note(canvasElement, "SGD", "Outstanding")).toHaveTextContent(
     "In 7 invoices"
   );

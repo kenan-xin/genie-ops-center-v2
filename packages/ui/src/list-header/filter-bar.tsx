@@ -13,10 +13,10 @@ import type { ListDefinition, ListFilterDefinition } from "./definitions.ts";
 import { barWidthOf, type ListFilterControl } from "./filter-controls.tsx";
 import { setFilterCount, type ListState } from "./list-state.ts";
 
-// The bar's padding, its gap, Clear filters and More filters, in px (LH27).
-const PADDING = 24;
+// The bar's padding, its gap, Clear filters and More filters, in px (LH27, variant A of czjw.102).
+const PADDING = 40;
 
-const GAP = 8;
+const GAP = 10;
 
 const CLEAR = 120;
 
@@ -74,8 +74,9 @@ export function FilterSlot(props: {
 }
 
 /**
- * The compact filter bar of the list card (variant C): the controls in definition order, each of a
- * fixed width, the ones that do not fit in More filters, then Clear filters and the actions.
+ * The filter bar of the list card (variant A of `czjw.102`): the controls in definition order, each
+ * of a fixed width, the ones that do not fit in More filters, Clear filters right after them while
+ * a filter is set, and the actions at the end. Its 20 px edge lines up with the tabs and the table.
  */
 export function FilterBar(props: {
   readonly definition: ListDefinition;
@@ -120,7 +121,7 @@ export function FilterBar(props: {
     <div
       ref={bar}
       data-slot="filter-bar"
-      className="flex items-center gap-2 border-b border-border px-3 py-2.5"
+      className="flex items-center gap-2.5 border-b border-border px-5 py-4"
     >
       {filters.slice(0, fit).map((filter) => (
         <FilterSlot
@@ -160,17 +161,14 @@ export function FilterBar(props: {
           </PopoverContent>
         </Popover>
       )}
-      <span className="ml-auto flex items-center gap-2">
-        <Button
-          variant="ghost"
-          size="filter"
-          disabled={!anySet}
-          onClick={state.clear}
-        >
+      {anySet ? (
+        <Button variant="link" size="filter" onClick={state.clear}>
           Clear filters
         </Button>
-        {props.actions}
-      </span>
+      ) : null}
+      {props.actions === undefined ? null : (
+        <span className="ml-auto flex items-center gap-2">{props.actions}</span>
+      )}
     </div>
   );
 }

@@ -106,6 +106,11 @@ export type DataTableProps<Row> = {
    */
   readonly rowLinks?: boolean;
   readonly actions?: (row: Row) => readonly DataTableAction[];
+  /**
+   * One visible action of the row, such as Review: the last column of the table, before the menu,
+   * and the end of line 1 of the card (czjw.102).
+   */
+  readonly rowAction?: (row: Row) => ReactNode;
   /** `false` drops the outer border, for a table inside a card that draws its own. */
   readonly framed?: boolean;
   /**
@@ -223,6 +228,7 @@ export function DataTable<Row>({
   onOpenRow,
   rowLinks = false,
   actions,
+  rowAction,
   framed = true,
   footer,
   onEndReached,
@@ -244,8 +250,8 @@ export function DataTable<Row>({
   const tableWindow = useRowWindow({
     count: rows.length,
     enabled: virtual && showTable,
-    // A row with an actions button is 65 px (40 px button and 24 px padding), else 49 px.
-    estimateSize: actions === undefined ? 49 : 65,
+    // A row with a button is 68 px (40 px button and 28 px padding), else 53 px.
+    estimateSize: actions === undefined && rowAction === undefined ? 53 : 68,
     anchor: tableBody,
   });
 
@@ -489,7 +495,8 @@ export function DataTable<Row>({
                     </TableCell>
                   ))}
                   {status ? <TableCell>{status(row)}</TableCell> : null}
-                  <TableCell className="relative z-10 text-right">
+                  <TableCell className="relative z-10 w-px text-right whitespace-nowrap">
+                    {rowAction?.(row)}
                     {menu(row)}
                   </TableCell>
                 </TableRow>
@@ -532,7 +539,7 @@ export function DataTable<Row>({
           const facts = card.facts?.(row) ?? [];
           const note = card.note?.(row) ?? null;
           const content = card.content?.(row) ?? null;
-          const trailing = card.trailing?.(row) ?? null;
+          const trailing = card.trailing?.(row) ?? rowAction?.(row) ?? null;
           const rowMenu = menu(row);
 
           return (
@@ -628,7 +635,8 @@ export function DataTable<Row>({
       {body}
       <div
         data-slot="data-table-footer"
-        className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t border-border px-4 py-2.5 text-xs text-muted-foreground md:px-5"
+        // A band that holds only a wide-only part is hidden on a phone, so no empty band shows.
+        className="flex flex-wrap justify-between gap-x-4 gap-y-1 border-t border-border px-4 py-2.5 text-xs text-muted-foreground max-md:has-[>[data-wide-only]:only-child]:hidden md:px-5"
       >
         {footer}
       </div>

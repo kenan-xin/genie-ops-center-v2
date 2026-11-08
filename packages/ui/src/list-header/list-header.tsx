@@ -35,7 +35,7 @@ export type ListHeaderProps<Row> = {
   readonly controls?: Readonly<Record<string, ListFilterControl>> | undefined;
   /** The ISO day that the quick ranges count from. */
   readonly anchorDay?: string | undefined;
-  /** After Clear filters on the bar, and beside Filters on a phone. */
+  /** At the end of the bar, and beside Filters on a phone. */
   readonly actions?: ReactNode | undefined;
   readonly table: Omit<
     DataTableProps<Row>,
@@ -146,6 +146,7 @@ export function ListHeader<Row>(props: ListHeaderProps<Row>) {
           >
             <TabsList
               aria-label={`${definition.label} by status`}
+              variant="card-top"
               className="w-full"
             >
               {tabs.items.map((item) => {
@@ -235,7 +236,13 @@ export function ListHeader<Row>(props: ListHeaderProps<Row>) {
             onEndReached={readMore}
             footer={
               <>
-                <span className="tabular-nums">{countText}</span>
+                {/* A phone shows the count once, in the line above the cards (czjw.102). */}
+                <span
+                  data-wide-only=""
+                  className="hidden tabular-nums md:inline"
+                >
+                  {countText}
+                </span>
                 {page.failed ? (
                   <span role="alert" className="text-destructive">
                     {`More ${many} could not be read. Try Show more again.`}

@@ -33,8 +33,11 @@ function ComboboxTrigger({
   variant = "default",
   ...props
 }: ComboboxPrimitive.Trigger.Props & {
-  /** `filter-set` tints a list filter that holds a value: tinted and semibold (R-37a, czjw.65). */
-  readonly variant?: "default" | "filter-set";
+  /**
+   * `filter` is an empty list filter in the bar, with the control border (czjw.102); `filter-set`
+   * tints a list filter that holds a value: tinted and semibold (R-37a, czjw.65).
+   */
+  readonly variant?: "default" | "filter" | "filter-set";
 }) {
   return (
     <ComboboxPrimitive.Trigger
@@ -44,7 +47,9 @@ function ComboboxTrigger({
         fieldHeight,
         variant === "filter-set"
           ? "border-primary/40 bg-primary/8 font-semibold text-primary dark:text-brand-on-dark"
-          : "border-input bg-card text-foreground",
+          : variant === "filter"
+            ? "border-control bg-card text-foreground hover:bg-muted"
+            : "border-input bg-card text-foreground",
         focusRing,
         className
       )}

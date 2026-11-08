@@ -17,6 +17,7 @@ export type ColorRole =
   | "placeholder"
   | "border"
   | "input"
+  | "control"
   | "ring"
   | "primary"
   | "primary-foreground"
@@ -34,6 +35,8 @@ const lightRoles = {
   "placeholder": "#6b7280",
   "border": "#e5e7eb",
   "input": "#6b7280",
+  // DESIGN.md "Control border": a button-like control that its text names, such as a list filter.
+  "control": "#d1d5db",
   "ring": "var(--primary)",
   "primary": "#2563eb",
   "primary-foreground": "#ffffff",
@@ -56,6 +59,7 @@ export const colorRoles: Readonly<
     "muted-foreground": "#9ca3af",
     "placeholder": "#9ca3af",
     "border": "#1f2937",
+    "control": "#374151",
     "ring": "var(--brand-on-dark)",
   },
 };

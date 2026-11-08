@@ -81,6 +81,22 @@ export function rangeNote(value: string | undefined, all: string): string {
   return all;
 }
 
+/** The day and the time of an instant in the tenant's time zone, for a cell on two lines (czjw.102). */
+export const instantParts = (instant: string, timeZone: string) => {
+  const date = new Date(instant);
+
+  return {
+    day: new Intl.DateTimeFormat("en-GB", {
+      dateStyle: "medium",
+      timeZone,
+    }).format(date),
+    time: new Intl.DateTimeFormat("en-GB", {
+      timeStyle: "short",
+      timeZone,
+    }).format(date),
+  };
+};
+
 /** An instant in the tenant's time zone (P10). */
 export const formatInstant = (instant: string, timeZone: string) =>
   new Intl.DateTimeFormat("en-GB", {

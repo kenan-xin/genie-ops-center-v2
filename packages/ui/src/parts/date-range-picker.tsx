@@ -41,8 +41,13 @@ export type DateRangePickerProps = {
   readonly "presets"?: readonly QuickRange[] | undefined;
   /** Classes of the trigger, for its width. Its height is the field height. */
   readonly "className"?: string | undefined;
-  /** `filter-set` tints a list filter that holds a range (R-37a). */
-  readonly "variant"?: "secondary" | "filter-set" | undefined;
+  /**
+   * `filter` is an empty list filter in the bar, with the control border (czjw.102); `filter-set`
+   * tints a list filter that holds a range (R-37a).
+   */
+  readonly "variant"?: "secondary" | "filter" | "filter-set" | undefined;
+  /** Shows the label, muted, before a semibold value, as a list filter in the bar (czjw.102). */
+  readonly "inlineLabel"?: boolean | undefined;
 };
 
 /**
@@ -74,6 +79,7 @@ export function DateRangePicker({
   presets,
   className,
   variant = "secondary",
+  inlineLabel = false,
   ...aria
 }: DateRangePickerProps) {
   const [open, setOpen] = useState(false);
@@ -117,16 +123,27 @@ export function DateRangePicker({
         }
       >
         <CalendarIcon aria-hidden="true" />
-        {/* A placeholder is muted and regular, a range set (R-37a). */}
-        <span
-          className={
-            known
-              ? "flex-1 truncate text-left"
-              : "flex-1 truncate text-left font-normal text-muted-foreground"
-          }
-        >
-          {text}
-        </span>
+        {inlineLabel ? (
+          <>
+            <span className="shrink-0 font-normal text-muted-foreground">
+              {label}
+            </span>
+            <span className="flex-1 truncate text-left font-semibold">
+              {text}
+            </span>
+          </>
+        ) : (
+          // A placeholder is muted and regular, a range set (R-37a).
+          <span
+            className={
+              known
+                ? "flex-1 truncate text-left"
+                : "flex-1 truncate text-left font-normal text-muted-foreground"
+            }
+          >
+            {text}
+          </span>
+        )}
         <ChevronDownIcon aria-hidden="true" />
       </PopoverTrigger>
       <PopoverContent

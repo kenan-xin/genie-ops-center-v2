@@ -46,10 +46,10 @@ export type ListFilterControl = ComponentType<ListFilterControlProps>;
 
 /**
  * The width of a control in the bar, in px, which `FilterBar` sums to fit the controls (LH27). A
- * registered kind takes the option width (`w-44`).
+ * registered kind takes the option width (`w-60`).
  */
 export const barWidthOf = (kind: string) =>
-  kind === "search" ? 256 : kind === "date-range" ? 224 : 176;
+  kind === "search" ? 256 : kind === "date-range" ? 288 : 240;
 
 const ICONS = { building: Building2Icon, file: FileTextIcon } as const;
 
@@ -119,10 +119,18 @@ function SearchControl({
   );
 }
 
+/** The bar's trigger classes: the control border while empty, and its fixed width (czjw.102). */
+const triggerOf = (place: "bar" | "sheet", set: boolean) =>
+  ({
+    variant: set ? "filter-set" : place === "bar" ? "filter" : "default",
+    className: place === "sheet" ? "w-full" : "w-60 shrink-0",
+  }) as const;
+
 function TriggerText(props: {
   readonly filter: ListFilterDefinition;
   readonly text: string;
   readonly set: boolean;
+  readonly place: "bar" | "sheet";
 }) {
   const Icon =
     props.filter.icon === undefined ? undefined : ICONS[props.filter.icon];
@@ -132,10 +140,20 @@ function TriggerText(props: {
       {Icon === undefined ? null : (
         <Icon aria-hidden="true" className="size-4 shrink-0" />
       )}
-      {/* The empty text is muted and regular (R-37a, czjw.65). */}
+      {/* In the bar, the muted label and a semibold value (variant A, czjw.102). */}
+      {props.place === "bar" ? (
+        <span className="shrink-0 font-normal text-muted-foreground">
+          {props.filter.label}
+        </span>
+      ) : null}
+      {/* Elsewhere the empty text is muted and regular (R-37a, czjw.65). */}
       <span
         className={
-          props.set ? "truncate" : "truncate font-normal text-muted-foreground"
+          props.place === "bar"
+            ? "truncate font-semibold"
+            : props.set
+              ? "truncate"
+              : "truncate font-normal text-muted-foreground"
         }
       >
         {props.text}
@@ -189,10 +207,9 @@ function OptionControl({
     >
       <ComboboxTrigger
         aria-label={`${filter.label}: ${text}`}
-        variant={set ? "filter-set" : "default"}
-        className={place === "sheet" ? "w-full" : "w-44 shrink-0"}
+        {...triggerOf(place, set)}
       >
-        <TriggerText filter={filter} text={text} set={set} />
+        <TriggerText filter={filter} text={text} set={set} place={place} />
       </ComboboxTrigger>
       <OptionPopup filter={filter} />
     </Combobox>
@@ -228,10 +245,14 @@ function MultiOptionControl({
     >
       <ComboboxTrigger
         aria-label={`${filter.label}: ${text}`}
-        variant={selected.length > 0 ? "filter-set" : "default"}
-        className={place === "sheet" ? "w-full" : "w-44 shrink-0"}
+        {...triggerOf(place, selected.length > 0)}
       >
-        <TriggerText filter={filter} text={text} set={selected.length > 0} />
+        <TriggerText
+          filter={filter}
+          text={text}
+          set={selected.length > 0}
+          place={place}
+        />
       </ComboboxTrigger>
       <OptionPopup filter={filter} />
     </Combobox>
@@ -256,8 +277,9 @@ function DateRangeControl({
       value={range}
       onChange={(next) => onChange(dayRangeParam(next))}
       presets={anchorDay === undefined ? undefined : quickRanges(anchorDay)}
-      variant={set ? "filter-set" : "secondary"}
-      className={place === "sheet" ? "w-full" : "w-56 shrink-0"}
+      variant={set ? "filter-set" : place === "bar" ? "filter" : "secondary"}
+      inlineLabel={place === "bar"}
+      className={place === "sheet" ? "w-full" : "w-72 shrink-0"}
     />
   );
 }

@@ -94,7 +94,8 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "bg-muted px-3 py-2 text-left align-middle first:pl-5 last:pr-5 text-xs font-semibold whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
+        // A 36 px header row and 14 px row padding (tokens.md "Tables and card lists", czjw.102).
+        "bg-muted px-3 py-2.5 text-left align-middle first:pl-5 last:pr-5 text-xs font-semibold whitespace-nowrap text-muted-foreground [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -107,7 +108,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "px-3 py-3 align-middle first:pl-5 last:pr-5 [&:has([role=checkbox])]:pr-0",
+        "px-3 py-3.5 align-middle first:pl-5 last:pr-5 [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

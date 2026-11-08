@@ -20,6 +20,7 @@
   --color-placeholder: var(--placeholder);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-control: var(--control);
   --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -84,6 +85,7 @@
     --placeholder: #6b7280;
     --border: #e5e7eb;
     --input: #6b7280;
+    --control: #d1d5db;
     --ring: var(--primary);
     --primary: #2563eb;
     --primary-foreground: #ffffff;
@@ -126,6 +128,7 @@
     --muted-foreground: #9ca3af;
     --placeholder: #9ca3af;
     --border: #1f2937;
+    --control: #374151;
     --ring: var(--brand-on-dark);
     --category-session-bg: #083344;
     --category-session-fg: #67e8f9;
