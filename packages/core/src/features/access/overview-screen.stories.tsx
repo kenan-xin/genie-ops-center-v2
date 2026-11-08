@@ -268,7 +268,7 @@ export const ByModule: Story = {
   },
 };
 
-/** S5: the search narrows the pager, and the header keeps counting every path (O5). */
+/** S5: the search narrows the pager, and says when nothing matches. */
 export const Search: Story = {
   args: { initial: invoices },
   play: async ({ canvas }) => {
@@ -279,9 +279,6 @@ export const Search: Story = {
     await userEvent.type(search, "finance");
 
     await expect(await canvas.findByText("1–7 of 7")).toBeVisible();
-    await expect(await header(canvas, "holders of")).toHaveTextContent(
-      "21 holders of Invoices"
-    );
 
     await userEvent.clear(search);
     await userEvent.type(search, "zzz");
@@ -289,6 +286,35 @@ export const Search: Story = {
     await expect(
       await canvas.findByText("No row matches the search.")
     ).toBeVisible();
+  },
+};
+
+/**
+ * B7: under a search the header counts the matches of the total, and a screen reader hears it
+ * (`d8l5.45`, dry run A4). An empty search shows the total alone again.
+ */
+export const SearchNarrowsTheCount: Story = {
+  args: { initial: invoices },
+  play: async ({ canvas }) => {
+    const search = await canvas.findByRole("searchbox", {
+      name: "Search these results",
+    });
+
+    await userEvent.type(search, "finance");
+
+    await waitFor(() =>
+      expect(canvas.getByRole("status")).toHaveTextContent(
+        "7 of 21 holders of Invoices"
+      )
+    );
+
+    await userEvent.clear(search);
+
+    await waitFor(() =>
+      expect(canvas.getByRole("status")).toHaveTextContent(
+        /^21 holders of Invoices$/
+      )
+    );
   },
 };
 

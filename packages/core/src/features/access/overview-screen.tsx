@@ -379,8 +379,18 @@ function Results(
       className="flex flex-col rounded-xl border border-border bg-card"
     >
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:px-5">
-        <p className="text-sm">
-          <b className="font-semibold tabular-nums">{page.total}</b>{" "}
+        {/* A search narrows the count to "3 of 5", and a screen reader hears it (`d8l5.45`). */}
+        <p role="status" className="text-sm">
+          {page.matches < page.total ? (
+            <>
+              <b className="font-semibold tabular-nums">{page.matches}</b> of{" "}
+              <span className="tabular-nums">{page.total}</span>{" "}
+            </>
+          ) : (
+            <>
+              <b className="font-semibold tabular-nums">{page.total}</b>{" "}
+            </>
+          )}
           {byHolder ? "holder" : "assignment"}
           {page.total === 1 ? "" : "s"} {byHolder ? "of" : "for"}{" "}
           <b className="font-semibold">{name}</b>
