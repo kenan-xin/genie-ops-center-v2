@@ -7,6 +7,7 @@ import type {
   AccessSubject,
 } from "../../services/roles/effective-access.ts";
 import {
+  FIXTURE_ROLES,
   FIXTURE_ROWS,
   OVERVIEW_RECIPIENTS,
   overviewPaths,
@@ -44,6 +45,7 @@ function Harness(args: Args) {
     <OverviewScreen
       catalogue={FIXTURE_ROWS}
       recipients={OVERVIEW_RECIPIENTS}
+      roles={FIXTURE_ROLES}
       subject={subject}
       onSubjectChange={(next) => {
         args.onSubjectChange(next);
@@ -324,6 +326,63 @@ export const ByGroup: Story = {
 export const ByModulePhone: Story = {
   args: { initial: invoices },
   globals: phone,
+};
+
+const auditorRole: AccessSubject = { type: "role", id: "r-auditor" };
+
+/**
+ * B5: a role link opens the third lookup with the role chosen. Auditor opens no module, so only
+ * a role lookup shows its holders (`d8l5.46`).
+ */
+export const ByRole: Story = {
+  args: { initial: auditorRole },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("button", { name: "By role" })
+    ).toHaveAttribute("aria-pressed", "true");
+    await expect(await header(canvas, "holders of")).toHaveTextContent(
+      "2 holders of Auditor"
+    );
+    await expect(
+      canvas.getByRole("combobox", { name: "Choose a role" })
+    ).toHaveTextContent("Auditor");
+
+    const table = within(
+      canvas.getByRole("table", { name: "Holders of Auditor" })
+    );
+
+    await expect(table.getByText("Direct assignment")).toBeVisible();
+    await expect(table.getByText("Group, 12 members")).toBeVisible();
+    await expect(
+      canvas.queryByRole("link", { name: "Change access" })
+    ).toBeNull();
+  },
+};
+
+/** B6: the three lookups fit a 390 px toggle (DEC-25). */
+export const ByRolePhone: Story = {
+  args: { initial: auditorRole },
+  globals: phone,
+  play: async ({ canvas }) => {
+    const toggle = within(
+      await canvas.findByRole("group", { name: "Look up" })
+    );
+
+    // Each chip, not the group: a chip's 44 px hit area may pass the edge by design.
+    await Promise.all(
+      toggle
+        .getAllByRole("button")
+        .map((chip) =>
+          expect(chip.getBoundingClientRect().right).toBeLessThanOrEqual(
+            window.innerWidth
+          )
+        )
+    );
+    await expect(toggle.getByRole("button", { name: "By role" })).toBeVisible();
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth
+    );
+  },
 };
 
 /** A module that nobody holds. */

@@ -20,3 +20,21 @@ export function accessHref(link: AccessLink): string {
 
   return query.size === 0 ? "/admin/access" : `/admin/access?${query}`;
 }
+
+/**
+ * The Overview with a module or a role chosen (`d8l5.46`). A role or a module is no recipient, so
+ * its link has no Grants subject. The role wins when both are set.
+ */
+export function accessOverviewHref(link: {
+  readonly module?: string | undefined;
+  readonly role?: string | undefined;
+}): string {
+  const query = new URLSearchParams();
+
+  if (link.role !== undefined) query.set("role", link.role);
+  else if (link.module !== undefined) query.set("module", link.module);
+
+  return query.size === 0
+    ? "/admin/access/overview"
+    : `/admin/access/overview?${query}`;
+}

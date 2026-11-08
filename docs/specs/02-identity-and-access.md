@@ -170,9 +170,9 @@ R-37a. Access, Grants tab (A1). Access is the one screen that assigns and remove
 - Each Granted row offers the module's roles by name, its default access role first. A change of the choice swaps the role.
 - Remove takes every role of that module from the recipient. A confirmation first names those roles and every other path that stays.
 - A switched-off module takes no new grant and keeps its existing grants. The row shows the reason, and Remove stays available.
-- The link `/admin/access?role=<id>` preselects the module of that role and puts the role in the row's choice. A link with a core role opens Advanced access.
+- A link that names a recipient and a role, `/admin/access?recipient=<id>&role=<id>`, preselects the module of that role and puts the role in the row's choice. A link with a core role opens Advanced access. A module or role link with no recipient opens the Overview with that module or role chosen (amended 2026-11-08, owner, follow-up 9 dry run A6, `d8l5.46`).
 
-R-37b. Access, Overview tab (A1). Overview is read-only. The administrator chooses by group or person, or by module, and then picks one subject. Nothing is read before that choice. The results are searchable and paged. Each row names the holder, the module, the role, the path (direct, or through a group), and the person who added it.
+R-37b. Access, Overview tab (A1). Overview is read-only. The administrator chooses by group or person, by module, or by role, and then picks one subject (by role amended 2026-11-08, `d8l5.46` and `d8l5.47`, because a core role such as Auditor opens no module). Nothing is read before that choice. The results are searchable and paged. Each row names the holder, the module, the role, the path (direct, or through a group), and the person who added it.
 
 R-37c. Advanced access (A1). Advanced access assigns and removes core administration, the `Auditor` role, a module role at a record scope, and custom roles. It writes through the same role-assignment service, and every removal calls the last-administrator check of R-38.
 

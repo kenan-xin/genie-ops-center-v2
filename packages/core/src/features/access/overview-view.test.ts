@@ -6,7 +6,7 @@ import {
   FIXTURE_ROWS,
   fixturePath,
 } from "./__fixtures__/access.ts";
-import { overviewRows } from "./overview-view.ts";
+import { linkedSubject, overviewRows } from "./overview-view.ts";
 
 const jamie = { type: "user", id: "p-jamie", name: "Jamie Chen" } as const;
 
@@ -174,6 +174,25 @@ describe("overviewRows", () => {
     ]);
   });
 
+  it("names a role lookup's holders by kind and member count", () => {
+    const rows = overviewRows({
+      subject: { type: "role", id: "r-tenant-admin" },
+      paths: [
+        admin,
+        { ...admin, assignmentId: "a-admin-jamie", holder: jamie },
+      ],
+      personPaths: undefined,
+      catalogue: FIXTURE_ROWS,
+      recipients: FIXTURE_RECIPIENTS,
+      recordLabels: new Map(),
+    });
+
+    expect(rows.map((row) => row.path)).toEqual([
+      "Group, 12 members",
+      "Direct assignment",
+    ]);
+  });
+
   it("W3: shows the record label when the labels read gives one, else the id", () => {
     const unlabeled: AccessPath = {
       ...path("a-scoped-2", ops, invoicesFinance, "invoices"),
@@ -196,5 +215,28 @@ describe("overviewRows", () => {
       "inv-0157",
       null,
     ]);
+  });
+});
+
+describe("linkedSubject", () => {
+  const roles = [{ id: "r-auditor" }];
+
+  it.each([
+    ["a listed role", { role: "r-auditor" }, { type: "role", id: "r-auditor" }],
+    [
+      "a listed module",
+      { module: "invoices" },
+      { type: "module", id: "invoices" },
+    ],
+    [
+      "a listed role and module, role first",
+      { module: "invoices", role: "r-auditor" },
+      { type: "role", id: "r-auditor" },
+    ],
+    ["an unlisted role", { role: "r-gone" }, null],
+    ["an unlisted module", { module: "gone" }, null],
+    ["no parameter", {}, null],
+  ] as const)("answers %s", (_name, link, expected) => {
+    expect(linkedSubject(link, FIXTURE_ROWS, roles)).toEqual(expected);
   });
 });

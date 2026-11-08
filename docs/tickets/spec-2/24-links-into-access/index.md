@@ -21,6 +21,8 @@ Depends on: S2-21.
 4. The Modules page links to `/admin/access?module=<id>`.
 5. Each link preselects its subject in Access, and is hidden for a person without `core:roles:manage`.
 
+Changed 2026-11-08 (`d8l5.46`): the Modules and Roles links open the Overview with the module or role chosen.
+
 ## Acceptance
 
 At a phone and a desktop viewport, each link opens Access with its subject chosen. A person without `core:roles:manage` sees no link. Spec 3 AC-11 still passes for the Modules page. The shared definition of done in the [index](../README.md) also applies.

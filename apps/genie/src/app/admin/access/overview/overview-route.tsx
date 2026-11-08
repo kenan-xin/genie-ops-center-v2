@@ -1,6 +1,10 @@
 "use client";
 
-import { AccessTabs, OverviewScreen } from "@genie/core/features/access";
+import {
+  AccessTabs,
+  linkedSubject,
+  OverviewScreen,
+} from "@genie/core/features/access";
 import { PageHeader } from "@genie/core/features/shell";
 import {
   infiniteQueryOptions,
@@ -8,7 +12,14 @@ import {
   useQuery,
 } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
-import { type ComponentProps, useState } from "react";
+import { usePathname, useSearchParams } from "next/navigation.js";
+import {
+  type ComponentProps,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import { rpc } from "../../../../rpc/client.ts";
 import { useRecordLabels } from "../use-record-labels.ts";
@@ -74,6 +85,50 @@ export function OverviewRoute(props: {
     queryFn: () => rpc.roles.grantRecipients(),
   });
 
+  // The Roles route reads the same list under the same key.
+  const roles = useQuery({
+    queryKey: ["roles"],
+    queryFn: () => rpc.roles.list(),
+  });
+
+  const search = useSearchParams();
+
+  const pathname = usePathname();
+
+  const linkModule = search.get("module") ?? undefined;
+
+  const linkRole = search.get("role") ?? undefined;
+
+  const choose = useCallback((next: Subject) => {
+    setSubject(next);
+    setQuery("");
+    setAt({ lookup: `${subjectKey(next)}|`, index: 0 });
+  }, []);
+
+  // A Roles or Modules link chooses once, when both lists arrive, and only an id they hold (P05-9).
+  // The address keeps the parameter, so a reload chooses it again.
+  const linkApplied = useRef(false);
+
+  useEffect(() => {
+    if (
+      linkApplied.current ||
+      catalogue.data === undefined ||
+      roles.data === undefined
+    ) {
+      return;
+    }
+
+    linkApplied.current = true;
+
+    const linked = linkedSubject(
+      { module: linkModule, role: linkRole },
+      catalogue.data,
+      roles.data
+    );
+
+    if (linked !== null) choose(linked);
+  }, [catalogue.data, roles.data, linkModule, linkRole, choose]);
+
   const results = useInfiniteQuery({
     ...pagesOf(subject, query),
     placeholderData: (previous, previousQuery) =>
@@ -125,11 +180,15 @@ export function OverviewRoute(props: {
       <OverviewScreen
         catalogue={catalogue.data}
         recipients={recipients.data}
+        roles={roles.data}
         subject={subject}
         onSubjectChange={(next) => {
-          setSubject(next);
-          setQuery("");
-          setAt({ lookup: `${subjectKey(next)}|`, index: 0 });
+          choose(next);
+
+          // Another pick drops the link, so a reload never brings the old subject back.
+          if (linkModule !== undefined || linkRole !== undefined) {
+            window.history.replaceState(null, "", pathname);
+          }
         }}
         onQueryChange={(next) => {
           setQuery(next);
@@ -157,6 +216,7 @@ export function OverviewRoute(props: {
         auditLogHref={props.auditLog ? "/admin/audit" : undefined}
         {...(catalogue.isError ||
         recipients.isError ||
+        roles.isError ||
         results.isError ||
         counted.isError ||
         personPaths.isError

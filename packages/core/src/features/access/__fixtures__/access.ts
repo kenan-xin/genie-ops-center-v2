@@ -7,6 +7,7 @@ import type {
   GrantRecipients,
   GrantRow,
 } from "../../../services/roles/grants.ts";
+import type { RoleRow } from "../../../services/roles/index.ts";
 
 /**
  * The prototype's sample tenant, Harbor Point (`docs/design/sections/access/access.prototype.html`):
@@ -478,7 +479,42 @@ const OVERVIEW_PATHS = {
   "group:g-finance": FINANCE_PATHS,
   "group:g-ops": OPS_PATHS,
   "module:invoices": INVOICE_PATHS,
+  "role:r-auditor": [
+    { ...auditor, assignmentId: "o-sam-aud", holder: holder.sam },
+    auditor,
+  ],
 } satisfies Record<string, readonly AccessPath[]>;
+
+const roleRow = (
+  id: string,
+  name: string,
+  moduleId: string | null,
+  extra: Partial<RoleRow> = {}
+): RoleRow => ({
+  id,
+  name,
+  description: "",
+  kind: "system",
+  moduleId,
+  permissions: [],
+  assignmentCount: 0,
+  entitlementAdded: [],
+  unavailableKeys: [],
+  ...extra,
+});
+
+/** The roles that the Overview's role lookup lists (`d8l5.46`): module roles, then core roles. */
+export const FIXTURE_ROLES: readonly RoleRow[] = [
+  roleRow("r-invoices-viewer", "Viewer", "invoices"),
+  roleRow("r-invoices-auditor", "Invoice auditor", "invoices", {
+    kind: "custom",
+  }),
+  roleRow("r-slides-editor", "Slides editor", "slides"),
+  roleRow("r-auditor", "Auditor", null, {
+    description: "Reads the audit log",
+  }),
+  roleRow("r-tenant-admin", "Tenant administrator", null),
+];
 
 /**
  * Every path of one Overview subject, from the prototype's sample data: Jamie Chen holds ten

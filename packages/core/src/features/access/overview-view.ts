@@ -3,6 +3,7 @@ import type {
   AccessSubject,
 } from "../../services/roles/effective-access.ts";
 import type { GrantRecipients, GrantRow } from "../../services/roles/grants.ts";
+import type { RoleRow } from "../../services/roles/index.ts";
 import { scopeKey } from "./advanced-view.ts";
 import { moduleNameOf } from "./grants-view.ts";
 
@@ -67,6 +68,32 @@ function alsoThroughOf(
   return [...direct, ...new Set(groups)];
 }
 
+/**
+ * The subject of a link into the Overview (`d8l5.46`): the role first, then the module, and only an
+ * id that the lists hold, so an old bookmark reads nothing.
+ */
+export function linkedSubject(
+  link: {
+    readonly module?: string | undefined;
+    readonly role?: string | undefined;
+  },
+  catalogue: readonly GrantRow[],
+  roles: readonly Pick<RoleRow, "id">[]
+): AccessSubject | null {
+  if (link.role !== undefined && roles.some((role) => role.id === link.role)) {
+    return { type: "role", id: link.role };
+  }
+
+  if (
+    link.module !== undefined &&
+    catalogue.some((row) => row.id === link.module)
+  ) {
+    return { type: "module", id: link.module };
+  }
+
+  return null;
+}
+
 /** The Overview rows of one page of the S2-19 read (R-37d, O4, O7, O16). */
 export function overviewRows(input: {
   readonly subject: AccessSubject;
@@ -81,14 +108,15 @@ export function overviewRows(input: {
 }): readonly OverviewRow[] {
   const { subject } = input;
 
-  const byModule = subject.type === "module";
-
-  const subjectModule = byModule
-    ? (input.catalogue.find((row) => row.id === subject.id)?.name ?? subject.id)
-    : null;
+  const subjectModule =
+    subject.type === "module"
+      ? (input.catalogue.find((row) => row.id === subject.id)?.name ??
+        subject.id)
+      : null;
 
   const pathOf = (path: AccessPath) => {
-    if (byModule) {
+    // A module or a role is no holder: each row says how its holder holds it.
+    if (subject.type === "module" || subject.type === "role") {
       if (path.holder.type === "user") return "Direct assignment";
 
       const members = input.recipients.groups.find(

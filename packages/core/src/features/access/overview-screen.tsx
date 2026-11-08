@@ -25,6 +25,7 @@ import type {
   AccessSubject,
 } from "../../services/roles/effective-access.ts";
 import type { GrantRecipients, GrantRow } from "../../services/roles/grants.ts";
+import type { RoleRow } from "../../services/roles/index.ts";
 import { HelpIcon, SearchIcon } from "../admin/icons.tsx";
 import { fmtDate } from "../audit/helpers.ts";
 import { PageLink } from "../shell/page-link.tsx";
@@ -54,8 +55,10 @@ export type OverviewPage = {
 export type OverviewScreenProps = {
   readonly catalogue: readonly GrantRow[] | undefined;
   readonly recipients: GrantRecipients | undefined;
+  /** Every role, for the role lookup (`d8l5.46`). */
+  readonly roles: readonly RoleRow[] | undefined;
   readonly subject: AccessSubject | null;
-  /** Null when the administrator switches between the two lookups. */
+  /** Null when the administrator switches between the lookups. */
   readonly onSubjectChange: (next: AccessSubject | null) => void;
   /** Called 300 ms after the last keystroke (O12). */
   readonly onQueryChange: (query: string) => void;
@@ -75,9 +78,65 @@ export type OverviewScreenProps = {
   readonly error?: string | undefined;
 };
 
-type Lookup = "recipient" | "module";
+type Lookup = "recipient" | "module" | "role";
 
 const keyOf = (subject: AccessSubject) => `${subject.type}:${subject.id}`;
+
+const lookupOf = (subject: AccessSubject): Lookup =>
+  subject.type === "module" || subject.type === "role"
+    ? subject.type
+    : "recipient";
+
+const PICKER = {
+  recipient: {
+    prompt: "Choose a group or person",
+    search: "Search groups and people",
+  },
+  module: { prompt: "Choose a module", search: "Search modules" },
+  role: { prompt: "Choose a role", search: "Search roles" },
+} as const;
+
+/** One group per module in catalogue order, then Core for the roles of no module. */
+function roleGroups(
+  catalogue: readonly GrantRow[],
+  roles: readonly RoleRow[]
+): readonly PickerGroup<AccessSubject>[] {
+  const choices = (moduleId: string | null) =>
+    roles.flatMap((role) =>
+      role.moduleId === moduleId
+        ? [
+            {
+              key: `role:${role.id}`,
+              name: role.name,
+              detail:
+                role.description !== ""
+                  ? role.description
+                  : role.kind === "custom"
+                    ? "Custom role"
+                    : "System role",
+              value: { type: "role", id: role.id } as const,
+            },
+          ]
+        : []
+    );
+
+  const moduleIds = [
+    ...new Set([
+      ...catalogue.map((row) => row.id),
+      ...roles.flatMap((role) =>
+        role.moduleId === null ? [] : [role.moduleId]
+      ),
+    ]),
+  ];
+
+  return [
+    ...moduleIds.map((id) => ({
+      label: catalogue.find((row) => row.id === id)?.name ?? id,
+      choices: choices(id),
+    })),
+    { label: "Core", choices: choices(null) },
+  ].filter((group) => group.choices.length > 0);
+}
 
 function moduleGroups(
   catalogue: readonly GrantRow[]
@@ -107,10 +166,15 @@ function moduleGroups(
 function subjectName(
   subject: AccessSubject,
   catalogue: readonly GrantRow[],
-  recipients: GrantRecipients | undefined
+  recipients: GrantRecipients | undefined,
+  roles: readonly RoleRow[] | undefined
 ): string {
   if (subject.type === "module") {
     return catalogue.find((row) => row.id === subject.id)?.name ?? subject.id;
+  }
+
+  if (subject.type === "role") {
+    return roles?.find((role) => role.id === subject.id)?.name ?? "";
   }
 
   const list =
@@ -268,9 +332,16 @@ function Results(
 
   const catalogue = props.catalogue ?? [];
 
-  const byModule = props.subject.type === "module";
+  // A module or a role has holders. A group or a person has assignments, and a Grants link.
+  const byHolder =
+    props.subject.type === "module" || props.subject.type === "role";
 
-  const name = subjectName(props.subject, catalogue, props.recipients);
+  const name = subjectName(
+    props.subject,
+    catalogue,
+    props.recipients,
+    props.roles
+  );
 
   const { page } = props;
 
@@ -293,7 +364,14 @@ function Results(
 
   const to = page.from + page.paths.length - 1;
 
-  const label = byModule ? `Holders of ${name}` : `Assignments for ${name}`;
+  const label = byHolder ? `Holders of ${name}` : `Assignments for ${name}`;
+
+  const nobody =
+    props.subject.type === "role"
+      ? `Nobody holds ${name} yet.`
+      : props.subject.type === "module"
+        ? `Nobody holds a role of ${name}.`
+        : `${name} holds no role.`;
 
   return (
     <section
@@ -303,8 +381,8 @@ function Results(
       <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:px-5">
         <p className="text-sm">
           <b className="font-semibold tabular-nums">{page.total}</b>{" "}
-          {byModule ? "holder" : "assignment"}
-          {page.total === 1 ? "" : "s"} {byModule ? "of" : "for"}{" "}
+          {byHolder ? "holder" : "assignment"}
+          {page.total === 1 ? "" : "s"} {byHolder ? "of" : "for"}{" "}
           <b className="font-semibold">{name}</b>
         </p>
         {page.total === 0 ? null : (
@@ -326,7 +404,7 @@ function Results(
             </InputGroupAddon>
           </InputGroup>
         )}
-        {byModule ? null : (
+        {byHolder ? null : (
           <PageLink
             href={accessHref({ recipient: props.subject.id })}
             className={`${buttonVariants({ variant: "secondary", size: "sm" })} ${focusRing}`}
@@ -338,9 +416,7 @@ function Results(
 
       {page.total === 0 ? (
         <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground md:px-5">
-          {byModule
-            ? `Nobody holds a role of ${name}.`
-            : `${name} holds no role.`}
+          {nobody}
         </p>
       ) : page.matches === 0 ? (
         <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground md:px-5">
@@ -423,20 +499,22 @@ function Results(
  * every path to a role, searchable and paged by the server. It writes nothing.
  */
 export function OverviewScreen(props: OverviewScreenProps): ReactNode {
-  const [lookup, setLookup] = useState<Lookup>(
-    props.subject?.type === "module" ? "module" : "recipient"
-  );
+  const [chosen, setChosen] = useState<Lookup>("recipient");
 
-  const byModule = lookup === "module";
+  // A subject that a link sets after mount still presses its own segment.
+  const lookup = props.subject === null ? chosen : lookupOf(props.subject);
 
-  const groups: readonly PickerGroup<AccessSubject>[] = byModule
-    ? moduleGroups(props.catalogue ?? [])
-    : props.recipients === undefined
-      ? []
-      : [
-          { label: "Groups", choices: groupChoices(props.recipients) },
-          { label: "People", choices: personChoices(props.recipients) },
-        ];
+  const groups: readonly PickerGroup<AccessSubject>[] =
+    lookup === "module"
+      ? moduleGroups(props.catalogue ?? [])
+      : lookup === "role"
+        ? roleGroups(props.catalogue ?? [], props.roles ?? [])
+        : props.recipients === undefined
+          ? []
+          : [
+              { label: "Groups", choices: groupChoices(props.recipients) },
+              { label: "People", choices: personChoices(props.recipients) },
+            ];
 
   return (
     <div className="flex flex-col gap-4">
@@ -450,7 +528,7 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
 
             if (next === undefined || next === lookup) return;
 
-            setLookup(next);
+            setChosen(next);
             props.onSubjectChange(null);
           }}
         >
@@ -458,14 +536,13 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
             By group or person
           </ToggleGroupItem>
           <ToggleGroupItem value="module">By module</ToggleGroupItem>
+          <ToggleGroupItem value="role">By role</ToggleGroupItem>
         </ToggleGroup>
         <div className="w-full md:w-96">
           <ChoicePicker<AccessSubject>
             key={lookup}
-            prompt={byModule ? "Choose a module" : "Choose a group or person"}
-            searchLabel={
-              byModule ? "Search modules" : "Search groups and people"
-            }
+            prompt={PICKER[lookup].prompt}
+            searchLabel={PICKER[lookup].search}
             empty="Nothing matches."
             groups={groups}
             value={props.subject === null ? null : keyOf(props.subject)}
@@ -495,7 +572,7 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
           variant="framed"
           icon={<SearchIcon />}
           title="Choose what to look up"
-          description="Pick a group or a person, or a module. Nothing is read before you choose, so there is no table of everybody against everything."
+          description="Pick a group or a person, a module, or a role. Nothing is read before you choose, so there is no table of everybody against everything."
         />
       ) : (
         <Results

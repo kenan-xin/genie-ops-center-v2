@@ -1,6 +1,12 @@
 export { AccessTabs } from "./access-tabs.tsx";
 
-export { type AccessLink, accessHref } from "./access-link.ts";
+export {
+  type AccessLink,
+  accessHref,
+  accessOverviewHref,
+} from "./access-link.ts";
+
+export { linkedSubject } from "./overview-view.ts";
 
 export { AccessPathList, type InspectorAccess } from "./access-path-list.tsx";
 
