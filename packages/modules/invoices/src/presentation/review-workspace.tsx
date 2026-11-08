@@ -20,7 +20,8 @@ import type { DocumentReviewView } from "./views.ts";
 
 /**
  * The model after a save on this page (P09-9): each card shows its value as text and keeps "Read
- * as" without Undo; the result card states the split, so the split goes.
+ * as" without Undo; the result card states the split, so the split and its summary row go: the
+ * refetched open invoices no longer hold the linked ones, so a row computed again reads 0.00.
  */
 function savedModel(model: ReviewModel): ReviewModel {
   return {
@@ -34,6 +35,7 @@ function savedModel(model: ReviewModel): ReviewModel {
       onUndo: null,
     })),
     split: null,
+    splitSummary: null,
     blocker: null,
     notices: null,
     submit: () => {},

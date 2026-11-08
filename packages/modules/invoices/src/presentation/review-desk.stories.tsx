@@ -759,6 +759,63 @@ export const ReadingOnPhone: Story = {
   },
 };
 
+// After a payment save the linked invoices leave the open list, so a split row computed again
+// from the refetch would read Linked 0.00; the result card states the split instead.
+export const PaymentSavedOnPhone: Story = {
+  globals: phone390,
+  args: { view: splitPaymentReview },
+  beforeEach: () => {
+    serve(splitPaymentReview);
+    savePayment.mockImplementation(async () => {
+      getDocumentReview.mockResolvedValue({
+        ...splitPaymentReview,
+        document: { ...splitPaymentReview.document, status: "saved" },
+        payment:
+          splitPaymentReview.payment === null
+            ? null
+            : { ...splitPaymentReview.payment, openInvoices: [] },
+        saved: {
+          invoice: null,
+          payment: {
+            id: "40000000-0000-4000-8000-000000000003",
+            reference: "OR-AUG-SEP-BUNDLE",
+            paymentDate: "2026-10-27",
+          },
+          automaticLinks: [],
+        },
+      });
+
+      return {
+        outcome: "saved",
+        paymentId: "40000000-0000-4000-8000-000000000003",
+        customerId: splitPaymentReview.customerMatch?.id ?? "",
+        allocations: [],
+      };
+    });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await onStep(canvas, 1, 9);
+    await pickField(canvas, "Save the payment");
+    await onStep(canvas, 9, 9);
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Save the payment" })
+    );
+    await expect(
+      await canvas.findByText(/^Payment saved: .* linked/u, {}, PAGE_TIMEOUT)
+    ).toBeVisible();
+
+    const summary = await drawn(
+      canvasElement,
+      "[data-review-summary]",
+      "The summary"
+    );
+
+    await waitFor(() =>
+      expect(within(summary).queryByText(/^Linked /u)).toBeNull()
+    );
+  },
+};
+
 // T9.4: a save on a phone shows the result and the summary read only, with no bottom bar.
 export const SavedOnPhone: Story = {
   globals: phone390,
