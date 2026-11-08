@@ -31,6 +31,11 @@ function readsOf(parts: readonly MessagePart[]): readonly Read[] {
   });
 }
 
+/** "1 row", "37 rows", or "1,000+ rows" when the gate cut the read, because then the count is only a floor. */
+export function rowsText(count: number, truncated: boolean): string {
+  return `${count.toLocaleString("en-GB")}${truncated ? "+" : ""} ${count === 1 && !truncated ? "row" : "rows"}`;
+}
+
 /** The titles of the datasets an answer read, once each; an untitled one keeps its name (5.1). */
 export function sourceTitles(
   parts: readonly MessagePart[],

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AgentMessage } from "../../services/agent/index.ts";
-import { methodLines, sourceTitles } from "./answer-sources.ts";
+import { methodLines, rowsText, sourceTitles } from "./answer-sources.ts";
 
 type Part = AgentMessage["parts"][number];
 
@@ -48,6 +48,17 @@ const listed: Part = {
   input: {},
   output: { datasets: [] },
 };
+
+describe("the row count of a read", () => {
+  it.each([
+    [1, false, "1 row"],
+    [37, false, "37 rows"],
+    // The gate cut the read, so the count is only a floor.
+    [1000, true, "1,000+ rows"],
+  ])("%i rows, cut %s, reads %s", (count, truncated, text) => {
+    expect(rowsText(count, truncated)).toBe(text);
+  });
+});
 
 describe("the sources and the method of an answer", () => {
   it.each([

@@ -298,7 +298,7 @@ export const LongInlineTable: Story = {
     await expect(within(figure).getAllByText("Record 5")).toHaveLength(2);
     await expect(within(figure).queryAllByText("Record 6")).toHaveLength(0);
     await expect(
-      canvas.getByText("8 more. Ask for the full list.")
+      canvas.getByText("8 more rows. Ask for the full list.")
     ).toBeVisible();
     // The KPI chart of the same answer draws as before.
     await expect(await canvas.findByText("42")).toBeVisible();

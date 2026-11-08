@@ -34,6 +34,7 @@ function tableOf(count: number, truncated = false): ChartData {
     columns: [
       { key: "name", label: "Name", type: "text" },
       { key: "total", label: "Total", type: "money", currencyKey: "currency" },
+      { key: "currency", label: "Currency", type: "text" },
     ],
     rows: Array.from({ length: count }, (_, index) => ({
       name: `Record ${index + 1}`,
@@ -91,7 +92,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The card of a chart or a table an answer made (R-45a, AG24). `action` `panel` opens the artifact panel in Ask ("Open", or "Showing" with `aria-pressed` for the shown version); `link` goes to the artifact in Ask. Until its answer is stored, the card reads "Ready when the answer ends" and is disabled. A table card reads its rows through the chart gate as the viewer and shows the first 5, one line each, with "7 more" that opens the full list (R-44a).',
+          'The card of a chart or a table an answer made (R-45a, AG24). `action` `panel` opens the artifact panel in Ask ("Open", or "Showing" with `aria-pressed` for the shown version); `link` goes to the artifact in Ask. Until its answer is stored, the card reads "Ready when the answer ends" and is disabled. A table card reads its rows through the chart gate as the viewer and shows the first 5, one line each, under its header. Its footer holds "7 more rows", which opens the full list, and a note that names the amounts the rows show (R-44a, czjw.118).',
       },
     },
     a11y: { test: "error" },
@@ -185,21 +186,57 @@ export const ShortTable: Story = {
   play: async ({ canvas }) => {
     const list = await canvas.findByRole("list", { name: "First rows" });
 
-    await expect(within(list).getAllByRole("listitem")).toHaveLength(4);
+    const lines = within(list).getAllByRole("listitem");
+
+    await expect(lines).toHaveLength(4);
+    // The amount carries its currency, so the currency column is not a field of its own.
+    await expect(lines[0]?.textContent).toMatch(/^Record 1 · SGD\s1,200\.00$/);
     await expect(canvas.queryByText(/more/)).toBeNull();
+    await expect(canvas.getByText("Amount: Total")).toBeVisible();
   },
 };
 
 export const CutTable: Story = {
   name: "Table cut at 1,000 rows",
-  args: { artifact: TABLE_ARTIFACT },
-  decorators: [withChartCheck(answering(tableOf(1000, true)))],
-  play: async ({ canvas }) => {
-    // The gate stopped at 1,000, so the count is a floor, never an exact number.
-    await expect(
-      await canvas.findByRole("button", { name: /^995\+ more/ })
-    ).toBeVisible();
+  args: {
+    artifact: TABLE_ARTIFACT,
+    action: { kind: "panel", shown: null, onOpen: openTable },
   },
+  decorators: [withChartCheck(answering(tableOf(1000, true)))],
+  beforeEach: () => {
+    openTable.mockClear();
+  },
+  play: async ({ canvas }) => {
+    // The gate stopped at 1,000, so each count is a floor, never an exact number.
+    const more = await canvas.findByRole("button", {
+      name: "995+ more rows, open the full list",
+    });
+
+    await expect(
+      canvas.getByRole("button", { name: /^Records/ })
+    ).toHaveTextContent("Table · v1 · 1,000+ rows");
+    await expect(canvas.getByText("Amount: Total")).toBeVisible();
+
+    await userEvent.click(more);
+    await expect(openTable).toHaveBeenCalledWith({
+      artifactId: TABLE_ARTIFACT.artifactId,
+      version: 1,
+    });
+  },
+};
+
+/** Variant A at 390 px: the header, the rows and the footer keep the card's 16 px edge. */
+export const TableOnAPhone: Story = {
+  name: "Table on a phone",
+  args: { artifact: TABLE_ARTIFACT },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  decorators: [
+    (Story) => (
+      <div style={{ width: 358 }}>
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 export const TableInThePanel: Story = {

@@ -4,9 +4,15 @@ import { focusRing, Skeleton } from "@genie/ui";
 import { ChartColumnIcon, TableIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
+import { rowsText } from "./answer-sources.ts";
 import type { ArtifactRef, CardArtifact } from "./artifact-refs.ts";
 import { useGatedChart } from "./gated-chart.tsx";
-import { moreText, SHORT_LIST_ROWS, ShortListRows } from "./short-list.tsx";
+import {
+  amountNote,
+  moreText,
+  SHORT_LIST_ROWS,
+  ShortListRows,
+} from "./short-list.tsx";
 
 /**
  * What a card does (AG12): in Ask it opens the artifact panel beside the chat and marks the shown
@@ -22,18 +28,22 @@ export type ArtifactCardAction =
 
 const frameClass = "rounded-lg border border-border bg-card";
 
-const controlClass = `flex min-h-14 w-full items-center gap-3 rounded-lg px-3 py-2 text-start ${focusRing}`;
+const controlClass = `flex min-h-14 w-full items-center gap-3 rounded-lg px-4 py-3.5 text-start ${focusRing}`;
 
 const cardClass = `${frameClass} ${controlClass}`;
 
-const moreClass = `inline-flex min-h-11 items-center rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline lg:min-h-8 ${focusRing}`;
+// A table card's header sits on a hairline over its rows (czjw.118 items 1 and 2).
+const headerClass = `${controlClass} rounded-b-none border-b border-border`;
+
+const moreClass = `inline-flex min-h-11 items-center rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline lg:min-h-8 ${focusRing}`;
 
 type PreviewOpen =
   | { readonly kind: "button"; readonly onOpen: () => void }
   | { readonly kind: "link"; readonly href: string };
 
 /**
- * The first rows of a table card and how many more (R-44a, FL1). It reads the gate as the viewer
+ * The first rows of a table card, then a footer with how many more and which amounts the rows show
+ * (R-44a, FL1, czjw.118). It reads the gate as the viewer
  * with the panel's query key, so opening the panel reads nothing twice. A refused read shows no
  * preview, and the card still opens the panel, which shows the refusal.
  */
@@ -48,7 +58,7 @@ export function TablePreview(props: {
 
   if (query.isPending) {
     return (
-      <div aria-hidden="true" className="grid gap-1.5 py-1">
+      <div aria-hidden="true" className="grid gap-1.5 px-4 py-2.5">
         <div className="grid h-4">
           <Skeleton className="w-full" />
         </div>
@@ -63,30 +73,47 @@ export function TablePreview(props: {
 
   const hidden = data.rows.length - SHORT_LIST_ROWS;
 
-  const label = (
-    <>
-      {moreText(hidden, data.truncated)}
-      <span className="sr-only"> rows, open the full list</span>
-    </>
+  const label = moreText(hidden, data.truncated);
+
+  // The name starts with the visible text, so a person who speaks what they see reaches it.
+  const name = `${label}, open the full list`;
+
+  const more =
+    hidden <= 0 ? null : props.open.kind === "link" ? (
+      <a href={props.open.href} aria-label={name} className={moreClass}>
+        {label}
+      </a>
+    ) : (
+      <button
+        type="button"
+        aria-label={name}
+        className={moreClass}
+        onClick={props.open.onOpen}
+      >
+        {label}
+      </button>
+    );
+
+  const note = amountNote(
+    data.x === undefined ? data.columns : [data.x, ...data.columns]
   );
 
   return (
-    <div className="grid min-w-0 gap-1">
-      <ShortListRows data={data} />
-      {hidden <= 0 ? null : props.open.kind === "link" ? (
-        <a href={props.open.href} className={`${moreClass} justify-self-start`}>
-          {label}
-        </a>
-      ) : (
-        <button
-          type="button"
-          className={`${moreClass} justify-self-start`}
-          onClick={props.open.onOpen}
-        >
-          {label}
-        </button>
+    <>
+      <div className="min-w-0 px-4 py-2.5">
+        <ShortListRows data={data} />
+      </div>
+      {more === null && note === undefined ? null : (
+        <div className="flex items-center gap-3 border-t border-border px-4 pt-2.5 pb-3">
+          {more}
+          {note === undefined ? null : (
+            <span className="ms-auto text-xs text-muted-foreground">
+              {note}
+            </span>
+          )}
+        </div>
       )}
-    </div>
+    </>
   );
 }
 
@@ -106,6 +133,8 @@ function KindIcon(props: { readonly kind: CardArtifact["kind"] }): ReactNode {
 function Body(props: {
   readonly artifact: CardArtifact;
   readonly end: string;
+  /** A table's row count once its preview's read answers, for example "37 rows". */
+  readonly rows?: string | undefined;
 }): ReactNode {
   const { artifact } = props;
 
@@ -113,9 +142,10 @@ function Body(props: {
     <>
       <KindIcon kind={artifact.kind} />
       <span className="grid min-w-0 flex-1">
-        <span className="truncate text-sm font-medium">{artifact.title}</span>
+        <span className="truncate text-sm font-semibold">{artifact.title}</span>
         <span className="text-xs text-muted-foreground">
           {artifact.kind === "table" ? "Table" : "Chart"} · v{artifact.version}
+          {props.rows === undefined ? null : ` · ${props.rows}`}
         </span>
       </span>
       <span className="shrink-0 text-xs font-medium text-muted-foreground">
@@ -139,6 +169,19 @@ export function ArtifactCard(props: {
 
   const ref = { artifactId: artifact.artifactId, version: artifact.version };
 
+  const table = artifact.kind === "table";
+
+  // The preview's query key, so the header's row count and the rows share one gate call.
+  const { query } = useGatedChart(
+    table ? artifact.config : undefined,
+    props.ready && table
+  );
+
+  const rows =
+    query.data === undefined
+      ? undefined
+      : rowsText(query.data.data.rows.length, query.data.data.truncated);
+
   if (!props.ready) {
     return (
       <button
@@ -151,10 +194,8 @@ export function ArtifactCard(props: {
     );
   }
 
-  const table = artifact.kind === "table";
-
   // A table card's frame holds the control and the preview, so no control sits inside another.
-  const ownFrame = table ? controlClass : cardClass;
+  const ownFrame = table ? headerClass : cardClass;
 
   let control: ReactNode;
 
@@ -167,7 +208,7 @@ export function ArtifactCard(props: {
 
     control = (
       <a href={href} className={`${ownFrame} hover:bg-muted`}>
-        <Body artifact={artifact} end="Open in Ask" />
+        <Body artifact={artifact} end="Open in Ask" rows={rows} />
       </a>
     );
   } else {
@@ -184,7 +225,11 @@ export function ArtifactCard(props: {
         className={`${ownFrame} hover:bg-muted aria-pressed:border-primary`}
         onClick={() => action.onOpen(ref)}
       >
-        <Body artifact={artifact} end={shown ? "Showing" : "Open"} />
+        <Body
+          artifact={artifact}
+          end={shown ? "Showing" : "Open"}
+          rows={rows}
+        />
       </button>
     );
   }
@@ -196,9 +241,7 @@ export function ArtifactCard(props: {
       className={`${frameClass} grid has-[[aria-pressed=true]]:border-primary`}
     >
       {control}
-      <div className="min-w-0 ps-14 pe-3 pb-2">
-        <TablePreview config={artifact.config} open={open} />
-      </div>
+      <TablePreview config={artifact.config} open={open} />
     </div>
   );
 }
