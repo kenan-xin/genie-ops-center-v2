@@ -20,8 +20,12 @@ export type TransferItem = {
   readonly description?: string;
   /** The caption the item sits under, for example "Modules". Captions keep the order of first use. */
   readonly group?: string;
-  /** A third line, for example "Also through Finance team". */
-  readonly note?: string;
+  /** A third line, for example "Also through Finance team". A read-only row may put a link in it. */
+  readonly note?: ReactNode;
+  /** The row shows on its side with no checkbox, and nothing moves it, for example inherited access. */
+  readonly readOnly?: boolean;
+  /** Rows that share a key count once in the counts. Defaults to `id`. */
+  readonly countKey?: string;
   /** Why the item cannot be added now. It stays readable in muted text, and it can still be removed. */
   readonly blockedReason?: string;
   /** Pills at the end of the row, for example Inactive and Pending. */
@@ -56,9 +60,13 @@ const matches = (item: TransferItem, query: string) =>
   item.label.toLowerCase().includes(query) ||
   (item.description?.toLowerCase().includes(query) ?? false);
 
-/** A blocked row stops only an add: on the granted side it can always be removed. */
+/** A blocked row stops only an add: on the granted side it can always be removed. A read-only row never moves. */
 const blocked = (item: TransferItem, side: Side) =>
-  side === "available" && item.blockedReason !== undefined;
+  item.readOnly === true ||
+  (side === "available" && item.blockedReason !== undefined);
+
+const countOf = (items: readonly TransferItem[]) =>
+  new Set(items.map((item) => item.countKey ?? item.id)).size;
 
 function SearchField(props: {
   readonly label: string;
@@ -108,12 +116,31 @@ function Rows(props: {
         <Fragment key={caption}>
           {caption === "" ? null : (
             <li className={cn(captionClass, "px-3 pt-3 pb-1")}>
-              {caption} · {rows.length}
+              {caption} · {countOf(rows)}
             </li>
           )}
           {rows.map((item) => {
             const stop = blocked(item, props.side);
             const on = props.ticked.has(item.id);
+
+            const text = (
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium break-words">
+                  {item.label}
+                </span>
+                {item.description === undefined ? null : (
+                  <span
+                    title={item.description}
+                    className="line-clamp-2 text-xs text-muted-foreground"
+                  >
+                    {item.description}
+                  </span>
+                )}
+                {item.note === undefined ? null : (
+                  <span className="block text-xs font-medium">{item.note}</span>
+                )}
+              </span>
+            );
 
             return (
               <li
@@ -123,40 +150,31 @@ function Rows(props: {
                   on ? infoTint : !stop && "hover:bg-muted"
                 )}
               >
-                <label
-                  title={stop ? item.blockedReason : undefined}
-                  className={cn(
-                    "flex min-w-0 flex-1 items-center gap-3",
-                    stop
-                      ? "cursor-not-allowed text-muted-foreground"
-                      : "cursor-pointer"
-                  )}
-                >
-                  <Checkbox
-                    aria-label={item.label}
-                    checked={on}
-                    disabled={stop}
-                    onCheckedChange={() => props.onTick(item.id)}
-                  />
-                  <span className="min-w-0 flex-1">
-                    <span className="block font-medium break-words">
-                      {item.label}
-                    </span>
-                    {item.description === undefined ? null : (
-                      <span
-                        title={item.description}
-                        className="line-clamp-2 text-xs text-muted-foreground"
-                      >
-                        {item.description}
-                      </span>
+                {item.readOnly === true ? (
+                  // No label: a link in the note must never tick a box.
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <span aria-hidden="true" className="size-4 shrink-0" />
+                    {text}
+                  </div>
+                ) : (
+                  <label
+                    title={stop ? item.blockedReason : undefined}
+                    className={cn(
+                      "flex min-w-0 flex-1 items-center gap-3",
+                      stop
+                        ? "cursor-not-allowed text-muted-foreground"
+                        : "cursor-pointer"
                     )}
-                    {item.note === undefined ? null : (
-                      <span className="block text-xs font-medium">
-                        {item.note}
-                      </span>
-                    )}
-                  </span>
-                </label>
+                  >
+                    <Checkbox
+                      aria-label={item.label}
+                      checked={on}
+                      disabled={stop}
+                      onCheckedChange={() => props.onTick(item.id)}
+                    />
+                    {text}
+                  </label>
+                )}
                 {item.pills}
                 {props.side === "granted" && item.control !== undefined ? (
                   <div
@@ -319,7 +337,7 @@ export function TransferList(props: TransferListProps) {
                   "sticky top-0 z-10 border-b border-border bg-muted px-4 py-2"
                 )}
               >
-                {label[side]} · {all(side).length}
+                {label[side]} · {countOf(all(side))}
               </h3>
               {rows(side)}
             </section>
@@ -351,7 +369,7 @@ export function TransferList(props: TransferListProps) {
           >
             <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border px-3">
               <h3 className={captionClass}>
-                {label[side]} · {all(side).length}
+                {label[side]} · {countOf(all(side))}
               </h3>
               {quick.length > 0 ? (
                 <Button

@@ -53,12 +53,46 @@ const items: readonly TransferItem[] = [
   },
 ];
 
+/** An editable row and a read-only path to the same module, which count once. */
+const readOnlyItems = (onNote: () => void): readonly TransferItem[] => [
+  {
+    id: "fixture",
+    label: "Fixture",
+    description: "The test module.",
+    group: "Modules",
+  },
+  {
+    id: "fixture-finance",
+    label: "Fixture",
+    description: "The test module.",
+    group: "Modules",
+    readOnly: true,
+    countKey: "fixture",
+    note: (
+      <>
+        Through{" "}
+        <button type="button" className="underline" onClick={onNote}>
+          Finance team
+        </button>
+      </>
+    ),
+  },
+  {
+    id: "other",
+    label: "Other",
+    description: "Another module.",
+    group: "Modules",
+  },
+];
+
 type Args = Pick<TransferListProps, "layout" | "onMove"> & {
   readonly initial: readonly string[];
+  readonly items?: readonly TransferItem[];
+  readonly onNote?: () => void;
 };
 
 /** Holds `granted` the way a screen does, so a move shows on the other side. */
-function Harness({ layout, onMove, initial }: Args) {
+function Harness({ layout, onMove, initial, items: rows = items }: Args) {
   const [granted, setGranted] = React.useState<ReadonlySet<string>>(
     () => new Set(initial)
   );
@@ -66,7 +100,7 @@ function Harness({ layout, onMove, initial }: Args) {
   return (
     <div className={layout === "roster" ? "flex h-[40rem] flex-col" : ""}>
       <TransferList
-        items={items}
+        items={rows}
         granted={granted}
         layout={layout}
         availableLabel="Catalog"
@@ -251,6 +285,70 @@ export const Roster: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Remove 1" }));
     await expect(args.onMove).toHaveBeenLastCalledWith(["slides"], "available");
+  },
+};
+
+/** A1, A2: a read-only row has no checkbox, never moves, and shares its module's count. */
+export const ReadOnlyRowsAndOneCountPerKey: Story = {
+  args: { initial: ["fixture", "fixture-finance"], onNote: fn() },
+  render: (args) => (
+    <Harness {...args} items={readOnlyItems(args.onNote ?? (() => {}))} />
+  ),
+  play: async ({ args, canvasElement }) => {
+    const canvas = within(canvasElement);
+    const granted = bucket(canvasElement, "Granted");
+
+    await expect(
+      canvas.getByRole("heading", { name: "Granted · 1" })
+    ).toBeVisible();
+    await expect(granted.getByText("Modules · 1")).toBeVisible();
+    await expect(
+      granted.getAllByRole("checkbox", { name: "Fixture" })
+    ).toHaveLength(1);
+
+    await userEvent.click(
+      granted.getByRole("checkbox", { name: "Select all shown in Granted" })
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Remove 1" })
+    ).toBeVisible();
+    await userEvent.click(
+      granted.getByRole("button", { name: "Remove all shown" })
+    );
+    await expect(args.onMove).toHaveBeenCalledWith(["fixture"], "available");
+
+    await userEvent.click(
+      bucket(canvasElement, "Granted").getByRole("button", {
+        name: "Finance team",
+      })
+    );
+    await expect(args.onNote).toHaveBeenCalledOnce();
+  },
+};
+
+/** A3: the phone roster counts and selects the same way. */
+export const ReadOnlyRowsRoster: Story = {
+  args: {
+    layout: "roster",
+    initial: ["fixture", "fixture-finance"],
+    onNote: fn(),
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  render: (args) => (
+    <Harness {...args} items={readOnlyItems(args.onNote ?? (() => {}))} />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      canvas.getByRole("heading", { name: "Granted · 1" })
+    ).toBeVisible();
+    await userEvent.click(
+      canvas.getByRole("checkbox", { name: "Select all shown" })
+    );
+    await expect(
+      canvas.getByRole("button", { name: "Remove 1" })
+    ).toBeVisible();
   },
 };
 
