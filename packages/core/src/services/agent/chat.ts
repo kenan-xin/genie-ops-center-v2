@@ -28,6 +28,7 @@ import {
   summarizeChat,
   summaryMessage,
 } from "./compaction.ts";
+import { CHAT_TITLE_LIMIT } from "./contract.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { chatLabels } from "./labels.ts";
@@ -56,8 +57,6 @@ export const AGENT_LIMITS = {
   steps: 10,
   turnMs: 180_000,
 } as const;
-
-const TITLE_CHARACTERS = 80;
 
 // One text part only: chat takes no file upload (R-42).
 const chatRequestSchema = z.strictObject({
@@ -171,7 +170,7 @@ export async function handleAgentChat(
   if (existing === undefined) {
     await createOwnSession(ctx, {
       id: sessionId,
-      title: text.replaceAll(/\s+/g, " ").slice(0, TITLE_CHARACTERS),
+      title: text.replaceAll(/\s+/g, " ").slice(0, CHAT_TITLE_LIMIT),
       modelId: sessionModel,
     });
   }

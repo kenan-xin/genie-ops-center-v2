@@ -6,6 +6,15 @@ import type { AgentArtifact } from "./artifacts.ts";
 import type { AgentFile } from "./files.ts";
 import type { AgentMessage, AgentSessionSummary } from "./store.ts";
 
+export const CHAT_TITLE_LIMIT = 80;
+
+/** A chat's name, as the owner renames it (czjw.120 item 13). */
+export const chatTitleSchema = z
+  .string()
+  .trim()
+  .min(1, "Enter a name.")
+  .max(CHAT_TITLE_LIMIT, "Use at most 80 characters.");
+
 /**
  * The `agent` area's API (R-42), under core's `/agent/` area. It imports only zod and the
  * browser-safe `@genie/core/rpc` entry, so the browser client types its calls from it. The answers
@@ -15,6 +24,16 @@ export const agentContract = {
   sessions: oc
     .route({ method: "GET", path: "/agent/sessions" })
     .output(z.custom<readonly AgentSessionSummary[]>()),
+  // Renames one of the caller's own sessions and keeps its place in the list (czjw.120 item 13).
+  rename: oc
+    .route({ method: "POST", path: "/agent/sessions/{id}/title" })
+    .input(z.object({ id: z.string(), title: chatTitleSchema }))
+    .output(z.custom<AgentSessionSummary>()),
+  // Deletes one of the caller's own sessions with its messages, artifacts and made files.
+  remove: oc
+    .route({ method: "DELETE", path: "/agent/sessions/{id}" })
+    .input(z.object({ id: z.string() }))
+    .output(z.void()),
   // The messages of one of the caller's own sessions; none for an id not saved yet.
   messages: oc
     .route({ method: "GET", path: "/agent/sessions/{id}/messages" })

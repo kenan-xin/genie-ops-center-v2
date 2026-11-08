@@ -135,7 +135,7 @@ R-39. The module declares `invoices:read` and `invoices:write` and default roles
 
 R-40. The agent route handler lives in core and the app mounts it. Messages stream as AI SDK message parts.
 
-R-41. Core stores agent sessions, messages, including tool results, and the artifacts of R-45a with their versions. Only the owner opens a session and its artifacts.
+R-41. Core stores agent sessions, messages, including tool results, and the artifacts of R-45a with their versions. Only the owner opens a session and its artifacts. Amended 2026-11-08 (`czjw.120`): the owner renames or deletes a chat. Delete removes its messages, artifacts and made files.
 
 The boss agent, Ask and the agent panel are core and module-agnostic: they work the same whether the deployment runs finance, healthcare, legal or CRM modules. Their screens, labels and artifact kinds never name a module's domain; a module's words appear only as content from its datasets and tools (owner, 2026-11-03).
 

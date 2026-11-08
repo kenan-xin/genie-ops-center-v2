@@ -9,6 +9,7 @@ import {
   type AgentMessage,
   appendMessage,
   createOwnSession,
+  deleteOwnSession,
   findOwnSession,
   listOwnArtifacts,
   listOwnSessions,
@@ -327,6 +328,28 @@ describe("the owner-only agent store against a real database", () => {
     );
 
     expect(left.rows[0]?.n).toBe(0);
+  });
+
+  it("starts a deleted chat's id again as a new, empty chat", async () => {
+    // An agent panel in another tab still holds the id and sends to it (czjw.120 item 13).
+    const s1 = await session(personA, "Deleted in Ask");
+
+    await appendMessage(personA, s1.id, {
+      role: "user",
+      parts: text("Hello"),
+    });
+    await deleteOwnSession(personA, s1.id);
+
+    await createOwnSession(personA, {
+      id: s1.id,
+      title: "Again",
+      modelId: MODEL,
+    });
+
+    const again = await readOwnSession(personA, s1.id);
+
+    expect(again.session.title).toBe("Again");
+    expect(again.messages).toEqual([]);
   });
 
   it("keeps each artifact's number in its chat", async () => {

@@ -11,6 +11,7 @@ import {
 import {
   agentArtifact,
   agentArtifactVersion,
+  agentFile,
   agentMessage,
   agentSession,
 } from "../../schema.ts";
@@ -161,6 +162,57 @@ export async function createOwnSession(
   if (created === undefined) throw notFound();
 
   return created;
+}
+
+/** Renames the caller's session; `updated_at` stays, so the list keeps its order. `not-found` otherwise. */
+export async function renameOwnSession(
+  ctx: ModuleRequestContext,
+  id: string,
+  title: string
+): Promise<AgentSessionSummary> {
+  const [row] = await ctx.tenant.db
+    .update(agentSession)
+    .set({ title })
+    .where(ownedBy(ctx, checkedId(id)))
+    .returning(summaryColumns);
+
+  if (row === undefined) throw notFound();
+
+  return summary(row);
+}
+
+/**
+ * Deletes the caller's session in one transaction: the stored bytes of its made files through
+ * `FileStorage`, then the session row, whose messages, artifacts and file rows cascade. No audit
+ * row: a chat is the person's own data (P08-8). `not-found` otherwise.
+ */
+export async function deleteOwnSession(
+  ctx: ModuleRequestContext,
+  id: string
+): Promise<void> {
+  const checked = checkedId(id);
+
+  await withTransaction(ctx.tenant, async (tx) => {
+    const [owned] = await tx
+      .select({ id: agentSession.id })
+      .from(agentSession)
+      .where(ownedBy(ctx, checked))
+      .for("update");
+
+    if (owned === undefined) throw notFound();
+
+    const made = await tx
+      .select({ fileId: agentFile.fileId })
+      .from(agentFile)
+      .where(eq(agentFile.sessionId, checked));
+
+    await ctx.tenant.fileStorage.remove(
+      made.flatMap(({ fileId }) => (fileId === null ? [] : [fileId])),
+      tx
+    );
+
+    await tx.delete(agentSession).where(eq(agentSession.id, checked));
+  });
 }
 
 /** The caller's session with its messages in order; `not-found` otherwise. */

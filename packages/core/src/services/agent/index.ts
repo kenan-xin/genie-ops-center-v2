@@ -4,11 +4,13 @@ export {
   type AgentSessionSummary,
   appendMessage,
   createOwnSession,
+  deleteOwnSession,
   findOwnSession,
   listOwnSessions,
   type OwnHistory,
   readOwnHistory,
   readOwnSession,
+  renameOwnSession,
   saveSummary,
 } from "./store.ts";
 
@@ -58,7 +60,12 @@ export {
 
 export { type ChatFieldLabel, type ChatLabels, chatLabels } from "./labels.ts";
 
-export { type AgentContract, agentContract } from "./contract.ts";
+export {
+  type AgentContract,
+  agentContract,
+  CHAT_TITLE_LIMIT,
+  chatTitleSchema,
+} from "./contract.ts";
 
 export { type AgentRouter, createAgentRouter } from "./router.ts";
 

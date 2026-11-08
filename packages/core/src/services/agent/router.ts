@@ -6,7 +6,12 @@ import { listOwnArtifacts } from "./artifacts.ts";
 import { agentContract } from "./contract.ts";
 import { listOwnFiles, ownFileLink } from "./files.ts";
 import { withRecordPaths } from "./record-paths.ts";
-import { listOwnSessions, readOwnSession } from "./store.ts";
+import {
+  deleteOwnSession,
+  listOwnSessions,
+  readOwnSession,
+  renameOwnSession,
+} from "./store.ts";
 
 // The session check and the `core:ask:use` gate run before input is parsed, so a person without
 // the key is refused `forbidden` before any read, whatever the config (R-42, DEC-39). The
@@ -29,6 +34,13 @@ const os = gatedArea(agentContract, ASK_PERMISSION).use(
 export function createAgentRouter() {
   return os.router({
     sessions: os.sessions.handler(({ context }) => listOwnSessions(context)),
+    // A rename or a delete of a missing chat, or of another person's, is `not-found`, not empty.
+    rename: os.rename.handler(({ context, input }) =>
+      renameOwnSession(context, input.id, input.title)
+    ),
+    remove: os.remove.handler(({ context, input }) =>
+      deleteOwnSession(context, input.id)
+    ),
     // A chat the bubble opened but never sent is not saved yet, and another person's id reads
     // the same way, so both answer no messages.
     messages: os.messages.handler(async ({ context, input }) => {
