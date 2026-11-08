@@ -52,12 +52,13 @@ export function DatePicker({
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
   const field = useRef<HTMLInputElement>(null);
+  const group = useRef<HTMLDivElement>(null);
   const day = dayFromText(value);
   const selected = day === null ? undefined : dateOfDay(day);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <InputGroup className={className}>
+      <InputGroup ref={group} className={className}>
         <InputGroupInput
           ref={field}
           value={value}
@@ -89,7 +90,9 @@ export function DatePicker({
         </InputGroupAddon>
       </InputGroup>
       <PopoverContent
-        align="end"
+        // Under the whole field, not the icon button (czjw.101).
+        anchor={group}
+        align="start"
         collisionPadding={8}
         className="w-auto"
         aria-label={pickLabel}

@@ -175,6 +175,44 @@ export const PhoneTouchTargets: Story = {
   },
 };
 
+function popupBox() {
+  const rect = document
+    .querySelector("[data-slot=popover-content]")
+    ?.getBoundingClientRect();
+
+  return { left: Math.round(rect?.left ?? -1), top: rect?.top ?? -1 };
+}
+
+/** czjw.101: the calendar opens under the whole field, its left edge on the field's left edge. */
+async function calendarSitsUnderTheField(canvas: {
+  getByRole: typeof screen.getByRole;
+}) {
+  const button = canvas.getByRole("button", { name: "Choose the due date" });
+  const field = button.closest("[data-slot=input-group]");
+
+  await userEvent.click(button);
+  await dayButton("2026-11-01");
+
+  const fieldBox = field?.getBoundingClientRect();
+
+  await waitFor(() =>
+    expect(popupBox().left).toBe(Math.round(fieldBox?.left ?? 0))
+  );
+
+  await expect(popupBox().top).toBeGreaterThanOrEqual(fieldBox?.bottom ?? 0);
+}
+
+export const CalendarUnderTheField: Story = {
+  args: { initial: "1 Nov 2026" },
+  play: async ({ canvas }) => calendarSitsUnderTheField(canvas),
+};
+
+export const CalendarUnderTheFieldPhone: Story = {
+  args: { initial: "1 Nov 2026" },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => calendarSitsUnderTheField(canvas),
+};
+
 export const UnreadableTextStays: Story = {
   play: async ({ canvas }) => {
     const field = canvas.getByLabelText("Due date");
