@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
@@ -8,7 +8,7 @@ import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { contextLoggerOf } from "../../lib/tenant-context/with-transaction.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { account, groupMember, role, session, user } from "../../schema.ts";
+import { account, groupMember, session, user } from "../../schema.ts";
 import { writeAdminAuditEvent, writeAuthAuditEvent } from "../audit/index.ts";
 import { describeUserAgent } from "../auth/user-agent.ts";
 import {
@@ -30,6 +30,8 @@ import {
 } from "../keycloak/client.ts";
 import { GENIE_ADMIN_CLIENT_ID } from "../keycloak/environment.ts";
 import { consumeRateLimit } from "../rate-limit/index.ts";
+import { assertGrantPicks, grantRows } from "../roles/grants.ts";
+import type { RolesModule } from "../roles/index.ts";
 import { onSsoDomain } from "./sso-domain.ts";
 
 /**
@@ -597,11 +599,13 @@ export type AddPersonResult = {
 
 /**
  * Add person (R-40, R-40a): one transaction writes the `user` row and every picked role through
- * the one role-assignment service, so both are saved or neither is. A local account also creates
- * the realm account through `genie-admin`; a brokered add optionally sends the invitation email.
+ * the one role-assignment service, so both are saved or neither is. The picks are at most one role
+ * per Grants row of `modules` and Ask. A local account also creates the realm account through
+ * `genie-admin`; a brokered add optionally sends the invitation email.
  */
 export async function addPerson(
   tenant: TenantContext,
+  modules: readonly RolesModule[],
   input: AddPersonInput
 ): Promise<AddPersonResult> {
   const email = input.email.trim().toLowerCase();
@@ -649,7 +653,7 @@ export async function addPerson(
   const roleIds = [...new Set(input.roleIds)];
 
   // The cheap checks run before any realm call: an address already taken, and every picked role
-  // must exist. This is what keeps a failing transaction from leaving an orphan realm account.
+  // must be one that Grants offers (R-40, R-37a). This is what keeps a failing transaction from leaving an orphan realm account.
   const existing = await tenant.db
     .select({ id: user.id })
     .from(user)
@@ -660,17 +664,9 @@ export async function addPerson(
     throw new AppError(CORE_ERRORS["email-taken"]);
   }
 
+  // The router checked `core:roles:manage` tenant-wide, so the ungated Grants read serves here.
   if (roleIds.length > 0) {
-    const known = await tenant.db
-      .select({ id: role.id })
-      .from(role)
-      .where(inArray(role.id, roleIds));
-
-    if (known.length !== roleIds.length) {
-      throw new AppError(CORE_ERRORS["not-found"], {
-        cause: new Error("A picked role does not exist"),
-      });
-    }
+    assertGrantPicks(await grantRows(tenant, modules), roleIds);
   }
 
   const displayName = input.name?.trim() || email.split("@")[0] || email;

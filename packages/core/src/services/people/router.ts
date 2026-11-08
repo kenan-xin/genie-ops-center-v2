@@ -4,6 +4,7 @@ import {
   implementCoreArea,
 } from "../../lib/rpc/implement-core-area.ts";
 import { can } from "../authorization/index.ts";
+import { managesAllRoles } from "../roles/effective-access.ts";
 import type { RolesModule } from "../roles/index.ts";
 import { readPersonAccess } from "../roles/person-access.ts";
 import { peopleContract } from "./contract.ts";
@@ -20,12 +21,12 @@ import {
   resendSetPassword,
 } from "./index.ts";
 
-/**
+/*
  * Picking roles in Add person is a grant edit, which the design puts behind `core:roles:manage`
- * (DEC-39, the Access screen). A holder of only `core:people:manage` may add a person but not give
- * them a role; the screen hides the picker for them and the server refuses roles in the input.
+ * tenant-wide, as the Grants read it shows (DEC-39, R-40, D7). A caller without it may add a person
+ * but not give them a role; the screen hides the picker for them and the server refuses roles in
+ * the input.
  */
-const ASSIGN_PERMISSION = "core:roles:manage";
 
 // The session check, then the permission gate, both before input is parsed: an anonymous,
 // idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
@@ -85,19 +86,19 @@ export function createPeopleRouter(modules: readonly RolesModule[]) {
     // `canManageGroups` shows the person's Add to group and Remove controls only to a caller the
     // groups router lets add and remove members (G16).
     capabilities: managed.capabilities.handler(async ({ context }) => ({
-      canAssignRoles: await can(context.caller, ASSIGN_PERMISSION),
+      canAssignRoles: await managesAllRoles(context.caller),
       canManageGroups: await can(context.caller, "core:groups:manage"),
     })),
 
     add: managed.add.handler(async ({ context, input }) => {
       if (
         input.roleIds.length > 0 &&
-        !(await can(context.caller, ASSIGN_PERMISSION))
+        !(await managesAllRoles(context.caller))
       ) {
         throw new AppError(CORE_ERRORS.forbidden);
       }
 
-      return addPerson(context.tenant, {
+      return addPerson(context.tenant, modules, {
         actorUserId: context.caller.userId,
         email: input.email,
         name: input.name,

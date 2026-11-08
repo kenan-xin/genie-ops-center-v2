@@ -657,4 +657,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent's module tools against a real database writes one refused audit row for each tool call the AI SDK refuses before it runs, and repairs none",
     ],
   },
+  {
+    file: "testing/role-writers.integration.test.ts",
+    reason:
+      "Spec 2 R-40 and R-37a: Add person gives at most one role per Grants row, never an administration role and never a role of a switched-off module, and refuses before it writes a person (d8l5.44)",
+    cases: [
+      "Add person against the Grants rows adds a person with one role of a switched-on module and Ask user, each through the one writer",
+      "Add person against the Grants rows refuses two roles of one module and writes no person",
+      "Add person against the Grants rows refuses an administration role and writes no person",
+      "Add person against the Grants rows refuses a role of a switched-off module and writes no person",
+    ],
+  },
 ];

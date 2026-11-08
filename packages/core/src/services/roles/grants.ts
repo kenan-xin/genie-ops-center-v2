@@ -183,6 +183,32 @@ export async function grantRows(
   return rows;
 }
 
+/**
+ * Refuses role picks that Grants would refuse (R-40, R-37a): a role that no row holds is
+ * `not-found` (so every administration role), two roles of one row are `invalid-input`, and a role
+ * of a switched-off row is `module-disabled`.
+ */
+export function assertGrantPicks(
+  rows: readonly GrantRow[],
+  roleIds: readonly string[]
+): void {
+  const met = new Set<string>();
+
+  for (const roleId of roleIds) {
+    const row = rows.find((candidate) =>
+      candidate.roles.some((owned) => owned.id === roleId)
+    );
+
+    if (row === undefined) throw notFound(`Role ${roleId} is in no Grants row`);
+
+    if (met.has(row.id)) throw new AppError(CORE_ERRORS["invalid-input"]);
+
+    met.add(row.id);
+
+    if (!row.enabled) throw new AppError(CORE_ERRORS["module-disabled"]);
+  }
+}
+
 /** The staged changes of one Grants save (P1, P7, P8). */
 export type GrantChanges = {
   readonly add: readonly { readonly row: string; readonly roleId: string }[];

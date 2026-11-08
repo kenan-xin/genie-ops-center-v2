@@ -130,12 +130,19 @@ const ORDER_SQL = `order by a.created_at desc, a.id desc`;
  * `gatedArea` admits a holder of the key at any scope, because `can()` without a resource answers
  * "holds it anywhere". The read shows every recipient, so it needs the key tenant-wide (D7).
  */
+export async function managesAllRoles(
+  caller: RequestPrincipal
+): Promise<boolean> {
+  return (await scopesFor(caller, "core:roles:manage")).kind === "all";
+}
+
+/** `forbidden` unless `managesAllRoles`. */
 export async function assertManagesAllRoles(
   caller: RequestPrincipal
 ): Promise<void> {
-  const scopes = await scopesFor(caller, "core:roles:manage");
-
-  if (scopes.kind !== "all") throw new AppError(CORE_ERRORS.forbidden);
+  if (!(await managesAllRoles(caller))) {
+    throw new AppError(CORE_ERRORS.forbidden);
+  }
 }
 
 /**

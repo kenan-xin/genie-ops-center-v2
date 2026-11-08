@@ -16,6 +16,7 @@ import {
   removePerson,
   resendInvitation,
   resendSetPassword,
+  seedRoles,
   withTransaction,
   type RequestPrincipal,
 } from "../src/index.ts";
@@ -30,6 +31,7 @@ import {
   user,
 } from "../src/schema.ts";
 import {
+  assignRole,
   insertCredentialPerson,
   insertGroup,
   insertPersonWith,
@@ -61,6 +63,9 @@ beforeAll(async () => {
   deployment = await startDisposableDeployment();
 
   await markSetupDone(deployment.context);
+
+  // The core roles, so that Add person can pick `Ask user`, its one Grants row with no module.
+  await seedRoles(deployment.context, []);
 
   // Local accounts on, so the local-account ordering and compensation paths run. Set before the
   // settings reader fills its ten-second cache.
@@ -96,6 +101,18 @@ function request(userId: string | undefined): RequestPrincipal {
     userId,
     authenticated: userId !== undefined,
   });
+}
+
+/** The seeded `Ask user` role, the one role Add person offers on a deployment with no module. */
+async function askUserId(): Promise<string> {
+  const [row] = await deployment.context.db
+    .select({ id: roleTable.id })
+    .from(roleTable)
+    .where(eq(roleTable.name, "Ask user"));
+
+  if (row === undefined) throw new Error("No seeded Ask user role");
+
+  return row.id;
 }
 
 /** A caller holding `core:people:manage` only. */
@@ -147,13 +164,11 @@ describe("the People writers against a real database", () => {
   it("adds a person and the picked roles in one transaction, or neither", async () => {
     const actor = await manager();
 
-    const roleId = await insertRole(deployment.context, {
-      permissions: ["fixture:use"],
-    });
+    const roleId = await askUserId();
 
     const email = `add-${Date.now()}@example.invalid`;
 
-    const { id: personId } = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email,
       name: "Added Person",
@@ -194,7 +209,7 @@ describe("the People writers against a real database", () => {
     const email = `rollback-${Date.now()}@example.invalid`;
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email,
         roleIds: ["00000000-0000-0000-0000-000000000000"],
@@ -214,7 +229,7 @@ describe("the People writers against a real database", () => {
     const actor = await manager();
     const email = `dup-${Date.now()}@example.invalid`;
 
-    await addPerson(deployment.context, {
+    await addPerson(deployment.context, [], {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -222,7 +237,7 @@ describe("the People writers against a real database", () => {
     });
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email,
         roleIds: [],
@@ -235,7 +250,7 @@ describe("the People writers against a real database", () => {
     const actor = await manager();
     const email = `invite-${Date.now()}@example.invalid`;
 
-    const { id: personId } = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -277,7 +292,7 @@ describe("the People writers against a real database", () => {
     const actor = await manager();
     const email = `resend-invite-${Date.now()}@example.invalid`;
 
-    const { id: personId } = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -310,7 +325,7 @@ describe("the People writers against a real database", () => {
     const actor = await manager();
     const email = `brokered-sp-${Date.now()}@example.invalid`;
 
-    const { id: personId } = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -342,7 +357,7 @@ describe("the People writers against a real database", () => {
 
     const email = `lifecycle-${Date.now()}@example.invalid`;
 
-    const { id: personId } = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email,
       roleIds: [],
@@ -753,7 +768,7 @@ describe("writes on the break-glass account and an erased row (R-39)", () => {
     });
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email,
         roleIds: [],
@@ -789,7 +804,7 @@ describe("disable, re-enable and the R-38 count (R-10, R-38)", () => {
 
     const actor = await manager();
 
-    const { id: personId } = await addPerson(deployment.context, {
+    const { id: personId } = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email: `reenable-${Date.now()}@example.invalid`,
       roleIds: [],
@@ -842,11 +857,17 @@ describe("disable, re-enable and the R-38 count (R-10, R-38)", () => {
       .where(eq(roleTable.name, "Tenant administrator"))
       .limit(1);
 
-    const { id: personId } = await addPerson(deployment.context, {
+    // Add person offers no administration role, so the role is given as Access gives it.
+    const { id: personId } = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email: `count-${Date.now()}@example.invalid`,
-      roleIds: [adminRole!.id],
+      roleIds: [],
       sendInvitation: false,
+    });
+
+    await assignRole(deployment.context, {
+      roleId: adminRole!.id,
+      principal: { type: "user", id: personId },
     });
 
     const before = await withTransaction(deployment.context, (tx) =>
@@ -875,7 +896,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
     const counters = installRealmStub();
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email,
         roleIds: [],
@@ -892,7 +913,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
     const counters = installRealmStub();
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email: `bad-role-${Date.now()}@example.invalid`,
         roleIds: [randomUUID()],
@@ -921,7 +942,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
     });
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email,
         roleIds: [],
@@ -966,6 +987,29 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
     expect(roleless.id).toBeTruthy();
   });
 
+  it("refuses roles from a caller who manages roles at one record only, and hides the picker", async () => {
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["core:people:manage", "core:roles:manage"],
+      { type: "fixture_record", id: "r-1" }
+    );
+
+    const caller = callProcedure(createPeopleRouter([]), {
+      tenant: deployment.context,
+      caller: request(userId),
+    });
+
+    expect((await caller.capabilities()).canAssignRoles).toBe(false);
+
+    await expect(
+      caller.add({
+        email: `scoped-${Date.now()}@example.invalid`,
+        roleIds: [await askUserId()],
+        sendInvitation: false,
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
+
   it("G16: offers the person's group controls only to a caller who manages groups", async () => {
     const { userId: peopleOnly } = await insertPersonWith(deployment.context, [
       "core:people:manage",
@@ -997,9 +1041,7 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
       caller: request(userId),
     });
 
-    const roleId = await insertRole(deployment.context, {
-      permissions: ["fixture:use"],
-    });
+    const roleId = await askUserId();
 
     expect((await caller.capabilities()).canAssignRoles).toBe(true);
 
@@ -1088,7 +1130,7 @@ describe("Add person partial success when the expected email fails (N1)", () => 
 
     installRealmStub({ failActionEmail: true });
 
-    const result = await addPerson(deployment.context, {
+    const result = await addPerson(deployment.context, [], {
       actorUserId: actor,
       email: `local-nomail-${Date.now()}@example.invalid`,
       roleIds: [],
@@ -1118,7 +1160,7 @@ describe("Add person partial success when the expected email fails (N1)", () => 
     };
 
     try {
-      const result = await addPerson(deployment.context, {
+      const result = await addPerson(deployment.context, [], {
         actorUserId: actor,
         email: `brokered-nomail-${Date.now()}@example.invalid`,
         roleIds: [],
@@ -1157,7 +1199,7 @@ describe("the People rate limits and the unchecked invitation (AC-6, AC-9a)", ()
     // R-19 defaults: 30 in one hour per acting person.
     for (let attempt = 0; attempt < 30; attempt += 1) {
       // oxlint-disable-next-line no-await-in-loop -- the limit is a sequence by definition
-      await addPerson(deployment.context, {
+      await addPerson(deployment.context, [], {
         actorUserId: actor,
         email: `window-${attempt}-${randomUUID()}@example.invalid`,
         roleIds: [],
@@ -1168,7 +1210,7 @@ describe("the People rate limits and the unchecked invitation (AC-6, AC-9a)", ()
     const refusedEmail = `window-refused-${randomUUID()}@example.invalid`;
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email: refusedEmail,
         roleIds: [],
@@ -1231,7 +1273,7 @@ describe("the People rate limits and the unchecked invitation (AC-6, AC-9a)", ()
     };
 
     try {
-      const { id: personId } = await addPerson(deployment.context, {
+      const { id: personId } = await addPerson(deployment.context, [], {
         actorUserId: actor,
         email: `unchecked-${randomUUID()}@example.invalid`,
         roleIds: [],
@@ -1283,7 +1325,7 @@ describe("Add person compensation failure is logged (N2)", () => {
     });
 
     await expect(
-      addPerson(deployment.context, {
+      addPerson(deployment.context, [], {
         actorUserId: actor,
         email,
         roleIds: [],
