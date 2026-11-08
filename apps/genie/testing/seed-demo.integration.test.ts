@@ -5,6 +5,7 @@ import {
   seedRoles,
 } from "@genie/core";
 import {
+  assignRole,
   DemoSeedRefused,
   enableModules,
   insertUser,
@@ -135,7 +136,7 @@ describe("the demo seed command", () => {
     expect(lines.slice(1)).toEqual([
       `Demo account: user ${demoId}`,
       "Modules: invoices, analytics",
-      "1. Role assignments for the demo account: 6 to write, 0 already present (Analytics editor, Analytics user, Analytics viewer, Invoices and Payments editor, Invoices and Payments user, Invoices and Payments viewer)",
+      "1. Role assignments for the demo account: 3 to write, 0 already present, 0 to remove (Analytics editor, Ask user, Invoices and Payments editor)",
       "2. Reporting date: blank -> 2026-10-27",
       "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
       "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
@@ -152,7 +153,7 @@ describe("the demo seed command", () => {
 
     expect(lines.slice(2, -1)).toEqual([
       "Modules: invoices",
-      "1. Role assignments for the demo account: 3 to write, 0 already present (Invoices and Payments editor, Invoices and Payments user, Invoices and Payments viewer)",
+      "1. Role assignments for the demo account: 2 to write, 0 already present, 0 to remove (Ask user, Invoices and Payments editor)",
       "2. Reporting date: blank -> 2026-10-27",
       "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
       "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
@@ -183,7 +184,7 @@ describe("the demo seed command", () => {
     expect(audit[0]).toEqual({ count: 102, only_invoice_actions: true });
     expect(changes(before, await tableCounts(deployment))).toEqual({
       "public.dashboard": 1,
-      "public.role_assignment": 6,
+      "public.role_assignment": 3,
       "public.file": 66,
       "public.file_blob": 66,
       "public.document": 66,
@@ -217,19 +218,15 @@ describe("the demo seed command", () => {
        from role_assignment a join role r on r.id = a.role_id
        where r.module_id = 'invoices' order by r.name`
     );
-    expect(grants).toEqual(
-      [
-        "Invoices and Payments editor",
-        "Invoices and Payments user",
-        "Invoices and Payments viewer",
-      ].map((name) => ({
-        name,
+    expect(grants).toEqual([
+      {
+        name: "Invoices and Payments editor",
         principal_type: "user",
         principal_id: demoId,
         scope_type: null,
         scope_id: null,
-      }))
-    );
+      },
+    ]);
 
     const { rows: date } = await client.query<{ reporting_date: string }>(
       "select reporting_date::text, allowed_models, chat_model, document_model from tenant_settings"
@@ -264,7 +261,7 @@ describe("the demo seed command", () => {
     const lines = await run(false);
 
     expect(lines.slice(3)).toEqual([
-      "1. Role assignments for the demo account: 0 to write, 6 already present (Analytics editor, Analytics user, Analytics viewer, Invoices and Payments editor, Invoices and Payments user, Invoices and Payments viewer)",
+      "1. Role assignments for the demo account: 0 to write, 3 already present, 0 to remove (Analytics editor, Ask user, Invoices and Payments editor)",
       "2. Reporting date: 2026-10-27, already set",
       "3. Model connection: chat anthropic/claude-opus-5.5 and document openai/gpt-6.1-terra, already set",
       "4. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows), 0 readings to store",
@@ -382,6 +379,89 @@ describe("the demo seed command", () => {
   });
 });
 
+describe("the demo seed command on an earlier demo deployment", () => {
+  let deployment: Deployment;
+  let demoId: string;
+  const run = () =>
+    seedDemo({
+      databaseUrl: deployment.context.env.databaseUrl,
+      email: DEMO_EMAIL,
+      // Analytics only, so that no history runs.
+      moduleIds: ["analytics"],
+      dryRun: false,
+    });
+
+  async function heldRoles(): Promise<readonly string[]> {
+    const { rows } = await deployment.context.db.$client.query<{
+      name: string;
+    }>(
+      `select r.name from role_assignment a join role r on r.id = a.role_id
+       where a.principal_type = 'user' and a.principal_id = $1 order by r.name`,
+      [demoId]
+    );
+
+    return rows.map((row) => row.name);
+  }
+
+  beforeAll(async () => {
+    deployment = await start([analyticsModule]);
+    await enableModules(deployment.context, ["analytics"]);
+    await seedRoles(deployment.context, [analyticsModule]);
+    demoId = await insertUser(deployment.context, { email: DEMO_EMAIL });
+    const administrator = await insertUser(deployment.context);
+    const { rows } = await deployment.context.db.$client.query<{
+      id: string;
+      name: string;
+    }>("select id::text as id, name from role");
+    const roleId = (name: string) =>
+      rows.find((row) => row.name === name)?.id ?? "";
+    const demo = { type: "user", id: demoId } as const;
+
+    // An earlier seed gave every role of the module, with no creator.
+    await assignRole(deployment.context, {
+      roleId: roleId("Analytics user"),
+      principal: demo,
+    });
+    await assignRole(deployment.context, {
+      roleId: roleId("Analytics editor"),
+      principal: demo,
+    });
+    // An administrator gave this one in Access, so it carries its creator.
+    await assignRole(deployment.context, {
+      roleId: roleId("Analytics viewer"),
+      principal: demo,
+      createdBy: administrator,
+    });
+  }, 240000);
+
+  // The two cases run in order on one deployment: the first run, then the second.
+  it("removes only the earlier seed's extra grants and keeps an administrator's grant", async () => {
+    const lines = await run();
+
+    expect(lines[3]).toBe(
+      "1. Role assignments for the demo account: 1 to write, 1 already present, 1 to remove (Analytics editor, Ask user; removes Analytics user)"
+    );
+    expect(lines.at(-1)).toBe("Written.");
+    expect(await heldRoles()).toEqual([
+      "Analytics editor",
+      "Analytics viewer",
+      "Ask user",
+    ]);
+  });
+
+  it("removes nothing and changes no row on the next run", async () => {
+    const before = await tableCounts(deployment);
+
+    const lines = await run();
+
+    expect(lines[3]).toBe(
+      "1. Role assignments for the demo account: 0 to write, 2 already present, 0 to remove (Analytics editor, Ask user)"
+    );
+    expect(lines.at(-1)).toBe("Already seeded: nothing to write.");
+    expect(changes(before, await tableCounts(deployment))).toEqual({});
+  });
+});
+
 describe("the demo seed command on a database that is not ready", () => {
   let ready: Deployment;
   let bare: Deployment;
@@ -413,6 +493,17 @@ describe("the demo seed command on a database that is not ready", () => {
         "no person has the address in DEMO_ACCOUNT_EMAIL. The demo account signs in once, then you run the seed again.",
     },
     {
+      name: "a planned role the deployment does not hold",
+      deployment: () => ready,
+      enabled: true,
+      roles: true,
+      email: DEMO_EMAIL,
+      // As if a later rename had reached the database before the seed learned the new name.
+      rename: "Invoices and Payments editor",
+      refusal:
+        "the Invoices and Payments editor role does not exist on this deployment, so the seed cannot grant it.",
+    },
+    {
       name: "no role of the module",
       deployment: () => ready,
       enabled: true,
@@ -434,7 +525,7 @@ describe("the demo seed command on a database that is not ready", () => {
 
   it.each(cases)(
     "refuses $name and writes nothing",
-    async ({ deployment, enabled, roles, email, refusal }) => {
+    async ({ deployment, enabled, roles, email, rename, refusal }) => {
       const target = deployment();
       const client = target.context.db.$client;
       await client.query(
@@ -444,6 +535,12 @@ describe("the demo seed command on a database that is not ready", () => {
       if (target === ready) {
         await client.query("delete from role where module_id = 'invoices'");
         if (roles) await seedRoles(target.context, [invoicesModule]);
+        if (rename !== undefined) {
+          await client.query(
+            "update role set name = name || ' (renamed)' where name = $1",
+            [rename]
+          );
+        }
       }
       const before = await tableCounts(target);
       const settingsBefore = await settings(target);

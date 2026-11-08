@@ -1,6 +1,7 @@
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { isEqual } from "es-toolkit";
 
+import { ASK_USER_ROLE } from "../src/lib/module-contract/system-roles.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import { role, roleAssignment, tenantSettings, user } from "../src/schema.ts";
 
@@ -20,6 +21,8 @@ export type DemoAccessPlan = {
   readonly roles: {
     readonly toGrant: readonly string[];
     readonly present: readonly string[];
+    /** Roles of listed modules that an earlier seed granted and the plan no longer holds. */
+    readonly toRemove: readonly string[];
   };
   readonly reportingDate: { readonly from: string | null; readonly to: string };
   readonly models: {
@@ -37,6 +40,8 @@ type ModelConnection = {
 type DemoAccessInput = {
   readonly email: string;
   readonly moduleIds: readonly string[];
+  /** One role per listed module, by name; the seed adds `Ask user`. */
+  readonly roles: readonly string[];
   readonly reportingDate: string;
   /** The chat and document defaults; the seed adds both to the allowed models it finds. */
   readonly models: { readonly chat: string; readonly document: string };
@@ -44,11 +49,18 @@ type DemoAccessInput = {
 
 type Db = Pick<TenantContext, "db">;
 
-/** The plan, and the ids of the roles still to grant, so the seed writes what the plan names. */
+/**
+ * The plan, the ids of the roles still to grant and the ids of the assignments to remove, so the
+ * seed writes what the plan names.
+ */
 async function readAccess(
   context: Db,
   input: DemoAccessInput
-): Promise<{ readonly plan: DemoAccessPlan; readonly grantIds: string[] }> {
+): Promise<{
+  readonly plan: DemoAccessPlan;
+  readonly grantIds: string[];
+  readonly removeIds: string[];
+}> {
   const [person] = await context.db
     .select({ id: user.id, isBreakGlass: user.isBreakGlass })
     .from(user)
@@ -66,12 +78,15 @@ async function readAccess(
     );
   }
 
+  const planned = [...input.roles, ASK_USER_ROLE];
+
   const roles = await context.db
     .select({
       id: role.id,
       name: role.name,
       moduleId: role.moduleId,
       held: roleAssignment.id,
+      createdBy: roleAssignment.createdByUserId,
     })
     .from(role)
     .leftJoin(
@@ -83,13 +98,26 @@ async function readAccess(
         isNull(roleAssignment.scopeType)
       )
     )
-    .where(inArray(role.moduleId, [...input.moduleIds]))
+    .where(
+      or(
+        inArray(role.moduleId, [...input.moduleIds]),
+        inArray(role.name, planned)
+      )
+    )
     .orderBy(role.name);
 
   for (const moduleId of input.moduleIds) {
     if (!roles.some((row) => row.moduleId === moduleId)) {
       throw new DemoSeedRefused(
         `the ${moduleId} module has no roles on this deployment. Switching the module on in Admin > Modules creates them.`
+      );
+    }
+  }
+
+  for (const name of planned) {
+    if (!roles.some((row) => row.name === name)) {
+      throw new DemoSeedRefused(
+        `the ${name} role does not exist on this deployment, so the seed cannot grant it.`
       );
     }
   }
@@ -109,7 +137,20 @@ async function readAccess(
     );
   }
 
-  const missing = roles.filter((row) => row.held === null);
+  const wanted = roles.filter((row) => planned.includes(row.name));
+  const missing = wanted.filter((row) => row.held === null);
+
+  // Only a grant an earlier seed made: direct, tenant-wide (the join), and with no creator. A
+  // grant through Access carries its creator, so it stays.
+  const extra = roles.filter(
+    (row) =>
+      !planned.includes(row.name) &&
+      row.moduleId !== null &&
+      input.moduleIds.includes(row.moduleId) &&
+      row.held !== null &&
+      row.createdBy === null
+  );
+
   const { chat, document } = input.models;
 
   return {
@@ -117,9 +158,10 @@ async function readAccess(
       userId: person.id,
       roles: {
         toGrant: missing.map((row) => row.name),
-        present: roles
+        present: wanted
           .filter((row) => row.held !== null)
           .map((row) => row.name),
+        toRemove: extra.map((row) => row.name),
       },
       reportingDate: { from: settings.reportingDate, to: input.reportingDate },
       models: {
@@ -136,12 +178,14 @@ async function readAccess(
       },
     },
     grantIds: missing.map((row) => row.id),
+    removeIds: extra.flatMap((row) => (row.held === null ? [] : [row.held])),
   };
 }
 
 /**
- * What the demo account's access needs: the person found by its lower-case address, every role of
- * the named modules it does not yet hold tenant-wide and directly, the reporting date and the model
+ * What the demo account's access needs: the person found by its lower-case address, the one named
+ * role per module and `Ask user` that it does not yet hold tenant-wide and directly, the other
+ * roles of the named modules that an earlier seed granted, the reporting date and the model
  * connection. Writes nothing.
  */
 export async function planDemoAccess(
@@ -157,17 +201,24 @@ export function modelsDiffer(plan: DemoAccessPlan): boolean {
 }
 
 /**
- * Grants the planned roles tenant-wide to the person directly, and sets the reporting date and the
- * model connection when they differ. The model key stays the administrator's to store. Written as `dev-session` writes its grants, so no audit row, notification or email
+ * Removes the earlier seed's extra grants, grants the planned roles tenant-wide to the person
+ * directly, and sets the reporting date and the model connection when they differ. A grant that an
+ * administrator made in Access carries its creator and stays. The model key stays the administrator's to store. Written as `dev-session` writes its grants, so no audit row, notification or email
  * follows (P13); `assignRole` would send a notification and an email per role.
  */
 export async function seedDemoAccess(
   context: Db,
   input: DemoAccessInput
 ): Promise<DemoAccessPlan> {
-  const { plan, grantIds } = await readAccess(context, input);
+  const { plan, grantIds, removeIds } = await readAccess(context, input);
 
   await context.db.transaction(async (tx) => {
+    if (removeIds.length > 0) {
+      await tx
+        .delete(roleAssignment)
+        .where(inArray(roleAssignment.id, removeIds));
+    }
+
     if (grantIds.length > 0) {
       await tx
         .insert(roleAssignment)

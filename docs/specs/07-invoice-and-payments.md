@@ -197,7 +197,7 @@ R-57. The module declares `slides:read` and `slides:write` with default roles.
 
 R-58. An evaluation script, outside `pnpm gate:merge`, scores the candidate models on two tracks: extraction of the seven live uploads, and the nine read questions plus about 14 chart cases at reporting date 2026-10-27. Each case runs three times per model. A committed report gives pass rate, variance, cost and time, and the recommended defaults.
 
-R-59. A demo tenant includes the three modules. A seed script loads the demo pack history and gives the demo account every Section 7 role.
+R-59. A demo tenant includes the three modules. A seed script loads the demo pack history and gives the demo account one role per module, the module's editor role, and `Ask user`. A later run removes only the extra roles that an earlier run granted (amended 2026-11-08, `czjw.99`: the seed gave every Section 7 role, which breaks one role per module).
 
 R-60. Every new screen works at a phone and a desktop viewport (`DEC-25`).
 

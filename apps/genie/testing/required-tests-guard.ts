@@ -228,15 +228,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/seed-demo.integration.test.ts",
     reason:
-      "S7-07 R-59, S7-12 R-51 and the owner's seed pre-authorization require the seed to write only the five allowed kinds, nothing on a second run or a dry run, and nothing on a database that is not ready, and every starter panel to pass the chart gate as the demo account",
+      "S7-07 R-59, S7-12 R-51 and the owner's seed pre-authorization require the seed to write only the five allowed kinds, nothing on a second run or a dry run, and nothing on a database that is not ready, one role per module and Ask user with only an earlier seed's extra grants removed (czjw.99), and every starter panel to pass the chart gate as the demo account",
     cases: [
       "the demo seed command answers the six numbered lines on a fresh deployment in a dry run and writes nothing",
       "the demo seed command plans no starter dashboard in a dry run without analytics",
       "the demo seed command writes only the owner's list on the first run and grants the demo person tenant-wide",
       "the demo seed command changes no row and no setting on a second run",
       "the demo seed command draws every starter panel through the chart gate as the demo account, also for one customer",
+      "the demo seed command on an earlier demo deployment removes only the earlier seed's extra grants and keeps an administrator's grant",
+      "the demo seed command on an earlier demo deployment removes nothing and changes no row on the next run",
       "the demo seed command on a database that is not ready refuses the module switched off and writes nothing",
       "the demo seed command on a database that is not ready refuses no person with the address and writes nothing",
+      "the demo seed command on a database that is not ready refuses a planned role the deployment does not hold and writes nothing",
       "the demo seed command on a database that is not ready refuses no role of the module and writes nothing",
       "the demo seed command on a database that is not ready refuses no module tables and writes nothing",
     ],

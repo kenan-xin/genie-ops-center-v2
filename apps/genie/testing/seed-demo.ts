@@ -29,9 +29,17 @@ const DEMO_MODELS = {
   document: "openai/gpt-6.1-terra",
 };
 
+/** The one role per module that the demo account gets: each module's editor role (R-59, `czjw.99`). */
+const DEMO_ROLES = new Map([
+  ["invoices", "Invoices and Payments editor"],
+  ["analytics", "Analytics editor"],
+  ["slides", "Slides editor"],
+]);
+
 /**
- * Loads the demo pack history and the demo account's access into one deployment (R-59): every
- * role of the demo tenant's modules granted tenant-wide to the demo account, the reporting date,
+ * Loads the demo pack history and the demo account's access into one deployment (R-59): one role
+ * per module of the demo tenant and `Ask user`, granted tenant-wide to the demo account, with the
+ * extra roles that an earlier seed granted removed, the reporting date,
  * the evaluated model connection, the history PDFs through FileStorage, the history through the module procedures and, with
  * analytics, the Receivables overview starter dashboard. It prints
  * what it will write before it writes, and a second run writes nothing. The revert is a
@@ -77,6 +85,17 @@ export async function seedDemo(input: {
     const accessInput = {
       email: input.email,
       moduleIds: input.moduleIds,
+      roles: input.moduleIds.map((moduleId) => {
+        const name = DEMO_ROLES.get(moduleId);
+
+        if (name === undefined) {
+          throw new DemoSeedRefused(
+            `no demo role is named for the ${moduleId} module. Add one to DEMO_ROLES in testing/seed-demo.ts.`
+          );
+        }
+
+        return name;
+      }),
       reportingDate: demoReportingDate(),
       models: DEMO_MODELS,
     };
@@ -104,7 +123,7 @@ export async function seedDemo(input: {
       `Demo seed for ${targetLabel(input.databaseUrl)}`,
       `Demo account: user ${access.userId}`,
       `Modules: ${input.moduleIds.join(", ")}`,
-      `1. Role assignments for the demo account: ${roles.toGrant.length} to write, ${roles.present.length} already present (${[...roles.toGrant, ...roles.present].toSorted().join(", ")})`,
+      `1. Role assignments for the demo account: ${roles.toGrant.length} to write, ${roles.present.length} already present, ${roles.toRemove.length} to remove (${[...roles.toGrant, ...roles.present].toSorted().join(", ")}${roles.toRemove.length === 0 ? "" : `; removes ${[...roles.toRemove].toSorted().join(", ")}`})`,
       reportingDate.from === reportingDate.to
         ? `2. Reporting date: ${reportingDate.to}, already set`
         : `2. Reporting date: ${reportingDate.from ?? "blank"} -> ${reportingDate.to}`,
@@ -122,6 +141,7 @@ export async function seedDemo(input: {
 
     const nothingToWrite =
       roles.toGrant.length === 0 &&
+      roles.toRemove.length === 0 &&
       reportingDate.from === reportingDate.to &&
       !modelsDiffer(access) &&
       history.documents.toWrite === 0 &&
