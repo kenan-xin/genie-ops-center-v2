@@ -5,7 +5,6 @@ import {
   e2eAccessLinksMemberEmail,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
-import { pickRecipient } from "./support/access.ts";
 import { queryDatabase } from "./support/database.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
@@ -13,7 +12,8 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 /**
  * S2-24 through the real realm and the real database: the navigation entry, the person inspector's
  * Access tab with "Manage in Access", and the Modules link each open Access with their subject
- * chosen. A member without `core:roles:manage` sees none of them, and no Access read is sent.
+ * chosen. A people manager without `core:roles:manage` sees no link into Access, and reads a
+ * person's access read-only through the People read, never the roles read (`d8l5.43`).
  *
  * The phone and desktop projects share one database, so the member is scoped to the project, and
  * the setup replaces the member's assignments that an earlier run left.
@@ -109,7 +109,7 @@ test("the navigation entry and Manage in Access open Access with the person chos
   ).toContainText(name);
 });
 
-test("the Modules link opens Access with the module staged for the chosen person", async ({
+test("the Modules link opens the Overview with the module chosen", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
@@ -130,33 +130,42 @@ test("the Modules link opens Access with the module staged for the chosen person
     })
     .filter({ visible: true })
     .click();
-  await expect(page).toHaveURL(/\/admin\/access\?module=placeholder$/);
-  // The phone band loads Access as a document, and a click before hydration is lost.
-  await page.waitForLoadState("networkidle");
 
-  await page.getByRole("button", { name: "People", exact: true }).click();
-  await pickRecipient(page, "user", e2eAccessLinksMemberEmail(project));
-
-  const granted = page.getByRole("group", { name: "Granted", exact: true });
-
-  await expect(granted).toContainText("Placeholder");
-  await expect(granted.getByText("Pending", { exact: true })).toBeVisible();
-  await expect(
-    page.getByRole("region", { name: "Unsaved changes" })
-  ).toContainText("1 to add");
+  // d8l5.46: a link with no recipient lands on the Overview, and a reload keeps the module.
+  await expectModuleChosen(page);
+  await page.reload();
+  await expectModuleChosen(page);
 });
 
-test("a member without core:roles:manage sees no link into Access and reads no access", async ({
+async function expectModuleChosen(page: Page): Promise<void> {
+  await expect(page).toHaveURL(
+    /\/admin\/access\/overview\?module=placeholder$/
+  );
+  await expect(page.getByRole("button", { name: "By module" })).toHaveAttribute(
+    "aria-pressed",
+    "true"
+  );
+  await expect(
+    page.getByRole("status").filter({ hasText: /holders? of Placeholder/ })
+  ).toBeVisible();
+}
+
+test("a people manager reads a person's access read-only", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
-  const accessReads: string[] = [];
+  const rolesReads: string[] = [];
+  const personReads: string[] = [];
 
   await setUp(project);
 
   page.on("request", (request) => {
     if (request.url().includes("/api/rpc/roles/recipientAccess")) {
-      accessReads.push(request.url());
+      rolesReads.push(request.url());
+    }
+
+    if (request.url().includes("/api/rpc/people/access")) {
+      personReads.push(request.url());
     }
   });
 
@@ -164,7 +173,7 @@ test("a member without core:roles:manage sees no link into Access and reads no a
     email: e2eAccessLinksMemberEmail(project),
   });
 
-  // E3: no entry, no Modules link, no Access tab and no Manage in Access.
+  // E3, d8l5.43: no entry and no Modules link; the Access tab reads, with no Manage in Access.
   await page.goto("/admin/modules");
   await expect(
     page
@@ -183,10 +192,13 @@ test("a member without core:roles:manage sees no link into Access and reads no a
 
   const inspector = await openPerson(page, memberName(project));
 
-  await expect(inspector.getByRole("tab").first()).toBeVisible();
-  await expect(inspector.getByRole("tab", { name: /^Access/ })).toHaveCount(0);
+  await inspector.getByRole("tab", { name: /^Access/ }).click();
+  await expect(
+    inspector.getByText("Core administration · E2E links limited")
+  ).toBeVisible();
   await expect(
     inspector.getByRole("button", { name: "Manage in Access" })
   ).toHaveCount(0);
-  expect(accessReads).toEqual([]);
+  expect(rolesReads).toEqual([]);
+  expect(personReads.length).toBeGreaterThan(0);
 });

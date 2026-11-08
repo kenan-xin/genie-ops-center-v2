@@ -501,7 +501,7 @@ test("Role detail links back to Roles through the page header trail", async ({
     ).toContainText("Auditor");
   }
 
-  // R-29b, R-37a: the holders card links to Access with the role preselected.
+  // d8l5.46, d8l5.47: the holders card opens the Access Overview by role.
   const [auditorId] = await queryDatabase(
     "select id from role where name = 'Auditor'"
   );
@@ -511,7 +511,7 @@ test("Role detail links back to Roles through the page header trail", async ({
   ).toBeVisible();
   await page.getByRole("button", { name: "Manage in Access" }).click();
   await expect(page).toHaveURL(
-    new RegExp(`/admin/access\\?role=${auditorId}$`)
+    new RegExp(`/admin/access/overview\\?role=${auditorId}$`)
   );
   await page.goBack();
   await expect(
