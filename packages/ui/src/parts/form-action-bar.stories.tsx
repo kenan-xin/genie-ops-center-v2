@@ -1,8 +1,16 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
-import { expect, userEvent } from "storybook/test";
+import { expect, screen, userEvent, waitFor } from "storybook/test";
 
-import { Button, FormActionBar } from "../index.ts";
+import {
+  Button,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  FormActionBar,
+} from "../index.ts";
 
 // The copy of each error kind, as the application's catalogue writes it for the idle timeout.
 const NOT_SAVED = "The idle timeout was not saved.";
@@ -26,7 +34,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The action bar of a form that saves: a failed save shows here, left of the buttons on desktop and above them on a phone, as an alert that takes focus. There is no Retry: Save is the retry. `placement` adds the rule of a dialog or section footer; a section footer stays at the bottom of the screen on a phone.",
+          "The action bar of a form that saves: a failed save shows here, left of the buttons on desktop and above them on a phone, as an alert that takes focus. There is no Retry: Save is the retry. `status` is the line that the bar shows while no failure shows, for example what a form will save. `placement` adds the rule of a dialog or section footer. A dialog footer stays at the bottom of a dialog that scrolls, and a section footer stays at the bottom of the screen on a phone.",
       },
     },
   },
@@ -69,6 +77,14 @@ export const Invalid: Story = {
 export const InDialog: Story = {
   ...Network,
   args: { ...Network.args, placement: "dialog" },
+  // The padding of `DialogContent`, which the bar's negative margins match.
+  decorators: [
+    (Story) => (
+      <div className="bg-card p-4 md:p-6">
+        <Story />
+      </div>
+    ),
+  ],
 };
 
 /** Under a form section, the bar stays at the bottom of the screen on a phone. */
@@ -104,6 +120,83 @@ function SaveThatFails(props: { readonly failure: string }) {
     </FormActionBar>
   );
 }
+
+function StatusThatFails() {
+  const [failure, setFailure] = useState<string | null>(null);
+
+  return (
+    <FormActionBar
+      failure={failure}
+      status={
+        <>
+          Access to <strong>Invoices and Ask</strong>
+        </>
+      }
+    >
+      <Button variant="secondary" onClick={() => setFailure(null)}>
+        Clear
+      </Button>
+      <Button onClick={() => setFailure(copy("The server did not answer."))}>
+        Fail
+      </Button>
+    </FormActionBar>
+  );
+}
+
+/** The status says what the form will save, and gives way to a failure while one shows. */
+export const StatusBesideTheButtons: Story = {
+  render: () => <StatusThatFails />,
+  play: async ({ canvas }) => {
+    const status = () => canvas.queryByText("Invoices and Ask");
+
+    await expect(status()).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Fail" }));
+    await expect(await canvas.findByRole("alert")).toHaveFocus();
+    await expect(status()).toBeNull();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Clear" }));
+    await expect(canvas.queryByRole("alert")).toBeNull();
+    await expect(status()).toBeVisible();
+  },
+};
+
+/** In a dialog taller than the screen, the bar stays in view while the body is at its top. */
+export const DialogBarStaysInView: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  render: () => (
+    <Dialog>
+      <DialogTrigger render={<Button variant="secondary" />}>
+        Add person
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add person</DialogTitle>
+        </DialogHeader>
+        {Array.from({ length: 40 }, (_, index) => (
+          <p key={index}>Line {index + 1} of a long form.</p>
+        ))}
+        <FormActionBar failure={null} placement="dialog" status="No access yet">
+          {buttons}
+        </FormActionBar>
+      </DialogContent>
+    </Dialog>
+  ),
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add person" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "Add person" });
+
+    await waitFor(() => expect(dialog).toBeVisible());
+    await expect(dialog.scrollTop).toBe(0);
+
+    const save = screen.getByRole("button", { name: "Save" });
+
+    await expect(save.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      window.innerHeight
+    );
+  },
+};
 
 /** A failed save moves focus to its alert, every time it fails, so the person hears it. */
 export const FocusOnFailure: Story = {
