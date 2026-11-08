@@ -74,6 +74,12 @@ async function save(
 
   expect((await response).status()).toBe(200);
   await expect(bar).toBeHidden();
+  // At desktop the success toast covers the next bar's Save, and it stays while the pointer rests on
+  // it, so the test closes it as a person would.
+  await page
+    .getByRole("region", { name: /^Notifications/ })
+    .getByRole("button", { name: "Close" })
+    .click();
 }
 
 test("a grant reaches the member's navigation, and Remove takes it unless another path stays", async ({
