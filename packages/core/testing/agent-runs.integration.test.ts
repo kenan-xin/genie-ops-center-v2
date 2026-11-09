@@ -158,6 +158,10 @@ describe("starting an agent run", () => {
     expect((await runColumns(session.id))?.runState).toBe("queued");
 
     await stopRun(ctx, session.id);
+
+    // A queued run ends at once, so the person is not blocked until its job is fetched.
+    expect((await runColumns(session.id))?.runState).toBeNull();
+
     await runQueuedAgentRun(deployment.context, [], session.id);
 
     const { rows } = await deployment.context.db.execute<{
