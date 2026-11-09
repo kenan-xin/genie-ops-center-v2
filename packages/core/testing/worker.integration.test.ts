@@ -12,7 +12,10 @@ import {
   createTenantContext,
   type TenantContext,
 } from "../src/lib/tenant-context/index.ts";
+import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import { AGENT_FILE_JOB } from "../src/services/agent/file-job.ts";
+import { startRun } from "../src/services/agent/run-job.ts";
+import { AGENT_RUN_JOB_NAME } from "../src/services/agent/runs.ts";
 import { principalFor } from "../src/services/authorization/index.ts";
 import { stopJobQueue } from "../src/services/job-queue/index.ts";
 import { enqueueJob } from "../src/services/job-queue/module-jobs.ts";
@@ -410,6 +413,121 @@ describe("the core pg-boss worker", () => {
     expect(audit.rows).toEqual([
       { actor_user_id: userId, outcome: "not-found" },
     ]);
+  });
+
+  it("settles agent runs at start and leaves a live one alone", async () => {
+    const database = await disposablePostgres();
+    const context = createTenantContext(
+      source(database.url),
+      silentLogger(),
+      []
+    );
+    cleanups.push(() => context.db.$client.end());
+    cleanups.push(() => stopJobQueue(context.jobQueue));
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: [],
+    });
+
+    // One person per run, because each person holds at most one run.
+    const runSession = async (
+      runState: string | null,
+      runJobId: string | null
+    ) => {
+      const userId = await insertUser(context);
+      const id = randomUUID();
+
+      await context.db.$client.query(
+        "insert into agent_session (id, user_id, title, model_id, surface, run_state, run_job_id) values ($1, $2, 'Chat', 'test-model', 'placeholder', $3, $4)",
+        [id, userId, runState, runJobId]
+      );
+
+      return { id, userId };
+    };
+
+    const queue = await boss(context);
+    await queue.createQueue(AGENT_RUN_JOB_NAME);
+
+    // A: its job failed while the run still says running, as after a crash.
+    const failedJob = await queue.send(
+      AGENT_RUN_JOB_NAME,
+      { sessionId: "a" },
+      { retryLimit: 0 }
+    );
+    const [fetchedA] = await queue.fetch(AGENT_RUN_JOB_NAME);
+    await queue.fail(AGENT_RUN_JOB_NAME, fetchedA?.id ?? "");
+    const a = await runSession("running", failedJob);
+
+    // B: Stop was asked, and no job holds the run.
+    const b = await runSession("stopping", randomUUID());
+
+    // C: another worker runs it now; the queue's 15-minute expiry keeps it active.
+    const liveJob = await queue.send(AGENT_RUN_JOB_NAME, { sessionId: "c" });
+    await queue.fetch(AGENT_RUN_JOB_NAME);
+    const c = await runSession("running", liveJob);
+
+    // D: queued by a person who may not ask, so the run job ends it failed.
+    const d = await runSession(null, null);
+    await withTransaction(context, async (tx) =>
+      startRun(
+        {
+          tenant: context,
+          caller: principalFor({
+            tenant: context,
+            modules: [],
+            userId: d.userId,
+            authenticated: true,
+          }),
+        },
+        tx,
+        d.id
+      )
+    );
+
+    const runs = async () => {
+      const { rows } = await context.db.$client.query<{
+        id: string;
+        run_state: string | null;
+        run_error: string | null;
+      }>("select id, run_state, run_error from agent_session");
+
+      return new Map(rows.map((row) => [row.id, row]));
+    };
+
+    const controller = new AbortController();
+    const worker = runWorker({
+      source: source(database.url),
+      modules: [],
+      histories: [],
+      ...OUTPUT,
+      signal: controller.signal,
+      heartbeat: {
+        cron: "* * * * *",
+        path: "/tmp/worker-heartbeat",
+        staleAfterMs: 180000,
+      },
+    });
+
+    await waitUntil(async () => {
+      const now = await runs();
+
+      return (
+        now.get(a.id)?.run_error === "interrupted" &&
+        now.get(b.id)?.run_error === "stopped" &&
+        now.get(d.id)?.run_error === "failed"
+      );
+    });
+    controller.abort();
+    await worker;
+
+    expect((await runs()).get(c.id)).toEqual({
+      id: c.id,
+      run_state: "running",
+      run_error: null,
+    });
   });
 
   it("skips a job of a compiled module with no tenant_module row", async () => {

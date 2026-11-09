@@ -1,4 +1,5 @@
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import type { PgBoss } from "pg-boss";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
@@ -54,6 +55,53 @@ export async function readRunState(
     .where(eq(agentSession.id, sessionId));
 
   return row === undefined ? "gone" : row.runState;
+}
+
+/** The pg-boss states of a job that still holds its run: waiting, waiting to retry, or running. */
+const LIVE_JOB_STATES: ReadonlySet<string> = new Set([
+  "created",
+  "retry",
+  "active",
+]);
+
+/**
+ * Ends every run that no live job holds (R-42b): its job is gone, or completed, cancelled or
+ * failed, as after a crash or an expiry. The run ends `stopped` when Stop was asked, else
+ * `interrupted`. A run whose job is still live is left alone, because another worker may hold it.
+ */
+export async function recoverRuns(
+  tenant: TenantContext,
+  boss: Pick<PgBoss, "findJobs">
+): Promise<void> {
+  const runs = await tenant.db
+    .select({ id: agentSession.id, runJobId: agentSession.runJobId })
+    .from(agentSession)
+    .where(isNotNull(agentSession.runState));
+
+  /* oxlint-disable no-await-in-loop -- few runs, one person each; each read decides its own update. */
+  for (const run of runs) {
+    // A check constraint holds a job id beside every run state.
+    if (run.runJobId === null) continue;
+
+    const [job] = await boss.findJobs(AGENT_RUN_JOB_NAME, { id: run.runJobId });
+
+    if (job !== undefined && LIVE_JOB_STATES.has(job.state)) continue;
+
+    await tenant.db
+      .update(agentSession)
+      .set({
+        runState: null,
+        runError: sql`case when ${agentSession.runState} = 'stopping' then 'stopped' else 'interrupted' end`,
+      })
+      .where(
+        and(
+          eq(agentSession.id, run.id),
+          eq(agentSession.runJobId, run.runJobId),
+          isNotNull(agentSession.runState)
+        )
+      );
+  }
+  /* oxlint-enable no-await-in-loop */
 }
 
 /** queued -> running only, so a run that was stopped or ended never starts. */

@@ -26,6 +26,7 @@ const SESSIONS: readonly AgentSessionSummary[] = [
     title: OVERDUE,
     modelId: "openai/gpt-6.1-terra",
     surface: "core:ask",
+    runState: null,
     updatedAt: new Date().toISOString(),
   },
   {
@@ -33,6 +34,7 @@ const SESSIONS: readonly AgentSessionSummary[] = [
     title: "What can you do?",
     modelId: "anthropic/claude-opus-5.5",
     surface: "core:ask",
+    runState: null,
     updatedAt: "2026-10-29T16:30:00.000Z",
   },
 ];

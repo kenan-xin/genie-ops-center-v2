@@ -24,6 +24,7 @@ import {
   type DisposableDeployment,
   type JsonValue,
   agentRequest,
+  insertAgentSession,
   insertPersonWith,
   insertUser,
   markSetupDone,
@@ -423,6 +424,43 @@ describe("the agent route", () => {
 
     expect(messages.rowCount).toBe(0);
     expect(recorded.sent).toEqual([]);
+  });
+
+  it("a message to a chat whose run is building is refused", async () => {
+    const ctx = await asker();
+
+    const session = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      runState: "running",
+      runJobId: randomUUID(),
+    });
+
+    const before = recorded.sent.length;
+
+    expect({
+      refusal: await refusal(ctx, body({ sessionId: session.id })),
+      messages: (await readOwnSession(ctx, session.id)).messages.length,
+      requests: recorded.sent.length - before,
+    }).toEqual({ refusal: "agent-run-active", messages: 0, requests: 0 });
+  });
+
+  it("a message to a surface chat whose module is off stores nothing", async () => {
+    const ctx = await asker();
+
+    // No module of this deployment provides a surface named "placeholder".
+    const session = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+    });
+
+    const before = recorded.sent.length;
+
+    expect({
+      refusal: await refusal(ctx, body({ sessionId: session.id })),
+      messages: (await readOwnSession(ctx, session.id)).messages.length,
+      requests: recorded.sent.length - before,
+    }).toEqual({ refusal: "module-disabled", messages: 0, requests: 0 });
   });
 
   it("names the page of a valid context in the system text it sends", async () => {

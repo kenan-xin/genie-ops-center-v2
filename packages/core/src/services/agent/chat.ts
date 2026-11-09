@@ -51,6 +51,7 @@ import {
 import {
   agentToolSet,
   auditRefusedToolCall,
+  offeredSessionTools,
   offersWriteTool,
   writeToolAudit,
 } from "./tools.ts";
@@ -163,6 +164,14 @@ export async function handleAgentChat(
   const existing = await findOwnSession(ctx, sessionId);
 
   const surface = existing?.surface ?? ASK_SURFACE;
+
+  // Before any write: one answer at a time in a chat (R-42b), and a surface whose module is off
+  // stores nothing.
+  if (existing !== undefined && existing.runState !== null) {
+    throw new AppError(CORE_ERRORS["agent-run-active"]);
+  }
+
+  if (surface !== ASK_SURFACE) await offeredSessionTools(ctx, surface);
 
   const sessionModel = existing?.modelId ?? modelId ?? access.chatModel;
 

@@ -31,6 +31,8 @@ export type AgentSessionSummary = {
   readonly modelId: string;
   /** `core:ask`, or the id of the module whose surface runs the session. */
   readonly surface: string;
+  /** The state of the session's background run; null when none runs (R-42b). */
+  readonly runState: "queued" | "running" | "stopping" | null;
   /** ISO instant. */
   readonly updatedAt: string;
 };
@@ -44,6 +46,7 @@ const summaryColumns = {
   title: agentSession.title,
   modelId: agentSession.modelId,
   surface: agentSession.surface,
+  runState: agentSession.runState,
   updatedAt: agentSession.updatedAt,
 };
 
@@ -63,6 +66,7 @@ function summary(row: {
   readonly title: string;
   readonly modelId: string;
   readonly surface: string;
+  readonly runState: AgentSessionSummary["runState"];
   readonly updatedAt: Date;
 }): AgentSessionSummary {
   return {
@@ -70,6 +74,7 @@ function summary(row: {
     title: row.title,
     modelId: row.modelId,
     surface: row.surface,
+    runState: row.runState,
     updatedAt: row.updatedAt.toISOString(),
   };
 }

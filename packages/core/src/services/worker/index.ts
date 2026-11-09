@@ -20,6 +20,7 @@ import {
 import { causeChain } from "../../utils/error-cause.ts";
 import { AGENT_FILE_JOB } from "../agent/file-job.ts";
 import { AGENT_RUN_JOB } from "../agent/run-job.ts";
+import { recoverRuns } from "../agent/runs.ts";
 import { principalFor } from "../authorization/index.ts";
 import {
   durableEventQueues,
@@ -733,8 +734,10 @@ export function heartbeatPath(
 }
 
 /**
- * The core heartbeat queue: no entitlement gate, a round trip, the schedules, then the file. The
- * file is written last, so a reconciliation that keeps failing lets the health check go stale.
+ * The core heartbeat queue: no entitlement gate, a round trip, the schedules, the recovery of agent
+ * runs that no live job holds (R-42b), then the file. The heartbeat runs at start and every minute,
+ * so recovery does too. The file is written last, so a reconciliation that keeps failing lets the
+ * health check go stale.
  */
 function heartbeatLoop(
   boss: PgBoss,
@@ -750,6 +753,7 @@ function heartbeatLoop(
     run: async () => {
       await context.db.$client.query("select 1");
       await reconcileSchedules(boss, context, jobs);
+      await recoverRuns(context, boss);
       await writeFile(path, new Date().toISOString());
     },
   };

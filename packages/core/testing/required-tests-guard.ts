@@ -308,6 +308,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the core pg-boss worker does not refresh the heartbeat when declaration schedule reconciliation fails",
       "the core pg-boss worker settles an abandoned handler job and ignores its late result",
       "the core pg-boss worker runs a queued agent file job as its starter",
+      "the core pg-boss worker settles agent runs at start and leaves a live one alone",
     ],
   },
   {
@@ -651,6 +652,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "Spec 7 R-40, R-41, R-42 and R-18: the agent route refuses a missing gate, an upload, an unbounded body, another person's session and a model the administrator did not allow, before it stores or sends anything; Stop aborts the model call and stores a stopped answer (czjw.110)",
     cases: [
       "the agent route refuses each bad request before the stream starts, and stores and sends nothing",
+      "the agent route a message to a chat whose run is building is refused",
+      "the agent route a message to a surface chat whose module is off stores nothing",
       "the agent route names the page of a valid context in the system text it sends",
       "the agent route answers the next message after a turn stored a tool call with no result",
       "the agent route streams the first words before the model's answer ends",
