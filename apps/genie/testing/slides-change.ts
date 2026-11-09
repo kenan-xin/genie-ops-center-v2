@@ -75,6 +75,28 @@ export const SLIDES_CHANGE_CONTEXT = {
   part: { type: "slide", id: "s2" },
 } as const;
 
+/** The page context of the deck editor on the title slide `s1`, where it opens. */
+export const SLIDES_TITLE_SLIDE_CONTEXT = {
+  ...SLIDES_CHANGE_CONTEXT,
+  part: { type: "slide", id: "s1" },
+} as const;
+
+/**
+ * The style change of S7-43 (AC-14), answered by `synthetic-slides-style-1` to `-3`: a read, one
+ * change with the background and a white text color for both texts of `s1` (each text without a
+ * fill is re-checked against the background), and the answer.
+ */
+export const SLIDES_STYLE_MESSAGE =
+  "Make the title slide dark blue with white text.";
+
+export const SLIDES_STYLE_BACKGROUND = "#1E3A8A";
+
+/** A request outside the deck tools, answered by `synthetic-slides-out-of-tools-1` (R-46a). */
+export const SLIDES_OUT_OF_TOOLS_MESSAGE = "Add a video to the title slide.";
+
+export const SLIDES_OUT_OF_TOOLS_ANSWER =
+  "I cannot add a video, but I can change the slides and their order, each slide's title, text, bullets, figures, charts, tables and images, and each element's position, size and style, so I can add an image to the title slide instead.";
+
 /**
  * The message of the refused-and-fixed change. It differs from `SLIDES_CHANGE_MESSAGE`, so its
  * first request is not the first request of the plain change, and each replays its own answer.

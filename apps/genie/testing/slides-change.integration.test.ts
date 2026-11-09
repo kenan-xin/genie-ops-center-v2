@@ -37,6 +37,11 @@ import {
   SLIDES_CHANGE_MESSAGE,
   SLIDES_CHANGE_NEW_TITLE,
   SLIDES_CHANGE_OLD_TITLE,
+  SLIDES_OUT_OF_TOOLS_ANSWER,
+  SLIDES_OUT_OF_TOOLS_MESSAGE,
+  SLIDES_STYLE_BACKGROUND,
+  SLIDES_STYLE_MESSAGE,
+  SLIDES_TITLE_SLIDE_CONTEXT,
 } from "./slides-change.ts";
 import { SLIDES_CHAT_KEYS } from "./slides-chat.ts";
 
@@ -128,7 +133,13 @@ const insertFixedDeck = (ownerUserId: string) =>
  * Sends the message with the deck page's context on slide `s2`, in a chat bound to the Slides
  * surface and the deck, as the panel on the deck page does (P11-26).
  */
-async function chat(sessionId: string, text: string): Promise<void> {
+async function chat(
+  sessionId: string,
+  text: string,
+  context:
+    | typeof SLIDES_CHANGE_CONTEXT
+    | typeof SLIDES_TITLE_SLIDE_CONTEXT = SLIDES_CHANGE_CONTEXT
+): Promise<void> {
   const reply = await handleAgentChat(
     asker,
     agentRequest({
@@ -138,7 +149,7 @@ async function chat(sessionId: string, text: string): Promise<void> {
         role: "user",
         parts: [{ type: "text", text }],
       },
-      context: SLIDES_CHANGE_CONTEXT,
+      context,
       surface: { id: "slides", recordId: SLIDES_CHANGE_DECK_ID },
     }),
     { logError: (cause: unknown) => errors.push(cause) }
@@ -188,7 +199,70 @@ const changeOutputs = async (sessionId: string) =>
       : []
   );
 
+/** The fixed deck's slide `s1` as stored. */
+const titleSlide = async () =>
+  (
+    await deployment.context.db.$client.query<{
+      s1: { background?: string; elements: { style?: { color?: string } }[] };
+      undo: number;
+    }>(
+      "select content->'slides'->0 as s1, jsonb_array_length(undo) as undo from deck where id = $1",
+      [SLIDES_CHANGE_DECK_ID]
+    )
+  ).rows[0];
+
 describe("the agent panel on the deck editor", () => {
+  it("makes the title slide dark blue with white text in one change, and Undo restores it (AC-14)", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0011";
+
+    await insertFixedDeck(asker.caller.userId);
+    await chat(session, SLIDES_STYLE_MESSAGE, SLIDES_TITLE_SLIDE_CONTEXT);
+
+    expect(errors).toEqual([]);
+    expect(await toolCalls(session)).toEqual([
+      { tool: "slides-read-deck", outcome: "answered" },
+      { tool: "slides-change-deck", outcome: "answered" },
+    ]);
+    expect(await titleSlide()).toMatchObject({
+      s1: {
+        background: SLIDES_STYLE_BACKGROUND,
+        elements: [
+          { style: { color: "#FFFFFF" } },
+          { style: { color: "#FFFFFF" } },
+        ],
+      },
+      undo: 1,
+    });
+
+    await callProcedure(slidesRouter, asker).undoDeck({
+      id: SLIDES_CHANGE_DECK_ID,
+      expectedHash: (await fixedDeck())?.content_hash ?? "",
+    });
+
+    expect(await titleSlide()).toEqual({
+      s1: SLIDES_CHANGE_CONTENT.slides[0],
+      undo: 0,
+    });
+  });
+
+  it("answers a request outside the deck tools with one sentence of what it can change", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0012";
+
+    await insertFixedDeck(asker.caller.userId);
+    await chat(
+      session,
+      SLIDES_OUT_OF_TOOLS_MESSAGE,
+      SLIDES_TITLE_SLIDE_CONTEXT
+    );
+
+    expect(errors).toEqual([]);
+    expect(await toolCalls(session)).toEqual([]);
+    expect(JSON.stringify(await answerParts(session))).toContain(
+      SLIDES_OUT_OF_TOOLS_ANSWER
+    );
+    expect((await titleSlide())?.undo).toBe(0);
+  });
+
   it("changes the open slide by chat with one Undo entry, keeps its figure, and Undo restores it", async () => {
     const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0006";
 
