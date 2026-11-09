@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { readUIMessageStream } from "ai";
@@ -43,7 +44,10 @@ export const AGENT_RUN_EXPIRE_SECONDS = AGENT_LIMITS.turnMs / 1000 + 60;
  * the answer, then the run ends: `failed` after a stream error, a refusal or the turn limit. An
  * error that is not a refusal is thrown, so the worker logs it.
  */
-async function runSession(ctx: JobContext, sessionId: string): Promise<void> {
+async function runSession(
+  ctx: JobContext,
+  { sessionId, runJobId }: AgentRunData
+): Promise<void> {
   const { tenant, caller } = ctx;
 
   const [session] = await tenant.db
@@ -59,15 +63,15 @@ async function runSession(ctx: JobContext, sessionId: string): Promise<void> {
 
   // Only the person whose chat it is runs it, as `file-job.ts` makes only the asker's file.
   if (caller === undefined || caller.userId !== session.userId) {
-    await endRun(tenant, sessionId, "failed");
+    await endRun(tenant, sessionId, runJobId, "failed");
 
     return;
   }
 
-  if (!(await markRunning(tenant, sessionId))) {
+  if (!(await markRunning(tenant, sessionId, runJobId))) {
     // Stopped before it began: nothing runs, and the run ends `stopped`.
     if ((await readRunState(tenant, sessionId)) === "stopping") {
-      await endRun(tenant, sessionId, null);
+      await endRun(tenant, sessionId, runJobId, null);
     }
 
     return;
@@ -87,7 +91,7 @@ async function runSession(ctx: JobContext, sessionId: string): Promise<void> {
     const access = await agentAccess(person);
 
     if (!access.permitted || access.ai !== "on") {
-      await endRun(tenant, sessionId, "failed");
+      await endRun(tenant, sessionId, runJobId, "failed");
 
       return;
     }
@@ -130,10 +134,15 @@ async function runSession(ctx: JobContext, sessionId: string): Promise<void> {
     }
 
     await stopWatching();
-    await endRun(tenant, sessionId, failed || limit.aborted ? "failed" : null);
+    await endRun(
+      tenant,
+      sessionId,
+      runJobId,
+      failed || limit.aborted ? "failed" : null
+    );
   } catch (error) {
     await stopWatching();
-    await endRun(tenant, sessionId, "failed");
+    await endRun(tenant, sessionId, runJobId, "failed");
 
     // A chat deleted during its run ends the run; the final save's refusal is no fault.
     if (
@@ -215,10 +224,13 @@ function watchRun(
   };
 }
 
-export const AGENT_RUN_JOB: JobDeclaration<{ readonly sessionId: string }> = {
+/** The run's session and its own job id, so the job acts only on the run it was queued for. */
+type AgentRunData = { readonly sessionId: string; readonly runJobId: string };
+
+export const AGENT_RUN_JOB: JobDeclaration<AgentRunData> = {
   name: AGENT_RUN_JOB_NAME,
   retry: { limit: 0 },
-  handler: async (ctx, { sessionId }) => runSession(ctx, sessionId),
+  handler: runSession,
 };
 
 /**
@@ -237,14 +249,17 @@ export async function startRun(
     eq(agentSession.userId, ctx.caller.userId)
   );
 
-  const jobId = await enqueueJob(
+  // The id is made first, so the job's data can name the run it belongs to.
+  const jobId = randomUUID();
+
+  const sent = await enqueueJob(
     ctx,
     AGENT_RUN_JOB,
-    { sessionId },
-    { tx, expireInSeconds: AGENT_RUN_EXPIRE_SECONDS }
+    { sessionId, runJobId: jobId },
+    { tx, id: jobId, expireInSeconds: AGENT_RUN_EXPIRE_SECONDS }
   );
 
-  if (jobId === null) throw new Error("The agent run job was not queued.");
+  if (sent !== jobId) throw new Error("The agent run job was not queued.");
 
   let moved: readonly { readonly id: string }[];
 

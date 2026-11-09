@@ -1,10 +1,11 @@
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { z } from "zod";
 
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import { agentSession } from "../src/schema.ts";
-import { startRun } from "../src/services/agent/run-job.ts";
+import { AGENT_RUN_JOB, startRun } from "../src/services/agent/run-job.ts";
 import { AGENT_RUN_JOB_NAME, stopRun } from "../src/services/agent/runs.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import { bossOf } from "../src/services/job-queue/index.ts";
@@ -88,7 +89,11 @@ describe("starting an agent run", () => {
       retryLimit: job?.retryLimit,
       expireInSeconds: job?.expireInSeconds,
     }).toEqual({
-      data: { "sessionId": session.id, "genie:startedBy": ctx.caller.userId },
+      data: {
+        "sessionId": session.id,
+        "runJobId": jobId,
+        "genie:startedBy": ctx.caller.userId,
+      },
       retryLimit: 0,
       expireInSeconds: 240,
     });
@@ -142,6 +147,29 @@ describe("starting an agent run", () => {
       runJobId: null,
     });
     expect(await jobsNaming(session.id)).toEqual([]);
+  });
+
+  it("the job of a stopped run leaves the run that replaced it alone", async () => {
+    const ctx = await person();
+    const session = await sessionOf(ctx);
+
+    const stoppedJob = await start(ctx, session.id);
+    await stopRun(ctx, session.id);
+    const replacement = await start(ctx, session.id);
+
+    const boss = await bossOf(deployment.context.jobQueue);
+    const [job] = await boss.findJobs(AGENT_RUN_JOB_NAME, { id: stoppedJob });
+
+    // The stopped run's job runs as its starter, as the worker would run it.
+    await AGENT_RUN_JOB.handler(
+      ctx,
+      z.object({ sessionId: z.string(), runJobId: z.string() }).parse(job?.data)
+    );
+
+    expect(await runColumns(session.id)).toEqual({
+      runState: "queued",
+      runJobId: replacement,
+    });
   });
 
   it("Stop on a queued run ends it stopped without a model call", async () => {

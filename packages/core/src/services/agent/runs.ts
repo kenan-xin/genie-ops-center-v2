@@ -109,16 +109,24 @@ export async function recoverRuns(
   /* oxlint-enable no-await-in-loop */
 }
 
-/** queued -> running only, so a run that was stopped or ended never starts. */
+/**
+ * queued -> running only, and only for the run of this job, so a run that was stopped or ended
+ * never starts, and the job of a stopped run never takes the run that replaced it.
+ */
 export async function markRunning(
   tenant: TenantContext,
-  sessionId: string
+  sessionId: string,
+  runJobId: string
 ): Promise<boolean> {
   const moved = await tenant.db
     .update(agentSession)
     .set({ runState: "running" })
     .where(
-      and(eq(agentSession.id, sessionId), eq(agentSession.runState, "queued"))
+      and(
+        eq(agentSession.id, sessionId),
+        eq(agentSession.runJobId, runJobId),
+        eq(agentSession.runState, "queued")
+      )
     )
     .returning({ id: agentSession.id });
 
@@ -126,12 +134,13 @@ export async function markRunning(
 }
 
 /**
- * Ends the session's run: `run_state` null, and `run_error` `stopped` when Stop was asked, else
- * `code`. Nothing for a session with no run.
+ * Ends the run of this job: `run_state` null, and `run_error` `stopped` when Stop was asked, else
+ * `code`. Nothing for a session with no run, or with the run of another job.
  */
 export async function endRun(
   tenant: TenantContext,
   sessionId: string,
+  runJobId: string,
   code: "failed" | null
 ): Promise<void> {
   await tenant.db
@@ -141,6 +150,10 @@ export async function endRun(
       runError: sql`case when ${agentSession.runState} = 'stopping' then 'stopped' else ${code}::text end`,
     })
     .where(
-      and(eq(agentSession.id, sessionId), isNotNull(agentSession.runState))
+      and(
+        eq(agentSession.id, sessionId),
+        eq(agentSession.runJobId, runJobId),
+        isNotNull(agentSession.runState)
+      )
     );
 }

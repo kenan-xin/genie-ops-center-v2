@@ -117,8 +117,11 @@ export async function runQueuedAgentRun(
           authenticated: true,
         });
 
-  // SAFETY: the run job's data is the `{ sessionId }` that `startRun` sent.
-  const payload = data as { readonly sessionId: string };
+  // SAFETY: the run job's data is the `{ sessionId, runJobId }` that `startRun` sent.
+  const payload = data as {
+    readonly sessionId: string;
+    readonly runJobId: string;
+  };
 
   await AGENT_RUN_JOB.handler(
     caller === undefined ? { tenant: context } : { tenant: context, caller },

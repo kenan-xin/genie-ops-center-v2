@@ -120,7 +120,7 @@ async function surfaceSession(ctx: ModuleRequestContext): Promise<string> {
 }
 
 async function start(ctx: ModuleRequestContext, sessionId: string) {
-  await withTransaction(deployment.context, async (tx) =>
+  return withTransaction(deployment.context, async (tx) =>
     startRun(ctx, tx, sessionId)
   );
 }
@@ -368,14 +368,14 @@ describe("a durable agent run on the placeholder test surface", () => {
     const owner = await person();
     const sessionId = await surfaceSession(owner);
 
-    await start(owner, sessionId);
+    const runJobId = await start(owner, sessionId);
 
     const other = await person();
     const before = recorded.sent.length;
 
     await AGENT_RUN_JOB.handler(
       { tenant: deployment.context, caller: other.caller },
-      { sessionId }
+      { sessionId, runJobId }
     );
 
     expect({

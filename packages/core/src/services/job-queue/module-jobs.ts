@@ -47,6 +47,7 @@ export async function enqueueJob<TData extends JobData>(
   data: TData,
   options: {
     readonly tx?: TenantTransaction;
+    readonly id?: string;
     readonly expireInSeconds?: number;
   } = {}
 ): Promise<string | null> {
@@ -58,6 +59,8 @@ export async function enqueueJob<TData extends JobData>(
   }
 
   if (options.tx !== undefined) send.db = fromDrizzle(options.tx, sql);
+
+  if (options.id !== undefined) send.id = options.id;
 
   return sendAsStarter(
     ctx.tenant.jobQueue,
