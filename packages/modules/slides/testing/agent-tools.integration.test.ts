@@ -1,6 +1,7 @@
 import {
   agentToolSet,
   artifactTurn,
+  ASK_SURFACE,
   moduleInstructionLines,
   type ModuleRequestContext,
   principalFor,
@@ -16,6 +17,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
+import { SLIDES_SURFACE } from "../src/agent-surface.ts";
 import { SLIDES_AGENT_TOOLS } from "../src/agent-tools.ts";
 import type { ElementInput } from "../src/contract.ts";
 import { slidesModule } from "../src/module.ts";
@@ -61,7 +63,9 @@ async function personWith(
 }
 
 function toolOf(name: string) {
-  const found = SLIDES_AGENT_TOOLS.find((tool) => tool.name === name);
+  const found = [...SLIDES_AGENT_TOOLS, ...SLIDES_SURFACE.tools].find(
+    (tool) => tool.name === name
+  );
 
   if (found === undefined) throw new Error(`No tool ${name}.`);
 
@@ -138,15 +142,35 @@ function inputIssues(elements: readonly ElementInput[]): string[] {
   );
 }
 
-/** The tool names the model gets for a person who may ask with these keys, and the module rule count. */
-async function offered(permissions: readonly string[]) {
+/** The stored content hash of a deck. */
+async function storedHash(id: string): Promise<string> {
+  const { rows } = await deployment.context.db.$client.query(
+    "select content_hash from deck where id::text = $1",
+    [id]
+  );
+
+  return rows[0].content_hash;
+}
+
+/**
+ * The tool names the model gets for a person who may ask with these keys, on Ask or in a Slides
+ * session, and the module rule count.
+ */
+async function offered(
+  permissions: readonly string[],
+  surface: string = ASK_SURFACE
+) {
   const ctx = await personWith(["core:ask:use", ...permissions]);
 
   return {
     tools: Object.keys(
-      await agentToolSet(ctx, { id: "session" }, artifactTurn("session", 0))
+      await agentToolSet(
+        ctx,
+        { id: "session", surface },
+        artifactTurn("session", 0)
+      )
     ),
-    rules: (await moduleInstructionLines(ctx)).length,
+    rules: (await moduleInstructionLines(ctx, surface)).length,
   };
 }
 
@@ -208,7 +232,7 @@ describe("the slides agent tools", () => {
     ]);
   });
 
-  it("slides-change-deck changes a slide with the hash slides-read-deck answers, with one Undo entry and one audit row, and answers no hash", async () => {
+  it("slides-change-deck answers the new content hash, and a second change with it saves without a read", async () => {
     const owner = await personWith(EDITOR);
 
     const id = await insertDeck(deployment.context, {
@@ -234,6 +258,7 @@ describe("the slides agent tools", () => {
     expect(changed).toEqual({
       output: {
         deckId: id,
+        contentHash: await storedHash(id),
         slides: [
           {
             number: 1,
@@ -245,9 +270,23 @@ describe("the slides agent tools", () => {
       },
       rowCount: 2,
     });
+
+    // The next slide of a build: the last answer's hash, and no read in between.
+    const added = await runTool(owner, "slides-change-deck", {
+      deckId: id,
+      expectedHash: hashIn(changed),
+      changes: [
+        {
+          op: "add-slide",
+          slide: { elements: [title("Three customers paid late.")] },
+        },
+      ],
+    });
+
+    expect(added.rowCount).toBe(3);
     expect(await deckState(id)).toMatchObject({
-      undo: 1,
-      audit: ["slides:deck-changed"],
+      undo: 2,
+      audit: ["slides:deck-changed", "slides:deck-changed"],
     });
   });
 
@@ -281,14 +320,10 @@ describe("the slides agent tools", () => {
     expect(before).toMatchObject({ title: "Hand save", undo: 1 });
   });
 
-  it("offers a reader the two read tools, a writer all four, and no slides key none; the rules reach only a writer", async () => {
-    const core = [
-      "list-datasets",
-      "query-dataset",
-      "open-record",
-      "make-artifact",
-      "make-file",
-    ];
+  it("offers the read tools in Ask and the write tools only in a Slides session of a writer, with the write rules only there", async () => {
+    const core = ["list-datasets", "query-dataset", "open-record"];
+
+    const ask = [...core, "make-artifact", "make-file"];
 
     const read = ["slides-list-decks", "slides-read-deck"];
 
@@ -297,13 +332,21 @@ describe("the slides agent tools", () => {
         offered(["slides:use"]),
         offered(["slides:use", "slides:read"]),
         offered(EDITOR),
+        offered(EDITOR, "slides"),
       ])
     ).toEqual([
-      { tools: core, rules: 0 },
-      { tools: [...core, ...read], rules: 0 },
+      { tools: ask, rules: 0 },
+      { tools: [...ask, ...read], rules: 1 },
+      { tools: [...ask, "hand-over", ...read], rules: 1 },
       {
-        tools: [...core, ...read, "slides-create-deck", "slides-change-deck"],
-        rules: 5,
+        tools: [
+          ...core,
+          "make-artifact",
+          ...read,
+          "slides-create-deck",
+          "slides-change-deck",
+        ],
+        rules: 9,
       },
     ]);
   });

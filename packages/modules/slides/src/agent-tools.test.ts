@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
-import { SLIDES_AGENT_TOOLS } from "./agent-tools.ts";
+import { SLIDES_SURFACE } from "./agent-surface.ts";
 
 /** Every sentence the server refuses a slide with (`contract.ts`, `content.ts`). */
 const RULES = [
@@ -17,7 +17,7 @@ const RULES = [
 describe("the slides-create-deck input", () => {
   // A live model got these rules only from refusals and ran out of chat steps (czjw.58).
   it("states every slide rule in the JSON schema the model receives", () => {
-    const tool = SLIDES_AGENT_TOOLS.find(
+    const tool = SLIDES_SURFACE.tools.find(
       ({ name }) => name === "slides-create-deck"
     );
 

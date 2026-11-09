@@ -81,9 +81,18 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "slides-create-deck answers chart-invalid for a chart on an unknown dataset and stores no deck",
       "slides-create-deck refuses in its input a slide whose first element is not its title",
       "slides-create-deck refuses in its input a table that shares its slide with a text and another visual",
-      "slides-change-deck changes a slide with the hash slides-read-deck answers, with one Undo entry and one audit row, and answers no hash",
+      "slides-change-deck answers the new content hash, and a second change with it saves without a read",
       "slides-change-deck refuses a hash read before a hand change with deck-changed and saves nothing",
-      "offers a reader the two read tools, a writer all four, and no slides key none; the rules reach only a writer",
+      "offers the read tools in Ask and the write tools only in a Slides session of a writer, with the write rules only there",
     ].map((name) => `the slides agent tools ${name}`),
+  },
+  {
+    file: "testing/agent-surface.integration.test.ts",
+    reason:
+      "Spec 7 R-42b and S7-42: the Slides surface makes the empty deck inside the handoff's transaction, as the person, behind slides:write, so a refusal or a rollback leaves no deck",
+    cases: [
+      "createRecord makes an empty deck of the person in the given transaction, frozen on the reporting date, with no Undo entry and one created audit row, and a rolled back transaction leaves none",
+      "createRecord refuses a person without slides:write and makes nothing",
+    ].map((name) => `the Slides agent surface ${name}`),
   },
 ];

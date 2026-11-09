@@ -28,7 +28,8 @@ import {
 
 /*
  * Every output holds no clock value, no data rows and no id of a deck the create tool made: a
- * recorded follow-up request holds the output, so it must be the same on every run (D13).
+ * recorded follow-up request holds the output, so it must be the same on every run (D13). The one
+ * exception is the change tool's content hash, which the replay transport renames (P11-43).
  */
 
 /** A data element as its config only; its frozen rows stay out of the model's context. */
@@ -168,9 +169,9 @@ const createDeckTool = defineAgentTool({
 
 /*
  * Goes through the store, so the owner check, the chart gate, the hash guard, the Undo entry and the
- * audit row are the hand editor's (R-46, R-53). The hash covers the frozen data and its read time,
- * so the output leaves the new hash out: a recorded follow-up stays the same, and a second change
- * reads the deck again (PC13).
+ * audit row are the hand editor's (R-46, R-53). The output holds the new hash, so a slide-by-slide
+ * build needs no read between changes. The hash varies with the read time of the figures, and the
+ * replay transport renames it (P11-43).
  */
 const changeDeckTool = defineAgentTool({
   name: "slides-change-deck",
@@ -179,7 +180,7 @@ const changeDeckTool = defineAgentTool({
     done: "Changed the deck",
     failed: "Could not change the deck",
   },
-  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide or rename. Read the deck with slides-read-deck first and give its content hash. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. ${DECK_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
+  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide or rename. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. ${DECK_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
   input: z.strictObject({
     deckId,
     expectedHash: contentHash,
@@ -199,30 +200,25 @@ const changeDeckTool = defineAgentTool({
     const slides = outlineOf(record);
 
     return {
-      output: { deckId: record.id, slides },
+      output: { deckId: record.id, contentHash: record.contentHash, slides },
       rowCount: slides.length,
     };
   },
 });
 
-export const SLIDES_AGENT_TOOLS = [
-  listDecksTool,
-  readDeckTool,
-  createDeckTool,
-  changeDeckTool,
-];
+/** The write tools, which only the Slides surface offers (P11-46). */
+export const SLIDES_WRITE_TOOLS = [createDeckTool, changeDeckTool];
+
+/** The read tools, which Ask and the Slides surface session both get. */
+export const SLIDES_AGENT_TOOLS = [listDecksTool, readDeckTool];
 
 /**
- * The module's rules for the agent, for a holder of `slides:write` only (R-46, R-56). The recorded
- * requests hold these lines verbatim, so a change here re-records them.
+ * The module's read rule for the agent, for a holder of `slides:read` (R-56, P11-48). The recorded
+ * requests hold this line verbatim, so a change here re-records them.
  */
 export const SLIDES_AGENT_INSTRUCTIONS: AgentInstructions = {
-  permission: "slides:write",
+  permission: "slides:read",
   lines: [
-    "Decks: the slides tools read and create only this person's own decks. A deck is 16:9 slides of typed elements.",
-    "Create a deck only when the person's own message asks for one. The person can remove a new deck with Delete in the Slides list.",
-    "Change a deck only when the person's own message asks for that change. Read it with slides-read-deck first, then save the change with one slides-change-deck call, and the person can undo it with Undo on the deck.",
-    'Each slide makes one claim. Its title element comes first and states the finding in one sentence, such as "Invoiced sales grew every month from May to October.", never a topic such as "Sales".',
-    "Every number in a title, text or bullet comes from a figure, chart or table on the same slide, which shows its source. A figure, chart or table takes the same config as a Chart in an answer.",
+    "Decks: the slides tools read only this person's own decks. A deck is 16:9 slides of typed elements.",
   ],
 };

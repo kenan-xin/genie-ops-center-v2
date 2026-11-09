@@ -252,30 +252,46 @@ export async function createDeck(
 
   const content = parseContent({ slides: drafts });
 
-  return withTransaction(ctx.tenant, async (tx) => {
-    const [row] = await tx
-      .insert(deck)
-      .values({
-        ownerUserId: ctx.caller.userId,
-        title: input.title,
-        content,
-        contentHash: deckHashSql(input.title, content),
-        frozenOn,
-      })
-      .returning(RECORD);
+  return withTransaction(ctx.tenant, (tx) =>
+    insertOwnDeck(ctx, tx, { title: input.title, content, frozenOn })
+  );
+}
 
-    if (row === undefined) throw new Error("the insert returned no row");
+/**
+ * Inserts a checked deck of the caller and its created audit row through `tx`, which the caller
+ * owns: `createDeck`, and the Slides surface's `createRecord` inside the handoff's transaction.
+ */
+export async function insertOwnDeck(
+  ctx: ModuleRequestContext,
+  tx: TenantTransaction,
+  input: {
+    readonly title: string;
+    readonly content: DeckContent;
+    readonly frozenOn: string;
+  }
+): Promise<DeckRecord> {
+  const [row] = await tx
+    .insert(deck)
+    .values({
+      ownerUserId: ctx.caller.userId,
+      title: input.title,
+      content: input.content,
+      contentHash: deckHashSql(input.title, input.content),
+      frozenOn: input.frozenOn,
+    })
+    .returning(RECORD);
 
-    await audit(
-      { tenant: ctx.tenant, caller: ctx.caller, tx },
-      "slides:deck-created",
-      targetOf(row.id),
-      "Created a deck.",
-      { slides: content.slides.length }
-    );
+  if (row === undefined) throw new Error("the insert returned no row");
 
-    return row;
-  });
+  await audit(
+    { tenant: ctx.tenant, caller: ctx.caller, tx },
+    "slides:deck-created",
+    targetOf(row.id),
+    "Created a deck.",
+    { slides: input.content.slides.length }
+  );
+
+  return row;
 }
 
 /**
