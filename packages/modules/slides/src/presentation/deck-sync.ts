@@ -34,9 +34,14 @@ export function openDeckSync(
   };
 }
 
+/** The deck's page. */
+export function deckPath(deckId: string): string {
+  return `/m/slides/decks/${deckId}`;
+}
+
 /** The presenter window's page. */
 export function presenterPath(deckId: string): string {
-  return `/m/slides/decks/${deckId}/presenter`;
+  return `${deckPath(deckId)}/presenter`;
 }
 
 /** The presenter timer: `m:ss`, and `h:mm:ss` from one hour. */

@@ -8,14 +8,28 @@ import {
   Textarea,
 } from "@genie/ui";
 import { useDebouncer } from "@tanstack/react-pacer";
-import { type ReactElement, useEffect, useId, useRef, useState } from "react";
+import {
+  type ReactElement,
+  type Ref,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 
 import { NOTES_CHARACTERS, NOTES_MESSAGES } from "../contract.ts";
 import type { ShownSlide } from "./views.ts";
 
 export const NOTES_PAUSE_MS = 800;
 
+export type NotesFieldHandle = {
+  /** Saves the pending text now; resolves once every save of this field has answered. */
+  readonly flush: () => Promise<void>;
+};
+
 export type NotesFieldProps = {
+  readonly ref?: Ref<NotesFieldHandle> | undefined;
   readonly slide: ShownSlide;
   /** Saves one notes step (null clears); the deck page owns the hash. A refusal throws. */
   readonly onSaveNotes: (
@@ -88,6 +102,14 @@ export function NotesField(props: NotesFieldProps): ReactElement {
     { wait: props.waitMs ?? NOTES_PAUSE_MS, onUnmount: (d) => d.flush() },
     (state) => ({ isPending: state.isPending })
   );
+
+  useImperativeHandle(props.ref, () => ({
+    flush: () => {
+      debouncer.flush();
+
+      return previous.current;
+    },
+  }));
 
   const saving = debouncer.state.isPending || writing > 0;
 

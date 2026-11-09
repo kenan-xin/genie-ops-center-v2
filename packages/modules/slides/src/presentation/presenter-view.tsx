@@ -139,6 +139,13 @@ export function PresenterView(props: PresenterViewProps) {
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
+    // Inside the notes, Space and the page keys scroll them; the arrows still move the slides.
+    const inNotes =
+      event.target instanceof Element &&
+      event.target.closest("[data-presenter-notes]") !== null;
+
+    if (inNotes && [" ", "PageUp", "PageDown"].includes(event.key)) return;
+
     switch (event.key) {
       case "ArrowRight":
       case "PageDown":
@@ -308,6 +315,7 @@ export function PresenterView(props: PresenterViewProps) {
                     role="region"
                     aria-label={`Notes for slide ${index + 1}`}
                     tabIndex={0}
+                    data-presenter-notes=""
                     className="min-h-0 flex-1 space-y-3 overflow-auto rounded-xl border border-white/15 bg-white/5 px-4 py-4 text-lg leading-relaxed text-white"
                   >
                     {notes.map((line, number) => (

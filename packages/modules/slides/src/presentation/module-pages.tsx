@@ -1,6 +1,7 @@
 import type { ModulePageProps } from "@genie/core";
 
 import { DeckList } from "./deck-list.tsx";
+import { deckPath } from "./deck-sync.ts";
 import { DeckView } from "./deck-view.tsx";
 import { PresenterView } from "./presenter-view.tsx";
 import type { DeckListView, DeckPageView } from "./views.ts";
@@ -31,7 +32,7 @@ export function PresenterPage(props: ModulePageProps<DeckPageView>) {
       onExit={() => {
         window.close();
 
-        if (!window.closed) window.location.assign(`/m/slides/decks/${deckId}`);
+        if (!window.closed) window.location.assign(deckPath(deckId));
       }}
     />
   );

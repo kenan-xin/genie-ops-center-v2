@@ -197,6 +197,12 @@ export const LongNotes: Story = {
       .getBoundingClientRect();
 
     expect(next.bottom).toBeLessThanOrEqual(notes.getBoundingClientRect().top);
+
+    // Space inside the notes scrolls them; it never moves to the next slide.
+    notes.focus();
+    await userEvent.keyboard(" ");
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await expect(dialog.getByText("3 / 5")).toBeVisible();
   },
 };
 

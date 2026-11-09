@@ -887,6 +887,50 @@ export const TwoNotesPausesSendTheNewerHash: Story = {
   },
 };
 
+// Final review 1: Undo inside a notes pause saves the typed notes first, then names their hash.
+export const UndoInsideNotesPause: Story = {
+  name: "Undo inside a notes pause takes its turn",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    undoDeck.mockResolvedValue({ ...deckPage.deck, contentHash: NEWER_HASH });
+  },
+  play: async ({ canvas }) => {
+    const answerNotes = holdNext(
+      changeDeck,
+      notesDeck("s1", "Say hello.", NEW_HASH)
+    );
+
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Speaker notes" }),
+      "Say hello."
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+
+    await waitFor(() =>
+      expect(changeDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: HASH,
+        changes: [
+          { op: "change-slide-fields", slideId: "s1", notes: "Say hello." },
+        ],
+      })
+    );
+    await expect(undoDeck).not.toHaveBeenCalled();
+
+    answerNotes();
+    await waitFor(() =>
+      expect(undoDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: NEW_HASH,
+      })
+    );
+    await expect(changeDeck).toHaveBeenCalledOnce();
+    await expect(canvas.queryByRole("alert")).toBeNull();
+  },
+};
+
 // A notes pause that ends while the sheet's Save slide runs waits for it and names its hash.
 export const SaveSlideAndNotesTakeTurns: Story = {
   name: "Save slide and a notes pause take turns",

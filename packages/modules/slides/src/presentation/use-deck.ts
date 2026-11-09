@@ -112,10 +112,10 @@ export function useDeckChange(
   });
 }
 
-/** Undo restores the newest save as stored, at the hash the page read (R-46, D1). */
+/** Undo restores the newest save as stored, at the hash the page names (R-46, D1). */
 export function useUndoDeck(
   deck: DeckView
-): UseMutationResult<DeckView, Error, void> {
+): UseMutationResult<DeckView, Error, string> {
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
 
@@ -123,26 +123,21 @@ export function useUndoDeck(
     mutationKey: deckWriteKey(deck.id),
     onMutate: () =>
       queryClient.cancelQueries({ queryKey: deckQueryKey(deck.id) }),
-    mutationFn: async () =>
-      narrowDeck(
-        await slides.undoDeck({
-          id: deck.id,
-          expectedHash: deck.contentHash,
-        })
-      ),
+    mutationFn: async (expectedHash) =>
+      narrowDeck(await slides.undoDeck({ id: deck.id, expectedHash })),
     onSuccess: (view) => {
       queryClient.setQueryData(deckQueryKey(view.id), view);
     },
   });
 }
 
-/** Reads every figure again, at the hash the page read, and names the slides whose rows moved (D4). */
+/** Reads every figure again, at the hash the page names, and names the slides whose rows moved (D4). */
 export function useRefreshDeck(
   deck: DeckView
 ): UseMutationResult<
   { readonly deck: DeckView; readonly changedSlides: readonly string[] },
   Error,
-  void
+  string
 > {
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
@@ -151,10 +146,10 @@ export function useRefreshDeck(
     mutationKey: deckWriteKey(deck.id),
     onMutate: () =>
       queryClient.cancelQueries({ queryKey: deckQueryKey(deck.id) }),
-    mutationFn: async () => {
+    mutationFn: async (expectedHash) => {
       const { deck: saved, changedSlides } = await slides.refreshDeck({
         id: deck.id,
-        expectedHash: deck.contentHash,
+        expectedHash,
       });
 
       return { deck: narrowDeck(saved), changedSlides };

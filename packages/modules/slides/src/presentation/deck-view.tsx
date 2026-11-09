@@ -48,7 +48,7 @@ import {
 } from "../contract.ts";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
 import { presenterPath } from "./deck-sync.ts";
-import { NotesField } from "./notes-field.tsx";
+import { NotesField, type NotesFieldHandle } from "./notes-field.tsx";
 import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
 import {
@@ -68,7 +68,11 @@ import {
   useUndoDeck,
   useUploadDeckImage,
 } from "./use-deck.ts";
-import type { DeckPageView, ShownSlide } from "./views.ts";
+import type {
+  DeckPageView,
+  DeckView as SavedDeck,
+  ShownSlide,
+} from "./views.ts";
 
 export type DeckViewProps = {
   readonly view: DeckPageView;
@@ -415,14 +419,14 @@ export function DeckView(props: DeckViewProps) {
 
   latestHash.current = deck.contentHash;
 
-  // Notes saves and the sheet's Save slide queue here: a pause can end while another write runs,
-  // and two notes fields can overlap (the page field flushes as the sheet's opens).
+  // Every write of this page queues here: a notes pause can end while another write runs, and two
+  // notes fields can overlap (the page field flushes as the sheet's opens).
   const writeQueue = useRef<Promise<unknown>>(Promise.resolve());
 
-  // Each notes save's hash move, in order, so the sheet can follow the person's own saves.
-  const notesMoves = useRef<{ readonly from: string; readonly to: string }[]>(
-    []
-  );
+  // Each write's hash move, in order, so a control follows the person's own saves, never another's.
+  const ownMoves = useRef<{ readonly from: string; readonly to: string }[]>([]);
+
+  const notesField = useRef<NotesFieldHandle>(null);
 
   function queueWrite<T>(write: () => Promise<T>): Promise<T> {
     const run = writeQueue.current.catch(() => undefined).then(write);
@@ -430,6 +434,32 @@ export function DeckView(props: DeckViewProps) {
     writeQueue.current = run;
 
     return run;
+  }
+
+  /**
+   * One write of this page: after the pending notes, in the queue, at the hash the control saw moved
+   * by this page's own saves. A change from another tab or the agent still refuses (R-53).
+   */
+  function pageWrite(
+    seenHash: string,
+    send: (expectedHash: string) => Promise<SavedDeck>
+  ): Promise<void> {
+    const notes = notesField.current?.flush() ?? Promise.resolve();
+
+    return notes.then(() =>
+      queueWrite(async () => {
+        let expectedHash = seenHash;
+
+        for (const move of ownMoves.current) {
+          if (move.from === expectedHash) expectedHash = move.to;
+        }
+
+        const saved = await send(expectedHash);
+
+        latestHash.current = saved.contentHash;
+        ownMoves.current.push({ from: expectedHash, to: saved.contentHash });
+      })
+    );
   }
 
   // The selected element, of one slide: another shown slide starts with nothing selected.
@@ -557,23 +587,14 @@ export function DeckView(props: DeckViewProps) {
     const target = editing;
 
     setEditorFailure(null);
-    void queueWrite(async () => {
-      // The sheet follows the person's own notes saves, never an outside change (R-53).
-      let expectedHash = target.expectedHash;
-
-      for (const move of notesMoves.current) {
-        if (move.from === expectedHash) expectedHash = move.to;
-      }
-
-      const saved = await change.mutateAsync({
+    void pageWrite(target.expectedHash, (expectedHash) =>
+      change.mutateAsync({
         changes: [
           { op: "change-slide", slideId: target.slide.id, slide: value },
         ],
         expectedHash,
-      });
-
-      latestHash.current = saved.contentHash;
-    }).then(closeEditor, (error) =>
+      })
+    ).then(closeEditor, (error) =>
       setEditorFailure({
         kind: "change",
         slideNumber: target.number,
@@ -601,16 +622,14 @@ export function DeckView(props: DeckViewProps) {
     }
   ): void {
     setFailure(null);
-    change.mutate(
-      { changes, expectedHash: options.expectedHash },
-      {
-        onError: (error) =>
-          setFailure({
-            kind: "change",
-            slideNumber: options.slideNumber,
-            error,
-          }),
-      }
+    pageWrite(options.expectedHash, (expectedHash) =>
+      change.mutateAsync({ changes, expectedHash })
+    ).catch((error) =>
+      setFailure({
+        kind: "change",
+        slideNumber: options.slideNumber,
+        error,
+      })
     );
   }
 
@@ -628,30 +647,33 @@ export function DeckView(props: DeckViewProps) {
 
       // Set before the page renders the answer, so a queued save never reads the older hash.
       latestHash.current = saved.contentHash;
-      notesMoves.current.push({ from: expectedHash, to: saved.contentHash });
+      ownMoves.current.push({ from: expectedHash, to: saved.contentHash });
     });
   }
 
   function undoLast(): void {
     setFailure(null);
-    undo.mutate(undefined, {
-      onError: (error) => setFailure({ kind: "undo", error }),
-    });
+    pageWrite(deck.contentHash, (expectedHash) =>
+      undo.mutateAsync(expectedHash)
+    ).catch((error) => setFailure({ kind: "undo", error }));
   }
 
   function refreshData(): void {
     setFailure(null);
-    refresh.mutate(undefined, {
-      onSuccess: ({ deck: refreshed, changedSlides }) =>
-        setRefreshNumbers(
-          changedSlides
-            .map(
-              (id) => refreshed.slides.findIndex((slide) => slide.id === id) + 1
-            )
-            .filter((number) => number > 0)
-        ),
-      onError: (error) => setFailure({ kind: "refresh", error }),
-    });
+    pageWrite(deck.contentHash, async (expectedHash) => {
+      const { deck: refreshed, changedSlides } =
+        await refresh.mutateAsync(expectedHash);
+
+      setRefreshNumbers(
+        changedSlides
+          .map(
+            (id) => refreshed.slides.findIndex((slide) => slide.id === id) + 1
+          )
+          .filter((number) => number > 0)
+      );
+
+      return refreshed;
+    }).catch((error) => setFailure({ kind: "refresh", error }));
   }
 
   function exportToPowerPoint(): void {
@@ -699,15 +721,14 @@ export function DeckView(props: DeckViewProps) {
     }
 
     setFailure(null);
-    change.mutate(
-      {
+    pageWrite(renaming.expectedHash, (expectedHash) =>
+      change.mutateAsync({
         changes: [{ op: "rename", title: trimmed }],
-        expectedHash: renaming.expectedHash,
-      },
-      {
-        onSuccess: () => setRenaming(null),
-        onError: (error) => setFailure({ kind: "change", error }),
-      }
+        expectedHash,
+      })
+    ).then(
+      () => setRenaming(null),
+      (error) => setFailure({ kind: "change", error })
     );
   }
 
@@ -732,22 +753,17 @@ export function DeckView(props: DeckViewProps) {
       elements.push({ kind: "text", text: text.trim() });
     }
 
+    const { toIndex } = adding;
+
     setFailure(null);
-    change.mutate(
-      {
-        changes: [
-          {
-            op: "add-slide",
-            slide: { elements },
-            toIndex: adding.toIndex,
-          },
-        ],
-        expectedHash: adding.expectedHash,
-      },
-      {
-        onSuccess: () => setAdding(null),
-        onError: (error) => setFailure({ kind: "change", error }),
-      }
+    pageWrite(adding.expectedHash, (expectedHash) =>
+      change.mutateAsync({
+        changes: [{ op: "add-slide", slide: { elements }, toIndex }],
+        expectedHash,
+      })
+    ).then(
+      () => setAdding(null),
+      (error) => setFailure({ kind: "change", error })
     );
   }
 
@@ -1070,6 +1086,7 @@ export function DeckView(props: DeckViewProps) {
               {editing === null ? (
                 <div className="hidden md:grid">
                   <NotesField
+                    ref={notesField}
                     key={current.id}
                     slide={current}
                     onSaveNotes={saveNotes}
