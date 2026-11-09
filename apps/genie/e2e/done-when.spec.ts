@@ -110,6 +110,16 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
     BROKER_DB,
     `delete from role_assignment where principal_type = 'group' and principal_id in (select id::text from "group" where external_id = '${grantGroup}')`
   );
+  // A rerun also restores the seeded groups that AC-24 strips, and starts with no live session
+  // of the member, which the count below reads.
+  await setRealmUserGroupMemberships(COMPANY_REALM, member, [
+    doneAdmitGroup(project),
+    grantGroup,
+  ]);
+  await queryBrokerDatabase(
+    BROKER_DB,
+    `delete from session where user_id = (select id from "user" where email = '${member}')`
+  );
 
   // AC-20 (jit): the provider assigned the person to the admit group, which an administrator
   // mapped to a role before this sign-in, so the first sign-in creates them active with a session.
