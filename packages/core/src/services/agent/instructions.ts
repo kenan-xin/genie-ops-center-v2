@@ -1,24 +1,19 @@
-import type { AgentToolsProvider } from "../../../contracts/index.ts";
+import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { can } from "../authorization/index.ts";
+import { offeredSessionTools } from "./tools.ts";
 
 /**
- * The rule lines of every enabled `agent-tools` provider whose key the caller holds, in
- * registration order (R-44, R-46). A person who cannot read a module's records gets no rules
- * about them, and the prompt of every other person stays the same.
+ * The rule lines of the session's surface whose key the caller holds, in order (R-44, R-46): on
+ * Ask every enabled `agent-tools` provider in registration order, on a surface its module's rules
+ * then the surface's. A person who cannot read a module's records gets no rules about them, and
+ * the prompt of every other person stays the same.
  */
 export async function moduleInstructionLines(
-  ctx: ModuleRequestContext
+  ctx: ModuleRequestContext,
+  surface: string = ASK_SURFACE
 ): Promise<readonly string[]> {
-  const providers = await ctx.tenant.capabilities.list("agent-tools");
-
-  const instructions = providers.flatMap(({ implementation }) => {
-    // SAFETY: validateModule checked each agent-tools provision against AgentToolsProvider before
-    // the registry took it, and `list` answers only enabled providers of that name.
-    const given = (implementation as AgentToolsProvider).instructions;
-
-    return given === undefined ? [] : [given];
-  });
+  const { instructions } = await offeredSessionTools(ctx, surface);
 
   const held = await Promise.all(
     instructions.map(({ permission }) => can(ctx.caller, permission))

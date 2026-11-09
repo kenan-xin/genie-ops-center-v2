@@ -16,6 +16,7 @@ import {
   GENERIC_ERROR_CODE,
   safeMessageFor,
 } from "../../lib/errors/index.ts";
+import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import { modelFor } from "../models/index.ts";
 import { reportingDate } from "../settings/reporting-date.ts";
@@ -157,6 +158,8 @@ export async function handleAgentChat(
 
   const existing = await findOwnSession(ctx, sessionId);
 
+  const surface = existing?.surface ?? ASK_SURFACE;
+
   const sessionModel = existing?.modelId ?? modelId ?? access.chatModel;
 
   // Before any write, so a refused model stores nothing (R-18).
@@ -247,7 +250,7 @@ export async function handleAgentChat(
     await storedArtifactCount(ctx, sessionId)
   );
 
-  const tools = await agentToolSet(ctx, { id: sessionId }, turn);
+  const tools = await agentToolSet(ctx, { id: sessionId, surface }, turn);
 
   let largestInput = 0;
 
@@ -255,8 +258,8 @@ export async function handleAgentChat(
     model,
     instructions: agentInstructions({
       reportingDate: await reportingDate(ctx.tenant),
-      moduleLines: await moduleInstructionLines(ctx),
-      writeTools: await offersWriteTool(ctx),
+      moduleLines: await moduleInstructionLines(ctx, surface),
+      writeTools: await offersWriteTool(ctx, surface),
       page: context,
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.

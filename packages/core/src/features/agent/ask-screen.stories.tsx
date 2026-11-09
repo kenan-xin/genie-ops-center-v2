@@ -25,12 +25,14 @@ const SESSIONS: readonly AgentSessionSummary[] = [
     id: "00000000-0000-4000-8000-000000000001",
     title: OVERDUE,
     modelId: "openai/gpt-6.1-terra",
+    surface: "core:ask",
     updatedAt: new Date().toISOString(),
   },
   {
     id: "00000000-0000-4000-8000-000000000002",
     title: "What can you do?",
     modelId: "anthropic/claude-opus-5.5",
+    surface: "core:ask",
     updatedAt: "2026-10-29T16:30:00.000Z",
   },
 ];

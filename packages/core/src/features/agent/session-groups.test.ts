@@ -4,7 +4,7 @@ import type { AgentSessionSummary } from "../../services/agent/index.ts";
 import { sessionGroups } from "./session-groups.ts";
 
 function chat(id: string, updatedAt: string): AgentSessionSummary {
-  return { id, title: id, modelId: "m", updatedAt };
+  return { id, title: id, modelId: "m", surface: "core:ask", updatedAt };
 }
 
 describe("sessionGroups", () => {

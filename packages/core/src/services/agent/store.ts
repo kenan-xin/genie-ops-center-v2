@@ -29,6 +29,8 @@ export type AgentSessionSummary = {
   readonly id: string;
   readonly title: string;
   readonly modelId: string;
+  /** `core:ask`, or the id of the module whose surface runs the session. */
+  readonly surface: string;
   /** ISO instant. */
   readonly updatedAt: string;
 };
@@ -41,6 +43,7 @@ const summaryColumns = {
   id: agentSession.id,
   title: agentSession.title,
   modelId: agentSession.modelId,
+  surface: agentSession.surface,
   updatedAt: agentSession.updatedAt,
 };
 
@@ -59,12 +62,14 @@ function summary(row: {
   readonly id: string;
   readonly title: string;
   readonly modelId: string;
+  readonly surface: string;
   readonly updatedAt: Date;
 }): AgentSessionSummary {
   return {
     id: row.id,
     title: row.title,
     modelId: row.modelId,
+    surface: row.surface,
     updatedAt: row.updatedAt.toISOString(),
   };
 }

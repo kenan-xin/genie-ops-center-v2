@@ -9,11 +9,11 @@ import {
 import { z } from "zod";
 
 import {
-  type AgentToolsProvider,
   type AnyAgentTool,
   defineAgentTool,
 } from "../../../contracts/index.ts";
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import type { AuditAction } from "../audit/actions.ts";
 import type { AuditMetadataValue } from "../audit/index.ts";
@@ -27,6 +27,7 @@ import {
   MAKE_ARTIFACT,
 } from "./artifact-tool.ts";
 import { fileTool, MAKE_FILE } from "./file-tool.ts";
+import { type SessionTools, sessionTools } from "./surfaces.ts";
 
 export const AGENT_TOOL_AUDIT_ACTION: AuditAction = "core:agent_tool_called";
 
@@ -279,43 +280,68 @@ function audited(
 }
 
 /**
- * Every enabled provider's tools in registration order that this person is offered: a tool with
- * no `permission`, or one whose key the person holds.
+ * The module tools and rules of one session's surface (`sessionTools`), the tools filtered to the
+ * ones this person is offered: a tool with no `permission`, or one whose key the person holds.
+ * `module-disabled` when the surface's module is off or declares no surface.
  */
-export async function offeredModuleTools(
-  ctx: ModuleRequestContext
-): Promise<readonly AnyAgentTool[]> {
-  const providers = await ctx.tenant.capabilities.list("agent-tools");
+export async function offeredSessionTools(
+  ctx: ModuleRequestContext,
+  surface: string = ASK_SURFACE
+): Promise<SessionTools> {
+  const [agentTools, surfaces] = await Promise.all([
+    ctx.tenant.capabilities.list("agent-tools"),
+    ctx.tenant.capabilities.list("agent-surface"),
+  ]);
 
-  // SAFETY: validateModule checked each agent-tools provision against AgentToolsProvider before
-  // the registry took it, and `list` answers only providers of that name.
-  const tools = providers.flatMap(
-    ({ implementation }) => (implementation as AgentToolsProvider).tools
-  );
+  const selected = sessionTools(surface, agentTools, surfaces);
+
+  if (selected === undefined)
+    throw new AppError(CORE_ERRORS["module-disabled"]);
 
   const held = await Promise.all(
-    tools.map(({ permission }) =>
+    selected.moduleTools.map(({ permission }) =>
       permission === undefined ? true : can(ctx.caller, permission)
     )
   );
 
-  return tools.filter((_, index) => held[index] === true);
+  return {
+    ...selected,
+    moduleTools: selected.moduleTools.filter(
+      (_, index) => held[index] === true
+    ),
+  };
+}
+
+/** Ask's module tools that this person is offered, in registration order. */
+export async function offeredModuleTools(
+  ctx: ModuleRequestContext
+): Promise<readonly AnyAgentTool[]> {
+  return (await offeredSessionTools(ctx)).moduleTools;
 }
 
 /** Whether this person is offered a module tool that changes data, which switches the prompt's write rule. */
 export async function offersWriteTool(
-  ctx: ModuleRequestContext
+  ctx: ModuleRequestContext,
+  surface: string = ASK_SURFACE
 ): Promise<boolean> {
-  return (await offeredModuleTools(ctx)).some(({ writes }) => writes === true);
+  return (await offeredSessionTools(ctx, surface)).moduleTools.some(
+    ({ writes }) => writes === true
+  );
 }
 
-/** The model's tools for one request: the five core tools, then the offered module tools in registration order. */
+/**
+ * The model's tools for one request: the core read tools, `make-artifact`, `make-file` on Ask
+ * only, then the session's offered module tools in order.
+ */
 export async function agentToolSet(
   ctx: ModuleRequestContext,
-  session: { readonly id: string },
+  session: { readonly id: string; readonly surface?: string },
   turn: ArtifactTurn
 ): Promise<ToolSet> {
-  const moduleTools = await offeredModuleTools(ctx);
+  const { files, moduleTools } = await offeredSessionTools(
+    ctx,
+    session.surface
+  );
 
   return Object.fromEntries([
     ...CORE_TOOLS.map((entry) => [
@@ -323,7 +349,7 @@ export async function agentToolSet(
       audited(ctx, session, entry, true),
     ]),
     [MAKE_ARTIFACT, artifactTool(ctx, session, turn)],
-    [MAKE_FILE, fileTool(ctx, session)],
+    ...(files ? [[MAKE_FILE, fileTool(ctx, session)]] : []),
     ...moduleTools.map((entry) => [
       entry.name,
       audited(ctx, session, entry, false),
