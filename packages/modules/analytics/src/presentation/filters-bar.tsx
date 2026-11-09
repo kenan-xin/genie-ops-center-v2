@@ -20,6 +20,7 @@ import {
   analyticsContract,
   DATE_RANGE_PRESETS,
   dateRangeFilter,
+  type DashboardFilters,
   type DateRangeFilter,
 } from "../contract.ts";
 import { ChangeRefusal } from "./change-refusal.tsx";
@@ -70,22 +71,29 @@ export function FiltersBar(props: FiltersBarProps) {
     setCustomMode(storedPreset === null);
   }, [storedFrom, storedTo, storedPreset]);
 
-  const field = dashboard.filters.field;
+  const { fields } = dashboard.filters;
+  // Task 4 rebuilds this bar for every filter kind; for now it shows the first select filter.
+  const first = fields[0];
+  const field = first?.kind === "select" ? first : undefined;
 
   const values = useQuery({
     // A save may change the field or add a dataset, so each version asks again.
     queryKey: ["analytics", "filter-values", dashboard.id, dashboard.version],
     queryFn: () => analytics.filterValues({ id: dashboard.id }),
-    enabled: field !== null,
+    enabled: field !== undefined,
     placeholderData: keepPreviousData,
   });
 
   function save(filters: {
     readonly dateRange: DateRangeFilter;
-    readonly field: typeof field;
+    readonly fields: DashboardFilters["fields"];
   }) {
     change.mutate([{ op: "set-filters", filters }]);
   }
+
+  /** The filters with the first select filter's value set to `value`, `null` meaning All. */
+  const withValue = (value: string | null): DashboardFilters["fields"] =>
+    field === undefined ? fields : [{ ...field, value }, ...fields.slice(1)];
 
   function applyCustom(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -108,13 +116,13 @@ export function FiltersBar(props: FiltersBarProps) {
     }
 
     setRangeError(null);
-    save({ dateRange: parsed.data, field });
+    save({ dateRange: parsed.data, fields });
   }
 
   const known: readonly string[] = values.data ?? [];
 
   const options: readonly string[] =
-    field === null || field.value === null || known.includes(field.value)
+    field === undefined || field.value === null || known.includes(field.value)
       ? known
       : [field.value, ...known];
 
@@ -141,7 +149,7 @@ export function FiltersBar(props: FiltersBarProps) {
 
             setCustomMode(false);
             setRangeError(null);
-            save({ dateRange: { preset }, field });
+            save({ dateRange: { preset }, fields });
           }}
         >
           <SelectTrigger id={rangeId}>
@@ -185,7 +193,7 @@ export function FiltersBar(props: FiltersBarProps) {
         </form>
       ) : null}
 
-      {field === null ? null : (
+      {field === undefined ? null : (
         <Field className="w-44">
           <FieldLabel htmlFor={fieldId}>{field.label}</FieldLabel>
           <Select
@@ -200,7 +208,7 @@ export function FiltersBar(props: FiltersBarProps) {
 
               save({
                 dateRange: range,
-                field: { ...field, value: value === "all" ? null : value },
+                fields: withValue(value === "all" ? null : value),
               });
             }}
           >

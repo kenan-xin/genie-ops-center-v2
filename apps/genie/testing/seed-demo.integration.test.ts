@@ -340,11 +340,14 @@ describe("the demo seed command", () => {
           op: "set-filters",
           filters: {
             dateRange: { preset: "all" },
-            field: {
-              field: "customerName",
-              label: "Customer",
-              value: "ABC Trading",
-            },
+            fields: [
+              {
+                kind: "select",
+                field: "customerName",
+                label: "Customer",
+                value: "ABC Trading",
+              },
+            ],
           },
         },
       ],

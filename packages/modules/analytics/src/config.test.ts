@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { dashboardConfigSchema, EMPTY_DASHBOARD_CONFIG } from "./config.ts";
+import {
+  dashboardConfigSchema,
+  EMPTY_DASHBOARD_CONFIG,
+  storedDashboardConfig,
+} from "./config.ts";
 
 // Only a dataset name: the module imports no other module (Global Constraints).
 const kpi = {
@@ -32,7 +36,27 @@ const panels = (count: number) =>
 
 const withRange = (dateRange: { from: string; to: string }) => ({
   ...EMPTY_DASHBOARD_CONFIG,
-  filters: { dateRange, field: null },
+  filters: { dateRange, fields: [] },
+});
+
+const noPanels = { ...EMPTY_DASHBOARD_CONFIG, panels: [] };
+
+const fieldFilter = (field: string) => ({
+  kind: "select",
+  field,
+  label: "Customer",
+  value: null,
+});
+
+/** An empty dashboard with `count` distinct field filters. */
+const withFields = (count: number) => ({
+  ...noPanels,
+  filters: {
+    dateRange: { preset: "all" },
+    fields: Array.from({ length: count }, (_, index) =>
+      fieldFilter(`field${index + 1}`)
+    ),
+  },
 });
 
 describe("the dashboard config", () => {
@@ -43,6 +67,34 @@ describe("the dashboard config", () => {
     expect(
       dashboardConfigSchema.safeParse(withPanels(panels(count))).success
     ).toBe(parses);
+  });
+
+  it.each([
+    ["4 field filters", 4, true],
+    ["5 field filters", 5, false],
+  ])("with %s parses: %s", (_, count, parses) => {
+    expect(dashboardConfigSchema.safeParse(withFields(count)).success).toBe(
+      parses
+    );
+  });
+
+  it("refuses two filters on one field", () => {
+    const result = dashboardConfigSchema.safeParse({
+      ...noPanels,
+      filters: {
+        dateRange: { preset: "all" },
+        fields: [fieldFilter("customerName"), fieldFilter("customerName")],
+      },
+    });
+
+    expect(
+      result.error?.issues.map(({ path, message }) => ({ path, message }))
+    ).toEqual([
+      {
+        path: ["filters", "fields", 1, "field"],
+        message: "Two filters use the field customerName.",
+      },
+    ]);
   });
 
   it("refuses two panels with one id", () => {
@@ -86,5 +138,40 @@ describe("the dashboard config", () => {
         message: "The end date is on or after the start date.",
       },
     ]);
+  });
+});
+
+/** A row written before the field filters were a list: one `field`, or none. */
+const storedWith = (
+  field: { field: string; label: string; value: string | null } | null
+) => ({
+  filters: { dateRange: { preset: "all" }, field },
+  panels: [],
+});
+
+describe("storedDashboardConfig", () => {
+  it("reads a stored single field as a list of one", () => {
+    const stored = storedDashboardConfig.parse(
+      storedWith({
+        field: "customerName",
+        label: "Customer",
+        value: "Demo Company",
+      })
+    );
+
+    expect(stored.filters.fields).toEqual([
+      {
+        kind: "select",
+        field: "customerName",
+        label: "Customer",
+        value: "Demo Company",
+      },
+    ]);
+  });
+
+  it("reads a stored empty field as no fields", () => {
+    expect(
+      storedDashboardConfig.parse(storedWith(null)).filters.fields
+    ).toEqual([]);
   });
 });

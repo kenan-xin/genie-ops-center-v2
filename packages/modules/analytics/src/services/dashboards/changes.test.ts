@@ -2,7 +2,7 @@ import { AppError, type PanelConfig } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
 import { type UndoEntry } from "../../config.ts";
-import type { DashboardChange } from "../../contract.ts";
+import type { DashboardChange, DateRangeFilter } from "../../contract.ts";
 import { applyChanges, pushUndo } from "./changes.ts";
 
 // Only a dataset name: the module imports no other module (Global Constraints).
@@ -30,7 +30,7 @@ function entry(ids: readonly string[]): UndoEntry {
   return {
     name: "Overview",
     config: {
-      filters: { dateRange: { preset: "all" }, field: null },
+      filters: { dateRange: { preset: "all" }, fields: [] },
       panels: ids.map((id) => ({
         id,
         layout: { columns: 1, rows: 1 },
@@ -42,6 +42,23 @@ function entry(ids: readonly string[]): UndoEntry {
 
 const ids = (current: UndoEntry, changes: readonly DashboardChange[]) =>
   applyChanges(current, changes).panels.map((panel) => panel.id);
+
+/** The entry of one panel `p1`, with `ownRange` when given. */
+const withOwnRange = (ownRange: DateRangeFilter | undefined): UndoEntry => {
+  const base = entry(["p1"]);
+  const [first] = base.config.panels;
+
+  return {
+    ...base,
+    config: {
+      ...base.config,
+      panels:
+        first === undefined || ownRange === undefined
+          ? base.config.panels
+          : [{ ...first, ownRange }],
+    },
+  };
+};
 
 const refusalOf = (run: () => void): AppError => {
   try {
@@ -132,6 +149,38 @@ describe("applyChanges", () => {
       })
     ).toMatchObject({ code: "analytics:change-invalid" });
     expect(current).toEqual(before);
+  });
+
+  it.each([
+    ["a preset", undefined, { preset: "this-month" }, { preset: "this-month" }],
+    [
+      "a custom range",
+      undefined,
+      { from: "2026-09-01", to: "2026-09-30" },
+      { from: "2026-09-01", to: "2026-09-30" },
+    ],
+    // Starts from a set range, so a `??` that ignores `null` shows.
+    ["null", { preset: "this-year" }, null, undefined],
+  ] as const)(
+    "sets a panel's own range to %s",
+    (_, current, ownRange, stored) => {
+      const [panel] = applyChanges(withOwnRange(current), [
+        { op: "change-panel", panelId: "p1", ownRange },
+      ]).panels;
+
+      expect(panel?.ownRange).toEqual(stored);
+    }
+  );
+
+  it("keeps the own range through a layout change", () => {
+    const [panel] = applyChanges(withOwnRange({ preset: "this-year" }), [
+      { op: "change-panel", panelId: "p1", layout: { columns: 2, rows: 1 } },
+    ]).panels;
+
+    expect(panel).toMatchObject({
+      layout: { columns: 2, rows: 1 },
+      ownRange: { preset: "this-year" },
+    });
   });
 });
 

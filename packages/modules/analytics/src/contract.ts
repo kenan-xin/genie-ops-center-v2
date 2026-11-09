@@ -10,6 +10,9 @@ export const UNDO_DEPTH = 20;
 /** The steps one change may hold. */
 export const DASHBOARD_CHANGE_LIMIT = 20;
 
+/** At most 4 field filters per dashboard; the date range does not count (R-49, D3). */
+export const FIELD_FILTER_LIMIT = 4;
+
 /** The date range presets, relative to the reporting date (D3). */
 export const DATE_RANGE_PRESETS = [
   "all",
@@ -41,16 +44,50 @@ export const dateRangeFilter = z.union([
     }),
 ]);
 
-/** One filter on a text field, applied to every series whose dataset declares it (D3). */
-export const fieldFilter = z.strictObject({
+/** One filter on a field, applied to every series whose dataset declares it (D3, R-49). */
+const fieldFilterFields = {
   field: z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,63}$/),
   label: z.string().trim().min(1).max(40),
-  value: z.string().min(1).max(200).nullable(),
-});
+};
+
+export const fieldFilter = z.discriminatedUnion("kind", [
+  z.strictObject({
+    kind: z.literal("select"),
+    ...fieldFilterFields,
+    value: z.string().min(1).max(200).nullable(),
+  }),
+  z.strictObject({
+    kind: z.literal("multi-select"),
+    ...fieldFilterFields,
+    values: z.array(z.string().min(1).max(200)).max(50),
+  }),
+  z.strictObject({
+    kind: z.literal("toggle"),
+    ...fieldFilterFields,
+    value: z.boolean(),
+  }),
+]);
 
 export const dashboardFilters = z.strictObject({
   dateRange: dateRangeFilter,
-  field: fieldFilter.nullable(),
+  fields: z
+    .array(fieldFilter)
+    .max(FIELD_FILTER_LIMIT)
+    .superRefine((filters, ctx) => {
+      const seen = new Set<string>();
+
+      for (const [index, { field }] of filters.entries()) {
+        if (seen.has(field)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [index, "field"],
+            message: `Two filters use the field ${field}.`,
+          });
+        }
+
+        seen.add(field);
+      }
+    }),
 });
 
 export const dashboardSummary = z.object({
@@ -72,6 +109,8 @@ export const dashboardChange = z.discriminatedUnion("op", [
     panelId,
     panel: z.unknown().optional(),
     layout: panelLayout.optional(),
+    /** A panel's own date range, which replaces the dashboard range; `null` uses the dashboard's. */
+    ownRange: dateRangeFilter.nullable().optional(),
   }),
   z.strictObject({ op: z.literal("remove-panel"), panelId }),
   z.strictObject({
@@ -101,7 +140,12 @@ export const dashboardView = z.object({
   // Read-only, so the server's `DashboardView` answers it as is.
   panels: z
     .array(
-      z.object({ id: z.string(), layout: panelLayout, config: z.unknown() })
+      z.object({
+        id: z.string(),
+        layout: panelLayout,
+        config: z.unknown(),
+        ownRange: dateRangeFilter.optional(),
+      })
     )
     .readonly(),
 });

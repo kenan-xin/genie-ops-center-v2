@@ -3,6 +3,7 @@ import type { ChatAvailability, PanelConfig } from "@genie/core";
 import type {
   DashboardFilters,
   DashboardSummary,
+  DateRangeFilter,
   PanelLayout,
 } from "../contract.ts";
 
@@ -11,6 +12,8 @@ export type PanelView = {
   id: string;
   layout: PanelLayout;
   config: PanelConfig;
+  /** A panel's own date range, in place of the dashboard's (R-49, P15-10). */
+  ownRange?: DateRangeFilter | undefined;
 };
 
 /** One dashboard as its owner reads it (R-48). */

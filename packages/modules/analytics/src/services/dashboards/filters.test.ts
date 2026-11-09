@@ -135,7 +135,14 @@ describe("effectivePanel", () => {
   it("adds the date filter on each series' own time field and the field filter only where the dataset declares it", () => {
     const filters: DashboardFilters = {
       dateRange: { preset: "this-month" },
-      field: { field: "customerName", label: "Customer", value: "Acme" },
+      fields: [
+        {
+          kind: "select",
+          field: "customerName",
+          label: "Customer",
+          value: "Acme",
+        },
+      ],
     };
 
     const effective = effectivePanel(panel, filters, DATASETS, "2026-10-27");
@@ -166,7 +173,14 @@ describe("effectivePanel", () => {
   it("leaves the panel the same for the range all and a field filter with no value", () => {
     const filters: DashboardFilters = {
       dateRange: { preset: "all" },
-      field: { field: "customerName", label: "Customer", value: null },
+      fields: [
+        {
+          kind: "select",
+          field: "customerName",
+          label: "Customer",
+          value: null,
+        },
+      ],
     };
 
     expect(effectivePanel(panel, filters, DATASETS, "2026-10-27")).toEqual(

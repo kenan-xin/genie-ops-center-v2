@@ -178,7 +178,7 @@ export const CreateOpens: Story = {
       name: "Cash in",
       version: 1,
       canUndo: false,
-      filters: { dateRange: { preset: "all" }, field: null },
+      filters: { dateRange: { preset: "all" }, fields: [] },
       panels: [],
     });
   },

@@ -130,6 +130,18 @@ const brokenConfig = {
   panels: [{ id: "p1", layout: { columns: 1, rows: 1 }, config: brokenKpi }],
 };
 
+/** A row as the database holds one written before the field filters were a list. */
+const legacyConfig = (value: string | null) => ({
+  filters: {
+    dateRange: { preset: "all" },
+    field:
+      value === null
+        ? null
+        : { field: "customerName", label: "Customer", value },
+  },
+  panels: [],
+});
+
 const editor = async () =>
   (await insertPersonWith(deployment.context, [...EDITOR])).userId;
 
@@ -609,4 +621,130 @@ describe("the analytics dashboard procedures", () => {
       ).rejects.toMatchObject({ code: "analytics:dashboard-name-taken" });
     }
   );
+
+  it("saves a panel's own range and keeps it through a later layout change", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      config: brokenConfig,
+    });
+
+    const caller = callerAs(owner);
+
+    const saved = await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [
+        {
+          op: "change-panel",
+          panelId: "p1",
+          ownRange: { preset: "this-year" },
+        },
+      ],
+    });
+
+    expect(saved.panels[0]?.ownRange).toEqual({ preset: "this-year" });
+
+    const resized = await caller.changeDashboard({
+      id,
+      expectedVersion: 2,
+      changes: [
+        { op: "change-panel", panelId: "p1", layout: { columns: 2, rows: 1 } },
+      ],
+    });
+
+    expect(resized.panels[0]).toMatchObject({
+      layout: { columns: 2, rows: 1 },
+      ownRange: { preset: "this-year" },
+    });
+    expect(await rowOf(id)).toMatchObject({
+      config: {
+        panels: [
+          {
+            id: "p1",
+            layout: { columns: 2, rows: 1 },
+            ownRange: { preset: "this-year" },
+          },
+        ],
+      },
+    });
+
+    // A step with `ownRange: null` returns the panel to the dashboard range.
+    const cleared = await caller.changeDashboard({
+      id,
+      expectedVersion: 3,
+      changes: [{ op: "change-panel", panelId: "p1", ownRange: null }],
+    });
+
+    expect(cleared.panels[0]?.ownRange).toBeUndefined();
+
+    const stored = await rowOf(id);
+
+    expect(stored.config.panels[0]).not.toHaveProperty("ownRange");
+  });
+
+  it("reads and undoes a dashboard stored with the old single field", async () => {
+    const owner = await editor();
+
+    const { rows } = await deployment.context.db.$client.query<{ id: string }>(
+      `insert into dashboard (owner_user_id, name, config, undo)
+       values ($1, 'Legacy', $2::jsonb, $3::jsonb) returning id`,
+      [
+        owner,
+        JSON.stringify(legacyConfig("Demo Company")),
+        JSON.stringify([{ name: "Legacy", config: legacyConfig(null) }]),
+      ]
+    );
+
+    const id = rows[0]?.id ?? "";
+    const caller = callerAs(owner);
+    const read = await caller.readDashboard({ id });
+
+    expect(read.filters).toEqual({
+      dateRange: { preset: "all" },
+      fields: [
+        {
+          kind: "select",
+          field: "customerName",
+          label: "Customer",
+          value: "Demo Company",
+        },
+      ],
+    });
+
+    await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [{ op: "rename", name: "Renamed" }],
+    });
+
+    // Undo the rename: the legacy config it pushed back is stored in the new shape.
+    const once = await caller.undoDashboard({ id, expectedVersion: 2 });
+
+    expect(once.filters).toEqual({
+      dateRange: { preset: "all" },
+      fields: [
+        {
+          kind: "select",
+          field: "customerName",
+          label: "Customer",
+          value: "Demo Company",
+        },
+      ],
+    });
+
+    // Undo the inserted entry, itself stored in the old shape with no field.
+    const twice = await caller.undoDashboard({ id, expectedVersion: 3 });
+
+    expect(twice.filters).toEqual({
+      dateRange: { preset: "all" },
+      fields: [],
+    });
+    expect(await rowOf(id)).toMatchObject({
+      name: "Legacy",
+      version: 4,
+      config: { filters: { dateRange: { preset: "all" }, fields: [] } },
+    });
+  });
 });

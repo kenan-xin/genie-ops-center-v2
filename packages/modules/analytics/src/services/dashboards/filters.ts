@@ -145,7 +145,6 @@ export function effectivePanel(
   reportingDate: string
 ): PanelConfig {
   const bounds = dateBounds(filters.dateRange, reportingDate);
-  const { field } = filters;
 
   const filtered = <S extends TableSeries>(entry: S): S => {
     const facts = datasets.get(entry.dataset);
@@ -155,8 +154,12 @@ export function effectivePanel(
       added.push({ field: facts.timeField, op: "between", ...bounds });
     }
 
+    // Task 2 gives every kind its own filter; until then the first select filter applies.
+    const [first] = filters.fields;
+    const field = first?.kind === "select" ? first : undefined;
+
     if (
-      field !== null &&
+      field !== undefined &&
       field.value !== null &&
       facts?.textFields.has(field.field) === true
     ) {

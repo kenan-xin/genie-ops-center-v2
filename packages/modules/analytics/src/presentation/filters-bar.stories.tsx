@@ -148,7 +148,14 @@ export const CustomRange: Story = {
           op: "set-filters",
           filters: {
             dateRange: { from, to },
-            field: { field: "label", label: "Customer", value: null },
+            fields: [
+              {
+                kind: "select",
+                field: "label",
+                label: "Customer",
+                value: null,
+              },
+            ],
           },
         },
       ],
@@ -215,7 +222,14 @@ export const FieldFilter: Story = {
           op: "set-filters",
           filters: {
             dateRange: { preset: "all" },
-            field: { field: "label", label: "Customer", value: "Bravo" },
+            fields: [
+              {
+                kind: "select",
+                field: "label",
+                label: "Customer",
+                value: "Bravo",
+              },
+            ],
           },
         },
       ],

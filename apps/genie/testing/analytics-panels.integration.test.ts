@@ -86,7 +86,7 @@ const KPI = {
 
 const NO_FILTERS: DashboardFilters = {
   dateRange: { preset: "all" },
-  field: null,
+  fields: [],
 };
 
 /** The owner's dashboard of one KPI panel `p1` under the given filters, written with no gate. */
@@ -100,11 +100,13 @@ async function kpiDashboard(filters: DashboardFilters): Promise<string> {
   });
 }
 
-const fieldFilter = (field: string, value: string | null) => ({
-  field,
-  label: "Customer",
-  value,
-});
+const fieldFilter = (field: string, value: string | null) =>
+  ({
+    kind: "select",
+    field,
+    label: "Customer",
+    value,
+  }) as const;
 
 describe("the analytics panels on real data", () => {
   it.each([
@@ -112,25 +114,28 @@ describe("the analytics panels on real data", () => {
     [
       "the range 2026-02-01 to 2026-03-31",
       130000,
-      { dateRange: { from: "2026-02-01", to: "2026-03-31" }, field: null },
+      { dateRange: { from: "2026-02-01", to: "2026-03-31" }, fields: [] },
     ],
     [
       "the field filter label = Bravo",
       80000,
-      { dateRange: { preset: "all" }, field: fieldFilter("label", "Bravo") },
+      {
+        dateRange: { preset: "all" },
+        fields: [fieldFilter("label", "Bravo")],
+      },
     ],
     [
       "a field filter on customerName, which the dataset lacks",
       250000,
       {
         dateRange: { preset: "all" },
-        field: fieldFilter("customerName", "Acme"),
+        fields: [fieldFilter("customerName", "Acme")],
       },
     ],
     [
       "the range this-month",
       null,
-      { dateRange: { preset: "this-month" }, field: null },
+      { dateRange: { preset: "this-month" }, fields: [] },
     ],
   ] as const satisfies readonly (readonly [
     string,
@@ -206,7 +211,7 @@ describe("the analytics panels on real data", () => {
     async (field, values) => {
       const id = await kpiDashboard({
         dateRange: { preset: "all" },
-        field: fieldFilter(field, null),
+        fields: [fieldFilter(field, null)],
       });
 
       expect(await caller().filterValues({ id })).toEqual(values);

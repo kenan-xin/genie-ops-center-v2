@@ -25,7 +25,9 @@ const OVERDUE = [{ field: "overdue", op: "eq", value: true }] as const;
 const config: DashboardConfig = {
   filters: {
     dateRange: { preset: "all" },
-    field: { field: "customerName", label: "Customer", value: null },
+    fields: [
+      { kind: "select", field: "customerName", label: "Customer", value: null },
+    ],
   },
   panels: [
     {

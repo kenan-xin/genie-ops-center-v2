@@ -10,6 +10,7 @@ import type {
 
 /** The field filter the starter dashboard labels Customer (D3). */
 export const CUSTOMER_FIELD = {
+  kind: "select",
   field: "label",
   label: "Customer",
   value: null,
@@ -17,7 +18,7 @@ export const CUSTOMER_FIELD = {
 
 export const DEFAULT_FILTERS: DashboardFilters = {
   dateRange: { preset: "all" },
-  field: CUSTOMER_FIELD,
+  fields: [CUSTOMER_FIELD],
 };
 
 const KPI: PanelConfig = {

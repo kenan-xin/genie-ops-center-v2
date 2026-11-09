@@ -96,9 +96,11 @@ export async function filterValues(
   input: { readonly id: string }
 ): Promise<readonly string[]> {
   const record = await readOwnDashboard(ctx, input.id);
-  const { field } = record.config.filters;
+  // Task 2 answers one field's options; until then the first select filter names the field.
+  const [first] = record.config.filters.fields;
+  const field = first?.kind === "select" ? first : undefined;
 
-  if (field === null) return [];
+  if (field === undefined) return [];
 
   const facts = await datasetFacts(ctx);
 

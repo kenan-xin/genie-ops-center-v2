@@ -6,6 +6,7 @@ import {
   DASHBOARD_PANEL_LIMIT,
   type DashboardChange,
   type DashboardFilters,
+  type DateRangeFilter,
   type PanelLayout,
   UNDO_DEPTH,
 } from "../../contract.ts";
@@ -15,6 +16,7 @@ export type DraftPanel = {
   readonly id: string;
   readonly layout: PanelLayout;
   readonly config: unknown;
+  readonly ownRange?: DateRangeFilter | undefined;
 };
 
 export type AppliedChanges = {
@@ -119,11 +121,20 @@ export function applyChanges(
       panels.splice(index, 1);
       panels.splice(change.toIndex, 0, found);
     } else {
-      panels[index] = {
+      // `null` clears the panel's own range; a step without it keeps the stored one (P15-10).
+      const ownRange =
+        change.ownRange === null
+          ? undefined
+          : (change.ownRange ?? found.ownRange);
+
+      const changed = {
         id: found.id,
         layout: change.layout ?? found.layout,
         config: change.panel === undefined ? found.config : change.panel,
       };
+
+      panels[index] =
+        ownRange === undefined ? changed : { ...changed, ownRange };
 
       if (change.panel !== undefined) checks.set(found.id, step);
     }

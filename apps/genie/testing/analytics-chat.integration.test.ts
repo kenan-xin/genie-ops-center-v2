@@ -262,7 +262,7 @@ describe("the analytics chat beside a dashboard", () => {
     // One panel: `toMatchObject` keeps an array's length.
     expect(await rowOf()).toMatchObject({
       config: {
-        filters: { dateRange: { preset: "all" }, field: null },
+        filters: { dateRange: { preset: "all" }, fields: [] },
         panels: [
           {
             id: "p1",

@@ -18,6 +18,7 @@ import {
   type StoredPanel,
   dashboardConfigSchema,
   EMPTY_DASHBOARD_CONFIG,
+  storedDashboardConfig,
   type UndoEntry,
 } from "../../config.ts";
 import type { DashboardChange, DashboardSummary } from "../../contract.ts";
@@ -70,6 +71,26 @@ export function viewOf(record: DashboardRecord): DashboardView {
   };
 }
 
+/**
+ * A row as the server reads it: `jsonb.$type` types the column without parsing it, so the parse
+ * here is what reads a row written before the field filters were a list (P15-2). The undo entries
+ * are parsed only where a save or an Undo uses them, so a panel's 10-second poll stays cheap.
+ */
+function parseRow(row: DashboardRecord): DashboardRecord {
+  return { ...row, config: storedDashboardConfig.parse(row.config) };
+}
+
+/** The undo entries of a row as the server reads them (P15-2). */
+function parseUndo(row: DashboardRecord): DashboardRecord {
+  return {
+    ...row,
+    undo: row.undo.map((entry) => ({
+      ...entry,
+      config: storedDashboardConfig.parse(entry.config),
+    })),
+  };
+}
+
 /** The caller's own dashboards, the last changed first. Another owner's row never reads (R-48). */
 export async function listOwnDashboards(
   ctx: ModuleRequestContext
@@ -97,11 +118,13 @@ export async function listOwnDashboards(
 export async function listOwnRecords(
   ctx: ModuleRequestContext
 ): Promise<DashboardRecord[]> {
-  return ctx.tenant.db
+  const rows = await ctx.tenant.db
     .select(RECORD)
     .from(dashboard)
     .where(eq(dashboard.ownerUserId, ctx.caller.userId))
     .orderBy(desc(dashboard.updatedAt), desc(dashboard.id));
+
+  return rows.map(parseRow);
 }
 
 export async function readOwnDashboard(
@@ -115,7 +138,7 @@ export async function readOwnDashboard(
 
   if (row === undefined) throw notFound();
 
-  return row;
+  return parseRow(row);
 }
 
 export async function createDashboard(
@@ -168,7 +191,7 @@ async function readForWrite(
   id: string,
   expectedVersion: number | undefined
 ): Promise<DashboardRecord> {
-  const row = await readOwnDashboard(ctx, id);
+  const row = parseUndo(await readOwnDashboard(ctx, id));
 
   if (expectedVersion !== undefined && expectedVersion !== row.version) {
     throw new AppError(ANALYTICS_ERRORS["dashboard-changed"]);
@@ -338,13 +361,16 @@ export async function changeDashboard(
     );
   }
 
-  const panels = applied.panels.map(({ id, layout }) => {
+  const panels = applied.panels.map(({ id, layout, ownRange }) => {
     const config = checked.get(id) ?? stored.get(id)?.config;
 
     // Every new or changed config was checked above; any other panel is a stored one.
     if (config === undefined) throw new Error(`panel ${id} has no config`);
 
-    return { id, layout, config };
+    const panel: StoredPanel = { id, layout, config };
+
+    // The save writes `dashboardConfigSchema`, so the key stays absent until a range is set.
+    return ownRange === undefined ? panel : { ...panel, ownRange };
   });
 
   return withTransaction(ctx.tenant, async (tx) => {

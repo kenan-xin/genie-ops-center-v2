@@ -16,6 +16,7 @@ import {
 import {
   analyticsContract,
   type DashboardChange,
+  type DateRangeFilter,
   type PanelLayout,
 } from "../contract.ts";
 import type { DashboardView } from "./views.ts";
@@ -32,6 +33,7 @@ type SavedDashboard = Omit<DashboardView, "panels"> & {
     readonly id: string;
     readonly layout: PanelLayout;
     readonly config: unknown;
+    readonly ownRange?: DateRangeFilter | undefined;
   }[];
 };
 
