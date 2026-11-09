@@ -437,7 +437,7 @@ describe("the slides agent tools", () => {
           "slides-create-deck",
           "slides-change-deck",
         ],
-        rules: 9,
+        rules: 10,
       },
     ]);
   });

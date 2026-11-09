@@ -21,6 +21,8 @@ export const SLIDES_SURFACE_INSTRUCTIONS: AgentInstructions = {
     "When the person asks for a chart or a table and does not say where, first ask in one short sentence whether to add it as a slide to the deck, named by its title, or to just show it here. Then stop and wait for the answer. If the person answers add, add the slide with slides-change-deck. Just show it here means in this chat: make it with make-artifact.",
     'Each slide makes one claim. Its title element comes first and states the finding in one sentence, such as "Invoiced sales grew every month from May to October.", never a topic such as "Sales".',
     "Every number in a title, text or bullet comes from a figure, chart or table on the same slide, which shows its source. A figure, chart or table takes the same config as a Chart in an answer.",
+    // R-46a: written, not generated; agent-surface.test.ts keeps it in step with the schema.
+    "You can change the slides of this deck and their order, the deck's name, each slide's title, text, bullets, figures, charts, tables and images, each element's position and size, its text color, size, weight, alignment, fill and border, and the slide background.",
   ],
 };
 

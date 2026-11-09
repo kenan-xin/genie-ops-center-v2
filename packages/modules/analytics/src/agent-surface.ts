@@ -19,6 +19,8 @@ export const ANALYTICS_SURFACE_INSTRUCTIONS: AgentInstructions = {
     "When the person asks for a chart or a table and does not say where, first ask in one short sentence whether to add it as a panel to the dashboard, named by its name, or to just show it here. Then stop and wait for the answer. If the person answers add, add the panel with analytics-change-dashboard. Just show it here means in this chat: make it with make-artifact.",
     "A dashboard panel takes the same config as a Chart in an answer: a chart type, a title and series of dataset queries. Every added or changed panel passes the chart check before it is saved, and a refused panel saves nothing.",
     "The dashboard filters apply to every panel: the date range filters each dataset by its time field, and the field filter, such as Customer, filters each dataset that has that field. Do not repeat them in a panel query.",
+    // R-46a: written, not generated; agent-surface.test.ts keeps it in step with the schema.
+    "You can change the panels of this dashboard and their order, each panel's chart type, title, data and size, the dashboard's name, and its filters.",
   ],
 };
 

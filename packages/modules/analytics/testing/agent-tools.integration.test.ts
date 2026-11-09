@@ -197,7 +197,7 @@ describe("the analytics agent tools", () => {
       { tools: ask, rules: 0 },
       { tools: [...ask, ...read], rules: 1 },
       { tools: [...ask, "hand-over", ...read], rules: 1 },
-      { tools: [...core, "make-artifact", ...read, ...write], rules: 9 },
+      { tools: [...core, "make-artifact", ...read, ...write], rules: 10 },
     ]);
   });
 });

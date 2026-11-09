@@ -68,6 +68,21 @@ export const ANALYTICS_ADD_ANSWER = "Add";
 
 export const ANALYTICS_SHOW_ANSWER = "Just show it here";
 
+/**
+ * A request outside the tools in Ask and on a dashboard, and the one-sentence answers of
+ * `synthetic-out-of-tools-ask-1` and `synthetic-out-of-tools-dashboard-1` (R-46a, S7-44).
+ */
+export const OUT_OF_TOOLS_ASK_MESSAGE = "Change the logo of this workspace.";
+
+export const OUT_OF_TOOLS_ASK_ANSWER =
+  "I cannot change the logo, because here I can only read your records and make tables and charts in this chat, so I can show you the records you can read instead.";
+
+export const OUT_OF_TOOLS_DASHBOARD_MESSAGE =
+  "Make the panel titles bigger and blue.";
+
+export const OUT_OF_TOOLS_DASHBOARD_ANSWER =
+  "I cannot change the color or size of panel titles, but I can change the panels and their order, each panel's chart type, title, data and size, the dashboard's name and its filters, so I can give a panel a clearer title instead.";
+
 /** The collections figure of slide `s2` in `slides-change.ts`. */
 export const COLLECTIONS_PANEL = {
   type: "kpi",

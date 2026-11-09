@@ -36,6 +36,10 @@ import {
   ANALYTICS_QUESTION_MESSAGE,
   ANALYTICS_SHOW_ANSWER,
   HANDOFF_PANEL_TITLES,
+  OUT_OF_TOOLS_ASK_ANSWER,
+  OUT_OF_TOOLS_ASK_MESSAGE,
+  OUT_OF_TOOLS_DASHBOARD_ANSWER,
+  OUT_OF_TOOLS_DASHBOARD_MESSAGE,
   QUESTION_DASHBOARD_NAME,
   UNALLOCATED_PANEL,
 } from "./analytics-chat.ts";
@@ -215,6 +219,33 @@ const rowOf = async () =>
   ).rows[0];
 
 describe("the analytics chat beside a dashboard", () => {
+  it("answers a request outside the tools with one sentence of what it can change, in Ask and on a dashboard", async () => {
+    const ctx = await newAsker();
+
+    const dashboardId = await insertDashboard(deployment.context, {
+      ownerUserId: ctx.caller.userId,
+      name: QUESTION_DASHBOARD_NAME,
+    });
+
+    const askId = randomUUID();
+    const dashboardChat = randomUUID();
+
+    errors.length = 0;
+    await send(ctx, askId, OUT_OF_TOOLS_ASK_MESSAGE);
+    await send(ctx, dashboardChat, OUT_OF_TOOLS_DASHBOARD_MESSAGE, dashboardId);
+
+    expect(errors).toEqual([]);
+    expect(await lastAnswerText(askId)).toContain(OUT_OF_TOOLS_ASK_ANSWER);
+    expect(await lastAnswerText(dashboardChat)).toContain(
+      OUT_OF_TOOLS_DASHBOARD_ANSWER
+    );
+    // An answer, no step: neither chat called a tool.
+    expect([
+      ...(await callsOf(askId)),
+      ...(await callsOf(dashboardChat)),
+    ]).toEqual([]);
+  });
+
   it("adds the recorded panel with one Undo entry and one audit row, and Undo restores the empty dashboard", async () => {
     const sessionId = "0b9f3c1e-2d4a-4e5f-8a6b-7c8d9e0f1a2b";
 
