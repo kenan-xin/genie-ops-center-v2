@@ -329,10 +329,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/analytics-chat.integration.test.ts",
     reason:
-      "Spec 7 R-46, R-47 and R-49: a chat change beside a dashboard saves through the store with one Undo entry and one agent audit row, Undo restores the dashboard, and the replayed follow-up request proves the tool output holds no clock value",
+      "Spec 7 R-42b, R-46 (amended), R-47, R-49 and AC-13: a Dashboards chat change beside a dashboard saves through the store with one Undo entry and one agent audit row, and Undo restores the dashboard; Ask hands a dashboard over and the run adds its panels one by one; a chart request that names no place asks first, Add makes a panel with Undo, and Just show it here makes an artifact and changes nothing",
     cases: [
-      "the analytics chat beside a dashboard adds the recorded panel with one Undo entry and one audit row, and Undo restores the empty dashboard",
-    ],
+      "adds the recorded panel with one Undo entry and one audit row, and Undo restores the empty dashboard",
+      "Ask hands a dashboard to the Dashboards agent, and the run adds its three panels one by one",
+      "on a dashboard, a chart request asks first, and Add adds the panel with one Undo entry that Undo restores",
+      "the answer Just show it here makes an artifact in the chat and leaves the dashboard as it was",
+    ].map((name) => `the analytics chat beside a dashboard ${name}`),
   },
   {
     file: "testing/slides-chat.integration.test.ts",
