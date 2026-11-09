@@ -85,4 +85,25 @@ describe("sessionTools", () => {
   it("answers nothing for a surface that is not listed", () => {
     expect(offeredTo("alpha")).toBeUndefined();
   });
+
+  it("lets Ask hand over only to surfaces that accept a handoff, and a surface session to none", () => {
+    const gammaSurface: AgentSurface = {
+      ...betaSurface,
+      name: "Gamma agent",
+      acceptsHandoff: false,
+    };
+
+    const both: readonly CapabilityProvider[] = [
+      { moduleId: "gamma", implementation: gammaSurface },
+      ...surfaces,
+    ];
+
+    const targets = (surface: string) =>
+      sessionTools(surface, agentTools, both)?.handoff.map(
+        ({ id, surface: declared }) => [id, declared.name]
+      );
+
+    expect(targets("core:ask")).toEqual([["beta", "Beta agent"]]);
+    expect(targets("beta")).toEqual([]);
+  });
 });

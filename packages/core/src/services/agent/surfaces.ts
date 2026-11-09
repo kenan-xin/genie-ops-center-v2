@@ -14,6 +14,13 @@ export type SessionTools = {
   readonly moduleTools: readonly AnyAgentTool[];
   /** In prompt order, before the permission check. */
   readonly instructions: readonly AgentInstructions[];
+  /** The surfaces this session may hand work over to: on Ask, each listed one that accepts a handoff. */
+  readonly handoff: readonly HandoffTarget[];
+};
+
+export type HandoffTarget = {
+  readonly id: string;
+  readonly surface: AgentSurface;
 };
 
 /**
@@ -45,7 +52,16 @@ export function sessionTools(
   );
 
   if (surface === ASK_SURFACE) {
-    return { files: true, moduleTools: tools, instructions };
+    const handoff = surfaces.flatMap(({ moduleId, implementation }) => {
+      // SAFETY: as below, validateModule checked each agent-surface provision.
+      const declared = implementation as AgentSurface;
+
+      return declared.acceptsHandoff
+        ? [{ id: moduleId, surface: declared }]
+        : [];
+    });
+
+    return { files: true, moduleTools: tools, instructions, handoff };
   }
 
   const provider = surfaces.find(({ moduleId }) => moduleId === surface);
@@ -60,5 +76,6 @@ export function sessionTools(
     files: false,
     moduleTools: [...tools, ...declared.tools],
     instructions: [...instructions, declared.instructions],
+    handoff: [],
   };
 }
