@@ -16,7 +16,11 @@ import type { ArtifactCardAction } from "./artifact-card.tsx";
 import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
 import { useSessionDetail } from "./session-detail.ts";
-import { AGENT_ROUTE, agentTransport } from "./transport.ts";
+import {
+  AGENT_ROUTE,
+  agentTransport,
+  type SurfaceBinding,
+} from "./transport.ts";
 
 const FILE_POLL_MS = 2000;
 
@@ -31,6 +35,8 @@ export function AgentChat(props: {
   /** Ask passes the server's messages; the panel leaves it out, and AgentChat loads them (`agent.messages`). */
   readonly initialMessages?: readonly AgentMessage[];
   readonly context?: () => AgentPageContext | undefined;
+  /** On a surface's record page, the binding a new chat takes (P11-26). */
+  readonly surface?: (() => SurfaceBinding | undefined) | undefined;
   readonly models: {
     readonly allowed: readonly string[];
     readonly chatDefault: string | null;
@@ -60,13 +66,20 @@ export function AgentChat(props: {
 }): ReactNode {
   const agent = useModuleClient(agentContract);
 
-  // The getter is read through a ref, so the transport made once still sees the latest page.
+  // The getters are read through refs, so the transport made once still sees the latest page.
   const context = useRef(props.context);
 
   context.current = props.context;
 
+  const surface = useRef(props.surface);
+
+  surface.current = props.surface;
+
   const [transport] = useState(() =>
-    agentTransport(AGENT_ROUTE, { context: () => context.current?.() })
+    agentTransport(AGENT_ROUTE, {
+      context: () => context.current?.(),
+      surface: () => surface.current?.(),
+    })
   );
 
   const checkChart: CheckChart = (config) => agent.chart({ config });

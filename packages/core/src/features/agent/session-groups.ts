@@ -1,9 +1,28 @@
 import type { AgentSessionSummary } from "../../services/agent/index.ts";
 
 export type SessionGroup = {
-  readonly label: "Today" | "Earlier";
+  readonly label: string;
   readonly sessions: readonly AgentSessionSummary[];
 };
+
+/** A surface panel's groups (R-42): "On this page", then "Other chats"; an empty group is left out. */
+export function surfaceSessionGroups(
+  sessions: readonly AgentSessionSummary[],
+  recordId: string
+): readonly SessionGroup[] {
+  const groups: readonly SessionGroup[] = [
+    {
+      label: "On this page",
+      sessions: sessions.filter((session) => session.recordId === recordId),
+    },
+    {
+      label: "Other chats",
+      sessions: sessions.filter((session) => session.recordId !== recordId),
+    },
+  ];
+
+  return groups.filter((group) => group.sessions.length > 0);
+}
 
 /**
  * The chat history's groups (AG22): the chats of today in the tenant's zone, then the rest, each

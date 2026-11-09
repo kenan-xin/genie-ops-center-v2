@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { AgentSessionSummary } from "../../services/agent/index.ts";
-import { sessionGroups } from "./session-groups.ts";
+import { sessionGroups, surfaceSessionGroups } from "./session-groups.ts";
 
 function chat(id: string, updatedAt: string): AgentSessionSummary {
   return {
@@ -14,6 +14,45 @@ function chat(id: string, updatedAt: string): AgentSessionSummary {
     updatedAt,
   };
 }
+
+function slidesChat(id: string, recordId: string): AgentSessionSummary {
+  return {
+    ...chat(id, "2026-10-27T02:00:00.000Z"),
+    surface: "slides",
+    recordId,
+  };
+}
+
+function labelled(groups: ReturnType<typeof surfaceSessionGroups>) {
+  return groups.map((group) => [
+    group.label,
+    group.sessions.map(({ id }) => id),
+  ]);
+}
+
+describe("surfaceSessionGroups", () => {
+  it("puts this record's chats first, in list order, and leaves out an empty group", () => {
+    expect(
+      labelled(
+        surfaceSessionGroups(
+          [
+            slidesChat("a", "r1"),
+            slidesChat("b", "r2"),
+            slidesChat("c", "r1"),
+            slidesChat("d", "r2"),
+          ],
+          "r2"
+        )
+      )
+    ).toEqual([
+      ["On this page", ["b", "d"]],
+      ["Other chats", ["a", "c"]],
+    ]);
+    expect(
+      labelled(surfaceSessionGroups([slidesChat("a", "r1")], "r1"))
+    ).toEqual([["On this page", ["a"]]]);
+  });
+});
 
 describe("sessionGroups", () => {
   it("groups chats by the day in the tenant's zone", () => {
@@ -31,12 +70,7 @@ describe("sessionGroups", () => {
       now
     );
 
-    expect(
-      groups.map((group) => [
-        group.label,
-        group.sessions.map((session) => session.id),
-      ])
-    ).toEqual([
+    expect(labelled(groups)).toEqual([
       ["Today", ["early-today"]],
       ["Earlier", ["late-yesterday"]],
     ]);

@@ -1,10 +1,12 @@
 import {
   type AgentAccess,
   chatLabels,
+  listSurfaces,
   type ModuleRequestContext,
 } from "@genie/core";
-import { AgentPanelHost } from "@genie/core/features/agent/panel";
 import type { ReactNode } from "react";
+
+import { NextAgentPanelHost } from "./next-app-shell.tsx";
 
 /**
  * The agent panel's props on every signed-in shell page (R-42). The shell frame renders it only for
@@ -16,13 +18,15 @@ export async function AgentPanelGate(props: {
 }): Promise<ReactNode> {
   const { ctx, access } = props;
 
-  const [branding, chat] = await Promise.all([
+  const [branding, chat, surfaces] = await Promise.all([
     ctx.tenant.branding.get(),
     chatLabels(ctx),
+    listSurfaces(ctx),
   ]);
 
   return (
-    <AgentPanelHost
+    <NextAgentPanelHost
+      surfaces={surfaces}
       person={ctx.caller.userId}
       // Only a person who manages the settings picks the model (design review 7.1).
       models={

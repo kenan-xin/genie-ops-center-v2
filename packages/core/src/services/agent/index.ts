@@ -36,6 +36,10 @@ export { AGENT_FILE_JOB, readEveryRow } from "./file-job.ts";
 
 export { fileTool, MAKE_FILE } from "./file-tool.ts";
 
+export { listSurfaces } from "./surfaces.ts";
+
+export type { SurfaceView } from "./surface-address.ts";
+
 export {
   type ArtifactCardPart,
   artifactTool,

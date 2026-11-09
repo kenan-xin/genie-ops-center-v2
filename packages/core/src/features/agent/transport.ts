@@ -71,12 +71,16 @@ export async function refusalFromResponse(
 
 const sendBody = z.object({ modelId: z.string().optional() });
 
+/** A new chat's surface binding: the surface and the record of the page it opened on (P11-26). */
+export type SurfaceBinding = { readonly id: string; readonly recordId: string };
+
 /** The body the route reads. */
 type AgentRouteBody = {
   sessionId: string;
   message: AgentMessage | undefined;
   modelId?: string;
   context?: AgentPageContext;
+  surface?: SurfaceBinding;
 };
 
 /**
@@ -86,7 +90,11 @@ type AgentRouteBody = {
  */
 export function agentTransport(
   api: string,
-  options?: { readonly context?: () => AgentPageContext | undefined }
+  options?: {
+    readonly context?: () => AgentPageContext | undefined;
+    /** Read when a message goes; the route binds only a new chat to it. */
+    readonly surface?: () => SurfaceBinding | undefined;
+  }
 ): ChatTransport<AgentMessage> {
   return new DefaultChatTransport<AgentMessage>({
     api,
@@ -111,6 +119,11 @@ export function agentTransport(
       // No `context` key without a context, so every recorded Ask request stays the same. A page
       // state the route would refuse is left out, so it never blocks the person's message.
       if (context.success) sent.context = context.data;
+
+      // No `surface` key off a surface page, so Ask's recorded requests stay the same.
+      const surface = options?.surface?.();
+
+      if (surface !== undefined) sent.surface = surface;
 
       return { body: sent };
     },

@@ -1,5 +1,6 @@
 "use client";
 
+import { AgentPanelHost } from "@genie/core/features/agent/panel";
 import {
   AppShell,
   RouteFocus,
@@ -7,7 +8,8 @@ import {
   type ShellLinkComponent,
 } from "@genie/core/features/shell";
 import linkModule from "next/link.js";
-import { usePathname } from "next/navigation.js";
+import { usePathname, useRouter } from "next/navigation.js";
+import type { ComponentProps } from "react";
 
 // NodeNext types this CommonJS default import as the whole module, while Next's bundler can hand
 // over the component itself, so the link is taken from whichever shape arrives.
@@ -24,6 +26,24 @@ export function NextAppShell(
 ) {
   return (
     <AppShell {...props} currentPath={usePathname()} linkComponent={Link} />
+  );
+}
+
+/**
+ * The agent panel with the router's path and push, so on a surface's record page it is that
+ * surface's agent, and a handoff opens the page that builds (S7-41).
+ */
+export function NextAgentPanelHost(
+  props: Omit<ComponentProps<typeof AgentPanelHost>, "path" | "navigate">
+) {
+  const router = useRouter();
+
+  return (
+    <AgentPanelHost
+      {...props}
+      path={usePathname()}
+      navigate={(href) => router.push(href)}
+    />
   );
 }
 

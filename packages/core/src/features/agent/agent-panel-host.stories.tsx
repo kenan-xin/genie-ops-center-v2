@@ -6,6 +6,7 @@ import { z } from "zod";
 
 import { ShellContext } from "../shell/shell-context.ts";
 import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
+import { handoffDetail } from "./__fixtures__/handoff.ts";
 import { AgentButton } from "./agent-button.tsx";
 import {
   AGENT_PANEL_SESSION_KEY,
@@ -58,6 +59,7 @@ const agentRoute = fn(
 /** The body of the n-th request to the route. */
 const routeBody = z.object({
   context: z.unknown().optional(),
+  surface: z.unknown().optional(),
   message: z.object({
     parts: z.array(z.object({ type: z.string(), text: z.string() })),
   }),
@@ -101,11 +103,25 @@ function TestPage(props: { readonly about?: string | undefined }) {
   );
 }
 
+/** The surfaces the panel knows: the placeholder's test surface on `/placeholder/:id`. */
+const SURFACES = [
+  {
+    id: "placeholder",
+    name: "Placeholder agent",
+    recordPage: "/placeholder/:id",
+    acceptsHandoff: true,
+  },
+];
+
+const navigate = fn();
+
 /** The shell's row as the host sees it: the page, then the panel. */
 function Frame(props: {
   readonly page: boolean;
   readonly person?: string;
   readonly about?: string;
+  /** The page's path, which turns on a surface's agent on its record page. */
+  readonly path?: string;
 }) {
   const [page, setPage] = useState(props.page);
 
@@ -137,6 +153,9 @@ function Frame(props: {
           suggestions={[]}
           inbox={[]}
           timeZone="UTC"
+          surfaces={SURFACES}
+          path={props.path ?? "/dashboards/d1"}
+          navigate={navigate}
         />
       </div>
     </ShellContext.Provider>
@@ -233,6 +252,117 @@ export const WorksWithThePanelClosed: Story = {
 };
 
 const openInAsk = () => screen.getByRole("link", { name: "Open in Ask" });
+
+const phone = { viewport: { value: "phone390", isRotated: false } };
+
+// T6.2: on a surface's record page the panel is that surface's agent, and a new chat binds to it.
+export const SurfacePage: Story = {
+  render: () => <Frame page={false} path="/placeholder/r1" />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+    const region = await screen.findByRole("region", {
+      name: "Placeholder agent",
+    });
+
+    await expect(
+      within(region).getByRole("tab", { name: "This chat" })
+    ).toBeVisible();
+    await expect(
+      within(region).getByRole("tab", { name: "Chats" })
+    ).toBeVisible();
+    await expect(
+      screen.queryByRole("link", { name: "Open in Ask" })
+    ).toBeNull();
+
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: "Message" }),
+      "Add a step{Enter}"
+    );
+    await waitFor(() => expect(agentRoute).toHaveBeenCalled());
+    await expect(sentBody(0).surface).toEqual({
+      id: "placeholder",
+      recordId: "r1",
+    });
+    release();
+  },
+};
+
+export const SurfacePageOnAPhone: Story = { ...SurfacePage, globals: phone };
+
+// T6.3: a page with no surface keeps the panel as it was (AC-8).
+export const OtherPage: Story = {
+  render: () => <Frame page={false} path="/invoices" />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await screen.findByRole("region", { name: "Agent" });
+    await expect(openInAsk()).toBeVisible();
+  },
+};
+
+const handedReads = fn();
+
+// T6.4: after a handoff the record page opens on the chat that builds, which ends Saved.
+export const AfterAHandoff: Story = {
+  render: () => {
+    const reads = [handoffDetail("building"), handoffDetail("saved")];
+
+    return (
+      <AgentClientStub
+        sessions={async () => [handoffDetail("building").session]}
+        session={async () => {
+          handedReads();
+
+          return reads.length > 1 ? reads.shift()! : reads[0]!;
+        }}
+      >
+        <Frame page={false} path="/placeholder/r1" />
+      </AgentClientStub>
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+    const region = await screen.findByRole("region", {
+      name: "Placeholder agent",
+    });
+
+    const header = () => within(region.querySelector("header")!);
+
+    await expect(await header().findByText("Building")).toBeVisible();
+    await expect(await within(region).findByText("From Ask")).toBeVisible();
+    await expect(
+      await header().findByText("Saved", {}, { timeout: 4000 })
+    ).toBeVisible();
+  },
+};
+
+// T6.5: on a phone the surface's agent is a bottom panel that leaves the record in view.
+export const PhoneSheet: Story = {
+  globals: phone,
+  render: () => <Frame page={false} path="/placeholder/r1" />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await screen.findByRole("region", { name: "Placeholder agent" });
+    await expect(
+      document.querySelector('[data-slot="sheet-overlay"]')
+    ).toBeNull();
+
+    const less = screen.getByRole("button", { name: "Show less" });
+
+    await expect(less).toHaveAttribute("aria-expanded", "true");
+    await userEvent.click(less);
+    await expect(screen.queryByRole("textbox", { name: "Message" })).toBeNull();
+
+    const more = screen.getByRole("button", { name: "Show more" });
+
+    await expect(more).toHaveAttribute("aria-expanded", "false");
+    await userEvent.click(more);
+    await expect(
+      await screen.findByRole("textbox", { name: "Message" })
+    ).toBeVisible();
+  },
+};
 
 // AM3: Open in Ask starts Ask afresh before any answer, continues the chat after one, and waits
 // while an answer streams, which Ask could not show yet (I1, Review Focus 3).

@@ -533,6 +533,8 @@ export {
   AGENT_RUN_JOB,
   startRun,
   stopRun,
+  listSurfaces,
+  type SurfaceView,
 } from "./services/agent/index.ts";
 
 export type {

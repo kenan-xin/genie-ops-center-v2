@@ -11,7 +11,7 @@ import { SearchIcon } from "lucide-react";
 import { useState, type ReactNode } from "react";
 
 import type { AgentSessionSummary } from "../../services/agent/index.ts";
-import { sessionGroups } from "./session-groups.ts";
+import { type SessionGroup, sessionGroups } from "./session-groups.ts";
 
 function sessionClass(current: boolean): string {
   return `flex h-11 min-w-0 items-center rounded-lg px-3 text-sm lg:h-9 ${
@@ -30,8 +30,14 @@ function sessionClass(current: boolean): string {
 export function ChatHistory(props: {
   readonly sessions: readonly AgentSessionSummary[];
   readonly currentId: string | undefined;
-  readonly sessionHref: (id: string) => string;
+  /** Each chat as a link; `onPick` makes each a button instead. */
+  readonly sessionHref?: ((id: string) => string) | undefined;
   readonly timeZone: string;
+  /** The groups; by default Today and Earlier in the tenant's zone. */
+  readonly groups?:
+    | ((sessions: readonly AgentSessionSummary[]) => readonly SessionGroup[])
+    | undefined;
+  readonly onPick?: ((session: AgentSessionSummary) => void) | undefined;
 }): ReactNode {
   const [query, setQuery] = useState("");
 
@@ -41,7 +47,9 @@ export function ChatHistory(props: {
     session.title.toLocaleLowerCase().includes(needle)
   );
 
-  const groups = sessionGroups(matches, props.timeZone, new Date());
+  const groups =
+    props.groups?.(matches) ??
+    sessionGroups(matches, props.timeZone, new Date());
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -88,16 +96,30 @@ export function ChatHistory(props: {
 
                   return (
                     <li key={session.id}>
-                      <a
-                        href={props.sessionHref(session.id)}
-                        title={session.title}
-                        aria-current={current ? "page" : undefined}
-                        className={sessionClass(current)}
-                      >
-                        <span className="min-w-0 truncate">
-                          {session.title}
-                        </span>
-                      </a>
+                      {props.onPick === undefined ? (
+                        <a
+                          href={props.sessionHref?.(session.id)}
+                          title={session.title}
+                          aria-current={current ? "page" : undefined}
+                          className={sessionClass(current)}
+                        >
+                          <span className="min-w-0 truncate">
+                            {session.title}
+                          </span>
+                        </a>
+                      ) : (
+                        <button
+                          type="button"
+                          title={session.title}
+                          aria-current={current ? "true" : undefined}
+                          className={`w-full ${sessionClass(current)}`}
+                          onClick={() => props.onPick?.(session)}
+                        >
+                          <span className="min-w-0 truncate">
+                            {session.title}
+                          </span>
+                        </button>
+                      )}
                     </li>
                   );
                 })}
