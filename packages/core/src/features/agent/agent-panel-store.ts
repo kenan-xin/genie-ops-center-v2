@@ -29,6 +29,8 @@ type AgentPanelState = {
    * page publishes another context or another page registers.
    */
   readonly leftOut: { readonly owner: string; readonly key: string } | null;
+  /** The phone bottom panel of a surface page while it shows, so the shell leaves room for it. */
+  readonly bottomPanel: "open" | "collapsed" | null;
 };
 
 const CLOSED: AgentPanelState = {
@@ -38,6 +40,7 @@ const CLOSED: AgentPanelState = {
   outbox: null,
   opener: null,
   leftOut: null,
+  bottomPanel: null,
 };
 
 /** The one panel of the tab. */
@@ -54,6 +57,12 @@ export function setPanelOpen(open: boolean): void {
 
 export function setPanelWorking(working: boolean): void {
   agentPanelStore.setState({ working });
+}
+
+export function setBottomPanel(
+  bottomPanel: AgentPanelState["bottomPanel"]
+): void {
+  agentPanelStore.setState({ bottomPanel });
 }
 
 /** True while the person left the current page out of the chat. */

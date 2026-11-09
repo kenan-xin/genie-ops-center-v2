@@ -949,6 +949,85 @@ export const OpensAndClosesTheAgentPanel: Story = {
   },
 };
 
+const deckPath = "/placeholder/r1";
+
+// T7.1 (P11-52): on a phone the end of a surface page scrolls into view above the bottom panel,
+// open or collapsed, so the record that builds stays readable.
+export const RoomAboveThePhoneAgentPanel: Story = {
+  name: "Room above the phone agent panel",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  decorators: withAgent,
+  beforeEach: () => {
+    resetAgentPanel();
+    sessionStorage.clear();
+  },
+  args: {
+    currentPath: deckPath,
+    agentPanel: (
+      <AgentPanelHost
+        person="person-1"
+        models={null}
+        labels={{ steps: {}, datasets: {}, fields: {} }}
+        suggestions={[]}
+        inbox={[]}
+        timeZone="UTC"
+        surfaces={[
+          {
+            id: "placeholder",
+            name: "Placeholder agent",
+            recordPage: "/placeholder/:id",
+            acceptsHandoff: true,
+          },
+        ]}
+        path={deckPath}
+      />
+    ),
+    children: (
+      <main>
+        <PageHeader title="Quarterly review" />
+        {Array.from({ length: 30 }, (_, index) => (
+          <p key={index} className="py-2">
+            Slide {index + 1}
+          </p>
+        ))}
+        <p>The last slide</p>
+      </main>
+    ),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+    const panel = await canvas.findByRole("complementary", {
+      name: "Agent panel",
+    });
+
+    const content = element(canvasElement, "[data-shell-content]");
+    const last = canvas.getByText("The last slide");
+
+    const expectEndAbovePanel = () =>
+      waitFor(() => {
+        content.scrollTo({ top: content.scrollHeight });
+
+        expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+          panel.getBoundingClientRect().top
+        );
+      });
+
+    await expectEndAbovePanel();
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Show less" })
+    );
+    await expectEndAbovePanel();
+
+    // Closed, the page gets its own bottom space back.
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Close the agent panel" })
+    );
+    await waitFor(() => expect(content).not.toHaveAttribute("data-agent-room"));
+  },
+};
+
 // FR7: Ask is the agent's full page, so it gets no Agent button and no panel beside it.
 export const NoAgentOnAsk: Story = {
   name: "No agent on Ask",

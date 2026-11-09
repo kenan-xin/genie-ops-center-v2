@@ -44,6 +44,7 @@ import {
   leaveOutPage,
   pageLeftOut,
   sentPageContext,
+  setBottomPanel,
   setPanelOpen,
   setPanelWorking,
 } from "./agent-panel-store.ts";
@@ -231,6 +232,17 @@ export function AgentPanelHost(props: {
     agentPanelStore.getState().opener?.focus();
   }, [open]);
 
+  const bottom = target !== undefined && phone;
+
+  // While the phone bottom panel shows, the shell pads the page by its height (P11-52).
+  useEffect(() => {
+    if (!bottom || !open) return;
+
+    setBottomPanel(collapsed ? "collapsed" : "open");
+
+    return () => setBottomPanel(null);
+  }, [bottom, open, collapsed]);
+
   // Outside a shell (a module page's story) it draws; inside one, never on Ask.
   if (shell !== null && !shell.agentPanel) return null;
 
@@ -249,8 +261,6 @@ export function AgentPanelHost(props: {
     setPicked({ recordId: target.recordId, id: crypto.randomUUID() });
     setTab("chat");
   }
-
-  const bottom = target !== undefined && phone;
 
   // Ask shows a chat only once it has a stored answer; before that Open in Ask starts Ask afresh.
   const askHref = stored === sessionId ? `${ASK_HREF}/${sessionId}` : ASK_HREF;

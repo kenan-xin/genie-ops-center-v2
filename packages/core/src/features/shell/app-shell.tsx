@@ -19,10 +19,13 @@ import {
   useId,
   useRef,
   useState,
+  type CSSProperties,
   type ReactNode,
 } from "react";
+import { useStore } from "zustand";
 
 import { AgentButton } from "../agent/agent-button.tsx";
+import { agentPanelStore } from "../agent/agent-panel-store.ts";
 import { activeHref, isAskPath, shellLinks } from "./active-link.ts";
 import { IdentityBlock, TenantMark } from "./identity-block.tsx";
 import { deviceStorage, NavigationRail } from "./navigation-rail.tsx";
@@ -139,6 +142,11 @@ export function AppShell(props: AppShellProps) {
   const scrolledPath = useRef(props.currentPath);
   const navigationId = useId();
   const wide = useMediaQuery("(min-width: 1024px)", {});
+  const bottomPanel = useStore(agentPanelStore, (state) => state.bottomPanel);
+
+  const agentRoom: CSSProperties & Record<"--agent-room", string> = {
+    "--agent-room": bottomPanel === "open" ? "calc(50vh + 2rem)" : "6rem",
+  };
 
   // The server render is the open menu; the device's choice applies after mount (R-31 pattern).
   const [storedRail, setStoredRail] = useState(false);
@@ -304,11 +312,16 @@ export function AppShell(props: AppShellProps) {
             role="group"
             aria-label={strings.pageContent}
             tabIndex={0}
+            // The phone agent panel of a surface page covers the lower half, or its header of about
+            // 62 px when collapsed, so the page's end scrolls above it with the usual 2rem gap
+            // (P11-52).
+            data-agent-room={bottomPanel ?? undefined}
+            style={agentRoom}
             // The bottom space keeps the last row clear of the phone's action bar (design review
             // 2.2). A page whose <main> carries `data-page-fill` (a chat page) fills the height
             // instead, so its own parts scroll and its composer stays at the bottom (agent-native
             // rule 1).
-            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 has-[[data-page-flush]]:flex has-[[data-page-flush]]:flex-col has-[[data-page-flush]]:p-0 md:has-[[data-page-flush]]:p-0 lg:has-[[data-page-flush]]:p-0 ${focusRing} focus-visible:ring-inset`}
+            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 data-agent-room:pb-(--agent-room) has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 has-[[data-page-flush]]:flex has-[[data-page-flush]]:flex-col has-[[data-page-flush]]:p-0 md:has-[[data-page-flush]]:p-0 lg:has-[[data-page-flush]]:p-0 ${focusRing} focus-visible:ring-inset`}
           >
             <ShellContext.Provider value={shellContext}>
               {props.children}
