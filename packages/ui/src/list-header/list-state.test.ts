@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { ListDefinition } from "./definitions.ts";
 import {
+  addressParams,
   dayRangeParam,
   readDayRange,
   readSort,
@@ -74,6 +75,22 @@ describe("readSort", () => {
     expect(readSort(invoices, "total.asc")).toEqual({
       column: "total",
       direction: "asc",
+    });
+  });
+});
+
+// The dashboard's filter bar and the list header share this reader (P15-9): a parameter the
+// reader drops, or one it invents, is a filter the page loses or shows that nobody set.
+describe("addressParams", () => {
+  it("reads only the named parameters, dropping a blank one and one not named", () => {
+    expect(
+      addressParams(["range", "fields"], "?range=all&fields=&q=harbor")
+    ).toEqual({ range: "all" });
+  });
+
+  it("reads a value that was encoded", () => {
+    expect(addressParams(["f.label"], "?f.label=North%2C%20East")).toEqual({
+      "f.label": "North, East",
     });
   });
 });

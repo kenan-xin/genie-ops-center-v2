@@ -90,30 +90,61 @@ function write(patch: Readonly<Record<string, string | undefined>>) {
   window.dispatchEvent(new Event(ADDRESS_CHANGE));
 }
 
+export type AddressParams = {
+  /** Only the named parameters, as written, and set. */
+  readonly params: Readonly<Record<string, string>>;
+  /** Sets parameters by name. `undefined` or blank text removes one. */
+  readonly set: (patch: Readonly<Record<string, string | undefined>>) => void;
+};
+
+/** The named parameters of an address string, each present one as written. */
+export function addressParams(
+  names: readonly string[],
+  search: string
+): Readonly<Record<string, string>> {
+  const address = new URLSearchParams(search);
+
+  return Object.fromEntries(
+    names.flatMap((name) => {
+      const value = address.get(name);
+
+      return value === null || value === "" ? [] : [[name, value]];
+    })
+  );
+}
+
 /**
- * A list's state in the page address, so a filtered list can be shared and reloaded. The server and
- * the hydration read no address, so the first paint matches the server page. A change replaces the
- * history entry, which Next keeps in step with its router.
+ * The named parameters of the page address, which a change replaces in place, so a shared link
+ * and a reload give back what it holds. The server and the hydration read no address, so the
+ * first paint matches the server page.
  */
-export function useListState(definition: ListDefinition): ListState {
+export function useAddressParams(names: readonly string[]): AddressParams {
   const search = useSyncExternalStore(
     subscribe,
     () => window.location.search,
     () => ""
   );
 
+  // A caller that builds the array each render keeps the same memo, because the names are the key.
+  const key = names.join("\n");
+
+  return useMemo(
+    () => ({ params: addressParams(names, search), set: write }),
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- a fresh array with the same names is the same key.
+    [search, key]
+  );
+}
+
+/**
+ * A list's state in the page address, so a filtered list can be shared and reloaded. The server and
+ * the hydration read no address, so the first paint matches the server page. A change replaces the
+ * history entry, which Next keeps in step with its router.
+ */
+export function useListState(definition: ListDefinition): ListState {
+  const names = useMemo(() => namesOf(definition), [definition]);
+  const { params } = useAddressParams(names);
+
   return useMemo(() => {
-    const address = new URLSearchParams(search);
-    const names = namesOf(definition);
-
-    const params: ListParams = Object.fromEntries(
-      names.flatMap((name) => {
-        const value = address.get(name);
-
-        return value === null || value === "" ? [] : [[name, value]];
-      })
-    );
-
     const tabs = definition.tabs;
     const asked = tabs === undefined ? undefined : params[tabs.param];
 
@@ -138,5 +169,5 @@ export function useListState(definition: ListDefinition): ListState {
         );
       },
     };
-  }, [search, definition]);
+  }, [params, definition, names]);
 }

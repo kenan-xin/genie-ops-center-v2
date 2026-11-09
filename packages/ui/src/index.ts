@@ -159,10 +159,15 @@ export {
   readSort,
   setFilterCount,
   sortParam,
+  useAddressParams,
   useListState,
 } from "./list-header/list-state.ts";
 
-export type { DayRangeValue, ListState } from "./list-header/list-state.ts";
+export type {
+  AddressParams,
+  DayRangeValue,
+  ListState,
+} from "./list-header/list-state.ts";
 
 export { BUILT_IN_CONTROLS } from "./list-header/filter-controls.tsx";
 
