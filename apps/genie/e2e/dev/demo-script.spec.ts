@@ -555,7 +555,10 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           // Ask beside the Slides list hands the deck over, and the Slides agent builds it (R-42b).
           await handOverWholeDeck(page);
 
-          await activate(page, page.getByRole("button", { name: "Present" }));
+          await activate(
+            page,
+            page.getByRole("button", { name: "Present", exact: true })
+          );
 
           const next = page.getByRole("button", { name: "Next slide" });
 
