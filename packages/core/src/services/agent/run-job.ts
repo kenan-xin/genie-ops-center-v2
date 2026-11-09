@@ -56,6 +56,7 @@ async function runSession(
     .select({
       userId: agentSession.userId,
       surface: agentSession.surface,
+      recordId: agentSession.recordId,
       modelId: agentSession.modelId,
     })
     .from(agentSession)
@@ -114,7 +115,7 @@ async function runSession(
 
     const stream = await turnStream(
       person,
-      { id: sessionId, surface: session.surface },
+      { id: sessionId, surface: session.surface, recordId: session.recordId },
       {
         model,
         abortSignal: AbortSignal.any([stop.signal, limit]),

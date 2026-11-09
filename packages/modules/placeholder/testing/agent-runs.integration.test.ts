@@ -202,6 +202,12 @@ function stoppedMark(message: AgentMessage | undefined): boolean {
 /** The model a sent request names, parsed at the transport's boundary. */
 const SENT_MODEL = z.object({ model: z.string() });
 
+const SENT_SYSTEM = z.object({
+  messages: z.array(z.object({ role: z.string(), content: z.unknown() })),
+});
+
+const SYSTEM_PARTS = z.array(z.object({ text: z.string() }));
+
 /** The person's agent tool rows, newest first, read by an auditor through the audit reader. */
 async function toolRows(actorId: string) {
   const { userId } = await insertPersonWith(deployment.context, [
@@ -266,6 +272,23 @@ describe("a durable agent run on the placeholder test surface", () => {
       last: FINAL_ANSWER,
       models: [RUN_MODEL, RUN_MODEL],
     });
+
+    // The run job, not only the route, names the session's record (P11-44).
+    const { rows } = await deployment.context.db.execute<{
+      record_id: string;
+    }>(sql`select record_id from agent_session where id = ${sessionId}`);
+
+    const system = SENT_SYSTEM.parse(recorded.sent[before]?.body).messages.find(
+      ({ role }) => role === "system"
+    )?.content;
+
+    expect(
+      SYSTEM_PARTS.parse(system)
+        .map(({ text }) => text)
+        .join("")
+    ).toContain(
+      `\nThis chat belongs to the record ${rows[0]?.record_id} of its page.\n`
+    );
     expect(await toolRows(ctx.caller.userId)).toMatchObject([
       {
         actor: { id: ctx.caller.userId },

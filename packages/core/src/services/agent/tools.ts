@@ -317,17 +317,26 @@ export async function offeredSessionTools(
   if (selected === undefined)
     throw new AppError(CORE_ERRORS["module-disabled"]);
 
-  const held = await Promise.all(
-    selected.moduleTools.map(({ permission }) =>
-      permission === undefined ? true : can(ctx.caller, permission)
-    )
-  );
+  const [held, handoffHeld] = await Promise.all([
+    Promise.all(
+      selected.moduleTools.map(({ permission }) =>
+        permission === undefined ? true : can(ctx.caller, permission)
+      )
+    ),
+    // A target only for a holder of the key of its rules; createRecord still checks its own key (P11-45).
+    Promise.all(
+      selected.handoff.map(({ surface: target }) =>
+        can(ctx.caller, target.instructions.permission)
+      )
+    ),
+  ]);
 
   return {
     ...selected,
     moduleTools: selected.moduleTools.filter(
       (_, index) => held[index] === true
     ),
+    handoff: selected.handoff.filter((_, index) => handoffHeld[index] === true),
   };
 }
 

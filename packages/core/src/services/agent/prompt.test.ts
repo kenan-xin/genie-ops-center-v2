@@ -27,6 +27,24 @@ describe("agentInstructions", () => {
     ]);
   });
 
+  it("names a surface session's record after the module lines and before the page line", () => {
+    const lines = agentInstructions({
+      reportingDate: "2026-10-27",
+      moduleLines: ["Rule A."],
+      page: { page: "Deck" },
+      record: "rec-1",
+    }).split("\n");
+
+    const blank = lines.indexOf("");
+
+    expect(lines.slice(blank - 3, blank + 1)).toEqual([
+      "Rule A.",
+      "This chat belongs to the record rec-1 of its page.",
+      "The person is on the Deck page.",
+      "",
+    ]);
+  });
+
   it("swaps the no-write line for the write rule and names the page after the module lines", () => {
     const lines = agentInstructions({
       reportingDate: "2026-10-27",

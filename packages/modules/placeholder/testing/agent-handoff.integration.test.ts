@@ -1,13 +1,16 @@
 import { randomUUID } from "node:crypto";
 
 import {
+  agentToolSet,
   type AgentMessage,
   appendMessage,
+  artifactTurn,
   chatLabels,
   createOwnSession,
   handleAgentChat,
   listOwnArtifacts,
   type ModuleRequestContext,
+  offersWriteTool,
   principalFor,
   readAuditPage,
   readOwnSession,
@@ -91,12 +94,14 @@ afterAll(async () => {
   await deployment?.stop();
 });
 
-async function person(): Promise<ModuleRequestContext> {
-  const { userId } = await insertPersonWith(deployment.context, [
+async function person(
+  keys: readonly string[] = [
     "core:ask:use",
     "placeholder:use",
     "placeholder:read",
-  ]);
+  ]
+): Promise<ModuleRequestContext> {
+  const { userId } = await insertPersonWith(deployment.context, keys);
 
   const tenant = deployment.context;
 
@@ -362,6 +367,23 @@ describe("the Ask handoff on the placeholder test surface", () => {
       ],
       output: [{ handedTo: "Placeholder agent", title: BRIEF_TITLE }],
     });
+  });
+
+  it("offers hand-over only to a holder of the surface's key", async () => {
+    const sessionId = randomUUID();
+
+    const handOver = async (ctx: ModuleRequestContext) =>
+      Object.keys(
+        await agentToolSet(ctx, { id: sessionId }, artifactTurn(sessionId, 0))
+      ).includes("hand-over");
+
+    const reader = await person(["core:ask:use", "placeholder:read"]);
+
+    expect({
+      reader: await handOver(reader),
+      readerWriteRule: await offersWriteTool(reader),
+      writer: await handOver(await person()),
+    }).toEqual({ reader: false, readerWriteRule: false, writer: true });
   });
 
   it("a refused createRecord saves nothing", async () => {

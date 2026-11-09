@@ -173,6 +173,13 @@ export async function handleAgentChat(
   // A saved session keeps its surface; only a new chat takes the page's binding (P11-26).
   const surface = existing?.surface ?? binding?.id ?? ASK_SURFACE;
 
+  const recordId =
+    existing === undefined
+      ? surface === ASK_SURFACE
+        ? null
+        : (binding?.recordId ?? null)
+      : existing.recordId;
+
   // Before any write: one answer at a time in a chat (R-42b), and a surface whose module is off
   // stores nothing.
   if (existing !== undefined && existing.runState !== null) {
@@ -197,7 +204,7 @@ export async function handleAgentChat(
       title: text.replaceAll(/\s+/g, " ").slice(0, CHAT_TITLE_LIMIT),
       modelId: sessionModel,
       surface,
-      recordId: surface === ASK_SURFACE ? null : (binding?.recordId ?? null),
+      recordId,
     });
   }
 
@@ -214,7 +221,7 @@ export async function handleAgentChat(
 
   const stream = await turnStream(
     ctx,
-    { id: sessionId, surface },
+    { id: sessionId, surface, recordId },
     { model, abortSignal, page: context, logError: hooks.logError }
   );
 
@@ -234,7 +241,11 @@ export async function handleAgentChat(
  */
 export async function turnStream(
   ctx: ModuleRequestContext,
-  session: { readonly id: string; readonly surface: string },
+  session: {
+    readonly id: string;
+    readonly surface: string;
+    readonly recordId: string | null;
+  },
   input: {
     readonly model: Awaited<ReturnType<typeof modelFor>>;
     readonly abortSignal: AbortSignal;
@@ -319,6 +330,7 @@ export async function turnStream(
       moduleLines: await moduleInstructionLines(ctx, surface),
       writeTools: await offersWriteTool(ctx, surface),
       page: input.page,
+      record: session.recordId ?? undefined,
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
     messages: await convertToModelMessages(
