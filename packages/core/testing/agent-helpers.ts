@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { createParser } from "@openuidev/react-lang";
 import {
   type UIMessageChunk,
@@ -12,6 +14,7 @@ import { artifactRefsOf } from "../src/features/agent/artifact-refs.ts";
 import { PROMPT_VIEWS } from "../src/features/agent/catalog-prompt.ts";
 import { answerLibrary } from "../src/features/agent/catalog.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
+import { agentSession } from "../src/schema.ts";
 import type { AgentMessage } from "../src/services/agent/index.ts";
 import { storeIntegrationKey } from "../src/services/integrations/keys.ts";
 import { insertUser } from "./access-fixtures.ts";
@@ -44,6 +47,28 @@ export async function writeModelConnection(
     "update tenant_settings set allowed_models = $1::text[], chat_model = $2, document_model = $3, reporting_date = coalesce($4::date, reporting_date)",
     [input.allowed, input.chat, input.document, input.reportingDate ?? null]
   );
+}
+
+/** One agent_session row. Defaults: a random id, title "Chat", model "openai/gpt-6.1-terra". */
+export async function insertAgentSession(
+  context: TenantContext,
+  values: { readonly userId: string } & Partial<
+    typeof agentSession.$inferInsert
+  >
+): Promise<typeof agentSession.$inferSelect> {
+  const [row] = await context.db
+    .insert(agentSession)
+    .values({
+      id: randomUUID(),
+      title: "Chat",
+      modelId: "openai/gpt-6.1-terra",
+      ...values,
+    })
+    .returning();
+
+  if (row === undefined) throw new Error("The session was not inserted.");
+
+  return row;
 }
 
 /**

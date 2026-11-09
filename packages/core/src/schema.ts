@@ -1,6 +1,6 @@
 import type { UIMessage } from "ai";
 import { sql } from "drizzle-orm";
-import type { PgTable } from "drizzle-orm/pg-core";
+import type { AnyPgColumn, PgTable } from "drizzle-orm/pg-core";
 import {
   bigint,
   boolean,
@@ -19,6 +19,7 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+import { ASK_SURFACE } from "./lib/module-contract/agent-tools.ts";
 import type { PanelConfig } from "./services/charts/panel-config.ts";
 import type { DatasetQuery } from "./services/datasets/query.ts";
 
@@ -557,6 +558,8 @@ export const userPreference = pgTable("user_preference", {
 /**
  * One boss-agent chat (Spec 7 R-41), owner-only: every read and write in `services/agent/store.ts`
  * filters on `user_id`. No default id: the browser makes it, so a new chat has its link at once.
+ * A session belongs to one surface: Ask, or a module's surface and one of its records. The run
+ * columns hold a background run's state on the server; one run per person (R-42b).
  */
 export const agentSession = pgTable(
   "agent_session",
@@ -572,11 +575,41 @@ export const agentSession = pgTable(
     summaryThroughSeq: bigint("summary_through_seq", { mode: "number" }),
     /** The largest input of a step of the latest turn, in tokens; a summary clears it. */
     lastInputTokens: integer("last_input_tokens"),
+    /** `core:ask`, or the id of the module whose surface runs the session. */
+    surface: text("surface").notNull().default(ASK_SURFACE),
+    /** The record a module surface's session builds; null for Ask. */
+    recordId: text("record_id"),
+    /** The Ask session that handed the work over; deleting it keeps this session. */
+    handedFromSessionId: uuid("handed_from_session_id").references(
+      (): AnyPgColumn => agentSession.id,
+      { onDelete: "set null" }
+    ),
+    runState: text("run_state", { enum: ["queued", "running", "stopping"] }),
+    runJobId: uuid("run_job_id"),
+    /** Why the latest run ended without its answer; null when it finished. */
+    runError: text("run_error", {
+      enum: ["stopped", "interrupted", "failed"],
+    }),
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },
   (table) => [
     index("agent_session_user_updated_idx").on(table.userId, table.updatedAt),
+    uniqueIndex("agent_session_one_run_per_user_idx")
+      .on(table.userId)
+      .where(sql`${table.runState} is not null`),
+    check(
+      "agent_session_run_state_check",
+      sql`${table.runState} in ('queued', 'running', 'stopping')`
+    ),
+    check(
+      "agent_session_run_error_check",
+      sql`${table.runError} in ('stopped', 'interrupted', 'failed')`
+    ),
+    check(
+      "agent_session_run_job_check",
+      sql`${table.runState} is null or ${table.runJobId} is not null`
+    ),
   ]
 );
 

@@ -20,6 +20,7 @@ export {
   type AnswerBlock,
   answerBlocks,
   answerChartConfigs,
+  insertAgentSession,
   readAgentReply,
   writeModelConnection,
 } from "./agent-helpers.ts";

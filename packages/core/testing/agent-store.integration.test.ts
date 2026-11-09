@@ -24,6 +24,7 @@ import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import type { PanelConfig } from "../src/services/charts/panel-config.ts";
 import {
   type DisposableDeployment,
+  insertAgentSession,
   insertPersonWith,
   markSetupDone,
   startDisposableDeployment,
@@ -507,6 +508,31 @@ describe("the owner-only agent store against a real database", () => {
       through: history.summaryThroughSeq,
       messages: history.messages,
     }).toEqual({ summary: "Later", through: sixth, messages: [] });
+  });
+
+  it("deleting the chat a handoff came from keeps the handed-over chat", async () => {
+    const { userId } = personA.caller;
+    const ask = await insertAgentSession(deployment.context, { userId });
+
+    const handed = await insertAgentSession(deployment.context, {
+      userId,
+      surface: "placeholder",
+      recordId: "record-1",
+      handedFromSessionId: ask.id,
+    });
+
+    await deleteOwnSession(personA, ask.id);
+
+    const { rows } = await deployment.context.db.execute<{
+      surface: string;
+      handed_from_session_id: string | null;
+    }>(
+      sql`select surface, handed_from_session_id from agent_session where id = ${handed.id}`
+    );
+
+    expect(rows).toEqual([
+      { surface: "placeholder", handed_from_session_id: null },
+    ]);
   });
 
   it("refuses a kind outside the four", async () => {
