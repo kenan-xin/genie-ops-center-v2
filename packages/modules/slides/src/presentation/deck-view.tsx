@@ -54,8 +54,9 @@ import {
   SlideEditor,
   slideInputOf,
 } from "./slide-editor.tsx";
-import { figuresDate } from "./slide-layout.ts";
+import { elementBoxes, figuresDate } from "./slide-layout.ts";
 import { SlideStage } from "./slide-stage.tsx";
+import { SlideEditorBar, StyleToolbar } from "./style-toolbar.tsx";
 import {
   useDeck,
   useDeckChange,
@@ -91,6 +92,13 @@ type AddTarget = {
   readonly toIndex: number;
   readonly expectedHash: string;
 };
+
+/** The box one element of a slide draws at: its own, else the computed one. */
+function boxOf(slide: ShownSlide, index: number) {
+  const boxes = elementBoxes(slide.elements);
+
+  return boxes.body.find((entry) => entry.index === index)?.box ?? boxes.title;
+}
 
 function titleOf(slide: ShownSlide): string {
   const title = slide.elements.find((element) => element.kind === "title");
@@ -858,7 +866,77 @@ export function DeckView(props: DeckViewProps) {
             ))}
           </nav>
           {view.canWrite ? (
-            <div data-shown-slide="" className="min-w-0 flex-1">
+            <div data-shown-slide="" className="grid min-w-0 flex-1 gap-2">
+              <SlideEditorBar
+                slide={current}
+                saving={busy}
+                onStep={(step) =>
+                  sendStep([step], {
+                    expectedHash: deck.contentHash,
+                    slideNumber: index + 1,
+                  })
+                }
+                onAdd={(kind) => {
+                  if (kind === "image") {
+                    openEditor({
+                      slide: current,
+                      number: index + 1,
+                      expectedHash: deck.contentHash,
+                    });
+
+                    return;
+                  }
+
+                  const input = slideInputOf(current);
+
+                  // The body goes after the title; the person writes it with Edit text.
+                  sendStep(
+                    [
+                      {
+                        op: "change-slide",
+                        slideId: current.id,
+                        slide: {
+                          ...input,
+                          elements: input.elements.toSpliced(
+                            1,
+                            0,
+                            kind === "text"
+                              ? { kind: "text", text: "Add your text." }
+                              : { kind: "bullets", items: ["Add a point."] }
+                          ),
+                        },
+                      },
+                    ],
+                    {
+                      expectedHash: deck.contentHash,
+                      slideNumber: index + 1,
+                    }
+                  );
+                }}
+              />
+              {selected === null ||
+              current.elements[selected] === undefined ? null : (
+                <StyleToolbar
+                  element={current.elements[selected]}
+                  slideId={current.id}
+                  index={selected}
+                  box={boxOf(current, selected)}
+                  saving={busy}
+                  onStep={(step) =>
+                    sendStep([step], {
+                      expectedHash: deck.contentHash,
+                      slideNumber: index + 1,
+                    })
+                  }
+                  onEditText={() =>
+                    openEditor({
+                      slide: current,
+                      number: index + 1,
+                      expectedHash: deck.contentHash,
+                    })
+                  }
+                />
+              )}
               <SlideStage
                 key={current.id}
                 slide={current}
