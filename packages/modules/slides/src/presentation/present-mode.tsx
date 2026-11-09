@@ -11,12 +11,14 @@ import {
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent,
 } from "react";
 
+import { type DeckSync, openDeckSync } from "./deck-sync.ts";
 import { SlideCanvas } from "./slide-canvas.tsx";
 import type { DeckPageView } from "./views.ts";
 
@@ -33,18 +35,18 @@ export type PresentModeProps = {
 const IDLE_MS = 2500;
 
 /** A style object of CSS custom properties only; the classes read them. */
-type CssVars = CSSProperties & {
+export type CssVars = CSSProperties & {
   readonly [key: `--${string}`]: string | number;
 };
 
-const ASPECT = 960 / 540;
+export const ASPECT = 960 / 540;
 
-function clampIndex(value: number, count: number): number {
+export function clampIndex(value: number, count: number): number {
   return Math.min(Math.max(value, 0), Math.max(count - 1, 0));
 }
 
 /** A key press on a control activates it, so Space must not also move the deck. */
-function isControl(target: EventTarget | null): boolean {
+export function isControl(target: EventTarget | null): boolean {
   return (
     target instanceof HTMLElement &&
     target.closest("button, a, input, select, textarea") !== null
@@ -68,6 +70,7 @@ export function PresentMode(props: PresentModeProps) {
   const [popupElement, setPopupElement] = useState<HTMLDivElement | null>(null);
   const stage = useRef<HTMLDivElement>(null);
   const requested = useRef(false);
+  const sync = useRef<DeckSync | null>(null);
   // The controls show after a move or a key and fade when idle; a touch screen keeps them (7.5).
   const [awake, setAwake] = useState(true);
   const [touch, setTouch] = useState(false);
@@ -99,6 +102,40 @@ export function PresentMode(props: PresentModeProps) {
   useEffect(() => {
     if (open) setShown(clampIndex(startAt, count));
   }, [open, startAt, count]);
+
+  // The presenter window reads the newest render through these, and the channel stays open.
+  const shownNow = useEffectEvent(() => clampIndex(shown, count));
+
+  const openingIndex = useEffectEvent(() => clampIndex(startAt, count));
+
+  const follow = useEffectEvent((target: number) =>
+    setShown(clampIndex(target, count))
+  );
+
+  // S7-45: while open, the deck's channel carries this slide to the presenter window and back.
+  useEffect(() => {
+    if (!open) return;
+
+    const end = openDeckSync(view.deck.id, (message) => {
+      if (message.kind === "ask") post(shownNow());
+      else if (message.kind === "show" && message.from === "presenter") {
+        follow(message.index);
+      }
+    });
+
+    function post(target: number): void {
+      end.post({ kind: "show", index: target, from: "audience" });
+    }
+
+    sync.current = end;
+    post(openingIndex());
+
+    return () => {
+      end.post({ kind: "closed" });
+      end.close();
+      sync.current = null;
+    };
+  }, [open, view.deck.id]);
 
   // The slide takes the largest 16:9 box the stage holds, above the control row.
   useEffect(() => {
@@ -144,8 +181,15 @@ export function PresentMode(props: PresentModeProps) {
     onOpenChange(next);
   }
 
+  const index = clampIndex(shown, count);
+
   function move(step: number): void {
-    setShown((current) => clampIndex(current + step, count));
+    const target = clampIndex(index + step, count);
+
+    if (target === index) return;
+
+    setShown(target);
+    sync.current?.post({ kind: "show", index: target, from: "audience" });
   }
 
   function handleKeyDown(event: KeyboardEvent<HTMLDivElement>): void {
@@ -176,7 +220,6 @@ export function PresentMode(props: PresentModeProps) {
     }
   }
 
-  const index = clampIndex(shown, count);
   const slide = slides[index];
 
   const width =

@@ -12,6 +12,7 @@ import {
 } from "storybook/test";
 
 import { deckPage } from "./__fixtures__/decks.ts";
+import type { DeckSyncMessage } from "./deck-sync.ts";
 import { PresentMode } from "./present-mode.tsx";
 import type { DeckPageView } from "./views.ts";
 
@@ -378,4 +379,61 @@ export const Fullscreen: Story = {
   args: { open: false },
   globals: desktop,
   play: fullscreenPlay,
+};
+
+/** The presenter window's end of the deck channel (S7-45). */
+let heard: DeckSyncMessage[] = [];
+
+let presenter: BroadcastChannel | undefined;
+
+function fromPresenter(message: DeckSyncMessage) {
+  // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a BroadcastChannel takes no target
+  presenter?.postMessage(message);
+}
+
+// S7-45: present mode tells the presenter window its slide on open and on ask, follows a show
+// without posting it back, and says when it closes.
+export const PostsItsSlideOnOpen: Story = {
+  name: "Posts its slide on open",
+  args: { startAt: 2 },
+  globals: desktop,
+  beforeEach: () => {
+    heard = [];
+    presenter = new BroadcastChannel("slides-present:deck-1");
+    presenter.addEventListener("message", (event: MessageEvent) =>
+      // SAFETY: only present mode under test posts on this channel.
+      heard.push(event.data as DeckSyncMessage)
+    );
+
+    return () => {
+      presenter?.close();
+      presenter = undefined;
+    };
+  },
+  play: async () => {
+    const dialog = await dialogBox();
+    const shown = { kind: "show", index: 2, from: "audience" };
+
+    await waitFor(() => expect(heard).toEqual([shown]));
+
+    fromPresenter({ kind: "ask" });
+    await waitFor(() => expect(heard).toEqual([shown, shown]));
+
+    fromPresenter({ kind: "show", index: 4, from: "presenter" });
+    await waitFor(() => expect(dialog.getByText("5 / 5")).toBeVisible());
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await expect(heard).toHaveLength(2);
+
+    const moved = { kind: "show", index: 3, from: "audience" };
+
+    await userEvent.keyboard("{ArrowLeft}");
+    await waitFor(() => expect(heard).toEqual([shown, shown, moved]));
+
+    // An ask answers the slide shown now, not the one present mode opened at.
+    fromPresenter({ kind: "ask" });
+    await waitFor(() => expect(heard).toEqual([shown, shown, moved, moved]));
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(heard.at(-1)).toEqual({ kind: "closed" }));
+  },
 };

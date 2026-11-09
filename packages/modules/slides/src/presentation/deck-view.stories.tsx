@@ -330,6 +330,78 @@ export const Present: Story = {
   },
 };
 
+/** Answers `window.open` with `answer` while `run` goes, and gives back the spy. */
+async function withWindowOpen(
+  answer: Window | null,
+  run: (open: ReturnType<typeof fn>) => Promise<void>
+) {
+  const original = window.open;
+  const open = fn(() => answer);
+
+  window.open = open;
+
+  try {
+    await run(open);
+  } finally {
+    window.open = original;
+  }
+}
+
+async function presentWithNotes(canvas: ReturnType<typeof within>) {
+  await userEvent.click(
+    canvas.getByRole("button", { name: "More ways to present" })
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: /^Present with notes/ })
+  );
+}
+
+// S7-45: Present with notes opens the presenter window first, then present mode at the shown slide.
+export const PresentWithNotes: Story = {
+  name: "Present with notes opens the presenter",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: ({ canvas }) =>
+    // SAFETY: the page only checks the answer for null; nothing reads the window.
+    withWindowOpen({} as Window, async (open) => {
+      await presentWithNotes(canvas);
+
+      await expect(open).toHaveBeenCalledWith(
+        "/m/slides/decks/deck-1/presenter",
+        "slides-presenter-deck-1",
+        "popup"
+      );
+      await screen.findByRole("dialog", {
+        name: "Present Receivables at a glance",
+      });
+    }),
+};
+
+// Review Focus 5: a blocked pop-up starts no audience-only show and says why.
+export const BlockedPopUp: Story = {
+  name: "Blocked pop-up",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: ({ canvas }) =>
+    withWindowOpen(null, async (open) => {
+      await presentWithNotes(canvas);
+
+      await expect(open).toHaveBeenCalledTimes(1);
+      await expect(
+        await canvas.findByText(
+          "Your browser blocked the presenter window. Allow pop-ups for this site, then choose Present with notes again."
+        )
+      ).toBeVisible();
+      await expect(
+        canvas.getByText(/Your browser blocked/).closest("[role=status]")
+      ).not.toBeNull();
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      await expect(screen.queryByRole("dialog")).toBeNull();
+    }),
+};
+
 // B6.2: each slide action sends the change it names, through the shown deck's hash.
 const slideActionsPlay: Story["play"] = async ({ canvas }) => {
   // Slide 1 has no earlier place, so Move earlier is off.

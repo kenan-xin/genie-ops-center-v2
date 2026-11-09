@@ -33,6 +33,7 @@ import {
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { isEqual } from "es-toolkit";
+import { ChevronDown, Play, Presentation } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -46,6 +47,7 @@ import {
   titleElement,
 } from "../contract.ts";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
+import { presenterPath } from "./deck-sync.ts";
 import { NotesField } from "./notes-field.tsx";
 import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
@@ -437,6 +439,8 @@ export function DeckView(props: DeckViewProps) {
   } | null>(null);
 
   const [presenting, setPresenting] = useState(false);
+  // Review Focus 5: a blocked presenter window starts no audience-only show.
+  const [popupBlocked, setPopupBlocked] = useState(false);
   const [editing, setEditing] = useState<EditTarget | null>(null);
 
   const [editorFailure, setEditorFailure] = useState<ChangeFailure | null>(
@@ -658,6 +662,24 @@ export function DeckView(props: DeckViewProps) {
     });
   }
 
+  function present(): void {
+    setPopupBlocked(false);
+    setPresenting(true);
+  }
+
+  /** The pop-up opens inside the click, before present mode, or the browser blocks it. */
+  function presentWithNotes(): void {
+    const presenter = window.open(
+      presenterPath(deck.id),
+      `slides-presenter-${deck.id}`,
+      "popup"
+    );
+
+    setPopupBlocked(presenter === null);
+
+    if (presenter !== null) setPresenting(true);
+  }
+
   function openRename(): void {
     setFailure(null);
     setRenaming({ title: deck.title, expectedHash: deck.contentHash });
@@ -754,12 +776,41 @@ export function DeckView(props: DeckViewProps) {
           </span>
         }
         actions={
-          <Button
-            disabled={current === undefined || busy}
-            onClick={() => setPresenting(true)}
-          >
-            Present
-          </Button>
+          // S7-45 variant A: one split button; the halves join at the seam.
+          <div className="flex *:first:rounded-r-none *:last:rounded-l-none *:last:border-l-primary-foreground/30">
+            <Button disabled={current === undefined || busy} onClick={present}>
+              Present
+            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger
+                disabled={current === undefined || busy}
+                render={<Button aria-label="More ways to present" />}
+              >
+                <ChevronDown aria-hidden />
+              </DropdownMenuTrigger>
+              {/* The two-line items need more than the chevron's width. */}
+              <DropdownMenuContent align="end" className="w-auto">
+                <DropdownMenuItem onClick={present}>
+                  <Play aria-hidden />
+                  <span className="flex flex-col">
+                    <span>Present</span>
+                    <span className="text-xs text-muted-foreground">
+                      Full screen, slides only
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={presentWithNotes}>
+                  <Presentation aria-hidden />
+                  <span className="flex flex-col">
+                    <span>Present with notes</span>
+                    <span className="text-xs text-muted-foreground">
+                      Opens a second window with your notes and a timer
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         }
         secondaryActions={
           <>
@@ -805,6 +856,14 @@ export function DeckView(props: DeckViewProps) {
         }
       />
       {pageRefusal}
+      {popupBlocked ? (
+        <div className="mb-4">
+          <InfoNote size="md" role="status">
+            Your browser blocked the presenter window. Allow pop-ups for this
+            site, then choose Present with notes again.
+          </InfoNote>
+        </div>
+      ) : null}
       {refreshNumbers === null ? null : (
         <div className="mb-4">
           <InfoNote size="md" role="status">

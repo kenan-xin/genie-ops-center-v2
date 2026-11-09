@@ -8,7 +8,11 @@ import {
 } from "./agent-tools.ts";
 import { slidesContract } from "./contract.ts";
 import { SLIDES_PERMISSIONS } from "./permissions.ts";
-import { DeckListPage, DeckPage } from "./presentation/module-pages.tsx";
+import {
+  DeckListPage,
+  DeckPage,
+  PresenterPage,
+} from "./presentation/module-pages.tsx";
 import { slidesRouter } from "./router.ts";
 import { deck, MIGRATIONS, MIGRATIONS_TABLE } from "./schema.ts";
 import { loadDeckList, loadDeckPage } from "./services/pages/loaders.ts";
@@ -95,6 +99,14 @@ export const slidesModule = {
         parent: SLIDES_ENTRY.path,
         load: (ctx, params) => loadDeckPage(ctx, params.id ?? ""),
         component: DeckPage,
+      }),
+      // The presenter window (S7-45): the same deck read and the same key as the deck page.
+      definePage({
+        path: `${SLIDES_ENTRY.path}/:id/presenter`,
+        permission: SLIDES_ENTRY.requiredPermission,
+        parent: SLIDES_ENTRY.path,
+        load: (ctx, params) => loadDeckPage(ctx, params.id ?? ""),
+        component: PresenterPage,
       }),
     ],
     admin: [],
