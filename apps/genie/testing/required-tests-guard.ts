@@ -337,9 +337,9 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/slides-chat.integration.test.ts",
     reason:
-      "Spec 7 R-46, R-47, R-55, R-56 and AC-10: a chat beside the Slides list creates the recorded five-slide deck through the store, frozen on the reporting date with the demo figures and one agent audit row, its export holds native charts, and a second chat replays both recordings, so the tool output holds no id and no clock value",
+      "Spec 7 R-42b, R-46, R-47, R-55, R-56, AC-10 and AC-13: Ask hands a five-slide deck to the Slides agent with one hand-over call, the run builds that one deck slide by slide through the store within the step limit, frozen on the reporting date with the demo figures and one audit row per tool, its export holds native charts, and a second handoff replays every fixture with a new deck id and new hashes",
     cases: [
-      "the slides chat beside the Slides list creates the recorded five-slide deck frozen on the reporting date, with one audit row, an export of native charts, and replays again",
+      "the slides chat beside the Slides list Ask hands a five-slide deck to the Slides agent, the run builds it slide by slide frozen on the reporting date with an export of native charts, and replays again",
     ],
   },
 ];

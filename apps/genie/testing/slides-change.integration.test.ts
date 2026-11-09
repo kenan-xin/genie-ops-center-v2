@@ -124,7 +124,10 @@ const insertFixedDeck = (ownerUserId: string) =>
     frozenOn: SLIDES_CHANGE_FROZEN_ON,
   });
 
-/** Sends the message with the deck page's context on slide `s2`, as the panel does. */
+/**
+ * Sends the message with the deck page's context on slide `s2`, in a chat bound to the Slides
+ * surface and the deck, as the panel on the deck page does (P11-26).
+ */
 async function chat(sessionId: string, text: string): Promise<void> {
   const reply = await handleAgentChat(
     asker,
@@ -136,6 +139,7 @@ async function chat(sessionId: string, text: string): Promise<void> {
         parts: [{ type: "text", text }],
       },
       context: SLIDES_CHANGE_CONTEXT,
+      surface: { id: "slides", recordId: SLIDES_CHANGE_DECK_ID },
     }),
     { logError: (cause: unknown) => errors.push(cause) }
   );
@@ -176,6 +180,14 @@ const answerParts = async (sessionId: string) =>
     )
   ).rows.flatMap(({ parts }) => parts);
 
+/** The stored outputs of a session's `slides-change-deck` calls. */
+const changeOutputs = async (sessionId: string) =>
+  (await answerParts(sessionId)).flatMap((part) =>
+    part.type === "tool-slides-change-deck" && "output" in part
+      ? [part.output]
+      : []
+  );
+
 describe("the agent panel on the deck editor", () => {
   it("changes the open slide by chat with one Undo entry, keeps its figure, and Undo restores it", async () => {
     const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0006";
@@ -201,6 +213,10 @@ describe("the agent panel on the deck editor", () => {
     });
     // The figure came back with its chart as read, so it kept its frozen data (R-54).
     expect(changed?.s2[1]?.data).toEqual(SLIDES_CHANGE_FIGURE.data);
+    // The change answers the new hash, so a next change needs no read (P11-47).
+    expect(await changeOutputs(session)).toMatchObject([
+      { contentHash: changed?.content_hash },
+    ]);
 
     await callProcedure(slidesRouter, asker).undoDeck({
       id: SLIDES_CHANGE_DECK_ID,
