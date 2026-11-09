@@ -807,6 +807,40 @@ async function filesOf(sessionId: string) {
   return rows;
 }
 
+describe("a tool call after Stop", () => {
+  it("does not run, and its audit row says stopped", async () => {
+    const userId = await reader();
+    const ctx = contextFor(userId);
+
+    const { execute } = (
+      await agentToolSet(ctx, { id: SESSION_ID }, artifactTurn(SESSION_ID, 0))
+    )["placeholder-count-records"] ?? { execute: undefined };
+
+    if (execute === undefined) throw new Error("No count tool.");
+
+    await expect(
+      execute(
+        {},
+        {
+          toolCallId: "call-after-stop",
+          messages: [],
+          context: {},
+          abortSignal: AbortSignal.abort(),
+        }
+      )
+    ).rejects.toThrow("The tool could not run.");
+    expect(await toolRows(userId)).toMatchObject([
+      {
+        metadata: {
+          tool: "placeholder-count-records",
+          outcome: "stopped",
+          rowCount: 0,
+        },
+      },
+    ]);
+  });
+});
+
 async function jobsFor(agentFileId: string) {
   const { rows } = await deployment.context.db.$client.query<{
     state: string;

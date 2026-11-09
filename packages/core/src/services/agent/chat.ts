@@ -221,6 +221,8 @@ export async function turnStream(
     readonly abortSignal: AbortSignal;
     readonly page?: AgentPageContext | undefined;
     readonly logError: (cause: unknown) => void;
+    /** Runs in `onEnd`, after the stream ended and before the answer is stored. */
+    readonly beforeSave?: () => Promise<void>;
   }
 ): Promise<ReadableStream<UIMessageChunk>> {
   const { id: sessionId, surface } = session;
@@ -355,6 +357,8 @@ export async function turnStream(
     // is stored. Stop cancels the stream, the turn limit aborts it: either one stores what
     // finished before it, with a stopped mark (P8, P03-1, P03-2).
     onEnd: async ({ responseMessage, isAborted, isCancelled }) => {
+      await input.beforeSave?.();
+
       if (responseMessage.parts.length === 0) return;
 
       const { parts, versions } =

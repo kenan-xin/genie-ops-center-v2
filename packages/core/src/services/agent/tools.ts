@@ -221,7 +221,7 @@ function audited(
     inputSchema: jsonSchema(() => asSchema(agentTool.input).jsonSchema, {
       validate: (value) => ({ success: true, value }),
     }),
-    execute: async (input) => {
+    execute: async (input, { abortSignal }) => {
       const parsed = agentTool.input.safeParse(input);
 
       // SAFETY: the AI SDK parsed the input from the model's JSON text, and the tool's schema
@@ -244,6 +244,13 @@ function audited(
           rowCount,
           dataset,
         });
+
+      // A call the model sent just before Stop does not run (tech plan wave 5, "Stop").
+      if (abortSignal?.aborted === true) {
+        await record("stopped", 0, named);
+
+        throw new Error(COULD_NOT_RUN);
+      }
 
       let result: Awaited<ReturnType<AnyAgentTool["run"]>>;
 

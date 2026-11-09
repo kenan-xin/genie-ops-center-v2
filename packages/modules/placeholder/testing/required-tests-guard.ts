@@ -116,6 +116,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent tools on the placeholder numbers two new artifacts of one step apart, after the chat's stored ones",
       "the agent tools on the placeholder make-file queues one file job as the person and answers without an id",
       "the agent tools on the placeholder make-file refuses an unreadable dataset and a bad query, and queues nothing",
+      "a tool call after Stop does not run, and its audit row says stopped",
       "make-file when the job queue fails leaves no queued file and tells the model it could not run",
     ],
   },
@@ -173,6 +174,9 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a durable agent run on the placeholder test surface the test surface is a valid declaration",
       "a durable agent run on the placeholder test surface a run finishes after its starter disconnects",
       "a durable agent run on the placeholder test surface a job whose starter is not the session's owner ends the run without a model call",
+      "a durable agent run on the placeholder test surface a reader sees a partial answer before the run ends",
+      "a durable agent run on the placeholder test surface Stop during a slow model call ends the run within about a second and no later tool call runs",
+      "a durable agent run on the placeholder test surface deleting the session ends the run",
     ],
   },
 ];

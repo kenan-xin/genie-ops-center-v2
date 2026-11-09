@@ -16,6 +16,16 @@ export function isStopped(message: AgentMessage): boolean {
   return message.parts.some(({ type }) => type === STOPPED_PART.type);
 }
 
+/**
+ * The parts a checkpoint of a running answer stores: every part but an artifact card, whose
+ * version is written only with the final answer, so a reader never opens a card with no version.
+ */
+export function checkpointParts(
+  parts: AgentMessage["parts"]
+): AgentMessage["parts"] {
+  return parts.filter(({ type }) => type !== "data-artifact");
+}
+
 /** A step that ran to its end: its result or its refusal came back. */
 const FINISHED_STATES: ReadonlySet<string> = new Set([
   "output-available",

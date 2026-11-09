@@ -472,7 +472,8 @@ async function writeVersion(
 /**
  * Appends one message with a server-made id and moves `updated_at`, in one transaction; `not-found`
  * when the session is not the caller's. The answer's artifact versions go in the same transaction,
- * so a failed write stores neither.
+ * so a failed write stores neither. An assistant message whose id is stored already replaces its
+ * parts and keeps its place, so a run's checkpoints and its final answer stay one message (R-42b).
  */
 export async function appendMessage(
   ctx: ModuleRequestContext,
@@ -509,11 +510,15 @@ export async function appendMessage(
         role: message.role,
         parts: withSettledArtifacts(message.parts, settled),
       })
+      .onConflictDoUpdate({
+        target: agentMessage.id,
+        set: { parts: sql`excluded.parts` },
+        // Only an assistant message of this session; another id answers no row.
+        setWhere: sql`${agentMessage.role} = 'assistant' and ${agentMessage.sessionId} = ${id}`,
+      })
       .returning({ id: agentMessage.id });
 
-    if (inserted === undefined) {
-      throw new Error("the message insert returned no row");
-    }
+    if (inserted === undefined) throw notFound();
 
     for (const pending of settled) {
       // In order: a new artifact's row comes before its versions, and a version moves its latest.

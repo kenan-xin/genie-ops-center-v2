@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from "node:timers/promises";
+
 import { readUIMessageStream } from "ai";
 import { and, eq, isNull } from "drizzle-orm";
 
@@ -17,8 +19,14 @@ import { enqueueJob } from "../job-queue/module-jobs.ts";
 import { modelFor } from "../models/index.ts";
 import { agentAccess } from "./access.ts";
 import { AGENT_LIMITS, turnStream } from "./chat.ts";
-import { AGENT_RUN_JOB_NAME, endRun, markRunning } from "./runs.ts";
-import { checkedId } from "./store.ts";
+import {
+  AGENT_RUN_JOB_NAME,
+  endRun,
+  markRunning,
+  readRunState,
+} from "./runs.ts";
+import { checkpointParts } from "./stopped-turn.ts";
+import { type AgentMessage, appendMessage, checkedId } from "./store.ts";
 
 /**
  * A session's turn as the core job `core.agent-run` (R-42b, tech plan wave 5): it goes on when the
@@ -56,9 +64,24 @@ async function runSession(ctx: JobContext, sessionId: string): Promise<void> {
     return;
   }
 
-  if (!(await markRunning(tenant, sessionId))) return;
+  if (!(await markRunning(tenant, sessionId))) {
+    // Stopped before it began: nothing runs, and the run ends `stopped`.
+    if ((await readRunState(tenant, sessionId)) === "stopping") {
+      await endRun(tenant, sessionId, null);
+    }
+
+    return;
+  }
 
   const person = { tenant, caller };
+
+  const logError = (cause: unknown) =>
+    contextLoggerOf(tenant)?.error({ err: cause }, "agent run error");
+
+  const stop = new AbortController();
+  let latest: AgentMessage | undefined;
+  let changes = 0;
+  let stopWatching = NOT_WATCHING;
 
   try {
     const access = await agentAccess(person);
@@ -77,14 +100,21 @@ async function runSession(ctx: JobContext, sessionId: string): Promise<void> {
     const limit = AbortSignal.timeout(AGENT_LIMITS.turnMs);
     let failed = false;
 
+    stopWatching = watchRun(person, sessionId, {
+      current: () => ({ message: latest, changes }),
+      stop,
+      logError,
+    });
+
     const stream = await turnStream(
       person,
       { id: sessionId, surface: session.surface },
       {
         model,
-        abortSignal: limit,
-        logError: (cause) =>
-          contextLoggerOf(tenant)?.error({ err: cause }, "agent run error"),
+        abortSignal: AbortSignal.any([stop.signal, limit]),
+        logError,
+        // No checkpoint lands after the final save.
+        beforeSave: stopWatching,
       }
     );
 
@@ -95,15 +125,94 @@ async function runSession(ctx: JobContext, sessionId: string): Promise<void> {
         failed = true;
       },
     })) {
-      void state;
+      latest = state;
+      changes += 1;
     }
 
+    await stopWatching();
     await endRun(tenant, sessionId, failed || limit.aborted ? "failed" : null);
   } catch (error) {
+    await stopWatching();
     await endRun(tenant, sessionId, "failed");
 
-    if (!(error instanceof AppError)) throw error;
+    // A chat deleted during its run ends the run; the final save's refusal is no fault.
+    if (
+      !(error instanceof AppError) &&
+      (await readRunState(tenant, sessionId)) !== "gone"
+    ) {
+      throw error;
+    }
   }
+}
+
+/** Before the turn starts, no watch loop runs. */
+async function NOT_WATCHING(): Promise<void> {}
+
+/** How often a run saves its answer so far and reads whether Stop was asked (R-42b). */
+const WATCH_INTERVAL_MS = 1000;
+
+/**
+ * The run's one watch loop (P11-9). Once a second it reads the run state and aborts `stop` when
+ * Stop was asked or the chat is gone, then saves the answer so far by its id when it changed. A
+ * failed save is logged and the loop goes on. Answers the function that ends the loop and waits
+ * for a save in progress, so a checkpoint never lands after the final answer.
+ */
+function watchRun(
+  person: ModuleRequestContext,
+  sessionId: string,
+  input: {
+    readonly current: () => {
+      readonly message: AgentMessage | undefined;
+      readonly changes: number;
+    };
+    readonly stop: AbortController;
+    readonly logError: (cause: unknown) => void;
+  }
+): () => Promise<void> {
+  const watching = new AbortController();
+
+  const loop = (async () => {
+    let saved = 0;
+
+    /* oxlint-disable no-await-in-loop -- one read and one save per interval, in order. */
+    while (!watching.signal.aborted) {
+      await sleep(WATCH_INTERVAL_MS, undefined, {
+        signal: watching.signal,
+      }).catch(() => undefined);
+
+      if (watching.signal.aborted) return;
+
+      try {
+        const state = await readRunState(person.tenant, sessionId);
+
+        if (state === "gone" || state === "stopping") input.stop.abort();
+
+        const { message, changes } = input.current();
+
+        if (changes !== saved && message !== undefined && message.id !== "") {
+          saved = changes;
+
+          await appendMessage(person, sessionId, {
+            id: message.id,
+            role: "assistant",
+            parts: checkpointParts(structuredClone(message.parts)),
+          });
+        }
+      } catch (cause) {
+        if (cause instanceof AppError && cause.code === "not-found") {
+          input.stop.abort();
+        } else {
+          input.logError(cause);
+        }
+      }
+    }
+    /* oxlint-enable no-await-in-loop */
+  })();
+
+  return async () => {
+    watching.abort();
+    await loop;
+  };
 }
 
 export const AGENT_RUN_JOB: JobDeclaration<{ readonly sessionId: string }> = {

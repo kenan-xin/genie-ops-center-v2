@@ -1,11 +1,11 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import { agentSession } from "../src/schema.ts";
 import { startRun } from "../src/services/agent/run-job.ts";
-import { AGENT_RUN_JOB_NAME } from "../src/services/agent/runs.ts";
+import { AGENT_RUN_JOB_NAME, stopRun } from "../src/services/agent/runs.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import { bossOf } from "../src/services/job-queue/index.ts";
 import {
@@ -13,6 +13,7 @@ import {
   insertAgentSession,
   insertPersonWith,
   markSetupDone,
+  runQueuedAgentRun,
   startDisposableDeployment,
 } from "./index.ts";
 
@@ -141,5 +142,34 @@ describe("starting an agent run", () => {
       runJobId: null,
     });
     expect(await jobsNaming(session.id)).toEqual([]);
+  });
+
+  it("Stop on a queued run ends it stopped without a model call", async () => {
+    const ctx = await person();
+    const session = await sessionOf(ctx);
+
+    await start(ctx, session.id);
+
+    const other = await person();
+
+    await expect(stopRun(other, session.id)).rejects.toMatchObject({
+      code: "not-found",
+    });
+    expect((await runColumns(session.id))?.runState).toBe("queued");
+
+    await stopRun(ctx, session.id);
+    await runQueuedAgentRun(deployment.context, [], session.id);
+
+    const { rows } = await deployment.context.db.execute<{
+      run_state: string | null;
+      run_error: string | null;
+      messages: number;
+    }>(
+      sql`select run_state, run_error, (select count(*)::int from agent_message where session_id = ${session.id}) as messages from agent_session where id = ${session.id}`
+    );
+
+    expect(rows).toEqual([
+      { run_state: null, run_error: "stopped", messages: 0 },
+    ]);
   });
 });

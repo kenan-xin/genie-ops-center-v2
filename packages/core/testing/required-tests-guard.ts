@@ -613,6 +613,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "starting an agent run startRun queues one job that names only the session, with no retry",
       "starting an agent run a second run for the same person is refused by the index",
       "starting an agent run an enqueue failure leaves run_state null",
+      "starting an agent run Stop on a queued run ends it stopped without a model call",
     ],
   },
   {

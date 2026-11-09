@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { keptOnStop, STOPPED_PART } from "./stopped-turn.ts";
+import { checkpointParts, keptOnStop, STOPPED_PART } from "./stopped-turn.ts";
 import type { AgentMessage } from "./store.ts";
 
 type Part = AgentMessage["parts"][number];
@@ -80,5 +80,17 @@ describe("keptOnStop", () => {
     expect(
       parts.map((part) => ("toolCallId" in part ? part.toolCallId : part.type))
     ).toEqual(["call-1", "call-2", "data-stopped"]);
+  });
+});
+
+describe("checkpointParts", () => {
+  it("a checkpoint leaves out artifact cards", () => {
+    expect(
+      checkpointParts([
+        text("Making the chart."),
+        chart("call-a", "output-available"),
+        card("call-a"),
+      ]).map((part) => part.type)
+    ).toEqual(["text", "tool-make-artifact"]);
   });
 });

@@ -532,6 +532,7 @@ export {
   handleAgentChat,
   AGENT_RUN_JOB,
   startRun,
+  stopRun,
 } from "./services/agent/index.ts";
 
 export type {

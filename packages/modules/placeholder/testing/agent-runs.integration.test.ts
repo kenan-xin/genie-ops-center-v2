@@ -1,3 +1,5 @@
+import { setTimeout as sleep } from "node:timers/promises";
+
 import {
   AGENT_RUN_JOB,
   type AgentMessage,
@@ -8,6 +10,7 @@ import {
   readOwnSession,
   registerModuleRuntime,
   startRun,
+  stopRun,
   validateModule,
   withTransaction,
 } from "@genie/core";
@@ -42,6 +45,15 @@ const MODULES = [placeholderWithSurface];
 const RUN_MODEL = "anthropic/claude-opus-5.5";
 
 const RUN_REQUEST = "Build the placeholder record step by step.";
+
+/** The text that `synthetic-run-slow-1` streams over about 4.8 seconds, before its tool call. */
+const NOTE = "Adding the first step of the placeholder record now.";
+
+/**
+ * Measured on 2026-11-09 over two runs: Stop ends the run in 0.96 to 1.02 s and a deleted chat in
+ * 1.00 s (one 1-second poll and the save). The bound keeps a margin for a loaded machine.
+ */
+const STOP_BOUND_MS = 2000;
 
 const FINAL_ANSWER = [
   "root = Answer([result])",
@@ -136,6 +148,57 @@ function textsOf(message: AgentMessage | undefined): readonly string[] {
   );
 }
 
+const POLL_MS = 100;
+
+const WAIT_LIMIT_MS = 15_000;
+
+/**
+ * The text of the stored answer the first time it holds some while the run still runs, as a
+ * reader polling the chat sees it. Empty when the run ended before any answer showed.
+ */
+async function partialWhileRunning(
+  ctx: ModuleRequestContext,
+  sessionId: string
+): Promise<string> {
+  const until = Date.now() + WAIT_LIMIT_MS;
+
+  /* oxlint-disable no-await-in-loop -- a reader polls the chat once per interval. */
+  while (Date.now() < until) {
+    if ((await runColumns(sessionId))?.run_state !== "running") {
+      if ((await runColumns(sessionId))?.run_state === null) return "";
+    } else {
+      const text = textsOf((await answers(ctx, sessionId))[0]).join("");
+
+      if (text !== "") return text;
+    }
+
+    await sleep(POLL_MS);
+  }
+  /* oxlint-enable no-await-in-loop */
+
+  return "";
+}
+
+/** Milliseconds from now until the session's run_state is null. */
+async function msUntilRunEnds(sessionId: string): Promise<number> {
+  const started = performance.now();
+  const until = Date.now() + WAIT_LIMIT_MS;
+
+  /* oxlint-disable no-await-in-loop -- polls the run state once per interval. */
+  while (Date.now() < until) {
+    if ((await runColumns(sessionId))?.run_state === null) break;
+
+    await sleep(POLL_MS / 2);
+  }
+  /* oxlint-enable no-await-in-loop */
+
+  return performance.now() - started;
+}
+
+function stoppedMark(message: AgentMessage | undefined): boolean {
+  return (message?.parts ?? []).some(({ type }) => type === "data-stopped");
+}
+
 /** The model a sent request names, parsed at the transport's boundary. */
 const SENT_MODEL = z.object({ model: z.string() });
 
@@ -213,6 +276,92 @@ describe("a durable agent run on the placeholder test surface", () => {
         },
       },
     ]);
+  });
+
+  it("a reader sees a partial answer before the run ends", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await start(ctx, sessionId);
+
+    const run = runQueuedAgentRun(deployment.context, MODULES, sessionId);
+    const partial = await partialWhileRunning(ctx, sessionId);
+
+    await run;
+
+    const stored = await answers(ctx, sessionId);
+
+    expect({
+      partialIsProperPrefix:
+        partial !== "" && partial !== NOTE && NOTE.startsWith(partial),
+      answers: stored.length,
+      texts: textsOf(stored[0]),
+    }).toEqual({
+      partialIsProperPrefix: true,
+      answers: 1,
+      texts: [NOTE, FINAL_ANSWER],
+    });
+  });
+
+  it("Stop during a slow model call ends the run within about a second and no later tool call runs", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await start(ctx, sessionId);
+
+    const before = recorded.sent.length;
+    const run = runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    await partialWhileRunning(ctx, sessionId);
+    await stopRun(ctx, sessionId);
+
+    const elapsed = await msUntilRunEnds(sessionId);
+
+    await run;
+
+    const [answer] = await answers(ctx, sessionId);
+    const note = textsOf(answer).join("");
+
+    expect(elapsed).toBeLessThan(STOP_BOUND_MS);
+    expect({
+      run: await runColumns(sessionId),
+      stopped: stoppedMark(answer),
+      partOfNote: note !== "" && note !== NOTE && NOTE.startsWith(note),
+      requests: recorded.sent.length - before,
+      steps: await toolRows(ctx.caller.userId),
+    }).toEqual({
+      run: { run_state: null, run_error: "stopped" },
+      stopped: true,
+      partOfNote: true,
+      requests: 1,
+      steps: [],
+    });
+  });
+
+  it("deleting the session ends the run", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await start(ctx, sessionId);
+
+    const before = recorded.sent.length;
+    const run = runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    await partialWhileRunning(ctx, sessionId);
+
+    const deletedAt = performance.now();
+
+    // The chat's messages cascade with it, as the owner's delete removes them.
+    await deployment.context.db.execute(
+      sql`delete from agent_session where id = ${sessionId}`
+    );
+    await run;
+
+    expect({
+      settled: performance.now() - deletedAt < STOP_BOUND_MS,
+      requests: recorded.sent.length - before,
+      steps: await toolRows(ctx.caller.userId),
+    }).toEqual({ settled: true, requests: 1, steps: [] });
   });
 
   it("a job whose starter is not the session's owner ends the run without a model call", async () => {
