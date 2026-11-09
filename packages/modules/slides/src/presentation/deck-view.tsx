@@ -55,6 +55,7 @@ import {
   slideInputOf,
 } from "./slide-editor.tsx";
 import { figuresDate } from "./slide-layout.ts";
+import { SlideStage } from "./slide-stage.tsx";
 import {
   useDeck,
   useDeckChange,
@@ -398,6 +399,13 @@ export function DeckView(props: DeckViewProps) {
   const upload = useUploadDeckImage(deck);
   const exporting = useExportDeck(deck);
   const [shown, setShown] = useState(0);
+
+  // The selected element, of one slide: another shown slide starts with nothing selected.
+  const [selection, setSelection] = useState<{
+    readonly slideId: string;
+    readonly index: number;
+  } | null>(null);
+
   const [presenting, setPresenting] = useState(false);
   const [editing, setEditing] = useState<EditTarget | null>(null);
 
@@ -424,6 +432,11 @@ export function DeckView(props: DeckViewProps) {
   const index = Math.min(shown, Math.max(deck.slides.length - 1, 0));
 
   const current = deck.slides[index];
+
+  const selected =
+    selection !== null && selection.slideId === current?.id
+      ? selection.index
+      : null;
 
   // The panel names the open deck and its shown slide (D21); a chat change reads the deck again.
   const context: AgentPageContext = {
@@ -844,19 +857,46 @@ export function DeckView(props: DeckViewProps) {
               </div>
             ))}
           </nav>
-          <div
-            data-shown-slide=""
-            className="min-w-0 flex-1 overflow-hidden rounded-lg border border-border"
-          >
-            <SlideCanvas
-              slide={current}
-              figuresAsOf={deck.figuresAsOf}
-              timeZone={view.timeZone}
-              theme={view.theme}
-              logoUrl={view.logoUrl}
-              images={deck.images}
-            />
-          </div>
+          {view.canWrite ? (
+            <div data-shown-slide="" className="min-w-0 flex-1">
+              <SlideStage
+                key={current.id}
+                slide={current}
+                figuresAsOf={deck.figuresAsOf}
+                timeZone={view.timeZone}
+                theme={view.theme}
+                logoUrl={view.logoUrl}
+                images={deck.images}
+                selected={selected}
+                onSelect={(at) =>
+                  setSelection(
+                    at === null ? null : { slideId: current.id, index: at }
+                  )
+                }
+                saving={busy}
+                onStep={(step) =>
+                  sendStep([step], {
+                    expectedHash: deck.contentHash,
+                    slideNumber: index + 1,
+                  })
+                }
+              />
+            </div>
+          ) : (
+            <div
+              data-shown-slide=""
+              className="min-w-0 flex-1 overflow-hidden rounded-lg border border-border"
+            >
+              <SlideCanvas
+                slide={current}
+                figuresAsOf={deck.figuresAsOf}
+                timeZone={view.timeZone}
+                theme={view.theme}
+                logoUrl={view.logoUrl}
+                images={deck.images}
+              />
+            </div>
+          )}
         </div>
       )}
       <PresentMode

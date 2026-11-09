@@ -158,6 +158,8 @@ export const sharedOxlintConfig: OxlintConfig = {
     "docs/design/reference/**",
     "apps/genie/src/modules.ts",
     "packages/config/oxlint/anti-slop/**",
+    // Canvas logic copied from agent-native (MIT), kept as copied so a later copy diffs cleanly.
+    "packages/modules/slides/src/lib/canvas-interactions/**",
     // Test fixtures the resolver must never evaluate. The throwing fixture exists
     // to explode on evaluation, so no gate may process it.
     "tools/generators/src/selection/__fixtures__/**",

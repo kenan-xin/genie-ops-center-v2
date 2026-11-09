@@ -1,0 +1,348 @@
+"use client";
+
+import { Kbd } from "@genie/ui";
+import { useDebouncedCallback } from "@tanstack/react-pacer";
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  type PointerEvent,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+
+import {
+  type DeckChange,
+  type ElementBox,
+  elementName,
+  SLIDE_CANVAS,
+} from "../contract.ts";
+import {
+  type CanvasGesture,
+  type CanvasResizeHandle,
+  createCanvasGestureController,
+  resolveCanvasNudge,
+} from "../lib/canvas-interactions/canvas-interactions.ts";
+import { boxStep, gestureBox, movedBox } from "./canvas-adapter.ts";
+import { SlideCanvas, type SlideCanvasProps } from "./slide-canvas.tsx";
+import { elementBoxes } from "./slide-layout.ts";
+import type { ShownSlide } from "./views.ts";
+
+export type SlideStageProps = SlideCanvasProps & {
+  /** The index of the selected element, or null. */
+  readonly selected: number | null;
+  readonly onSelect: (index: number | null) => void;
+  /** One gesture, nudge run or Position press: one step, one save, one Undo entry. */
+  readonly onStep: (step: DeckChange) => void;
+  readonly saving?: boolean;
+};
+
+/** Arrow keys move 8, and 1 with Shift (prototype hint line). */
+const NUDGE = { amount: 8, acceleratedAmount: 1 };
+
+/** A run of arrow presses within this time is one save (P01-8). */
+const NUDGE_RUN_MS = 800;
+
+const HANDLES = [
+  "nw",
+  "ne",
+  "sw",
+  "se",
+] as const satisfies readonly CanvasResizeHandle[];
+
+const HANDLE_CLASS = {
+  nw: "-top-1.5 -left-1.5 cursor-nwse-resize",
+  ne: "-top-1.5 -right-1.5 cursor-nesw-resize",
+  sw: "-bottom-1.5 -left-1.5 cursor-nesw-resize",
+  se: "-right-1.5 -bottom-1.5 cursor-nwse-resize",
+} as const;
+
+type CssVars = CSSProperties & {
+  readonly [key: `--${string}`]: string | number;
+};
+
+/** A length in percent of a canvas side, so the layer matches the scaled slide at every width. */
+const percent = (value: number, side: number) => `${(value / side) * 100}%`;
+
+const pointerOf = (event: PointerEvent<HTMLElement>) => ({
+  x: event.clientX,
+  y: event.clientY,
+  shiftKey: event.shiftKey,
+});
+
+/** The slide with one element drawn at a preview box, while a gesture or a nudge run lasts. */
+function withBox(
+  slide: ShownSlide,
+  index: number,
+  box: ElementBox
+): ShownSlide {
+  return {
+    ...slide,
+    elements: slide.elements.map((element, at) =>
+      at === index ? { ...element, box } : element
+    ),
+  };
+}
+
+/**
+ * The editable slide (S7-43): each element is a button over the canvas. A selected element moves
+ * by drag, resizes by its four corner handles, and nudges with the arrow keys. Each gesture or
+ * nudge run calls `onStep` once with a box snapped and kept inside the slide.
+ */
+export function SlideStage(props: SlideStageProps) {
+  const { slide, selected, onSelect, onStep } = props;
+  const layer = useRef<HTMLDivElement>(null);
+
+  const [preview, setPreview] = useState<{
+    readonly index: number;
+    readonly box: ElementBox;
+  } | null>(null);
+
+  const [seenSlide, setSeenSlide] = useState(slide);
+
+  // A new read of the slide replaces the preview: the save landed, or another one did.
+  if (slide !== seenSlide) {
+    setSeenSlide(slide);
+    setPreview(null);
+  }
+
+  const shown =
+    preview === null ? slide : withBox(slide, preview.index, preview.box);
+
+  const boxes = elementBoxes(shown.elements);
+
+  const boxOf = (index: number): ElementBox | undefined =>
+    index === 0
+      ? boxes.title
+      : boxes.body.find((entry) => entry.index === index)?.box;
+
+  const start = useRef<{
+    readonly index: number;
+    readonly box: ElementBox;
+  } | null>(null);
+
+  const controller = useMemo(
+    () =>
+      createCanvasGestureController<number>({
+        capabilities: { duplicate: false },
+        adapter: {
+          preview: (gesture: CanvasGesture<number>) => {
+            const from = start.current;
+
+            const element =
+              from === null ? undefined : slide.elements[from.index];
+
+            if (from === null || element === undefined) {
+              return { handled: false, reason: "unhandled" };
+            }
+
+            setPreview({
+              index: from.index,
+              box: gestureBox(gesture, from.box, element.kind),
+            });
+
+            return { handled: true };
+          },
+          commit: (gesture: CanvasGesture<number>) => {
+            const from = start.current;
+
+            const element =
+              from === null ? undefined : slide.elements[from.index];
+
+            if (from === null || element === undefined) {
+              return { handled: false, reason: "unhandled" };
+            }
+
+            onStep(
+              boxStep(
+                slide.id,
+                from.index,
+                gestureBox(gesture, from.box, element.kind)
+              )
+            );
+
+            return { handled: true };
+          },
+          cancel: () => {
+            setPreview(null);
+
+            return { handled: true };
+          },
+        },
+      }),
+    [slide, onStep]
+  );
+
+  const nudgeRun = useRef<{
+    readonly index: number;
+    readonly box: ElementBox;
+  } | null>(null);
+
+  const commitNudge = useDebouncedCallback(
+    () => {
+      const run = nudgeRun.current;
+
+      nudgeRun.current = null;
+
+      if (run !== null) onStep(boxStep(slide.id, run.index, run.box));
+    },
+    { wait: NUDGE_RUN_MS }
+  );
+
+  function pointerDown(
+    event: PointerEvent<HTMLElement>,
+    index: number,
+    handle?: CanvasResizeHandle
+  ): void {
+    const rect = layer.current?.getBoundingClientRect();
+    const box = boxOf(index);
+
+    if (rect === undefined || box === undefined || props.saving === true)
+      return;
+
+    event.stopPropagation();
+    onSelect(index);
+    start.current = { index, box };
+
+    const pointer = {
+      x: event.clientX,
+      y: event.clientY,
+      shiftKey: event.shiftKey,
+    };
+
+    const viewport = {
+      left: rect.left,
+      top: rect.top,
+      width: rect.width,
+      height: rect.height,
+    };
+
+    controller.pointerDown(
+      handle === undefined
+        ? {
+            kind: "move",
+            objectIds: [index],
+            pointer,
+            viewport,
+            canvas: SLIDE_CANVAS,
+          }
+        : {
+            kind: "resize",
+            objectIds: [index],
+            pointer,
+            viewport,
+            canvas: SLIDE_CANVAS,
+            handle,
+            rect: { x: box.x, y: box.y, width: box.w, height: box.h },
+          }
+    );
+
+    // A synthetic event has no live pointer to capture; the layer's own handlers still run.
+    if (event.currentTarget.hasPointerCapture?.(event.pointerId) === false) {
+      try {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      } catch {
+        // A synthetic pointer id cannot be captured; nothing to undo.
+      }
+    }
+  }
+
+  function keyDown(event: KeyboardEvent<HTMLElement>, index: number): void {
+    if (event.key === "Escape") {
+      onSelect(null);
+
+      return;
+    }
+
+    const nudge = resolveCanvasNudge(
+      { key: event.key, shiftKey: event.shiftKey },
+      NUDGE
+    );
+
+    const element = slide.elements[index];
+    const from = nudgeRun.current?.box ?? boxOf(index);
+
+    if (nudge === null || element === undefined || from === undefined) return;
+
+    event.preventDefault();
+
+    const box = movedBox(from, nudge.delta, element.kind);
+
+    nudgeRun.current = { index, box };
+    setPreview({ index, box });
+    commitNudge();
+  }
+
+  return (
+    <div className="grid gap-2">
+      <div className="relative overflow-hidden rounded-lg border border-border">
+        <SlideCanvas {...props} slide={shown} />
+        <div
+          ref={layer}
+          role="group"
+          aria-label="Slide editing"
+          className="absolute inset-0"
+          onPointerDown={() => onSelect(null)}
+          onPointerMove={(event) => controller.pointerMove(pointerOf(event))}
+          onPointerUp={(event) => controller.pointerUp(pointerOf(event))}
+          onPointerCancel={() => controller.cancel()}
+        >
+          {shown.elements.map((element, index) => {
+            const box = boxOf(index);
+
+            if (box === undefined) return null;
+
+            const isSelected = selected === index;
+
+            return (
+              <button
+                key={`${index}-${element.kind}`}
+                type="button"
+                aria-label={elementName(element)}
+                aria-pressed={isSelected}
+                data-stage-element={index}
+                className={`absolute top-(--hit-y) left-(--hit-x) h-(--hit-h) w-(--hit-w) touch-none rounded-none outline-offset-2 ${
+                  isSelected
+                    ? "cursor-move ring-2 ring-primary"
+                    : "cursor-pointer hover:ring-1 hover:ring-primary/60"
+                }`}
+                style={
+                  // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
+                  {
+                    "--hit-x": percent(box.x, SLIDE_CANVAS.width),
+                    "--hit-y": percent(box.y, SLIDE_CANVAS.height),
+                    "--hit-w": percent(box.w, SLIDE_CANVAS.width),
+                    "--hit-h": percent(box.h, SLIDE_CANVAS.height),
+                  } as CssVars
+                }
+                onPointerDown={(event) => pointerDown(event, index)}
+                onKeyDown={(event) => keyDown(event, index)}
+                onClick={() => onSelect(index)}
+              >
+                {isSelected
+                  ? HANDLES.map((handle) => (
+                      <span
+                        key={handle}
+                        aria-hidden="true"
+                        data-handle={handle}
+                        className={`absolute size-3 border-2 border-primary bg-background after:absolute after:-inset-2 pointer-coarse:after:-inset-4 ${HANDLE_CLASS[handle]}`}
+                        onPointerDown={(event) =>
+                          pointerDown(event, index, handle)
+                        }
+                      />
+                    ))
+                  : null}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+      <p className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+        Drag to move. Drag a handle to resize, or use Position. <Kbd>←</Kbd>
+        <Kbd>↑</Kbd>
+        <Kbd>→</Kbd>
+        <Kbd>↓</Kbd> move 8, with <Kbd>Shift</Kbd> 1. <Kbd>Esc</Kbd> deselects.
+      </p>
+    </div>
+  );
+}

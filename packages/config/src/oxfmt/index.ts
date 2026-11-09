@@ -43,6 +43,8 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     // Vendored upstream source. Reformatting it would break the three-way
     // merge that an anti-slop update depends on (R-5a).
     "packages/config/oxlint/anti-slop/**",
+    // Canvas logic copied from agent-native (MIT), kept byte-equal to the upstream revision.
+    "packages/modules/slides/src/lib/canvas-interactions/**",
 
     // A test fixture that must throw on evaluation. A formatter rewriting it
     // could only ever make that proof weaker.
