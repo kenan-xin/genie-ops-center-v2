@@ -319,6 +319,10 @@ export async function buildDeckPptx(input: {
       slide.background = { color: hex(shown.background) };
     }
 
+    if (shown.notes !== undefined) {
+      slide.addNotes(shown.notes);
+    }
+
     const titleStyle = first?.style;
 
     slide.addText(first?.kind === "title" ? first.text : "", {

@@ -105,3 +105,36 @@ describe("buildDeckPptx", () => {
     expect(overrides.filter((part) => !parts.has(part))).toEqual([]);
   });
 });
+
+describe("the speaker notes", () => {
+  it("writes each slide's notes into its own notes slide, escaped, and none into a slide without notes", async () => {
+    const bytes = await buildDeckPptx({
+      title: "Noted",
+      slides: [
+        { ...slide("s1"), notes: "Line one.\nLine two & <three>" },
+        slide("s2"),
+      ],
+      figuresAsOf: "2026-10-27",
+      timeZone: "UTC",
+      theme: THEME,
+      logo: null,
+      images: new Map(),
+    });
+
+    const zip = await JSZip.loadAsync(bytes);
+
+    const notesOf = async (part: string) => {
+      const xml = (await zip.file(part)?.async("string")) ?? "";
+
+      return [...xml.matchAll(/<a:t>([^<]*)<\/a:t>/g)].map(([, text]) => text);
+    };
+
+    // The slide number is the part's other text run.
+    expect((await notesOf("ppt/notesSlides/notesSlide1.xml")).join("")).toBe(
+      "Line one.\r\nLine two &amp; &lt;three&gt;1"
+    );
+    expect((await notesOf("ppt/notesSlides/notesSlide2.xml")).join("")).toBe(
+      "2"
+    );
+  });
+});

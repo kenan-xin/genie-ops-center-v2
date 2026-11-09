@@ -273,6 +273,38 @@ describe("the slides PowerPoint export", () => {
     expect(slide).not.toContain("Source: placeholder.records");
   });
 
+  it("writes saved speaker notes into the export, and none after Undo clears them", async () => {
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: { slides: [{ id: "s1", elements: [title("A claim")] }] },
+    });
+
+    const slides = callProcedure(slidesRouter, owner);
+    const plain = await slides.readDeck({ id });
+    const notes = "Say it warmly.\nThen pause.";
+
+    const noted = await slides.changeDeck({
+      id,
+      expectedHash: plain.contentHash,
+      changes: [{ op: "change-slide-fields", slideId: "s1", notes }],
+    });
+
+    expect((await slides.readDeck({ id })).slides[0]).toMatchObject({ notes });
+
+    const notesSlide = () =>
+      exportAs(owner, id).then(({ pptx }) =>
+        pptx.xmlOf("ppt/notesSlides/notesSlide1.xml")
+      );
+
+    expect(await notesSlide()).toContain("Say it warmly.");
+    expect(await notesSlide()).toContain("Then pause.");
+
+    await slides.undoDeck({ id, expectedHash: noted.contentHash });
+
+    expect((await slides.readDeck({ id })).slides[0]?.notes).toBeUndefined();
+    expect(await notesSlide()).not.toContain("Say it warmly.");
+  });
+
   // Last: it moves the clock past the 10 s branding cache (DEC-46).
   it("uses the tenant color, logo and company name, and writes no media part without a logo", async () => {
     const id = await insertDeck(deployment.context, {
