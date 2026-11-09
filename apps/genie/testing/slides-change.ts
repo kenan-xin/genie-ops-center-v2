@@ -91,6 +91,15 @@ export const SLIDES_STYLE_MESSAGE =
 
 export const SLIDES_STYLE_BACKGROUND = "#1E3A8A";
 
+/**
+ * The notes request of S7-45, answered by `synthetic-slides-notes-1` to `-3`: a read, one
+ * change-slide-fields step with the notes for `s2`, and a one-sentence answer.
+ */
+export const SLIDES_NOTES_MESSAGE =
+  "Add speaker notes to slide 2: mention that the reminder emails started in September.";
+
+export const SLIDES_NOTES_TEXT = "The reminder emails started in September.";
+
 /** A request outside the deck tools, answered by `synthetic-slides-out-of-tools-1` (R-46a). */
 export const SLIDES_OUT_OF_TOOLS_MESSAGE = "Add a video to the title slide.";
 

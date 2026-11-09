@@ -37,6 +37,8 @@ import {
   SLIDES_CHANGE_MESSAGE,
   SLIDES_CHANGE_NEW_TITLE,
   SLIDES_CHANGE_OLD_TITLE,
+  SLIDES_NOTES_MESSAGE,
+  SLIDES_NOTES_TEXT,
   SLIDES_OUT_OF_TOOLS_ANSWER,
   SLIDES_OUT_OF_TOOLS_MESSAGE,
   SLIDES_STYLE_BACKGROUND,
@@ -211,6 +213,18 @@ const titleSlide = async () =>
     )
   ).rows[0];
 
+/** The fixed deck's slide `s2` notes, `null` when absent, and its undo length. */
+const notesOfS2 = async () =>
+  (
+    await deployment.context.db.$client.query<{
+      notes: string | null;
+      undo: number;
+    }>(
+      "select content->'slides'->1->>'notes' as notes, jsonb_array_length(undo) as undo from deck where id = $1",
+      [SLIDES_CHANGE_DECK_ID]
+    )
+  ).rows[0];
+
 describe("the agent panel on the deck editor", () => {
   it("makes the title slide dark blue with white text in one change, and Undo restores it (AC-14)", async () => {
     const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0011";
@@ -243,6 +257,28 @@ describe("the agent panel on the deck editor", () => {
       s1: SLIDES_CHANGE_CONTENT.slides[0],
       undo: 0,
     });
+  });
+
+  it("writes speaker notes on slide 2 in one change, and Undo clears them (S7-45)", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0013";
+
+    await insertFixedDeck(asker.caller.userId);
+    await chat(session, SLIDES_NOTES_MESSAGE);
+
+    // First, so a recording miss prints the body the model was sent.
+    expect(errors).toEqual([]);
+    expect(await toolCalls(session)).toEqual([
+      { tool: "slides-read-deck", outcome: "answered" },
+      { tool: "slides-change-deck", outcome: "answered" },
+    ]);
+    expect(await notesOfS2()).toEqual({ notes: SLIDES_NOTES_TEXT, undo: 1 });
+
+    await callProcedure(slidesRouter, asker).undoDeck({
+      id: SLIDES_CHANGE_DECK_ID,
+      expectedHash: (await fixedDeck())?.content_hash ?? "",
+    });
+
+    expect(await notesOfS2()).toEqual({ notes: null, undo: 0 });
   });
 
   it("answers a request outside the deck tools with one sentence of what it can change", async () => {

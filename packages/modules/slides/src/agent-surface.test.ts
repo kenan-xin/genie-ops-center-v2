@@ -27,6 +27,16 @@ const STYLE_WORDS = {
   border: "border",
 };
 
+/** A word per field of the change-slide-fields step, so a field it gains needs a word (S7-45). */
+const FIELD_WORDS = {
+  background: "the slide background",
+  notes: "speaker notes",
+};
+
+const slideFieldsStep = deckChange.options.find(
+  (option) => option.shape.op.value === "change-slide-fields"
+)?.shape;
+
 const line = SLIDES_SURFACE_INSTRUCTIONS.lines.find((text) =>
   text.startsWith("You can change")
 );
@@ -39,12 +49,18 @@ describe("the Slides surface's You can change line", () => {
     expect(Object.keys(STYLE_WORDS).toSorted()).toEqual(
       Object.keys(elementStyle.shape).toSorted()
     );
+    expect(Object.keys(FIELD_WORDS).toSorted()).toEqual(
+      Object.keys(slideFieldsStep ?? {})
+        .filter((key) => key !== "op" && key !== "slideId")
+        .toSorted()
+    );
   });
 
   it("names each of those words", () => {
     const missing = [
       ...Object.values(STEP_WORDS),
       ...Object.values(STYLE_WORDS),
+      ...Object.values(FIELD_WORDS),
     ].filter((word) => !(line ?? "").includes(word));
 
     expect(missing).toEqual([]);

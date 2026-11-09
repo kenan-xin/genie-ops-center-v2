@@ -45,7 +45,15 @@ A title, text or bullet list takes a text color, a font size of 12, 14, 18, 24, 
 
 The save checks the contrast of every text: at least 4.5:1, or 3:1 from font size 24. The text is checked against its own fill, else the slide background, else the theme background `#FFFFFF`. A text without a color is checked in the theme's text color `#111827`, so a background change re-checks every text without a fill. A refused change saves nothing and names the element.
 
-Two steps change these fields: `change-element` sets the box or the style of one element, and `change-slide-fields` sets the background of one slide. Each sets only the fields it names, and `null` clears one. A style change sets or clears each named key and keeps the others. `add-slide` and `change-slide` can carry boxes, styles and a background. A `change-slide` step that names no background keeps the slide's background. One change is one Undo entry. The screen, present mode and the PowerPoint export draw the same boxes, colors, fills, borders, font sizes and alignments.
+Two steps change these fields: `change-element` sets the box or the style of one element, and `change-slide-fields` sets the background or the speaker notes of one slide. Each sets only the fields it names, and `null` clears one. A style change sets or clears each named key and keeps the others. `add-slide` and `change-slide` can carry boxes, styles and a background. A `change-slide` step that names no background keeps the slide's background. One change is one Undo entry. The screen, present mode and the PowerPoint export draw the same boxes, colors, fills, borders, font sizes and alignments.
+
+## Speaker notes
+
+A slide may carry notes: plain text of at most 2,000 characters (JavaScript string length, the textarea's `maxLength` unit), newlines kept and never trimmed. A stored note is never blank; the editor sends `null` to clear a field that holds only spaces. `change-slide-fields` sets or clears them with one Undo entry, and `add-slide` and `change-slide` may carry them; a `change-slide` that names no notes keeps them. The person types them in the Speaker notes field of the slide editor, which saves after a pause.
+
+Notes show in two places only: the presenter window and the PowerPoint export, which writes them as each slide's PowerPoint notes. Present with notes opens the presenter window at `/m/slides/decks/:id/presenter` beside present mode: the current slide, the next slide, the notes and a timer. The two windows follow each other over the `BroadcastChannel` `slides-present:<deckId>`: each move posts `show`, and on open the presenter asks for the shown slide. A browser that blocks the pop-up gets a page note and no audience-only show.
+
+The agent writes notes only when the person asks, with a `change-slide-fields` step, and `slides-read-deck` answers each slide's notes. Notes hold no figure that the slide does not show (R-56); this is an agent rule, and no code checks it.
 
 ## Refresh data
 
