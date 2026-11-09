@@ -304,12 +304,16 @@ const WORKER_START_MS = 60000;
 let readingWorker: StartedWorker | undefined;
 
 /**
- * Starts the module job worker in this process, so an upload's reading job runs. The worker asks
- * the document model from this process, so `replayModelRequests` answers those requests here
- * from the reading recordings.
+ * Starts the module job worker in this process, so an upload's reading job and a handed-over
+ * agent run (R-42b) run. The worker asks the model from this process, so `replayModelRequests`
+ * answers those requests here from the reading recordings and the agent's recordings.
  */
 async function startReadingWorker(): Promise<void> {
-  replayModelRequests([INVOICES_READING_RECORDINGS]);
+  replayModelRequests([
+    INVOICES_READING_RECORDINGS,
+    PLACEHOLDER_AGENT_RECORDINGS,
+    APP_AGENT_RECORDINGS,
+  ]);
 
   readingWorker = await startWorker({
     source: { DATABASE_URL: databaseUrl(), PUBLIC_URL: publicUrl() },

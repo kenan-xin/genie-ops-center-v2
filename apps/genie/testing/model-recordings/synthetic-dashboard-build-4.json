@@ -2300,6 +2300,7 @@
   },
   "response": {
     "status": 200,
+    "chunkDelayMs": 500,
     "events": [
       {
         "id": "gen-synthetic-dashboard-build-4",
