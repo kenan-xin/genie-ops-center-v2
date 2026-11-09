@@ -20,6 +20,7 @@ import {
   refineSlideRules,
   SLIDE_ELEMENT_LIMIT,
   slideId,
+  slideNotes,
   TABLE_COLUMNS,
   TABLE_ROWS,
   textElement,
@@ -53,6 +54,7 @@ export type StoredSlide = {
   readonly id: string;
   readonly elements: readonly StoredElement[];
   readonly background?: string | undefined;
+  readonly notes?: string | undefined;
 };
 
 /** WCAG 2.2 large text, in canvas pixels; it needs 3:1, other text 4.5:1 (R-52a). */
@@ -217,6 +219,7 @@ const storedSlide = z
       .min(1)
       .max(SLIDE_ELEMENT_LIMIT),
     background: hexColor.optional(),
+    notes: slideNotes.optional(),
   })
   .superRefine((slide, ctx) => {
     refineSlideRules(slide, ctx);

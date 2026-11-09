@@ -22,6 +22,7 @@ export type ShownSlide = {
   readonly id: string;
   readonly elements: readonly ShownElement[];
   readonly background?: string | undefined;
+  readonly notes?: string | undefined;
 };
 
 /** One deck as its owner reads it. */

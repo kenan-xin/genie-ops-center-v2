@@ -86,7 +86,7 @@ type Extra = {
 const styled = (
   title: Extra,
   text: Extra,
-  slide: { readonly background?: string } = {}
+  slide: { readonly background?: string; readonly notes?: string } = {}
 ): DeckContent => ({
   slides: [
     {
@@ -257,6 +257,16 @@ describe("the deck content schema", () => {
       { slides: slides(20) },
       null,
     ],
+    [
+      "refuses notes over 2,000 characters",
+      styled({}, {}, { notes: "n".repeat(2001) }),
+      "slides.0.notes: Notes hold at most 2,000 characters.",
+    ],
+    [
+      "refuses notes of only spaces",
+      styled({}, {}, { notes: "   " }),
+      "slides.0.notes: Write the notes, or clear them.",
+    ],
   ])("%s", (_, content, expected) => {
     const result = deckContentSchema.safeParse(content);
 
@@ -269,6 +279,19 @@ describe("the deck content schema", () => {
 
   it("reads a stored deck without boxes or styles unchanged", () => {
     const content = deckOf(["title", "text", "chart"]);
+    const parsed = deckContentSchema.parse(content);
+
+    expect(parsed).toEqual(content);
+    // Absent notes stay absent: no default is written back.
+    expect(parsed.slides[0]).not.toHaveProperty("notes");
+  });
+
+  it("keeps the newline and end spaces of notes at the cap", () => {
+    const content = styled(
+      {},
+      {},
+      { notes: `Line one.\n${"n".repeat(1988)}  ` }
+    );
 
     expect(deckContentSchema.parse(content)).toEqual(content);
   });

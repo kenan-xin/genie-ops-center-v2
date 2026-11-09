@@ -27,6 +27,23 @@ export const deckTitle = z
 /** The hex sha256 the database computes over the title and content (D2). */
 export const contentHash = z.string().regex(/^[0-9a-f]{64}$/);
 
+/** The notes cap, counted as JavaScript string length, the same unit as the textarea's `maxLength`. */
+export const NOTES_CHARACTERS = 2000;
+
+export const NOTES_MESSAGES = {
+  cap: "Notes hold at most 2,000 characters.",
+  blank: "Write the notes, or clear them.",
+};
+
+/**
+ * Speaker notes as plain text. Never trimmed, so the text under the person's cursor does not move;
+ * a string with no non-space character is refused, because a stored note is real text or absent.
+ */
+export const slideNotes = z
+  .string()
+  .max(NOTES_CHARACTERS, NOTES_MESSAGES.cap)
+  .refine((value) => value.trim() !== "", NOTES_MESSAGES.blank);
+
 /** The text limits of one slide, shared by the schemas and the deck tool descriptions (czjw.79). */
 export const TITLE_CHARACTERS = 90;
 
@@ -339,6 +356,7 @@ export const slideInput = z
   .strictObject({
     elements: z.array(elementInput).min(1).max(SLIDE_ELEMENT_LIMIT),
     background: hexColor.optional(),
+    notes: slideNotes.optional(),
   })
   .superRefine(refineSlideRules);
 
@@ -391,6 +409,7 @@ export const deckChange = z.discriminatedUnion("op", [
     op: z.literal("change-slide-fields"),
     slideId,
     background: hexColor.nullable().optional(),
+    notes: slideNotes.nullable().optional(),
   }),
 ]);
 
@@ -415,6 +434,7 @@ export const deckView = z.object({
         id: z.string(),
         elements: z.array(z.unknown()).readonly(),
         background: z.string().optional(),
+        notes: z.string().optional(),
       })
     )
     .readonly(),
