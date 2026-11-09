@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -121,6 +122,14 @@ export function SlideStage(props: SlideStageProps) {
     readonly box: ElementBox;
   } | null>(null);
 
+  // The newest slide and callback for the controller and the nudge run, which outlive a render:
+  // the deck page passes a new onStep each render, and a press re-renders it by selecting.
+  const latest = useRef({ slide, onStep });
+
+  useEffect(() => {
+    latest.current = { slide, onStep };
+  });
+
   const controller = useMemo(
     () =>
       createCanvasGestureController<number>({
@@ -130,7 +139,9 @@ export function SlideStage(props: SlideStageProps) {
             const from = start.current;
 
             const element =
-              from === null ? undefined : slide.elements[from.index];
+              from === null
+                ? undefined
+                : latest.current.slide.elements[from.index];
 
             if (from === null || element === undefined) {
               return { handled: false, reason: "unhandled" };
@@ -147,15 +158,17 @@ export function SlideStage(props: SlideStageProps) {
             const from = start.current;
 
             const element =
-              from === null ? undefined : slide.elements[from.index];
+              from === null
+                ? undefined
+                : latest.current.slide.elements[from.index];
 
             if (from === null || element === undefined) {
               return { handled: false, reason: "unhandled" };
             }
 
-            onStep(
+            latest.current.onStep(
               boxStep(
-                slide.id,
+                latest.current.slide.id,
                 from.index,
                 gestureBox(gesture, from.box, element.kind)
               )
@@ -170,7 +183,7 @@ export function SlideStage(props: SlideStageProps) {
           },
         },
       }),
-    [slide, onStep]
+    []
   );
 
   const nudgeRun = useRef<{
@@ -184,7 +197,11 @@ export function SlideStage(props: SlideStageProps) {
 
       nudgeRun.current = null;
 
-      if (run !== null) onStep(boxStep(slide.id, run.index, run.box));
+      if (run !== null) {
+        latest.current.onStep(
+          boxStep(latest.current.slide.id, run.index, run.box)
+        );
+      }
     },
     { wait: NUDGE_RUN_MS }
   );

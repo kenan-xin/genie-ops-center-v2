@@ -40,6 +40,8 @@ const meta = {
       <div className="p-4">
         <SlideStage
           {...args}
+          // A new function each render, as the deck page passes it, so a gesture must survive one.
+          onStep={(step) => args.onStep(step)}
           selected={selected}
           onSelect={(index) => {
             setSelected(index);
@@ -109,15 +111,18 @@ const dragPlay: Story["play"] = async ({ args, canvas, canvasElement }) => {
   });
 };
 
+// Nothing selected at first, as on the deck page: the press selects, and the drag goes on.
 export const DragMoves: Story = {
   name: "A drag moves the element in one step",
   globals: desktop,
+  args: { selected: null },
   play: dragPlay,
 };
 
 export const DragMovesOnPhone: Story = {
   name: "A drag moves the element in one step on a phone",
   globals: phone,
+  args: { selected: null },
   play: dragPlay,
 };
 
