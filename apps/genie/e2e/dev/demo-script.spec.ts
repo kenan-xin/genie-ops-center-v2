@@ -13,16 +13,12 @@ import {
   ANALYTICS_CHAT_MESSAGE,
 } from "../../testing/analytics-chat.ts";
 import { RECEIVABLES_OVERVIEW } from "../../testing/receivables-overview.ts";
-import {
-  MONTHLY_DECK,
-  SLIDES_CHAT_MESSAGE,
-} from "../../testing/slides-chat.ts";
+import { MONTHLY_DECK } from "../../testing/slides-chat.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import { openNavigation } from "../support/shell.ts";
 import {
   askQuestion,
   hideDevelopmentWidgets,
-  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import {
@@ -60,6 +56,11 @@ import {
   SLIDES_PEOPLE,
 } from "./global-setup.ts";
 import { closeSlidesDatabase, removeOwnDecks } from "./slides-support.ts";
+import {
+  closeSurfaceDatabase,
+  handOverWholeDeck,
+  openSurfaceAgent,
+} from "./surface-support.ts";
 
 test.skip(
   !["invoices", "analytics", "slides", "placeholder"].every((id) =>
@@ -137,6 +138,7 @@ test.afterAll(async () => {
   tenant = undefined;
   await closeDashboardDatabase();
   await closeSlidesDatabase();
+  await closeSurfaceDatabase();
 });
 
 // The development widgets float over the chat's Send in development.
@@ -148,11 +150,14 @@ async function activate(page: Page, target: Locator): Promise<void> {
 }
 
 /**
- * Sends a message in the agent panel, a column beside the page from 1280 px and a sheet below
- * that. On a phone the sheet covers the page, so it closes after Send and keeps streaming.
+ * Sends a message to the Dashboards agent of the open dashboard (R-42). On a phone its panel covers
+ * part of the page, so it closes after Send and the run goes on.
  */
-async function sendInPageChat(page: Page, message: string): Promise<void> {
-  const chat = await openAgentPanel(page);
+async function sendToDashboardsAgent(
+  page: Page,
+  message: string
+): Promise<void> {
+  const chat = await openSurfaceAgent(page, "Dashboards agent");
 
   await chat
     .getByRole("textbox", { name: "Message", exact: true })
@@ -533,7 +538,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
             page.getByText("No panels yet", { exact: true })
           ).toBeVisible(FIRST_PAINT);
 
-          await sendInPageChat(page, ANALYTICS_CHAT_MESSAGE);
+          await sendToDashboardsAgent(page, ANALYTICS_CHAT_MESSAGE);
 
           // The panel reads the baseline ledger: step 7 removed the uploads, and the baseline
           // links every payment, so no payment is unallocated. The starter has no such panel.
@@ -545,32 +550,10 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           ).toBeVisible(FIRST_PAINT);
         });
 
-        await test.step("10. create the five-slide deck by chat, present it and export it", async () => {
+        await test.step("10. hand the five-slide deck over from Ask, present it and export it", async () => {
           await removeOwnDecks(SLIDES_PEOPLE.chat);
-          await signInAs(page, SLIDES_PEOPLE.chat);
-          await page.goto("/m/slides/decks");
-          await expect(
-            page.getByRole("heading", { level: 1, name: "Slides" })
-          ).toBeVisible(FIRST_PAINT);
-
-          await sendInPageChat(page, SLIDES_CHAT_MESSAGE);
-
-          const deck = page.getByRole("link", {
-            name: MONTHLY_DECK.title,
-            exact: true,
-          });
-
-          await expect(deck).toBeVisible(FIRST_PAINT);
-          await activate(page, deck);
-          await expect(
-            page.getByRole("heading", { level: 1, name: MONTHLY_DECK.title })
-          ).toBeVisible(FIRST_PAINT);
-
-          const rail = page.getByRole("navigation", { name: "Slides" });
-
-          await expect(
-            rail.getByRole("button", { name: /^Slide \d+:/ })
-          ).toHaveCount(5);
+          // Ask beside the Slides list hands the deck over, and the Slides agent builds it (R-42b).
+          await handOverWholeDeck(page);
 
           await activate(page, page.getByRole("button", { name: "Present" }));
 
