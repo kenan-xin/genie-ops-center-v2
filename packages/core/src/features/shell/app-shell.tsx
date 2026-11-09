@@ -144,8 +144,18 @@ export function AppShell(props: AppShellProps) {
   const wide = useMediaQuery("(min-width: 1024px)", {});
   const bottomPanel = useStore(agentPanelStore, (state) => state.bottomPanel);
 
-  const agentRoom: CSSProperties & Record<"--agent-room", string> = {
-    "--agent-room": bottomPanel === "open" ? "calc(50vh + 2rem)" : "6rem",
+  // The phone's bottom bar sits on the panel: half the height open, its header of about 62 px
+  // collapsed. With the bar, the page's end also clears the bar's 5rem (P11-65).
+  const room = bottomPanel === "open" ? "calc(50vh + 2rem)" : "6rem";
+
+  const agentRoom: CSSProperties &
+    Record<
+      "--agent-room" | "--agent-room-and-bar" | "--shell-bottom-bar-offset",
+      string
+    > = {
+    "--agent-room": room,
+    "--agent-room-and-bar": `calc(${room} + 5rem)`,
+    "--shell-bottom-bar-offset": bottomPanel === "open" ? "50vh" : "4.5rem",
   };
 
   // The server render is the open menu; the device's choice applies after mount (R-31 pattern).
@@ -321,7 +331,7 @@ export function AppShell(props: AppShellProps) {
             // 2.2). A page whose <main> carries `data-page-fill` (a chat page) fills the height
             // instead, so its own parts scroll and its composer stays at the bottom (agent-native
             // rule 1).
-            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 data-agent-room:pb-(--agent-room) has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 has-[[data-page-flush]]:flex has-[[data-page-flush]]:flex-col has-[[data-page-flush]]:p-0 md:has-[[data-page-flush]]:p-0 lg:has-[[data-page-flush]]:p-0 ${focusRing} focus-visible:ring-inset`}
+            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-2 has-[[data-shell-bottom-bar]]:max-md:pb-32 data-agent-room:pb-(--agent-room) data-agent-room:has-[[data-shell-bottom-bar]]:max-md:pb-(--agent-room-and-bar) data-agent-room:**:data-shell-bottom-bar:bottom-(--shell-bottom-bar-offset) has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 has-[[data-page-flush]]:flex has-[[data-page-flush]]:flex-col has-[[data-page-flush]]:p-0 md:has-[[data-page-flush]]:p-0 lg:has-[[data-page-flush]]:p-0 ${focusRing} focus-visible:ring-inset`}
           >
             <ShellContext.Provider value={shellContext}>
               {props.children}

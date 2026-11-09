@@ -1028,6 +1028,75 @@ export const RoomAboveThePhoneAgentPanel: Story = {
   },
 };
 
+// P11-65: a surface page's main action sits in the phone's bottom bar (a deck's Present), so the
+// bar and the page's end stay above the bottom panel, open or collapsed, and the action can be used.
+export const ActionBarAboveThePhoneAgentPanel: Story = {
+  name: "Action bar above the phone agent panel",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  decorators: withAgent,
+  beforeEach: () => {
+    resetAgentPanel();
+    sessionStorage.clear();
+  },
+  args: {
+    ...RoomAboveThePhoneAgentPanel.args,
+    children: (
+      <main>
+        <PageHeader
+          title="Quarterly review"
+          actions={<button type="button">Present</button>}
+        />
+        {Array.from({ length: 30 }, (_, index) => (
+          <p key={index} className="py-2">
+            Slide {index + 1}
+          </p>
+        ))}
+        <p>The last slide</p>
+      </main>
+    ),
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+    const panel = await canvas.findByRole("complementary", {
+      name: "Agent panel",
+    });
+
+    const content = element(canvasElement, "[data-shell-content]");
+    const bar = element(canvasElement, "[data-shell-bottom-bar]");
+    const present = canvas.getByRole("button", { name: "Present" });
+    const last = canvas.getByText("The last slide");
+
+    const expectBarUsable = () =>
+      waitFor(() => {
+        content.scrollTo({ top: content.scrollHeight });
+
+        expect(bar.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+          panel.getBoundingClientRect().top + 0.5
+        );
+        expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+          bar.getBoundingClientRect().top
+        );
+
+        const box = present.getBoundingClientRect();
+
+        expect(
+          document.elementFromPoint(
+            box.left + box.width / 2,
+            box.top + box.height / 2
+          )
+        ).toBe(present);
+      });
+
+    await expectBarUsable();
+
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Show less" })
+    );
+    await expectBarUsable();
+  },
+};
+
 // FR7: Ask is the agent's full page, so it gets no Agent button and no panel beside it.
 export const NoAgentOnAsk: Story = {
   name: "No agent on Ask",
