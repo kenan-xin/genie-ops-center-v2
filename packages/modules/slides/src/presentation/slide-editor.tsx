@@ -92,7 +92,11 @@ export function inputOfElement(element: ShownElement): ElementInput {
   }
 }
 
-/** One slide as its stored input, to tell a save that changes nothing (no Undo entry spent). */
+/**
+ * One slide as its stored input, to tell a save that changes nothing (no Undo entry spent). It
+ * never sends the notes: they save per pause, and a Done in the sheet must not overwrite the text
+ * another pause already saved.
+ */
 export function slideInputOf(slide: ShownSlide): SlideInput {
   return {
     elements: slide.elements.map(inputOfElement),

@@ -30,4 +30,14 @@ describe("the hand edit of a styled slide", () => {
       ],
     });
   });
+
+  it("sends no notes, so Done in the sheet never overwrites the notes saved per pause", () => {
+    const input = slideInputOf({
+      id: "s1",
+      notes: "Say hello.",
+      elements: [{ kind: "title", text: "Claim" }],
+    });
+
+    expect(input).not.toHaveProperty("notes");
+  });
 });

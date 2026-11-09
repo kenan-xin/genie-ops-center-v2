@@ -166,7 +166,20 @@ describe("the element and slide field steps", () => {
     expect(error.issues).toEqual([
       {
         path: "changes.0",
-        message: "Name a box, a style or a background to change.",
+        message: "Name a box, a style, a background or notes to change.",
+      },
+    ]);
+  });
+
+  it("refuses a change-slide-fields step that names neither a background nor notes", () => {
+    const error = refusalOf(() =>
+      applyChanges(styledDeck, [{ op: "change-slide-fields", slideId: "s1" }])
+    );
+
+    expect(error.issues).toEqual([
+      {
+        path: "changes.0",
+        message: "Name a box, a style, a background or notes to change.",
       },
     ]);
   });
@@ -189,6 +202,103 @@ describe("the element and slide field steps", () => {
 
     expect(applied.slides[0]?.elements[1]).toEqual({ ...figure, box });
     expect(applied.checks.size).toBe(0);
+  });
+});
+
+const notedDeck = {
+  title: "Q3",
+  content: {
+    slides: [
+      {
+        id: "s1",
+        background: "#1E3A8A",
+        notes: "Say hello.",
+        elements: [title("Claim")],
+      },
+    ],
+  } satisfies DeckContent,
+};
+
+const slideAfter = (
+  current: { title: string; content: DeckContent },
+  changes: readonly DeckChange[]
+) => applyChanges(current, changes).slides[0];
+
+describe("the slide notes", () => {
+  it("sets the notes and keeps the background and elements", () => {
+    const slide = slideAfter(notedDeck, [
+      { op: "change-slide-fields", slideId: "s1", notes: "Welcome them." },
+    ]);
+
+    expect(slide?.notes).toBe("Welcome them.");
+    expect(slide?.background).toBe("#1E3A8A");
+    expect(slide?.elements).toEqual(notedDeck.content.slides[0]?.elements);
+  });
+
+  it("clears notes with null and keeps the background", () => {
+    const slide = slideAfter(notedDeck, [
+      { op: "change-slide-fields", slideId: "s1", notes: null },
+    ]);
+
+    expect(slide?.notes).toBeUndefined();
+    expect(slide?.background).toBe("#1E3A8A");
+  });
+
+  it("clears the background with null and keeps the notes", () => {
+    const slide = slideAfter(notedDeck, [
+      { op: "change-slide-fields", slideId: "s1", background: null },
+    ]);
+
+    expect(slide?.background).toBeUndefined();
+    expect(slide?.notes).toBe("Say hello.");
+  });
+
+  it("sets the background and the notes a single step names", () => {
+    const slide = slideAfter(deckOf(["s1"]), [
+      {
+        op: "change-slide-fields",
+        slideId: "s1",
+        background: "#1E3A8A",
+        notes: "Say hello.",
+      },
+    ]);
+
+    expect(slide?.background).toBe("#1E3A8A");
+    expect(slide?.notes).toBe("Say hello.");
+  });
+
+  it("keeps the stored notes through a change-slide that names none, and replaces them when it does", () => {
+    const kept = slideAfter(notedDeck, [
+      {
+        op: "change-slide",
+        slideId: "s1",
+        slide: { elements: [title("New claim")] },
+      },
+    ]);
+
+    expect(kept?.notes).toBe("Say hello.");
+    expect(kept?.background).toBe("#1E3A8A");
+
+    const replaced = slideAfter(notedDeck, [
+      {
+        op: "change-slide",
+        slideId: "s1",
+        slide: { elements: [title("New claim")], notes: "New words." },
+      },
+    ]);
+
+    expect(replaced?.notes).toBe("New words.");
+  });
+
+  it("stores the notes of an added slide", () => {
+    const added = slideAfter(deckOf([]), [
+      {
+        op: "add-slide",
+        slide: { elements: [title("New")], notes: "Say hello." },
+      },
+    ]);
+
+    expect(added?.notes).toBe("Say hello.");
   });
 });
 

@@ -7880,6 +7880,9 @@
                           },
                           "background": {
                             "type": "string"
+                          },
+                          "notes": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -7987,6 +7990,9 @@
                             "readOnly": true
                           },
                           "background": {
+                            "type": "string"
+                          },
+                          "notes": {
                             "type": "string"
                           }
                         },
@@ -8850,6 +8856,10 @@
                                 "background": {
                                   "type": "string",
                                   "pattern": "^#[0-9A-Fa-f]{6}$"
+                                },
+                                "notes": {
+                                  "type": "string",
+                                  "maxLength": 2000
                                 }
                               },
                               "required": [
@@ -9680,6 +9690,10 @@
                                 "background": {
                                   "type": "string",
                                   "pattern": "^#[0-9A-Fa-f]{6}$"
+                                },
+                                "notes": {
+                                  "type": "string",
+                                  "maxLength": 2000
                                 }
                               },
                               "required": [
@@ -9947,6 +9961,17 @@
                                   "type": "null"
                                 }
                               ]
+                            },
+                            "notes": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "maxLength": 2000
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             }
                           },
                           "required": [
@@ -10034,6 +10059,9 @@
                             "readOnly": true
                           },
                           "background": {
+                            "type": "string"
+                          },
+                          "notes": {
                             "type": "string"
                           }
                         },
@@ -10196,6 +10224,9 @@
                           },
                           "background": {
                             "type": "string"
+                          },
+                          "notes": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -10325,6 +10356,9 @@
                                 "readOnly": true
                               },
                               "background": {
+                                "type": "string"
+                              },
+                              "notes": {
                                 "type": "string"
                               }
                             },

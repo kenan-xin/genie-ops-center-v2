@@ -20,6 +20,7 @@ import type { DeckContent } from "../src/content.ts";
 import { slidesModule } from "../src/module.ts";
 import { slidesRouter } from "../src/router.ts";
 import { deckHashSql } from "../src/services/decks/hash.ts";
+import { createDeck } from "../src/services/decks/store.ts";
 import { loadDeckList, loadDeckPage } from "../src/services/pages/loaders.ts";
 import { insertDeck } from "./factories.ts";
 
@@ -567,6 +568,99 @@ describe("the slides deck procedures", () => {
     );
 
     expect(rows).toEqual([]);
+  });
+});
+
+describe("the slide notes through the deck procedures", () => {
+  it("store the notes of a created slide and answer them with the deck", async () => {
+    const owner = await editor();
+
+    const { id } = await createDeck(contextOf(owner), {
+      title: "Noted",
+      slides: [
+        { elements: [title("A claim")], notes: "Say hello." },
+        { elements: [title("No words")] },
+      ],
+    });
+
+    const view = await callerAs(owner).readDeck({ id });
+
+    expect(view.slides[0]?.notes).toBe("Say hello.");
+    expect(view.slides[1]?.notes).toBeUndefined();
+  });
+
+  it("set the notes of a slide, keep them through a Refresh, and bring the earlier ones back with Undo", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: oneSlide,
+    });
+
+    const caller = callerAs(owner);
+
+    const noted = await caller.changeDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+      changes: [
+        { op: "change-slide-fields", slideId: "s1", notes: "Say hello." },
+      ],
+    });
+
+    expect(noted.slides[0]?.notes).toBe("Say hello.");
+
+    const refreshed = await caller.refreshDeck({
+      id,
+      expectedHash: noted.contentHash,
+    });
+
+    expect(refreshed.deck.slides[0]?.notes).toBe("Say hello.");
+
+    const undone = await caller.undoDeck({
+      id,
+      expectedHash: refreshed.deck.contentHash,
+    });
+
+    // Undo of the Refresh, then of the notes step: the first save had no notes.
+    const twice = await caller.undoDeck({
+      id,
+      expectedHash: undone.contentHash,
+    });
+
+    expect(undone.slides[0]?.notes).toBe("Say hello.");
+    expect(twice.slides[0]?.notes).toBeUndefined();
+  });
+
+  it("refuse a 2,001-character note at changes.0.notes and leave the row the same", async () => {
+    const owner = await editor();
+    const id = await ownedDeck(owner);
+    const before = await rowOf(id);
+
+    await expect(
+      callerAs(owner).changeDeck({
+        id,
+        expectedHash: before.content_hash,
+        changes: [
+          {
+            op: "change-slide-fields",
+            slideId: "s1",
+            notes: "a".repeat(2001),
+          },
+        ],
+      })
+    ).rejects.toMatchObject({
+      code: "BAD_REQUEST",
+      data: {
+        issues: [
+          {
+            path: ["changes", 0, "notes"],
+            message: "Notes hold at most 2,000 characters.",
+          },
+        ],
+      },
+    });
+
+    expect(await rowOf(id)).toEqual(before);
   });
 });
 

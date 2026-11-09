@@ -21,9 +21,10 @@ export type DraftSlide = {
   readonly id: string;
   readonly elements: readonly DraftElement[];
   readonly background?: string | undefined;
+  readonly notes?: string | undefined;
 };
 
-const NO_FIELD = "Name a box, a style or a background to change.";
+const NO_FIELD = "Name a box, a style, a background or notes to change.";
 
 /** A style after a change: `null` clears it all, else each named key is set or cleared. */
 function mergedStyle(
@@ -135,7 +136,8 @@ export function applyChanges(
     id: string,
     stored: readonly DraftElement[],
     input: readonly ElementInput[],
-    background: string | undefined
+    background: string | undefined,
+    notes: string | undefined
   ): DraftSlide => {
     const { elements, checked } = changedElements(stored, input);
 
@@ -143,7 +145,7 @@ export function applyChanges(
 
     for (const index of checked) checks.set(`${id}.${index}`, step);
 
-    return { id, elements, background };
+    return { id, elements, background, notes };
   };
 
   for (const [step, change] of changes.entries()) {
@@ -177,7 +179,8 @@ export function applyChanges(
           nextSlideId(slides),
           [],
           change.slide.elements,
-          change.slide.background
+          change.slide.background,
+          change.slide.notes
         )
       );
       continue;
@@ -234,17 +237,31 @@ export function applyChanges(
         elements: found.elements.with(change.index, changed),
       };
     } else if (change.op === "change-slide-fields") {
-      if (change.background === undefined) refuse(`changes.${step}`, NO_FIELD);
+      if (change.background === undefined && change.notes === undefined) {
+        refuse(`changes.${step}`, NO_FIELD);
+      }
 
-      slides[index] = { ...found, background: change.background ?? undefined };
+      // Each field sets only when the step names it; `null` clears it.
+      slides[index] = {
+        ...found,
+        background:
+          change.background === undefined
+            ? found.background
+            : (change.background ?? undefined),
+        notes:
+          change.notes === undefined
+            ? found.notes
+            : (change.notes ?? undefined),
+      };
     } else {
-      // A changed slide keeps its background unless the step names one: change-slide-fields clears it.
+      // A changed slide keeps its background and notes unless the step names them.
       slides[index] = setSlide(
         step,
         found.id,
         found.elements,
         change.slide.elements,
-        change.slide.background ?? found.background
+        change.slide.background ?? found.background,
+        change.slide.notes ?? found.notes
       );
     }
   }

@@ -28,6 +28,7 @@ type SavedDeck = Omit<DeckView, "slides"> & {
     readonly id: string;
     readonly elements: readonly unknown[];
     readonly background?: string | undefined;
+    readonly notes?: string | undefined;
   }[];
 };
 
@@ -37,6 +38,7 @@ export function narrowDeck(view: SavedDeck): DeckView {
     slides: view.slides.map((slide) => ({
       id: slide.id,
       background: slide.background,
+      notes: slide.notes,
       elements: slide.elements.map(
         // SAFETY: the server parsed the stored content with `deckContentSchema`, and `deckViewFor`
         // only adds `hidden` to a data element it could no longer read (D15).

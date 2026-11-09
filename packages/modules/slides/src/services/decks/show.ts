@@ -23,6 +23,7 @@ export async function deckViewFor(
     slides: record.content.slides.map((slide) => ({
       id: slide.id,
       background: slide.background,
+      notes: slide.notes,
       elements: slide.elements.map((element) =>
         "chart" in element &&
         element.chart.series.some(({ dataset }) => !readable.has(dataset))

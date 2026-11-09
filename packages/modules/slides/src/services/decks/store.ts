@@ -239,7 +239,12 @@ export async function createDeck(
       );
     }
 
-    drafts.push({ id: `s${i + 1}`, elements, background: slide.background });
+    drafts.push({
+      id: `s${i + 1}`,
+      elements,
+      background: slide.background,
+      notes: slide.notes,
+    });
   }
 
   refuseIf(
@@ -367,6 +372,7 @@ export async function changeDeck(
     slides: applied.slides.map((slide) => ({
       id: slide.id,
       background: slide.background,
+      notes: slide.notes,
       elements: slide.elements.map((element, index) => {
         const frozen = checked.get(`${slide.id}.${index}`);
 
@@ -495,7 +501,12 @@ export async function refreshDeck(
       elements.push({ ...element, ...frozen });
     }
 
-    slides.push({ id: slide.id, elements, background: slide.background });
+    slides.push({
+      id: slide.id,
+      elements,
+      background: slide.background,
+      notes: slide.notes,
+    });
   }
 
   const content = parseContent({ slides });

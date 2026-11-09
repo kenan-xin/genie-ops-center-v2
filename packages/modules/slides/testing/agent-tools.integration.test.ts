@@ -224,6 +224,33 @@ describe("the slides agent tools", () => {
     expect(JSON.stringify(output)).not.toContain('"data"');
   });
 
+  it("slides-read-deck answers the notes of a slide that has them and no notes key for one that has none", async () => {
+    const owner = await personWith(EDITOR);
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            notes: "Say hello.",
+            elements: [title("Collections are on track.")],
+          },
+          { id: "s2", elements: [title("Collections grew.")] },
+        ],
+      },
+    });
+
+    const { output } = await runTool(owner, "slides-read-deck", { deckId: id });
+
+    const { slides } = z
+      .object({ slides: z.array(z.record(z.string(), z.unknown())) })
+      .parse(output);
+
+    expect(slides[0]?.notes).toBe("Say hello.");
+    expect(slides[1]).not.toHaveProperty("notes");
+  });
+
   it("slides-create-deck stores a slide background and each element's box and style", async () => {
     const owner = await personWith(EDITOR);
     const box = { x: 40, y: 136, w: 400, h: 96 };

@@ -74,13 +74,15 @@ function withoutData(element: StoredElement) {
   };
 }
 
-/** A slide as the read tool answers it: its id, its elements, and its background when it has one. */
-function slideOutput({ id, elements, background }: StoredSlide) {
-  const shown = elements.map(withoutData);
+/** A slide as the read tool answers it: its id, its elements, and its background and notes when it has them. */
+function slideOutput({ id, elements, background, notes }: StoredSlide) {
+  const fields: ToolObject = {};
 
-  return background === undefined
-    ? { id, elements: shown }
-    : { id, elements: shown, background };
+  if (background !== undefined) fields.background = background;
+
+  if (notes !== undefined) fields.notes = notes;
+
+  return { id, elements: elements.map(withoutData), ...fields };
 }
 
 /** A stored slide's first element is its title (D5). */
