@@ -1,7 +1,8 @@
-import { implementModule } from "@genie/core";
+import { implementModule, type ModuleRequestContext } from "@genie/core";
 
 import { analyticsContract } from "./contract.ts";
 import { assertCanRead, assertCanWrite } from "./services/dashboards/access.ts";
+import { filterFieldsOf } from "./services/dashboards/filters.ts";
 import { filterValues, panelData } from "./services/dashboards/panel-data.ts";
 import {
   changeDashboard,
@@ -9,11 +10,15 @@ import {
   deleteDashboard,
   listOwnDashboards,
   readOwnDashboard,
+  type DashboardRecord,
   undoDashboard,
   viewOf,
 } from "./services/dashboards/store.ts";
 
 const os = implementModule("analytics", analyticsContract);
+
+const view = async (ctx: ModuleRequestContext, record: DashboardRecord) =>
+  viewOf(record, await filterFieldsOf(ctx, record.config.panels));
 
 /**
  * The module's router, built by core from the contract and mounted under the module id when the
@@ -30,25 +35,25 @@ export const analyticsRouter = os.router({
   readDashboard: os.readDashboard.handler(async ({ context, input }) => {
     await assertCanRead(context.caller);
 
-    return viewOf(await readOwnDashboard(context, input.id));
+    return view(context, await readOwnDashboard(context, input.id));
   }),
 
   createDashboard: os.createDashboard.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller);
 
-    return viewOf(await createDashboard(context, input));
+    return view(context, await createDashboard(context, input));
   }),
 
   changeDashboard: os.changeDashboard.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller);
 
-    return viewOf(await changeDashboard(context, input));
+    return view(context, await changeDashboard(context, input));
   }),
 
   undoDashboard: os.undoDashboard.handler(async ({ context, input }) => {
     await assertCanWrite(context.caller);
 
-    return viewOf(await undoDashboard(context, input));
+    return view(context, await undoDashboard(context, input));
   }),
 
   deleteDashboard: os.deleteDashboard.handler(async ({ context, input }) => {

@@ -2918,51 +2918,151 @@
                             }
                           ]
                         },
-                        "field": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "field": {
-                                  "type": "string",
-                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                        "fields": {
+                          "type": "array",
+                          "maxItems": 4,
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
                                 },
-                                "label": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 40
-                                },
-                                "value": {
-                                  "anyOf": [
-                                    {
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "multi-select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "values": {
+                                    "type": "array",
+                                    "maxItems": 50,
+                                    "items": {
                                       "type": "string",
                                       "minLength": 1,
                                       "maxLength": 200
-                                    },
-                                    {
-                                      "type": "null"
                                     }
-                                  ]
-                                }
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "values"
+                                ],
+                                "additionalProperties": false
                               },
-                              "required": [
-                                "field",
-                                "label",
-                                "value"
-                              ],
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "toggle"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
                         "dateRange",
-                        "field"
+                        "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "filterFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "enum": [
+                              "multi-select",
+                              "select",
+                              "toggle"
+                            ],
+                            "type": "string"
+                          },
+                          "datasets": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "label",
+                          "kind",
+                          "datasets"
+                        ]
+                      },
+                      "readOnly": true
                     },
                     "panels": {
                       "type": "array",
@@ -2992,7 +3092,48 @@
                             ],
                             "additionalProperties": false
                           },
-                          "config": {}
+                          "config": {},
+                          "ownRange": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "preset": {
+                                    "enum": [
+                                      "all",
+                                      "this-month",
+                                      "last-3-months",
+                                      "last-6-months",
+                                      "this-year"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "preset"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "from": {
+                                    "type": "string",
+                                    "format": "date"
+                                  },
+                                  "to": {
+                                    "type": "string",
+                                    "format": "date"
+                                  }
+                                },
+                                "required": [
+                                  "from",
+                                  "to"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         },
                         "required": [
                           "id",
@@ -3008,6 +3149,7 @@
                     "version",
                     "canUndo",
                     "filters",
+                    "filterFields",
                     "panels"
                   ]
                 }
@@ -3097,51 +3239,151 @@
                             }
                           ]
                         },
-                        "field": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "field": {
-                                  "type": "string",
-                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                        "fields": {
+                          "type": "array",
+                          "maxItems": 4,
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
                                 },
-                                "label": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 40
-                                },
-                                "value": {
-                                  "anyOf": [
-                                    {
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "multi-select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "values": {
+                                    "type": "array",
+                                    "maxItems": 50,
+                                    "items": {
                                       "type": "string",
                                       "minLength": 1,
                                       "maxLength": 200
-                                    },
-                                    {
-                                      "type": "null"
                                     }
-                                  ]
-                                }
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "values"
+                                ],
+                                "additionalProperties": false
                               },
-                              "required": [
-                                "field",
-                                "label",
-                                "value"
-                              ],
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "toggle"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
                         "dateRange",
-                        "field"
+                        "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "filterFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "enum": [
+                              "multi-select",
+                              "select",
+                              "toggle"
+                            ],
+                            "type": "string"
+                          },
+                          "datasets": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "label",
+                          "kind",
+                          "datasets"
+                        ]
+                      },
+                      "readOnly": true
                     },
                     "panels": {
                       "type": "array",
@@ -3171,7 +3413,48 @@
                             ],
                             "additionalProperties": false
                           },
-                          "config": {}
+                          "config": {},
+                          "ownRange": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "preset": {
+                                    "enum": [
+                                      "all",
+                                      "this-month",
+                                      "last-3-months",
+                                      "last-6-months",
+                                      "this-year"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "preset"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "from": {
+                                    "type": "string",
+                                    "format": "date"
+                                  },
+                                  "to": {
+                                    "type": "string",
+                                    "format": "date"
+                                  }
+                                },
+                                "required": [
+                                  "from",
+                                  "to"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         },
                         "required": [
                           "id",
@@ -3187,6 +3470,7 @@
                     "version",
                     "canUndo",
                     "filters",
+                    "filterFields",
                     "panels"
                   ]
                 }
@@ -3289,6 +3573,54 @@
                                 "rows"
                               ],
                               "additionalProperties": false
+                            },
+                            "ownRange": {
+                              "anyOf": [
+                                {
+                                  "anyOf": [
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "preset": {
+                                          "enum": [
+                                            "all",
+                                            "this-month",
+                                            "last-3-months",
+                                            "last-6-months",
+                                            "this-year"
+                                          ],
+                                          "type": "string"
+                                        }
+                                      },
+                                      "required": [
+                                        "preset"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    {
+                                      "type": "object",
+                                      "properties": {
+                                        "from": {
+                                          "type": "string",
+                                          "format": "date"
+                                        },
+                                        "to": {
+                                          "type": "string",
+                                          "format": "date"
+                                        }
+                                      },
+                                      "required": [
+                                        "from",
+                                        "to"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  ]
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
                             }
                           },
                           "required": [
@@ -3405,49 +3737,114 @@
                                     }
                                   ]
                                 },
-                                "field": {
-                                  "anyOf": [
-                                    {
-                                      "type": "object",
-                                      "properties": {
-                                        "field": {
-                                          "type": "string",
-                                          "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                "fields": {
+                                  "type": "array",
+                                  "maxItems": 4,
+                                  "items": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "const": "select"
+                                          },
+                                          "field": {
+                                            "type": "string",
+                                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 40
+                                          },
+                                          "value": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "minLength": 1,
+                                                "maxLength": 200
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          }
                                         },
-                                        "label": {
-                                          "type": "string",
-                                          "minLength": 1,
-                                          "maxLength": 40
-                                        },
-                                        "value": {
-                                          "anyOf": [
-                                            {
+                                        "required": [
+                                          "kind",
+                                          "field",
+                                          "label",
+                                          "value"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "const": "multi-select"
+                                          },
+                                          "field": {
+                                            "type": "string",
+                                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 40
+                                          },
+                                          "values": {
+                                            "type": "array",
+                                            "maxItems": 50,
+                                            "items": {
                                               "type": "string",
                                               "minLength": 1,
                                               "maxLength": 200
-                                            },
-                                            {
-                                              "type": "null"
                                             }
-                                          ]
-                                        }
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "field",
+                                          "label",
+                                          "values"
+                                        ],
+                                        "additionalProperties": false
                                       },
-                                      "required": [
-                                        "field",
-                                        "label",
-                                        "value"
-                                      ],
-                                      "additionalProperties": false
-                                    },
-                                    {
-                                      "type": "null"
-                                    }
-                                  ]
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "kind": {
+                                            "const": "toggle"
+                                          },
+                                          "field": {
+                                            "type": "string",
+                                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                          },
+                                          "label": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 40
+                                          },
+                                          "value": {
+                                            "type": "boolean"
+                                          }
+                                        },
+                                        "required": [
+                                          "kind",
+                                          "field",
+                                          "label",
+                                          "value"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    ]
+                                  }
                                 }
                               },
                               "required": [
                                 "dateRange",
-                                "field"
+                                "fields"
                               ],
                               "additionalProperties": false
                             }
@@ -3536,51 +3933,151 @@
                             }
                           ]
                         },
-                        "field": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "field": {
-                                  "type": "string",
-                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                        "fields": {
+                          "type": "array",
+                          "maxItems": 4,
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
                                 },
-                                "label": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 40
-                                },
-                                "value": {
-                                  "anyOf": [
-                                    {
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "multi-select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "values": {
+                                    "type": "array",
+                                    "maxItems": 50,
+                                    "items": {
                                       "type": "string",
                                       "minLength": 1,
                                       "maxLength": 200
-                                    },
-                                    {
-                                      "type": "null"
                                     }
-                                  ]
-                                }
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "values"
+                                ],
+                                "additionalProperties": false
                               },
-                              "required": [
-                                "field",
-                                "label",
-                                "value"
-                              ],
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "toggle"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
                         "dateRange",
-                        "field"
+                        "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "filterFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "enum": [
+                              "multi-select",
+                              "select",
+                              "toggle"
+                            ],
+                            "type": "string"
+                          },
+                          "datasets": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "label",
+                          "kind",
+                          "datasets"
+                        ]
+                      },
+                      "readOnly": true
                     },
                     "panels": {
                       "type": "array",
@@ -3610,7 +4107,48 @@
                             ],
                             "additionalProperties": false
                           },
-                          "config": {}
+                          "config": {},
+                          "ownRange": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "preset": {
+                                    "enum": [
+                                      "all",
+                                      "this-month",
+                                      "last-3-months",
+                                      "last-6-months",
+                                      "this-year"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "preset"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "from": {
+                                    "type": "string",
+                                    "format": "date"
+                                  },
+                                  "to": {
+                                    "type": "string",
+                                    "format": "date"
+                                  }
+                                },
+                                "required": [
+                                  "from",
+                                  "to"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         },
                         "required": [
                           "id",
@@ -3626,6 +4164,7 @@
                     "version",
                     "canUndo",
                     "filters",
+                    "filterFields",
                     "panels"
                   ]
                 }
@@ -3769,51 +4308,151 @@
                             }
                           ]
                         },
-                        "field": {
-                          "anyOf": [
-                            {
-                              "type": "object",
-                              "properties": {
-                                "field": {
-                                  "type": "string",
-                                  "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                        "fields": {
+                          "type": "array",
+                          "maxItems": 4,
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
                                 },
-                                "label": {
-                                  "type": "string",
-                                  "minLength": 1,
-                                  "maxLength": 40
-                                },
-                                "value": {
-                                  "anyOf": [
-                                    {
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "multi-select"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "values": {
+                                    "type": "array",
+                                    "maxItems": 50,
+                                    "items": {
                                       "type": "string",
                                       "minLength": 1,
                                       "maxLength": 200
-                                    },
-                                    {
-                                      "type": "null"
                                     }
-                                  ]
-                                }
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "values"
+                                ],
+                                "additionalProperties": false
                               },
-                              "required": [
-                                "field",
-                                "label",
-                                "value"
-                              ],
-                              "additionalProperties": false
-                            },
-                            {
-                              "type": "null"
-                            }
-                          ]
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "kind": {
+                                    "const": "toggle"
+                                  },
+                                  "field": {
+                                    "type": "string",
+                                    "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                                  },
+                                  "label": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 40
+                                  },
+                                  "value": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "kind",
+                                  "field",
+                                  "label",
+                                  "value"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         }
                       },
                       "required": [
                         "dateRange",
-                        "field"
+                        "fields"
                       ],
                       "additionalProperties": false
+                    },
+                    "filterFields": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "field": {
+                            "type": "string"
+                          },
+                          "label": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "enum": [
+                              "multi-select",
+                              "select",
+                              "toggle"
+                            ],
+                            "type": "string"
+                          },
+                          "datasets": {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": [
+                          "field",
+                          "label",
+                          "kind",
+                          "datasets"
+                        ]
+                      },
+                      "readOnly": true
                     },
                     "panels": {
                       "type": "array",
@@ -3843,7 +4482,48 @@
                             ],
                             "additionalProperties": false
                           },
-                          "config": {}
+                          "config": {},
+                          "ownRange": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "preset": {
+                                    "enum": [
+                                      "all",
+                                      "this-month",
+                                      "last-3-months",
+                                      "last-6-months",
+                                      "this-year"
+                                    ],
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "preset"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "from": {
+                                    "type": "string",
+                                    "format": "date"
+                                  },
+                                  "to": {
+                                    "type": "string",
+                                    "format": "date"
+                                  }
+                                },
+                                "required": [
+                                  "from",
+                                  "to"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
                         },
                         "required": [
                           "id",
@@ -3859,6 +4539,7 @@
                     "version",
                     "canUndo",
                     "filters",
+                    "filterFields",
                     "panels"
                   ]
                 }
@@ -3889,6 +4570,169 @@
               "type": "string",
               "pattern": "^p[1-9][0-9]{0,2}$"
             }
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "schema": {
+              "type": "object",
+              "properties": {
+                "dateRange": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "preset": {
+                          "enum": [
+                            "all",
+                            "this-month",
+                            "last-3-months",
+                            "last-6-months",
+                            "this-year"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "preset"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "to": {
+                          "type": "string",
+                          "format": "date"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "fields": {
+                  "type": "array",
+                  "maxItems": 4,
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "select"
+                          },
+                          "field": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "field",
+                          "label",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "multi-select"
+                          },
+                          "field": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "values": {
+                            "type": "array",
+                            "maxItems": 50,
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "field",
+                          "label",
+                          "values"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "toggle"
+                          },
+                          "field": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "value": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "field",
+                          "label",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "dateRange",
+                "fields"
+              ],
+              "additionalProperties": false
+            },
+            "style": "deepObject",
+            "explode": true,
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {
@@ -3922,6 +4766,181 @@
               "type": "string",
               "format": "uuid"
             }
+          },
+          {
+            "name": "field",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+            },
+            "allowEmptyValue": true,
+            "allowReserved": true
+          },
+          {
+            "name": "filters",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "object",
+              "properties": {
+                "dateRange": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "preset": {
+                          "enum": [
+                            "all",
+                            "this-month",
+                            "last-3-months",
+                            "last-6-months",
+                            "this-year"
+                          ],
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "preset"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "from": {
+                          "type": "string",
+                          "format": "date"
+                        },
+                        "to": {
+                          "type": "string",
+                          "format": "date"
+                        }
+                      },
+                      "required": [
+                        "from",
+                        "to"
+                      ],
+                      "additionalProperties": false
+                    }
+                  ]
+                },
+                "fields": {
+                  "type": "array",
+                  "maxItems": 4,
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "select"
+                          },
+                          "field": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "value": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "field",
+                          "label",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "multi-select"
+                          },
+                          "field": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "values": {
+                            "type": "array",
+                            "maxItems": 50,
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            }
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "field",
+                          "label",
+                          "values"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "const": "toggle"
+                          },
+                          "field": {
+                            "type": "string",
+                            "pattern": "^[A-Za-z][A-Za-z0-9]{0,63}$"
+                          },
+                          "label": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 40
+                          },
+                          "value": {
+                            "type": "boolean"
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "field",
+                          "label",
+                          "value"
+                        ],
+                        "additionalProperties": false
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "dateRange",
+                "fields"
+              ],
+              "additionalProperties": false
+            },
+            "style": "deepObject",
+            "explode": true,
+            "allowEmptyValue": true,
+            "allowReserved": true
           }
         ],
         "responses": {

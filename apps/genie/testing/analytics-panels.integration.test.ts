@@ -5,8 +5,10 @@ import {
   registerModuleRuntime,
 } from "@genie/core";
 import {
+  assignRole,
   enableModules,
   insertPersonWith,
+  insertRole,
   markSetupDone,
   startDisposableDeployment,
   writeModelConnection,
@@ -14,8 +16,12 @@ import {
 import { analyticsModule, analyticsRouter } from "@genie/module-analytics";
 import type { DashboardFilters } from "@genie/module-analytics/contract";
 import { insertDashboard } from "@genie/module-analytics/testing";
+import { invoicesModule } from "@genie/module-invoices";
 import { placeholderModule } from "@genie/module-placeholder";
-import { insertAgentRecords } from "@genie/module-placeholder/testing";
+import {
+  AGENT_RECORDS,
+  insertAgentRecords,
+} from "@genie/module-placeholder/testing";
 import type { ChartData } from "@genie/ui";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -23,11 +29,12 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * Dashboard panels on real data (Spec 7 R-15, R-49): the dashboard filters reach each panel's
  * query through core's chart gate, a change runs the gate, and the field filter offers the values
  * of the panel datasets. The analytics module imports no other module, so these cases live in the
- * app, on the placeholder's three agent records (120000, 80000 and 50000 cents).
+ * app, on the placeholder's three agent records (120000, 80000 and 50000 cents) and the invoices
+ * datasets with no rows (a second dataset, and one with a boolean field).
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
-const MODULES = [analyticsModule, placeholderModule];
+const MODULES = [analyticsModule, placeholderModule, invoicesModule];
 
 let owner: ModuleRequestContext;
 
@@ -41,7 +48,11 @@ beforeAll(async () => {
     document: null,
     reportingDate: "2026-10-27",
   });
-  await enableModules(deployment.context, ["analytics", "placeholder"]);
+  await enableModules(deployment.context, [
+    "analytics",
+    "placeholder",
+    "invoices",
+  ]);
   registerModuleRuntime(deployment.context, MODULES);
   await insertAgentRecords(deployment.context);
 
@@ -51,9 +62,14 @@ beforeAll(async () => {
     "analytics:use",
     "placeholder:read",
     "placeholder:use",
+    "invoices:read",
   ]);
 
-  owner = {
+  owner = contextOf(userId);
+}, 120000);
+
+function contextOf(userId: string): ModuleRequestContext {
+  return {
     tenant: deployment.context,
     caller: principalFor({
       tenant: deployment.context,
@@ -62,7 +78,7 @@ beforeAll(async () => {
       authenticated: true,
     }),
   };
-}, 120000);
+}
 
 afterAll(async () => {
   // A failed start leaves this unset, and calling through it would replace the real error.
@@ -90,15 +106,68 @@ const NO_FILTERS: DashboardFilters = {
 };
 
 /** The owner's dashboard of one KPI panel `p1` under the given filters, written with no gate. */
-async function kpiDashboard(filters: DashboardFilters): Promise<string> {
+async function kpiDashboard(
+  filters: DashboardFilters,
+  ownerUserId = owner.caller.userId
+): Promise<string> {
   return insertDashboard(deployment.context, {
-    ownerUserId: owner.caller.userId,
+    ownerUserId,
     config: {
       filters,
       panels: [{ id: "p1", layout: { columns: 1, rows: 1 }, config: KPI }],
     },
   });
 }
+
+/** A count KPI on an invoices dataset, which has no `label` field. */
+const countOf = (dataset: string) =>
+  ({
+    type: "kpi",
+    title: "Rows",
+    series: [
+      {
+        name: "Rows",
+        dataset,
+        query: { aggregates: [{ fn: "count", as: "n" }] },
+        value: "n",
+      },
+    ],
+  }) as const;
+
+const LAYOUT = { columns: 1, rows: 1 } as const;
+
+/** The owner's dashboard of `p1` on the placeholder records and `p2` on an invoices dataset. */
+async function twoDatasetDashboard(dataset: string): Promise<string> {
+  return insertDashboard(deployment.context, {
+    ownerUserId: owner.caller.userId,
+    config: {
+      filters: NO_FILTERS,
+      panels: [
+        { id: "p1", layout: LAYOUT, config: KPI },
+        { id: "p2", layout: LAYOUT, config: countOf(dataset) },
+      ],
+    },
+  });
+}
+
+// SAFETY: the contract answers `z.unknown()`, and the procedure answers the gate's ChartData.
+// oxlint-disable-next-line anti-slop/no-unknown-parameters -- `panelData`'s answer, typed unknown by its contract
+const chartOf = (answer: unknown) => answer as ChartData;
+
+const labelFilter = (values: readonly string[]) => ({
+  kind: "multi-select" as const,
+  field: "label",
+  label: "Label",
+  values: [...values],
+});
+
+const storedOf = async (id: string) =>
+  (
+    await deployment.context.db.$client.query(
+      "select config, version from dashboard where id = $1",
+      [id]
+    )
+  ).rows[0];
 
 const fieldFilter = (field: string, value: string | null) =>
   ({
@@ -214,7 +283,173 @@ describe("the analytics panels on real data", () => {
         fields: [fieldFilter(field, null)],
       });
 
-      expect(await caller().filterValues({ id })).toEqual(values);
+      expect(await caller().filterValues({ id, field })).toEqual(values);
     }
   );
+
+  it("narrows every panel whose dataset has the field with transient filters, and leaves the others", async () => {
+    const id = await twoDatasetDashboard("invoices.customers");
+    const before = await storedOf(id);
+    const unfiltered = chartOf(await caller().panelData({ id, panelId: "p2" }));
+
+    const filters: DashboardFilters = {
+      dateRange: { preset: "all" },
+      fields: [labelFilter(["Alpha", "Charlie"])],
+    };
+
+    const [narrowed, other] = await Promise.all(
+      ["p1", "p2"].map(async (panelId) =>
+        chartOf(await caller().panelData({ id, panelId, filters }))
+      )
+    );
+
+    expect(narrowed?.rows[0]?.Amount).toBe(170000);
+    expect(other?.rows).toEqual(unfiltered.rows);
+    expect(await storedOf(id)).toEqual(before);
+  });
+
+  it("keeps a transient filter inside the caller's scopes", async () => {
+    // placeholder:read on Alpha only; the analytics keys through a second, unscoped role.
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["placeholder:read"],
+      { type: "placeholder-record", id: AGENT_RECORDS[0].id }
+    );
+
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["analytics:use", "analytics:read"],
+    });
+
+    await assignRole(deployment.context, {
+      roleId,
+      principal: { type: "user", id: userId },
+    });
+
+    const id = await kpiDashboard(NO_FILTERS, userId);
+    const scoped = callProcedure(analyticsRouter, contextOf(userId));
+
+    const amountUnder = async (values: readonly string[]) =>
+      chartOf(
+        await scoped.panelData({
+          id,
+          panelId: "p1",
+          filters: {
+            dateRange: { preset: "all" },
+            fields: [labelFilter(values)],
+          },
+        })
+      ).rows[0]?.Amount ?? null;
+
+    expect(await amountUnder(["Bravo"])).toBeNull();
+    expect(await amountUnder(["Alpha", "Bravo"])).toBe(120000);
+    expect(
+      await scoped.filterValues({
+        id,
+        field: "label",
+        filters: {
+          dateRange: { preset: "all" },
+          fields: [labelFilter(["Bravo"])],
+        },
+      })
+    ).toEqual(["Alpha"]);
+  });
+
+  it("refuses a toggle on a text field", async () => {
+    const id = await kpiDashboard(NO_FILTERS);
+
+    const filters: DashboardFilters = {
+      dateRange: { preset: "all" },
+      fields: [{ kind: "toggle", field: "label", label: "Label", value: true }],
+    };
+
+    const refusal = {
+      code: "analytics:change-invalid",
+      issues: [
+        {
+          path: "filters.fields.0.field",
+          message: "No data you can read has the field label for this filter.",
+        },
+      ],
+    };
+
+    await expect(
+      caller().panelData({ id, panelId: "p1", filters })
+    ).rejects.toMatchObject(refusal);
+    await expect(
+      caller().filterValues({ id, field: "label", filters })
+    ).rejects.toMatchObject(refusal);
+  });
+
+  it("uses a panel's own range for its figure and its comparison", async () => {
+    // The dashboard range this-month holds no record; the panel's own range holds Bravo and
+    // Charlie, and the 59 days before it (2025-12-04 to 2026-01-31) hold Alpha.
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      config: {
+        filters: { dateRange: { preset: "this-month" }, fields: [] },
+        panels: [
+          {
+            id: "p1",
+            layout: LAYOUT,
+            config: KPI,
+            ownRange: { from: "2026-02-01", to: "2026-03-31" },
+          },
+        ],
+      },
+    });
+
+    const data = chartOf(await caller().panelData({ id, panelId: "p1" }));
+
+    expect(data.rows[0]?.Amount).toBe(130000);
+    expect(data.change).toEqual({
+      previous: 120000,
+      label: "the 59 days before",
+    });
+  });
+
+  it("answers the filter fields of the panel datasets", async () => {
+    const id = await twoDatasetDashboard("invoices.allocations");
+    const { filterFields } = await caller().readDashboard({ id });
+
+    expect(filterFields).toEqual(
+      expect.arrayContaining([
+        {
+          field: "label",
+          label: "label",
+          kind: "multi-select",
+          datasets: ["placeholder.records"],
+        },
+        {
+          field: "automatic",
+          label: "Linked automatically",
+          kind: "toggle",
+          datasets: ["invoices.allocations"],
+        },
+      ])
+    );
+    expect(filterFields.map(({ field }) => field)).not.toContain("amountCents");
+  });
+
+  it("narrows a field's options by the other filters but not by its own", async () => {
+    const id = await kpiDashboard(NO_FILTERS);
+
+    expect(
+      await caller().filterValues({
+        id,
+        field: "label",
+        filters: {
+          dateRange: { from: "2026-02-01", to: "2026-03-31" },
+          fields: [
+            labelFilter(["Bravo"]),
+            {
+              kind: "select",
+              field: "id",
+              label: "Id",
+              value: AGENT_RECORDS[2].id,
+            },
+          ],
+        },
+      })
+    ).toEqual(["Charlie"]);
+  });
 });

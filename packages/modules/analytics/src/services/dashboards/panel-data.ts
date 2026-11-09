@@ -8,20 +8,32 @@ import {
 } from "@genie/core";
 import type { ChartData } from "@genie/ui";
 
-import { datasetFacts, effectivePanel, priorBounds } from "./filters.ts";
+import type { DashboardFilters } from "../../contract.ts";
+import {
+  assertFiltersFit,
+  datasetFacts,
+  datasetFilters,
+  dateBounds,
+  effectivePanel,
+  priorBounds,
+} from "./filters.ts";
 import { readOwnDashboard } from "./store.ts";
 
 /** The most values the field filter offers. */
 const FILTER_VALUE_LIMIT = 1000;
 
 /**
- * One panel of the caller's own dashboard drawn under the dashboard filters. The show path runs
- * the chart gate, so a panel whose dataset the caller can no longer read answers its refusal
- * (R-15, R-49, D2).
+ * One panel of the caller's own dashboard drawn under the dashboard filters: the given ones for
+ * this read only, else the stored ones. The show path runs the chart gate as the caller, so a
+ * panel whose dataset the caller can no longer read answers its refusal (R-15, R-49, D2).
  */
 export async function panelData(
   ctx: ModuleRequestContext,
-  input: { readonly id: string; readonly panelId: string }
+  input: {
+    readonly id: string;
+    readonly panelId: string;
+    readonly filters?: DashboardFilters | undefined;
+  }
 ): Promise<ChartData> {
   const record = await readOwnDashboard(ctx, input.id);
   const panel = record.config.panels.find(({ id }) => id === input.panelId);
@@ -33,14 +45,22 @@ export async function panelData(
     reportingDate(ctx.tenant),
   ]);
 
-  const { filters } = record.config;
+  if (input.filters !== undefined) assertFiltersFit(input.filters, datasets);
+
+  const filters = input.filters ?? record.config.filters;
+  const { ownRange } = panel;
 
   const data = (
-    await checkChart(ctx, effectivePanel(panel.config, filters, datasets, date))
+    await checkChart(
+      ctx,
+      effectivePanel(panel.config, filters, datasets, date, ownRange)
+    )
   ).data;
 
   const prior =
-    panel.config.type === "kpi" ? priorBounds(filters.dateRange, date) : null;
+    panel.config.type === "kpi"
+      ? priorBounds(ownRange ?? filters.dateRange, date)
+      : null;
 
   if (prior === null) return data;
 
@@ -49,12 +69,7 @@ export async function panelData(
   // The change line is extra: a refused or empty prior read drops it, never the panel.
   const previous = await checkChart(
     ctx,
-    effectivePanel(
-      panel.config,
-      { ...filters, dateRange: range },
-      datasets,
-      date
-    )
+    effectivePanel(panel.config, filters, datasets, date, range)
   ).then(
     ({ data: before }) => priorKpiValue(data, before),
     (cause: unknown) => {
@@ -88,26 +103,36 @@ export function priorKpiValue(
 }
 
 /**
- * The values the field filter offers: the distinct non-null values of the field in each panel
- * dataset that declares it as text, sorted, at most 1,000 (D3).
+ * The values a filter on `field` offers: the distinct non-null values of the field in each panel
+ * dataset that declares it as text, under the date range and every other field filter (P15-6),
+ * sorted, at most 1,000 (D3). A boolean field offers none.
  */
 export async function filterValues(
   ctx: ModuleRequestContext,
-  input: { readonly id: string }
+  input: {
+    readonly id: string;
+    readonly field: string;
+    readonly filters?: DashboardFilters | undefined;
+  }
 ): Promise<readonly string[]> {
   const record = await readOwnDashboard(ctx, input.id);
-  // Task 2 answers one field's options; until then the first select filter names the field.
-  const [first] = record.config.filters.fields;
-  const field = first?.kind === "select" ? first : undefined;
 
-  if (field === undefined) return [];
+  const [facts, date] = await Promise.all([
+    datasetFacts(ctx),
+    reportingDate(ctx.tenant),
+  ]);
 
-  const facts = await datasetFacts(ctx);
+  if (input.filters !== undefined) assertFiltersFit(input.filters, facts);
+
+  const { field } = input;
+  const filters = input.filters ?? record.config.filters;
+  const bounds = dateBounds(filters.dateRange, date);
+  const others = filters.fields.filter((filter) => filter.field !== field);
 
   const datasets = new Set(
     record.config.panels
       .flatMap(({ config }) => config.series.map((series) => series.dataset))
-      .filter((name) => facts.get(name)?.textFields.has(field.field) === true)
+      .filter((name) => facts.get(name)?.fields.get(field)?.type === "text")
   );
 
   const results = await Promise.all(
@@ -115,7 +140,8 @@ export async function filterValues(
       queryDataset(ctx, {
         dataset,
         query: {
-          groupBy: [{ field: field.field }],
+          filters: datasetFilters(facts.get(dataset), others, bounds),
+          groupBy: [{ field }],
           aggregates: [{ fn: "count", as: "rows" }],
           limit: FILTER_VALUE_LIMIT,
         },
@@ -126,7 +152,7 @@ export async function filterValues(
   const values = new Set(
     results
       // A text field answers a string or null.
-      .flatMap(({ rows }) => rows.map((row) => row[field.field] ?? null))
+      .flatMap(({ rows }) => rows.map((row) => row[field] ?? null))
       .filter((value) => value !== null)
       .map(String)
   );

@@ -1,4 +1,6 @@
 import {
+  AppError,
+  type DatasetFieldType,
   type DatasetFilter,
   listDatasets,
   type ModuleRequestContext,
@@ -6,13 +8,114 @@ import {
   type TableSeries,
 } from "@genie/core";
 
-import type { DashboardFilters, DateRangeFilter } from "../../contract.ts";
+import type { StoredPanel } from "../../config.ts";
+import type {
+  DashboardFilters,
+  DateRangeFilter,
+  FieldFilter,
+  FilterField,
+} from "../../contract.ts";
+import { ANALYTICS_ERRORS } from "../../errors.ts";
 
-/** What a dashboard filter needs to know of one dataset: where its dates are, and its text fields. */
+/** What a dashboard filter needs to know of one dataset: where its dates are, and its fields. */
 export type DatasetFacts = {
   readonly timeField: string;
-  readonly textFields: ReadonlySet<string>;
+  readonly fields: ReadonlyMap<
+    string,
+    { readonly type: DatasetFieldType; readonly label: string }
+  >;
 };
+
+export type FieldFilterKind = FieldFilter["kind"];
+
+/** The filter kinds a field of this type takes, the default first (R-49, D3). */
+export function filterKindsOf(
+  type: DatasetFieldType
+): readonly FieldFilterKind[] {
+  switch (type) {
+    case "text":
+      return ["multi-select", "select"];
+    case "boolean":
+      return ["toggle"];
+    default:
+      return [];
+  }
+}
+
+/** Whether the dataset declares the filter's field with a type that takes its kind. */
+function fits(facts: DatasetFacts | undefined, filter: FieldFilter): boolean {
+  const type = facts?.fields.get(filter.field)?.type;
+
+  return type !== undefined && filterKindsOf(type).includes(filter.kind);
+}
+
+/** The query filter of one field filter; one with no value, or a toggle off, filters nothing (P15-4). */
+function clauseOf(filter: FieldFilter): DatasetFilter | undefined {
+  const { field } = filter;
+
+  switch (filter.kind) {
+    case "select":
+      return filter.value === null
+        ? undefined
+        : { field, op: "eq", value: filter.value };
+    case "multi-select":
+      return filter.values.length === 0
+        ? undefined
+        : { field, op: "in", values: filter.values };
+    case "toggle":
+      return filter.value ? { field, op: "eq", value: true } : undefined;
+  }
+}
+
+/**
+ * The filters a dashboard adds to a read of one dataset: the date bounds on its time field, and
+ * each field filter whose field the dataset declares with a fitting type, so a dataset that lacks
+ * the field stays unfiltered (Review Focus 5).
+ */
+export function datasetFilters(
+  facts: DatasetFacts | undefined,
+  fields: readonly FieldFilter[],
+  bounds: { readonly from: string; readonly to: string } | null
+): DatasetFilter[] {
+  if (facts === undefined) return [];
+
+  const added: DatasetFilter[] =
+    bounds === null
+      ? []
+      : [{ field: facts.timeField, op: "between", ...bounds }];
+
+  for (const filter of fields) {
+    const clause = fits(facts, filter) ? clauseOf(filter) : undefined;
+
+    if (clause !== undefined) added.push(clause);
+  }
+
+  return added;
+}
+
+/**
+ * Refuses filters from the browser whose field no dataset the caller reads declares with a type
+ * that takes the filter's kind (P15-5). Runs before any read of those filters.
+ */
+export function assertFiltersFit(
+  filters: DashboardFilters,
+  datasets: ReadonlyMap<string, DatasetFacts>
+): void {
+  const issues = filters.fields.flatMap((filter, index) =>
+    [...datasets.values()].some((facts) => fits(facts, filter))
+      ? []
+      : [
+          {
+            path: `filters.fields.${index}.field`,
+            message: `No data you can read has the field ${filter.field} for this filter.`,
+          },
+        ]
+  );
+
+  if (issues.length > 0) {
+    throw new AppError(ANALYTICS_ERRORS["change-invalid"], { issues });
+  }
+}
 
 /** The months each preset starts before the reporting month; `this-year` starts in January. */
 const MONTHS_BACK = {
@@ -134,37 +237,24 @@ export function priorBounds(
 }
 
 /**
- * The panel with the dashboard filters added to each series' own filters (R-49, D3): the date range
- * on the time field of the series' dataset, and the field filter only where that dataset declares
- * the field as text, so a panel whose dataset lacks the field stays unfiltered (Review Focus 5).
+ * The panel with the dashboard filters added to each series' own filters (R-49, D3), through
+ * `datasetFilters`. A panel's own range replaces the dashboard range (P15-10).
  */
 export function effectivePanel(
   panel: PanelConfig,
   filters: DashboardFilters,
   datasets: ReadonlyMap<string, DatasetFacts>,
-  reportingDate: string
+  reportingDate: string,
+  ownRange?: DateRangeFilter
 ): PanelConfig {
-  const bounds = dateBounds(filters.dateRange, reportingDate);
+  const bounds = dateBounds(ownRange ?? filters.dateRange, reportingDate);
 
   const filtered = <S extends TableSeries>(entry: S): S => {
-    const facts = datasets.get(entry.dataset);
-    const added: DatasetFilter[] = [];
-
-    if (facts !== undefined && bounds !== null) {
-      added.push({ field: facts.timeField, op: "between", ...bounds });
-    }
-
-    // Task 2 gives every kind its own filter; until then the first select filter applies.
-    const [first] = filters.fields;
-    const field = first?.kind === "select" ? first : undefined;
-
-    if (
-      field !== undefined &&
-      field.value !== null &&
-      facts?.textFields.has(field.field) === true
-    ) {
-      added.push({ field: field.field, op: "eq", value: field.value });
-    }
+    const added = datasetFilters(
+      datasets.get(entry.dataset),
+      filters.fields,
+      bounds
+    );
 
     if (added.length === 0) return entry;
 
@@ -189,7 +279,7 @@ export function effectivePanel(
   }
 }
 
-/** The time field and text fields of each dataset the caller can read (DEC-54). */
+/** The time field and the fields of each dataset the caller can read (DEC-54). */
 export async function datasetFacts(
   ctx: ModuleRequestContext
 ): Promise<ReadonlyMap<string, DatasetFacts>> {
@@ -198,12 +288,49 @@ export async function datasetFacts(
       name,
       {
         timeField,
-        textFields: new Set(
-          Object.entries(fields)
-            .filter(([, { type }]) => type === "text")
-            .map(([fieldName]) => fieldName)
+        fields: new Map(
+          Object.entries(fields).map(([field, { type, label }]) => [
+            field,
+            { type, label: label ?? field },
+          ])
         ),
       },
     ])
+  );
+}
+
+/**
+ * Every text and boolean field of the panel datasets the caller can read, sorted by label, with
+ * the datasets that declare it. A field one dataset declares as text and another as boolean keeps
+ * the kind of the first panel that names it.
+ */
+export async function filterFieldsOf(
+  ctx: ModuleRequestContext,
+  panels: readonly StoredPanel[]
+): Promise<FilterField[]> {
+  const facts = await datasetFacts(ctx);
+  const found = new Map<string, FilterField>();
+
+  const names = new Set(
+    panels.flatMap(({ config }) => config.series.map(({ dataset }) => dataset))
+  );
+
+  for (const dataset of names) {
+    for (const [field, { type, label }] of facts.get(dataset)?.fields ?? []) {
+      const [kind] = filterKindsOf(type);
+      const entry = found.get(field);
+
+      if (kind === undefined) continue;
+
+      if (entry === undefined) {
+        found.set(field, { field, label, kind, datasets: [dataset] });
+      } else if (entry.kind === kind) {
+        entry.datasets.push(dataset);
+      }
+    }
+  }
+
+  return [...found.values()].toSorted((left, right) =>
+    left.label.localeCompare(right.label)
   );
 }

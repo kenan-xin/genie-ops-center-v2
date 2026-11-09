@@ -4,6 +4,7 @@ import type {
   DashboardFilters,
   DashboardSummary,
   DateRangeFilter,
+  FilterField,
   PanelLayout,
 } from "../contract.ts";
 
@@ -23,6 +24,8 @@ export type DashboardView = {
   version: number;
   canUndo: boolean;
   filters: DashboardFilters;
+  /** The fields Add filter offers, sorted by label. */
+  filterFields: readonly FilterField[];
   panels: readonly PanelView[];
 };
 

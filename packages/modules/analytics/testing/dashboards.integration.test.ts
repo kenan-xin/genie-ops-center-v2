@@ -12,6 +12,7 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { EMPTY_DASHBOARD_CONFIG } from "../src/config.ts";
+import type { DashboardFilters } from "../src/contract.ts";
 import { analyticsModule } from "../src/module.ts";
 import { analyticsRouter } from "../src/router.ts";
 import { changeDashboard } from "../src/services/dashboards/store.ts";
@@ -199,7 +200,10 @@ const PROCEDURES: readonly (readonly [string, Call])[] = [
   ],
   ["deleteDashboard", (caller, id) => caller.deleteDashboard({ id })],
   ["panelData", (caller, id) => caller.panelData({ id, panelId: "p1" })],
-  ["filterValues", (caller, id) => caller.filterValues({ id })],
+  [
+    "filterValues",
+    (caller, id) => caller.filterValues({ id, field: "customerName" }),
+  ],
 ];
 
 describe("the analytics page loaders", () => {
@@ -682,6 +686,44 @@ describe("the analytics dashboard procedures", () => {
     const stored = await rowOf(id);
 
     expect(stored.config.panels[0]).not.toHaveProperty("ownRange");
+  });
+
+  // This deployment registers no dataset, so no data the caller reads has any field.
+  it("refuses a transient filter on a field no readable dataset has", async () => {
+    const owner = await editor();
+    const id = await ownedDashboard(owner);
+    const caller = callerAs(owner);
+
+    const filters: DashboardFilters = {
+      dateRange: { preset: "all" },
+      fields: [
+        {
+          kind: "select",
+          field: "customerName",
+          label: "Customer",
+          value: "Acme",
+        },
+      ],
+    };
+
+    // `change-invalid`, not the panel's own `chart-invalid`: the filters are refused before any read.
+    const refusal = {
+      code: "analytics:change-invalid",
+      issues: [
+        {
+          path: "filters.fields.0.field",
+          message:
+            "No data you can read has the field customerName for this filter.",
+        },
+      ],
+    };
+
+    await expect(
+      caller.panelData({ id, panelId: "p1", filters })
+    ).rejects.toMatchObject(refusal);
+    await expect(
+      caller.filterValues({ id, field: "customerName", filters })
+    ).rejects.toMatchObject(refusal);
   });
 
   it("reads and undoes a dashboard stored with the old single field", async () => {

@@ -179,6 +179,7 @@ export const CreateOpens: Story = {
       version: 1,
       canUndo: false,
       filters: { dateRange: { preset: "all" }, fields: [] },
+      filterFields: [],
       panels: [],
     });
   },

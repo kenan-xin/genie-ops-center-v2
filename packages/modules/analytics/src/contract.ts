@@ -44,9 +44,12 @@ export const dateRangeFilter = z.union([
     }),
 ]);
 
+/** A dataset field name a filter names. */
+export const filterFieldName = z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,63}$/);
+
 /** One filter on a field, applied to every series whose dataset declares it (D3, R-49). */
 const fieldFilterFields = {
-  field: z.string().regex(/^[A-Za-z][A-Za-z0-9]{0,63}$/),
+  field: filterFieldName,
   label: z.string().trim().min(1).max(40),
 };
 
@@ -130,6 +133,15 @@ export const dashboardChanges = z
   .min(1)
   .max(DASHBOARD_CHANGE_LIMIT);
 
+/** A field the page can filter by: a text or boolean field of a panel dataset the caller reads. */
+export const filterField = z.object({
+  field: z.string(),
+  label: z.string(),
+  kind: z.enum(["multi-select", "select", "toggle"]),
+  /** The panel datasets that declare the field. */
+  datasets: z.array(z.string()),
+});
+
 /** One dashboard as its owner reads it. The browser narrows each panel `config` (Global Constraints). */
 export const dashboardView = z.object({
   id: z.string(),
@@ -137,6 +149,7 @@ export const dashboardView = z.object({
   version: z.int(),
   canUndo: z.boolean(),
   filters: dashboardFilters,
+  filterFields: z.array(filterField).readonly(),
   // Read-only, so the server's `DashboardView` answers it as is.
   panels: z
     .array(
@@ -159,6 +172,8 @@ export type DateRangeFilter = z.infer<typeof dateRangeFilter>;
 export type FieldFilter = z.infer<typeof fieldFilter>;
 
 export type DashboardFilters = z.infer<typeof dashboardFilters>;
+
+export type FilterField = z.infer<typeof filterField>;
 
 export type DashboardSummary = z.infer<typeof dashboardSummary>;
 
@@ -197,19 +212,37 @@ export const analyticsContract = {
     .route({ method: "DELETE", path: "/analytics/dashboards/{id}" })
     .input(z.object({ id: dashboardId }))
     .output(z.object({ id: z.string() })),
-  /** One panel's chart data under the dashboard filters, through the chart gate (R-15, R-49). */
+  /**
+   * One panel's chart data under the dashboard filters, through the chart gate (R-15, R-49).
+   * `filters` replaces the stored ones for this read only and is never saved.
+   */
   panelData: oc
     .route({
       method: "GET",
       path: "/analytics/dashboards/{id}/panels/{panelId}",
     })
-    .input(z.object({ id: dashboardId, panelId }))
+    .input(
+      z.object({
+        id: dashboardId,
+        panelId,
+        filters: dashboardFilters.optional(),
+      })
+    )
     // The gate's ChartData; the browser narrows it once (Global Constraints).
     .output(z.unknown()),
-  /** The values the field filter offers, from the panel datasets that declare the field. */
+  /**
+   * The values a filter on `field` offers, from the panel datasets that declare it as text, under
+   * the date range and every other field filter (P15-6). `filters` is never saved.
+   */
   filterValues: oc
     .route({ method: "GET", path: "/analytics/dashboards/{id}/filter-values" })
-    .input(z.object({ id: dashboardId }))
+    .input(
+      z.object({
+        id: dashboardId,
+        field: filterFieldName,
+        filters: dashboardFilters.optional(),
+      })
+    )
     .output(z.array(z.string())),
 };
 

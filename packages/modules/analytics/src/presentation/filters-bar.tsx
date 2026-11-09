@@ -79,7 +79,9 @@ export function FiltersBar(props: FiltersBarProps) {
   const values = useQuery({
     // A save may change the field or add a dataset, so each version asks again.
     queryKey: ["analytics", "filter-values", dashboard.id, dashboard.version],
-    queryFn: () => analytics.filterValues({ id: dashboard.id }),
+    // `enabled` holds the call until a field is set.
+    queryFn: () =>
+      analytics.filterValues({ id: dashboard.id, field: field?.field ?? "" }),
     enabled: field !== undefined,
     placeholderData: keepPreviousData,
   });

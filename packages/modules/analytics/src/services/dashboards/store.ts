@@ -21,7 +21,11 @@ import {
   storedDashboardConfig,
   type UndoEntry,
 } from "../../config.ts";
-import type { DashboardChange, DashboardSummary } from "../../contract.ts";
+import type {
+  DashboardChange,
+  DashboardSummary,
+  FilterField,
+} from "../../contract.ts";
 import { ANALYTICS_ERRORS } from "../../errors.ts";
 import type { DashboardView } from "../../presentation/views.ts";
 import { dashboard } from "../../schema.ts";
@@ -60,13 +64,17 @@ const notFound = () => new AppError(CORE_ERRORS["not-found"]);
 
 const targetOf = (id: string) => ({ type: "analytics-dashboard", id });
 
-export function viewOf(record: DashboardRecord): DashboardView {
+export function viewOf(
+  record: DashboardRecord,
+  filterFields: readonly FilterField[]
+): DashboardView {
   return {
     id: record.id,
     name: record.name,
     version: record.version,
     canUndo: record.undo.length > 0,
     filters: record.config.filters,
+    filterFields,
     panels: record.config.panels,
   };
 }

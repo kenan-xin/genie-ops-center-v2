@@ -10,6 +10,7 @@ import type {
   DashboardPageView,
 } from "../../presentation/views.ts";
 import { assertCanRead } from "../dashboards/access.ts";
+import { filterFieldsOf } from "../dashboards/filters.ts";
 import {
   listOwnDashboards,
   readOwnDashboard,
@@ -42,15 +43,16 @@ export async function loadDashboardPage(
 
   const record = await readOwnDashboard(ctx, id);
 
-  const [canWrite, date, branding, chat] = await Promise.all([
+  const [canWrite, date, branding, chat, filterFields] = await Promise.all([
     can(ctx.caller, "analytics:write"),
     reportingDate(ctx.tenant),
     ctx.tenant.branding.get(),
     chatAvailability(ctx),
+    filterFieldsOf(ctx, record.config.panels),
   ]);
 
   return {
-    dashboard: viewOf(record),
+    dashboard: viewOf(record, filterFields),
     canWrite,
     reportingDate: date,
     timeZone: branding.defaultTimeZone,

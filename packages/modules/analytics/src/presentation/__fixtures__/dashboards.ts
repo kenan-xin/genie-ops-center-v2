@@ -133,6 +133,7 @@ export const defaultDashboardPage: DashboardPageView = {
     version: 1,
     canUndo: false,
     filters: DEFAULT_FILTERS,
+    filterFields: [],
     panels: [KPI_PANEL, BAR_PANEL, TABLE_PANEL],
   },
   canWrite: true,
