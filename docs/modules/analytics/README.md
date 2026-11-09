@@ -36,18 +36,22 @@ Limits: 12 panels per dashboard, each panel 1 to 4 columns wide and 1 to 2 rows 
 
 ## Agent tools and rules
 
-The module provides the `agent-tools` capability. Each tool runs as the person who asks, checks its key through `can()` again, and reads or changes only that person's own dashboards; another person's dashboard id answers `not-found`. Core writes one audit row per call.
+The module provides the `agent-tools` capability and the `agent-surface` capability. Each tool runs as the person who asks, checks its key through `can()` again, and reads or changes only that person's own dashboards; another person's dashboard id answers `not-found`. Core writes one audit row per call.
 
 | Tool | Offered to | Does |
 | --- | --- | --- |
-| `analytics-list-dashboards` | `analytics:read` | Lists the person's dashboards: id, name, version and each panel's id, chart type and title. |
-| `analytics-read-dashboard` | `analytics:read` | Reads one dashboard: name, version, filters and each panel's id, layout and chart config. |
-| `analytics-create-dashboard` | `analytics:write` | Creates an empty dashboard with a name unique among the person's dashboards. |
-| `analytics-change-dashboard` | `analytics:write` | Saves one change of add-panel, change-panel, remove-panel, move-panel, rename or set-filters steps. |
+| `analytics-list-dashboards` | `analytics:read`, in Ask and in a Dashboards chat | Lists the person's dashboards: id, name, version and each panel's id, chart type and title. |
+| `analytics-read-dashboard` | `analytics:read`, in Ask and in a Dashboards chat | Reads one dashboard: name, version, filters and each panel's id, layout and chart config. |
+| `analytics-create-dashboard` | `analytics:write`, in a Dashboards chat only | Creates an empty dashboard with a name unique among the person's dashboards. |
+| `analytics-change-dashboard` | `analytics:write`, in a Dashboards chat only | Saves one change of add-panel, change-panel, remove-panel, move-panel, rename or set-filters steps. |
 
 The two write tools are marked `writes: true`. A change goes through the same store path as a hand save: every added or changed panel passes the chart gate, except a panel whose only change is its title, because a rename reads no data (plan D2), a refused step saves nothing, and the save adds an Undo entry that Undo on the dashboard restores (Spec 7 R-46, R-49). A create has no earlier version to restore, so it adds no Undo entry: Delete on the Dashboards list is the inverse of a chat create, and it removes the new dashboard for good (R-46). No tool output holds a clock value or data rows, because a recorded follow-up request holds the output.
 
-The module's four agent rules reach a holder of `analytics:write` only. They say that the tools touch only the person's own dashboards, that a change runs only on the person's own request and has Undo, that a panel takes the config of a Chart in an answer and passes the chart check, and that the dashboard filters apply to every panel and are not repeated in a panel query.
+Ask and every Dashboards chat get the two read tools and one read rule for a holder of `analytics:read`: the tools read only the person's own dashboards.
+
+The module declares the agent surface "Dashboards agent" in `src/agent-surface.ts`, on the dashboard page `/m/analytics/dashboards/:id`, and it accepts a handoff from Ask (`DEC-29`, amended 2026-11-07; S7-42). Only a Dashboards chat of a holder of `analytics:write` gets the two write tools and the surface's rules, and Ask offers a holder of `analytics:write` the handoff to it. The rules say that the chat's dashboard is its record, that a change runs only when the person's own message or a brief from Ask asks for it and has Undo (R-46), that a dashboard is built panel by panel with one `add-panel` step per `analytics-change-dashboard` call, that a second dashboard is made only when the person asks for one, that Try again reads the dashboard first, and that a chart or a table with no place named first asks whether to add it as a panel or just show it here. They also say that a panel takes the config of a Chart in an answer and passes the chart check, and that the dashboard filters apply to every panel and are not repeated in a panel query. The change answer holds the new `version`, and the tool takes no expected version, so a panel-by-panel build needs no read between panels.
+
+The surface's `createRecord` checks `analytics:write` and inserts the empty dashboard, named by the brief's title, with its created audit row through the handoff's transaction, with the same insert as New dashboard. A name that the person already uses answers `dashboard-name-taken`, and the handoff saves nothing. It adds no Undo entry: Delete on the Dashboards list is its inverse.
 
 The dashboard page shows the chat beside the dashboard for a person who may ask while AI is on: from the `lg` width it is a 22rem column to the right of the panels, and below that it follows them. Every message names the dashboard as the open record, and after each answer the page reads the dashboard again. While AI is off, a note says that the dashboard can still be changed by hand.
 

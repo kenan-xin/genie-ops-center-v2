@@ -140,23 +140,19 @@ const changeDashboardTool = defineAgentTool({
   },
 });
 
-export const ANALYTICS_AGENT_TOOLS = [
-  listDashboardsTool,
-  readDashboardTool,
-  createDashboardTool,
-  changeDashboardTool,
-];
+/** The write tools, which only the Dashboards surface offers (P11-46). */
+export const ANALYTICS_WRITE_TOOLS = [createDashboardTool, changeDashboardTool];
+
+/** The read tools, which Ask and the Dashboards surface session both get. */
+export const ANALYTICS_AGENT_TOOLS = [listDashboardsTool, readDashboardTool];
 
 /**
- * The module's rules for the agent, for a holder of `analytics:write` only (R-46, R-49). The
- * recorded requests hold these lines verbatim, so a change here re-records them.
+ * The module's read rule for the agent, for a holder of `analytics:read` (R-49, P11-48). The
+ * recorded requests hold this line verbatim, so a change here re-records them.
  */
 export const ANALYTICS_AGENT_INSTRUCTIONS: AgentInstructions = {
-  permission: "analytics:write",
+  permission: "analytics:read",
   lines: [
-    "Dashboards: the analytics tools read and change only this person's own dashboards. Each dashboard has an id, a name, filters and panels.",
-    "Change a dashboard only when the person's own message asks for that change. Each call of analytics-change-dashboard saves one change, and the person can undo it with Undo on the dashboard.",
-    "A dashboard panel takes the same config as a Chart in an answer: a chart type, a title and series of dataset queries. Every added or changed panel passes the chart check before it is saved, and a refused panel saves nothing.",
-    "The dashboard filters apply to every panel: the date range filters each dataset by its time field, and the field filter, such as Customer, filters each dataset that has that field. Do not repeat them in a panel query.",
+    "Dashboards: the analytics tools read only this person's own dashboards. Each dashboard has an id, a name, filters and panels.",
   ],
 };

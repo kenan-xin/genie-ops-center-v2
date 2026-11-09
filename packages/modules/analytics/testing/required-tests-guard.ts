@@ -80,7 +80,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/agent-tools.integration.test.ts",
     reason:
-      "Spec 7 R-46, R-48 and R-49: the agent tools read and change only the asker's own dashboards through the chart gate, and a write tool and the module rules reach only a holder of analytics:write",
+      "Spec 7 R-43, R-46, R-48 and R-49: the agent tools read and change only the asker's own dashboards through the chart gate, Ask gets only the read tools, and the write tools and the write rules reach only a Dashboards session of a holder of analytics:write",
     cases: [
       ...[
         "analytics-list-dashboards answers no dashboard to another person",
@@ -91,7 +91,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
         (row) =>
           `the analytics agent tools ${row} and leaves the owner's dashboard the same`
       ),
-      "the analytics agent tools offers a reader the two read tools, a writer all four, and no analytics key none; the rules reach only a writer",
+      "the analytics agent tools offers the read tools in Ask and the write tools only in a Dashboards session of a writer, with the write rules only there",
     ],
+  },
+  {
+    file: "testing/agent-surface.integration.test.ts",
+    reason:
+      "Spec 7 R-42b and S7-42: the Dashboards surface makes the empty dashboard inside the handoff's transaction, as the person, behind analytics:write, so a refusal, a taken name or a rollback leaves no dashboard",
+    cases: [
+      "createRecord makes an empty dashboard named by the title in the given transaction, at version 1 with no Undo entry and one created audit row, and a rolled back transaction leaves none",
+      "createRecord refuses a name the person already uses with dashboard-name-taken, and the handoff's transaction saves nothing",
+      "createRecord refuses a person without analytics:write and makes nothing",
+    ].map((name) => `the Dashboards agent surface ${name}`),
   },
 ];

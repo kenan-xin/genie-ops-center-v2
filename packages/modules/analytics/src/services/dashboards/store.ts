@@ -122,31 +122,44 @@ export async function createDashboard(
   ctx: ModuleRequestContext,
   input: { readonly name: string }
 ): Promise<DashboardRecord> {
-  return withTransaction(ctx.tenant, async (tx) => {
-    const [row] = await tx
-      .insert(dashboard)
-      .values({
-        ownerUserId: ctx.caller.userId,
-        name: input.name,
-        config: EMPTY_DASHBOARD_CONFIG,
-      })
-      .onConflictDoNothing()
-      .returning(RECORD);
+  return withTransaction(ctx.tenant, (tx) =>
+    insertOwnDashboard(ctx, tx, input)
+  );
+}
 
-    // The only unique key besides the generated id is the owner's name (`dashboard_owner_name_key`).
-    if (row === undefined) {
-      throw new AppError(ANALYTICS_ERRORS["dashboard-name-taken"]);
-    }
+/**
+ * Inserts an empty dashboard of the caller and its created audit row through `tx`, which the caller
+ * owns: `createDashboard`, and the Dashboards surface's `createRecord` inside the handoff's
+ * transaction.
+ */
+export async function insertOwnDashboard(
+  ctx: ModuleRequestContext,
+  tx: TenantTransaction,
+  input: { readonly name: string }
+): Promise<DashboardRecord> {
+  const [row] = await tx
+    .insert(dashboard)
+    .values({
+      ownerUserId: ctx.caller.userId,
+      name: input.name,
+      config: EMPTY_DASHBOARD_CONFIG,
+    })
+    .onConflictDoNothing()
+    .returning(RECORD);
 
-    await audit(
-      { tenant: ctx.tenant, caller: ctx.caller, tx },
-      "analytics:dashboard-created",
-      targetOf(row.id),
-      "Created a dashboard."
-    );
+  // The only unique key besides the generated id is the owner's name (`dashboard_owner_name_key`).
+  if (row === undefined) {
+    throw new AppError(ANALYTICS_ERRORS["dashboard-name-taken"]);
+  }
 
-    return row;
-  });
+  await audit(
+    { tenant: ctx.tenant, caller: ctx.caller, tx },
+    "analytics:dashboard-created",
+    targetOf(row.id),
+    "Created a dashboard."
+  );
+
+  return row;
 }
 
 /** The caller's own row as it stands before the gate, refused when the caller saw an older version. */

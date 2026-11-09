@@ -1,6 +1,7 @@
 import { definePage, type Module } from "@genie/core";
 import { capability } from "@genie/core/contracts";
 
+import { ANALYTICS_SURFACE } from "./agent-surface.ts";
 import {
   ANALYTICS_AGENT_INSTRUCTIONS,
   ANALYTICS_AGENT_TOOLS,
@@ -112,6 +113,7 @@ export const analyticsModule = {
       tools: ANALYTICS_AGENT_TOOLS,
       instructions: ANALYTICS_AGENT_INSTRUCTIONS,
     }),
+    capability("agent-surface", ANALYTICS_SURFACE),
   ],
 
   jobs: [],

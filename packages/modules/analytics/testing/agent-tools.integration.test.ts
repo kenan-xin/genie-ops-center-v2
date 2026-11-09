@@ -1,6 +1,7 @@
 import {
   agentToolSet,
   artifactTurn,
+  ASK_SURFACE,
   moduleInstructionLines,
   type ModuleRequestContext,
   principalFor,
@@ -15,6 +16,7 @@ import {
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { ANALYTICS_SURFACE } from "../src/agent-surface.ts";
 import { ANALYTICS_AGENT_TOOLS } from "../src/agent-tools.ts";
 import { analyticsModule } from "../src/module.ts";
 import { insertDashboard } from "./factories.ts";
@@ -62,7 +64,9 @@ function runTool(
   name: string,
   input: AgentToolValue
 ) {
-  const found = ANALYTICS_AGENT_TOOLS.find((tool) => tool.name === name);
+  const found = [...ANALYTICS_AGENT_TOOLS, ...ANALYTICS_SURFACE.tools].find(
+    (tool) => tool.name === name
+  );
 
   if (found === undefined) throw new Error(`No tool ${name}.`);
 
@@ -91,15 +95,25 @@ const rowOf = async (id: string) =>
     )
   ).rows[0];
 
-/** The tool names the model gets for a person who may ask with these keys, and the module rule count. */
-async function offered(permissions: readonly string[]) {
+/**
+ * The tool names the model gets for a person who may ask with these keys, on Ask or in a
+ * Dashboards session, and the module rule count.
+ */
+async function offered(
+  permissions: readonly string[],
+  surface: string = ASK_SURFACE
+) {
   const ctx = await personWith(["core:ask:use", ...permissions]);
 
   return {
     tools: Object.keys(
-      await agentToolSet(ctx, { id: "session" }, artifactTurn("session", 0))
+      await agentToolSet(
+        ctx,
+        { id: "session", surface },
+        artifactTurn("session", 0)
+      )
     ),
-    rules: (await moduleInstructionLines(ctx)).length,
+    rules: (await moduleInstructionLines(ctx, surface)).length,
   };
 }
 
@@ -164,14 +178,10 @@ describe("the analytics agent tools", () => {
     }
   );
 
-  it("offers a reader the two read tools, a writer all four, and no analytics key none; the rules reach only a writer", async () => {
-    const core = [
-      "list-datasets",
-      "query-dataset",
-      "open-record",
-      "make-artifact",
-      "make-file",
-    ];
+  it("offers the read tools in Ask and the write tools only in a Dashboards session of a writer, with the write rules only there", async () => {
+    const core = ["list-datasets", "query-dataset", "open-record"];
+
+    const ask = [...core, "make-artifact", "make-file"];
 
     const read = ["analytics-list-dashboards", "analytics-read-dashboard"];
     const write = ["analytics-create-dashboard", "analytics-change-dashboard"];
@@ -181,11 +191,13 @@ describe("the analytics agent tools", () => {
         offered(["analytics:use"]),
         offered(["analytics:use", "analytics:read"]),
         offered(EDITOR),
+        offered(EDITOR, "analytics"),
       ])
     ).toEqual([
-      { tools: core, rules: 0 },
-      { tools: [...core, ...read], rules: 0 },
-      { tools: [...core, ...read, ...write], rules: 4 },
+      { tools: ask, rules: 0 },
+      { tools: [...ask, ...read], rules: 1 },
+      { tools: [...ask, "hand-over", ...read], rules: 1 },
+      { tools: [...core, "make-artifact", ...read, ...write], rules: 9 },
     ]);
   });
 });
