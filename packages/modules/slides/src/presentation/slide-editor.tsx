@@ -14,6 +14,7 @@ import { useForm } from "@tanstack/react-form";
 import { useId, useRef, useState } from "react";
 
 import { type ElementInput, slideInput, type SlideInput } from "../contract.ts";
+import { NotesField, type NotesFieldProps } from "./notes-field.tsx";
 import type { ShownElement, ShownSlide } from "./views.ts";
 
 /** The two images the schema lets one slide show. */
@@ -32,6 +33,8 @@ export type SlideEditorProps = {
   readonly onSave: (slide: SlideInput) => void;
   readonly onClose: () => void;
   readonly onUpload: (file: File) => Promise<string>;
+  /** Saves the notes per pause, outside the form's own values and its Save slide. */
+  readonly onSaveNotes: NotesFieldProps["onSaveNotes"];
 };
 
 function isVisual(element: ElementInput): boolean {
@@ -248,6 +251,8 @@ export function SlideEditor(props: SlideEditorProps) {
             );
           }}
         </form.Field>
+
+        <NotesField slide={slide} onSaveNotes={props.onSaveNotes} />
 
         <form.Field name="elements" mode="array">
           {(elements) => {

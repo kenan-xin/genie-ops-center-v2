@@ -33,7 +33,7 @@ import {
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { isEqual } from "es-toolkit";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
 import {
@@ -46,6 +46,7 @@ import {
   titleElement,
 } from "../contract.ts";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
+import { NotesField } from "./notes-field.tsx";
 import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
 import {
@@ -407,6 +408,27 @@ export function DeckView(props: DeckViewProps) {
   const upload = useUploadDeckImage(deck);
   const exporting = useExportDeck(deck);
   const [shown, setShown] = useState(0);
+  // A notes save answers the next hash before the page renders it, so two pauses never share one.
+  const latestHash = useRef(deck.contentHash);
+
+  latestHash.current = deck.contentHash;
+
+  // Notes saves and the sheet's Save slide queue here: a pause can end while another write runs,
+  // and two notes fields can overlap (the page field flushes as the sheet's opens).
+  const writeQueue = useRef<Promise<unknown>>(Promise.resolve());
+
+  // Each notes save's hash move, in order, so the sheet can follow the person's own saves.
+  const notesMoves = useRef<{ readonly from: string; readonly to: string }[]>(
+    []
+  );
+
+  function queueWrite<T>(write: () => Promise<T>): Promise<T> {
+    const run = writeQueue.current.catch(() => undefined).then(write);
+
+    writeQueue.current = run;
+
+    return run;
+  }
 
   // The selected element, of one slide: another shown slide starts with nothing selected.
   const [selection, setSelection] = useState<{
@@ -528,23 +550,31 @@ export function DeckView(props: DeckViewProps) {
       return;
     }
 
+    const target = editing;
+
     setEditorFailure(null);
-    change.mutate(
-      {
-        changes: [
-          { op: "change-slide", slideId: editing.slide.id, slide: value },
-        ],
-        expectedHash: editing.expectedHash,
-      },
-      {
-        onSuccess: closeEditor,
-        onError: (error) =>
-          setEditorFailure({
-            kind: "change",
-            slideNumber: editing.number,
-            error,
-          }),
+    void queueWrite(async () => {
+      // The sheet follows the person's own notes saves, never an outside change (R-53).
+      let expectedHash = target.expectedHash;
+
+      for (const move of notesMoves.current) {
+        if (move.from === expectedHash) expectedHash = move.to;
       }
+
+      const saved = await change.mutateAsync({
+        changes: [
+          { op: "change-slide", slideId: target.slide.id, slide: value },
+        ],
+        expectedHash,
+      });
+
+      latestHash.current = saved.contentHash;
+    }).then(closeEditor, (error) =>
+      setEditorFailure({
+        kind: "change",
+        slideNumber: target.number,
+        error,
+      })
     );
   }
 
@@ -578,6 +608,24 @@ export function DeckView(props: DeckViewProps) {
           }),
       }
     );
+  }
+
+  async function saveNotes(
+    slideId: string,
+    notes: string | null
+  ): Promise<void> {
+    await queueWrite(async () => {
+      const expectedHash = latestHash.current;
+
+      const saved = await change.mutateAsync({
+        changes: [{ op: "change-slide-fields", slideId, notes }],
+        expectedHash,
+      });
+
+      // Set before the page renders the answer, so a queued save never reads the older hash.
+      latestHash.current = saved.contentHash;
+      notesMoves.current.push({ from: expectedHash, to: saved.contentHash });
+    });
   }
 
   function undoLast(): void {
@@ -959,6 +1007,16 @@ export function DeckView(props: DeckViewProps) {
                   })
                 }
               />
+              {/* From 768 px, and only while the sheet is closed: one notes field per slide. */}
+              {editing === null ? (
+                <div className="hidden md:grid">
+                  <NotesField
+                    key={current.id}
+                    slide={current}
+                    onSaveNotes={saveNotes}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : (
             <div
@@ -1006,11 +1064,20 @@ export function DeckView(props: DeckViewProps) {
           {editing === null ? null : (
             <SlideEditor
               key={editing.slide.id}
-              slide={editing.slide}
+              // The words stay as the sheet opened them (R-53); the notes follow the deck, so a
+              // save the page field flushed on opening shows here once it answers.
+              slide={{
+                ...editing.slide,
+                notes: (
+                  deck.slides.find((slide) => slide.id === editing.slide.id) ??
+                  editing.slide
+                ).notes,
+              }}
               saving={busy}
               onClose={closeEditor}
               onUpload={upload}
               onSave={saveSlide}
+              onSaveNotes={saveNotes}
             />
           )}
         </SheetContent>

@@ -659,6 +659,276 @@ async function refetchWith(
   );
 }
 
+/** The hash the notes save answers; the sheet's Save slide must send it next. */
+const NOTES_HASH = "1".repeat(64);
+
+/** The fixture deck as the server answers it after a notes save on one slide. */
+function notesDeck(slideId: string, notes: string, contentHash: string) {
+  return {
+    ...deckPage.deck,
+    contentHash,
+    slides: deckPage.deck.slides.map((slide) =>
+      slide.id === slideId ? { ...slide, notes } : slide
+    ),
+  };
+}
+
+/** Holds the next answer of a client call until the story releases it. */
+function holdNext(
+  call: typeof changeDeck,
+  answer: DeckPageView["deck"]
+): () => void {
+  let release: (() => void) | undefined;
+
+  call.mockImplementationOnce(
+    () =>
+      new Promise((resolve) => {
+        release = () => resolve(answer);
+      })
+  );
+
+  return () => release?.();
+}
+
+const pause = (ms: number) =>
+  new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+
+// Review Focus 2: a poll that left before a notes save and answers after it must not put the older
+// notes back in the field, nor the older hash into the next save.
+export const NotesSurviveStalePoll: Story = {
+  name: "Notes survive a stale poll",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockResolvedValueOnce(notesDeck("s1", "Say hello.", NEW_HASH));
+  },
+  play: async ({ canvas }) => {
+    const answerPoll = holdNext(readDeck, deckPage.deck);
+
+    window.dispatchEvent(new Event("refetch-deck"));
+    await waitFor(() => expect(readDeck).toHaveBeenCalled());
+
+    const notes = canvas.getByRole("textbox", { name: "Speaker notes" });
+
+    await userEvent.type(notes, "Say hello.");
+    await expect(
+      await canvas.findByText("Saved", {}, { timeout: 3000 })
+    ).toBeVisible();
+
+    answerPoll();
+    await pause(200);
+    await expect(notes).toHaveValue("Say hello.");
+
+    await userEvent.type(notes, " Bye.");
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2), {
+      timeout: 3000,
+    });
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ expectedHash: NEW_HASH })
+    );
+  },
+};
+
+// Review Focus 2: a poll that leaves while a notes save runs reads the deck before the save, and
+// answers after it; its older deck must not replace the save's answer.
+export const NotesSurvivePollDuringSave: Story = {
+  name: "Notes survive a poll during the save",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const answerSave = holdNext(
+      changeDeck,
+      notesDeck("s1", "Say hello.", NEW_HASH)
+    );
+
+    const notes = canvas.getByRole("textbox", { name: "Speaker notes" });
+
+    await userEvent.type(notes, "Say hello.");
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce(), {
+      timeout: 3000,
+    });
+
+    const answerPoll = holdNext(readDeck, deckPage.deck);
+
+    window.dispatchEvent(new Event("refetch-deck"));
+    await waitFor(() => expect(readDeck).toHaveBeenCalled());
+
+    answerSave();
+    await expect(await canvas.findByText("Saved")).toBeVisible();
+
+    answerPoll();
+    await pause(200);
+    await expect(notes).toHaveValue("Say hello.");
+
+    await userEvent.type(notes, " Bye.");
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2), {
+      timeout: 3000,
+    });
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ expectedHash: NEW_HASH })
+    );
+  },
+};
+
+// Review Focus 1: a pause queued behind a running save sends the hash that save answered, before
+// the page has rendered it.
+export const TwoNotesPausesSendTheNewerHash: Story = {
+  name: "Two notes pauses send the newer hash",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const answerFirst = holdNext(changeDeck, notesDeck("s1", "One.", NEW_HASH));
+
+    changeDeck.mockResolvedValueOnce(notesDeck("s1", "One. Two.", NEWER_HASH));
+
+    const notes = canvas.getByRole("textbox", { name: "Speaker notes" });
+
+    await userEvent.type(notes, "One.");
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce(), {
+      timeout: 3000,
+    });
+    await userEvent.type(notes, " Two.");
+    await pause(1200);
+    await expect(changeDeck).toHaveBeenCalledOnce();
+
+    answerFirst();
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck).toHaveBeenNthCalledWith(1, {
+      id: "deck-1",
+      expectedHash: HASH,
+      changes: [{ op: "change-slide-fields", slideId: "s1", notes: "One." }],
+    });
+    await expect(changeDeck).toHaveBeenNthCalledWith(2, {
+      id: "deck-1",
+      expectedHash: NEW_HASH,
+      changes: [
+        { op: "change-slide-fields", slideId: "s1", notes: "One. Two." },
+      ],
+    });
+  },
+};
+
+// A notes pause that ends while the sheet's Save slide runs waits for it and names its hash.
+export const SaveSlideAndNotesTakeTurns: Story = {
+  name: "Save slide and a notes pause take turns",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const answerSlide = holdNext(changeDeck, {
+      ...deckPage.deck,
+      contentHash: NEW_HASH,
+    });
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const notes = sheet.getByRole("textbox", { name: "Speaker notes" });
+
+    await waitFor(() => expect(notes).toBeVisible());
+    await userEvent.type(notes, "Point at it.");
+    await userEvent.type(sheet.getByRole("textbox", { name: "Title" }), "!");
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce());
+    await expect(changeDeck).toHaveBeenCalledWith(
+      expect.objectContaining({ expectedHash: HASH })
+    );
+
+    // The notes pause ends while Save slide is still waiting for its answer.
+    await pause(1200);
+    await expect(changeDeck).toHaveBeenCalledOnce();
+
+    answerSlide();
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck).toHaveBeenLastCalledWith({
+      id: "deck-1",
+      expectedHash: NEW_HASH,
+      changes: [
+        { op: "change-slide-fields", slideId: "s2", notes: "Point at it." },
+      ],
+    });
+  },
+};
+
+// S7-45: the notes field sits under Title in the sheet at 390 px; a pause saves one notes step,
+// and Save slide afterwards names the hash that save answered, not the one the sheet opened with.
+export const NotesInSheetOnPhone: Story = {
+  name: "Notes in the Edit slide sheet on a phone",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockResolvedValueOnce(
+      notesDeck("s2", "Point at the September bar.", NOTES_HASH)
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const title = sheet.getByRole("textbox", { name: "Title" });
+    const notes = sheet.getByRole("textbox", { name: "Speaker notes" });
+
+    await waitFor(() => expect(notes).toBeVisible());
+    await expect(
+      title.getBoundingClientRect().bottom <= notes.getBoundingClientRect().top
+    ).toBe(true);
+    // The sheet slides in from the right, so its place settles after the opening transition.
+    await waitFor(() =>
+      expect(notes.getBoundingClientRect().right).toBeLessThanOrEqual(390)
+    );
+
+    await userEvent.type(notes, "Point at the September bar.");
+    await waitFor(
+      () =>
+        expect(changeDeck).toHaveBeenCalledWith({
+          id: "deck-1",
+          expectedHash: HASH,
+          changes: [
+            {
+              op: "change-slide-fields",
+              slideId: "s2",
+              notes: "Point at the September bar.",
+            },
+          ],
+        }),
+      { timeout: 3000 }
+    );
+    await expect(await sheet.findByText("Saved")).toBeVisible();
+
+    await userEvent.type(title, " again");
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ expectedHash: NOTES_HASH })
+    );
+  },
+};
+
 // C1(a): the editor sends the hash and content the person saw, so a newer refetch answers
 // deck-changed and the typed title stays.
 export const StaleEditorKeepsSeenHash: Story = {

@@ -22,6 +22,9 @@ export const decksQueryKey = () => ["slides", "decks"] as const;
 /** One deck, read by its owner. */
 export const deckQueryKey = (id: string) => ["slides", "deck", id] as const;
 
+/** Every write on one deck, so a read can tell that one is still running. */
+const deckWriteKey = (id: string) => ["slides", "deck-write", id] as const;
+
 /** The server's answer before the browser narrows each stored element (Global Constraints). */
 type SavedDeck = Omit<DeckView, "slides"> & {
   readonly slides: readonly {
@@ -54,10 +57,23 @@ export function narrowDeck(view: SavedDeck): DeckView {
  */
 export function useDeck(initial: DeckView): UseQueryResult<DeckView> {
   const slides = useModuleClient(slidesContract);
+  const queryClient = useQueryClient();
+  const queryKey = deckQueryKey(initial.id);
 
   return useQuery({
-    queryKey: deckQueryKey(initial.id),
-    queryFn: async () => narrowDeck(await slides.readDeck({ id: initial.id })),
+    queryKey,
+    // A read that overlapped a write may hold the deck from before it, so the write's answer stays.
+    queryFn: async () => {
+      const before = queryClient.getQueryState(queryKey)?.dataUpdatedAt;
+      const read = narrowDeck(await slides.readDeck({ id: initial.id }));
+      const state = queryClient.getQueryState<DeckView>(queryKey);
+
+      const overlapped =
+        state?.dataUpdatedAt !== before ||
+        queryClient.isMutating({ mutationKey: deckWriteKey(initial.id) }) > 0;
+
+      return overlapped ? (state?.data ?? read) : read;
+    },
     initialData: initial,
     refetchInterval: 10_000,
     refetchOnWindowFocus: true,
@@ -78,6 +94,10 @@ export function useDeckChange(
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deckWriteKey(deck.id),
+    // A poll that left before this save must not put its older deck over the save's answer.
+    onMutate: () =>
+      queryClient.cancelQueries({ queryKey: deckQueryKey(deck.id) }),
     mutationFn: async ({ changes, expectedHash }) =>
       narrowDeck(
         await slides.changeDeck({
@@ -100,6 +120,9 @@ export function useUndoDeck(
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deckWriteKey(deck.id),
+    onMutate: () =>
+      queryClient.cancelQueries({ queryKey: deckQueryKey(deck.id) }),
     mutationFn: async () =>
       narrowDeck(
         await slides.undoDeck({
@@ -125,6 +148,9 @@ export function useRefreshDeck(
   const queryClient = useQueryClient();
 
   return useMutation({
+    mutationKey: deckWriteKey(deck.id),
+    onMutate: () =>
+      queryClient.cancelQueries({ queryKey: deckQueryKey(deck.id) }),
     mutationFn: async () => {
       const { deck: saved, changedSlides } = await slides.refreshDeck({
         id: deck.id,

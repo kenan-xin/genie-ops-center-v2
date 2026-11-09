@@ -31,6 +31,8 @@ const close = fn();
 
 const upload = fn();
 
+const saveNotes = fn();
+
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
@@ -94,6 +96,7 @@ const meta = {
     onSave: save,
     onClose: close,
     onUpload: upload,
+    onSaveNotes: saveNotes,
   },
   render: (args) => (
     <SheetFrame>
@@ -178,6 +181,7 @@ function ChangeHarness(props: {
       <SlideEditor
         slide={textWithChartSlide}
         saving={change.isPending}
+        onSaveNotes={saveNotes}
         onClose={close}
         onUpload={props.onUpload}
         onSave={(slide) =>
@@ -256,6 +260,7 @@ function UploadHarness() {
       <SlideEditor
         slide={textWithChartSlide}
         saving={change.isPending}
+        onSaveNotes={saveNotes}
         onClose={close}
         onUpload={async (file) => {
           const { fileId } = await uploadDeckImage({ id: "deck-1", file });
