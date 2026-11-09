@@ -125,6 +125,9 @@ function Frame(props: {
 }) {
   const [page, setPage] = useState(props.page);
 
+  // The app's router moves the path, as a link to another record does.
+  const [path, setPath] = useState(props.path ?? "/dashboards/d1");
+
   return (
     <ShellContext.Provider
       value={{
@@ -154,8 +157,11 @@ function Frame(props: {
           inbox={[]}
           timeZone="UTC"
           surfaces={SURFACES}
-          path={props.path ?? "/dashboards/d1"}
-          navigate={navigate}
+          path={path}
+          navigate={(href) => {
+            navigate(href);
+            setPath(href);
+          }}
         />
       </div>
     </ShellContext.Provider>
@@ -334,6 +340,58 @@ export const AfterAHandoff: Story = {
     await expect(
       await header().findByText("Saved", {}, { timeout: 4000 })
     ).toBeVisible();
+  },
+};
+
+const OLDER_R2 = "00000000-0000-4000-8000-0000000000b2";
+
+const NEWER_R2 = "00000000-0000-4000-8000-0000000000b3";
+
+function r2Chat(id: string, title: string, updatedAt: string) {
+  return {
+    ...handoffDetail(null).session,
+    id,
+    title,
+    recordId: "r2",
+    updatedAt,
+  };
+}
+
+// Review fix: a chat of another record opens that record's page on that chat, not its newest.
+export const PickAnotherRecordsChat: Story = {
+  render: () => (
+    <AgentClientStub
+      sessions={async () => [
+        r2Chat(NEWER_R2, "Newer chat", "2026-10-27T03:00:00.000Z"),
+        r2Chat(OLDER_R2, "Older chat", "2026-10-27T01:00:00.000Z"),
+      ]}
+      session={async ({ id }) => ({
+        session: r2Chat(id, "Chat", "2026-10-27T01:00:00.000Z"),
+        messages: [
+          {
+            id: `answer-${id}`,
+            role: "assistant",
+            parts: [
+              {
+                type: "text",
+                text: `root = Answer([p])\np = Paragraph("${id === OLDER_R2 ? "The older chat" : "The newer chat"}")`,
+              },
+            ],
+          },
+        ],
+      })}
+    >
+      <Frame page={false} path="/placeholder/r1" />
+    </AgentClientStub>
+  ),
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(await screen.findByRole("tab", { name: "Chats" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Older chat" })
+    );
+    await expect(navigate).toHaveBeenCalledWith("/placeholder/r2");
+    await expect(await screen.findByText("The older chat")).toBeVisible();
   },
 };
 

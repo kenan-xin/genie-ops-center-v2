@@ -454,6 +454,9 @@ export function AgentPanelHost(props: {
                     setPicked({ recordId: target.recordId, id: session.id });
                     setTab("chat");
                   } else if (session.recordId !== null) {
+                    // The pick holds for that record, so its page opens on this chat.
+                    setPicked({ recordId: session.recordId, id: session.id });
+                    setTab("chat");
                     props.navigate?.(
                       recordAddress(target.surface.recordPage, session.recordId)
                     );
