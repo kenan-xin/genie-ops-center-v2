@@ -37,6 +37,16 @@ Default roles: `Slides user` (`slides:use`), `Slides viewer` (`slides:use`, `sli
 
 Limits: 20 slides per deck. A slide starts with its one title and holds at most 5 elements: at most one text or bullet list, and at most two figures, charts, tables or images. A slide holds at most one table, beside one text or one other figure, chart or image, not both, because a table takes the wide column. A deck title of 1 to 80 characters, a slide title of 1 to 90, a text of at most 280, 1 to 5 bullets of at most 80, an image alt text of 1 to 200. A slide table shows at most 12 rows and 5 columns, a slide chart at most 60 points. 10 undo entries, 20 steps per change.
 
+## Position and style
+
+An element can have its own box on the 960 by 540 slide, in whole canvas pixels. Without a box, it keeps the computed layout. A box must stay inside the slide. A title, text or bullet list needs at least 80 by 32, and a figure, chart, table or image at least 160 by 96. The editor snaps a drag or a resize to 8 pixels.
+
+A title, text or bullet list takes a text color, a font size of 12, 14, 18, 24, 32, 40 or 56, a weight (regular, semibold or bold), an alignment (left, center or right), a fill and a border. A figure, chart, table or image takes only a fill and a border, and a chart keeps the theme's colors. A border is 0, 1, 2 or 4 pixels wide, with no radius. A slide can have a background. Colors are 6-digit hex values.
+
+The save checks the contrast of every text: at least 4.5:1, or 3:1 from font size 24. The text is checked against its own fill, else the slide background, else the theme background `#FFFFFF`. A text without a color is checked in the theme's text color `#111827`, so a background change re-checks every text without a fill. A refused change saves nothing and names the element.
+
+Two steps change these fields: `change-element` sets the box or the style of one element, and `change-slide-fields` sets the background of one slide. Each sets only the fields it names, and `null` clears one. A style change sets or clears each named key and keeps the others. `add-slide` and `change-slide` can carry boxes, styles and a background. A `change-slide` step that names no background keeps the slide's background. One change is one Undo entry. The screen, present mode and the PowerPoint export draw the same boxes, colors, fills, borders, font sizes and alignments.
+
 ## Refresh data
 
 Refresh data reads every figure, chart and table of the deck again through the chart gate, needs `slides:write` and the content hash the person read, and sets `frozen_on` to the reporting date. One refused element refreshes nothing. It never rewrites a title: it answers the ids of the slides whose rows changed, so the editor can ask the person to check those claims. It adds one Undo entry, and Undo brings back the earlier figures and date.
@@ -63,4 +73,4 @@ The create tool saves through the same store as New deck: every figure, chart an
 
 ## Not built
 
-Shared decks, Word documents, freely positioned objects, edits by chat.
+Shared decks, Word documents, edits by chat.

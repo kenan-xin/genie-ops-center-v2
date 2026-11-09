@@ -51,6 +51,147 @@ const withFigure = {
 const chartOf = (element: typeof figure) =>
   "chart" in element ? element.chart : undefined;
 
+/** One slide `s1`: a styled title, a boxed text and the frozen figure. */
+const styledDeck = {
+  title: "Q3",
+  content: {
+    slides: [
+      {
+        id: "s1",
+        elements: [
+          { ...title("Claim"), style: { color: "#1E3A8A", weight: "bold" } },
+          {
+            kind: "text",
+            text: "Sales rose.",
+            box: { x: 40, y: 136, w: 320, h: 96 },
+          },
+          figure,
+        ],
+      },
+    ],
+  } satisfies DeckContent,
+};
+
+const elementsOf = (
+  current: typeof styledDeck,
+  changes: readonly DeckChange[]
+) => applyChanges(current, changes).slides[0]?.elements ?? [];
+
+describe("the element and slide field steps", () => {
+  it("sets one style key and keeps the others and the box", () => {
+    const [first] = elementsOf(styledDeck, [
+      {
+        op: "change-element",
+        slideId: "s1",
+        index: 0,
+        style: { color: "#FFFFFF" },
+      },
+    ]);
+
+    expect(first).toEqual({
+      kind: "title",
+      text: "Claim",
+      style: { color: "#FFFFFF", weight: "bold" },
+    });
+  });
+
+  it("clears one style key with null, all keys with style null, the box with box null", () => {
+    const [first, second] = elementsOf(styledDeck, [
+      {
+        op: "change-element",
+        slideId: "s1",
+        index: 0,
+        style: { weight: null },
+      },
+      { op: "change-element", slideId: "s1", index: 1, box: null },
+    ]);
+
+    expect(first).toEqual({
+      kind: "title",
+      text: "Claim",
+      style: { color: "#1E3A8A" },
+    });
+    expect(second).toEqual({ kind: "text", text: "Sales rose." });
+
+    const [cleared] = elementsOf(styledDeck, [
+      { op: "change-element", slideId: "s1", index: 0, style: null },
+    ]);
+
+    expect(cleared).toEqual({ kind: "title", text: "Claim" });
+  });
+
+  it("sets and clears a slide background and keeps the elements", () => {
+    const set = applyChanges(styledDeck, [
+      { op: "change-slide-fields", slideId: "s1", background: "#1E3A8A" },
+    ]).slides[0];
+
+    expect(set?.background).toBe("#1E3A8A");
+    expect(set?.elements).toEqual(styledDeck.content.slides[0]?.elements);
+
+    const dark = {
+      title: "Q3",
+      content: {
+        slides: [
+          { id: "s1", background: "#1E3A8A", elements: [title("Claim")] },
+        ],
+      },
+    };
+
+    const cleared = applyChanges(dark, [
+      { op: "change-slide-fields", slideId: "s1", background: null },
+    ]).slides[0];
+
+    expect(cleared?.background).toBeUndefined();
+  });
+
+  it("refuses an element index past the slide's elements", () => {
+    const error = refusalOf(() =>
+      applyChanges(styledDeck, [
+        { op: "change-element", slideId: "s1", index: 3, box: null },
+      ])
+    );
+
+    expect(error.issues).toEqual([
+      { path: "changes.0.index", message: "Slide s1 has no element 3." },
+    ]);
+  });
+
+  it("refuses a step that names no field", () => {
+    const error = refusalOf(() =>
+      applyChanges(styledDeck, [
+        { op: "change-element", slideId: "s1", index: 0 },
+      ])
+    );
+
+    expect(error.issues).toEqual([
+      {
+        path: "changes.0",
+        message: "Name a box, a style or a background to change.",
+      },
+    ]);
+  });
+
+  it("keeps a resent figure's frozen data and takes its new box, with no chart check", () => {
+    const box = { x: 384, y: 136, w: 536, h: 348 };
+
+    const applied = applyChanges(styledDeck, [
+      {
+        op: "change-slide",
+        slideId: "s1",
+        slide: {
+          elements: [
+            title("Claim"),
+            { kind: "figure", chart: chartOf(figure), box },
+          ],
+        },
+      },
+    ]);
+
+    expect(applied.slides[0]?.elements[1]).toEqual({ ...figure, box });
+    expect(applied.checks.size).toBe(0);
+  });
+});
+
 describe("applyChanges", () => {
   it("adds a slide to an empty deck as s1", () => {
     expect(ids(deckOf([]), [addSlide])).toEqual(["s1"]);

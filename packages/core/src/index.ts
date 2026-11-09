@@ -114,6 +114,8 @@ export {
   type SupportContact,
 } from "./lib/branding/support.ts";
 
+export { contrastRatio, foregroundFor } from "./lib/branding/foreground.ts";
+
 export { brandingTokens, primaryPair } from "./lib/branding/tokens.ts";
 
 export type {

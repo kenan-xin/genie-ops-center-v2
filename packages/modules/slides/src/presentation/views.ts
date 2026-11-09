@@ -1,6 +1,6 @@
 import type { ChatAvailability, PanelConfig } from "@genie/core";
 
-import type { StoredElement } from "../content.ts";
+import type { Placement, StoredElement } from "../content.ts";
 import type { DeckSummary } from "../contract.ts";
 import type { DeckTheme } from "../services/decks/theme.ts";
 import type { ImageLinks } from "./image-links.ts";
@@ -12,15 +12,16 @@ import type { ImageLinks } from "./image-links.ts";
  */
 export type ShownElement =
   | StoredElement
-  | {
+  | (Placement & {
       readonly kind: "figure" | "chart" | "table";
       readonly hidden: true;
       readonly chart: PanelConfig;
-    };
+    });
 
 export type ShownSlide = {
   readonly id: string;
   readonly elements: readonly ShownElement[];
+  readonly background?: string | undefined;
 };
 
 /** One deck as its owner reads it. */

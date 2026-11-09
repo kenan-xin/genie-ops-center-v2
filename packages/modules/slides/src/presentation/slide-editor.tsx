@@ -69,24 +69,35 @@ function visualLabel(element: ElementInput): string {
  * never drops it.
  */
 export function inputOfElement(element: ShownElement): ElementInput {
+  // The box and style ride along, so a text edit keeps them (R-52a).
+  const placement = { box: element.box, style: element.style };
+
   switch (element.kind) {
     case "title":
     case "text":
-      return { kind: element.kind, text: element.text };
+      return { kind: element.kind, text: element.text, ...placement };
     case "bullets":
-      return { kind: "bullets", items: [...element.items] };
+      return { kind: "bullets", items: [...element.items], ...placement };
     case "image":
-      return { kind: "image", fileId: element.fileId, alt: element.alt };
+      return {
+        kind: "image",
+        fileId: element.fileId,
+        alt: element.alt,
+        ...placement,
+      };
     case "figure":
     case "chart":
     case "table":
-      return { kind: element.kind, chart: element.chart };
+      return { kind: element.kind, chart: element.chart, ...placement };
   }
 }
 
 /** One slide as its stored input, to tell a save that changes nothing (no Undo entry spent). */
 export function slideInputOf(slide: ShownSlide): SlideInput {
-  return { elements: slide.elements.map(inputOfElement) };
+  return {
+    elements: slide.elements.map(inputOfElement),
+    background: slide.background,
+  };
 }
 
 /** The ids of a control's helper and error text, so a screen reader hears both (DESIGN.md). */

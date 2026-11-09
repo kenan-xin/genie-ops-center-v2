@@ -1,5 +1,8 @@
-import { type PanelConfig, panelConfigSchema } from "@genie/core";
-import { contrastRatio } from "@genie/core/features/branding";
+import {
+  contrastRatio,
+  type PanelConfig,
+  panelConfigSchema,
+} from "@genie/core";
 import type { ChartData } from "@genie/ui";
 import { z } from "zod";
 

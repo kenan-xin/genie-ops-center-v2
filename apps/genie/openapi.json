@@ -8062,6 +8062,101 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 90
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8080,6 +8175,101 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 280
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8103,6 +8293,101 @@
                                               "minLength": 1,
                                               "maxLength": 80
                                             }
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8117,7 +8402,102 @@
                                           "kind": {
                                             "const": "figure"
                                           },
-                                          "chart": {}
+                                          "chart": {},
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         },
                                         "required": [
                                           "kind"
@@ -8130,7 +8510,102 @@
                                           "kind": {
                                             "const": "chart"
                                           },
-                                          "chart": {}
+                                          "chart": {},
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         },
                                         "required": [
                                           "kind"
@@ -8143,7 +8618,102 @@
                                           "kind": {
                                             "const": "table"
                                           },
-                                          "chart": {}
+                                          "chart": {},
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         },
                                         "required": [
                                           "kind"
@@ -8164,6 +8734,101 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 200
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8175,6 +8840,10 @@
                                       }
                                     ]
                                   }
+                                },
+                                "background": {
+                                  "type": "string",
+                                  "pattern": "^#[0-9A-Fa-f]{6}$"
                                 }
                               },
                               "required": [
@@ -8223,6 +8892,101 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 90
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8241,6 +9005,101 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 280
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8264,6 +9123,101 @@
                                               "minLength": 1,
                                               "maxLength": 80
                                             }
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8278,7 +9232,102 @@
                                           "kind": {
                                             "const": "figure"
                                           },
-                                          "chart": {}
+                                          "chart": {},
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         },
                                         "required": [
                                           "kind"
@@ -8291,7 +9340,102 @@
                                           "kind": {
                                             "const": "chart"
                                           },
-                                          "chart": {}
+                                          "chart": {},
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         },
                                         "required": [
                                           "kind"
@@ -8304,7 +9448,102 @@
                                           "kind": {
                                             "const": "table"
                                           },
-                                          "chart": {}
+                                          "chart": {},
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
+                                          }
                                         },
                                         "required": [
                                           "kind"
@@ -8325,6 +9564,101 @@
                                             "type": "string",
                                             "minLength": 1,
                                             "maxLength": 200
+                                          },
+                                          "box": {
+                                            "type": "object",
+                                            "properties": {
+                                              "x": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "y": {
+                                                "type": "integer",
+                                                "minimum": 0,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "w": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              },
+                                              "h": {
+                                                "type": "integer",
+                                                "minimum": 1,
+                                                "maximum": 9007199254740991
+                                              }
+                                            },
+                                            "required": [
+                                              "x",
+                                              "y",
+                                              "w",
+                                              "h"
+                                            ],
+                                            "additionalProperties": false
+                                          },
+                                          "style": {
+                                            "type": "object",
+                                            "properties": {
+                                              "color": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "fontSize": {
+                                                "enum": [
+                                                  12,
+                                                  14,
+                                                  18,
+                                                  24,
+                                                  32,
+                                                  40,
+                                                  56
+                                                ]
+                                              },
+                                              "weight": {
+                                                "enum": [
+                                                  "regular",
+                                                  "semibold",
+                                                  "bold"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "align": {
+                                                "enum": [
+                                                  "left",
+                                                  "center",
+                                                  "right"
+                                                ],
+                                                "type": "string"
+                                              },
+                                              "fill": {
+                                                "type": "string",
+                                                "pattern": "^#[0-9A-Fa-f]{6}$"
+                                              },
+                                              "border": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "color": {
+                                                    "type": "string",
+                                                    "pattern": "^#[0-9A-Fa-f]{6}$"
+                                                  },
+                                                  "width": {
+                                                    "enum": [
+                                                      0,
+                                                      1,
+                                                      2,
+                                                      4
+                                                    ]
+                                                  }
+                                                },
+                                                "required": [
+                                                  "color",
+                                                  "width"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            },
+                                            "additionalProperties": false
                                           }
                                         },
                                         "required": [
@@ -8336,6 +9670,10 @@
                                       }
                                     ]
                                   }
+                                },
+                                "background": {
+                                  "type": "string",
+                                  "pattern": "^#[0-9A-Fa-f]{6}$"
                                 }
                               },
                               "required": [
@@ -8406,6 +9744,208 @@
                           "required": [
                             "op",
                             "title"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "change-element"
+                            },
+                            "slideId": {
+                              "type": "string",
+                              "pattern": "^s[1-9][0-9]{0,2}$"
+                            },
+                            "index": {
+                              "type": "integer",
+                              "minimum": 0,
+                              "maximum": 4
+                            },
+                            "box": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "x": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "y": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "w": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "h": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 9007199254740991
+                                    }
+                                  },
+                                  "required": [
+                                    "x",
+                                    "y",
+                                    "w",
+                                    "h"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "style": {
+                              "anyOf": [
+                                {
+                                  "type": "object",
+                                  "properties": {
+                                    "color": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "pattern": "^#[0-9A-Fa-f]{6}$"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "fontSize": {
+                                      "anyOf": [
+                                        {
+                                          "enum": [
+                                            12,
+                                            14,
+                                            18,
+                                            24,
+                                            32,
+                                            40,
+                                            56
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "weight": {
+                                      "anyOf": [
+                                        {
+                                          "enum": [
+                                            "regular",
+                                            "semibold",
+                                            "bold"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "align": {
+                                      "anyOf": [
+                                        {
+                                          "enum": [
+                                            "left",
+                                            "center",
+                                            "right"
+                                          ],
+                                          "type": "string"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "fill": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "pattern": "^#[0-9A-Fa-f]{6}$"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "border": {
+                                      "anyOf": [
+                                        {
+                                          "type": "object",
+                                          "properties": {
+                                            "color": {
+                                              "type": "string",
+                                              "pattern": "^#[0-9A-Fa-f]{6}$"
+                                            },
+                                            "width": {
+                                              "enum": [
+                                                0,
+                                                1,
+                                                2,
+                                                4
+                                              ]
+                                            }
+                                          },
+                                          "required": [
+                                            "color",
+                                            "width"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    }
+                                  },
+                                  "additionalProperties": false
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "slideId",
+                            "index"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "op": {
+                              "const": "change-slide-fields"
+                            },
+                            "slideId": {
+                              "type": "string",
+                              "pattern": "^s[1-9][0-9]{0,2}$"
+                            },
+                            "background": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "pattern": "^#[0-9A-Fa-f]{6}$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            }
+                          },
+                          "required": [
+                            "op",
+                            "slideId"
                           ],
                           "additionalProperties": false
                         }

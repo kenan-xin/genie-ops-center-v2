@@ -8,8 +8,14 @@ import { z } from "zod";
 
 import type { Placement, StoredElement } from "./content.ts";
 import {
+  BORDER_WIDTHS,
   BULLET_CHARACTERS,
   BULLET_ITEMS,
+  FONT_SIZES,
+  FONT_WEIGHTS,
+  minBox,
+  SLIDE_CANVAS,
+  TEXT_ALIGNS,
   contentHash,
   DATA_LIMIT_MESSAGES,
   DECK_SLIDE_LIMIT,
@@ -156,6 +162,14 @@ const DECK_RULES = [
   ...CHART_PROMPT_RULES,
 ].join(" ");
 
+/** The position and style rules, so a first styling call passes (S7-43). */
+const STYLE_RULES = [
+  `To move, resize or style one element, use a change-element step with its slideId, its index on the slide (the title is 0), and a box or a style; to set a slide's background, use a change-slide-fields step with a background. In both, null clears a field, and a style step sets or clears only the keys it names.`,
+  `A box is { x, y, w, h } in whole pixels on the ${SLIDE_CANVAS.width} by ${SLIDE_CANVAS.height} slide and must stay inside it; a title, text or bullet list needs at least ${minBox("text").w} by ${minBox("text").h}, a figure, chart, table or image at least ${minBox("chart").w} by ${minBox("chart").h}.`,
+  `A title, text or bullet list takes the style keys color, fontSize (${FONT_SIZES.join(", ")}), weight (${FONT_WEIGHTS.join(", ")}), align (${TEXT_ALIGNS.join(", ")}), fill and border { color, width (${BORDER_WIDTHS.join(", ")}) }; a figure, chart, table or image takes only fill and border. Colors are hex such as #1E3A8A.`,
+  `Every text needs a contrast of 4.5:1, or 3:1 from fontSize 24, against its fill, else the slide background, else white; a text without a color is dark gray #111827. A background change re-checks every text without a fill, so set their colors in the same change.`,
+].join(" ");
+
 /** Each slide's number, id and title, as the deck tools answer them. */
 const outlineOf = (record: DeckRecord) =>
   record.content.slides.map(({ id, elements }, index) => ({
@@ -212,7 +226,7 @@ const changeDeckTool = defineAgentTool({
     done: "Changed the deck",
     failed: "Could not change the deck",
   },
-  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide or rename. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. ${DECK_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
+  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element or change-slide-fields. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. ${DECK_RULES} ${STYLE_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
   input: z.strictObject({
     deckId,
     expectedHash: contentHash,

@@ -68,6 +68,11 @@ export const elementBox = z.strictObject({
   h: z.int().min(1),
 });
 
+const elementBorder = z.strictObject({
+  color: hexColor,
+  width: z.literal(BORDER_WIDTHS),
+});
+
 /** Every style key. Title, text and bullets take all; a figure, chart, table or image only fill and border. */
 export const elementStyle = z.strictObject({
   color: hexColor.optional(),
@@ -75,10 +80,20 @@ export const elementStyle = z.strictObject({
   weight: z.enum(FONT_WEIGHTS).optional(),
   align: z.enum(TEXT_ALIGNS).optional(),
   fill: hexColor.optional(),
-  border: z
-    .strictObject({ color: hexColor, width: z.literal(BORDER_WIDTHS) })
-    .optional(),
+  border: elementBorder.optional(),
 });
+
+/** A style change: a key with a value sets it, a key with `null` clears it, an absent key stays. */
+export const styleChange = z.strictObject({
+  color: hexColor.nullable().optional(),
+  fontSize: z.literal(FONT_SIZES).nullable().optional(),
+  weight: z.enum(FONT_WEIGHTS).nullable().optional(),
+  align: z.enum(TEXT_ALIGNS).nullable().optional(),
+  fill: hexColor.nullable().optional(),
+  border: elementBorder.nullable().optional(),
+});
+
+export type StyleChange = z.infer<typeof styleChange>;
 
 export type ElementBox = z.infer<typeof elementBox>;
 
@@ -360,6 +375,23 @@ export const deckChange = z.discriminatedUnion("op", [
       .max(DECK_SLIDE_LIMIT - 1),
   }),
   z.strictObject({ op: z.literal("rename"), title: deckTitle }),
+  /** Sets the box or the style of one element; `null` clears (tech plan, Change steps). */
+  z.strictObject({
+    op: z.literal("change-element"),
+    slideId,
+    index: z
+      .int()
+      .min(0)
+      .max(SLIDE_ELEMENT_LIMIT - 1),
+    box: elementBox.nullable().optional(),
+    style: styleChange.nullable().optional(),
+  }),
+  /** Sets the fields of one slide that are not its elements; `null` clears. */
+  z.strictObject({
+    op: z.literal("change-slide-fields"),
+    slideId,
+    background: hexColor.nullable().optional(),
+  }),
 ]);
 
 export const deckChanges = z.array(deckChange).min(1).max(DECK_CHANGE_LIMIT);
