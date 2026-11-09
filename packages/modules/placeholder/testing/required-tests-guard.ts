@@ -166,4 +166,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the placeholder record search S1: answers the records whose label holds the query, in any case, up to the limit",
     ],
   },
+  {
+    file: "testing/agent-runs.integration.test.ts",
+    reason: "Spec 7 R-42b, AC-13: the durable run (S7-40)",
+    cases: [
+      "a durable agent run on the placeholder test surface the test surface is a valid declaration",
+      "a durable agent run on the placeholder test surface a run finishes after its starter disconnects",
+      "a durable agent run on the placeholder test surface a job whose starter is not the session's owner ends the run without a model call",
+    ],
+  },
 ];

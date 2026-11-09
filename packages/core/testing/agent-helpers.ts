@@ -8,15 +8,24 @@ import {
   simulateReadableStream,
   uiMessageChunkSchema,
 } from "ai";
+import { eq } from "drizzle-orm";
 import { z } from "zod";
 
 import { artifactRefsOf } from "../src/features/agent/artifact-refs.ts";
 import { PROMPT_VIEWS } from "../src/features/agent/catalog-prompt.ts";
 import { answerLibrary } from "../src/features/agent/catalog.ts";
+import type { Module } from "../src/lib/module-contract/module.ts";
 import type { TenantContext } from "../src/lib/tenant-context/index.ts";
 import { agentSession } from "../src/schema.ts";
-import type { AgentMessage } from "../src/services/agent/index.ts";
+import {
+  AGENT_RUN_JOB,
+  AGENT_RUN_JOB_NAME,
+  type AgentMessage,
+} from "../src/services/agent/index.ts";
+import { principalFor } from "../src/services/authorization/index.ts";
 import { storeIntegrationKey } from "../src/services/integrations/keys.ts";
+import { bossOf, type JobData } from "../src/services/job-queue/index.ts";
+import { splitJobStarter } from "../src/services/job-queue/module-jobs.ts";
 import { insertUser } from "./access-fixtures.ts";
 import type { JsonValue } from "./model-transports.ts";
 
@@ -69,6 +78,52 @@ export async function insertAgentSession(
   if (row === undefined) throw new Error("The session was not inserted.");
 
   return row;
+}
+
+/**
+ * Runs a session's queued `core.agent-run` job as the worker's job loop does: the job's data without
+ * the starter key, and the starter's principal built now. The pg-boss job stays `created`, because
+ * nothing completes it, so recovery treats it as live.
+ */
+export async function runQueuedAgentRun(
+  context: TenantContext,
+  modules: readonly Module[],
+  sessionId: string
+): Promise<void> {
+  const [row] = await context.db
+    .select({ runJobId: agentSession.runJobId })
+    .from(agentSession)
+    .where(eq(agentSession.id, sessionId));
+
+  if (row?.runJobId === null || row === undefined) {
+    throw new Error("The session has no queued run.");
+  }
+
+  const boss = await bossOf(context.jobQueue);
+  const [job] = await boss.findJobs(AGENT_RUN_JOB_NAME, { id: row.runJobId });
+
+  if (job === undefined) throw new Error("The run's job does not exist.");
+
+  // SAFETY: pg-boss stores the JSON object that `startRun` sent as the job's data.
+  const { data, startedBy } = splitJobStarter(job.data as JobData);
+
+  const caller =
+    startedBy === undefined
+      ? undefined
+      : principalFor({
+          tenant: context,
+          modules,
+          userId: startedBy,
+          authenticated: true,
+        });
+
+  // SAFETY: the run job's data is the `{ sessionId }` that `startRun` sent.
+  const payload = data as { readonly sessionId: string };
+
+  await AGENT_RUN_JOB.handler(
+    caller === undefined ? { tenant: context } : { tenant: context, caller },
+    payload
+  );
 }
 
 /**

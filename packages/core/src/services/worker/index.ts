@@ -19,6 +19,7 @@ import {
 } from "../../lib/tenant-context/index.ts";
 import { causeChain } from "../../utils/error-cause.ts";
 import { AGENT_FILE_JOB } from "../agent/file-job.ts";
+import { AGENT_RUN_JOB } from "../agent/run-job.ts";
 import { principalFor } from "../authorization/index.ts";
 import {
   durableEventQueues,
@@ -52,7 +53,7 @@ export const DEFAULT_WORKER_HEARTBEAT_PATH = "/tmp/genie-worker-heartbeat";
 export const HEARTBEAT_JOB = "core.worker-heartbeat";
 
 /** The jobs core declares: they run as their starter, with no module entitlement. */
-const CORE_JOBS: readonly JobDeclaration[] = [AGENT_FILE_JOB];
+const CORE_JOBS: readonly JobDeclaration[] = [AGENT_FILE_JOB, AGENT_RUN_JOB];
 
 /** Every minute, so a health check that allows three minutes tolerates two missed passes. */
 const HEARTBEAT_CRON = "* * * * *";

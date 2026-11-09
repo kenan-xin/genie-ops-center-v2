@@ -72,6 +72,8 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "AI is off for this deployment. An administrator can turn it on in Tenant settings.",
   "model-not-allowed":
     "That model is not allowed here. Pick one of the allowed models.",
+  "agent-run-active":
+    "Work is still building. Wait for it to finish, or stop it.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

@@ -39,6 +39,7 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["chart-invalid", 400],
   ["ai-off", 409],
   ["model-not-allowed", 400],
+  ["agent-run-active", 409],
 ]);
 
 /**

@@ -530,6 +530,8 @@ export {
   moduleInstructionLines,
   AGENT_LIMITS,
   handleAgentChat,
+  AGENT_RUN_JOB,
+  startRun,
 } from "./services/agent/index.ts";
 
 export type {

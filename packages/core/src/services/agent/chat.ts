@@ -7,6 +7,7 @@ import {
   isStepCount,
   streamText,
   toUIMessageStream,
+  type UIMessageChunk,
 } from "ai";
 import { z } from "zod";
 
@@ -33,7 +34,10 @@ import { CHAT_TITLE_LIMIT } from "./contract.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { chatLabels } from "./labels.ts";
-import { agentPageContextSchema } from "./page-context.ts";
+import {
+  type AgentPageContext,
+  agentPageContextSchema,
+} from "./page-context.ts";
 import { agentInstructions } from "./prompt.ts";
 import { keptOnStop, STOPPED_PART } from "./stopped-turn.ts";
 import {
@@ -189,6 +193,39 @@ export async function handleAgentChat(
     AbortSignal.timeout(AGENT_LIMITS.turnMs),
   ]);
 
+  const stream = await turnStream(
+    ctx,
+    { id: sessionId, surface },
+    { model, abortSignal, page: context, logError: hooks.logError }
+  );
+
+  return createUIMessageStreamResponse({
+    // Next's gzip middleware holds a whole event stream until it ends unless the response says
+    // no-transform; measured on 2026-11-05: one chunk at the end, against one chunk per event.
+    headers: { "cache-control": "no-cache, no-transform" },
+    stream,
+  });
+}
+
+/**
+ * One turn of a session after the person's message is stored: the history, the compaction, the
+ * model call with the session surface's tools, and the answer as an AI SDK UI message stream that
+ * stores the answer when it ends. The agent route and the run job `core.agent-run` share it, so
+ * both send the same request for the same session.
+ */
+export async function turnStream(
+  ctx: ModuleRequestContext,
+  session: { readonly id: string; readonly surface: string },
+  input: {
+    readonly model: Awaited<ReturnType<typeof modelFor>>;
+    readonly abortSignal: AbortSignal;
+    readonly page?: AgentPageContext | undefined;
+    readonly logError: (cause: unknown) => void;
+  }
+): Promise<ReadableStream<UIMessageChunk>> {
+  const { id: sessionId, surface } = session;
+  const { model, abortSignal } = input;
+
   const history = await readOwnHistory(ctx, sessionId);
 
   const plan = compactionPlan(history);
@@ -240,7 +277,7 @@ export async function handleAgentChat(
       await audit("answered");
     } catch (cause) {
       // A failed summary stores nothing; this turn answers from the plain window, the next tries again (LC6).
-      hooks.logError(cause);
+      input.logError(cause);
       await audit("failed");
     }
   }
@@ -260,7 +297,7 @@ export async function handleAgentChat(
       reportingDate: await reportingDate(ctx.tenant),
       moduleLines: await moduleInstructionLines(ctx, surface),
       writeTools: await offersWriteTool(ctx, surface),
-      page: context,
+      page: input.page,
     }),
     // A turn cancelled mid-tool stores a call with no result; replaying it would refuse every later turn.
     messages: await convertToModelMessages(
@@ -281,68 +318,63 @@ export async function handleAgentChat(
     abortSignal,
   });
 
-  return createUIMessageStreamResponse({
-    // Next's gzip middleware holds a whole event stream until it ends unless the response says
-    // no-transform; measured on 2026-11-05: one chunk at the end, against one chunk per event.
-    headers: { "cache-control": "no-cache, no-transform" },
-    stream: createUIMessageStream({
-      originalMessages: [...sent],
-      generateId: () => randomUUID(),
-      // The tool writes each artifact's card part into this stream while the answer streams.
-      execute: ({ writer }) => {
-        // Transient: the chat moves its summary line now, and the stored answer never holds it (LC7).
-        if (summarized !== null) {
-          writer.write({
-            type: "data-summary",
-            data: summarized,
-            transient: true,
-          });
-        }
-
-        turn.write = (part) => writer.write(part);
-        writer.merge(
-          toUIMessageStream({
-            stream: result.stream,
-            tools,
-            onError: (error) => streamErrorText(error, hooks.logError),
-          }).pipeThrough(
-            // The browser ignores the abort chunk, so a turn that the server aborts (the turn
-            // limit) also sends the stopped mark that the store keeps (P03-1).
-            new TransformStream({
-              transform(chunk, controller) {
-                if (chunk.type === "abort") controller.enqueue(STOPPED_PART);
-
-                controller.enqueue(chunk);
-              },
-            })
-          )
-        );
-      },
-      // The library awaits this in the stream's flush, so the response closes after the answer
-      // is stored. Stop cancels the stream, the turn limit aborts it: either one stores what
-      // finished before it, with a stopped mark (P8, P03-1, P03-2).
-      onEnd: async ({ responseMessage, isAborted, isCancelled }) => {
-        if (responseMessage.parts.length === 0) return;
-
-        const { parts, versions } =
-          isAborted || isCancelled === true
-            ? keptOnStop(responseMessage.parts, turn.pending)
-            : { parts: responseMessage.parts, versions: turn.pending };
-
-        // A failed store errors the stream; log it, because no onError sees a flush failure.
-        await appendMessage(
-          ctx,
-          sessionId,
-          { id: responseMessage.id, role: "assistant", parts },
-          versions,
-          largestInput > 0 ? { inputTokens: largestInput } : {}
-        ).catch((cause: unknown) => {
-          hooks.logError(cause);
-
-          throw cause;
+  return createUIMessageStream({
+    originalMessages: [...sent],
+    generateId: () => randomUUID(),
+    // The tool writes each artifact's card part into this stream while the answer streams.
+    execute: ({ writer }) => {
+      // Transient: the chat moves its summary line now, and the stored answer never holds it (LC7).
+      if (summarized !== null) {
+        writer.write({
+          type: "data-summary",
+          data: summarized,
+          transient: true,
         });
-      },
-      onError: (error) => streamErrorText(error, hooks.logError),
-    }),
+      }
+
+      turn.write = (part) => writer.write(part);
+      writer.merge(
+        toUIMessageStream({
+          stream: result.stream,
+          tools,
+          onError: (error) => streamErrorText(error, input.logError),
+        }).pipeThrough(
+          // The browser ignores the abort chunk, so a turn that the server aborts (the turn
+          // limit) also sends the stopped mark that the store keeps (P03-1).
+          new TransformStream({
+            transform(chunk, controller) {
+              if (chunk.type === "abort") controller.enqueue(STOPPED_PART);
+
+              controller.enqueue(chunk);
+            },
+          })
+        )
+      );
+    },
+    // The library awaits this in the stream's flush, so the response closes after the answer
+    // is stored. Stop cancels the stream, the turn limit aborts it: either one stores what
+    // finished before it, with a stopped mark (P8, P03-1, P03-2).
+    onEnd: async ({ responseMessage, isAborted, isCancelled }) => {
+      if (responseMessage.parts.length === 0) return;
+
+      const { parts, versions } =
+        isAborted || isCancelled === true
+          ? keptOnStop(responseMessage.parts, turn.pending)
+          : { parts: responseMessage.parts, versions: turn.pending };
+
+      // A failed store errors the stream; log it, because no onError sees a flush failure.
+      await appendMessage(
+        ctx,
+        sessionId,
+        { id: responseMessage.id, role: "assistant", parts },
+        versions,
+        largestInput > 0 ? { inputTokens: largestInput } : {}
+      ).catch((cause: unknown) => {
+        input.logError(cause);
+
+        throw cause;
+      });
+    },
+    onError: (error) => streamErrorText(error, input.logError),
   });
 }

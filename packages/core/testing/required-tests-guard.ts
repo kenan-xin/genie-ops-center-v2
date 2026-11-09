@@ -607,6 +607,15 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/agent-runs.integration.test.ts",
+    reason: "Spec 7 R-42b, AC-13: the durable run (S7-40)",
+    cases: [
+      "starting an agent run startRun queues one job that names only the session, with no retry",
+      "starting an agent run a second run for the same person is refused by the index",
+      "starting an agent run an enqueue failure leaves run_state null",
+    ],
+  },
+  {
     file: "testing/agent-compaction.integration.test.ts",
     reason:
       "Spec 7 R-41, `czjw.80`: a long chat sends a stored summary and its recent messages, and a failed summary call still answers",

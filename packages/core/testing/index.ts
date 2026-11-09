@@ -22,6 +22,7 @@ export {
   answerChartConfigs,
   insertAgentSession,
   readAgentReply,
+  runQueuedAgentRun,
   writeModelConnection,
 } from "./agent-helpers.ts";
 

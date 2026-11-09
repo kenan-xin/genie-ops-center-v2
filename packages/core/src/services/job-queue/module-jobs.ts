@@ -1,7 +1,10 @@
+import { sql } from "drizzle-orm";
 import { omit } from "es-toolkit";
+import { fromDrizzle, type SendOptions } from "pg-boss";
 
 import type { JobDeclaration } from "../../lib/module-contract/module.ts";
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
+import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import type { RequestPrincipal } from "../authorization/index.ts";
 import { type JobData, JOB_STARTER_KEY, sendAsStarter } from "./index.ts";
 
@@ -35,14 +38,26 @@ export function jobRetryOptions(
 /**
  * Enqueues one run of a module job, started by the caller when the caller is signed in. The job
  * carries the declaration's retry policy, so a queue created before the worker updated it still
- * retries by the declaration.
+ * retries by the declaration. With `tx`, the job is sent on the caller's transaction, as the event
+ * bus sends, so it commits or rolls back with the caller's writes.
  */
 export async function enqueueJob<TData extends JobData>(
   ctx: { readonly tenant: TenantContext; readonly caller?: RequestPrincipal },
   job: JobDeclaration<TData>,
-  data: TData
+  data: TData,
+  options: {
+    readonly tx?: TenantTransaction;
+    readonly expireInSeconds?: number;
+  } = {}
 ): Promise<string | null> {
   const payload: JobData = omit(data, [JOB_STARTER_KEY]);
+  const send: SendOptions = jobRetryOptions(job);
+
+  if (options.expireInSeconds !== undefined) {
+    send.expireInSeconds = options.expireInSeconds;
+  }
+
+  if (options.tx !== undefined) send.db = fromDrizzle(options.tx, sql);
 
   return sendAsStarter(
     ctx.tenant.jobQueue,
@@ -50,7 +65,7 @@ export async function enqueueJob<TData extends JobData>(
     ctx.caller?.authenticated === true
       ? { ...payload, [JOB_STARTER_KEY]: ctx.caller.userId }
       : payload,
-    jobRetryOptions(job)
+    send
   );
 }
 
