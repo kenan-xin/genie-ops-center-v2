@@ -75,6 +75,13 @@ const chatRequestSchema = z.strictObject({
   }),
   // The page beside the chat, names and ids only (I20). The prompt names it as text.
   context: agentPageContextSchema.optional(),
+  // A new chat on a surface's record page is a session of that surface, bound to the record.
+  surface: z
+    .strictObject({
+      id: z.string().min(1).max(64),
+      recordId: z.string().regex(/^[A-Za-z0-9-]{1,64}$/),
+    })
+    .optional(),
 });
 
 function tooLarge(): AppError {
@@ -153,12 +160,18 @@ export async function handleAgentChat(
     throw new AppError(CORE_ERRORS["ai-off"]);
   }
 
-  const { sessionId, modelId, message, context } =
-    await readChatRequest(request);
+  const {
+    sessionId,
+    modelId,
+    message,
+    context,
+    surface: binding,
+  } = await readChatRequest(request);
 
   const existing = await findOwnSession(ctx, sessionId);
 
-  const surface = existing?.surface ?? ASK_SURFACE;
+  // A saved session keeps its surface; only a new chat takes the page's binding (P11-26).
+  const surface = existing?.surface ?? binding?.id ?? ASK_SURFACE;
 
   // Before any write: one answer at a time in a chat (R-42b), and a surface whose module is off
   // stores nothing.
@@ -183,6 +196,8 @@ export async function handleAgentChat(
       id: sessionId,
       title: text.replaceAll(/\s+/g, " ").slice(0, CHAT_TITLE_LIMIT),
       modelId: sessionModel,
+      surface,
+      recordId: surface === ASK_SURFACE ? null : (binding?.recordId ?? null),
     });
   }
 

@@ -6,10 +6,13 @@ import { listOwnArtifacts } from "./artifacts.ts";
 import { agentContract } from "./contract.ts";
 import { listOwnFiles, ownFileLink } from "./files.ts";
 import { withRecordPaths } from "./record-paths.ts";
+import { retryRun } from "./run-job.ts";
+import { stopRun } from "./runs.ts";
 import {
   deleteOwnSession,
   listOwnSessions,
   readOwnSession,
+  readOwnSessionDetail,
   renameOwnSession,
 } from "./store.ts";
 
@@ -33,7 +36,16 @@ const os = gatedArea(agentContract, ASK_PERMISSION).use(
  */
 export function createAgentRouter() {
   return os.router({
-    sessions: os.sessions.handler(({ context }) => listOwnSessions(context)),
+    sessions: os.sessions.handler(({ context, input }) =>
+      listOwnSessions(context, input)
+    ),
+    session: os.session.handler(({ context, input }) =>
+      readOwnSessionDetail(context, input.id)
+    ),
+    stop: os.stop.handler(({ context, input }) => stopRun(context, input.id)),
+    retry: os.retry.handler(({ context, input }) =>
+      retryRun(context, input.id)
+    ),
     // A rename or a delete of a missing chat, or of another person's, is `not-found`, not empty.
     rename: os.rename.handler(({ context, input }) =>
       renameOwnSession(context, input.id, input.title)

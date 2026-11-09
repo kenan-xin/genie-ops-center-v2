@@ -137,6 +137,40 @@ describe("the owner-only agent store against a real database", () => {
     expect((await listOwnSessions(other)).map(({ id }) => id)).toEqual([s3.id]);
   });
 
+  it("Ask lists only Ask chats, and a surface lists its record's chats first", async () => {
+    const own = await person();
+    const other = await person();
+
+    const ask = await session(own, "Ask chat");
+    const older = new Date(Date.now() - 60_000);
+
+    const forR2 = await insertAgentSession(deployment.context, {
+      userId: own.caller.userId,
+      surface: "slides",
+      recordId: "r2",
+      updatedAt: older,
+    });
+
+    const forR1 = await insertAgentSession(deployment.context, {
+      userId: own.caller.userId,
+      surface: "slides",
+      recordId: "r1",
+    });
+
+    await insertAgentSession(deployment.context, {
+      userId: other.caller.userId,
+      surface: "slides",
+      recordId: "r2",
+    });
+
+    expect({
+      ask: (await listOwnSessions(own)).map(({ id }) => id),
+      slides: (
+        await listOwnSessions(own, { surface: "slides", recordId: "r2" })
+      ).map(({ id }) => id),
+    }).toEqual({ ask: [ask.id], slides: [forR2.id, forR1.id] });
+  });
+
   it("another person's session answers not-found and stays unchanged", async () => {
     const s1 = await session(personA, "A's chat");
 

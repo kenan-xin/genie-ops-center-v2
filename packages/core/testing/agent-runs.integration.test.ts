@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
@@ -5,7 +7,12 @@ import { z } from "zod";
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import { agentSession } from "../src/schema.ts";
-import { AGENT_RUN_JOB, startRun } from "../src/services/agent/run-job.ts";
+import {
+  AGENT_RUN_JOB,
+  RETRY_TEXT,
+  retryRun,
+  startRun,
+} from "../src/services/agent/run-job.ts";
 import { AGENT_RUN_JOB_NAME, stopRun } from "../src/services/agent/runs.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import { bossOf } from "../src/services/job-queue/index.ts";
@@ -66,6 +73,14 @@ async function runColumns(sessionId: string) {
     .where(eq(agentSession.id, sessionId));
 
   return row;
+}
+
+async function messageTexts(sessionId: string) {
+  const { rows } = await deployment.context.db.execute<{ text: string }>(
+    sql`select parts->0->>'text' as text from agent_message where session_id = ${sessionId} order by seq`
+  );
+
+  return rows.map(({ text }) => text);
 }
 
 async function jobsNaming(sessionId: string) {
@@ -169,6 +184,47 @@ describe("starting an agent run", () => {
     expect(await runColumns(session.id)).toEqual({
       runState: "queued",
       runJobId: replacement,
+    });
+  });
+
+  it("Try again stores the message and queues a run, and is refused while another run builds", async () => {
+    const ctx = await person();
+
+    const interrupted = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: "record-1",
+      runJobId: randomUUID(),
+      runError: "interrupted",
+    });
+
+    await retryRun(ctx, interrupted.id);
+
+    expect({
+      run: await runColumns(interrupted.id),
+      messages: await messageTexts(interrupted.id),
+    }).toMatchObject({
+      run: { runState: "queued" },
+      messages: [RETRY_TEXT],
+    });
+
+    const blocked = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: "record-2",
+      runJobId: randomUUID(),
+      runError: "stopped",
+    });
+
+    await expect(retryRun(ctx, blocked.id)).rejects.toMatchObject({
+      code: "agent-run-active",
+    });
+    expect(await messageTexts(blocked.id)).toEqual([]);
+
+    const neverRan = await sessionOf(ctx);
+
+    await expect(retryRun(ctx, neverRan.id)).rejects.toMatchObject({
+      code: "not-found",
     });
   });
 

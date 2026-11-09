@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import {
   type AgentMessage,
   appendMessage,
+  chatLabels,
   createOwnSession,
   handleAgentChat,
   listOwnArtifacts,
@@ -52,6 +53,8 @@ const HANDOFF_ASK =
 const REFUSED_ASK = "Hand this over: build the refused placeholder review.";
 
 const BRIEF_TITLE = "October placeholder review";
+
+const SURFACE_CHAT_ASK = "Add a first step to this record.";
 
 const TABLE = {
   type: "table",
@@ -391,6 +394,77 @@ describe("the Ask handoff on the placeholder test surface", () => {
       toolError: true,
     });
     expect(rows[0]?.metadata).not.toHaveProperty("targetSessionId");
+  });
+
+  it("a new chat on a record page is a session of that surface with the surface's tools", async () => {
+    const ctx = await person();
+
+    const record = await insertPlaceholderRecord(deployment.context, {
+      label: "Chat record",
+    });
+
+    const sessionId = randomUUID();
+
+    const before = recorded.sent.length;
+
+    await readAgentReply(
+      await handleAgentChat(
+        ctx,
+        agentRequest({
+          sessionId,
+          modelId: RUN_MODEL,
+          message: message(SURFACE_CHAT_ASK),
+          surface: { id: "placeholder", recordId: record.id },
+        }),
+        hooks
+      )
+    );
+
+    expect(errors).toEqual([]);
+
+    const tools = SENT.parse(recorded.sent[before]?.body).tools.map(
+      ({ function: { name } }) => name
+    );
+
+    expect({
+      session: (await sessionsOf(ctx)).map(({ surface, record_id }) => ({
+        surface,
+        record_id,
+      })),
+      step: tools.includes("placeholder-surface-step"),
+      askOnly: tools.filter(
+        (name) => name === "make-file" || name === "hand-over"
+      ),
+    }).toEqual({
+      session: [{ surface: "placeholder", record_id: record.id }],
+      step: true,
+      askOnly: [],
+    });
+
+    await expect(
+      handleAgentChat(
+        ctx,
+        agentRequest({
+          sessionId: randomUUID(),
+          message: message(SURFACE_CHAT_ASK),
+          surface: { id: "nope", recordId: record.id },
+        }),
+        hooks
+      )
+    ).rejects.toMatchObject({ code: "module-disabled" });
+    expect(await sessionsOf(ctx)).toHaveLength(1);
+  });
+
+  it("the chat labels hold the surface tool's step words", async () => {
+    expect(
+      (await chatLabels(await person())).labels.steps[
+        "placeholder-surface-step"
+      ]
+    ).toEqual({
+      active: "Noting a step",
+      done: "Noted a step",
+      failed: "Could not note a step",
+    });
   });
 
   it("a second handoff while one builds answers with the first one's card", async () => {

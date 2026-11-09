@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { readUIMessageStream } from "ai";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type {
@@ -13,8 +13,9 @@ import type {
 import {
   contextLoggerOf,
   type TenantTransaction,
+  withTransaction,
 } from "../../lib/tenant-context/with-transaction.ts";
-import { agentSession } from "../../schema.ts";
+import { agentMessage, agentSession } from "../../schema.ts";
 import { pgErrorCode } from "../../utils/error-cause.ts";
 import { enqueueJob } from "../job-queue/module-jobs.ts";
 import { modelFor } from "../models/index.ts";
@@ -233,6 +234,46 @@ export const AGENT_RUN_JOB: JobDeclaration<AgentRunData> = {
   retry: { limit: 0 },
   handler: runSession,
 };
+
+export const RETRY_TEXT = "Try again.";
+
+/**
+ * Try again on a run that ended (R-42b): the caller's message "Try again." and a new run, in one
+ * transaction, so a refused run stores no message. `not-found` for a session that never ran or is
+ * not the caller's; `agent-run-active` while one of the caller's runs builds. Beside `startRun`,
+ * because `runs.ts` is imported by this file at load time.
+ */
+export async function retryRun(
+  ctx: ModuleRequestContext,
+  sessionId: string
+): Promise<void> {
+  const id = checkedId(sessionId);
+
+  await withTransaction(ctx.tenant, async (tx) => {
+    const [row] = await tx
+      .select({ runJobId: agentSession.runJobId })
+      .from(agentSession)
+      .where(
+        and(eq(agentSession.id, id), eq(agentSession.userId, ctx.caller.userId))
+      )
+      .for("update");
+
+    if (row?.runJobId === null || row === undefined) {
+      throw new AppError(CORE_ERRORS["not-found"]);
+    }
+
+    await tx.insert(agentMessage).values({
+      sessionId: id,
+      role: "user",
+      parts: [{ type: "text", text: RETRY_TEXT }],
+    });
+    await tx
+      .update(agentSession)
+      .set({ updatedAt: sql`now()` })
+      .where(eq(agentSession.id, id));
+    await startRun(ctx, tx, id);
+  });
+}
 
 /**
  * Queues a run of the caller's own session in the caller's transaction, so the job and the

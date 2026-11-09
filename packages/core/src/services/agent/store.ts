@@ -3,6 +3,7 @@ import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import {
   type TenantTransaction,
@@ -16,6 +17,9 @@ import {
   agentSession,
 } from "../../schema.ts";
 import type { PendingVersion } from "./artifacts.ts";
+import { type AgentRunStatus, runStatus } from "./runs.ts";
+import { recordAddress } from "./surface-address.ts";
+import { listSurfaces } from "./surfaces.ts";
 
 /**
  * The owner-only store of boss-agent chats (Spec 7 R-41). Every function filters on the signed-in
@@ -31,6 +35,8 @@ export type AgentSessionSummary = {
   readonly modelId: string;
   /** `core:ask`, or the id of the module whose surface runs the session. */
   readonly surface: string;
+  /** The record a surface session builds; null on Ask. */
+  readonly recordId: string | null;
   /** The state of the session's background run; null when none runs (R-42b). */
   readonly runState: "queued" | "running" | "stopping" | null;
   /** ISO instant. */
@@ -46,6 +52,7 @@ const summaryColumns = {
   title: agentSession.title,
   modelId: agentSession.modelId,
   surface: agentSession.surface,
+  recordId: agentSession.recordId,
   runState: agentSession.runState,
   updatedAt: agentSession.updatedAt,
 };
@@ -66,6 +73,7 @@ function summary(row: {
   readonly title: string;
   readonly modelId: string;
   readonly surface: string;
+  readonly recordId: string | null;
   readonly runState: AgentSessionSummary["runState"];
   readonly updatedAt: Date;
 }): AgentSessionSummary {
@@ -74,6 +82,7 @@ function summary(row: {
     title: row.title,
     modelId: row.modelId,
     surface: row.surface,
+    recordId: row.recordId,
     runState: row.runState,
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -117,15 +126,34 @@ function ownedBy(ctx: ModuleRequestContext, id: string) {
   );
 }
 
-/** The caller's sessions, latest message first, at most 50. */
+/**
+ * The caller's sessions of one surface, Ask by default (R-42), latest message first, at most 50.
+ * With a record, that record's chats come first.
+ */
 export async function listOwnSessions(
-  ctx: ModuleRequestContext
+  ctx: ModuleRequestContext,
+  filter: {
+    readonly surface?: string | undefined;
+    readonly recordId?: string | undefined;
+  } = {}
 ): Promise<readonly AgentSessionSummary[]> {
+  const first =
+    filter.recordId === undefined
+      ? []
+      : [
+          sql`case when ${agentSession.recordId} = ${filter.recordId} then 0 else 1 end`,
+        ];
+
   const rows = await ctx.tenant.db
     .select(summaryColumns)
     .from(agentSession)
-    .where(eq(agentSession.userId, ctx.caller.userId))
-    .orderBy(desc(agentSession.updatedAt), desc(agentSession.id))
+    .where(
+      and(
+        eq(agentSession.userId, ctx.caller.userId),
+        eq(agentSession.surface, filter.surface ?? ASK_SURFACE)
+      )
+    )
+    .orderBy(...first, desc(agentSession.updatedAt), desc(agentSession.id))
     .limit(AGENT_SESSION_LIST_LIMIT);
 
   return rows.map(summary);
@@ -155,6 +183,9 @@ export async function createOwnSession(
     readonly id: string;
     readonly title: string;
     readonly modelId: string;
+    /** A new chat on a surface's record page is bound to that surface and record (P11-26). */
+    readonly surface?: string;
+    readonly recordId?: string | null;
   }
 ): Promise<AgentSessionSummary> {
   await ctx.tenant.db
@@ -164,6 +195,8 @@ export async function createOwnSession(
       userId: ctx.caller.userId,
       title: input.title,
       modelId: input.modelId,
+      surface: input.surface ?? ASK_SURFACE,
+      recordId: input.recordId ?? null,
     })
     .onConflictDoNothing({ target: agentSession.id });
 
@@ -291,6 +324,62 @@ export async function readOwnSession(
         message.seq === row.summaryThroughSeq ? row.summary : null
       )
     ),
+  };
+}
+
+export type AgentSessionDetail = AgentSessionSummary & {
+  readonly handedFromSessionId: string | null;
+  readonly run: AgentRunStatus | null;
+  /** The surface's name and the record's page; null on Ask or when the surface is not listed. */
+  readonly agentName: string | null;
+  readonly address: string | null;
+};
+
+/**
+ * The caller's session with its run status, then its messages, which the card and the panel poll
+ * (P11-32). The row is read first, so a read that sees the run end also holds the final answer.
+ * Null for an id that is not the caller's or not saved.
+ */
+export async function readOwnSessionDetail(
+  ctx: ModuleRequestContext,
+  id: string
+): Promise<{
+  readonly session: AgentSessionDetail;
+  readonly messages: readonly AgentMessage[];
+} | null> {
+  if (!uuid.safeParse(id).success) return null;
+
+  const [row] = await ctx.tenant.db
+    .select({
+      ...summaryColumns,
+      handedFromSessionId: agentSession.handedFromSessionId,
+      runError: agentSession.runError,
+      runJobId: agentSession.runJobId,
+    })
+    .from(agentSession)
+    .where(ownedBy(ctx, id));
+
+  if (row === undefined) return null;
+
+  const [{ messages }, surfaces] = await Promise.all([
+    readOwnSession(ctx, id),
+    listSurfaces(ctx),
+  ]);
+
+  const surface = surfaces.find(({ id: listed }) => listed === row.surface);
+
+  return {
+    session: {
+      ...summary(row),
+      handedFromSessionId: row.handedFromSessionId,
+      run: runStatus(row),
+      agentName: surface?.name ?? null,
+      address:
+        surface === undefined || row.recordId === null
+          ? null
+          : recordAddress(surface.recordPage, row.recordId),
+    },
+    messages,
   };
 }
 

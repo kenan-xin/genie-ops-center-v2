@@ -4,7 +4,7 @@ import type {
   ModuleRequestContext,
 } from "../../lib/module-contract/module.ts";
 import { listDatasets } from "../datasets/index.ts";
-import { offeredModuleTools } from "./tools.ts";
+import { offeredModuleTools, offeredSessionTools } from "./tools.ts";
 
 /** A labelled field of a readable dataset, for the sentence and the rows of a read (czjw.108). */
 export type ChatFieldLabel = {
@@ -49,6 +49,20 @@ function fieldLabels(
   );
 }
 
+/** The tools each listed surface offers this person, so a surface panel names its steps (P11-31). */
+async function surfaceStepTools(ctx: ModuleRequestContext) {
+  const surfaces = await ctx.tenant.capabilities.list("agent-surface");
+
+  const offered = await Promise.all(
+    surfaces.map(
+      async ({ moduleId }) =>
+        (await offeredSessionTools(ctx, moduleId)).moduleTools
+    )
+  );
+
+  return offered.flat();
+}
+
 /** At most this many starter questions above the composer. */
 const SUGGESTION_LIMIT = 3;
 
@@ -61,10 +75,13 @@ export async function chatLabels(ctx: ModuleRequestContext): Promise<{
   readonly labels: ChatLabels;
   readonly suggestions: readonly string[];
 }> {
-  const [tools, datasets] = await Promise.all([
+  const [askTools, surfaceTools, datasets] = await Promise.all([
     offeredModuleTools(ctx),
+    surfaceStepTools(ctx),
     listDatasets(ctx),
   ]);
+
+  const tools = [...askTools, ...surfaceTools];
 
   return {
     labels: {

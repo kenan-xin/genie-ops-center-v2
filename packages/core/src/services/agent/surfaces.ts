@@ -5,7 +5,24 @@ import type {
   AnyAgentTool,
 } from "../../../contracts/index.ts";
 import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
+import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
 import type { CapabilityProvider } from "../capabilities/index.ts";
+import type { SurfaceView } from "./surface-address.ts";
+
+/** Every listed surface as the screens see it, in registration order. */
+export async function listSurfaces(
+  ctx: ModuleRequestContext
+): Promise<readonly SurfaceView[]> {
+  const providers = await ctx.tenant.capabilities.list("agent-surface");
+
+  return providers.map(({ moduleId, implementation }) => {
+    // SAFETY: validateModule checked the agent-surface provision against AgentSurface, and `list`
+    // answers only providers of that name.
+    const { name, recordPage, acceptsHandoff } = implementation as AgentSurface;
+
+    return { id: moduleId, name, recordPage, acceptsHandoff };
+  });
+}
 
 export type SessionTools = {
   /** Ask offers `make-file`. A surface session does not (R-43, amended 2026-11-08). */

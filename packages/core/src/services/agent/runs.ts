@@ -49,6 +49,30 @@ export async function stopRun(
   if (found === undefined) throw new AppError(CORE_ERRORS["not-found"]);
 }
 
+export type AgentRunStatus =
+  | "building"
+  | "stopping"
+  | "saved"
+  | "stopped"
+  | "interrupted"
+  | "failed";
+
+/** What a page shows of a session's run; null for a session that never ran. */
+export function runStatus(row: {
+  readonly runState: "queued" | "running" | "stopping" | null;
+  readonly runError: "stopped" | "interrupted" | "failed" | null;
+  readonly runJobId: string | null;
+}): AgentRunStatus | null {
+  if (row.runState === "queued" || row.runState === "running") {
+    return "building";
+  }
+
+  if (row.runState === "stopping") return "stopping";
+
+  // A run that ended keeps its job id, so a plain chat never shows Saved.
+  return row.runJobId === null ? null : (row.runError ?? "saved");
+}
+
 /** The caller's session whose run is set, or undefined: a person has at most one (R-42b). */
 export async function findOwnRun(ctx: ModuleRequestContext): Promise<
   | {

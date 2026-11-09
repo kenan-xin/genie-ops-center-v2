@@ -605,6 +605,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the owner-only agent store against a real database marks only the last summarized message with the summary, and moves the mark with a later summary",
       "the owner-only agent store against a real database keeps a later summary when an older one is saved after it",
       "the owner-only agent store against a real database deleting the chat a handoff came from keeps the handed-over chat",
+      "the owner-only agent store against a real database Ask lists only Ask chats, and a surface lists its record's chats first",
     ],
   },
   {
@@ -616,6 +617,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "starting an agent run an enqueue failure leaves run_state null",
       "starting an agent run the job of a stopped run leaves the run that replaced it alone",
       "starting an agent run Stop on a queued run ends it stopped without a model call",
+      "starting an agent run Try again stores the message and queues a run, and is refused while another run builds",
     ],
   },
   {

@@ -21,6 +21,12 @@ export const SURFACE_STEP_TOOL = defineAgentTool({
   name: "placeholder-surface-step",
   description:
     "Notes one build step of the open placeholder record. Test surface only.",
+  // The chat shows these words; they never reach the model.
+  step: {
+    active: "Noting a step",
+    done: "Noted a step",
+    failed: "Could not note a step",
+  },
   input: z.strictObject({ step: z.string().min(1) }),
   run: async () => ({ output: { noted: true }, rowCount: 0 }),
 });

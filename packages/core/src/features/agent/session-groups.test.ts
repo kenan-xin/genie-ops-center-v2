@@ -9,6 +9,7 @@ function chat(id: string, updatedAt: string): AgentSessionSummary {
     title: id,
     modelId: "m",
     surface: "core:ask",
+    recordId: null,
     runState: null,
     updatedAt,
   };

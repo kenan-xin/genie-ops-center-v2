@@ -4,7 +4,11 @@ import { oc } from "../../lib/rpc/index.ts";
 import type { CheckedChart } from "../charts/index.ts";
 import type { AgentArtifact } from "./artifacts.ts";
 import type { AgentFile } from "./files.ts";
-import type { AgentMessage, AgentSessionSummary } from "./store.ts";
+import type {
+  AgentMessage,
+  AgentSessionDetail,
+  AgentSessionSummary,
+} from "./store.ts";
 
 export const CHAT_TITLE_LIMIT = 80;
 
@@ -21,9 +25,39 @@ export const chatTitleSchema = z
  * are typed with `z.custom`, which checks nothing at run time: the store and the gate build them.
  */
 export const agentContract = {
+  // Ask's chats by default; a surface's chats, with its record's chats first (R-42).
   sessions: oc
     .route({ method: "GET", path: "/agent/sessions" })
+    .input(
+      z
+        .object({
+          surface: z.string().max(64).optional(),
+          recordId: z.string().max(64).optional(),
+        })
+        .optional()
+    )
     .output(z.custom<readonly AgentSessionSummary[]>()),
+  // One of the caller's sessions with its run status and messages, which a page polls while it
+  // builds (P11-32); null for an id not saved yet or another person's.
+  session: oc
+    .route({ method: "GET", path: "/agent/sessions/{id}" })
+    .input(z.object({ id: z.string() }))
+    .output(
+      z.custom<{
+        readonly session: AgentSessionDetail;
+        readonly messages: readonly AgentMessage[];
+      } | null>()
+    ),
+  // Stops the run of one of the caller's sessions (R-42b).
+  stop: oc
+    .route({ method: "POST", path: "/agent/sessions/{id}/stop" })
+    .input(z.object({ id: z.string() }))
+    .output(z.void()),
+  // Sends "Try again." and starts a new run of a session whose run ended (R-42b).
+  retry: oc
+    .route({ method: "POST", path: "/agent/sessions/{id}/retry" })
+    .input(z.object({ id: z.string() }))
+    .output(z.void()),
   // Renames one of the caller's own sessions and keeps its place in the list (czjw.120 item 13).
   rename: oc
     .route({ method: "POST", path: "/agent/sessions/{id}/title" })
