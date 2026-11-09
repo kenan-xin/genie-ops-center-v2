@@ -6,7 +6,7 @@ import {
 } from "@genie/core/contracts";
 import { z } from "zod";
 
-import type { Placement, StoredElement } from "./content.ts";
+import type { Placement, StoredElement, StoredSlide } from "./content.ts";
 import {
   BORDER_WIDTHS,
   BULLET_CHARACTERS,
@@ -74,6 +74,15 @@ function withoutData(element: StoredElement) {
   };
 }
 
+/** A slide as the read tool answers it: its id, its elements, and its background when it has one. */
+function slideOutput({ id, elements, background }: StoredSlide) {
+  const shown = elements.map(withoutData);
+
+  return background === undefined
+    ? { id, elements: shown }
+    : { id, elements: shown, background };
+}
+
 /** A stored slide's first element is its title (D5). */
 const titleOf = ([first]: readonly StoredElement[]) =>
   first?.kind === "title" ? first.text : "";
@@ -127,10 +136,7 @@ const readDeckTool = defineAgentTool({
         title: record.title,
         figuresAsOf: record.frozenOn,
         contentHash: record.contentHash,
-        slides: slides.map(({ id, elements }) => ({
-          id,
-          elements: elements.map(withoutData),
-        })),
+        slides: slides.map(slideOutput),
       },
       rowCount: slides.length,
     };

@@ -7877,6 +7877,9 @@
                               ]
                             },
                             "readOnly": true
+                          },
+                          "background": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -7982,6 +7985,9 @@
                               ]
                             },
                             "readOnly": true
+                          },
+                          "background": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -10026,6 +10032,9 @@
                               ]
                             },
                             "readOnly": true
+                          },
+                          "background": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -10184,6 +10193,9 @@
                               ]
                             },
                             "readOnly": true
+                          },
+                          "background": {
+                            "type": "string"
                           }
                         },
                         "required": [
@@ -10311,6 +10323,9 @@
                                   ]
                                 },
                                 "readOnly": true
+                              },
+                              "background": {
+                                "type": "string"
                               }
                             },
                             "required": [

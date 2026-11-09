@@ -1,7 +1,14 @@
-import type { ElementKind } from "../contract.ts";
+import {
+  type ElementBox,
+  type ElementKind,
+  SLIDE_CANVAS,
+} from "../contract.ts";
 
 /** The one canvas every deck is laid out on, on screen and in PowerPoint (D10). */
-export const CANVAS = { width: 960, height: 540 } as const;
+export const CANVAS = SLIDE_CANVAS;
+
+/** The inner padding of an element with a fill or a border, in canvas pixels (P01-8). */
+export const FRAME_PADDING = 12;
 
 export type Box = {
   readonly x: number;
@@ -138,6 +145,27 @@ export function slideLayout(kinds: readonly ElementKind[]): SlideBoxes {
     rule: { x: MARGIN_X, y: 120, w: CONTENT_W, h: 4 },
     body,
     footer: { x: MARGIN_X, y: 500, w: CONTENT_W, h: 24 },
+  };
+}
+
+/**
+ * Each element's box: its own stored box, else the computed one of `slideLayout`, so the screen
+ * and the export place the same slide (R-52a). The rule and the footer stay computed.
+ */
+export function elementBoxes(
+  elements: readonly {
+    readonly kind: ElementKind;
+    readonly box?: ElementBox | undefined;
+  }[]
+): Pick<SlideBoxes, "title" | "body"> {
+  const layout = slideLayout(elements.map(({ kind }) => kind));
+
+  return {
+    title: elements[0]?.box ?? layout.title,
+    body: layout.body.map(({ index, box }) => ({
+      index,
+      box: elements[index]?.box ?? box,
+    })),
   };
 }
 

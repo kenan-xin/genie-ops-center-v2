@@ -22,7 +22,7 @@ import { SLIDES_AGENT_TOOLS } from "../src/agent-tools.ts";
 import type { ElementInput } from "../src/contract.ts";
 import { slidesModule } from "../src/module.ts";
 import { changeDeck } from "../src/services/decks/store.ts";
-import { insertDeck } from "./factories.ts";
+import { frozenElement, insertDeck } from "./factories.ts";
 
 /**
  * The slides agent tools against a real Postgres (Spec 7 R-46, R-52, R-56): a tool reads only the
@@ -175,6 +175,97 @@ async function offered(
 }
 
 describe("the slides agent tools", () => {
+  it("slides-read-deck answers each element's box and style and the slide background, and no frozen rows", async () => {
+    const owner = await personWith(EDITOR);
+    const chart = frozenElement("chart");
+    const box = { x: 480, y: 136, w: 440, h: 336 };
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            background: "#1E3A8A",
+            elements: [
+              {
+                kind: "title",
+                text: "Dark claim",
+                style: { color: "#FFFFFF" },
+              },
+              { ...chart, box, style: { fill: "#EFF6FF" } },
+            ],
+          },
+        ],
+      },
+    });
+
+    const { output } = await runTool(owner, "slides-read-deck", {
+      deckId: id,
+    });
+
+    expect(output).toMatchObject({
+      slides: [
+        {
+          id: "s1",
+          background: "#1E3A8A",
+          elements: [
+            { kind: "title", text: "Dark claim", style: { color: "#FFFFFF" } },
+            {
+              kind: "chart",
+              chart: "chart" in chart ? chart.chart : null,
+              box,
+              style: { fill: "#EFF6FF" },
+            },
+          ],
+        },
+      ],
+    });
+    expect(JSON.stringify(output)).not.toContain('"data"');
+  });
+
+  it("slides-create-deck stores a slide background and each element's box and style", async () => {
+    const owner = await personWith(EDITOR);
+    const box = { x: 40, y: 136, w: 400, h: 96 };
+
+    await runTool(owner, "slides-create-deck", {
+      title: "Dark deck",
+      slides: [
+        {
+          background: "#1E3A8A",
+          elements: [
+            { kind: "title", text: "Dark claim", style: { color: "#FFFFFF" } },
+            {
+              kind: "text",
+              text: "White text.",
+              box,
+              style: { color: "#FFFFFF", fontSize: 24 },
+            },
+          ],
+        },
+      ],
+    });
+
+    const { rows } = await deployment.context.db.$client.query(
+      "select content from deck where owner_user_id = $1",
+      [owner.caller.userId]
+    );
+
+    expect(rows[0].content.slides[0]).toEqual({
+      id: "s1",
+      background: "#1E3A8A",
+      elements: [
+        { kind: "title", text: "Dark claim", style: { color: "#FFFFFF" } },
+        {
+          kind: "text",
+          text: "White text.",
+          box,
+          style: { color: "#FFFFFF", fontSize: 24 },
+        },
+      ],
+    });
+  });
+
   it("slides-read-deck answers not-found to another person and leaves the deck the same", async () => {
     const owner = await personWith(EDITOR);
     const other = await personWith(EDITOR);

@@ -1,4 +1,5 @@
 import type { FetchedFile } from "@genie/core";
+import { foregroundFor } from "@genie/core";
 import {
   chartCaption,
   type ChartData,
@@ -8,9 +9,12 @@ import { chartColors } from "@genie/ui/tokens";
 import { imageSize } from "image-size";
 import pptxgenjs from "pptxgenjs";
 
+import { type ElementStyle, THEME_TEXT } from "../../contract.ts";
 import {
   type Box,
+  elementBoxes,
   figuresDate,
+  FRAME_PADDING,
   slideLayout,
   TYPE_PX,
 } from "../../presentation/slide-layout.ts";
@@ -32,7 +36,7 @@ const MASTER = "GENIE";
 const HIDDEN = "You can no longer read the data of this chart.";
 
 /** The text colors of the light theme, as PowerPoint hex. */
-const TEXT = "111827";
+const TEXT = THEME_TEXT.replace("#", "");
 
 const MUTED = "6B7280";
 
@@ -66,6 +70,50 @@ const inches = (box: Box) => ({
 const points = (px: number) => px * 0.75;
 
 const hex = (color: string) => color.replace("#", "");
+
+/** An element's fill or border, as a rectangle under it; none without either. */
+function addFrame(
+  slide: Slide,
+  rect: Parameters<Slide["addShape"]>[0],
+  box: Box,
+  style: ElementStyle | undefined
+): boolean {
+  const border =
+    style?.border !== undefined && style.border.width > 0
+      ? style.border
+      : undefined;
+
+  if (style?.fill === undefined && border === undefined) return false;
+
+  slide.addShape(rect, {
+    ...inches(box),
+    fill:
+      style?.fill === undefined ? { type: "none" } : { color: hex(style.fill) },
+    line:
+      border === undefined
+        ? { type: "none" }
+        : { color: hex(border.color), width: points(border.width) },
+  });
+
+  return true;
+}
+
+/** The text options of a title, text or bullet list, from its style over the theme's defaults. */
+function textStyle(
+  style: ElementStyle | undefined,
+  defaults: { readonly px: number; readonly bold: boolean },
+  framed: boolean
+) {
+  return {
+    color: style?.color === undefined ? TEXT : hex(style.color),
+    fontSize: points(style?.fontSize ?? defaults.px),
+    // PowerPoint has bold or not; semibold draws bold.
+    bold:
+      style?.weight === undefined ? defaults.bold : style.weight !== "regular",
+    align: style?.align ?? ("left" as const),
+    margin: framed ? points(FRAME_PADDING) : 0,
+  };
+}
 
 const isData = (kind: ShownElement["kind"]) =>
   kind === "figure" || kind === "chart" || kind === "table";
@@ -262,27 +310,38 @@ export async function buildDeckPptx(input: {
     const slide = pptx.addSlide({ masterName: MASTER });
     const kinds = shown.elements.map(({ kind }) => kind);
     const layout = slideLayout(kinds);
+    const boxes = elementBoxes(shown.elements);
     const [first] = shown.elements;
+    const rect = pptx.ShapeType.rect;
+
+    if (shown.background !== undefined) {
+      slide.background = { color: hex(shown.background) };
+    }
+
+    const titleStyle = first?.style;
 
     slide.addText(first?.kind === "title" ? first.text : "", {
-      ...inches(layout.title),
+      ...inches(boxes.title),
       fontFace,
-      fontSize: points(TYPE_PX.title),
-      bold: true,
-      color: TEXT,
+      ...textStyle(
+        titleStyle,
+        { px: TYPE_PX.title, bold: true },
+        addFrame(slide, rect, boxes.title, titleStyle)
+      ),
       valign: "top",
-      margin: 0,
     });
-    slide.addShape(pptx.ShapeType.rect, {
+    slide.addShape(rect, {
       ...inches(layout.rule),
       fill: { color: hex(theme.primaryColor) },
       line: { color: hex(theme.primaryColor) },
     });
 
-    for (const { index, box } of layout.body) {
+    for (const { index, box } of boxes.body) {
       const element = shown.elements[index];
 
       if (element === undefined) continue;
+
+      const framed = addFrame(slide, rect, box, element.style);
 
       if ("hidden" in element) {
         slide.addText(HIDDEN, {
@@ -297,10 +356,12 @@ export async function buildDeckPptx(input: {
         slide.addText(element.text, {
           ...inches(box),
           fontFace,
-          fontSize: points(TYPE_PX.text),
-          color: TEXT,
+          ...textStyle(
+            element.style,
+            { px: TYPE_PX.text, bold: false },
+            framed
+          ),
           valign: "top",
-          margin: 0,
         });
       } else if (element.kind === "bullets") {
         slide.addText(
@@ -311,10 +372,12 @@ export async function buildDeckPptx(input: {
           {
             ...inches(box),
             fontFace,
-            fontSize: points(TYPE_PX.bullet),
-            color: TEXT,
+            ...textStyle(
+              element.style,
+              { px: TYPE_PX.bullet, bold: false },
+              framed
+            ),
             valign: "middle",
-            margin: 0,
           }
         );
       } else if (element.kind === "image") {
@@ -338,6 +401,11 @@ export async function buildDeckPptx(input: {
       slide.addText(`Figures as of ${figuresDate(input.figuresAsOf)}`, {
         ...inches({ ...footer, w: logoBox.x - footer.x - LOGO.gap }),
         ...footerText,
+        // On a slide background the muted gray can vanish; the one foreground rule keeps it read.
+        color:
+          shown.background === undefined
+            ? footerText.color
+            : hex(foregroundFor(shown.background)),
         margin: 0,
       });
     }

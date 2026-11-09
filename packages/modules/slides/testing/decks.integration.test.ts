@@ -311,6 +311,38 @@ describe("the slides deck procedures", () => {
     expect(await rowOf(id)).toEqual(before);
   });
 
+  it("refuse a low-contrast text color, name the element and write nothing", async () => {
+    const owner = await editor();
+    const id = await ownedDeck(owner);
+    const before = await rowOf(id);
+
+    await expect(
+      callerAs(owner).changeDeck({
+        id,
+        expectedHash: before.content_hash,
+        changes: [
+          {
+            op: "change-element",
+            slideId: "s1",
+            index: 0,
+            style: { color: "#F3F4F6" },
+          },
+        ],
+      })
+    ).rejects.toMatchObject({
+      code: "slides:change-invalid",
+      issues: [
+        {
+          path: "slides.0.elements.0.style",
+          message:
+            'Title "A claim": #F3F4F6 on the theme background #FFFFFF is 1.1:1, and this text needs 3:1. Pick a color with more contrast, or give the text a fill.',
+        },
+      ],
+    });
+
+    expect(await rowOf(id)).toEqual(before);
+  });
+
   it("keep a figures date that moved while a text change waited for the row lock", async () => {
     const owner = await editor();
 

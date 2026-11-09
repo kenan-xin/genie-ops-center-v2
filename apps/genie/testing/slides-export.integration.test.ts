@@ -311,4 +311,109 @@ describe("the slides PowerPoint export", () => {
     expect(pptx.mediaParts).toHaveLength(1);
     expect(master).toContain("Acme Export");
   });
+
+  it("saves a dark blue slide with white text and a moved chart, reads and exports it the same, and Undo restores the deck", async () => {
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [
+              title("Records grow each month"),
+              { kind: "text", text: "Three months of records." },
+              frozenElement("chart"),
+            ],
+          },
+        ],
+      },
+    });
+
+    const slides = callProcedure(slidesRouter, owner);
+    const plain = await slides.readDeck({ id });
+    const box = { x: 480, y: 136, w: 440, h: 336 };
+
+    const styled = await slides.changeDeck({
+      id,
+      expectedHash: plain.contentHash,
+      changes: [
+        { op: "change-slide-fields", slideId: "s1", background: "#1E3A8A" },
+        {
+          op: "change-element",
+          slideId: "s1",
+          index: 0,
+          style: { color: "#FFFFFF" },
+        },
+        {
+          op: "change-element",
+          slideId: "s1",
+          index: 1,
+          style: { color: "#FFFFFF" },
+        },
+        { op: "change-element", slideId: "s1", index: 2, box },
+      ],
+    });
+
+    const read = await slides.readDeck({ id });
+
+    expect(read.contentHash).toBe(styled.contentHash);
+    expect(read.slides[0]).toMatchObject({
+      background: "#1E3A8A",
+      elements: [
+        { kind: "title", style: { color: "#FFFFFF" } },
+        { kind: "text", style: { color: "#FFFFFF" } },
+        { kind: "chart", box },
+      ],
+    });
+
+    const { pptx } = await exportAs(owner, id);
+    const slide1 = await pptx.xmlOf("ppt/slides/slide1.xml");
+
+    expect(slide1).toMatch(/<p:bg>.*srgbClr val="1E3A8A"/s);
+    expect(slide1).toMatch(/srgbClr val="FFFFFF".*Records grow each month/s);
+    // The chart frame at 480, 136 px is 4572000, 1295400 EMU.
+    expect(slide1).toContain('<a:off x="4572000" y="1295400"/>');
+
+    const undone = await slides.undoDeck({
+      id,
+      expectedHash: styled.contentHash,
+    });
+
+    expect(undone.contentHash).toBe(plain.contentHash);
+    expect(undone.slides).toEqual(plain.slides);
+  });
+
+  it("keeps a slide's background and a chart's box and style through Refresh data", async () => {
+    const box = { x: 480, y: 136, w: 440, h: 336 };
+    const style = { fill: "#EFF6FF" };
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            background: "#F8FAFC",
+            elements: [
+              title("Records grow each month"),
+              { ...frozenElement("chart"), box, style },
+            ],
+          },
+        ],
+      },
+    });
+
+    const slides = callProcedure(slidesRouter, owner);
+    const read = await slides.readDeck({ id });
+
+    const { deck } = await slides.refreshDeck({
+      id,
+      expectedHash: read.contentHash,
+    });
+
+    expect(deck.slides[0]).toMatchObject({
+      background: "#F8FAFC",
+      elements: [{ kind: "title" }, { kind: "chart", box, style }],
+    });
+  });
 });

@@ -411,7 +411,11 @@ export const deckView = z.object({
   // Read-only, so the server's `DeckView` answers it as is.
   slides: z
     .array(
-      z.object({ id: z.string(), elements: z.array(z.unknown()).readonly() })
+      z.object({
+        id: z.string(),
+        elements: z.array(z.unknown()).readonly(),
+        background: z.string().optional(),
+      })
     )
     .readonly(),
 });

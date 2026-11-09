@@ -1,7 +1,40 @@
 import { describe, expect, it } from "vitest";
 
 import type { ElementKind } from "../contract.ts";
-import { CANVAS, figuresDate, type Box, slideLayout } from "./slide-layout.ts";
+import {
+  CANVAS,
+  elementBoxes,
+  figuresDate,
+  type Box,
+  slideLayout,
+} from "./slide-layout.ts";
+
+describe("elementBoxes", () => {
+  it("places each stored box over its computed one and keeps the rest", () => {
+    const computed = slideLayout(["title", "text", "chart"]);
+    const titleBox = { x: 40, y: 200, w: 400, h: 80 };
+    const chartBox = { x: 480, y: 24, w: 456, h: 240 };
+
+    expect(
+      elementBoxes([
+        { kind: "title", box: titleBox },
+        { kind: "text" },
+        { kind: "chart", box: chartBox },
+      ])
+    ).toEqual({
+      title: titleBox,
+      body: [computed.body[0], { index: 2, box: chartBox }],
+    });
+  });
+
+  it("equals the computed layout when no element has a box", () => {
+    const { title, body } = slideLayout(["title", "bullets", "table"]);
+
+    expect(
+      elementBoxes([{ kind: "title" }, { kind: "bullets" }, { kind: "table" }])
+    ).toEqual({ title, body });
+  });
+});
 
 const cellsOf = (kinds: readonly ElementKind[]) => {
   const layout = slideLayout(kinds);

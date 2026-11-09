@@ -22,10 +22,18 @@ export async function deckViewFor(
     canUndo: record.undo.length > 0,
     slides: record.content.slides.map((slide) => ({
       id: slide.id,
+      background: slide.background,
       elements: slide.elements.map((element) =>
         "chart" in element &&
         element.chart.series.some(({ dataset }) => !readable.has(dataset))
-          ? { kind: element.kind, hidden: true, chart: element.chart }
+          ? {
+              kind: element.kind,
+              hidden: true,
+              chart: element.chart,
+              // A hidden element keeps its place and style, so an edit never moves it.
+              box: element.box,
+              style: element.style,
+            }
           : element
       ),
     })),

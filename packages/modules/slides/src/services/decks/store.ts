@@ -225,6 +225,8 @@ export async function createDeck(
           element.kind === "table"
           ? {
               kind: element.kind,
+              box: element.box,
+              style: element.style,
               // One at a time, so a refusal always names the same element.
               // oxlint-disable-next-line no-await-in-loop
               ...(await gate(
@@ -237,7 +239,7 @@ export async function createDeck(
       );
     }
 
-    drafts.push({ id: `s${i + 1}`, elements });
+    drafts.push({ id: `s${i + 1}`, elements, background: slide.background });
   }
 
   refuseIf(
@@ -364,12 +366,18 @@ export async function changeDeck(
   const content = parseContent({
     slides: applied.slides.map((slide) => ({
       id: slide.id,
+      background: slide.background,
       elements: slide.elements.map((element, index) => {
         const frozen = checked.get(`${slide.id}.${index}`);
 
         return frozen === undefined
           ? element
-          : { kind: element.kind, ...frozen };
+          : {
+              kind: element.kind,
+              box: element.box,
+              style: element.style,
+              ...frozen,
+            };
       }),
     })),
   });
@@ -483,10 +491,11 @@ export async function refreshDeck(
         changedSlides.push(slide.id);
       }
 
-      elements.push({ kind: element.kind, ...frozen });
+      // The new figures only: the element keeps its place and style.
+      elements.push({ ...element, ...frozen });
     }
 
-    slides.push({ id: slide.id, elements });
+    slides.push({ id: slide.id, elements, background: slide.background });
   }
 
   const content = parseContent({ slides });
