@@ -870,8 +870,8 @@ export function DeckView(props: DeckViewProps) {
               <SlideEditorBar
                 slide={current}
                 saving={busy}
-                onStep={(step) =>
-                  sendStep([step], {
+                onSteps={(steps) =>
+                  sendStep(steps, {
                     expectedHash: deck.contentHash,
                     slideNumber: index + 1,
                   })

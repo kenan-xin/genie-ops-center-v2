@@ -1,5 +1,6 @@
 "use client";
 
+import { contrastRatio, foregroundFor } from "@genie/core/features/branding";
 import {
   Button,
   DropdownMenu,
@@ -54,6 +55,8 @@ import {
   slideRuleIssues,
   type StyleChange,
   TEXT_KINDS,
+  THEME_BACKGROUND,
+  THEME_TEXT,
 } from "../contract.ts";
 import { boxStep, movedBox, resizedBox, SNAP } from "./canvas-adapter.ts";
 import type { ShownElement, ShownSlide } from "./views.ts";
@@ -535,6 +538,44 @@ export function StyleToolbar(props: StyleToolbarProps) {
   );
 }
 
+/**
+ * A background change with the text colors it needs: each text without a fill whose color falls
+ * below 4.5:1 on the new background takes the one foreground rule's color, in the same change, so
+ * a hand edit reaches what the save allows (P13-9). One change, one Undo entry.
+ */
+export function backgroundSteps(
+  slide: ShownSlide,
+  background: string | null
+): DeckChange[] {
+  const behind = background ?? THEME_BACKGROUND;
+
+  const texts = slide.elements.flatMap((element, index) =>
+    TEXT_KINDS.has(element.kind) &&
+    element.style?.fill === undefined &&
+    contrastRatio(element.style?.color ?? THEME_TEXT, behind) < 4.5
+      ? [
+          {
+            op: "change-element" as const,
+            slideId: slide.id,
+            index,
+            // On the theme background the theme's own text color; else the foreground rule's.
+            style: {
+              color:
+                background === null
+                  ? null
+                  : foregroundFor(behind).toUpperCase(),
+            },
+          },
+        ]
+      : []
+  );
+
+  return [
+    { op: "change-slide-fields", slideId: slide.id, background },
+    ...texts,
+  ];
+}
+
 /** The kinds a hand edit adds without a chart config (P13-5). */
 const ADDABLE = [
   ["text", "Text"],
@@ -546,7 +587,7 @@ const ADDABLE = [
 export function SlideEditorBar(props: {
   readonly slide: ShownSlide;
   readonly saving?: boolean;
-  readonly onStep: (step: DeckChange) => void;
+  readonly onSteps: (steps: readonly DeckChange[]) => void;
   /** A text or bullet list goes in at once; an image needs its file and alt text in the editor. */
   readonly onAdd: (kind: "text" | "bullets" | "image") => void;
 }) {
@@ -587,11 +628,7 @@ export function SlideEditorBar(props: {
           </>
         }
         onPick={(background) =>
-          props.onStep({
-            op: "change-slide-fields",
-            slideId: slide.id,
-            background,
-          })
+          props.onSteps(backgroundSteps(slide, background))
         }
       />
     </div>

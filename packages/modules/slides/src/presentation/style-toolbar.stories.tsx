@@ -161,11 +161,48 @@ export const PhoneDock: Story = {
   },
 };
 
+// P13-9: a dark background turns each text without a fill white in the same change, so the hand
+// edit reaches what the save allows; one change, one Undo entry.
+export const BackgroundAdjustsText: StoryObj<typeof SlideEditorBar> = {
+  name: "A dark background turns the texts without a fill white in one change",
+  globals: desktop,
+  render: (args) => <SlideEditorBar {...args} />,
+  args: { slide: textWithChartSlide, onSteps: fn(), onAdd: fn() },
+  play: async ({ args, canvas, canvasElement }) => {
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Background" }));
+    await userEvent.click(
+      await body.findByRole("button", { name: "Dark blue #1E3A8A" })
+    );
+    await expect(args.onSteps).toHaveBeenCalledTimes(1);
+    await expect(args.onSteps).toHaveBeenCalledWith([
+      {
+        op: "change-slide-fields",
+        slideId: textWithChartSlide.id,
+        background: "#1E3A8A",
+      },
+      {
+        op: "change-element",
+        slideId: textWithChartSlide.id,
+        index: 0,
+        style: { color: "#FFFFFF" },
+      },
+      {
+        op: "change-element",
+        slideId: textWithChartSlide.id,
+        index: 1,
+        style: { color: "#FFFFFF" },
+      },
+    ]);
+  },
+};
+
 export const EditorBar: StoryObj<typeof SlideEditorBar> = {
   name: "Add element and Background",
   globals: desktop,
   render: (args) => <SlideEditorBar {...args} />,
-  args: { slide: bulletsWithTwoVisualsSlide, onStep: fn(), onAdd: fn() },
+  args: { slide: bulletsWithTwoVisualsSlide, onSteps: fn(), onAdd: fn() },
   play: async ({ args, canvas, canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);
 
@@ -184,11 +221,13 @@ export const EditorBar: StoryObj<typeof SlideEditorBar> = {
     await userEvent.click(
       await body.findByRole("button", { name: "No background" })
     );
-    await expect(args.onStep).toHaveBeenCalledTimes(1);
-    await expect(args.onStep).toHaveBeenCalledWith({
-      op: "change-slide-fields",
-      slideId: bulletsWithTwoVisualsSlide.id,
-      background: null,
-    });
+    await expect(args.onSteps).toHaveBeenCalledTimes(1);
+    await expect(args.onSteps).toHaveBeenCalledWith([
+      {
+        op: "change-slide-fields",
+        slideId: bulletsWithTwoVisualsSlide.id,
+        background: null,
+      },
+    ]);
   },
 };
