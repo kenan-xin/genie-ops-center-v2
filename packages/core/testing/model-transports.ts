@@ -240,15 +240,30 @@ async function streamEvents(response: Response): Promise<readonly JsonValue[]> {
  * A fetch that answers the recording whose method, URL and whole parsed body
  * match, and records each request's URL, authorization header and parsed body in
  * `sent`. The no-match error names no header. A recording is never used up, so
- * two equal requests get the same answer. With a `recorder`, a request that no
- * recording answers is sent live and saved as `live-<hash>.json`, then replayed.
+ * two equal requests get the same answer. When no body matches exactly, a body
+ * that matches up to a one-to-one renaming of UUIDs and 64-character hashes
+ * answers, with the sent tokens in place of its own (P11-43): a handed-over
+ * record has a new id each run, and a deck's hash covers the read time of its
+ * figures. With a `recorder`, a request that no recording answers is sent live
+ * and saved as `live-<hash>.json`, then replayed.
  */
 export function replayModelTransport(
   recordings: readonly ModelRecording[],
   recorder?: ModelRecorder
 ): typeof globalThis.fetch & { readonly sent: readonly SentModelRequest[] } {
   const sent: SentModelRequest[] = [];
+
   const known = [...recordings];
+
+  const masks = new WeakMap<ModelRecording, MaskedBody>();
+
+  const maskedOf = (recording: ModelRecording): MaskedBody => {
+    const masked = masks.get(recording) ?? maskTokens(recording.request.body);
+
+    masks.set(recording, masked);
+
+    return masked;
+  };
 
   const transport: typeof globalThis.fetch = async (input, init) => {
     const request = input instanceof Request ? input : undefined;
@@ -265,6 +280,17 @@ export function replayModelTransport(
         candidate.request.url === url &&
         isEqual(candidate.request.body, body)
     );
+
+    if (recording === undefined && body !== undefined) {
+      recording = renamedRecording(
+        known.filter(
+          (candidate) =>
+            candidate.request.method === method && candidate.request.url === url
+        ),
+        maskTokens(body),
+        maskedOf
+      );
+    }
 
     if (
       recording === undefined &&
@@ -288,6 +314,122 @@ export function replayModelTransport(
   };
 
   return Object.assign(transport, { sent });
+}
+
+/** A lowercase UUID, or a run of exactly 64 lowercase hex characters (a content hash). */
+const TOKEN_PATTERN =
+  /[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}|(?<![\da-f])[\da-f]{64}(?![\da-f])/g;
+
+/** A body with each token replaced by its kind and its number of first appearance. */
+type MaskedBody = {
+  readonly masked: JsonValue;
+  readonly tokens: readonly string[];
+};
+
+function maskTokens(body: JsonValue): MaskedBody {
+  const tokens: string[] = [];
+
+  const masked = mapJsonStrings(
+    body,
+    (text) =>
+      text.replace(TOKEN_PATTERN, (token) => {
+        const seen = tokens.indexOf(token);
+
+        const number = seen === -1 ? tokens.push(token) - 1 : seen;
+
+        return `<${token.length === 64 ? "hash" : "uuid"}:${number}>`;
+      }),
+    // Sorted keys number the tokens the same way whatever the key order, as isEqual ignores it.
+    true
+  );
+
+  return { masked, tokens };
+}
+
+function renamedRecording(
+  candidates: readonly ModelRecording[],
+  sent: MaskedBody,
+  maskedOf: (recording: ModelRecording) => MaskedBody
+): ModelRecording | undefined {
+  if (sent.tokens.length === 0) {
+    return undefined;
+  }
+
+  const matches = candidates.filter((candidate) =>
+    isEqual(maskedOf(candidate).masked, sent.masked)
+  );
+
+  if (matches.length > 1) {
+    throw new Error(
+      `Recordings ${matches.map(({ name }) => name).join(", ")} answer this request only by renaming ids or hashes. ` +
+        "Give each a request that differs in more than its ids."
+    );
+  }
+
+  const [match] = matches;
+
+  if (match === undefined) {
+    return undefined;
+  }
+
+  const renames = new Map(
+    maskedOf(match).tokens.map((token, number) => [
+      token,
+      sent.tokens[number] ?? token,
+    ])
+  );
+
+  const rename = (text: string): string =>
+    text.replace(TOKEN_PATTERN, (token) => renames.get(token) ?? token);
+
+  return { ...match, response: renamedResponse(match.response, rename) };
+}
+
+function renamedResponse(
+  response: ModelRecording["response"],
+  rename: (text: string) => string
+): ModelRecording["response"] {
+  if ("body" in response) {
+    return { ...response, body: mapJsonStrings(response.body, rename) };
+  }
+
+  // A tool call's arguments stream in fragments that can split a token, so each
+  // call's fragments are joined, renamed, and cut back at the same lengths. A
+  // renamed token keeps its length, so every fragment keeps its length.
+  const joined = new Map<string, string>();
+
+  for (const event of response.events) {
+    mapStreamEvent(
+      event,
+      (text) => text,
+      (call, fragment) => {
+        joined.set(call, (joined.get(call) ?? "") + fragment);
+
+        return fragment;
+      }
+    );
+  }
+
+  const renamed = new Map(
+    [...joined].map(([call, text]) => [call, rename(text)])
+  );
+
+  const cut = new Map<string, number>();
+
+  const events = response.events.map((event) =>
+    mapStreamEvent(event, rename, (call, fragment) => {
+      const start = cut.get(call) ?? 0;
+
+      cut.set(call, start + fragment.length);
+
+      return (renamed.get(call) ?? fragment).slice(
+        start,
+        start + fragment.length
+      );
+    })
+  );
+
+  return { ...response, events };
 }
 
 async function recordLive(
@@ -349,5 +491,130 @@ function modelNameOf(body: JsonValue | undefined): string {
   }
 
   return typeof body.model === "string" ? body.model : "unknown";
+}
+
+function isJsonArray(value: JsonValue): value is readonly JsonValue[] {
+  return Array.isArray(value);
+}
+
+function mapJsonStrings(
+  value: JsonValue,
+  map: (text: string) => string,
+  sortKeys = false
+): JsonValue {
+  if (typeof value === "string") {
+    return map(value);
+  }
+
+  if (isJsonArray(value)) {
+    return value.map((item) => mapJsonStrings(item, map, sortKeys));
+  }
+
+  if (!isJsonObject(value)) {
+    return value;
+  }
+
+  const keys = Object.keys(value);
+
+  if (sortKeys) {
+    keys.sort();
+  }
+
+  return Object.fromEntries(
+    keys.map((key) => [key, mapJsonStrings(value[key] ?? null, map, sortKeys)])
+  );
+}
+
+/**
+ * Maps each string of a streamed chat completion event. Each tool call's
+ * argument fragment goes to `mapArguments` instead, with a key of its choice
+ * index and its tool call index.
+ */
+function mapStreamEvent(
+  event: JsonValue,
+  map: (text: string) => string,
+  mapArguments: (call: string, fragment: string) => string
+): JsonValue {
+  const choices = isJsonObject(event) ? event.choices : undefined;
+
+  if (!isJsonObject(event) || choices === undefined || !isJsonArray(choices)) {
+    return mapJsonStrings(event, map);
+  }
+
+  return Object.assign(mapJsonObject(event, map, "choices"), {
+    choices: choices.map((choice) => mapChoice(choice, map, mapArguments)),
+  });
+}
+
+function mapChoice(
+  choice: JsonValue,
+  map: (text: string) => string,
+  mapArguments: (call: string, fragment: string) => string
+): JsonValue {
+  const delta = isJsonObject(choice) ? choice.delta : undefined;
+
+  const calls =
+    delta !== undefined && isJsonObject(delta) ? delta.tool_calls : undefined;
+
+  if (
+    !isJsonObject(choice) ||
+    delta === undefined ||
+    !isJsonObject(delta) ||
+    calls === undefined ||
+    !isJsonArray(calls)
+  ) {
+    return mapJsonStrings(choice, map);
+  }
+
+  const choiceIndex = String(choice.index);
+
+  return Object.assign(mapJsonObject(choice, map, "delta"), {
+    delta: Object.assign(mapJsonObject(delta, map, "tool_calls"), {
+      tool_calls: calls.map((call) =>
+        mapToolCall(call, map, (callIndex, fragment) =>
+          mapArguments(`${choiceIndex}:${callIndex}`, fragment)
+        )
+      ),
+    }),
+  });
+}
+
+function mapToolCall(
+  call: JsonValue,
+  map: (text: string) => string,
+  mapArguments: (callIndex: string, fragment: string) => string
+): JsonValue {
+  const named = isJsonObject(call) ? call.function : undefined;
+
+  const fragment =
+    named !== undefined && isJsonObject(named) ? named.arguments : undefined;
+
+  if (
+    !isJsonObject(call) ||
+    named === undefined ||
+    !isJsonObject(named) ||
+    typeof fragment !== "string"
+  ) {
+    return mapJsonStrings(call, map);
+  }
+
+  return Object.assign(mapJsonObject(call, map, "function"), {
+    function: Object.assign(mapJsonObject(named, map, "arguments"), {
+      arguments: mapArguments(String(call.index), fragment),
+    }),
+  });
+}
+
+/** Maps each string of an object, without the key `omit`, which the caller fills. */
+function mapJsonObject(
+  value: { readonly [key: string]: JsonValue },
+  map: (text: string) => string,
+  omit: string
+): { [key: string]: JsonValue } {
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([key]) => key !== omit)
+      .map(([key, item]) => [key, mapJsonStrings(item, map)])
+  );
 }
 /* oxlint-enable anti-slop/no-runtime-typeof */

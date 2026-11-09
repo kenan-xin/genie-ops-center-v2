@@ -10,6 +10,8 @@ A disposable Postgres with the real migration histories applied in the order the
 
 The recorded test model (`DEC-55`): `model-transports.ts` loads a folder of `*.json` recordings, replays the one whose whole request matches, and turns a recorded answer into a provider response and back. The no-live-model setup that `@genie/config`'s unit preset and core's integration config install refuses a request to a model host, so a test cannot reach the provider by accident (R-21, AC-5).
 
+A recording matches its whole request, or the whole request up to a one-to-one renaming of UUIDs and 64-character hashes. A renamed match answers with the sent ids and hashes in place of its own, also inside a tool call that streams in fragments. An exact match wins, and two renamed matches are an error. A handed-over record has a new id each run, and a deck's content hash covers the read time of its figures, so this keeps their recordings stable.
+
 Only the owner refreshes `model-recordings/`, from a live run in their own shell. The script prints names and statuses, never the key, refuses to run in CI, and changes only files under the directories it is given. It never runs in a gate.
 
 ```sh

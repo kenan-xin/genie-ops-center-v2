@@ -3,8 +3,9 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { expect, it } from "vitest";
+import { z } from "zod";
 
-import type { ModelRecording } from "./model-transports.ts";
+import type { JsonValue, ModelRecording } from "./model-transports.ts";
 import {
   loadModelRecordings,
   recordingFromResponse,
@@ -33,6 +34,163 @@ function recordingForFolder(name: string): ModelRecording {
     response: { status: 200, body: { id: `answer-${name}` } },
   };
 }
+
+const ID_A = "aaaaaaaa-0000-4000-8000-00000000000a";
+
+const ID_B = "bbbbbbbb-0000-4000-8000-00000000000b";
+
+const ID_C = "cccccccc-0000-4000-8000-00000000000c";
+
+const HASH_A = "a".repeat(64);
+
+const HASH_B = "b".repeat(64);
+
+const toolCallEventSchema = z.object({
+  choices: z.array(
+    z.object({
+      delta: z.object({
+        tool_calls: z
+          .array(z.object({ function: z.object({ arguments: z.string() }) }))
+          .optional(),
+      }),
+    })
+  ),
+});
+
+function bodyWith(model: string, ...tokens: readonly string[]): JsonValue {
+  return {
+    model,
+    messages: [{ role: "user", content: `Change ${tokens.join(" and ")}.` }],
+  };
+}
+
+function recordingWith(
+  name: string,
+  body: JsonValue,
+  response: ModelRecording["response"] = { status: 200, body: { answer: name } }
+): ModelRecording {
+  return { name, request: { method: "POST", url: CHAT_URL, body }, response };
+}
+
+function toolCallEvent(fragment: string): JsonValue {
+  return {
+    choices: [
+      {
+        index: 0,
+        delta: {
+          tool_calls: [{ index: 0, function: { arguments: fragment } }],
+        },
+      },
+    ],
+  };
+}
+
+async function send(
+  transport: typeof globalThis.fetch,
+  body: JsonValue
+): Promise<Response> {
+  return transport(CHAT_URL, { method: "POST", body: JSON.stringify(body) });
+}
+
+async function argumentFragments(response: Response): Promise<string[]> {
+  const answer = await recordingFromResponse(response);
+  const events = "events" in answer ? answer.events : [];
+
+  return events.flatMap((event) =>
+    toolCallEventSchema
+      .parse(event)
+      .choices.flatMap(({ delta }) => delta.tool_calls ?? [])
+      .map((call) => call.function.arguments)
+  );
+}
+
+it("answers an exact recording before one that matches only by renamed ids", async () => {
+  const transport = replayModelTransport([
+    recordingWith("renamed", bodyWith("m", ID_A)),
+    recordingWith("exact", bodyWith("m", ID_B)),
+  ]);
+
+  const answer = await send(transport, bodyWith("m", ID_B));
+
+  expect(await answer.json()).toEqual({ answer: "exact" });
+});
+
+it("answers a renamed recording with the sent ids and hashes in its tool call and its body", async () => {
+  const transport = replayModelTransport([
+    recordingWith("call", bodyWith("call", ID_A, HASH_A), {
+      status: 200,
+      events: [
+        toolCallEvent(JSON.stringify({ deckId: ID_A, expectedHash: HASH_A })),
+      ],
+    }),
+    recordingWith("body", bodyWith("body", ID_A), {
+      status: 200,
+      body: { id: ID_A },
+    }),
+  ]);
+
+  const fragments = await argumentFragments(
+    await send(transport, bodyWith("call", ID_B, HASH_B))
+  );
+
+  expect(JSON.parse(fragments.join(""))).toEqual({
+    deckId: ID_B,
+    expectedHash: HASH_B,
+  });
+  expect(await (await send(transport, bodyWith("body", ID_B))).json()).toEqual({
+    id: ID_B,
+  });
+});
+
+it("rewrites an id split over argument fragments, and keeps each fragment's length and the answer's delay", async () => {
+  const recorded = [`{"deckId":"${ID_A.slice(0, 10)}`, `${ID_A.slice(10)}"}`];
+
+  const transport = replayModelTransport([
+    recordingWith("split", bodyWith("m", ID_A), {
+      status: 200,
+      chunkDelayMs: 50,
+      events: [
+        { choices: [{ index: 0, delta: { role: "assistant" } }] },
+        ...recorded.map(toolCallEvent),
+      ],
+    }),
+  ]);
+
+  const started = performance.now();
+
+  const fragments = await argumentFragments(
+    await send(transport, bodyWith("m", ID_B))
+  );
+
+  const elapsedMs = performance.now() - started;
+
+  expect(fragments.join("")).toBe(`{"deckId":"${ID_B}"}`);
+  expect(fragments.map((part) => part.length)).toEqual(
+    recorded.map((part) => part.length)
+  );
+  expect(elapsedMs).toBeGreaterThanOrEqual(100);
+});
+
+it("refuses a request that two recordings answer only by renaming, and names both", async () => {
+  const transport = replayModelTransport([
+    recordingWith("one", bodyWith("m", ID_A)),
+    recordingWith("two", bodyWith("m", ID_C)),
+  ]);
+
+  await expect(send(transport, bodyWith("m", ID_B))).rejects.toThrow(
+    /one, two/
+  );
+});
+
+it("does not match when the sent ids do not pair one to one with the recorded ids", async () => {
+  const transport = replayModelTransport([
+    recordingWith("two ids", bodyWith("m", ID_A, ID_C)),
+  ]);
+
+  await expect(send(transport, bodyWith("m", ID_B, ID_B))).rejects.toThrow(
+    /No recording answers/
+  );
+});
 
 it("replays the recording that matches a request, and refuses any other request without its headers", async () => {
   const transport = replayModelTransport([
