@@ -17,7 +17,12 @@ import {
   type ReactNode,
 } from "react";
 
-import { type DeckSync, formatElapsed, openDeckSync } from "./deck-sync.ts";
+import {
+  deckPath,
+  type DeckSync,
+  formatElapsed,
+  openDeckSync,
+} from "./deck-sync.ts";
 import {
   ASPECT,
   clampIndex,
@@ -30,8 +35,16 @@ import type { DeckPageView, ShownSlide } from "./views.ts";
 
 export type PresenterViewProps = {
   readonly view: DeckPageView;
-  readonly onExit: () => void;
+  /** Stories pass their own; the page leaves it out and gets `closeWindow`. */
+  readonly onExit?: (() => void) | undefined;
 };
+
+/** Exit closes the pop-up; a page a script did not open cannot close itself, so it goes to the deck. */
+function closeWindow(deckId: string): void {
+  window.close();
+
+  if (!window.closed) window.location.assign(deckPath(deckId));
+}
 
 /** Where the audience window stands: unheard yet, following, or closed. */
 type Audience = "unheard" | "follows" | "closed";
@@ -188,7 +201,10 @@ export function PresenterView(props: PresenterViewProps) {
     <Dialog
       open
       onOpenChange={(open) => {
-        if (!open) onExit();
+        if (open) return;
+
+        if (onExit === undefined) closeWindow(deck.id);
+        else onExit();
       }}
     >
       <DialogContent
