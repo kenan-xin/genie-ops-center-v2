@@ -1,3 +1,6 @@
+/** The surface id of Ask. A module surface's id is its module id (DEC-29, amended 2026-11-07). */
+export const ASK_SURFACE = "core:ask";
+
 /** The tools core gives the boss agent itself; a module tool never takes one of these names (R-43). */
 export const CORE_AGENT_TOOL_NAMES = [
   "list-datasets",

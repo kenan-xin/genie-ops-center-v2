@@ -1,5 +1,9 @@
 import { z, type ZodType } from "zod";
 
+import type {
+  AgentInstructions,
+  AnyAgentTool,
+} from "../../../contracts/index.ts";
 import { moduleApiProblems } from "../rpc/conformance.ts";
 import {
   AGENT_TOOL_NAME,
@@ -784,16 +788,56 @@ function transformationProblems(
 /**
  * The capability rules. One bad tool name makes the model provider refuse every chat request, and
  * a module tool must not shadow a core tool (R-43). Agent instructions and an inbox link check one
- * of the module's own keys, and an inbox link stays inside the application (R-42).
+ * of the module's own keys, and an inbox link stays inside the application (R-42). A surface's
+ * record page takes the new record's id, and a surface session holds the module's agent-tools
+ * beside the surface tools, so one name must not hide another (DEC-29, amended 2026-11-07).
  */
 function capabilityProblems(module: Module): string[] {
   const id = module.identity.id;
   const declared = new Set<string>(module.permissions.map(({ key }) => key));
-  const coreTools: ReadonlySet<string> = new Set(CORE_AGENT_TOOL_NAMES);
   const toolNames = new Set<string>();
   const problems: string[] = [];
 
+  const agentToolNames = new Set(
+    module.capabilities.flatMap((provision) =>
+      provision.name === "agent-tools"
+        ? provision.implementation.tools.map(({ name }) => name)
+        : []
+    )
+  );
+
   for (const provision of module.capabilities) {
+    if (provision.name === "agent-surface") {
+      const { name, recordPage, tools, instructions } =
+        provision.implementation;
+
+      const servesRecord =
+        recordPage.split("/").filter((segment) => segment.startsWith(":"))
+          .length === 1 &&
+        module.pages.workspace.some((page) => page.path === recordPage);
+
+      if (!servesRecord) {
+        problems.push(
+          `Agent surface "${name}" names record page "${recordPage}", which is not one of the module's workspace pages with one parameter.`
+        );
+      }
+
+      const surfaceToolNames = new Set<string>();
+
+      for (const tool of tools) {
+        if (agentToolNames.has(tool.name)) {
+          problems.push(
+            `Agent surface tool "${tool.name}" repeats the name of one of the module's agent-tools.`
+          );
+        } else {
+          problems.push(...toolProblems(tool, id, declared, surfaceToolNames));
+        }
+      }
+
+      problems.push(...instructionProblems(instructions, declared));
+      continue;
+    }
+
     if (provision.name === "document-inbox") {
       const { label, path, permission } = provision.implementation;
 
@@ -812,69 +856,92 @@ function capabilityProblems(module: Module): string[] {
       continue;
     }
 
-    const { instructions } = provision.implementation;
+    const { instructions, tools } = provision.implementation;
 
     if (instructions !== undefined) {
-      if (!declared.has(instructions.permission)) {
-        problems.push(
-          `Agent instructions name permission "${instructions.permission}", which the module does not declare.`
-        );
-      }
-
-      if (instructions.lines.length === 0) {
-        problems.push("Agent instructions hold no line.");
-      }
-
-      // One rule per prompt line: a blank or broken line would merge into the catalog's blank line.
-      instructions.lines.forEach((line, index) => {
-        if (line.trim() === "" || /[\r\n]/.test(line)) {
-          problems.push(
-            `Agent instructions line ${index + 1} is blank or holds a line break.`
-          );
-        }
-      });
+      problems.push(...instructionProblems(instructions, declared));
     }
 
-    for (const { name, description, permission, writes } of provision
-      .implementation.tools) {
-      const tool = `Agent tool "${name}"`;
-
-      if (!AGENT_TOOL_NAME.test(name)) {
-        problems.push(
-          `${tool} is not kebab-case: lower-case letters and digits in hyphen-separated parts.`
-        );
-      } else if (name.length > AGENT_TOOL_NAME_MAX) {
-        problems.push(
-          `${tool} is longer than ${AGENT_TOOL_NAME_MAX} characters.`
-        );
-      } else if (coreTools.has(name)) {
-        problems.push(`${tool} takes the name of a core tool.`);
-      } else if (!name.startsWith(`${id}-`)) {
-        problems.push(`${tool} must start with "${id}-".`);
-      }
-
-      if (toolNames.has(name)) {
-        problems.push(`${tool} is declared more than once.`);
-      }
-
-      toolNames.add(name);
-
-      if (description.trim() === "") {
-        problems.push(`${tool} has no description.`);
-      }
-
-      if (permission !== undefined && !declared.has(permission)) {
-        problems.push(
-          `${tool} names permission "${permission}", which the module does not declare.`
-        );
-      }
-
-      // A write tool without a key would be offered to every person (R-46).
-      if (writes === true && permission === undefined) {
-        problems.push(`${tool} changes data, so it names a permission.`);
-      }
+    for (const tool of tools) {
+      problems.push(...toolProblems(tool, id, declared, toolNames));
     }
   }
+
+  return problems;
+}
+
+const coreTools: ReadonlySet<string> = new Set(CORE_AGENT_TOOL_NAMES);
+
+/** One tool's rules. `seen` collects the names of one tool list, so a repeat is refused. */
+function toolProblems(
+  { name, description, permission, writes }: AnyAgentTool,
+  id: string,
+  declared: ReadonlySet<string>,
+  seen: Set<string>
+): string[] {
+  const tool = `Agent tool "${name}"`;
+  const problems: string[] = [];
+
+  if (!AGENT_TOOL_NAME.test(name)) {
+    problems.push(
+      `${tool} is not kebab-case: lower-case letters and digits in hyphen-separated parts.`
+    );
+  } else if (name.length > AGENT_TOOL_NAME_MAX) {
+    problems.push(`${tool} is longer than ${AGENT_TOOL_NAME_MAX} characters.`);
+  } else if (coreTools.has(name)) {
+    problems.push(`${tool} takes the name of a core tool.`);
+  } else if (!name.startsWith(`${id}-`)) {
+    problems.push(`${tool} must start with "${id}-".`);
+  }
+
+  if (seen.has(name)) {
+    problems.push(`${tool} is declared more than once.`);
+  }
+
+  seen.add(name);
+
+  if (description.trim() === "") {
+    problems.push(`${tool} has no description.`);
+  }
+
+  if (permission !== undefined && !declared.has(permission)) {
+    problems.push(
+      `${tool} names permission "${permission}", which the module does not declare.`
+    );
+  }
+
+  // A write tool without a key would be offered to every person (R-46).
+  if (writes === true && permission === undefined) {
+    problems.push(`${tool} changes data, so it names a permission.`);
+  }
+
+  return problems;
+}
+
+function instructionProblems(
+  instructions: AgentInstructions,
+  declared: ReadonlySet<string>
+): string[] {
+  const problems: string[] = [];
+
+  if (!declared.has(instructions.permission)) {
+    problems.push(
+      `Agent instructions name permission "${instructions.permission}", which the module does not declare.`
+    );
+  }
+
+  if (instructions.lines.length === 0) {
+    problems.push("Agent instructions hold no line.");
+  }
+
+  // One rule per prompt line: a blank or broken line would merge into the catalog's blank line.
+  instructions.lines.forEach((line, index) => {
+    if (line.trim() === "" || /[\r\n]/.test(line)) {
+      problems.push(
+        `Agent instructions line ${index + 1} is blank or holds a line break.`
+      );
+    }
+  });
 
   return problems;
 }

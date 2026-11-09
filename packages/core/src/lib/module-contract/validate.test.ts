@@ -3,6 +3,7 @@ import { z } from "zod";
 
 import {
   type AgentInstructions,
+  type AgentSurface,
   capability,
   defineAgentTool,
   type DocumentInbox,
@@ -1459,6 +1460,76 @@ describe("validateModule", () => {
   });
 });
 
+describe("agent surface", () => {
+  it("refuses a record page that no workspace page with one parameter serves", () => {
+    for (const path of [
+      "/admin/fixture",
+      "/fixture/missing/:id",
+      "/fixture/archive",
+    ]) {
+      expect(validateModule(withSurface({ recordPage: path }))).toEqual([
+        `Agent surface "Fixture agent" names record page "${path}", which is not one of the module's workspace pages with one parameter.`,
+      ]);
+    }
+  });
+
+  it("accepts a workspace page with one parameter and no record check", () => {
+    expect(validateModule(withSurface({}))).toEqual([]);
+  });
+
+  it("refuses a surface tool that repeats an agent-tools name, in either order", () => {
+    for (const surfaceFirst of [true, false]) {
+      expect(
+        validateModule(
+          withSurface(
+            { tools: [readTool("fixture-count")] },
+            ["fixture-count"],
+            surfaceFirst
+          )
+        )
+      ).toEqual([
+        'Agent surface tool "fixture-count" repeats the name of one of the module\'s agent-tools.',
+      ]);
+    }
+  });
+
+  it("holds surface tools and instructions to the agent-tools rules", () => {
+    const cases: readonly [Partial<AgentSurface>, string][] = [
+      [
+        {
+          tools: [
+            defineAgentTool({
+              name: "fixture-change",
+              description: "Changes a record.",
+              input: z.object({}),
+              writes: true,
+              run: async () => ({ output: 0, rowCount: 0 }),
+            }),
+          ],
+        },
+        'Agent tool "fixture-change" changes data, so it names a permission.',
+      ],
+      [
+        { tools: [readTool("change")] },
+        'Agent tool "change" must start with "fixture-".',
+      ],
+      [
+        {
+          instructions: {
+            permission: "fixture:missing",
+            lines: ["Build the open record."],
+          },
+        },
+        'Agent instructions name permission "fixture:missing", which the module does not declare.',
+      ],
+    ];
+
+    for (const [change, problem] of cases) {
+      expect(validateModule(withSurface(change))).toEqual([problem]);
+    }
+  });
+});
+
 describe("validateRegistry", () => {
   it("accepts the exact ledger name for a module id", () => {
     expect(validateRegistry([validModule])).toEqual([]);
@@ -1592,6 +1663,53 @@ function withTools(names: readonly string[], description = "Counts records.") {
   return {
     ...validModule,
     capabilities: [capability("agent-tools", { tools })],
+  };
+}
+
+/** One read tool of the given name. */
+function readTool(name: string) {
+  return defineAgentTool({
+    name,
+    description: "Counts records.",
+    input: z.object({}),
+    run: async () => ({ output: 0, rowCount: 0 }),
+  });
+}
+
+/**
+ * The valid fixture with a `/fixture/:id` workspace page, `agent-tools` read tools of the given
+ * names, and a surface on that page with the given changes.
+ */
+function withSurface(
+  change: Partial<AgentSurface>,
+  toolNames: readonly string[] = [],
+  surfaceFirst = true
+) {
+  const surface: AgentSurface = {
+    name: "Fixture agent",
+    recordPage: "/fixture/:id",
+    tools: [],
+    instructions: {
+      permission: "fixture:use",
+      lines: ["Build the open record."],
+    },
+    acceptsHandoff: true,
+    createRecord: async () => "record-1",
+    ...change,
+  };
+
+  const tools = capability("agent-tools", { tools: toolNames.map(readTool) });
+  const surfaceProvision = capability("agent-surface", surface);
+
+  return {
+    ...validModule,
+    pages: {
+      ...validModule.pages,
+      workspace: [...validModule.pages.workspace, page("/fixture/:id")],
+    },
+    capabilities: surfaceFirst
+      ? [surfaceProvision, tools]
+      : [tools, surfaceProvision],
   };
 }
 

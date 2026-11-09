@@ -142,12 +142,33 @@ export type DocumentInbox = {
 };
 
 /**
+ * One module's agent surface (DEC-29, amended 2026-11-07): the agent of a page that builds a
+ * record, for example a deck. Core runs it; a module declares at most one.
+ */
+export type AgentSurface = {
+  /** The agent's name a person reads, for example "Slides agent". */
+  readonly name: string;
+  /** A workspace page path of the module with one parameter, for example "/m/slides/decks/:id". */
+  readonly recordPage: string;
+  /** The surface's own tools. Read tools stay in `agent-tools`, which a surface session also gets. */
+  readonly tools: readonly AnyAgentTool[];
+  readonly instructions: AgentInstructions;
+  readonly acceptsHandoff: boolean;
+  /** Module code: creates the empty record as the person and answers its id. */
+  createRecord(
+    ctx: ModuleRequestContext,
+    input: { readonly title: string }
+  ): Promise<string>;
+};
+
+/**
  * The named synchronous interfaces a module can provide and another can ask for. A capability is
  * added here when a real module needs one, in the same change that documents it in the module
  * contract.
  */
 export type CapabilityInterfaces = {
   readonly "agent-tools": AgentToolsProvider;
+  readonly "agent-surface": AgentSurface;
   readonly "document-inbox": DocumentInbox;
 };
 

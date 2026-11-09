@@ -121,6 +121,8 @@ export type {
   BrandingTokenSource,
 } from "./lib/branding/tokens.ts";
 
+export { ASK_SURFACE } from "./lib/module-contract/agent-tools.ts";
+
 export { registerModuleRuntime } from "./lib/module-contract/runtime.ts";
 
 export {
