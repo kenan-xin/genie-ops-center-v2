@@ -8,11 +8,11 @@ Bead: `czjw.116`. Status and claims live in Beads, not in this document.
 - [Technical plan](../../../tech-plans/07-invoice-and-payments.md), wave 5, Decisions: "Dashboard filters".
 - agent-native `templates/analytics/app/pages/adhoc/sql-dashboard/types.ts` `DashboardFilter` and `DashboardFilterBar.tsx` (MIT, commit `f31225ba3332a3dd4965d1ee5644df4d281bc650`), ideas only, never their SQL text templates.
 - The [Spec 7 ticket index](../README.md).
-- Prototype: the dashboard filter bar prototype of phase W3a of follow-up 11, the variant the owner picks at gate G2. It starts from the list header's filter controls (S7-19, `czjw.102` variant A) and the date pickers (S7-16, `czjw.101`).
+- Prototype: the dashboard filter bar prototype of phase W3a of follow-up 11, variant A: the view menu at the left of the bar, the status at its end, a sentence in the panel header when a filter does not apply, and on a phone the Filters sheet. [`dashboard-filters.prototype.html`](../../../design/prototypes/dashboard-filters.prototype.html), captures in [`dashboard-filters/`](../../../design/sections/invoices-and-payments/dashboard-filters/). Picked by the run, owner review at G3 (owner, 2026-11-08). It starts from the list header's filter controls (S7-19, `czjw.102` variant A) and the date pickers (S7-16, `czjw.101`).
 
 ## Dependencies
 
-Depends on: S7-42 (the Dashboards surface), S7-44 (the "You can change" line and its test), `czjw.101`, `czjw.102` and gate G2.
+Depends on: S7-42 (the Dashboards surface), S7-44 (the "You can change" line and its test), `czjw.101`, `czjw.102` and the Phase 12 import.
 
 ## Scope
 

@@ -61,10 +61,10 @@ Owner decision, 2026-10-27: full scope for the November 2026 festival, with no s
 | [S7-40](40-surface-runtime/index.md) | `czjw.113` | `cvij.6`, `czjw.110` | none | Core surface runtime: contract, sessions and the durable run |
 | [S7-41](41-ask-handoff/index.md) | `czjw.122` | S7-40, `czjw.120` | none | The Ask handoff: tool, brief, card and target panel |
 | [S7-42](42-slides-and-dashboards-surfaces/index.md) | `czjw.96` | S7-41 | none | Slides and Dashboards surfaces, slide by slide, and add as a panel |
-| [S7-43](43-slide-position-and-style/index.md) | `czjw.103` | S7-42, gate G2 | none | Position and style per slide element |
+| [S7-43](43-slide-position-and-style/index.md) | `czjw.103` | S7-42, the Phase 12 import | none | Position and style per slide element |
 | [S7-44](44-what-the-agent-can-change/index.md) | `czjw.104` | S7-43 | none | The agent names what it can change |
-| [S7-45](45-speaker-notes-and-presenter-view/index.md) | `czjw.115` | S7-43, S7-44, gate G2 | none | Speaker notes and the presenter view |
-| [S7-46](46-dashboard-filters-in-the-url/index.md) | `czjw.116` | S7-42, S7-44, `czjw.101`, `czjw.102`, gate G2 | none | Dashboard filters, several at once, in the page address |
+| [S7-45](45-speaker-notes-and-presenter-view/index.md) | `czjw.115` | S7-43, S7-44, the Phase 12 import | none | Speaker notes and the presenter view |
+| [S7-46](46-dashboard-filters-in-the-url/index.md) | `czjw.116` | S7-42, S7-44, `czjw.101`, `czjw.102`, the Phase 12 import | none | Dashboard filters, several at once, in the page address |
 | [S7-47](47-dashboard-saved-views/index.md) | `czjw.117` | S7-46 | none | Saved views of a dashboard, with one default |
 | `6wz1.89`, no folder, owned by the Spec 3 epic `6wz1` | `6wz1.89` | none | none | Collapsible, edge-to-edge app sidebar (icon rail) |
 | `xok3.49`, no folder, owned by the Maintenance epic `xok3` | `xok3.49` | none | none | Polish the idle sign-out warning dialog |
@@ -132,13 +132,13 @@ graph LR
   S40 --> S41[S7-41 Ask handoff]
   S41 --> S42[S7-42 Slides and Dashboards surfaces]
   S42 --> S43[S7-43 position and style]
-  G2[gate G2 three design prototypes] --> S43
+  P12[Phase 12 import of three design prototypes] --> S43
   S43 --> S44[S7-44 what I can change]
   S44 --> S45[S7-45 speaker notes]
-  G2 --> S45
+  P12 --> S45
   S42 --> S46[S7-46 dashboard filters]
   S44 --> S46
-  G2 --> S46
+  P12 --> S46
   S46 --> S47[S7-47 saved views]
 ```
 
@@ -166,9 +166,9 @@ Wave 5 check, 2026-11-08. The same section is the only one Spec 7 owns. Its Ask,
 | --- | --- | --- | --- |
 | Ask, handoff card and header chip (`ask`) | R-42b | S7-41 | `agent-handoff.prototype.html`, variant A, design workspace |
 | Deck and dashboard pages, surface agent panel with the brief card and live steps (`slides`, `dashboards`) | R-42, R-42b | S7-41, S7-42 | the same prototype |
-| Slides editor, position and style controls (`slides`) | R-52a | S7-43 | the W3a slide editor prototype, picked at gate G2 |
-| Slides editor notes field and presenter window (`slides`, `slides-present`) | R-55a | S7-45 | the W3a presenter prototype, picked at gate G2 (owner, 2026-11-08) |
-| Dashboards filter bar and view menu (`dashboards`) | R-49, R-49a | S7-46, S7-47 | the W3a filter bar prototype, picked at gate G2 (owner, 2026-11-08); it starts from the list header variant A |
+| Slides editor, position and style controls (`slides`) | R-52a | S7-43 | `../../design/prototypes/slide-editor-controls.prototype.html`, variant A, picked by the run, owner review at G3 (owner, 2026-11-08) |
+| Slides editor notes field and presenter window (`slides`, `slides-present`) | R-55a | S7-45 | `../../design/prototypes/presenter-window.prototype.html`, variant A, picked by the run, owner review at G3 (owner, 2026-11-08) |
+| Dashboards filter bar and view menu (`dashboards`) | R-49, R-49a | S7-46, S7-47 | `../../design/prototypes/dashboard-filters.prototype.html`, variant A, picked by the run, owner review at G3 (owner, 2026-11-08); it starts from the list header variant A |
 
 No open amendment file under `../../design/` touches wave 5.
 

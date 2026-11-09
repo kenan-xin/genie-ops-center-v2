@@ -10,6 +10,8 @@ Open [Invoice upload and review](invoice-upload-review.prototype.html) directly 
 
 Open [Section 7 redesign](section-7-redesign.prototype.html) directly in a browser. It holds every Section 7 screen in one page pattern, switched by `?screen=<key>&state=<state>` (design review `buv3.20`, 2026-11-02). It waits for the owner review. Its data is the fictional demo pack. The [import record](../imports/2026-11-02-section-7-redesign.md) lists the screens and the captures.
 
+Open [Slide editor controls](slide-editor-controls.prototype.html), [Presenter window](presenter-window.prototype.html) and [Dashboard filters](dashboard-filters.prototype.html) directly in a browser. Each holds three variants of a wave 5 screen, switched by `?variant=A|B|C&state=<state>`, and opens variant A, the run's pick of 2026-11-09. The owner reviews the picks at gate G3. Their data is fictional sample data. The [import record](../imports/2026-11-09-wave-5-prototypes.md) lists the states and the captures.
+
 The Access prototype lives beside its spec: [Access, role-per-row model](../sections/access/access.prototype.html), switched by `?screen=grants&state=<state>`. Its [import record](../imports/2026-11-03-access-role-per-row.md) lists the states.
 
 Canonical designs:

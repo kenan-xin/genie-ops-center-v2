@@ -8,7 +8,7 @@ Bead: `czjw.117`. Status and claims live in Beads, not in this document.
 - [Technical plan](../../../tech-plans/07-invoice-and-payments.md), wave 5, Decisions: "Saved views".
 - agent-native `templates/analytics/server/db/schema.ts` `dashboardViews` and `app/hooks/use-dashboard-views.ts` (MIT, commit `f31225ba3332a3dd4965d1ee5644df4d281bc650`), ideas only.
 - The [Spec 7 ticket index](../README.md).
-- Prototype: the view menu in the dashboard filter bar prototype of phase W3a of follow-up 11, the variant the owner picks at gate G2.
+- Prototype: the view menu in the dashboard filter bar prototype of phase W3a of follow-up 11, variant A, a "View: <name>" menu at the left of the bar: [`dashboard-filters.prototype.html`](../../../design/prototypes/dashboard-filters.prototype.html), states `views`, `view-changed` and `default-view` in [`dashboard-filters/`](../../../design/sections/invoices-and-payments/dashboard-filters/). Picked by the run, owner review at G3 (owner, 2026-11-08).
 
 ## Dependencies
 

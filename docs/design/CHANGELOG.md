@@ -2,6 +2,17 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-09
+
+### Added, the wave 5 prototypes: slide editor controls, presenter window and dashboard filters
+
+- Three prototypes for wave 5 of Spec 7, variant A of each. The run picked them on 2026-11-09 without a stop (owner, 2026-11-08), and the owner reviews the picks at gate G3.
+- Slide editor controls (S7-43, R-52a): a floating toolbar on the selected element, drag with four corner handles on a phone, and a Position control that moves and resizes without a drag.
+- Presenter window (S7-45, R-55a): the current slide first, with the next slide and the notes beside it, opened by "Present with notes" in the Present split button.
+- Dashboard filter bar and view menu (S7-46, S7-47, R-49, R-49a): the view menu at the left of the bar, the status at the end, and on a phone the list header's Filters sheet.
+- 62 variant A captures at 1440 and 390.
+- Files: `prototypes/slide-editor-controls.prototype.html`, `prototypes/presenter-window.prototype.html`, `prototypes/dashboard-filters.prototype.html` and the folders `slide-editor-controls/`, `presenter-window/` and `dashboard-filters/` in `sections/invoices-and-payments/`. Record: `imports/2026-11-09-wave-5-prototypes.md`.
+
 ## 2026-11-04
 
 ### Added, the invoice record prototype, variant C (document desk)

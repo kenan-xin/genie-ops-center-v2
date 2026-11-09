@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Dashboard filter bar with several filters and the view menu, S7-46 (czjw.116) and S7-47 (czjw.117), wave 5 W3a.
+     Switch with ?variant=A|B|C and &state=clear|two-set|open-date|open-select|open-multi|open-toggle|own-range|not-applied|views|view-changed|default-view|max-fields.
+     The switcher at the bottom (top on a phone) changes both.
+     Question (gate G2, picked in Phase 12): where does the view menu sit, how do "Not saved as default" and "Changed" read,
+     how do the filters fit on a phone, and how does a panel say that a filter does not apply to it?
+     A: view switcher first. "View: <name>" menu button at the left of the bar, status text and its actions at the bar end.
+        Not-applied panel: one muted header line. Phone: the view button and one "Filters (n)" button that opens a Filters sheet.
+     B: filters first, a Views menu button at the bar end that carries "Changed"; the menu holds Update view and Save as new view.
+        Not-applied panel: a "Not filtered by <field>" badge. Phone: the filters scroll as chips, the Views button stays at the end.
+     C: views as tabs above the bar, Update view and Save as new view inline under a changed tab, a More menu for the view actions.
+        Not-applied panel: a dashed chip with the field name and a tip on hover, focus or tap. Phone: the tabs scroll, one Filters sheet.
+     Common: list header filter triggers (list-header-polish variant A: label and value, tint when set, Clear filters only when a
+     field filter is set). Kinds by DatasetFieldType: text gives select or multi-select, boolean gives a toggle, the time field gives
+     the date range (the six presets of filters-bar.tsx and a custom range). At most 4 field filters, the date range does not count;
+     Add filter is disabled at 4 with the reason. "Not saved as default" with Save as default when no view is selected and the
+     filters differ from the stored ones. Save as default stores the filters and clears the default view; Make default, in the view
+     menu, opens the dashboard with that view. A panel with its own range shows the range in its header.
+     The build writes the filters to the page address (S7-46); this file keeps them in memory only. Each save is one Undo step.
+     World: DESIGN.md fixed layer (tokens, 8px controls, 12px cards, hairlines). Lucide icons (ISC). No network.
+     Data: fictional sample figures and sample companies, no real person and no customer name. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PROTOTYPE: Dashboard filters and saved views</title>
+<style>
+  :root{
+    --background:#fff;--foreground:#111827;--muted:#f9fafb;--muted-foreground:#4b5563;--tile:#f3f4f6;
+    --border:#e5e7eb;--control:#d1d5db;--input:#6b7280;--primary:#2563eb;--ring:var(--primary);
+    --body-2:#374151;--danger:#b91c1c;--sel-bg:#eff6ff;--ok:#047857;--ok-bg:#ecfdf5;--warn:#92400e;--warn-bg:#fffbeb;
+    --font-sans:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --text-xs:max(12px,.8rem);--text-sm:.875rem;--ease:cubic-bezier(.16,1,.3,1);
+    --shadow-pop:0 10px 15px -3px rgb(0 0 0 / .1),0 4px 6px -4px rgb(0 0 0 / .1);
+  }
+  html{font-size:15px;scrollbar-color:#d1d5db transparent}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:var(--font-sans);font-size:1rem;line-height:1.5;color:var(--foreground);background:#fff;-webkit-font-smoothing:antialiased}
+  :focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+  h1,h2,p{margin:0}
+  .num{font-variant-numeric:tabular-nums}
+  .ic{width:16px;height:16px;flex:none;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  @media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+  .page{max-width:1376px;margin:0 auto;padding:24px 32px 96px}
+  .head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:16px}
+  .head h1{font-size:1.5rem;font-weight:700;letter-spacing:-.025em;line-height:1.25}
+  .head p{margin-top:2px;font-size:var(--text-sm);color:var(--muted-foreground)}
+  .head .act{display:flex;align-items:center;gap:16px}
+  .agent{display:inline-flex;align-items:center;gap:8px;font-size:var(--text-sm);font-weight:600;color:var(--body-2);background:none;border:0;font-family:inherit;cursor:pointer;min-height:40px}
+  .agent i{width:8px;height:8px;border-radius:50%;background:#4b5563}
+
+  .btn{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 14px;border:1px solid var(--control);border-radius:8px;background:#fff;color:#1f2937;font:inherit;font-size:var(--text-sm);font-weight:600;white-space:nowrap;cursor:pointer;transition:background-color .15s var(--ease)}
+  .btn:hover{background:var(--muted)}
+  .btn.pri{border-color:var(--primary);background:var(--primary);color:#fff}.btn.pri:hover{opacity:.94;background:var(--primary)}
+  .btn.sm{height:32px;padding:0 10px}
+  .btn.icon{width:40px;padding:0;justify-content:center}
+  .ghost{display:inline-flex;align-items:center;gap:6px;height:40px;padding:0 10px;border:0;background:none;border-radius:8px;color:var(--body-2);font:inherit;font-size:var(--text-sm);font-weight:500;white-space:nowrap;cursor:pointer}
+  .ghost:hover{background:var(--muted)}
+  .ghost.link{color:var(--primary);font-weight:600}
+  .ghost:disabled{color:var(--input);cursor:not-allowed;background:none}
+  .fcount{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--primary);color:#fff;font-size:var(--text-xs);font-weight:600}
+  .pill{display:inline-flex;align-items:center;height:20px;padding:0 7px;border-radius:999px;font-size:var(--text-xs);font-weight:600;white-space:nowrap;background:var(--ok-bg);color:var(--ok)}
+
+  /* filter bar */
+  .bar{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+  .bar .end{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .vr{width:1px;height:24px;background:var(--border);margin:0 2px}
+  .anc{position:relative;display:inline-flex}
+  .trig{display:inline-flex;align-items:center;gap:8px;height:40px;padding:0 12px;border:1px solid var(--control);border-radius:8px;background:#fff;color:#1f2937;font:inherit;font-size:var(--text-sm);cursor:pointer;white-space:nowrap}
+  .trig:hover{background:var(--muted)}
+  .trig .k{color:var(--muted-foreground)}
+  .trig .v{font-weight:600;color:var(--foreground)}
+  .trig .chev{color:var(--input)}
+  .trig.set{border-color:#93c5fd;background:var(--sel-bg)}
+  .tog .knob{position:relative;flex:none;width:28px;height:16px;border-radius:999px;background:var(--input);transition:background-color .15s var(--ease)}
+  .tog .knob::after{content:"";position:absolute;top:2px;left:2px;width:12px;height:12px;border-radius:50%;background:#fff;transition:transform .15s var(--ease)}
+  .tog[aria-checked=true] .knob{background:var(--primary)}
+  .tog[aria-checked=true] .knob::after{transform:translateX(12px)}
+  .tog[aria-checked=true]{font-weight:600}
+  .hint{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .note{display:inline-flex;align-items:center;gap:8px;font-size:var(--text-sm);color:var(--body-2)}
+  .note i,.chg i{width:8px;height:8px;border-radius:50%;background:#d97706;flex:none}
+  .chg{display:inline-flex;align-items:center;gap:6px;font-size:var(--text-sm);font-weight:600;color:var(--warn)}
+  .vbtn b{font-weight:600}
+  .vbtn .k{color:var(--muted-foreground);font-weight:500}
+  .vbtn .chg{margin-left:2px;padding-left:10px;border-left:1px solid var(--border)}
+  .sum{flex-basis:100%;font-size:var(--text-sm);color:var(--muted-foreground)}
+
+  /* popovers and menus */
+  .pop{position:absolute;left:0;top:calc(100% + 6px);z-index:30;width:300px;max-height:min(80vh,680px);overflow:auto;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff;box-shadow:var(--shadow-pop);text-align:left}
+  .pop.right{left:auto;right:0}
+  .pop.wide{width:340px}
+  .fs{margin:0;padding:0;border:0;min-width:0}
+  .fs legend{padding:6px 8px;font-size:var(--text-xs);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground)}
+  .opts{display:grid;gap:2px}
+  .opt{display:flex;align-items:center;gap:10px;min-height:36px;padding:6px 8px;border-radius:6px;font-size:var(--text-sm);cursor:pointer}
+  .opt:hover{background:var(--muted)}
+  .opt input{width:16px;height:16px;margin:0;accent-color:var(--primary);flex:none}
+  .custom{display:grid;gap:8px;margin:6px 8px 4px;padding-top:10px;border-top:1px solid var(--border)}
+  .two{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .fl{display:grid;gap:4px;font-size:var(--text-xs);font-weight:600;color:var(--body-2)}
+  .fl input{width:100%;min-width:0;height:36px;padding:0 8px;border:1px solid var(--input);border-radius:8px;font:inherit;font-size:var(--text-sm);color:var(--foreground);background:#fff}
+  .err{font-size:var(--text-xs);color:var(--danger);font-weight:600}
+  .pfoot{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:6px;padding:6px 0 0;border-top:1px solid var(--border)}
+  .menu{display:grid;gap:2px;margin:0;padding:0;list-style:none}
+  .mi{display:flex;gap:10px;align-items:flex-start;width:100%;min-height:36px;padding:8px;border:0;border-radius:6px;background:none;font:inherit;text-align:left;cursor:pointer;color:var(--foreground);font-size:var(--text-sm)}
+  .mi:hover{background:var(--muted)}
+  .mi:disabled{cursor:default;background:none}
+  .mi .ic{margin-top:2px}
+  .mi .grow{flex:1;min-width:0}
+  .mi small{display:block;font-size:var(--text-xs);color:var(--muted-foreground)}
+  .mi.danger{color:var(--danger)}
+  .mi .blank{width:16px;flex:none}
+  .sep{height:1px;margin:6px 0;background:var(--border)}
+  .mhead{padding:6px 8px;font-size:var(--text-xs);font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted-foreground)}
+  .mchg{display:grid;gap:8px;margin-bottom:6px;padding:10px;border:1px solid #fde68a;border-radius:8px;background:var(--warn-bg);font-size:var(--text-sm);color:var(--body-2)}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .nform{display:grid;gap:8px;padding:8px}
+  .nform label{display:grid;gap:4px;font-size:var(--text-sm);font-weight:600}
+  .nform input{height:40px;padding:0 10px;border:1px solid var(--input);border-radius:8px;font:inherit;font-size:var(--text-sm)}
+
+  /* C: views as tabs */
+  .vtabs{display:flex;align-items:center;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--border)}
+  .vtabs nav{display:flex;gap:4px;min-width:0;overflow-x:auto}
+  .vtab{position:relative;display:inline-flex;align-items:center;gap:8px;height:44px;padding:0 12px;border:0;background:none;font:inherit;font-size:var(--text-sm);font-weight:500;color:var(--muted-foreground);white-space:nowrap;cursor:pointer}
+  .vtab:hover{color:var(--foreground)}
+  .vtab[aria-current=true]{color:var(--foreground);font-weight:600}
+  .vtab[aria-current=true]::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:2px;background:var(--primary);border-radius:2px}
+  .vtabs .tools{display:flex;align-items:center;gap:4px;margin-left:8px;flex:none}
+  .chgrow{display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;margin:-4px 0 12px;padding:8px 12px;border:1px solid #fde68a;border-radius:8px;background:var(--warn-bg);font-size:var(--text-sm);color:var(--body-2)}
+
+  /* panels */
+  .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+  .card{display:flex;flex-direction:column;gap:10px;min-width:0;padding:16px 20px;border:1px solid var(--border);border-radius:12px;background:#fff}
+  .span2{grid-column:span 2}
+  .ph{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .ph h2{font-size:var(--text-sm);font-weight:600;color:var(--body-2)}
+  .ph .tags{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .own{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 8px;border-radius:999px;background:var(--tile);font-size:var(--text-xs);font-weight:600;color:var(--body-2)}
+  .own .ic{width:14px;height:14px}
+  .na{display:flex;align-items:center;gap:6px;margin-top:-4px;font-size:var(--text-xs);color:var(--muted-foreground)}
+  .na .ic{width:14px;height:14px}
+  .badge{display:inline-flex;align-items:center;height:24px;padding:0 8px;border:1px solid var(--control);border-radius:999px;font-size:var(--text-xs);font-weight:600;color:var(--body-2);background:#fff}
+  .napp{display:inline-flex;align-items:center;gap:4px;height:24px;padding:0 8px;border:1px dashed var(--input);border-radius:999px;background:var(--muted);font:inherit;font-size:var(--text-xs);font-weight:600;color:var(--muted-foreground);text-decoration:line-through;cursor:help}
+  .tip{display:none;position:absolute;right:0;top:calc(100% + 6px);z-index:25;width:240px;padding:8px 10px;border-radius:6px;background:#111827;color:#f9fafb;font-size:var(--text-xs);line-height:1.45;text-decoration:none;font-weight:500}
+  .napp:hover + .tip,.napp:focus-visible + .tip,.napp[aria-expanded=true] + .tip{display:block}
+  .kpi{font-size:1.75rem;font-weight:700;letter-spacing:-.02em;line-height:1.2}
+  .cmp{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .src{font-size:var(--text-xs);color:var(--muted-foreground)}
+  .bars{display:flex;align-items:flex-end;gap:12px;height:200px;border-bottom:1px solid var(--border)}
+  .bcol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:4px;height:100%}
+  .bcol .b{width:min(56px,70%);border-radius:3px 3px 0 0;background:var(--primary)}
+  .bv{font-size:var(--text-xs);color:var(--body-2)}
+  .bms{display:flex;gap:12px;margin-top:4px}
+  .bms span{flex:1;min-width:0;text-align:center;font-size:var(--text-xs);color:var(--muted-foreground)}
+  table{width:100%;border-collapse:collapse;font-size:var(--text-sm)}
+  th{padding:6px 0;text-align:left;font-size:var(--text-xs);font-weight:600;color:var(--muted-foreground);border-bottom:1px solid var(--border)}
+  td{padding:8px 0;border-bottom:1px solid var(--border)}
+  td.r,th.r{text-align:right}
+  .empty{padding:16px 0;font-size:var(--text-sm);color:var(--muted-foreground)}
+
+  /* Filters sheet (phone, A and C) */
+  .scrim{position:fixed;inset:0;z-index:40;background:rgb(17 24 39 / .4)}
+  .sheet{position:fixed;z-index:41;left:0;right:0;bottom:0;max-height:86vh;display:flex;flex-direction:column;border-radius:16px 16px 0 0;background:#fff;box-shadow:0 -10px 24px -8px rgb(0 0 0 / .2)}
+  .sheet .top{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;padding:8px 16px 12px;border-bottom:1px solid var(--border)}
+  .sheet .top h2{font-size:1.05rem;font-weight:700}
+  .grab{display:block;flex:0 0 100%;height:4px;margin-bottom:8px;background:linear-gradient(var(--control),var(--control)) center/36px 4px no-repeat}
+  .brow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:-8px 0 16px}
+  .sheet .in{flex:1;overflow:auto;padding:8px 16px 16px;display:grid;gap:12px;align-content:start}
+  .sheet .in .fs + .fs,.sheet .in .addrow{padding-top:8px;border-top:1px solid var(--border)}
+  .sheet .sfoot{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));border-top:1px solid var(--border)}
+  .addrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+  .toast{position:fixed;z-index:80;top:16px;left:50%;transform:translate(-50%,-8px);padding:8px 14px;border-radius:999px;background:#111827;color:#f9fafb;font-size:var(--text-sm);opacity:0;pointer-events:none;transition:opacity .2s var(--ease),transform .2s var(--ease);max-width:calc(100% - 32px)}
+  .toast.on{opacity:1;transform:translate(-50%,0)}
+
+  /* phone (adapt) */
+  @media (max-width:767px){
+    .page{padding:56px 16px 24px}
+    .head{flex-direction:column;gap:8px;margin-bottom:12px}
+    .head h1{font-size:1.25rem}
+    .head .act{gap:8px}
+    .btn,.trig,.ghost,.agent{height:44px;min-height:44px}
+    .btn.sm{height:44px}
+    .btn.icon{width:44px}
+    .bar{gap:8px;margin-bottom:16px;padding-bottom:12px}
+    .bar .end{margin-left:0;flex-basis:100%}
+    .v-A .bar .vbtn{flex:1;justify-content:space-between}
+    .v-C .bar .fbtn{flex:1}
+    .bars{height:160px;gap:8px}
+    .bms{gap:8px}
+    .v-A .vbtn .chg{display:none}
+    .scroller{display:flex;gap:8px;flex:1;min-width:0;overflow-x:auto;padding:2px;scrollbar-width:none}
+    .v-B .bar{flex-wrap:nowrap}
+    .v-B .bar .end{flex-basis:auto}
+    .v-B .bar .note,.v-B .bar .savedef{display:none}
+    .opt,.mi{min-height:44px}
+    .fl input,.nform input{height:44px;font-size:16px}
+    .pop,.pop.right,.pop.wide{position:fixed;left:0;right:0;top:auto;bottom:0;width:auto;max-height:80vh;z-index:41;padding:8px 16px calc(16px + env(safe-area-inset-bottom));border-radius:16px 16px 0 0;box-shadow:0 -10px 24px -8px rgb(0 0 0 / .2)}
+    .pop::before{content:"";display:block;width:36px;height:4px;margin:0 auto 8px;border-radius:2px;background:var(--control)}
+    .grid{grid-template-columns:1fr;gap:12px}
+    .span2{grid-column:auto}
+    .card{padding:14px 16px}
+    .vtab{height:44px}
+    .chgrow{margin-top:0}
+    .tip{left:auto;right:0;width:min(240px,calc(100vw - 48px))}
+    .ghost{min-width:44px;justify-content:center}
+    .napp{position:relative}
+    .napp::after{content:"";position:absolute;inset:-10px -4px}
+  }
+
+  /* Review switcher, not part of the design */
+  #sw{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:100;display:flex;align-items:center;gap:6px;padding:5px;border-radius:999px;background:#0b0f19;color:#f9fafb;font-size:var(--text-xs);box-shadow:0 0 0 1px #374151,0 12px 32px -8px rgb(0 0 0 / .5);white-space:nowrap}
+  #sw button{height:30px;padding:0 10px;border:0;border-radius:999px;background:none;color:#d1d5db;font:inherit;font-size:var(--text-xs);font-weight:600;cursor:pointer}
+  #sw button:hover{background:#1f2937;color:#fff}
+  #sw button[aria-pressed=true]{background:#f9fafb;color:#0b0f19}
+  #sw select{height:30px;border:0;border-radius:999px;background:#1f2937;color:#f9fafb;font:inherit;font-size:var(--text-xs);padding:0 8px}
+  #sw .name{min-width:13rem;text-align:center;font-weight:500;color:#e5e7eb}
+  #sw .tag{padding:0 4px 0 10px;color:#9ca3af;letter-spacing:.06em;font-weight:700;font-size:10px}
+  @media (max-width:767px){#sw{top:8px;bottom:auto;max-width:calc(100% - 16px);overflow-x:auto}#sw .name,#sw .tag{display:none}}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="toast" id="toast" role="status"></div>
+<nav id="sw" aria-label="Prototype switcher">
+  <span class="tag">PROTOTYPE</span>
+  <button type="button" data-v="A">A</button><button type="button" data-v="B">B</button><button type="button" data-v="C">C</button>
+  <span class="name" aria-live="polite"></span>
+  <label class="sr" for="stsel">State</label>
+  <select id="stsel"></select>
+</nav>
+<script>
+const ICONS = {
+  cal:'<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  chev:'<path d="m6 9 6 6 6-6"/>',
+  plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',
+  x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  check:'<path d="M20 6 9 17l-5-5"/>',
+  more:'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+  filter:'<path d="M3 6h18"/><path d="M7 12h10"/><path d="M10 18h4"/>',
+  views:'<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>',
+  info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  pin:'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  status:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="1"/>',
+  coins:'<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/>',
+  star:'<path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z"/>',
+  trash:'<path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>',
+  save:'<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/>',
+};
+const ic = (n, extra = "") => `<svg class="ic ${extra}" viewBox="0 0 24 24" aria-hidden="true">${ICONS[n]}</svg>`;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const phone = () => matchMedia("(max-width: 767px)").matches;
+const andList = a => a.length < 2 ? a.join("") : `${a.slice(0, -1).join(", ")} and ${a[a.length - 1]}`;
+
+/* ---------- sample dashboard ---------- */
+const RANGES = [["all","All time"],["this-month","This month"],["last-3-months","Last 3 months"],["last-6-months","Last 6 months"],["this-year","This year"],["custom","Custom range"]];
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov"];
+const COLLECTED = [48,52,61,57,63,62,58,71,66,74,40]; // SGD thousands, Jan to Nov 2026
+const RANGE_MONTHS = { all:[0,11], "this-month":[10,11], "last-3-months":[8,11], "last-6-months":[5,11], "this-year":[0,11] };
+// Field kinds follow DatasetFieldType: text gives select or multi-select, boolean gives a toggle.
+const FIELDS = {
+  region:{ label:"Region", kind:"select", icon:"pin", all:"All regions", values:["North","South","East","West"], ds:["invoices","payments"] },
+  customer:{ label:"Customer", kind:"multi", icon:"users", all:"All customers", values:["Demo Company","Sample Trading","Example Supplies","Test Retail","Mock Logistics"], ds:["invoices","payments"] },
+  overdue:{ label:"Overdue", text:"Overdue only", kind:"toggle", ds:["invoices"] },
+  status:{ label:"Status", kind:"select", icon:"status", all:"Any status", values:["Open","Part paid"], ds:["invoices"] },
+  currency:{ label:"Currency", kind:"select", icon:"coins", all:"All currencies", values:["SGD","USD"], ds:["invoices","payments"] },
+};
+const MAX_FIELDS = 4;
+const INV = [
+  ["INV-2026-0418","Demo Company","North","Open",true,12600],
+  ["INV-2026-0402","Sample Trading","South","Part paid",true,9840],
+  ["INV-2026-0431","Example Supplies","East","Open",false,8250],
+  ["INV-2026-0395","Test Retail","North","Open",true,7120],
+  ["INV-2026-0440","Mock Logistics","West","Open",false,5300],
+  ["INV-2026-0427","Demo Company","East","Part paid",false,4980],
+  ["INV-2026-0409","Sample Trading","North","Open",false,3615],
+].map(([no, customer, region, status, overdue, amount]) => ({ no, customer, region, status, overdue, amount, currency:"SGD" }));
+const PANELS = [
+  { id:"outstanding", title:"Outstanding", ds:"invoices", kind:"outstanding" },
+  { id:"collected", title:"Collected this year", ds:"payments", kind:"collected", own:"this-year" },
+  { id:"overdue", title:"Overdue invoices", ds:"invoices", kind:"count" },
+  { id:"bymonth", title:"Collected by month", ds:"payments", kind:"bar", span:2 },
+  { id:"largest", title:"Largest open invoices", ds:"invoices", kind:"table" },
+];
+const STORED = { range:"last-3-months", from:"2026-10-01", to:"2026-10-31", fields:["region","customer","overdue"], region:null, customer:[], overdue:false, status:null, currency:null };
+const VIEWS = () => [
+  { id:"month-end", name:"Month end", f:{ ...clone(STORED), range:"this-month", overdue:true } },
+  { id:"north", name:"North region", f:{ ...clone(STORED), region:"North" } },
+  { id:"key-customers", name:"Key customers", f:{ ...clone(STORED), customer:["Demo Company","Sample Trading"] } },
+];
+
+const VARIANTS = { A:"View switcher first, status at the bar end", B:"Filters first, Views menu at the end", C:"Views as tabs above the filters" };
+const STATES = ["clear","two-set","open-date","open-select","open-multi","open-toggle","own-range","not-applied","views","view-changed","default-view","max-fields"];
+const P = new URLSearchParams(location.search);
+const S = { v: VARIANTS[P.get("variant")] ? P.get("variant") : "A", state: STATES.includes(P.get("state")) ? P.get("state") : "clear" };
+
+/* ---------- filter state ---------- */
+const norm = f => ({ ...f, from: f.range === "custom" ? f.from : "", to: f.range === "custom" ? f.to : "", customer: [...f.customer].sort() });
+const same = (a, b) => JSON.stringify(norm(a)) === JSON.stringify(norm(b));
+const cur = () => S.views.find(v => v.id === S.sel) || null;
+const isSet = k => k === "customer" ? S.f.customer.length > 0 : k === "overdue" ? S.f.overdue : S.f[k] != null;
+const setCount = () => S.f.fields.filter(isSet).length;
+const emptyOf = k => k === "customer" ? [] : k === "overdue" ? false : null;
+// With a view selected the bar speaks about the view only; "Not saved as default" is for the dashboard's own filters (P01-14).
+function statusKind() {
+  if (S.sel) return same(S.f, cur().f) ? null : "changed";
+  return same(S.f, S.stored) ? null : "unsaved";
+}
+const fmtD = d => { const [y, m, day] = d.split("-").map(Number); return `${day} ${MONTHS[m - 1] || "Dec"} ${y}`; };
+const rangeText = () => S.f.range === "custom" ? `${fmtD(S.f.from)} – ${fmtD(S.f.to)}` : RANGES.find(r => r[0] === S.f.range)[1];
+function valText(k) {
+  const v = S.f[k], F = FIELDS[k];
+  if (k === "customer") return v.length === 0 ? F.all : v.length === 1 ? v[0] : `${v[0]} +${v.length - 1}`;
+  return v ?? F.all;
+}
+function summary() {
+  const parts = [rangeText()];
+  for (const k of S.f.fields) if (isSet(k)) parts.push(k === "overdue" ? "Overdue only" : k === "customer" && S.f.customer.length > 1 ? `${S.f.customer.length} customers` : `${FIELDS[k].label}: ${valText(k)}`);
+  return parts.join(" · ");
+}
+
+/* ---------- controls ---------- */
+function bodyRange() {
+  const chosen = S.customOpen ? "custom" : S.f.range;
+  return `<fieldset class="fs" id="fs-range"><legend>Date range</legend><div class="opts">${RANGES.map(([k, l]) =>
+    `<label class="opt"><input type="radio" name="range" value="${k}" data-act="range" ${chosen === k ? "checked" : ""}><span>${l}</span></label>`).join("")}</div>${S.customOpen ?
+    `<div class="custom"><div class="two"><label class="fl">From<input type="date" id="from" value="${S.f.from}" ${S.rangeErr ? 'aria-invalid="true" aria-describedby="rerr"' : ""}></label><label class="fl">To<input type="date" id="to" value="${S.f.to}"></label></div>${S.rangeErr ? `<p class="err" id="rerr">${S.rangeErr}</p>` : ""}<div class="row"><button type="button" class="btn sm" data-act="applycustom">Apply</button></div></div>` : ""}</fieldset>`;
+}
+function bodyField(k) {
+  const F = FIELDS[k];
+  if (F.kind === "toggle") return `<div class="fs" id="fs-${k}"><div class="mhead">${F.label}</div>${toggleHtml(k)}</div>`;
+  const opts = F.kind === "multi"
+    ? F.values.map(x => `<label class="opt"><input type="checkbox" name="${k}" value="${esc(x)}" data-act="multi" ${S.f[k].includes(x) ? "checked" : ""}><span>${esc(x)}</span></label>`).join("")
+    : [["", F.all], ...F.values.map(x => [x, x])].map(([val, l]) => `<label class="opt"><input type="radio" name="${k}" value="${esc(val)}" data-act="opt" ${(S.f[k] ?? "") === val ? "checked" : ""}><span>${esc(l)}</span></label>`).join("");
+  return `<fieldset class="fs" id="fs-${k}"><legend>${F.label}${F.kind === "multi" ? " (any of)" : ""}</legend><div class="opts">${opts}</div></fieldset>`;
+}
+function toggleHtml(k) {
+  return `<button type="button" class="trig tog ${S.f[k] ? "set" : ""}" role="switch" aria-checked="${S.f[k]}" data-act="toggle" data-val="${k}" id="t-${k}"><span class="knob" aria-hidden="true"></span>${FIELDS[k].text}</button>`;
+}
+function popField(k) {
+  const label = k === "range" ? "Date range" : FIELDS[k].label;
+  const foot = k === "range"
+    ? (phone() ? `<div class="pfoot"><span></span><button type="button" class="btn sm pri" data-act="close">Done</button></div>` : "")
+    : `<div class="pfoot">${FIELDS[k].kind === "multi" && S.f[k].length ? `<button type="button" class="ghost" data-act="fieldclear" data-val="${k}">Clear</button>` : "<span></span>"}<span class="row"><button type="button" class="ghost" data-act="removefield" data-val="${k}">Remove filter</button>${phone() ? `<button type="button" class="btn sm pri" data-act="close">Done</button>` : ""}</span></div>`;
+  return `<div class="pop ${k === "range" ? "wide" : ""}" role="dialog" aria-label="${label} filter">${k === "range" ? bodyRange() : bodyField(k)}${foot}</div>`;
+}
+function trig(k) {
+  if (k !== "range" && FIELDS[k].kind === "toggle") return toggleHtml(k);
+  const open = S.pop === k;
+  const [icon, key, val, set] = k === "range" ? ["cal", "Date", rangeText(), S.f.range !== "all"] : [FIELDS[k].icon, FIELDS[k].label, valText(k), isSet(k)];
+  return `<span class="anc"><button type="button" class="trig ${set ? "set" : ""}" data-act="pop" data-val="${k}" aria-expanded="${open}" aria-haspopup="dialog">${ic(icon)}<span class="k">${key}</span><span class="v">${esc(val)}</span>${ic("chev", "chev")}</button>${open ? popField(k) : ""}</span>`;
+}
+function addHtml(inSheet) {
+  const left = Object.keys(FIELDS).filter(k => !S.f.fields.includes(k));
+  if (S.f.fields.length >= MAX_FIELDS) {
+    const btn = `<span class="row" style="gap:4px"><button type="button" class="ghost" disabled aria-describedby="maxhint">${ic("plus")}Add filter</button><span class="hint" id="maxhint">Up to ${MAX_FIELDS} filters. Remove one to add another.</span></span>`;
+    return inSheet ? `<div class="addrow">${btn}</div>` : btn;
+  }
+  if (!left.length) return "";
+  if (inSheet) return `<div class="addrow"><span class="hint">Add filter:</span>${left.map(k => `<button type="button" class="btn sm" data-act="add" data-val="${k}">${ic("plus")}${FIELDS[k].label}</button>`).join("")}</div>`;
+  const open = S.pop === "add";
+  return `<span class="anc"><button type="button" class="ghost" data-act="pop" data-val="add" aria-expanded="${open}" aria-haspopup="dialog">${ic("plus")}Add filter</button>${open ? `<div class="pop" role="dialog" aria-label="Add filter"><div class="mhead">Filter by</div><ul class="menu">${left.map(k => `<li><button type="button" class="mi" data-act="add" data-val="${k}">${ic(FIELDS[k].icon || "filter")}<span class="grow">${FIELDS[k].label}<small>${FIELDS[k].kind === "multi" ? "Several values" : FIELDS[k].kind === "toggle" ? "On or off" : "One value"} · ${FIELDS[k].ds.length === 2 ? "every panel" : "invoice panels only"}</small></span></button></li>`).join("")}</ul></div>` : ""}</span>`;
+}
+const clearHtml = () => setCount() ? `<button type="button" class="ghost link" data-act="clear">Clear filters</button>` : "";
+const filtersHtml = () => trig("range") + S.f.fields.map(trig).join("") + addHtml(false) + clearHtml();
+
+/* ---------- views ---------- */
+function viewsPop(withList, align) {
+  const v = cur(), k = statusKind();
+  const items = [{ id:null, name:"Dashboard filters", sub:"The filters saved with Save as default" }, ...S.views];
+  const list = withList ? `<div class="mhead">Views</div><ul class="menu">${items.map(it => `<li><button type="button" class="mi" data-act="view" data-val="${it.id ?? ""}" aria-current="${S.sel === it.id}">${S.sel === it.id ? ic("check") : '<span class="blank"></span>'}<span class="grow">${esc(it.name)}${it.sub ? `<small>${it.sub}</small>` : ""}</span>${it.id && S.def === it.id ? '<span class="pill">Default</span>' : ""}</button></li>`).join("")}</ul><div class="sep"></div>` : "";
+  const chg = k === "changed" && S.v === "B" ? `<div class="mchg"><span class="chg"><i></i>Changed</span><span>These filters differ from the view ${esc(v.name)}.</span><span class="row"><button type="button" class="btn sm pri" data-act="update">Update view</button><button type="button" class="btn sm" data-act="saveas">Save as new view</button></span></div>` : "";
+  const acts = [];
+  if (v) {
+    const isDef = S.def === v.id;
+    acts.push(`<button type="button" class="mi" data-act="makedefault" ${isDef ? "disabled" : ""}>${ic("star")}<span class="grow">${isDef ? "Default view" : "Make default"}<small>${isDef ? `The dashboard opens with ${esc(v.name)}` : `Open the dashboard with ${esc(v.name)}`}</small></span></button>`);
+    acts.push(`<button type="button" class="mi danger" data-act="remove">${ic("trash")}<span class="grow">Remove view<small>Undo restores it</small></span></button>`);
+  }
+  acts.push(`<button type="button" class="mi" data-act="saveas">${ic("plus")}<span class="grow">Save as view<small>Keeps the current filters under a name</small></span></button>`);
+  if (v) acts.push(`<button type="button" class="mi" data-act="savedefault">${ic("save")}<span class="grow">Save as default<small>Stores these filters as the dashboard filters and clears the default view</small></span></button>`);
+  const form = S.naming ? `<form class="nform" data-form="name"><label>View name<input id="vname" maxlength="60" autocomplete="off" value="${esc(S.nameDraft || "")}" ${S.nameErr ? 'aria-invalid="true" aria-describedby="nerr"' : ""}></label>${S.nameErr ? `<p class="err" id="nerr">${S.nameErr}</p>` : ""}<span class="row"><button type="submit" class="btn sm pri">Save view</button><button type="button" class="btn sm" data-act="cancelname">Cancel</button></span></form>` : "";
+  return `<div class="pop wide ${align || ""}" role="dialog" aria-label="Views">${chg}${list}${form || `<div class="menu">${acts.join("")}</div>`}</div>`;
+}
+function viewsBtn(variant) {
+  const v = cur(), open = S.pop === "views", changed = statusKind() === "changed";
+  const label = variant === "A" ? `<span class="k">View:</span><b>${esc(v ? v.name : "Dashboard filters")}</b>` : `${ic("views")}<b>${esc(v ? v.name : "Views")}</b>`;
+  const mark = variant === "B" && changed ? `<span class="chg"><i></i>Changed</span>` : "";
+  return `<span class="anc"><button type="button" class="btn vbtn" data-act="pop" data-val="views" aria-expanded="${open}" aria-haspopup="dialog">${label}${mark}${ic("chev", "chev")}</button>${open ? viewsPop(true, variant === "B" ? "right" : "") : ""}</span>`;
+}
+const unsavedHtml = () => statusKind() === "unsaved" ? `<span class="note"><i></i>Not saved as default</span><button type="button" class="btn sm savedef" data-act="savedefault">Save as default</button>` : "";
+const changedActs = () => `<button type="button" class="btn sm pri" data-act="update">Update view</button><button type="button" class="btn sm" data-act="saveas">Save as new view</button>`;
+const filtersBtn = () => `<button type="button" class="btn fbtn" data-act="sheet">${ic("filter")}Filters${setCount() ? `<span class="fcount">${setCount()}</span>` : ""}</button>`;
+
+function barA() {
+  const k = statusKind();
+  const end = k === "unsaved" ? unsavedHtml() : k === "changed" ? `<span class="chg"><i></i>Changed</span>${changedActs()}` : "";
+  if (phone()) return `<div class="bar">${viewsBtn("A")}${filtersBtn()}<p class="sum">${esc(summary())}</p>${end ? `<div class="end">${end}</div>` : ""}</div>`;
+  return `<div class="bar">${viewsBtn("A")}<span class="vr"></span>${filtersHtml()}${end ? `<div class="end">${end}</div>` : ""}</div>`;
+}
+function barB() {
+  if (phone()) return `<div class="bar"><div class="scroller">${trig("range")}${S.f.fields.map(trig).join("")}${addHtml(false)}</div><div class="end">${viewsBtn("B")}</div></div>${statusKind() === "unsaved" || setCount() ? `<div class="brow">${statusKind() === "unsaved" ? `<span class="note"><i></i>Not saved as default</span><button type="button" class="btn sm" data-act="savedefault">Save as default</button>` : ""}${clearHtml()}</div>` : ""}`;
+  return `<div class="bar">${filtersHtml()}<div class="end">${unsavedHtml()}${viewsBtn("B")}</div></div>`;
+}
+function barC() {
+  const open = S.pop === "views";
+  const items = [{ id:null, name:"Dashboard filters" }, ...S.views];
+  const tabs = `<div class="vtabs"><nav aria-label="Views">${items.map(it => `<button type="button" class="vtab" data-act="view" data-val="${it.id ?? ""}" aria-current="${S.sel === it.id}">${esc(it.name)}${it.id && S.def === it.id ? '<span class="pill">Default</span>' : ""}</button>`).join("")}</nav><div class="tools"><span class="anc"><button type="button" class="btn icon" data-act="pop" data-val="views" aria-expanded="${open}" aria-haspopup="dialog" aria-label="View actions">${ic("more")}</button>${open ? viewsPop(false, "right") : ""}</span></div></div>`;
+  const chg = statusKind() === "changed" ? `<div class="chgrow"><span class="chg"><i></i>Changed</span><span>The filters differ from ${esc(cur().name)}.</span><span class="row">${changedActs()}</span></div>` : "";
+  if (phone()) return `${tabs}${chg}<div class="bar">${filtersBtn()}<p class="sum">${esc(summary())}</p>${statusKind() === "unsaved" ? `<div class="end">${unsavedHtml()}</div>` : ""}</div>`;
+  return `${tabs}${chg}<div class="bar">${filtersHtml()}${statusKind() === "unsaved" ? `<div class="end">${unsavedHtml()}</div>` : ""}</div>`;
+}
+function sheetHtml() {
+  if (!S.sheet) return "";
+  return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true" aria-labelledby="sheet-t"><div class="top"><span class="grab" aria-hidden="true"></span><h2 id="sheet-t">Filters</h2><button type="button" class="ghost" data-act="close" aria-label="Close filters">${ic("x")}</button></div><div class="in">${bodyRange()}${S.f.fields.map(k => bodyField(k) + (FIELDS[k].kind === "toggle" ? "" : `<div class="row" style="justify-content:flex-end;margin-top:-8px"><button type="button" class="ghost" data-act="removefield" data-val="${k}">Remove ${FIELDS[k].label} filter</button></div>`)).join("")}${addHtml(true)}</div><div class="sfoot">${setCount() ? `<button type="button" class="btn" data-act="clear">Clear filters</button>` : ""}<button type="button" class="btn pri" data-act="close">Done</button></div></div>`;
+}
+
+/* ---------- panels ---------- */
+const money = n => `SGD ${Math.round(n).toLocaleString("en-US")}`;
+const invRows = () => INV.filter(r => (!S.f.region || r.region === S.f.region) && (!S.f.customer.length || S.f.customer.includes(r.customer)) && (!S.f.overdue || r.overdue) && (!S.f.status || r.status === S.f.status) && (!S.f.currency || r.currency === S.f.currency));
+function payFactor() {
+  let f = S.f.region ? .28 : 1;
+  if (S.f.customer.length) f *= .18 * S.f.customer.length;
+  if (S.f.currency === "USD") f = 0;
+  return f;
+}
+function monthsOf(range) {
+  if (range === "custom") { const a = Number(S.f.from.slice(5, 7)) - 1, b = Number(S.f.to.slice(5, 7)); return [Math.max(0, a), Math.min(11, b)]; }
+  return RANGE_MONTHS[range];
+}
+function notApplied(p) { return S.f.fields.filter(k => isSet(k) && !FIELDS[k].ds.includes(p.ds)); }
+function naHtml(p) {
+  const na = notApplied(p);
+  if (!na.length) return ["", ""];
+  const names = na.map(k => FIELDS[k].label);
+  if (S.v === "A") return ["", `<p class="na">${ic("info")}The ${andList(names)} ${na.length > 1 ? "filters do" : "filter does"} not apply to this panel.</p>`];
+  if (S.v === "B") return [`<span class="badge">Not filtered by ${andList(names)}</span>`, ""];
+  return [na.map(k => { const id = `${p.id}-${k}`; return `<span class="anc"><button type="button" class="napp" data-act="tip" data-val="${id}" aria-expanded="${S.tip === id}" aria-describedby="tip-${id}">${FIELDS[k].label}</button><span class="tip" role="tooltip" id="tip-${id}">The ${FIELDS[k].label} filter does not apply: this panel's data has no ${FIELDS[k].label} field.</span></span>`; }).join(""), ""];
+}
+function panelBody(p) {
+  const rows = invRows();
+  if (p.kind === "outstanding") return `<p class="kpi num">${money(rows.reduce((s, r) => s + r.amount, 0))}</p><p class="cmp">${rows.length} open invoice${rows.length === 1 ? "" : "s"}</p>`;
+  if (p.kind === "count") { const n = rows.filter(r => r.overdue).length; return `<p class="kpi num">${n}</p><p class="cmp">${n ? `${money(rows.filter(r => r.overdue).reduce((s, r) => s + r.amount, 0))} past due` : "Nothing past due"}</p>`; }
+  if (p.kind === "collected") { const [a, b] = monthsOf(p.own); const n = COLLECTED.slice(a, b).reduce((s, x) => s + x, 0) * 1000 * payFactor(); return `<p class="kpi num">${money(n)}</p><p class="cmp">Compared with ${money(n * .91)} in Jan – Nov 2025, +9%</p>`; }
+  if (p.kind === "bar") {
+    const [a, b] = monthsOf(S.f.range), f = payFactor(), vals = COLLECTED.slice(a, b).map(x => x * f), ms = MONTHS.slice(a, b);
+    const max = Math.max(...vals, 1) * 1.15, k = x => x ? `${x.toFixed(x < 10 ? 1 : 0)}k` : "0";
+    const cols = vals.map(x => `<div class="bcol"><span class="bv num">${k(x)}</span><span class="b" style="height:${Math.max(2, x / max * 82)}%"></span></div>`).join("");
+    return `<div class="bars" role="img" aria-label="Collected by month, SGD thousands: ${ms.map((m, i) => `${m} ${k(vals[i])}`).join(", ")}">${cols}</div><div class="bms" aria-hidden="true">${ms.map(m => `<span>${m}</span>`).join("")}</div><p class="src">Source: Payments · ${esc(rangeText())}</p>`;
+  }
+  const top = rows.slice().sort((x, y) => y.amount - x.amount).slice(0, 4);
+  return top.length ? `<table><thead><tr><th scope="col">Invoice</th><th scope="col">Customer</th><th scope="col" class="r">Amount</th></tr></thead><tbody>${top.map(r => `<tr><td class="num">${r.no}</td><td>${esc(r.customer)}</td><td class="r num">${money(r.amount)}</td></tr>`).join("")}</tbody></table>` : `<p class="empty">No open invoices match these filters.</p>`;
+}
+function panelHtml(p) {
+  const [tags, line] = naHtml(p);
+  const own = p.own ? `<span class="own" title="This panel keeps its own range">${ic("cal")}${RANGES.find(r => r[0] === p.own)[1]} · own range</span>` : "";
+  return `<section class="card ${p.span === 2 ? "span2" : ""}" aria-labelledby="p-${p.id}"><div class="ph"><h2 id="p-${p.id}">${p.title}</h2>${own || tags ? `<span class="tags">${own}${tags}</span>` : ""}</div>${line}${panelBody(p)}</section>`;
+}
+
+/* ---------- render ---------- */
+const app = document.getElementById("app");
+function keyOf(n) { if (!n || n === document.body || n.closest("#sw")) return null; return [n.id, n.dataset.act, n.dataset.val, n.value].join("|"); }
+function render() {
+  const fk = keyOf(document.activeElement);
+  const head = `<div class="head"><div><h1>Collections overview</h1><p>Figures as of 8 Nov 2026, 09:00.</p></div><div class="act"><button type="button" class="btn" data-act="toast" data-msg="Opens the panel edits">Edit</button><button type="button" class="agent" data-act="toast" data-msg="Opens the agent"><i></i>Agent</button></div></div>`;
+  const bar = ({ A: barA, B: barB, C: barC })[S.v]();
+  const scrim = S.pop && phone() ? `<div class="scrim" data-act="close"></div>` : "";
+  app.className = `page v-${S.v}`;
+  app.innerHTML = `${head}${bar}<div class="grid">${PANELS.map(panelHtml).join("")}</div>${scrim}${sheetHtml()}`;
+  if (S.pop && phone()) { const pop = app.querySelector(".pop"); if (pop) app.appendChild(pop); }
+  if (S.focusIn) { const t = app.querySelector(S.focusIn); if (t) t.focus({ preventScroll:true }); S.focusIn = null; }
+  else if (fk) { const t = [...app.querySelectorAll("button,input")].find(n => keyOf(n) === fk); if (t) t.focus({ preventScroll:true }); }
+  document.querySelector("#sw .name").textContent = `${S.v}: ${VARIANTS[S.v]}`;
+  document.querySelectorAll("#sw [data-v]").forEach(b => b.setAttribute("aria-pressed", b.dataset.v === S.v));
+  history.replaceState(null, "", `?${new URLSearchParams({ variant:S.v, state:S.state })}`);
+}
+let tt;
+function toast(m) { const t = document.getElementById("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => t.classList.remove("on"), 2600); }
+const closeAll = () => { S.pop = null; S.sheet = false; S.naming = false; S.nameErr = ""; S.tip = null; };
+const inPop = () => !!S.sheet || phone();
+
+/* ---------- events ---------- */
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-act],[data-v]");
+  if (t && t.closest("#sw")) { if (t.dataset.v) { S.v = t.dataset.v; applyState(S.state); } return; }
+  if (!t) { if ((S.pop || S.tip) && !ev.target.closest(".pop,.sheet")) { S.pop = null; S.tip = null; S.naming = false; render(); } return; }
+  const a = t.dataset.act, val = t.dataset.val;
+  switch (a) {
+    case "toast": toast(t.dataset.msg); return;
+    case "pop": S.naming = false; S.rangeErr = ""; S.customOpen = val === "range" && S.f.range === "custom"; S.pop = S.pop === val ? null : val; if (S.pop) S.focusIn = ".pop input:checked,.pop input,.pop button"; break;
+    case "close": closeAll(); break;
+    case "sheet": closeAll(); S.sheet = true; S.focusIn = ".sheet button"; break;
+    case "range": if (t.value === "custom") S.customOpen = true; else { S.f.range = t.value; S.customOpen = false; S.rangeErr = ""; if (!inPop()) S.pop = null; } break;
+    case "applycustom": {
+      const from = document.getElementById("from").value, to = document.getElementById("to").value;
+      if (!from || !to) S.rangeErr = "Choose a start and an end date.";
+      else if (from > to) S.rangeErr = "The start date must be on or before the end date.";
+      else { Object.assign(S.f, { range:"custom", from, to }); S.rangeErr = ""; S.customOpen = false; if (!inPop()) S.pop = null; }
+      break;
+    }
+    case "opt": S.f[t.name] = t.value === "" ? null : t.value; if (!inPop()) S.pop = null; break;
+    case "multi": { const set = new Set(S.f[t.name]); if (t.checked) set.add(t.value); else set.delete(t.value); S.f[t.name] = FIELDS[t.name].values.filter(x => set.has(x)); break; }
+    case "fieldclear": S.f[val] = emptyOf(val); break;
+    case "toggle": S.f[val] = !S.f[val]; break;
+    case "clear": for (const k of S.f.fields) S.f[k] = emptyOf(k); break;
+    case "removefield": S.f.fields = S.f.fields.filter(k => k !== val); S.f[val] = emptyOf(val); if (!S.sheet) S.pop = null; break;
+    case "add": S.f.fields = [...S.f.fields, val]; if (S.sheet) break; S.pop = FIELDS[val].kind === "toggle" ? null : val; S.focusIn = FIELDS[val].kind === "toggle" ? `#t-${val}` : ".pop input"; break;
+    case "savedefault": S.stored = clone(S.f); S.def = null; S.sel = null; closeAll(); toast("Saved as the dashboard filters. The default view is cleared. Undo restores both."); break;
+    case "view": S.sel = val || null; S.f = clone(S.sel ? cur().f : S.stored); closeAll(); break;
+    case "update": cur().f = clone(S.f); closeAll(); toast(`Updated the view ${cur().name}.`); break;
+    case "saveas": S.pop = "views"; S.naming = true; S.nameErr = ""; S.nameDraft = ""; S.focusIn = "#vname"; break;
+    case "cancelname": S.naming = false; break;
+    case "makedefault": S.def = S.sel; toast(`The dashboard now opens with ${cur().name}.`); S.pop = null; break;
+    case "remove": { const v = cur(); S.views = S.views.filter(x => x !== v); if (S.def === v.id) S.def = null; S.sel = null; S.f = clone(S.stored); closeAll(); toast(`Removed the view ${v.name}. Undo restores it.`); break; }
+    case "tip": S.tip = S.tip === val ? null : val; break;
+  }
+  render();
+});
+document.addEventListener("submit", ev => {
+  ev.preventDefault();
+  const name = document.getElementById("vname").value.trim();
+  S.nameDraft = name;
+  if (!name) S.nameErr = "Name the view.";
+  else if (S.views.some(v => v.name.toLowerCase() === name.toLowerCase())) S.nameErr = "A view with this name exists. Choose another name.";
+  else { const id = `v${Date.now()}`; S.views.push({ id, name, f:clone(S.f) }); S.sel = id; closeAll(); toast(`Saved the view ${name}.`); }
+  if (S.nameErr) S.focusIn = "#vname";
+  render();
+});
+document.addEventListener("change", ev => { if (ev.target.id === "stsel") applyState(ev.target.value); });
+document.addEventListener("keydown", ev => { if (ev.key === "Escape" && (S.pop || S.sheet || S.tip)) { closeAll(); render(); } });
+let wasPhone = phone();
+addEventListener("resize", () => { if (phone() !== wasPhone) { wasPhone = phone(); render(); } });
+
+/* ---------- named states for review and captures ---------- */
+function applyState(name) {
+  Object.assign(S, { state:name, f:clone(STORED), stored:clone(STORED), views:VIEWS(), sel:null, def:null, pop:null, sheet:false, naming:false, nameErr:"", nameDraft:"", tip:null, rangeErr:"", customOpen:false, focusIn:null });
+  const sheetFor = k => { if (phone() && S.v !== "B") { S.sheet = true; S.scrollTo = k; } else S.pop = k; };
+  const pick = id => { S.sel = id; S.f = clone(cur().f); };
+  document.getElementById("toast").classList.remove("on");
+  switch (name) {
+    case "two-set": S.f.region = "North"; S.f.customer = ["Demo Company","Sample Trading"]; break;
+    case "open-date": S.customOpen = true; S.f.from = "2026-10-01"; S.f.to = "2026-10-31"; sheetFor("range"); break;
+    case "open-select": S.f.region = "North"; sheetFor("region"); break;
+    case "open-multi": S.f.customer = ["Demo Company","Sample Trading"]; sheetFor("customer"); break;
+    case "open-toggle": S.f.overdue = true; if (phone() && S.v !== "B") { S.sheet = true; S.scrollTo = "overdue"; } S.focusIn = "#t-overdue"; break;
+    case "own-range": S.f.range = "this-month"; break;
+    case "not-applied": S.f.region = "North"; S.f.overdue = true; if (S.v === "C") S.tip = "collected-overdue"; break;
+    case "views": pick("month-end"); S.pop = "views"; break;
+    case "view-changed": pick("month-end"); S.f.region = "North"; if (S.v === "B") S.pop = "views"; break;
+    case "default-view": S.def = "month-end"; pick("month-end"); if (S.v !== "C") S.pop = "views"; break;
+    case "max-fields": S.f.fields = ["region","customer","overdue","status"]; S.f.status = "Open"; S.f.region = "North"; break;
+  }
+  document.getElementById("stsel").value = name;
+  render();
+  if (S.scrollTo) { const s = document.getElementById(`fs-${S.scrollTo}`); if (s) s.scrollIntoView({ block:"start" }); S.scrollTo = null; }
+}
+document.getElementById("stsel").innerHTML = STATES.map(s => `<option value="${s}">${s}</option>`).join("");
+applyState(S.state);
+</script>
+</body>
+</html>

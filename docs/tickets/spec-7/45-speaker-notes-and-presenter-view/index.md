@@ -8,11 +8,11 @@ Bead: `czjw.115`. Status and claims live in Beads, not in this document.
 - [Technical plan](../../../tech-plans/07-invoice-and-payments.md), wave 5, Decisions: "Change steps".
 - agent-native `templates/slides/app/components/presentation/PresenterView.tsx`, `SpeakerNotesPanel.tsx` and `actions/export-pptx.ts` `addNotes` (MIT, commit `f31225ba3332a3dd4965d1ee5644df4d281bc650`), pattern only.
 - The [Spec 7 ticket index](../README.md).
-- Prototype: the presenter window prototype of phase W3a of follow-up 11, the variant the owner picks at gate G2. It reuses present mode's frame.
+- Prototype: the presenter window prototype of phase W3a of follow-up 11, variant A: the current slide first, opened by "Present with notes" in the Present split button, and on a phone the notes field under the title in the Edit slide sheet. [`presenter-window.prototype.html`](../../../design/prototypes/presenter-window.prototype.html), captures in [`presenter-window/`](../../../design/sections/invoices-and-payments/presenter-window/). Picked by the run, owner review at G3 (owner, 2026-11-08). It reuses present mode's frame.
 
 ## Dependencies
 
-Depends on: S7-43 (`change-slide-fields`), S7-44 (the "You can change" line and its test) and gate G2.
+Depends on: S7-43 (`change-slide-fields`), S7-44 (the "You can change" line and its test) and the Phase 12 import.
 
 ## Scope
 
