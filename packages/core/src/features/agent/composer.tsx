@@ -43,6 +43,10 @@ export function Composer(props: {
   readonly picker?: ReactNode;
   /** The titles of the datasets the person can read, for the desktop placeholder. */
   readonly datasetTitles?: readonly string[] | undefined;
+  /** While a background run builds: "Building" and Stop take Send's place (R-42b). */
+  readonly building?:
+    | { readonly stopping: boolean; readonly onStop: () => void }
+    | undefined;
 }): ReactNode {
   const hintId = useId();
 
@@ -69,13 +73,34 @@ export function Composer(props: {
 
             event.preventDefault();
 
-            if (!props.busy && !empty) props.onSend();
+            if (!props.busy && props.building === undefined && !empty) {
+              props.onSend();
+            }
           }}
         />
         {/* oxlint-disable-next-line shadcn/no-restyle -- Composer 1: the tools row inside the box */}
         <InputGroupAddon align="block-end" className="pt-1.5 ps-2.5 pe-2 pb-2">
           {props.picker}
-          {props.busy ? (
+          {props.building === undefined ? null : (
+            <>
+              <span
+                role="status"
+                className="ms-auto text-xs font-medium text-muted-foreground"
+              >
+                Building
+              </span>
+              <InputGroupButton
+                variant="secondary"
+                size="sm"
+                aria-label="Stop building"
+                disabled={props.building.stopping}
+                onClick={props.building.onStop}
+              >
+                Stop
+              </InputGroupButton>
+            </>
+          )}
+          {props.building !== undefined ? null : props.busy ? (
             <InputGroupButton
               variant="primary"
               size="icon-send"

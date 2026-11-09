@@ -14,6 +14,22 @@ const NO_MESSAGES: readonly AgentMessage[] = [];
 
 const NO_FILES: readonly AgentFile[] = [];
 
+function plainSession(id: string): AgentSessionDetail {
+  return {
+    id,
+    title: "Chat",
+    modelId: "openai/gpt-6.1-terra",
+    surface: "core:ask",
+    recordId: null,
+    runState: null,
+    updatedAt: "2026-10-27T02:00:00.000Z",
+    handedFromSessionId: null,
+    run: null,
+    agentName: null,
+    address: null,
+  };
+}
+
 const noChart: CheckChart = async () => {
   throw new Error("This story draws no chart.");
 };
@@ -59,7 +75,18 @@ export function AgentClientStub(props: {
     chart: ({ config }: { readonly config: unknown }) =>
       (props.chart ?? noChart)(config),
     sessions: props.sessions ?? (async () => []),
-    session: props.session ?? (async () => null),
+    // A story that stubs only the saved messages reads a plain chat with no run, as the server does.
+    session:
+      props.session ??
+      (async ({ id }: { readonly id: string }) => {
+        const saved = await (props.messages ?? (async () => NO_MESSAGES))({
+          id,
+        });
+
+        return saved.length === 0
+          ? null
+          : { session: plainSession(id), messages: saved };
+      }),
     stop: props.stop ?? (async () => undefined),
     retry: props.retry ?? (async () => undefined),
     files: props.files ?? (async () => NO_FILES),

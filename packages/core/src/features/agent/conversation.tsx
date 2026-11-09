@@ -27,8 +27,10 @@ import type {
   ChatLabels,
   InboxLink,
 } from "../../services/agent/index.ts";
+import type { AgentRunStatus } from "../../services/agent/runs.ts";
 import { isStopped, keptOnStop } from "../../services/agent/stopped-turn.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
+import { BriefCard, briefPartOf } from "./brief-card.tsx";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
 import { ChatEmpty } from "./chat-parts.tsx";
 import { Composer } from "./composer.tsx";
@@ -72,6 +74,16 @@ function questionBefore(
     .join("");
 }
 
+/** A background run of this chat (R-42b): its status, its latest read, Stop and Try again. */
+export type ConversationRun = {
+  readonly status: AgentRunStatus | null;
+  readonly messages: readonly AgentMessage[];
+  /** The Ask chat the work came from, for the brief card's link; undefined once it is deleted. */
+  readonly askHref: string | undefined;
+  readonly onStop: () => void;
+  readonly onTryAgain: () => void;
+};
+
 /**
  * One agent chat (R-40, R-18), laid out as a chat (Section 7 redesign, agent-native rules 2, 5
  * and 6): the empty state of a new chat, the person's message in a muted bubble at the right, the
@@ -114,6 +126,8 @@ export function Conversation(props: {
     | { readonly text: string; readonly onSent: () => void }
     | undefined;
   readonly onFinished?: ((sessionId: string) => void) | undefined;
+  /** The chat's background run; its reads replace the chat's messages (R-42b). */
+  readonly run?: ConversationRun | undefined;
   /** An answer handed work over to a surface; the frame opens its page (S7-41). */
   readonly onHandoff?: ((card: HandoffCardData) => void) | undefined;
   /**
@@ -205,6 +219,26 @@ export function Conversation(props: {
   });
 
   const busy = chat.status === "submitted" || chat.status === "streaming";
+
+  const { run } = props;
+
+  const building = run?.status === "building" || run?.status === "stopping";
+
+  // Each read of the run is the chat, so one chat draws its checkpoints with the same parts.
+  useEffect(() => {
+    if (run === undefined || busy) return;
+
+    chat.setMessages([...run.messages]);
+  }, [run?.messages]);
+
+  const ended =
+    run?.status === "stopped"
+      ? "You stopped this work."
+      : run?.status === "interrupted"
+        ? "A restart interrupted this work."
+        : run?.status === "failed"
+          ? "This work could not finish."
+          : undefined;
 
   const refusal = refusalOf(chat.error);
 
@@ -302,7 +336,13 @@ export function Conversation(props: {
               >
                 {chat.messages.map((message, index) => (
                   <Fragment key={message.id}>
-                    {message.role === "user" ? (
+                    {message.role === "user" &&
+                    briefPartOf(message) !== undefined ? (
+                      <BriefCard
+                        brief={briefPartOf(message)!}
+                        askHref={run?.askHref}
+                      />
+                    ) : message.role === "user" ? (
                       <Message align="end">
                         <Bubble variant="muted" align="end">
                           <BubbleContent>
@@ -327,6 +367,7 @@ export function Conversation(props: {
                             }
                             onAsk={
                               !busy &&
+                              !building &&
                               refusal === null &&
                               index === chat.messages.length - 1
                                 ? send
@@ -397,7 +438,29 @@ export function Conversation(props: {
               </div>
             )}
 
+            {ended === undefined || run === undefined ? null : (
+              <div
+                role="status"
+                className="flex items-center gap-3 rounded-lg border border-border p-3"
+              >
+                <p className="flex-1 text-sm">{ended}</p>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  onClick={run.onTryAgain}
+                >
+                  Try again
+                </Button>
+              </div>
+            )}
+
             <Composer
+              building={
+                building && run !== undefined
+                  ? { stopping: run.status === "stopping", onStop: run.onStop }
+                  : undefined
+              }
               value={draft}
               onChange={setDraft}
               onSend={() => send(draft)}

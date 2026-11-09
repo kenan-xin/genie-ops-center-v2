@@ -1,7 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
-import { useRef, useState, type ReactNode } from "react";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { useModuleClient } from "../../lib/rpc/module-client.tsx";
 import { agentContract } from "../../services/agent/contract.ts";
@@ -15,6 +15,7 @@ import type { AgentPageContext } from "../../services/agent/page-context.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
+import { useSessionDetail } from "./session-detail.ts";
 import { AGENT_ROUTE, agentTransport } from "./transport.ts";
 
 const FILE_POLL_MS = 2000;
@@ -43,6 +44,8 @@ export function AgentChat(props: {
   readonly headingLevel: 2 | 3;
   readonly onNewChat: () => void;
   readonly onFinished?: ((sessionId: string) => void) | undefined;
+  /** Each read of a building run that changed its messages, and the read that saw it end. */
+  readonly onProgress?: (() => void) | undefined;
   /** An answer handed work over to a surface; see `Conversation`. */
   readonly onHandoff?: ((card: HandoffCardData) => void) | undefined;
   readonly onWorking?: ((working: boolean) => void) | undefined;
@@ -69,14 +72,51 @@ export function AgentChat(props: {
   const checkChart: CheckChart = (config) => agent.chart({ config });
 
   // A chat the panel reopens is read fresh each time, so it continues after a page load (czjw.60).
-  const saved = useQuery({
-    queryKey: ["agent", "messages", props.sessionId],
-    queryFn: () => agent.messages({ id: props.sessionId }),
-    enabled: props.initialMessages === undefined,
-    gcTime: 0,
-    // The app's default stale time (30 s) would answer a quick reopen from the first open's read.
-    staleTime: 0,
+  // The read holds the run, and polls each second while it builds (R-42b, P11-32).
+  const saved = useSessionDetail(props.sessionId);
+
+  const stop = useMutation({
+    mutationFn: () => agent.stop({ id: props.sessionId }),
+    onSettled: () => void saved.refetch(),
   });
+
+  const retry = useMutation({
+    mutationFn: () => agent.retry({ id: props.sessionId }),
+    onSettled: () => void saved.refetch(),
+  });
+
+  const read = saved.data;
+
+  // The page refreshes after each read that changed a building run, and after the read that saw
+  // its end, so its record shows new parts without a reload (tech plan "How pages follow a run").
+  const followed = useRef<{
+    readonly messages: unknown;
+    readonly building: boolean;
+  } | null>(null);
+
+  const onProgress = useRef(props.onProgress);
+
+  onProgress.current = props.onProgress;
+
+  useEffect(() => {
+    if (read === undefined || read === null) return;
+
+    const run = read.session.run;
+
+    const building = run === "building" || run === "stopping";
+
+    const before = followed.current;
+
+    followed.current = { messages: read.messages, building };
+
+    if (
+      before !== null &&
+      before.messages !== read.messages &&
+      (building || before.building)
+    ) {
+      onProgress.current?.();
+    }
+  }, [read]);
 
   // The chat's list files: read again when an answer ends, and every 2 s while one is being made.
   const files = useQuery({
@@ -91,9 +131,10 @@ export function AgentChat(props: {
   });
 
   // `Conversation` takes its messages once, so it waits for this mount's own read.
+  // An id not saved yet reads null, which is an empty new chat.
   const messages =
     props.initialMessages ??
-    (saved.isFetchedAfterMount ? saved.data : undefined);
+    (saved.isFetchedAfterMount ? (read?.messages ?? []) : undefined);
 
   if (messages === undefined) {
     return saved.isError ? (
@@ -120,6 +161,20 @@ export function AgentChat(props: {
       onNewChat={props.onNewChat}
       onWorking={props.onWorking}
       onHandoff={props.onHandoff}
+      run={
+        read === undefined || read === null || read.session.run === null
+          ? undefined
+          : {
+              status: read.session.run,
+              messages: read.messages,
+              askHref:
+                read.session.handedFromSessionId === null
+                  ? undefined
+                  : `/ask/${read.session.handedFromSessionId}`,
+              onStop: () => stop.mutate(),
+              onTryAgain: () => retry.mutate(),
+            }
+      }
       pending={props.pending}
       model={props.model}
       onFinished={(sessionId) => {
