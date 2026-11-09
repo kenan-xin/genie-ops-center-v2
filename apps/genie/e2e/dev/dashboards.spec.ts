@@ -10,7 +10,6 @@ import { withDeploymentLock } from "../support/lock.ts";
 import {
   FIRST_PAINT,
   hideDevelopmentWidgets,
-  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import {
@@ -25,6 +24,7 @@ import {
   DEMO_ACCOUNT_EMAIL,
   DEV_MODULES,
 } from "./global-setup.ts";
+import { closeSurfaceDatabase, openSurfaceAgent } from "./surface-support.ts";
 
 declare global {
   interface Window {
@@ -66,7 +66,10 @@ const figure = (page: Page, title: string) =>
 // The development widgets float over the chat's Send in development.
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
-test.afterAll(() => closeDashboardDatabase());
+test.afterAll(async () => {
+  await closeDashboardDatabase();
+  await closeSurfaceDatabase();
+});
 
 test("the demo account's Receivables overview shows the baseline totals", async ({
   page,
@@ -136,8 +139,8 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
           `/m/analytics/dashboards/${ANALYTICS_CHAT_DASHBOARD.id}`
         );
 
-        // The agent panel: a column beside the dashboard from 1280 px, a sheet below (AG11).
-        const chat = await openAgentPanel(page);
+        // The Dashboards agent of this dashboard (R-42): a column from 1280 px, a bottom panel below.
+        const chat = await openSurfaceAgent(page, "Dashboards agent");
 
         // Before the chat change, so a reload of either the chat path or the refresh drops it.
         await page.evaluate(() => {

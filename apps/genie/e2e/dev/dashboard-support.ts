@@ -57,6 +57,12 @@ export async function resetChatDashboard(): Promise<void> {
   await context().db.$client.query("delete from dashboard where id = $1", [
     ANALYTICS_CHAT_DASHBOARD.id,
   ]);
+  // The dashboard page opens the record's last Dashboards chat, and a chat outlives its
+  // dashboard, so a fresh dashboard also gets no chat.
+  await context().db.$client.query(
+    "delete from agent_session where record_id = $1",
+    [ANALYTICS_CHAT_DASHBOARD.id]
+  );
 
   await insertDashboard(context(), {
     ...ANALYTICS_CHAT_DASHBOARD,
