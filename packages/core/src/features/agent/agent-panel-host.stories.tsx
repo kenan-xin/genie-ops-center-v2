@@ -339,6 +339,10 @@ export const AfterAHandoff: Story = {
     // The agent's name shows in full beside the chip, also at 390 px (Phase 11 capture).
     const name = region.querySelector("h2 .truncate")!;
     await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+    // One row: the shell's collapsed-panel offset (P11-65) assumes a header of about 62 px.
+    await expect(
+      region.querySelector("header")!.offsetHeight
+    ).toBeLessThanOrEqual(64);
     await expect(await within(region).findByText("From Ask")).toBeVisible();
     await expect(
       await header().findByText("Saved", {}, { timeout: 4000 })

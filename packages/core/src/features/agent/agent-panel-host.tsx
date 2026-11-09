@@ -328,7 +328,7 @@ export function AgentPanelHost(props: {
       className="flex h-full min-h-0 flex-col bg-background"
     >
       <header className="flex min-h-14 shrink-0 items-center gap-1 border-b border-border py-2 ps-4 pe-2">
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2">
           <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
             <span
               aria-hidden="true"
@@ -337,7 +337,7 @@ export function AgentPanelHost(props: {
             <span className="truncate">{name}</span>
           </h2>
           {target === undefined || chip === undefined ? null : (
-            <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground">
+            <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               {chip}
             </span>
           )}
