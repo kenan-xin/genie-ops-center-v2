@@ -328,7 +328,7 @@ export function AgentPanelHost(props: {
       className="flex h-full min-h-0 flex-col bg-background"
     >
       <header className="flex min-h-14 shrink-0 items-center gap-1 border-b border-border py-2 ps-4 pe-2">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
           <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
             <span
               aria-hidden="true"
@@ -342,10 +342,23 @@ export function AgentPanelHost(props: {
             </span>
           )}
         </div>
-        <Button type="button" variant="ghost" size="sm" onClick={newChat}>
-          <PlusIcon aria-hidden="true" strokeWidth={1.75} />
-          New chat
-        </Button>
+        {target === undefined ? (
+          <Button type="button" variant="ghost" size="sm" onClick={newChat}>
+            <PlusIcon aria-hidden="true" strokeWidth={1.75} />
+            New chat
+          </Button>
+        ) : (
+          // An icon beside the chip, so the surface's name shows in full at 390 px.
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="New chat"
+            onClick={newChat}
+          >
+            <PlusIcon aria-hidden="true" strokeWidth={1.75} />
+          </Button>
+        )}
         {target !== undefined ? null : working ? (
           // The answer is stored only when it ends, so Ask would show the question alone.
           <Button

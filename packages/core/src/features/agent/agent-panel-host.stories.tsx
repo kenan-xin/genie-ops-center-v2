@@ -336,11 +336,19 @@ export const AfterAHandoff: Story = {
     const header = () => within(region.querySelector("header")!);
 
     await expect(await header().findByText("Building")).toBeVisible();
+    // The agent's name shows in full beside the chip, also at 390 px (Phase 11 capture).
+    const name = region.querySelector("h2 .truncate")!;
+    await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
     await expect(await within(region).findByText("From Ask")).toBeVisible();
     await expect(
       await header().findByText("Saved", {}, { timeout: 4000 })
     ).toBeVisible();
   },
+};
+
+export const AfterAHandoffOnAPhone: Story = {
+  ...AfterAHandoff,
+  globals: phone,
 };
 
 const OLDER_R2 = "00000000-0000-4000-8000-0000000000b2";
