@@ -11,14 +11,6 @@ import {
   HANDOFF_PANEL_TITLES,
   QUESTION_DASHBOARD_NAME,
 } from "../../testing/analytics-chat.ts";
-import {
-  SLIDES_CHANGE_DECK_ID,
-  SLIDES_CHANGE_DECK_TITLE,
-} from "../../testing/slides-change.ts";
-import {
-  MONTHLY_DECK,
-  SLIDES_CHAT_MESSAGE,
-} from "../../testing/slides-chat.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
@@ -38,16 +30,15 @@ import {
   DEV_MODULES,
   SLIDES_PEOPLE,
 } from "./global-setup.ts";
-import {
-  closeSlidesDatabase,
-  removeOwnDecks,
-  resetChangeDeck,
-} from "./slides-support.ts";
+import { closeSlidesDatabase, removeOwnDecks } from "./slides-support.ts";
 import {
   closeSurfaceDatabase,
   handedOverFrom,
+  handOverDeck,
   insertEmptyDashboard,
   removeDashboardsNamed,
+  send,
+  warm,
 } from "./surface-support.ts";
 
 test.skip(
@@ -85,33 +76,6 @@ async function activate(page: Page, target: Locator): Promise<void> {
   }
 
   await target.click();
-}
-
-/** Sends `text` in `chat` and answers the session id that the browser sent. */
-async function send(page: Page, chat: Locator, text: string): Promise<string> {
-  const sent = page.waitForRequest(
-    (request) =>
-      request.url().endsWith("/api/agent") && request.method() === "POST"
-  );
-
-  await chat.getByRole("textbox", { name: "Message", exact: true }).fill(text);
-  await activate(page, chat.getByRole("button", { name: "Send" }));
-
-  // SAFETY: the agent panel sends the route's JSON body, whose `sessionId` is a string (P3).
-  const { sessionId } = (await sent).postDataJSON() as { sessionId: string };
-
-  return sessionId;
-}
-
-/**
- * Opens a record page once, so that `next dev` compiles it before a run builds on it: a cold
- * compile can outlast the whole paced build.
- */
-async function warm(page: Page, path: string, heading: string): Promise<void> {
-  await page.goto(path);
-  await expect(
-    page.getByRole("heading", { level: 1, name: heading })
-  ).toBeVisible(FIRST_PAINT);
 }
 
 /**
@@ -187,31 +151,6 @@ const slideButtons = (page: Page) =>
   page
     .getByRole("navigation", { name: "Slides" })
     .getByRole("button", { name: /^Slide \d+:/ });
-
-/** Asks for the deck in Ask's panel beside the Slides list; answers the Ask chat's id. */
-async function handOverDeck(page: Page): Promise<string> {
-  await signInAs(page, SLIDES_PEOPLE.chat);
-  await resetChangeDeck(SLIDES_PEOPLE.chat);
-  await warm(
-    page,
-    `/m/slides/decks/${SLIDES_CHANGE_DECK_ID}`,
-    SLIDES_CHANGE_DECK_TITLE
-  );
-  await warm(page, "/m/slides/decks", "Slides");
-
-  const askId = await send(
-    page,
-    await openAgentPanel(page),
-    SLIDES_CHAT_MESSAGE
-  );
-
-  // The deck page opens as soon as Ask hands the deck over.
-  await expect(
-    page.getByRole("heading", { level: 1, name: MONTHLY_DECK.title })
-  ).toBeVisible(FIRST_PAINT);
-
-  return askId;
-}
 
 test("Ask hands a deck over, and the deck page fills slide by slide", async ({
   page,

@@ -111,6 +111,12 @@ export async function resetChangeDeck(email: string): Promise<void> {
   await tenant.db.$client.query("delete from deck where id = $1", [
     SLIDES_CHANGE_DECK_ID,
   ]);
+  // The deck page opens the record's last Slides chat, and a chat outlives its deck, so a fresh
+  // deck also gets no chat: the next message starts the recorded first turn again.
+  await tenant.db.$client.query(
+    "delete from agent_session where record_id = $1",
+    [SLIDES_CHANGE_DECK_ID]
+  );
   await insertDeck(tenant, {
     ownerUserId,
     id: SLIDES_CHANGE_DECK_ID,
