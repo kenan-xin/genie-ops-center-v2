@@ -9,8 +9,10 @@ import type {
   AgentSessionSummary,
   InboxLink,
 } from "../../services/agent/index.ts";
+import type { AgentRunStatus } from "../../services/agent/runs.ts";
 import type { PanelConfig } from "../../services/charts/panel-config.ts";
 import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
+import { HANDOFF_CARD, handoffDetail } from "./__fixtures__/handoff.ts";
 import { GROUPED_READ, READ_LABELS } from "./__fixtures__/reads.ts";
 import { type Read, readsOf } from "./answer-sources.ts";
 import { latestRef, type ArtifactRef } from "./artifact-refs.ts";
@@ -154,13 +156,29 @@ const removeChat = fn(async (_input: { readonly id: string }) => undefined);
 
 type AskProps = ComponentProps<typeof AskScreen>;
 
+/** Called on each `agent.session` read of a handoff story. */
+const handoffReads = fn();
+
 /** Ask as the route composes it: the screen keeps no artifact state, the route does. */
-function Framed(props: AskProps) {
+function Framed(
+  props: AskProps & {
+    readonly handoffRun?: AgentRunStatus | null | undefined;
+  }
+) {
   const [shown, setShown] = useState<ArtifactRef | null>(props.shown);
   const [rows, setRows] = useState<Read | null>(props.rows);
 
   return (
-    <AgentClientStub chart={draw} rename={renameChat} remove={removeChat}>
+    <AgentClientStub
+      chart={draw}
+      rename={renameChat}
+      remove={removeChat}
+      session={async () => {
+        handoffReads();
+
+        return handoffDetail(props.handoffRun ?? null);
+      }}
+    >
       <div style={{ height: "100dvh" }} className="flex flex-col">
         <AskScreen
           {...props}
@@ -216,7 +234,13 @@ const meta = {
     },
     a11y: { test: "error" },
   },
-  render: (args) => <Framed {...args} />,
+  render: (args, { parameters }) => (
+    // SAFETY: the handoff stories set `handoffRun` to an AgentRunStatus.
+    <Framed
+      {...args}
+      handoffRun={parameters.handoffRun as AgentRunStatus | undefined}
+    />
+  ),
   globals: desktop,
   args: {
     sessions: SESSIONS,
@@ -245,6 +269,38 @@ type Story = StoryObj<typeof meta>;
 
 const history = () =>
   screen.queryByRole("complementary", { name: "Chat history" });
+
+// T4.5: running work keeps a way back to it from Ask's header.
+export const HandoffChipWhileItBuilds: Story = {
+  args: { handoff: HANDOFF_CARD },
+  parameters: { handoffRun: "building" },
+  play: async ({ canvasElement }) => {
+    const chip = await within(canvasElement).findByRole("link", {
+      name: "Placeholder agent is working",
+    });
+
+    await expect(chip).toHaveAttribute("href", "/placeholder/r1");
+  },
+};
+
+export const HandoffChipOnAPhone: Story = {
+  ...HandoffChipWhileItBuilds,
+  globals: phone,
+};
+
+export const NoHandoffChipOnceSaved: Story = {
+  args: { handoff: HANDOFF_CARD },
+  parameters: { handoffRun: "saved" },
+  play: async ({ canvasElement }) => {
+    // Storybook clears every spy before a story, so this waits for this story's own read.
+    await waitFor(() => expect(handoffReads).toHaveBeenCalled());
+    await expect(
+      within(canvasElement).queryByRole("link", {
+        name: "Placeholder agent is working",
+      })
+    ).toBeNull();
+  },
+};
 
 // AK1: the history hides fully, and the top bar then holds only its toggle (I18c, owner note).
 export const HideTheChatHistory: Story = {

@@ -33,6 +33,8 @@ import { artifactRefsOf } from "./artifact-refs.ts";
 import { QuestionPills } from "./chat-parts.tsx";
 import { FileCard } from "./file-card.tsx";
 import { fileCallsOf } from "./file-refs.ts";
+import { HandoffCard } from "./handoff-card.tsx";
+import { handoffCardsOf } from "./handoff-parts.ts";
 import { StepTimeline } from "./step-timeline.tsx";
 
 /**
@@ -373,6 +375,26 @@ function ArtifactCards(props: {
   );
 }
 
+/** The handoffs an answer made, after its prose and before its artifacts (S7-41). */
+function HandoffCards(props: {
+  readonly message: AgentMessage;
+  readonly labels: ChatLabels;
+}): ReactNode {
+  const cards = handoffCardsOf(props.message);
+
+  if (cards.length === 0) return null;
+
+  return (
+    <ul aria-label="Handoffs" className="grid gap-2">
+      {cards.map(({ callId, data }) => (
+        <li key={callId}>
+          <HandoffCard card={data} labels={props.labels} />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 /** The files an answer asked for, after its artifacts (R-44a). */
 function FileCards(props: {
   readonly message: AgentMessage;
@@ -489,6 +511,7 @@ export function MessageParts(props: {
           ) : null
         )}
       </div>
+      <HandoffCards message={props.message} labels={labels} />
       {props.artifacts === undefined ? null : (
         <ArtifactCards
           message={props.message}

@@ -20,6 +20,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { z } from "zod";
 
+import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
   AgentFile,
   AgentMessage,
@@ -31,6 +32,7 @@ import type { ArtifactCardAction } from "./artifact-card.tsx";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
 import { ChatEmpty } from "./chat-parts.tsx";
 import { Composer } from "./composer.tsx";
+import { startedHandoff } from "./handoff-parts.ts";
 import { MessageParts } from "./message-parts.tsx";
 import { SummaryLine } from "./summary-line.tsx";
 import {
@@ -112,6 +114,8 @@ export function Conversation(props: {
     | { readonly text: string; readonly onSent: () => void }
     | undefined;
   readonly onFinished?: ((sessionId: string) => void) | undefined;
+  /** An answer handed work over to a surface; the frame opens its page (S7-41). */
+  readonly onHandoff?: ((card: HandoffCardData) => void) | undefined;
   /**
    * A frame that shows the model choice itself below 1024 px passes the chosen model; the composer
    * then shows its picker only from 1024 px (czjw.120 item 12).
@@ -193,6 +197,10 @@ export function Conversation(props: {
       }
 
       if (!isError) props.onFinished?.(props.sessionId);
+
+      const handoff = isError ? undefined : startedHandoff(message);
+
+      if (handoff !== undefined) props.onHandoff?.(handoff);
     },
   });
 

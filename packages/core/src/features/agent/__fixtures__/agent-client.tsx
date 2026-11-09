@@ -7,6 +7,7 @@ import type {
   AgentMessage,
   AgentSessionSummary,
 } from "../../../services/agent/index.ts";
+import type { AgentSessionDetail } from "../../../services/agent/store.ts";
 import type { CheckChart } from "../chart-check.tsx";
 
 const NO_MESSAGES: readonly AgentMessage[] = [];
@@ -37,6 +38,16 @@ export function AgentClientStub(props: {
     readonly title: string;
   }) => Promise<AgentSessionSummary>;
   readonly remove?: (input: { readonly id: string }) => Promise<void>;
+  readonly session?: (input: { readonly id: string }) => Promise<{
+    readonly session: AgentSessionDetail;
+    readonly messages: readonly AgentMessage[];
+  } | null>;
+  readonly sessions?: (input?: {
+    readonly surface?: string | undefined;
+    readonly recordId?: string | undefined;
+  }) => Promise<readonly AgentSessionSummary[]>;
+  readonly stop?: (input: { readonly id: string }) => Promise<void>;
+  readonly retry?: (input: { readonly id: string }) => Promise<void>;
   readonly children: ReactNode;
 }): ReactNode {
   const [client] = useState(
@@ -47,7 +58,10 @@ export function AgentClientStub(props: {
     messages: props.messages ?? (async () => NO_MESSAGES),
     chart: ({ config }: { readonly config: unknown }) =>
       (props.chart ?? noChart)(config),
-    sessions: async () => [],
+    sessions: props.sessions ?? (async () => []),
+    session: props.session ?? (async () => null),
+    stop: props.stop ?? (async () => undefined),
+    retry: props.retry ?? (async () => undefined),
     files: props.files ?? (async () => NO_FILES),
     fileLink:
       props.fileLink ??

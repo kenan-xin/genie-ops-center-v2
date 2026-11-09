@@ -5,6 +5,7 @@ import { useRef, useState, type ReactNode } from "react";
 
 import { useModuleClient } from "../../lib/rpc/module-client.tsx";
 import { agentContract } from "../../services/agent/contract.ts";
+import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
   AgentMessage,
   ChatLabels,
@@ -42,6 +43,8 @@ export function AgentChat(props: {
   readonly headingLevel: 2 | 3;
   readonly onNewChat: () => void;
   readonly onFinished?: ((sessionId: string) => void) | undefined;
+  /** An answer handed work over to a surface; see `Conversation`. */
+  readonly onHandoff?: ((card: HandoffCardData) => void) | undefined;
   readonly onWorking?: ((working: boolean) => void) | undefined;
   /** The model a frame chooses itself; see `Conversation`. */
   readonly model?:
@@ -116,6 +119,7 @@ export function AgentChat(props: {
       headingLevel={props.headingLevel}
       onNewChat={props.onNewChat}
       onWorking={props.onWorking}
+      onHandoff={props.onHandoff}
       pending={props.pending}
       model={props.model}
       onFinished={(sessionId) => {

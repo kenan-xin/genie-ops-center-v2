@@ -19,6 +19,10 @@ export {
 
 export { AgentChat } from "./agent-chat.tsx";
 
+export { latestHandoff } from "./handoff-parts.ts";
+
+export type { HandoffCardData } from "../../services/agent/hand-over.ts";
+
 export { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 
 export { type Read, readsOf } from "./answer-sources.ts";

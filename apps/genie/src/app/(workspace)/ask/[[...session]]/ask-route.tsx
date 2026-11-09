@@ -11,9 +11,12 @@ import {
   AgentChat,
   type ArtifactRef,
   AskScreen,
+  type HandoffCardData,
+  latestHandoff,
   type Read,
   readsOf,
 } from "@genie/core/features/agent";
+import { useAgentPanel } from "@genie/core/features/agent/panel";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation.js";
 import { useEffect, useRef, useState } from "react";
@@ -49,6 +52,12 @@ export function AskRoute(props: {
 }) {
   const router = useRouter();
   const queryClient = useQueryClient();
+  const panel = useAgentPanel();
+
+  // The chip follows the chat's last handoff; a new one replaces it when its answer ends.
+  const [handoff, setHandoff] = useState<HandoffCardData | undefined>(() =>
+    latestHandoff(props.initialMessages)
+  );
 
   const sessions = useQuery({
     queryKey: SESSION_LIST_KEY,
@@ -164,6 +173,7 @@ export function AskRoute(props: {
         void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
         startNewChat();
       }}
+      handoff={handoff}
     >
       {props.aiOn ? (
         <AgentChat
@@ -185,6 +195,12 @@ export function AskRoute(props: {
           }}
           headingLevel={2}
           onNewChat={startNewChat}
+          // The work goes on in the background; the page that builds it opens with its agent.
+          onHandoff={(card) => {
+            setHandoff(card);
+            panel.setOpen(true);
+            router.push(card.address);
+          }}
           onFinished={(id) => {
             void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
             void queryClient.invalidateQueries({

@@ -40,6 +40,7 @@ import {
   agentContract,
   chatTitleSchema,
 } from "../../services/agent/contract.ts";
+import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
   AgentArtifact,
   AgentSessionSummary,
@@ -50,6 +51,7 @@ import { ArtifactPanel } from "./artifact-panel.tsx";
 import type { ArtifactRef } from "./artifact-refs.ts";
 import { ChartCheckProvider } from "./chart-check.tsx";
 import { ChatHistory } from "./chat-history.tsx";
+import { HandoffChip } from "./handoff-card.tsx";
 import { ReadRowsPanel } from "./read-rows-panel.tsx";
 
 /** From this width an open artifact sits in a column beside the chat (AG22). */
@@ -183,6 +185,8 @@ export function AskScreen(props: {
   } | null;
   readonly onRenamed: () => void;
   readonly onDeleted: () => void;
+  /** The chat's last handoff; the header links to its work while it builds (R-42b). */
+  readonly handoff?: HandoffCardData | undefined;
   readonly children: ReactNode;
 }): ReactNode {
   const agent = useModuleClient(agentContract);
@@ -370,6 +374,9 @@ export function AskScreen(props: {
           >
             {props.title}
           </p>
+          {props.handoff === undefined ? null : (
+            <HandoffChip card={props.handoff} />
+          )}
           {newChat("lg:hidden")}
           {chatActions}
         </div>
