@@ -14,4 +14,6 @@ export {
   type SupportContact,
 } from "../../lib/branding/support.ts";
 
+export { contrastRatio, foregroundFor } from "../../lib/branding/foreground.ts";
+
 export { READER_WINDOW_MS } from "../../lib/tenant-context/reader-window.ts";

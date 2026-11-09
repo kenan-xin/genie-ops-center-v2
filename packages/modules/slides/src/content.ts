@@ -1,4 +1,5 @@
 import { type PanelConfig, panelConfigSchema } from "@genie/core";
+import { contrastRatio } from "@genie/core/features/branding";
 import type { ChartData } from "@genie/ui";
 import { z } from "zod";
 
@@ -7,15 +8,23 @@ import {
   CHART_POINTS,
   DATA_LIMIT_MESSAGES,
   DECK_SLIDE_LIMIT,
+  type ElementBox,
+  elementName,
+  type ElementStyle,
+  hexColor,
   imageElement,
+  placed,
   refineSlideRules,
   SLIDE_ELEMENT_LIMIT,
   slideId,
   TABLE_COLUMNS,
   TABLE_ROWS,
   textElement,
+  THEME_BACKGROUND,
+  THEME_TEXT,
   titleElement,
 } from "./contract.ts";
+import { TYPE_PX } from "./presentation/slide-layout.ts";
 
 /** The chart config and the data the gate answered for it, frozen on the deck (D3). */
 export type FrozenChart = {
@@ -23,16 +32,87 @@ export type FrozenChart = {
   readonly data: ChartData;
 };
 
-export type StoredElement =
-  | { readonly kind: "title" | "text"; readonly text: string }
-  | { readonly kind: "bullets"; readonly items: readonly string[] }
-  | ({ readonly kind: "figure" | "chart" | "table" } & FrozenChart)
-  | { readonly kind: "image"; readonly fileId: string; readonly alt: string };
+/** An element's own box and style; absent keeps the computed layout and the theme (R-52a). */
+export type Placement = {
+  readonly box?: ElementBox | undefined;
+  readonly style?: ElementStyle | undefined;
+};
+
+export type StoredElement = Placement &
+  (
+    | { readonly kind: "title" | "text"; readonly text: string }
+    | { readonly kind: "bullets"; readonly items: readonly string[] }
+    | ({ readonly kind: "figure" | "chart" | "table" } & FrozenChart)
+    | { readonly kind: "image"; readonly fileId: string; readonly alt: string }
+  );
 
 export type StoredSlide = {
   readonly id: string;
   readonly elements: readonly StoredElement[];
+  readonly background?: string | undefined;
 };
+
+/** WCAG 2.2 large text, in canvas pixels; it needs 3:1, other text 4.5:1 (R-52a). */
+const LARGE_TEXT_PX = 24;
+
+const DEFAULT_TEXT_PX = {
+  title: TYPE_PX.title,
+  text: TYPE_PX.text,
+  bullets: TYPE_PX.bullet,
+} as const;
+
+/**
+ * Each text element whose color is below the contrast limit against its own fill, else the slide
+ * background, else the theme background. A text without a color is checked in the theme's text
+ * color, so a background change re-checks every text without a fill (tech plan, Style reach).
+ */
+export function textContrastIssues(slide: {
+  readonly background?: string | undefined;
+  readonly elements: readonly (Placement & {
+    readonly kind: StoredElement["kind"];
+    readonly text?: string | undefined;
+    readonly items?: readonly string[] | undefined;
+  })[];
+}): { index: number; message: string }[] {
+  return slide.elements.flatMap((element, index) => {
+    if (
+      element.kind !== "title" &&
+      element.kind !== "text" &&
+      element.kind !== "bullets"
+    ) {
+      return [];
+    }
+
+    const style = element.style ?? {};
+    const color = style.color ?? THEME_TEXT;
+
+    const [where, behind] =
+      style.fill !== undefined
+        ? ["its fill", style.fill]
+        : slide.background !== undefined
+          ? ["the slide background", slide.background]
+          : ["the theme background", THEME_BACKGROUND];
+
+    const needs =
+      (style.fontSize ?? DEFAULT_TEXT_PX[element.kind]) >= LARGE_TEXT_PX
+        ? 3
+        : 4.5;
+
+    const ratio = contrastRatio(color, behind);
+
+    if (ratio >= needs) return [];
+
+    // Rounded down, so a refused pair never shows the limit itself.
+    const shown = (Math.floor(ratio * 10) / 10).toFixed(1);
+
+    return [
+      {
+        index,
+        message: `${elementName(element)}: ${color} on ${where} ${behind} is ${shown}:1, and this text needs ${needs}:1. Pick a color with more contrast, or give the text a fill.`,
+      },
+    ];
+  });
+}
 
 /** The stored content of one deck: its slides in display order (R-52). */
 export type DeckContent = { readonly slides: readonly StoredSlide[] };
@@ -79,6 +159,7 @@ const frozenElement = <K extends keyof typeof TAKES>(kind: K) =>
       chart: panelConfigSchema,
       // The gate built the data, so only its kind is checked against the chart.
       data: z.custom<ChartData>((value) => frozenData.safeParse(value).success),
+      ...placed,
     })
     .superRefine(({ chart, data }, ctx) => {
       const [takes, message] = TAKES[kind];
@@ -132,8 +213,19 @@ const storedSlide = z
       )
       .min(1)
       .max(SLIDE_ELEMENT_LIMIT),
+    background: hexColor.optional(),
   })
-  .superRefine(refineSlideRules);
+  .superRefine((slide, ctx) => {
+    refineSlideRules(slide, ctx);
+
+    for (const { index, message } of textContrastIssues(slide)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["elements", index, "style"],
+        message,
+      });
+    }
+  });
 
 /** The server's parse of a stored or changed deck content. */
 export const deckContentSchema: z.ZodType<DeckContent> = z.strictObject({

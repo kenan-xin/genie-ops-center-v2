@@ -36,14 +36,70 @@ export const BULLET_CHARACTERS = 80;
 
 export const BULLET_ITEMS = 5;
 
+/** The one slide canvas, on screen and in PowerPoint, in canvas pixels (D10). */
+export const SLIDE_CANVAS = { width: 960, height: 540 } as const;
+
+/** The colors a slide draws with when nothing sets one: the light theme, as the export (R-52a). */
+export const THEME_TEXT = "#111827";
+
+export const THEME_BACKGROUND = "#FFFFFF";
+
+/** The font sizes in canvas pixels and the border widths an element may take (tech plan, Style defaults). */
+export const FONT_SIZES = [12, 14, 18, 24, 32, 40, 56] as const;
+
+export const BORDER_WIDTHS = [0, 1, 2, 4] as const;
+
+export const FONT_WEIGHTS = ["regular", "semibold", "bold"] as const;
+
+export const TEXT_ALIGNS = ["left", "center", "right"] as const;
+
+export const hexColor = z
+  .string()
+  .regex(
+    /^#[0-9A-Fa-f]{6}$/,
+    "Enter a 6-digit hex color, for example #1E3A8A."
+  );
+
+/** An element's own place on the canvas, in whole canvas pixels; without one it keeps the computed layout. */
+export const elementBox = z.strictObject({
+  x: z.int().min(0),
+  y: z.int().min(0),
+  w: z.int().min(1),
+  h: z.int().min(1),
+});
+
+/** Every style key. Title, text and bullets take all; a figure, chart, table or image only fill and border. */
+export const elementStyle = z.strictObject({
+  color: hexColor.optional(),
+  fontSize: z.literal(FONT_SIZES).optional(),
+  weight: z.enum(FONT_WEIGHTS).optional(),
+  align: z.enum(TEXT_ALIGNS).optional(),
+  fill: hexColor.optional(),
+  border: z
+    .strictObject({ color: hexColor, width: z.literal(BORDER_WIDTHS) })
+    .optional(),
+});
+
+export type ElementBox = z.infer<typeof elementBox>;
+
+export type ElementStyle = z.infer<typeof elementStyle>;
+
+/** The optional place and style every element kind carries. */
+export const placed = {
+  box: elementBox.optional(),
+  style: elementStyle.optional(),
+};
+
 export const titleElement = z.strictObject({
   kind: z.literal("title"),
   text: z.string().trim().min(1).max(TITLE_CHARACTERS),
+  ...placed,
 });
 
 export const textElement = z.strictObject({
   kind: z.literal("text"),
   text: z.string().trim().min(1).max(TEXT_CHARACTERS),
+  ...placed,
 });
 
 export const bulletsElement = z.strictObject({
@@ -52,12 +108,14 @@ export const bulletsElement = z.strictObject({
     .array(z.string().trim().min(1).max(BULLET_CHARACTERS))
     .min(1)
     .max(BULLET_ITEMS),
+  ...placed,
 });
 
 export const imageElement = z.strictObject({
   kind: z.literal("image"),
   fileId: z.uuid(),
   alt: z.string().trim().min(1).max(200),
+  ...placed,
 });
 
 /** One element as a person or the agent sends it. A data element names its chart config only. */
@@ -65,13 +123,103 @@ export const elementInput = z.discriminatedUnion("kind", [
   titleElement,
   textElement,
   bulletsElement,
-  z.strictObject({ kind: z.literal("figure"), chart: z.unknown() }),
-  z.strictObject({ kind: z.literal("chart"), chart: z.unknown() }),
-  z.strictObject({ kind: z.literal("table"), chart: z.unknown() }),
+  z.strictObject({ kind: z.literal("figure"), chart: z.unknown(), ...placed }),
+  z.strictObject({ kind: z.literal("chart"), chart: z.unknown(), ...placed }),
+  z.strictObject({ kind: z.literal("table"), chart: z.unknown(), ...placed }),
   imageElement,
 ]);
 
 export type ElementKind = z.infer<typeof elementInput>["kind"];
+
+/** The kinds that hold text and take every style key. */
+export const TEXT_KINDS: ReadonlySet<ElementKind> = new Set([
+  "title",
+  "text",
+  "bullets",
+]);
+
+/** The smallest box per kind, so a text keeps one line and a visual stays readable (tech plan, Style defaults). */
+export function minBox(kind: ElementKind): {
+  readonly w: number;
+  readonly h: number;
+} {
+  return TEXT_KINDS.has(kind) ? { w: 80, h: 32 } : { w: 160, h: 96 };
+}
+
+const TEXT_ONLY_KEYS = ["color", "fontSize", "weight", "align"] as const;
+
+/** What the shape rules and the refusals read of one element. */
+export type ElementLike = {
+  readonly kind: ElementKind;
+  readonly text?: string | undefined;
+  readonly items?: readonly string[] | undefined;
+  readonly alt?: string | undefined;
+  readonly box?: ElementBox | undefined;
+  readonly style?: ElementStyle | undefined;
+};
+
+const NAME_CHARACTERS = 28;
+
+const quoted = (value: string) =>
+  `"${value.length > NAME_CHARACTERS ? `${value.slice(0, NAME_CHARACTERS)}…` : value}"`;
+
+/** An element as a refusal names it, for example `Text "Sales rose."` or `The chart`. */
+export function elementName(element: ElementLike): string {
+  switch (element.kind) {
+    case "title":
+      return `Title ${quoted(element.text ?? "")}`;
+    case "text":
+      return `Text ${quoted(element.text ?? "")}`;
+    case "bullets":
+      return `Bullets ${quoted(element.items?.[0] ?? "")}`;
+    case "image":
+      return `Image ${quoted(element.alt ?? "")}`;
+    case "figure":
+    case "chart":
+    case "table":
+      return `The ${element.kind}`;
+  }
+}
+
+/** The box limits and kind rules of one element, at its `box` or `style` field. */
+function placementIssues(
+  element: ElementLike
+): { field: "box" | "style"; message: string }[] {
+  const issues: { field: "box" | "style"; message: string }[] = [];
+  const { box, style } = element;
+
+  if (box !== undefined) {
+    const min = minBox(element.kind);
+
+    if (
+      box.x + box.w > SLIDE_CANVAS.width ||
+      box.y + box.h > SLIDE_CANVAS.height
+    ) {
+      issues.push({
+        field: "box",
+        message: `${elementName(element)} must stay inside the ${SLIDE_CANVAS.width} by ${SLIDE_CANVAS.height} slide.`,
+      });
+    } else if (box.w < min.w || box.h < min.h) {
+      issues.push({
+        field: "box",
+        message: `${elementName(element)} needs a box of at least ${min.w} by ${min.h}.`,
+      });
+    }
+  }
+
+  if (
+    style !== undefined &&
+    !TEXT_KINDS.has(element.kind) &&
+    TEXT_ONLY_KEYS.some((key) => style[key] !== undefined)
+  ) {
+    issues.push({
+      field: "style",
+      message: `${elementName(element)} takes only a fill and a border.`,
+    });
+  }
+
+  return issues;
+}
 
 export const TABLE_ROWS = 12;
 
@@ -152,7 +300,7 @@ export function slideRuleIssues(
 
 /** Adds the slide shape issues to a slide schema's refinement, at each element's path. */
 export function refineSlideRules(
-  slide: { readonly elements: readonly { readonly kind: ElementKind }[] },
+  slide: { readonly elements: readonly ElementLike[] },
   ctx: z.RefinementCtx
 ): void {
   for (const { index, message } of ruleIssues(
@@ -160,11 +308,22 @@ export function refineSlideRules(
   )) {
     ctx.addIssue({ code: "custom", path: ["elements", index], message });
   }
+
+  for (const [index, element] of slide.elements.entries()) {
+    for (const { field, message } of placementIssues(element)) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["elements", index, field],
+        message,
+      });
+    }
+  }
 }
 
 export const slideInput = z
   .strictObject({
     elements: z.array(elementInput).min(1).max(SLIDE_ELEMENT_LIMIT),
+    background: hexColor.optional(),
   })
   .superRefine(refineSlideRules);
 

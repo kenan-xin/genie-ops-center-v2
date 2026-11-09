@@ -6,7 +6,7 @@ import {
   deckContentSchema,
   type StoredElement,
 } from "./content.ts";
-import type { ElementKind } from "./contract.ts";
+import type { ElementBox, ElementKind, ElementStyle } from "./contract.ts";
 
 const ELEMENT: Record<ElementKind, () => StoredElement> = {
   title: () => ({ kind: "title", text: "Overdue invoices doubled in October" }),
@@ -76,6 +76,44 @@ const largestSlide = (id: string) => ({
   ] satisfies StoredElement[],
 });
 
+type Extra = {
+  readonly text?: string;
+  readonly box?: ElementBox;
+  readonly style?: ElementStyle;
+};
+
+/** One slide of a title and one text, with each element's extra fields and the slide's. */
+const styled = (
+  title: Extra,
+  text: Extra,
+  slide: { readonly background?: string } = {}
+): DeckContent => ({
+  slides: [
+    {
+      id: "s1",
+      ...slide,
+      elements: [
+        { kind: "title", text: "Sales grew", ...title },
+        { kind: "text", text: "Sales rose.", ...text },
+      ],
+    },
+  ],
+});
+
+const withChart = (chart: Omit<Extra, "text">): DeckContent => ({
+  slides: [
+    {
+      id: "s1",
+      elements: [
+        { kind: "title", text: "Sales grew" },
+        { ...frozenElement("chart"), ...chart },
+      ],
+    },
+  ],
+});
+
+const NEEDS = "Pick a color with more contrast, or give the text a fill.";
+
 const slides = (count: number) =>
   Array.from({ length: count }, (_, index) => largestSlide(`s${index + 1}`));
 
@@ -142,6 +180,79 @@ describe("the deck content schema", () => {
       "slides: A deck holds at most 20 slides.",
     ],
     [
+      "refuses a text box under 80 wide",
+      styled({}, { box: { x: 40, y: 136, w: 79, h: 32 } }),
+      'slides.0.elements.1.box: Text "Sales rose." needs a box of at least 80 by 32.',
+    ],
+    [
+      "parses a text box of 80 by 32",
+      styled({}, { box: { x: 40, y: 136, w: 80, h: 32 } }),
+      null,
+    ],
+    [
+      "refuses a chart box under 96 high",
+      withChart({ box: { x: 40, y: 136, w: 160, h: 95 } }),
+      "slides.0.elements.1.box: The chart needs a box of at least 160 by 96.",
+    ],
+    [
+      "refuses a box past the right edge",
+      styled({}, { box: { x: 881, y: 136, w: 80, h: 32 } }),
+      'slides.0.elements.1.box: Text "Sales rose." must stay inside the 960 by 540 slide.',
+    ],
+    [
+      "parses a box that ends on the right edge",
+      styled({}, { box: { x: 880, y: 508, w: 80, h: 32 } }),
+      null,
+    ],
+    [
+      "refuses a text color on a chart",
+      withChart({ style: { color: "#111827" } }),
+      "slides.0.elements.1.style: The chart takes only a fill and a border.",
+    ],
+    [
+      "parses a fill and a border on a chart",
+      withChart({
+        style: { fill: "#EFF6FF", border: { color: "#1E3A8A", width: 2 } },
+      }),
+      null,
+    ],
+    [
+      "refuses light gray text on the theme background",
+      styled({}, { style: { color: "#F3F4F6" } }),
+      `slides.0.elements.1.style: Text "Sales rose.": #F3F4F6 on the theme background #FFFFFF is 1.1:1, and this text needs 4.5:1. ${NEEDS}`,
+    ],
+    [
+      "checks white text against its own fill first",
+      styled({}, { style: { color: "#FFFFFF", fill: "#1E3A8A" } }),
+      null,
+    ],
+    [
+      "refuses a dark background under default text",
+      styled({ style: { color: "#FFFFFF" } }, {}, { background: "#1E3A8A" }),
+      `slides.0.elements.1.style: Text "Sales rose.": #111827 on the slide background #1E3A8A is 1.7:1, and this text needs 4.5:1. ${NEEDS}`,
+    ],
+    [
+      "allows 3:1 for text of size 24",
+      styled({}, { style: { color: "#909090", fontSize: 24 } }),
+      null,
+    ],
+    [
+      "needs 4.5:1 for text of size 18",
+      styled({}, { style: { color: "#909090", fontSize: 18 } }),
+      `slides.0.elements.1.style: Text "Sales rose.": #909090 on the theme background #FFFFFF is 3.1:1, and this text needs 4.5:1. ${NEEDS}`,
+    ],
+    [
+      "names a long text by its first 28 characters",
+      styled(
+        {},
+        {
+          text: "Most of the rise is one customer.",
+          style: { color: "#F3F4F6" },
+        }
+      ),
+      `slides.0.elements.1.style: Text "Most of the rise is one cust…": #F3F4F6 on the theme background #FFFFFF is 1.1:1, and this text needs 4.5:1. ${NEEDS}`,
+    ],
+    [
       "parses 20 slides of the largest allowed shape",
       { slides: slides(20) },
       null,
@@ -154,5 +265,11 @@ describe("the deck content schema", () => {
     );
 
     expect(issues).toEqual(expected === null ? [] : [expected]);
+  });
+
+  it("reads a stored deck without boxes or styles unchanged", () => {
+    const content = deckOf(["title", "text", "chart"]);
+
+    expect(deckContentSchema.parse(content)).toEqual(content);
   });
 });

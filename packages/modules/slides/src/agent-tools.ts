@@ -1,8 +1,12 @@
 import { CHART_PROMPT_RULES } from "@genie/core";
-import { type AgentInstructions, defineAgentTool } from "@genie/core/contracts";
+import {
+  type AgentInstructions,
+  type AgentToolValue,
+  defineAgentTool,
+} from "@genie/core/contracts";
 import { z } from "zod";
 
-import type { StoredElement } from "./content.ts";
+import type { Placement, StoredElement } from "./content.ts";
 import {
   BULLET_CHARACTERS,
   BULLET_ITEMS,
@@ -32,9 +36,37 @@ import {
  * exception is the change tool's content hash, which the replay transport renames (P11-43).
  */
 
+/** One JSON object of a tool answer. */
+type ToolObject = { [key: string]: AgentToolValue };
+
+/** An element's box and style as JSON: the model reads no key without a value. */
+function placementOf({ box, style }: Placement) {
+  const placement: ToolObject = {};
+
+  if (box !== undefined) placement.box = box;
+
+  if (style !== undefined) {
+    const kept: ToolObject = {};
+
+    for (const [key, value] of Object.entries(style)) {
+      if (value !== undefined) kept[key] = value;
+    }
+
+    placement.style = kept;
+  }
+
+  return placement;
+}
+
 /** A data element as its config only; its frozen rows stay out of the model's context. */
-const withoutData = (element: StoredElement) =>
-  "chart" in element ? { kind: element.kind, chart: element.chart } : element;
+function withoutData(element: StoredElement) {
+  const { box, style, ...body } = element;
+
+  return {
+    ...("chart" in body ? { kind: body.kind, chart: body.chart } : body),
+    ...placementOf({ box, style }),
+  };
+}
 
 /** A stored slide's first element is its title (D5). */
 const titleOf = ([first]: readonly StoredElement[]) =>
