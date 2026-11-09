@@ -15,6 +15,11 @@ import {
 } from "../../testing/slides-change.ts";
 import { DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
 
+/** The stored deck content, as the factory takes it. */
+export type DeckContent = NonNullable<
+  Parameters<typeof insertDeck>[1]["content"]
+>;
+
 /**
  * What the slides spec shares: the demo database's own rows. The chat person's decks are removed
  * before and after a test, because a killed run must not leave a deck the next one reads (D16).
@@ -93,9 +98,14 @@ export function slideOverflowFailures(canvas: HTMLElement): readonly string[] {
 
 /**
  * Puts the fixed deck of `slides-change.ts` back for this person, whatever a killed run left, so
- * the recorded requests of the deck editor's chat match (D12). Call it under the ledger lock.
+ * the recorded requests of the deck editor's chat match (D12). A spec with no chat may pass other
+ * content, such as the deck with speaker notes. Call it under the ledger lock.
  */
-export async function resetChangeDeck(email: string): Promise<void> {
+export async function resetChangeDeck(
+  email: string,
+  // SAFETY: the fixture holds the stored deck shape; the store's parse refuses any other.
+  content: DeckContent = SLIDES_CHANGE_CONTENT as never
+): Promise<void> {
   const tenant = context();
 
   const { rows } = await tenant.db.$client.query<{ id: string }>(
@@ -121,8 +131,7 @@ export async function resetChangeDeck(email: string): Promise<void> {
     ownerUserId,
     id: SLIDES_CHANGE_DECK_ID,
     title: SLIDES_CHANGE_DECK_TITLE,
-    // SAFETY: the fixture holds the stored deck shape; the store's parse refuses any other.
-    content: SLIDES_CHANGE_CONTENT as never,
+    content,
     frozenOn: SLIDES_CHANGE_FROZEN_ON,
   });
 }

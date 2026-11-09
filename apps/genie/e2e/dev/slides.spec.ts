@@ -208,7 +208,10 @@ test("every slide of the chat deck fits at the viewport", async ({ page }) => {
 
         // Present starts at the shown slide, so return to the first before presenting.
         await activate(page, railButton(page, 1));
-        await activate(page, page.getByRole("button", { name: "Present" }));
+        await activate(
+          page,
+          page.getByRole("button", { name: "Present", exact: true })
+        );
 
         const present = page.locator(
           "[data-present-stage] [data-slide-canvas]"

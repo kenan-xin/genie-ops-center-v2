@@ -85,7 +85,9 @@ export async function openAgentPanel(page: Page): Promise<Locator> {
 }
 
 /** Keeps the development widgets off the agent panel's Send. Call before the first page. */
-export async function hideDevelopmentWidgets(page: Page): Promise<void> {
+export async function hideDevelopmentWidgets(
+  page: Pick<Page, "addInitScript">
+): Promise<void> {
   await page.addInitScript(() => {
     // P11: react-lang mounts its Inspect widget in development unless this flag is already set.
     Object.assign(globalThis, {
