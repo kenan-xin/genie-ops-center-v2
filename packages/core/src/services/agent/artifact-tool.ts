@@ -14,6 +14,7 @@ import {
   type PendingVersion,
   storedArtifact,
 } from "./artifacts.ts";
+import type { HandoffCardPart } from "./hand-over.ts";
 import { COULD_NOT_RUN, refusalText, writeToolAudit } from "./tools.ts";
 
 /**
@@ -36,8 +37,8 @@ export type ArtifactTurn = {
   readonly sessionId: string;
   readonly storedCount: number;
   readonly pending: PendingVersion[];
-  /** Writes the card part into the UI stream; the route sets it when the stream starts. */
-  write: (part: ArtifactCardPart) => void;
+  /** Writes a card part into the UI stream; the route sets it when the stream starts. */
+  write: (part: ArtifactCardPart | HandoffCardPart) => void;
 };
 
 /** A turn with nothing made yet; its writer throws until the route sets the stream's writer. */

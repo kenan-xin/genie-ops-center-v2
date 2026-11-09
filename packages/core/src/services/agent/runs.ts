@@ -49,6 +49,35 @@ export async function stopRun(
   if (found === undefined) throw new AppError(CORE_ERRORS["not-found"]);
 }
 
+/** The caller's session whose run is set, or undefined: a person has at most one (R-42b). */
+export async function findOwnRun(ctx: ModuleRequestContext): Promise<
+  | {
+      readonly id: string;
+      readonly title: string;
+      readonly surface: string;
+      readonly recordId: string | null;
+    }
+  | undefined
+> {
+  const [row] = await ctx.tenant.db
+    .select({
+      id: agentSession.id,
+      title: agentSession.title,
+      surface: agentSession.surface,
+      recordId: agentSession.recordId,
+    })
+    .from(agentSession)
+    .where(
+      and(
+        eq(agentSession.userId, ctx.caller.userId),
+        isNotNull(agentSession.runState)
+      )
+    )
+    .limit(1);
+
+  return row;
+}
+
 /** The session's run state, or `gone` when the session was deleted. */
 export async function readRunState(
   tenant: TenantContext,

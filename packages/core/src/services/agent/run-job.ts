@@ -19,7 +19,8 @@ import { pgErrorCode } from "../../utils/error-cause.ts";
 import { enqueueJob } from "../job-queue/module-jobs.ts";
 import { modelFor } from "../models/index.ts";
 import { agentAccess } from "./access.ts";
-import { AGENT_LIMITS, turnStream } from "./chat.ts";
+import { turnStream } from "./chat.ts";
+import { AGENT_LIMITS } from "./limits.ts";
 import {
   AGENT_RUN_JOB_NAME,
   endRun,

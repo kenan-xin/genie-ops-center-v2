@@ -2,6 +2,7 @@ import type { ZodType } from "zod";
 
 import type { PermissionKey } from "../src/lib/module-contract/keys.ts";
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
+import type { TenantTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 
 /**
  * One event's contract: its name, its version and the zod schema of its payload. The emitting
@@ -154,9 +155,13 @@ export type AgentSurface = {
   readonly tools: readonly AnyAgentTool[];
   readonly instructions: AgentInstructions;
   readonly acceptsHandoff: boolean;
-  /** Module code: creates the empty record as the person and answers its id. */
+  /**
+   * Module code: creates the empty record as the person and answers its id. It writes through
+   * `tx` and opens no transaction, because core calls it inside the handoff's one transaction.
+   */
   createRecord(
     ctx: ModuleRequestContext,
+    tx: TenantTransaction,
     input: { readonly title: string }
   ): Promise<string>;
 };

@@ -174,6 +174,38 @@ export async function createOwnSession(
   return created;
 }
 
+/**
+ * The target session of a handoff and its first user message, through the handoff's transaction
+ * (S7-41). The session takes the Ask session's model and the brief's title.
+ */
+export async function insertHandedSession(
+  ctx: ModuleRequestContext,
+  tx: TenantTransaction,
+  input: {
+    readonly id: string;
+    readonly surface: string;
+    readonly recordId: string;
+    readonly handedFromSessionId: string;
+    readonly title: string;
+    readonly modelId: string;
+    readonly parts: AgentMessage["parts"];
+  }
+): Promise<void> {
+  await tx.insert(agentSession).values({
+    id: checkedId(input.id),
+    userId: ctx.caller.userId,
+    surface: input.surface,
+    recordId: input.recordId,
+    handedFromSessionId: input.handedFromSessionId,
+    title: input.title,
+    modelId: input.modelId,
+  });
+
+  await tx
+    .insert(agentMessage)
+    .values({ sessionId: input.id, role: "user", parts: input.parts });
+}
+
 /** Renames the caller's session; `updated_at` stays, so the list keeps its order. `not-found` otherwise. */
 export async function renameOwnSession(
   ctx: ModuleRequestContext,

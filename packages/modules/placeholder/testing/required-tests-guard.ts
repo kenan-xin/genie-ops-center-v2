@@ -179,4 +179,13 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a durable agent run on the placeholder test surface deleting the session ends the run",
     ],
   },
+  {
+    file: "testing/agent-handoff.integration.test.ts",
+    reason: "Spec 7 R-42b, AC-13: the Ask handoff (S7-41)",
+    cases: [
+      "the Ask handoff on the placeholder test surface a handoff creates the record, the session, the audit row and the link, and starts the run",
+      "the Ask handoff on the placeholder test surface a refused createRecord saves nothing",
+      "the Ask handoff on the placeholder test surface a second handoff while one builds answers with the first one's card",
+    ],
+  },
 ];

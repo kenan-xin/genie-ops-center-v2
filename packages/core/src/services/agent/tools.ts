@@ -15,6 +15,7 @@ import {
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
 import type { ModuleRequestContext } from "../../lib/module-contract/module.ts";
+import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import type { AuditAction } from "../audit/actions.ts";
 import type { AuditMetadataValue } from "../audit/index.ts";
 import { insertAuditRow } from "../audit/insert.ts";
@@ -27,6 +28,7 @@ import {
   MAKE_ARTIFACT,
 } from "./artifact-tool.ts";
 import { fileTool, MAKE_FILE } from "./file-tool.ts";
+import { HAND_OVER, handOverTool } from "./hand-over.ts";
 import { type SessionTools, sessionTools } from "./surfaces.ts";
 
 export const AGENT_TOOL_AUDIT_ACTION: AuditAction = "core:agent_tool_called";
@@ -149,22 +151,32 @@ export async function writeToolAudit(
     readonly outcome: string;
     readonly rowCount: number;
     readonly dataset: string | null;
-  }
+    /** The session a handoff created; the row then names both sessions. */
+    readonly targetSessionId?: string;
+  },
+  tx?: TenantTransaction
 ): Promise<void> {
-  await insertAuditRow(ctx.tenant.db, {
+  const base = {
+    sessionId: session.id,
+    tool: call.tool,
+    dataset: call.dataset,
+    query: call.query,
+    rowCount: call.rowCount,
+    outcome: call.outcome,
+  };
+
+  const metadata =
+    call.targetSessionId === undefined
+      ? base
+      : { ...base, targetSessionId: call.targetSessionId };
+
+  await insertAuditRow(tx ?? ctx.tenant.db, {
     actorUserId: ctx.caller.userId,
     action: AGENT_TOOL_AUDIT_ACTION,
     targetType: call.dataset === null ? null : "dataset",
     targetId: call.dataset,
     summary: `Agent tool ${call.tool}${call.dataset === null ? "" : ` on ${call.dataset}`}`,
-    metadata: {
-      sessionId: session.id,
-      tool: call.tool,
-      dataset: call.dataset,
-      query: call.query,
-      rowCount: call.rowCount,
-      outcome: call.outcome,
-    },
+    metadata,
   }).catch((cause: unknown) => {
     throw new Error(COULD_NOT_RUN, { cause });
   });
@@ -326,26 +338,32 @@ export async function offeredModuleTools(
   return (await offeredSessionTools(ctx)).moduleTools;
 }
 
-/** Whether this person is offered a module tool that changes data, which switches the prompt's write rule. */
+/**
+ * Whether this person is offered a tool that changes data, which switches the prompt's write rule:
+ * a module tool that writes, or `hand-over`, which creates a record (P11-22).
+ */
 export async function offersWriteTool(
   ctx: ModuleRequestContext,
   surface: string = ASK_SURFACE
 ): Promise<boolean> {
-  return (await offeredSessionTools(ctx, surface)).moduleTools.some(
-    ({ writes }) => writes === true
+  const { moduleTools, handoff } = await offeredSessionTools(ctx, surface);
+
+  return (
+    handoff.length > 0 || moduleTools.some(({ writes }) => writes === true)
   );
 }
 
 /**
  * The model's tools for one request: the core read tools, `make-artifact`, `make-file` on Ask
- * only, then the session's offered module tools in order.
+ * only, `hand-over` on Ask while a surface accepts a handoff, then the session's offered module
+ * tools in order.
  */
 export async function agentToolSet(
   ctx: ModuleRequestContext,
   session: { readonly id: string; readonly surface?: string },
   turn: ArtifactTurn
 ): Promise<ToolSet> {
-  const { files, moduleTools } = await offeredSessionTools(
+  const { files, moduleTools, handoff } = await offeredSessionTools(
     ctx,
     session.surface
   );
@@ -357,6 +375,9 @@ export async function agentToolSet(
     ]),
     [MAKE_ARTIFACT, artifactTool(ctx, session, turn)],
     ...(files ? [[MAKE_FILE, fileTool(ctx, session)]] : []),
+    ...(handoff.length > 0
+      ? [[HAND_OVER, handOverTool(ctx, session, turn, handoff)]]
+      : []),
     ...moduleTools.map((entry) => [
       entry.name,
       audited(ctx, session, entry, false),

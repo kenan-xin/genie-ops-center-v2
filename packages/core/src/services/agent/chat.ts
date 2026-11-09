@@ -34,6 +34,7 @@ import { CHAT_TITLE_LIMIT } from "./contract.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { chatLabels } from "./labels.ts";
+import { AGENT_LIMITS } from "./limits.ts";
 import {
   type AgentPageContext,
   agentPageContextSchema,
@@ -56,13 +57,7 @@ import {
   writeToolAudit,
 } from "./tools.ts";
 
-/** The route's limits (P8): one bounded turn per request, never retried. */
-export const AGENT_LIMITS = {
-  requestBytes: 64 * 1024,
-  messageCharacters: 4000,
-  steps: 10,
-  turnMs: 180_000,
-} as const;
+export { AGENT_LIMITS } from "./limits.ts";
 
 // One text part only: chat takes no file upload (R-42).
 const chatRequestSchema = z.strictObject({

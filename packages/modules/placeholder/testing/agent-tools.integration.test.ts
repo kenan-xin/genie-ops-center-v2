@@ -4,7 +4,6 @@ import {
   agentToolSet,
   artifactTool,
   artifactTurn,
-  type ArtifactCardPart,
   type ArtifactTurn,
   createOwnSession,
   createTenantContext,
@@ -176,7 +175,7 @@ const tableConfig = {
 
 /** A turn whose card parts land in `written`, as the route's stream writer would take them. */
 function recordingTurn(storedCount: number) {
-  const written: ArtifactCardPart[] = [];
+  const written: Parameters<ArtifactTurn["write"]>[0][] = [];
 
   const turn: ArtifactTurn = {
     ...artifactTurn(SESSION_ID, storedCount),

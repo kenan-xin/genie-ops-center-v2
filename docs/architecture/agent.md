@@ -66,6 +66,7 @@ A module page that builds something has its own agent surface (`DEC-29`, amended
 - Ask has one core tool, `hand-over`. It runs only when the person's own message asks to build something on a surface that accepts a handoff (R-46). It writes a brief: the goal, the facts from the chat with their sources and dates, the datasets, and what it did not pass. It creates a session on the target surface with the brief as its first message, starts the run on the server, and opens the target page. The rest of the Ask chat is never passed. Ask keeps a handoff card with the live status and a link.
 - The run continues on the server. If the person leaves the page, the work goes on, and the card and the target page show its status. Stop on the target page aborts the run.
 - Rights do not change. Every tool call of every surface runs as the signed-in person, through `can()` and `scopesFor()`. The handoff writes one audit row that names both sessions.
+- Ask offers `hand-over` only while an enabled surface accepts a handoff, and then its prompt takes the write rule. One transaction makes the record through the surface's `createRecord`, the target session with the brief, the audit row and the run, so a refusal saves nothing. The tool answers the model the agent's name and the title, never an id, and the chat shows a handoff card with the address. A second handoff while a build runs saves nothing, and the card leads to the build that runs.
 
 ## Built after wave 4
 

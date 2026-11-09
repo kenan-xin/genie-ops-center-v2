@@ -1,4 +1,4 @@
-import type { Module } from "@genie/core";
+import { AppError, CORE_ERRORS, type Module } from "@genie/core";
 import {
   type AgentSurface,
   capability,
@@ -7,7 +7,10 @@ import {
 import { z } from "zod";
 
 import { placeholderModule } from "../src/module.ts";
-import { insertPlaceholderRecord } from "./factories.ts";
+import { placeholderRecord } from "../src/schema.ts";
+
+/** The title whose record `createRecord` makes and then refuses, so nothing may stay. */
+export const REFUSED_TITLE = "Refused placeholder review";
 
 /**
  * A test-only agent surface on the placeholder record page, so core's surface runtime is proven
@@ -31,8 +34,19 @@ export const TEST_SURFACE: AgentSurface = {
     lines: ["Build the open placeholder record one step at a time."],
   },
   acceptsHandoff: true,
-  createRecord: async (ctx, { title }) =>
-    (await insertPlaceholderRecord(ctx.tenant, { label: title })).id,
+  createRecord: async (_ctx, tx, { title }) => {
+    const [row] = await tx
+      .insert(placeholderRecord)
+      .values({ label: title })
+      .returning({ id: placeholderRecord.id });
+
+    if (row === undefined) throw new Error("the insert returned no row");
+
+    // After the insert, so the handoff test proves that a refusal rolls the record back.
+    if (title === REFUSED_TITLE) throw new AppError(CORE_ERRORS.forbidden);
+
+    return row.id;
+  },
 };
 
 export const placeholderWithSurface = {
