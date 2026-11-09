@@ -12,6 +12,7 @@ import pptxgenjs from "pptxgenjs";
 import { type ElementStyle, THEME_TEXT } from "../../contract.ts";
 import {
   type Box,
+  drawnStyle,
   elementBoxes,
   figuresDate,
   FRAME_PADDING,
@@ -341,7 +342,12 @@ export async function buildDeckPptx(input: {
 
       if (element === undefined) continue;
 
-      const framed = addFrame(slide, rect, box, element.style);
+      const framed = addFrame(
+        slide,
+        rect,
+        box,
+        drawnStyle(element.kind, element.style, shown.background)
+      );
 
       if ("hidden" in element) {
         slide.addText(HIDDEN, {

@@ -1,10 +1,19 @@
 "use client";
 
+import { foregroundFor } from "@genie/core/features/branding";
 import { Chart } from "@genie/ui/chart";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
+import { type ElementBox, type ElementStyle, THEME_TEXT } from "../contract.ts";
 import { type ImageLinks, keepImageLinks } from "./image-links.ts";
-import { CANVAS, figuresDate, slideLayout, TYPE_PX } from "./slide-layout.ts";
+import {
+  CANVAS,
+  drawnStyle,
+  elementBoxes,
+  figuresDate,
+  slideLayout,
+  TYPE_PX,
+} from "./slide-layout.ts";
 import type { DeckPageView, ShownElement, ShownSlide } from "./views.ts";
 
 export type SlideCanvasProps = {
@@ -21,6 +30,85 @@ export type SlideCanvasProps = {
 type CssVars = CSSProperties & {
   readonly [key: `--${string}`]: string | number;
 };
+
+/** Joins the classes that apply; the lists here set no two classes of one property. */
+const cn = (...classes: readonly (string | false | undefined)[]) =>
+  classes.filter(Boolean).join(" ");
+
+const WEIGHT_CLASS = {
+  regular: "font-normal",
+  semibold: "font-semibold",
+  bold: "font-bold",
+} as const;
+
+const ALIGN_CLASS = {
+  left: "text-left",
+  center: "text-center",
+  right: "text-right",
+} as const;
+
+/**
+ * A slide with a background or a colored element draws on the light palette under its own values,
+ * so the pair on screen is the pair the save checked, in the dark theme too (P13-3).
+ */
+function usesLightPalette(slide: ShownSlide): boolean {
+  return (
+    slide.background !== undefined ||
+    slide.elements.some(
+      ({ style }) => style?.color !== undefined || style?.fill !== undefined
+    )
+  );
+}
+
+/** The classes and variables of one element box: its place, its frame and its text style. */
+function boxProps(box: ElementBox, style: ElementStyle | undefined) {
+  const border =
+    style?.border !== undefined && style.border.width > 0
+      ? style.border
+      : undefined;
+
+  const framed = style?.fill !== undefined || border !== undefined;
+
+  const vars: CssVars = {
+    "--box-x": `${box.x}px`,
+    "--box-y": `${box.y}px`,
+    "--box-w": `${box.w}px`,
+    "--box-h": `${box.h}px`,
+    ...(style?.fill === undefined ? undefined : { "--el-fill": style.fill }),
+    ...(border === undefined
+      ? undefined
+      : {
+          "--el-border-color": border.color,
+          "--el-border-width": `${border.width}px`,
+        }),
+    ...(style?.color === undefined ? undefined : { "--el-color": style.color }),
+    ...(style?.fontSize === undefined
+      ? undefined
+      : { "--el-size": `${style.fontSize}px` }),
+  };
+
+  return {
+    style: vars,
+    className: cn(
+      "absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w)",
+      style?.fill !== undefined && "bg-(--el-fill)",
+      border !== undefined &&
+        "border-solid border-(length:--el-border-width) border-(--el-border-color)",
+      // 12 px inside a frame, as the export's margin (P01-8).
+      framed && "p-3",
+      style?.color !== undefined && "text-(color:--el-color)",
+      style?.align !== undefined && ALIGN_CLASS[style.align]
+    ),
+  };
+}
+
+/** The text classes an element's style sets over its kind's default size and weight. */
+function textClass(style: ElementStyle | undefined, fallback: string): string {
+  return cn(
+    style?.fontSize === undefined ? fallback : "text-(length:--el-size)",
+    style?.weight !== undefined && WEIGHT_CLASS[style.weight]
+  );
+}
 
 function titleOf(slide: ShownSlide): string {
   const title = slide.elements.find((element) => element.kind === "title");
@@ -40,13 +128,23 @@ function ElementBody(props: {
       return null;
     case "text":
       return (
-        <p className="text-(length:--slide-text-size) leading-normal wrap-anywhere">
+        <p
+          className={cn(
+            textClass(element.style, "text-(length:--slide-text-size)"),
+            "leading-normal wrap-anywhere"
+          )}
+        >
           {element.text}
         </p>
       );
     case "bullets":
       return (
-        <ul className="text-(length:--slide-bullet-size) flex h-full flex-col justify-center gap-0.5 leading-tight">
+        <ul
+          className={cn(
+            textClass(element.style, "text-(length:--slide-bullet-size)"),
+            "flex h-full flex-col justify-center gap-0.5 leading-tight"
+          )}
+        >
           {element.items.map((item, index) => (
             <li key={index} className="flex gap-2 wrap-anywhere">
               <span aria-hidden="true">•</span>
@@ -129,6 +227,10 @@ export function SlideCanvas(props: SlideCanvasProps) {
   }, []);
 
   const layout = slideLayout(slide.elements.map(({ kind }) => kind));
+  const boxes = elementBoxes(slide.elements);
+  const light = usesLightPalette(slide);
+  const titleStyle = slide.elements[0]?.style;
+  const title = boxProps(boxes.title, titleStyle);
 
   const hasFigures = slide.elements.some(
     (element) =>
@@ -151,13 +253,12 @@ export function SlideCanvas(props: SlideCanvasProps) {
     "--slide-bullet-size": `${TYPE_PX.bullet}px`,
     "--slide-footer-size": `${TYPE_PX.footer}px`,
     "--slide-primary": theme.primaryColor,
-  };
-
-  const titleStyle: CssVars = {
-    "--box-x": `${layout.title.x}px`,
-    "--box-y": `${layout.title.y}px`,
-    "--box-w": `${layout.title.w}px`,
-    "--box-h": `${layout.title.h}px`,
+    // Read only with a background (`bg-(--slide-bg)` below).
+    "--slide-bg": slide.background ?? "initial",
+    "--slide-footer":
+      slide.background === undefined
+        ? THEME_TEXT
+        : foregroundFor(slide.background),
   };
 
   const ruleStyle: CssVars = {
@@ -185,15 +286,22 @@ export function SlideCanvas(props: SlideCanvasProps) {
         aria-roledescription="slide"
         aria-label={titleOf(slide)}
         data-slide-canvas=""
-        className="absolute top-0 left-0 h-(--slide-canvas-height) w-(--slide-canvas-width) origin-top-left scale-(--slide-scale) overflow-hidden bg-background font-(family-name:--slide-font) text-foreground"
+        // The light tokens on a styled slide, so its colors meet the theme's text (P13-3).
+        data-theme={light ? "light" : undefined}
+        className={cn(
+          "absolute top-0 left-0 h-(--slide-canvas-height) w-(--slide-canvas-width) origin-top-left scale-(--slide-scale) overflow-hidden font-(family-name:--slide-font) text-foreground",
+          slide.background === undefined ? "bg-background" : "bg-(--slide-bg)"
+        )}
         style={canvasStyle}
       >
-        <div
-          data-slide-box="title"
-          className="absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w)"
-          style={titleStyle}
-        >
-          <p className="text-(length:--slide-title-size) leading-tight wrap-anywhere font-bold">
+        <div data-slide-box="title" {...title}>
+          <p
+            className={cn(
+              "leading-tight wrap-anywhere",
+              titleStyle?.weight === undefined && "font-bold",
+              textClass(titleStyle, "text-(length:--slide-title-size)")
+            )}
+          >
             {titleOf(slide)}
           </p>
         </div>
@@ -201,23 +309,17 @@ export function SlideCanvas(props: SlideCanvasProps) {
           className="absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w) bg-(--slide-primary)"
           style={ruleStyle}
         />
-        {layout.body.map(({ index, box }) => {
+        {boxes.body.map(({ index, box }) => {
           const element = slide.elements[index];
 
           return element === undefined ? null : (
             <div
               key={index}
               data-slide-box={element.kind}
-              className="absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w)"
-              style={
-                // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
-                {
-                  "--box-x": `${box.x}px`,
-                  "--box-y": `${box.y}px`,
-                  "--box-w": `${box.w}px`,
-                  "--box-h": `${box.h}px`,
-                } as CssVars
-              }
+              {...boxProps(
+                box,
+                drawnStyle(element.kind, element.style, slide.background)
+              )}
             >
               <ElementBody
                 element={element}
@@ -228,7 +330,10 @@ export function SlideCanvas(props: SlideCanvasProps) {
           );
         })}
         <footer
-          className="absolute top-(--box-y) left-(--box-x) flex h-(--box-h) w-(--box-w) items-center justify-between gap-4 text-muted-foreground"
+          className={cn(
+            "absolute top-(--box-y) left-(--box-x) flex h-(--box-h) w-(--box-w) items-center justify-between gap-4",
+            light ? "text-(color:--slide-footer)" : "text-muted-foreground"
+          )}
           style={footerStyle}
         >
           <span className="text-(length:--slide-footer-size)">

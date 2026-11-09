@@ -111,6 +111,92 @@ function lineCount(element: HTMLElement): number {
   return range.getClientRects().length;
 }
 
+/** A dark blue slide: a white centered title, and a white bordered text in its own box (S7-43). */
+const styledSlide = {
+  ...textWithChartSlide,
+  background: "#1E3A8A",
+  elements: textWithChartSlide.elements.map((element, index) => {
+    if (index === 0) {
+      return {
+        ...element,
+        style: { color: "#FFFFFF", align: "center" as const },
+      };
+    }
+
+    if (element.kind === "text") {
+      return {
+        ...element,
+        box: { x: 96, y: 192, w: 320, h: 160 },
+        style: {
+          color: "#FFFFFF",
+          weight: "semibold" as const,
+          border: { color: "#F59E0B", width: 4 as const },
+        },
+      };
+    }
+
+    return element;
+  }),
+};
+
+const styledPlay: Story["play"] = async ({ canvasElement }) => {
+  const slide = canvasElement.querySelector<HTMLElement>("[data-slide-canvas]");
+
+  const title = canvasElement.querySelector<HTMLElement>(
+    '[data-slide-box="title"] p'
+  );
+
+  const text = canvasElement.querySelector<HTMLElement>(
+    '[data-slide-box="text"]'
+  );
+
+  const footer = canvasElement.querySelector<HTMLElement>("footer span");
+
+  await expect(getComputedStyle(slide!).backgroundColor).toBe(
+    "rgb(30, 58, 138)"
+  );
+  await expect(getComputedStyle(title!).color).toBe("rgb(255, 255, 255)");
+  await expect(getComputedStyle(title!).textAlign).toBe("center");
+
+  const textStyle = getComputedStyle(text!);
+
+  // The stored box, in canvas pixels before the scale.
+  await expect(textStyle.left).toBe("96px");
+  await expect(textStyle.top).toBe("192px");
+  await expect(textStyle.borderTopWidth).toBe("4px");
+  await expect(textStyle.borderTopColor).toBe("rgb(245, 158, 11)");
+  await expect(textStyle.paddingTop).toBe("12px");
+  await expect(getComputedStyle(text!.querySelector("p")!).fontWeight).toBe(
+    "600"
+  );
+
+  // A chart keeps the theme's text, so on a background it draws on the theme background (P13-6).
+  const chart = canvasElement.querySelector<HTMLElement>(
+    '[data-slide-box="chart"]'
+  );
+
+  await expect(getComputedStyle(chart!).backgroundColor).toBe(
+    "rgb(255, 255, 255)"
+  );
+  // The footer on a background takes the one foreground rule (white on dark blue).
+  await expect(getComputedStyle(footer!).color).toBe("rgb(255, 255, 255)");
+};
+
+// S7-43: the background, each box and each style draw as stored, on screen and in present mode.
+export const Styled: Story = {
+  name: "Styled slide",
+  args: { ...canvasProps, slide: styledSlide },
+  globals: desktop,
+  play: styledPlay,
+};
+
+export const StyledOnPhone: Story = {
+  name: "Styled slide on a phone",
+  args: { ...canvasProps, slide: styledSlide },
+  globals: phone,
+  play: styledPlay,
+};
+
 const longestPlay: Story["play"] = async ({ canvasElement }) => {
   await noOverflow(canvasElement);
 };

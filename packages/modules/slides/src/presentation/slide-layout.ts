@@ -1,7 +1,9 @@
 import {
   type ElementBox,
   type ElementKind,
+  type ElementStyle,
   SLIDE_CANVAS,
+  THEME_BACKGROUND,
 } from "../contract.ts";
 
 /** The one canvas every deck is laid out on, on screen and in PowerPoint (D10). */
@@ -167,6 +169,32 @@ export function elementBoxes(
       box: elements[index]?.box ?? box,
     })),
   };
+}
+
+const THEMED_KINDS: ReadonlySet<ElementKind> = new Set([
+  "figure",
+  "chart",
+  "table",
+]);
+
+/**
+ * The style an element draws with. A figure, chart or table keeps the theme's text, so on a slide
+ * background it draws on the theme background unless it has its own fill (P13-6).
+ */
+export function drawnStyle(
+  kind: ElementKind,
+  style: ElementStyle | undefined,
+  background: string | undefined
+): ElementStyle | undefined {
+  if (
+    background === undefined ||
+    style?.fill !== undefined ||
+    !THEMED_KINDS.has(kind)
+  ) {
+    return style;
+  }
+
+  return { ...style, fill: THEME_BACKGROUND };
 }
 
 const FIGURES_DATE = new Intl.DateTimeFormat("en-GB", {
