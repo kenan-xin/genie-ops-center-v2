@@ -151,7 +151,7 @@ function readOf(principalType: "user" | "group", principalId: string) {
 }
 
 describe("the person read of the People inspector", () => {
-  it("lets core:people:manage alone read one person's paths and the catalogue, and nothing else of Access", async () => {
+  it("lets core:people:manage alone read one person's paths, and nothing else of Access", async () => {
     const managerRoleId = await insertRole(deployment.context, {
       name: `People manager ${Date.now()}`,
       permissions: ["core:people:manage"],
@@ -173,7 +173,6 @@ describe("the person read of the People inspector", () => {
       "group",
       "user",
     ]);
-    expect(access.catalogue).toEqual(await roles(adminId).grantCatalogue());
 
     await expect(
       roles(manager).accessBySubject({

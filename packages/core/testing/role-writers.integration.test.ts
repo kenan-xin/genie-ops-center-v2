@@ -14,6 +14,7 @@ import {
   ASK_USER_ROLE,
   TENANT_ADMINISTRATOR_ROLE,
 } from "../src/lib/module-contract/system-roles.ts";
+import { ASK_ROW } from "../src/services/roles/grants.ts";
 import {
   assignRole,
   enableModules,
@@ -160,6 +161,11 @@ function caller(userId: string = actorId) {
 
 function people(userId?: string) {
   return callProcedure(createPeopleRouter(modules), caller(userId));
+}
+
+/** The ids of the Grants rows that the person read returns for one person. */
+async function rowsOf(personId: string) {
+  return (await people().access({ personId })).catalogue.map((row) => row.id);
 }
 
 function roles(userId?: string) {
@@ -346,4 +352,49 @@ describe("roles.assign and the scope rules (d8l5.51)", () => {
       expect(await assignmentCount(id)).toBe(before);
     }
   );
+});
+
+describe("the person read of the People inspector (d8l5.54)", () => {
+  it("names only the Grants rows of the person's paths", async () => {
+    const person = await insertUser(deployment.context);
+    const switchedOff = await insertUser(deployment.context);
+
+    await assignRole(deployment.context, {
+      roleId: roleId("On viewer"),
+      principal: { type: "user", id: person },
+    });
+    await assignRole(deployment.context, {
+      roleId: roleId(ASK_USER_ROLE),
+      principal: { type: "user", id: person },
+    });
+
+    // A fixture insert, as a grant made before the module was switched off.
+    const offAssignment = await assignRole(deployment.context, {
+      roleId: roleId("Off user"),
+      principal: { type: "user", id: switchedOff },
+    });
+
+    expect(await rowsOf(person)).toEqual(["on", ASK_ROW]);
+    expect(await rowsOf(switchedOff)).toEqual(["off"]);
+
+    // The d8l5.39 cases count every Off user row, so the fixture row goes again.
+    await deployment.context.db.$client.query(
+      "delete from role_assignment where id = $1",
+      [offAssignment]
+    );
+  });
+
+  it("refuses a holder of core:people:manage at a scope that is not the person", async () => {
+    const person = await insertUser(deployment.context);
+
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["core:people:manage"],
+      { type: "group", id: groupId }
+    );
+
+    await expect(
+      people(userId).access({ personId: person })
+    ).rejects.toMatchObject({ code: "forbidden" });
+  });
 });
