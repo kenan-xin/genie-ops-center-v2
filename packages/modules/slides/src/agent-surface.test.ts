@@ -33,6 +33,8 @@ const FIELD_WORDS = {
   notes: "speaker notes",
 };
 
+const BOX_WORDS = "position and size,";
+
 const slideFieldsStep = deckChange.options.find(
   (option) => option.shape.op.value === "change-slide-fields"
 )?.shape;
@@ -57,11 +59,19 @@ describe("the Slides surface's You can change line", () => {
   });
 
   it("names each of those words", () => {
+    const whole = line ?? "";
+
+    // The style list follows the box words; read from there, "size" cannot match "position and size".
+    const styleStart = whole.indexOf(BOX_WORDS) + BOX_WORDS.length;
+
     const missing = [
-      ...Object.values(STEP_WORDS),
-      ...Object.values(STYLE_WORDS),
-      ...Object.values(FIELD_WORDS),
-    ].filter((word) => !(line ?? "").includes(word));
+      ...[...Object.values(STEP_WORDS), ...Object.values(FIELD_WORDS)].filter(
+        (word) => !whole.includes(word)
+      ),
+      ...Object.values(STYLE_WORDS).filter(
+        (word) => !whole.includes(word, styleStart)
+      ),
+    ];
 
     expect(missing).toEqual([]);
   });

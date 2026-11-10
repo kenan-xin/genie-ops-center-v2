@@ -211,6 +211,77 @@ test("a drag and a resize each make one Undo entry", async ({ page }) => {
   });
 });
 
+test("a press inside a corner handle's touch area resizes the element", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 120_000);
+
+  await onFixedDeck(page, async () => {
+    // The 44 px area is the pointer-coarse one; without a coarse pointer the phone proves nothing.
+    expect(
+      await page.evaluate(() => matchMedia("(pointer: coarse)").matches)
+    ).toBe(onPhone(page));
+
+    const text = textElement(page);
+
+    await activate(page, text);
+
+    const handle = page.locator('[data-stage-element="1"] [data-handle="se"]');
+
+    await handle.scrollIntoViewIfNeeded();
+
+    const start = await text.boundingBox();
+    const corner = await handle.boundingBox();
+
+    if (start === null || corner === null) {
+      throw new Error("the text or its handle has no box");
+    }
+
+    // Inside the text, outside the 12 px square, inside the 44 px (coarse) or 28 px (fine) area.
+    const inset = onPhone(page) ? 18 : 10;
+
+    const p = {
+      x: corner.x + corner.width / 2 - inset,
+      y: corner.y + corner.height / 2 - inset,
+    };
+
+    expect(
+      await page.evaluate(
+        ({ x, y }) =>
+          document.elementFromPoint(x, y)?.getAttribute("data-handle"),
+        p
+      )
+    ).toBe("se");
+
+    if (onPhone(page)) {
+      const cdp = await page.context().newCDPSession(page);
+
+      const touch = (
+        type: "touchStart" | "touchMove" | "touchEnd",
+        points: { x: number; y: number }[]
+      ) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: points });
+
+      await touch("touchStart", [p]);
+      await touch("touchMove", [{ x: p.x - 20, y: p.y - 10 }]);
+      await touch("touchMove", [{ x: p.x - 40, y: p.y - 20 }]);
+      await touch("touchEnd", []);
+    } else {
+      await page.mouse.move(p.x, p.y);
+      await page.mouse.down();
+      await page.mouse.move(p.x - 40, p.y - 20, { steps: 6 });
+      await page.mouse.up();
+    }
+
+    await expect
+      .poll(async () => (await text.boundingBox())?.width, FIRST_PAINT)
+      .toBeLessThan(start.width - 10);
+    expect(
+      Math.abs(((await text.boundingBox())?.x ?? Infinity) - start.x)
+    ).toBeLessThanOrEqual(1);
+    await expect(undoButton(page)).toBeEnabled(FIRST_PAINT);
+  });
+});
+
 test("arrow presses on the title and then the text within 800 ms move each one", async ({
   page,
 }) => {

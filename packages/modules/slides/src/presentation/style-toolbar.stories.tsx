@@ -161,6 +161,31 @@ export const PhoneDock: Story = {
   },
 };
 
+// The desktop popover holds its own PositionControl wiring; PhoneDock covers only the sheet.
+export const PositionPopover: Story = {
+  name: "On a desktop Position opens a popover, and Move right is one step",
+  globals: desktop,
+  args: { element: text!, index: 1, box: { x: 40, y: 136, w: 320, h: 348 } },
+  play: async ({ args, canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Position/ }));
+
+    const popover = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog", {
+        name: "Position and size",
+      })
+    );
+
+    await userEvent.click(popover.getByRole("button", { name: "Move right" }));
+    await expect(args.onStep).toHaveBeenCalledTimes(1);
+    await expect(args.onStep).toHaveBeenCalledWith({
+      op: "change-element",
+      slideId: textWithChartSlide.id,
+      index: 1,
+      box: { x: 48, y: 136, w: 320, h: 348 },
+    });
+  },
+};
+
 // P13-9: a dark fill on a text with the theme color turns it white in the same step, so the hand
 // edit reaches what the save allows.
 export const FillAdjustsText: Story = {
