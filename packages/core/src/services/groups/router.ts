@@ -1,10 +1,10 @@
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import { gatedArea } from "../../lib/rpc/implement-core-area.ts";
-import { can } from "../authorization/index.ts";
 import {
   assignRole,
   removeAssignment,
 } from "../authorization/role-assignment.ts";
+import { managesAllRoles } from "../roles/effective-access.ts";
 import { groupsContract } from "./contract.ts";
 import {
   addDirectoryGroup,
@@ -21,8 +21,6 @@ import {
   updateLocalGroup,
 } from "./index.ts";
 
-const ASSIGN_PERMISSION = "core:roles:manage";
-
 // The session check, then the permission gate, both before input is parsed: an anonymous,
 // idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
 // `forbidden` at 403, however malformed the input is; only then does the handler read
@@ -30,12 +28,12 @@ const ASSIGN_PERMISSION = "core:roles:manage";
 const managed = gatedArea(groupsContract, "core:groups:manage");
 
 /**
- * A role-assignment write is a grant edit, which the design puts behind `core:roles:manage`
- * (DEC-39, the Access screen). The Groups screen may edit its own group's grants only for a caller
- * that also holds that key; a holder of only `core:groups:manage` cannot change any assignment.
+ * A role-assignment write is a grant edit, which needs `core:roles:manage` tenant-wide, as Grants
+ * does (DEC-39, D7, R-40, d8l5.51): a holder of the key only at a scope, or of only
+ * `core:groups:manage`, cannot change any assignment.
  */
 const assigning = managed.use(async ({ context, next }) => {
-  if (!(await can(context.caller, ASSIGN_PERMISSION))) {
+  if (!(await managesAllRoles(context.caller))) {
     throw new AppError(CORE_ERRORS.forbidden);
   }
 
@@ -64,8 +62,9 @@ export function createGroupsRouter() {
     }),
 
     // Assignment goes through the one role-assignment service, so the R-38 guard and the
-    // core:role:granted event have one writer (DEC-39, R-47). It needs core:roles:manage, and the
-    // removal checks the assignment belongs to this group in the same transaction.
+    // core:role:granted event have one writer (DEC-39, R-47). It needs core:roles:manage
+    // tenant-wide, and the removal checks the assignment belongs to this group in the same
+    // transaction.
     assignRole: assigning.assignRole.handler(async ({ context, input }) => ({
       id: (
         await assignRole({

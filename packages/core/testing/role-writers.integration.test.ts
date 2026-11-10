@@ -294,7 +294,7 @@ describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
 });
 
 describe("a scoped Roles manager and the grant writers (d8l5.51)", () => {
-  it.each(["roles.assign"])(
+  it.each(["roles.assign", "the Groups assignRole"])(
     "%s refuses a caller who holds core:roles:manage only at a scope and writes no assignment",
     async (writer) => {
       const { userId } = await insertPersonWith(

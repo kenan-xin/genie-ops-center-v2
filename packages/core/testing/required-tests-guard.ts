@@ -692,6 +692,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the one writer and a switched-off module (R-37a, d8l5.39) the Groups assignRole refuses Gone user with module-disabled and writes no assignment",
       "the one writer and a switched-off module (R-37a, d8l5.39) removes an existing grant of a switched-off module's role (R-33d)",
       "a scoped Roles manager and the grant writers (d8l5.51) roles.assign refuses a caller who holds core:roles:manage only at a scope and writes no assignment",
+      "a scoped Roles manager and the grant writers (d8l5.51) the Groups assignRole refuses a caller who holds core:roles:manage only at a scope and writes no assignment",
       "roles.assign and the scope rules (d8l5.51) refuses a core role at a scope with invalid-input and writes no assignment",
       "roles.assign and the scope rules (d8l5.51) refuses a module role at a scope type its module does not declare with invalid-input and writes no assignment",
     ],
