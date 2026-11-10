@@ -18,7 +18,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { ANALYTICS_SURFACE } from "../src/agent-surface.ts";
 import { ANALYTICS_AGENT_TOOLS } from "../src/agent-tools.ts";
+import type { DashboardFilters } from "../src/contract.ts";
 import { analyticsModule } from "../src/module.ts";
+import { undoDashboard } from "../src/services/dashboards/store.ts";
 import { insertDashboard } from "./factories.ts";
 
 /**
@@ -177,6 +179,63 @@ describe("the analytics agent tools", () => {
       expect(await rowOf(id)).toEqual(before);
     }
   );
+
+  it("set-filters saves two field filters, read-dashboard answers them and a panel's own range as stored, and Undo restores the old filters", async () => {
+    const owner = await personWith(EDITOR);
+
+    const before: DashboardFilters = {
+      dateRange: { preset: "all" },
+      fields: [
+        { kind: "select", field: "region", label: "Region", value: "North" },
+      ],
+    };
+
+    const after: DashboardFilters = {
+      dateRange: { preset: "last-3-months" },
+      fields: [
+        {
+          kind: "multi-select",
+          field: "customerName",
+          label: "Customer",
+          values: ["Demo Company", "Acme"],
+        },
+        { kind: "toggle", field: "overdue", label: "Overdue", value: true },
+      ],
+    };
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      config: {
+        filters: before,
+        panels: [
+          {
+            id: "p1",
+            layout: { columns: 1, rows: 1 },
+            config: KPI,
+            ownRange: { preset: "this-year" },
+          },
+        ],
+      },
+    });
+
+    await runTool(owner, "analytics-change-dashboard", {
+      dashboardId: id,
+      changes: [{ op: "set-filters", filters: after }],
+    });
+
+    expect(
+      await runTool(owner, "analytics-read-dashboard", { dashboardId: id })
+    ).toMatchObject({
+      output: {
+        filters: after,
+        panels: [{ id: "p1", ownRange: { preset: "this-year" } }],
+      },
+    });
+
+    await undoDashboard(owner, { id, expectedVersion: 2 });
+
+    expect((await rowOf(id)).config.filters).toEqual(before);
+  });
 
   it("offers the read tools in Ask and the write tools only in a Dashboards session of a writer, with the write rules only there", async () => {
     const core = ["list-datasets", "query-dataset", "open-record"];

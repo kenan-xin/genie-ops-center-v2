@@ -30,6 +30,9 @@ import {
   ANALYTICS_CHAT_DASHBOARD,
   ANALYTICS_CHAT_KEYS,
   ANALYTICS_CHAT_MESSAGE,
+  ANALYTICS_FILTER_ANSWER,
+  ANALYTICS_FILTER_MESSAGE,
+  ANALYTICS_FILTERS,
   ANALYTICS_HANDOFF_MESSAGE,
   ANALYTICS_HANDOFF_TITLE,
   ANALYTICS_QUESTION,
@@ -293,6 +296,34 @@ describe("the analytics chat beside a dashboard", () => {
       undo: 0,
       version: 3,
     });
+  });
+
+  it("a filter request saves the Customer multi-select and the 3-month range in one set-filters change", async () => {
+    const ctx = await newAsker();
+
+    const dashboardId = await insertDashboard(deployment.context, {
+      ownerUserId: ctx.caller.userId,
+      name: ANALYTICS_CHAT_DASHBOARD.name,
+    });
+
+    const sessionId = randomUUID();
+
+    errors.length = 0;
+    await send(ctx, sessionId, ANALYTICS_FILTER_MESSAGE, dashboardId);
+
+    // First, so a recording miss prints the body the model was sent.
+    expect(errors).toEqual([]);
+    expect(await callsOf(sessionId)).toEqual([
+      { tool: "analytics-change-dashboard", outcome: "answered" },
+    ]);
+
+    const { rows } = await deployment.context.db.$client.query(
+      "select config->'filters' as filters, jsonb_array_length(undo) as undo, version from dashboard where id = $1",
+      [dashboardId]
+    );
+
+    expect(rows).toEqual([{ filters: ANALYTICS_FILTERS, undo: 1, version: 2 }]);
+    expect(await lastAnswerText(sessionId)).toContain(ANALYTICS_FILTER_ANSWER);
   });
 
   it("Ask hands a dashboard to the Dashboards agent, and the run adds its three panels one by one", async () => {

@@ -83,6 +83,28 @@ export const OUT_OF_TOOLS_DASHBOARD_MESSAGE =
 export const OUT_OF_TOOLS_DASHBOARD_ANSWER =
   "I cannot change the color or size of panel titles, but I can change the panels and their order, each panel's chart type, title, data and size, the dashboard's name and its filters, so I can give a panel a clearer title instead.";
 
+/**
+ * The filter request of `synthetic-dashboard-filters-1`, the filters its one `set-filters` step
+ * saves, and the answer of `-2` (S7-46, R-49).
+ */
+export const ANALYTICS_FILTER_MESSAGE =
+  "Show only Demo Company and the last 3 months.";
+
+export const ANALYTICS_FILTERS = {
+  dateRange: { preset: "last-3-months" },
+  fields: [
+    {
+      kind: "multi-select",
+      field: "customerName",
+      label: "Customer",
+      values: ["Demo Company"],
+    },
+  ],
+} as const;
+
+export const ANALYTICS_FILTER_ANSWER =
+  "The dashboard now shows only Demo Company and the last 3 months.";
+
 /** The collections figure of slide `s2` in `slides-change.ts`. */
 export const COLLECTIONS_PANEL = {
   type: "kpi",

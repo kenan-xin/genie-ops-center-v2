@@ -1,4 +1,8 @@
-import { type AgentInstructions, defineAgentTool } from "@genie/core/contracts";
+import {
+  type AgentInstructions,
+  type AgentToolValue,
+  defineAgentTool,
+} from "@genie/core/contracts";
 import { z } from "zod";
 
 import type { StoredPanel } from "./config.ts";
@@ -10,6 +14,8 @@ import {
   listOwnRecords,
   readOwnDashboard,
 } from "./services/dashboards/store.ts";
+
+type ToolObject = { [key: string]: AgentToolValue };
 
 const summaryOf = (panels: readonly StoredPanel[]) =>
   panels.map(({ id, config }) => ({
@@ -71,11 +77,14 @@ const readDashboardTool = defineAgentTool({
         name: record.name,
         version: record.version,
         filters: filters,
-        panels: panels.map(({ id, layout, config }) => ({
-          id,
-          layout: layout,
-          config: config,
-        })),
+        panels: panels.map(({ id, layout, config, ownRange }) => {
+          // A tool value holds no undefined, so a panel on the dashboard range has no key.
+          const range: ToolObject = {};
+
+          if (ownRange !== undefined) range.ownRange = ownRange;
+
+          return { id, layout: layout, config: config, ...range };
+        }),
       },
       rowCount: panels.length,
     };
