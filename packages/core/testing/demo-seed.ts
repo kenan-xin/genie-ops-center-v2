@@ -43,8 +43,12 @@ type DemoAccessInput = {
   /** One role per listed module, by name; the seed adds `Ask user`. */
   readonly roles: readonly string[];
   readonly reportingDate: string;
-  /** The chat and document defaults; the seed adds both to the allowed models it finds. */
-  readonly models: { readonly chat: string; readonly document: string };
+  /** The chat and document defaults and the other allowed models; the seed adds all to the allowed models it finds. */
+  readonly models: {
+    readonly chat: string;
+    readonly document: string;
+    readonly allowed: readonly string[];
+  };
 };
 
 type Db = Pick<TenantContext, "db">;
@@ -151,7 +155,7 @@ async function readAccess(
       row.createdBy === null
   );
 
-  const { chat, document } = input.models;
+  const { chat, document, allowed } = input.models;
 
   return {
     plan: {
@@ -171,7 +175,9 @@ async function readAccess(
           document: settings.document,
         },
         to: {
-          allowed: [...new Set([...settings.allowed, chat, document])],
+          allowed: [
+            ...new Set([...settings.allowed, ...allowed, chat, document]),
+          ],
           chat,
           document,
         },

@@ -23,10 +23,14 @@ import {
 
 import { RECEIVABLES_OVERVIEW } from "./receivables-overview.ts";
 
-/** The recommended defaults of the committed S7-14 report (`docs/modules/invoices-and-payments/evaluation/report.md`, AC-11). */
+/**
+ * The recommended defaults of the committed S7-14 report (`docs/modules/invoices-and-payments/evaluation/report.md`, AC-11),
+ * with Opus still allowed so that a person can pick it per chat (`czjw.97`).
+ */
 const DEMO_MODELS = {
-  chat: "anthropic/claude-opus-5.5",
+  chat: "openai/gpt-6.1-terra",
   document: "openai/gpt-6.1-terra",
+  allowed: ["anthropic/claude-opus-5.5"],
 };
 
 /** The one role per module that the demo account gets: each module's editor role (R-59, `czjw.99`). */

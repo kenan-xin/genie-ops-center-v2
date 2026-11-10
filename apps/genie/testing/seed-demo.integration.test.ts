@@ -138,7 +138,7 @@ describe("the demo seed command", () => {
       "Modules: invoices, analytics",
       "1. Role assignments for the demo account: 3 to write, 0 already present, 0 to remove (Analytics editor, Ask user, Invoices and Payments editor)",
       "2. Reporting date: blank -> 2026-10-27",
-      "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
+      "3. Model connection: chat blank -> openai/gpt-6.1-terra, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
       "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
       "5. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
       "6. Receivables overview starter dashboard: 1 to write, 0 already present (dashboard row)",
@@ -155,7 +155,7 @@ describe("the demo seed command", () => {
       "Modules: invoices",
       "1. Role assignments for the demo account: 2 to write, 0 already present, 0 to remove (Ask user, Invoices and Payments editor)",
       "2. Reporting date: blank -> 2026-10-27",
-      "3. Model connection: chat blank -> anthropic/claude-opus-5.5, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
+      "3. Model connection: chat blank -> openai/gpt-6.1-terra, document blank -> openai/gpt-6.1-terra, 2 allowed models to add",
       "4. History PDFs through FileStorage: 66 to write, 0 already present (file, file_blob and document rows), 66 readings to store",
       "5. Demo pack history: 36 invoices and 30 payments to write, 0 and 0 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
     ]);
@@ -239,7 +239,7 @@ describe("the demo seed command", () => {
           "anthropic/claude-opus-5.5",
           "openai/gpt-6.1-terra",
         ],
-        chat_model: "anthropic/claude-opus-5.5",
+        chat_model: "openai/gpt-6.1-terra",
         document_model: "openai/gpt-6.1-terra",
       },
     ]);
@@ -263,7 +263,7 @@ describe("the demo seed command", () => {
     expect(lines.slice(3)).toEqual([
       "1. Role assignments for the demo account: 0 to write, 3 already present, 0 to remove (Analytics editor, Ask user, Invoices and Payments editor)",
       "2. Reporting date: 2026-10-27, already set",
-      "3. Model connection: chat anthropic/claude-opus-5.5 and document openai/gpt-6.1-terra, already set",
+      "3. Model connection: chat openai/gpt-6.1-terra and document openai/gpt-6.1-terra, already set",
       "4. History PDFs through FileStorage: 0 to write, 66 already present (file, file_blob and document rows), 0 readings to store",
       "5. Demo pack history: 0 invoices and 0 payments to write, 36 and 30 already present (customer, invoice, payment, allocation, allocation_event and audit_event rows)",
       "6. Receivables overview starter dashboard: 0 to write, 1 already present (dashboard row)",
