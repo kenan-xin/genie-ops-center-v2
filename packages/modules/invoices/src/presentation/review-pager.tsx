@@ -21,7 +21,14 @@ import {
   ListIcon,
   Loader2Icon,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { type CssVars, PreviewFailed } from "./desk-canvas.tsx";
 import { LazyDocumentViewer } from "./document-viewer-lazy.tsx";
@@ -290,6 +297,7 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
   // The steps passed with the next button, for the count of All fields.
   const [passed, setPassed] = useState<ReadonlySet<string>>(new Set());
   const [listOpen, setListOpen] = useState(false);
+  const counterId = useId();
   const saved = frame.saved !== null;
 
   // Once saved, the page shows the result and the summary, with no steps.
@@ -350,7 +358,11 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
     item !== null &&
     (item.sources.length === 0 || (places !== null && place === null));
 
-  const go = (to: number) => setAt(steps[to]?.key ?? null);
+  // Focus moves to the step line, so a screen reader reads the new step (czjw.148).
+  const go = (to: number) => {
+    setAt(steps[to]?.key ?? null);
+    setFocusId(counterId);
+  };
 
   const held = step?.key === "split" && model?.blocker?.key === "split";
 
@@ -559,7 +571,11 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
         <section className="flex flex-col gap-4">
           {step === undefined ? null : (
             <div className="flex items-center justify-between gap-2">
-              <p className="text-sm font-semibold text-muted-foreground">
+              <p
+                id={counterId}
+                tabIndex={-1}
+                className="text-sm font-semibold text-muted-foreground"
+              >
                 {`Step ${index + 1} of ${steps.length}`}
               </p>
               {fieldList}
@@ -582,17 +598,19 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
           data-shell-bottom-bar=""
           className="z-10 flex items-center gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8"
         >
-          {index === 0 ? null : (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              aria-label="Previous field"
-              onClick={() => go(index - 1)}
-            >
-              <ChevronLeftIcon />
-            </Button>
-          )}
+          {/* Step 1 keeps a Previous that does nothing, so its place and its focus stay put. */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            aria-label="Previous field"
+            aria-disabled={index === 0 ? true : undefined}
+            onClick={() => {
+              if (index > 0) go(index - 1);
+            }}
+          >
+            <ChevronLeftIcon />
+          </Button>
           {/* The form's default button: Enter in a step's field clicks it, and the prevented click does not submit. */}
           <Button
             type="submit"

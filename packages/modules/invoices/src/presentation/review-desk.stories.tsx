@@ -911,6 +911,30 @@ export const EnterOnAStepOnPhone: Story = {
   },
 };
 
+// czjw.148: a step change puts focus on the step line, and Previous stays on step 1, where it does nothing.
+export const StepFocusOnPhone: Story = {
+  globals: phone390,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    await onStep(canvas, 1, 9);
+
+    const previous = () =>
+      canvas.getByRole("button", { name: "Previous field" });
+
+    await expect(previous()).toHaveAttribute("aria-disabled", "true");
+    await userEvent.click(previous());
+    await expect(canvas.getByText("Step 1 of 9")).toBeVisible();
+    await expect(previous()).toHaveFocus();
+
+    await next(canvas, "Looks right");
+    await waitFor(() => expect(canvas.getByText("Step 2 of 9")).toHaveFocus());
+
+    await userEvent.click(previous());
+    await waitFor(() => expect(canvas.getByText("Step 1 of 9")).toHaveFocus());
+    await expect(previous()).toBeInTheDocument();
+  },
+};
+
 // T8.3: an edit shows the read value, and the next button keeps the edit.
 export const EditedOnPhone: Story = {
   globals: phone390,
