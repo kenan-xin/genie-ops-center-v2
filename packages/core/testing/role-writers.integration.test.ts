@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -146,13 +148,13 @@ function roleId(name: string): string {
   return id;
 }
 
-function caller() {
+function caller(userId = actorId) {
   return {
     tenant: deployment.context,
     caller: principalFor({
       tenant: deployment.context,
       modules,
-      userId: actorId,
+      userId,
       authenticated: true,
     }),
   };
@@ -162,8 +164,12 @@ function people() {
   return callProcedure(createPeopleRouter(modules), caller());
 }
 
+function rolesAs(userId: string) {
+  return callProcedure(createRolesRouter(modules), caller(userId));
+}
+
 function roles() {
-  return callProcedure(createRolesRouter(modules), caller());
+  return rolesAs(actorId);
 }
 
 /** One grant through each of the two writers that `d8l5.39` names. */
@@ -264,7 +270,6 @@ describe("Add person against the Grants rows", () => {
 describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
   it.each([
     ["roles.assign", "Off user"],
-    ["roles.assign", "Gone user"],
     ["the Groups assignRole", "Off user"],
     ["the Groups assignRole", "Gone user"],
   ])(
@@ -277,6 +282,13 @@ describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
     }
   );
 
+  it("roles.assign refuses Gone user with not-found and writes no assignment", async () => {
+    await expect(
+      grant("roles.assign", roleId("Gone user"))
+    ).rejects.toMatchObject({ code: "not-found" });
+    expect(await assignmentCount(roleId("Gone user"))).toBe(0);
+  });
+
   it("removes an existing grant of a switched-off module's role (R-33d)", async () => {
     // A fixture insert, as a grant made before the module was switched off.
     const assignmentId = await assignRole(deployment.context, {
@@ -287,5 +299,42 @@ describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
     await roles().unassign({ assignmentId });
 
     expect(await assignmentCount(roleId("Off user"))).toBe(0);
+  });
+});
+
+describe("roles.assign takes the Advanced access rule (d8l5.51)", () => {
+  it("refuses a caller who holds core:roles:manage at one scope only, and writes nothing", async () => {
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["core:roles:manage"],
+      { type: "on-record", id: randomUUID() }
+    );
+
+    await expect(
+      rolesAs(userId).assign({
+        roleId: roleId(TENANT_ADMINISTRATOR_ROLE),
+        principalType: "user",
+        principalId: userId,
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    expect(await roleNamesOf(userId)).not.toContain(TENANT_ADMINISTRATOR_ROLE);
+  });
+
+  it("refuses a core role with a scope, and writes nothing", async () => {
+    const custom = await insertRole(deployment.context, {
+      permissions: ["core:roles:manage"],
+    });
+
+    const person = await insertUser(deployment.context);
+
+    await expect(
+      roles().assign({
+        roleId: custom,
+        principalType: "user",
+        principalId: person,
+        scope: { scopeType: "on-record", scopeId: randomUUID() },
+      })
+    ).rejects.toMatchObject({ code: "invalid-input" });
+    expect(await assignmentCount(custom)).toBe(0);
   });
 });

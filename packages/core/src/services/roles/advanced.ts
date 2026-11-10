@@ -312,6 +312,51 @@ async function assertAddable(
   await assertModuleScope(check, named.moduleId, scope, named.isSystem);
 }
 
+async function readNamedRoles(
+  tenant: TenantContext,
+  roleIds: readonly string[]
+): Promise<readonly NamedRole[]> {
+  const result = await tenant.db.$client.query<NamedRole>(
+    `select r.id::text as id, r.name, r.is_system as "isSystem", r.module_id as "moduleId"
+       from role r where r.id = any($1::uuid[])`,
+    [roleIds]
+  );
+
+  return result.rows;
+}
+
+/**
+ * Refuses one grant that Advanced access would refuse (d8l5.51): a caller who does not manage all
+ * roles (`forbidden`), a missing role (`not-found`), and an add `assertAddable` refuses.
+ */
+export async function assertAssignable(input: {
+  readonly tenant: TenantContext;
+  readonly caller: RequestPrincipal;
+  readonly modules: readonly RolesModule[];
+  readonly roleId: string;
+  readonly scope: Scope | null;
+}): Promise<void> {
+  await assertManagesAllRoles(input.caller);
+
+  const [found] = await readNamedRoles(input.tenant, [input.roleId]);
+
+  if (found === undefined) {
+    throw new AppError(CORE_ERRORS["not-found"], {
+      cause: new Error(`No role ${input.roleId}`),
+    });
+  }
+
+  await assertAddable(
+    {
+      caller: input.caller,
+      modules: input.modules,
+      entitled: await entitlementByModule(input.tenant, input.modules),
+    },
+    found,
+    input.scope
+  );
+}
+
 /**
  * Applies the Advanced access adds and removals for one recipient in one transaction (R-37c, AD4).
  * Every write goes through the one assignment writer (DEC-39), and the R-38 check runs once on the
@@ -340,13 +385,13 @@ export async function saveAdvanced(input: {
     throw new AppError(CORE_ERRORS["invalid-input"]);
   }
 
-  const named = await input.tenant.db.$client.query<NamedRole>(
-    `select r.id::text as id, r.name, r.is_system as "isSystem", r.module_id as "moduleId"
-       from role r where r.id = any($1::uuid[])`,
-    [[...new Set(add.map((entry) => entry.roleId))]]
+  const roles = new Map(
+    (
+      await readNamedRoles(input.tenant, [
+        ...new Set(add.map((entry) => entry.roleId)),
+      ])
+    ).map((row) => [row.id, row])
   );
-
-  const roles = new Map(named.rows.map((row) => [row.id, row]));
 
   const check: AddCheck = {
     caller: input.caller,

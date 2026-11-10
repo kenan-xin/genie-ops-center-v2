@@ -5,6 +5,7 @@ import {
   removeAssignment,
 } from "../authorization/role-assignment.ts";
 import {
+  assertAssignable,
   readAdministratorGuards,
   readAdvancedCatalogue,
   saveAdvanced,
@@ -100,23 +101,33 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
       });
     }),
 
-    assign: managed.assign.handler(async ({ context, input }) => ({
-      id: (
-        await assignRole({
-          tenant: context.tenant,
-          actorUserId: context.caller.userId,
-          roleId: input.roleId,
-          principal: {
-            type: input.principalType,
-            id: input.principalId,
-          },
-          scope:
-            input.scope?.scopeType != null && input.scope.scopeId != null
-              ? { type: input.scope.scopeType, id: input.scope.scopeId }
-              : null,
-        })
-      ).id,
-    })),
+    assign: managed.assign.handler(async ({ context, input }) => {
+      const scope =
+        input.scope?.scopeType != null && input.scope.scopeId != null
+          ? { type: input.scope.scopeType, id: input.scope.scopeId }
+          : null;
+
+      // The raw endpoint takes the same rule as Advanced access (d8l5.51).
+      await assertAssignable({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        roleId: input.roleId,
+        scope,
+      });
+
+      return {
+        id: (
+          await assignRole({
+            tenant: context.tenant,
+            actorUserId: context.caller.userId,
+            roleId: input.roleId,
+            principal: { type: input.principalType, id: input.principalId },
+            scope,
+          })
+        ).id,
+      };
+    }),
 
     unassign: managed.unassign.handler(async ({ context, input }) => {
       await removeAssignment({
