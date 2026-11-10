@@ -931,19 +931,28 @@ export const OpensAndClosesTheAgentPanel: Story = {
       within(region).getByRole("button", { name: "Close the agent panel" })
     );
     await waitFor(() =>
-      expect(canvas.queryByRole("region", { name: "Agent" })).toBeNull()
+      expect(
+        canvas.queryByRole("region", { name: "Agent" }),
+        "after Close"
+      ).toBeNull()
     );
     await expect(button).toHaveFocus();
 
     await userEvent.click(button);
-    await userEvent.click(
-      await within(
-        await canvas.findByRole("region", { name: "Agent" })
-      ).findByRole("button", { name: "New chat" })
-    );
+
+    const newChat = await within(
+      await canvas.findByRole("region", { name: "Agent" })
+    ).findByRole("button", { name: "New chat" });
+
+    await userEvent.click(newChat);
+    // The panel closes on an Escape from inside it only (xok3.59: once it stayed open here).
+    await expect(newChat).toHaveFocus();
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
-      expect(canvas.queryByRole("region", { name: "Agent" })).toBeNull()
+      expect(
+        canvas.queryByRole("region", { name: "Agent" }),
+        "after Escape"
+      ).toBeNull()
     );
     await expect(button).toHaveFocus();
   },
