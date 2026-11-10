@@ -111,6 +111,25 @@ export function useDashboardFilters(
 
     last.current = { named, under };
 
+    // An unknown view (removed, undone, a stale link) leaves, so a view that reuses its id is not
+    // selected by it. As Remove view, it falls to "Dashboard filters", not to the default view.
+    if (
+      named !== undefined &&
+      !dashboard.views.some(({ id }) => id === named)
+    ) {
+      address.set({
+        ...(dashboard.defaultViewId !== null &&
+          readFilterAddress(params, dashboard.filterFields) === null &&
+          writeFilterAddress(
+            dashboard.filters,
+            fieldNamesOf(params[ADDRESS.fields])
+          )),
+        [ADDRESS.view]: undefined,
+      });
+
+      return;
+    }
+
     // A switch of view is the person's own pick, not a stored change.
     if (before.named !== named || sameFilters(before.under, under)) return;
 

@@ -614,6 +614,129 @@ export const RemovedViewInAddress: Story = {
     });
     await expect(canvas.queryByRole("alert")).toBeNull();
     await expect(canvas.queryByText("Not saved as default")).toBeNull();
+    // Dropped, so a later view that reuses the id is not selected by the stale link.
+    await waitFor(() => expect(addressParam("view")).toBeNull());
+  },
+};
+
+const WEST: DashboardFilters = {
+  dateRange: { preset: "this-month" },
+  fields: [{ kind: "select", field: "region", label: "Region", value: "West" }],
+};
+
+// A selected view changed elsewhere drops the address filters and keeps the view (S7-46, S7-47).
+export const SelectedViewChanged: Story = {
+  name: "Selected view changed elsewhere",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(MONTH_END_ALL, "v1"),
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("Changed")).toBeVisible();
+
+    readDashboard.mockResolvedValue({
+      ...viewsDashboardPage.dashboard,
+      version: 2,
+      views: viewsDashboardPage.dashboard.views.map((view) =>
+        view.id === "v1" ? { ...view, filters: WEST } : view
+      ),
+    });
+
+    await expect(
+      await canvas.findByLabelText("Region: West", {}, { timeout: 12_000 })
+    ).toBeVisible();
+    await expect(addressParam("view")).toBe("v1");
+    await expect(addressParam("range")).toBeNull();
+    await expect(addressParam("f.overdue")).toBeNull();
+    await expect(canvas.queryByText("Changed")).toBeNull();
+  },
+};
+
+// On Dashboard filters, dropping the address would open the default view, so it takes the stored.
+export const StoredChangedBesideDefaultView: Story = {
+  name: "Stored filters changed beside a default view",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(TWO_SET),
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("button", { name: "View: Dashboard filters" })
+    ).toBeVisible();
+
+    readDashboard.mockResolvedValue({
+      ...viewsDashboardPage.dashboard,
+      version: 2,
+      filters: WEST,
+    });
+
+    await expect(
+      await canvas.findByLabelText("Region: West", {}, { timeout: 12_000 })
+    ).toBeVisible();
+    await expect(addressParam("f.region")).toBe("West");
+    await expect(addressParam("range")).toBe("this-month");
+    await expect(addressParam("view")).toBeNull();
+    await expect(
+      canvas.getByRole("button", { name: "View: Dashboard filters" })
+    ).toBeVisible();
+  },
+};
+
+/** North region with South picked: a change the person made on that view. */
+const NORTH_SOUTH: DashboardFilters = {
+  ...NORTH,
+  fields: [
+    { kind: "select", field: "region", label: "Region", value: "South" },
+  ],
+};
+
+// Make default stores only the default view; the person's change on the view stays.
+export const MakeDefault: Story = {
+  name: "Make default",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(NORTH_SOUTH, "v2"),
+  play: async ({ canvas }) => {
+    await pickView(canvas, "North region");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Make default/ })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "set-default-view", id: "v2" }],
+    });
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await expect(
+      canvas.getByRole("button", { name: "View: North region" })
+    ).toBeVisible();
+    await expect(canvas.getByText("Changed")).toBeVisible();
+    await expect(addressParam("f.region")).toBe("South");
+  },
+};
+
+// Remove view goes back to the dashboard filters, not to the default view.
+export const RemoveView: Story = {
+  name: "Remove view",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(null, "v2"),
+  play: async ({ canvas }) => {
+    await pickView(canvas, "North region");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Remove view/ })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "remove-view", id: "v2" }],
+    });
+    await expect(
+      await canvas.findByRole("button", { name: "View: Dashboard filters" })
+    ).toBeVisible();
+    await expect(addressParam("view")).toBeNull();
   },
 };
 
