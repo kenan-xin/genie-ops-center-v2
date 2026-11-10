@@ -870,6 +870,47 @@ export const SavedOnPhone: Story = {
   },
 };
 
+// czjw.147: Enter (the Go key) in a step's field goes to the next step and never saves; Enter in
+// the customer picker picks the option and stays on its step.
+export const EnterOnAStepOnPhone: Story = {
+  globals: phone390,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await onStep(canvas, 1, 9);
+    // Clear the due date blocker, so that a submit would really save.
+    await pickField(canvas, "Due date");
+    await onStep(canvas, 7, 9);
+    await userEvent.click(
+      canvas.getByRole("radio", { name: "Mark as unspecified" })
+    );
+    await pickField(canvas, "Invoice number");
+    await onStep(canvas, 2, 9);
+    await userEvent.type(canvas.getByLabelText("Invoice number"), "{Enter}");
+    await expect(saveInvoice).not.toHaveBeenCalled();
+    await onStep(canvas, 3, 9);
+
+    // A browser and user-event both click the form's first submit button on Enter.
+    await expect(
+      canvasElement
+        .querySelector("form")
+        ?.querySelector(
+          'button[type="submit"], button:not([type]), input[type="submit"]'
+        )
+    ).toBe(canvas.getByRole("button", { name: "Looks right" }));
+
+    await pickField(canvas, "Customer");
+    await onStep(canvas, 1, 9);
+
+    const customer = canvas.getByRole("combobox", { name: "Customer" });
+
+    await userEvent.clear(customer);
+    await userEvent.type(customer, "ABC{ArrowDown}{Enter}");
+    await expect(customer).toHaveValue("ABC Trading");
+    await expect(canvas.getByText("Step 1 of 9")).toBeVisible();
+    await expect(saveInvoice).not.toHaveBeenCalled();
+  },
+};
+
 // T8.3: an edit shows the read value, and the next button keeps the edit.
 export const EditedOnPhone: Story = {
   globals: phone390,

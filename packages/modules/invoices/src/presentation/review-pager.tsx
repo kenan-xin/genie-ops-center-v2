@@ -593,12 +593,16 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
               <ChevronLeftIcon />
             </Button>
           )}
+          {/* The form's default button: Enter in a step's field clicks it, and the prevented click does not submit. */}
           <Button
-            type="button"
+            type="submit"
             size="lg"
             className="flex-1"
             aria-disabled={held ? true : undefined}
-            onClick={pressNext}
+            onClick={(event) => {
+              event.preventDefault();
+              pressNext();
+            }}
           >
             {nextLabelOf(item)}
             <ArrowRightIcon aria-hidden />
