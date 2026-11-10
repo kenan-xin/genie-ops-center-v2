@@ -20,7 +20,7 @@ import { CalendarIcon, InfoIcon } from "lucide-react";
 import { useEffect } from "react";
 
 import { DATE_RANGE_PRESETS, type DashboardChange } from "../contract.ts";
-import { notAppliedLabels } from "./not-applied.ts";
+import { notApplied } from "./not-applied.ts";
 import { convertibleTypes, convertPanel } from "./panel-convert.ts";
 import { PRESET_LABEL, rangeLabel } from "./range-label.ts";
 import { type DashboardFilterState, usePanelData } from "./use-dashboard.ts";
@@ -279,7 +279,7 @@ export function PanelCard(props: PanelCardProps) {
     if (readAt !== undefined) onRead(readAt);
   }, [readAt]);
 
-  const notApplied = notAppliedLabels(
+  const skipped = notApplied(
     panel,
     props.filters.filters,
     dashboard.filterFields
@@ -303,12 +303,12 @@ export function PanelCard(props: PanelCardProps) {
             </div>
           ) : null}
           {/* What the panel's own header adds: a range it keeps, and the filters that skip it. */}
-          {panel.ownRange === undefined && notApplied.length === 0 ? null : (
+          {panel.ownRange === undefined && skipped.length === 0 ? null : (
             <div className="mb-2 flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
               <div className="grid gap-0.5">
-                {notApplied.map((label) => (
+                {skipped.map(({ field, label }) => (
                   <p
-                    key={label}
+                    key={field}
                     className="flex items-center gap-1.5 text-xs text-muted-foreground"
                   >
                     <InfoIcon

@@ -326,6 +326,38 @@ export const SaveAsDefault: Story = {
   },
 };
 
+// Filters the agent or another tab stores replace the address ones, which would hide them (S7-46).
+export const StoredFiltersChanged: Story = {
+  name: "Stored filters changed elsewhere",
+  args: { view: filtersDashboardPage },
+  globals: desktop,
+  beforeEach: () => {
+    serveFilters(filtersDashboardPage);
+
+    return withFilterAddress(TWO_SET);
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByLabelText("Region: North")).toBeVisible();
+
+    readDashboard.mockResolvedValue({
+      ...filtersDashboardPage.dashboard,
+      version: 2,
+      filters: {
+        dateRange: { preset: "last-3-months" },
+        fields: [
+          { kind: "select", field: "region", label: "Region", value: "West" },
+        ],
+      },
+    });
+
+    await expect(
+      await canvas.findByLabelText("Region: West", {}, { timeout: 12_000 })
+    ).toBeVisible();
+    await expect(addressParam("f.region")).toBeNull();
+    await expect(canvas.queryByText("Not saved as default")).toBeNull();
+  },
+};
+
 /** A starter chip sends its text to the dashboard's chat, which opens for it (6.5). */
 async function starterSends(canvas: ReturnType<typeof within>) {
   await expect(canvas.getByText("No panels yet")).toBeVisible();

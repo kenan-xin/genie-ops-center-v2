@@ -378,6 +378,18 @@ describe("the analytics panels on real data", () => {
     await expect(
       caller().filterValues({ id, field: "label", filters })
     ).rejects.toMatchObject(refusal);
+    // A stored filter that fits no dataset would filter nothing and show no notice (P15-5).
+    await expect(
+      caller().changeDashboard({
+        id,
+        expectedVersion: 1,
+        changes: [{ op: "set-filters", filters }],
+      })
+    ).rejects.toMatchObject(refusal);
+    expect(await caller().readDashboard({ id })).toMatchObject({
+      version: 1,
+      filters: NO_FILTERS,
+    });
   });
 
   it("uses a panel's own range for its figure and its comparison", async () => {

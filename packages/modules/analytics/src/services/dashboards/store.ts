@@ -30,6 +30,7 @@ import { ANALYTICS_ERRORS } from "../../errors.ts";
 import type { DashboardView } from "../../presentation/views.ts";
 import { dashboard } from "../../schema.ts";
 import { applyChanges, pushUndo } from "./changes.ts";
+import { assertFiltersFit, datasetFacts } from "./filters.ts";
 
 export type DashboardRecord = {
   readonly id: string;
@@ -353,6 +354,11 @@ export async function changeDashboard(
     { name: row.name, config: row.config },
     input.changes
   );
+
+  // A stored filter no dataset fits would filter nothing and show no notice (P15-5).
+  if (input.changes.some((change) => change.op === "set-filters")) {
+    assertFiltersFit(applied.filters, await datasetFacts(ctx));
+  }
 
   const stored = new Map(row.config.panels.map((panel) => [panel.id, panel]));
   const checked = new Map<string, PanelConfig>();

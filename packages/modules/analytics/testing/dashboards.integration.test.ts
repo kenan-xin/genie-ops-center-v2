@@ -735,7 +735,10 @@ describe("the analytics dashboard procedures", () => {
       [
         owner,
         JSON.stringify(legacyConfig("Demo Company")),
-        JSON.stringify([{ name: "Legacy", config: legacyConfig(null) }]),
+        JSON.stringify([
+          { name: "Legacy", config: legacyConfig(null) },
+          { name: "Older", config: legacyConfig("Old Company") },
+        ]),
       ]
     );
 
@@ -787,6 +790,21 @@ describe("the analytics dashboard procedures", () => {
       name: "Legacy",
       version: 4,
       config: { filters: { dateRange: { preset: "all" }, fields: [] } },
+    });
+
+    // An old-shape entry with a value restores as one select filter of that value.
+    const thrice = await caller.undoDashboard({ id, expectedVersion: 4 });
+
+    expect(thrice.filters).toEqual({
+      dateRange: { preset: "all" },
+      fields: [
+        {
+          kind: "select",
+          field: "customerName",
+          label: "Customer",
+          value: "Old Company",
+        },
+      ],
     });
   });
 });

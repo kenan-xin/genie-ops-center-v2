@@ -11,7 +11,7 @@ import {
   type UseMutationResult,
   type UseQueryResult,
 } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 import {
   analyticsContract,
@@ -52,7 +52,10 @@ export type DashboardFilterState = {
   readonly reset: () => void;
 };
 
-/** The dashboard filters the page applies: the address first, else the stored ones (S7-46). */
+/**
+ * The dashboard filters the page applies: the address first, else the stored ones (S7-46). When
+ * the stored filters change (the agent, Undo, another tab), the address is cleared so they show.
+ */
 export function useDashboardFilters(
   dashboard: DashboardView
 ): DashboardFilterState {
@@ -61,8 +64,9 @@ export function useDashboardFilters(
   const names = addressNames(first.params);
   const address = useAddressParams(names);
   const { params } = address;
+  const lastStored = useRef(dashboard.filters);
 
-  return useMemo(() => {
+  const state = useMemo<DashboardFilterState>(() => {
     const read = readFilterAddress(params, dashboard.filterFields);
 
     return {
@@ -80,6 +84,16 @@ export function useDashboardFilters(
         ),
     };
   }, [address, params, dashboard.filters, dashboard.filterFields]);
+
+  useEffect(() => {
+    if (sameFilters(lastStored.current, dashboard.filters)) return;
+
+    lastStored.current = dashboard.filters;
+
+    if (state.fromAddress) state.reset();
+  }, [dashboard.filters, state]);
+
+  return state;
 }
 
 /** The server's answer before the browser narrows each panel config (Global Constraints). */

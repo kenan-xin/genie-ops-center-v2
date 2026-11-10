@@ -180,7 +180,7 @@ describe("the analytics agent tools", () => {
     }
   );
 
-  it("set-filters saves two field filters, read-dashboard answers them and a panel's own range as stored, and Undo restores the old filters", async () => {
+  it("set-filters saves the filters, read-dashboard answers them and a panel's own range as stored, and Undo restores the old field filter", async () => {
     const owner = await personWith(EDITOR);
 
     const before: DashboardFilters = {
@@ -190,17 +190,11 @@ describe("the analytics agent tools", () => {
       ],
     };
 
+    // No dataset here, so a stored field filter would be refused (P15-5); the app's
+    // analytics-chat test stores one through this tool on real datasets.
     const after: DashboardFilters = {
       dateRange: { preset: "last-3-months" },
-      fields: [
-        {
-          kind: "multi-select",
-          field: "customerName",
-          label: "Customer",
-          values: ["Demo Company", "Acme"],
-        },
-        { kind: "toggle", field: "overdue", label: "Overdue", value: true },
-      ],
+      fields: [],
     };
 
     const id = await insertDashboard(deployment.context, {

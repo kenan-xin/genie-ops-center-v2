@@ -2,7 +2,7 @@ import type { PanelConfig } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
 import type { DashboardFilters, FilterField } from "../contract.ts";
-import { notAppliedLabels } from "./not-applied.ts";
+import { notApplied } from "./not-applied.ts";
 import type { PanelView } from "./views.ts";
 
 const CONFIG = (datasets: readonly string[]): PanelConfig => ({
@@ -49,10 +49,10 @@ const FILTERS = (fields: DashboardFilters["fields"]): DashboardFilters => ({
   fields,
 });
 
-describe("notAppliedLabels", () => {
+describe("notApplied", () => {
   it("names a set filter that reaches none of the panel's datasets", () => {
     expect(
-      notAppliedLabels(
+      notApplied(
         PANEL,
         FILTERS([
           { kind: "select", field: "region", label: "Region", value: "North" },
@@ -61,19 +61,19 @@ describe("notAppliedLabels", () => {
       )
     ).toEqual([]);
     expect(
-      notAppliedLabels(
+      notApplied(
         PANEL,
         FILTERS([
           { kind: "toggle", field: "overdue", label: "Overdue", value: true },
         ]),
         FIELDS
       )
-    ).toEqual(["Overdue"]);
+    ).toEqual([{ field: "overdue", label: "Overdue" }]);
   });
 
   it("excuses nothing for a filter that applies nothing", () => {
     expect(
-      notAppliedLabels(
+      notApplied(
         PANEL,
         FILTERS([
           { kind: "select", field: "region", label: "Region", value: null },
@@ -92,7 +92,7 @@ describe("notAppliedLabels", () => {
 
   it("counts a multi-select's values and a set toggle as applying", () => {
     expect(
-      notAppliedLabels(
+      notApplied(
         PANEL,
         FILTERS([
           {
@@ -106,7 +106,7 @@ describe("notAppliedLabels", () => {
       )
     ).toEqual([]);
     expect(
-      notAppliedLabels(
+      notApplied(
         { ...PANEL, config: CONFIG(["payments.payments"]) },
         FILTERS([
           {
@@ -118,12 +118,12 @@ describe("notAppliedLabels", () => {
         ]),
         FIELDS
       )
-    ).toEqual(["Status"]);
+    ).toEqual([{ field: "status", label: "Status" }]);
   });
 
   it("names the filter that matches one of the panel's series datasets", () => {
     expect(
-      notAppliedLabels(
+      notApplied(
         {
           ...PANEL,
           config: CONFIG(["invoices.invoices", "payments.payments"]),
@@ -136,9 +136,35 @@ describe("notAppliedLabels", () => {
     ).toEqual([]);
   });
 
+  it("keeps two filters apart whose fields share a label", () => {
+    expect(
+      notApplied(
+        PANEL,
+        FILTERS([
+          { kind: "toggle", field: "overdue", label: "Status", value: true },
+          {
+            kind: "multi-select",
+            field: "paymentStatus",
+            label: "Status",
+            values: ["Late"],
+          },
+        ]),
+        [
+          ...FIELDS,
+          {
+            field: "paymentStatus",
+            label: "Status",
+            kind: "multi-select",
+            datasets: ["payments.payments"],
+          },
+        ]
+      ).map(({ field }) => field)
+    ).toEqual(["overdue", "paymentStatus"]);
+  });
+
   it("says nothing for a filter the dashboard no longer offers", () => {
     expect(
-      notAppliedLabels(
+      notApplied(
         PANEL,
         FILTERS([{ kind: "select", field: "gone", label: "Gone", value: "x" }]),
         FIELDS
