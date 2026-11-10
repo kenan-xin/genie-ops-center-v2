@@ -247,7 +247,8 @@ export const Edited: Story = {
     );
     await expect(row.getByText("Extracted")).toBeVisible();
     await expect(row.queryByText(/^Read as/u)).toBeNull();
-    await expect(description).toHaveFocus();
+    // Undo focuses on the next frame (focusSoon), which comes late under load (xok3.61).
+    await waitFor(() => expect(description).toHaveFocus());
   },
 };
 
