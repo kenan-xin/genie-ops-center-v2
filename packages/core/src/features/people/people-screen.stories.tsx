@@ -776,6 +776,8 @@ export const AddPersonStartsAtNoAccess: Story = {
     ]);
 
     await userEvent.keyboard("{Escape}");
+    // The popup's focus guards stay until it has closed; axe runs after the play function.
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   },
 };
 
