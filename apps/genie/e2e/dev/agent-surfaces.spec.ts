@@ -9,6 +9,10 @@ import {
   ANALYTICS_QUESTION_MESSAGE,
   ANALYTICS_SHOW_ANSWER,
   HANDOFF_PANEL_TITLES,
+  OUT_OF_TOOLS_ASK_ANSWER,
+  OUT_OF_TOOLS_ASK_MESSAGE,
+  OUT_OF_TOOLS_DASHBOARD_ANSWER,
+  OUT_OF_TOOLS_DASHBOARD_MESSAGE,
   QUESTION_DASHBOARD_NAME,
 } from "../../testing/analytics-chat.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
@@ -36,6 +40,7 @@ import {
   handedOverFrom,
   handOverDeck,
   insertEmptyDashboard,
+  openSurfaceAgent,
   removeDashboardsNamed,
   send,
   warm,
@@ -371,6 +376,71 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
         ).toBeVisible(FIRST_PAINT);
         await expect(empty).toBeVisible();
         await expect(panel).toHaveCount(0);
+      } finally {
+        await removeDashboardsNamed(email, [QUESTION_DASHBOARD_NAME]);
+      }
+    },
+    LOCK_WAIT
+  );
+});
+
+// The replay of `synthetic-out-of-tools-ask-1` and `-dashboard-1`, through the browser's page context.
+test("Ask answers a request outside its tools with one sentence", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signInAs(page, ANALYTICS_PEOPLE.chat);
+      await warm(page, "/m/analytics/dashboards", "Dashboards");
+
+      const chat = await openAgentPanel(page);
+
+      await send(page, chat, OUT_OF_TOOLS_ASK_MESSAGE);
+
+      await expect(
+        chat.getByText(OUT_OF_TOOLS_ASK_ANSWER, { exact: true })
+      ).toBeVisible(FIRST_PAINT);
+    },
+    LOCK_WAIT
+  );
+});
+
+test("the Dashboards agent answers a request outside its tools with one sentence and adds nothing", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  const email = ANALYTICS_PEOPLE.chat;
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await removeDashboardsNamed(email, [QUESTION_DASHBOARD_NAME]);
+
+      try {
+        // A new dashboard opens a new chat, so the request holds this message alone.
+        const id = await insertEmptyDashboard(email, QUESTION_DASHBOARD_NAME);
+
+        await signInAs(page, email);
+        await warm(
+          page,
+          `/m/analytics/dashboards/${id}`,
+          QUESTION_DASHBOARD_NAME
+        );
+
+        const surface = await openSurfaceAgent(page, "Dashboards agent");
+
+        await send(page, surface, OUT_OF_TOOLS_DASHBOARD_MESSAGE);
+
+        await expect(
+          surface.getByText(OUT_OF_TOOLS_DASHBOARD_ANSWER, { exact: true })
+        ).toBeVisible(FIRST_PAINT);
+        await expect(
+          page.getByText("No panels yet", { exact: true })
+        ).toBeVisible();
       } finally {
         await removeDashboardsNamed(email, [QUESTION_DASHBOARD_NAME]);
       }
