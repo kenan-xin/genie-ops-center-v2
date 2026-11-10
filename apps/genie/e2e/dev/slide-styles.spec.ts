@@ -18,6 +18,7 @@ import { LEDGER_LOCK, LOCK_WAIT, onPhone } from "./dev-support.ts";
 import { DEV_MODULES, SLIDES_PEOPLE } from "./global-setup.ts";
 import {
   closeSlidesDatabase,
+  type DeckContent,
   removeOwnDecks,
   resetChangeDeck,
 } from "./slides-support.ts";
@@ -65,15 +66,16 @@ async function activate(page: Page, target: Locator): Promise<void> {
   await target.click();
 }
 
-/** Runs one case on the fixed deck, signed in as the chat person, under the ledger lock. */
+/** Runs one case on the fixed deck (or `content` in its place), signed in as the chat person, under the ledger lock. */
 async function onFixedDeck(
   page: Page,
-  run: () => Promise<void>
+  run: () => Promise<void>,
+  content?: DeckContent
 ): Promise<void> {
   await withDeploymentLock(
     LEDGER_LOCK,
     async () => {
-      await resetChangeDeck(SLIDES_PEOPLE.chat);
+      await resetChangeDeck(SLIDES_PEOPLE.chat, content);
 
       try {
         await signInAs(page, SLIDES_PEOPLE.chat);
@@ -229,6 +231,81 @@ test("a text color below the contrast limit is refused, names the element and sa
     ).toBeVisible(FIRST_PAINT);
     await expect(undoButton(page)).toBeDisabled();
   });
+});
+
+/** One dark slide whose bullets carry a box and a white color (czjw.128). */
+const STYLED_BULLETS_DECK: DeckContent = {
+  slides: [
+    {
+      id: "s1",
+      background: "#1E3A8A",
+      elements: [
+        {
+          kind: "title",
+          text: "Collections are on track for October.",
+          style: { color: "#FFFFFF" },
+        },
+        {
+          kind: "bullets",
+          items: ["Call each customer", "Send the statement"],
+          box: { x: 40, y: 136, w: 440, h: 300 },
+          style: { color: "#FFFFFF", fontSize: 24 },
+        },
+      ],
+    },
+  ],
+};
+
+test("a bullet edit on a dark slide keeps the list's box and color", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 120_000);
+
+  await onFixedDeck(
+    page,
+    async () => {
+      const bullets = page.getByRole("button", {
+        name: /^Bullets "Call each customer"/,
+      });
+
+      await activate(page, bullets);
+
+      const kept = await bullets.boundingBox();
+
+      await activate(page, page.getByRole("button", { name: "Edit text" }));
+
+      const sheet = page.getByRole("dialog", { name: "Edit slide" });
+
+      await activate(page, sheet.getByRole("button", { name: "Add bullet" }));
+      await sheet
+        .getByRole("textbox", { name: "Bullet 3" })
+        .fill("Close the account");
+      await activate(
+        page,
+        sheet.getByRole("button", { name: "Remove bullet 1" })
+      );
+      await activate(page, sheet.getByRole("button", { name: "Save slide" }));
+
+      await expect(undoButton(page)).toBeEnabled(FIRST_PAINT);
+      await expect(page.getByText(/was not changed/)).toHaveCount(0);
+      await expect(deckCanvas(page).getByText("Close the account")).toHaveCSS(
+        "color",
+        "rgb(255, 255, 255)"
+      );
+
+      const moved = await page
+        .getByRole("button", { name: /^Bullets "Send the statement"/ })
+        .boundingBox();
+
+      if (kept === null || moved === null) {
+        throw new Error("the bullets have no box");
+      }
+
+      expect(Math.abs(moved.x - kept.x)).toBeLessThanOrEqual(1);
+      expect(Math.abs(moved.y - kept.y)).toBeLessThanOrEqual(1);
+    },
+    STYLED_BULLETS_DECK
+  );
 });
 
 test("a request outside the deck tools gets one sentence of what the agent can change", async ({

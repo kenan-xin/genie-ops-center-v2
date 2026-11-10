@@ -205,7 +205,7 @@ export function SlideEditor(props: SlideEditorProps) {
         ? current.filter((_, index) => index !== bodyIndex)
         : current.map((element, index) =>
             index === bodyIndex && element.kind === "bullets"
-              ? { kind: "bullets", items: [...items] }
+              ? { ...element, items: [...items] }
               : element
           )
     );

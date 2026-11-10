@@ -18,6 +18,7 @@ import {
 } from "./__fixtures__/decks.ts";
 import { SlideEditor } from "./slide-editor.tsx";
 import { useDeckChange } from "./use-deck.ts";
+import type { ShownSlide } from "./views.ts";
 
 const readDeck = fn();
 
@@ -349,6 +350,63 @@ export const UploadImage: Story = {
               },
             ],
           },
+        },
+      ],
+    });
+  },
+};
+
+const styledBulletsSlide: ShownSlide = {
+  id: "s3",
+  background: "#1E3A8A",
+  elements: [
+    {
+      kind: "title",
+      text: "Three calls cut the overdue total.",
+      style: { color: "#FFFFFF" },
+    },
+    {
+      kind: "bullets",
+      items: ["Call each customer", "Send the statement"],
+      box: { x: 40, y: 136, w: 440, h: 300 },
+      style: { color: "#FFFFFF", fontSize: 24 },
+    },
+  ],
+};
+
+// czjw.128: a bullet edit replaces only the items; dropping the white style fails the save on dark blue.
+export const BulletEditKeepsPlacement: Story = {
+  name: "A bullet edit keeps the list's box and style",
+  args: { slide: styledBulletsSlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await userEvent.click(sheet.getByRole("button", { name: "Add bullet" }));
+    await userEvent.type(
+      sheet.getByRole("textbox", { name: "Bullet 3" }),
+      "Close the account"
+    );
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Remove bullet 1" })
+    );
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    await expect(save).toHaveBeenCalledWith({
+      background: "#1E3A8A",
+      elements: [
+        {
+          kind: "title",
+          text: "Three calls cut the overdue total.",
+          style: { color: "#FFFFFF" },
+        },
+        {
+          kind: "bullets",
+          items: ["Send the statement", "Close the account"],
+          box: { x: 40, y: 136, w: 440, h: 300 },
+          style: { color: "#FFFFFF", fontSize: 24 },
         },
       ],
     });
