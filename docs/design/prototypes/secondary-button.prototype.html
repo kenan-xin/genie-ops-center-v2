@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. The secondary button variant (packages/ui button-variants.ts "secondary"), before and after.
+     Cause found 2026-11-11: the variant uses border-input (#6b7280, the field border) and font-medium, where DESIGN.md says
+     a gray-300 control border (#d1d5db), gray-800 text and semibold. So every outlined button reads as a dark pen line.
+     Switch with ?variant=before|A|B|C and ?theme=light|dark, or the bar at the bottom.
+     A: DESIGN.md as written. B: soft gray fill, no outline. C: light hairline with a 1 px lift (bends the Hairline-First rule).
+     Primary, ghost and filter-set stay as built. Data: fictional. No network. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: secondary button, before and after</title>
+<style>
+:root{--font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+[data-theme=light]{--page:#fff;--stage:#eef0f3;--fg:#111827;--muted:#4b5563;--hair:#e5e7eb;--panel:#f9fafb;--tile:#f3f4f6;--primary:#2563eb;--onp:#fff;--ring:#2563eb;--info:#eff6ff;--set-b:rgb(37 99 235 / .4);--set-bg:rgb(37 99 235 / .08);--set-fg:#2563eb}
+[data-theme=dark]{--page:#030712;--stage:#0b0f19;--fg:#f3f4f6;--muted:#9ca3af;--hair:#1f2937;--panel:#111827;--tile:#1f2937;--primary:#2563eb;--onp:#fff;--ring:#60a5fa;--info:#0b1a33;--set-b:rgb(96 165 250 / .45);--set-bg:rgb(37 99 235 / .16);--set-fg:#60a5fa}
+/* the variant under test */
+[data-theme=light][data-v=before]{--s-bg:#fff;--s-border:#6b7280;--s-fg:#111827;--s-w:500;--s-hover:#f9fafb;--s-shadow:none}
+[data-theme=dark][data-v=before]{--s-bg:#111827;--s-border:#6b7280;--s-fg:#f3f4f6;--s-w:500;--s-hover:#1f2937;--s-shadow:none}
+[data-theme=light][data-v=A]{--s-bg:#fff;--s-border:#d1d5db;--s-fg:#1f2937;--s-w:600;--s-hover:#f9fafb;--s-shadow:none}
+[data-theme=dark][data-v=A]{--s-bg:#111827;--s-border:#374151;--s-fg:#f3f4f6;--s-w:600;--s-hover:#1f2937;--s-shadow:none}
+[data-theme=light][data-v=B]{--s-bg:#f3f4f6;--s-border:transparent;--s-fg:#111827;--s-w:600;--s-hover:#e5e7eb;--s-shadow:none}
+[data-theme=dark][data-v=B]{--s-bg:#1f2937;--s-border:transparent;--s-fg:#f3f4f6;--s-w:600;--s-hover:#374151;--s-shadow:none}
+[data-theme=light][data-v=C]{--s-bg:#fff;--s-border:#e5e7eb;--s-fg:#1f2937;--s-w:600;--s-hover:#f9fafb;--s-shadow:0 1px 2px rgb(17 24 39 / .07)}
+[data-theme=dark][data-v=C]{--s-bg:#111827;--s-border:#1f2937;--s-fg:#f3f4f6;--s-w:600;--s-hover:#1f2937;--s-shadow:0 1px 2px rgb(0 0 0 / .5)}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);background:var(--stage);color:var(--fg);padding:24px 16px 110px;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--ring);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;display:grid;gap:20px}
+h1{font-size:1.125rem;margin:0}
+.lead{color:var(--muted);font-size:.9375rem;margin:4px 0 0;max-width:70ch;line-height:1.5}
+.grid{display:grid;grid-template-columns:390px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+.frame{background:var(--page);border:1px solid var(--hair);border-radius:16px;overflow:hidden}
+.frame>.lab{font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 16px;border-bottom:1px solid var(--hair);background:var(--panel)}
+.in{padding:16px;display:grid;gap:12px}
+.b{height:40px;border-radius:8px;border:1px solid transparent;padding:0 16px;font-size:.875rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;transition:background-color .15s ease-out}
+.b.sec{background:var(--s-bg);border-color:var(--s-border);color:var(--s-fg);font-weight:var(--s-w);box-shadow:var(--s-shadow)}
+.b.sec:hover{background:var(--s-hover)}
+.b.pri{background:var(--primary);color:var(--onp);font-weight:600}
+.b.pri:hover{background:rgb(37 99 235 / .94)}
+.b.ghost{background:none;color:var(--fg);font-weight:500}
+.b.set{border-color:var(--set-b);background:var(--set-bg);color:var(--set-fg);font-weight:600}
+.b.icon{width:40px;padding:0}
+.phone .b{height:44px}.phone .b.icon{width:44px}
+.ic{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.cap{font-size:.8125rem;color:var(--muted)}
+.title{font-size:1.25rem;font-weight:700;letter-spacing:-.025em;margin:0}
+.count{background:var(--primary);color:#fff;border-radius:999px;font-size:.75rem;font-weight:700;padding:1px 7px}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--primary)}
+.card{border:1px solid var(--hair);border-radius:12px;padding:16px}
+.slide{aspect-ratio:16/9;border-radius:8px;background:#1e3a8a;color:#fff;padding:14px;font-weight:700}
+.dialog{border:1px solid var(--hair);border-radius:12px;box-shadow:0 25px 50px -12px rgb(17 24 39 / .18);background:var(--page);max-width:480px}
+.dialog .t{padding:20px 20px 4px;font-weight:700;font-size:1.0625rem}
+.dialog p{padding:0 20px;margin:0 0 16px;color:var(--muted);font-size:.9375rem}
+.dialog .f{display:flex;justify-content:flex-end;gap:8px;padding:12px 20px;border-top:1px solid var(--hair)}
+.solo{display:flex;gap:28px;flex-wrap:wrap;align-items:center;padding:20px 16px}
+.solo .k{display:grid;gap:8px;justify-items:start}
+.bar{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#111827;color:#fff;border-radius:14px;padding:6px;display:flex;gap:4px;align-items:center;z-index:9;box-shadow:0 20px 40px -12px rgb(0 0 0 / .5)}
+.bar span{font-size:.75rem;color:#d1d5db;padding:0 8px;font-weight:600}
+.bar button{border:0;background:none;color:#fff;height:40px;min-width:44px;padding:0 12px;border-radius:10px;font-weight:700}
+.bar button[aria-pressed=true]{background:#fff;color:#111827}
+.bar i{width:1px;height:24px;background:#374151;margin:0 4px}
+.note{background:var(--page);border:1px solid var(--hair);border-radius:12px;padding:16px 18px;font-size:.9375rem;line-height:1.55}
+.note b{font-weight:700}
+.mono{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.75rem;background:var(--tile);border-radius:6px;padding:2px 6px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div><h1>Secondary button: before and after <span class="cap">(prototype, throwaway)</span></h1>
+  <p class="lead">Only the secondary variant changes. Primary, ghost and the set filter stay as built. The bar at the bottom switches the variant and the theme.</p></div>
+  <div class="note" id="note"></div>
+  <div class="frame"><div class="lab">The variant alone, with its neighbours</div>
+    <div class="solo">
+      <div class="k"><span class="cap">Secondary</span><button class="b sec">Export to PowerPoint</button></div>
+      <div class="k"><span class="cap">Secondary icon</span><button class="b sec icon" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div>
+      <div class="k"><span class="cap">Primary (unchanged)</span><button class="b pri"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3v18l14-9z"/></svg>Present</button></div>
+      <div class="k"><span class="cap">Ghost (unchanged)</span><button class="b ghost">Cancel</button></div>
+      <div class="k"><span class="cap">Filter, set (unchanged)</span><button class="b set">Customer: Harbor Foods</button></div>
+    </div>
+  </div>
+  <div class="grid">
+    <div class="frame phone"><div class="lab">Phone, 390 px: dashboard header</div>
+      <div class="in">
+        <div><h2 class="title">Receivables overview</h2><div class="cap">Figures as of 10 Nov 2026, 04:49.</div></div>
+        <div class="row"><button class="b sec">Edit dashboard</button><button class="b sec icon" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button></div>
+        <div class="row"><button class="b sec"><span style="color:var(--muted);font-weight:500">View:</span> Dashboard filters <svg class="ic" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg></button><button class="b sec"><svg class="ic" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/></svg>Filters <span class="count">2</span></button></div>
+        <div class="cap">All time · Customer: Harbor Foods · Overdue</div>
+        <div class="row"><span class="dot"></span><span class="cap" style="color:var(--fg)">Not saved as default</span><button class="b sec" style="height:40px">Save as default</button></div>
+        <div class="card"><div class="cap">Overdue</div><div style="font-size:1.5rem;font-weight:700">S$ 48,210.00</div></div>
+      </div>
+    </div>
+    <div style="display:grid;gap:20px;min-width:0">
+      <div class="frame"><div class="lab">Desktop: deck header</div>
+        <div class="in"><div class="row" style="justify-content:space-between"><div><h2 class="title">Q3 collections</h2><div class="cap">5 slides · figures as of 10 Nov 2026</div></div>
+          <div class="row"><button class="b sec">Export to PowerPoint</button><button class="b sec icon" aria-label="More"><svg class="ic" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg></button><button class="b pri"><svg class="ic" viewBox="0 0 24 24"><path d="M6 3v18l14-9z"/></svg>Present</button></div></div>
+          <div class="slide">Collections rose 12% in the third quarter</div></div>
+      </div>
+      <div class="frame"><div class="lab">Desktop: confirm dialog footer</div>
+        <div class="in" style="background:var(--panel)"><div class="dialog"><div class="t">Remove the view "Q3 overdue"?</div><p>The dashboard keeps its panels and its default filters.</p><div class="f"><button class="b sec">Cancel</button><button class="b pri" style="background:#dc2626">Remove view</button></div></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="bar" role="group" aria-label="Variant and theme" id="bar"></div>
+<script>
+const q=new URLSearchParams(location.search);
+const S={v:q.get('variant')||'before',t:q.get('theme')||'light'};
+const N={before:['Before, as built','<span class="mono">border-input</span> (#6b7280, the field border, 4.89:1) and medium weight. Every outline reads as a dark pen line, the "sketch on paper" look, and next to a field it looks like one more field.'],
+A:['A, DESIGN.md as written','<span class="mono">border-control</span> (#d1d5db), gray-800 text, semibold, gray-50 hover. One line in <span class="mono">button-variants.ts</span>: the variant matches the design system that already says this. The label identifies the button, so WCAG 1.4.11 does not require a 3:1 outline.'],
+B:['B, soft fill, no outline','Gray-100 fill, no border, semibold, gray-200 hover. The quietest option: no lines at all, the button reads as a surface. Needs a <span class="mono">DESIGN.md</span> change (secondary becomes a tinted button), and on gray-50 panels it loses contrast with the panel.'],
+C:['C, light hairline with a 1 px lift','Gray-200 hairline, a 1 px soft shadow, semibold. The most tactile option, but it puts a shadow on a resting surface, which the Hairline-First rule of <span class="mono">DESIGN.md</span> forbids.']};
+function render(){
+ document.body.dataset.theme=S.t;document.body.dataset.v=S.v;
+ document.getElementById('note').innerHTML=`<b>${N[S.v][0]}.</b> ${N[S.v][1]}`;
+ document.getElementById('bar').innerHTML='<span>Variant</span>'+['before','A','B','C'].map(v=>`<button aria-pressed="${S.v===v}" data-v="${v}">${v==='before'?'Before':v}</button>`).join('')+'<i></i>'+['light','dark'].map(t=>`<button aria-pressed="${S.t===t}" data-t="${t}">${t==='light'?'Light':'Dark'}</button>`).join('');
+ const u=new URL(location);u.searchParams.set('variant',S.v);u.searchParams.set('theme',S.t);history.replaceState(null,'',u);
+}
+document.addEventListener('click',e=>{const b=e.target.closest('#bar [data-v],#bar [data-t]');if(!b)return;if(b.dataset.v)S.v=b.dataset.v;if(b.dataset.t)S.t=b.dataset.t;render()});
+render();
+</script>
+</body>
+</html>

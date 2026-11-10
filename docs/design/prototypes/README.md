@@ -12,6 +12,8 @@ Open [Section 7 redesign](section-7-redesign.prototype.html) directly in a brows
 
 Open [Slide editor controls](slide-editor-controls.prototype.html), [Presenter window](presenter-window.prototype.html) and [Dashboard filters](dashboard-filters.prototype.html) directly in a browser. Each holds three variants of a wave 5 screen, switched by `?variant=A|B|C&state=<state>`, and opens variant A, the run's pick of 2026-11-09. The owner reviews the picks at gate G3. Their data is fictional sample data. The [import record](../imports/2026-11-09-wave-5-prototypes.md) lists the states and the captures.
 
+Open [Phone adapt](phone-adapt.prototype.html) and [Secondary button](secondary-button.prototype.html) directly in a browser. The owner picked on 2026-11-11: `phone-adapt.prototype.html?screen=filters&variant=A`, `?screen=editor&variant=A` and `?screen=notes&variant=C`, and `secondary-button.prototype.html?variant=C`. Use these addresses, because the files open variant A and `before`. Their data is fictional sample data. The [import record](../imports/2026-11-11-phone-adapt-and-secondary-button.md) lists the picks and their beads.
+
 The Access prototype lives beside its spec: [Access, role-per-row model](../sections/access/access.prototype.html), switched by `?screen=grants&state=<state>`. Its [import record](../imports/2026-11-03-access-role-per-row.md) lists the states.
 
 Canonical designs:

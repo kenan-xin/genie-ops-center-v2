@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Phone adapt of three built screens, for the follow-up 12 run (czjw.156 and the dashboard filter bar).
+     Question: on a 390 px phone, how should these screens look so they stop reading as a stack of separate outlined buttons?
+     Switch with ?screen=filters|editor|notes and ?variant=A|B|C, or the bar at the bottom. Desktop stays as built.
+     World: DESIGN.md fixed layer (white page, hairlines, 8px controls, 12px cards and sheets, one blue accent, 44px touch targets).
+     Data: fictional sample figures and sample companies. No network. Icons drawn as Lucide-style SVG paths. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>PROTOTYPE: phone adapt, dashboard filters, slide editor, slide notes</title>
+<style>
+:root{
+  --bg:#fff;--fg:#111827;--panel:#f9fafb;--tile:#f3f4f6;--hair:#e5e7eb;--control:#d1d5db;--input:#6b7280;
+  --muted:#4b5563;--idle:#374151;--icon:#6b7280;--primary:#2563eb;--on-primary:#fff;--info:#eff6ff;
+  --danger:#b91c1c;--overlay:0 25px 50px -12px rgb(17 24 39 / .18);--menu:0 10px 15px -3px rgb(0 0 0 / .1),0 4px 6px -4px rgb(0 0 0 / .1);
+  --font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--font);color:var(--fg);background:#e9ebef;min-height:100vh;padding:20px 16px 104px;-webkit-font-smoothing:antialiased}
+::selection{background:#bfdbfe}
+button{font:inherit;color:inherit;cursor:pointer}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.top{max-width:1100px;margin:0 auto 16px;display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between}
+.top h1{font-size:1.125rem;margin:0;letter-spacing:-.02em}
+.tabs{display:flex;gap:4px;background:#fff;border:1px solid var(--hair);border-radius:10px;padding:4px}
+.tabs button{border:0;background:none;padding:8px 12px;border-radius:8px;font-size:.875rem;font-weight:600;color:var(--idle)}
+.tabs button[aria-pressed=true]{background:var(--fg);color:#fff}
+.stage{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:auto minmax(0,1fr);gap:28px;align-items:start}
+@media (max-width:820px){.stage{grid-template-columns:1fr}}
+.phone{width:390px;height:844px;background:var(--bg);border-radius:36px;box-shadow:0 0 0 10px #1f2937,0 30px 60px -20px rgb(0 0 0 / .45);overflow:hidden;position:relative;display:flex;flex-direction:column}
+@media (max-width:430px){.phone{width:100%;height:calc(100vh - 140px);border-radius:0;box-shadow:none}}
+.notes-panel{background:#fff;border:1px solid var(--hair);border-radius:12px;padding:20px 22px;font-size:.9375rem;line-height:1.55;min-width:0}
+.notes-panel h2{font-size:1.125rem;margin:0 0 4px}
+.notes-panel h3{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:18px 0 6px}
+.notes-panel ul{margin:0;padding-left:18px}.notes-panel li{margin:3px 0}
+.notes-panel .state{font-family:"JetBrains Mono",ui-monospace,monospace;font-size:.75rem;background:var(--tile);border-radius:8px;padding:10px 12px;white-space:pre-wrap;color:var(--idle)}
+.switcher{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:var(--fg);color:#fff;border-radius:14px;padding:6px;display:flex;gap:4px;align-items:center;box-shadow:var(--overlay);z-index:50}
+.switcher span{font-size:.75rem;font-weight:600;padding:0 10px 0 8px;color:#d1d5db}
+.switcher button{border:0;background:transparent;color:#fff;min-width:44px;height:40px;border-radius:10px;font-weight:700}
+.switcher button[aria-pressed=true]{background:#fff;color:var(--fg)}
+/* app chrome */
+.status{height:44px;flex:none;display:flex;align-items:flex-end;justify-content:space-between;padding:0 26px 6px;font-size:.8125rem;font-weight:600}
+.appbar{height:56px;flex:none;display:flex;align-items:center;gap:4px;padding:0 8px;border-bottom:1px solid var(--hair)}
+.appbar .ttl{flex:1;min-width:0;font-weight:700;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-left:4px}
+.ib{width:44px;height:44px;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--idle);flex:none}
+.ib:hover{background:var(--panel)}
+.ib svg,.ic{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.sm svg,svg.sm{width:16px;height:16px}
+.scroll{flex:1;overflow:auto;position:relative}
+.pad{padding:16px}
+.h-title{font-size:1.25rem;font-weight:700;letter-spacing:-.025em;margin:0}
+.cap{font-size:.8125rem;color:var(--muted)}
+.btn{height:44px;border-radius:8px;border:1px solid var(--control);background:#fff;padding:0 14px;font-weight:600;font-size:.875rem;display:inline-flex;align-items:center;gap:8px;justify-content:center}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.ghost{border-color:transparent;background:none;color:var(--idle)}
+.btn.text{border:0;background:none;color:var(--primary);padding:0 8px}
+.count{background:var(--primary);color:#fff;border-radius:999px;font-size:.75rem;font-weight:700;padding:1px 7px;line-height:1.35}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--primary);display:inline-block;flex:none}
+.card{border:1px solid var(--hair);border-radius:12px;padding:16px;background:#fff}
+.kpi{font-size:1.5rem;font-weight:700;letter-spacing:-.02em;font-variant-numeric:tabular-nums}
+.chips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 16px;margin:0 -16px}
+.chips::-webkit-scrollbar{display:none}
+.chip{height:36px;flex:none;border-radius:999px;border:1px solid var(--hair);background:#fff;padding:0 6px 0 12px;display:inline-flex;align-items:center;gap:4px;font-size:.875rem;font-weight:500;color:var(--fg);white-space:nowrap}
+.chip.set{background:var(--info);border-color:#bfdbfe;color:#1e3a8a}
+.chip.view{background:var(--tile);border-color:var(--tile);font-weight:600;padding-right:10px}
+.chip.add{border-style:dashed;color:var(--muted);padding-right:12px}
+.chip .x{width:28px;height:28px;border:0;background:none;border-radius:50%;display:grid;place-items:center;color:inherit;margin-left:-2px;position:relative}
+.chip .x::after{content:"";position:absolute;inset:-8px}
+.seg{display:flex;border:1px solid var(--control);border-radius:10px;overflow:hidden;height:44px}
+.seg button{flex:1;border:0;background:#fff;display:flex;align-items:center;gap:8px;padding:0 12px;font-size:.875rem;min-width:0}
+.seg button+button{border-left:1px solid var(--hair);flex:none}
+.seg .lbl{color:var(--muted)}.seg .val{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.unsaved{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;font-size:.875rem;color:var(--idle)}
+.sumbar{position:sticky;top:0;z-index:3;background:rgb(255 255 255 / .96);backdrop-filter:blur(8px);border-bottom:1px solid var(--hair);padding:8px 16px}
+.sumbtn{width:100%;min-height:52px;border:0;border-radius:10px;background:var(--panel);display:flex;align-items:center;gap:12px;padding:6px 12px;text-align:left}
+.sumbtn .t{font-weight:600;font-size:.875rem}.sumbtn .s{font-size:.8125rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scrim{position:absolute;inset:0;background:rgb(17 24 39 / .38);z-index:20;animation:fade .18s ease-out}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:16px 16px 0 0;box-shadow:var(--overlay);z-index:21;display:flex;flex-direction:column;max-height:86%;animation:up .22s cubic-bezier(.16,1,.3,1)}
+.sheet .grab{width:36px;height:4px;border-radius:2px;background:var(--control);margin:8px auto 4px;flex:none}
+.sheet header{display:flex;align-items:center;justify-content:space-between;padding:4px 8px 4px 16px;flex:none}
+.sheet header h2{font-size:1.0625rem;margin:0}
+.sheet .body{overflow:auto;padding:4px 16px 16px;flex:1}
+.sheet footer{border-top:1px solid var(--hair);padding:10px 16px 24px;display:flex;gap:8px;flex:none}
+.sheet footer .btn{flex:1}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sheet,.scrim{animation:none}}
+.field{display:flex;flex-direction:column;gap:6px;margin:12px 0}
+.field label,.flabel{font-size:.875rem;font-weight:600;color:#1f2937}
+.input{min-height:44px;border:1px solid var(--input);border-radius:8px;padding:10px 12px;font-size:1rem;background:#fff;display:flex;align-items:center;justify-content:space-between;gap:8px}
+textarea.input{width:100%;font:inherit;font-size:1rem;resize:none;line-height:1.5;color:var(--fg)}
+.help{font-size:.8125rem;color:var(--muted)}
+.row{display:flex;align-items:center;gap:12px}
+.list{border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.list button{width:100%;min-height:52px;border:0;border-bottom:1px solid var(--hair);background:#fff;display:flex;align-items:center;gap:12px;padding:8px 14px;text-align:left}
+.list button:last-child{border-bottom:0}
+.radio{width:20px;height:20px;border-radius:50%;border:2px solid var(--input);flex:none;display:grid;place-items:center}
+.radio.on{border-color:var(--primary)}.radio.on::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--primary)}
+.bars{display:flex;align-items:flex-end;gap:10px;height:120px;padding-top:8px;border-bottom:1px solid var(--hair)}
+.bars i{flex:1;background:#93c5fd;border-radius:4px 4px 0 0}
+.bars i.hi{background:var(--primary)}
+.axis{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-top:6px}
+.bottombar{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--hair);padding:8px 16px 26px;display:flex;align-items:center;gap:10px;z-index:5}
+/* slide */
+.slide{position:relative;aspect-ratio:16/9;border-radius:8px;overflow:hidden;background:#1e3a8a;color:#fff;box-shadow:0 0 0 1px var(--hair)}
+.slide .s-title{position:absolute;left:5%;top:9%;right:5%;font-weight:700;font-size:1.05rem;line-height:1.25}
+.slide .s-text{position:absolute;left:5%;top:36%;width:40%;font-size:.6875rem;line-height:1.45;opacity:.92}
+.slide .s-chart{position:absolute;right:5%;top:34%;width:46%;height:52%;display:flex;align-items:flex-end;gap:5%}
+.slide .s-chart i{flex:1;background:#93c5fd;border-radius:2px 2px 0 0}
+.sel{position:absolute;inset:-4px;border:2px solid #60a5fa;border-radius:4px;pointer-events:none}
+.sel b{position:absolute;width:12px;height:12px;background:#fff;border:2px solid #2563eb;border-radius:3px}
+.sel b:nth-child(1){left:-7px;top:-7px}.sel b:nth-child(2){right:-7px;top:-7px}.sel b:nth-child(3){left:-7px;bottom:-7px}.sel b:nth-child(4){right:-7px;bottom:-7px}
+.thumbs{display:flex;gap:8px;overflow-x:auto;padding:12px 16px;scrollbar-width:none}
+.thumbs div{flex:none;width:64px;aspect-ratio:16/9;border-radius:4px;background:var(--tile);border:1px solid var(--hair);font-size:.625rem;color:var(--muted);display:grid;place-items:center}
+.thumbs div.on{outline:2px solid var(--primary);outline-offset:1px;background:#1e3a8a;color:#fff}
+.dock{position:absolute;left:0;right:0;bottom:0;background:#fff;border-top:1px solid var(--hair);padding:6px 4px 24px;z-index:6}
+.tools{display:flex;justify-content:space-around}
+.tool{width:60px;min-height:52px;border:0;background:none;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:.6875rem;font-weight:600;color:var(--idle)}
+.tool[aria-pressed=true]{color:var(--primary);background:var(--info)}
+.swatches{display:flex;gap:10px;flex-wrap:wrap}
+.sw{width:44px;height:44px;border-radius:10px;border:1px solid var(--hair);position:relative}
+.sw.on::after{content:"";position:absolute;inset:-4px;border:2px solid var(--primary);border-radius:13px}
+.segtabs{display:flex;background:var(--tile);border-radius:10px;padding:3px;gap:2px}
+.segtabs button{flex:1;height:38px;border:0;border-radius:8px;background:none;font-weight:600;font-size:.875rem;color:var(--idle)}
+.segtabs button[aria-selected=true]{background:#fff;color:var(--fg);box-shadow:0 1px 2px rgb(0 0 0 / .08)}
+.pill-row{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:8px 12px}
+.pill{flex:none;height:40px;border-radius:10px;border:1px solid var(--hair);background:#fff;display:inline-flex;align-items:center;gap:6px;padding:0 12px;font-size:.875rem;font-weight:600}
+.swatch-dot{width:16px;height:16px;border-radius:4px;border:1px solid rgb(0 0 0 / .15)}
+.fab{position:absolute;left:50%;transform:translateX(-50%);bottom:28px;z-index:6;height:48px;border-radius:999px;border:0;background:var(--fg);color:#fff;padding:0 18px;display:flex;align-items:center;gap:8px;font-weight:600;box-shadow:var(--menu)}
+.counter{font-size:.8125rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.saved{display:inline-flex;align-items:center;gap:6px;font-size:.8125rem;color:#047857}
+.disclosure{width:100%;border:1px solid var(--hair);border-radius:12px;background:#fff;padding:12px 14px;text-align:left;display:flex;gap:12px;align-items:flex-start;min-height:64px}
+.disclosure .p{font-size:.875rem;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;margin-top:2px}
+.notespane{border-top:1px solid var(--hair);padding:12px 16px 0}
+.full{position:absolute;inset:0;background:#fff;z-index:30;display:flex;flex-direction:column;animation:up .22s cubic-bezier(.16,1,.3,1)}
+</style>
+</head>
+<body>
+<div class="top">
+  <h1>Phone adapt prototype <span class="cap">(throwaway)</span></h1>
+  <div class="tabs" role="group" aria-label="Screen" id="tabs"></div>
+</div>
+<div class="stage">
+  <div class="phone" id="phone" aria-label="Phone preview, 390 by 844"></div>
+  <aside class="notes-panel" id="notes" aria-live="polite"></aside>
+</div>
+<div class="switcher" role="group" aria-label="Variant switcher" id="switcher"></div>
+
+<script>
+const P={
+ menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',
+ down:'<path d="m6 9 6 6 6-6"/>',
+ left:'<path d="m15 18-6-6 6-6"/>',
+ right:'<path d="m9 18 6-6-6-6"/>',
+ more:'<circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/>',
+ pencil:'<path d="M21.2 6.8a2.8 2.8 0 0 0-4-4L3.8 16.2a2 2 0 0 0-.5.8l-1.3 4.4a.5.5 0 0 0 .6.6l4.4-1.3a2 2 0 0 0 .8-.5zM15 5l4 4"/>',
+ sliders:'<path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M2 14h4M10 8h4M18 16h4"/>',
+ x:'<path d="M18 6 6 18M6 6l12 12"/>',
+ plus:'<path d="M5 12h14M12 5v14"/>',
+ play:'<path d="M6 3v18l14-9z"/>',
+ type:'<path d="M4 7V4h16v3M9 20h6M12 4v16"/>',
+ palette:'<path d="M12 22a10 10 0 1 1 10-10c0 2.2-1.8 3-3.5 3H16a2 2 0 0 0-1.4 3.4A2 2 0 0 1 13 22z"/><circle cx="7.5" cy="10.5" r=".5"/><circle cx="10.5" cy="7" r=".5"/><circle cx="15" cy="7.5" r=".5"/>',
+ bucket:'<path d="m19 11-8-8-8.6 8.6a2 2 0 0 0 0 2.8l5.2 5.2a2 2 0 0 0 2.8 0zM5 2l5 5M2 13h15M22 20a2 2 0 1 1-4 0c0-1.6 1.7-2.4 2-4 .3 1.6 2 2.4 2 4z"/>',
+ square:'<rect x="3" y="3" width="18" height="18" rx="2"/>',
+ move:'<path d="m5 9-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>',
+ undo:'<path d="M9 14 4 9l5-5M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>',
+ check:'<path d="M20 6 9 17l-5-5"/>',
+ notes:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7zM14 2v4a2 2 0 0 0 2 2h4M8 13h8M8 17h6"/>',
+ spark:'<path d="M12 3l1.9 5.8L20 10l-6.1 1.2L12 17l-1.9-5.8L4 10l6.1-1.2z"/>',
+ bold:'<path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/>',
+ align:'<path d="M15 12H3M17 18H3M21 6H3"/>',
+ trash:'<path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>'
+};
+const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+const q=new URLSearchParams(location.search);
+const S={screen:q.get('screen')||'filters',variant:(q.get('variant')||'A').toUpperCase(),dirty:true,sheet:null,tool:null,tab:'Text',notesOpen:false,notesTab:'Notes',notes:"Open with the overdue total, then the three customers that make up most of it.\nHarbor Foods pays late every quarter; mention the new reminder schedule.\nEnd on the November target."};
+const SCREENS={filters:'Dashboard filters',editor:'Slide editor',notes:'Slide notes'};
+const status=`<div class="status"><span>9:41</span><span aria-hidden="true">5G ▮▮▮</span></div>`;
+const appbar=(title,right='')=>`<div class="appbar"><button class="ib" aria-label="Open menu">${ic('menu')}</button><div class="ttl">${title}</div>${right}<button class="ib" aria-label="Agent">${ic('spark')}</button></div>`;
+const dashBody=`<div class="pad" style="display:grid;gap:12px;padding-top:4px">
+  <div class="card"><div class="cap">Overdue</div><div class="kpi">S$ 48,210.00</div><div class="cap">14 invoices</div></div>
+  <div class="card"><div style="font-weight:600;font-size:.9375rem">Collected by month</div><div class="bars">${[38,52,44,61,57,70].map((h,i)=>`<i class="${i==5?'hi':''}" style="height:${h}%"></i>`).join('')}</div><div class="axis"><span>Jun</span><span>Aug</span><span>Nov</span></div></div>
+  <div class="card"><div style="font-weight:600;font-size:.9375rem">Largest overdue</div><div class="cap" style="margin-top:6px">Harbor Foods · S$ 21,400.00</div></div></div>`;
+const summary='All time · Customer: Harbor Foods · Overdue';
+
+function filtersSheet(){return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Filters"><div class="grab"></div>
+ <header><h2>Filters</h2><button class="ib" data-act="close" aria-label="Close">${ic('x')}</button></header>
+ <div class="body">
+  ${S.variant==='B'?`<div class="flabel" style="margin:4px 0 8px">View</div><div class="list">${['Dashboard filters','Q3 overdue','All customers'].map((v,i)=>`<button><span class="radio ${i==0?'on':''}"></span><span style="flex:1">${v}</span>${i==1?'<span class="cap">Default</span>':''}</button>`).join('')}</div>`:''}
+  <div class="field"><label>Date range</label><div class="input">All time ${ic('down','sm')}</div></div>
+  <div class="field"><label>Customer</label><div class="input">Harbor Foods ${ic('down','sm')}</div></div>
+  <div class="field"><label>Status</label><div class="input">Overdue ${ic('down','sm')}</div></div>
+  <button class="btn ghost" style="padding-left:0">${ic('plus','sm')} Add filter</button>
+ </div>
+ <footer>${S.variant==='B'?`<button class="btn" data-act="save">Save as default</button><button class="btn primary" data-act="close">Show results</button>`:`<button class="btn" data-act="clear">Clear filters</button><button class="btn primary" data-act="close">Show results</button>`}</footer></div>`}
+
+function viewSheet(){return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Views"><div class="grab"></div>
+ <header><h2>Views</h2><button class="ib" data-act="close" aria-label="Close">${ic('x')}</button></header>
+ <div class="body"><div class="list">${['Dashboard filters','Q3 overdue','All customers'].map((v,i)=>`<button data-act="close"><span class="radio ${i==0?'on':''}"></span><span style="flex:1">${v}</span>${i==1?'<span class="cap">Default</span>':''}</button>`).join('')}</div>
+ <div style="display:grid;gap:4px;margin-top:12px"><button class="btn ghost" style="justify-content:flex-start">${ic('plus','sm')} Save current filters as a view</button><button class="btn ghost" style="justify-content:flex-start">${ic('check','sm')} Make this view the default</button></div></div></div>`}
+
+function moreSheet(){return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Dashboard actions"><div class="grab"></div>
+ <div class="body" style="padding-top:8px"><div class="list"><button data-act="close">${ic('pencil')}<span>Edit dashboard</span></button><button data-act="close">${ic('plus')}<span>Add panel</span></button><button data-act="close">${ic('trash')}<span style="color:var(--danger)">Delete dashboard</span></button></div></div></div>`}
+
+function filters(){
+ const V=S.variant; let head='',sheet='';
+ const titleRow=(acts)=>`<div class="row" style="align-items:flex-start;justify-content:space-between"><div style="min-width:0"><h1 class="h-title">Receivables overview</h1><div class="cap" style="margin-top:2px">Figures as of 10 Nov 2026, 04:49</div></div><div class="row" style="gap:0;margin:-6px -10px 0 0">${acts}</div></div>`;
+ if(V==='A'){
+  head=`<div class="pad" style="display:grid;gap:12px">${titleRow(`<button class="ib" aria-label="Edit dashboard">${ic('pencil')}</button><button class="ib" aria-label="More" data-act="more">${ic('more')}</button>`)}
+   <div class="seg"><button data-act="views"><span class="lbl">View</span><span class="val">Dashboard filters</span>${ic('down','sm')}</button><button data-act="filters" style="gap:6px">${ic('sliders','sm')}<span style="font-weight:600">Filters</span><span class="count">2</span></button></div>
+   <div class="chips"><span class="chip" style="padding-right:12px">All time</span><span class="chip set">Harbor Foods<button class="x" aria-label="Remove Customer filter">${ic('x','sm')}</button></span><span class="chip set">Overdue<button class="x" aria-label="Remove Status filter">${ic('x','sm')}</button></span></div>
+   ${S.dirty?`<div class="unsaved" style="border-top:1px solid var(--hair);margin-top:-4px"><span class="row" style="gap:8px"><span class="dot"></span>Not saved as default</span><button class="btn text" data-act="save">Save as default</button></div>`:''}</div>`;
+ } else if(V==='B'){
+  head=`<div class="pad" style="padding-bottom:8px">${titleRow(`<button class="ib" aria-label="More" data-act="more">${ic('more')}</button>`)}</div>
+   <div class="sumbar"><button class="sumbtn" data-act="filters"><span style="flex:1;min-width:0"><span class="t" style="display:flex;align-items:center;gap:6px">${S.dirty?'<span class="dot" aria-label="Not saved as default"></span>':''}Dashboard filters</span><span class="s" style="display:block">${summary}</span></span><span class="row" style="gap:6px;flex:none"><span class="count">2</span>${ic('sliders')}</span></button></div>`;
+ } else {
+  head=`<div class="pad" style="display:grid;gap:12px">${titleRow(`<button class="ib" aria-label="Edit dashboard">${ic('pencil')}</button><button class="ib" aria-label="More" data-act="more">${ic('more')}</button>`)}
+   <div class="chips"><button class="chip view" data-act="views">Dashboard filters ${ic('down','sm')}</button><button class="chip" style="padding-right:12px" data-act="filters">All time</button><span class="chip set">Customer: Harbor Foods<button class="x" aria-label="Remove Customer filter">${ic('x','sm')}</button></span><span class="chip set">Overdue<button class="x" aria-label="Remove Status filter">${ic('x','sm')}</button></span><button class="chip add" data-act="filters">${ic('plus','sm')} Filter</button></div></div>`;
+ }
+ if(S.sheet==='filters')sheet=filtersSheet(); if(S.sheet==='views')sheet=viewSheet(); if(S.sheet==='more')sheet=moreSheet();
+ const bar=(V==='C'&&S.dirty&&!S.sheet)?`<div class="bottombar" role="status"><span style="flex:1;font-size:.875rem;color:var(--idle)">Changes not saved as default</span><button class="btn ghost" data-act="discard">Discard</button><button class="btn primary" data-act="save">Save</button></div>`:'';
+ return status+appbar('Dashboards')+`<div class="scroll">${head}${dashBody}<div style="height:${bar?96:24}px"></div></div>${bar}${sheet}`;
+}
+
+function slideEl(sel){return `<div class="slide" aria-label="Slide 2: Collections, third quarter"><div class="s-title">Collections rose 12% in the third quarter${sel?'<span class="sel"><b></b><b></b><b></b><b></b></span>':''}</div><div class="s-text">Harbor Foods and two others make up 61% of what is still overdue.</div><div class="s-chart">${[40,55,48,72].map(h=>`<i style="height:${h}%"></i>`).join('')}</div></div>`}
+function toolPanel(t){
+ const colors=['#ffffff','#111827','#1e3a8a','#2563eb','#047857','#b91c1c','#f59e0b','#6b7280'];
+ if(t==='Color'||t==='Text')return `<div class="flabel" style="margin-bottom:8px">Text color</div><div class="swatches">${colors.map((c,i)=>`<button class="sw ${i==0?'on':''}" style="background:${c}" aria-label="Color ${c}"></button>`).join('')}</div><div class="row" style="margin-top:14px;gap:8px"><button class="pill">${ic('bold','sm')} Bold</button><button class="pill">${ic('align','sm')} Left</button><button class="pill">Size 32</button></div>`;
+ if(t==='Fill')return `<div class="flabel" style="margin-bottom:8px">Fill</div><div class="swatches">${['transparent',...colors].map((c,i)=>`<button class="sw ${i==0?'on':''}" style="background:${c==='transparent'?'repeating-linear-gradient(45deg,#fff 0 6px,#f3f4f6 6px 12px)':c}" aria-label="Fill ${c}"></button>`).join('')}</div>`;
+ if(t==='Border')return `<div class="flabel" style="margin-bottom:8px">Border</div><div class="segtabs" role="tablist">${['None','1 px','2 px','4 px'].map((b,i)=>`<button role="tab" aria-selected="${i==0}">${b}</button>`).join('')}</div>`;
+ if(t==='Position'||t==='Box')return `<div class="flabel" style="margin-bottom:8px">Position</div><div class="row" style="gap:8px;flex-wrap:wrap">${['X 40','Y 32','W 880','H 88'].map(v=>`<span class="input" style="width:80px;min-height:44px;font-variant-numeric:tabular-nums">${v}</span>`).join('')}</div><div class="help" style="margin-top:8px">Drag on the slide, or set exact values. Snaps to 8.</div>`;
+ return `<div class="list"><button>${ic('pencil')}Edit text</button><button>${ic('undo')}Use theme style</button><button>${ic('trash')}<span style="color:var(--danger)">Delete element</span></button></div>`;
+}
+function editor(){
+ const V=S.variant;
+ const top=`<div class="appbar"><button class="ib" aria-label="Back to decks">${ic('left')}</button><div class="ttl">Q3 collections</div><button class="ib" aria-label="Undo">${ic('undo')}</button>${V!=='C'?`<button class="btn primary" style="height:40px;padding:0 12px">${ic('play','sm')} Present</button>`:''}</div>`;
+ const thumbs=`<div class="thumbs">${[1,2,3,4,5].map(n=>`<div class="${n==2?'on':''}">${n}</div>`).join('')}</div>`;
+ const hint=`<div class="help" style="padding:10px 16px 0">Drag to move. Drag a corner to resize, or tap Position.</div>`;
+ let bottom='',sheet='';
+ if(V==='A'){
+  const tools=[['Text','type'],['Fill','bucket'],['Border','square'],['Position','move'],['More','more']];
+  bottom=`<div class="dock"><div class="tools">${tools.map(([n,i])=>`<button class="tool" data-tool="${n}" aria-pressed="${S.tool===n}">${ic(i)}${n}</button>`).join('')}</div></div>`;
+  if(S.tool)sheet=`<div class="sheet" style="bottom:82px;border-radius:16px;margin:0 8px;left:0;right:0;box-shadow:var(--menu);border:1px solid var(--hair)" role="dialog" aria-label="${S.tool}"><div class="body" style="padding:14px 16px">${toolPanel(S.tool)}</div></div>`;
+ } else if(V==='B'){
+  bottom=S.sheet==='format'?'':`<button class="fab" data-act="format">${ic('sliders','sm')} Format title</button>`;
+  if(S.sheet==='format')sheet=`<div class="sheet" style="max-height:52%" role="dialog" aria-label="Format title"><div class="grab"></div><header><h2>Format title</h2><button class="ib" data-act="close" aria-label="Done">${ic('check')}</button></header><div class="body"><div class="segtabs" role="tablist" style="margin-bottom:14px">${['Text','Box','Position'].map(t=>`<button role="tab" data-tab="${t}" aria-selected="${S.tab===t}">${t}</button>`).join('')}</div>${S.tab==='Box'?toolPanel('Fill')+'<div style="height:14px"></div>'+toolPanel('Border'):toolPanel(S.tab)}</div></div>`;
+ } else {
+  bottom=`<div class="dock" style="padding:0 0 24px"><div class="pill-row" style="border-bottom:1px solid var(--hair)"><button class="pill"><span class="swatch-dot" style="background:#fff"></span>Color</button><button class="pill">Size 32</button><button class="pill" aria-label="Bold">${ic('bold','sm')}</button><button class="pill" aria-label="Align">${ic('align','sm')}</button><button class="pill">${ic('bucket','sm')} Fill</button><button class="pill">${ic('square','sm')} Border</button><button class="pill">${ic('move','sm')} Position</button></div><div class="row" style="padding:8px 16px 0;justify-content:space-between"><span class="counter">Slide 2 of 5</span><button class="btn primary" style="height:44px">${ic('play','sm')} Present</button></div></div>`;
+ }
+ return status+top+`<div class="scroll" style="background:var(--panel)">${thumbs}<div style="padding:0 16px">${slideEl(true)}</div>${hint}<div class="pad"><div class="card" style="font-size:.875rem;color:var(--muted)">Title selected. Tap outside the slide to deselect.</div></div><div style="height:200px"></div></div>${bottom}${sheet}`;
+}
+
+function notes(){
+ const V=S.variant; const n=S.notes; const cnt=`${n.length} / 2,000`;
+ const ta=(rows)=>`<textarea class="input" rows="${rows}" aria-label="Speaker notes" data-notes>${n}</textarea>`;
+ const helper=`<div class="row" style="justify-content:space-between;margin-top:6px"><span class="help">Only you see notes. They go to PowerPoint with the deck.</span><span class="counter">${cnt}</span></div>`;
+ const page=`<div class="appbar"><button class="ib" aria-label="Back to decks">${ic('left')}</button><div class="ttl">Q3 collections</div><button class="btn primary" style="height:40px;padding:0 12px">${ic('play','sm')} Present</button></div>`;
+ if(V==='C'){
+  return status+page+`<div class="scroll" style="background:var(--panel);display:flex;flex-direction:column"><div class="thumbs">${[1,2,3,4,5].map(x=>`<div class="${x==2?'on':''}">${x}</div>`).join('')}</div><div style="padding:0 16px">${slideEl(false)}</div><div style="padding:10px 16px"><button class="btn" style="width:100%">${ic('pencil','sm')} Edit slide</button></div><div class="notespane" style="background:#fff;flex:1;border-radius:16px 16px 0 0;margin-top:4px"><div class="row" style="justify-content:space-between;min-height:40px"><span class="flabel">${ic('notes','sm')} Speaker notes</span><span class="saved">${ic('check','sm')} Saved</span></div>${ta(7)}${helper}</div></div>`;
+ }
+ let sheet='';
+ if(V==='A'){
+  sheet=`<div class="scrim"></div><div class="sheet" style="max-height:92%;height:92%" role="dialog" aria-label="Edit slide 2"><div class="grab"></div><header><h2>Edit slide 2</h2><button class="ib" aria-label="Close">${ic('x')}</button></header><div class="body"><div class="segtabs" role="tablist" style="margin-bottom:12px">${['Slide','Notes'].map(t=>`<button role="tab" data-ntab="${t}" aria-selected="${S.notesTab===t}">${t}</button>`).join('')}</div>
+   ${S.notesTab==='Notes'?`${ta(12)}${helper}`:`<div class="field"><label>Title</label><div class="input">Collections rose 12% in the third quarter</div></div><div class="field"><label>Text</label><div class="input" style="min-height:88px;align-items:flex-start">Harbor Foods and two others make up 61% of what is still overdue.</div></div><div class="field"><label>Chart</label><div class="input">Collected by month ${ic('right','sm')}</div></div>`}</div><footer><button class="btn">Cancel</button><button class="btn primary">Save</button></footer></div>`;
+ } else {
+  sheet=`<div class="scrim"></div><div class="sheet" style="max-height:92%;height:92%" role="dialog" aria-label="Edit slide 2"><div class="grab"></div><header><h2>Edit slide 2</h2><button class="ib" aria-label="Close">${ic('x')}</button></header><div class="body">
+   <div class="field"><label>Title</label><div class="input">Collections rose 12% in the third quarter</div></div>
+   <div class="field"><label>Text</label><div class="input" style="min-height:88px;align-items:flex-start">Harbor Foods and two others make up 61% of what is still overdue.</div></div>
+   <div class="field"><label>Chart</label><div class="input">Collected by month ${ic('right','sm')}</div></div>
+   <div class="flabel" style="margin:16px 0 8px">Speaker notes</div>
+   <button class="disclosure" data-act="opennotes">${ic('notes')}<span style="flex:1;min-width:0"><span style="font-weight:600;font-size:.9375rem">3 lines</span><span class="p">${n.replace(/\n/g,' ')}</span></span>${ic('right')}</button></div><footer><button class="btn">Cancel</button><button class="btn primary">Save</button></footer></div>
+   ${S.notesOpen?`<div class="full" role="dialog" aria-label="Speaker notes">${status}<div class="appbar"><button class="ib" data-act="closenotes" aria-label="Back">${ic('left')}</button><div class="ttl">Speaker notes · Slide 2</div><button class="btn text" data-act="closenotes">Done</button></div><div class="pad" style="flex:1;display:flex;flex-direction:column">${ta(16)}${helper}</div></div>`:''}`;
+ }
+ return status+page+`<div class="scroll" style="background:var(--panel)"><div class="thumbs">${[1,2,3,4,5].map(x=>`<div class="${x==2?'on':''}">${x}</div>`).join('')}</div><div style="padding:0 16px">${slideEl(false)}</div></div>`+sheet;
+}
+
+const NOTES={
+ filters:{A:{name:'A, one control row',what:['Edit and More become plain icon buttons in the title row, no outlines.','View and Filters join in one segmented control, one border instead of two boxes.','The summary line becomes removable chips that scroll sideways.','"Not saved as default" is a quiet row with a text button, not an outlined button.'],cost:'Still three rows above the panels; the segmented control holds a long view name in about 180 px.'},
+  B:{name:'B, one summary bar and one sheet',what:['The title row keeps only More; Edit dashboard moves into it.','One tinted bar, sticky while the panels scroll, says the view and the filters in words.','Tap the bar: one sheet holds the view, every filter and Save as default.','The unsaved state is a blue dot in the bar.'],cost:'Removing one filter takes two taps (open the sheet, change it). Saving as default sits inside the sheet.'},
+  C:{name:'C, one chip row',what:['Everything about filters lives in one scrolling chip row: the view, the date, each filter with its own remove button, and + Filter.','Edit and More stay as plain icons in the title row.','Unsaved changes raise a bottom bar with Discard and Save, only while there is a change.'],cost:'Some chips sit off screen; the bottom bar covers about 80 px of panels while a change is unsaved.'}},
+ editor:{A:{name:'A, one-row tool dock',what:['Present moves to the top bar, so nothing can cover it.','The dock is one row of five labelled tools (Text, Fill, Border, Position, More), 52 px targets.','A tool opens a small floating card above the dock; the slide stays in view.','The hint uses phone words: tap Position, drag a corner.'],cost:'Two taps to reach a color; More hides Edit text, theme style and Delete.'},
+  B:{name:'B, Format button and one sheet',what:['Nothing is docked. A Format button floats under the slide while an element is selected.','Format opens a half-height sheet with Text, Box and Position tabs; the slide stays visible above it.','Present stays in the top bar.'],cost:'The sheet covers the lower half of the page while open; one more tap than A for each change.'},
+  C:{name:'C, scrolling chips above the page bar',what:['Two fixed rows only: a scrolling row of labelled style chips, then a page bar with the slide count and Present.','The color chip shows the current color, the size chip the current size.','Present stays at the bottom, where today\'s users find it, and is never covered.'],cost:'Some chips sit off screen; 128 px of the page is fixed at the bottom.'}},
+ notes:{A:{name:'A, Slide and Notes tabs in the sheet',what:['Edit slide gets two tabs, Slide and Notes.','Notes take the whole sheet height, with the helper and a 2,000 character count below the field.'],cost:'You switch tabs to see the slide fields and the notes together.'},
+  B:{name:'B, a notes row that opens a full screen',what:['The sheet shows Speaker notes as one row with a two-line preview.','Tap it: a full-screen notes editor with Back and Done, the count below.'],cost:'One more screen; the preview is the only notes view inside the sheet.'},
+  C:{name:'C, a notes pane under the slide',what:['No sheet for notes. The page shows the slide, Edit slide, then a notes pane you type in, as PowerPoint and Keynote do on a phone.','Saves on pause and says Saved.'],cost:'The notes pane shares the page with the slide; long notes scroll the page.'}}
+};
+function render(){
+ const r={filters,editor,notes}[S.screen]();
+ document.getElementById('phone').innerHTML=r;
+ document.getElementById('tabs').innerHTML=Object.entries(SCREENS).map(([k,v])=>`<button aria-pressed="${S.screen===k}" data-screen="${k}">${v}</button>`).join('');
+ document.getElementById('switcher').innerHTML='<span>Variant</span>'+['A','B','C'].map(v=>`<button aria-pressed="${S.variant===v}" data-variant="${v}">${v}</button>`).join('');
+ const n=NOTES[S.screen][S.variant];
+ document.getElementById('notes').innerHTML=`<h2>${SCREENS[S.screen]}: ${n.name}</h2><div class="cap">Phone, 390 by 844. Desktop stays as built.</div><h3>What changes</h3><ul>${n.what.map(w=>`<li>${w}</li>`).join('')}</ul><h3>What it costs</h3><p style="margin:0">${n.cost}</p><h3>Try</h3><p style="margin:0">${{filters:'Tap View, Filters, More, Save. Unsaved state: '+(S.dirty?'on':'off')+'.',editor:S.variant==='A'?'Tap a tool in the dock.':S.variant==='B'?'Tap Format, then the tabs.':'Scroll the chip row.',notes:S.variant==='A'?'Tap the Notes tab and type.':S.variant==='B'?'Tap the notes row.':'Type in the notes pane.'}[S.screen]}</p><h3>State</h3><div class="state">${JSON.stringify({screen:S.screen,variant:S.variant,unsaved:S.dirty,open:S.sheet||S.tool||(S.notesOpen?'notes':null),notesLength:S.notes.length},null,1)}</div>`;
+ const u=new URL(location);u.searchParams.set('screen',S.screen);u.searchParams.set('variant',S.variant);history.replaceState(null,'',u);
+}
+document.addEventListener('click',e=>{
+ const t=e.target.closest('[data-screen],[data-variant],[data-act],[data-tool],[data-tab],[data-ntab]');if(!t)return;
+ const d=t.dataset;
+ if(d.screen){S.screen=d.screen;S.sheet=null;S.tool=null;S.notesOpen=false}
+ if(d.variant){S.variant=d.variant;S.sheet=null;S.tool=null;S.notesOpen=false}
+ if(d.tool){S.tool=S.tool===d.tool?null:d.tool}
+ if(d.tab)S.tab=d.tab; if(d.ntab)S.notesTab=d.ntab;
+ const a=d.act;
+ if(a==='filters'||a==='views'||a==='more'||a==='format')S.sheet=a;
+ if(a==='close')S.sheet=null;
+ if(a==='save'||a==='discard'){S.dirty=false;S.sheet=null}
+ if(a==='clear'){S.dirty=true}
+ if(a==='opennotes')S.notesOpen=true; if(a==='closenotes')S.notesOpen=false;
+ render();
+});
+document.addEventListener('input',e=>{if(e.target.matches('[data-notes]')){S.notes=e.target.value;const c=e.target.parentElement.querySelector('.counter');if(c)c.textContent=`${S.notes.length} / 2,000`}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){S.sheet=null;S.tool=null;S.notesOpen=false;render()}});
+render();
+</script>
+</body>
+</html>

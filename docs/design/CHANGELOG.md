@@ -2,6 +2,15 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-11
+
+### Added, the phone adapt and secondary button prototypes, owner picks
+
+- Phone adapt (`czjw.159`, `czjw.156`): at 390 px, the dashboard header takes variant A (one segmented View and Filters control, filter chips below), the slide editor takes variant A (Present in the top bar, one dock row of five labelled tools), and the notes sheet takes variant C. Desktop stays as built.
+- Secondary button (`6wz1.99`): variant C, a light hairline with a 1 px lift.
+- The owner picked all four on 2026-11-11. No captures.
+- Files: `prototypes/phone-adapt.prototype.html` and `prototypes/secondary-button.prototype.html`. Record: `imports/2026-11-11-phone-adapt-and-secondary-button.md`.
+
 ## 2026-11-09
 
 ### Added, the wave 5 prototypes: slide editor controls, presenter window and dashboard filters
