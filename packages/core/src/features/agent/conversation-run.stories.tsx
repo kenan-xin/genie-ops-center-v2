@@ -304,8 +304,13 @@ export const TryAgainFails: StoryObj<typeof ChatWithRun> = {
 
     const tryAgain = await canvas.findByRole("button", { name: "Try again" });
 
-    await userEvent.click(tryAgain);
-    await waitFor(() => expect(tryAgain).toBeDisabled());
+    // By keyboard: the pending button keeps focus, so Enter does not drop it on the page.
+    tryAgain.focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() =>
+      expect(tryAgain).toHaveAttribute("aria-disabled", "true")
+    );
+    await expect(tryAgain).toHaveFocus();
 
     await userEvent.click(tryAgain);
     await expect(retryPending).toHaveBeenCalledOnce();
@@ -314,7 +319,10 @@ export const TryAgainFails: StoryObj<typeof ChatWithRun> = {
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "The work could not start again. Try again."
     );
-    await waitFor(() => expect(tryAgain).toBeEnabled());
+    await waitFor(() =>
+      expect(tryAgain).not.toHaveAttribute("aria-disabled", "true")
+    );
+    await expect(tryAgain).toHaveFocus();
   },
 };
 

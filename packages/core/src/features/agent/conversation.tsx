@@ -453,6 +453,7 @@ export function Conversation(props: {
                   variant="secondary"
                   size="sm"
                   disabled={run.retrying}
+                  focusableWhenDisabled
                   onClick={run.onTryAgain}
                 >
                   Try again
