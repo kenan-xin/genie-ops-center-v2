@@ -1,7 +1,7 @@
 "use client";
 
 import { Kbd } from "@genie/ui";
-import { useDebouncedCallback } from "@tanstack/react-pacer";
+import { useDebouncer } from "@tanstack/react-pacer";
 import {
   type CSSProperties,
   type KeyboardEvent,
@@ -191,20 +191,23 @@ export function SlideStage(props: SlideStageProps) {
     readonly box: ElementBox;
   } | null>(null);
 
-  const commitNudge = useDebouncedCallback(
-    () => {
-      const run = nudgeRun.current;
+  function commitRun(): void {
+    const run = nudgeRun.current;
 
-      nudgeRun.current = null;
+    nudgeRun.current = null;
 
-      if (run !== null) {
-        latest.current.onStep(
-          boxStep(latest.current.slide.id, run.index, run.box)
-        );
-      }
-    },
-    { wait: NUDGE_RUN_MS }
-  );
+    if (run !== null) {
+      latest.current.onStep(
+        boxStep(latest.current.slide.id, run.index, run.box)
+      );
+    }
+  }
+
+  // Pacer cancels a waiting call on unmount by default; a slide switch must still save the run.
+  const nudge = useDebouncer(commitRun, {
+    wait: NUDGE_RUN_MS,
+    onUnmount: (debouncer) => debouncer.flush(),
+  });
 
   function pointerDown(
     event: PointerEvent<HTMLElement>,
@@ -217,6 +220,8 @@ export function SlideStage(props: SlideStageProps) {
     if (rect === undefined || box === undefined || props.saving === true)
       return;
 
+    // The box above came from the preview, so the gesture starts where the run left the element.
+    nudge.flush();
     event.stopPropagation();
     onSelect(index);
     start.current = { index, box };
@@ -271,23 +276,28 @@ export function SlideStage(props: SlideStageProps) {
       return;
     }
 
-    const nudge = resolveCanvasNudge(
+    const step = resolveCanvasNudge(
       { key: event.key, shiftKey: event.shiftKey },
       NUDGE
     );
 
+    // Another element's waiting run saves first, with its own box.
+    if (nudgeRun.current !== null && nudgeRun.current.index !== index) {
+      nudge.flush();
+    }
+
     const element = slide.elements[index];
     const from = nudgeRun.current?.box ?? boxOf(index);
 
-    if (nudge === null || element === undefined || from === undefined) return;
+    if (step === null || element === undefined || from === undefined) return;
 
     event.preventDefault();
 
-    const box = movedBox(from, nudge.delta, element.kind);
+    const box = movedBox(from, step.delta, element.kind);
 
     nudgeRun.current = { index, box };
     setPreview({ index, box });
-    commitNudge();
+    nudge.maybeExecute();
   }
 
   return (

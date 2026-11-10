@@ -21,6 +21,7 @@ import {
   type DeckContent,
   removeOwnDecks,
   resetChangeDeck,
+  undoLengthOf,
 } from "./slides-support.ts";
 import { closeSurfaceDatabase, openSurfaceAgent } from "./surface-support.ts";
 
@@ -207,6 +208,52 @@ test("a drag and a resize each make one Undo entry", async ({ page }) => {
       .poll(async () => (await text.boundingBox())?.x, FIRST_PAINT)
       .toBeCloseTo(start?.x ?? 0, 0);
     await expect(undoButton(page)).toBeDisabled();
+  });
+});
+
+test("arrow presses on the title and then the text within 800 ms move each one", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 120_000);
+
+  await onFixedDeck(page, async () => {
+    const title = page.getByRole("button", {
+      name: /^Title "Collections are on track for/,
+    });
+
+    const text = textElement(page);
+    const titleStart = await title.boundingBox();
+    const textStart = await text.boundingBox();
+
+    if (titleStart === null || textStart === null) {
+      throw new Error("the title or the text has no box");
+    }
+
+    await title.focus();
+    await page.keyboard.press("ArrowRight");
+    await page.keyboard.press("Tab");
+    await expect(text).toBeFocused();
+    await page.keyboard.press("ArrowDown");
+
+    // The stored row is the proof: an Undo press could land while the text's run still waits.
+    await expect
+      .poll(() => undoLengthOf(SLIDES_CHANGE_DECK_ID), FIRST_PAINT)
+      .toBe(2);
+
+    // One preview (P16-2): the title shows its saved box only after the page reads the deck again.
+    await expect
+      .poll(async () => (await title.boundingBox())?.x, FIRST_PAINT)
+      .toBeGreaterThan(titleStart.x + 1);
+    await expect
+      .poll(async () => (await text.boundingBox())?.y, FIRST_PAINT)
+      .toBeGreaterThan(textStart.y + 1);
+    await expect
+      .poll(
+        async () =>
+          Math.abs(((await text.boundingBox())?.x ?? Infinity) - textStart.x),
+        FIRST_PAINT
+      )
+      .toBeLessThanOrEqual(1);
   });
 });
 

@@ -174,3 +174,99 @@ export const ArrowKeysNudge: Story = {
     await expect(text).toHaveAttribute("aria-pressed", "false");
   },
 };
+
+// The text's run saves when the chart's press starts, so each element keeps its own box.
+export const NudgeTwoElements: Story = {
+  name: "Arrow presses on two elements make one step each",
+  globals: desktop,
+  play: async ({ args, canvas }) => {
+    canvas.getByRole("button", { name: TEXT }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    canvas.getByRole("button", { name: "The chart" }).focus();
+    await userEvent.keyboard("{ArrowDown}");
+
+    await waitFor(() => expect(args.onStep).toHaveBeenCalledTimes(2), {
+      timeout: 2000,
+    });
+    await expect(args.onStep).toHaveBeenNthCalledWith(1, {
+      op: "change-element",
+      slideId: textWithChartSlide.id,
+      index: 1,
+      box: { x: 48, y: 136, w: 320, h: 348 },
+    });
+    await expect(args.onStep).toHaveBeenNthCalledWith(2, {
+      op: "change-element",
+      slideId: textWithChartSlide.id,
+      index: 2,
+      box: { x: 384, y: 144, w: 536, h: 348 },
+    });
+  },
+};
+
+// The run saves when the drag starts, and the drag starts from x 48: 48 + 104, 136 + 48.
+export const NudgeThenDrag: Story = {
+  name: "A drag right after an arrow press keeps the drag",
+  globals: desktop,
+  args: { selected: null },
+  play: async ({ args, canvas, canvasElement }) => {
+    const text = canvas.getByRole("button", { name: TEXT });
+
+    text.focus();
+    await userEvent.keyboard("{ArrowRight}");
+    drag(text, canvasElement, 104, 48);
+
+    await waitFor(() => expect(args.onStep).toHaveBeenCalledTimes(2));
+    await expect(args.onStep).toHaveBeenNthCalledWith(1, {
+      op: "change-element",
+      slideId: textWithChartSlide.id,
+      index: 1,
+      box: { x: 48, y: 136, w: 320, h: 348 },
+    });
+    await expect(args.onStep).toHaveBeenNthCalledWith(2, {
+      op: "change-element",
+      slideId: textWithChartSlide.id,
+      index: 1,
+      box: { x: 152, y: 184, w: 320, h: 348 },
+    });
+
+    // Past the 800 ms run: no late step lands on top of the drag.
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    await expect(args.onStep).toHaveBeenCalledTimes(2);
+  },
+};
+
+// A slide switch unmounts the stage within the run; the press is still saved.
+export const NudgeThenUnmount: Story = {
+  name: "An arrow press is saved when the stage closes",
+  globals: desktop,
+  render: function Render(args) {
+    const [open, setOpen] = useState(true);
+
+    return (
+      <div className="grid gap-2 p-4">
+        <button type="button" onClick={() => setOpen(false)}>
+          Close
+        </button>
+        {open ? (
+          <SlideStage {...args} onStep={(step) => args.onStep(step)} />
+        ) : null}
+      </div>
+    );
+  },
+  play: async ({ args, canvas }) => {
+    canvas.getByRole("button", { name: TEXT }).focus();
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.click(canvas.getByRole("button", { name: "Close" }));
+
+    // Under the 800 ms run, so only the save on unmount can pass.
+    await waitFor(() => expect(args.onStep).toHaveBeenCalledTimes(1), {
+      timeout: 400,
+    });
+    await expect(args.onStep).toHaveBeenCalledWith({
+      op: "change-element",
+      slideId: textWithChartSlide.id,
+      index: 1,
+      box: { x: 48, y: 136, w: 320, h: 348 },
+    });
+  },
+};

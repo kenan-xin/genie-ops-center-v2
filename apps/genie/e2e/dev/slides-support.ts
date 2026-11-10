@@ -50,6 +50,16 @@ export async function closeSlidesDatabase(): Promise<void> {
   tenantContext = undefined;
 }
 
+/** How many Undo entries the stored deck holds: one per save that reached the database. */
+export async function undoLengthOf(id: string): Promise<number> {
+  const { rows } = await context().db.$client.query<{ length: number }>(
+    "select jsonb_array_length(undo) as length from deck where id = $1",
+    [id]
+  );
+
+  return rows[0]?.length ?? 0;
+}
+
 /**
  * Mirrors `noOverflow` in `slide-canvas.stories.tsx` (B4.2), for one slide canvas: every box that
  * is not a chart, and every descendant that clips or scrolls, must not hide content. A table's
