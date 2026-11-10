@@ -1635,6 +1635,23 @@ describe("the gate:merge runner", () => {
     }
   });
 
+  // nx turns SIGINT and SIGTERM into exit 130 and 143, so a killed background
+  // gate must stop there, not go on into the e2e stages.
+  it("stops at a stage that a signal ended", () => {
+    const root = fakeWorkspace({
+      "ci:develop": "exit 143 && echo after-the-kill",
+    });
+
+    try {
+      const result = runGateMerge(root);
+
+      expect(result.status).toBe(143);
+      expect(result.stdout).not.toContain("after-the-kill");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it("exits 0 when every stage passes", () => {
     const root = fakeWorkspace({ "ci:develop": "echo a && echo b" });
 

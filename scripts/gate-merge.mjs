@@ -47,10 +47,13 @@ for (const [index, stage] of list.entries()) {
     stdio: "inherit",
   });
 
-  if (status === null) {
-    // A killed stage stops the gate, so that a stopped run does not go on.
-    console.log(`gate-merge: stage ${index + 1} ended by ${signal}, stopping`);
-    process.exit(1);
+  // A killed stage stops the gate, so that a stopped run does not go on. nx
+  // catches SIGINT and SIGTERM and exits 130 or 143 instead of by signal.
+  if (status === null || status > 128) {
+    console.log(
+      `gate-merge: stage ${index + 1} ended by ${signal ?? `exit ${status}`}, stopping`
+    );
+    process.exit(status ?? 1);
   }
 
   if (status !== 0) failed.push({ index, stage, status });
