@@ -16,9 +16,18 @@ import {
   OUT_OF_TOOLS_DASHBOARD_MESSAGE,
   QUESTION_DASHBOARD_NAME,
 } from "../../testing/analytics-chat.ts";
+import {
+  SLIDES_CHANGE_DECK_ID,
+  SLIDES_CHANGE_DECK_TITLE,
+} from "../../testing/slides-change.ts";
+import {
+  MONTHLY_DECK,
+  SLIDES_CHAT_MESSAGE,
+} from "../../testing/slides-chat.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
+  askQuestion,
   FIRST_PAINT,
   hideDevelopmentWidgets,
   openAgentPanel,
@@ -35,7 +44,11 @@ import {
   DEV_MODULES,
   SLIDES_PEOPLE,
 } from "./global-setup.ts";
-import { closeSlidesDatabase, removeOwnDecks } from "./slides-support.ts";
+import {
+  closeSlidesDatabase,
+  removeOwnDecks,
+  resetChangeDeck,
+} from "./slides-support.ts";
 import {
   closeSurfaceDatabase,
   handedOverFrom,
@@ -177,6 +190,10 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
 
         const seen = await countsUntil(() => slideButtons(page).count(), 5);
 
+        await expect(
+          surface.getByText("From Ask", { exact: true })
+        ).toBeVisible(FIRST_PAINT);
+
         expect(
           seen.some((count) => count > 0 && count < 5),
           `the deck showed ${JSON.stringify(seen)} slides on the way to 5`
@@ -190,6 +207,77 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
 
         await expectSurfaceChats(page, surface, handed.title);
         await expectAskHistory(page, askId, handed.id);
+      } finally {
+        await removeOwnDecks(SLIDES_PEOPLE.chat);
+      }
+    },
+    LOCK_WAIT
+  );
+});
+
+test("the Ask screen hands a deck over: the deck opens with its panel, and Ask shows the card", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await removeOwnDecks(SLIDES_PEOPLE.chat);
+
+      try {
+        await signInAs(page, SLIDES_PEOPLE.chat);
+        await resetChangeDeck(SLIDES_PEOPLE.chat);
+        await warm(
+          page,
+          `/m/slides/decks/${SLIDES_CHANGE_DECK_ID}`,
+          SLIDES_CHANGE_DECK_TITLE
+        );
+
+        // The shell posts on mount, so this response proves hydration: a Send before it can be lost.
+        const mounted = page.waitForResponse((response) =>
+          response.url().endsWith("/api/session/activity")
+        );
+
+        await page.goto("/ask");
+        await expect(
+          page.getByRole("textbox", { name: "Message", exact: true })
+        ).toBeVisible(FIRST_PAINT);
+        await mounted;
+
+        const askId = await askQuestion(page, SLIDES_CHAT_MESSAGE);
+
+        await expect(
+          page.getByRole("heading", { level: 1, name: MONTHLY_DECK.title })
+        ).toBeVisible(FIRST_PAINT);
+
+        // `AskRoute.onHandoff` opens the panel, so the deck arrives with its agent.
+        const surface = page.getByRole("region", { name: "Slides agent" });
+
+        await expect(surface).toBeVisible();
+        await expect(
+          surface.getByText("From Ask", { exact: true })
+        ).toBeVisible(FIRST_PAINT);
+        // Wait for the end, so the next handoff of this person finds no live run.
+        await expect(chip(surface, "Saved")).toBeVisible(FIRST_PAINT);
+
+        // Back in the Ask chat, the card shows how the run ended (Review Focus 5).
+        await page.goto(`/ask/${askId}`);
+
+        const card = page
+          .locator("div")
+          .filter({
+            has: page.getByRole("link", { name: `Open ${MONTHLY_DECK.title}` }),
+          })
+          .filter({ has: page.locator("details") })
+          .last();
+
+        await expect(card.getByText("Done", { exact: true })).toBeVisible(
+          FIRST_PAINT
+        );
+        await expect(
+          card.getByText("What Ask passed to the Slides agent", { exact: true })
+        ).toBeVisible();
       } finally {
         await removeOwnDecks(SLIDES_PEOPLE.chat);
       }
@@ -282,6 +370,10 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
         };
 
         const seen = await countsUntil(panels, 3);
+
+        await expect(
+          surface.getByText("From Ask", { exact: true })
+        ).toBeVisible(FIRST_PAINT);
 
         expect(
           seen.some((count) => count > 0 && count < 3),
