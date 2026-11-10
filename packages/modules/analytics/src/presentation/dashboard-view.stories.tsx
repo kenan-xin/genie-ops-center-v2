@@ -22,6 +22,8 @@ import {
   FILTER_VALUES,
   filtersDashboardPage,
   noChatDashboardPage,
+  notAppliedDashboardPage,
+  ownRangeDashboardPage,
   readOnlyDashboardPage,
   TWO_SET,
 } from "./__fixtures__/dashboards.ts";
@@ -1132,5 +1134,136 @@ export const EditOnPhone: Story = {
     await expect(
       await screen.findByRole("menuitem", { name: "Remove panel" })
     ).toBeInTheDocument();
+  },
+};
+
+// S7-46: a set filter that reaches none of a panel's datasets is named on that panel, and only
+// there; an empty filter in the bar excuses nothing (P15-4, P15-5).
+export const NotApplied: Story = {
+  name: "Not applied",
+  args: { view: notAppliedDashboardPage },
+  globals: desktop,
+  beforeEach: () => serve(notAppliedDashboardPage),
+  play: async ({ canvas }) => {
+    // The payments panel is the only one the invoice Region filter skips.
+    await expect(
+      await canvas.findByText("The Region filter does not apply to this panel.")
+    ).toBeVisible();
+    await expect(
+      canvas.queryByText("The Status filter does not apply to this panel.")
+    ).toBeNull();
+    // One line, on the panel it names, not on the invoice panels.
+    await expect(
+      canvas.getAllByText("The Region filter does not apply to this panel.")
+    ).toHaveLength(1);
+    await expect(
+      await canvas.findByRole("figure", { name: "Invoiced sales" })
+    ).toBeVisible();
+  },
+};
+
+// A panel that keeps its own range names it at its header end, and the dashboard range does not
+// move it (P15-10).
+export const OwnRange: Story = {
+  name: "Own range",
+  args: { view: ownRangeDashboardPage },
+  globals: desktop,
+  beforeEach: () => serve(ownRangeDashboardPage),
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText("This year · own range")
+    ).toBeVisible();
+
+    // Changing the dashboard range leaves the panel's own range as it was.
+    await userEvent.click(await canvas.findByLabelText("Date: Last 3 months"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "This month" })
+    );
+    await waitFor(() => expect(canvas.queryByRole("listbox")).toBeNull());
+    await expect(canvas.getByText("This year · own range")).toBeVisible();
+    await expect(canvas.queryByText("This month · own range")).toBeNull();
+    // The other panels take the dashboard range, so the chip is the only one of its kind.
+    await expect(canvas.getAllByText(/ · own range$/)).toHaveLength(1);
+  },
+};
+
+// The panel menu sets or clears the panel's own range, each one `change-panel` step (P15-10).
+export const OwnRangeMenu: Story = {
+  name: "Own range menu",
+  args: { view: ownRangeDashboardPage },
+  globals: desktop,
+  beforeEach: () => serve(ownRangeDashboardPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Collected this year" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Date range" })
+    );
+
+    // The current own range is off, so a pick never saves a no-op.
+    await expect(
+      await screen.findByRole("menuitem", { name: "This year" })
+    ).toHaveAttribute("data-disabled");
+    await userEvent.click(
+      screen.getByRole("menuitem", { name: "Last 6 months" })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [
+        {
+          op: "change-panel",
+          panelId: "p4",
+          ownRange: { preset: "last-6-months" },
+        },
+      ],
+    });
+
+    // "Use the dashboard range" clears it with a null.
+    changeDashboard.mockClear();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for Collected this year" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Date range" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Use the dashboard range" })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "change-panel", panelId: "p4", ownRange: null }],
+    });
+  },
+};
+
+// DEC-25: the notice and the chip run at the phone viewport too.
+export const PanelHeaderOnPhone: Story = {
+  name: "Panel header on a phone",
+  args: { view: ownRangeDashboardPage },
+  globals: phone,
+  beforeEach: () => serve(ownRangeDashboardPage),
+  play: async ({ canvas }) => {
+    const chip = await canvas.findByText("This year · own range");
+
+    await expect(chip).toBeVisible();
+
+    // The card clips its content, so an overflowing chip would still pass a visibility check.
+    const card = chip.closest('[data-slot="card"]');
+
+    if (card === null) throw new Error("The chip is not inside a card.");
+
+    await expect(chip.getBoundingClientRect().right).toBeLessThanOrEqual(
+      card.getBoundingClientRect().right
+    );
   },
 };

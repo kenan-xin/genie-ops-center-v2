@@ -219,12 +219,27 @@ export const tableChart: ChartData = {
   truncated: false,
 };
 
+export const paymentsChart: ChartData = {
+  kind: "table",
+  title: "Collected this year",
+  columns: [
+    { key: "paidOn", label: "Paid on", type: "date" },
+    { key: "total", label: "Collected", type: "money", currency: "SGD" },
+  ],
+  rows: [{ paidOn: "2026-09-14", total: 980000 }],
+  datasets: ["payments.payments"],
+  readAt: "2026-10-27T09:00:00.000Z",
+  truncated: false,
+};
+
 export const chartOf = (panelId: string): ChartData => {
   switch (panelId) {
     case "p1":
       return kpiChart;
     case "p2":
       return barChart;
+    case "p4":
+      return paymentsChart;
     default:
       return tableChart;
   }
@@ -233,6 +248,72 @@ export const chartOf = (panelId: string): ChartData => {
 export const FILTER_VALUES = ["Alpha", "Bravo", "Charlie"] as const;
 
 const DATASETS = ["invoices.invoices"];
+
+const PAYMENTS = ["payments.payments"];
+
+/** A table of collected payments, the one panel the invoice filters do not reach (P15-5). */
+const PAYMENTS_PANEL: PanelView = {
+  id: "p4",
+  layout: { columns: 2, rows: 1 },
+  config: {
+    type: "table",
+    title: "Collected this year",
+    series: [
+      {
+        name: "Collected",
+        dataset: "payments.payments",
+        query: { select: ["paidOn"] },
+      },
+    ],
+  },
+};
+
+/**
+ * A set Region filter and an empty Status one, over invoices panels and one payments panel: the
+ * payments panel says Region skips it, and the empty filter says nothing (P15-4, P15-5).
+ */
+export const notAppliedDashboardPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  dashboard: {
+    ...defaultDashboardPage.dashboard,
+    filters: {
+      dateRange: { preset: "last-3-months" },
+      fields: [
+        { kind: "select", field: "region", label: "Region", value: "North" },
+        {
+          kind: "multi-select",
+          field: "status",
+          label: "Status",
+          values: [],
+        },
+      ],
+    },
+    filterFields: [
+      { field: "region", label: "Region", kind: "select", datasets: DATASETS },
+      {
+        field: "status",
+        label: "Status",
+        kind: "multi-select",
+        datasets: PAYMENTS,
+      },
+    ],
+    panels: [KPI_PANEL, BAR_PANEL, PAYMENTS_PANEL],
+  },
+};
+
+/** A payments panel that keeps its own range, beside the invoices panels under the dashboard one. */
+export const ownRangeDashboardPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  dashboard: {
+    ...defaultDashboardPage.dashboard,
+    filters: { dateRange: { preset: "last-3-months" }, fields: [] },
+    panels: [
+      KPI_PANEL,
+      BAR_PANEL,
+      { ...PAYMENTS_PANEL, ownRange: { preset: "this-year" } },
+    ],
+  },
+};
 
 /** A dashboard with five fields to filter by, stored with the last three months (S7-46). */
 export const filtersDashboardPage: DashboardPageView = {

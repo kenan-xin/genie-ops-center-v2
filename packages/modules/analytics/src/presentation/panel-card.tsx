@@ -16,10 +16,13 @@ import {
   DropdownMenuTrigger,
 } from "@genie/ui";
 import { Chart } from "@genie/ui/chart";
+import { CalendarIcon, InfoIcon } from "lucide-react";
 import { useEffect } from "react";
 
-import type { DashboardChange } from "../contract.ts";
+import { DATE_RANGE_PRESETS, type DashboardChange } from "../contract.ts";
+import { notAppliedLabels } from "./not-applied.ts";
 import { convertibleTypes, convertPanel } from "./panel-convert.ts";
+import { PRESET_LABEL, rangeLabel } from "./range-label.ts";
 import { type DashboardFilterState, usePanelData } from "./use-dashboard.ts";
 import type { DashboardView, PanelView } from "./views.ts";
 
@@ -165,6 +168,43 @@ function PanelActions(props: PanelActionsProps) {
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+        <DropdownMenuSub>
+          <DropdownMenuSubTrigger>Date range</DropdownMenuSubTrigger>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem
+              // The dashboard range is the panel's own until it picks one.
+              disabled={panel.ownRange === undefined}
+              onClick={() =>
+                onChange([
+                  { op: "change-panel", panelId: panel.id, ownRange: null },
+                ])
+              }
+            >
+              Use the dashboard range
+            </DropdownMenuItem>
+            {DATE_RANGE_PRESETS.map((preset) => (
+              <DropdownMenuItem
+                key={preset}
+                disabled={
+                  panel.ownRange !== undefined &&
+                  "preset" in panel.ownRange &&
+                  panel.ownRange.preset === preset
+                }
+                onClick={() =>
+                  onChange([
+                    {
+                      op: "change-panel",
+                      panelId: panel.id,
+                      ownRange: { preset },
+                    },
+                  ])
+                }
+              >
+                {PRESET_LABEL[preset]}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuSubContent>
+        </DropdownMenuSub>
         <DropdownMenuItem
           disabled={index === 0}
           onClick={() =>
@@ -239,6 +279,12 @@ export function PanelCard(props: PanelCardProps) {
     if (readAt !== undefined) onRead(readAt);
   }, [readAt]);
 
+  const notApplied = notAppliedLabels(
+    panel,
+    props.filters.filters,
+    dashboard.filterFields
+  );
+
   return (
     <div
       className={`grid ${spanOf(panel.layout.columns, narrow)} ${heightOf(panel.layout.rows)}`}
@@ -256,6 +302,39 @@ export function PanelCard(props: PanelCardProps) {
               />
             </div>
           ) : null}
+          {/* What the panel's own header adds: a range it keeps, and the filters that skip it. */}
+          {panel.ownRange === undefined && notApplied.length === 0 ? null : (
+            <div className="mb-2 flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
+              <div className="grid gap-0.5">
+                {notApplied.map((label) => (
+                  <p
+                    key={label}
+                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                  >
+                    <InfoIcon
+                      aria-hidden="true"
+                      strokeWidth={1.75}
+                      className="size-3.5 shrink-0"
+                    />
+                    {`The ${label} filter does not apply to this panel.`}
+                  </p>
+                ))}
+              </div>
+              {panel.ownRange === undefined ? null : (
+                <span
+                  title="This panel keeps its own range"
+                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-tile px-2 py-0.5 text-xs font-semibold text-muted-foreground"
+                >
+                  <CalendarIcon
+                    aria-hidden="true"
+                    strokeWidth={1.75}
+                    className="size-3.5 shrink-0"
+                  />
+                  {`${rangeLabel(panel.ownRange)} · own range`}
+                </span>
+              )}
+            </div>
+          )}
           {/* Without a chart there is no figure title, so name the panel here. */}
           {query.isError || query.data === undefined ? (
             <p className="mb-1 text-sm font-medium">{panel.config.title}</p>

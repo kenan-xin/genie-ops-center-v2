@@ -10,7 +10,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
   FilterSheet,
-  formatDayRange,
   type ListDefinition,
   type ListFilterControl,
   type ListFilterControlProps,
@@ -32,6 +31,7 @@ import {
 } from "../contract.ts";
 import { ChangeRefusal } from "./change-refusal.tsx";
 import { sameFilters } from "./filter-address.ts";
+import { PRESET_LABEL, rangeLabel } from "./range-label.ts";
 import {
   type DashboardFilterState,
   useDashboardChange,
@@ -41,14 +41,6 @@ import type { DashboardView } from "./views.ts";
 const RANGE = "range";
 
 const CUSTOM = "custom";
-
-const PRESET_LABEL: Record<(typeof DATE_RANGE_PRESETS)[number], string> = {
-  "all": "All time",
-  "this-month": "This month",
-  "last-3-months": "Last 3 months",
-  "last-6-months": "Last 6 months",
-  "this-year": "This year",
-};
 
 const LIMIT_HINT = "Up to 4 filters. Remove one to add another.";
 
@@ -178,11 +170,6 @@ function rangeOf(value: string | undefined): DateRangeFilter {
     ? { from, to }
     : { preset: preset ?? "all" };
 }
-
-const rangeLabel = (range: DateRangeFilter) =>
-  "preset" in range
-    ? PRESET_LABEL[range.preset]
-    : formatDayRange(range.from, range.to);
 
 /**
  * A filter as its control writes it. Each multi value is encoded, because the list header joins

@@ -34,7 +34,7 @@ const kindsOf = (field: FilterField): readonly FieldFilter["kind"][] =>
   field.kind === "toggle" ? ["toggle"] : ["select", "multi-select"];
 
 /** Whether a filter applies anything: a value-less select, an empty list and a toggle off do not (P15-4). */
-const applies = (filter: FieldFilter): boolean =>
+export const filterApplies = (filter: FieldFilter): boolean =>
   filter.kind === "select"
     ? filter.value !== null
     : filter.kind === "multi-select"
@@ -216,7 +216,7 @@ export function writeFilterAddress(
       (field) => [nameOf(field), undefined]
     ),
     ...filters.fields
-      .filter(applies)
+      .filter(filterApplies)
       .map((filter) => [nameOf(filter.field), writeValue(filter)]),
   ];
 
