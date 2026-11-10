@@ -95,7 +95,10 @@ export function AgentChat(props: {
 
   const retry = useMutation({
     mutationFn: () => agent.retry({ id: props.sessionId }),
-    onSettled: () => void saved.refetch(),
+    // An old Stop failure is no longer true once the run starts again.
+    onSuccess: () => stop.reset(),
+    // Returned, so Try again stays pending until the read shows the new run (Review Focus 3).
+    onSettled: () => saved.refetch(),
   });
 
   const read = saved.data;
@@ -178,6 +181,16 @@ export function AgentChat(props: {
         read === undefined || read === null || read.session.run === null
           ? undefined
           : {
+              failure:
+                read.session.run === "building" ||
+                read.session.run === "stopping"
+                  ? stop.isError
+                    ? "The work could not be stopped. Try again."
+                    : undefined
+                  : retry.isError
+                    ? "The work could not start again. Try again."
+                    : undefined,
+              retrying: retry.isPending,
               status: read.session.run,
               messages: read.messages,
               askHref:

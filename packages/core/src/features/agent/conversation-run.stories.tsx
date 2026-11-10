@@ -82,6 +82,8 @@ function RunChat(props: {
             askHref: "/ask/00000000-0000-4000-8000-0000000000a0",
             onStop,
             onTryAgain,
+            failure: undefined,
+            retrying: false,
           }}
         />
       </div>
@@ -227,6 +229,94 @@ function PolledChat() {
     </AgentClientStub>
   );
 }
+
+function ChatWithRun({
+  status,
+  ...client
+}: {
+  readonly status: AgentRunStatus;
+  readonly stop?: () => Promise<void>;
+  readonly retry?: () => Promise<void>;
+}) {
+  return (
+    <AgentClientStub
+      {...client}
+      session={async () =>
+        handoffDetail(status, [BRIEF_MESSAGE, PARTIAL_ANSWER])
+      }
+    >
+      <div style={{ height: "100dvh" }} className="flex flex-col">
+        <AgentChat
+          sessionId="00000000-0000-4000-8000-0000000000a1"
+          models={null}
+          labels={HANDOFF_LABELS}
+          suggestions={[]}
+          inbox={[]}
+          timeZone="UTC"
+          artifacts={{
+            kind: "link",
+            href: () => "/ask",
+            rowsHref: () => "/ask",
+          }}
+          headingLevel={3}
+          onNewChat={() => undefined}
+        />
+      </div>
+    </AgentClientStub>
+  );
+}
+
+export const StopFails: StoryObj<typeof ChatWithRun> = {
+  render: () => (
+    <ChatWithRun
+      status="building"
+      stop={async () => {
+        throw new Error("The stop did not reach the server.");
+      }}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Stop building" })
+    );
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "The work could not be stopped. Try again."
+    );
+  },
+};
+
+let rejectRetry: (error: Error) => void = () => undefined;
+
+const retryPending = fn(
+  () =>
+    new Promise<void>((_, reject) => {
+      rejectRetry = reject;
+    })
+);
+
+// Review Focus 3: Try again pressed twice while its retry is pending sends one retry.
+export const TryAgainFails: StoryObj<typeof ChatWithRun> = {
+  render: () => <ChatWithRun status="failed" retry={retryPending} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const tryAgain = await canvas.findByRole("button", { name: "Try again" });
+
+    await userEvent.click(tryAgain);
+    await waitFor(() => expect(tryAgain).toBeDisabled());
+
+    await userEvent.click(tryAgain);
+    await expect(retryPending).toHaveBeenCalledOnce();
+
+    rejectRetry(new Error("The retry did not reach the server."));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "The work could not start again. Try again."
+    );
+    await waitFor(() => expect(tryAgain).toBeEnabled());
+  },
+};
 
 // T5.6: the record page reads again after each change of the run, and once at its end.
 export const ProgressWhileItBuilds: StoryObj<typeof PolledChat> = {

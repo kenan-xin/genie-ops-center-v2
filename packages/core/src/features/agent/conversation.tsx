@@ -82,6 +82,10 @@ export type ConversationRun = {
   readonly askHref: string | undefined;
   readonly onStop: () => void;
   readonly onTryAgain: () => void;
+  /** Why the last Stop or Try again failed, shown above the composer. */
+  readonly failure: string | undefined;
+  /** A Try again is pending, so a second press sends nothing. */
+  readonly retrying: boolean;
 };
 
 /**
@@ -448,11 +452,18 @@ export function Conversation(props: {
                   type="button"
                   variant="secondary"
                   size="sm"
+                  disabled={run.retrying}
                   onClick={run.onTryAgain}
                 >
                   Try again
                 </Button>
               </div>
+            )}
+
+            {run?.failure === undefined ? null : (
+              <p role="alert" className="text-sm text-destructive">
+                {run.failure}
+              </p>
             )}
 
             <Composer
