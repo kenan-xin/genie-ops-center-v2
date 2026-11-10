@@ -174,6 +174,8 @@ export const RoleChoicePending: Story = {
       await screen.findByRole("option", { name: "Finance" })
     );
     await expect(pendingBar().getByText("1 to change")).toBeVisible();
+    // The popup's focus guards stay until it has closed; axe runs after the play function.
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   },
 };
 

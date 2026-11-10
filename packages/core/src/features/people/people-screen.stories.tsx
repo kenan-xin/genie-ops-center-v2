@@ -711,6 +711,8 @@ const pickRole = async (dialog: DialogQueries, row: string, role: string) => {
     dialog.getByRole("combobox", { name: `Role for ${row}` })
   );
   await userEvent.click(await screen.findByRole("option", { name: role }));
+  // The popup's focus guards stay until it has closed; axe runs after the play function.
+  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 };
 
 /** The footer line, whose names sit in `<strong>`, read as one text. */
