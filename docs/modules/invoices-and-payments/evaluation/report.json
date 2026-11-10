@@ -9,39 +9,35 @@
       "runs": 3,
       "passRate": 1,
       "unstableCases": [],
-      "meanCostUsd": 0.025530666666666663,
-      "meanMs": 5545.436044666662
+      "meanCostUsd": 0.025537333333333342,
+      "meanMs": 5577.753184238093
     },
     {
       "model": "anthropic/claude-opus-5.5",
       "track": "answers",
       "cases": 9,
       "runs": 3,
-      "passRate": 0.8148148148148148,
+      "passRate": 0.5925925925925926,
       "unstableCases": [
-        "overdue-invoices",
-        "top-customers-by-sales",
+        "repeated-late-payers",
         "top-customers-overdue",
         "partial-payments"
       ],
-      "meanCostUsd": 0.3149884615384615,
-      "meanMs": 15941.363204518522
+      "meanCostUsd": 0.2944580740740741,
+      "meanMs": 13675.712937925926
     },
     {
       "model": "anthropic/claude-opus-5.5",
       "track": "charts",
       "cases": 12,
       "runs": 3,
-      "passRate": 0.8333333333333334,
+      "passRate": 0.8055555555555556,
       "unstableCases": [
-        "overdue-invoices: Overdue invoices",
-        "top-customers-by-sales: Invoiced sales by customer",
         "top-customers-overdue: Overdue balance by customer",
-        "top-customers-overdue: Invoiced sales by customer",
         "partial-payments: Invoices with partial payments"
       ],
-      "meanCostUsd": 0.3236624705882351,
-      "meanMs": 16442.84771608334
+      "meanCostUsd": 0.30009988888888894,
+      "meanMs": 14207.616591638889
     },
     {
       "model": "openai/gpt-6.1-terra",
@@ -50,8 +46,8 @@
       "runs": 3,
       "passRate": 1,
       "unstableCases": [],
-      "meanCostUsd": 0.0020456023809523817,
-      "meanMs": 5137.745108428583
+      "meanCostUsd": 0.002001554761904764,
+      "meanMs": 5520.014280714286
     },
     {
       "model": "openai/gpt-6.1-terra",
@@ -60,8 +56,8 @@
       "runs": 3,
       "passRate": 1,
       "unstableCases": [],
-      "meanCostUsd": 0.010268355555555556,
-      "meanMs": 16850.817288592574
+      "meanCostUsd": 0.00873441851851852,
+      "meanMs": 19430.51553096296
     },
     {
       "model": "openai/gpt-6.1-terra",
@@ -70,60 +66,58 @@
       "runs": 3,
       "passRate": 1,
       "unstableCases": [],
-      "meanCostUsd": 0.011414141666666667,
-      "meanMs": 18049.173319444424
+      "meanCostUsd": 0.009636618055555555,
+      "meanMs": 20097.493737166664
     },
     {
       "model": "deepseek/deepseek-v4.1-flash-1017",
       "track": "extraction",
       "cases": 7,
       "runs": 3,
-      "passRate": 0.6666666666666666,
+      "passRate": 0.5238095238095238,
       "unstableCases": [
         "01",
         "02",
-        "04"
+        "03",
+        "04",
+        "06"
       ],
-      "meanCostUsd": 0.0015234861642857145,
-      "meanMs": 16480.885488952445
+      "meanCostUsd": 0.001426823411428572,
+      "meanMs": 19849.53872909521
     },
     {
       "model": "deepseek/deepseek-v4.1-flash-1017",
       "track": "answers",
       "cases": 9,
       "runs": 3,
-      "passRate": 0.3333333333333333,
+      "passRate": 0.18518518518518517,
       "unstableCases": [
-        "repeated-late-payers",
-        "overdue-balances",
+        "monthly-invoiced-and-collected",
         "top-customers-by-sales",
         "top-customers-overdue",
         "invoices-without-due-date",
-        "manual-due-dates",
-        "partial-payments"
+        "manual-due-dates"
       ],
-      "meanCostUsd": 0.004028632869565219,
-      "meanMs": 13944.546761925927
+      "meanCostUsd": 0.0028421782280000007,
+      "meanMs": 9472.629312148145
     },
     {
       "model": "deepseek/deepseek-v4.1-flash-1017",
       "track": "charts",
       "cases": 12,
       "runs": 3,
-      "passRate": 0.3333333333333333,
+      "passRate": 0.19444444444444445,
       "unstableCases": [
-        "repeated-late-payers: Late payment by customer",
-        "overdue-balances: Overdue balance by customer",
+        "monthly-invoiced-and-collected: Invoiced sales by month",
+        "monthly-invoiced-and-collected: Collections by month",
         "top-customers-by-sales: Invoiced sales by customer",
         "top-customers-overdue: Overdue balance by customer",
         "top-customers-overdue: Invoiced sales by customer",
         "invoices-without-due-date: Invoices with no due date",
-        "manual-due-dates: Due dates entered by a person",
-        "partial-payments: Invoices with partial payments",
-        "partial-payments: Allocations to those invoices"
+        "manual-due-dates: Due dates entered by a person"
       ],
-      "meanCostUsd": 0.004246127500000002,
-      "meanMs": 16381.031658277781
+      "meanCostUsd": 0.002694228634074075,
+      "meanMs": 10838.5323068611
     }
   ],
   "defaults": {
