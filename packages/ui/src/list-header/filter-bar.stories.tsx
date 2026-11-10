@@ -229,9 +229,11 @@ export const ClearFilters: Story = {
     await expect(
       clear.getBoundingClientRect().left - last.getBoundingClientRect().right
     ).toBeLessThanOrEqual(10);
-    await userEvent.click(clear);
+    clear.focus();
+    await userEvent.keyboard("{Enter}");
     await waitFor(() => expect(param("q")).toBeNull());
     await expect(canvas.getByLabelText("Search invoices")).toHaveValue("");
     await waitFor(() => expect(clearButton()).toBeNull());
+    await expect(canvas.getByLabelText("Search invoices")).toHaveFocus();
   },
 };

@@ -164,7 +164,15 @@ export function FilterBar(props: {
         </Popover>
       )}
       {anySet ? (
-        <Button variant="link" size="filter" onClick={state.clear}>
+        <Button
+          variant="link"
+          size="filter"
+          onClick={() => {
+            state.clear();
+            // Clear filters unmounts itself, so focus goes to the first control (WCAG 2.4.3).
+            bar.current?.querySelector<HTMLElement>("input, button")?.focus();
+          }}
+        >
           Clear filters
         </Button>
       ) : null}
