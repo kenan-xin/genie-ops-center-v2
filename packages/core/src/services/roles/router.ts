@@ -16,6 +16,7 @@ import {
   assertManagesAllRoles,
   readAccessBySubject,
   readRecipientAccess,
+  recipientDisabled,
 } from "./effective-access.ts";
 import {
   readGrantCatalogue,
@@ -116,6 +117,12 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         input.scope?.scopeType != null && input.scope.scopeId != null
           ? { type: input.scope.scopeType, id: input.scope.scopeId }
           : null;
+
+      // Refuses an erased person, the break-glass account and an unknown id (R-39, d8l5.57).
+      await recipientDisabled(context.tenant, {
+        type: input.principalType,
+        id: input.principalId,
+      });
 
       if (scope !== null) {
         await assertAdvancedAdds({

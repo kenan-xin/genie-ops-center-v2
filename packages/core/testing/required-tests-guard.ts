@@ -680,7 +680,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/role-writers.integration.test.ts",
     reason:
-      "Spec 2 R-40 and R-37a: Add person gives at most one role per Grants row, never an administration role and never a role of a switched-off module, and refuses before it writes a person (d8l5.44); the one writer refuses a new grant of a switched-off or uncompiled module's role for every caller, and Remove stays open (d8l5.39, R-33d). d8l5.51: a grant writer needs core:roles:manage tenant-wide, and roles.assign takes a scope only as Advanced access does; every Roles procedure, role edits and unassign included, refuses a holder of the key only at a scope. groups.addMembers needs core:groups:manage tenant-wide, so a scoped holder cannot join a Tenant administrator group. d8l5.54: the person read answers one person through can() and names only the Grants rows of its paths.",
+      "Spec 2 R-40 and R-37a: Add person gives at most one role per Grants row, never an administration role and never a role of a switched-off module, and refuses before it writes a person (d8l5.44); the one writer refuses a new grant of a switched-off or uncompiled module's role for every caller, and Remove stays open (d8l5.39, R-33d). d8l5.51: a grant writer needs core:roles:manage tenant-wide, and roles.assign takes a scope only as Advanced access does; every Roles procedure, role edits and unassign included, refuses a holder of the key only at a scope. groups.addMembers needs core:groups:manage tenant-wide, so a scoped holder cannot join a Tenant administrator group. d8l5.54: the person read answers one person through can() and names only the Grants rows of its paths. d8l5.57: roles.assign refuses a recipient Advanced access refuses (R-39).",
     cases: [
       "Add person against the Grants rows adds a person with one role of a switched-on module and Ask user, each through the one writer",
       "Add person against the Grants rows refuses two roles of one module and writes no person",
@@ -700,6 +700,9 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "roles.assign and the scope rules (d8l5.51) refuses a module role at a scope type its module does not declare with invalid-input and writes no assignment",
       "roles.assign takes the Advanced access rule (d8l5.51) refuses a caller who holds core:roles:manage at one scope only, and writes nothing",
       "roles.assign takes the Advanced access rule (d8l5.51) refuses a core role with a scope, and writes nothing",
+      "roles.assign takes the Advanced access rule (d8l5.51) refuses an erased person as the recipient with not-found, and writes nothing",
+      "roles.assign takes the Advanced access rule (d8l5.51) refuses the break-glass account as the recipient with not-found, and writes nothing",
+      "roles.assign takes the Advanced access rule (d8l5.51) refuses an unknown id as the recipient with not-found, and writes nothing",
       "the person read of the People inspector (d8l5.54) names only the Grants rows of the person's paths",
       "the person read of the People inspector (d8l5.54) refuses a holder of core:people:manage at a scope that is not the person",
     ],

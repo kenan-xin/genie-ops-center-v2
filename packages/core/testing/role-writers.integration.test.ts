@@ -472,6 +472,34 @@ describe("roles.assign takes the Advanced access rule (d8l5.51)", () => {
     ).rejects.toMatchObject({ code: "invalid-input" });
     expect(await assignmentCount(custom)).toBe(0);
   });
+
+  it.each([
+    [
+      "an erased person",
+      () => insertUser(deployment.context, { erasedAt: new Date() }),
+    ],
+    [
+      "the break-glass account",
+      () => insertUser(deployment.context, { isBreakGlass: true }),
+    ],
+    ["an unknown id", async () => randomUUID()],
+  ])(
+    "refuses %s as the recipient with not-found, and writes nothing",
+    async (_name, recipient) => {
+      const custom = await insertRole(deployment.context, {
+        permissions: ["core:roles:manage"],
+      });
+
+      await expect(
+        roles().assign({
+          roleId: custom,
+          principalType: "user",
+          principalId: await recipient(),
+        })
+      ).rejects.toMatchObject({ code: "not-found" });
+      expect(await assignmentCount(custom)).toBe(0);
+    }
+  );
 });
 
 describe("the person read of the People inspector (d8l5.54)", () => {
