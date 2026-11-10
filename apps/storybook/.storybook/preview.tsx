@@ -3,6 +3,12 @@ import type { Preview } from "@storybook/nextjs-vite";
 
 import "./preview.css";
 
+// xok3.59: in development @openuidev/react-lang 1.0.2 mounts the OpenUI devtools widget from
+// jsDelivr. Its hidden Debug help dialog swallows the page's first Escape in the capture phase, so
+// a story's Escape fails whenever the CDN script arrives first. This is react-lang's own guard
+// against a second mount; recheck the key when the pinned version changes.
+Reflect.set(globalThis, Symbol.for("openui.devtools.autoMount"), true);
+
 const preview: Preview = {
   parameters: {
     // Violations fail the component test in the user interface and on the
