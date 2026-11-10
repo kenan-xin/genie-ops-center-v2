@@ -86,19 +86,12 @@ const CURRENCY = text(
   "The ISO currency code of the amounts on this row."
 );
 
-// The list fields stay hidden from the agent until the next recording refresh (LH1, DEC-55).
 const UPDATED_AT: DatasetField = {
   kind: "dimension",
   type: "instant",
   label: "Updated",
   description: "When the row last changed.",
-  hiddenFromAgent: true,
 };
-
-const listStatus = (description: string): DatasetField => ({
-  ...text("Status", description),
-  hiddenFromAgent: true,
-});
 
 export const invoicesDataset: DatasetDeclaration = {
   name: INVOICE_DATASET_NAMES.invoices,
@@ -165,7 +158,7 @@ export const invoicesDataset: DatasetDeclaration = {
       "True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate."
     ),
     updatedAt: UPDATED_AT,
-    status: listStatus("paid, overdue, no-due-date or open."),
+    status: text("Status", "paid, overdue, no-due-date or open."),
   },
   timeField: "invoiceDate",
   recordKey: { type: RECORD_TYPES.invoice, field: "id" },
@@ -265,7 +258,7 @@ export const paymentsDataset: DatasetDeclaration = {
       "The amount minus the allocated cents: money received that lowers no invoice balance."
     ),
     updatedAt: UPDATED_AT,
-    status: listStatus("allocated, part-allocated or unallocated."),
+    status: text("Status", "allocated, part-allocated or unallocated."),
   },
   timeField: "paymentDate",
   recordKey: { type: RECORD_TYPES.payment, field: "id" },
