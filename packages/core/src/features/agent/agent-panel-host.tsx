@@ -222,7 +222,7 @@ export function AgentPanelHost(props: {
         ? "Saved"
         : undefined;
 
-  // Set when the docked column closes, so focus goes back to the button that opened it.
+  // Set when the docked column or phone bottom panel closes, so focus goes back to the button that opened it.
   const returnFocus = useRef(false);
 
   useEffect(() => {
@@ -247,7 +247,7 @@ export function AgentPanelHost(props: {
   if (shell !== null && !shell.agentPanel) return null;
 
   function close(): void {
-    returnFocus.current = docked;
+    returnFocus.current = docked || bottom;
     setPanelOpen(false);
   }
 
@@ -500,6 +500,9 @@ export function AgentPanelHost(props: {
         aria-label="Agent panel"
         hidden={!open}
         className={`fixed inset-x-0 bottom-0 z-40 flex-col overflow-hidden rounded-t-xl border-t border-border shadow-xl ${open ? "flex" : "hidden"} ${collapsed ? "" : "h-1/2"}`}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") close();
+        }}
       >
         {panel}
       </aside>

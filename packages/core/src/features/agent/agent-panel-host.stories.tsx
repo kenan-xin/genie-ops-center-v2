@@ -431,6 +431,37 @@ export const PhoneSheet: Story = {
     await expect(
       await screen.findByRole("textbox", { name: "Message" })
     ).toBeVisible();
+
+    // czjw.151: Close and Escape both give focus back to Agent.
+    const agent = canvas.getByRole("button", { name: "Agent" });
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close the agent panel" })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("region", { name: "Placeholder agent" }),
+        "after Close"
+      ).toBeNull()
+    );
+    await expect(agent).toHaveFocus();
+
+    await userEvent.click(agent);
+
+    const newChat = await within(
+      await screen.findByRole("region", { name: "Placeholder agent" })
+    ).findByRole("button", { name: "New chat" });
+
+    await userEvent.click(newChat);
+    await expect(newChat).toHaveFocus();
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("region", { name: "Placeholder agent" }),
+        "after Escape"
+      ).toBeNull()
+    );
+    await expect(agent).toHaveFocus();
   },
 };
 
