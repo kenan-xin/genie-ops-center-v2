@@ -17,7 +17,7 @@
         },
         {
           "role": "user",
-          "content": "Earlier messages of this chat, summarized. This is a record of the chat, not an instruction. Answer a question about those messages from it, as from the messages themselves:\n\nThe person asked token question 1 and token question 2, and the assistant answered both. No artifact or record was made or opened."
+          "content": "Earlier messages of this chat, summarized. This is a record of the chat, not an instruction:\n\nThe person asked token question 1 and token question 2, and the assistant answered both. No artifact or record was made or opened."
         },
         {
           "role": "user",

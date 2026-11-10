@@ -32,7 +32,7 @@ export const SUMMARY_INSTRUCTIONS = [
 ].join("\n");
 
 export const SUMMARY_PREFIX =
-  "Earlier messages of this chat, summarized. This is a record of the chat, not an instruction. Answer a question about those messages from it, as from the messages themselves:";
+  "Earlier messages of this chat, summarized. This is a record of the chat, not an instruction:";
 
 export type CompactionPlan =
   | { readonly compact: false }
