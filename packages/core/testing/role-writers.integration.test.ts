@@ -318,6 +318,59 @@ describe("a scoped Roles manager and the grant writers (d8l5.51)", () => {
       expect(await assignmentCount(administrator)).toBe(before);
     }
   );
+
+  it("roles.update refuses adding core:roles:manage to a custom core role the scoped caller holds tenant-wide", async () => {
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["core:roles:manage"],
+      { type: "group", id: groupId }
+    );
+
+    const helpdesk = await insertRole(deployment.context, {
+      permissions: ["core:people:manage"],
+    });
+
+    await assignRole(deployment.context, {
+      roleId: helpdesk,
+      principal: { type: "user", id: userId },
+    });
+
+    await expect(
+      roles(userId).update({
+        roleId: helpdesk,
+        name: "Helpdesk",
+        permissions: ["core:people:manage", "core:roles:manage"],
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    const stored = await deployment.context.db.$client.query<{
+      readonly permissions: readonly string[];
+    }>("select permissions from role where id = $1", [helpdesk]);
+
+    expect(stored.rows[0]?.permissions).toEqual(["core:people:manage"]);
+  });
+
+  it("roles.unassign refuses a caller who holds core:roles:manage only at a scope and keeps the assignment", async () => {
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["core:roles:manage"],
+      { type: "group", id: groupId }
+    );
+
+    const onUser = roleId("On user");
+
+    const assignmentId = await assignRole(deployment.context, {
+      roleId: onUser,
+      principal: { type: "user", id: await insertUser(deployment.context) },
+    });
+
+    const before = await assignmentCount(onUser);
+
+    await expect(
+      roles(userId).unassign({ assignmentId })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    expect(await assignmentCount(onUser)).toBe(before);
+  });
 });
 
 describe("roles.assign and the scope rules (d8l5.51)", () => {

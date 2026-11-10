@@ -37,15 +37,22 @@ import { readRecordLabels, searchScopeRecords } from "./records.ts";
 // The session check, then the permission gate, both before input is parsed: an anonymous,
 // idle-expired or capped request answers `unauthenticated` at 401 and a caller without the key
 // `forbidden` at 403, however malformed the input is; only then does the handler read
-// (Spec 2 R-14, R-37).
-const managed = gatedArea(rolesContract, "core:roles:manage");
+// (Spec 2 R-14, R-37). The key must be held tenant-wide, as Grants and Advanced need it (D7,
+// d8l5.51): a holder only at a scope could otherwise edit a role it holds into a manager role.
+const managed = gatedArea(rolesContract, "core:roles:manage").use(
+  async ({ context, next }) => {
+    await assertManagesAllRoles(context.caller);
+
+    return next();
+  }
+);
 
 /**
  * The Roles screen's one router (R-37), built from its contract. Every procedure is behind
- * `core:roles:manage` through the one `can()` seam (DEC-39). It edits role definitions and,
- * through the one role-assignment service, writes grants; the Access screen and Add person reuse
- * the same service, so `role_assignment` has exactly one writer (DEC-39). Every write records a
- * catalogue audit action.
+ * `core:roles:manage` held tenant-wide, through the `can()` and `scopesFor()` seam (DEC-39). It
+ * edits role definitions and, through the one role-assignment service, writes grants; the Access
+ * screen and Add person reuse the same service, so `role_assignment` has exactly one writer
+ * (DEC-39). Every write records a catalogue audit action.
  */
 export function createRolesRouter(modules: readonly RolesModule[]) {
   return managed.router({
@@ -103,10 +110,8 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
     }),
 
     assign: managed.assign.handler(async ({ context, input }) => {
-      // The key tenant-wide, as Grants and Advanced need it (D7); a scoped add only as Advanced
-      // takes it (d8l5.51); a whole-tenant add keeps the writer's own refusals (R-37a).
-      await assertManagesAllRoles(context.caller);
-
+      // A scoped add only as Advanced takes it (d8l5.51); a whole-tenant add keeps the writer's
+      // own refusals (R-37a).
       const scope =
         input.scope?.scopeType != null && input.scope.scopeId != null
           ? { type: input.scope.scopeType, id: input.scope.scopeId }
