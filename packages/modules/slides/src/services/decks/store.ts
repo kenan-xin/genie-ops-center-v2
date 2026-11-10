@@ -391,6 +391,15 @@ export async function changeDeck(
   return withTransaction(ctx.tenant, async (tx) => {
     const locked = await lockOwnDeck(tx, ctx, row.id, row.contentHash);
 
+    // A step that leaves the deck as it is saves nothing. The round trip drops the `undefined`
+    // keys the draft keeps and storage does not (P13 Task 2 ruling).
+    if (
+      applied.title === locked.title &&
+      isEqual(JSON.parse(JSON.stringify(content)), locked.content)
+    ) {
+      return locked;
+    }
+
     // The hash leaves out `frozen_on`, so the date and the Undo list come from the locked row:
     // a save never undoes a Refresh that ran meanwhile, and new figures never get another date.
     if (applied.checks.size > 0 && locked.frozenOn !== row.frozenOn) {

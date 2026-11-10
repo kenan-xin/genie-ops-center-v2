@@ -33,8 +33,11 @@ export type SlideStageProps = SlideCanvasProps & {
   /** The index of the selected element, or null. */
   readonly selected: number | null;
   readonly onSelect: (index: number | null) => void;
-  /** One gesture, nudge run or Position press: one step, one save, one Undo entry. */
-  readonly onStep: (step: DeckChange) => void;
+  /**
+   * One gesture, nudge run or Position press: one step, one save, one Undo entry. An answer of
+   * false (the save was refused) draws that element at its stored box again.
+   */
+  readonly onStep: (step: DeckChange) => Promise<boolean> | void;
   readonly saving?: boolean;
 };
 
@@ -130,6 +133,18 @@ export function SlideStage(props: SlideStageProps) {
     latest.current = { slide, onStep };
   });
 
+  // Calls onStep at once (before the first await), so a flush on unmount still saves.
+  async function saveBox(index: number, box: ElementBox): Promise<void> {
+    const saved = await latest.current.onStep(
+      boxStep(latest.current.slide.id, index, box)
+    );
+
+    // Another element's preview stays: only the refused one goes back.
+    if (saved === false) {
+      setPreview((current) => (current?.index === index ? null : current));
+    }
+  }
+
   const controller = useMemo(
     () =>
       createCanvasGestureController<number>({
@@ -166,12 +181,9 @@ export function SlideStage(props: SlideStageProps) {
               return { handled: false, reason: "unhandled" };
             }
 
-            latest.current.onStep(
-              boxStep(
-                latest.current.slide.id,
-                from.index,
-                gestureBox(gesture, from.box, element.kind)
-              )
+            void saveBox(
+              from.index,
+              gestureBox(gesture, from.box, element.kind)
             );
 
             return { handled: true };
@@ -196,11 +208,7 @@ export function SlideStage(props: SlideStageProps) {
 
     nudgeRun.current = null;
 
-    if (run !== null) {
-      latest.current.onStep(
-        boxStep(latest.current.slide.id, run.index, run.box)
-      );
-    }
+    if (run !== null) void saveBox(run.index, run.box);
   }
 
   // Pacer cancels a waiting call on unmount by default; a slide switch must still save the run.

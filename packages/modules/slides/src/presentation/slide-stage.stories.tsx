@@ -126,6 +126,26 @@ export const DragMovesOnPhone: Story = {
   play: dragPlay,
 };
 
+// The save answers false (refused), so the text draws at its stored box again, not where it was dropped.
+export const RefusedDragGoesBack: Story = {
+  name: "A refused drag puts the element back",
+  globals: desktop,
+  args: { selected: null, onStep: fn(async () => false) },
+  play: async ({ args, canvas, canvasElement }) => {
+    const text = canvas.getByRole("button", { name: TEXT });
+    const left = text.getBoundingClientRect().left;
+
+    drag(text, canvasElement, 104, 48);
+
+    await waitFor(() => expect(args.onStep).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        canvas.getByRole("button", { name: TEXT }).getBoundingClientRect().left
+      ).toBeCloseTo(left, 0)
+    );
+  },
+};
+
 // The corner handle by -100, -200 from 320 x 348 ends on 224 x 152 after the snap: one step.
 export const HandleResizes: Story = {
   name: "A corner handle resizes the element in one step",

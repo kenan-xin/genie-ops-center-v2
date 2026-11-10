@@ -312,6 +312,67 @@ describe("the slides deck procedures", () => {
     expect(await rowOf(id)).toEqual(before);
   });
 
+  it.each([
+    [
+      "a box equal to the stored one",
+      {
+        op: "change-element",
+        slideId: "s1",
+        index: 1,
+        box: { x: 96, y: 192, w: 480, h: 96 },
+      },
+    ],
+    [
+      "box null on an element with no box",
+      { op: "change-element", slideId: "s1", index: 0, box: null },
+    ],
+    [
+      "a color equal to the stored one",
+      {
+        op: "change-element",
+        slideId: "s1",
+        index: 1,
+        style: { color: "#1E3A8A" },
+      },
+    ],
+  ] as const)("keep the hash and the Undo list for %s", async (_, step) => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [
+              title("Claim"),
+              {
+                kind: "text",
+                text: "Sales rose.",
+                box: { x: 96, y: 192, w: 480, h: 96 },
+                style: { color: "#1E3A8A" },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const expectedHash = await hashOfRow(id);
+
+    const saved = await callerAs(owner).changeDeck({
+      id,
+      expectedHash,
+      changes: [step],
+    });
+
+    expect(saved.contentHash).toBe(expectedHash);
+    expect((await rowOf(id)).undo).toEqual([]);
+    expect(await auditOf(id)).not.toContainEqual(
+      expect.objectContaining({ action: "slides:deck-changed" })
+    );
+  });
+
   it("refuse a low-contrast text color, name the element and write nothing", async () => {
     const owner = await editor();
     const id = await ownedDeck(owner);

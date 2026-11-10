@@ -620,16 +620,22 @@ export function DeckView(props: DeckViewProps) {
       readonly expectedHash: string;
       readonly slideNumber?: number;
     }
-  ): void {
+  ): Promise<boolean> {
     setFailure(null);
-    pageWrite(options.expectedHash, (expectedHash) =>
+
+    return pageWrite(options.expectedHash, (expectedHash) =>
       change.mutateAsync({ changes, expectedHash })
-    ).catch((error) =>
-      setFailure({
-        kind: "change",
-        slideNumber: options.slideNumber,
-        error,
-      })
+    ).then(
+      () => true,
+      (error) => {
+        setFailure({
+          kind: "change",
+          slideNumber: options.slideNumber,
+          error,
+        });
+
+        return false;
+      }
     );
   }
 
