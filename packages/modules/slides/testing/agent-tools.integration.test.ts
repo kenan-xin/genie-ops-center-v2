@@ -408,6 +408,52 @@ describe("the slides agent tools", () => {
     });
   });
 
+  it("slides-change-deck stores a change-slide element sent without its box and style without them", async () => {
+    const owner = await personWith(EDITOR);
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [
+              title("Claim"),
+              {
+                kind: "text",
+                text: "Sales rose.",
+                box: { x: 96, y: 192, w: 480, h: 96 },
+                style: { fill: "#EFF6FF" },
+              },
+            ],
+          },
+        ],
+      },
+    });
+
+    const read = await runTool(owner, "slides-read-deck", { deckId: id });
+
+    await runTool(owner, "slides-change-deck", {
+      deckId: id,
+      expectedHash: hashIn(read),
+      changes: [
+        {
+          op: "change-slide",
+          slideId: "s1",
+          slide: {
+            elements: [title("Claim"), { kind: "text", text: "Sales rose." }],
+          },
+        },
+      ],
+    });
+
+    // The step replaces the elements, so the tool description must ask for box and style as read.
+    expect((await deckState(id)).content.slides[0].elements[1]).toEqual({
+      kind: "text",
+      text: "Sales rose.",
+    });
+  });
+
   it("slides-change-deck refuses a hash read before a hand change with deck-changed and saves nothing", async () => {
     const owner = await personWith(EDITOR);
 

@@ -238,7 +238,7 @@ const changeDeckTool = defineAgentTool({
     done: "Changed the deck",
     failed: "Could not change the deck",
   },
-  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element or change-slide-fields. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. ${DECK_RULES} ${STYLE_RULES} ${NOTES_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
+  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element or change-slide-fields. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each with its box and style as read, and each figure, chart or table with its chart config as read. ${DECK_RULES} ${STYLE_RULES} ${NOTES_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
   input: z.strictObject({
     deckId,
     expectedHash: contentHash,
