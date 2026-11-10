@@ -77,6 +77,8 @@ export function viewOf(
     filters: record.config.filters,
     filterFields,
     panels: record.config.panels,
+    views: record.config.views,
+    defaultViewId: record.config.defaultViewId,
   };
 }
 
@@ -355,9 +357,18 @@ export async function changeDashboard(
     input.changes
   );
 
-  // A stored filter no dataset fits would filter nothing and show no notice (P15-5).
-  if (input.changes.some((change) => change.op === "set-filters")) {
-    assertFiltersFit(applied.filters, await datasetFacts(ctx));
+  // A stored filter no dataset fits would filter nothing and show no notice (P15-5); a saved
+  // view's filters pass the same check (P15-19).
+  const fitted = input.changes.flatMap((change) => {
+    if (change.op === "set-filters") return [applied.filters];
+
+    return change.op === "save-view" ? [change.filters] : [];
+  });
+
+  if (fitted.length > 0) {
+    const facts = await datasetFacts(ctx);
+
+    for (const filters of fitted) assertFiltersFit(filters, facts);
   }
 
   const stored = new Map(row.config.panels.map((panel) => [panel.id, panel]));
@@ -394,7 +405,15 @@ export async function changeDashboard(
     const saved = await save(
       tx,
       row,
-      { name: applied.name, config: { filters: applied.filters, panels } },
+      {
+        name: applied.name,
+        config: {
+          filters: applied.filters,
+          panels,
+          views: applied.views,
+          defaultViewId: applied.defaultViewId,
+        },
+      },
       pushUndo(row.undo, { name: row.name, config: row.config })
     );
 

@@ -201,6 +201,8 @@ describe("the analytics agent tools", () => {
       ownerUserId: owner.caller.userId,
       config: {
         filters: before,
+        views: [],
+        defaultViewId: null,
         panels: [
           {
             id: "p1",

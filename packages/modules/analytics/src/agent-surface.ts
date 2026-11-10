@@ -20,7 +20,7 @@ export const ANALYTICS_SURFACE_INSTRUCTIONS: AgentInstructions = {
     "A dashboard panel takes the same config as a Chart in an answer: a chart type, a title and series of dataset queries. Every added or changed panel passes the chart check before it is saved, and a refused panel saves nothing.",
     "The dashboard filters apply to every panel: the date range filters each dataset by its time field, unless a panel keeps its own range, and each field filter, such as Customer, filters each dataset that has that field. A text field filter is select or multi-select, a true-or-false field is a toggle, and a dashboard has at most four. Do not repeat them in a panel query.",
     // R-46a: written, not generated; agent-surface.test.ts keeps it in step with the schema.
-    "You can change the panels of this dashboard and their order, each panel's chart type, title, data, size and own date range, the dashboard's name, and its filters.",
+    "You can change the panels of this dashboard and their order, each panel's chart type, title, data, size and own date range, the dashboard's name, its filters, its saved views and which view it opens with.",
   ],
 };
 

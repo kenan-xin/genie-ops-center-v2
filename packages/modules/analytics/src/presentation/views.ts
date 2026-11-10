@@ -6,6 +6,7 @@ import type {
   DateRangeFilter,
   FilterField,
   PanelLayout,
+  SavedView,
 } from "../contract.ts";
 
 /** One panel as the dashboard page reads it. */
@@ -27,6 +28,9 @@ export type DashboardView = {
   /** The fields Add filter offers, sorted by label. */
   filterFields: readonly FilterField[];
   panels: readonly PanelView[];
+  views: readonly SavedView[];
+  /** The view the dashboard opens with, else its stored filters. */
+  defaultViewId: string | null;
 };
 
 /** What the Dashboards list page loads. */

@@ -13,6 +13,9 @@ export const DASHBOARD_CHANGE_LIMIT = 20;
 /** At most 4 field filters per dashboard; the date range does not count (R-49, D3). */
 export const FIELD_FILTER_LIMIT = 4;
 
+/** At most 20 saved views per dashboard, so the config and each Undo entry stay small (P15-17). */
+export const DASHBOARD_VIEW_LIMIT = 20;
+
 /** The date range presets, relative to the reporting date (D3). */
 export const DATE_RANGE_PRESETS = [
   "all",
@@ -93,6 +96,19 @@ export const dashboardFilters = z.strictObject({
     }),
 });
 
+/** `v<n>`: a new view takes the highest current number plus one, as a panel does (P15-18). */
+export const viewId = z.string().regex(/^v[1-9][0-9]{0,2}$/);
+
+/** Unique on the dashboard, ignoring case and outer spaces (P15-17). */
+export const viewName = z.string().trim().min(1).max(40);
+
+/** A saved view holds filter values only, never panels (R-49a). */
+export const dashboardSavedView = z.strictObject({
+  id: viewId,
+  name: viewName,
+  filters: dashboardFilters,
+});
+
 export const dashboardSummary = z.object({
   id: z.string(),
   name: z.string(),
@@ -126,6 +142,16 @@ export const dashboardChange = z.discriminatedUnion("op", [
   }),
   z.strictObject({ op: z.literal("rename"), name: dashboardName }),
   z.strictObject({ op: z.literal("set-filters"), filters: dashboardFilters }),
+  /** Without `id` adds a view; with `id` replaces that view's name and filters (P15-19). */
+  z.strictObject({
+    op: z.literal("save-view"),
+    id: viewId.optional(),
+    name: viewName,
+    filters: dashboardFilters,
+  }),
+  z.strictObject({ op: z.literal("remove-view"), id: viewId }),
+  /** `null` opens the dashboard with its stored filters. */
+  z.strictObject({ op: z.literal("set-default-view"), id: viewId.nullable() }),
 ]);
 
 export const dashboardChanges = z
@@ -150,6 +176,9 @@ export const dashboardView = z.object({
   canUndo: z.boolean(),
   filters: dashboardFilters,
   filterFields: z.array(filterField).readonly(),
+  views: z.array(dashboardSavedView).readonly(),
+  /** The view the dashboard opens with, else its stored filters. */
+  defaultViewId: viewId.nullable(),
   // Read-only, so the server's `DashboardView` answers it as is.
   panels: z
     .array(
@@ -174,6 +203,8 @@ export type FieldFilter = z.infer<typeof fieldFilter>;
 export type DashboardFilters = z.infer<typeof dashboardFilters>;
 
 export type FilterField = z.infer<typeof filterField>;
+
+export type SavedView = z.infer<typeof dashboardSavedView>;
 
 export type DashboardSummary = z.infer<typeof dashboardSummary>;
 

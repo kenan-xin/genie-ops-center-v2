@@ -4,10 +4,12 @@ import { z } from "zod";
 import type { UndoEntry } from "../../config.ts";
 import {
   DASHBOARD_PANEL_LIMIT,
+  DASHBOARD_VIEW_LIMIT,
   type DashboardChange,
   type DashboardFilters,
   type DateRangeFilter,
   type PanelLayout,
+  type SavedView,
   UNDO_DEPTH,
 } from "../../contract.ts";
 import { ANALYTICS_ERRORS } from "../../errors.ts";
@@ -23,6 +25,8 @@ export type AppliedChanges = {
   readonly name: string;
   readonly filters: DashboardFilters;
   readonly panels: readonly DraftPanel[];
+  readonly views: readonly SavedView[];
+  readonly defaultViewId: string | null;
   /** Each added or changed panel id, with the index of the last step that set its config. */
   readonly checks: ReadonlyMap<string, number>;
 };
@@ -36,13 +40,58 @@ function refuse(path: string, message: string): never {
   });
 }
 
-/** `p` + the highest number plus one, so an id stays unique on this dashboard (D9). */
-export function nextPanelId(
-  panels: readonly { readonly id: string }[]
+/** The prefix + the highest number plus one, so an id stays unique on this dashboard (D9). */
+function nextId(
+  prefix: string,
+  items: readonly { readonly id: string }[]
 ): string {
-  const highest = Math.max(0, ...panels.map(({ id }) => Number(id.slice(1))));
+  const highest = Math.max(0, ...items.map(({ id }) => Number(id.slice(1))));
 
-  return `p${highest + 1}`;
+  return `${prefix}${highest + 1}`;
+}
+
+export const nextPanelId = (panels: readonly { readonly id: string }[]) =>
+  nextId("p", panels);
+
+/** As panel ids, so a recorded agent request keeps its ids (P15-18). */
+export const nextViewId = (views: readonly SavedView[]) => nextId("v", views);
+
+/** The place of view `id`, or the step's refusal. */
+function viewIndex(
+  views: readonly SavedView[],
+  id: string,
+  step: number
+): number {
+  const at = views.findIndex((view) => view.id === id);
+
+  if (at === -1)
+    refuse(`changes.${step}.id`, `No view ${id} on this dashboard.`);
+
+  return at;
+}
+
+/**
+ * A step's view name, unless another view has it ignoring case and outer spaces (P15-17): the
+ * strict save would refuse it only as a raw schema error.
+ */
+function assertNameFree(
+  views: readonly SavedView[],
+  name: string,
+  step: number,
+  ownId?: string
+): void {
+  const key = name.trim().toLowerCase();
+
+  if (
+    views.some(
+      (view) => view.id !== ownId && view.name.trim().toLowerCase() === key
+    )
+  ) {
+    refuse(
+      `changes.${step}.name`,
+      `Another view on this dashboard has the name ${name.trim()}.`
+    );
+  }
 }
 
 /** The saves Undo can restore, newest first, at most `UNDO_DEPTH` (D1). */
@@ -62,7 +111,8 @@ export function applyChanges(
   changes: readonly DashboardChange[]
 ): AppliedChanges {
   let { name } = current;
-  let { filters } = current.config;
+  let { filters, defaultViewId } = current.config;
+  const views: SavedView[] = [...current.config.views];
   const panels: DraftPanel[] = [...current.config.panels];
   const checks = new Map<string, number>();
 
@@ -74,6 +124,46 @@ export function applyChanges(
 
     if (change.op === "set-filters") {
       ({ filters } = change);
+      continue;
+    }
+
+    if (change.op === "save-view") {
+      const { id, ...saved } = change;
+
+      if (id === undefined) {
+        if (views.length >= DASHBOARD_VIEW_LIMIT) {
+          throw new AppError(ANALYTICS_ERRORS["view-limit"]);
+        }
+
+        assertNameFree(views, saved.name, step);
+        views.push({
+          id: nextViewId(views),
+          name: saved.name,
+          filters: saved.filters,
+        });
+      } else {
+        const at = viewIndex(views, id, step);
+
+        assertNameFree(views, saved.name, step, id);
+        views[at] = { id, name: saved.name, filters: saved.filters };
+      }
+
+      continue;
+    }
+
+    if (change.op === "remove-view") {
+      views.splice(viewIndex(views, change.id, step), 1);
+
+      // The dashboard then opens with its stored filters (ticket scope).
+      if (defaultViewId === change.id) defaultViewId = null;
+
+      continue;
+    }
+
+    if (change.op === "set-default-view") {
+      if (change.id !== null) viewIndex(views, change.id, step);
+
+      defaultViewId = change.id;
       continue;
     }
 
@@ -140,5 +230,5 @@ export function applyChanges(
     }
   }
 
-  return { name, filters, panels, checks };
+  return { name, filters, panels, views, defaultViewId, checks };
 }

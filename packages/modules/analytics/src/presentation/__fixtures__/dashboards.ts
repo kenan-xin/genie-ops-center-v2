@@ -135,6 +135,8 @@ export const defaultDashboardPage: DashboardPageView = {
     filters: DEFAULT_FILTERS,
     filterFields: [],
     panels: [KPI_PANEL, BAR_PANEL, TABLE_PANEL],
+    views: [],
+    defaultViewId: null,
   },
   canWrite: true,
   reportingDate: "2026-10-27",

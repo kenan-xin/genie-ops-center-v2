@@ -14,6 +14,9 @@ const STEP_WORDS = {
   "move-panel": "their order",
   "rename": "the dashboard's name",
   "set-filters": "filters",
+  "save-view": "saved views",
+  "remove-view": "saved views",
+  "set-default-view": "which view it opens with",
 };
 
 const line = ANALYTICS_SURFACE_INSTRUCTIONS.lines.find((text) =>

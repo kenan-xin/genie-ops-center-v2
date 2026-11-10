@@ -27,4 +27,8 @@ export const ANALYTICS_ERRORS = defineModuleErrors("analytics", {
     message: "A dashboard holds at most 12 panels. Remove a panel first.",
     status: 409,
   },
+  "view-limit": {
+    message: "A dashboard keeps at most 20 views. Remove one to save another.",
+    status: 400,
+  },
 });

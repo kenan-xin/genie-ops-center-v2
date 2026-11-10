@@ -2,7 +2,12 @@ import { AppError, type PanelConfig } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
 import { type UndoEntry } from "../../config.ts";
-import type { DashboardChange, DateRangeFilter } from "../../contract.ts";
+import type {
+  DashboardChange,
+  DashboardFilters,
+  DateRangeFilter,
+  SavedView,
+} from "../../contract.ts";
 import { applyChanges, pushUndo } from "./changes.ts";
 
 // Only a dataset name: the module imports no other module (Global Constraints).
@@ -31,6 +36,8 @@ function entry(ids: readonly string[]): UndoEntry {
     name: "Overview",
     config: {
       filters: { dateRange: { preset: "all" }, fields: [] },
+      views: [],
+      defaultViewId: null,
       panels: ids.map((id) => ({
         id,
         layout: { columns: 1, rows: 1 },
@@ -181,6 +188,143 @@ describe("applyChanges", () => {
       layout: { columns: 2, rows: 1 },
       ownRange: { preset: "this-year" },
     });
+  });
+});
+
+const ALL: DashboardFilters = { dateRange: { preset: "all" }, fields: [] };
+
+const YEAR: DashboardFilters = {
+  dateRange: { preset: "this-year" },
+  fields: [{ kind: "toggle", field: "overdue", label: "Overdue", value: true }],
+};
+
+const view = (id: string, name = `View ${id}`): SavedView => ({
+  id,
+  name,
+  filters: ALL,
+});
+
+/** A dashboard of no panels with the given views and default. */
+const withViews = (
+  views: readonly SavedView[],
+  defaultViewId: string | null = null
+): UndoEntry => ({
+  name: "Overview",
+  config: { filters: ALL, panels: [], views, defaultViewId },
+});
+
+const viewsOf = (count: number) =>
+  Array.from({ length: count }, (_, i) => view(`v${i + 1}`));
+
+describe("applyChanges on views", () => {
+  it("gives a view added after v1 and v3 the id v4", () => {
+    const { views } = applyChanges(withViews([view("v1"), view("v3")]), [
+      { op: "save-view", name: "Overdue", filters: YEAR },
+    ]);
+
+    expect(views).toEqual([
+      view("v1"),
+      view("v3"),
+      { id: "v4", name: "Overdue", filters: YEAR },
+    ]);
+  });
+
+  it("updates a view by id in its place, with the new name and filters", () => {
+    const { views } = applyChanges(withViews([view("v1"), view("v2")]), [
+      { op: "save-view", id: "v1", name: "Overdue", filters: YEAR },
+    ]);
+
+    expect(views).toEqual([
+      { id: "v1", name: "Overdue", filters: YEAR },
+      view("v2"),
+    ]);
+  });
+
+  it("clears the default when the default view is removed", () => {
+    const applied = applyChanges(withViews([view("v1"), view("v2")], "v2"), [
+      { op: "remove-view", id: "v2" },
+    ]);
+
+    expect(applied.views).toEqual([view("v1")]);
+    expect(applied.defaultViewId).toBeNull();
+  });
+
+  it("keeps the default when another view is removed", () => {
+    expect(
+      applyChanges(withViews([view("v1"), view("v2")], "v2"), [
+        { op: "remove-view", id: "v1" },
+      ]).defaultViewId
+    ).toBe("v2");
+  });
+
+  it("sets and clears the default view", () => {
+    const current = withViews([view("v1")]);
+
+    expect(
+      applyChanges(current, [{ op: "set-default-view", id: "v1" }])
+        .defaultViewId
+    ).toBe("v1");
+    expect(
+      applyChanges(withViews([view("v1")], "v1"), [
+        { op: "set-default-view", id: null },
+      ]).defaultViewId
+    ).toBeNull();
+  });
+
+  it.each([
+    ["save-view", { op: "save-view", id: "v9", name: "Other", filters: ALL }],
+    ["remove-view", { op: "remove-view", id: "v9" }],
+    ["set-default-view", { op: "set-default-view", id: "v9" }],
+  ] as const)("refuses %s of an unknown id at its step", (_, change) => {
+    expect(
+      refusalOf(() => {
+        applyChanges(withViews([view("v1")]), [
+          { op: "rename", name: "Renamed" },
+          change,
+        ]);
+      })
+    ).toMatchObject({
+      code: "analytics:change-invalid",
+      issues: [
+        { path: "changes.1.id", message: "No view v9 on this dashboard." },
+      ],
+    });
+  });
+
+  it("saves a 20th view and refuses a 21st with analytics:view-limit", () => {
+    const save: DashboardChange = {
+      op: "save-view",
+      name: "One more",
+      filters: ALL,
+    };
+
+    expect(applyChanges(withViews(viewsOf(19)), [save]).views).toHaveLength(20);
+    expect(
+      refusalOf(() => {
+        applyChanges(withViews(viewsOf(20)), [save]);
+      })
+    ).toMatchObject({ code: "analytics:view-limit" });
+  });
+
+  it("refuses a view named as another one, ignoring case and outer spaces", () => {
+    expect(
+      refusalOf(() => {
+        applyChanges(withViews([view("v1", "Overdue"), view("v2")]), [
+          { op: "save-view", id: "v2", name: " overdue ", filters: ALL },
+        ]);
+      })
+    ).toMatchObject({
+      code: "analytics:change-invalid",
+      issues: [{ path: "changes.0.name" }],
+    });
+  });
+
+  it("saves an update that keeps the view's own name in another case", () => {
+    expect(
+      applyChanges(withViews([view("v1", "Overdue")]), [
+        { op: "save-view", id: "v1", name: "OVERDUE", filters: YEAR },
+      ]).views
+    ).toEqual([{ id: "v1", name: "OVERDUE", filters: YEAR }]);
   });
 });
 

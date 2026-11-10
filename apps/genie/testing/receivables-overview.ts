@@ -23,6 +23,8 @@ const kpi = (
 const OVERDUE = [{ field: "overdue", op: "eq", value: true }] as const;
 
 const config: DashboardConfig = {
+  views: [],
+  defaultViewId: null,
   filters: {
     dateRange: { preset: "all" },
     fields: [

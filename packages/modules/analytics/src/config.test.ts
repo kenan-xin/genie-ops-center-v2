@@ -175,3 +175,71 @@ describe("storedDashboardConfig", () => {
     ).toEqual([]);
   });
 });
+
+const savedView = (id: string, name = `View ${id}`) => ({
+  id,
+  name,
+  filters: { dateRange: { preset: "all" }, fields: [] },
+});
+
+const withViews = (
+  views: readonly unknown[],
+  defaultViewId: string | null = null
+) => ({ ...noPanels, views, defaultViewId });
+
+const issuesOf = (config: ReturnType<typeof withViews>) =>
+  dashboardConfigSchema
+    .safeParse(config)
+    .error?.issues.map(({ path, message }) => ({ path, message }));
+
+describe("the dashboard config's views", () => {
+  it.each([
+    ["20 views", 20, true],
+    ["21 views", 21, false],
+  ])("with %s parses: %s", (_, count, parses) => {
+    const views = Array.from({ length: count }, (__, i) =>
+      savedView(`v${i + 1}`)
+    );
+
+    expect(dashboardConfigSchema.safeParse(withViews(views)).success).toBe(
+      parses
+    );
+  });
+
+  it("refuses two views with one name, ignoring case and outer spaces", () => {
+    expect(
+      issuesOf(
+        withViews([savedView("v1", "Overdue"), savedView("v2", " overdue ")])
+      )
+    ).toEqual([
+      {
+        path: ["views", 1, "name"],
+        message: "Two views share the name overdue.",
+      },
+    ]);
+  });
+
+  it("refuses a default view that names no view", () => {
+    expect(issuesOf(withViews([savedView("v1")], "v2"))).toEqual([
+      { path: ["defaultViewId"], message: "No view v2 on this dashboard." },
+    ]);
+  });
+
+  it("parses a default view that names a view", () => {
+    expect(
+      dashboardConfigSchema.safeParse(withViews([savedView("v1")], "v1"))
+        .success
+    ).toBe(true);
+  });
+});
+
+describe("storedDashboardConfig on a row stored before saved views", () => {
+  it("reads no views and no default", () => {
+    const stored = storedDashboardConfig.parse({
+      filters: { dateRange: { preset: "all" }, fields: [] },
+      panels: [],
+    });
+
+    expect(stored).toMatchObject({ views: [], defaultViewId: null });
+  });
+});

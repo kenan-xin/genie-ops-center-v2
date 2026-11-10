@@ -115,6 +115,8 @@ async function kpiDashboard(
     config: {
       filters,
       panels: [{ id: "p1", layout: { columns: 1, rows: 1 }, config: KPI }],
+      views: [],
+      defaultViewId: null,
     },
   });
 }
@@ -146,6 +148,8 @@ async function twoDatasetDashboard(dataset: string): Promise<string> {
         { id: "p1", layout: LAYOUT, config: KPI },
         { id: "p2", layout: LAYOUT, config: countOf(dataset) },
       ],
+      views: [],
+      defaultViewId: null,
     },
   });
 }
@@ -386,9 +390,18 @@ describe("the analytics panels on real data", () => {
         changes: [{ op: "set-filters", filters }],
       })
     ).rejects.toMatchObject(refusal);
+    // A saved view passes the same check, so picking it never filters nothing (P15-19).
+    await expect(
+      caller().changeDashboard({
+        id,
+        expectedVersion: 1,
+        changes: [{ op: "save-view", name: "Flagged", filters }],
+      })
+    ).rejects.toMatchObject(refusal);
     expect(await caller().readDashboard({ id })).toMatchObject({
       version: 1,
       filters: NO_FILTERS,
+      views: [],
     });
   });
 
@@ -399,6 +412,8 @@ describe("the analytics panels on real data", () => {
       ownerUserId: owner.caller.userId,
       config: {
         filters: { dateRange: { preset: "this-month" }, fields: [] },
+        views: [],
+        defaultViewId: null,
         panels: [
           {
             id: "p1",

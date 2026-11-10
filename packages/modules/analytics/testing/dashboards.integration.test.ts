@@ -12,8 +12,9 @@ import {
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { EMPTY_DASHBOARD_CONFIG } from "../src/config.ts";
-import type { DashboardFilters } from "../src/contract.ts";
+import type { DashboardChange, DashboardFilters } from "../src/contract.ts";
 import { analyticsModule } from "../src/module.ts";
+import type { DashboardView } from "../src/presentation/views.ts";
 import { analyticsRouter } from "../src/router.ts";
 import { changeDashboard } from "../src/services/dashboards/store.ts";
 import {
@@ -142,6 +143,17 @@ const legacyConfig = (value: string | null) => ({
   },
   panels: [],
 });
+
+// This deployment registers no dataset, so a view's filters hold a date range only.
+const YEAR: DashboardFilters = {
+  dateRange: { preset: "this-year" },
+  fields: [],
+};
+
+const QUARTER: DashboardFilters = {
+  dateRange: { from: "2026-07-01", to: "2026-09-30" },
+  fields: [],
+};
 
 const editor = async () =>
   (await insertPersonWith(deployment.context, [...EDITOR])).userId;
@@ -806,5 +818,201 @@ describe("the analytics dashboard procedures", () => {
         },
       ],
     });
+  });
+
+  it("saves, updates, removes and sets the default view, each with Undo, and reads them back", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+    });
+
+    const caller = callerAs(owner);
+    const states: Pick<DashboardView, "views" | "defaultViewId">[] = [];
+
+    const step = async (version: number, change: DashboardChange) => {
+      const { views, defaultViewId } = await caller.changeDashboard({
+        id,
+        expectedVersion: version,
+        changes: [change],
+      });
+
+      states.push({ views, defaultViewId });
+
+      return { views, defaultViewId };
+    };
+
+    await step(1, { op: "save-view", name: "Year", filters: YEAR });
+    await step(2, {
+      op: "save-view",
+      id: "v1",
+      name: "Quarter",
+      filters: QUARTER,
+    });
+    await step(3, { op: "set-default-view", id: "v1" });
+    await step(4, { op: "save-view", name: "Year", filters: YEAR });
+
+    expect(await step(5, { op: "remove-view", id: "v2" })).toEqual({
+      views: [{ id: "v1", name: "Quarter", filters: QUARTER }],
+      defaultViewId: "v1",
+    });
+    expect(states.slice(0, 4)).toEqual([
+      {
+        views: [{ id: "v1", name: "Year", filters: YEAR }],
+        defaultViewId: null,
+      },
+      {
+        views: [{ id: "v1", name: "Quarter", filters: QUARTER }],
+        defaultViewId: null,
+      },
+      {
+        views: [{ id: "v1", name: "Quarter", filters: QUARTER }],
+        defaultViewId: "v1",
+      },
+      {
+        views: [
+          { id: "v1", name: "Quarter", filters: QUARTER },
+          { id: "v2", name: "Year", filters: YEAR },
+        ],
+        defaultViewId: "v1",
+      },
+    ]);
+
+    const read = await caller.readDashboard({ id });
+
+    expect({ views: read.views, defaultViewId: read.defaultViewId }).toEqual(
+      states[4]
+    );
+
+    // Each Undo restores the views and the default of the save before it.
+    const undone = [];
+
+    for (const version of [6, 7, 8, 9, 10]) {
+      // One at a time: each Undo needs the version the one before it answered.
+      // oxlint-disable-next-line no-await-in-loop
+      const { views, defaultViewId } = await caller.undoDashboard({
+        id,
+        expectedVersion: version,
+      });
+
+      undone.push({ views, defaultViewId });
+    }
+
+    expect(undone).toEqual([
+      ...states.slice(0, 4).toReversed(),
+      { views: [], defaultViewId: null },
+    ]);
+    expect(await rowOf(id)).toMatchObject({
+      version: 11,
+      config: { views: [], defaultViewId: null },
+    });
+  });
+
+  it("clears the default view when Save as default stores the filters", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      config: {
+        ...EMPTY_DASHBOARD_CONFIG,
+        views: [{ id: "v1", name: "Year", filters: YEAR }],
+        defaultViewId: "v1",
+      },
+    });
+
+    const caller = callerAs(owner);
+
+    // The person opened the default view and changed its filters before Save as default.
+    const saved = await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [
+        { op: "set-filters", filters: QUARTER },
+        { op: "set-default-view", id: null },
+      ],
+    });
+
+    expect(saved).toMatchObject({
+      filters: QUARTER,
+      views: [{ id: "v1", name: "Year", filters: YEAR }],
+      defaultViewId: null,
+    });
+
+    const undone = await caller.undoDashboard({ id, expectedVersion: 2 });
+
+    expect(undone).toMatchObject({
+      filters: EMPTY_DASHBOARD_CONFIG.filters,
+      defaultViewId: "v1",
+      canUndo: false,
+    });
+  });
+
+  it("clears the default when the default view is removed", async () => {
+    const owner = await editor();
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner,
+      config: {
+        ...EMPTY_DASHBOARD_CONFIG,
+        views: [
+          { id: "v1", name: "Year", filters: YEAR },
+          { id: "v2", name: "Quarter", filters: QUARTER },
+        ],
+        defaultViewId: "v2",
+      },
+    });
+
+    await callerAs(owner).changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [{ op: "remove-view", id: "v2" }],
+    });
+
+    expect(await rowOf(id)).toMatchObject({
+      config: {
+        views: [{ id: "v1", name: "Year", filters: YEAR }],
+        defaultViewId: null,
+      },
+    });
+  });
+
+  it("reads a dashboard stored without views", async () => {
+    const owner = await editor();
+    const stored = { filters: EMPTY_DASHBOARD_CONFIG.filters, panels: [] };
+
+    const { rows } = await deployment.context.db.$client.query<{ id: string }>(
+      `insert into dashboard (owner_user_id, name, config, undo)
+       values ($1, 'Before views', $2::jsonb, $3::jsonb) returning id`,
+      [
+        owner,
+        JSON.stringify(stored),
+        JSON.stringify([{ name: "Older", config: stored }]),
+      ]
+    );
+
+    const id = rows[0]?.id ?? "";
+    const caller = callerAs(owner);
+
+    expect(await caller.readDashboard({ id })).toMatchObject({
+      views: [],
+      defaultViewId: null,
+    });
+
+    const saved = await caller.changeDashboard({
+      id,
+      expectedVersion: 1,
+      changes: [{ op: "save-view", name: "Year", filters: YEAR }],
+    });
+
+    expect(saved.views).toEqual([{ id: "v1", name: "Year", filters: YEAR }]);
+
+    // Both Undo entries were stored without views: the save's own and the older one.
+    const once = await caller.undoDashboard({ id, expectedVersion: 2 });
+    const twice = await caller.undoDashboard({ id, expectedVersion: 3 });
+
+    expect([once, twice]).toMatchObject([
+      { views: [], defaultViewId: null },
+      { name: "Older", views: [], defaultViewId: null },
+    ]);
   });
 });
