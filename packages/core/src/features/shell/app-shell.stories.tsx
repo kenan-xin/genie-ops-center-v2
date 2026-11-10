@@ -9,7 +9,10 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { AgentClientStub } from "../agent/__fixtures__/agent-client.tsx";
 import { AgentPanelHost } from "../agent/agent-panel-host.tsx";
-import { resetAgentPanel } from "../agent/agent-panel-store.ts";
+import {
+  agentPanelStore,
+  resetAgentPanel,
+} from "../agent/agent-panel-store.ts";
 import { AppShell, type AppShellProps } from "./app-shell.tsx";
 import { COLLAPSED_CATEGORIES_KEY } from "./collapsed-categories.ts";
 import { PageHeader } from "./page-header.tsx";
@@ -914,7 +917,7 @@ export const OpensAndClosesTheAgentPanel: Story = {
   decorators: withAgent,
   beforeEach: resetAgentPanel,
   args: { agentPanel },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     const button = canvas.getByRole("button", { name: "Agent" });
 
     await expect(button).toHaveAttribute("aria-expanded", "false");
@@ -947,13 +950,29 @@ export const OpensAndClosesTheAgentPanel: Story = {
     await userEvent.click(newChat);
     // The panel closes on an Escape from inside it only (xok3.59: once it stayed open here).
     await expect(newChat).toHaveFocus();
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() =>
-      expect(
-        canvas.queryByRole("region", { name: "Agent" }),
-        "after Escape"
-      ).toBeNull()
-    );
+
+    // xok3.59 probe (owner, 2026-11-10): a failure names the Escape target, the store and the aside.
+    let escapeTarget = "no Escape keydown";
+
+    const noteEscape = (event: KeyboardEvent) => {
+      if (event.key !== "Escape" || !(event.target instanceof Element)) return;
+      escapeTarget = `${event.target.tagName} "${event.target.getAttribute("aria-label") ?? event.target.textContent?.replace(/\s+/g, " ").trim().slice(0, 30)}"`;
+    };
+
+    document.addEventListener("keydown", noteEscape, true);
+
+    try {
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() =>
+        expect(
+          canvas.queryByRole("region", { name: "Agent" }),
+          `after Escape: target ${escapeTarget}, store open ${agentPanelStore.getState().open}, aside hidden ${canvasElement.querySelector<HTMLElement>("aside[aria-label='Agent panel']")?.hidden}`
+        ).toBeNull()
+      );
+    } finally {
+      document.removeEventListener("keydown", noteEscape, true);
+    }
+
     await expect(button).toHaveFocus();
   },
 };
