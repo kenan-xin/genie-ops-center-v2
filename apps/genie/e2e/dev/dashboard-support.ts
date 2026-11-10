@@ -4,7 +4,13 @@ import { insertDashboard } from "@genie/module-analytics/testing";
 
 import { selectedModuleIds } from "../../src/modules.ts";
 import { ANALYTICS_CHAT_DASHBOARD } from "../../testing/analytics-chat.ts";
-import { ANALYTICS_PEOPLE, DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
+import { RECEIVABLES_OVERVIEW } from "../../testing/receivables-overview.ts";
+import {
+  ANALYTICS_PEOPLE,
+  DEMO_ACCOUNT_EMAIL,
+  DEV_DB_PORT,
+  DEV_PORT,
+} from "./global-setup.ts";
 
 /**
  * What the dashboard spec shares: the demo database's own rows.
@@ -68,6 +74,32 @@ export async function resetChatDashboard(): Promise<void> {
     ...ANALYTICS_CHAT_DASHBOARD,
     ownerUserId,
   });
+}
+
+/**
+ * Puts the demo account's Receivables overview back to the seeded config, with no views, no
+ * default view and no undo, whatever a killed run left. Answers its id.
+ */
+export async function resetReceivablesOverview(): Promise<string> {
+  const ownerUserId = await userIdOf(DEMO_ACCOUNT_EMAIL);
+
+  // The version moves, so a page still open on the old config reads the reset one.
+  const { rows } = await context().db.$client.query<{ id: string }>(
+    `update dashboard set config = $1, undo = '[]', version = version + 1, updated_at = now()
+     where owner_user_id = $2 and name = $3 returning id`,
+    [
+      JSON.stringify(RECEIVABLES_OVERVIEW.config),
+      ownerUserId,
+      RECEIVABLES_OVERVIEW.name,
+    ]
+  );
+
+  const id = rows[0]?.id;
+
+  if (id === undefined)
+    throw new Error(`the demo account has no ${RECEIVABLES_OVERVIEW.name}`);
+
+  return id;
 }
 
 /** The id of the `customer` row with this name. */
