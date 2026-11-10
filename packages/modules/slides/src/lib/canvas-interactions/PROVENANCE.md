@@ -22,6 +22,8 @@ Two, in `canvas-interactions.ts`, so the file passes `exactOptionalPropertyTypes
 - `createCanvasInteractionCore` `resize` falls back to `DEFAULT_CANVAS_MIN_SIZE` after `config.minSize`. `resizeCanvasRect` already applies that default.
 - The resize gesture passes `altKey: Boolean(pointer.altKey)`. The key is read only for its truth value.
 
+The shipped `canvas-interactions.ts`, after both edits, has SHA-256 `9db4f4ab7245e6bef0962f7cbfc1e5bbb1cc02e40dde9874b761023d83834ba6`. `hotkey-keys.ts` ships as upstream.
+
 The formatter and the linter skip this folder (`packages/config/src/oxfmt/`, `packages/config/src/oxlint/`), so the files stay as copied.
 
 ## What the module uses

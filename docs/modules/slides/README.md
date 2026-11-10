@@ -81,4 +81,4 @@ The create tool saves through the same store as New deck: every figure, chart an
 
 ## Not built
 
-Shared decks, Word documents, edits by chat.
+Shared decks, Word documents.

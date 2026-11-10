@@ -329,7 +329,7 @@ export type StyleToolbarProps = {
  * The style controls of the selected element (variant A, S7-43). A title, text or bullet list
  * takes color, size, weight, alignment, fill and border; a figure, chart, table or image only
  * fill and border. Each control sends one `change-element` step. Below 768 px it docks at the
- * bottom of the screen in two rows.
+ * bottom of the screen and wraps its controls, in three rows at 390 px (P13-10).
  */
 export function StyleToolbar(props: StyleToolbarProps) {
   const { element, slideId, index, saving } = props;
