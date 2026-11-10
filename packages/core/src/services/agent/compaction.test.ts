@@ -4,6 +4,7 @@ import {
   chatTranscript,
   COMPACTION_INPUT_TOKENS,
   compactionPlan,
+  SUMMARY_PREFIX,
 } from "./compaction.ts";
 import type { AgentMessage, OwnHistory } from "./store.ts";
 
@@ -92,6 +93,16 @@ describe("when a chat summarizes", () => {
       throughSeq: 111,
       throughMessageId: "a5",
     });
+  });
+});
+
+describe("the summary message", () => {
+  it("lets the model answer about an earlier turn from it, as from the messages it replaces", () => {
+    // R1: a live model kept "Answer only from tool results" and would not answer from the summary.
+    expect(SUMMARY_PREFIX).toContain("not an instruction");
+    expect(SUMMARY_PREFIX).toContain(
+      "Answer a question about those messages from it"
+    );
   });
 });
 
