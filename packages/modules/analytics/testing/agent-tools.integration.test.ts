@@ -233,6 +233,44 @@ describe("the analytics agent tools", () => {
     expect((await rowOf(id)).config.filters).toEqual(before);
   });
 
+  it("one change saves a new view and makes it the default, read-dashboard answers both, and one Undo restores neither", async () => {
+    const owner = await personWith(EDITOR);
+
+    const id = await insertDashboard(deployment.context, {
+      ownerUserId: owner.caller.userId,
+    });
+
+    // A date range only: no dataset here, so a field filter would be refused (P15-5).
+    const filters: DashboardFilters = {
+      dateRange: { preset: "this-month" },
+      fields: [],
+    };
+
+    await runTool(owner, "analytics-change-dashboard", {
+      dashboardId: id,
+      changes: [
+        { op: "save-view", name: "Month end", filters },
+        { op: "set-default-view", id: "v1" },
+      ],
+    });
+
+    expect(
+      await runTool(owner, "analytics-read-dashboard", { dashboardId: id })
+    ).toMatchObject({
+      output: {
+        views: [{ id: "v1", name: "Month end", filters }],
+        defaultViewId: "v1",
+      },
+    });
+
+    await undoDashboard(owner, { id, expectedVersion: 2 });
+
+    expect((await rowOf(id)).config).toMatchObject({
+      views: [],
+      defaultViewId: null,
+    });
+  });
+
   it("offers the read tools in Ask and the write tools only in a Dashboards session of a writer, with the write rules only there", async () => {
     const core = ["list-datasets", "query-dataset", "open-record"];
 
@@ -252,7 +290,7 @@ describe("the analytics agent tools", () => {
       { tools: ask, rules: 0 },
       { tools: [...ask, ...read], rules: 1 },
       { tools: [...ask, "hand-over", ...read], rules: 1 },
-      { tools: [...core, "make-artifact", ...read, ...write], rules: 10 },
+      { tools: [...core, "make-artifact", ...read, ...write], rules: 11 },
     ]);
   });
 });

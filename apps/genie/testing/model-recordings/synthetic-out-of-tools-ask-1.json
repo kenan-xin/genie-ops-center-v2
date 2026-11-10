@@ -2278,7 +2278,7 @@
           "type": "function",
           "function": {
             "name": "analytics-read-dashboard",
-            "description": "Reads one of this person's own dashboards by id: its name, version, filters and panels, with each panel's id, layout and chart config.",
+            "description": "Reads one of this person's own dashboards by id: its name, version, filters, saved views, default view id and panels, with each panel's id, layout and chart config.",
             "parameters": {
               "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",

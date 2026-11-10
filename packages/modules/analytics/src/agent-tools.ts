@@ -62,14 +62,14 @@ const readDashboardTool = defineAgentTool({
     failed: "Could not read the dashboard",
   },
   description:
-    "Reads one of this person's own dashboards by id: its name, version, filters and panels, with each panel's id, layout and chart config.",
+    "Reads one of this person's own dashboards by id: its name, version, filters, saved views, default view id and panels, with each panel's id, layout and chart config.",
   input: z.strictObject({ dashboardId }),
   permission: "analytics:read",
   run: async (ctx, input) => {
     await assertCanRead(ctx.caller);
 
     const record = await readOwnDashboard(ctx, input.dashboardId);
-    const { filters, panels } = record.config;
+    const { filters, views, defaultViewId, panels } = record.config;
 
     return {
       output: {
@@ -77,6 +77,8 @@ const readDashboardTool = defineAgentTool({
         name: record.name,
         version: record.version,
         filters: filters,
+        views: views,
+        defaultViewId,
         panels: panels.map(({ id, layout, config, ownRange }) => {
           // A tool value holds no undefined, so a panel on the dashboard range has no key.
           const range: ToolObject = {};
@@ -128,7 +130,7 @@ const changeDashboardTool = defineAgentTool({
     failed: "Could not change the dashboard",
   },
   description:
-    "Saves one change to one of this person's own dashboards: a list of steps, each add-panel, change-panel, remove-panel, move-panel, rename or set-filters. Every added or changed panel passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the dashboard.",
+    "Saves one change to one of this person's own dashboards: a list of steps, each add-panel, change-panel, remove-panel, move-panel, rename, set-filters, save-view, remove-view or set-default-view. Every added or changed panel passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the dashboard.",
   input: z.strictObject({ dashboardId, changes: dashboardChanges }),
   permission: "analytics:write",
   writes: true,

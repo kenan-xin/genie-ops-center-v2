@@ -105,6 +105,22 @@ export const ANALYTICS_FILTERS = {
 export const ANALYTICS_FILTER_ANSWER =
   "The dashboard now shows only Demo Company and the last 3 months.";
 
+/**
+ * The view request of `synthetic-dashboard-view-1`, the view its `save-view` step saves as `v1`
+ * and its `set-default-view` step makes the default, and the answer of `-2` (S7-47, R-49a).
+ */
+export const ANALYTICS_VIEW_MESSAGE =
+  "Save this as a view called Month end and open the dashboard with it.";
+
+export const ANALYTICS_VIEW = {
+  id: "v1",
+  name: "Month end",
+  filters: { dateRange: { preset: "this-month" }, fields: [] },
+} as const;
+
+export const ANALYTICS_VIEW_ANSWER =
+  "I saved the view Month end, and the dashboard now opens with it.";
+
 /** The collections figure of slide `s2` in `slides-change.ts`. */
 export const COLLECTIONS_PANEL = {
   type: "kpi",

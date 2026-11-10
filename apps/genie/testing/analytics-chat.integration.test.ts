@@ -38,6 +38,9 @@ import {
   ANALYTICS_QUESTION,
   ANALYTICS_QUESTION_MESSAGE,
   ANALYTICS_SHOW_ANSWER,
+  ANALYTICS_VIEW,
+  ANALYTICS_VIEW_ANSWER,
+  ANALYTICS_VIEW_MESSAGE,
   HANDOFF_PANEL_TITLES,
   OUT_OF_TOOLS_ASK_ANSWER,
   OUT_OF_TOOLS_ASK_MESSAGE,
@@ -324,6 +327,36 @@ describe("the analytics chat beside a dashboard", () => {
 
     expect(rows).toEqual([{ filters: ANALYTICS_FILTERS, undo: 1, version: 2 }]);
     expect(await lastAnswerText(sessionId)).toContain(ANALYTICS_FILTER_ANSWER);
+  });
+
+  it("a view request saves a new view and makes it the default in one change", async () => {
+    const ctx = await newAsker();
+
+    const dashboardId = await insertDashboard(deployment.context, {
+      ownerUserId: ctx.caller.userId,
+      name: ANALYTICS_CHAT_DASHBOARD.name,
+    });
+
+    const sessionId = randomUUID();
+
+    errors.length = 0;
+    await send(ctx, sessionId, ANALYTICS_VIEW_MESSAGE, dashboardId);
+
+    // First, so a recording miss prints the body the model was sent.
+    expect(errors).toEqual([]);
+    expect(await callsOf(sessionId)).toEqual([
+      { tool: "analytics-change-dashboard", outcome: "answered" },
+    ]);
+
+    const { rows } = await deployment.context.db.$client.query(
+      "select config->'views' as views, config->>'defaultViewId' as default_view_id, jsonb_array_length(undo) as undo, version from dashboard where id = $1",
+      [dashboardId]
+    );
+
+    expect(rows).toEqual([
+      { views: [ANALYTICS_VIEW], default_view_id: "v1", undo: 1, version: 2 },
+    ]);
+    expect(await lastAnswerText(sessionId)).toContain(ANALYTICS_VIEW_ANSWER);
   });
 
   it("Ask hands a dashboard to the Dashboards agent, and the run adds its three panels one by one", async () => {
