@@ -371,6 +371,35 @@ describe("a scoped Roles manager and the grant writers (d8l5.51)", () => {
     ).rejects.toMatchObject({ code: "forbidden" });
     expect(await assignmentCount(onUser)).toBe(before);
   });
+
+  it("groups.addMembers refuses a caller who holds core:groups:manage only at a scope adding itself to a Tenant administrator group", async () => {
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["core:groups:manage"],
+      { type: "group", id: groupId }
+    );
+
+    const administrators = await insertGroup(deployment.context, []);
+
+    await assignRole(deployment.context, {
+      roleId: roleId(TENANT_ADMINISTRATOR_ROLE),
+      principal: { type: "group", id: administrators },
+    });
+
+    await expect(
+      callProcedure(createGroupsRouter(), caller(userId)).addMembers({
+        groupId: administrators,
+        userIds: [userId],
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    const members = await deployment.context.db.$client.query(
+      "select 1 from group_member where group_id = $1 and user_id = $2",
+      [administrators, userId]
+    );
+
+    expect(members.rowCount).toBe(0);
+  });
 });
 
 describe("roles.assign and the scope rules (d8l5.51)", () => {

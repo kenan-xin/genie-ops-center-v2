@@ -680,7 +680,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
   {
     file: "testing/role-writers.integration.test.ts",
     reason:
-      "Spec 2 R-40 and R-37a: Add person gives at most one role per Grants row, never an administration role and never a role of a switched-off module, and refuses before it writes a person (d8l5.44); the one writer refuses a new grant of a switched-off or uncompiled module's role for every caller, and Remove stays open (d8l5.39, R-33d). d8l5.51: a grant writer needs core:roles:manage tenant-wide, and roles.assign takes a scope only as Advanced access does; every Roles procedure, role edits and unassign included, refuses a holder of the key only at a scope. d8l5.54: the person read answers one person through can() and names only the Grants rows of its paths.",
+      "Spec 2 R-40 and R-37a: Add person gives at most one role per Grants row, never an administration role and never a role of a switched-off module, and refuses before it writes a person (d8l5.44); the one writer refuses a new grant of a switched-off or uncompiled module's role for every caller, and Remove stays open (d8l5.39, R-33d). d8l5.51: a grant writer needs core:roles:manage tenant-wide, and roles.assign takes a scope only as Advanced access does; every Roles procedure, role edits and unassign included, refuses a holder of the key only at a scope. groups.addMembers needs core:groups:manage tenant-wide, so a scoped holder cannot join a Tenant administrator group. d8l5.54: the person read answers one person through can() and names only the Grants rows of its paths.",
     cases: [
       "Add person against the Grants rows adds a person with one role of a switched-on module and Ask user, each through the one writer",
       "Add person against the Grants rows refuses two roles of one module and writes no person",
@@ -695,6 +695,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a scoped Roles manager and the grant writers (d8l5.51) the Groups assignRole refuses a caller who holds core:roles:manage only at a scope and writes no assignment",
       "a scoped Roles manager and the grant writers (d8l5.51) roles.update refuses adding core:roles:manage to a custom core role the scoped caller holds tenant-wide",
       "a scoped Roles manager and the grant writers (d8l5.51) roles.unassign refuses a caller who holds core:roles:manage only at a scope and keeps the assignment",
+      "a scoped Roles manager and the grant writers (d8l5.51) groups.addMembers refuses a caller who holds core:groups:manage only at a scope adding itself to a Tenant administrator group",
       "roles.assign and the scope rules (d8l5.51) refuses a core role at a scope with invalid-input and writes no assignment",
       "roles.assign and the scope rules (d8l5.51) refuses a module role at a scope type its module does not declare with invalid-input and writes no assignment",
       "the person read of the People inspector (d8l5.54) names only the Grants rows of the person's paths",

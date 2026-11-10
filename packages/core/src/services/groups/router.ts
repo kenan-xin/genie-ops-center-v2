@@ -1,5 +1,6 @@
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import { gatedArea } from "../../lib/rpc/implement-core-area.ts";
+import { scopesFor } from "../authorization/index.ts";
 import {
   assignRole,
   removeAssignment,
@@ -41,9 +42,24 @@ const assigning = managed.use(async ({ context, next }) => {
 });
 
 /**
+ * A membership write can hand the member a group's roles, the Tenant administrator group's
+ * included, so it needs `core:groups:manage` tenant-wide (DEC-39, d8l5.51): a legacy holder of the
+ * key only at a scope cannot add anyone, itself included. A tenant-wide holder without
+ * `core:roles:manage` can still join such a group; that is the owner's call (d8l5.55).
+ */
+const adding = managed.use(async ({ context, next }) => {
+  if ((await scopesFor(context.caller, "core:groups:manage")).kind !== "all") {
+    throw new AppError(CORE_ERRORS.forbidden);
+  }
+
+  return next();
+});
+
+/**
  * The Groups screen's one router (R-37), built from its contract. Every procedure is behind
- * `core:groups:manage` through the one `can()` seam (DEC-39). The screen reads and writes only
- * through it, and every writer records a catalogue audit action.
+ * `core:groups:manage` through the one `can()` seam (DEC-39); adding members needs the key
+ * tenant-wide through `scopesFor()`. The screen reads and writes only through it, and every
+ * writer records a catalogue audit action.
  */
 export function createGroupsRouter() {
   return managed.router({
@@ -152,7 +168,7 @@ export function createGroupsRouter() {
       }
     ),
 
-    addMembers: managed.addMembers.handler(async ({ context, input }) => {
+    addMembers: adding.addMembers.handler(async ({ context, input }) => {
       await addLocalGroupMembers(context.tenant, {
         actorUserId: context.caller.userId,
         groupId: input.groupId,
