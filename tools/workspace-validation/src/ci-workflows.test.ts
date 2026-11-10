@@ -22,6 +22,8 @@ const MIGRATION_CHECK_SCRIPT = "scripts/check-migrations.mjs";
 
 const PULL_REQUEST_TEMPLATE = ".github/pull_request_template.md";
 
+const GATE_MERGE_SCRIPT = "scripts/gate-merge.mjs";
+
 /** A `permissions:` block: a scope map, or the `read-all`/`write-all` shorthand. */
 type ReleasePermissions = string | Readonly<Record<string, string>>;
 
@@ -1582,5 +1584,88 @@ describe("the Spec 0 CI gates", () => {
     for (const file of workflowFiles()) {
       expect(read(file), file).not.toContain("coverage");
     }
+  });
+});
+
+/** Runs the gate:merge runner in `cwd` and returns its status and stdout. */
+function runGateMerge(cwd: string, args: readonly string[] = []) {
+  return spawnSync(
+    process.execPath,
+    [join(WORKSPACE_ROOT, GATE_MERGE_SCRIPT), ...args],
+    { cwd, encoding: "utf8" }
+  );
+}
+
+/** A throwaway workspace whose package.json holds only `scripts`. */
+function fakeWorkspace(scripts: Record<string, string>): string {
+  const root = mkdtempSync(join(tmpdir(), "genie-gate-merge-"));
+
+  writeFileSync(join(root, "package.json"), JSON.stringify({ scripts }));
+
+  return root;
+}
+
+// gate:merge runs every ci:develop stage, also after a failed one, so that one
+// local run reports the failures of every stage. ci:pr and ci:develop keep
+// their fail-fast && chain for CI.
+describe("the gate:merge runner", () => {
+  it("runs every stage after a failed one and exits with the first failing code", () => {
+    const root = fakeWorkspace({
+      "ci:develop": "pnpm run ci:pr && echo three",
+      "ci:pr": "echo one && exit 3 && echo two && exit 4",
+    });
+
+    try {
+      const result = runGateMerge(root);
+
+      expect(result.status).toBe(3);
+      expect(result.stdout).toContain("one");
+      expect(result.stdout).toContain("two");
+      expect(result.stdout).toContain("three");
+
+      const summary = result.stdout.slice(
+        result.stdout.indexOf("gate-merge: failed stages:")
+      );
+
+      expect(summary).toContain("exit 3");
+      expect(summary).toContain("exit 4");
+      expect(summary).not.toContain("echo three");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("exits 0 when every stage passes", () => {
+    const root = fakeWorkspace({ "ci:develop": "echo a && echo b" });
+
+    try {
+      expect(runGateMerge(root).status).toBe(0);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("runs exactly the ci:develop stages, in order", () => {
+    expect(rootScript("gate:merge")).toBe(`node ${GATE_MERGE_SCRIPT}`);
+
+    const segments = (name: string) =>
+      rootScript(name)
+        .split("&&")
+        .map((segment) => segment.trim());
+
+    const [first, ...rest] = segments("ci:develop");
+
+    expect(first).toBe("pnpm run ci:pr");
+
+    // The gate drops --nx-bail so that every integration project reports.
+    const expected = [
+      ...segments("ci:pr").map((stage) => stage.replace(" --nx-bail", "")),
+      ...rest,
+    ];
+
+    const result = runGateMerge(WORKSPACE_ROOT, ["--list"]);
+
+    expect(result.status).toBe(0);
+    expect(result.stdout.trim().split("\n")).toEqual(expected);
   });
 });
