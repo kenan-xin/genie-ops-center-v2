@@ -58,8 +58,10 @@ function Live(props: FiltersBarProps) {
 
 const docsFilters: FiltersBarProps["filters"] = {
   filters: filtersDashboardPage.dashboard.filters,
+  viewId: null,
   fromAddress: false,
   set: fn(),
+  selectView: fn(),
   reset: fn(),
 };
 
@@ -71,7 +73,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The dashboard filter bar, variant A (Spec 7 R-49, S7-46), built on the list header controls. The date range, then one trigger per field filter (a select, a multi-select or a toggle), each with Remove filter; Add filter offers the other fields, up to four. A change writes the page address only, so a reload or a shared link keeps it, and saves nothing. While the filters differ from the stored ones, the bar ends in "Not saved as default" and Save as default, which stores them in one `set-filters` change. On a phone the controls move into the Filters sheet, with a one-line summary under it.',
+          'The dashboard filter bar, variant A (Spec 7 R-49, S7-46, S7-47), built on the list header controls. The view menu first (see Dashboard view menu), then the date range, then one trigger per field filter (a select, a multi-select or a toggle), each with Remove filter; Add filter offers the other fields, up to four. A change writes the page address only, so a reload or a shared link keeps it, and saves nothing. With no view selected and filters that differ from the stored ones, the bar ends in "Not saved as default" and Save as default, which stores them and clears the default view in one change. With a view selected and changed filters, it ends in "Changed", Update view and Save as new view. On a phone the controls move into the Filters sheet, with a one-line summary under it.',
       },
     },
     a11y: { test: "error" },

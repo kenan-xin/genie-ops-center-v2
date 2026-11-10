@@ -12,7 +12,10 @@ export function DashboardListPage(props: ModulePageProps<DashboardListView>) {
   return <DashboardList view={props.data} />;
 }
 
-/** One dashboard page. The loader already answered missing for another person's dashboard. */
+/**
+ * One dashboard page. The loader already answered missing for another person's dashboard. The key
+ * starts a fresh page on a move to another dashboard, so no state of the last one stays (P15-16).
+ */
 export function DashboardPage(props: ModulePageProps<DashboardPageView>) {
-  return <DashboardView view={props.data} />;
+  return <DashboardView key={props.data.dashboard.id} view={props.data} />;
 }

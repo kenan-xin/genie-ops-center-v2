@@ -14,10 +14,15 @@ import {
   fieldFilter,
   type FieldFilter,
   type FilterField,
+  type SavedView,
 } from "../contract.ts";
 
-/** The two dashboard parameters, beside one `f.<field>` per field filter. */
-export const ADDRESS = { range: "range", fields: "fields" } as const;
+/** The dashboard parameters, beside one `f.<field>` per field filter; `view` selects a view (P15-20). */
+export const ADDRESS = {
+  range: "range",
+  fields: "fields",
+  view: "view",
+} as const;
 
 /** The patch `useAddressParams().set` takes. */
 export type FilterPatch = Record<string, string | undefined>;
@@ -54,13 +59,14 @@ export function fieldNamesOf(fields: string | undefined): readonly string[] {
   return [...seen];
 }
 
-/** The parameters this address can hold: the range, the field names, and a value per field. */
+/** The parameters this address can hold: the range, the field names, the view, a value per field. */
 export function addressNames(
   params: Readonly<Record<string, string>>
 ): readonly string[] {
   return [
     ADDRESS.range,
     ADDRESS.fields,
+    ADDRESS.view,
     ...fieldNamesOf(params[ADDRESS.fields]).map(nameOf),
   ];
 }
@@ -176,6 +182,47 @@ export function readFilterAddress(
   return {
     dateRange: readRange(range),
     fields: readFields(named, fields, params),
+  };
+}
+
+/** What the open order reads of a dashboard: its stored filters and its saved views. */
+export type ViewSource = {
+  readonly filters: DashboardFilters;
+  readonly filterFields: readonly FilterField[];
+  readonly views: readonly SavedView[];
+  readonly defaultViewId: string | null;
+};
+
+export type OpenFilters = {
+  readonly filters: DashboardFilters;
+  /** The selected view; an unknown `view` id reads as none (P15-20). */
+  readonly viewId: string | null;
+  /** Whether the filters differ in source from the stored ones, so a read sends them. */
+  readonly fromAddress: boolean;
+};
+
+/**
+ * The filters the page opens with: the address filters when the address holds any dashboard
+ * parameter, else the default view's, else the stored ones (S7-47). Filters without `view` are the
+ * dashboard filters, so the default view does not take over (P15-22).
+ */
+export function openFilters(
+  params: Readonly<Record<string, string | undefined>>,
+  dashboard: ViewSource
+): OpenFilters {
+  const read = readFilterAddress(params, dashboard.filterFields);
+  const named = params[ADDRESS.view];
+
+  const wanted =
+    read === null && named === undefined ? dashboard.defaultViewId : named;
+
+  const view = dashboard.views.find((candidate) => candidate.id === wanted);
+  const filters = read ?? view?.filters;
+
+  return {
+    filters: filters ?? dashboard.filters,
+    viewId: view?.id ?? null,
+    fromAddress: filters !== undefined,
   };
 }
 

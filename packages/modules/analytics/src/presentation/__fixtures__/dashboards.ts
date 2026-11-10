@@ -356,6 +356,34 @@ export const FIELD_VALUES = new Map<string, readonly string[]>([
   ["status", ["Open", "Paid"]],
 ]);
 
+/** The Month end view: this month, overdue only (variant A `views`). */
+export const MONTH_END: DashboardFilters = {
+  dateRange: { preset: "this-month" },
+  fields: [
+    { kind: "toggle", field: "overdue", label: "Overdue only", value: true },
+  ],
+};
+
+export const NORTH: DashboardFilters = {
+  dateRange: { preset: "last-3-months" },
+  fields: [
+    { kind: "select", field: "region", label: "Region", value: "North" },
+  ],
+};
+
+/** The filters dashboard with two saved views and Month end as its default (S7-47). */
+export const viewsDashboardPage: DashboardPageView = {
+  ...filtersDashboardPage,
+  dashboard: {
+    ...filtersDashboardPage.dashboard,
+    views: [
+      { id: "v1", name: "Month end", filters: MONTH_END },
+      { id: "v2", name: "North region", filters: NORTH },
+    ],
+    defaultViewId: "v1",
+  },
+};
+
 /** Two filters set, as the address holds them (variant A `two-set`). */
 export const TWO_SET: DashboardFilters = {
   dateRange: { preset: "last-3-months" },

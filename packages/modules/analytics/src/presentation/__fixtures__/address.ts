@@ -9,6 +9,7 @@ function replace(patch: Readonly<Record<string, string | undefined>>) {
     if (
       name !== ADDRESS.range &&
       name !== ADDRESS.fields &&
+      name !== ADDRESS.view &&
       !name.startsWith("f.")
     )
       params.append(name, value);
@@ -25,9 +26,14 @@ function replace(patch: Readonly<Record<string, string | undefined>>) {
   );
 }
 
-/** Opens the story with `filters` in the address, and clears them after it (S7-46). */
-export function withFilterAddress(filters: DashboardFilters | null) {
-  replace(filters === null ? {} : writeFilterAddress(filters));
+/** Opens the story with `filters` and a `view` in the address, and clears them after it. */
+export function withFilterAddress(
+  filters: DashboardFilters | null,
+  view?: string
+) {
+  const patch = filters === null ? {} : writeFilterAddress(filters);
+
+  replace({ ...patch, [ADDRESS.view]: view });
 
   return () => replace({});
 }

@@ -36,6 +36,7 @@ import {
   type DashboardFilterState,
   useDashboardChange,
 } from "./use-dashboard.ts";
+import { ViewMenu, ViewNameDialog } from "./view-menu.tsx";
 import type { DashboardView } from "./views.ts";
 
 const RANGE = "range";
@@ -231,8 +232,9 @@ export type FiltersBarProps = {
 };
 
 /**
- * The dashboard filter bar, variant A (R-49, S7-46), on the list header controls. A change writes
- * the page address only; Save as default stores the filters in one `set-filters` change.
+ * The dashboard filter bar, variant A (R-49, S7-46, S7-47), on the list header controls, after the
+ * view menu. A change writes the page address only; Save as default stores the filters and clears
+ * the default view in one change, and a changed view offers Update view and Save as new view.
  */
 export function FiltersBar(props: FiltersBarProps) {
   const { dashboard, filters } = props;
@@ -241,6 +243,8 @@ export function FiltersBar(props: FiltersBarProps) {
   const change = useDashboardChange(dashboard);
   const addId = useId();
   const hintId = useId();
+  // The Name dialog's title while it is open.
+  const [naming, setNaming] = useState<string | null>(null);
 
   // The bar shows every field filter the page applies, with or without a value (S7-46 ruling).
   const shown = current.fields;
@@ -361,11 +365,68 @@ export function FiltersBar(props: FiltersBarProps) {
   const onRemove = (id: string) =>
     id === RANGE ? undefined : () => remove(id.slice(2));
 
-  function save() {
-    change.mutate([{ op: "set-filters", filters: current }], {
+  /** One change, one Undo: these filters stored, and the default view cleared (P15-21). */
+  function saveAsDefault() {
+    change.mutate(
+      [
+        { op: "set-filters", filters: current },
+        { op: "set-default-view", id: null },
+      ],
       // The page then reads the stored filters, which are now these.
-      onSuccess: () => filters.reset(),
+      { onSuccess: () => filters.reset() }
+    );
+  }
+
+  const selected = dashboard.views.find((view) => view.id === filters.viewId);
+
+  function updateView() {
+    if (selected === undefined) return;
+
+    change.mutate(
+      [
+        {
+          op: "save-view",
+          id: selected.id,
+          name: selected.name,
+          filters: current,
+        },
+      ],
+      // The address keeps the view and drops the filters, so the page reads the saved view.
+      { onSuccess: () => filters.reset(selected.id) }
+    );
+  }
+
+  function saveAsView(name: string) {
+    change.mutate([{ op: "save-view", name, filters: current }], {
+      onSuccess: (saved) => {
+        const added = saved.views.find(
+          (view) => !dashboard.views.some((old) => old.id === view.id)
+        );
+
+        setNaming(null);
+        filters.reset(added?.id);
+      },
     });
+  }
+
+  function makeDefault() {
+    if (selected === undefined) return;
+
+    change.mutate([{ op: "set-default-view", id: selected.id }]);
+  }
+
+  function removeView() {
+    if (selected === undefined) return;
+
+    change.mutate([{ op: "remove-view", id: selected.id }], {
+      // As in the prototype: back to the dashboard filters, not to another default view.
+      onSuccess: () => filters.selectView(null),
+    });
+  }
+
+  function openNaming(title: string) {
+    change.reset();
+    setNaming(title);
   }
 
   const available = dashboard.filterFields.filter(
@@ -375,7 +436,16 @@ export function FiltersBar(props: FiltersBarProps) {
   const full = shown.length >= FIELD_FILTER_LIMIT;
   const canAdd = full || available.length > 0;
   const anySet = Object.keys(params).some((id) => id !== RANGE);
-  const unsaved = !sameFilters(current, dashboard.filters);
+
+  // The prototype's `statusKind()`: with a view selected the bar speaks about the view only.
+  const status =
+    selected === undefined
+      ? sameFilters(current, dashboard.filters)
+        ? null
+        : "unsaved"
+      : sameFilters(current, selected.filters)
+        ? null
+        : "changed";
 
   const summary = [
     rangeLabel(current.dateRange),
@@ -385,7 +455,16 @@ export function FiltersBar(props: FiltersBarProps) {
   return (
     <div className="grid gap-3">
       <div className="flex flex-wrap items-center gap-2.5 border-b border-border pb-4">
-        {/* S7-47 puts the view menu first, here. */}
+        <ViewMenu
+          views={dashboard.views}
+          defaultViewId={dashboard.defaultViewId}
+          viewId={filters.viewId}
+          onSelect={filters.selectView}
+          onMakeDefault={makeDefault}
+          onRemove={removeView}
+          onSaveAsView={() => openNaming("Save as view")}
+          onSaveAsDefault={saveAsDefault}
+        />
         <div className="hidden md:contents">
           <DateControl
             filter={RANGE_FILTER}
@@ -484,29 +563,69 @@ export function FiltersBar(props: FiltersBarProps) {
           <p className="basis-full text-sm text-muted-foreground">{summary}</p>
         </div>
 
-        {unsaved ? (
-          <div className="flex items-center gap-3 md:ml-auto">
+        {status === null ? null : (
+          <div className="flex flex-wrap items-center gap-3 md:ml-auto">
             <span className="flex items-center gap-2 text-sm text-muted-foreground">
               {/* DESIGN.md: an unsaved change carries a small blue dot. */}
               <span
                 aria-hidden="true"
                 className="size-2 rounded-full bg-primary"
               />
-              Not saved as default
+              {status === "changed" ? "Changed" : "Not saved as default"}
             </span>
-            <Button
-              variant="secondary"
-              size="sm"
-              loading={change.isPending}
-              onClick={save}
-            >
-              Save as default
-            </Button>
+            {status === "changed" ? (
+              <>
+                <Button
+                  size="sm"
+                  loading={change.isPending}
+                  onClick={updateView}
+                >
+                  Update view
+                </Button>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => openNaming("Save as new view")}
+                >
+                  Save as new view
+                </Button>
+              </>
+            ) : (
+              <Button
+                variant="secondary"
+                size="sm"
+                loading={change.isPending}
+                onClick={saveAsDefault}
+              >
+                Save as default
+              </Button>
+            )}
           </div>
-        ) : null}
+        )}
       </div>
 
-      {change.error === null ? null : (
+      {naming === null ? null : (
+        <ViewNameDialog
+          title={naming}
+          views={dashboard.views}
+          saving={change.isPending}
+          refusal={
+            change.error === null ? null : (
+              <ChangeRefusal
+                failure={{ kind: "change", error: change.error }}
+                onReload={() => {
+                  change.reset();
+                  props.onReload();
+                }}
+              />
+            )
+          }
+          onSave={saveAsView}
+          onClose={() => setNaming(null)}
+        />
+      )}
+
+      {change.error === null || naming !== null ? null : (
         <ChangeRefusal
           failure={{ kind: "change", error: change.error }}
           focus

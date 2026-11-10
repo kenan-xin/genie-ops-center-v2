@@ -4,6 +4,7 @@ import type { DashboardFilters, FilterField } from "../contract.ts";
 import {
   addressNames,
   fieldNamesOf,
+  openFilters,
   readFilterAddress,
   sameFilters,
   writeFilterAddress,
@@ -33,6 +34,69 @@ const fields: readonly FilterField[] = [
   { field: "ref", label: "Reference", kind: "select", datasets: [] },
   { field: "extra", label: "Extra", kind: "select", datasets: [] },
 ];
+
+// S7-47 open order: the address when it holds any dashboard parameter, else the default view,
+// else the stored filters; `view=<id>` selects a view (P15-20, P15-22).
+describe("openFilters", () => {
+  const stored: DashboardFilters = { dateRange: { preset: "all" }, fields: [] };
+
+  const monthEnd: DashboardFilters = {
+    dateRange: { preset: "this-month" },
+    fields: [{ kind: "toggle", field: "flag", label: "Flagged", value: true }],
+  };
+
+  const dashboard = {
+    filters: stored,
+    filterFields: fields,
+    views: [{ id: "v1", name: "Month end", filters: monthEnd }],
+    defaultViewId: "v1",
+  };
+
+  const lastQuarter: DashboardFilters = {
+    dateRange: { preset: "last-3-months" },
+    fields: [],
+  };
+
+  it.each([
+    ["no address opens the default view", {}, monthEnd, "v1", true],
+    ["a view alone opens its filters", { view: "v1" }, monthEnd, "v1", true],
+    [
+      "a view with filters keeps the changed filters on the view",
+      { view: "v1", range: "last-3-months", fields: "" },
+      lastQuarter,
+      "v1",
+      true,
+    ],
+    [
+      "an unknown view opens the stored filters",
+      { view: "v9" },
+      stored,
+      null,
+      false,
+    ],
+    [
+      "filters without a view are the dashboard filters, not the default view",
+      { range: "last-3-months", fields: "" },
+      lastQuarter,
+      null,
+      true,
+    ],
+  ])("%s", (_name, params, filters, viewId, fromAddress) => {
+    expect(openFilters(params, dashboard)).toEqual({
+      filters,
+      viewId,
+      fromAddress,
+    });
+  });
+
+  it("reads the stored filters without sending them when nothing selects a view", () => {
+    expect(openFilters({}, { ...dashboard, defaultViewId: null })).toEqual({
+      filters: stored,
+      viewId: null,
+      fromAddress: false,
+    });
+  });
+});
 
 describe("fieldNamesOf", () => {
   it("names each field of a fields parameter once, and nothing for no parameter", () => {
@@ -144,7 +208,7 @@ describe("the dashboard filters in the address", () => {
         "f.flag": "1",
         "status": "open",
       })
-    ).toEqual(["range", "fields", "f.label", "f.flag"]);
+    ).toEqual(["range", "fields", "view", "f.label", "f.flag"]);
   });
 
   it("removes the value of a previous field that is gone", () => {

@@ -24,6 +24,8 @@ import {
   ADDRESS,
   addressNames,
   fieldNamesOf,
+  openFilters,
+  type OpenFilters,
   readFilterAddress,
   sameFilters,
   writeFilterAddress,
@@ -41,20 +43,22 @@ export const panelQueryKey = (
   filters: DashboardFilters
 ) => ["analytics", "panel", id, panelId, version, filters] as const;
 
-export type DashboardFilterState = {
-  /** The address filters, or the stored ones when the address holds none. */
-  readonly filters: DashboardFilters;
-  /** Whether the filters come from the address, so a read sends them. */
-  readonly fromAddress: boolean;
-  /** Writes `next` to the address; nothing is saved (S7-46). */
+export type DashboardFilterState = OpenFilters & {
+  /** Writes `next` to the address, on the selected view; nothing is saved (S7-46). */
   readonly set: (next: DashboardFilters) => void;
-  /** Clears the address, so the page reads the stored filters. */
-  readonly reset: () => void;
+  /** Writes `view` and that view's filters, or the stored filters for `null` (P15-22). */
+  readonly selectView: (id: string | null) => void;
+  /**
+   * Clears the address filters, so the page reads the stored filters, or with `viewId` that
+   * view's (after Update view and Save as new view).
+   */
+  readonly reset: (viewId?: string) => void;
 };
 
 /**
- * The dashboard filters the page applies: the address first, else the stored ones (S7-46). When
- * the stored filters change (the agent, Undo, another tab), the address is cleared so they show.
+ * The dashboard filters the page applies, in the open order of `openFilters` (S7-46, S7-47). When
+ * what the page reads under the address changes (the agent, Undo, another tab), the address
+ * filters are dropped so it shows; the `view` parameter stays, so a save's own write wins.
  */
 export function useDashboardFilters(
   dashboard: DashboardView
@@ -64,34 +68,71 @@ export function useDashboardFilters(
   const names = addressNames(first.params);
   const address = useAddressParams(names);
   const { params } = address;
-  const lastStored = useRef(dashboard.filters);
 
   const state = useMemo<DashboardFilterState>(() => {
-    const read = readFilterAddress(params, dashboard.filterFields);
+    const open = openFilters(params, dashboard);
+    const previous = fieldNamesOf(params[ADDRESS.fields]);
+
+    const without = Object.fromEntries(
+      addressNames(params).map((name) => [name, undefined])
+    );
 
     return {
-      filters: read ?? dashboard.filters,
-      fromAddress: read !== null,
+      ...open,
       set: (next) =>
-        address.set(
-          writeFilterAddress(next, fieldNamesOf(params[ADDRESS.fields]))
-        ),
-      reset: () =>
-        address.set(
-          Object.fromEntries(
-            addressNames(params).map((name) => [name, undefined])
-          )
-        ),
+        address.set({
+          ...writeFilterAddress(next, previous),
+          // A default view selected by the open order stays selected once the address holds filters.
+          [ADDRESS.view]: open.viewId ?? undefined,
+        }),
+      selectView: (id) => {
+        const view = dashboard.views.find((candidate) => candidate.id === id);
+
+        address.set({
+          ...writeFilterAddress(view?.filters ?? dashboard.filters, previous),
+          [ADDRESS.view]: view?.id,
+        });
+      },
+      reset: (viewId) => address.set({ ...without, [ADDRESS.view]: viewId }),
     };
-  }, [address, params, dashboard.filters, dashboard.filterFields]);
+  }, [address, params, dashboard]);
+
+  // What the page reads with the address filters dropped: the named view's, else the stored ones.
+  const named = params[ADDRESS.view];
+
+  const under =
+    dashboard.views.find((view) => view.id === named)?.filters ??
+    dashboard.filters;
+
+  const last = useRef({ named, under });
 
   useEffect(() => {
-    if (sameFilters(lastStored.current, dashboard.filters)) return;
+    const before = last.current;
 
-    lastStored.current = dashboard.filters;
+    last.current = { named, under };
 
-    if (state.fromAddress) state.reset();
-  }, [dashboard.filters, state]);
+    // A switch of view is the person's own pick, not a stored change.
+    if (before.named !== named || sameFilters(before.under, under)) return;
+
+    if (readFilterAddress(params, dashboard.filterFields) === null) return;
+
+    // "Dashboard filters" with a default view: dropping the filters would open the default view.
+    if (named === undefined && dashboard.defaultViewId !== null) {
+      address.set(
+        writeFilterAddress(under, fieldNamesOf(params[ADDRESS.fields]))
+      );
+
+      return;
+    }
+
+    address.set(
+      Object.fromEntries(
+        addressNames(params)
+          .filter((name) => name !== ADDRESS.view)
+          .map((name) => [name, undefined])
+      )
+    );
+  }, [named, under, params, address, dashboard]);
 
   return state;
 }
