@@ -1,6 +1,6 @@
 "use client";
 
-import { contrastRatio, foregroundFor } from "@genie/core/features/branding";
+import { contrastRatio } from "@genie/core/features/branding";
 import {
   Button,
   DropdownMenu,
@@ -318,6 +318,8 @@ export type StyleToolbarProps = {
   readonly index: number;
   /** The element's box as drawn: its own, else the computed one. */
   readonly box: ElementBox;
+  /** The slide's background, which a fill pick checks the text color against. */
+  readonly background?: string | undefined;
   readonly saving?: boolean;
   readonly onStep: (step: DeckChange) => void;
   readonly onEditText: () => void;
@@ -455,7 +457,7 @@ export function StyleToolbar(props: StyleToolbarProps) {
         clearLabel="No fill"
         disabled={saving}
         icon={<PaintBucketIcon aria-hidden="true" />}
-        onPick={(fill) => send({ fill })}
+        onPick={(fill) => send(fillChange(element, props.background, fill))}
       />
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -539,36 +541,78 @@ export function StyleToolbar(props: StyleToolbarProps) {
 }
 
 /**
+ * The color a text needs on what draws behind it, or `undefined` when its own color reaches the
+ * flat 4.5:1 (P13-9, P16-4). On the theme background the theme's own text color (`null`); else
+ * the theme text or white, whichever has more contrast there.
+ */
+function readableColor(
+  color: string | undefined,
+  fill: string | undefined,
+  background: string | undefined
+): string | null | undefined {
+  const behind = fill ?? background ?? THEME_BACKGROUND;
+
+  if (contrastRatio(color ?? THEME_TEXT, behind) >= 4.5) return undefined;
+
+  if (fill === undefined && background === undefined) return null;
+
+  return contrastRatio(THEME_TEXT, behind) >= contrastRatio("#FFFFFF", behind)
+    ? THEME_TEXT
+    : "#FFFFFF";
+}
+
+/**
+ * A fill pick with the text color it needs: a title, text or bullet list whose color falls below
+ * 4.5:1 on what then draws behind it takes a readable color in the same step (P13-9).
+ */
+export function fillChange(
+  element: ShownElement,
+  background: string | undefined,
+  fill: string | null
+): StyleChange {
+  if (!TEXT_KINDS.has(element.kind)) return { fill };
+
+  const color = readableColor(
+    element.style?.color,
+    fill ?? undefined,
+    background
+  );
+
+  return color === undefined ? { fill } : { fill, color };
+}
+
+/**
  * A background change with the text colors it needs: each text without a fill whose color falls
- * below 4.5:1 on the new background takes the one foreground rule's color, in the same change, so
- * a hand edit reaches what the save allows (P13-9). One change, one Undo entry.
+ * below 4.5:1 on the new background takes a readable color in the same change, so a hand edit reaches
+ * what the save allows (P13-9). One change, one Undo entry.
  */
 export function backgroundSteps(
   slide: ShownSlide,
   background: string | null
 ): DeckChange[] {
-  const behind = background ?? THEME_BACKGROUND;
+  const texts = slide.elements.flatMap((element, index) => {
+    // A text with its own fill draws on that fill, which a background change leaves as it is.
+    if (!TEXT_KINDS.has(element.kind) || element.style?.fill !== undefined) {
+      return [];
+    }
 
-  const texts = slide.elements.flatMap((element, index) =>
-    TEXT_KINDS.has(element.kind) &&
-    element.style?.fill === undefined &&
-    contrastRatio(element.style?.color ?? THEME_TEXT, behind) < 4.5
-      ? [
+    const color = readableColor(
+      element.style?.color,
+      undefined,
+      background ?? undefined
+    );
+
+    return color === undefined
+      ? []
+      : [
           {
             op: "change-element" as const,
             slideId: slide.id,
             index,
-            // On the theme background the theme's own text color; else the foreground rule's.
-            style: {
-              color:
-                background === null
-                  ? null
-                  : foregroundFor(behind).toUpperCase(),
-            },
+            style: { color },
           },
-        ]
-      : []
-  );
+        ];
+  });
 
   return [
     { op: "change-slide-fields", slideId: slide.id, background },

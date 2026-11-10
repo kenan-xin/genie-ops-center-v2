@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
 import {
   bulletsWithTwoVisualsSlide,
@@ -158,6 +158,32 @@ export const PhoneDock: Story = {
       index: 1,
       box: { x: 48, y: 136, w: 320, h: 348 },
     });
+  },
+};
+
+// P13-9: a dark fill on a text with the theme color turns it white in the same step, so the hand
+// edit reaches what the save allows.
+export const FillAdjustsText: Story = {
+  name: "A dark fill turns the text white in the same step",
+  globals: desktop,
+  args: { element: text!, index: 1, box: { x: 40, y: 136, w: 320, h: 348 } },
+  play: async ({ args, canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Fill" }));
+
+    const body = within(canvasElement.ownerDocument.body);
+
+    await userEvent.click(
+      await body.findByRole("button", { name: "Dark blue #1E3A8A" })
+    );
+    await expect(args.onStep).toHaveBeenCalledTimes(1);
+    await expect(args.onStep).toHaveBeenCalledWith({
+      op: "change-element",
+      slideId: textWithChartSlide.id,
+      index: 1,
+      style: { fill: "#1E3A8A", color: "#FFFFFF" },
+    });
+    // The pick closes the popover; axe runs once its focus guards are gone, not during the exit.
+    await waitFor(() => expect(body.queryByRole("dialog")).toBeNull());
   },
 };
 

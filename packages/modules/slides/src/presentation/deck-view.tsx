@@ -1044,6 +1044,7 @@ export function DeckView(props: DeckViewProps) {
                   slideId={current.id}
                   index={selected}
                   box={boxOf(current, selected)}
+                  background={current.background}
                   saving={busy}
                   onStep={(step) =>
                     sendStep([step], {
