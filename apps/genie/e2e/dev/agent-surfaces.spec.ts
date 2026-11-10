@@ -433,14 +433,31 @@ test("the Dashboards agent answers a request outside its tools with one sentence
 
         const surface = await openSurfaceAgent(page, "Dashboards agent");
 
+        const answer = page.waitForResponse(
+          (response) =>
+            response.url().endsWith("/api/agent") &&
+            response.request().method() === "POST"
+        );
+
         await send(page, surface, OUT_OF_TOOLS_DASHBOARD_MESSAGE);
 
         await expect(
           surface.getByText(OUT_OF_TOOLS_DASHBOARD_ANSWER, { exact: true })
         ).toBeVisible(FIRST_PAINT);
+
+        // A panel step can still land after the answer text, so wait for the stream to end and
+        // read the dashboard again from the server before the check (Review Focus 5).
+        await (await answer).finished();
+        await warm(
+          page,
+          `/m/analytics/dashboards/${id}`,
+          QUESTION_DASHBOARD_NAME
+        );
+
         await expect(
           page.getByText("No panels yet", { exact: true })
         ).toBeVisible();
+        await expect(page.getByRole("main").getByRole("figure")).toHaveCount(0);
       } finally {
         await removeDashboardsNamed(email, [QUESTION_DASHBOARD_NAME]);
       }
