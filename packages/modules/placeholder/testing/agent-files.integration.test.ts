@@ -3,7 +3,9 @@ import { randomUUID } from "node:crypto";
 import {
   AGENT_FILE_JOB,
   type AuditMetadataValue,
+  callProcedure,
   createAgentFile,
+  createAgentRouter,
   type DatasetQuery,
   createOwnSession,
   principalFor,
@@ -143,6 +145,25 @@ async function csvLabels(agentFileId: string): Promise<string[]> {
   return rows.map((cells) => cells[at] ?? "").toSorted();
 }
 
+/** Waits, at most 10 s, until `count` sessions of the database wait on a lock. */
+async function waitersReach(count: number): Promise<void> {
+  for (let tries = 0; tries < 200; tries += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- polls until the lock waits show.
+    const { rows } = await deployment.context.db.$client.query<{
+      waiting: number;
+    }>(
+      "select count(distinct pid)::int as waiting from pg_locks where not granted"
+    );
+
+    if (rows[0]?.waiting === count) return;
+
+    // oxlint-disable-next-line no-await-in-loop -- polls until the lock waits show.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+  }
+
+  throw new Error(`${count} sessions never waited on a lock.`);
+}
+
 const fullReader = async () =>
   (
     await insertPersonWith(deployment.context, [
@@ -250,6 +271,51 @@ describe("the agent file job on the placeholder", () => {
     expect((await auditRows(csv))[0]?.metadata).toMatchObject({
       outcome: "forbidden",
     });
+  });
+
+  it("stores no file when the chat is deleted while the file is made", async () => {
+    const person = await fullReader();
+    const csv = await queuedFile(person, { format: "csv", query: LABELS });
+
+    const { rows } = await deployment.context.db.$client.query<{
+      session_id: string;
+    }>("select session_id from agent_file where id = $1", [csv]);
+
+    const sessionId = rows[0]?.session_id ?? "";
+
+    // The job's audit row is its first audit_event write, inside its transaction: it parks there.
+    const blocker = await deployment.context.db.$client.connect();
+
+    try {
+      await blocker.query("begin");
+      await blocker.query("lock table audit_event in share mode");
+
+      const job = runJob(person, csv);
+
+      await waitersReach(1);
+
+      const removed = callProcedure(
+        createAgentRouter(),
+        contextFor(person)
+      ).remove({ id: sessionId });
+
+      await waitersReach(2);
+
+      await blocker.query("commit");
+      await Promise.all([job, removed]);
+    } finally {
+      await blocker.query("rollback");
+      blocker.release();
+    }
+
+    const { rows: files } = await deployment.context.db.$client.query<{
+      count: number;
+    }>(
+      "select count(*)::int as count from file where uploaded_by_user_id = $1",
+      [person]
+    );
+
+    expect(files[0]?.count).toBe(0);
   });
 
   it("pages past 1,000 rows", async () => {

@@ -128,6 +128,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent file job on the placeholder writes every record a full reader may read as CSV and Excel, once, with one audit row",
       "the agent file job on the placeholder writes only the records a scoped reader may read",
       "the agent file job on the placeholder fails without a retry and stores no file when the starter lost the read key",
+      "the agent file job on the placeholder stores no file when the chat is deleted while the file is made",
       "the agent file job on the placeholder pages past 1,000 rows",
     ],
   },

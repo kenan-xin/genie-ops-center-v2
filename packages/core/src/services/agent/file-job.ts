@@ -179,6 +179,15 @@ async function makeAgentFile(
     });
 
     await withTransaction(ctx.tenant, async (tx) => {
+      // A chat deleted while the file is made would read no file id and leave the file behind.
+      const [live] = await tx
+        .select({ id: agentSession.id })
+        .from(agentSession)
+        .where(eq(agentSession.id, found.sessionId))
+        .for("key share");
+
+      if (live === undefined) return;
+
       const stored = await ctx.tenant.fileStorage.store(
         {
           fileName: fileNameOf(found.title, found.format),
