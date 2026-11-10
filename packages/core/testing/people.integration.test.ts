@@ -204,48 +204,6 @@ describe("the People writers against a real database", () => {
     expect(added.length).toBeGreaterThan(0);
   });
 
-  it("writes no person when a picked role does not exist", async () => {
-    const actor = await manager();
-    const email = `rollback-${Date.now()}@example.invalid`;
-
-    await expect(
-      addPerson(deployment.context, [], {
-        actorUserId: actor,
-        email,
-        roleIds: ["00000000-0000-0000-0000-000000000000"],
-        sendInvitation: false,
-      })
-    ).rejects.toMatchObject({ code: "not-found" });
-
-    const rows = await deployment.context.db
-      .select({ id: user.id })
-      .from(user)
-      .where(eq(user.email, email));
-
-    expect(rows).toHaveLength(0);
-  });
-
-  it("refuses a duplicate email with the stable code", async () => {
-    const actor = await manager();
-    const email = `dup-${Date.now()}@example.invalid`;
-
-    await addPerson(deployment.context, [], {
-      actorUserId: actor,
-      email,
-      roleIds: [],
-      sendInvitation: false,
-    });
-
-    await expect(
-      addPerson(deployment.context, [], {
-        actorUserId: actor,
-        email,
-        roleIds: [],
-        sendInvitation: false,
-      })
-    ).rejects.toMatchObject({ code: "email-taken" });
-  });
-
   it("sends the brokered invitation and writes one core:invitation_sent row with no link", async () => {
     const actor = await manager();
     const email = `invite-${Date.now()}@example.invalid`;
@@ -909,19 +867,27 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
 
   it("refuses an unknown role id and creates no realm user", async () => {
     const actor = await manager();
+    const email = `bad-role-${Date.now()}@example.invalid`;
 
     const counters = installRealmStub();
 
     await expect(
       addPerson(deployment.context, [], {
         actorUserId: actor,
-        email: `bad-role-${Date.now()}@example.invalid`,
+        email,
         roleIds: [randomUUID()],
         accountType: "local",
       })
     ).rejects.toMatchObject({ code: "not-found" });
 
     expect(counters.posts).toBe(0);
+
+    const rows = await deployment.context.db
+      .select({ id: user.id })
+      .from(user)
+      .where(eq(user.email, email));
+
+    expect(rows).toHaveLength(0);
   });
 
   it("deletes the realm user when the transaction fails after it was created", async () => {

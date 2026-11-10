@@ -12,10 +12,6 @@ const MINIMAL_ENV = { logLevel: "info" } as const;
  * commit 0cec072 while its own tests passed (R-17).
  */
 describe("the core package root", () => {
-  it("exports the tenant-context factory", () => {
-    expect(core.createTenantContext).toBeTypeOf("function");
-  });
-
   it("builds a context through the package root and holds its fixed members", async () => {
     const context = core.createTenantContext(
       {
@@ -63,11 +59,6 @@ describe("the core package root", () => {
     expect(core.permissionKeyFor).toBeTypeOf("function");
     expect(core.modelFor).toBeTypeOf("function");
     expect(core.modelStatus).toBeTypeOf("function");
-  });
-
-  it("exports the logger a deployment builds and the execution seam a request takes", () => {
-    expect(core.createLogger).toBeTypeOf("function");
-    expect(core.forExecution).toBeTypeOf("function");
   });
 
   it("writes one execution's ids on the lines of a logger taken through the package root", () => {

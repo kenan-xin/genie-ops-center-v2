@@ -176,12 +176,6 @@ const grantsAnotherModule = () =>
   });
 
 describe("the placeholder router", () => {
-  it("mounts one read procedure", () => {
-    const caller = callProcedure(placeholderRouter, contextWith(grantsNothing));
-
-    expect(caller.read).toBeTypeOf("function");
-  });
-
   it("refuses a disabled placeholder through its own procedure", async () => {
     const caller = callProcedure(
       placeholderRouter,

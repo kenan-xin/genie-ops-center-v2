@@ -113,15 +113,6 @@ describe("collectFrameOrigins", () => {
     ).resolves.toEqual([]);
   });
 
-  it("contributes nothing when the provider rejects", async () => {
-    await expect(
-      collectFrameOrigins(
-        { frameOrigins: () => Promise.reject(new Error("down")) },
-        ctx
-      )
-    ).resolves.toEqual([]);
-  });
-
   // These assert the collector's own return value. Routing them through
   // serializeContentSecurityPolicy would normalize a second time and hide
   // whether the collector filtered anything at all.

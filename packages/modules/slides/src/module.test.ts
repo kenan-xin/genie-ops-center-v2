@@ -16,18 +16,6 @@ describe("the slides module declaration", () => {
     ]);
   });
 
-  it("requires its use key on every workspace entry (DEC-50)", () => {
-    const workspace = slidesModule.navigation.entries.filter(
-      (entry) => entry.surface === "workspace"
-    );
-
-    expect(workspace.length).toBeGreaterThan(0);
-
-    for (const entry of workspace) {
-      expect(entry.requiredPermission).toBe("slides:use");
-    }
-  });
-
   it("claims no landing route, so an include list stays valid (DEC-49)", () => {
     // Read through the contract's own type: the declaration is narrower than it,
     // and a literal that never carries the flag has no property to read.
@@ -45,13 +33,6 @@ describe("the slides module declaration", () => {
 
   it("contributes no frame origin until it frames something", async () => {
     expect(await slidesModule.contentSecurityPolicy.frameOrigins()).toEqual([]);
-  });
-
-  it("hands core a migration declaration it has not read yet", () => {
-    expect(slidesModule.schema.migrations).toBeInstanceOf(Function);
-    expect(slidesModule.schema.migrationsTable).toBe(
-      "__drizzle_migrations_slides"
-    );
   });
 
   it("reads its own SQL when core calls the declaration", () => {

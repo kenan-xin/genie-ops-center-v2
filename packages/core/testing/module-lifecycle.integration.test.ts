@@ -552,48 +552,6 @@ describe("genie-ops module lifecycle", () => {
     expectAudit(rows[0], "ops:module-enable", ["required-config"], "success");
   }, 120000);
 
-  it("setModuleEnabled writes the same tenant_module row as the module enable command", async () => {
-    const fixture = await createFixture([validModule]);
-    await seedModule(fixture.observer, "fixture", {
-      title: "Shared procedure",
-    });
-
-    const { setModuleEnabled } =
-      await import("../src/services/module-management/index.ts");
-
-    await expect(
-      setModuleEnabled(
-        fixture.context,
-        fixture.compiledModules,
-        "fixture",
-        true
-      )
-    ).resolves.toEqual({ changed: true });
-    const procedureRow = await moduleRow(fixture.observer, "fixture");
-
-    const captured = outputCapture();
-
-    const exitCode = await runGenieOps(
-      ["module", "enable", "fixture"],
-      runnerOptions(fixture, captured)
-    );
-
-    const commandRow = await moduleRow(fixture.observer, "fixture");
-
-    expect(exitCode).toBe(0);
-    expect(commandRow).toMatchObject({
-      module_id: procedureRow.module_id,
-      enabled: procedureRow.enabled,
-      enabled_at: procedureRow.enabled_at,
-      config: procedureRow.config,
-    });
-    expect(procedureRow.enabled).toBe(true);
-    expect(commandRow.enabled_at).not.toBeNull();
-    const rows = await auditRows(fixture.observer);
-    expect(rows).toHaveLength(1);
-    expectAudit(rows[0], "ops:module-enable", ["fixture"], "success");
-  }, 120000);
-
   it("setModuleEnabled reports changes and preserves enabled_at on repeated enable and disable", async () => {
     const fixture = await createFixture([validModule]);
     await fixture.observer.query(

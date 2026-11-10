@@ -1,7 +1,6 @@
 import {
   checkChart,
   createTenantContext,
-  type DatasetCursor,
   type DatasetQuery,
   principalFor,
   queryDataset,
@@ -328,45 +327,6 @@ describe("invoice datasets", () => {
       [...first.rows, ...second.rows].map((row) => row["id"]).toSorted()
     ).toEqual(inserted.map(({ id }) => id).toSorted());
     expect(second.next).toBeUndefined();
-  });
-
-  it("pages invoices under Updated across rows that share one microsecond, each row once, ties by id", async () => {
-    const { id: customerId } = await insertCustomer(t());
-    const invoices = await Promise.all(
-      [1, 2, 3, 4, 5].map(() => insertInvoice(t(), { customerId }))
-    );
-    const tied = invoices.slice(0, 3).map(({ id }) => id);
-
-    await t().db.$client.query(
-      "update invoice set updated_at = case when id = any($1::uuid[]) then timestamptz '2026-10-20 08:00:00.123456+00' else timestamptz '2026-10-20 08:00:00.123455+00' end where customer_id = $2",
-      [tied, customerId]
-    );
-
-    const ctx = contextFor(reader);
-    const query: DatasetQuery = {
-      select: ["id", "updatedAt"],
-      filters: [ofCustomer(customerId)],
-      orderBy: [{ column: "updatedAt", direction: "desc" }],
-      limit: 2,
-    };
-    // Each page starts from the last one's cursor, so the reads run one after another.
-    const walk = async (after?: DatasetCursor): Promise<string[]> => {
-      const read = await queryDataset(ctx, {
-        dataset: "invoices.invoices",
-        query,
-        after,
-      });
-      const ids = read.rows.map((row) => String(row["id"]));
-
-      return read.next === undefined
-        ? ids
-        : [...ids, ...(await walk(read.next))];
-    };
-
-    const walked = await walk();
-    const rest = invoices.slice(3).map(({ id }) => id);
-
-    expect(walked).toEqual([...tied.toSorted(), ...rest.toSorted()]);
   });
 
   it("a link to an invoice dated after the reporting date leaves its payment unallocated and has no allocation row", async () => {

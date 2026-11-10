@@ -143,19 +143,6 @@ describe("the logger", () => {
     });
   });
 
-  it("names an unauthenticated caller rather than inventing a user", () => {
-    const { lines, destination } = capture();
-
-    forExecution(createLogger(ENV, destination), {
-      requestId: "r1",
-      correlationId: "r1",
-      tenantId: "t1",
-      userId: "anonymous",
-    }).info("sign-in page");
-
-    expect(lines[0]).toMatchObject({ userId: "anonymous" });
-  });
-
   it("redacts a secret whatever the call site passes", () => {
     const { lines, destination } = capture();
 

@@ -173,9 +173,4 @@ describe("the advisory lock key", () => {
   it("is one fixed value for the whole application", () => {
     expect(MIGRATION_LOCK_KEY).toBe(7562301498120384n);
   });
-
-  it("fits in a signed 64 bit integer, which is what Postgres takes", () => {
-    expect(MIGRATION_LOCK_KEY).toBeGreaterThan(0n);
-    expect(MIGRATION_LOCK_KEY).toBeLessThan(2n ** 63n);
-  });
 });

@@ -1,4 +1,3 @@
-import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { type TenantContext } from "@genie/core";
@@ -86,12 +85,6 @@ describe("the placeholder module declaration", () => {
     ]);
   });
 
-  it("names its own migration history and table", () => {
-    expect(placeholderModule.schema.migrationsTable).toBe(
-      "__drizzle_migrations_placeholder"
-    );
-  });
-
   it("carries its migration history as data, not as a folder path", () => {
     // A folder path would be resolved at run time, which is what keeps the SQL out of a
     // production image: the bundler follows no folder and copies no folder.
@@ -113,15 +106,6 @@ describe("the placeholder module declaration", () => {
     });
 
     expect(placeholderModule.schema.migrations()).toEqual(fromFolder);
-  });
-
-  it("carries the real SQL of the one migration on disk", () => {
-    const onDisk = readFileSync(
-      new URL("../drizzle/0000_boring_gargoyle.sql", import.meta.url),
-      "utf8"
-    );
-
-    expect(placeholderModule.schema.migrations()[0]?.sql.join("")).toBe(onDisk);
   });
 
   it("contributes one https frame origin", async () => {

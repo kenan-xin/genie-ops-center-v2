@@ -39,10 +39,6 @@ describe("the catalogue", () => {
     }
   });
 
-  it("holds a generic entry for an error it does not know", () => {
-    expect(CORE_ERROR_MESSAGES[GENERIC_ERROR_CODE]).toBeDefined();
-  });
-
   it("answers the generic message for a code it does not hold", () => {
     expect(safeMessageFor("invented-code")).toBe(
       CORE_ERROR_MESSAGES[GENERIC_ERROR_CODE]

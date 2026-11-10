@@ -21,13 +21,6 @@ describe("the invoices module declaration", () => {
     );
   });
 
-  it("hands core a migration declaration it has not read yet", () => {
-    expect(invoicesModule.schema.migrations).toBeInstanceOf(Function);
-    expect(invoicesModule.schema.migrationsTable).toBe(
-      "__drizzle_migrations_invoices"
-    );
-  });
-
   it("reads its own SQL when core calls the declaration", () => {
     // Calling it proves the static URLs resolve to real files, which is what the
     // deferred read defers. Nothing reads them at import time.

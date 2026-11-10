@@ -308,25 +308,6 @@ describe("the customer image release pipeline", () => {
     expect(calls).toEqual([]);
   });
 
-  it.each([
-    ["a failed per-customer typecheck", "typecheck"],
-    [
-      "a failed repository validate (missing README or a module with no tests)",
-      "validate",
-    ],
-    ["a failed unit test", "test"],
-    ["a skipped isolation run", "integration"],
-  ] as const)("does not build or publish after %s", async (_label, step) => {
-    const root = repoWithModules("placeholder\n");
-    const { calls, runner } = recordingRunner([step]);
-
-    const outcome = await runRelease(request(root), runner);
-
-    expect(outcome.ok).toBe(false);
-    expect(calls.some((call) => call.args[0] === "push")).toBe(false);
-    expect(has(calls, "build")).toBe(false);
-  });
-
   // The S0-11 injected-failure acceptance: each failure, against both publish
   // boundaries (docker tag + push, and the local sink the release tests use),
   // runs no publish command at all.

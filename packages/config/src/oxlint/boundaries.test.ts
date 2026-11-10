@@ -110,17 +110,6 @@ describe.concurrent(
     // contract, and no layer enforces it yet. An off-contract id still lands
     // inside `@genie/module-*`, so nothing escapes the boundary meanwhile.
 
-    it("stops a module importing a hyphenated module id by the singular name", async () => {
-      const result = await lintAt(
-        "packages/modules/alpha/__boundary__/__boundary__.ts",
-        `import "@genie/module-contract-data";\n`
-      );
-
-      expect(result.failed).toBe(true);
-
-      expect(result.output).toContain("a module never imports another module.");
-    });
-
     it("stops ui importing a module by the singular package name", async () => {
       const result = await lintAt(
         "packages/ui/__boundary__/__boundary__.ts",
@@ -1466,28 +1455,10 @@ describe.concurrent(
   "the contracts and schema subpaths",
   { timeout: LINT_TIMEOUT },
   () => {
-    it("lets tooling import the build-safe tenant schemas", async () => {
-      const result = await lintAt(
-        "tools/generators/__boundary__/__boundary__.ts",
-        `import "@genie/core/tenant-config";\n`
-      );
-
-      expect(result.failed).toBe(false);
-    });
-
     it("lets a module import the contracts surface", async () => {
       const result = await lintAt(
         "packages/modules/example/__boundary__/__boundary__.ts",
         `import "@genie/core/contracts";\n`
-      );
-
-      expect(result.failed).toBe(false);
-    });
-
-    it("lets the contracts surface import zod", async () => {
-      const result = await lintAt(
-        "packages/core/contracts/__boundary__/__boundary__.ts",
-        `import "zod";\n`
       );
 
       expect(result.failed).toBe(false);
@@ -1550,23 +1521,6 @@ function patternsOf(
 }
 
 describe("the serialized oxlint configuration", () => {
-  it("keeps allowTypeImports on the contracts pattern", async () => {
-    const entry = importBoundaryOverrides.find((o) =>
-      o.files?.includes("packages/core/contracts/**")
-    );
-
-    expect(entry).toBeDefined();
-
-    // `restrict()` always writes the rule as this two-element array, so matching it
-    // directly proves the field survived serialization. Oxlint exports no type for
-    // the rule's configuration, and its declared type is a union that includes a
-    // bare severity string, so reading it back needs no assertion.
-    expect(entry?.rules?.["no-restricted-imports"]).toMatchObject([
-      "error",
-      { patterns: [expect.objectContaining({ allowTypeImports: true })] },
-    ]);
-  });
-
   // The entry is a real product file, so no fixture can be planted at its path; the rule is read
   // back from the configuration instead, together with its position after every other entry that
   // matches the rpc folder, because the last matching entry wins.

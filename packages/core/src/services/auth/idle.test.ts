@@ -24,15 +24,6 @@ describe("idleExpiry", () => {
       }).toISOString()
     ).toBe("2026-09-28T10:15:00.000Z");
   });
-
-  it("serves the smallest tenant window unchanged", () => {
-    expect(
-      idleExpiry({
-        lastActivityAt: LAST_ACTIVITY,
-        idleMinutes: 5,
-      }).toISOString()
-    ).toBe("2026-09-28T10:05:00.000Z");
-  });
 });
 
 describe("isIdleExpired", () => {

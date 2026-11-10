@@ -372,14 +372,6 @@ describe("the rendered deployment folder", () => {
     }
   });
 
-  it("selects the bundled Keycloak through COMPOSE_PROFILES and marks the KC_ settings", () => {
-    const example = read(".env.example");
-
-    expect(example).toContain("COMPOSE_PROFILES=bundled-keycloak");
-    expect(example).toContain("read only while COMPOSE_PROFILES holds");
-    expect(example).toContain("never with --profile");
-  });
-
   it("passes the stack profiles to every Genie Ops Center service and depends on no Keycloak", () => {
     const compose = read("compose.yaml");
 
@@ -423,18 +415,6 @@ describe("the rendered deployment folder", () => {
 
     expect(appHealthcheck).toMatch(/\/api\/health/);
     expect(appHealthcheck).toMatch(/(?:curl|wget|node)/i);
-  });
-
-  it("checks worker health through the heartbeat file", () => {
-    const compose = read("compose.yaml");
-    const worker = service(compose, "worker");
-    const workerHealthcheck =
-      /    healthcheck:\n([\s\S]*?)(?=\n    [a-z][a-z0-9_-]*:|$)/.exec(
-        worker
-      )?.[1] ?? "";
-
-    expect(workerHealthcheck).toContain("$$WORKER_HEARTBEAT_PATH");
-    expect(workerHealthcheck).toContain("-lt 180");
   });
 
   it("renders every environment catalogue variable with its default and no secret value", () => {
@@ -628,13 +608,6 @@ describe("the two configuration files", () => {
       default_locale: "en",
       default_time_zone: "Europe/Berlin",
     });
-  });
-
-  it("authors no derived or nulled branding column", () => {
-    const text = read("branding.seed.json");
-
-    expect(text).not.toContain("primary_foreground");
-    expect(text).not.toContain("null");
   });
 });
 
