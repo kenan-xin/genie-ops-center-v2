@@ -15,6 +15,7 @@ import {
   drawnStyle,
   elementBoxes,
   figuresDate,
+  footerColor,
   FRAME_PADDING,
   slideLayout,
   TYPE_PX,
@@ -353,9 +354,19 @@ export async function buildDeckPptx(input: {
         drawnStyle(element.kind, element.style, shown.background)
       );
 
+      // A frame's content sits 12 px inside it, as `p-3` on screen; text kinds take it as margin.
+      const inner = framed
+        ? {
+            x: box.x + FRAME_PADDING,
+            y: box.y + FRAME_PADDING,
+            w: box.w - 2 * FRAME_PADDING,
+            h: box.h - 2 * FRAME_PADDING,
+          }
+        : box;
+
       if ("hidden" in element) {
         slide.addText(HIDDEN, {
-          ...inches(box),
+          ...inches(inner),
           fontFace,
           fontSize: points(TYPE_PX.text),
           color: TEXT,
@@ -395,12 +406,12 @@ export async function buildDeckPptx(input: {
 
         if (image !== undefined) {
           slide.addImage({
-            ...containedImage(image, box),
+            ...containedImage(image, inner),
             altText: element.alt,
           });
         }
       } else if ("data" in element) {
-        addData(slide, element.kind, element.data, box, {
+        addData(slide, element.kind, element.data, inner, {
           fontFace,
           timeZone: input.timeZone,
         });
@@ -411,11 +422,8 @@ export async function buildDeckPptx(input: {
       slide.addText(`Figures as of ${figuresDate(input.figuresAsOf)}`, {
         ...inches({ ...footer, w: logoBox.x - footer.x - LOGO.gap }),
         ...footerText,
-        // On a slide background the muted gray can vanish; the one foreground rule keeps it read.
-        color:
-          shown.background === undefined
-            ? footerText.color
-            : hex(foregroundFor(shown.background)),
+        // The screen's footer color, so the gray never vanishes on a background (P13-7).
+        color: hex(footerColor(shown, foregroundFor) ?? footerText.color),
         margin: 0,
       });
     }

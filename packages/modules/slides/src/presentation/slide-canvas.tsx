@@ -4,15 +4,17 @@ import { foregroundFor } from "@genie/core/features/branding";
 import { Chart } from "@genie/ui/chart";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-import { type ElementBox, type ElementStyle, THEME_TEXT } from "../contract.ts";
+import { type ElementBox, type ElementStyle } from "../contract.ts";
 import { type ImageLinks, keepImageLinks } from "./image-links.ts";
 import {
   CANVAS,
   drawnStyle,
   elementBoxes,
   figuresDate,
+  footerColor,
   slideLayout,
   TYPE_PX,
+  usesLightPalette,
 } from "./slide-layout.ts";
 import type { DeckPageView, ShownElement, ShownSlide } from "./views.ts";
 
@@ -46,19 +48,6 @@ const ALIGN_CLASS = {
   center: "text-center",
   right: "text-right",
 } as const;
-
-/**
- * A slide with a background or a colored element draws on the light palette under its own values,
- * so the pair on screen is the pair the save checked, in the dark theme too (P13-3).
- */
-function usesLightPalette(slide: ShownSlide): boolean {
-  return (
-    slide.background !== undefined ||
-    slide.elements.some(
-      ({ style }) => style?.color !== undefined || style?.fill !== undefined
-    )
-  );
-}
 
 /** The classes and variables of one element box: its place, its frame and its text style. */
 function boxProps(box: ElementBox, style: ElementStyle | undefined) {
@@ -255,10 +244,8 @@ export function SlideCanvas(props: SlideCanvasProps) {
     "--slide-primary": theme.primaryColor,
     // Read only with a background (`bg-(--slide-bg)` below).
     "--slide-bg": slide.background ?? "initial",
-    "--slide-footer":
-      slide.background === undefined
-        ? THEME_TEXT
-        : foregroundFor(slide.background),
+    // Read only on the light palette (`text-(color:--slide-footer)` below), where it has a color.
+    "--slide-footer": footerColor(slide, foregroundFor) ?? "initial",
   };
 
   const ruleStyle: CssVars = {

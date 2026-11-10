@@ -1,6 +1,7 @@
 import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 
+import { frozenElement } from "../../../testing/factories.ts";
 import { buildDeckPptx } from "./build.ts";
 
 const slide = (id: string) => ({
@@ -80,6 +81,67 @@ describe("buildDeckPptx", () => {
       /<a:ln w="38100"[^>]*>\s*<a:solidFill>\s*<a:srgbClr val="F59E0B"/
     );
     expect(xml).toMatch(/b="1".*Boxed text/s);
+  });
+
+  it("draws a framed chart inside its frame's padding, as the screen", async () => {
+    const bytes = await buildDeckPptx({
+      title: "Framed",
+      slides: [
+        {
+          id: "s1",
+          elements: [
+            { kind: "title", text: "Claim" },
+            {
+              ...frozenElement("chart"),
+              box: { x: 384, y: 136, w: 536, h: 348 },
+              style: { fill: "#EFF6FF" },
+            },
+          ],
+        },
+      ],
+      figuresAsOf: "2026-10-27",
+      timeZone: "UTC",
+      theme: THEME,
+      logo: null,
+      images: new Map(),
+    });
+
+    const zip = await JSZip.loadAsync(bytes);
+
+    const xml =
+      (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+
+    // 384 + 12, 136 + 12 px.
+    expect(xml).toMatch(/<p:graphicFrame>.*<a:off x="3771900" y="1409700"\/>/s);
+  });
+
+  it("writes the figures date of a styled slide without a background in the theme text", async () => {
+    const bytes = await buildDeckPptx({
+      title: "Dated",
+      slides: [
+        {
+          id: "s1",
+          elements: [
+            { kind: "title", text: "Claim", style: { color: "#1E3A8A" } },
+            frozenElement("figure"),
+          ],
+        },
+      ],
+      figuresAsOf: "2026-10-27",
+      timeZone: "UTC",
+      theme: THEME,
+      logo: null,
+      images: new Map(),
+    });
+
+    const zip = await JSZip.loadAsync(bytes);
+
+    const xml =
+      (await zip.file("ppt/slides/slide1.xml")?.async("string")) ?? "";
+
+    expect(xml).toMatch(
+      /<a:r>(?:(?!<\/a:r>).)*srgbClr val="111827"(?:(?!<\/a:r>).)*Figures as of/s
+    );
   });
 
   // pptxgenjs 4.0.1 lists one slide master per slide (upstream #1444), and PowerPoint repairs that.

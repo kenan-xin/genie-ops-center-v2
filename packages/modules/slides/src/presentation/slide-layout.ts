@@ -4,6 +4,7 @@ import {
   type ElementStyle,
   SLIDE_CANVAS,
   THEME_BACKGROUND,
+  THEME_TEXT,
 } from "../contract.ts";
 
 /** The one canvas every deck is laid out on, on screen and in PowerPoint (D10). */
@@ -195,6 +196,38 @@ export function drawnStyle(
   }
 
   return { ...style, fill: THEME_BACKGROUND };
+}
+
+type PaletteSlide = {
+  readonly background?: string | undefined;
+  readonly elements: readonly { readonly style?: ElementStyle | undefined }[];
+};
+
+/**
+ * A slide with a background or a colored element draws on the light palette under its own values,
+ * so the pair on screen is the pair the save checked, in the dark theme too (P13-3).
+ */
+export function usesLightPalette(slide: PaletteSlide): boolean {
+  return (
+    slide.background !== undefined ||
+    slide.elements.some(
+      ({ style }) => style?.color !== undefined || style?.fill !== undefined
+    )
+  );
+}
+
+/**
+ * The footer's text color: the readable one on a background, the theme text on another light-palette
+ * slide, none for the theme's muted gray (P13-7). The caller passes core's `foregroundFor`, because
+ * the server loads this file and core's branding entry also exports a client component.
+ */
+export function footerColor(
+  slide: PaletteSlide,
+  foregroundOf: (background: string) => string
+): string | undefined {
+  if (slide.background !== undefined) return foregroundOf(slide.background);
+
+  return usesLightPalette(slide) ? THEME_TEXT : undefined;
 }
 
 const FIGURES_DATE = new Intl.DateTimeFormat("en-GB", {
