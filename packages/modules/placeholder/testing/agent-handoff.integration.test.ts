@@ -38,8 +38,8 @@ import { PLACEHOLDER_AGENT_RECORDINGS } from "./index.ts";
 import { placeholderWithSurface, REFUSED_TITLE } from "./test-surface.ts";
 
 /**
- * The Ask handoff on the placeholder's test surface (Spec 7 R-42b, S7-41), with the synthetic
- * fixtures `synthetic-handoff-*`: one `hand-over` call makes the record, the target session with
+ * The Ask handoff on the placeholder's test surface (Spec 7 R-42b, S7-41), with the recordings
+ * `handoff-*` and `surface-chat-*`: one `hand-over` call makes the record, the target session with
  * the brief, the audit row and the run in one transaction, or saves nothing.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
@@ -55,7 +55,8 @@ const HANDOFF_ASK =
 
 const REFUSED_ASK = "Hand this over: build the refused placeholder review.";
 
-const BRIEF_TITLE = "October placeholder review";
+/** The title of the recorded `hand-over` call, the model's choice (P16-55). */
+const BRIEF_TITLE = "October 2026 board review";
 
 const SURFACE_CHAT_ASK = "Add a first step to this record.";
 
@@ -135,7 +136,17 @@ async function askChatWithTable(ctx: ModuleRequestContext): Promise<string> {
     {
       id: randomUUID(),
       role: "assistant",
-      parts: [{ type: "text", text: "Here are the October records." }],
+      // The make-artifact call as a chat stores it, so the model sees the table it may pass on.
+      parts: [
+        {
+          type: "tool-make-artifact",
+          toolCallId: "call_table",
+          state: "output-available",
+          input: { config: TABLE },
+          output: { artifact: 1, version: 1, title: TABLE.title },
+        },
+        { type: "text", text: "Here are the October records." },
+      ],
     },
     [
       {
@@ -336,7 +347,12 @@ describe("the Ask handoff on the placeholder test surface", () => {
     expect(text?.type === "text" ? text.text : "").toContain(
       "- The rest of the Ask chat"
     );
-    expect(await toolRows(ctx.caller.userId)).toMatchObject([
+    // The live chat also reads and fixes its table first; those calls are the model's choice.
+    expect(
+      (await toolRows(ctx.caller.userId)).filter(
+        ({ metadata }) => metadata?.["tool"] === "hand-over"
+      )
+    ).toMatchObject([
       {
         metadata: {
           tool: "hand-over",
@@ -402,11 +418,17 @@ describe("the Ask handoff on the placeholder test surface", () => {
       sessions: (await sessionsOf(ctx)).map(({ id }) => id),
       records: await recordsLabelled(REFUSED_TITLE),
       jobs: await runJobsOf(ctx),
-      audit: rows.map(({ metadata }) => metadata),
+      // The reads before the hand-over are the model's choice, so the hand-over rows count, and
+      // any later request may carry the refusal back to the model.
+      audit: rows
+        .map(({ metadata }) => metadata)
+        .filter((metadata) => metadata?.["tool"] === "hand-over"),
       cards: partsOf(answer, "data-handoff"),
-      toolError: JSON.stringify(recorded.sent[before + 1]?.body).includes(
-        "You may not do that."
-      ),
+      toolError: recorded.sent
+        .slice(before + 1)
+        .some(({ body }) =>
+          JSON.stringify(body).includes("You may not do that.")
+        ),
     }).toMatchObject({
       sessions: [askId],
       records: [],
@@ -518,26 +540,36 @@ describe("the Ask handoff on the placeholder test surface", () => {
     const answer = await lastAnswer(ctx, askId);
     const sessions = await sessionsOf(ctx);
 
+    // The live model tried hand-over once more after the refusal (Phase 16, R1), so each call
+    // and each card is checked, not their count: every call is refused, every card is the first.
+    const handOvers = (await toolRows(ctx.caller.userId))
+      .map(({ metadata }) => metadata)
+      .filter((metadata) => metadata?.["tool"] === "hand-over");
+
+    const calls = partsOf(answer, "tool-hand-over").map((part) =>
+      "state" in part ? part.state : undefined
+    );
+
+    const cards = partsOf(answer, "data-handoff").map((part) =>
+      "data" in part ? part.data : undefined
+    );
+
     expect({
       sessions: sessions.map(({ id }) => id),
       records: (await recordsLabelled(BRIEF_TITLE)).length,
       building: sessions[0]?.run_state,
-      audit: (await toolRows(ctx.caller.userId)).map(
-        ({ metadata }) => metadata
-      ),
-      call: partsOf(answer, "tool-hand-over").map((part) =>
-        "state" in part ? part.state : undefined
-      ),
-      card: partsOf(answer, "data-handoff").map((part) =>
-        "data" in part ? part.data : undefined
+      outcomes: [...new Set(handOvers.map((row) => row?.["outcome"]))],
+      calls: [...new Set(calls)],
+      cards: [...new Set(cards.map((card) => JSON.stringify(card)))].map(
+        (card) => JSON.parse(card)
       ),
     }).toMatchObject({
       sessions: [building.id, askId],
       records: recordsBefore,
       building: "queued",
-      audit: [{ tool: "hand-over", outcome: "agent-run-active" }],
-      call: ["output-error"],
-      card: [
+      outcomes: ["agent-run-active"],
+      calls: ["output-error"],
+      cards: [
         {
           sessionId: building.id,
           title: "First record",

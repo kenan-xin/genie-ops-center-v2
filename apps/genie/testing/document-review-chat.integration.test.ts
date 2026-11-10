@@ -113,7 +113,9 @@ describe("the agent panel on a document review page", () => {
 
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
+    // The datasets list that the core prompt asks first, then one audited read (P16-58).
     expect(await toolCalls()).toEqual([
+      { tool: "list-datasets", outcome: "answered" },
       { tool: "invoices-read-document", outcome: "answered" },
     ]);
   });

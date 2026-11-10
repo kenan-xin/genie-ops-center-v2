@@ -486,7 +486,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           // The result first, with the total (R-44), from `overdue-invoices-*.json`.
           await expect(
             page.getByText(
-              "Five overdue invoices from three customers have SGD 27,350.00 unpaid in all.",
+              "Three customers have five overdue invoices, totaling SGD 27,350.00.",
               { exact: true }
             )
           ).toBeVisible(FIRST_PAINT);
@@ -497,14 +497,14 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           // The records card opens its table in the artifact panel.
           await page
             .getByRole("button", {
-              name: /^Overdue invoices and their sources/,
+              name: /^Overdue invoices by customer/,
             })
             .click();
 
           const sources = page
             .getByRole("region", { name: "Artifact", exact: true })
             .getByRole("group", {
-              name: "Overdue invoices and their sources",
+              name: "Overdue invoices by customer",
               exact: true,
             })
             .getByRole("link");

@@ -40,10 +40,11 @@ const errors: unknown[] = [];
 const hooks = { logError: (cause: unknown) => errors.push(cause) };
 
 const WHAT_CAN_YOU_DO = [
-  "root = Answer([intro, options, scope])",
-  'intro = Paragraph("I can help you explore the records you can read.")',
-  'options = List(["Count records and summarize amounts or quantities.", "Compare results by date or other available details.", "Show results in tables or charts, and prepare downloads.", "Find a record’s page when you can open it."])',
-  'scope = Paragraph("The available data contains placeholder records. Figures are as of 27 Oct 2026.")',
+  "root = Answer([result, detail], next)",
+  'result = Paragraph("I can answer questions about the placeholder records you can read.")',
+  'detail = Paragraph("I can count and summarize them, make tables and charts, export files, and find record pages. I cannot change records.")',
+  'next = ["How many records can I see?", "Show records by month"]',
+  "",
 ].join("\n");
 
 const RECORDS = "placeholder.records";
@@ -52,9 +53,9 @@ const RECORDS = "placeholder.records";
 const S1_QUESTION = "How many placeholder records are there?";
 
 const S1_ANSWER = [
-  "root = Answer([result, method])",
+  "root = Answer([result], next)",
   'result = Paragraph("There are 3 placeholder records.")',
-  'method = Paragraph("This counts the records you can read as of 27 Oct 2026.")',
+  'next = ["Show the placeholder records", "When were these records written?"]',
 ].join("\n");
 
 /**
@@ -65,8 +66,9 @@ const S3_QUESTION =
   "How many placeholder records are there? Read placeholder.records.";
 
 const S3_ANSWER = [
-  "root = Answer([result])",
-  'result = Paragraph("I can’t count the placeholder records because you don’t have access to them.")',
+  "root = Answer([result], next)",
+  'result = Paragraph("I can’t determine the count because I don’t have access to those records.")',
+  'next = ["What records can I read?", "What data is available?"]',
 ].join("\n");
 
 /** AC-8: a chart artifact, then a change that makes its version 2. */
@@ -130,7 +132,10 @@ async function ask(ctx: ModuleRequestContext, payload: JsonValue) {
 async function storedAnswer(ctx: ModuleRequestContext, sessionId: string) {
   const { messages } = await readOwnSession(ctx, sessionId);
 
-  return messages.at(-1)?.parts.filter(({ type }) => type !== "step-start");
+  // A live step can reason before it acts; the reasoning parts are not the answer (P16-55).
+  return messages
+    .at(-1)
+    ?.parts.filter(({ type }) => type !== "step-start" && type !== "reasoning");
 }
 
 /** The person's agent tool rows, newest first, read by an auditor through the audit reader. */

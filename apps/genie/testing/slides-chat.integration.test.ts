@@ -32,8 +32,8 @@ import {
 } from "./slides-chat.ts";
 
 /**
- * A deck that Ask hands to the Slides agent beside the Slides list, with the synthetic fixtures
- * `synthetic-slides-handoff-*` and `synthetic-slides-build-*` (Spec 7 R-42b, R-46, R-47, R-55,
+ * A deck that Ask hands to the Slides agent beside the Slides list, with the recordings
+ * `slides-handoff-*` and `slides-build-*` (Spec 7 R-42b, R-46, R-47, R-55,
  * R-56, AC-10, AC-13): the run builds the deck slide by slide through the store, so the figures
  * freeze on the reporting date and an audit row names each tool. The modules come in the order of
  * the app's generated selection, so the tool list equals the dev e2e list. A second handoff replays
@@ -234,24 +234,39 @@ describe("the slides chat beside the Slides list", () => {
     expect(others).toEqual([]);
     expect(target).toMatchObject({ surface: "slides", record_id: deck?.id });
 
-    // Ask's turn: one hand-over call, and its follow-up request holds no deck id (P11-18).
+    // Ask's turn: the datasets list, one hand-over call, and its follow-up request holds no deck
+    // id (P11-18).
     expect(await toolCalls(askId)).toEqual([
+      { tool: "list-datasets", outcome: "answered" },
       { tool: "hand-over", outcome: "handed-over" },
     ]);
-    expect(askRequests).toHaveLength(2);
-    expect(JSON.stringify(askRequests[1]?.body)).not.toContain(deck?.id);
+    expect(askRequests).toHaveLength(3);
+    expect(JSON.stringify(askRequests.at(-1)?.body)).not.toContain(deck?.id);
     expect(await handoffCards(askId)).toMatchObject([
       { address: `/m/slides/decks/${deck?.id}` },
     ]);
 
-    // One read, then five changes with the hash of the answer before: a stale hash would refuse.
-    expect(await toolCalls(target.id)).toEqual([
-      { tool: "slides-read-deck", outcome: "answered" },
-      ...Array.from({ length: 5 }, () => ({
+    // The reads are the model's choice (P16-58), then five changes with the hash of the answer
+    // before: a stale hash would refuse.
+    // Calls of one step can finish in any order, so the reads compare as a sorted list.
+    const runCalls = await toolCalls(target.id);
+
+    expect(
+      runCalls
+        .slice(0, -5)
+        .map(({ tool }) => tool)
+        .toSorted()
+    ).toEqual([
+      "list-datasets",
+      ...Array.from({ length: 10 }, () => "query-dataset"),
+      "slides-read-deck",
+    ]);
+    expect(runCalls.slice(-5)).toEqual(
+      Array.from({ length: 5 }, () => ({
         tool: "slides-change-deck",
         outcome: "answered",
-      })),
-    ]);
+      }))
+    );
     expect(await deckAudit(deck?.id ?? "")).toEqual([
       "slides:deck-created",
       ...Array.from({ length: 5 }, () => "slides:deck-changed"),
@@ -282,10 +297,11 @@ describe("the slides chat beside the Slides list", () => {
       }))
     );
     // The overdue balance of each customer in `expected_baseline_answers.json`, SGD 27,350 in all.
+    // The series name is the model's choice (P16-55).
     expect(rowsOf(2, 2)).toEqual([
-      { x: "Harbor Foods", Overdue: 1260000 },
-      { x: "Orchid Retail", Overdue: 825000 },
-      { x: "ABC Trading", Overdue: 650000 },
+      { "x": "Harbor Foods", "Overdue balances": 1260000 },
+      { "x": "Orchid Retail", "Overdue balances": 825000 },
+      { "x": "ABC Trading", "Overdue balances": 650000 },
     ]);
     const slides = callProcedure(slidesRouter, asker);
     const answer = await slides.exportDeck({ id: deck?.id ?? "" });

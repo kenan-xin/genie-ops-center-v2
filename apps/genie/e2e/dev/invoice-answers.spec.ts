@@ -152,10 +152,10 @@ test("the overdue invoices answer gives its total first, shows its records card,
         page,
         testInfo,
         "overdue-invoices",
-        "Five overdue invoices from three customers have SGD 27,350.00 unpaid in all."
+        "Three customers have five overdue invoices, totaling SGD 27,350.00."
       );
 
-      const title = "Overdue invoices and their sources";
+      const title = "Overdue invoices by customer";
 
       // Five overdue invoices fit the card, so it shows them all and no "more".
       await expect(firstRows(page, 0)).toHaveCount(5, FIRST_PAINT);
@@ -207,7 +207,7 @@ test("the late payer answer shows the counts per customer without links and the 
         page,
         testInfo,
         "repeated-late-payers",
-        "Three customers repeatedly pay late."
+        "3 customers repeatedly paid late."
       );
 
       await expect(firstRows(page, 0)).toHaveCount(3, FIRST_PAINT);
@@ -249,7 +249,7 @@ test("the late payer answer shows the counts per customer without links and the 
 
       const settled = await openCard(
         page,
-        "Settled invoices with known due dates for these customers"
+        "Settled invoices behind the counts"
       );
 
       expect(
@@ -272,16 +272,19 @@ test("the monthly answer states both totals first and shows the chart and the in
         page,
         testInfo,
         "monthly-invoiced-and-collected",
-        "From May to October, SGD 236,400.00 was invoiced and SGD 195,200.00 was collected."
+        "From May to October 2026, we invoiced SGD 236,400.00 and collected SGD 195,200.00."
       );
 
       await expect(
-        card(page, "Invoiced and collected by month, May–October 2026")
+        card(page, "Monthly invoices and collections — May to October 2026")
       ).toBeVisible(FIRST_PAINT);
       await expect(firstRows(page, 0)).toHaveCount(5);
       await capture(page, testInfo, "ask-monthly-invoiced-and-collected");
 
-      const invoices = await openCard(page, "Invoices dated May–October 2026");
+      const invoices = await openCard(
+        page,
+        "Invoices from May to October 2026"
+      );
 
       expect(
         await invoices.getByRole("link").first().getAttribute("href")

@@ -6,6 +6,7 @@ import {
   ANALYTICS_HANDOFF_MESSAGE,
   ANALYTICS_HANDOFF_TITLE,
   ANALYTICS_QUESTION,
+  ANALYTICS_CHART_TITLE,
   ANALYTICS_QUESTION_MESSAGE,
   ANALYTICS_SHOW_ANSWER,
   HANDOFF_PANEL_TITLES,
@@ -343,7 +344,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
 
         const panel = page
           .getByRole("main")
-          .getByRole("figure", { name: "Monthly collections (SGD)" });
+          .getByRole("figure", { name: ANALYTICS_CHART_TITLE });
 
         /** Asks for the chart, and expects the question with nothing added. */
         const ask = async () => {
@@ -372,7 +373,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
         await expect(
           surface
             .getByRole("list", { name: "Artifacts" })
-            .getByText("Monthly collections (SGD)")
+            .getByText(ANALYTICS_CHART_TITLE)
         ).toBeVisible(FIRST_PAINT);
         await expect(empty).toBeVisible();
         await expect(panel).toHaveCount(0);
@@ -384,7 +385,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
   );
 });
 
-// The replay of `synthetic-out-of-tools-ask-1` and `-dashboard-1`, through the browser's page context.
+// The replay of `out-of-tools-ask-2` and `out-of-tools-dashboard-2`, through the browser's page context.
 test("Ask answers a request outside its tools with one sentence", async ({
   page,
 }) => {

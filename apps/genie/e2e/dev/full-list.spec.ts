@@ -171,7 +171,7 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
         // 4. The chat answers while the job is still pending.
         await askQuestion(page, "Thank you.");
         await expect(
-          page.getByText("You are welcome.", { exact: true })
+          page.getByText("You’re welcome.", { exact: true })
         ).toBeVisible(FIRST_PAINT);
         await expect(card.getByText("Making", { exact: true })).toBeVisible();
       } finally {

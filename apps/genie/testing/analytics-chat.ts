@@ -1,8 +1,8 @@
 /**
  * The chat change on a dashboard that the app integration test and the dev e2e share (Spec 7
  * R-46, R-49, D12) and demo step 9, and the dashboard handoff and the add-as-panel question
- * (R-42b, R-46 amended, AC-13). The recorded and synthetic model requests hold these values, so a
- * change here re-keys `dashboard-unallocated-*` and `synthetic-dashboard-*`.
+ * (R-42b, R-46 amended, AC-13). The recorded model requests hold these values, so a change here
+ * re-keys `dashboard-*` and `out-of-tools-*`.
  */
 
 /** The keys of the person who chats beside the dashboard. */
@@ -42,17 +42,17 @@ export const UNALLOCATED_PANEL = {
   ],
 } as const;
 
-/** Ask's message that `synthetic-dashboard-handoff-1` hands over, and the brief's title. */
+/** Ask's message that `dashboard-handoff-2` hands over, and the brief's title. */
 export const ANALYTICS_HANDOFF_MESSAGE =
   "Build a Receivables watch dashboard with the unallocated payments, the monthly collections and the overdue balances by customer.";
 
 export const ANALYTICS_HANDOFF_TITLE = "Receivables watch";
 
-/** The three panels that `synthetic-dashboard-build-1` to `-3` add, one per call, in order. */
+/** The three panels that `dashboard-build-3` to `-5` add, one per call, in order. */
 export const HANDOFF_PANEL_TITLES = [
-  "Unallocated payments",
-  "Monthly collections (SGD)",
-  "Overdue balances by customer (SGD)",
+  "Unallocated payments above zero",
+  "Monthly collections by currency",
+  "Overdue balances by customer and currency",
 ] as const;
 
 /** The empty dashboard of the question, and the chart request that names no place for the chart. */
@@ -60,9 +60,12 @@ export const QUESTION_DASHBOARD_NAME = "Collections";
 
 export const ANALYTICS_QUESTION_MESSAGE = "Show me the collections by month.";
 
-/** The question of `synthetic-dashboard-question-2`, and the person's two answers. */
+/** The question of `dashboard-question-1`, and the two answers that the person types. */
 export const ANALYTICS_QUESTION =
-  "Add this as a panel to Collections, or just show it here?";
+  "Would you like collections by month added to this dashboard or shown here?";
+
+/** The chart that both answers make, as a panel (Add) or as an artifact (Just show it here). */
+export const ANALYTICS_CHART_TITLE = "Collections by month (SGD)";
 
 export const ANALYTICS_ADD_ANSWER = "Add";
 
@@ -70,22 +73,22 @@ export const ANALYTICS_SHOW_ANSWER = "Just show it here";
 
 /**
  * A request outside the tools in Ask and on a dashboard, and the one-sentence answers of
- * `synthetic-out-of-tools-ask-1` and `synthetic-out-of-tools-dashboard-1` (R-46a, S7-44).
+ * `out-of-tools-ask-2` and `out-of-tools-dashboard-2` (R-46a, S7-44).
  */
 export const OUT_OF_TOOLS_ASK_MESSAGE = "Change the logo of this workspace.";
 
 export const OUT_OF_TOOLS_ASK_ANSWER =
-  "I cannot change the logo, because here I can only read your records and make tables and charts in this chat, so I can show you the records you can read instead.";
+  "I can’t change the workspace logo, but I can help build a dashboard instead.";
 
 export const OUT_OF_TOOLS_DASHBOARD_MESSAGE =
   "Make the panel titles bigger and blue.";
 
 export const OUT_OF_TOOLS_DASHBOARD_ANSWER =
-  "I cannot change the color or size of panel titles, but I can change the panels and their order, each panel's chart type, title, data and size, the dashboard's name and its filters, so I can give a panel a clearer title instead.";
+  "I can rename panel titles, but I can’t change their size or colour; would you like to rename them instead?";
 
 /**
- * The filter request of `synthetic-dashboard-filters-1`, the filters its one `set-filters` step
- * saves, and the answer of `-2` (S7-46, R-49).
+ * The filter request of `dashboard-filters-1`, the filters the one `set-filters` step of `-3`
+ * saves, and the answer of `-4` (S7-46, R-49). One company is a select; a text field takes either.
  */
 export const ANALYTICS_FILTER_MESSAGE =
   "Show only Demo Company and the last 3 months.";
@@ -94,20 +97,21 @@ export const ANALYTICS_FILTERS = {
   dateRange: { preset: "last-3-months" },
   fields: [
     {
-      kind: "multi-select",
+      kind: "select",
       field: "customerName",
       label: "Customer",
-      values: ["Demo Company"],
+      value: "Demo Company",
     },
   ],
 } as const;
 
 export const ANALYTICS_FILTER_ANSWER =
-  "The dashboard now shows only Demo Company and the last 3 months.";
+  "Collections watch is filtered to Demo Company and the last 3 months.";
 
 /**
- * The view request of `synthetic-dashboard-view-1`, the view its `save-view` step saves as `v1`
- * and its `set-default-view` step makes the default, and the answer of `-2` (S7-47, R-49a).
+ * The view request of `dashboard-view-1`, the view that the `save-view` step of `-2` saves as `v1`
+ * with the dashboard's own filters, and that its `set-default-view` step makes the default in the
+ * same change, and the answer of `-3` (S7-47, R-49a).
  */
 export const ANALYTICS_VIEW_MESSAGE =
   "Save this as a view called Month end and open the dashboard with it.";
@@ -115,11 +119,11 @@ export const ANALYTICS_VIEW_MESSAGE =
 export const ANALYTICS_VIEW = {
   id: "v1",
   name: "Month end",
-  filters: { dateRange: { preset: "this-month" }, fields: [] },
+  filters: { dateRange: { preset: "all" }, fields: [] },
 } as const;
 
 export const ANALYTICS_VIEW_ANSWER =
-  "I saved the view Month end, and the dashboard now opens with it.";
+  "Saved Month end as the default view for Collections watch.";
 
 /** The collections figure of slide `s2` in `slides-change.ts`. */
 export const COLLECTIONS_PANEL = {

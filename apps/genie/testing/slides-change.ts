@@ -19,7 +19,7 @@ export const SLIDES_CHANGE_FROZEN_ON = "2026-10-27";
 export const SLIDES_CHANGE_OLD_TITLE =
   "Collections grew every month from July to October.";
 
-export const SLIDES_CHANGE_NEW_TITLE = "Collections grew every month.";
+export const SLIDES_CHANGE_NEW_TITLE = "Collections grew monthly.";
 
 /**
  * The figure of slide `s2`: `COLLECTIONS_PANEL` with the data that `checkChart` answers for it on
@@ -82,7 +82,7 @@ export const SLIDES_TITLE_SLIDE_CONTEXT = {
 } as const;
 
 /**
- * The style change of S7-43 (AC-14), answered by `synthetic-slides-style-1` to `-3`: a read, one
+ * The style change of S7-43 (AC-14), answered by `slides-style-1` to `-3`: a read, one
  * change with the background and a white text color for both texts of `s1` (each text without a
  * fill is re-checked against the background), and the answer.
  */
@@ -92,19 +92,19 @@ export const SLIDES_STYLE_MESSAGE =
 export const SLIDES_STYLE_BACKGROUND = "#1E3A8A";
 
 /**
- * The notes request of S7-45, answered by `synthetic-slides-notes-1` to `-3`: a read, one
+ * The notes request of S7-45, answered by `slides-notes-1` to `-4`: a read, one
  * change-slide-fields step with the notes for `s2`, and a one-sentence answer.
  */
 export const SLIDES_NOTES_MESSAGE =
   "Add speaker notes to slide 2: mention that the reminder emails started in September.";
 
-export const SLIDES_NOTES_TEXT = "The reminder emails started in September.";
+export const SLIDES_NOTES_TEXT = "Reminder emails started in September.";
 
-/** A request outside the deck tools, answered by `synthetic-slides-out-of-tools-1` (R-46a). */
+/** A request outside the deck tools, answered by `slides-out-of-tools-2` (R-46a). */
 export const SLIDES_OUT_OF_TOOLS_MESSAGE = "Add a video to the title slide.";
 
 export const SLIDES_OUT_OF_TOOLS_ANSWER =
-  "I cannot add a video, but I can change the slides and their order, each slide's title, text, bullets, figures, charts, tables and images, and each element's position, size and style, so I can add an image to the title slide instead.";
+  "I can’t add a video, but I can add an image to the title slide instead.";
 
 /**
  * The message of the refused-and-fixed change. It differs from `SLIDES_CHANGE_MESSAGE`, so its

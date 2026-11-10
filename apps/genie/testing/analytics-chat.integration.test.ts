@@ -22,6 +22,7 @@ import {
 import { analyticsModule, analyticsRouter } from "@genie/module-analytics";
 import { insertDashboard } from "@genie/module-analytics/testing";
 import { invoicesModule } from "@genie/module-invoices";
+import { seedDemoHistory } from "@genie/module-invoices/testing";
 import { placeholderModule } from "@genie/module-placeholder";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -37,6 +38,7 @@ import {
   ANALYTICS_HANDOFF_TITLE,
   ANALYTICS_QUESTION,
   ANALYTICS_QUESTION_MESSAGE,
+  ANALYTICS_CHART_TITLE,
   ANALYTICS_SHOW_ANSWER,
   ANALYTICS_VIEW,
   ANALYTICS_VIEW_ANSWER,
@@ -55,7 +57,7 @@ import { APP_AGENT_RECORDINGS } from "./model-replay.ts";
  * A dashboard changed by the Dashboards agent beside it, with the recorded model (Spec 7 R-42b,
  * R-46, R-47, R-49, AC-13): the write tool saves through the store, so each change has Undo and an
  * audit row. Ask hands a dashboard over and the run adds its panels one by one, and a chart request
- * that names no place asks first (`synthetic-dashboard-*`). The modules come in the order of the
+ * that names no place asks first (`dashboard-question-*`). The modules come in the order of the
  * app's generated selection, so the tool list equals the dev e2e list. The replayed follow-up
  * request holds the tool output, so it also proves the output holds no clock.
  */
@@ -85,6 +87,15 @@ beforeAll(async () => {
     "placeholder",
   ]);
   registerModuleRuntime(deployment.context, MODULES);
+
+  // The demo ledger, as in `slides-chat`: with no rows, a live chart request gets no chart.
+  const seeder = await insertPersonWith(deployment.context, [
+    "invoices:read",
+    "invoices:write",
+    "invoices:use",
+  ]);
+
+  await seedDemoHistory(deployment.context, { userId: seeder.userId });
   recorded = useRecordedModel(deployment.context, APP_AGENT_RECORDINGS);
 
   asker = await newAsker();
@@ -197,6 +208,8 @@ const lastAnswerText = async (sessionId: string) =>
       [sessionId]
     )
   ).rows[0]?.parts
+    // The reasoning parts can draft the answer word for word, so only the answer counts.
+    .filter(({ type }) => type === "text")
     .map(({ text }) => text ?? "")
     .join("");
 
@@ -245,11 +258,14 @@ describe("the analytics chat beside a dashboard", () => {
     expect(await lastAnswerText(dashboardChat)).toContain(
       OUT_OF_TOOLS_DASHBOARD_ANSWER
     );
-    // An answer, no step: neither chat called a tool.
+    // An answer, no change: each chat only listed its datasets, as the core prompt asks first.
     expect([
       ...(await callsOf(askId)),
       ...(await callsOf(dashboardChat)),
-    ]).toEqual([]);
+    ]).toEqual([
+      { tool: "list-datasets", outcome: "answered" },
+      { tool: "list-datasets", outcome: "answered" },
+    ]);
   });
 
   it("adds the recorded panel with one Undo entry and one audit row, and Undo restores the empty dashboard", async () => {
@@ -301,7 +317,7 @@ describe("the analytics chat beside a dashboard", () => {
     });
   });
 
-  it("a filter request saves the Customer multi-select and the 3-month range in one set-filters change", async () => {
+  it("a filter request saves the Customer filter and the 3-month range in one set-filters change", async () => {
     const ctx = await newAsker();
 
     const dashboardId = await insertDashboard(deployment.context, {
@@ -316,7 +332,10 @@ describe("the analytics chat beside a dashboard", () => {
 
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
+    // The reads before the one change are the model's choice (P16-55).
     expect(await callsOf(sessionId)).toEqual([
+      { tool: "list-datasets", outcome: "answered" },
+      { tool: "analytics-read-dashboard", outcome: "answered" },
       { tool: "analytics-change-dashboard", outcome: "answered" },
     ]);
 
@@ -344,7 +363,18 @@ describe("the analytics chat beside a dashboard", () => {
 
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
-    expect(await callsOf(sessionId)).toEqual([
+
+    // The first step lists the datasets and reads the dashboard at once, so those two can finish
+    // in either order; then one change (P16-58).
+    const calls = await callsOf(sessionId);
+
+    expect(
+      calls
+        .slice(0, 2)
+        .map(({ tool }) => tool)
+        .toSorted()
+    ).toEqual(["analytics-read-dashboard", "list-datasets"]);
+    expect(calls.slice(2)).toEqual([
       { tool: "analytics-change-dashboard", outcome: "answered" },
     ]);
 
@@ -384,6 +414,7 @@ describe("the analytics chat beside a dashboard", () => {
     expect(errors).toEqual([]);
     expect(targets).toHaveLength(1);
     expect(await callsOf(askId)).toEqual([
+      { tool: "list-datasets", outcome: "answered" },
       { tool: "hand-over", outcome: "handed-over" },
     ]);
 
@@ -393,10 +424,15 @@ describe("the analytics chat beside a dashboard", () => {
     );
 
     expect(ended).toEqual([{ run_state: null, run_error: null }]);
-    // 4 with these fixtures: three changes and the answer, no read in between.
+    // 6 with these recordings: two reads, three changes and the answer.
     expect(runRequests).toBeGreaterThanOrEqual(4);
     expect(runRequests).toBeLessThanOrEqual(10);
-    expect(await callsOf(target?.id ?? "")).toEqual(
+    // The reads before the changes are the model's choice; each panel is one change.
+    expect(
+      (await callsOf(target?.id ?? "")).filter(
+        ({ tool }) => tool === "analytics-change-dashboard"
+      )
+    ).toEqual(
       HANDOFF_PANEL_TITLES.map(() => ({
         tool: "analytics-change-dashboard",
         outcome: "answered",
@@ -443,7 +479,7 @@ describe("the analytics chat beside a dashboard", () => {
       )
     ).toEqual([{ tool: "analytics-change-dashboard", outcome: "answered" }]);
     expect(await dashboardOf(dashboardId)).toMatchObject({
-      titles: ["Monthly collections (SGD)"],
+      titles: [ANALYTICS_CHART_TITLE],
       undo: 1,
       version: 2,
     });
@@ -470,7 +506,7 @@ describe("the analytics chat beside a dashboard", () => {
         kind,
         title,
       }))
-    ).toEqual([{ kind: "chart", title: "Monthly collections (SGD)" }]);
+    ).toEqual([{ kind: "chart", title: ANALYTICS_CHART_TITLE }]);
     expect(await dashboardOf(dashboardId)).toEqual({
       name: QUESTION_DASHBOARD_NAME,
       titles: [],

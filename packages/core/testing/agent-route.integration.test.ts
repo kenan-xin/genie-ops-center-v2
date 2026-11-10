@@ -568,7 +568,7 @@ describe("the agent route", () => {
   });
 
   it("Stop during a later step aborts that step's model call and starts no other", async () => {
-    const model = heldModel({ firstStep: recordedEvents("live-e32fa7188483") });
+    const model = heldModel({ firstStep: recordedEvents("live-f2dde9ba8fc8") });
 
     const ctx = await asker();
 
@@ -586,6 +586,8 @@ describe("the agent route", () => {
       await expect
         .poll(() => storedAnswer(ctx, sessionId), { timeout: 5000 })
         .toEqual([
+          // The live first step reasons before its tool call (P16-55).
+          expect.objectContaining({ type: "reasoning" }),
           expect.objectContaining({
             type: "tool-list-datasets",
             state: "output-available",
@@ -686,7 +688,7 @@ describe("the agent route", () => {
     expect(message?.parts).toContainEqual(
       expect.objectContaining({
         type: "text",
-        text: expect.stringContaining('greeting = Paragraph("Hello!")'),
+        text: expect.stringContaining('result = Paragraph("Hello!'),
       })
     );
   });

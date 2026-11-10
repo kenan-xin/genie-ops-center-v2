@@ -66,11 +66,10 @@ const CHANGED = "Quantity by day";
 const OVERDUE_QUESTION = "Which of these is largest?";
 
 /**
- * The answer of `invoices-overdue-2.json`, from the one row that its query read: the largest
+ * The answer of `invoices-overdue-4.json`, from the rows that its queries read: the largest
  * outstanding amount of the seeded overdue invoices.
  */
-const OVERDUE_ANSWER =
-  "INV-2026-10-03 from Harbor Foods has the largest amount still owed of the overdue invoices on this page, SGD 7,400.00.";
+const OVERDUE_ANSWER = "The largest overdue balance is SGD 7,400.00.";
 
 const onPhone = (testInfo: TestInfo) => testInfo.project.name === "phone";
 
@@ -342,11 +341,12 @@ test("on the Overdue tab, the agent answers about the overdue invoices only", as
       // czjw.108: the method says in words what the read counted, and its rows open in Ask.
       const log = conversationOf(panel);
 
+      // The live answer reads twice (a list and a count, one row each), so the first read opens.
       await log.getByRole("button", { name: "How this was counted" }).click();
       await expect(
-        log.getByText(/^(Added up|Counted|Listed|Took) /)
+        log.getByText(/^(Added up|Counted|Listed|Took) /).first()
       ).toBeVisible();
-      await log.getByRole("link", { name: "See the 1 row" }).click();
+      await log.getByRole("link", { name: "See the 1 row" }).first().click();
       await expect(
         page.getByRole("heading", { name: "Rows read from Invoices" })
       ).toBeVisible(FIRST_PAINT);
@@ -381,10 +381,10 @@ test("on a document's review page, the agent answers about that document", async
 
         await askQuestion(page, DOCUMENT_REVIEW_CHAT_MESSAGE);
 
-        // The answer of `document-review-2.json`, which only a read of this document reaches.
+        // The answer of `document-review-3.json`, which only a read of this document reaches.
         await expect(
           conversationOf(panel).getByText(
-            "Add the due date on this review page, then save the invoice."
+            "This document needs input before it can be saved."
           )
         ).toBeVisible(FIRST_PAINT);
         await expectNoAxeViolations(page, "The answer on the review page");

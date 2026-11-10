@@ -62,5 +62,7 @@ test("a signed-in person's message streams the recorded answer @no-screen", asyn
     .map((chunk) => chunk.delta)
     .join("");
 
-  expect(text).toContain("I can help you explore the records you can read.");
+  expect(text).toContain(
+    "I can answer questions about the placeholder records you can read."
+  );
 });
