@@ -21,7 +21,19 @@ const meta = {
           'The view switcher at the start of the dashboard filter bar, variant A (Spec 7 R-49a, S7-47). "View: <name>" opens the views ("Dashboard filters" and each saved view, the default one with a Default badge), then the actions on the selected view: Make default (or the disabled "Default view" line), Remove view, Save as view and Save as default. Without a view only Save as view shows. A menu from 768 px; the same content in a bottom sheet on a phone.',
       },
     },
-    a11y: { test: "error" },
+    // Base UI's focus guards are aria-hidden on purpose (they hand focus on), so only they skip
+    // aria-hidden-focus, as in the audit log stories.
+    a11y: {
+      test: "error",
+      config: {
+        rules: [
+          {
+            id: "aria-hidden-focus",
+            selector: '[aria-hidden="true"]:not([data-base-ui-focus-guard])',
+          },
+        ],
+      },
+    },
   },
   args: {
     views,
