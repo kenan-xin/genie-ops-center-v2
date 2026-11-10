@@ -3,6 +3,16 @@ import { describe, expect, it } from "vitest";
 import { agentInstructions } from "./prompt.ts";
 
 describe("agentInstructions", () => {
+  it("lets an answer come from what the person said earlier in the chat, not only from tool results", () => {
+    // R1: with "Answer only from tool results", a live model would not answer from a chat summary.
+    const text = agentInstructions({ reportingDate: "2026-10-27" });
+
+    expect(text).toContain(
+      "Answer from tool results and from what the person said earlier in this chat."
+    );
+    expect(text).toContain("Do not guess.");
+  });
+
   it("states the reporting date as a person reads it, and its ISO form only for a query", () => {
     expect(
       agentInstructions({ reportingDate: "2026-10-27" }).split("\n")
