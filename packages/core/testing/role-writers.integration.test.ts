@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -434,6 +436,42 @@ describe("roles.assign and the scope rules (d8l5.51)", () => {
       expect(await assignmentCount(id)).toBe(before);
     }
   );
+});
+
+// Kept from 02d9e009 (owner, 2026-11-11): a record scope, beside the group scope cases above.
+describe("roles.assign takes the Advanced access rule (d8l5.51)", () => {
+  it("refuses a caller who holds core:roles:manage at one scope only, and writes nothing", async () => {
+    const { userId } = await insertPersonWith(
+      deployment.context,
+      ["core:roles:manage"],
+      { type: "on-record", id: randomUUID() }
+    );
+
+    await expect(
+      roles(userId).assign({
+        roleId: roleId(TENANT_ADMINISTRATOR_ROLE),
+        principalType: "user",
+        principalId: userId,
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+    expect(await roleNamesOf(userId)).not.toContain(TENANT_ADMINISTRATOR_ROLE);
+  });
+
+  it("refuses a core role with a scope, and writes nothing", async () => {
+    const custom = await insertRole(deployment.context, {
+      permissions: ["core:roles:manage"],
+    });
+
+    await expect(
+      roles().assign({
+        roleId: custom,
+        principalType: "user",
+        principalId: await insertUser(deployment.context),
+        scope: { scopeType: "on-record", scopeId: randomUUID() },
+      })
+    ).rejects.toMatchObject({ code: "invalid-input" });
+    expect(await assignmentCount(custom)).toBe(0);
+  });
 });
 
 describe("the person read of the People inspector (d8l5.54)", () => {

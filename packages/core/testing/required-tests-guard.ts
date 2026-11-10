@@ -698,6 +698,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a scoped Roles manager and the grant writers (d8l5.51) groups.addMembers refuses a caller who holds core:groups:manage only at a scope adding itself to a Tenant administrator group",
       "roles.assign and the scope rules (d8l5.51) refuses a core role at a scope with invalid-input and writes no assignment",
       "roles.assign and the scope rules (d8l5.51) refuses a module role at a scope type its module does not declare with invalid-input and writes no assignment",
+      "roles.assign takes the Advanced access rule (d8l5.51) refuses a caller who holds core:roles:manage at one scope only, and writes nothing",
+      "roles.assign takes the Advanced access rule (d8l5.51) refuses a core role with a scope, and writes nothing",
       "the person read of the People inspector (d8l5.54) names only the Grants rows of the person's paths",
       "the person read of the People inspector (d8l5.54) refuses a holder of core:people:manage at a scope that is not the person",
     ],
