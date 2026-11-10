@@ -10,6 +10,7 @@ import {
   type ComponentType,
 } from "react";
 
+import { Button } from "../components/button.tsx";
 import {
   Combobox,
   ComboboxContent,
@@ -40,6 +41,8 @@ export type ListFilterControlProps = {
   readonly place: "bar" | "sheet";
   /** The ISO day that the quick ranges count from. */
   readonly anchorDay?: string | undefined;
+  /** Given for a filter the page lets the person take away: its popup ends in "Remove filter". */
+  readonly onRemove?: (() => void) | undefined;
 };
 
 export type ListFilterControl = ComponentType<ListFilterControlProps>;
@@ -165,7 +168,10 @@ function TriggerText(props: {
   );
 }
 
-function OptionPopup(props: { readonly filter: ListFilterDefinition }) {
+function OptionPopup(props: {
+  readonly filter: ListFilterDefinition;
+  readonly onRemove?: (() => void) | undefined;
+}) {
   return (
     <ComboboxContent className="min-w-56">
       <div className="p-2">
@@ -182,6 +188,13 @@ function OptionPopup(props: { readonly filter: ListFilterDefinition }) {
           </ComboboxItem>
         )}
       </ComboboxList>
+      {props.onRemove === undefined ? null : (
+        <div className="flex justify-end border-t border-border p-1">
+          <Button variant="ghost" size="sm" onClick={props.onRemove}>
+            Remove filter
+          </Button>
+        </div>
+      )}
     </ComboboxContent>
   );
 }
@@ -192,6 +205,7 @@ function OptionControl({
   value,
   onChange,
   place,
+  onRemove,
 }: ListFilterControlProps) {
   const items: readonly ListOption[] = [
     { value: "", label: filter.placeholder },
@@ -214,7 +228,7 @@ function OptionControl({
       >
         <TriggerText filter={filter} text={text} set={set} place={place} />
       </ComboboxTrigger>
-      <OptionPopup filter={filter} />
+      <OptionPopup filter={filter} onRemove={onRemove} />
     </Combobox>
   );
 }
@@ -225,6 +239,7 @@ function MultiOptionControl({
   value,
   onChange,
   place,
+  onRemove,
 }: ListFilterControlProps) {
   const items = filter.options ?? [];
   const chosen = new Set(value?.split(",") ?? []);
@@ -235,7 +250,10 @@ function MultiOptionControl({
       ? filter.placeholder
       : selected.length === 1
         ? (selected[0]?.label ?? filter.placeholder)
-        : `${selected.length} ${pluralOf(filter)}`;
+        : // A placeholder that names no many ("All customers") gives no noun to count with.
+          filter.placeholder.startsWith("All ")
+          ? `${selected.length} ${pluralOf(filter)}`
+          : `${selected.length} selected`;
 
   return (
     <Combobox<ListOption, true>
@@ -257,7 +275,7 @@ function MultiOptionControl({
           place={place}
         />
       </ComboboxTrigger>
-      <OptionPopup filter={filter} />
+      <OptionPopup filter={filter} onRemove={onRemove} />
     </Combobox>
   );
 }

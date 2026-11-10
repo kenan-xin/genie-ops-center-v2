@@ -31,6 +31,7 @@ import {
   dashboardQueryKey,
   useDashboard,
   useDashboardChange,
+  useDashboardFilters,
   useUndoDashboard,
 } from "./use-dashboard.ts";
 import type { DashboardPageView } from "./views.ts";
@@ -67,6 +68,7 @@ export function DashboardView(props: DashboardViewProps) {
   const dashboard = dashboardQuery.data ?? view.dashboard;
   const change = useDashboardChange(dashboard);
   const undo = useUndoDashboard(dashboard);
+  const filters = useDashboardFilters(dashboard);
   const queryClient = useQueryClient();
   const nameId = useId();
   const [editing, setEditing] = useState(false);
@@ -246,7 +248,11 @@ export function DashboardView(props: DashboardViewProps) {
           ) : null}
           {view.canWrite ? (
             <div className="mb-4">
-              <FiltersBar dashboard={dashboard} onReload={reload} />
+              <FiltersBar
+                dashboard={dashboard}
+                filters={filters}
+                onReload={reload}
+              />
             </div>
           ) : null}
           {dashboard.panels.length === 0 ? (
@@ -283,6 +289,7 @@ export function DashboardView(props: DashboardViewProps) {
                 <PanelCard
                   key={panel.id}
                   dashboard={dashboard}
+                  filters={filters}
                   panel={panel}
                   index={index}
                   count={dashboard.panels.length}

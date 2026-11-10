@@ -65,6 +65,33 @@ describe("the dashboard filters in the address", () => {
     );
   });
 
+  // S7-46 ruling: a field in the bar with no value survives a reload and a copied link.
+  it("round trips bar fields that apply nothing, with no value parameter", () => {
+    const filters: DashboardFilters = {
+      dateRange: { preset: "all" },
+      fields: [
+        { kind: "select", field: "status", label: "Status", value: null },
+        {
+          kind: "multi-select",
+          field: "label",
+          label: "Customer",
+          values: [],
+        },
+        { kind: "toggle", field: "flag", label: "Flagged", value: false },
+      ],
+    };
+
+    const patch = writeFilterAddress(filters);
+
+    expect(patch["fields"]).toBe(
+      "status:select,label:multi-select,flag:toggle"
+    );
+    expect(patch["f.status"] ?? patch["f.label"] ?? patch["f.flag"]).toBe(
+      undefined
+    );
+    expect(readFilterAddress(patch, fields)).toEqual(filters);
+  });
+
   // P15-8: a customer name can hold a comma, so each multi-select value is encoded.
   it("keeps a multi-select value that holds a comma", () => {
     const filters: DashboardFilters = {
@@ -138,7 +165,7 @@ describe("the dashboard filters in the address", () => {
 
   // Review Focus 1: a hand-edited address opens with what is valid, never with a filter the
   // server refuses.
-  it("drops an unknown field, a refused kind and a missing value", () => {
+  it("drops an unknown field and a refused kind, and reads a missing value as empty", () => {
     expect(
       readFilterAddress(
         {
@@ -155,6 +182,7 @@ describe("the dashboard filters in the address", () => {
     ).toEqual({
       dateRange: { preset: "this-month" },
       fields: [
+        { kind: "select", field: "note", label: "Note", value: null },
         {
           kind: "multi-select",
           field: "label",
@@ -300,6 +328,17 @@ describe("sameFilters", () => {
       },
     ],
     [
+      "one empty filter more",
+      {
+        dateRange: base.dateRange,
+        fields: [
+          status,
+          customer,
+          { kind: "toggle", field: "flag", label: "Flagged", value: false },
+        ],
+      },
+    ],
+    [
       "one filter more",
       {
         dateRange: base.dateRange,
@@ -310,7 +349,8 @@ describe("sameFilters", () => {
         ],
       },
     ],
-  ])("sees %s as a different set of filters", (_, other) => {
+  ])("sees %s as a different set of filters, either way round", (_, other) => {
     expect(sameFilters(base, other)).toBe(false);
+    expect(sameFilters(other, base)).toBe(false);
   });
 });

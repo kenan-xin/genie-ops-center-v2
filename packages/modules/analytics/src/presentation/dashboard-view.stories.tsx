@@ -9,6 +9,8 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import type { DashboardChange, DashboardFilters } from "../contract.ts";
+import { addressParam, withFilterAddress } from "./__fixtures__/address.ts";
 import {
   chartOf,
   chatNoneDashboardPage,
@@ -16,9 +18,12 @@ import {
   chatOnDashboardPage,
   defaultDashboardPage,
   emptyDashboardPage,
+  FIELD_VALUES,
   FILTER_VALUES,
+  filtersDashboardPage,
   noChatDashboardPage,
   readOnlyDashboardPage,
+  TWO_SET,
 } from "./__fixtures__/dashboards.ts";
 import { DashboardView } from "./dashboard-view.tsx";
 import type { DashboardPageView } from "./views.ts";
@@ -183,6 +188,139 @@ export const PanelsOnPhone: Story = {
     await expect(
       await canvas.findByRole("figure", { name: "Invoiced sales" })
     ).toBeVisible();
+  },
+};
+
+/** The filters page: each field's own values, and a save of filters that answers them stored. */
+function serveFilters(page: DashboardPageView) {
+  serve(page);
+  filterValues
+    .mockReset()
+    .mockImplementation(async ({ field }: { readonly field: string }) => [
+      ...(FIELD_VALUES.get(field) ?? []),
+    ]);
+  changeDashboard
+    .mockReset()
+    .mockImplementation(
+      async ({ changes }: { readonly changes: readonly DashboardChange[] }) => {
+        const change = changes[0];
+
+        return change?.op === "set-filters"
+          ? {
+              ...page.dashboard,
+              version: page.dashboard.version + 1,
+              filters: change.filters,
+            }
+          : page.dashboard;
+      }
+    );
+}
+
+const SOUTH: DashboardFilters = {
+  ...TWO_SET,
+  fields: TWO_SET.fields.map((filter) =>
+    filter.kind === "select" ? { ...filter, value: "South" } : filter
+  ),
+};
+
+// S7-46: the address filters reach the bar and every panel read; a change saves nothing, and the
+// next read asks under the new filters, so the old answer is not the one shown (Review Focus 4).
+export const TwoSet: Story = {
+  name: "Two filters set",
+  args: { view: filtersDashboardPage },
+  globals: desktop,
+  beforeEach: () => {
+    serveFilters(filtersDashboardPage);
+    // The answer under South never comes, so the story sees what shows while it is asked for.
+    panelData.mockImplementation(
+      async ({
+        panelId,
+        filters,
+      }: {
+        readonly panelId: string;
+        readonly filters?: DashboardFilters;
+      }) =>
+        filters?.fields.some(
+          (filter) => filter.kind === "select" && filter.value === "South"
+        )
+          ? new Promise(() => {})
+          : chartOf(panelId)
+    );
+
+    return withFilterAddress(TWO_SET);
+  },
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByLabelText("Region: North")).toBeVisible();
+    await expect(
+      await canvas.findByRole("figure", { name: "Invoiced sales" })
+    ).toBeVisible();
+    // One customer whose name holds a comma stays one value (P15-8).
+    await expect(canvas.getByLabelText("Customer: A, B Ltd")).toBeVisible();
+    await expect(canvas.getByText("Not saved as default")).toBeVisible();
+
+    await waitFor(() => {
+      for (const panelId of ["p1", "p2", "p3"]) {
+        expect(panelData).toHaveBeenCalledWith({
+          id: "dashboard-1",
+          panelId,
+          filters: TWO_SET,
+        });
+      }
+    });
+
+    await userEvent.click(canvas.getByLabelText("Region: North"));
+    await userEvent.click(await screen.findByRole("option", { name: "South" }));
+
+    await waitFor(() =>
+      expect(panelData).toHaveBeenCalledWith({
+        id: "dashboard-1",
+        panelId: "p1",
+        filters: SOUTH,
+      })
+    );
+    await expect(addressParam("f.region")).toBe("South");
+    // The North figure must not stand under "Region: South" while South is read (Review Focus 4).
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole("figure", { name: "Invoiced sales" })
+      ).toBeNull()
+    );
+    await expect(
+      canvas
+        .getAllByRole("status")
+        .some((line) => line.textContent === "Loading…")
+    ).toBe(true);
+    await expect(changeDashboard).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+  },
+};
+
+// Save as default stores the address filters, not the stored ones, then the page reads them.
+export const SaveAsDefault: Story = {
+  name: "Save as default",
+  args: { view: filtersDashboardPage },
+  globals: desktop,
+  beforeEach: () => {
+    serveFilters(filtersDashboardPage);
+
+    return withFilterAddress(TWO_SET);
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Save as default" })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "set-filters", filters: TWO_SET }],
+    });
+    await waitFor(() =>
+      expect(canvas.queryByText("Not saved as default")).toBeNull()
+    );
+    await expect(addressParam("range")).toBeNull();
+    await expect(canvas.getByLabelText("Region: North")).toBeVisible();
   },
 };
 

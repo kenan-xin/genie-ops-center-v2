@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontalIcon } from "lucide-react";
-import { useId } from "react";
+import { useId, type ReactNode } from "react";
 
 import { Button } from "../components/button.tsx";
 import { FieldLabel } from "../components/field.tsx";
@@ -34,6 +34,10 @@ export function FilterSheet(props: {
   /** The rows that the filters give, for "Show 6 invoices". */
   readonly resultCount: number | undefined;
   readonly anchorDay?: string | undefined;
+  /** Takes a filter away; each control that offers it shows "Remove filter". */
+  readonly onRemove?: ((filterId: string) => void) | undefined;
+  /** Content after the filters, such as a way to add one. */
+  readonly children?: ReactNode;
 }) {
   const { definition, state } = props;
   const statusId = useId();
@@ -117,9 +121,15 @@ export function FilterSheet(props: {
                   controls={props.controls}
                   place="sheet"
                   anchorDay={props.anchorDay}
+                  onRemove={
+                    props.onRemove === undefined
+                      ? undefined
+                      : () => props.onRemove?.(filter.id)
+                  }
                 />
               </div>
             ))}
+          {props.children}
         </div>
         <SheetFooter className="flex-row">
           <Button

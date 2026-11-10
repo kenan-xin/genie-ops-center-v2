@@ -231,3 +231,58 @@ export const chartOf = (panelId: string): ChartData => {
 };
 
 export const FILTER_VALUES = ["Alpha", "Bravo", "Charlie"] as const;
+
+const DATASETS = ["invoices.invoices"];
+
+/** A dashboard with five fields to filter by, stored with the last three months (S7-46). */
+export const filtersDashboardPage: DashboardPageView = {
+  ...defaultDashboardPage,
+  dashboard: {
+    ...defaultDashboardPage.dashboard,
+    filters: { dateRange: { preset: "last-3-months" }, fields: [] },
+    filterFields: [
+      {
+        field: "currency",
+        label: "Currency",
+        kind: "select",
+        datasets: DATASETS,
+      },
+      {
+        field: "label",
+        label: "Customer",
+        kind: "multi-select",
+        datasets: DATASETS,
+      },
+      {
+        field: "overdue",
+        label: "Overdue only",
+        kind: "toggle",
+        datasets: DATASETS,
+      },
+      { field: "region", label: "Region", kind: "select", datasets: DATASETS },
+      { field: "status", label: "Status", kind: "select", datasets: DATASETS },
+    ],
+  },
+};
+
+/** The values each field offers; a customer name holds a comma (P15-8). */
+export const FIELD_VALUES = new Map<string, readonly string[]>([
+  ["currency", ["SGD", "USD"]],
+  ["label", ["A, B Ltd", "Bravo", "Charlie"]],
+  ["region", ["North", "South", "East", "West"]],
+  ["status", ["Open", "Paid"]],
+]);
+
+/** Two filters set, as the address holds them (variant A `two-set`). */
+export const TWO_SET: DashboardFilters = {
+  dateRange: { preset: "last-3-months" },
+  fields: [
+    { kind: "select", field: "region", label: "Region", value: "North" },
+    {
+      kind: "multi-select",
+      field: "label",
+      label: "Customer",
+      values: ["A, B Ltd"],
+    },
+  ],
+};

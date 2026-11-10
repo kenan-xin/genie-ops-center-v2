@@ -2,6 +2,7 @@
 
 import { type AppIssue, appCodeOf, appIssuesOf } from "@genie/core/rpc/client";
 import { Button } from "@genie/ui";
+import { useEffect, useRef } from "react";
 
 export type ChangeFailure = {
   readonly kind: "change" | "undo";
@@ -45,11 +46,24 @@ function refusalOf(failure: ChangeFailure): Refusal {
 export function ChangeRefusal(props: {
   readonly failure: ChangeFailure;
   readonly onReload: () => void;
+  /** Takes focus when it shows, so the person hears it (DESIGN.md "Save failures"). */
+  readonly focus?: boolean | undefined;
 }) {
+  const alert = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (props.focus === true) alert.current?.focus();
+  }, [props.focus]);
+
   const { message, issues, reload } = refusalOf(props.failure);
 
   return (
-    <div role="alert" className="grid gap-1 text-sm text-destructive">
+    <div
+      ref={alert}
+      role="alert"
+      tabIndex={props.focus === true ? -1 : undefined}
+      className="grid gap-1 text-sm text-destructive outline-none"
+    >
       <p>{message === "" ? "The change was not saved." : message}</p>
       {issues.map((issue, index) => (
         <p key={`${index}:${issue.path}`}>{issue.message}</p>

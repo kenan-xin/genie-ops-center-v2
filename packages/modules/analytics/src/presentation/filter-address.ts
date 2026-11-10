@@ -87,7 +87,10 @@ function decode(part: string): readonly string[] {
   }
 }
 
-/** One filter of the address, or `undefined` for a missing value or a value it cannot hold. */
+/**
+ * One filter of the address. A listed field with no value is in the bar with nothing chosen (S7-46
+ * ruling); a value it cannot hold gives `undefined`.
+ */
 function readFilter(
   known: FilterField,
   kind: FieldFilter["kind"],
@@ -97,28 +100,26 @@ function readFilter(
 
   switch (kind) {
     case "select":
-      return value === undefined ? undefined : { kind, field, label, value };
+      return { kind, field, label, value: value ?? null };
     case "multi-select":
-      return value === undefined
-        ? undefined
-        : {
-            kind,
-            field,
-            label,
-            values: value.split(",").flatMap(decode),
-          };
+      return {
+        kind,
+        field,
+        label,
+        values: value === undefined ? [] : value.split(",").flatMap(decode),
+      };
     case "toggle":
-      return value === "1"
-        ? { kind, field, label, value: true }
-        : value === "0"
-          ? { kind, field, label, value: false }
+      return value === undefined || value === "0"
+        ? { kind, field, label, value: false }
+        : value === "1"
+          ? { kind, field, label, value: true }
           : undefined;
   }
 }
 
 /**
  * The field filters the address names, in its order, at most four (R-49). A field the page does
- * not offer, a kind it does not allow and a missing value are dropped (Review Focus 1).
+ * not offer, a kind it does not allow and a value it cannot hold are dropped (Review Focus 1).
  */
 function readFields(
   value: string | undefined,
@@ -197,23 +198,26 @@ function writeValue(filter: FieldFilter): string {
 
 /**
  * The patch that writes `filters` to the address. It always writes `range`, `all` included
- * (P15-7), lists the filters that apply, and removes the value of each field in `previous` that
- * the filters no longer hold.
+ * (P15-7), lists every field filter, also one that applies nothing, so it stays in the bar after
+ * a reload (S7-46 ruling), writes a value only for a filter that applies, and removes every other
+ * value of the filters and of `previous`.
  */
 export function writeFilterAddress(
   filters: DashboardFilters,
   previous: readonly string[] = []
 ): FilterPatch {
-  const applied = filters.fields.filter(applies);
-
   const written = [
     [ADDRESS.range, writeRange(filters.dateRange)],
     [
       ADDRESS.fields,
-      applied.map(({ field, kind }) => `${field}:${kind}`).join(","),
+      filters.fields.map(({ field, kind }) => `${field}:${kind}`).join(","),
     ],
-    ...previous.map((field) => [nameOf(field), undefined]),
-    ...applied.map((filter) => [nameOf(filter.field), writeValue(filter)]),
+    ...[...previous, ...filters.fields.map(({ field }) => field)].map(
+      (field) => [nameOf(field), undefined]
+    ),
+    ...filters.fields
+      .filter(applies)
+      .map((filter) => [nameOf(filter.field), writeValue(filter)]),
   ];
 
   return Object.fromEntries(written);
@@ -227,7 +231,7 @@ const sameRange = (a: DateRangeFilter, b: DateRangeFilter): boolean => {
   return a.from === b.from && a.to === b.to;
 };
 
-/** A filter as the address carries it, with a multi-select's values in one order. */
+/** A filter's kind and value, with a multi-select's values in one order. */
 const canonical = (filter: FieldFilter): string => {
   switch (filter.kind) {
     case "select":
@@ -235,23 +239,25 @@ const canonical = (filter: FieldFilter): string => {
     case "multi-select":
       return `${filter.kind}:${[...filter.values].toSorted().join(",")}`;
     case "toggle":
-      return filter.kind;
+      return `${filter.kind}:${filter.value ? 1 : 0}`;
   }
 };
 
 /**
- * Whether two sets of filters are the same: a multi-select's value order, the labels and the
- * filter order do not count, and a filter that applies nothing is not a difference (P15-4).
- * "Not saved as default" waits on this.
+ * Whether two sets of filters are the same: the same fields in the bar, each of one kind and
+ * value. A multi-select's value order, the labels and the filter order do not count; a field in
+ * the bar with no value does (S7-46 ruling). "Not saved as default" waits on this.
  */
 export function sameFilters(a: DashboardFilters, b: DashboardFilters): boolean {
   if (!sameRange(a.dateRange, b.dateRange)) return false;
 
   const mine = new Map(
-    a.fields.filter(applies).map((filter) => [filter.field, canonical(filter)])
+    a.fields.map((filter) => [filter.field, canonical(filter)])
   );
 
-  return b.fields
-    .filter(applies)
-    .every((filter) => mine.get(filter.field) === canonical(filter));
+  // The count catches a filter `a` holds and `b` does not; `every` only looks from `b`'s side.
+  return (
+    b.fields.length === mine.size &&
+    b.fields.every((filter) => mine.get(filter.field) === canonical(filter))
+  );
 }

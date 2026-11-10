@@ -57,6 +57,7 @@ export function FilterSlot(props: {
   readonly controls: Readonly<Record<string, ListFilterControl>>;
   readonly place: "bar" | "sheet";
   readonly anchorDay?: string | undefined;
+  readonly onRemove?: (() => void) | undefined;
 }) {
   const Control = props.controls[props.filter.kind];
 
@@ -69,6 +70,7 @@ export function FilterSlot(props: {
       onChange={(value) => props.state.set({ [props.filter.id]: value })}
       place={props.place}
       anchorDay={props.anchorDay}
+      onRemove={props.onRemove}
     />
   );
 }

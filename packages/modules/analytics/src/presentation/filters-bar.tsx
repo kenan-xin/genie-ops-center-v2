@@ -2,243 +2,532 @@
 
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
+  BUILT_IN_CONTROLS,
   Button,
-  DateRangePicker,
-  Field,
-  FieldError,
-  FieldLabel,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  buttonVariants,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  FilterSheet,
+  formatDayRange,
+  type ListDefinition,
+  type ListFilterControl,
+  type ListFilterControlProps,
+  type ListFilterDefinition,
+  type ListOption,
+  type ListState,
+  readDayRange,
+  Switch,
 } from "@genie/ui";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQueries } from "@tanstack/react-query";
 import { useEffect, useId, useState } from "react";
 
 import {
   analyticsContract,
   DATE_RANGE_PRESETS,
-  dateRangeFilter,
-  type DashboardFilters,
   type DateRangeFilter,
+  FIELD_FILTER_LIMIT,
+  type FieldFilter,
 } from "../contract.ts";
 import { ChangeRefusal } from "./change-refusal.tsx";
-import { useDashboardChange } from "./use-dashboard.ts";
+import { sameFilters } from "./filter-address.ts";
+import {
+  type DashboardFilterState,
+  useDashboardChange,
+} from "./use-dashboard.ts";
 import type { DashboardView } from "./views.ts";
+
+const RANGE = "range";
 
 const CUSTOM = "custom";
 
-const RANGE_ITEMS = [
-  { value: "all", label: "All time" },
-  { value: "this-month", label: "This month" },
-  { value: "last-3-months", label: "Last 3 months" },
-  { value: "last-6-months", label: "Last 6 months" },
-  { value: "this-year", label: "This year" },
-  { value: CUSTOM, label: "Custom range" },
-] as const;
+const PRESET_LABEL: Record<(typeof DATE_RANGE_PRESETS)[number], string> = {
+  "all": "All time",
+  "this-month": "This month",
+  "last-3-months": "Last 3 months",
+  "last-6-months": "Last 6 months",
+  "this-year": "This year",
+};
+
+const LIMIT_HINT = "Up to 4 filters. Remove one to add another.";
+
+/** The date trigger: the presets of today, then Custom range (D3). "All time" is the empty value. */
+const RANGE_FILTER: ListFilterDefinition = {
+  id: RANGE,
+  kind: "option",
+  label: "Date",
+  placeholder: PRESET_LABEL.all,
+  options: [
+    ...DATE_RANGE_PRESETS.filter((preset) => preset !== "all").map(
+      (preset) => ({ value: preset, label: PRESET_LABEL[preset] })
+    ),
+    { value: CUSTOM, label: "Custom range" },
+  ],
+};
+
+const DATES_FILTER: ListFilterDefinition = {
+  id: "dates",
+  kind: "date-range",
+  label: "Dates",
+  placeholder: "Choose the dates",
+};
+
+/**
+ * The dashboard range as one control: the preset list, and the range calendar beside it once
+ * Custom range is picked. Half a range stays here; only a whole one reaches the address.
+ */
+function DateControl({ value, onChange, place }: ListFilterControlProps) {
+  const custom = value?.includes("..") ?? false;
+  const [customMode, setCustomMode] = useState(custom);
+  const [draft, setDraft] = useState(custom ? value : undefined);
+
+  // Follow a range the address changed, such as a reset after Save as default or a shared link.
+  useEffect(() => {
+    setCustomMode(custom);
+    setDraft(custom ? value : undefined);
+  }, [value, custom]);
+
+  const Presets = BUILT_IN_CONTROLS.option;
+  const Dates = BUILT_IN_CONTROLS["date-range"];
+
+  return (
+    <>
+      <Presets
+        filter={RANGE_FILTER}
+        value={customMode ? CUSTOM : value}
+        place={place}
+        onChange={(next) => {
+          setCustomMode(next === CUSTOM);
+          setDraft(undefined);
+
+          if (next !== CUSTOM) onChange(next);
+        }}
+      />
+      {customMode ? (
+        <Dates
+          filter={DATES_FILTER}
+          value={draft}
+          place={place}
+          onChange={(next) => {
+            setDraft(next);
+
+            const { from, to } = readDayRange(next);
+
+            if (from !== undefined && to !== undefined) onChange(next);
+          }}
+        />
+      ) : null}
+    </>
+  );
+}
+
+/** A yes-or-no field as a switch in the filter trigger frame; off applies nothing (P15-4). */
+function ToggleControl({
+  filter,
+  value,
+  onChange,
+  place,
+}: ListFilterControlProps) {
+  const on = value === "1";
+
+  return (
+    <label
+      className={buttonVariants({
+        variant: on ? "filter-set" : place === "bar" ? "filter" : "secondary",
+        size: "filter",
+        className: place === "sheet" ? "w-full justify-start" : "",
+      })}
+    >
+      <Switch
+        checked={on}
+        onCheckedChange={(checked) => onChange(checked ? "1" : undefined)}
+      />
+      {filter.label}
+    </label>
+  );
+}
+
+const CONTROLS = {
+  ...BUILT_IN_CONTROLS,
+  date: DateControl,
+  toggle: ToggleControl,
+} satisfies Readonly<Record<string, ListFilterControl>>;
+
+const CONTROL_KIND = {
+  "select": "option",
+  "multi-select": "multi-option",
+  "toggle": "toggle",
+} as const;
+
+const idOf = (field: string) => `f.${field}`;
+
+/** The range as the date control writes it; All time is no value. */
+const rangeParam = (range: DateRangeFilter): string | undefined =>
+  "preset" in range
+    ? range.preset === "all"
+      ? undefined
+      : range.preset
+    : `${range.from}..${range.to}`;
+
+function rangeOf(value: string | undefined): DateRangeFilter {
+  const preset = DATE_RANGE_PRESETS.find((name) => name === value);
+  const { from, to } = readDayRange(value);
+
+  return preset === undefined && from !== undefined && to !== undefined
+    ? { from, to }
+    : { preset: preset ?? "all" };
+}
+
+const rangeLabel = (range: DateRangeFilter) =>
+  "preset" in range
+    ? PRESET_LABEL[range.preset]
+    : formatDayRange(range.from, range.to);
+
+/**
+ * A filter as its control writes it. Each multi value is encoded, because the list header joins
+ * values with a comma and a customer name can hold one (P15-8).
+ */
+function paramOf(filter: FieldFilter): string | undefined {
+  switch (filter.kind) {
+    case "select":
+      return filter.value ?? undefined;
+    case "multi-select":
+      return filter.values.map(encodeURIComponent).join(",") || undefined;
+    case "toggle":
+      return filter.value ? "1" : undefined;
+  }
+}
+
+type ShownField = Pick<FieldFilter, "field" | "kind" | "label">;
+
+function filterOf(shown: ShownField, raw: string | undefined): FieldFilter {
+  const { field, label } = shown;
+
+  switch (shown.kind) {
+    case "select":
+      return { kind: "select", field, label, value: raw ?? null };
+    case "multi-select":
+      return {
+        kind: "multi-select",
+        field,
+        label,
+        values: raw === undefined ? [] : raw.split(",").map(decodeURIComponent),
+      };
+    case "toggle":
+      return { kind: "toggle", field, label, value: raw === "1" };
+  }
+}
+
+/** "Region: North", "Customer: 2 selected", "Overdue only": one applied filter in the summary. */
+function summaryOf(filter: FieldFilter): string | undefined {
+  switch (filter.kind) {
+    case "select":
+      return filter.value === null
+        ? undefined
+        : `${filter.label}: ${filter.value}`;
+    case "multi-select":
+      return filter.values.length === 0
+        ? undefined
+        : `${filter.label}: ${filter.values.length === 1 ? filter.values[0] : `${filter.values.length} selected`}`;
+    case "toggle":
+      return filter.value ? filter.label : undefined;
+  }
+}
 
 export type FiltersBarProps = {
   readonly dashboard: DashboardView;
+  /** The filters the page applies, from `useDashboardFilters`. */
+  readonly filters: DashboardFilterState;
   /** Reads the dashboard again after a save met a newer version. */
   readonly onReload: () => void;
 };
 
-/** The date range and the field filter, each save one `set-filters` change (R-49, D3). */
+/**
+ * The dashboard filter bar, variant A (R-49, S7-46), on the list header controls. A change writes
+ * the page address only; Save as default stores the filters in one `set-filters` change.
+ */
 export function FiltersBar(props: FiltersBarProps) {
-  const { dashboard } = props;
+  const { dashboard, filters } = props;
+  const current = filters.filters;
   const analytics = useModuleClient(analyticsContract);
   const change = useDashboardChange(dashboard);
-  const rangeId = useId();
-  const datesId = useId();
-  const fieldId = useId();
-  const rangeErrorId = useId();
+  const addId = useId();
+  const hintId = useId();
 
-  const range = dashboard.filters.dateRange;
-  const storedPreset = "preset" in range ? range.preset : null;
-  const storedFrom = "preset" in range ? "" : range.from;
-  const storedTo = "preset" in range ? "" : range.to;
-  const [customMode, setCustomMode] = useState(false);
-  const [from, setFrom] = useState(storedFrom);
-  const [to, setTo] = useState(storedTo);
-  const [rangeError, setRangeError] = useState<string | null>(null);
-  const custom = customMode || !("preset" in range);
+  // The bar shows every field filter the page applies, with or without a value (S7-46 ruling).
+  const shown = current.fields;
+  const applied = new Map(shown.map((filter) => [filter.field, filter]));
+  const lists = shown.filter((field) => field.kind !== "toggle");
 
-  // Follow a stored range that changed under the fields, such as after an Undo.
-  useEffect(() => {
-    setFrom(storedFrom);
-    setTo(storedTo);
-    setCustomMode(storedPreset === null);
-  }, [storedFrom, storedTo, storedPreset]);
-
-  const { fields } = dashboard.filters;
-  // Task 4 rebuilds this bar for every filter kind; for now it shows the first select filter.
-  const first = fields[0];
-  const field = first?.kind === "select" ? first : undefined;
-
-  const values = useQuery({
-    // A save may change the field or add a dataset, so each version asks again.
-    queryKey: ["analytics", "filter-values", dashboard.id, dashboard.version],
-    // `enabled` holds the call until a field is set.
-    queryFn: () =>
-      analytics.filterValues({ id: dashboard.id, field: field?.field ?? "" }),
-    enabled: field !== undefined,
-    placeholderData: keepPreviousData,
+  const values = useQueries({
+    queries: lists.map((field) => ({
+      // The values answer under every other filter, so each change asks again (P15-6).
+      queryKey: [
+        "analytics",
+        "filter-values",
+        dashboard.id,
+        dashboard.version,
+        field.field,
+        current,
+      ],
+      queryFn: () =>
+        analytics.filterValues({
+          id: dashboard.id,
+          field: field.field,
+          ...(filters.fromAddress && { filters: current }),
+        }),
+      placeholderData: keepPreviousData,
+    })),
   });
 
-  function save(filters: {
-    readonly dateRange: DateRangeFilter;
-    readonly fields: DashboardFilters["fields"];
-  }) {
-    change.mutate([{ op: "set-filters", filters }]);
+  /** The values a field offers, with a chosen value the answer no longer holds kept first. */
+  function optionsOf(filter: FieldFilter): readonly ListOption[] {
+    const index = lists.findIndex((list) => list.field === filter.field);
+    const known = values[index]?.data ?? [];
+
+    const chosen =
+      filter.kind === "select" && filter.value !== null
+        ? [filter.value]
+        : filter.kind === "multi-select"
+          ? filter.values
+          : [];
+
+    return [...new Set([...chosen, ...known])].map((value) => ({
+      value: filter.kind === "multi-select" ? encodeURIComponent(value) : value,
+      label: value,
+    }));
   }
 
-  /** The filters with the first select filter's value set to `value`, `null` meaning All. */
-  const withValue = (value: string | null): DashboardFilters["fields"] =>
-    field === undefined ? fields : [{ ...field, value }, ...fields.slice(1)];
+  const fieldFilters = shown.map((field) => ({
+    field,
+    filter: {
+      id: idOf(field.field),
+      kind: CONTROL_KIND[field.kind],
+      label: field.label,
+      placeholder: "All",
+      options: optionsOf(field),
+    },
+  }));
 
-  function applyCustom(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  const definition: ListDefinition = {
+    label: "Dashboard filters",
+    noun: ["result", "results"],
+    filters: [
+      { ...RANGE_FILTER, kind: "date" },
+      ...fieldFilters.map(({ filter }) => filter),
+    ],
+    sorts: [],
+    defaultSort: { column: "", direction: "asc" },
+  };
 
-    // The schema's own message for a missing day is not written for people.
-    if (from === "" || to === "") {
-      setRangeError("Choose a start and an end date.");
+  const params: Record<string, string> = {};
+  const range = rangeParam(current.dateRange);
 
-      return;
-    }
+  if (range !== undefined) params[RANGE] = range;
 
-    const parsed = dateRangeFilter.safeParse({ from, to });
+  for (const filter of current.fields) {
+    const value = paramOf(filter);
 
-    if (!parsed.success) {
-      setRangeError(
-        parsed.error.issues[0]?.message ?? "Choose a start and an end date."
-      );
-
-      return;
-    }
-
-    setRangeError(null);
-    save({ dateRange: parsed.data, fields });
+    if (value !== undefined) params[idOf(filter.field)] = value;
   }
 
-  const known: readonly string[] = values.data ?? [];
+  /** Writes a patch of control values to the address; nothing is saved (S7-46). */
+  function apply(patch: Readonly<Record<string, string | undefined>>) {
+    const read = (id: string) => (id in patch ? patch[id] : params[id]);
 
-  const options: readonly string[] =
-    field === undefined || field.value === null || known.includes(field.value)
-      ? known
-      : [field.value, ...known];
+    filters.set({
+      dateRange: rangeOf(read(RANGE)),
+      fields: shown.map((field) => filterOf(field, read(idOf(field.field)))),
+    });
+  }
+
+  const clear = () =>
+    apply(
+      Object.fromEntries(shown.map((field) => [idOf(field.field), undefined]))
+    );
+
+  const state: ListState = {
+    params,
+    tab: "",
+    sort: definition.defaultSort,
+    set: apply,
+    clear,
+  };
+
+  /** Adds a field with nothing chosen; the address keeps it in the bar (S7-46 ruling). */
+  function add(field: ShownField) {
+    filters.set({
+      ...current,
+      fields: [...current.fields, filterOf(field, undefined)],
+    });
+  }
+
+  function remove(field: string) {
+    filters.set({
+      ...current,
+      fields: current.fields.filter((filter) => filter.field !== field),
+    });
+  }
+
+  /** The control's "Remove filter"; the date range is always there. */
+  const onRemove = (id: string) =>
+    id === RANGE ? undefined : () => remove(id.slice(2));
+
+  function save() {
+    change.mutate([{ op: "set-filters", filters: current }], {
+      // The page then reads the stored filters, which are now these.
+      onSuccess: () => filters.reset(),
+    });
+  }
+
+  const available = dashboard.filterFields.filter(
+    (field) => !applied.has(field.field)
+  );
+
+  const full = shown.length >= FIELD_FILTER_LIMIT;
+  const canAdd = full || available.length > 0;
+  const anySet = Object.keys(params).some((id) => id !== RANGE);
+  const unsaved = !sameFilters(current, dashboard.filters);
+
+  const summary = [
+    rangeLabel(current.dateRange),
+    ...current.fields.flatMap((filter) => summaryOf(filter) ?? []),
+  ].join(" · ");
 
   return (
-    <div className="flex flex-wrap items-end gap-4">
-      <Field className="w-44">
-        <FieldLabel htmlFor={rangeId}>Date range</FieldLabel>
-        <Select
-          items={RANGE_ITEMS}
-          value={custom ? CUSTOM : range.preset}
-          disabled={change.isPending}
-          onValueChange={(value) => {
-            if (value === CUSTOM) {
-              setCustomMode(true);
+    <div className="grid gap-3">
+      <div className="flex flex-wrap items-center gap-2.5 border-b border-border pb-4">
+        {/* S7-47 puts the view menu first, here. */}
+        <div className="hidden md:contents">
+          <DateControl
+            filter={RANGE_FILTER}
+            value={params[RANGE]}
+            onChange={(value) => apply({ [RANGE]: value })}
+            place="bar"
+          />
+          {fieldFilters.map(({ field, filter }) => {
+            const Control = CONTROLS[CONTROL_KIND[field.kind]];
 
-              return;
-            }
-
-            const preset = DATE_RANGE_PRESETS.find(
-              (candidate) => candidate === value
+            return (
+              <Control
+                key={filter.id}
+                filter={filter}
+                value={params[filter.id]}
+                onChange={(value) => apply({ [filter.id]: value })}
+                place="bar"
+                onRemove={() => remove(field.field)}
+              />
             );
+          })}
+          {canAdd ? (
+            // One unit, so the hint wraps with the button it explains.
+            <span className="flex items-center gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  disabled={full}
+                  aria-describedby={full ? hintId : undefined}
+                  render={<Button variant="ghost" size="filter" />}
+                >
+                  <span aria-hidden="true">+</span>
+                  Add filter
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  {available.map((field) => (
+                    <DropdownMenuItem
+                      key={field.field}
+                      onClick={() => add(field)}
+                    >
+                      {field.label}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {full ? (
+                <span id={hintId} className="text-sm text-muted-foreground">
+                  {LIMIT_HINT}
+                </span>
+              ) : null}
+            </span>
+          ) : null}
+          {anySet ? (
+            <Button variant="link" size="filter" onClick={clear}>
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
 
-            if (preset === undefined) return;
-
-            setCustomMode(false);
-            setRangeError(null);
-            save({ dateRange: { preset }, fields });
-          }}
-        >
-          <SelectTrigger id={rangeId}>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {RANGE_ITEMS.map((item) => (
-              <SelectItem key={item.value} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </Field>
-
-      {custom ? (
-        <form className="flex flex-wrap items-end gap-2" onSubmit={applyCustom}>
-          <Field className="w-64">
-            <FieldLabel htmlFor={datesId}>Dates</FieldLabel>
-            <DateRangePicker
-              id={datesId}
-              label="Dates"
-              placeholder="Choose the dates"
-              value={{ from: from || undefined, to: to || undefined }}
-              aria-invalid={rangeError !== null}
-              aria-describedby={rangeError === null ? undefined : rangeErrorId}
-              onChange={(next) => {
-                setFrom(next.from ?? "");
-                setTo(next.to ?? "");
-              }}
-            />
-          </Field>
-          <Button type="submit" variant="secondary" loading={change.isPending}>
-            Apply
-          </Button>
-          {rangeError === null ? null : (
-            <FieldError id={rangeErrorId} className="basis-full">
-              {rangeError}
-            </FieldError>
-          )}
-        </form>
-      ) : null}
-
-      {field === undefined ? null : (
-        <Field className="w-44">
-          <FieldLabel htmlFor={fieldId}>{field.label}</FieldLabel>
-          <Select
-            items={[
-              { value: "all", label: "All" },
-              ...options.map((value) => ({ value, label: value })),
-            ]}
-            value={field.value ?? "all"}
-            disabled={change.isPending}
-            onValueChange={(value) => {
-              if (value === null) return;
-
-              save({
-                dateRange: range,
-                fields: withValue(value === "all" ? null : value),
-              });
-            }}
+        <div className="contents md:hidden">
+          <FilterSheet
+            definition={definition}
+            state={state}
+            controls={CONTROLS}
+            resultCount={undefined}
+            onRemove={(id) => onRemove(id)?.()}
           >
-            <SelectTrigger id={fieldId}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All</SelectItem>
-              {options.map((value) => (
-                <SelectItem key={value} value={value}>
-                  {value}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-      )}
+            {canAdd ? (
+              <div className="grid gap-1.5">
+                <span id={addId} className="text-sm font-medium">
+                  Add filter
+                </span>
+                {full ? (
+                  <p className="text-sm text-muted-foreground">{LIMIT_HINT}</p>
+                ) : (
+                  <div
+                    role="group"
+                    aria-labelledby={addId}
+                    className="flex flex-wrap gap-2"
+                  >
+                    {available.map((field) => (
+                      <Button
+                        key={field.field}
+                        variant="secondary"
+                        size="md"
+                        onClick={() => add(field)}
+                      >
+                        <span aria-hidden="true">+</span>
+                        {field.label}
+                      </Button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </FilterSheet>
+          <p className="basis-full text-sm text-muted-foreground">{summary}</p>
+        </div>
+
+        {unsaved ? (
+          <div className="flex items-center gap-3 md:ml-auto">
+            <span className="flex items-center gap-2 text-sm text-muted-foreground">
+              {/* DESIGN.md: an unsaved change carries a small blue dot. */}
+              <span
+                aria-hidden="true"
+                className="size-2 rounded-full bg-primary"
+              />
+              Not saved as default
+            </span>
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={change.isPending}
+              onClick={save}
+            >
+              Save as default
+            </Button>
+          </div>
+        ) : null}
+      </div>
 
       {change.error === null ? null : (
-        <div className="basis-full">
-          <ChangeRefusal
-            failure={{ kind: "change", error: change.error }}
-            onReload={() => {
-              change.reset();
-              props.onReload();
-            }}
-          />
-        </div>
+        <ChangeRefusal
+          failure={{ kind: "change", error: change.error }}
+          focus
+          onReload={() => {
+            change.reset();
+            props.onReload();
+          }}
+        />
       )}
     </div>
   );

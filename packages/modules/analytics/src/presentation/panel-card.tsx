@@ -20,7 +20,7 @@ import { useEffect } from "react";
 
 import type { DashboardChange } from "../contract.ts";
 import { convertibleTypes, convertPanel } from "./panel-convert.ts";
-import { usePanelData } from "./use-dashboard.ts";
+import { type DashboardFilterState, usePanelData } from "./use-dashboard.ts";
 import type { DashboardView, PanelView } from "./views.ts";
 
 const COLUMN_SPAN = {
@@ -199,6 +199,8 @@ function PanelActions(props: PanelActionsProps) {
 
 export type PanelCardProps = {
   readonly dashboard: DashboardView;
+  /** The filters the page applies (S7-46). */
+  readonly filters: DashboardFilterState;
   readonly panel: PanelView;
   readonly index: number;
   readonly count: number;
@@ -230,7 +232,7 @@ export function PanelCard(props: PanelCardProps) {
     onRead,
   } = props;
 
-  const query = usePanelData(dashboard, panel.id);
+  const query = usePanelData(dashboard, panel.id, props.filters);
   const readAt = query.data?.readAt;
 
   useEffect(() => {
