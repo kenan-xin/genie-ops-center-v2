@@ -312,49 +312,47 @@ async function assertAddable(
   await assertModuleScope(check, named.moduleId, scope, named.isSystem);
 }
 
-async function readNamedRoles(
-  tenant: TenantContext,
-  roleIds: readonly string[]
-): Promise<readonly NamedRole[]> {
-  const result = await tenant.db.$client.query<NamedRole>(
-    `select r.id::text as id, r.name, r.is_system as "isSystem", r.module_id as "moduleId"
-       from role r where r.id = any($1::uuid[])`,
-    [roleIds]
-  );
-
-  return result.rows;
-}
-
 /**
- * Refuses one grant that Advanced access would refuse (d8l5.51): a caller who does not manage all
- * roles (`forbidden`), a missing role (`not-found`), and an add `assertAddable` refuses.
+ * Refuses an add Advanced access does not take (AD5), for each entry in input order: an unknown
+ * role id is `not-found`, and every other refusal is that of `assertAddable`. It writes nothing
+ * and checks no key. Its two callers, `saveAdvanced` and the `roles.assign` handler for a scoped
+ * add, check `core:roles:manage` tenant-wide first.
  */
-export async function assertAssignable(input: {
+export async function assertAdvancedAdds(input: {
   readonly tenant: TenantContext;
   readonly caller: RequestPrincipal;
   readonly modules: readonly RolesModule[];
-  readonly roleId: string;
-  readonly scope: Scope | null;
+  readonly add: AdvancedChanges["add"];
 }): Promise<void> {
-  await assertManagesAllRoles(input.caller);
+  const { add } = input;
 
-  const [found] = await readNamedRoles(input.tenant, [input.roleId]);
-
-  if (found === undefined) {
-    throw new AppError(CORE_ERRORS["not-found"], {
-      cause: new Error(`No role ${input.roleId}`),
-    });
-  }
-
-  await assertAddable(
-    {
-      caller: input.caller,
-      modules: input.modules,
-      entitled: await entitlementByModule(input.tenant, input.modules),
-    },
-    found,
-    input.scope
+  const named = await input.tenant.db.$client.query<NamedRole>(
+    `select r.id::text as id, r.name, r.is_system as "isSystem", r.module_id as "moduleId"
+       from role r where r.id = any($1::uuid[])`,
+    [[...new Set(add.map((entry) => entry.roleId))]]
   );
+
+  const roles = new Map(named.rows.map((row) => [row.id, row]));
+
+  const check: AddCheck = {
+    caller: input.caller,
+    modules: input.modules,
+    entitled: await entitlementByModule(input.tenant, input.modules),
+  };
+
+  for (const entry of add) {
+    const found = roles.get(entry.roleId);
+
+    if (found === undefined) {
+      throw new AppError(CORE_ERRORS["not-found"], {
+        cause: new Error(`No role ${entry.roleId}`),
+      });
+    }
+
+    // One add at a time; the principal memoises each record.
+    // oxlint-disable-next-line no-await-in-loop
+    await assertAddable(check, found, entry.scope);
+  }
 }
 
 /**
@@ -385,33 +383,12 @@ export async function saveAdvanced(input: {
     throw new AppError(CORE_ERRORS["invalid-input"]);
   }
 
-  const roles = new Map(
-    (
-      await readNamedRoles(input.tenant, [
-        ...new Set(add.map((entry) => entry.roleId)),
-      ])
-    ).map((row) => [row.id, row])
-  );
-
-  const check: AddCheck = {
+  await assertAdvancedAdds({
+    tenant: input.tenant,
     caller: input.caller,
     modules: input.modules,
-    entitled: await entitlementByModule(input.tenant, input.modules),
-  };
-
-  for (const entry of add) {
-    const found = roles.get(entry.roleId);
-
-    if (found === undefined) {
-      throw new AppError(CORE_ERRORS["not-found"], {
-        cause: new Error(`No role ${entry.roleId}`),
-      });
-    }
-
-    // One add at a time; the principal memoises each record.
-    // oxlint-disable-next-line no-await-in-loop
-    await assertAddable(check, found, entry.scope);
-  }
+    add,
+  });
 
   const { recipient } = input;
   const actorUserId = input.caller.userId;

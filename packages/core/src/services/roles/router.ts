@@ -5,7 +5,7 @@ import {
   removeAssignment,
 } from "../authorization/role-assignment.ts";
 import {
-  assertAssignable,
+  assertAdvancedAdds,
   readAdministratorGuards,
   readAdvancedCatalogue,
   saveAdvanced,
@@ -13,6 +13,7 @@ import {
 import { rolesContract } from "./contract.ts";
 import {
   ACCESS_PAGE_SIZE,
+  assertManagesAllRoles,
   readAccessBySubject,
   readRecipientAccess,
 } from "./effective-access.ts";
@@ -102,19 +103,23 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
     }),
 
     assign: managed.assign.handler(async ({ context, input }) => {
+      // The key tenant-wide, as Grants and Advanced need it (D7); a scoped add only as Advanced
+      // takes it (d8l5.51); a whole-tenant add keeps the writer's own refusals (R-37a).
+      await assertManagesAllRoles(context.caller);
+
       const scope =
         input.scope?.scopeType != null && input.scope.scopeId != null
           ? { type: input.scope.scopeType, id: input.scope.scopeId }
           : null;
 
-      // The raw endpoint takes the same rule as Advanced access (d8l5.51).
-      await assertAssignable({
-        tenant: context.tenant,
-        caller: context.caller,
-        modules,
-        roleId: input.roleId,
-        scope,
-      });
+      if (scope !== null) {
+        await assertAdvancedAdds({
+          tenant: context.tenant,
+          caller: context.caller,
+          modules,
+          add: [{ roleId: input.roleId, scope }],
+        });
+      }
 
       return {
         id: (
@@ -122,7 +127,10 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
             tenant: context.tenant,
             actorUserId: context.caller.userId,
             roleId: input.roleId,
-            principal: { type: input.principalType, id: input.principalId },
+            principal: {
+              type: input.principalType,
+              id: input.principalId,
+            },
             scope,
           })
         ).id,

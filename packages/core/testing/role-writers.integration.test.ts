@@ -1,5 +1,3 @@
-import { randomUUID } from "node:crypto";
-
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -148,7 +146,7 @@ function roleId(name: string): string {
   return id;
 }
 
-function caller(userId = actorId) {
+function caller(userId: string = actorId) {
   return {
     tenant: deployment.context,
     caller: principalFor({
@@ -160,27 +158,26 @@ function caller(userId = actorId) {
   };
 }
 
-function people() {
-  return callProcedure(createPeopleRouter(modules), caller());
+function people(userId?: string) {
+  return callProcedure(createPeopleRouter(modules), caller(userId));
 }
 
-function rolesAs(userId: string) {
+function roles(userId?: string) {
   return callProcedure(createRolesRouter(modules), caller(userId));
 }
 
-function roles() {
-  return rolesAs(actorId);
-}
-
-/** One grant through each of the two writers that `d8l5.39` names. */
-function grant(writer: string, roleIdToGrant: string) {
+/**
+ * One grant by `as` through each of the two writers that `d8l5.39` names: `roles.assign` grants
+ * `as` itself, and the Groups `assignRole` grants the fixture group.
+ */
+function grant(writer: string, roleIdToGrant: string, as: string = actorId) {
   return writer === "roles.assign"
-    ? roles().assign({
+    ? roles(as).assign({
         roleId: roleIdToGrant,
         principalType: "user",
-        principalId: actorId,
+        principalId: as,
       })
-    : callProcedure(createGroupsRouter(), caller()).assignRole({
+    : callProcedure(createGroupsRouter(), caller(as)).assignRole({
         groupId,
         roleId: roleIdToGrant,
       });
@@ -270,6 +267,7 @@ describe("Add person against the Grants rows", () => {
 describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
   it.each([
     ["roles.assign", "Off user"],
+    ["roles.assign", "Gone user"],
     ["the Groups assignRole", "Off user"],
     ["the Groups assignRole", "Gone user"],
   ])(
@@ -281,13 +279,6 @@ describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
       expect(await assignmentCount(roleId(roleName))).toBe(0);
     }
   );
-
-  it("roles.assign refuses Gone user with not-found and writes no assignment", async () => {
-    await expect(
-      grant("roles.assign", roleId("Gone user"))
-    ).rejects.toMatchObject({ code: "not-found" });
-    expect(await assignmentCount(roleId("Gone user"))).toBe(0);
-  });
 
   it("removes an existing grant of a switched-off module's role (R-33d)", async () => {
     // A fixture insert, as a grant made before the module was switched off.
@@ -302,39 +293,57 @@ describe("the one writer and a switched-off module (R-37a, d8l5.39)", () => {
   });
 });
 
-describe("roles.assign takes the Advanced access rule (d8l5.51)", () => {
-  it("refuses a caller who holds core:roles:manage at one scope only, and writes nothing", async () => {
-    const { userId } = await insertPersonWith(
-      deployment.context,
-      ["core:roles:manage"],
-      { type: "on-record", id: randomUUID() }
-    );
+describe("a scoped Roles manager and the grant writers (d8l5.51)", () => {
+  it.each(["roles.assign"])(
+    "%s refuses a caller who holds core:roles:manage only at a scope and writes no assignment",
+    async (writer) => {
+      const { userId } = await insertPersonWith(
+        deployment.context,
+        ["core:roles:manage", "core:groups:manage"],
+        { type: "group", id: groupId }
+      );
 
-    await expect(
-      rolesAs(userId).assign({
-        roleId: roleId(TENANT_ADMINISTRATOR_ROLE),
-        principalType: "user",
-        principalId: userId,
-      })
-    ).rejects.toMatchObject({ code: "forbidden" });
-    expect(await roleNamesOf(userId)).not.toContain(TENANT_ADMINISTRATOR_ROLE);
-  });
+      const administrator = roleId(TENANT_ADMINISTRATOR_ROLE);
+      const before = await assignmentCount(administrator);
 
-  it("refuses a core role with a scope, and writes nothing", async () => {
-    const custom = await insertRole(deployment.context, {
-      permissions: ["core:roles:manage"],
-    });
+      await expect(grant(writer, administrator, userId)).rejects.toMatchObject({
+        code: "forbidden",
+      });
+      expect(await assignmentCount(administrator)).toBe(before);
+    }
+  );
+});
 
-    const person = await insertUser(deployment.context);
+describe("roles.assign and the scope rules (d8l5.51)", () => {
+  it.each([
+    [
+      "a core role at a scope",
+      "invalid-input",
+      () =>
+        insertRole(deployment.context, {
+          permissions: ["core:roles:manage"],
+        }),
+    ],
+    [
+      "a module role at a scope type its module does not declare",
+      "invalid-input",
+      async () => roleId("On viewer"),
+    ],
+  ])(
+    "refuses %s with %s and writes no assignment",
+    async (_label, code, role) => {
+      const id = await role();
+      const before = await assignmentCount(id);
 
-    await expect(
-      roles().assign({
-        roleId: custom,
-        principalType: "user",
-        principalId: person,
-        scope: { scopeType: "on-record", scopeId: randomUUID() },
-      })
-    ).rejects.toMatchObject({ code: "invalid-input" });
-    expect(await assignmentCount(custom)).toBe(0);
-  });
+      await expect(
+        roles().assign({
+          roleId: id,
+          principalType: "user",
+          principalId: await insertUser(deployment.context),
+          scope: { scopeType: "invoice", scopeId: "inv-1" },
+        })
+      ).rejects.toMatchObject({ code });
+      expect(await assignmentCount(id)).toBe(before);
+    }
+  );
 });
