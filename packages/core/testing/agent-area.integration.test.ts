@@ -286,7 +286,7 @@ describe("the agent area", () => {
     ]);
   });
 
-  it("deletes the owner's chat with its messages, artifacts, files and their stored bytes", async () => {
+  it("deletes the owner's chat with its messages, artifacts, files and their stored bytes, and audits only a delete that removes files", async () => {
     const owner = await personWith(["core:ask:use"]);
     const id = randomUUID();
     const tenant = deployment.context;
@@ -368,6 +368,32 @@ describe("the agent area", () => {
     await expect(owner.agent.remove({ id })).rejects.toMatchObject({
       code: "not-found",
     });
+
+    const plainId = randomUUID();
+
+    await createOwnSession(owner.ctx, {
+      id: plainId,
+      title: "No file",
+      modelId: "openai/gpt-6.1-terra",
+    });
+    await appendMessage(owner.ctx, plainId, {
+      role: "user",
+      parts: [{ type: "text", text: "Hello." }],
+    });
+    await owner.agent.remove({ id: plainId });
+
+    const audited = await tenant.db.execute(sql`
+      select actor_user_id, target_type, metadata from audit_event
+      where action = 'core:agent_files_deleted'
+        and metadata->>'sessionId' in (${id}, ${plainId})`);
+
+    expect(audited.rows).toEqual([
+      {
+        actor_user_id: owner.ctx.caller.userId,
+        target_type: null,
+        metadata: { sessionId: id, fileCount: 1 },
+      },
+    ]);
   });
 
   it("refuses the break-glass account, which bypasses the key check (P7)", async () => {

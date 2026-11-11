@@ -63,6 +63,7 @@ export const AUDIT_ACTIONS = [
   // The boss agent (Section 7, R-47).
   "core:agent_tool_called",
   "core:agent_file_made",
+  "core:agent_files_deleted",
 ] as const;
 
 /** One action string the reader's fixed filter offers. */

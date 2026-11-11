@@ -27,6 +27,8 @@ import {
   agentMessage,
   agentSession,
 } from "../../schema.ts";
+import type { AuditAction } from "../audit/actions.ts";
+import { insertAuditRow } from "../audit/insert.ts";
 import type { PendingVersion } from "./artifacts.ts";
 import { type AgentRunStatus, runStatus } from "./runs.ts";
 import { recordAddress } from "./surface-address.ts";
@@ -267,10 +269,15 @@ export async function renameOwnSession(
   return summary(row);
 }
 
+export const AGENT_FILES_DELETED_ACTION: AuditAction =
+  "core:agent_files_deleted";
+
 /**
  * Deletes the caller's session in one transaction: the stored bytes of its made files through
- * `FileStorage`, then the session row, whose messages, artifacts and file rows cascade. No audit
- * row: a chat is the person's own data (P08-8). `not-found` otherwise.
+ * `FileStorage`, then the session row, whose messages, artifacts and file rows cascade. One audit
+ * row when it removes stored files: the session id and the file count, no content (`czjw.154`, the
+ * `DEC-45` pattern). A chat with no stored file writes none, because a chat is the person's own
+ * data (P08-8). `not-found` otherwise.
  */
 export async function deleteOwnSession(
   ctx: ModuleRequestContext,
@@ -292,10 +299,20 @@ export async function deleteOwnSession(
       .from(agentFile)
       .where(eq(agentFile.sessionId, checked));
 
-    await ctx.tenant.fileStorage.remove(
-      made.flatMap(({ fileId }) => (fileId === null ? [] : [fileId])),
-      tx
+    const fileIds = made.flatMap(({ fileId }) =>
+      fileId === null ? [] : [fileId]
     );
+
+    await ctx.tenant.fileStorage.remove(fileIds, tx);
+
+    if (fileIds.length > 0) {
+      await insertAuditRow(tx, {
+        actorUserId: ctx.caller.userId,
+        action: AGENT_FILES_DELETED_ACTION,
+        summary: "Agent files deleted with their chat",
+        metadata: { sessionId: checked, fileCount: fileIds.length },
+      });
+    }
 
     await tx.delete(agentSession).where(eq(agentSession.id, checked));
   });

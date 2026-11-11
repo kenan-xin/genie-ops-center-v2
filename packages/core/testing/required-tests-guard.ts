@@ -642,6 +642,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the agent area refuses a person without core:ask:use on every procedure, and lists a holder's own sessions",
       "the agent area answers the caller's artifacts of a chat with every version, and none of another person's",
       "the agent area answers the caller's files of a chat, and a download link for the caller's own finished file only",
+      "the agent area deletes the owner's chat with its messages, artifacts, files and their stored bytes, and audits only a delete that removes files",
       "the agent area refuses the break-glass account, which bypasses the key check (P7)",
     ],
   },
