@@ -187,7 +187,13 @@ test("the presenter window follows the audience window and moves it back", async
     // Exit closes the pop-up the deck page opened (the page's default exit).
     const closed = presenter.waitForEvent("close", { timeout: 10_000 });
 
-    await activate(presenter, presenter.getByRole("button", { name: "Exit" }));
+    // Exit closes this window, so the tap can lose its page before it returns; `closed` still
+    // proves the close, and any other error fails the test.
+    const [exit] = await Promise.allSettled([
+      activate(presenter, presenter.getByRole("button", { name: "Exit" })),
+    ]);
+
+    if (exit.status === "rejected" && !presenter.isClosed()) throw exit.reason;
     await closed;
   });
 });
