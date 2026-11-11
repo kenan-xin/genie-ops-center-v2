@@ -38,6 +38,8 @@ export default defineConfig({
   // projects and their files moving without that load.
   workers: 4,
   forbidOnly: true,
+  // One retry inside gate:merge only (scripts/gate-merge.mjs); CI keeps zero.
+  retries: Number(process.env.E2E_RETRIES ?? 0),
   reporter: [["list"]],
   use: { baseURL: `http://127.0.0.1:${PORT}` },
   projects: [

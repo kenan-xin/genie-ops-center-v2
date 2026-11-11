@@ -8,6 +8,8 @@ export default defineConfig({
   testIgnore: ["**/*__boundary__*", "**/*__wiring__*", "**/*__antislop__*"],
   outputDir: "test-results/setup-gate",
   forbidOnly: true,
+  // One retry inside gate:merge only (scripts/gate-merge.mjs); CI keeps zero.
+  retries: Number(process.env.E2E_RETRIES ?? 0),
   reporter: [["list"]],
   workers: 1,
   use: {

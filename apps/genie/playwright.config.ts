@@ -56,6 +56,8 @@ const config = defineConfig({
   // Playwright empties its `outputDir` at run start.
   outputDir: "test-results/e2e",
   forbidOnly: true,
+  // One retry inside gate:merge only (scripts/gate-merge.mjs); CI keeps zero.
+  retries: Number(process.env.E2E_RETRIES ?? 0),
   reporter: [["list"]],
   // A flake that passes on rerun leaves its network and DOM record (xok3.32).
   use: { baseURL: BASE_URL, trace: "retain-on-failure" },

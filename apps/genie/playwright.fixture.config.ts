@@ -19,6 +19,8 @@ export default defineConfig({
   // default `test-results` would delete the other's artifacts mid-run.
   outputDir: "test-results/fixture",
   forbidOnly: true,
+  // One retry inside gate:merge only (scripts/gate-merge.mjs); CI keeps zero.
+  retries: Number(process.env.E2E_RETRIES ?? 0),
   reporter: [["list"]],
   use: { baseURL: BASE_URL },
   projects: [

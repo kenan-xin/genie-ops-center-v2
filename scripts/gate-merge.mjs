@@ -11,6 +11,10 @@
 // the --parallel=1 of ci:pr is for the 4-vCPU CI runner. Two local runs at 4
 // passed in 17 and 18 minutes, against 25 serial. Set GATE_PARALLEL=1
 // when other worktrees run suites at the same time (genie-ops-center-v2-rq9).
+// It gives each failed e2e test one retry (E2E_RETRIES, default 1), so that one
+// flake does not fail a 20-minute stage. Playwright reports such a test as
+// "flaky", not as passed: search the gate log for "flaky" and file a bead for
+// each. CI sets no E2E_RETRIES, so it keeps zero retries.
 //
 // Usage, from the repository root:
 //   pnpm gate:merge         run every stage
@@ -21,6 +25,8 @@ import { readFileSync } from "node:fs";
 const { scripts } = JSON.parse(readFileSync("package.json", "utf8"));
 
 const parallel = process.env.GATE_PARALLEL ?? "4";
+
+process.env.E2E_RETRIES ??= "1";
 
 function stages(name) {
   const script = scripts?.[name];
