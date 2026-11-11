@@ -95,21 +95,6 @@ async function onFixedDeck(
   );
 }
 
-/** Opens the Edit slide sheet of the first slide and returns it. */
-async function editFirstSlide(page: Page): Promise<Locator> {
-  await activate(
-    page,
-    page.getByRole("button", { name: "Actions for slide 1" })
-  );
-  await activate(page, page.getByRole("menuitem", { name: "Edit slide" }));
-
-  const sheet = page.getByRole("dialog", { name: "Edit slide" });
-
-  await expect(sheet).toBeVisible(FIRST_PAINT);
-
-  return sheet;
-}
-
 test("the presenter window follows the audience window and moves it back", async ({
   page,
   context,
@@ -198,38 +183,29 @@ test("the presenter window follows the audience window and moves it back", async
   });
 });
 
-test("notes typed in the Edit slide sheet stay after a reload, and Undo removes them", async ({
+test("notes typed under the slide stay after a reload, and Undo removes them", async ({
   page,
 }) => {
   test.setTimeout(LOCK_WAIT + 120_000);
 
   const typed = "Pause on the October total before the next slide.";
 
-  await onFixedDeck(page, undefined, async () => {
-    let sheet = await editFirstSlide(page);
+  const notes = page.getByRole("textbox", { name: "Speaker notes" });
 
-    await sheet.getByRole("textbox", { name: "Speaker notes" }).fill(typed);
-    await expect(sheet.getByText("Saved", { exact: true })).toBeVisible(
+  await onFixedDeck(page, undefined, async () => {
+    await notes.fill(typed);
+    await expect(page.getByText("Saved", { exact: true })).toBeVisible(
       FIRST_PAINT
     );
 
     await page.reload();
     await openDeck(page);
-    sheet = await editFirstSlide(page);
-    await expect(
-      sheet.getByRole("textbox", { name: "Speaker notes" })
-    ).toHaveValue(typed);
+    await expect(notes).toHaveValue(typed);
 
-    await page.keyboard.press("Escape");
-    await expect(sheet).toBeHidden();
     await activate(page, page.getByRole("button", { name: "Undo" }));
     await expect(page.getByRole("button", { name: "Undo" })).toBeDisabled(
       FIRST_PAINT
     );
-
-    sheet = await editFirstSlide(page);
-    await expect(
-      sheet.getByRole("textbox", { name: "Speaker notes" })
-    ).toHaveValue("");
+    await expect(notes).toHaveValue("");
   });
 });

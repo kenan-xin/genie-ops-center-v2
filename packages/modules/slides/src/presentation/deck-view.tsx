@@ -33,7 +33,7 @@ import {
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { isEqual } from "es-toolkit";
-import { ChevronDown, Play, Presentation, Undo2 } from "lucide-react";
+import { ChevronDown, Pencil, Play, Presentation, Undo2 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -465,8 +465,7 @@ export function DeckView(props: DeckViewProps) {
 
   latestHash.current = deck.contentHash;
 
-  // Every write of this page queues here: a notes pause can end while another write runs, and two
-  // notes fields can overlap (the page field flushes as the sheet's opens).
+  // Every write of this page queues here: a notes pause can end while another write runs.
   const writeQueue = useRef<Promise<unknown>>(Promise.resolve());
 
   // Each write's hash move, in order, so a control follows the person's own saves, never another's.
@@ -1270,17 +1269,29 @@ export function DeckView(props: DeckViewProps) {
                   )
                 }
               />
-              {/* From 768 px, and only while the sheet is closed: one notes field per slide. */}
-              {editing === null ? (
-                <div className="hidden md:grid">
-                  <NotesField
-                    ref={notesField}
-                    key={current.id}
-                    slide={current}
-                    onSaveNotes={saveNotes}
-                  />
-                </div>
-              ) : null}
+              {/* Below 768 px Edit slide sits between the slide and its notes (notes pick C). */}
+              <Button
+                variant="secondary"
+                className="w-full md:hidden"
+                disabled={busy}
+                onClick={() =>
+                  openEditor({
+                    slide: current,
+                    number: index + 1,
+                    expectedHash: deck.contentHash,
+                  })
+                }
+              >
+                <Pencil aria-hidden="true" />
+                Edit slide
+              </Button>
+              {/* The one notes field of the slide, at every width; it stays while the sheet is open. */}
+              <NotesField
+                ref={notesField}
+                key={`notes-${current.id}`}
+                slide={current}
+                onSaveNotes={saveNotes}
+              />
             </div>
           ) : (
             <div
@@ -1328,20 +1339,12 @@ export function DeckView(props: DeckViewProps) {
           {editing === null ? null : (
             <SlideEditor
               key={editing.slide.id}
-              // The words stay as the sheet opened them (R-53); the notes follow the deck, so a
-              // save the page field flushed on opening shows here once it answers.
-              slide={{
-                ...editing.slide,
-                notes: (
-                  deck.slides.find((slide) => slide.id === editing.slide.id) ??
-                  editing.slide
-                ).notes,
-              }}
+              // The words stay as the sheet opened them (R-53).
+              slide={editing.slide}
               saving={busy}
               onClose={closeEditor}
               onUpload={upload}
               onSave={saveSlide}
-              onSaveNotes={saveNotes}
             />
           )}
         </SheetContent>

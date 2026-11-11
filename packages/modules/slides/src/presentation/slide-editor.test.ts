@@ -31,7 +31,7 @@ describe("the hand edit of a styled slide", () => {
     });
   });
 
-  it("sends no notes, so Done in the sheet never overwrites the notes saved per pause", () => {
+  it("sends no notes, so a sheet save keeps the stored notes", () => {
     const input = slideInputOf({
       id: "s1",
       notes: "Say hello.",

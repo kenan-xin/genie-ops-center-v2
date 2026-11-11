@@ -49,7 +49,7 @@ Two steps change these fields: `change-element` sets the box or the style of one
 
 ## Speaker notes
 
-A slide may carry notes: plain text of at most 2,000 characters (JavaScript string length, the textarea's `maxLength` unit), stored with their newlines and never trimmed. A stored note is never blank; the editor sends `null` to clear a field that holds only spaces. `change-slide-fields` sets or clears them with one Undo entry, and `add-slide` and `change-slide` may carry them; a `change-slide` that names no notes keeps them. The person types them in the Speaker notes field of the slide editor, which saves after a pause.
+A slide may carry notes: plain text of at most 2,000 characters (JavaScript string length, the textarea's `maxLength` unit), stored with their newlines and never trimmed. A stored note is never blank; the editor sends `null` to clear a field that holds only spaces. `change-slide-fields` sets or clears them with one Undo entry, and `add-slide` and `change-slide` may carry them; a `change-slide` that names no notes keeps them. The person types them in the Speaker notes field under the slide, at every width, which saves after a pause. The Edit slide sheet holds no notes.
 
 Notes show in two places only: the presenter window and the PowerPoint export, which writes them as each slide's PowerPoint notes. Present with notes opens the presenter window at `/m/slides/decks/:id/presenter` beside present mode: the current slide, the next slide, the notes, each non-blank line as a paragraph, and a timer. The two windows follow each other over the `BroadcastChannel` `slides-present:<deckId>`: each move posts `show`, and on open the presenter asks for the shown slide. A browser that blocks the pop-up gets a page note and no audience-only show.
 

@@ -1471,18 +1471,23 @@ export const RecolorUndoInsideNotesPause: Story = {
   },
 };
 
-// A notes pause that ends while the sheet's Save slide runs waits for it and names its hash.
+// A notes pause still waiting when Save slide is pressed saves first; the slide save waits for its
+// answer and names the hash it answered, not the one the sheet opened with.
 export const SaveSlideAndNotesTakeTurns: Story = {
   name: "Save slide and a notes pause take turns",
   args: { view: deckPage },
   globals: desktop,
   beforeEach: () => serve(deckPage),
   play: async ({ canvas }) => {
-    const answerSlide = holdNext(changeDeck, {
-      ...deckPage.deck,
-      contentHash: NEW_HASH,
-    });
+    const answerNotes = holdNext(
+      changeDeck,
+      notesDeck("s1", "Point at it.", NOTES_HASH)
+    );
 
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Speaker notes" }),
+      "Point at it."
+    );
     await userEvent.click(
       canvas.getByRole("button", { name: "Actions for slide 2" })
     );
@@ -1494,37 +1499,39 @@ export const SaveSlideAndNotesTakeTurns: Story = {
       await screen.findByRole("dialog", { name: "Edit slide" })
     );
 
-    const notes = sheet.getByRole("textbox", { name: "Speaker notes" });
-
-    await waitFor(() => expect(notes).toBeVisible());
-    await userEvent.type(notes, "Point at it.");
     await userEvent.type(sheet.getByRole("textbox", { name: "Title" }), "!");
+    // The pause has not ended yet, so only the press can send the notes first.
+    await expect(changeDeck).not.toHaveBeenCalled();
     await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
     await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce());
-    await expect(changeDeck).toHaveBeenCalledWith(
-      expect.objectContaining({ expectedHash: HASH })
-    );
-
-    // The notes pause ends while Save slide is still waiting for its answer.
-    await pause(1200);
-    await expect(changeDeck).toHaveBeenCalledOnce();
-
-    answerSlide();
-    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
-    await expect(changeDeck).toHaveBeenLastCalledWith({
+    await expect(changeDeck).toHaveBeenCalledWith({
       id: "deck-1",
-      expectedHash: NEW_HASH,
+      expectedHash: HASH,
       changes: [
-        { op: "change-slide-fields", slideId: "s2", notes: "Point at it." },
+        { op: "change-slide-fields", slideId: "s1", notes: "Point at it." },
       ],
     });
+    await pause(300);
+    await expect(changeDeck).toHaveBeenCalledOnce();
+
+    answerNotes();
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        expectedHash: NOTES_HASH,
+        changes: [
+          expect.objectContaining({ op: "change-slide", slideId: "s2" }),
+        ],
+      })
+    );
   },
 };
 
-// S7-45: the notes field sits under Title in the sheet at 390 px; a pause saves one notes step,
-// and Save slide afterwards names the hash that save answered, not the one the sheet opened with.
-export const NotesInSheetOnPhone: Story = {
-  name: "Notes in the Edit slide sheet on a phone",
+// Notes pick C (czjw.156): at 390 px the slide, Edit slide, then the notes pane; a pause saves one
+// notes step and says Saved, and the Edit slide sheet holds no notes field.
+export const NotesPaneOnPhone: Story = {
+  name: "Notes in a pane under the slide on a phone",
   args: { view: deckPage },
   globals: phone,
   beforeEach: () => {
@@ -1535,26 +1542,21 @@ export const NotesInSheetOnPhone: Story = {
   },
   play: async ({ canvas }) => {
     await userEvent.click(
-      canvas.getByRole("button", { name: "Actions for slide 2" })
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Edit slide" })
-    );
-
-    const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      canvas.getByRole("button", {
+        name: "Slide 2: Collections narrowed the gap to the plan line",
+      })
     );
 
-    const title = sheet.getByRole("textbox", { name: "Title" });
-    const notes = sheet.getByRole("textbox", { name: "Speaker notes" });
+    const slide = canvas.getByRole("group", { name: "Slide editing" });
+    const edit = canvas.getByRole("button", { name: "Edit slide" });
+    const notes = canvas.getByRole("textbox", { name: "Speaker notes" });
 
-    await waitFor(() => expect(notes).toBeVisible());
-    await expect(
-      title.getBoundingClientRect().bottom <= notes.getBoundingClientRect().top
-    ).toBe(true);
-    // The sheet slides in from the right, so its place settles after the opening transition.
-    await waitFor(() =>
-      expect(notes.getBoundingClientRect().right).toBeLessThanOrEqual(390)
+    await expect(notes).toBeVisible();
+    await expect(slide.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      edit.getBoundingClientRect().top
+    );
+    await expect(edit.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      notes.getBoundingClientRect().top
     );
 
     await userEvent.type(notes, "Point at the September bar.");
@@ -1573,15 +1575,21 @@ export const NotesInSheetOnPhone: Story = {
         }),
       { timeout: 3000 }
     );
-    await expect(await sheet.findByText("Saved")).toBeVisible();
+    await expect(await canvas.findByText("Saved")).toBeVisible();
+    await expect(changeDeck).toHaveBeenCalledOnce();
 
-    await userEvent.type(title, " again");
-    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+    await userEvent.click(edit);
 
-    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
-    await expect(changeDeck).toHaveBeenLastCalledWith(
-      expect.objectContaining({ expectedHash: NOTES_HASH })
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
     );
+
+    await expect(sheet.getByRole("textbox", { name: "Title" })).toHaveValue(
+      "Collections narrowed the gap to the plan line"
+    );
+    await expect(
+      sheet.queryByRole("textbox", { name: "Speaker notes" })
+    ).toBeNull();
   },
 };
 
