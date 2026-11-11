@@ -28,6 +28,21 @@ pnpm nx run @genie/module-placeholder:test:integration --skip-nx-cache
 unset MODEL_RECORDING_KEY
 ```
 
+### Re-key recordings after a prompt edit
+
+A prompt or tool-description edit changes the request of every recording that carries the old text, and replay then finds no recording. The re-key command edits the request part of those recordings as text and keeps every response byte-equal. It calls no model and reads no key, so any agent can run it.
+
+1. Write the edits to a file, for example `edits.json`: `[{ "find": "old text", "replace": "new text" }]`. Write `find` and `replace` as the decoded text. Add `"raw": true` to match the file's own JSON text instead, for example a whole tool entry, or text inside a tool call's `arguments`, which the file holds escaped twice.
+2. Run the command over the recording folders that the edit touches:
+
+```sh
+node packages/core/tools/rekey-model-recordings.ts edits.json --refresh-list <list-file> \
+  packages/core/testing/model-recordings apps/genie/testing/model-recordings \
+  packages/modules/invoices/testing/model-recordings packages/modules/placeholder/testing/model-recordings
+```
+
+The command prints each changed file and appends it to `--refresh-list`, because a re-keyed recording still holds the answer to the old prompt. In each file an edit matches once or not at all. If an edit matches no file, matches one request twice, or leaves a file that is not JSON, the command stops and writes nothing.
+
 ## What must not go here
 
 An import of a module, a module's factory, and any composition that knows which modules a deployment includes. A module owns its own factories, and the app harness composes them with these helpers (R-39). No database mock: a test here takes a real Postgres.
