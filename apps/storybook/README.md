@@ -6,13 +6,13 @@ The host is development-only. No Storybook package, story, fixture, or static ou
 
 ## What belongs here
 
-Only the host configuration: `.storybook/main.ts`, `.storybook/preview.tsx`, `.storybook/preview.css`, and the small Vite plugin `main.ts` uses. The main file reads the module selection, spreads the shared preset, and adds Tailwind's Vite plugin. The preview file loads the stylesheet and sets the accessibility gate, the docs table of contents, and the theme toolbar.
+Only the host configuration: `.storybook/main.ts`, `.storybook/preview.tsx`, `.storybook/preview.css`, and the small Vite plugin `main.ts` uses. The main file reads the module selection, spreads the shared preset, and adds Tailwind's Vite plugin. The preview file loads the stylesheet and sets the accessibility gate, the docs table of contents, and the theme toolbar. Its `afterEach` waits until no Base UI popup is closing before axe runs (`.storybook/closing-popups.ts`), so a story play needs no wait of its own before the accessibility check.
 
 The stylesheet imports Tailwind and the token layer `@genie/ui/tokens.css`, the same file the application imports, and never copies it, so a story renders with the product's Tailwind rules. It adds `@source` lines for `packages/ui`, `packages/core` and `apps/genie/src`. `main.ts` adds one for each selected module only, so an excluded module is never scanned.
 
 ## What must not go here
 
-No server barrel, no database factory, no tenant bootstrap, and no deployment environment read. No story file: stories live in `packages/ui`, `packages/core`, and each module package. The one exception is the composition stories under `stories/`: they import only the public `@genie/core` and `@genie/ui` entry points and prove that a host outside `apps/genie` composes the shell from them. No component that exists only for this host rather than for the product.
+No server barrel, no database factory, no tenant bootstrap, and no deployment environment read. No story file: stories live in `packages/ui`, `packages/core`, and each module package. The exceptions are under `stories/`. The composition stories import only the public `@genie/core` and `@genie/ui` entry points and prove that a host outside `apps/genie` composes the shell from them. The `Testing/` stories prove the host's own test hooks and stay out of the sidebar. No component that exists only for this host rather than for the product.
 
 ## What it imports
 

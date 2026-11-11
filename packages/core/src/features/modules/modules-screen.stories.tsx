@@ -82,8 +82,6 @@ export const Default: Story = {
     );
 
     await expect(args.onCategory).toHaveBeenCalledWith("fixture", "c-fin");
-    // The popup's focus guards stay until it has closed; axe runs after the play function.
-    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 
     // A module under no category names that in its trigger, not a blank value.
     await expect(
@@ -189,7 +187,6 @@ export const Phone: Story = {
     );
 
     await expect(args.onCategory).toHaveBeenCalledWith("dormant", "c-ops");
-    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   },
 };
 

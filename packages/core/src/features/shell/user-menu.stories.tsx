@@ -158,10 +158,6 @@ export const SignOutPostsTheForm: Story = {
     await waitFor(() => expect(submitted).toHaveLength(1));
     await expect(submitted[0]?.method).toBe("post");
     await expect(submitted[0]?.action).toMatch(/\/api\/auth\/sign-out$/);
-    // The closing popup keeps its focus guards until it leaves; axe runs after that.
-    await waitFor(() =>
-      expect(within(document.body).queryByRole("menu")).toBeNull()
-    );
   },
 };
 

@@ -711,7 +711,7 @@ const pickRole = async (dialog: DialogQueries, row: string, role: string) => {
     dialog.getByRole("combobox", { name: `Role for ${row}` })
   );
   await userEvent.click(await screen.findByRole("option", { name: role }));
-  // The popup's focus guards stay until it has closed; axe runs after the play function.
+  // The next pick starts with no popup open.
   await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 };
 
@@ -776,8 +776,6 @@ export const AddPersonStartsAtNoAccess: Story = {
     ]);
 
     await userEvent.keyboard("{Escape}");
-    // The popup's focus guards stay until it has closed; axe runs after the play function.
-    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   },
 };
 

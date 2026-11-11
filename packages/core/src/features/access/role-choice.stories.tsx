@@ -52,8 +52,6 @@ export const Default: Story = {
     await waitFor(() =>
       expect(args.onChange).toHaveBeenCalledWith("r-invoices-finance")
     );
-    // The popup's focus guards stay until it has closed; axe runs after the play function.
-    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
   },
 };
 

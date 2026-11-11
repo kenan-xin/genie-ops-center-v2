@@ -201,7 +201,7 @@ async function pickFromMore(
 ): Promise<void> {
   await userEvent.click(canvas.getByRole("button", { name: "More" }));
   await userEvent.click(await screen.findByRole("menuitem", { name }));
-  // The menu's focus guards stay until it has closed; axe runs after the play function.
+  // The next step starts with no menu open.
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 }
 

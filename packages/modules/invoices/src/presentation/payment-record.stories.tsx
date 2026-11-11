@@ -158,7 +158,7 @@ async function chooseInvoice(canvas: ReturnType<typeof within>) {
   await pick(`INV-2026-10-07 · open ${formatMoney(120_000, "SGD")}`, "1200.00");
   await pick(`INV-2026-10-09 · open ${formatMoney(450_000, "SGD")}`, "2000.00");
 
-  // The popup fades out; axe must not catch it half unmounted.
+  // The next step in the dialog starts with no popup open.
   await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 
   return dialog;

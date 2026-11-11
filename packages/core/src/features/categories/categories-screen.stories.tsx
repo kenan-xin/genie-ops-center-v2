@@ -81,7 +81,7 @@ const pick = async (canvas: Canvas, module: string, option: string) => {
     canvas.getByRole("combobox", { name: `Category for ${module}` })
   );
   await userEvent.click(await screen.findByRole("option", { name: option }));
-  // The popup's focus guards stay until it has closed; axe runs after the play function.
+  // The next pick starts with no popup open.
   await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 };
 

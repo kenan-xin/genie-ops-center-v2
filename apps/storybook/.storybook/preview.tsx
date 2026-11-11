@@ -1,6 +1,8 @@
 import { ThemeProvider, type ThemeName } from "@genie/ui";
 import type { Preview } from "@storybook/nextjs-vite";
 
+import { waitForClosingPopups } from "./closing-popups.ts";
+
 import "./preview.css";
 
 // xok3.59: in development @openuidev/react-lang 1.0.2 mounts the OpenUI devtools widget from
@@ -58,6 +60,8 @@ const preview: Preview = {
       },
     },
   },
+  // Storybook runs afterEach hooks in reverse, so this runs before the a11y addon's axe check.
+  afterEach: [waitForClosingPopups],
   decorators: [
     (Story, context) => (
       // SAFETY: the theme globalType declares exactly the two ThemeName values
