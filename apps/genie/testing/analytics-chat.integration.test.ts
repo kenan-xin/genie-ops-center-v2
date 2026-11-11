@@ -57,7 +57,7 @@ import { APP_AGENT_RECORDINGS } from "./model-replay.ts";
  * A dashboard changed by the Dashboards agent beside it, with the recorded model (Spec 7 R-42b,
  * R-46, R-47, R-49, AC-13): the write tool saves through the store, so each change has Undo and an
  * audit row. Ask hands a dashboard over and the run adds its panels one by one, and a chart request
- * that names no place asks first (`dashboard-question-*`). The modules come in the order of the
+ * that names no place offers its choices first (`synthetic-dashboard-question-1`). The modules come in the order of the
  * app's generated selection, so the tool list equals the dev e2e list. The replayed follow-up
  * request holds the tool output, so it also proves the output holds no clock.
  */
@@ -212,6 +212,19 @@ const lastAnswerText = async (sessionId: string) =>
     .filter(({ type }) => type === "text")
     .map(({ text }) => text ?? "")
     .join("");
+
+/** The tool parts of a session's last answer. */
+const lastAnswerToolParts = async (sessionId: string) =>
+  (
+    await deployment.context.db.$client.query<{
+      parts: { type: string; state?: string; input?: unknown }[];
+    }>(
+      "select parts from agent_message where session_id = $1 and role = 'assistant' order by seq desc limit 1",
+      [sessionId]
+    )
+  ).rows[0]?.parts
+    .filter(({ type }) => type.startsWith("tool-"))
+    .map(({ type, state, input }) => ({ type, state, input }));
 
 /** A Dashboards chat on a new empty dashboard of a new person, after the question. */
 async function askedOnEmptyDashboard() {
@@ -461,12 +474,27 @@ describe("the analytics chat beside a dashboard", () => {
   });
 
   it("on a dashboard, a chart request asks first, and Add adds the panel with one Undo entry that Undo restores", async () => {
+    errors.length = 0;
+    const before = recorded.sent.length;
     const { ctx, dashboardId, sessionId } = await askedOnEmptyDashboard();
 
     expect(errors).toEqual([]);
-    expect(await lastAnswerText(sessionId)).toContain(ANALYTICS_QUESTION);
-    expect(await dashboardOf(dashboardId)).toMatchObject({
+    // The turn ends with the offer: one request, no other tool, no write before the person chooses.
+    expect(recorded.sent.length - before).toBe(1);
+    expect(await lastAnswerToolParts(sessionId)).toEqual([
+      {
+        type: "tool-offer-choices",
+        state: "output-available",
+        input: {
+          question: ANALYTICS_QUESTION,
+          choices: [ANALYTICS_ADD_ANSWER, ANALYTICS_SHOW_ANSWER],
+        },
+      },
+    ]);
+    expect(await dashboardOf(dashboardId)).toEqual({
+      name: QUESTION_DASHBOARD_NAME,
       titles: [],
+      undo: 0,
       version: 1,
     });
 

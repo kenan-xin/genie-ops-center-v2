@@ -60,9 +60,9 @@ export const QUESTION_DASHBOARD_NAME = "Collections";
 
 export const ANALYTICS_QUESTION_MESSAGE = "Show me the collections by month.";
 
-/** The question of `dashboard-question-1`, and the two answers that the person types. */
+/** The question that `synthetic-dashboard-question-1` offers, and its two choices. */
 export const ANALYTICS_QUESTION =
-  "Would you like collections by month added to this dashboard or shown here?";
+  "Add the collections by month to Collections, or just show it here?";
 
 /** The chart that both answers make, as a panel (Add) or as an artifact (Just show it here). */
 export const ANALYTICS_CHART_TITLE = "Collections by month (SGD)";
