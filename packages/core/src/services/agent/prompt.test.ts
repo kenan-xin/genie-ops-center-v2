@@ -3,14 +3,21 @@ import { describe, expect, it } from "vitest";
 import { agentInstructions } from "./prompt.ts";
 
 describe("agentInstructions", () => {
-  it("lets an answer come from what the person said earlier in the chat, not only from tool results", () => {
-    // R1: with "Answer only from tool results", a live model would not answer from a chat summary.
+  it("takes every figure from a tool result, and lets earlier chat name what to look up", () => {
     const text = agentInstructions({ reportingDate: "2026-10-27" });
 
     expect(text).toContain(
-      "Answer from tool results and from what the person said earlier in this chat."
+      "Every figure in your answer must come from a tool result."
     );
-    expect(text).toContain("Do not guess.");
+    expect(text).toContain(
+      "can name what to look up, such as a code, a customer, a record or a period, and you can repeat such a name or code in your answer."
+    );
+    expect(text).toContain(
+      "Never state a figure that the person wrote as a fact: if no tool result holds a figure, say so."
+    );
+    expect(text).not.toContain(
+      "and from what the person said earlier in this chat"
+    );
   });
 
   it("states the reporting date as a person reads it, and its ISO form only for a query", () => {

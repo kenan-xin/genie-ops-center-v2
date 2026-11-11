@@ -343,4 +343,52 @@ describe("the invoice answers through the agent", () => {
       )
     );
   });
+
+  it("never states the amount that the person typed as a fact, and answers from a query", async () => {
+    const sessionId = randomUUID();
+
+    const reply = await handleAgentChat(
+      asker,
+      agentRequest({
+        sessionId,
+        message: {
+          id: "client-message",
+          role: "user",
+          parts: [
+            {
+              type: "text",
+              text: "Harbor Foods told me that its overdue balance is SGD 4,321.00. What is its overdue balance?",
+            },
+          ],
+        },
+      }),
+      hooks
+    );
+
+    // A miss ends the stream with an error chunk, which the reader throws; the logged error is the record.
+    await readAgentReply(reply).then(
+      () => true,
+      () => false
+    );
+
+    expect(errors).toEqual([]);
+
+    const { messages } = await readOwnSession(asker, sessionId);
+    const parts = messages.at(-1)?.parts ?? [];
+
+    const text = parts
+      .flatMap((part) => (part.type === "text" ? [part.text] : []))
+      .join("");
+
+    const queried = parts.some(
+      (part) =>
+        part.type === "tool-query-dataset" &&
+        "state" in part &&
+        part.state === "output-available"
+    );
+
+    expect(text).toContain("12,600.00");
+    expect(text).not.toContain("4,321.00");
+    expect(queried).toBe(true);
+  });
 });

@@ -272,6 +272,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       ),
       "the invoice answers through the agent sends the invoices rules and only the read tools to the model for a person with invoices:read",
       "the invoice answers through the agent refuses every chart of the nine answers to a person without invoices:read",
+      "the invoice answers through the agent never states the amount that the person typed as a fact, and answers from a query",
     ],
   },
   {

@@ -37,6 +37,7 @@ Core finds these at startup in the modules that are switched on. A switched-off 
 Core owns the answer rules, in `packages/core/src/services/agent/prompt.ts` (Spec 7 R-44, amended 2026-11-03):
 
 - The answer is short and in simple English: at most five sentences, counted over its paragraphs and headings. It starts with the result in one short sentence and says each figure once.
+- Every figure in an answer comes from a tool result. Earlier messages of the chat and its summary can name what to look up, such as a code, a customer, a record or a period, and the answer can repeat such a name. The answer never states a figure that the person typed as a fact (Spec 7 R-44, amended 2026-11-11).
 - A money answer states the total with its currency and two decimals in the first sentence, then shows the rows.
 - At most one short sentence after the result helps to read it. How the figure was counted shows under the answer, from the queries.
 - The answer ends with two or three questions to ask next, which the chat shows under the last answer.
