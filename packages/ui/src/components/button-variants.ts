@@ -22,9 +22,11 @@ const buttonVariants = cva(
         "filter":
           "border-control bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
         // A filter control with a set value: tinted and semibold, where an empty one stays
-        // secondary (Spec 7 R-37a, czjw.65).
+        // secondary (Spec 7 R-37a, czjw.65). Hover makes the border solid and keeps the 8% tint.
+        // Blue-600 text reads 4.63:1 on it, and 4.24:1 on a 14% tint (czjw.136). A darker tint
+        // lowers the contrast, and a darker text shade breaks the No-Ramp Rule.
         "filter-set":
-          "border-primary/40 bg-primary/8 font-semibold text-primary not-disabled:not-aria-disabled:hover:bg-primary/14 dark:text-brand-on-dark",
+          "border-primary/40 bg-primary/8 font-semibold text-primary not-disabled:not-aria-disabled:hover:border-primary dark:text-brand-on-dark",
         "danger":
           "border-transparent bg-destructive text-white not-disabled:not-aria-disabled:hover:bg-destructive/94 not-disabled:not-aria-disabled:active:bg-destructive/80",
         // A destructive action beside others: the secondary outline with red text (DESIGN.md "Danger").
