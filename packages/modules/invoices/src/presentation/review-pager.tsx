@@ -539,7 +539,11 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
       />
       <div className="flex min-w-0 flex-col gap-4">
         {file.failed ? (
-          <PreviewFailed onDownload={file.download} onRetry={file.retry} />
+          <PreviewFailed
+            wide={false}
+            onDownload={file.download}
+            onRetry={file.retry}
+          />
         ) : (
           <PageLens
             key={file.attempt}

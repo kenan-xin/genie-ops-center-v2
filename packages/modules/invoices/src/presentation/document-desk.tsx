@@ -25,10 +25,14 @@ import {
   NoDocument,
   PreviewFailed,
 } from "./desk-canvas.tsx";
+import { DESK_PINS_FROM, useWidth } from "./desk-width.ts";
 
 export type { DeskField } from "./desk-canvas.tsx";
 
-/** Where the record's links and history show: the drawer from 1280 px, the sheet below it. */
+/**
+ * Where the record's links and history show: the drawer on a wide desk (`DESK_PINS_FROM` of its
+ * own width, from a 1024 px viewport), the sheet otherwise.
+ */
 export type DeskPlace = "drawer" | "sheet";
 
 export type DocumentDeskProps = {
@@ -46,7 +50,7 @@ export type DocumentDeskProps = {
    * sheet below it, so that a phone shows the page first (variant C).
    */
   readonly sheetHeader?: ReactNode;
-  /** The figures: under the header from 1280 px, in the sheet below it. */
+  /** The figures: under the header on a wide desk, in the sheet on a narrower one. */
   readonly figures: ReactNode;
   /** What the closed sheet shows: the status, a caption and the lead amount. */
   readonly peek: {
@@ -58,7 +62,10 @@ export type DocumentDeskProps = {
   readonly side: (place: DeskPlace) => ReactNode;
 };
 
-/** The canvas and drawer fill the window below their top edge, from 1280 px, each with its own scroll. */
+/**
+ * The canvas and drawer fill the window below their top edge on a wide desk, each with its own
+ * scroll.
+ */
 export function useFillHeight(
   element: RefObject<HTMLElement | null>,
   wide: boolean
@@ -100,13 +107,20 @@ export function download(url: string, fileName: string): void {
 }
 
 /**
- * The record page with its document in the page (R-38a, prototype invoice record variant C). From
- * 1280 px the page sits on a canvas with each read field pinned beside its line, and the links and
- * history in a drawer. Below it the page comes first, and the record opens in a bottom sheet.
+ * The record page with its document in the page (R-38a, prototype invoice record variant C). On a
+ * wide desk (its own width, so the docked agent panel narrows it, P16g-4, and a viewport of at
+ * least 1024 px, P16g-13) the page sits on a canvas with each read field pinned beside its line,
+ * and the links and history in a drawer. Otherwise the page comes first, and the record opens in
+ * a bottom sheet.
  */
 export function DocumentDesk(props: DocumentDeskProps): ReactNode {
   const { kind, label, side } = props;
-  const wide = useMediaQuery("(min-width: 1280px)", {});
+  const root = useRef<HTMLDivElement>(null);
+  // Below 1024 px the header hides its meta and actions (`compactBelowLg`) and only the sheet
+  // shows them, so a desk wide enough to pin still keeps the sheet there (P16g-13).
+  const lg = useMediaQuery("(min-width: 1024px)", {});
+  const width = useWidth(root) ?? 0;
+  const wide = lg && width >= DESK_PINS_FROM;
   const body = useRef<HTMLDivElement>(null);
   const fillHeight = useFillHeight(body, wide);
   const sheetBody = useId();
@@ -159,11 +173,12 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
   let canvas: ReactNode;
 
   if (url === null) {
-    canvas = <NoDocument kind={kind} fields={props.fields} />;
+    canvas = <NoDocument kind={kind} fields={props.fields} wide={wide} />;
   } else if (failed) {
     canvas = (
       <PreviewFailed
         fields={props.fields}
+        wide={wide}
         onDownload={() => void downloadFresh()}
         onRetry={() => void retry()}
       />
@@ -184,7 +199,7 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
         onLoadError={() => setFailed(true)}
         onDownload={() => void downloadFresh()}
         drawerButton={
-          drawerShown ? null : (
+          !wide || drawerShown ? null : (
             <>
               <span aria-hidden className="mx-1 h-5 w-px bg-border" />
               <Button
@@ -204,18 +219,20 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
   }
 
   return (
-    <div className="flex flex-col" style={deskStyle}>
+    <div ref={root} className="flex flex-col" style={deskStyle}>
       {props.header}
-      <div className="mb-4 max-xl:hidden">{props.figures}</div>
+      {wide ? <div className="mb-4">{props.figures}</div> : null}
       <div
         ref={body}
-        className="flex min-w-0 gap-4 xl:h-(--desk-height) xl:gap-0"
+        className={
+          wide ? "flex h-(--desk-height) min-w-0" : "flex min-w-0 gap-4"
+        }
       >
         {canvas}
-        {drawerShown ? (
+        {wide && drawerShown ? (
           <aside
             aria-label={sideName}
-            className="flex w-100 shrink-0 flex-col border-l border-border bg-card max-xl:hidden"
+            className="flex w-100 shrink-0 flex-col border-l border-border bg-card"
           >
             <div className="flex h-12 shrink-0 items-center gap-2 border-b border-border pr-2 pl-5">
               <b className="flex-1 text-sm">{sideName}</b>
@@ -236,63 +253,65 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
           </aside>
         ) : null}
       </div>
-      <section
-        aria-label={`Details of ${label}`}
-        data-shell-bottom-bar=""
-        className="z-20 flex max-h-(--desk-sheet-height) flex-col rounded-t-2xl bg-card shadow-lg ring-1 ring-border max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8 xl:hidden"
-      >
-        <div className="flex shrink-0 flex-col gap-2 px-4 pt-2 pb-3">
-          <span
-            aria-hidden
-            className="h-1 w-9 self-center rounded-full bg-border"
-          />
-          <span className="flex items-center gap-2">
-            <b className="tabular-nums">{label}</b>
-            {props.peek.status}
-          </span>
-          <span className="flex items-end justify-between gap-3">
-            <span className="flex flex-col">
-              <span className="text-xs text-muted-foreground">
-                {props.peek.caption}
-              </span>
-              <span className="text-2xl font-semibold tabular-nums">
-                {props.peek.amount}
-              </span>
-            </span>
-            <Button
-              variant="ghost"
-              size="lg"
-              aria-expanded={sheetOpen}
-              aria-controls={sheetBody}
-              onClick={() => setSheetOpen((open) => !open)}
-            >
-              {sheetOpen ? "Hide details" : "Details"}
-              {sheetOpen ? <ChevronDownIcon /> : <ChevronUpIcon />}
-            </Button>
-          </span>
-        </div>
-        <div
-          id={sheetBody}
-          hidden={!sheetOpen}
-          // A scroll area takes keyboard focus, so a keyboard can scroll it (axe scrollable-region-focusable).
-          tabIndex={0}
-          className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto border-t border-border px-4 pt-4 pb-6"
+      {wide ? null : (
+        <section
+          aria-label={`Details of ${label}`}
+          data-shell-bottom-bar=""
+          className="z-20 flex max-h-(--desk-sheet-height) flex-col rounded-t-2xl bg-card shadow-lg ring-1 ring-border max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8"
         >
-          {props.sheetHeader === undefined ? null : (
-            <div className="flex flex-col items-start gap-3 lg:hidden">
-              {props.sheetHeader}
-            </div>
-          )}
-          {props.figures}
-          <section aria-label="Fields" className="flex flex-col gap-2">
-            <h2 className="text-base font-semibold">Fields</h2>
-            {props.fields.map((field) => (
-              <FieldCard key={field.key} field={field} />
-            ))}
-          </section>
-          {side("sheet")}
-        </div>
-      </section>
+          <div className="flex shrink-0 flex-col gap-2 px-4 pt-2 pb-3">
+            <span
+              aria-hidden
+              className="h-1 w-9 self-center rounded-full bg-border"
+            />
+            <span className="flex items-center gap-2">
+              <b className="tabular-nums">{label}</b>
+              {props.peek.status}
+            </span>
+            <span className="flex items-end justify-between gap-3">
+              <span className="flex flex-col">
+                <span className="text-xs text-muted-foreground">
+                  {props.peek.caption}
+                </span>
+                <span className="text-2xl font-semibold tabular-nums">
+                  {props.peek.amount}
+                </span>
+              </span>
+              <Button
+                variant="ghost"
+                size="lg"
+                aria-expanded={sheetOpen}
+                aria-controls={sheetBody}
+                onClick={() => setSheetOpen((open) => !open)}
+              >
+                {sheetOpen ? "Hide details" : "Details"}
+                {sheetOpen ? <ChevronDownIcon /> : <ChevronUpIcon />}
+              </Button>
+            </span>
+          </div>
+          <div
+            id={sheetBody}
+            hidden={!sheetOpen}
+            // A scroll area takes keyboard focus, so a keyboard can scroll it (axe scrollable-region-focusable).
+            tabIndex={0}
+            className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto border-t border-border px-4 pt-4 pb-6"
+          >
+            {props.sheetHeader === undefined ? null : (
+              <div className="flex flex-col items-start gap-3 lg:hidden">
+                {props.sheetHeader}
+              </div>
+            )}
+            {props.figures}
+            <section aria-label="Fields" className="flex flex-col gap-2">
+              <h2 className="text-base font-semibold">Fields</h2>
+              {props.fields.map((field) => (
+                <FieldCard key={field.key} field={field} />
+              ))}
+            </section>
+            {side("sheet")}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

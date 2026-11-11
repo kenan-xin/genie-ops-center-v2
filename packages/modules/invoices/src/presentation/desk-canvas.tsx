@@ -176,7 +176,10 @@ export type DeskCanvasProps = {
   /** The cards beside the page, in list order. */
   readonly pins: readonly DeskPin[];
   readonly renderCard: (key: string) => ReactNode;
-  /** From 1280 px the cards pin beside the page; below it the page shows alone. */
+  /**
+   * On a wide desk (`DESK_PINS_FROM` of its own width) the cards pin beside the page; else the
+   * page shows alone.
+   */
   readonly wide: boolean;
   /** The key whose line is boxed as selected. */
   readonly selected?: string | null;
@@ -198,8 +201,8 @@ export type DeskCanvasProps = {
 };
 
 /**
- * The page of a document on its canvas, with its toolbar, and from 1280 px each field pinned beside
- * its source line by a leader line (R-38a, prototype variant C).
+ * The page of a document on its canvas, with its toolbar, and on a wide desk each field pinned
+ * beside its source line by a leader line (R-38a, prototype variant C).
  */
 export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   const { pins, wide, onHover } = props;
@@ -464,7 +467,11 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   return (
     <div
       ref={canvas}
-      className="relative min-w-0 flex-1 overflow-auto bg-muted max-xl:rounded-xl xl:h-full"
+      className={
+        wide
+          ? "relative h-full min-w-0 flex-1 overflow-auto bg-muted"
+          : "relative min-w-0 flex-1 overflow-auto rounded-xl bg-muted"
+      }
       style={SCAN_START}
     >
       <div className="sticky top-3 left-3 z-10 h-0 w-max">
@@ -537,7 +544,11 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
       </div>
       <div
         data-desk-content=""
-        className="relative flex w-max min-w-full items-start justify-center px-3 pt-17 pb-40 xl:px-8 xl:pb-14"
+        className={
+          wide
+            ? "relative flex w-max min-w-full items-start justify-center px-8 pt-17 pb-14"
+            : "relative flex w-max min-w-full items-start justify-center px-3 pt-17 pb-40"
+        }
       >
         <div
           ref={pageBox}
@@ -673,9 +684,16 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
 export function NoDocument(props: {
   readonly kind: "invoice" | "payment";
   readonly fields: readonly DeskField[];
+  readonly wide: boolean;
 }): ReactNode {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto xl:pr-4">
+    <div
+      className={
+        props.wide
+          ? "flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto pr-4"
+          : "flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto"
+      }
+    >
       <StateCard
         icon={<FileTextIcon />}
         title="No document"
@@ -692,9 +710,16 @@ export function PreviewFailed(props: {
   readonly fields?: readonly DeskField[];
   readonly onDownload: () => void;
   readonly onRetry: () => void;
+  readonly wide: boolean;
 }): ReactNode {
   return (
-    <div className="flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto xl:pr-4">
+    <div
+      className={
+        props.wide
+          ? "flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto pr-4"
+          : "flex min-w-0 flex-1 flex-col gap-5 overflow-y-auto"
+      }
+    >
       <StateCard
         alert
         icon={<FileXIcon />}

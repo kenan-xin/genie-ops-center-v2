@@ -77,7 +77,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The review of a document as a desk (Spec 7 R-38, `czjw.98`). From 1280 px each field read from the page is an editable card beside its line; the Before you save panel holds the fields the page does not quote and Save, which names and focuses what blocks it.",
+          "The review of a document as a desk (Spec 7 R-38, `czjw.98`). The desk chooses its layout from its own width, not the viewport, so the docked agent panel narrows it. From 944 px of the desk's width each field read from the page is an editable card beside its line; the Before you save panel holds the fields the page does not quote and Save, which names and focuses what blocks it.",
       },
     },
     a11y: { test: "error" },
@@ -986,5 +986,52 @@ export const PaymentSplitOnPhone: Story = {
     await userEvent.click(looksRight);
     await expect(sep).toHaveFocus();
     await expect(canvas.getByText("Step 8 of 9")).toBeVisible();
+  },
+};
+
+// B1: beside the docked panel at 1440 px the page column is 736 px, so the desk lists every card.
+export const BesideTheDockedPanel: Story = {
+  decorators: [
+    (Story) => (
+      <div className="w-184">
+        <Story />
+      </div>
+    ),
+  ],
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    const side = await canvas.findByRole(
+      "complementary",
+      { name: "Before you save" },
+      PAGE_TIMEOUT
+    );
+
+    await expect(
+      await within(side).findByRole(
+        "region",
+        { name: "On the page" },
+        PAGE_TIMEOUT
+      )
+    ).toBeVisible();
+  },
+};
+
+// B2: beside the docked panel at 1280 px the page column is 576 px, so the review is the pager.
+export const PagerBesideTheDockedPanel: Story = {
+  decorators: [
+    (Story) => (
+      <div className="w-144">
+        <Story />
+      </div>
+    ),
+  ],
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText(/^Step 1 of \d+$/u, {}, PAGE_TIMEOUT)
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("complementary", { name: "Before you save" })
+    ).toBeNull();
   },
 };

@@ -1,7 +1,7 @@
 "use client";
 
 import { PageHeader } from "@genie/core/features/shell";
-import { Badge, useMediaQuery } from "@genie/ui";
+import { Badge } from "@genie/ui";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import {
@@ -115,14 +115,16 @@ export function usePageFile(
 }
 
 /**
- * The review as a document desk (R-38, czjw.98, prototype variant A with variant B's hover link):
- * from 1280 px each field read from the page is an editable card beside its line; the Before you
- * save panel holds the other fields, the split and Save. From 1024 px to 1279 px the panel lists
- * every card, with no leader line. Below 1024 px the workspace shows the pager instead.
+ * The review as a document desk (R-38, czjw.98, prototype variant A with variant B's hover link).
+ * When the desk is wide (`DESK_PINS_FROM` of its own width) each field read from the page is an
+ * editable card beside its line; the Before you save panel holds the other fields, the split and
+ * Save. A narrower desk lists every card in the panel, with no leader line. Below `DESK_FROM` the
+ * workspace shows the pager instead.
  */
-export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
-  const { frame, model, revealRef } = props;
-  const wide = useMediaQuery("(min-width: 1280px)", { noSsr: true });
+export function ReviewDesk(
+  props: ReviewLayoutProps & { readonly wide: boolean }
+): ReactNode {
+  const { frame, model, revealRef, wide } = props;
   const body = useRef<HTMLDivElement>(null);
   const fillHeight = useFillHeight(body, true);
   const file = usePageFile(props);
@@ -215,7 +217,11 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
         style={deskStyle}
       >
         {failed ? (
-          <PreviewFailed onDownload={file.download} onRetry={file.retry} />
+          <PreviewFailed
+            wide={wide}
+            onDownload={file.download}
+            onRetry={file.retry}
+          />
         ) : (
           <DeskCanvas
             key={file.attempt}

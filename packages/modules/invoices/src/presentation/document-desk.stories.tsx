@@ -27,7 +27,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The record page with its document in the page (Spec 7 R-38a, prototype invoice record variant C). From 1280 px the page sits on a canvas with each read field pinned beside its source line by a leader line, and the links and history in a drawer. A field with no quote, or with a quote that the page does not hold (a scan), gets a card and no pin. Below 1280 px the page comes first, and the record opens in a bottom sheet that peeks with its status and amount. A record entered by hand shows its fields in place of the page; a page that does not load offers Download and Try again, each with a fresh file link.",
+          "The record page with its document in the page (Spec 7 R-38a, prototype invoice record variant C). From 944 px of the desk's own width (not the viewport's, so the docked agent panel narrows it) the page sits on a canvas with each read field pinned beside its source line by a leader line, and the links and history in a drawer. A field with no quote, or with a quote that the page does not hold (a scan), gets a card and no pin. On a narrower desk the page comes first, and the record opens in a bottom sheet that peeks with its status and amount. A record entered by hand shows its fields in place of the page; a page that does not load offers Download and Try again, each with a fresh file link.",
       },
     },
     a11y: { test: "error" },
@@ -461,5 +461,77 @@ export const Phone: Story = {
     await expect(
       within(sheet).getByRole("region", { name: "Fields" })
     ).toBeVisible();
+  },
+};
+
+// B3: beside the docked panel at 1440 px the page column is 736 px: the sheet, and no drawer over the page.
+export const BesideTheDockedPanel: Story = {
+  globals: desktop,
+  decorators: [
+    (Story) => (
+      <div className="w-184">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("region", { name: "Details of INV-2026-09-03" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("complementary", { name: "Payments and history" })
+    ).toBeNull();
+  },
+};
+
+// B4: at 1280 px with the menu and a classic scrollbar the desk is about 960 px, and it stays wide.
+export const WideAtTheNarrowestDesk: Story = {
+  globals: desktop,
+  decorators: [
+    (Story) => (
+      <div className="w-240">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("complementary", {
+        name: "Payments and history",
+      })
+    ).toBeVisible();
+  },
+};
+
+// B7: below 1024 px the page header hides its meta and actions (`compactBelowLg`) and shows them
+// only in the sheet, so a desk wide enough to pin keeps the sheet there.
+export const SheetBelowLgOnAWideDesk: Story = {
+  parameters: {
+    viewport: {
+      options: {
+        desktop1000: {
+          name: "Desktop 1000",
+          styles: { width: "1000px", height: "800px" },
+          type: "desktop",
+        },
+      },
+    },
+  },
+  globals: { viewport: { value: "desktop1000", isRotated: false } },
+  decorators: [
+    (Story) => (
+      <div className="w-240">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    await expect(window.innerWidth).toBe(1000);
+    await expect(
+      await canvas.findByRole("region", { name: "Details of INV-2026-09-03" })
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("complementary", { name: "Payments and history" })
+    ).toBeNull();
   },
 };

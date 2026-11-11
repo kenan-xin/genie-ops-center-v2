@@ -2,10 +2,11 @@
 
 import { PageHeader, PageSkeleton } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
-import { useHydrated, useMediaQuery } from "@genie/ui";
+import { useHydrated } from "@genie/ui";
 import { useRef, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
+import { DESK_FROM, DESK_PINS_FROM, useWidth } from "./desk-width.ts";
 import { useInvoiceReview } from "./invoice-review-form.tsx";
 import { usePaymentReview } from "./payment-review-form.tsx";
 import type { Blocker } from "./review-blocker.ts";
@@ -60,8 +61,9 @@ export function ReviewWorkspace(props: {
   // The first link lasts the page's life, so a refetch never loads the PDF again.
   const [fileUrl] = useState(view.document.fileUrl);
   const hydrated = useHydrated();
-  // The desk from 1024 px, the pager below (P09-3).
-  const desk = useMediaQuery("(min-width: 1024px)", { noSsr: true });
+  // The desk from its own width, not the viewport's, so the docked agent panel narrows it (P16g-4).
+  const form = useRef<HTMLFormElement>(null);
+  const width = useWidth(form);
   const kind = view.document.kind;
 
   const invoice = useInvoiceReview({
@@ -106,6 +108,7 @@ export function ReviewWorkspace(props: {
 
   return (
     <form
+      ref={form}
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
@@ -114,13 +117,13 @@ export function ReviewWorkspace(props: {
         if (!frame.sweep && frame.saved === null) model?.submit();
       }}
     >
-      {!hydrated ? (
+      {!hydrated || width === undefined ? (
         <>
           <PageHeader title={frame.title} breadcrumb={frame.breadcrumb} />
           <PageSkeleton label={frame.title} />
         </>
-      ) : desk ? (
-        <ReviewDesk {...layout} />
+      ) : width >= DESK_FROM ? (
+        <ReviewDesk {...layout} wide={width >= DESK_PINS_FROM} />
       ) : (
         <ReviewPager {...layout} />
       )}
