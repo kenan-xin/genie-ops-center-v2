@@ -277,6 +277,74 @@ export const NudgeRunReportsItsBox: Story = {
   },
 };
 
+const PHONE_HINT = "Drag to move. Drag a corner to resize, or tap Position.";
+
+/** The keys of the hint lines a person can see at this width. */
+function shownKeys(canvasElement: HTMLElement): string[] {
+  return [...canvasElement.querySelectorAll<HTMLElement>("kbd")].flatMap(
+    (kbd) => (kbd.checkVisibility() ? [kbd.textContent ?? ""] : [])
+  );
+}
+
+// czjw.139: a touch screen has no arrow keys, so the phone hint names none (P16e-16).
+export const HintOnPhone: Story = {
+  name: "The phone hint names no key",
+  globals: phone,
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getByText(PHONE_HINT)).toBeVisible();
+    await expect(shownKeys(canvasElement)).toEqual([]);
+  },
+};
+
+// From 768 px the key hint stays as built, and the phone line does not show.
+export const HintOnDesktop: Story = {
+  name: "The desktop hint keeps its keys",
+  globals: desktop,
+  play: async ({ canvas, canvasElement }) => {
+    await expect(shownKeys(canvasElement)).toEqual([
+      "←",
+      "↑",
+      "→",
+      "↓",
+      "Shift",
+      "Esc",
+    ]);
+    await expect(
+      canvas.queryByText(PHONE_HINT)?.checkVisibility() ?? false
+    ).toBe(false);
+  },
+};
+
+// czjw.140: a handle at the slide edge draws past the frame and takes a press in its outer half.
+export const EdgeHandleTakesAPress: Story = {
+  name: "A handle at the slide edge takes a press outside the frame",
+  globals: phone,
+  args: {
+    slide: {
+      ...textWithChartSlide,
+      elements: textWithChartSlide.elements.map((element, at) =>
+        at === 1 ? { ...element, box: { x: 0, y: 0, w: 320, h: 96 } } : element
+      ),
+    },
+  },
+  play: async ({ canvasElement }) => {
+    const frame = canvasElement.querySelector<HTMLElement>(
+      '[aria-label="Slide editing"]'
+    )?.parentElement;
+
+    const handle = canvasElement.querySelector(
+      '[data-stage-element="1"] [data-handle="nw"]'
+    );
+
+    await expect(frame).toBeTruthy();
+    await expect(handle).toBeTruthy();
+
+    const { left, top } = frame!.getBoundingClientRect();
+
+    await expect(document.elementFromPoint(left - 3, top - 3)).toBe(handle);
+  },
+};
+
 // A slide switch unmounts the stage within the run; the press is still saved.
 export const NudgeThenUnmount: Story = {
   name: "An arrow press is saved when the stage closes",

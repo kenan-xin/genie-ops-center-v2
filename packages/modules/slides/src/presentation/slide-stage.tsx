@@ -68,11 +68,13 @@ const HANDLES = [
   "se",
 ] as const satisfies readonly CanvasResizeHandle[];
 
+// A right handle's 44 px touch area moves in by the handle's 6 px outset, so at the slide's right
+// edge it ends inside the page's 16 px gutter and the page does not scroll sideways.
 const HANDLE_CLASS = {
   nw: "-top-1.5 -left-1.5 cursor-nwse-resize",
-  ne: "-top-1.5 -right-1.5 cursor-nesw-resize",
+  ne: "-top-1.5 -right-1.5 cursor-nesw-resize pointer-coarse:after:-translate-x-1.5",
   sw: "-bottom-1.5 -left-1.5 cursor-nesw-resize",
-  se: "-right-1.5 -bottom-1.5 cursor-nwse-resize",
+  se: "-right-1.5 -bottom-1.5 cursor-nwse-resize pointer-coarse:after:-translate-x-1.5",
 } as const;
 
 type CssVars = CSSProperties & {
@@ -332,8 +334,11 @@ export function SlideStage(props: SlideStageProps) {
 
   return (
     <div className="grid gap-2">
-      <div className="relative overflow-hidden rounded-lg border border-border">
-        <SlideCanvas {...props} slide={shown} />
+      {/* Only the canvas clips, so a selected element's ring and handles draw past the frame (P16e-17). */}
+      <div className="relative rounded-lg border border-border">
+        <div className="overflow-hidden rounded-lg">
+          <SlideCanvas {...props} slide={shown} />
+        </div>
         <div
           ref={layer}
           role="group"
@@ -394,7 +399,11 @@ export function SlideStage(props: SlideStageProps) {
           })}
         </div>
       </div>
-      <p className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+      {/* A touch screen has no arrow keys; the hint switches with the dock (P16e-16). */}
+      <p className="text-sm text-muted-foreground md:hidden">
+        Drag to move. Drag a corner to resize, or tap Position.
+      </p>
+      <p className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground max-md:hidden">
         Drag to move. Drag a handle to resize, or use Position. <Kbd>←</Kbd>
         <Kbd>↑</Kbd>
         <Kbd>→</Kbd>
