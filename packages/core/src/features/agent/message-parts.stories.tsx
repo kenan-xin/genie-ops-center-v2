@@ -1,7 +1,13 @@
 import type { ChartData } from "@genie/ui/chart-data";
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import { expect, fn, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
@@ -253,6 +259,61 @@ export const Streaming: Story = {
     await expect(canvas.queryByText(/root = Answer/)).toBeNull();
     await expect(canvas.queryByText(/could not be drawn/)).toBeNull();
     await expect(checkStreaming).not.toHaveBeenCalled();
+  },
+};
+
+/** Starts the mounted driver's stream. `play` calls it, after Storybook's `act` around the mount. */
+let startStream = () => {};
+
+/**
+ * Grows `text` by one character a commit. Each character lands in a microtask after the commit,
+ * as the AI SDK delivers a stream chunk, so it renders together with any update the commit's
+ * effects scheduled. Inside `act`, each update would render on its own.
+ */
+function StreamDriver(props: { readonly text: string }) {
+  const [length, setLength] = useState(0);
+
+  const streaming = length < props.text.length;
+
+  useEffect(() => {
+    startStream = () => setLength(1);
+  }, []);
+
+  useEffect(() => {
+    if (length > 0 && streaming) queueMicrotask(() => setLength(length + 1));
+  }, [length, streaming]);
+
+  return (
+    <MessageParts
+      message={answer(props.text.slice(0, length))}
+      streaming={streaming}
+    />
+  );
+}
+
+/**
+ * An answer whose chunks arrive faster than the page draws them (xok3.69). The answer must not set
+ * state from an effect for each chunk: more than 50 of those in a row make React log "Maximum update
+ * depth exceeded".
+ */
+export const FastStream: Story = {
+  name: "Fast stream",
+  decorators: [withChartCheck(resolveKpi)],
+  // The spy is in place before the first render, and `play` reads it as `console.error`.
+  beforeEach: () => {
+    const spy = spyOn(console, "error");
+
+    return () => spy.mockRestore();
+  },
+  // After its first line, each character of the answer gives the parser a new result: over 200.
+  render: () => <StreamDriver text={CHART_ANSWER} />,
+  play: async ({ canvas }) => {
+    startStream();
+    // The finished answer is still read and drawn: the gate's 42 shows.
+    await expect(await canvas.findByText("42")).toBeVisible();
+    await expect(console.error).not.toHaveBeenCalledWith(
+      expect.stringContaining("Maximum update depth exceeded")
+    );
   },
 };
 
