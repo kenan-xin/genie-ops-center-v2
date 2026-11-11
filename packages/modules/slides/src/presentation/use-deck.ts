@@ -87,6 +87,27 @@ export type DeckWrite = {
   readonly expectedHash: string;
 };
 
+/**
+ * A change-slide step with every element's box and style stated, `null` where it has none. The
+ * server keeps a left-out box or style of the element at that place (czjw.157), so a hand Remove
+ * must never leave them out: the next element would take the removed one's.
+ */
+export function statedPlacement(change: DeckChange): DeckChange {
+  if (change.op !== "change-slide") return change;
+
+  return {
+    ...change,
+    slide: {
+      ...change.slide,
+      elements: change.slide.elements.map((element) => ({
+        ...element,
+        box: element.box ?? null,
+        style: element.style ?? null,
+      })),
+    },
+  };
+}
+
 export function useDeckChange(
   deck: DeckView
 ): UseMutationResult<DeckView, Error, DeckWrite> {
@@ -103,7 +124,7 @@ export function useDeckChange(
         await slides.changeDeck({
           id: deck.id,
           expectedHash,
-          changes: [...changes],
+          changes: changes.map(statedPlacement),
         })
       ),
     onSuccess: (view) => {

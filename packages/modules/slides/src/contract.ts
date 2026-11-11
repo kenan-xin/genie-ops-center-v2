@@ -161,6 +161,27 @@ export const elementInput = z.discriminatedUnion("kind", [
   imageElement,
 ]);
 
+/**
+ * One element of a change-slide step. A box or style left out keeps the stored element's at that
+ * place with that kind, and `null` clears it (czjw.157).
+ */
+const stated = {
+  box: elementBox.nullable().optional(),
+  style: elementStyle.nullable().optional(),
+};
+
+export const changedElementInput = z.discriminatedUnion("kind", [
+  titleElement.extend(stated),
+  textElement.extend(stated),
+  bulletsElement.extend(stated),
+  z.strictObject({ kind: z.literal("figure"), chart: z.unknown(), ...stated }),
+  z.strictObject({ kind: z.literal("chart"), chart: z.unknown(), ...stated }),
+  z.strictObject({ kind: z.literal("table"), chart: z.unknown(), ...stated }),
+  imageElement.extend(stated),
+]);
+
+export type ChangedElementInput = z.infer<typeof changedElementInput>;
+
 export type ElementKind = z.infer<typeof elementInput>["kind"];
 
 /** The kinds that hold text and take every style key. */
@@ -186,8 +207,8 @@ export type ElementLike = {
   readonly text?: string | undefined;
   readonly items?: readonly string[] | undefined;
   readonly alt?: string | undefined;
-  readonly box?: ElementBox | undefined;
-  readonly style?: ElementStyle | undefined;
+  readonly box?: ElementBox | null | undefined;
+  readonly style?: ElementStyle | null | undefined;
 };
 
 const NAME_CHARACTERS = 28;
@@ -218,7 +239,9 @@ function placementIssues(
   element: ElementLike
 ): { field: "box" | "style"; message: string }[] {
   const issues: { field: "box" | "style"; message: string }[] = [];
-  const { box, style } = element;
+  // A change-slide step's null clears, so it reads as none (czjw.157).
+  const box = element.box ?? undefined;
+  const style = element.style ?? undefined;
 
   if (box !== undefined) {
     const min = minBox(element.kind);
@@ -352,13 +375,27 @@ export function refineSlideRules(
   }
 }
 
+const slideFields = {
+  background: hexColor.optional(),
+  notes: slideNotes.optional(),
+};
+
 export const slideInput = z
   .strictObject({
     elements: z.array(elementInput).min(1).max(SLIDE_ELEMENT_LIMIT),
-    background: hexColor.optional(),
-    notes: slideNotes.optional(),
+    ...slideFields,
   })
   .superRefine(refineSlideRules);
+
+/** A slide of a change-slide step: `slideInput` with elements of `changedElementInput`. */
+export const changedSlideInput = z
+  .strictObject({
+    elements: z.array(changedElementInput).min(1).max(SLIDE_ELEMENT_LIMIT),
+    ...slideFields,
+  })
+  .superRefine(refineSlideRules);
+
+export type ChangedSlideInput = z.infer<typeof changedSlideInput>;
 
 export const deckSummary = z.object({
   id: z.string(),
@@ -382,7 +419,11 @@ export const deckChange = z.discriminatedUnion("op", [
       .max(DECK_SLIDE_LIMIT - 1)
       .optional(),
   }),
-  z.strictObject({ op: z.literal("change-slide"), slideId, slide: slideInput }),
+  z.strictObject({
+    op: z.literal("change-slide"),
+    slideId,
+    slide: changedSlideInput,
+  }),
   z.strictObject({ op: z.literal("remove-slide"), slideId }),
   z.strictObject({
     op: z.literal("move-slide"),

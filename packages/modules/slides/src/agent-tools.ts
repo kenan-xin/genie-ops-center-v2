@@ -124,7 +124,7 @@ const readDeckTool = defineAgentTool({
     failed: "Could not read the deck",
   },
   description:
-    "Reads one of this person's own decks by id: its title, figures date and content hash, and its slides, with each slide's id, its background and speaker notes when it has them, and each element's kind, text and chart config. Give the content hash to slides-change-deck.",
+    "Reads one of this person's own decks by id: its title, figures date and content hash, and its slides, with each slide's id, its background and speaker notes when it has them, and each element's kind, text and chart config, and its box and style when it has them. Give the content hash to slides-change-deck.",
   input: z.strictObject({ deckId }),
   permission: "slides:read",
   run: async (ctx, input) => {
@@ -238,7 +238,7 @@ const changeDeckTool = defineAgentTool({
     done: "Changed the deck",
     failed: "Could not change the deck",
   },
-  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element or change-slide-fields. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each with its box and style as read, and each figure, chart or table with its chart config as read. ${DECK_RULES} ${STYLE_RULES} ${NOTES_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
+  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element or change-slide-fields. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. An element at the same place with the same kind keeps its box and style when the step leaves them out, and null clears them. If the step removes, adds or reorders elements, send each element's box and style as read. ${DECK_RULES} ${STYLE_RULES} ${NOTES_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
   input: z.strictObject({
     deckId,
     expectedHash: contentHash,

@@ -408,7 +408,7 @@ describe("the slides agent tools", () => {
     });
   });
 
-  it("slides-change-deck stores a change-slide element sent without its box and style without them", async () => {
+  it("slides-change-deck keeps a change-slide element's stored box and style when the step leaves them out, and null clears them", async () => {
     const owner = await personWith(EDITOR);
 
     const id = await insertDeck(deployment.context, {
@@ -433,7 +433,7 @@ describe("the slides agent tools", () => {
 
     const read = await runTool(owner, "slides-read-deck", { deckId: id });
 
-    await runTool(owner, "slides-change-deck", {
+    const kept = await runTool(owner, "slides-change-deck", {
       deckId: id,
       expectedHash: hashIn(read),
       changes: [
@@ -447,7 +447,30 @@ describe("the slides agent tools", () => {
       ],
     });
 
-    // The step replaces the elements, so the tool description must ask for box and style as read.
+    expect((await deckState(id)).content.slides[0].elements[1]).toEqual({
+      kind: "text",
+      text: "Sales rose.",
+      box: { x: 96, y: 192, w: 480, h: 96 },
+      style: { fill: "#EFF6FF" },
+    });
+
+    await runTool(owner, "slides-change-deck", {
+      deckId: id,
+      expectedHash: hashIn(kept),
+      changes: [
+        {
+          op: "change-slide",
+          slideId: "s1",
+          slide: {
+            elements: [
+              title("Claim"),
+              { kind: "text", text: "Sales rose.", box: null, style: null },
+            ],
+          },
+        },
+      ],
+    });
+
     expect((await deckState(id)).content.slides[0].elements[1]).toEqual({
       kind: "text",
       text: "Sales rose.",

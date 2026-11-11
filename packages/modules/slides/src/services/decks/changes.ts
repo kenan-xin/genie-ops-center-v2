@@ -3,6 +3,7 @@ import { isEqual } from "es-toolkit";
 
 import type { DeckContent, StoredElement, UndoEntry } from "../../content.ts";
 import {
+  type ChangedElementInput,
   DECK_SLIDE_LIMIT,
   type DeckChange,
   type ElementInput,
@@ -74,17 +75,27 @@ export function pushUndo(
 }
 
 /**
- * A changed slide's elements. A data element whose chart equals a stored one of the same kind on
- * that slide keeps the stored chart and data, so a hand edit never re-reads a frozen figure
- * (R-54); every other data element is set to be checked.
+ * A changed slide's elements. An element's box or style left out keeps the stored element's at that
+ * index when its kind is the same, and `null` clears it (czjw.157). A data element whose chart
+ * equals a stored one of the same kind on that slide keeps the stored chart and data, so a hand edit
+ * never re-reads a frozen figure (R-54); every other data element is set to be checked.
  */
 function changedElements(
   stored: readonly DraftElement[],
-  input: readonly ElementInput[]
+  input: readonly ChangedElementInput[]
 ) {
   const checked: number[] = [];
 
-  const elements = input.map((element, index): DraftElement => {
+  const elements = input.map((sent, index): DraftElement => {
+    const kept = stored[index]?.kind === sent.kind ? stored[index] : undefined;
+
+    const placement = {
+      box: sent.box === undefined ? kept?.box : (sent.box ?? undefined),
+      style: sent.style === undefined ? kept?.style : (sent.style ?? undefined),
+    };
+
+    const element = { ...sent, ...placement };
+
     if (
       element.kind !== "figure" &&
       element.kind !== "chart" &&
@@ -100,10 +111,8 @@ function changedElements(
         isEqual(candidate.chart, element.chart)
     );
 
-    // The stored chart and data, with the box and style the change sends.
-    if (same !== undefined) {
-      return { ...same, box: element.box, style: element.style };
-    }
+    // The stored chart and data, with the box and style of the rule above.
+    if (same !== undefined) return { ...same, ...placement };
 
     checked.push(index);
 
@@ -135,7 +144,7 @@ export function applyChanges(
     step: number,
     id: string,
     stored: readonly DraftElement[],
-    input: readonly ElementInput[],
+    input: readonly ChangedElementInput[],
     background: string | undefined,
     notes: string | undefined
   ): DraftSlide => {

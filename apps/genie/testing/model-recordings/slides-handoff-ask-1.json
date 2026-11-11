@@ -2343,7 +2343,7 @@
           "type": "function",
           "function": {
             "name": "slides-read-deck",
-            "description": "Reads one of this person's own decks by id: its title, figures date and content hash, and its slides, with each slide's id, its background and speaker notes when it has them, and each element's kind, text and chart config. Give the content hash to slides-change-deck.",
+            "description": "Reads one of this person's own decks by id: its title, figures date and content hash, and its slides, with each slide's id, its background and speaker notes when it has them, and each element's kind, text and chart config, and its box and style when it has them. Give the content hash to slides-change-deck.",
             "parameters": {
               "$schema": "http://json-schema.org/draft-07/schema#",
               "type": "object",

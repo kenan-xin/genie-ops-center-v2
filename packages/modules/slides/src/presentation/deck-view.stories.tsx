@@ -8,7 +8,12 @@ import {
 import { useEffect, useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { deckPage, emptyDeckPage } from "./__fixtures__/decks.ts";
+import {
+  deckPage,
+  emptyDeckPage,
+  tableWithVisualSlide,
+  titleOnlySlide,
+} from "./__fixtures__/decks.ts";
 import { DeckView } from "./deck-view.tsx";
 import { deckQueryKey } from "./use-deck.ts";
 import type { DeckPageView } from "./views.ts";
@@ -584,6 +589,77 @@ export const RefusedSlideChange: Story = {
         name: "Slide 2: Collections narrowed the gap to the plan line",
       })
     ).toBeVisible();
+  },
+};
+
+const TABLE_BOX = { x: 384, y: 136, w: 536, h: 348 };
+
+const [claim, kpi, table] = tableWithVisualSlide.elements;
+
+/** A figure with a fill before a placed table, so a Remove of the figure shows what the table sends. */
+const placedVisualsPage: DeckPageView = {
+  ...deckPage,
+  deck: {
+    ...deckPage.deck,
+    slides: [
+      titleOnlySlide,
+      {
+        ...tableWithVisualSlide,
+        elements: [
+          claim!,
+          { ...kpi!, style: { fill: "#EFF6FF" } },
+          { ...table!, box: TABLE_BOX },
+        ],
+      },
+    ],
+  },
+};
+
+// czjw.157: the server keeps a left-out box of the element at that place, so the hand save states
+// every element's box and style, and the table never takes the removed figure's fill.
+export const RemoveStatesEveryPlacement: Story = {
+  name: "Remove states every placement",
+  args: { view: placedVisualsPage },
+  globals: desktop,
+  beforeEach: () => serve(placedVisualsPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for slide 2" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Edit slide" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Edit slide" })
+    );
+
+    const [removeFigure] = await sheet.findAllByRole("button", {
+      name: "Remove",
+    });
+
+    await waitFor(() => expect(removeFigure).toBeVisible());
+    await userEvent.click(removeFigure!);
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+
+    const [{ changes }] = changeDeck.mock.calls[0] ?? [{}];
+
+    await expect(changes).toHaveLength(1);
+    await expect(changes[0]?.op).toBe("change-slide");
+    await expect(
+      changes[0]?.slide.elements.map(
+        (element: { kind: string; box?: unknown; style?: unknown }) => ({
+          kind: element.kind,
+          box: "box" in element ? element.box : "absent",
+          style: "style" in element ? element.style : "absent",
+        })
+      )
+    ).toEqual([
+      { kind: "title", box: null, style: null },
+      { kind: "table", box: TABLE_BOX, style: null },
+    ]);
   },
 };
 

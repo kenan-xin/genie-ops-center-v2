@@ -200,6 +200,9 @@ function ChangeHarness(props: {
 
 const HASH = deckPage.deck.contentHash;
 
+/** The hand save states every element's box and style, `null` where it has none (czjw.157). */
+const unplaced = { box: null, style: null };
+
 const titleElement = textWithChartSlide.elements[0];
 
 const textElement = textWithChartSlide.elements[1];
@@ -242,9 +245,13 @@ export const SaveKeepsChart: Story = {
           slideId: "s2",
           slide: {
             elements: [
-              { kind: "title", text: "Collections beat the plan line" },
-              { kind: "text", text: textElement.text },
-              { kind: "chart", chart: chartElement.chart },
+              {
+                kind: "title",
+                text: "Collections beat the plan line",
+                ...unplaced,
+              },
+              { kind: "text", text: textElement.text, ...unplaced },
+              { kind: "chart", chart: chartElement.chart, ...unplaced },
             ],
           },
         },
@@ -340,13 +347,14 @@ export const UploadImage: Story = {
           slideId: "s2",
           slide: {
             elements: [
-              { kind: "title", text: titleElement.text },
-              { kind: "text", text: textElement.text },
-              { kind: "chart", chart: chartElement.chart },
+              { kind: "title", text: titleElement.text, ...unplaced },
+              { kind: "text", text: textElement.text, ...unplaced },
+              { kind: "chart", chart: chartElement.chart, ...unplaced },
               {
                 kind: "image",
                 fileId: FILE_ID,
                 alt: "A bar chart of invoiced sales by month.",
+                ...unplaced,
               },
             ],
           },

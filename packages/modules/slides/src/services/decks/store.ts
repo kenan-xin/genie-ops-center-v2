@@ -19,9 +19,9 @@ import {
   type UndoEntry,
 } from "../../content.ts";
 import type {
+  ChangedElementInput,
   DeckChange,
   DeckSummary,
-  ElementInput,
   SlideInput,
 } from "../../contract.ts";
 import { SLIDES_ERRORS } from "../../errors.ts";
@@ -78,7 +78,7 @@ function foreignImages(
   imageFileIds: readonly string[],
   slides: readonly {
     readonly path: string;
-    readonly elements: readonly ElementInput[];
+    readonly elements: readonly ChangedElementInput[];
   }[]
 ): AppErrorIssue[] {
   return slides.flatMap(({ path, elements }) =>

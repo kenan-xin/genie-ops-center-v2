@@ -203,6 +203,111 @@ describe("the element and slide field steps", () => {
     expect(applied.slides[0]?.elements[1]).toEqual({ ...figure, box });
     expect(applied.checks.size).toBe(0);
   });
+
+  it("keeps the box and style of the stored element at that place with that kind when the step leaves them out", () => {
+    const [first, second, third] = elementsOf(styledDeck, [
+      {
+        op: "change-slide",
+        slideId: "s1",
+        slide: {
+          elements: [
+            title("New claim"),
+            { kind: "text", text: "Sales rose more." },
+            { kind: "figure", chart: chartOf(figure) },
+          ],
+        },
+      },
+    ]);
+
+    expect(first).toEqual({
+      ...title("New claim"),
+      style: { color: "#1E3A8A", weight: "bold" },
+    });
+    expect(second).toEqual({
+      kind: "text",
+      text: "Sales rose more.",
+      box: { x: 40, y: 136, w: 320, h: 96 },
+    });
+    expect(third).toEqual(figure);
+  });
+
+  it("keeps the stored box of a figure with a new chart at that place and checks the chart", () => {
+    const box = { x: 384, y: 136, w: 536, h: 348 };
+    const [slide] = styledDeck.content.slides;
+
+    const boxedFigure = {
+      title: "Q3",
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [
+              ...(slide?.elements.slice(0, 2) ?? []),
+              { ...figure, box },
+            ],
+          },
+        ],
+      } satisfies DeckContent,
+    };
+
+    const chart = { ...chartOf(figure), title: "Other" };
+
+    const applied = applyChanges(boxedFigure, [
+      {
+        op: "change-slide",
+        slideId: "s1",
+        slide: {
+          elements: [
+            title("Claim"),
+            { kind: "text", text: "Sales rose." },
+            { kind: "figure", chart },
+          ],
+        },
+      },
+    ]);
+
+    expect(applied.slides[0]?.elements[2]).toEqual({
+      kind: "figure",
+      chart,
+      box,
+    });
+    expect([...applied.checks]).toEqual([["s1.2", 0]]);
+  });
+
+  it("clears the box and the style of a change-slide element sent with null", () => {
+    const [first, second] = elementsOf(styledDeck, [
+      {
+        op: "change-slide",
+        slideId: "s1",
+        slide: {
+          elements: [
+            { ...title("Claim"), style: null },
+            { kind: "text", text: "Sales rose.", box: null },
+          ],
+        },
+      },
+    ]);
+
+    expect(first).toEqual(title("Claim"));
+    expect(second).toEqual({ kind: "text", text: "Sales rose." });
+  });
+
+  it("keeps nothing of a stored element of another kind at that place", () => {
+    const [, second] = elementsOf(styledDeck, [
+      {
+        op: "change-slide",
+        slideId: "s1",
+        slide: {
+          elements: [
+            title("Claim"),
+            { kind: "bullets", items: ["Sales rose."] },
+          ],
+        },
+      },
+    ]);
+
+    expect(second).toEqual({ kind: "bullets", items: ["Sales rose."] });
+  });
 });
 
 const notedDeck = {
