@@ -22,6 +22,26 @@ async function contentTypesOf(bytes: Buffer) {
   };
 }
 
+/** The color of the text run that holds `text`, matched without case. */
+function runColorOf(xml: string, text: string) {
+  return new RegExp(
+    `<a:r>(?:(?!</a:r>).)*srgbClr val="([0-9a-f]{6})"(?:(?!</a:r>).)*${text}`,
+    "is"
+  )
+    .exec(xml)?.[1]
+    ?.toUpperCase();
+}
+
+/** The color of the slide number placeholder's field. */
+function numberColorOf(xml: string) {
+  const at = xml.indexOf('name="Slide Number Placeholder 0"');
+  const placeholder = xml.slice(at, xml.indexOf("</p:sp>", at));
+
+  expect(placeholder).toContain('type="slidenum"');
+
+  return /srgbClr val="([0-9a-f]{6})"/i.exec(placeholder)?.[1]?.toUpperCase();
+}
+
 const THEME = {
   companyName: "Acme",
   primaryColor: "#0f766e",
@@ -142,6 +162,48 @@ describe("buildDeckPptx", () => {
     expect(xml).toMatch(
       /<a:r>(?:(?!<\/a:r>).)*srgbClr val="111827"(?:(?!<\/a:r>).)*Figures as of/s
     );
+  });
+
+  it("draws the slide number and the company name in each slide's footer color", async () => {
+    const bytes = await buildDeckPptx({
+      title: "Footer",
+      slides: [
+        {
+          id: "s1",
+          background: "#1E3A8A",
+          elements: [{ kind: "title", text: "Claim" }],
+        },
+        { id: "s2", elements: [{ kind: "title", text: "Plain" }] },
+      ],
+      figuresAsOf: "2026-10-27",
+      timeZone: "UTC",
+      theme: THEME,
+      logo: null,
+      images: new Map(),
+    });
+
+    const zip = await JSZip.loadAsync(bytes);
+
+    const part = async (name: string) =>
+      (await zip.file(name)?.async("string")) ?? "";
+
+    const [slide1, slide2, masterParts] = await Promise.all([
+      part("ppt/slides/slide1.xml"),
+      part("ppt/slides/slide2.xml"),
+      Promise.all(
+        Object.keys(zip.files)
+          .filter((name) => /^ppt\/slide(Masters|Layouts)\/.*\.xml$/.test(name))
+          .map(part)
+      ),
+    ]);
+
+    // The dark slide takes its foreground, the plain slide the light muted text.
+    expect(runColorOf(slide1, "Acme")).toBe("FFFFFF");
+    expect(numberColorOf(slide1)).toBe("FFFFFF");
+    expect(runColorOf(slide2, "Acme")).toBe("4B5563");
+    expect(numberColorOf(slide2)).toBe("4B5563");
+    // The name belongs to the slide, so the inherited parts hold none.
+    expect(masterParts.join("\n")).not.toContain("Acme");
   });
 
   // pptxgenjs 4.0.1 lists one slide master per slide (upstream #1444), and PowerPoint repairs that.

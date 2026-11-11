@@ -40,7 +40,7 @@ const HIDDEN = "You can no longer read the data of this chart.";
 /** The text colors of the light theme, as PowerPoint hex. */
 const TEXT = THEME_TEXT.replace("#", "");
 
-const MUTED = "6B7280";
+const MUTED = "4B5563";
 
 const BORDER = "D1D5DB";
 
@@ -264,13 +264,12 @@ export async function buildDeckPptx(input: {
   pptx.company = theme.companyName;
   pptx.theme = { headFontFace: fontFace, bodyFontFace: fontFace };
 
-  // The layout's footer is the same on every slide.
+  // The layout's footer is the same on every slide; its color is the slide's.
   const { footer } = slideLayout(["title"]);
 
   const footerText = {
     fontFace,
     fontSize: points(TYPE_PX.footer),
-    color: MUTED,
   };
 
   const nameX = footer.x + footer.w - NUMBER_W - NAME_W;
@@ -285,27 +284,10 @@ export async function buildDeckPptx(input: {
   pptx.defineSlideMaster({
     title: MASTER,
     background: { color: "FFFFFF" },
-    slideNumber: {
-      ...inches({ ...footer, x: footer.x + footer.w - NUMBER_W, w: NUMBER_W }),
-      ...footerText,
-      align: "right",
-    },
-    objects: [
-      {
-        text: {
-          text: theme.companyName,
-          options: {
-            ...inches({ ...footer, x: nameX, w: NAME_W }),
-            ...footerText,
-            align: "right",
-            margin: 0,
-          },
-        },
-      },
-      ...(input.logo !== null && EMBEDDABLE.has(input.logo.mimeType)
+    objects:
+      input.logo !== null && EMBEDDABLE.has(input.logo.mimeType)
         ? [{ image: containedImage(input.logo, logoBox) }]
-        : []),
-    ],
+        : [],
   });
 
   for (const shown of input.slides) {
@@ -418,12 +400,29 @@ export async function buildDeckPptx(input: {
       }
     }
 
+    // The footer items take the screen's footer color, so the gray never vanishes on a
+    // background (P13-7) and each slide's number and name stay legible (P16e-15).
+    const footerHex = hex(footerColor(shown, foregroundFor) ?? MUTED);
+
+    slide.slideNumber = {
+      ...inches({ ...footer, x: footer.x + footer.w - NUMBER_W, w: NUMBER_W }),
+      ...footerText,
+      color: footerHex,
+      align: "right",
+    };
+    slide.addText(theme.companyName, {
+      ...inches({ ...footer, x: nameX, w: NAME_W }),
+      ...footerText,
+      color: footerHex,
+      align: "right",
+      margin: 0,
+    });
+
     if (kinds.some(isData)) {
       slide.addText(`Figures as of ${figuresDate(input.figuresAsOf)}`, {
         ...inches({ ...footer, w: logoBox.x - footer.x - LOGO.gap }),
         ...footerText,
-        // The screen's footer color, so the gray never vanishes on a background (P13-7).
-        color: hex(footerColor(shown, foregroundFor) ?? footerText.color),
+        color: footerHex,
         margin: 0,
       });
     }
