@@ -621,7 +621,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "starting an agent run an enqueue failure leaves run_state null",
       "starting an agent run the job of a stopped run leaves the run that replaced it alone",
       "starting an agent run Stop on a queued run ends it stopped without a model call",
-      "starting an agent run Try again stores the message and queues a run, and is refused while another run builds",
+      "starting an agent run Try again is refused while AI is off and stores nothing",
     ],
   },
   {

@@ -5,6 +5,7 @@ import { readUIMessageStream } from "ai";
 import { and, eq, gt, isNull, sql } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
+import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
 import type {
   JobContext,
   JobDeclaration,
@@ -29,7 +30,13 @@ import {
   readRunState,
 } from "./runs.ts";
 import { checkpointParts } from "./stopped-turn.ts";
-import { type AgentMessage, appendMessage, checkedId } from "./store.ts";
+import {
+  type AgentMessage,
+  appendMessage,
+  checkedId,
+  findOwnSession,
+} from "./store.ts";
+import { offeredSessionTools } from "./tools.ts";
 
 /**
  * A session's turn as the core job `core.agent-run` (R-42b, tech plan wave 5): it goes on when the
@@ -257,16 +264,37 @@ export const RETRY_TEXT = "Try again.";
 
 /**
  * Try again on a run that ended (R-42b): the caller's message "Try again." and a new run, in one
- * transaction, so a refused run stores no message. `not-found` for a session that never ran or is
- * not the caller's; `agent-run-active` while one of the caller's runs builds, or while a sent
- * message's answer can still stream. Beside `startRun`,
- * because `runs.ts` is imported by this file at load time.
+ * transaction, so a refused run stores no message. Before any write, the chat route's checks in its
+ * order (czjw.126): `not-found` for a malformed id, `forbidden` without agent access, `ai-off`,
+ * `not-found` for a session that is not the caller's, `module-disabled` when its surface's module
+ * is off, `model-not-allowed` for its model. Then `not-found` for a session that never ran;
+ * `agent-run-active` while one of the caller's runs builds, or while a sent message's answer can
+ * still stream. Beside `startRun`, because `runs.ts` is imported by this file at load time.
  */
 export async function retryRun(
   ctx: ModuleRequestContext,
   sessionId: string
 ): Promise<void> {
   const id = checkedId(sessionId);
+
+  const access = await agentAccess(ctx);
+
+  if (!access.permitted) throw new AppError(CORE_ERRORS.forbidden);
+
+  if (access.ai !== "on" || access.chatModel === null) {
+    throw new AppError(CORE_ERRORS["ai-off"]);
+  }
+
+  // Outside the row lock: a session's surface and model never change after its first message.
+  const session = await findOwnSession(ctx, id);
+
+  if (session === undefined) throw new AppError(CORE_ERRORS["not-found"]);
+
+  if (session.surface !== ASK_SURFACE) {
+    await offeredSessionTools(ctx, session.surface);
+  }
+
+  await modelFor(ctx.tenant, { task: "chat", modelId: session.modelId });
 
   await withTransaction(ctx.tenant, async (tx) => {
     const [row] = await tx

@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import {
@@ -636,5 +637,90 @@ describe("a durable agent run on the placeholder test surface", () => {
     await retry(ctx, sessionId);
 
     expect((await messageTexts(sessionId)).at(-1)).toBe("Try again.");
+  });
+
+  it("Try again stores the message and queues a run, and is refused while another run builds", async () => {
+    const ctx = await person();
+
+    const interrupted = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: "record-1",
+      runJobId: randomUUID(),
+      runError: "interrupted",
+    });
+
+    await retry(ctx, interrupted.id);
+
+    expect({
+      run: await runColumns(interrupted.id),
+      messages: await messageTexts(interrupted.id),
+    }).toMatchObject({
+      run: { run_state: "queued" },
+      messages: ["Try again."],
+    });
+
+    const blocked = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: "record-2",
+      runJobId: randomUUID(),
+      runError: "stopped",
+    });
+
+    await expect(retry(ctx, blocked.id)).rejects.toMatchObject({
+      code: "agent-run-active",
+    });
+    expect(await messageTexts(blocked.id)).toEqual([]);
+
+    const neverRan = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: "record-3",
+    });
+
+    await expect(retry(ctx, neverRan.id)).rejects.toMatchObject({
+      code: "not-found",
+    });
+  });
+
+  it("Try again is refused, and stores nothing, when its chat's module is off or its model is not allowed", async () => {
+    const ctx = await person();
+
+    // No module of this deployment declares the surface `analytics`.
+    const moduleOff = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "analytics",
+      runJobId: randomUUID(),
+      runError: "interrupted",
+    });
+
+    const retiredModel = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      modelId: "openai/gpt-retired",
+      runJobId: randomUUID(),
+      runError: "interrupted",
+    });
+
+    await expect(retry(ctx, moduleOff.id)).rejects.toMatchObject({
+      code: "module-disabled",
+    });
+    await expect(retry(ctx, retiredModel.id)).rejects.toMatchObject({
+      code: "model-not-allowed",
+    });
+    expect({
+      moduleOff: {
+        texts: await messageTexts(moduleOff.id),
+        state: (await runColumns(moduleOff.id))?.run_state,
+      },
+      retiredModel: {
+        texts: await messageTexts(retiredModel.id),
+        state: (await runColumns(retiredModel.id))?.run_state,
+      },
+    }).toEqual({
+      moduleOff: { texts: [], state: null },
+      retiredModel: { texts: [], state: null },
+    });
   });
 });

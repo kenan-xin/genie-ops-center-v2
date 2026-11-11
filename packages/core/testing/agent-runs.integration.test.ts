@@ -9,7 +9,6 @@ import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import { agentSession } from "../src/schema.ts";
 import {
   AGENT_RUN_JOB,
-  RETRY_TEXT,
   retryRun,
   startRun,
 } from "../src/services/agent/run-job.ts";
@@ -38,9 +37,10 @@ afterAll(async () => {
 });
 
 async function person(
-  tenant = deployment.context
+  tenant = deployment.context,
+  permissions: readonly string[] = []
 ): Promise<ModuleRequestContext> {
-  const { userId } = await insertPersonWith(deployment.context, []);
+  const { userId } = await insertPersonWith(deployment.context, permissions);
 
   return {
     tenant,
@@ -187,44 +187,28 @@ describe("starting an agent run", () => {
     });
   });
 
-  it("Try again stores the message and queues a run, and is refused while another run builds", async () => {
-    const ctx = await person();
+  it("Try again is refused while AI is off and stores nothing", async () => {
+    // This deployment has no model connection, so AI is off.
+    const ctx = await person(deployment.context, ["core:ask:use"]);
+    const runJobId = randomUUID();
 
-    const interrupted = await insertAgentSession(deployment.context, {
+    const session = await insertAgentSession(deployment.context, {
       userId: ctx.caller.userId,
-      surface: "placeholder",
-      recordId: "record-1",
-      runJobId: randomUUID(),
+      runJobId,
       runError: "interrupted",
     });
 
-    await retryRun(ctx, interrupted.id);
-
+    await expect(retryRun(ctx, session.id)).rejects.toMatchObject({
+      code: "ai-off",
+    });
     expect({
-      run: await runColumns(interrupted.id),
-      messages: await messageTexts(interrupted.id),
-    }).toMatchObject({
-      run: { runState: "queued" },
-      messages: [RETRY_TEXT],
-    });
-
-    const blocked = await insertAgentSession(deployment.context, {
-      userId: ctx.caller.userId,
-      surface: "placeholder",
-      recordId: "record-2",
-      runJobId: randomUUID(),
-      runError: "stopped",
-    });
-
-    await expect(retryRun(ctx, blocked.id)).rejects.toMatchObject({
-      code: "agent-run-active",
-    });
-    expect(await messageTexts(blocked.id)).toEqual([]);
-
-    const neverRan = await sessionOf(ctx);
-
-    await expect(retryRun(ctx, neverRan.id)).rejects.toMatchObject({
-      code: "not-found",
+      messages: await messageTexts(session.id),
+      jobs: await jobsNaming(session.id),
+      run: await runColumns(session.id),
+    }).toEqual({
+      messages: [],
+      jobs: [],
+      run: { runState: null, runJobId },
     });
   });
 

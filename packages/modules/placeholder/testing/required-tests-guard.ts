@@ -183,6 +183,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a durable agent run on the placeholder test surface Try again is refused while a sent message's answer can still stream, and works once the answer is stored",
       "a durable agent run on the placeholder test surface Try again works after a run that ended with no answer",
       "a durable agent run on the placeholder test surface an unanswered message older than one turn does not block Try again",
+      "a durable agent run on the placeholder test surface Try again stores the message and queues a run, and is refused while another run builds",
+      "a durable agent run on the placeholder test surface Try again is refused, and stores nothing, when its chat's module is off or its model is not allowed",
     ],
   },
   {
