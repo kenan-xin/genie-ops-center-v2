@@ -1,0 +1,150 @@
+<!doctype html>
+<!-- THROWAWAY logic prototype. Can finance understand and resolve expense exceptions?
+     Fictional receipts, fixed demo policy, in-memory state. No uploads, AI calls or payments. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Expense Claim Checker · Genie Ops Center prototype</title>
+<style>
+:root{color-scheme:light;--ink:#172033;--muted:#576477;--line:#dce2eb;--soft:#f5f7fa;--blue:#2563eb;--blue-soft:#edf3ff;--amber:#8a4b08;--amber-soft:#fff6e7;--green:#176449;--green-soft:#edf8f2}
+*{box-sizing:border-box}body{margin:0;background:#fff;color:var(--ink);font:14px/1.55 "Plus Jakarta Sans",system-ui,sans-serif}button,input,textarea{font:inherit}button,a,input,textarea{outline-offset:4px}button{cursor:pointer;border:1px solid #cbd3df;background:white;color:var(--ink);border-radius:7px;padding:8px 12px;font-weight:550}button:hover{background:var(--soft)}button:disabled{cursor:default;opacity:.5}.primary{background:var(--blue);border-color:var(--blue);color:white}.primary:hover{background:#1d4ed8}a{color:var(--blue)}h1,h2,h3,p{margin:0}h1{font-size:27px;letter-spacing:-.8px;line-height:1.25}h2{font-size:17px;letter-spacing:-.2px}h3{font-size:14px}small,.small{font-size:12px}.muted{color:var(--muted)}.eyebrow{font-size:11px;font-weight:700;letter-spacing:1.1px;text-transform:uppercase;color:var(--muted)}.app{display:grid;grid-template-columns:205px minmax(0,1fr);min-height:100vh}.rail{background:#f8f9fb;border-right:1px solid var(--line);padding:27px 18px;display:flex;flex-direction:column;gap:32px}.brand{font-size:18px;font-weight:750;letter-spacing:-.5px}.brand span{display:block;font-size:11px;letter-spacing:1px;font-weight:550;text-transform:uppercase;color:var(--muted)}.rail a{display:block;padding:10px;border-radius:7px;color:var(--muted);text-decoration:none}.rail .active{background:#e9eef8;color:#224cac;font-weight:650}.rail .aside{margin-top:auto;font-size:12px;color:var(--muted)}main{min-width:0}.topbar{padding:14px 32px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:12px}.proto{font-weight:650;color:#334155}.content{padding:28px 32px 40px;max-width:1520px;margin:auto}.heading{display:flex;justify-content:space-between;align-items:center;gap:20px;margin-bottom:20px}.heading p{margin-top:7px;max-width:720px}.badge{display:inline-block;border-radius:5px;padding:3px 7px;font-size:11px;font-weight:650;background:var(--soft);color:var(--muted)}.badge.warn{background:var(--amber-soft);color:var(--amber)}.badge.ok{background:var(--green-soft);color:var(--green)}.badge.blue{background:var(--blue-soft);color:#244fba}.summary{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--line);border-radius:9px;margin-bottom:18px}.stat{padding:16px 20px;border-right:1px solid var(--line)}.stat:last-child{border:0}.stat strong{display:block;font-size:25px;letter-spacing:-.7px;font-variant-numeric:tabular-nums}.stat span{font-size:12px;color:var(--muted)}.banner{border-left:3px solid var(--blue);padding:10px 14px;background:var(--blue-soft);margin:14px 0;color:#244477;min-height:43px}.toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:18px 0}.toolbar .eyebrow{margin-right:7px}.workspace{display:grid;grid-template-columns:290px minmax(0,1fr);border:1px solid var(--line);border-radius:9px;overflow:hidden;min-height:435px}.inbox{background:#fafbfc;border-right:1px solid var(--line)}.section-head{padding:15px 18px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}.claim{display:block;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;padding:15px 18px;background:transparent}.claim[aria-pressed=true]{background:var(--blue-soft);box-shadow:inset 3px 0 var(--blue)}.claim-top{display:flex;gap:8px;justify-content:space-between;margin-bottom:5px}.claim small{display:block;color:var(--muted);margin-bottom:9px}.detail{min-width:0}.detail-head{padding:18px 22px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;align-items:start;gap:10px}.review-grid{display:grid;grid-template-columns:minmax(210px,.9fr) minmax(250px,1.1fr);gap:24px;padding:22px}.paper-wrap{background:var(--soft);padding:20px;border-radius:7px;align-self:start}.paper{background:#fff;border:1px solid #d3dae3;padding:24px 19px;min-height:270px;font-size:12px;box-shadow:0 3px 9px #17203308}.paper .merchant{font-size:16px;text-align:center;font-weight:700;margin:12px 0 3px}.paper .center{text-align:center}.paper hr{border:0;border-top:1px dashed #c8cfda;margin:20px 0}.paper-row{display:flex;justify-content:space-between;gap:10px;margin:9px 0}.paper .total{font-size:18px;font-weight:700}.paper mark{background:#fff0c7;padding:2px}.fields{display:grid;grid-template-columns:100px 1fr;gap:9px 14px;margin:13px 0 20px}.fields dt{color:var(--muted)}.fields dd{margin:0;font-weight:550}.fields dd small{display:block;font-weight:400;color:var(--muted)}.finding{padding:12px 14px;background:var(--amber-soft);border-radius:6px;margin:10px 0}.finding.clear{background:var(--green-soft);color:var(--green)}.finding p{font-size:12px;margin-top:3px}.editor label{display:block;font-size:12px;font-weight:650;margin:12px 0 5px}.editor input,.editor textarea{display:block;width:100%;min-height:39px;border:1px solid #aeb9c8;border-radius:6px;padding:8px;background:white;color:var(--ink)}.editor textarea{min-height:65px;resize:vertical}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.empty{padding:48px 25px;text-align:center;color:var(--muted)}.empty h2{color:var(--ink);margin:10px 0}.bottom-grid{display:grid;grid-template-columns:1.15fr 1fr;gap:20px;margin-top:22px}.panel{border:1px solid var(--line);border-radius:9px;padding:20px;min-width:0}.panel h2{margin-bottom:6px}.tabs{display:flex;flex-wrap:wrap;gap:5px;margin:16px 0}.tabs button{font-size:12px;padding:6px 9px}.tabs button[aria-selected=true]{background:var(--blue-soft);color:#244fba;border-color:#b8cbf4}.steps{margin:15px 0;padding:0;list-style:none}.steps li{display:flex;gap:10px;align-items:center;margin:8px 0}.step-number{background:var(--soft);border:1px solid var(--line);border-radius:50%;width:24px;height:24px;display:grid;place-items:center;font-size:11px;flex-shrink:0}.steps .done .step-number{background:var(--green-soft);color:var(--green)}.steps button{border:0;text-align:left;padding:4px;color:var(--blue);background:transparent}.question{margin:14px 0 10px}.answer{border-top:1px solid var(--line);padding-top:14px;margin-top:15px}.answer strong{font-size:19px}.answer ul{padding-left:18px}.mini-bars{display:grid;gap:12px;margin-top:16px}.bar-row{display:grid;grid-template-columns:74px 1fr 85px;gap:10px;align-items:center;font-size:12px}.track{height:8px;background:var(--soft);border-radius:2px}.bar{height:100%;background:var(--blue);border-radius:2px}.bottom-meta{margin-top:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px}.bottom-meta details{border-top:1px solid var(--line);padding-top:14px}.bottom-meta summary{cursor:pointer;font-weight:650}.history{padding-left:19px;font-size:12px;color:var(--muted)}.policy{padding-left:18px;font-size:12px}.footnote{font-size:12px;color:var(--muted);margin-top:20px}.nowrap{white-space:nowrap}button:focus-visible,a:focus-visible{outline:3px solid #5f8eea}.steps li.current{font-weight:650}@media(max-width:1150px){.rail{display:none}.app{grid-template-columns:1fr}.content{padding:24px}.topbar{padding:14px 24px}.workspace{grid-template-columns:245px minmax(0,1fr)}.review-grid{gap:16px;padding:16px}}@media(max-width:800px){.workspace{grid-template-columns:1fr}.inbox{border-right:0;border-bottom:1px solid var(--line)}.review-grid{grid-template-columns:1fr 1fr}.bottom-grid{grid-template-columns:1fr}.heading{align-items:start}.heading h1{font-size:24px}.summary{grid-template-columns:1fr 1fr}.stat:nth-child(2){border-right:0}.stat:nth-child(-n+2){border-bottom:1px solid var(--line)}}@media(max-width:520px){.content{padding:20px 14px}.topbar{padding:12px 14px}.topbar>span:last-child{display:none}.heading{display:block}.heading>button{margin-top:14px}.review-grid{grid-template-columns:1fr}.paper-wrap{padding:15px}.paper{min-height:0}.stat{padding:13px}.stat strong{font-size:22px}.bottom-meta{grid-template-columns:1fr}.toolbar button{flex:1 1 140px}.detail-head{padding:16px}.bar-row{grid-template-columns:65px 1fr 75px}}
+</style>
+</head>
+<body>
+<div class="app">
+<aside class="rail"><div class="brand">Genie<span>Ops Center · demo</span></div><nav aria-label="Prototype sections"><p class="eyebrow" style="padding:0 10px 10px">Finance workspace</p><a class="active" href="#claims">Expense claims</a><a href="#walkthrough">Guided walkthroughs</a><a href="#insights">Ask about expenses</a><a href="#policy">Demo policy</a></nav><p class="aside">A second finance use case.<br>From receipts to review.<br><br>Fictional data only.</p></aside>
+<main><header class="topbar"><span>Workspace / Finance / Expense claims</span><span class="proto">THROWAWAY PROTOTYPE · NOTHING IS SAVED</span></header><div class="content">
+<div class="heading"><div><p class="eyebrow" style="margin-bottom:8px">Expense Claim Checker</p><h1>Expense claims</h1><p class="muted">Can finance quickly understand and resolve claim exceptions? Try the sample receipts below. This explores the workflow, not the final screen design.</p></div><button id="reset" type="button">Reset demo</button></div>
+<section id="summary" class="summary" aria-label="Current claim totals"></section>
+<div class="toolbar" aria-label="Free-play actions"><span class="eyebrow">Try a receipt</span><button id="pack" class="primary">Load sample pack</button><button id="taxi">+ Taxi · SGD 28</button><button id="meal">+ Meal · SGD 125</button><button id="missing">+ Missing date · SGD 18</button><button id="duplicate">Try duplicate taxi</button></div>
+<p class="small muted">These buttons simulate document reading. No files are uploaded and no AI service is called.</p>
+<p id="feedback" class="banner" role="status" aria-live="polite"></p>
+<section id="claims" class="workspace" aria-label="Expense review workspace"><div class="inbox"><div class="section-head"><h2>Claims</h2><span id="claim-count" class="badge"></span></div><div id="claim-list"></div></div><div id="detail" class="detail"></div></section>
+<div class="bottom-grid"><section id="walkthrough" class="panel"><p class="eyebrow">Try the awkward cases</p><h2>Guided walkthroughs</h2><p class="small muted">Choose a scenario to start fresh. Each numbered step is a real action.</p><div id="scenario-tabs" class="tabs" role="tablist" aria-label="Walkthrough scenario"></div><div id="scenario-panel" role="tabpanel"></div></section>
+<section id="insights" class="panel"><p class="eyebrow">Ask preview · calculated locally</p><h2>From claims to answers</h2><p class="small muted">Preset questions over the current claims. This is not a live chat agent.</p><div class="actions"><button id="attention">What needs attention?</button><button id="spending">Show spending by category</button></div><div id="answer" class="answer"></div></section></div>
+<div class="bottom-meta"><details id="policy" open><summary>Demo policy &amp; boundaries</summary><ul class="policy"><li>SGD only. Meals: SGD 80 per receipt. Transport: SGD 60 per receipt.</li><li>A missing receipt date must be completed before review.</li><li>An over-limit claim needs a reviewer note. Review never removes the warning.</li><li>The same sample file is kept once. Similar-looking receipts are not detected.</li><li>“Reviewed” is not approval, reimbursement or proof that a claim is genuine.</li></ul></details><details open><summary>What changed</summary><ol id="history" class="history"></ol></details></div>
+<p class="footnote">Prototype only · All people and receipts are fictional · Reload resets every change · No payment, approval, accounting or production connection</p>
+</div></main></div>
+<script id="claim-model">
+// Pure state model: fixed sample receipts and demo policy, independent of the page.
+const SAMPLES = {
+  taxi: { id: "EX-001", file: "taxi-001.pdf", merchant: "City Cab", person: "Alex Tan", date: "2026-11-10", category: "Transport", cents: 2800, currency: "SGD", description: "Office to client meeting" },
+  meal: { id: "EX-002", file: "meal-002.pdf", merchant: "Garden Kitchen", person: "Alex Tan", date: "2026-11-10", category: "Meals", cents: 12500, currency: "SGD", description: "Client lunch" },
+  missing: { id: "EX-003", file: "taxi-003.pdf", merchant: "City Cab", person: "Jamie Lee", date: "", category: "Transport", cents: 1800, currency: "SGD", description: "Return to office" },
+};
+const LIMITS = { Meals: 8000, Transport: 6000 };
+function freshState() { return { claims: [], selected: null, history: [], message: "Start with Load sample pack, or follow a guided walkthrough below." }; }
+function findings(claim) { return { missingDate: !claim.date, excess: Math.max(0, claim.cents - LIMITS[claim.category]) }; }
+function needsAttention(claim) { const f = findings(claim); return !claim.reviewed && (f.missingDate || f.excess > 0); }
+function totals(state) { return { count: state.claims.length, cents: state.claims.reduce((n,c) => n+c.cents,0), attention: state.claims.filter(needsAttention), reviewed: state.claims.filter(c => c.reviewed).length }; }
+function reduceClaim(state, action) {
+  const next = { ...state, claims: state.claims.map(c => ({ ...c })), history: [...state.history] };
+  function say(message) { next.message = message; next.history.push(message); return next; }
+  if (action.type === "add") {
+    const sample = SAMPLES[action.key];
+    const existing = next.claims.find(c => c.file === sample.file);
+    if (existing) { next.selected = existing.id; return say("Duplicate upload: " + sample.file + " already exists. Nothing added; the total is unchanged."); }
+    next.claims.push({ ...sample, dateOrigin: sample.date ? "From sample receipt" : "Missing", reviewed: false, note: "" });
+    next.selected = sample.id;
+    return say("Added " + sample.file + ". Sample fields loaded; policy checks applied.");
+  }
+  if (action.type === "select") { next.selected = action.id; return next; }
+  const claim = next.claims.find(c => c.id === (action.id || next.selected));
+  if (!claim) return say("Add a sample receipt first.");
+  if (action.type === "date") {
+    const date = action.value;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(Date.parse(date)) || new Date(date).toISOString().slice(0,10) !== date) return say("Enter a valid receipt date before saving.");
+    claim.date = date; claim.dateOrigin = "Entered by reviewer"; claim.reviewed = false;
+    return say(claim.id + ": receipt date saved by the reviewer. Review status reset; the source receipt is unchanged.");
+  }
+  if (action.type === "review") {
+    const f = findings(claim);
+    if (claim.reviewed) return say(claim.id + " is already reviewed.");
+    if (f.missingDate) return say("Review blocked: add the missing receipt date first.");
+    const note = (action.note || "").trim();
+    if (f.excess > 0 && !note) return say("Review blocked: explain the over-limit claim in a reviewer note.");
+    claim.reviewed = true; claim.note = note;
+    return say(claim.id + ": marked reviewed" + (f.excess ? "; the over-limit warning is retained" : "") + ". No reimbursement approved.");
+  }
+  if (action.type === "reopen") { claim.reviewed = false; return say(claim.id + ": reopened for review. Previous reviewer note kept."); }
+  return next;
+}
+</script>
+<script>
+const $ = id => document.getElementById(id);
+const money = cents => "SGD " + (cents / 100).toFixed(2);
+const esc = text => String(text).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const dateLabel = date => date ? new Date(date + "T00:00:00Z").toLocaleDateString("en-GB", {day:"numeric",month:"short",year:"numeric",timeZone:"UTC"}) : "Not on receipt";
+let state = freshState(), activeScenario = "clear", step = 0, question = "attention";
+const SCENARIOS = {
+  clear: { label: "1. Clear claim", text: "A taxi receipt is complete and within the transport limit. Check it, then mark it reviewed.", steps: [ ["Add the SGD 28 taxi receipt", {type:"add",key:"taxi"}], ["Mark the taxi claim reviewed", {type:"review",id:"EX-001"}] ] },
+  limit: { label: "2. Over limit", text: "A SGD 125 meal exceeds the SGD 80 limit. A note records the review; it does not approve payment or erase the exception.", steps: [ ["Add the SGD 125 meal receipt", {type:"add",key:"meal"}], ["Try reviewing without a note", {type:"review",id:"EX-002"}], ["Record the explanation and review", {type:"review",id:"EX-002",note:"Client lunch for three people. Exception needs manager approval before reimbursement."}] ] },
+  duplicate: { label: "3. Duplicate", text: "Submit the same file twice. Only one claim and SGD 28 should remain in the total.", steps: [ ["Add the taxi receipt", {type:"add",key:"taxi"}], ["Submit the same receipt again", {type:"add",key:"taxi"}] ] },
+  missing: { label: "4. Missing date", text: "A receipt has no date. See the blocked review, add a date as a person, then review the claim.", steps: [ ["Add the receipt without a date", {type:"add",key:"missing"}], ["Try marking it reviewed", {type:"review",id:"EX-003"}], ["Enter 10 Nov 2026 as the date", {type:"date",id:"EX-003",value:"2026-11-10"}], ["Mark the completed claim reviewed", {type:"review",id:"EX-003"}] ] },
+};
+function status(c) { const f=findings(c); return c.reviewed ? ["Reviewed", "blue"] : f.missingDate ? ["Needs information", "warn"] : f.excess ? ["Needs review", "warn"] : ["No issues found", "ok"]; }
+function dispatch(action) { state=reduceClaim(state,action); render(); }
+function render() {
+  const focusId=document.activeElement?.id;
+  const t=totals(state);
+  $("summary").innerHTML=`<div class="stat"><span>Claimed total</span><strong>${money(t.cents)}</strong><span>${t.count} unique receipt${t.count===1?"":"s"}</span></div><div class="stat"><span>Needs attention</span><strong>${t.attention.length}</strong><span>Unresolved exceptions</span></div><div class="stat"><span>Amount needing attention</span><strong>${money(t.attention.reduce((n,c)=>n+c.cents,0))}</strong><span>Full claim amounts, not excess only</span></div><div class="stat"><span>Reviewed</span><strong>${t.reviewed} <span>/ ${t.count}</span></strong><span>No reimbursements approved</span></div>`;
+  $("feedback").textContent=state.message;
+  $("claim-count").textContent=t.count + " receipts";
+  $("claim-list").innerHTML=state.claims.length ? state.claims.map(c=>{const [label,tone]=status(c);return `<button id="select-${c.id}" class="claim" data-claim="${c.id}" aria-pressed="${c.id===state.selected}"><span class="claim-top"><strong>${c.merchant}</strong><strong class="nowrap">${money(c.cents)}</strong></span><small>${c.id} · ${c.person} · ${c.category}</small><span class="badge ${tone}">${label}</span>${c.reviewed&&findings(c).excess?'<span class="badge warn" style="margin-left:4px">Over limit</span>':''}</button>`;}).join("") : '<div class="empty"><h2>No claims yet</h2><p>Add a sample receipt above.<br>Every action stays in this browser tab.</p></div>';
+  renderDetail(); renderScenario(); renderAnswer();
+  $("history").innerHTML=state.history.length?state.history.map(item=>`<li>${esc(item)}</li>`).join(""):'<li>No actions yet.</li>';
+  if(focusId) $(focusId)?.focus({preventScroll:true});
+}
+function renderDetail() {
+  const c=state.claims.find(c=>c.id===state.selected);
+  if(!c){$("detail").innerHTML='<div class="empty" style="padding-top:100px"><span class="eyebrow">Receipt → checks → review</span><h2>Make the exceptions easy to explain.</h2><p>Load the sample pack to see one clear claim,<br>one over-limit meal and one missing receipt date.</p></div>';return;}
+  const sample=Object.values(SAMPLES).find(s=>s.id===c.id), f=findings(c), [label,tone]=status(c);
+  $("detail").innerHTML=`<div class="detail-head"><div><h2>${c.merchant} <span class="muted" style="font-weight:400">/ ${c.id}</span></h2><p class="small muted">Submitted by ${c.person} · ${c.file}</p></div><span class="badge ${tone}">${label}</span></div><div class="review-grid"><div class="paper-wrap"><p class="eyebrow" style="margin-bottom:12px">Source receipt · simulated</p><div class="paper"><p class="center small muted">FICTIONAL SAMPLE</p><p class="merchant">${sample.merchant}</p><p class="center muted">${sample.category==='Meals'?'Dining receipt':'Trip receipt'}</p><hr><div class="paper-row"><span>Receipt</span><span>${sample.id}</span></div><div class="paper-row"><span>Date</span><span>${sample.date?dateLabel(sample.date):'<mark>Not printed</mark>'}</span></div><hr><p>${sample.description}</p><div class="paper-row total"><span>Total</span><span>${money(sample.cents)}</span></div><hr><p class="center muted">Sample source remains unchanged<br>when a reviewer corrects a field.</p></div><p class="small muted" style="margin-top:10px">Page 1 of 1 · illustrative receipt, not a PDF viewer</p></div><div><p class="eyebrow">Claim details &amp; checks</p><dl class="fields"><dt>Claimant</dt><dd>${c.person}<small>Sample submission</small></dd><dt>Merchant</dt><dd>${c.merchant}<small>From sample receipt</small></dd><dt>Amount</dt><dd>${money(c.cents)}<small>From sample receipt</small></dd><dt>Category</dt><dd>${c.category}<small>Preset sample category</small></dd><dt>Receipt date</dt><dd>${dateLabel(c.date)}<small>${c.dateOrigin}</small></dd></dl>${f.missingDate?'<div class="finding"><strong>Missing receipt date</strong><p>Enter a date before marking this claim reviewed. It will be labelled as entered by a person.</p></div>':''}${f.excess?`<div class="finding"><strong>${money(f.excess)} above the meal limit</strong><p>${money(c.cents)} claimed · ${money(LIMITS[c.category])} per receipt. A reviewer note is required. The full claim stays recorded.</p></div>`:''}${!f.missingDate&&!f.excess?'<div class="finding clear"><strong>No issues found</strong><p>Required fields are present. This claim is within the demo category limit.</p></div>':''}<form id="review-form" class="editor"><label for="receipt-date">Receipt date</label><input id="receipt-date" type="date" value="${c.date}" aria-describedby="date-help"><p id="date-help" class="small muted">Saving a date resets the claim to unreviewed.</p><button id="save-date" type="button" style="margin-top:8px">Save date correction</button><label for="review-note">Reviewer note ${f.excess?'(required for this exception)':'(optional)'}</label><textarea id="review-note" maxlength="500" placeholder="What should the next person know?">${esc(c.note)}</textarea><div class="actions"><button id="mark-review" type="submit" class="primary" ${c.reviewed?'disabled':''}>${c.reviewed?'Reviewed':'Mark reviewed'}</button>${c.reviewed?'<button id="reopen" type="button">Reopen claim</button>':''}</div><p class="small muted" style="margin-top:8px">Review records a human check. It does not approve payment.</p></form></div></div>`;
+  $("save-date").onclick=()=>dispatch({type:"date",value:$("receipt-date").value});
+  $("review-form").onsubmit=e=>{e.preventDefault();dispatch({type:"review",note:$("review-note").value});};
+  if($("reopen")) $("reopen").onclick=()=>dispatch({type:"reopen"});
+}
+function renderScenario(){
+  $("scenario-tabs").innerHTML=Object.entries(SCENARIOS).map(([key,s])=>`<button id="tab-${key}" role="tab" aria-selected="${key===activeScenario}" aria-controls="scenario-panel" tabindex="${key===activeScenario?0:-1}" data-scenario="${key}">${s.label}</button>`).join("");
+  const s=SCENARIOS[activeScenario];
+  $("scenario-panel").setAttribute("aria-labelledby","tab-"+activeScenario);
+  $("scenario-panel").innerHTML=`<p class="small muted">${s.text}</p><ol class="steps">${s.steps.map(([title],i)=>`<li class="${i<step?'done':i===step?'current':''}"><span class="step-number">${i<step?'✓':i+1}</span><button id="step-${i}" data-step="${i}" ${i!==step?'disabled':''}>${title}</button></li>`).join("")}</ol>${step===s.steps.length?'<p class="small" style="color:var(--green)">Walkthrough finished. Explore the claim, or restart below.</p>':''}<button id="restart-scenario" class="small">Restart this walkthrough</button>`;
+  $("restart-scenario").onclick=()=>startScenario(activeScenario);
+}
+function renderAnswer(){
+  const t=totals(state);
+  if(!t.count){$("answer").innerHTML='<p class="muted">Add receipts to see answers based on the current state.</p>';return;}
+  if(question==='attention'){
+    const sum=t.attention.reduce((n,c)=>n+c.cents,0);
+    $("answer").innerHTML=`<p class="small muted">Which claims need attention?</p><p style="margin:7px 0"><strong>${money(sum)}</strong> across ${t.attention.length} unresolved claim${t.attention.length===1?'':'s'}.</p>${t.attention.length?'<ul>'+t.attention.map(c=>`<li><button data-open="${c.id}" style="border:0;padding:2px 0;color:var(--blue);background:transparent">${c.id} · ${c.merchant} · ${money(c.cents)}</button><br><span class="small muted">${findings(c).missingDate?'Missing receipt date':money(findings(c).excess)+' above the meal limit'}</span></li>`).join('')+'</ul>':'<p class="small muted">No unresolved exceptions. Clear, unreviewed claims still need a human check.</p>'}<p class="small muted">Counts full claim amounts where a date is missing or a category limit is exceeded, excluding reviewed claims. Reviewed exceptions keep their flags.</p>`;
+  }else{
+    const sums=Object.keys(LIMITS).map(category=>({category,cents:state.claims.filter(c=>c.category===category).reduce((n,c)=>n+c.cents,0)}));
+    $("answer").innerHTML=`<p class="small muted">What has been claimed by category?</p><p style="margin:7px 0"><strong>${money(t.cents)}</strong> in unique claims.</p><div class="mini-bars">${sums.map(s=>`<div class="bar-row"><span>${s.category}</span><div class="track"><div class="bar" style="width:${s.cents/t.cents*100}%"></div></div><span>${money(s.cents)}</span></div>`).join('')}</div><p class="small muted" style="margin-top:17px">Includes reviewed and unreviewed claims. Claim amounts are not amounts approved or paid.</p>`;
+  }
+}
+function startScenario(key){activeScenario=key;step=0;state=freshState();state.message="Walkthrough started: " + SCENARIOS[key].label.slice(3) + ". Follow the numbered buttons below.";render();}
+for(const key of ['taxi','meal','missing']) $(key).onclick=()=>dispatch({type:'add',key});
+$("duplicate").onclick=()=>dispatch({type:'add',key:'taxi'});
+$("pack").onclick=()=>{state=freshState();for(const key of ['taxi','meal','missing']) state=reduceClaim(state,{type:'add',key});state.selected='EX-002';state.message='Sample pack loaded: SGD 171.00 across 3 receipts. Two claims need attention; the meal is selected.';step=0;render();};
+$("reset").onclick=()=>{state=freshState();step=0;question='attention';render();};
+$("attention").onclick=()=>{question='attention';renderAnswer();};
+$("spending").onclick=()=>{question='spending';renderAnswer();};
+document.addEventListener('click',e=>{
+  const button=e.target.closest('button');if(!button)return;
+  if(button.dataset.claim) dispatch({type:'select',id:button.dataset.claim});
+  if(button.dataset.open){dispatch({type:'select',id:button.dataset.open});$('detail').scrollIntoView({block:'start'});}
+  if(button.dataset.scenario)startScenario(button.dataset.scenario);
+  if(button.dataset.step!==undefined){const i=Number(button.dataset.step);if(i===step){if(i===0)state=freshState();state=reduceClaim(state,SCENARIOS[activeScenario].steps[i][1]);step++;render();}}
+});
+$('scenario-tabs').addEventListener('keydown', e=>{
+  if(!['ArrowLeft','ArrowRight','Home','End'].includes(e.key))return;
+  e.preventDefault();
+  const keys=Object.keys(SCENARIOS), index=keys.indexOf(activeScenario);
+  const next=e.key==='Home'?0:e.key==='End'?keys.length-1:(index+(e.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
+  startScenario(keys[next]);$('tab-'+keys[next]).focus();
+});
+render();
+</script>
+</body>
+</html>
