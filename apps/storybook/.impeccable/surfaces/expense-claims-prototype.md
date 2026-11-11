@@ -25,4 +25,8 @@ FINISH: unreviewed and undocumented is unfinished; this build ends with the fini
 
 DESIGN.md stays unchanged; no new visual world or raster assets. Prototype policy is illustrative, and role switching is not authentication.
 
-Sidebar correction: Ask alone in Workspace; flat Expenses category contains Approvals and My claims as direct module page links. Category placement is a demo fixture, not a new admin capability.
+Sidebar correction: Ask, Dashboards and Slides in Workspace; flat Expenses category contains Approvals and My claims as direct module page links. Category placement is a demo fixture, not a new admin capability.
+
+Owner correction: Dashboards and Slides are uncategorized Workspace links. No Insights category.
+
+My claims refinement: disclose sample choices, prioritize employee form before source on narrow screens, keep corrective instructions beside fields, and preserve desktop evidence adjacency. Reviewer disposition ship at captured desktop/phone scope.

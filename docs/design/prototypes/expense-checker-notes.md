@@ -66,4 +66,12 @@ Source: `apps/storybook/stories/expense-claims/`. Existing AppShell, PageHeader,
 
 ### Sidebar correction
 
-Ask remains in Workspace. The illustrative Expenses module is assigned to one flat Expenses category; Approvals and My claims are direct page links, alphabetically ordered as the production navigation builder orders category entries. This is a fixed category fixture, not a new admin placement or subcategory mechanism.
+Ask, Dashboards and Slides remain in Workspace. The illustrative Expenses module is assigned to one flat Expenses category; Approvals and My claims are direct page links, alphabetically ordered as the production navigation builder orders category entries. This is a fixed category fixture, not a new admin placement or subcategory mechanism.
+
+Owner correction: Dashboards and Slides are uncategorized Workspace links. No Insights category.
+
+### My claims refinement
+
+Impeccable polish/adapt/clarify: sample choices use a New claim disclosure; employee form precedes the receipt on narrow screens; submission has a full-width phone target; date and purpose help explain the required action. Returned reason appears beside editable fields. Missing-information progress and completed-decision copy no longer imply a passed check or outstanding approval. Receipt filenames wrap at words.
+
+Verified 1440px desktop, 834px tablet and 390px phone layouts in Chromium emulation; native browser missing date correction, return/edit/resubmit and approval passed. Storybook Workflow and gate:fast passed; no console errors/warnings. Detector returned no findings. Supplemental fresh-context designer review: ship for supplied desktop and phone captures. Physical devices and other browser engines untested.

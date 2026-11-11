@@ -53,7 +53,16 @@ const PrototypeLink: ShellLinkComponent = ({ href, children, ...props }) => {
 };
 
 const navigation: ShellNavigation = {
-  workspace: [{ id: "core-ask", label: "Ask", href: "/ask" }],
+  workspace: [
+    { id: "core-ask", label: "Ask", href: "/ask" },
+    {
+      id: "analytics",
+      label: "Dashboards",
+      href: "/m/analytics",
+      icon: "layout-dashboard",
+    },
+    { id: "slides", label: "Slides", href: "/m/slides", icon: "presentation" },
+  ],
   pinned: [],
   categories: [
     {
@@ -95,24 +104,6 @@ const navigation: ShellNavigation = {
           label: "Payments",
           href: "/m/invoices/payments",
           icon: "banknote",
-        },
-      ],
-    },
-    {
-      id: "insights",
-      name: "Insights",
-      entries: [
-        {
-          id: "analytics",
-          label: "Dashboards",
-          href: "/m/analytics",
-          icon: "layout-dashboard",
-        },
-        {
-          id: "slides",
-          label: "Slides",
-          href: "/m/slides",
-          icon: "presentation",
         },
       ],
     },
@@ -234,8 +225,8 @@ function Receipt({ claim }: { claim: Claim }) {
           Fictional receipt · no real file uploaded
         </p>
       </div>
-      <p className="break-all text-xs text-muted-foreground">
-        {claim.file} · Source stays unchanged when a person completes the claim.
+      <p className="break-words text-xs text-muted-foreground">
+        {claim.file} · Original receipt; corrections are saved on the claim.
       </p>
     </section>
   );
@@ -280,7 +271,9 @@ function ClaimEditor({
             ? "AI pre-check"
             : claim.stage === "checking"
               ? "Checking…"
-              : "Pre-check complete"}
+              : claim.stage === "needs-info"
+                ? "Needs information"
+                : "Pre-check complete"}
         </li>
         <li>
           3.{" "}
@@ -288,12 +281,16 @@ function ClaimEditor({
             ? "Approved"
             : claim.stage === "rejected"
               ? "Rejected"
-              : "Human decision"}
+              : claim.stage === "returned"
+                ? "Returned to you"
+                : "Human decision"}
         </li>
       </ol>
       <div className="grid gap-6 xl:grid-cols-2">
-        <Receipt claim={claim} />
-        <div className="space-y-5">
+        <div className={approver ? "" : "order-last xl:order-first"}>
+          <Receipt claim={claim} />
+        </div>
+        <div className="min-w-0 space-y-5">
           {canEdit ? (
             <form
               className="space-y-4"
@@ -308,7 +305,21 @@ function ClaimEditor({
                 });
               }}
             >
-              <h3 className="text-base font-semibold">Claim details</h3>
+              <div className="space-y-1">
+                <h3 className="text-base font-semibold">
+                  {claim.stage === "draft"
+                    ? "Check your claim"
+                    : "Update your claim"}
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  {claim.stage === "returned"
+                    ? "Read Morgan’s note, make your changes, then resubmit."
+                    : "Confirm the receipt date and explain the business expense."}
+                </p>
+              </div>
+              {claim.stage === "returned" && claim.decision && (
+                <WarningNote>{claim.decision}</WarningNote>
+              )}
               <Field>
                 <FieldLabel htmlFor="claim-date">Receipt date</FieldLabel>
                 <Input
@@ -318,8 +329,9 @@ function ClaimEditor({
                   onChange={(e) => setDate(e.target.value)}
                 />
                 <FieldDescription>
-                  {claim.origin}. Missing dates will be returned by the
-                  pre-check.
+                  {claim.date
+                    ? `${claim.origin}. Correct it if needed.`
+                    : "Missing from the receipt. Enter the date to send this claim for approval."}
                 </FieldDescription>
               </Field>
               <Field>
@@ -332,12 +344,15 @@ function ClaimEditor({
                   onChange={(e) => setPurpose(e.target.value)}
                   maxLength={500}
                 />
+                <FieldDescription>
+                  Include the meeting, trip or attendees this expense was for.
+                </FieldDescription>
               </Field>
               <div className="flex items-center justify-between border-t border-border pt-4 text-sm">
                 <span>Claim amount</span>
                 <strong className="tabular-nums">{money(claim.cents)}</strong>
               </div>
-              <Button type="submit">
+              <Button type="submit" className="min-h-11 w-full sm:w-auto">
                 {claim.stage === "draft" ? "Submit claim" : "Resubmit claim"}
               </Button>
               <p className="text-xs text-muted-foreground">
@@ -388,15 +403,18 @@ function ClaimEditor({
                     ))
                   ) : (
                     <InfoNote>
-                      No issues found. A human still needs to approve this
-                      claim.
+                      {claim.stage === "approved"
+                        ? "No issues found during the pre-check."
+                        : claim.stage === "rejected"
+                          ? "Pre-check passed; Morgan rejected this claim."
+                          : "Pre-check passed. Morgan makes the final decision."}
                     </InfoNote>
                   )}
                 </>
               )}
             </section>
           )}
-          {claim.decision && (
+          {claim.decision && !(canEdit && claim.stage === "returned") && (
             <InfoNote>
               <p className="font-semibold">Morgan’s last decision note</p>
               <p>{claim.decision}</p>
@@ -668,7 +686,7 @@ export function ExpenseClaimsPrototype() {
                 description={
                   approver
                     ? "Make the final decision on claims that have completed their pre-checks."
-                    : "Submit an expense, complete missing information and follow its approval."
+                    : "Submit expenses and track Morgan’s decision."
                 }
               />
               <div className="flex flex-wrap items-center justify-between gap-3">
@@ -717,30 +735,37 @@ export function ExpenseClaimsPrototype() {
                   </p>
                 </div>
               ) : (
-                <section
-                  aria-label="Attach sample receipt"
-                  className="flex flex-wrap items-center gap-2 border-b border-border pb-4"
-                >
-                  <span className="mr-2 text-sm font-semibold">New claim</span>
-                  <Button
-                    variant="secondary"
-                    onClick={() => dispatch({ type: "add", key: "taxi" })}
+                <details className="border-b border-border pb-4">
+                  <summary
+                    className={`w-fit cursor-pointer rounded-md py-3 text-sm font-semibold ${focusRing}`}
                   >
-                    Attach taxi receipt
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => dispatch({ type: "add", key: "meal" })}
-                  >
-                    Attach meal receipt
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    onClick={() => dispatch({ type: "add", key: "missing" })}
-                  >
-                    Attach receipt without date
-                  </Button>
-                </section>
+                    New claim · choose a sample receipt
+                  </summary>
+                  <p className="mb-3 text-sm text-muted-foreground">
+                    Try a standard claim, a policy exception or a missing
+                    receipt date.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      variant="secondary"
+                      onClick={() => dispatch({ type: "add", key: "taxi" })}
+                    >
+                      Attach taxi receipt
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => dispatch({ type: "add", key: "meal" })}
+                    >
+                      Attach meal receipt
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      onClick={() => dispatch({ type: "add", key: "missing" })}
+                    >
+                      Attach receipt without date
+                    </Button>
+                  </div>
+                </details>
               )}
               <div className="grid items-start gap-6 lg:grid-cols-4">
                 <section
@@ -761,7 +786,7 @@ export function ExpenseClaimsPrototype() {
                       type="button"
                       aria-pressed={selected?.id === c.id}
                       onClick={() => dispatch({ type: "select", id: c.id })}
-                      className={`w-full space-y-2 rounded-lg border p-4 text-left ${focusRing} ${selected?.id === c.id ? "border-input bg-muted" : "border-border bg-background hover:bg-muted"}`}
+                      className={`w-full space-y-2 rounded-lg border p-3 text-left ${focusRing} ${selected?.id === c.id ? "border-input bg-muted" : "border-border bg-background hover:bg-muted"}`}
                     >
                       <span className="flex flex-wrap justify-between gap-2 text-sm font-semibold">
                         <span>{c.merchant}</span>
