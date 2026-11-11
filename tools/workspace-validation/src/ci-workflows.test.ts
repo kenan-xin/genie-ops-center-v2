@@ -1674,13 +1674,24 @@ describe("the gate:merge runner", () => {
 
     expect(first).toBe("pnpm run ci:pr");
 
-    // The gate drops --nx-bail so that every integration project reports.
+    // The gate drops --nx-bail so that every integration project reports, and
+    // runs the integration projects GATE_PARALLEL at a time.
     const expected = [
-      ...segments("ci:pr").map((stage) => stage.replace(" --nx-bail", "")),
+      ...segments("ci:pr").map((stage) =>
+        stage.replace(" --nx-bail", "").replace("--parallel=1", "--parallel=2")
+      ),
       ...rest,
     ];
 
-    const result = runGateMerge(WORKSPACE_ROOT, ["--list"]);
+    const result = spawnSync(
+      process.execPath,
+      [join(WORKSPACE_ROOT, GATE_MERGE_SCRIPT), "--list"],
+      {
+        cwd: WORKSPACE_ROOT,
+        encoding: "utf8",
+        env: { ...process.env, GATE_PARALLEL: "2" },
+      }
+    );
 
     expect(result.status).toBe(0);
     expect(result.stdout.trim().split("\n")).toEqual(expected);
