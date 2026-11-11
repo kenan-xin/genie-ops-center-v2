@@ -30,3 +30,7 @@ Sidebar correction: Ask, Dashboards and Slides in Workspace; flat Expenses categ
 Owner correction: Dashboards and Slides are uncategorized Workspace links. No Insights category.
 
 My claims refinement: disclose sample choices, prioritize employee form before source on narrow screens, keep corrective instructions beside fields, and preserve desktop evidence adjacency. Reviewer disposition ship at captured desktop/phone scope.
+
+## Redesign contract — requester overview
+
+THESIS: My claims is a place to find the next action, not an always-open editor. OWN-WORLD: preserve Ops Center typography, tokens, shared DataTable/Tabs/PageHeader; replace the prototype's composition only. STORY: scan claims, filter by responsibility, create or open one, submit, return to the list. FIRST VIEWPORT: compact demo disclosure, page heading and primary New claim, status tabs, full-width rows showing merchant/date/amount/next action/status. FORM: code-led local redesign; detail is a separate focused view with Back to my claims. No role switching: both module pages are exposed solely for demonstration, and the account identity stays constant. FINISH: inspect desktop/mobile and independent review; no shared DESIGN.md changes.

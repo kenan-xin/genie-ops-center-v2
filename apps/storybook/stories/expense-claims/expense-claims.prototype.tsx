@@ -7,6 +7,11 @@ import {
 } from "@genie/core/features/shell";
 import {
   Button,
+  DataTable,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
   Field,
   FieldLabel,
   FieldDescription,
@@ -31,6 +36,7 @@ import {
   limit,
   type Claim,
   type Action,
+  type State,
 } from "./expense-claims-model.prototype.ts";
 
 const Navigate = createContext<(path: string) => void>(() => {});
@@ -193,7 +199,7 @@ function Receipt({ claim }: { claim: Claim }) {
   return (
     <section
       aria-label="Source receipt"
-      className="space-y-4 rounded-lg bg-muted p-5"
+      className="space-y-4 border-t border-border pt-5 xl:border-t-0 xl:border-l xl:pl-6 xl:pt-0"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h3 className="text-sm font-semibold">Attached receipt</h3>
@@ -260,32 +266,6 @@ function ClaimEditor({
         </div>
         <ClaimStatus claim={claim} />
       </div>
-      <ol
-        aria-label="Claim progress"
-        className="grid grid-cols-3 gap-3 border-y border-border py-3 text-xs text-muted-foreground"
-      >
-        <li>1. {claim.stage === "draft" ? "Draft" : "Submitted"}</li>
-        <li>
-          2.{" "}
-          {claim.stage === "draft"
-            ? "AI pre-check"
-            : claim.stage === "checking"
-              ? "Checking…"
-              : claim.stage === "needs-info"
-                ? "Needs information"
-                : "Pre-check complete"}
-        </li>
-        <li>
-          3.{" "}
-          {claim.stage === "approved"
-            ? "Approved"
-            : claim.stage === "rejected"
-              ? "Rejected"
-              : claim.stage === "returned"
-                ? "Returned to you"
-                : "Human decision"}
-        </li>
-      </ol>
       <div className="grid gap-6 xl:grid-cols-2">
         <div className={approver ? "" : "order-last xl:order-first"}>
           <Receipt claim={claim} />
@@ -518,8 +498,253 @@ function ClaimEditor({
   );
 }
 
+function nextStep(claim: Claim) {
+  switch (claim.stage) {
+    case "draft":
+      return "Complete and submit";
+    case "checking":
+      return "Checking receipt and policy";
+    case "needs-info":
+      return !claim.date ? "Add receipt date" : "Add business purpose";
+    case "returned":
+      return "Read note and update claim";
+    case "pending":
+      return claim.checks.length
+        ? "Exception with Morgan for review"
+        : "With Morgan for approval";
+    case "approved":
+      return "Approved · not yet paid";
+    case "rejected":
+      return "Read Morgan’s decision";
+  }
+}
+
+function EmployeeClaims({
+  state,
+  dispatch,
+}: {
+  state: State;
+  dispatch: (action: Action) => void;
+}) {
+  const [view, setView] = useState<"list" | "new" | "detail">("list");
+  const claim = state.claims.find((item) => item.id === state.selected);
+
+  const groups = [
+    { id: "all", label: "All claims", rows: state.claims },
+    {
+      id: "attention",
+      label: "Needs attention",
+      rows: state.claims.filter(editable),
+    },
+    {
+      id: "progress",
+      label: "In progress",
+      rows: state.claims.filter((item) =>
+        ["checking", "pending"].includes(item.stage)
+      ),
+    },
+    {
+      id: "done",
+      label: "Completed",
+      rows: state.claims.filter((item) =>
+        ["approved", "rejected"].includes(item.stage)
+      ),
+    },
+  ];
+
+  const openClaim = (item: Claim) => {
+    dispatch({ type: "select", id: item.id });
+    setView("detail");
+  };
+
+  return (
+    <div className="space-y-6 pb-20 md:pb-6">
+      <div hidden={view !== "list"} className="space-y-6">
+        {view === "list" && (
+          <PageHeader
+            title="My claims"
+            description="Your expenses, from submission to decision."
+            actions={<Button onClick={() => setView("new")}>New claim</Button>}
+          />
+        )}
+        <Tabs defaultValue="all">
+          <div className="overflow-x-auto border-b border-border">
+            <TabsList>
+              {groups.map((group) => (
+                <TabsTrigger key={group.id} value={group.id}>
+                  {group.label} ({group.rows.length})
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+          {groups.map((group) => (
+            <TabsContent key={group.id} value={group.id}>
+              {group.rows.length ? (
+                <DataTable<Claim>
+                  label={`${group.label} — Alex Tan`}
+                  rows={group.rows}
+                  rowKey={(item) => item.id}
+                  rowLabel={(item) => `${item.merchant} ${item.id}`}
+                  columns={[
+                    {
+                      id: "claim",
+                      header: "Expense",
+                      cell: (item) => (
+                        <div className="space-y-1">
+                          <span className="font-semibold">{item.merchant}</span>
+                          <span className="block text-xs text-muted-foreground">
+                            {item.id} · {item.category}
+                          </span>
+                        </div>
+                      ),
+                    },
+                    {
+                      id: "date",
+                      header: "Receipt date",
+                      cell: (item) => dateText(item.date),
+                    },
+                    {
+                      id: "amount",
+                      header: "Amount",
+                      align: "end",
+                      cell: (item) => (
+                        <span className="font-semibold tabular-nums">
+                          {money(item.cents)}
+                        </span>
+                      ),
+                    },
+                    { id: "next", header: "Next step", cell: nextStep },
+                  ]}
+                  status={(item) => <ClaimStatus claim={item} />}
+                  card={{
+                    title: (item) => item.merchant,
+                    detail: (item) => `${item.id} · ${dateText(item.date)}`,
+                    badge: (item) => <ClaimStatus claim={item} />,
+                    facts: (item) => [nextStep(item)],
+                    trailing: (item) => (
+                      <span className="font-semibold tabular-nums">
+                        {money(item.cents)}
+                      </span>
+                    ),
+                  }}
+                  onOpenRow={openClaim}
+                />
+              ) : (
+                <div className="space-y-2 border-b border-border py-12 text-center">
+                  <h2 className="font-semibold">
+                    {group.id === "attention"
+                      ? "Nothing needs your attention"
+                      : group.id === "done"
+                        ? "No decisions yet"
+                        : "No claims here yet"}
+                  </h2>
+                  <p className="text-sm text-muted-foreground">
+                    {group.id === "done"
+                      ? "Approved and rejected claims appear here after review."
+                      : "Use All claims to see your expenses, or start a new claim."}
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+          ))}
+        </Tabs>
+        <p className="text-xs text-muted-foreground">
+          Claims for Alex Tan · Amounts in SGD · Approval does not mean
+          reimbursement has been paid.
+        </p>
+      </div>
+      {view !== "list" && (
+        <>
+          <Button variant="ghost" onClick={() => setView("list")}>
+            Back to my claims
+          </Button>
+          {view === "new" ? (
+            <div className="mx-auto max-w-2xl space-y-6">
+              <div className="space-y-2">
+                <h1 className="text-2xl font-semibold">New claim</h1>
+                <p className="text-sm text-muted-foreground">
+                  Start with a receipt, then confirm the expense details.
+                </p>
+              </div>
+              <section
+                className="space-y-4 rounded-xl border border-border p-6"
+                aria-label="Choose a sample receipt"
+              >
+                <div className="space-y-1">
+                  <h2 className="font-semibold">Choose a sample receipt</h2>
+                  <p className="text-sm text-muted-foreground">
+                    This prototype uses fictional receipts instead of file
+                    uploads.
+                  </p>
+                </div>
+                {(["taxi", "meal", "missing"] as const).map((key) => (
+                  <Button
+                    key={key}
+                    variant="secondary"
+                    className="h-auto min-h-14 w-full justify-between whitespace-normal py-3 text-left"
+                    onClick={() => {
+                      const existing = state.claims.find(
+                        (item) => item.key === key
+                      );
+
+                      if (existing)
+                        dispatch({ type: "select", id: existing.id });
+                      else dispatch({ type: "add", key });
+                      setView("detail");
+                    }}
+                  >
+                    <span>
+                      {samples[key].merchant}
+                      <span className="block text-xs font-normal text-muted-foreground">
+                        {samples[key].file} ·{" "}
+                        {state.claims.some((item) => item.key === key)
+                          ? "Open existing claim"
+                          : samples[key].date
+                            ? samples[key].category
+                            : "Missing receipt date"}
+                      </span>
+                    </span>
+                    <span className="tabular-nums">
+                      {money(samples[key].cents)}
+                    </span>
+                  </Button>
+                ))}
+              </section>
+              <p className="text-xs text-muted-foreground">
+                Demo policy: meals up to SGD 80; transport up to SGD 60.
+                Exceptions need an approver’s explanation.
+              </p>
+            </div>
+          ) : (
+            claim && (
+              <div className="mx-auto max-w-5xl space-y-5">
+                <p role="status" className="text-sm text-muted-foreground">
+                  {nextStep(claim)}
+                </p>
+                <ClaimEditor
+                  key={`${claim.id}-${claim.stage}`}
+                  claim={claim}
+                  approver={false}
+                  dispatch={dispatch}
+                />
+              </div>
+            )
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function ExpenseClaimsPrototype() {
-  const [state, dispatch] = useReducer(claimReducer, undefined, initialState);
+  const [state, dispatch] = useReducer(claimReducer, undefined, () => {
+    const demo = claimReducer(initialState(), { type: "demo" });
+
+    return {
+      ...demo,
+      claims: demo.claims.filter((item) => item.key !== "taxi"),
+    };
+  });
 
   const [path, setPath] = useState("/m/expenses/claims"),
     [completed, setCompleted] = useState(false),
@@ -560,8 +785,8 @@ export function ExpenseClaimsPrototype() {
           markUrl: "/brand/icon-blue.svg",
         }}
         user={{
-          name: approver ? "Morgan Lee" : "Alex Tan",
-          roleLabel: approver ? "Finance approver · demo" : "Employee · demo",
+          name: "Demo workspace",
+          roleLabel: "Expense claims demo",
         }}
         menu={{
           accountHref: "/account",
@@ -574,13 +799,18 @@ export function ExpenseClaimsPrototype() {
         linkComponent={PrototypeLink}
       >
         <main className="space-y-5 pb-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border py-3 text-xs text-muted-foreground">
-            <div className="flex flex-wrap items-center gap-2">
-              <LabelPill>Prototype</LabelPill>
-              <span>
-                Sample receipts · simulated AI and roles · resets on reload
-              </span>
-            </div>
+          <details className="border-b border-border py-2 text-xs text-muted-foreground">
+            <summary
+              className={`w-fit cursor-pointer rounded-md py-2 ${focusRing}`}
+            >
+              Demo · both views enabled
+            </summary>
+            <p className="mb-3 max-w-prose leading-relaxed">
+              My claims and Approvals are both shown so you can demo without
+              changing accounts. Requesters cannot access Approvals in
+              production. Receipts and AI checks are simulated; reload resets
+              this demo.
+            </p>
             <div className="flex flex-wrap gap-2">
               <Button
                 size="sm"
@@ -605,7 +835,7 @@ export function ExpenseClaimsPrototype() {
                 Reset demo
               </Button>
             </div>
-          </div>
+          </details>
           {preview ? (
             <>
               <p className="text-xs text-muted-foreground">
@@ -674,11 +904,13 @@ export function ExpenseClaimsPrototype() {
             <>
               <PageHeader title="Demo account" />
               <InfoNote>
-                This is a role simulation. Use My claims for Alex or Approvals
-                for Morgan; no account settings or sign-out action are
-                connected.
+                Both pages are exposed for this demo without switching accounts.
+                In production, requesters cannot access Approvals. All records
+                and AI checks here are simulated; reload resets the demo.
               </InfoNote>
             </>
+          ) : !approver ? (
+            <EmployeeClaims state={state} dispatch={dispatch} />
           ) : (
             <>
               <PageHeader
@@ -689,84 +921,31 @@ export function ExpenseClaimsPrototype() {
                     : "Submit expenses and track Morgan’s decision."
                 }
               />
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-sm">
-                  <strong>{approver ? "Morgan Lee" : "Alex Tan"}</strong>
-                  <span className="text-muted-foreground">
-                    {" "}
-                    · {approver ? "Finance approver" : "Sales · employee"}
-                  </span>
-                </p>
-                <Button
-                  variant="secondary"
-                  onClick={() => {
-                    setPath(
-                      approver ? "/m/expenses/claims" : "/m/expenses/approvals"
-                    );
-                    setCompleted(false);
-                  }}
-                >
-                  {approver ? "Switch to employee" : "Switch to approver"}
-                </Button>
-              </div>
               <p role="status" className="text-sm text-muted-foreground">
                 {state.message}
               </p>
-              {approver ? (
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
-                  <div className="flex gap-2">
-                    <Button
-                      variant={completed ? "ghost" : "secondary"}
-                      onClick={() => setCompleted(false)}
-                    >
-                      Awaiting decision ({pending.length})
-                    </Button>
-                    <Button
-                      variant={completed ? "secondary" : "ghost"}
-                      onClick={() => setCompleted(true)}
-                    >
-                      Decided &amp; returned
-                    </Button>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Approved:{" "}
-                    {money(approved.reduce((sum, c) => sum + c.cents, 0))} ·
-                    Paid: SGD 0.00
-                  </p>
-                </div>
-              ) : (
-                <details className="border-b border-border pb-4">
-                  <summary
-                    className={`w-fit cursor-pointer rounded-md py-3 text-sm font-semibold ${focusRing}`}
+
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
+                <div className="flex gap-2">
+                  <Button
+                    variant={completed ? "ghost" : "secondary"}
+                    onClick={() => setCompleted(false)}
                   >
-                    New claim · choose a sample receipt
-                  </summary>
-                  <p className="mb-3 text-sm text-muted-foreground">
-                    Try a standard claim, a policy exception or a missing
-                    receipt date.
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="secondary"
-                      onClick={() => dispatch({ type: "add", key: "taxi" })}
-                    >
-                      Attach taxi receipt
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => dispatch({ type: "add", key: "meal" })}
-                    >
-                      Attach meal receipt
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      onClick={() => dispatch({ type: "add", key: "missing" })}
-                    >
-                      Attach receipt without date
-                    </Button>
-                  </div>
-                </details>
-              )}
+                    Awaiting decision ({pending.length})
+                  </Button>
+                  <Button
+                    variant={completed ? "secondary" : "ghost"}
+                    onClick={() => setCompleted(true)}
+                  >
+                    Decided &amp; returned
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Approved:{" "}
+                  {money(approved.reduce((sum, c) => sum + c.cents, 0))} · Paid:
+                  SGD 0.00
+                </p>
+              </div>
               <div className="grid items-start gap-6 lg:grid-cols-4">
                 <section
                   aria-label={approver ? "Approval queue" : "My claim list"}
@@ -847,8 +1026,8 @@ export function ExpenseClaimsPrototype() {
                 </summary>
                 <ol className="mt-3 list-decimal space-y-2 pl-5 text-muted-foreground">
                   <li>
-                    As Alex, submit the taxi claim. Wait for AI checking, then
-                    switch to Morgan and approve it.
+                    Submit a claim in My claims. After AI checking, open
+                    Approvals from the sidebar to record Morgan’s decision.
                   </li>
                   <li>
                     Attach the meal receipt. Submit, then approve the exception
