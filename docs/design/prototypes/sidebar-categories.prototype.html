@@ -1,0 +1,110 @@
+<!doctype html>
+<!-- PROTOTYPE, throwaway. Question: how does the workspace menu read without the CATEGORIES caption?
+     Options A, B, C, switch with the bar at the bottom or ?v=a|b|c&theme=light|dark. Tokens copied from
+     packages/ui/src/theme/tokens.css; row sizes and classes from packages/core/src/features/shell/navigation-rail.tsx. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Prototype: side menu without the Categories caption</title>
+<style>
+[data-theme=light]{--bg:#fff;--fg:#111827;--panel:#f9fafb;--card:#fff;--muted:#4b5563;--border:#e5e7eb;--primary:#2563eb;--active-fg:#2563eb;--active-bg:#fff;--active-ring:#e5e7eb;--stage:#eef0f3}
+[data-theme=dark]{--bg:#030712;--fg:#f3f4f6;--panel:#111827;--card:#111827;--muted:#9ca3af;--border:#1f2937;--primary:#2563eb;--active-fg:#60a5fa;--active-bg:#1f2937;--active-ring:rgb(156 163 175 / .3);--stage:#000}
+*{box-sizing:border-box;margin:0}
+body{font-family:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;background:var(--stage);color:var(--fg);-webkit-font-smoothing:antialiased;padding:24px 16px 120px}
+.frames{display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+.frame{display:flex;height:640px;border:1px solid var(--border);border-radius:12px;overflow:hidden;background:var(--bg)}
+.frame.desk{width:760px}.frame.phone{width:300px}
+.cap-frame{font-size:12px;color:var(--muted);margin:0 0 6px 2px}
+aside{width:264px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);padding:12px;overflow:auto}
+.phone aside{width:100%;border-right:0}
+main{flex:1;padding:28px}
+main h1{font-size:20px;font-weight:600}main p{color:var(--muted);font-size:14px;margin-top:6px}
+.tenant{display:flex;align-items:center;gap:10px;padding:4px 8px 8px;font-size:14px;font-weight:600}
+.logo{width:28px;height:28px;border-radius:8px;background:var(--primary)}
+.caption{padding:20px 12px 6px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted)}
+.gap{height:20px}
+.row{display:flex;align-items:center;gap:10px;width:100%;border:0;background:none;color:var(--fg);font:inherit;font-size:14px;font-weight:500;text-align:left;border-radius:8px;padding:0 12px;height:40px;cursor:pointer;text-decoration:none}
+.row:hover{background:color-mix(in srgb,var(--border) 60%,transparent)}
+.row.tree{height:32px}
+.row.child{color:var(--muted)}.row.child:hover{color:var(--fg)}
+.row.cat{font-weight:600}
+.row[aria-current=page]{background:var(--active-bg);color:var(--active-fg);font-weight:600;box-shadow:0 0 0 1px var(--active-ring)}
+.row[aria-current=page] svg{color:var(--active-fg)}
+.row:focus-visible,.capbtn:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.row .label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+svg{width:20px;height:20px;flex-shrink:0;color:var(--muted);fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round}
+svg.s{width:16px;height:16px}
+.chev{transition:transform .15s}.closed .chev{transform:rotate(-90deg)}
+.badge{font-size:12px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--border);border-radius:999px;padding:0 7px;line-height:18px}
+.kids{display:flex;flex-direction:column;gap:2px}
+.kids.guide{margin-left:20px;padding-left:12px;border-left:1px solid var(--border)}
+.closed>.kids{display:none}
+.list{display:flex;flex-direction:column;gap:2px}
+.capbtn{display:flex;align-items:center;gap:6px;width:100%;border:0;background:none;font:inherit;cursor:pointer;padding:20px 12px 6px;font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);border-radius:6px;text-align:left}
+.capbtn:hover{color:var(--fg)}
+.capbtn .label{flex:1}
+.capbtn .count{font-weight:500;letter-spacing:0}
+.capbtn .chev{width:14px;height:14px;opacity:0;transition:opacity .15s,transform .15s}
+.capbtn:hover .chev,.capbtn:focus-visible .chev,.closed .capbtn .chev{opacity:1}
+.bar{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:flex;gap:6px;align-items:center;background:#111827;color:#f9fafb;padding:8px;border-radius:12px;box-shadow:0 10px 30px rgb(0 0 0 / .3);font-size:13px}
+.bar button{border:0;border-radius:8px;padding:8px 12px;background:transparent;color:inherit;font:inherit;cursor:pointer}
+.bar button[aria-pressed=true]{background:#2563eb;font-weight:600}
+.bar .sep{width:1px;height:22px;background:#374151;margin:0 4px}
+.note{max-width:1100px;margin:0 auto 16px;font-size:14px;line-height:1.5}
+.note b{font-weight:600}
+.state{font-family:ui-monospace,monospace;font-size:12px;color:var(--muted);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="note"><span id="desc"></span><div class="state" id="state"></div></div>
+<div class="frames">
+  <div><div class="cap-frame">Desktop, 1280 px and up</div><div class="frame desk"><aside data-menu></aside><main><h1 id="title">Invoices</h1><p>Page content. Click rows to move the selection, and click a category to collapse it.</p></main></div></div>
+  <div><div class="cap-frame">Phone drawer, 390 px</div><div class="frame phone"><aside data-menu></aside></div></div>
+</div>
+<div class="bar" role="toolbar" aria-label="Prototype controls">
+  <button data-v="a">A: drop caption</button><button data-v="b">B: category is caption</button><button data-v="c">C: category is a row</button>
+  <span class="sep"></span><button data-theme-toggle>Dark</button>
+</div>
+<script>
+const ICON={home:'<path d="M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z"/>',ask:'<path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/>',grip:'<circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/>',chev:'<path d="m6 9 6 6 6-6"/>',inbox:'<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.5 5h13L22 12v6a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2v-6z"/>',receipt:'<path d="M4 2v20l3-2 3 2 2-2 2 2 3-2 3 2V2l-3 2-3-2-2 2-2-2-3 2z"/><path d="M8 9h8M8 13h6"/>',bank:'<rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2"/>',dash:'<rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/>',slides:'<path d="M2 3h20M3 3v11a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V3M12 16v5M8 21h8"/>',folder:'<path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-8l-2-2H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"/>'};
+const svg=(n,c='')=>`<svg class="${c}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
+const NAV={workspace:[{id:'home',label:'Home',icon:'home'},{id:'ask',label:'Ask',icon:'ask'}],pinned:[{id:'p1',label:'October board review'},{id:'p2',label:'Collections watch'}],categories:[{id:'fin',name:'Finance',entries:[{id:'docs',label:'Documents',icon:'inbox'},{id:'inv',label:'Invoices',icon:'receipt'},{id:'pay',label:'Payments',icon:'bank'}]},{id:'ops',name:'Operations',entries:[{id:'dash',label:'Dashboards',icon:'dash'},{id:'deck',label:'Slides',icon:'slides'}]}]};
+const DESC={a:'<b>A, drop the caption.</b> The category row stays as built: chevron, name, count, entries indented under a guide line. The caption is replaced by the same gap. Smallest change.',b:'<b>B, the category is the caption.</b> "FINANCE 3" takes the caption\'s place, like PEOPLE AND ACCESS in the admin menu. Click it to collapse (a chevron shows on hover, focus and when collapsed). Entries are normal 40 px rows with icons, no indent.',c:'<b>C, the category is a row.</b> A 40 px row with a folder icon, like the Workspace rows, with the count and chevron on the right. Entries indent under it with icons. Every top-level row starts at the same x.'};
+const p=new URLSearchParams(location.search);
+let v=p.get('v')||'a',theme=p.get('theme')||'light',active='inv';const closed=new Set();
+const row=(e,cls='',icon=true)=>`<a href="#" class="row ${cls}" data-id="${e.id}" ${e.id===active?'aria-current="page"':''}>${e.grip?svg('grip','s'):''}${icon&&e.icon?svg(e.icon):''}<span class="label">${e.label}</span></a>`;
+function category(c){
+  const shut=closed.has(c.id),n=c.entries.length;
+  if(v==='a')return `<div class="${shut?'closed':''}"><button class="row tree cat" data-cat="${c.id}" aria-expanded="${!shut}">${svg('chev','s chev')}<span class="label">${c.name}</span><span class="badge">${n}</span></button><div class="kids guide">${c.entries.map(e=>row(e,'tree child',false)).join('')}</div></div>`;
+  if(v==='b')return `<div class="${shut?'closed':''}"><button class="capbtn" data-cat="${c.id}" aria-expanded="${!shut}"><span class="label">${c.name}</span><span class="count">${n}</span>${svg('chev','chev')}</button><div class="kids">${c.entries.map(e=>row(e)).join('')}</div></div>`;
+  return `<div class="${shut?'closed':''}"><button class="row cat" data-cat="${c.id}" aria-expanded="${!shut}">${svg('folder')}<span class="label">${c.name}</span><span class="badge">${n}</span>${svg('chev','s chev')}</button><div class="kids guide">${c.entries.map(e=>row(e,'tree child')).join('')}</div></div>`;
+}
+function menu(){
+  return `<div class="tenant"><span class="logo"></span>Demo customer</div>
+  <nav class="list" aria-label="Workspace"><div class="caption">Workspace</div>${NAV.workspace.map(e=>row(e)).join('')}</nav>
+  <nav class="list" aria-label="Pinned"><div class="caption">Pinned</div>${NAV.pinned.map(e=>row({...e,grip:1},'tree')).join('')}</nav>
+  <nav class="list" aria-label="Categories">${v==='b'?'':'<div class="gap"></div>'}${NAV.categories.map(category).join('')}</nav>`;
+}
+function render(){
+  document.documentElement.dataset.theme=theme;
+  document.querySelectorAll('[data-menu]').forEach(m=>m.innerHTML=menu());
+  document.querySelectorAll('.bar [data-v]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));
+  document.querySelector('[data-theme-toggle]').textContent=theme==='light'?'Dark':'Light';
+  document.getElementById('desc').innerHTML=DESC[v];
+  const all=[...NAV.workspace,...NAV.pinned,...NAV.categories.flatMap(c=>c.entries)];
+  document.getElementById('title').textContent=all.find(e=>e.id===active).label;
+  document.getElementById('state').textContent=`variant=${v} theme=${theme} active=${active} collapsed=[${[...closed].join(',')}]`;
+  history.replaceState(null,'',`?v=${v}&theme=${theme}`);
+}
+document.addEventListener('click',e=>{
+  const t=e.target.closest('[data-v],[data-theme-toggle],[data-cat],[data-id]');if(!t)return;e.preventDefault();
+  if(t.dataset.v)v=t.dataset.v;else if(t.hasAttribute('data-theme-toggle'))theme=theme==='light'?'dark':'light';
+  else if(t.dataset.cat){closed.has(t.dataset.cat)?closed.delete(t.dataset.cat):closed.add(t.dataset.cat);}
+  else active=t.dataset.id;
+  render();
+});
+render();
+</script>
+</body>
+</html>

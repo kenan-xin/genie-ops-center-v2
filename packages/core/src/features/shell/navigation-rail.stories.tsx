@@ -149,6 +149,18 @@ export const Workspace: Story = {
       )
     );
 
+    // 6wz1.102: each category name is the caption, so no Categories caption shows above them.
+    await expect(within(categories).queryByText("Categories")).toBeNull();
+
+    // Its entries are nav rows: each draws an icon, as a workspace row does.
+    const finance = within(categories).getByRole("group", { name: "Finance" });
+
+    await Promise.all(
+      within(finance)
+        .getAllByRole("link")
+        .map((link) => expect(link.querySelector("svg")).not.toBeNull())
+    );
+
     const current = canvas
       .getAllByRole("link")
       .filter((link) => link.getAttribute("aria-current") === "page");

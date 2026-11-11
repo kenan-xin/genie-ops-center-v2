@@ -2,6 +2,15 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-12
+
+### Changed, the category name is the caption in the workspace menu
+
+- The CATEGORIES caption repeated what the category names already say, so it is gone (`6wz1.102`).
+- Each category name is now a group caption with its entry count, in the type of the admin captions. The caption collapses its group, and a chevron shows on hover, on focus, and while collapsed.
+- The entries under a category are nav rows with icons, with no indent and no guide line.
+- The owner picked option B of three on 2026-11-12. File: `prototypes/sidebar-categories.prototype.html`.
+
 ## 2026-11-11
 
 ### Added, the phone adapt and secondary button prototypes, owner picks

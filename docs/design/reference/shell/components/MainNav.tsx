@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { ChevronDown, GripVertical, type LucideIcon } from 'lucide-react'
+import { Box, ChevronDown, GripVertical, type LucideIcon } from 'lucide-react'
 import { focusRing } from './helpers'
 
 export interface NavigationItem {
@@ -55,18 +55,11 @@ export function GroupLabel({ children }: { children: React.ReactNode }) {
 const rowBase = `flex min-h-11 items-center gap-2.5 rounded-lg px-3 motion-safe:transition-colors lg:min-h-0 ${focusRing}`
 const navRow = 'text-sm lg:h-10'
 const treeRow = 'text-sm lg:h-8'
-// A category is a heading, not a destination, so it is smaller and heavier than the
-// entries under it. The entries keep the readable size, because they are what you click.
-const catRow = 'text-sm lg:h-8'
 // Every row is medium and the selected one semibold, as the section navigator does.
 // The label sits in a fixed flex-1 box and 500 to 600 changes its advance by at most
 // 1px on a 62px label, so selecting a row never moves the text.
 const rowIdle =
   'font-medium text-gray-700 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-300 dark:hover:bg-gray-800 dark:hover:text-gray-100'
-// An entry inside a category is one step quieter than a top-level row, so the two levels never read alike.
-const rowChild =
-  'font-medium text-gray-600 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100'
-const rowCategory = 'font-semibold text-gray-900 hover:bg-gray-200/60 dark:text-gray-100 dark:hover:bg-gray-800'
 const rowActive = 'bg-white font-semibold text-blue-700 ring-1 ring-gray-200 dark:bg-gray-800 dark:text-blue-400 dark:ring-gray-700'
 
 function go(onNavigate: ((href: string) => void) | undefined, href: string) {
@@ -106,24 +99,21 @@ function NavLink({ item, onNavigate }: { item: NavigationItem; onNavigate?: (hre
   )
 }
 
-function EntryLink({
-  item,
-  child,
-  onNavigate,
-}: {
-  item: NavEntry
-  /** The entry sits under a category. The rail and the indent come from the wrapper. */
-  child?: boolean
-  onNavigate?: (href: string) => void
-}) {
+// A category or Other entry is a nav row with an icon, under its caption (owner, 2026-11-12).
+function EntryLink({ item, onNavigate }: { item: NavEntry; onNavigate?: (href: string) => void }) {
   return (
     <a
       href={item.href}
       aria-current={item.isActive ? 'page' : undefined}
       onClick={go(onNavigate, item.href)}
-      className={`${rowBase} ${treeRow} ${item.isActive ? rowActive : child ? rowChild : rowIdle}`}
+      className={`${rowBase} ${navRow} ${item.isActive ? rowActive : rowIdle}`}
     >
-      <span title={item.label} className="truncate">{item.label}</span>
+      <Box
+        aria-hidden
+        strokeWidth={1.75}
+        className={`size-5 shrink-0 ${item.isActive ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500'}`}
+      />
+      <span title={item.label} className="min-w-0 flex-1 truncate">{item.label}</span>
     </a>
   )
 }
@@ -151,29 +141,27 @@ function Category({ category, items, onNavigate }: { category: NavCategory; item
       return next
     })
   }
+  // The category name is the group caption and collapses the group (owner, 2026-11-12).
   return (
     <div className="flex flex-col gap-0.5">
       <button
         type="button"
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
-        className={`${rowBase} ${rowCategory} ${catRow} w-full text-left`}
+        className={`group flex min-h-11 w-full items-end gap-1.5 rounded-md px-3 pb-1.5 pt-5 text-left text-xs font-semibold uppercase tracking-wider text-gray-600 hover:text-gray-900 lg:min-h-0 dark:text-gray-400 dark:hover:text-gray-100 ${focusRing}`}
       >
+        <span className="min-w-0 flex-1 truncate">{category.name}</span>
+        <span className="font-medium tabular-nums tracking-normal">{items.length}</span>
         <ChevronDown
           aria-hidden
           strokeWidth={1.75}
-          className={`size-4 text-gray-500 motion-safe:transition-transform ${open ? '' : '-rotate-90'}`}
+          className={`size-3.5 motion-safe:transition ${open ? 'opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100' : '-rotate-90'}`}
         />
-        <span title={category.name} className="min-w-0 flex-1 truncate">{category.name}</span>
-        <span className="rounded-full bg-gray-200/70 px-1.5 text-xs font-medium tabular-nums text-gray-600 dark:bg-gray-800 dark:text-gray-300">
-          {items.length}
-        </span>
       </button>
-      {/* The rail starts under the chevron, so every entry reads as hanging off its category. */}
       {open ? (
-        <div className="ml-5 flex flex-col gap-0.5 border-l border-gray-200 pl-3 dark:border-gray-800">
+        <div className="flex flex-col gap-0.5">
           {items.map((s) => (
-            <EntryLink key={s.href} item={s} child onNavigate={onNavigate} />
+            <EntryLink key={s.href} item={s} onNavigate={onNavigate} />
           ))}
         </div>
       ) : null}
@@ -238,7 +226,6 @@ export function MainNav({ items, tree, categories = [], onNavigate }: MainNavPro
 
       {groups.length > 0 ? (
         <nav aria-label="Categories" className="flex flex-col gap-0.5">
-          <GroupLabel>Categories</GroupLabel>
           {groups.map((g) => (
             <Category key={g.category.id} category={g.category} items={g.items} onNavigate={onNavigate} />
           ))}

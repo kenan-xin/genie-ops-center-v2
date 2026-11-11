@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  Badge,
-  focusRing,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@genie/ui";
+import { focusRing, Tooltip, TooltipContent, TooltipTrigger } from "@genie/ui";
 import {
   Banknote,
   Blocks,
@@ -91,12 +85,9 @@ const treeRow = "lg:h-8";
 
 const rowIdle = "font-medium text-foreground hover:bg-border/60";
 
-// An entry under a category is one step quieter than a top-level row.
-const rowChild =
-  "font-medium text-muted-foreground hover:bg-border/60 hover:text-foreground";
-
-// A category is a heading, not a destination: heavier than the entries under it.
-const rowCategory = "font-semibold text-foreground hover:bg-border/60";
+// A category is a group caption that also collapses its group (6wz1.102): the caption's type,
+// 44 px tall under lg like every row, and its own hover tone instead of a row fill.
+const captionButton = `group flex min-h-11 w-full items-end gap-1.5 rounded-md px-3 pt-5 pb-1.5 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase motion-safe:transition-colors hover:text-foreground lg:min-h-0 ${focusRing}`;
 
 // A filled row, not a hairline: in dark the card is the panel's own color, so the fill steps up.
 const rowActive =
@@ -267,41 +258,38 @@ function Category(props: {
         aria-labelledby={`${props.groupId}-name`}
         aria-describedby={`${props.groupId}-count`}
         onClick={props.onToggle}
-        className={`${rowBase} ${treeRow} w-full text-left ${rowCategory}`}
+        className={captionButton}
       >
+        <span id={`${props.groupId}-name`} className="min-w-0 flex-1 truncate">
+          {category.name}
+        </span>
+        <span
+          id={`${props.groupId}-count`}
+          className="font-medium tracking-normal tabular-nums"
+        >
+          {category.entries.length}
+        </span>
+        {/* Shown on hover and focus, and always while collapsed, so a closed group says so. */}
         <ChevronDown
           aria-hidden
           strokeWidth={1.75}
-          className={`size-4 shrink-0 text-muted-foreground motion-safe:transition-transform ${props.open ? "" : "-rotate-90"}`}
+          className={`size-3.5 shrink-0 motion-safe:transition ${props.open ? "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" : "-rotate-90"}`}
         />
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <span id={`${props.groupId}-name`} className="min-w-0 flex-1" />
-            }
-          >
-            <span className="block truncate">{category.name}</span>
-          </TooltipTrigger>
-          <TooltipContent>{category.name}</TooltipContent>
-        </Tooltip>
-        <span id={`${props.groupId}-count`}>
-          <Badge variant="neutral">{category.entries.length}</Badge>
-        </span>
       </button>
       {props.open ? (
         <div
           role="group"
           id={props.groupId}
           aria-label={category.name}
-          className="ml-5 flex flex-col gap-0.5 border-l border-border pl-3"
+          className="flex flex-col gap-0.5"
         >
           {category.entries.map((entry) => (
             <Row
               key={entry.id}
               link={entry}
               active={props.active}
-              height={treeRow}
-              idle={rowChild}
+              height={navRow}
+              defaultIcon={Box}
               linkComponent={props.linkComponent}
               rail={false}
             />
@@ -314,7 +302,7 @@ function Category(props: {
 
 /**
  * The shell's navigation rail (R-27, R-29, R-31). The workspace chrome shows the workspace links,
- * the pinned rail, and one disclosure per category; the admin chrome shows one captioned group per
+ * the pinned rail, and one captioned group per category that collapses; the admin chrome shows one captioned group per
  * admin group, never indented. A row renders through the host's link component for a path of the
  * app, so a client router opens it without a document load. A row under `/viewer/` stays a plain
  * anchor, so a viewer's own policy is installed before its frame renders (R-42).
@@ -408,7 +396,8 @@ export function NavigationRail(props: NavigationRailProps) {
       )}
       {categories.length === 0 ? null : (
         <nav aria-label={strings.categories} className={list}>
-          <Caption rail={rail}>{strings.categories}</Caption>
+          {/* Each category name is its own caption (6wz1.102); the rail keeps its divider. */}
+          {rail ? <Caption rail>{strings.categories}</Caption> : null}
           {categories.map((category) => (
             <Category
               key={category.id}
