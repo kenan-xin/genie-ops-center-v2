@@ -258,6 +258,8 @@ export { Checkbox } from "./components/checkbox.tsx";
 
 export { ToggleGroup, ToggleGroupItem } from "./components/toggle-group.tsx";
 
+export { Toolbar, ToolbarButton } from "./components/toolbar.tsx";
+
 export {
   Tabs,
   TabsContent,

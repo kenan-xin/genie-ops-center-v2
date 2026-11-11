@@ -19,12 +19,10 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
   ToggleGroup,
   ToggleGroupItem,
+  Toolbar,
+  ToolbarButton,
 } from "@genie/ui";
 import {
   AlignCenterIcon,
@@ -34,15 +32,24 @@ import {
   ArrowLeftIcon,
   ArrowRightIcon,
   ArrowUpIcon,
+  EllipsisIcon,
   MinusIcon,
   MoveIcon,
   PaintBucketIcon,
   PencilIcon,
   PlusIcon,
+  RotateCcwIcon,
   SquareIcon,
+  Trash2Icon,
   TypeIcon,
 } from "lucide-react";
-import { type ReactNode, useId, useState, useSyncExternalStore } from "react";
+import {
+  type ReactNode,
+  useId,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
 import {
   BORDER_WIDTHS,
@@ -83,7 +90,7 @@ const WEIGHT_LABEL = {
 
 const PHONE_QUERY = "(max-width: 767px)";
 
-/** True below 768 px, where Position opens a bottom sheet instead of a popover. */
+/** True below 768 px, where the toolbar is the dock. */
 function useIsPhone(): boolean {
   return useSyncExternalStore(
     (notify) => {
@@ -99,26 +106,18 @@ function useIsPhone(): boolean {
 }
 
 /** Swatches, a hex field and a clear choice; a pick or a valid hex calls `onPick` once. */
-export function ColorChoice(props: {
-  readonly label: string;
+export function ColorPanel(props: {
   readonly value: string | undefined;
   readonly clearLabel: string;
   readonly helper?: string | undefined;
   readonly disabled?: boolean | undefined;
-  readonly icon: ReactNode;
   readonly onPick: (color: string | null) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [hex, setHex] = useState("");
   const [error, setError] = useState<string | null>(null);
   const hexId = useId();
   const helpId = useId();
   const errorId = useId();
-
-  function pick(color: string | null): void {
-    setOpen(false);
-    props.onPick(color);
-  }
 
   function applyHex(): void {
     const parsed = hexColor.safeParse(hex.trim());
@@ -130,8 +129,80 @@ export function ColorChoice(props: {
     }
 
     setError(null);
-    pick(parsed.data.toUpperCase());
+    props.onPick(parsed.data.toUpperCase());
   }
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-1.5">
+        {SWATCHES.map(([name, color]) => (
+          <button
+            key={color}
+            type="button"
+            aria-label={`${name} ${color}`}
+            aria-pressed={props.value?.toUpperCase() === color}
+            disabled={props.disabled}
+            className="size-8 rounded-md border border-border bg-(--swatch) disabled:opacity-50 aria-pressed:ring-2 aria-pressed:ring-ring aria-pressed:ring-offset-1"
+            style={
+              // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
+              { "--swatch": color } as React.CSSProperties
+            }
+            onClick={() => props.onPick(color)}
+          />
+        ))}
+      </div>
+      <div className="grid gap-1">
+        <label htmlFor={hexId} className="text-sm font-medium">
+          Hex
+        </label>
+        <div className="flex gap-2">
+          <Input
+            id={hexId}
+            value={hex}
+            placeholder="#1E3A8A"
+            aria-invalid={error === null ? undefined : true}
+            aria-describedby={error === null ? helpId : `${helpId} ${errorId}`}
+            onValueChange={setHex}
+            onKeyDown={(event) => {
+              // The card stays open through a save, so Enter waits for it as Apply does.
+              if (event.key === "Enter" && props.disabled !== true) applyHex();
+            }}
+          />
+          <Button
+            variant="secondary"
+            disabled={props.disabled}
+            onClick={applyHex}
+          >
+            Apply
+          </Button>
+        </div>
+        <FieldDescription id={helpId}>
+          {props.helper ?? "Or type a 6-digit hex color."}
+        </FieldDescription>
+        {error === null ? null : <FieldError id={errorId}>{error}</FieldError>}
+      </div>
+      <Button
+        variant="ghost"
+        disabled={props.disabled}
+        onClick={() => props.onPick(null)}
+      >
+        {props.clearLabel}
+      </Button>
+    </>
+  );
+}
+
+/** The desktop popover around `ColorPanel`; a pick closes it. */
+export function ColorChoice(props: {
+  readonly label: string;
+  readonly value: string | undefined;
+  readonly clearLabel: string;
+  readonly helper?: string | undefined;
+  readonly disabled?: boolean | undefined;
+  readonly icon: ReactNode;
+  readonly onPick: (color: string | null) => void;
+}) {
+  const [open, setOpen] = useState(false);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -149,54 +220,15 @@ export function ColorChoice(props: {
       <PopoverContent align="start" className="w-72">
         <div className="grid gap-3">
           <PopoverTitle>{props.label}</PopoverTitle>
-          <div className="flex flex-wrap gap-1.5">
-            {SWATCHES.map(([name, color]) => (
-              <button
-                key={color}
-                type="button"
-                aria-label={`${name} ${color}`}
-                aria-pressed={props.value?.toUpperCase() === color}
-                className="size-8 rounded-md border border-border bg-(--swatch) aria-pressed:ring-2 aria-pressed:ring-ring aria-pressed:ring-offset-1"
-                style={
-                  // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
-                  { "--swatch": color } as React.CSSProperties
-                }
-                onClick={() => pick(color)}
-              />
-            ))}
-          </div>
-          <div className="grid gap-1">
-            <label htmlFor={hexId} className="text-sm font-medium">
-              Hex
-            </label>
-            <div className="flex gap-2">
-              <Input
-                id={hexId}
-                value={hex}
-                placeholder="#1E3A8A"
-                aria-invalid={error === null ? undefined : true}
-                aria-describedby={
-                  error === null ? helpId : `${helpId} ${errorId}`
-                }
-                onValueChange={setHex}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter") applyHex();
-                }}
-              />
-              <Button variant="secondary" onClick={applyHex}>
-                Apply
-              </Button>
-            </div>
-            <FieldDescription id={helpId}>
-              {props.helper ?? "Or type a 6-digit hex color."}
-            </FieldDescription>
-            {error === null ? null : (
-              <FieldError id={errorId}>{error}</FieldError>
-            )}
-          </div>
-          <Button variant="ghost" onClick={() => pick(null)}>
-            {props.clearLabel}
-          </Button>
+          <ColorPanel
+            value={props.value}
+            clearLabel={props.clearLabel}
+            helper={props.helper}
+            onPick={(color) => {
+              setOpen(false);
+              props.onPick(color);
+            }}
+          />
         </div>
       </PopoverContent>
     </Popover>
@@ -324,23 +356,35 @@ export type StyleToolbarProps = {
   readonly saving?: boolean;
   readonly onStep: (step: DeckChange) => void;
   readonly onEditText: () => void;
+  /** Removes the element; undefined when the slide rules refuse the slide without it. Phone only. */
+  readonly onDelete?: (() => void) | undefined;
 };
 
 /**
  * The style controls of the selected element (variant A, S7-43). A title, text or bullet list
  * takes color, size, weight, alignment, fill and border; a figure, chart, table or image only
- * fill and border. Each control sends one `change-element` step. Below 768 px it docks at the
- * bottom of the screen and wraps its controls, in three rows at 390 px (P13-10).
+ * fill and border. Each control sends one `change-element` step. Below 768 px it is a dock of
+ * one row of tools at the bottom of the screen, each opening a card above it (czjw.156, P16e-7).
  */
 export function StyleToolbar(props: StyleToolbarProps) {
   const { element, slideId, index, saving } = props;
   const style = element.style ?? {};
   const text = TEXT_KINDS.has(element.kind);
   const phone = useIsPhone();
-  const [positionOpen, setPositionOpen] = useState(false);
+  const dock = useRef<HTMLDivElement>(null);
+  // The open card of the dock: one at a time.
+  const [tool, setTool] = useState<string | null>(null);
+
+  const label = `${element.kind === "title" ? "Title" : element.kind[0]?.toUpperCase() + element.kind.slice(1)} style`;
 
   const send = (change: StyleChange | null) =>
     props.onStep({ op: "change-element", slideId, index, style: change });
+
+  const border = (width: (typeof BORDER_WIDTHS)[number]) =>
+    send({
+      border:
+        width === 0 ? null : { color: style.border?.color ?? "#111827", width },
+    });
 
   const position = (
     <PositionControl
@@ -351,17 +395,227 @@ export function StyleToolbar(props: StyleToolbarProps) {
     />
   );
 
-  const positionLabel = (
+  const textControls = (
     <>
-      <MoveIcon aria-hidden="true" /> Position
+      <Select
+        items={FONT_SIZES.map((size) => ({
+          value: String(size),
+          label: String(size),
+        }))}
+        value={style.fontSize === undefined ? null : String(style.fontSize)}
+        disabled={saving}
+        onValueChange={(value) =>
+          send({
+            fontSize:
+              value === null
+                ? null
+                : (FONT_SIZES.find((size) => String(size) === value) ?? null),
+          })
+        }
+      >
+        <SelectTrigger aria-label="Font size" className="w-20">
+          <SelectValue placeholder="Size" />
+        </SelectTrigger>
+        <SelectContent>
+          {FONT_SIZES.map((size) => (
+            <SelectItem key={size} value={String(size)}>
+              {size}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        items={FONT_WEIGHTS.map((weight) => ({
+          value: weight,
+          label: WEIGHT_LABEL[weight],
+        }))}
+        value={style.weight ?? null}
+        disabled={saving}
+        onValueChange={(value) =>
+          send({
+            weight: FONT_WEIGHTS.find((weight) => weight === value) ?? null,
+          })
+        }
+      >
+        <SelectTrigger aria-label="Weight" className="w-32">
+          <SelectValue placeholder="Weight" />
+        </SelectTrigger>
+        <SelectContent>
+          {FONT_WEIGHTS.map((weight) => (
+            <SelectItem key={weight} value={weight}>
+              {WEIGHT_LABEL[weight]}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <ToggleGroup
+        aria-label="Alignment"
+        value={style.align === undefined ? [] : [style.align]}
+        disabled={saving}
+        onValueChange={(value) => {
+          const align = value[0];
+
+          send({
+            align:
+              align === "left" || align === "center" || align === "right"
+                ? align
+                : null,
+          });
+        }}
+      >
+        <ToggleGroupItem value="left" aria-label="Align left">
+          <AlignLeftIcon aria-hidden="true" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="center" aria-label="Align center">
+          <AlignCenterIcon aria-hidden="true" />
+        </ToggleGroupItem>
+        <ToggleGroupItem value="right" aria-label="Align right">
+          <AlignRightIcon aria-hidden="true" />
+        </ToggleGroupItem>
+      </ToggleGroup>
     </>
   );
+
+  const fillPick = (fill: string | null) =>
+    send(fillChange(element, props.background, fill));
+
+  if (phone) {
+    // An action of More closes its card first, so the sheet or the save never opens under it.
+    const act = (action: () => void) => () => {
+      setTool(null);
+      action();
+    };
+
+    const tools: (readonly [string, ReactNode, ReactNode])[] = [
+      ...(text
+        ? [
+            [
+              "Text",
+              <TypeIcon aria-hidden="true" />,
+              <>
+                <span className="text-sm font-semibold">Text color</span>
+                <ColorPanel
+                  value={style.color}
+                  clearLabel="Use the theme color"
+                  disabled={saving}
+                  onPick={(color) => send({ color })}
+                />
+                <div className="flex flex-wrap items-center gap-2">
+                  {textControls}
+                </div>
+              </>,
+            ] as const,
+          ]
+        : []),
+      [
+        "Fill",
+        <PaintBucketIcon aria-hidden="true" />,
+        <ColorPanel
+          value={style.fill}
+          clearLabel="No fill"
+          disabled={saving}
+          onPick={fillPick}
+        />,
+      ],
+      [
+        "Border",
+        <SquareIcon aria-hidden="true" />,
+        <ToggleGroup
+          aria-label="Border width"
+          value={[String(style.border?.width ?? 0)]}
+          disabled={saving}
+          onValueChange={(value) => {
+            const width = BORDER_WIDTHS.find((w) => String(w) === value[0]);
+
+            // A press on the pressed value leaves none; the border stays as it is.
+            if (width !== undefined) border(width);
+          }}
+        >
+          {BORDER_WIDTHS.map((width) => (
+            <ToggleGroupItem key={width} value={String(width)}>
+              {width === 0 ? "None" : `${width} px`}
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>,
+      ],
+      ["Position", <MoveIcon aria-hidden="true" />, position],
+      [
+        "More",
+        <EllipsisIcon aria-hidden="true" />,
+        <div className="grid gap-2">
+          {text ? (
+            <Button
+              variant="secondary"
+              className="w-full justify-start"
+              disabled={saving}
+              onClick={act(props.onEditText)}
+            >
+              <PencilIcon aria-hidden="true" /> Edit text
+            </Button>
+          ) : null}
+          <Button
+            variant="secondary"
+            className="w-full justify-start"
+            disabled={saving || element.style === undefined}
+            onClick={act(() => send(null))}
+          >
+            <RotateCcwIcon aria-hidden="true" /> Use theme style
+          </Button>
+          <Button
+            variant="danger-outline"
+            className="w-full justify-start"
+            disabled={saving || props.onDelete === undefined}
+            onClick={act(() => props.onDelete?.())}
+          >
+            <Trash2Icon aria-hidden="true" /> Delete element
+          </Button>
+        </div>,
+      ],
+    ];
+
+    return (
+      // The shell keeps the page's last row clear of a bottom bar, and lifts it over the agent.
+      <div
+        data-shell-bottom-bar=""
+        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-2 shadow-lg"
+      >
+        <Toolbar ref={dock} aria-label={label} className="justify-around">
+          {tools.map(([name, icon, card]) => (
+            <Popover
+              key={name}
+              open={tool === name}
+              onOpenChange={(open) => setTool(open ? name : null)}
+            >
+              <PopoverTrigger render={<ToolbarButton />}>
+                {icon}
+                {name}
+              </PopoverTrigger>
+              <PopoverContent
+                anchor={dock}
+                side="top"
+                sideOffset={8}
+                className="w-(--anchor-width)"
+              >
+                <div className="grid gap-3 p-1.5">
+                  <PopoverTitle>{name}</PopoverTitle>
+                  {/* Review Focus 4: a short card that scrolls leaves the selected element in view. */}
+                  <div className="-m-1 grid max-h-48 gap-3 overflow-y-auto p-1">
+                    {card}
+                  </div>
+                </div>
+              </PopoverContent>
+            </Popover>
+          ))}
+        </Toolbar>
+      </div>
+    );
+  }
 
   return (
     <div
       role="toolbar"
-      aria-label={`${element.kind === "title" ? "Title" : element.kind[0]?.toUpperCase() + element.kind.slice(1)} style`}
-      className="fixed inset-x-0 bottom-0 z-30 flex flex-wrap items-center gap-1 border-t border-border bg-background p-2 shadow-lg md:static md:z-auto md:w-fit md:rounded-lg md:border md:shadow-sm"
+      aria-label={label}
+      className="flex w-fit flex-wrap items-center gap-1 rounded-lg border border-border bg-background p-2 shadow-sm"
     >
       {text ? (
         <>
@@ -373,83 +627,7 @@ export function StyleToolbar(props: StyleToolbarProps) {
             icon={<TypeIcon aria-hidden="true" />}
             onPick={(color) => send({ color })}
           />
-          <Select
-            items={FONT_SIZES.map((size) => ({
-              value: String(size),
-              label: String(size),
-            }))}
-            value={style.fontSize === undefined ? null : String(style.fontSize)}
-            disabled={saving}
-            onValueChange={(value) =>
-              send({
-                fontSize:
-                  value === null
-                    ? null
-                    : (FONT_SIZES.find((size) => String(size) === value) ??
-                      null),
-              })
-            }
-          >
-            <SelectTrigger aria-label="Font size" className="w-20">
-              <SelectValue placeholder="Size" />
-            </SelectTrigger>
-            <SelectContent>
-              {FONT_SIZES.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select
-            items={FONT_WEIGHTS.map((weight) => ({
-              value: weight,
-              label: WEIGHT_LABEL[weight],
-            }))}
-            value={style.weight ?? null}
-            disabled={saving}
-            onValueChange={(value) =>
-              send({
-                weight: FONT_WEIGHTS.find((weight) => weight === value) ?? null,
-              })
-            }
-          >
-            <SelectTrigger aria-label="Weight" className="w-32">
-              <SelectValue placeholder="Weight" />
-            </SelectTrigger>
-            <SelectContent>
-              {FONT_WEIGHTS.map((weight) => (
-                <SelectItem key={weight} value={weight}>
-                  {WEIGHT_LABEL[weight]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <ToggleGroup
-            aria-label="Alignment"
-            value={style.align === undefined ? [] : [style.align]}
-            disabled={saving}
-            onValueChange={(value) => {
-              const align = value[0];
-
-              send({
-                align:
-                  align === "left" || align === "center" || align === "right"
-                    ? align
-                    : null,
-              });
-            }}
-          >
-            <ToggleGroupItem value="left" aria-label="Align left">
-              <AlignLeftIcon aria-hidden="true" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="center" aria-label="Align center">
-              <AlignCenterIcon aria-hidden="true" />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="right" aria-label="Align right">
-              <AlignRightIcon aria-hidden="true" />
-            </ToggleGroupItem>
-          </ToggleGroup>
+          {textControls}
         </>
       ) : null}
       <ColorChoice
@@ -458,7 +636,7 @@ export function StyleToolbar(props: StyleToolbarProps) {
         clearLabel="No fill"
         disabled={saving}
         icon={<PaintBucketIcon aria-hidden="true" />}
-        onPick={(fill) => send(fillChange(element, props.background, fill))}
+        onPick={fillPick}
       />
       <DropdownMenu>
         <DropdownMenuTrigger
@@ -470,55 +648,24 @@ export function StyleToolbar(props: StyleToolbarProps) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start">
           {BORDER_WIDTHS.map((width) => (
-            <DropdownMenuItem
-              key={width}
-              onClick={() =>
-                send({
-                  border:
-                    width === 0
-                      ? null
-                      : { color: style.border?.color ?? "#111827", width },
-                })
-              }
-            >
+            <DropdownMenuItem key={width} onClick={() => border(width)}>
               {width === 0 ? "No border" : `Border ${width} pixels`}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-      {phone ? (
-        <>
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={saving}
-            onClick={() => setPositionOpen(true)}
-          >
-            {positionLabel}
-          </Button>
-          <Sheet open={positionOpen} onOpenChange={setPositionOpen}>
-            <SheetContent side="bottom">
-              <SheetHeader>
-                <SheetTitle>Position and size</SheetTitle>
-              </SheetHeader>
-              <div className="p-4">{position}</div>
-            </SheetContent>
-          </Sheet>
-        </>
-      ) : (
-        <Popover>
-          <PopoverTrigger
-            disabled={saving}
-            render={<Button variant="ghost" size="sm" />}
-          >
-            {positionLabel}
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-auto">
-            <PopoverTitle>Position and size</PopoverTitle>
-            {position}
-          </PopoverContent>
-        </Popover>
-      )}
+      <Popover>
+        <PopoverTrigger
+          disabled={saving}
+          render={<Button variant="ghost" size="sm" />}
+        >
+          <MoveIcon aria-hidden="true" /> Position
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-auto">
+          <PopoverTitle>Position and size</PopoverTitle>
+          {position}
+        </PopoverContent>
+      </Popover>
       {text ? (
         <Button
           variant="ghost"

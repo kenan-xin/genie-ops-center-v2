@@ -44,6 +44,7 @@ import {
   type ElementInput,
   slideInput,
   type SlideInput,
+  slideRuleIssues,
   textElement,
   titleElement,
 } from "../contract.ts";
@@ -1195,6 +1196,49 @@ export function DeckView(props: DeckViewProps) {
                       number: index + 1,
                       expectedHash: deck.contentHash,
                     })
+                  }
+                  onDelete={
+                    // A Delete the slide rules refuse is offered disabled, never refused after.
+                    slideRuleIssues(
+                      current.elements
+                        .map(({ kind }) => kind)
+                        .toSpliced(selected, 1)
+                    ).length > 0
+                      ? undefined
+                      : () => {
+                          const input = slideInputOf(withRun(current));
+
+                          // Every element states its box and style, so none takes the removed one's (czjw.157).
+                          void sendStep(
+                            [
+                              {
+                                op: "change-slide",
+                                slideId: current.id,
+                                slide: {
+                                  ...input,
+                                  elements: input.elements.toSpliced(
+                                    selected,
+                                    1
+                                  ),
+                                },
+                              },
+                            ],
+                            {
+                              expectedHash: deck.contentHash,
+                              slideNumber: index + 1,
+                            }
+                          ).then((saved) => {
+                            // Only the deleted element's selection goes; one made during the save stays.
+                            if (saved) {
+                              setSelection((now) =>
+                                now?.slideId === current.id &&
+                                now.index === selected
+                                  ? null
+                                  : now
+                              );
+                            }
+                          });
+                        }
                   }
                 />
               )}

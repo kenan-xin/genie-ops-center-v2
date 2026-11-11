@@ -60,6 +60,7 @@ const config: StorybookConfig = {
       optimizeDeps: {
         include: [
           "@ai-sdk/react",
+          "@base-ui/react/toolbar",
           "@orpc/contract",
           "@tanstack/react-form",
           "@tanstack/react-pacer",

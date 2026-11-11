@@ -19,6 +19,7 @@ import { DEV_MODULES, SLIDES_PEOPLE } from "./global-setup.ts";
 import {
   closeSlidesDatabase,
   type DeckContent,
+  openStyleTool,
   removeOwnDecks,
   resetChangeDeck,
   undoLengthOf,
@@ -338,7 +339,13 @@ test("a text color below the contrast limit is refused, names the element and sa
       page,
       page.getByRole("button", { name: /^Title "Collections are on track for/ })
     );
-    await activate(page, page.getByRole("button", { name: "Text color" }));
+    await openStyleTool(page, "Text");
+
+    // The phone's Text card shows the color panel itself.
+    if (!onPhone(page)) {
+      await activate(page, page.getByRole("button", { name: "Text color" }));
+    }
+
     await page.getByRole("textbox", { name: "Hex" }).fill("#F3F4F6");
     await activate(page, page.getByRole("button", { name: "Apply" }));
 
@@ -390,6 +397,7 @@ test("a bullet edit on a dark slide keeps the list's box and color", async ({
 
       const kept = await bullets.boundingBox();
 
+      await openStyleTool(page, "More");
       await activate(page, page.getByRole("button", { name: "Edit text" }));
 
       const sheet = page.getByRole("dialog", { name: "Edit slide" });

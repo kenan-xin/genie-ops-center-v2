@@ -663,6 +663,139 @@ export const RemoveStatesEveryPlacement: Story = {
   },
 };
 
+/** Selects slide 2's figure on a phone and presses More, then Delete element. */
+async function deleteFigureOnPhone(canvas: ReturnType<typeof within>) {
+  await userEvent.click(
+    canvas.getByRole("button", {
+      name: "Slide 2: Three customers hold most of the open balance",
+    })
+  );
+  await userEvent.click(
+    within(canvas.getByRole("group", { name: "Slide editing" })).getByRole(
+      "button",
+      { name: "The figure" }
+    )
+  );
+  await userEvent.click(
+    within(canvas.getByRole("toolbar", { name: "Figure style" })).getByRole(
+      "button",
+      { name: "More" }
+    )
+  );
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Delete element" })
+  );
+}
+
+// czjw.156 and Review Focus 1: a phone Delete states every placement, so the table keeps its own
+// box and never takes the removed figure's fill, and the selection goes with the element.
+export const DeleteElementOnPhone: Story = {
+  name: "Delete on a phone states every placement and clears the selection",
+  args: { view: placedVisualsPage },
+  globals: phone,
+  beforeEach: () => serve(placedVisualsPage),
+  play: async ({ canvas }) => {
+    await deleteFigureOnPhone(canvas);
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+
+    const [{ changes }] = changeDeck.mock.calls[0] ?? [{}];
+
+    await expect(changes).toHaveLength(1);
+    await expect(changes[0]?.op).toBe("change-slide");
+    await expect(changes[0]?.slideId).toBe("s9");
+    await expect(
+      changes[0]?.slide.elements.map(
+        (element: { kind: string; box?: unknown; style?: unknown }) => ({
+          kind: element.kind,
+          box: "box" in element ? element.box : "absent",
+          style: "style" in element ? element.style : "absent",
+        })
+      )
+    ).toEqual([
+      { kind: "title", box: null, style: null },
+      { kind: "table", box: TABLE_BOX, style: null },
+    ]);
+    // The answer still shows the figure here, so only a cleared selection hides the dock.
+    await waitFor(() =>
+      expect(canvas.queryByRole("toolbar", { name: /style$/ })).toBeNull()
+    );
+  },
+};
+
+// A refused Delete keeps the element selected, so the person sees the refusal beside its dock.
+export const RefusedDeleteOnPhone: Story = {
+  name: "A refused Delete on a phone keeps the selection",
+  args: { view: placedVisualsPage },
+  globals: phone,
+  beforeEach: () => {
+    serve(placedVisualsPage);
+    changeDeck.mockRejectedValue(
+      Object.assign(new Error(CHANGE_INVALID), {
+        data: { appCode: "slides:change-invalid", requestId: "req-3" },
+      })
+    );
+  },
+  play: async ({ canvas }) => {
+    await deleteFigureOnPhone(canvas);
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      `Slide 2 was not changed. ${CHANGE_INVALID}`
+    );
+    await expect(
+      canvas.getByRole("toolbar", { name: "Figure style" })
+    ).toBeInTheDocument();
+  },
+};
+
+// Review Focus 4: an open card leaves the selected element in view, also a body text low on the
+// slide: its centre never hits the Text or the Position card.
+export const CardLeavesSelectionInViewOnPhone: Story = {
+  name: "On a phone an open card leaves a low selection in view",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Slide 2: Collections narrowed the gap to the plan line",
+      })
+    );
+
+    const body = within(
+      canvas.getByRole("group", { name: "Slide editing" })
+    ).getByRole("button", { name: /^Text "Cash in grew/ });
+
+    await userEvent.click(body);
+
+    const keepsInView = async (tool: string) => {
+      await userEvent.click(
+        within(canvas.getByRole("toolbar", { name: "Text style" })).getByRole(
+          "button",
+          { name: tool }
+        )
+      );
+
+      const card = await screen.findByRole("dialog", { name: tool });
+
+      await waitFor(() => {
+        const box = body.getBoundingClientRect();
+
+        const hit = document.elementFromPoint(
+          box.left + box.width / 2,
+          box.top + box.height / 2
+        );
+
+        expect(card.contains(hit)).toBe(false);
+      });
+      await userEvent.keyboard("{Escape}");
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    };
+
+    await keepsInView("Text");
+    await keepsInView("Position");
+  },
+};
+
 const undoPlay: Story["play"] = async ({ canvas }) => {
   await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
 

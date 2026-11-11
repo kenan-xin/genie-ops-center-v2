@@ -5,6 +5,7 @@ import {
 } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 import { insertDeck } from "@genie/module-slides/testing";
+import type { Page } from "@playwright/test";
 
 import { selectedModuleIds } from "../../src/modules.ts";
 import {
@@ -13,7 +14,25 @@ import {
   SLIDES_CHANGE_DECK_TITLE,
   SLIDES_CHANGE_FROZEN_ON,
 } from "../../testing/slides-change.ts";
+import { onPhone } from "./dev-support.ts";
 import { DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
+
+/**
+ * Below 768 px the selected element's tools sit in a dock, each opening its card (czjw.156):
+ * taps the tool there. From 768 px the row shows every control, so it does nothing.
+ */
+export async function openStyleTool(
+  page: Page,
+  tool: "Text" | "Fill" | "Border" | "Position" | "More"
+): Promise<void> {
+  if (!onPhone(page)) return;
+
+  await page
+    .getByRole("toolbar", { name: /style$/ })
+    .getByRole("button", { name: tool, exact: true })
+    .tap();
+  await page.getByRole("dialog", { name: tool }).waitFor();
+}
 
 /** The stored deck content, as the factory takes it. */
 export type DeckContent = NonNullable<
