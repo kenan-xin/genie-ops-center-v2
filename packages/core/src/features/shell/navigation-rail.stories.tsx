@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { COLLAPSED_CATEGORIES_KEY } from "./collapsed-categories.ts";
 import { NavigationRail } from "./navigation-rail.tsx";
@@ -183,6 +183,30 @@ export const CollapsePersistsOnTheDevice: Story = {
     await expect(
       JSON.parse(localStorage.getItem(COLLAPSED_CATEGORIES_KEY) ?? "[]")
     ).toEqual(["operations"]);
+  },
+};
+
+const LONG_CATEGORY = "Regional operations and clinical support";
+
+// A long category caption truncates, so hovering it shows the whole name.
+export const LongCategoryNameShowsInFull: Story = {
+  args: {
+    navigation: {
+      ...workspaceNavigation,
+      categories: [
+        { ...workspaceNavigation.categories[0]!, name: LONG_CATEGORY },
+      ],
+    },
+  },
+  play: async ({ canvas }) => {
+    await userEvent.hover(canvas.getByText(LONG_CATEGORY));
+
+    const tip = await screen.findByText(LONG_CATEGORY, {
+      selector: "[data-slot=tooltip-content]",
+    });
+
+    // The tooltip fades in, so wait until it paints.
+    await waitFor(() => expect(tip).toBeVisible());
   },
 };
 

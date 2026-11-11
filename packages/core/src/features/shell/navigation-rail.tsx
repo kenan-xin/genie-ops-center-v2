@@ -260,9 +260,17 @@ function Category(props: {
         onClick={props.onToggle}
         className={captionButton}
       >
-        <span id={`${props.groupId}-name`} className="min-w-0 flex-1 truncate">
-          {category.name}
-        </span>
+        {/* A long name truncates, so the tooltip shows it whole, as on every row. */}
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <span id={`${props.groupId}-name`} className="min-w-0 flex-1" />
+            }
+          >
+            <span className="block truncate">{category.name}</span>
+          </TooltipTrigger>
+          <TooltipContent>{category.name}</TooltipContent>
+        </Tooltip>
         <span
           id={`${props.groupId}-count`}
           className="font-medium tracking-normal tabular-nums"
