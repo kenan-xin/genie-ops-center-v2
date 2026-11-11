@@ -408,6 +408,32 @@ describe("the slides agent tools", () => {
     });
   });
 
+  it("slides-change-deck says that nothing changed, and leaves Undo as it was, when its steps leave the deck as it is", async () => {
+    const owner = await personWith(EDITOR);
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      title: "Collections review",
+      content: TWO_SLIDES,
+    });
+
+    const read = await runTool(owner, "slides-read-deck", { deckId: id });
+    const before = await deckState(id);
+
+    const unchanged = await runTool(owner, "slides-change-deck", {
+      deckId: id,
+      expectedHash: hashIn(read),
+      changes: [{ op: "rename", title: "Collections review" }],
+    });
+
+    expect(unchanged.output).toMatchObject({
+      contentHash: hashIn(read),
+      note: "Nothing changed: the deck already looks like this. Nothing was saved, so there is nothing to undo.",
+    });
+    expect(await deckState(id)).toMatchObject({ undo: before.undo });
+    expect((await deckState(id)).audit).toEqual(before.audit);
+  });
+
   it("slides-change-deck keeps a change-slide element's stored box and style when the step leaves them out, and null clears them", async () => {
     const owner = await personWith(EDITOR);
 

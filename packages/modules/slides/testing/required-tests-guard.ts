@@ -84,6 +84,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "slides-change-deck answers the new content hash, and a second change with it saves without a read",
       "slides-change-deck refuses a hash read before a hand change with deck-changed and saves nothing",
       "slides-change-deck keeps a change-slide element's stored box and style when the step leaves them out, and null clears them",
+      "slides-change-deck says that nothing changed, and leaves Undo as it was, when its steps leave the deck as it is",
       "offers the read tools in Ask and the write tools only in a Slides session of a writer, with the write rules only there",
     ].map((name) => `the slides agent tools ${name}`),
   },

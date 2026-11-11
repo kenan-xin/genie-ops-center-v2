@@ -257,8 +257,21 @@ const changeDeckTool = defineAgentTool({
 
     const slides = outlineOf(record);
 
+    const output = {
+      deckId: record.id,
+      contentHash: record.contentHash,
+      slides,
+    };
+
     return {
-      output: { deckId: record.id, contentHash: record.contentHash, slides },
+      // A step that leaves the deck as it is saves nothing (czjw.134), so nothing can be undone.
+      output:
+        record.contentHash === input.expectedHash
+          ? {
+              ...output,
+              note: "Nothing changed: the deck already looks like this. Nothing was saved, so there is nothing to undo.",
+            }
+          : output,
       rowCount: slides.length,
     };
   },
