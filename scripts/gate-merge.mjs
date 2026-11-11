@@ -59,9 +59,11 @@ for (const [index, stage] of list.entries()) {
     stdio: "inherit",
   });
 
-  // A killed stage stops the gate, so that a stopped run does not go on. nx
-  // catches SIGINT and SIGTERM and exits 130 or 143 instead of by signal.
-  if (status === null || status > 128) {
+  // Only a signal to the stage's process stops the gate, so that a killed run
+  // does not go on. A stage that exits 130 or 143 is a failed stage: nx exits
+  // 130 after an ordinary failure (xok3.72). The gate adds no signal handler:
+  // spawnSync blocks the event loop, so a handler would let a killed gate go on.
+  if (status === null) {
     console.log(
       `gate-merge: stage ${index + 1} ended by ${signal ?? `exit ${status}`}, stopping`
     );

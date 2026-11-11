@@ -1635,18 +1635,54 @@ describe("the gate:merge runner", () => {
     }
   });
 
-  // nx turns SIGINT and SIGTERM into exit 130 and 143, so a killed background
-  // gate must stop there, not go on into the e2e stages.
+  // nx exits 130 after an ordinary failure, so an exit above 128 is a failed
+  // stage and the gate goes on (xok3.72).
+  it("runs the next stage after a stage that exits 130, and lists exit 130", () => {
+    const root = fakeWorkspace({ "ci:develop": "exit 130 && echo next" });
+
+    try {
+      const result = runGateMerge(root);
+
+      expect(result.status).toBe(130);
+      expect(result.stdout.split("\n")).toContain("next");
+
+      const summary = result.stdout.slice(
+        result.stdout.indexOf("gate-merge: failed stages:")
+      );
+
+      expect(summary).toContain("exit 130");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // Only a signal to a stage's process stops the gate, so a killed stage does
+  // not go on into the e2e stages.
   it("stops at a stage that a signal ended", () => {
+    const root = fakeWorkspace({ "ci:develop": "kill -TERM $$ && echo after" });
+
+    try {
+      const result = runGateMerge(root);
+
+      expect(result.status).not.toBe(0);
+      expect(result.stdout).not.toContain("after");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // The gate adds no signal handler: spawnSync blocks the event loop, so a
+  // handler would let a killed gate go on.
+  it("ends when a stage kills the gate itself", () => {
     const root = fakeWorkspace({
-      "ci:develop": "exit 143 && echo after-the-kill",
+      "ci:develop": "kill -TERM $PPID && echo after",
     });
 
     try {
       const result = runGateMerge(root);
 
-      expect(result.status).toBe(143);
-      expect(result.stdout).not.toContain("after-the-kill");
+      expect(result.signal).toBe("SIGTERM");
+      expect(result.stdout).not.toContain("after");
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
