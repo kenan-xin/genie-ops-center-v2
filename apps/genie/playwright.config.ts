@@ -44,6 +44,8 @@ const config = defineConfig({
     // The scheduled Entra run has its own stack and config (`playwright.entra.config.ts`).
     "**/e2e/entra/**",
     "**/setup-gate.spec.ts",
+    // A Vitest unit test of the shared lock, not a browser spec.
+    "**/e2e/support/lock.test.ts",
     "**/*__boundary__*",
     "**/*__wiring__*",
     "**/*__antislop__*",

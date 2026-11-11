@@ -41,6 +41,8 @@ export default defineConfig({
       "testing/section-3-imports.test.ts",
       // The Entra secret parser is pure; it must never echo the secret it refuses.
       "e2e/entra/tenant.test.ts",
+      // The deployment lock's stale-holder break runs against real folders and process ids.
+      "e2e/support/lock.test.ts",
     ],
     // No include glob reaches the browser specs, so lifting the `e2e/**` exclusion collects only
     // the one pure file named above.
