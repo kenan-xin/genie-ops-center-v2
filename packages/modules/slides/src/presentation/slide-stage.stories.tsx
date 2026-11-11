@@ -255,6 +255,28 @@ export const NudgeThenDrag: Story = {
   },
 };
 
+// czjw.141: each press reports the run's box, so the toolbar's Position starts from it; the run's
+// save reports null, so the toolbar goes back to the stored box.
+export const NudgeRunReportsItsBox: Story = {
+  name: "An arrow run reports its box until it saves",
+  globals: desktop,
+  args: { onRunBox: fn() },
+  play: async ({ args, canvas }) => {
+    canvas.getByRole("button", { name: TEXT }).focus();
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}");
+
+    await expect(args.onRunBox).toHaveBeenLastCalledWith({
+      index: 1,
+      box: { x: 56, y: 136, w: 320, h: 348 },
+    });
+
+    await waitFor(() => expect(args.onStep).toHaveBeenCalledTimes(1), {
+      timeout: 2000,
+    });
+    await expect(args.onRunBox).toHaveBeenLastCalledWith(null);
+  },
+};
+
 // A slide switch unmounts the stage within the run; the press is still saved.
 export const NudgeThenUnmount: Story = {
   name: "An arrow press is saved when the stage closes",

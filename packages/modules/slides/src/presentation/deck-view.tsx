@@ -40,6 +40,7 @@ import { z } from "zod";
 import {
   type DeckChange,
   deckTitle,
+  type ElementBox,
   type ElementInput,
   slideInput,
   type SlideInput,
@@ -58,7 +59,7 @@ import {
   slideInputOf,
 } from "./slide-editor.tsx";
 import { elementBoxes, figuresDate } from "./slide-layout.ts";
-import { SlideStage } from "./slide-stage.tsx";
+import { SlideStage, type SlideStageHandle } from "./slide-stage.tsx";
 import { SlideEditorBar, StyleToolbar } from "./style-toolbar.tsx";
 import {
   useDeck,
@@ -427,6 +428,14 @@ export function DeckView(props: DeckViewProps) {
   const ownMoves = useRef<{ readonly from: string; readonly to: string }[]>([]);
 
   const notesField = useRef<NotesFieldHandle>(null);
+  const stage = useRef<SlideStageHandle>(null);
+
+  // The stage's waiting arrow run, so the toolbar's Position starts where the run left the element.
+  const [nudgeRun, setNudgeRun] = useState<{
+    readonly slideId: string;
+    readonly index: number;
+    readonly box: ElementBox;
+  } | null>(null);
 
   function queueWrite<T>(write: () => Promise<T>): Promise<T> {
     const run = writeQueue.current.catch(() => undefined).then(write);
@@ -444,6 +453,9 @@ export function DeckView(props: DeckViewProps) {
     seenHash: string,
     send: (expectedHash: string) => Promise<SavedDeck>
   ): Promise<void> {
+    // The run's save queues first, synchronously, so this write lands after it (czjw.141).
+    stage.current?.flush();
+
     const notes = notesField.current?.flush() ?? Promise.resolve();
 
     return notes.then(() =>
@@ -603,10 +615,27 @@ export function DeckView(props: DeckViewProps) {
     );
   }
 
+  /**
+   * The slide with the waiting run's box, for a change-slide built from it: the run saves first,
+   * so the stored box would put the element back, or null clear it (P16e-33).
+   */
+  function withRun(slide: ShownSlide): ShownSlide {
+    if (nudgeRun === null || nudgeRun.slideId !== slide.id) return slide;
+
+    const { index: at, box } = nudgeRun;
+
+    return {
+      ...slide,
+      elements: slide.elements.map((element, i) =>
+        i === at ? { ...element, box } : element
+      ),
+    };
+  }
+
   function openEditor(target: EditTarget): void {
     setFailure(null);
     setEditorFailure(null);
-    setEditing(target);
+    setEditing({ ...target, slide: withRun(target.slide) });
   }
 
   function closeEditor(): void {
@@ -1016,7 +1045,7 @@ export function DeckView(props: DeckViewProps) {
                     return;
                   }
 
-                  const input = slideInputOf(current);
+                  const input = slideInputOf(withRun(current));
 
                   // The body goes after the title; the person writes it with Edit text.
                   sendStep(
@@ -1049,7 +1078,13 @@ export function DeckView(props: DeckViewProps) {
                   element={current.elements[selected]}
                   slideId={current.id}
                   index={selected}
-                  box={boxOf(current, selected)}
+                  box={
+                    nudgeRun !== null &&
+                    nudgeRun.slideId === current.id &&
+                    nudgeRun.index === selected
+                      ? nudgeRun.box
+                      : boxOf(current, selected)
+                  }
                   background={current.background}
                   saving={busy}
                   onStep={(step) =>
@@ -1068,6 +1103,7 @@ export function DeckView(props: DeckViewProps) {
                 />
               )}
               <SlideStage
+                ref={stage}
                 key={current.id}
                 slide={current}
                 figuresAsOf={deck.figuresAsOf}
@@ -1087,6 +1123,11 @@ export function DeckView(props: DeckViewProps) {
                     expectedHash: deck.contentHash,
                     slideNumber: index + 1,
                   })
+                }
+                onRunBox={(at) =>
+                  setNudgeRun(
+                    at === null ? null : { slideId: current.id, ...at }
+                  )
                 }
               />
               {/* From 768 px, and only while the sheet is closed: one notes field per slide. */}

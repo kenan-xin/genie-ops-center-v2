@@ -6,7 +6,9 @@ import {
   type CSSProperties,
   type KeyboardEvent,
   type PointerEvent,
+  type Ref,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
@@ -29,7 +31,13 @@ import { SlideCanvas, type SlideCanvasProps } from "./slide-canvas.tsx";
 import { elementBoxes } from "./slide-layout.ts";
 import type { ShownSlide } from "./views.ts";
 
+export type SlideStageHandle = {
+  /** Saves a waiting arrow-key run now. */
+  readonly flush: () => void;
+};
+
 export type SlideStageProps = SlideCanvasProps & {
+  readonly ref?: Ref<SlideStageHandle> | undefined;
   /** The index of the selected element, or null. */
   readonly selected: number | null;
   readonly onSelect: (index: number | null) => void;
@@ -39,6 +47,12 @@ export type SlideStageProps = SlideCanvasProps & {
    */
   readonly onStep: (step: DeckChange) => Promise<boolean> | void;
   readonly saving?: boolean;
+  /** The waiting arrow run's box after each press, and null when its save starts. */
+  readonly onRunBox?:
+    | ((
+        run: { readonly index: number; readonly box: ElementBox } | null
+      ) => void)
+    | undefined;
 };
 
 /** Arrow keys move 8, and 1 with Shift (prototype hint line). */
@@ -127,10 +141,10 @@ export function SlideStage(props: SlideStageProps) {
 
   // The newest slide and callback for the controller and the nudge run, which outlive a render:
   // the deck page passes a new onStep each render, and a press re-renders it by selecting.
-  const latest = useRef({ slide, onStep });
+  const latest = useRef({ slide, onStep, onRunBox: props.onRunBox });
 
   useEffect(() => {
-    latest.current = { slide, onStep };
+    latest.current = { slide, onStep, onRunBox: props.onRunBox };
   });
 
   // Calls onStep at once (before the first await), so a flush on unmount still saves.
@@ -206,9 +220,13 @@ export function SlideStage(props: SlideStageProps) {
   function commitRun(): void {
     const run = nudgeRun.current;
 
+    // Stays above the calls below: the save's own pageWrite flushes again and re-enters here.
     nudgeRun.current = null;
 
-    if (run !== null) void saveBox(run.index, run.box);
+    if (run !== null) {
+      latest.current.onRunBox?.(null);
+      void saveBox(run.index, run.box);
+    }
   }
 
   // Pacer cancels a waiting call on unmount by default; a slide switch must still save the run.
@@ -216,6 +234,9 @@ export function SlideStage(props: SlideStageProps) {
     wait: NUDGE_RUN_MS,
     onUnmount: (debouncer) => debouncer.flush(),
   });
+
+  // The deck page saves the run before each of its writes, so Undo or Position lands after it.
+  useImperativeHandle(props.ref, () => ({ flush: () => nudge.flush() }));
 
   function pointerDown(
     event: PointerEvent<HTMLElement>,
@@ -305,6 +326,7 @@ export function SlideStage(props: SlideStageProps) {
 
     nudgeRun.current = { index, box };
     setPreview({ index, box });
+    props.onRunBox?.({ index, box });
     nudge.maybeExecute();
   }
 

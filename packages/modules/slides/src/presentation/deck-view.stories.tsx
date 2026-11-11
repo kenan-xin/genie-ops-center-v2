@@ -1007,6 +1007,168 @@ export const UndoInsideNotesPause: Story = {
   },
 };
 
+/** The title of slide 1 as drawn: the computed title box, x 40, y 32. */
+const TITLE_BOX = { x: 40, y: 32, w: 880, h: 88 };
+
+/** Selects the title of the shown slide 1 on the stage, which also focuses it for the arrow keys. */
+async function selectTitle(canvas: ReturnType<typeof within>) {
+  await userEvent.click(
+    within(canvas.getByRole("group", { name: "Slide editing" })).getByRole(
+      "button",
+      { name: /^Title "/ }
+    )
+  );
+}
+
+// czjw.141: Undo within 800 ms of an arrow press saves the waiting run first, then names its hash.
+export const UndoInsideNudgeRun: Story = {
+  name: "Undo inside an arrow run takes its turn",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    undoDeck.mockResolvedValue({ ...deckPage.deck, contentHash: NEWER_HASH });
+  },
+  play: async ({ canvas }) => {
+    const answerRun = holdNext(changeDeck, {
+      ...deckPage.deck,
+      contentHash: NEW_HASH,
+    });
+
+    await selectTitle(canvas);
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.click(canvas.getByRole("button", { name: "Undo" }));
+
+    await waitFor(() =>
+      expect(changeDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: HASH,
+        changes: [
+          {
+            op: "change-element",
+            slideId: "s1",
+            index: 0,
+            box: { ...TITLE_BOX, x: 48 },
+          },
+        ],
+      })
+    );
+    await expect(undoDeck).not.toHaveBeenCalled();
+
+    answerRun();
+    await waitFor(() =>
+      expect(undoDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: NEW_HASH,
+      })
+    );
+    await expect(changeDeck).toHaveBeenCalledOnce();
+  },
+};
+
+// czjw.141: Move right after a run saves the run first and starts from its box: x + 24, then x + 32.
+export const PositionAfterNudgeRun: Story = {
+  name: "Position after an arrow run starts from the run's box",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    // The run's answer holds its box, so a run that saved on its own timer still gives x + 24.
+    changeDeck.mockResolvedValueOnce({
+      ...deckPage.deck,
+      contentHash: NEW_HASH,
+      slides: deckPage.deck.slides.map((slide) =>
+        slide.id === "s1"
+          ? {
+              ...slide,
+              elements: slide.elements.map((element, at) =>
+                at === 0
+                  ? { ...element, box: { ...TITLE_BOX, x: 64 } }
+                  : element
+              ),
+            }
+          : slide
+      ),
+    });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await selectTitle(canvas);
+    await userEvent.keyboard("{ArrowRight}{ArrowRight}{ArrowRight}");
+    await userEvent.click(canvas.getByRole("button", { name: /Position/ }));
+
+    const popover = within(
+      await within(canvasElement.ownerDocument.body).findByRole("dialog", {
+        name: "Position and size",
+      })
+    );
+
+    const moveRight = popover.getByRole("button", { name: "Move right" });
+
+    await waitFor(() => expect(moveRight).toBeEnabled());
+    // Nothing saved yet, so the press lands inside the run.
+    await expect(changeDeck).not.toHaveBeenCalled();
+    await userEvent.click(moveRight);
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        changes: [
+          {
+            op: "change-element",
+            slideId: "s1",
+            index: 0,
+            box: { ...TITLE_BOX, x: 64 },
+          },
+        ],
+      })
+    );
+    await expect(changeDeck).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        changes: [
+          {
+            op: "change-element",
+            slideId: "s1",
+            index: 0,
+            box: { ...TITLE_BOX, x: 72 },
+          },
+        ],
+      })
+    );
+  },
+};
+
+// czjw.141, P16e-33: Add text inside a run saves after it, so its change-slide states the run's box;
+// the title has no stored box, so the stored slide would state null and clear the run's save.
+export const AddTextAfterNudgeRun: Story = {
+  name: "Add text after an arrow run keeps the run's box",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await selectTitle(canvas);
+    await userEvent.keyboard("{ArrowRight}");
+    await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
+
+    const text = await screen.findByRole("menuitem", { name: "Text" });
+
+    // Nothing saved yet, so the add lands inside the run.
+    await expect(changeDeck).not.toHaveBeenCalled();
+    await userEvent.click(text);
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+
+    const [{ changes }] = changeDeck.mock.calls[1] ?? [{}];
+
+    await expect(changes[0]?.op).toBe("change-slide");
+    await expect(changes[0]?.slide.elements[0]?.box).toEqual({
+      ...TITLE_BOX,
+      x: 48,
+    });
+  },
+};
+
 // A notes pause that ends while the sheet's Save slide runs waits for it and names its hash.
 export const SaveSlideAndNotesTakeTurns: Story = {
   name: "Save slide and a notes pause take turns",
