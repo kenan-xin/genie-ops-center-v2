@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import { chartColors, type ThemeName } from "../theme/tokens.ts";
+import { axisLabelIndexes } from "./chart-axis.ts";
 import { formatChartValue } from "./chart-data.ts";
 import { Chart, type ChartProps } from "./chart.tsx";
 
@@ -38,7 +39,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The one chart of Analytics, Slides and chat (Spec 7 R-16), on the shadcn Chart. It draws the `ChartData` that the core chart gate answers: series in the fixed slots `--chart-1` to `--chart-8` (tokens.md, "Chart series colors"), a Chart and a Table view, and a caption that names the sources by title (the dataset names for a stored chart without them) and the read time, or only the sources with `caption="source"`. A multi-series chart shows its legend above the plot, and a KPI with `change` shows a neutral change line against the prior period. No rows show the compact empty state. A table whose `recordPaths` names a row\'s page links that row\'s first cell, and on a phone its card title, through `linkComponent`; a row without a page stays plain text. Import it from `@genie/ui/chart`, so a page with no chart never loads Recharts.',
+          'The one chart of Analytics, Slides and chat (Spec 7 R-16), on the shadcn Chart. It draws the `ChartData` that the core chart gate answers: series in the fixed slots `--chart-1` to `--chart-8` (tokens.md, "Chart series colors"), a Chart and a Table view, and a caption that names the sources by title (the dataset names for a stored chart without them) and the read time, or only the sources with `caption="source"`. A multi-series chart shows its legend above the plot, and a KPI with `change` shows a neutral change line against the prior period. No rows show the compact empty state. A table whose `recordPaths` names a row\'s page links that row\'s first cell, and on a phone its card title, through `linkComponent`; a row without a page stays plain text. The x axis labels the first and the last point, and the points between at an even step from the first, without one closer to the last than a step. Import it from `@genie/ui/chart`, so a page with no chart never loads Recharts.',
       },
     },
   },
@@ -650,53 +651,60 @@ function monthlySales(from: string, count: number): ChartProps {
   };
 }
 
-/** The x-axis labels that the chart draws, left to right. */
-function monthLabels(canvasElement: HTMLElement) {
-  return waitFor(() => {
-    const labels = [
-      ...canvasElement.querySelectorAll(
-        ".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value"
-      ),
-    ];
-
-    expect(labels.length).toBeGreaterThan(0);
-
-    return labels;
-  });
-}
-
 /**
- * Every month keeps its label, or the labels step evenly from the first month, and no two labels
- * overlap. Recharts kept the last label and hid any that overlapped, so "May 2026" and "Sep 2026"
- * went missing at random on a phone (czjw.106).
+ * The axis rule (czjw.144): the first and the last month always keep a label, the months between
+ * step evenly from the first, no two labels overlap and every label stays inside the chart.
+ * Recharts kept only one end and hid the rest at random (czjw.106). `minimum` keeps a sample taken
+ * before the label width is measured, which shows only the first and the last label, from passing.
  */
-const everyMonthPlay =
-  (count: number, step: number): NonNullable<Story["play"]> =>
+const axisRulePlay =
+  (count: number, minimum: number): NonNullable<Story["play"]> =>
   async ({ args, canvasElement }) => {
-    const labels = await monthLabels(canvasElement);
+    // The months, as the axis names them.
+    const months = args.rows.map((row) =>
+      formatChartValue(args.x!, row["x"] ?? null, { compact: true })
+    );
 
-    const texts = labels.map((label) => label.textContent);
+    await expect(months).toHaveLength(count);
 
-    // The months, as the axis names them, at the step the story expects.
-    const months = args.rows
-      .map((row) =>
-        formatChartValue(args.x!, row["x"] ?? null, { compact: true })
-      )
-      .filter((_, index) => index % step === 0);
+    await waitFor(() => {
+      const labels = [
+        ...canvasElement.querySelectorAll(
+          ".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value"
+        ),
+      ];
 
-    await expect(months).toHaveLength(Math.ceil(count / step));
-    await expect(texts).toEqual(months);
+      expect(labels.length).toBeGreaterThanOrEqual(minimum);
 
-    const boxes = labels.map((label) => label.getBoundingClientRect());
+      const texts = labels.map((label) => label.textContent);
+      const step = months.indexOf(texts[1] ?? "");
 
-    // The gap from each label to the one before it.
-    const gaps = boxes
-      .slice(1)
-      .map((box, index) => box.left - boxes[index]!.right);
+      expect(texts).toEqual(
+        axisLabelIndexes(count, step).map((index) => months[index])
+      );
 
-    await expect(Math.min(...gaps)).toBeGreaterThanOrEqual(0);
+      const boxes = labels.map((label) => label.getBoundingClientRect());
 
-    await noPageScroll();
+      // The gap from each label to the one before it.
+      const gaps = boxes
+        .slice(1)
+        .map((box, index) => box.left - boxes[index]!.right);
+
+      expect(Math.min(...gaps)).toBeGreaterThanOrEqual(0);
+
+      const surface = canvasElement
+        .querySelector("svg.recharts-surface")!
+        .getBoundingClientRect();
+
+      expect(Math.min(...boxes.map((box) => box.left))).toBeGreaterThanOrEqual(
+        surface.left
+      );
+      expect(Math.max(...boxes.map((box) => box.right))).toBeLessThanOrEqual(
+        surface.right
+      );
+
+      noPageScroll();
+    });
   };
 
 // The Ask artifact panel's body: `w-120` less its 1 px border and `p-4`, in 16 px rem units.
@@ -711,14 +719,14 @@ export const SixMonthsInThePanel: Story = {
   args: monthlySales("2026-05", 6),
   globals: desktop,
   render: panelFrame,
-  play: everyMonthPlay(6, 1),
+  play: axisRulePlay(6, 6),
 };
 
 export const SixMonthsOnPhone: Story = {
   name: "Six months on a phone",
   args: monthlySales("2026-05", 6),
   globals: phone,
-  play: everyMonthPlay(6, 1),
+  play: axisRulePlay(6, 6),
 };
 
 export const TwelveMonthsInThePanel: Story = {
@@ -726,14 +734,49 @@ export const TwelveMonthsInThePanel: Story = {
   args: monthlySales("2025-11", 12),
   globals: desktop,
   render: panelFrame,
-  play: everyMonthPlay(12, 2),
+  play: axisRulePlay(12, 6),
 };
 
 export const TwelveMonthsOnPhone: Story = {
   name: "Twelve months on a phone",
   args: monthlySales("2025-11", 12),
   globals: phone,
-  play: everyMonthPlay(12, 2),
+  play: axisRulePlay(12, 4),
+};
+
+/** A line's last point sits on the plot's right edge, so its label must still fit the chart. */
+export const TwelveMonthsLineOnPhone: Story = {
+  name: "Twelve months as a line on a phone",
+  args: { ...monthlySales("2025-11", 12), kind: "line" },
+  globals: phone,
+  play: axisRulePlay(12, 4),
+};
+
+export const SixMonthsOnAPhoneTile: Story = {
+  name: "Six months on a phone dashboard tile",
+  args: monthlySales("2026-05", 6),
+  globals: phone,
+  // 390 px less the 16 px page padding and the 16 px card padding on each side (czjw.145).
+  render: (args) => (
+    <div style={{ width: 326 }}>
+      <Chart {...args} />
+    </div>
+  ),
+  play: axisRulePlay(6, 3),
+};
+
+/**
+ * A phone scales the slide canvas to 0.4 with a CSS transform, so a label width read from the
+ * scaled box comes out too small and the labels overlap.
+ */
+export const TwelveMonthsOnAScaledSlide: Story = {
+  name: "Twelve months on a slide scaled as on a phone",
+  args: { ...monthlySales("2025-11", 12), slide: true },
+  globals: desktop,
+  render: (args) => (
+    <div className="origin-top-left scale-40">{slideFrame(args)}</div>
+  ),
+  play: axisRulePlay(12, 4),
 };
 
 const slideTable = { ...records, slide: true } as const satisfies ChartProps;

@@ -1,7 +1,16 @@
 "use client";
 
+import { pick } from "es-toolkit";
 import { MinusIcon, TrendingDownIcon, TrendingUpIcon } from "lucide-react";
-import { useId, type ComponentType, type ReactNode } from "react";
+import {
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import {
   Area,
   AreaChart,
@@ -12,9 +21,13 @@ import {
   LineChart,
   Pie,
   PieChart,
+  Text,
+  useChartWidth,
+  usePlotArea,
   XAxis,
   YAxis,
   type TooltipPayloadEntry,
+  type XAxisTickContentProps,
 } from "recharts";
 
 import {
@@ -31,6 +44,12 @@ import {
   TabsTrigger,
 } from "../components/tabs.tsx";
 import { focusRing } from "../theme/tokens.ts";
+import {
+  AXIS_MARGIN,
+  axisLabelIndexes,
+  axisLabelStep,
+  type AxisScale,
+} from "./chart-axis.ts";
 import {
   chartCaption,
   formatChartValue,
@@ -253,8 +272,105 @@ function ChartTable(props: {
   );
 }
 
+/** The width of the widest label in the font of `ref`, or `undefined` before the first measure. */
+function useLabelWidth(
+  ref: RefObject<HTMLElement | null>,
+  labels: readonly string[]
+): number | undefined {
+  const [width, setWidth] = useState<number>();
+  const text = labels.join("\n");
+
+  // Canvas text metrics ignore the CSS transform that scales a slide, and a measured box reads it
+  // (the `YAxis` comment below).
+  useLayoutEffect(() => {
+    const element = ref.current;
+    const context = document.createElement("canvas").getContext("2d");
+
+    if (element === null || context === null) return;
+
+    let live = true;
+
+    const measure = () => {
+      if (!live) return;
+
+      const style = getComputedStyle(element);
+
+      context.font = `${style.fontStyle} ${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+      setWidth(
+        Math.max(
+          ...text.split("\n").map((label) => context.measureText(label).width)
+        )
+      );
+    };
+
+    measure();
+    // A web font that loads after the first measure changes the widths.
+    void document.fonts.ready.then(measure);
+
+    return () => {
+      live = false;
+    };
+  }, [ref, text]);
+
+  return width;
+}
+
+/** One x-axis label, or nothing for a point the rule leaves unlabelled (czjw.144). */
+function AxisTick(
+  props: Partial<XAxisTickContentProps> & {
+    readonly labelWidth: number | undefined;
+    readonly scale: AxisScale;
+  }
+) {
+  const plot = usePlotArea();
+  const chartWidth = useChartWidth();
+  const { labelWidth } = props;
+  const count = props.visibleTicksCount ?? 0;
+  const index = props.index ?? 0;
+  const plotWidth = plot?.width ?? Number.NaN;
+
+  // Until the plot and the label width are known, as on the server, only the two ends show.
+  const indexes =
+    labelWidth === undefined ||
+    !Number.isFinite(labelWidth) ||
+    !Number.isFinite(plotWidth)
+      ? [0, count - 1]
+      : axisLabelIndexes(
+          count,
+          axisLabelStep({ count, plotWidth, labelWidth, scale: props.scale })
+        );
+
+  if (!indexes.includes(index)) return null;
+
+  // A bar chart's last label can reach a few px past the chart's right edge; the step left room
+  // for this move (`axisLabelStep`).
+  const x =
+    chartWidth === undefined || labelWidth === undefined
+      ? props.x
+      : Math.min(Number(props.x), chartWidth - labelWidth / 2);
+
+  return (
+    <Text
+      {...pick(props, [
+        "y",
+        "textAnchor",
+        "verticalAnchor",
+        "fill",
+        "className",
+      ])}
+      {...(x === undefined ? {} : { x })}
+    >
+      {props.tickFormatter?.(props.payload?.value, index)}
+    </Text>
+  );
+}
+
 function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
   const { columns, x } = props;
+  const ref = useRef<HTMLDivElement>(null);
+
+  const formatTick = (value: string | number | null): string =>
+    value === null ? "No value" : formatChartValue(x, value, { compact: true });
 
   const data = props.rows.map((row) =>
     Object.fromEntries([
@@ -264,6 +380,11 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
         row[column.key] ?? null,
       ]),
     ])
+  );
+
+  const labelWidth = useLabelWidth(
+    ref,
+    data.map((point) => formatTick(point["x"] ?? null))
   );
 
   const byKey = new Map(
@@ -323,21 +444,36 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
         : AreaChart;
 
   return (
-    <ChartContainer fill={props.slide === true}>
-      <Plot data={data} title={props.title} margin={{ left: 8, right: 8 }}>
+    <ChartContainer ref={ref} fill={props.slide === true}>
+      <Plot
+        data={data}
+        title={props.title}
+        margin={{
+          left: AXIS_MARGIN,
+          // A line's last point sits on the plot's right edge, so half a label must fit beyond
+          // it. A bar chart keeps its plot width, so every label that fits today still shows.
+          right:
+            props.kind === "bar"
+              ? AXIS_MARGIN
+              : Math.max(AXIS_MARGIN, Math.ceil((labelWidth ?? 0) / 2)),
+        }}
+      >
         <CartesianGrid vertical={false} />
-        {/* Recharts' default `preserveEnd` hid any label that overlapped its neighbor, so a
-            panel or phone chart lost months at random (czjw.106). Every label shows when the
-            compact labels fit, and an even step from the first one when they do not. */}
+        {/* The first and the last point always get a label, and the labels between them step
+            evenly from the first, with none closer to the last than a step (czjw.144). Recharts'
+            `interval` modes keep one end only, so every tick reaches `AxisTick`, which applies
+            the rule with the measured label width. */}
         <XAxis
           dataKey="x"
           tickLine={false}
           axisLine={false}
-          interval="equidistantPreserveStart"
-          tickFormatter={(value: string | number | null) =>
-            value === null
-              ? "No value"
-              : formatChartValue(x, value, { compact: true })
+          interval={0}
+          tickFormatter={formatTick}
+          tick={
+            <AxisTick
+              labelWidth={labelWidth}
+              scale={props.kind === "bar" ? "band" : "point"}
+            />
           }
         />
         {/* The 60 px default cut a slide's base-size "SGD 60k". Off a slide, auto width measures
