@@ -37,6 +37,11 @@ export type PageHeaderProps = {
   readonly meta?: ReactNode;
   /** The page's primary action; below `md` it moves to the bottom bar. */
   readonly actions?: ReactNode;
+  /**
+   * The page's own actions below 768 px, in place of `actions`: in the page top bar when it
+   * renders, else in the header. With them, the bottom bar shows only `bottomBar`.
+   */
+  readonly topBarActions?: ReactNode;
   /** Other actions, such as "Open the PDF"; they stay in the header at every width, unless `compactBelowLg`. */
   readonly secondaryActions?: ReactNode;
   /**
@@ -62,6 +67,7 @@ function PageTopBar(props: {
   readonly backTo: string;
   readonly Anchor: ReturnType<typeof linkFor>;
   readonly agent: boolean;
+  readonly actions: ReactNode;
 }) {
   const { crumb, Anchor } = props;
 
@@ -85,7 +91,14 @@ function PageTopBar(props: {
       >
         {props.name}
       </p>
-      {props.agent ? <AgentButton /> : null}
+      {props.actions === undefined ? null : (
+        <div className="flex shrink-0 items-center gap-1 md:hidden">
+          {props.actions}
+        </div>
+      )}
+      {props.agent ? (
+        <AgentButton compact={props.actions !== undefined} />
+      ) : null}
     </div>
   );
 }
@@ -133,12 +146,23 @@ export function PageHeader(props: PageHeaderProps) {
   // A module page passes none: core gives it the trail of its route (R-1a).
   const crumb = props.breadcrumb ?? use(PageTrailContext);
   const hideBelowLg = inShell ? "max-lg:sr-only" : "";
-  const bar = props.bottomBar ?? props.actions;
+  const topBar = props.topBarActions;
+
+  const bar =
+    props.bottomBar ?? (topBar === undefined ? props.actions : undefined);
 
   const Anchor =
     crumb === undefined
       ? undefined
       : linkFor(crumb.parent.href, shell?.linkComponent);
+
+  const hasTopBar = shell !== null && Anchor !== undefined;
+
+  // Below `md` the top-bar actions sit in the header when no page top bar renders.
+  const headerTopBar =
+    topBar === undefined || hasTopBar ? null : (
+      <div className="flex items-center gap-2 md:hidden">{topBar}</div>
+    );
 
   const compact = props.compactBelowLg === true;
   const hiddenIfCompact = compact ? "max-lg:hidden" : "";
@@ -150,7 +174,7 @@ export function PageHeader(props: PageHeaderProps) {
   // Below the width where the header shows nothing, take it out of the flow so a page's gap does not
   // leave an empty band under the top bar.
   const emptyBelow =
-    !inShell || showsBelowLg
+    !inShell || showsBelowLg || headerTopBar !== null
       ? ""
       : props.actions === undefined
         ? "max-lg:sr-only"
@@ -158,7 +182,9 @@ export function PageHeader(props: PageHeaderProps) {
 
   // Below `md` the side holds only hidden parts unless secondary actions show.
   const sideBelowMd =
-    props.secondaryActions === undefined ? "max-md:hidden" : "";
+    props.secondaryActions === undefined && headerTopBar === null
+      ? "max-md:hidden"
+      : "";
 
   return (
     <>
@@ -169,6 +195,7 @@ export function PageHeader(props: PageHeaderProps) {
           name={crumb.current ?? props.title}
           Anchor={Anchor}
           agent={shell.agentPanel}
+          actions={topBar}
         />
       ) : null}
       <header
@@ -212,6 +239,7 @@ export function PageHeader(props: PageHeaderProps) {
               className="hidden lg:block"
             />
             {props.secondaryActions}
+            {headerTopBar}
             {props.actions === undefined ? null : (
               <div className="hidden items-center gap-2 md:flex">
                 {props.actions}
@@ -225,12 +253,20 @@ export function PageHeader(props: PageHeaderProps) {
             ) : null}
           </div>
         ) : props.actions === undefined &&
-          props.secondaryActions === undefined ? null : (
+          props.secondaryActions === undefined &&
+          topBar === undefined ? null : (
           <div
             className={`flex flex-wrap items-center gap-2 ${hiddenIfCompact}`}
           >
             {props.secondaryActions}
-            {props.actions}
+            {headerTopBar}
+            {topBar === undefined || props.actions === undefined ? (
+              props.actions
+            ) : (
+              <div className="hidden items-center gap-2 md:flex">
+                {props.actions}
+              </div>
+            )}
           </div>
         )}
       </header>

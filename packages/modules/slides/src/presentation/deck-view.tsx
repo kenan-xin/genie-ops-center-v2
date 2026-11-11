@@ -33,7 +33,7 @@ import {
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { isEqual } from "es-toolkit";
-import { ChevronDown, Play, Presentation } from "lucide-react";
+import { ChevronDown, Play, Presentation, Undo2 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -401,6 +401,50 @@ function RailMenu(props: {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** S7-45 variant A: Present, and More ways to present, as one split button; the halves join at the seam. */
+function PresentButton(props: {
+  readonly disabled: boolean;
+  readonly onPresent: () => void;
+  readonly onPresentWithNotes: () => void;
+}) {
+  return (
+    <div className="flex *:first:rounded-r-none *:last:rounded-l-none *:last:border-l-primary-foreground/30">
+      <Button disabled={props.disabled} onClick={props.onPresent}>
+        Present
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          disabled={props.disabled}
+          render={<Button aria-label="More ways to present" />}
+        >
+          <ChevronDown aria-hidden />
+        </DropdownMenuTrigger>
+        {/* The two-line items need more than the chevron's width. */}
+        <DropdownMenuContent align="end" className="w-auto">
+          <DropdownMenuItem onClick={props.onPresent}>
+            <Play aria-hidden />
+            <span className="flex flex-col">
+              <span>Present</span>
+              <span className="text-xs text-muted-foreground">
+                Full screen, slides only
+              </span>
+            </span>
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={props.onPresentWithNotes}>
+            <Presentation aria-hidden />
+            <span className="flex flex-col">
+              <span>Present with notes</span>
+              <span className="text-xs text-muted-foreground">
+                Opens a second window with your notes and a timer
+              </span>
+            </span>
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }
 
@@ -855,6 +899,14 @@ export function DeckView(props: DeckViewProps) {
       </div>
     ) : null;
 
+  const presentButton = (
+    <PresentButton
+      disabled={current === undefined || busy}
+      onPresent={present}
+      onPresentWithNotes={presentWithNotes}
+    />
+  );
+
   return (
     <main>
       {/* 7.2: Present is the main action, Export beside it, the rest in More. The meta line is the
@@ -869,42 +921,24 @@ export function DeckView(props: DeckViewProps) {
             · Figures as of {figuresDate(deck.figuresAsOf)}
           </span>
         }
-        actions={
-          // S7-45 variant A: one split button; the halves join at the seam.
-          <div className="flex *:first:rounded-r-none *:last:rounded-l-none *:last:border-l-primary-foreground/30">
-            <Button disabled={current === undefined || busy} onClick={present}>
-              Present
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger
-                disabled={current === undefined || busy}
-                render={<Button aria-label="More ways to present" />}
+        actions={presentButton}
+        // Below 768 px Undo and Present sit in the top bar, so the editor dock cannot cover them (czjw.156).
+        topBarActions={
+          <>
+            {view.canWrite ? (
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Undo"
+                disabled={!deck.canUndo || busy}
+                loading={undo.isPending}
+                onClick={undoLast}
               >
-                <ChevronDown aria-hidden />
-              </DropdownMenuTrigger>
-              {/* The two-line items need more than the chevron's width. */}
-              <DropdownMenuContent align="end" className="w-auto">
-                <DropdownMenuItem onClick={present}>
-                  <Play aria-hidden />
-                  <span className="flex flex-col">
-                    <span>Present</span>
-                    <span className="text-xs text-muted-foreground">
-                      Full screen, slides only
-                    </span>
-                  </span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={presentWithNotes}>
-                  <Presentation aria-hidden />
-                  <span className="flex flex-col">
-                    <span>Present with notes</span>
-                    <span className="text-xs text-muted-foreground">
-                      Opens a second window with your notes and a timer
-                    </span>
-                  </span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+                <Undo2 aria-hidden />
+              </Button>
+            ) : null}
+            {presentButton}
+          </>
         }
         secondaryActions={
           <>
@@ -982,9 +1016,10 @@ export function DeckView(props: DeckViewProps) {
           </InfoNote>
         </div>
       ) : null}
-      {/* Undo beside the slide (7.2), also with no slide left, so the last removal is undoable. */}
+      {/* Undo beside the slide (7.2), also with no slide left, so the last removal is undoable.
+          Below 768 px Undo is in the top bar. */}
       {view.canWrite ? (
-        <div className="mb-2 flex items-center gap-3">
+        <div className="mb-2 flex items-center gap-3 max-md:hidden">
           <span className="text-sm text-muted-foreground">
             {current === undefined
               ? null

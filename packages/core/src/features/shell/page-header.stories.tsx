@@ -1,5 +1,6 @@
 import { Badge, Button } from "@genie/ui";
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
+import { ChevronDown, Undo2 } from "lucide-react";
 import { expect, within } from "storybook/test";
 
 import { PageHeader } from "./page-header.tsx";
@@ -351,6 +352,114 @@ export const CompactBelowLgPhone: Story = {
         .querySelector("[data-shell-page-header]")
         ?.getBoundingClientRect().height
     ).toBeLessThanOrEqual(1);
+  },
+};
+
+/** The deck page's case: the phone top bar holds Undo and Present, so no bottom bar can cover them. */
+const topBarArgs = {
+  title: "Roles",
+  actions: <Button>Present</Button>,
+  topBarActions: (
+    <>
+      <Button variant="ghost" size="icon" aria-label="Undo">
+        <Undo2 aria-hidden />
+      </Button>
+      <div className="flex">
+        <Button>Present</Button>
+        <Button aria-label="More ways to present">
+          <ChevronDown aria-hidden />
+        </Button>
+      </div>
+    </>
+  ),
+};
+
+const inShellWithAgent: Decorator = (Story) => (
+  <ShellContext.Provider
+    value={{ chrome: "admin", backTo: "Back to {page}", agentPanel: true }}
+  >
+    <Story />
+  </ShellContext.Provider>
+);
+
+function visibleButtons(element: HTMLElement, name: string) {
+  return within(element)
+    .queryAllByRole("button", { name })
+    .filter((button) => button.checkVisibility());
+}
+
+export const InShellPhoneTopBarActions: Story = {
+  decorators: [
+    inShellWithAgent,
+    // The shell's content pads 16 px, and the top bar reaches past it to the screen edges.
+    (Story) => (
+      <div className="p-4">
+        <Story />
+      </div>
+    ),
+  ],
+  args: { ...topBarArgs, breadcrumb: rolesTrail },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const bar = region(canvasElement, "[data-page-top-bar]");
+
+    await expect(bar.getByRole("button", { name: "Undo" })).toBeVisible();
+    await expect(bar.getByRole("button", { name: "Present" })).toBeVisible();
+    await expect(bar.getByRole("button", { name: "Agent" })).toBeVisible();
+    // The record's name keeps 96 px before it truncates.
+    await expect(
+      bar.getByText("Tenant administrator").getBoundingClientRect().width
+    ).toBeGreaterThanOrEqual(96);
+    await expect(
+      canvasElement.querySelector("[data-shell-bottom-bar]")
+    ).toBeNull();
+    await expect(visibleButtons(canvasElement, "Present")).toHaveLength(1);
+  },
+};
+
+export const InShellDesktopTopBarActions: Story = {
+  decorators: [inShell],
+  args: { ...topBarArgs, breadcrumb: rolesTrail },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const header = canvasElement.querySelector<HTMLElement>(
+      "[data-shell-page-header]"
+    );
+
+    if (header === null) throw new Error("the page header is missing");
+
+    await expect(visibleButtons(header, "Present")).toHaveLength(1);
+    await expect(visibleButtons(canvasElement, "Present")).toHaveLength(1);
+    await expect(visibleButtons(canvasElement, "Undo")).toEqual([]);
+  },
+};
+
+/** A shell page with no trail renders no top bar: the header shows them, and no bottom bar does. */
+export const InShellPhoneTopBarActionsNoTrail: Story = {
+  decorators: [inShell],
+  args: topBarArgs,
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const header = region(canvasElement, "[data-shell-page-header]");
+
+    await expect(header.getByRole("button", { name: "Undo" })).toBeVisible();
+    await expect(visibleButtons(canvasElement, "Present")).toHaveLength(1);
+    await expect(
+      canvasElement.querySelector("[data-shell-bottom-bar]")
+    ).toBeNull();
+  },
+};
+
+export const StandalonePhoneTopBarActions: Story = {
+  args: topBarArgs,
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const header = canvasElement.querySelector<HTMLElement>("header");
+
+    if (header === null) throw new Error("the page header is missing");
+
+    await expect(visibleButtons(header, "Undo")).toHaveLength(1);
+    await expect(visibleButtons(canvasElement, "Present")).toHaveLength(1);
   },
 };
 
