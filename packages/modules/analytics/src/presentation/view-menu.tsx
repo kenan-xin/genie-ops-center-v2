@@ -55,6 +55,8 @@ type Action = {
 };
 
 export type ViewMenuProps = {
+  /** The menu, from 768 px, or the bottom sheet, on a phone. */
+  readonly place: "bar" | "sheet";
   readonly views: readonly SavedView[];
   readonly defaultViewId: string | null;
   readonly viewId: string | null;
@@ -84,7 +86,7 @@ const DefaultBadge = () => <Badge variant="success">Default</Badge>;
 
 /**
  * The view switcher at the start of the filter bar, variant A (R-49a, S7-47): the views, then the
- * actions on the selected one. A menu from 768 px, the same content in a bottom sheet below it.
+ * actions on the selected one. A menu in the bar, the same content in a bottom sheet on a phone.
  */
 export function ViewMenu(props: ViewMenuProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -167,9 +169,9 @@ export function ViewMenu(props: ViewMenuProps) {
     run();
   };
 
-  return (
-    <>
-      <div className="hidden md:contents">
+  if (props.place === "bar") {
+    return (
+      <>
         <DropdownMenu>
           <DropdownMenuTrigger
             render={
@@ -215,73 +217,78 @@ export function ViewMenu(props: ViewMenuProps) {
           </DropdownMenuContent>
         </DropdownMenu>
         <span aria-hidden="true" className="h-6 w-px bg-border" />
-      </div>
+      </>
+    );
+  }
 
-      <div className="contents md:hidden">
-        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-          <SheetTrigger
-            render={
-              <Button variant="secondary" size="filter" className="min-w-0" />
-            }
-          >
-            {trigger}
-          </SheetTrigger>
-          <SheetContent side="bottom">
-            <SheetHeader>
-              <SheetTitle>Views</SheetTitle>
-            </SheetHeader>
-            <div className="grid overflow-y-auto px-2 pb-4">
-              <ul className="grid">
-                {choices.map((choice) => {
-                  const current = (props.viewId ?? NONE) === choice.id;
+  // No wrapper: the trigger is a direct child of the phone's button group, which joins its corners.
+  return (
+    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+      <SheetTrigger
+        render={
+          <Button
+            variant="secondary"
+            size="filter"
+            className="min-w-0 flex-1"
+          />
+        }
+      >
+        {trigger}
+      </SheetTrigger>
+      <SheetContent side="bottom">
+        <SheetHeader>
+          <SheetTitle>Views</SheetTitle>
+        </SheetHeader>
+        <div className="grid overflow-y-auto px-2 pb-4">
+          <ul className="grid">
+            {choices.map((choice) => {
+              const current = (props.viewId ?? NONE) === choice.id;
 
-                  return (
-                    <li key={choice.id}>
-                      <button
-                        type="button"
-                        aria-current={current ? "true" : undefined}
-                        className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-                        onClick={inSheet(() =>
-                          props.onSelect(choice.id === NONE ? null : choice.id)
-                        )}
-                      >
-                        <CheckIcon
-                          aria-hidden="true"
-                          className={`size-4 shrink-0 ${current ? "" : "invisible"}`}
-                        />
-                        <Lines name={choice.name} line={choice.line} />
-                        {choice.id === props.defaultViewId ? (
-                          <DefaultBadge />
-                        ) : null}
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-              <div className="my-2 h-px bg-border" />
-              <ul className="grid">
-                {actions.map((action) => (
-                  <li key={action.label}>
-                    <button
-                      type="button"
-                      disabled={action.disabled}
-                      className={`flex min-h-11 w-full items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hover:bg-transparent ${action.destructive === true ? "text-destructive" : ""}`}
-                      onClick={inSheet(action.onSelect)}
-                    >
-                      <action.icon
-                        aria-hidden="true"
-                        className="mt-0.5 size-4 shrink-0"
-                      />
-                      <Lines name={action.label} line={action.line} />
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          </SheetContent>
-        </Sheet>
-      </div>
-    </>
+              return (
+                <li key={choice.id}>
+                  <button
+                    type="button"
+                    aria-current={current ? "true" : undefined}
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    onClick={inSheet(() =>
+                      props.onSelect(choice.id === NONE ? null : choice.id)
+                    )}
+                  >
+                    <CheckIcon
+                      aria-hidden="true"
+                      className={`size-4 shrink-0 ${current ? "" : "invisible"}`}
+                    />
+                    <Lines name={choice.name} line={choice.line} />
+                    {choice.id === props.defaultViewId ? (
+                      <DefaultBadge />
+                    ) : null}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="my-2 h-px bg-border" />
+          <ul className="grid">
+            {actions.map((action) => (
+              <li key={action.label}>
+                <button
+                  type="button"
+                  disabled={action.disabled}
+                  className={`flex min-h-11 w-full items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hover:bg-transparent ${action.destructive === true ? "text-destructive" : ""}`}
+                  onClick={inSheet(action.onSelect)}
+                >
+                  <action.icon
+                    aria-hidden="true"
+                    className="mt-0.5 size-4 shrink-0"
+                  />
+                  <Lines name={action.label} line={action.line} />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

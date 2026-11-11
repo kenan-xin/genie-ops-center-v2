@@ -1,6 +1,6 @@
 import { Badge, Button } from "@genie/ui";
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
-import { ChevronDown, Undo2 } from "lucide-react";
+import { ChevronDown, Ellipsis, Pencil, Undo2 } from "lucide-react";
 import { expect, within } from "storybook/test";
 
 import { PageHeader } from "./page-header.tsx";
@@ -388,16 +388,18 @@ function visibleButtons(element: HTMLElement, name: string) {
     .filter((button) => button.checkVisibility());
 }
 
+const inShellPadded: Decorator[] = [
+  inShellWithAgent,
+  // The shell's content pads 16 px, and the top bar reaches past it to the screen edges.
+  (Story) => (
+    <div className="p-4">
+      <Story />
+    </div>
+  ),
+];
+
 export const InShellPhoneTopBarActions: Story = {
-  decorators: [
-    inShellWithAgent,
-    // The shell's content pads 16 px, and the top bar reaches past it to the screen edges.
-    (Story) => (
-      <div className="p-4">
-        <Story />
-      </div>
-    ),
-  ],
+  decorators: inShellPadded,
   args: { ...topBarArgs, breadcrumb: rolesTrail },
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvasElement }) => {
@@ -414,6 +416,63 @@ export const InShellPhoneTopBarActions: Story = {
       canvasElement.querySelector("[data-shell-bottom-bar]")
     ).toBeNull();
     await expect(visibleButtons(canvasElement, "Present")).toHaveLength(1);
+  },
+};
+
+/**
+ * The dashboard's case (czjw.159): three icon actions and Agent in the top bar beside a long name,
+ * and the desktop buttons as `actions`, so the header keeps no empty row under the meta line.
+ */
+export const InShellPhoneIconActions: Story = {
+  decorators: inShellPadded,
+  args: {
+    title: "Receivables overview for the northern region",
+    breadcrumb: {
+      parent: { label: "Dashboards", href: "/m/analytics/dashboards" },
+      current: "Receivables overview for the northern region",
+    },
+    meta: "Figures as of 10 Nov 2026, 04:49.",
+    actions: <Button variant="secondary">Edit dashboard</Button>,
+    topBarActions: (
+      <>
+        <Button variant="ghost" size="icon" aria-label="Undo">
+          <Undo2 aria-hidden />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="Edit dashboard">
+          <Pencil aria-hidden />
+        </Button>
+        <Button variant="ghost" size="icon" aria-label="More">
+          <Ellipsis aria-hidden />
+        </Button>
+      </>
+    ),
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const bar = region(canvasElement, "[data-page-top-bar]");
+
+    await expect(
+      bar.getAllByRole("button").map((button) => button.ariaLabel)
+    ).toEqual(["Undo", "Edit dashboard", "More", "Agent"]);
+    await expect(
+      bar.getByText(/^Receivables overview/u).getBoundingClientRect().width
+    ).toBeGreaterThanOrEqual(96);
+    await expect(visibleButtons(canvasElement, "Edit dashboard")).toHaveLength(
+      1
+    );
+
+    const header = canvasElement.querySelector("[data-shell-page-header]");
+
+    const line = region(canvasElement, "[data-shell-page-header]").getByText(
+      "Figures as of 10 Nov 2026, 04:49."
+    );
+
+    // An empty action row under the meta line pushes the header 12 px further down.
+    const gap =
+      (header?.getBoundingClientRect().bottom ?? Number.NaN) -
+      line.getBoundingClientRect().bottom;
+
+    await expect(Math.abs(gap)).toBeLessThanOrEqual(1);
   },
 };
 

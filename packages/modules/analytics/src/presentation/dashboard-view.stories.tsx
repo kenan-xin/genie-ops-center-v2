@@ -100,6 +100,19 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
+/**
+ * The status line the page shows: the bar and the phone each render one, and the other width's
+ * copy is hidden.
+ */
+const shownStatus = (canvas: ReturnType<typeof within>, text: string) =>
+  waitFor(() =>
+    expect(
+      canvas
+        .getAllByText(text)
+        .filter((element: HTMLElement) => element.checkVisibility())
+    ).toHaveLength(1)
+  );
+
 /** The Rename dashboard item sits in the header's More menu (redesign 7.2 pattern). */
 async function openRenameDashboard(canvas: ReturnType<typeof within>) {
   await userEvent.click(canvas.getByRole("button", { name: "More" }));
@@ -292,7 +305,7 @@ export const TwoSet: Story = {
     ).toBeVisible();
     // One customer whose name holds a comma stays one value (P15-8).
     await expect(canvas.getByLabelText("Customer: A, B Ltd")).toBeVisible();
-    await expect(canvas.getByText("Not saved as default")).toBeVisible();
+    await shownStatus(canvas, "Not saved as default");
 
     await waitFor(() => {
       for (const panelId of ["p1", "p2", "p3"]) {
@@ -449,7 +462,7 @@ export const SwitchView: Story = {
   globals: desktop,
   beforeEach: openViews(MONTH_END_ALL, "v1"),
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Changed")).toBeVisible();
+    await shownStatus(canvas, "Changed");
 
     await pickView(canvas, "Month end");
     await userEvent.click(
@@ -485,7 +498,7 @@ export const ChangedView: Story = {
       await canvas.findByRole("switch", { name: "Overdue only" })
     );
 
-    await expect(await canvas.findByText("Changed")).toBeVisible();
+    await shownStatus(canvas, "Changed");
     await expect(canvas.queryByText("Not saved as default")).toBeNull();
     await expect(addressParam("view")).toBe("v1");
 
@@ -631,7 +644,7 @@ export const SelectedViewChanged: Story = {
   globals: desktop,
   beforeEach: openViews(MONTH_END_ALL, "v1"),
   play: async ({ canvas }) => {
-    await expect(await canvas.findByText("Changed")).toBeVisible();
+    await shownStatus(canvas, "Changed");
 
     readDashboard.mockResolvedValue({
       ...viewsDashboardPage.dashboard,
@@ -710,7 +723,7 @@ export const MakeDefault: Story = {
     await expect(
       canvas.getByRole("button", { name: "View: North region" })
     ).toBeVisible();
-    await expect(canvas.getByText("Changed")).toBeVisible();
+    await shownStatus(canvas, "Changed");
     await expect(addressParam("f.region")).toBe("South");
   },
 };
@@ -1465,6 +1478,48 @@ export const UndoOnPhone: Story = {
   beforeEach: () => serve(undoablePage),
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("button", { name: "Undo" })).toBeVisible();
+  },
+};
+
+/** The one button of `name` the page shows; the other width's copy is hidden. */
+function visibleButton(element: HTMLElement, name: string) {
+  const shown = within(element)
+    .queryAllByRole("button", { name, hidden: true })
+    .filter((button) => button.checkVisibility());
+
+  const [one] = shown;
+
+  if (one === undefined || shown.length > 1) {
+    throw new Error(`${shown.length} "${name}" shown`);
+  }
+
+  return one;
+}
+
+// czjw.159: at 390 px Edit dashboard and More are plain icon buttons in the title row.
+export const HeaderOnPhone: Story = {
+  name: "Header on a phone",
+  globals: phone,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas, canvasElement }) => {
+    const edit = visibleButton(canvasElement, "Edit dashboard");
+
+    await expect(edit).toHaveTextContent(/^$/u);
+    await expect(edit.getBoundingClientRect().width).toBe(44);
+    await userEvent.click(edit);
+    await expect(edit).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      await canvas.findByRole("button", { name: "Actions for Invoiced sales" })
+    ).toBeVisible();
+
+    await userEvent.click(visibleButton(canvasElement, "More"));
+
+    const rename = await screen.findByRole("menuitem", {
+      name: "Rename dashboard",
+    });
+
+    // The menu fades in.
+    await waitFor(() => expect(rename).toBeVisible());
   },
 };
 

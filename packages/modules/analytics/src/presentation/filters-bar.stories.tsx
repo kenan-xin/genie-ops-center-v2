@@ -73,7 +73,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The dashboard filter bar, variant A (Spec 7 R-49, S7-46, S7-47), built on the list header controls. The view menu first (see Dashboard view menu), then the date range, then one trigger per field filter (a select, a multi-select or a toggle), each with Remove filter; Add filter offers the other fields, up to four. A change writes the page address only, so a reload or a shared link keeps it, and saves nothing. With no view selected and filters that differ from the stored ones, the bar ends in "Not saved as default" and Save as default, which stores them and clears the default view in one change. With a view selected and changed filters, it ends in "Changed", Update view and Save as new view. On a phone the controls move into the Filters sheet, with a one-line summary under it.',
+          'The dashboard filter bar, variant A (Spec 7 R-49, S7-46, S7-47), built on the list header controls. The view menu first (see Dashboard view menu), then the date range, then one trigger per field filter (a select, a multi-select or a toggle), each with Remove filter; Add filter offers the other fields, up to four. A change writes the page address only, so a reload or a shared link keeps it, and saves nothing. With no view selected and filters that differ from the stored ones, the bar ends in "Not saved as default" and Save as default, which stores them and clears the default view in one change. With a view selected and changed filters, it ends in "Changed", Update view and Save as new view. On a phone, View and Filters join in one control, and the applied filters show as chips that scroll sideways.',
       },
     },
     a11y: { test: "error" },
@@ -113,6 +113,19 @@ function serve(dashboard: DashboardView) {
       }
     );
 }
+
+/**
+ * The status line the page shows: the bar and the phone each render one, and the other width's
+ * copy is hidden.
+ */
+const shownStatus = (canvas: ReturnType<typeof within>, text: string) =>
+  waitFor(() =>
+    expect(
+      canvas
+        .getAllByText(text)
+        .filter((element: HTMLElement) => element.checkVisibility())
+    ).toHaveLength(1)
+  );
 
 /** Opens the story on the filters dashboard with `filters` in the address. */
 const opened = (filters: DashboardFilters | null) => () => {
@@ -168,17 +181,28 @@ export const MaxFields: Story = {
   },
 };
 
-// The phone keeps the filters one tap away and names what applies in one line.
+// czjw.159: View and Filters join in one control, and the applied filters show as chips.
 export const Phone: Story = {
   name: "Two filters set on a phone",
   globals: phone,
   beforeEach: opened(TWO_SET),
   play: async ({ canvas }) => {
+    const group = await canvas.findByRole("group", {
+      name: "View and filters",
+    });
+
+    // A wrapper between a trigger and the group breaks the joined corners.
     await expect(
-      await canvas.findByText(
-        "Last 3 months · Region: North · Customer: A, B Ltd"
+      ["View: Dashboard filters", "Filters 3 set"].map(
+        (name) => canvas.getByRole("button", { name }).parentElement
       )
-    ).toBeVisible();
+    ).toEqual([group, group]);
+
+    await expect(
+      within(canvas.getByRole("list", { name: "Applied filters" }))
+        .getAllByRole("listitem")
+        .map((chip) => chip.textContent)
+    ).toEqual(["Last 3 months", "North", "A, B Ltd"]);
     await expect(
       canvas.getByRole("button", { name: "Save as default" })
     ).toBeVisible();
@@ -200,7 +224,34 @@ export const Phone: Story = {
     await expect(addressParam("fields")).toBe(
       "region:select,label:multi-select,status:select"
     );
-    await expect(screen.getByText("Not saved as default")).toBeVisible();
+    await shownStatus(canvas, "Not saved as default");
+    await expect(changeDashboard).not.toHaveBeenCalled();
+  },
+};
+
+// A chip's remove takes the field out of the address and saves nothing (P16f-7).
+export const RemoveChipOnPhone: Story = {
+  name: "Remove a chip on a phone",
+  globals: phone,
+  beforeEach: opened(TWO_SET),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Remove Region filter" })
+    );
+
+    await waitFor(() =>
+      expect(addressParam("fields")).toBe("label:multi-select")
+    );
+    await expect(
+      within(canvas.getByRole("list", { name: "Applied filters" })).queryByText(
+        "North"
+      )
+    ).toBeNull();
+    // The chips stay mounted across the address change, so the focus moves on (WCAG 2.4.3).
+    await expect(
+      canvas.getByRole("button", { name: "Remove Customer filter" })
+    ).toHaveFocus();
+    await shownStatus(canvas, "Not saved as default");
     await expect(changeDashboard).not.toHaveBeenCalled();
   },
 };

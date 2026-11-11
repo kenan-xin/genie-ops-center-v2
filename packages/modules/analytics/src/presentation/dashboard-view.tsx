@@ -21,7 +21,8 @@ import {
   Input,
 } from "@genie/ui";
 import { useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { EllipsisIcon, PencilIcon, Undo2Icon } from "lucide-react";
+import { type ReactElement, useId, useState } from "react";
 
 import type { DashboardChange } from "../contract.ts";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
@@ -186,6 +187,28 @@ export function DashboardView(props: DashboardViewProps) {
   // Only a person who may write gets the chat's write tools.
   const starters = chatOn && view.canWrite;
 
+  // A mode switch, so a pressed button, not a menu item.
+  function toggleEditing() {
+    setEditing(!editing);
+    setFailure(null);
+  }
+
+  /** The header's More menu; the desktop button and the phone icon open the same one. */
+  const dashboardMenu = (trigger: ReactElement) => (
+    <DropdownMenu>
+      <DropdownMenuTrigger render={trigger} />
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem
+          onClick={() =>
+            openRename({ kind: "dashboard", value: dashboard.name })
+          }
+        >
+          Rename dashboard
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   return (
     <main>
       <PageHeader
@@ -195,7 +218,9 @@ export function DashboardView(props: DashboardViewProps) {
             ? undefined
             : `Figures as of ${formatReadTime(readAt, view.timeZone)}.`
         }
-        secondaryActions={
+        // `actions`, not `secondaryActions`: below 768 px the header then hides their row and
+        // leaves no empty band, while `topBarActions` put the icons in the title row (P16f-9).
+        actions={
           view.canWrite ? (
             <>
               {/* Outside edit mode too: a chat answer tells the person to use Undo (R-49). */}
@@ -208,35 +233,49 @@ export function DashboardView(props: DashboardViewProps) {
                   Undo
                 </Button>
               ) : null}
-              {/* A mode switch, so a pressed button, not a menu item. */}
               <Button
                 variant="secondary"
                 aria-pressed={editing}
-                onClick={() => {
-                  setEditing(!editing);
-                  setFailure(null);
-                }}
+                onClick={toggleEditing}
               >
                 Edit dashboard
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  render={
-                    <Button variant="secondary" size="icon" aria-label="More" />
-                  }
-                >
+              {dashboardMenu(
+                <Button variant="secondary" size="icon" aria-label="More">
                   <span aria-hidden="true">⋯</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onClick={() =>
-                      openRename({ kind: "dashboard", value: dashboard.name })
-                    }
-                  >
-                    Rename dashboard
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                </Button>
+              )}
+            </>
+          ) : undefined
+        }
+        topBarActions={
+          view.canWrite ? (
+            <>
+              {dashboard.canUndo ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Undo"
+                  loading={undo.isPending}
+                  onClick={undoLast}
+                >
+                  <Undo2Icon aria-hidden="true" />
+                </Button>
+              ) : null}
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label="Edit dashboard"
+                aria-pressed={editing}
+                onClick={toggleEditing}
+              >
+                <PencilIcon aria-hidden="true" />
+              </Button>
+              {dashboardMenu(
+                <Button variant="ghost" size="icon" aria-label="More">
+                  <EllipsisIcon aria-hidden="true" />
+                </Button>
+              )}
             </>
           ) : undefined
         }

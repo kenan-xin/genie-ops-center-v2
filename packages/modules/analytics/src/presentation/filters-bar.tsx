@@ -4,11 +4,14 @@ import { useModuleClient } from "@genie/core/rpc/client";
 import {
   BUILT_IN_CONTROLS,
   Button,
+  ButtonGroup,
   buttonVariants,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  type FilterChip,
+  FilterChips,
   FilterSheet,
   type ListDefinition,
   type ListFilterControl,
@@ -207,20 +210,82 @@ function filterOf(shown: ShownField, raw: string | undefined): FieldFilter {
   }
 }
 
-/** "Region: North", "Customer: 2 selected", "Overdue only": one applied filter in the summary. */
-function summaryOf(filter: FieldFilter): string | undefined {
+/** "North", "Customer: 2 selected", "Overdue only": one applied filter as a chip (P16f-6). */
+function chipLabelOf(filter: FieldFilter): string | undefined {
   switch (filter.kind) {
     case "select":
-      return filter.value === null
-        ? undefined
-        : `${filter.label}: ${filter.value}`;
+      return filter.value ?? undefined;
     case "multi-select":
-      return filter.values.length === 0
-        ? undefined
-        : `${filter.label}: ${filter.values.length === 1 ? filter.values[0] : `${filter.values.length} selected`}`;
+      return filter.values.length > 1
+        ? `${filter.label}: ${filter.values.length} selected`
+        : filter.values[0];
     case "toggle":
       return filter.value ? filter.label : undefined;
   }
+}
+
+type Status = "unsaved" | "changed";
+
+/**
+ * "Not saved as default" or "Changed" with its saves: at the end of the bar, or on a phone a quiet
+ * row with text buttons (`czjw.159`).
+ */
+function StatusRow(props: {
+  readonly place: "bar" | "phone";
+  readonly status: Status;
+  readonly saving: boolean;
+  readonly onSaveAsDefault: () => void;
+  readonly onUpdateView: () => void;
+  readonly onSaveAsNewView: () => void;
+}) {
+  const bar = props.place === "bar";
+  const size = bar ? "sm" : "filter";
+
+  return (
+    <div
+      className={
+        bar
+          ? "flex flex-wrap items-center gap-3 md:ml-auto"
+          : "flex min-h-11 items-center justify-between gap-2 border-t border-border text-sm text-muted-foreground"
+      }
+    >
+      <span
+        className={`flex items-center gap-2 ${bar ? "text-sm text-muted-foreground" : ""}`}
+      >
+        {/* DESIGN.md: an unsaved change carries a small blue dot. */}
+        <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
+        {props.status === "changed" ? "Changed" : "Not saved as default"}
+      </span>
+      {props.status === "changed" ? (
+        <span className={bar ? "contents" : "flex items-center gap-3"}>
+          <Button
+            variant={bar ? "primary" : "link"}
+            size={size}
+            loading={props.saving}
+            onClick={props.onUpdateView}
+          >
+            Update view
+          </Button>
+          <Button
+            variant={bar ? "secondary" : "link"}
+            size={size}
+            onClick={props.onSaveAsNewView}
+          >
+            Save as new view
+          </Button>
+        </span>
+      ) : (
+        <Button
+          variant={bar ? "secondary" : "link"}
+          size={size}
+          loading={props.saving}
+          onClick={props.onSaveAsDefault}
+        >
+          Save as default
+        </Button>
+      )}
+    </div>
+  );
 }
 
 export type FiltersBarProps = {
@@ -447,25 +512,60 @@ export function FiltersBar(props: FiltersBarProps) {
         ? null
         : "changed";
 
-  const summary = [
-    rangeLabel(current.dateRange),
-    ...current.fields.flatMap((filter) => summaryOf(filter) ?? []),
-  ].join(" · ");
+  // The date range first, with no remove: the dashboard always has one.
+  const chips: readonly FilterChip[] = [
+    {
+      id: RANGE,
+      label: rangeLabel(current.dateRange),
+      set: range !== undefined,
+    },
+    ...current.fields.flatMap((filter) => {
+      const label = chipLabelOf(filter);
+
+      return label === undefined
+        ? []
+        : [
+            {
+              id: idOf(filter.field),
+              label,
+              set: true,
+              remove: {
+                name: `Remove ${filter.label} filter`,
+                onRemove: () => remove(filter.field),
+              },
+            },
+          ];
+    }),
+  ];
+
+  const viewMenu = {
+    views: dashboard.views,
+    defaultViewId: dashboard.defaultViewId,
+    viewId: filters.viewId,
+    onSelect: filters.selectView,
+    onMakeDefault: makeDefault,
+    onRemove: removeView,
+    onSaveAsView: () => openNaming("Save as view"),
+    onSaveAsDefault: saveAsDefault,
+  };
+
+  const statusRow = (place: "bar" | "phone") =>
+    status === null ? null : (
+      <StatusRow
+        place={place}
+        status={status}
+        saving={change.isPending}
+        onSaveAsDefault={saveAsDefault}
+        onUpdateView={updateView}
+        onSaveAsNewView={() => openNaming("Save as new view")}
+      />
+    );
 
   return (
     <div className="grid gap-3">
-      <div className="flex flex-wrap items-center gap-2.5 border-b border-border pb-4">
-        <ViewMenu
-          views={dashboard.views}
-          defaultViewId={dashboard.defaultViewId}
-          viewId={filters.viewId}
-          onSelect={filters.selectView}
-          onMakeDefault={makeDefault}
-          onRemove={removeView}
-          onSaveAsView={() => openNaming("Save as view")}
-          onSaveAsDefault={saveAsDefault}
-        />
-        <div className="hidden md:contents">
+      <div className="hidden flex-wrap items-center gap-2.5 border-b border-border pb-4 md:flex">
+        <ViewMenu place="bar" {...viewMenu} />
+        <div className="contents">
           <DateControl
             filter={RANGE_FILTER}
             value={params[RANGE]}
@@ -522,8 +622,12 @@ export function FiltersBar(props: FiltersBarProps) {
             </Button>
           ) : null}
         </div>
+        {statusRow("bar")}
+      </div>
 
-        <div className="contents md:hidden">
+      <div className="grid gap-3 md:hidden">
+        <ButtonGroup aria-label="View and filters" className="w-full">
+          <ViewMenu place="sheet" {...viewMenu} />
           <FilterSheet
             definition={definition}
             state={state}
@@ -560,48 +664,9 @@ export function FiltersBar(props: FiltersBarProps) {
               </div>
             ) : null}
           </FilterSheet>
-          <p className="basis-full text-sm text-muted-foreground">{summary}</p>
-        </div>
-
-        {status === null ? null : (
-          <div className="flex flex-wrap items-center gap-3 md:ml-auto">
-            <span className="flex items-center gap-2 text-sm text-muted-foreground">
-              {/* DESIGN.md: an unsaved change carries a small blue dot. */}
-              <span
-                aria-hidden="true"
-                className="size-2 rounded-full bg-primary"
-              />
-              {status === "changed" ? "Changed" : "Not saved as default"}
-            </span>
-            {status === "changed" ? (
-              <>
-                <Button
-                  size="sm"
-                  loading={change.isPending}
-                  onClick={updateView}
-                >
-                  Update view
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => openNaming("Save as new view")}
-                >
-                  Save as new view
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="secondary"
-                size="sm"
-                loading={change.isPending}
-                onClick={saveAsDefault}
-              >
-                Save as default
-              </Button>
-            )}
-          </div>
-        )}
+        </ButtonGroup>
+        <FilterChips label="Applied filters" chips={chips} />
+        {statusRow("phone")}
       </div>
 
       {naming === null ? null : (
