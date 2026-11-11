@@ -18,7 +18,7 @@ The core product and the modules are documented apart. Read `core/` first, then 
 | `runbooks/` | Operator procedures: the deployment guide (`deployment.md`), the Keycloak realm and identity provider runbook (`keycloak-realm.md`), the reverse proxy setup (`reverse-proxy.md`), upgrades, backup verification. | Deployment guide, realm runbook, and reverse proxy runbook written; the last two are planned procedures not yet run |
 | `guides/` | Per-scenario setup guides for a person doing the setup, one per sign-in scenario under `sign-in/`, plus the chooser. A guide ships in the same change as its end-to-end test and links to the runbooks for detail. | All seven scenario guides, S-A to S-G, written; `sign-in/choose-your-setup.md` is the chooser |
 | `research/` | Research notes that informed a decision. Each note names the decision it fed and links to the canonical document. | One note: module import spelling |
-| `maintenance/` | Documentation reconciliation records and notes on tooling that the repository does not require. | Two records, linked below |
+| `maintenance/` | Documentation reconciliation records, code review records, and notes on tooling that the repository does not require. | Three records, linked below |
 
 For initial branding requirements and defaults, read [Branding seed requirements](architecture/branding-seed.md), governed by DEC-35 in the [decision log](core/decision-log.md). Architectural decisions remain in `adr/`; unresolved product questions remain in `core/vision.md`.
 
@@ -26,7 +26,7 @@ For module lifecycle policy, read [Module removal and reintroduction](architectu
 
 For UI implementation and testing, read [Storybook and UI development](architecture/ui-development.md): story ownership, module-safe discovery, documentation, the test-first loop, and the boundary between component tests and E2E. Section 0 establishes this development infrastructure.
 
-The [2026-09-21 reconciliation record](maintenance/2026-09-21-documentation-reconciliation.md) maps current decisions, accepted integration evidence and remaining open requirements. [Optional agent hooks](maintenance/optional-agent-hooks.md) states how the tracked agent hooks find personal tools that the repository does not require.
+The [2026-09-21 reconciliation record](maintenance/2026-09-21-documentation-reconciliation.md) maps current decisions, accepted integration evidence and remaining open requirements. [Optional agent hooks](maintenance/optional-agent-hooks.md) states how the tracked agent hooks find personal tools that the repository does not require. The [2026-11-11 post-run review](maintenance/2026-11-11-post-run-review-phases-04-11/README.md) records the review of Follow-Up 11 Phases 04 to 11, its fixes and its follow-up beads.
 
 ## Direction of authority
 
