@@ -14,6 +14,8 @@ import { startDisposablePostgres } from "./postgres.ts";
 
 export { enableModules } from "./enable-modules.ts";
 
+export { lockWaitersReach } from "./lock-waits.ts";
+
 export {
   agentRequest,
   answerArtifactConfigs,

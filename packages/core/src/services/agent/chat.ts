@@ -182,7 +182,7 @@ export async function handleAgentChat(
       : existing.recordId;
 
   // Before any write: one answer at a time in a chat (R-42b), and a surface whose module is off
-  // stores nothing.
+  // stores nothing. A fast refusal before the model check; the append decides under the row lock.
   if (existing !== undefined && existing.runState !== null) {
     throw new AppError(CORE_ERRORS["agent-run-active"]);
   }
@@ -209,10 +209,13 @@ export async function handleAgentChat(
     });
   }
 
-  await appendMessage(ctx, sessionId, {
-    role: "user",
-    parts: [{ type: "text", text }],
-  });
+  await appendMessage(
+    ctx,
+    sessionId,
+    { role: "user", parts: [{ type: "text", text }] },
+    [],
+    { run: "none" }
+  );
 
   // One signal for both model calls: Stop and the turn limit end the summary call too (LC5).
   const abortSignal = AbortSignal.any([

@@ -3,7 +3,11 @@ import { setTimeout as sleep } from "node:timers/promises";
 import {
   AGENT_RUN_JOB,
   type AgentMessage,
+  AppError,
   appendMessage,
+  callProcedure,
+  createAgentRouter,
+  handleAgentChat,
   type ModuleRequestContext,
   principalFor,
   readAuditPage,
@@ -15,9 +19,11 @@ import {
   withTransaction,
 } from "@genie/core";
 import {
+  agentRequest,
   enableModules,
   insertAgentSession,
   insertPersonWith,
+  lockWaitersReach,
   markSetupDone,
   runQueuedAgentRun,
   startDisposableDeployment,
@@ -134,6 +140,57 @@ async function runColumns(sessionId: string) {
   );
 
   return rows[0];
+}
+
+/** Try again through the router, as the chat's button calls it. */
+async function retry(ctx: ModuleRequestContext, sessionId: string) {
+  return callProcedure(createAgentRouter(), ctx).retry({ id: sessionId });
+}
+
+/** The first text of every message of the session, in order. */
+async function messageTexts(sessionId: string) {
+  const { rows } = await deployment.context.db.execute<{ text: string }>(
+    sql`select parts->0->>'text' as text from agent_message where session_id = ${sessionId} order by seq`
+  );
+
+  return rows.map(({ text }) => text);
+}
+
+/** Sends a message through the chat route: "streamed", or the refusal's catalogue code. */
+async function send(
+  ctx: ModuleRequestContext,
+  sessionId: string
+): Promise<string> {
+  try {
+    await handleAgentChat(
+      ctx,
+      agentRequest({
+        sessionId,
+        message: {
+          id: "client-message-1",
+          role: "user",
+          parts: [{ type: "text", text: "Make it shorter." }],
+        },
+      }),
+      { logError: () => {} }
+    );
+
+    return "streamed";
+  } catch (error) {
+    return error instanceof AppError
+      ? error.code
+      : `not an AppError: ${String(error)}`;
+  }
+}
+
+/** A run that ended with no answer: started, then stopped while still queued. */
+async function stoppedSession(ctx: ModuleRequestContext): Promise<string> {
+  const sessionId = await surfaceSession(ctx);
+
+  await start(ctx, sessionId);
+  await stopRun(ctx, sessionId);
+
+  return sessionId;
 }
 
 async function answers(ctx: ModuleRequestContext, sessionId: string) {
@@ -460,5 +517,124 @@ describe("a durable agent run on the placeholder test surface", () => {
       requests: 0,
       answers: 0,
     });
+  });
+
+  it("a message sent while Try again starts a run is refused and stores nothing", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    const begun = Promise.withResolvers<void>();
+    const held = Promise.withResolvers<void>();
+
+    // Try again's transaction: the run starts and the row stays locked until released.
+    const tryAgain = withTransaction(deployment.context, async (tx) => {
+      await startRun(ctx, tx, sessionId);
+      begun.resolve();
+      await held.promise;
+    });
+
+    let sent: Promise<string> | undefined;
+
+    try {
+      await Promise.race([begun.promise, tryAgain]);
+      sent = send(ctx, sessionId);
+      await lockWaitersReach(deployment.context, 1);
+    } finally {
+      held.resolve();
+    }
+
+    await tryAgain;
+
+    expect({
+      send: await sent,
+      texts: await messageTexts(sessionId),
+      state: (await runColumns(sessionId))?.run_state,
+    }).toEqual({
+      send: "agent-run-active",
+      texts: [RUN_REQUEST],
+      state: "queued",
+    });
+  });
+
+  it("Try again is refused while a sent message's answer can still stream, and works once the answer is stored", async () => {
+    const ctx = await person();
+    const sessionId = await stoppedSession(ctx);
+
+    // As the chat route stores the person's message before its answer streams.
+    await appendMessage(ctx, sessionId, {
+      role: "user",
+      parts: [{ type: "text", text: "Make it shorter." }],
+    });
+
+    await expect(retry(ctx, sessionId)).rejects.toMatchObject({
+      code: "agent-run-active",
+    });
+    expect({
+      texts: await messageTexts(sessionId),
+      run: await runColumns(sessionId),
+    }).toEqual({
+      texts: [RUN_REQUEST, "Make it shorter."],
+      run: { run_state: null, run_error: "stopped" },
+    });
+
+    await appendMessage(ctx, sessionId, {
+      role: "assistant",
+      parts: [{ type: "text", text: "Shorter now." }],
+    });
+    await retry(ctx, sessionId);
+
+    expect({
+      texts: await messageTexts(sessionId),
+      state: (await runColumns(sessionId))?.run_state,
+    }).toEqual({
+      texts: [RUN_REQUEST, "Make it shorter.", "Shorter now.", "Try again."],
+      state: "queued",
+    });
+  });
+
+  it("Try again works after a run that ended with no answer", async () => {
+    const ctx = await person();
+    const sessionId = await stoppedSession(ctx);
+
+    await retry(ctx, sessionId);
+
+    expect({
+      texts: await messageTexts(sessionId),
+      state: (await runColumns(sessionId))?.run_state,
+    }).toEqual({ texts: [RUN_REQUEST, "Try again."], state: "queued" });
+
+    // The second time, Try again's own message and run start came from one transaction.
+    await stopRun(ctx, sessionId);
+    await retry(ctx, sessionId);
+
+    expect({
+      texts: await messageTexts(sessionId),
+      state: (await runColumns(sessionId))?.run_state,
+    }).toEqual({
+      texts: [RUN_REQUEST, "Try again.", "Try again."],
+      state: "queued",
+    });
+  });
+
+  it("an unanswered message older than one turn does not block Try again", async () => {
+    const ctx = await person();
+    const sessionId = await stoppedSession(ctx);
+
+    await appendMessage(ctx, sessionId, {
+      role: "user",
+      parts: [{ type: "text", text: "Make it shorter." }],
+    });
+
+    // As after a turn of the chat route that stored no answer, four minutes ago.
+    await deployment.context.db.execute(
+      sql`update agent_message set created_at = created_at - interval '4 minutes' where session_id = ${sessionId} and parts->0->>'text' = 'Make it shorter.'`
+    );
+    await deployment.context.db.execute(
+      sql`update agent_session set updated_at = updated_at - interval '4 minutes' where id = ${sessionId}`
+    );
+
+    await retry(ctx, sessionId);
+
+    expect((await messageTexts(sessionId)).at(-1)).toBe("Try again.");
   });
 });

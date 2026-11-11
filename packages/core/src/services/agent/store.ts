@@ -612,7 +612,8 @@ async function writeVersion(
  * so a failed write stores neither. An assistant message whose id is stored already replaces its
  * parts and keeps its place, so a run's checkpoints and its final answer stay one message (R-42b).
  * With `turn.run`, the save needs that job to hold the session's run, `stopping` included; a run
- * that ended or that a new run replaced answers `not-found` and writes nothing.
+ * that ended or that a new run replaced answers `not-found` and writes nothing. With `"none"`, a
+ * session that a run holds answers `agent-run-active` and writes nothing.
  */
 export async function appendMessage(
   ctx: ModuleRequestContext,
@@ -625,29 +626,35 @@ export async function appendMessage(
   versions: readonly PendingVersion[] = [],
   turn: {
     readonly inputTokens?: number;
-    readonly run?: { readonly jobId: string };
+    readonly run?: "none" | { readonly jobId: string };
   } = {}
 ): Promise<string> {
   const id = checkedId(sessionId);
+  const { run } = turn;
 
   return withTransaction(ctx.tenant, async (tx) => {
     // The row lock orders concurrent appends to one session, so `seq` follows the commits.
     const [owned] = await tx
-      .select({ id: agentSession.id })
+      .select({ id: agentSession.id, runState: agentSession.runState })
       .from(agentSession)
       .where(
-        turn.run === undefined
+        run === undefined || run === "none"
           ? ownedBy(ctx, id)
           : // A run saves only while its job holds the session's run; `stopping` still saves.
             and(
               ownedBy(ctx, id),
-              eq(agentSession.runJobId, turn.run.jobId),
+              eq(agentSession.runJobId, run.jobId),
               isNotNull(agentSession.runState)
             )
       )
       .for("update");
 
     if (owned === undefined) throw notFound();
+
+    // A send decides here, under the lock, so a run that started after its early read refuses it.
+    if (run === "none" && owned.runState !== null) {
+      throw new AppError(CORE_ERRORS["agent-run-active"]);
+    }
 
     // Under the lock: an overlapping turn may have stored the numbers this turn read as free.
     const settled = await settleVersions(tx, id, versions);

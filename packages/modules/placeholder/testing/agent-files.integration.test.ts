@@ -17,6 +17,7 @@ import {
   enableModules,
   insertPersonWith,
   insertRole,
+  lockWaitersReach,
   markSetupDone,
   startDisposableDeployment,
 } from "@genie/core/testing";
@@ -143,25 +144,6 @@ async function csvLabels(agentFileId: string): Promise<string[]> {
   const at = header?.indexOf("Label") ?? -1;
 
   return rows.map((cells) => cells[at] ?? "").toSorted();
-}
-
-/** Waits, at most 10 s, until `count` sessions of the database wait on a lock. */
-async function waitersReach(count: number): Promise<void> {
-  for (let tries = 0; tries < 200; tries += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- polls until the lock waits show.
-    const { rows } = await deployment.context.db.$client.query<{
-      waiting: number;
-    }>(
-      "select count(distinct pid)::int as waiting from pg_locks where not granted"
-    );
-
-    if (rows[0]?.waiting === count) return;
-
-    // oxlint-disable-next-line no-await-in-loop -- polls until the lock waits show.
-    await new Promise((resolve) => setTimeout(resolve, 50));
-  }
-
-  throw new Error(`${count} sessions never waited on a lock.`);
 }
 
 const fullReader = async () =>
@@ -292,14 +274,14 @@ describe("the agent file job on the placeholder", () => {
 
       const job = runJob(person, csv);
 
-      await waitersReach(1);
+      await lockWaitersReach(deployment.context, 1);
 
       const removed = callProcedure(
         createAgentRouter(),
         contextFor(person)
       ).remove({ id: sessionId });
 
-      await waitersReach(2);
+      await lockWaitersReach(deployment.context, 2);
 
       await blocker.query("commit");
       await Promise.all([job, removed]);

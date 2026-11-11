@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { readUIMessageStream } from "ai";
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, sql } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type {
@@ -258,7 +258,8 @@ export const RETRY_TEXT = "Try again.";
 /**
  * Try again on a run that ended (R-42b): the caller's message "Try again." and a new run, in one
  * transaction, so a refused run stores no message. `not-found` for a session that never ran or is
- * not the caller's; `agent-run-active` while one of the caller's runs builds. Beside `startRun`,
+ * not the caller's; `agent-run-active` while one of the caller's runs builds, or while a sent
+ * message's answer can still stream. Beside `startRun`,
  * because `runs.ts` is imported by this file at load time.
  */
 export async function retryRun(
@@ -278,6 +279,30 @@ export async function retryRun(
 
     if (row?.runJobId === null || row === undefined) {
       throw new AppError(CORE_ERRORS["not-found"]);
+    }
+
+    // The chat route stores no run state. A person's message that is still the session's latest
+    // change has no answer yet, so its answer can still stream. A turn ends within the turn limit,
+    // so an older message no longer blocks (czjw.125).
+    const [streaming] = await tx
+      .select({ id: agentMessage.id })
+      .from(agentMessage)
+      .innerJoin(agentSession, eq(agentSession.id, agentMessage.sessionId))
+      .where(
+        and(
+          eq(agentMessage.sessionId, id),
+          eq(agentMessage.role, "user"),
+          eq(agentMessage.createdAt, agentSession.updatedAt),
+          gt(
+            agentMessage.createdAt,
+            sql`now() - make_interval(secs => ${AGENT_LIMITS.turnMs / 1000})`
+          )
+        )
+      )
+      .limit(1);
+
+    if (streaming !== undefined) {
+      throw new AppError(CORE_ERRORS["agent-run-active"]);
     }
 
     await tx.insert(agentMessage).values({
@@ -326,7 +351,14 @@ export async function startRun(
   try {
     moved = await tx
       .update(agentSession)
-      .set({ runState: "queued", runJobId: jobId, runError: null })
+      // `clock_timestamp()`, not `now()`: the start is a change after the request it answers, also
+      // when that request was written in this transaction (Try again's rule, czjw.125).
+      .set({
+        runState: "queued",
+        runJobId: jobId,
+        runError: null,
+        updatedAt: sql`clock_timestamp()`,
+      })
       .where(and(owned, isNull(agentSession.runState)))
       .returning({ id: agentSession.id });
   } catch (error) {
