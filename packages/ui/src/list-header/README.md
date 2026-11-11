@@ -16,6 +16,7 @@ Business logic, data fetching, a list of one module, and any import of an intern
 - The address holds one parameter per filter id, the tab parameter and `sort`. An old or hand-edited value reads as no value, or as the default sort.
 - In the bar a trigger shows its label muted and its value semibold, with the control border; a set value tints the trigger (variant A, `czjw.102`). In the Filters sheet and More filters a placeholder is muted and regular, a set value tinted and semibold.
 - Clear filters shows only while a filter or the search is set, right after the last control. The actions sit at the end of the bar.
+- Clear filters gives the focus to the first control of the bar, and Clear all in the Filters sheet gives it to Show.
 - The tab row, the bar and the table share one 20 px left edge.
 - Every control of one place has one height: the field height, 36 px from 1024 px and 44 px under it.
 - A phone shows the count once, in the line above the cards.

@@ -256,6 +256,21 @@ export const RemoveChipOnPhone: Story = {
   },
 };
 
+// 6wz1.98: Clear filters unmounts itself, so the focus goes to the first control, not the body.
+export const ClearFiltersKeepsFocus: Story = {
+  name: "Clear filters keeps the focus",
+  globals: desktop,
+  beforeEach: opened(TWO_SET),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Clear filters" })
+    );
+
+    await waitFor(() => expect(addressParam("f.region")).toBeNull());
+    await expect(canvas.getByLabelText("Date: Last 3 months")).toHaveFocus();
+  },
+};
+
 /** The day buttons of the open calendar, in date order; the month shown is today's. */
 const shownDays = () =>
   waitFor(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { SlidersHorizontalIcon } from "lucide-react";
-import { useId, type ReactNode } from "react";
+import { useId, useRef, type ReactNode } from "react";
 
 import { Button } from "../components/button.tsx";
 import { FieldLabel } from "../components/field.tsx";
@@ -41,6 +41,7 @@ export function FilterSheet(props: {
 }) {
   const { definition, state } = props;
   const statusId = useId();
+  const showButton = useRef<HTMLButtonElement>(null);
   const count = setFilterCount(definition, state.params);
   const tabs = definition.tabs;
   const [one, many] = definition.noun;
@@ -136,11 +137,18 @@ export function FilterSheet(props: {
             variant="secondary"
             size="lg"
             disabled={count === 0}
-            onClick={state.clear}
+            onClick={() => {
+              state.clear();
+              // Clear all can disable itself, and the first control of a sheet can be a radio
+              // group, so the focus goes to its neighbor Show (WCAG 2.4.3).
+              showButton.current?.focus();
+            }}
           >
             Clear all
           </Button>
-          <SheetClose render={<Button size="lg" className="flex-1" />}>
+          <SheetClose
+            render={<Button ref={showButton} size="lg" className="flex-1" />}
+          >
             {show}
           </SheetClose>
         </SheetFooter>

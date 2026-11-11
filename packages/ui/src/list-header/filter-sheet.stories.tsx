@@ -107,6 +107,12 @@ export const ClearAll: Story = {
     await userEvent.click(clear);
     await waitFor(() => expect(param("status")).toBeNull());
     await expect(screen.getByRole("radio", { name: "All 36" })).toBeChecked();
+    // 6wz1.98: Clear all disables itself, so the focus moves to Show, not the body.
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Show 6 invoices" })
+      ).toHaveFocus()
+    );
     await userEvent.keyboard("{Escape}");
   },
 };

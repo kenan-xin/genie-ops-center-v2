@@ -23,7 +23,7 @@ import {
   Switch,
 } from "@genie/ui";
 import { keepPreviousData, useQueries } from "@tanstack/react-query";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import {
   analyticsContract,
@@ -308,6 +308,7 @@ export function FiltersBar(props: FiltersBarProps) {
   const change = useDashboardChange(dashboard);
   const addId = useId();
   const hintId = useId();
+  const controls = useRef<HTMLDivElement>(null);
   // The Name dialog's title while it is open.
   const [naming, setNaming] = useState<string | null>(null);
 
@@ -565,7 +566,7 @@ export function FiltersBar(props: FiltersBarProps) {
     <div className="grid gap-3">
       <div className="hidden flex-wrap items-center gap-2.5 border-b border-border pb-4 md:flex">
         <ViewMenu place="bar" {...viewMenu} />
-        <div className="contents">
+        <div ref={controls} className="contents">
           <DateControl
             filter={RANGE_FILTER}
             value={params[RANGE]}
@@ -617,7 +618,15 @@ export function FiltersBar(props: FiltersBarProps) {
             </span>
           ) : null}
           {anySet ? (
-            <Button variant="link" size="filter" onClick={clear}>
+            <Button
+              variant="link"
+              size="filter"
+              onClick={() => {
+                clear();
+                // Clear filters unmounts itself, so focus goes to the first control (WCAG 2.4.3).
+                controls.current?.querySelector<HTMLElement>("button")?.focus();
+              }}
+            >
               Clear filters
             </Button>
           ) : null}
