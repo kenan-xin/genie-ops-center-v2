@@ -72,6 +72,14 @@ const POLL_INTERVAL_MS = 1000;
  */
 const MAX_EVENT_HANDLERS_IN_FLIGHT = 16;
 
+/**
+ * How many `core.agent-run` jobs one worker runs at once (czjw.123). A run waits on its model
+ * for up to three minutes, so a single loop holds every other person's run behind it. Each
+ * loop is a plain `drain`, and pg-boss gives each fetch a different job. One run per person
+ * stays the partial unique index (R-42b).
+ */
+const AGENT_RUNS_AT_ONCE = 4;
+
 /** Below Docker's default 10 s stop grace, so the worker stops pg-boss itself before SIGKILL. */
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 8000;
 
@@ -588,7 +596,12 @@ async function serve(
   const jobLoops = [
     heartbeatLoop(boss, context, jobs, options),
     // Core owns its jobs, so no entitlement gates them.
-    ...CORE_JOBS.map((job) => jobLoop(job, async () => true)),
+    ...CORE_JOBS.flatMap((job) =>
+      Array.from(
+        { length: job === AGENT_RUN_JOB ? AGENT_RUNS_AT_ONCE : 1 },
+        () => jobLoop(job, async () => true)
+      )
+    ),
     ...jobs.map(({ moduleId, job }) =>
       jobLoop(job, async () => context.entitlements.isEnabled(moduleId))
     ),
@@ -626,8 +639,9 @@ async function serve(
 
   const settled = await Promise.race([
     Promise.all([
-      // Job queues and the heartbeat run one job at a time; event queues run handlers
-      // concurrently, because serialized keys are parallel across keys (R-56).
+      // Each job loop runs one job at a time, and the run queue has `AGENT_RUNS_AT_ONCE` loops.
+      // Event queues run handlers concurrently, because serialized keys are parallel across keys
+      // (R-56).
       ...jobLoops.map(async (loop) =>
         drain(boss, loop, claims, logger, options)
       ),

@@ -15,8 +15,8 @@ import { checkedId } from "./store.ts";
 export const AGENT_RUN_JOB_NAME = "core.agent-run";
 
 /**
- * Stops the caller's run. A `queued` run ends at once as `stopped`, because the worker runs one
- * run job at a time and the person must not wait for its turn; its job then finds no queued run
+ * Stops the caller's run. A `queued` run ends at once as `stopped`, because a queued run can wait
+ * behind other runs, and the person must not wait for its turn; its job then finds no queued run
  * and does nothing. A `running` run becomes `stopping`, and the job ends it within about a second
  * (R-42b). A session with no run is left as it is, because Stop can race the
  * end of a run. Another person's or an unknown session is `not-found`.

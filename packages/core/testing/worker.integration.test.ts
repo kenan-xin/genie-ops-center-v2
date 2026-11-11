@@ -530,6 +530,109 @@ describe("the core pg-boss worker", () => {
     });
   });
 
+  // Red on the old code (one run loop): "worker integration condition timed out" at the wait for B.
+  it("runs a second person's agent run while the first one still runs", async () => {
+    const database = await disposablePostgres();
+    const context = createTenantContext(
+      source(database.url),
+      silentLogger(),
+      []
+    );
+    cleanups.push(() => context.db.$client.end());
+    cleanups.push(() => stopJobQueue(context.jobQueue));
+
+    await runMigrations({
+      env: context.env,
+      pool: context.db.$client,
+      histories: migrationPlan([]),
+      compiledModuleIds: [],
+    });
+
+    const queue = await boss(context);
+    await queue.createQueue(AGENT_RUN_JOB_NAME);
+
+    const person = async () => {
+      const userId = await insertUser(context);
+      const id = randomUUID();
+
+      await context.db.$client.query(
+        "insert into agent_session (id, user_id, title, model_id) values ($1, $2, 'Chat', 'test-model')",
+        [id, userId]
+      );
+
+      const ctx = {
+        tenant: context,
+        caller: principalFor({
+          tenant: context,
+          modules: [],
+          userId,
+          authenticated: true,
+        }),
+      };
+
+      return {
+        id,
+        start: () =>
+          withTransaction(context, async (tx) => startRun(ctx, tx, id)),
+      };
+    };
+    const runOf = async (id: string) => {
+      const { rows } = await context.db.$client.query<{
+        run_state: string | null;
+        run_error: string | null;
+      }>("select run_state, run_error from agent_session where id = $1", [id]);
+
+      return rows[0];
+    };
+
+    const a = await person();
+    const b = await person();
+    const jobA = await a.start();
+
+    // A's handler waits in `markRunning` on this lock, as a run waits on its model.
+    const lock = await context.db.$client.connect();
+    await lock.query("begin");
+    await lock.query("select id from agent_session where id = $1 for update", [
+      a.id,
+    ]);
+
+    const controller = new AbortController();
+    const worker = runWorker({
+      source: source(database.url),
+      modules: [],
+      histories: [],
+      ...OUTPUT,
+      signal: controller.signal,
+      heartbeat: {
+        cron: "* * * * *",
+        path: "/tmp/worker-heartbeat",
+        staleAfterMs: 180000,
+      },
+    });
+
+    try {
+      await waitUntil(async () => {
+        const [job] = await queue.findJobs(AGENT_RUN_JOB_NAME, { id: jobA });
+
+        return job?.state === "active";
+      });
+      await b.start();
+
+      // B holds no `core:ask:use`, so its job ends it without a model call.
+      await waitUntil(async () => (await runOf(b.id))?.run_error === "failed");
+      expect(await runOf(a.id)).toEqual({
+        run_state: "queued",
+        run_error: null,
+      });
+    } finally {
+      await lock.query("rollback");
+      lock.release();
+      await waitUntil(async () => (await runOf(a.id))?.run_error === "failed");
+      controller.abort();
+      await worker;
+    }
+  });
+
   it("skips a job of a compiled module with no tenant_module row", async () => {
     await expectSkippedModuleJob({ id: "unseeded", enabled: undefined });
   });

@@ -307,6 +307,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the core pg-boss worker settles an abandoned handler job and ignores its late result",
       "the core pg-boss worker runs a queued agent file job as its starter",
       "the core pg-boss worker settles agent runs at start and leaves a live one alone",
+      "the core pg-boss worker runs a second person's agent run while the first one still runs",
     ],
   },
   {
