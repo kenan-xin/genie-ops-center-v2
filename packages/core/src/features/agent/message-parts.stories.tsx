@@ -742,3 +742,124 @@ export const ToolCalls: Story = {
   },
   decorators: [withChartCheck(resolveKpi)],
 };
+
+const CHOICE_QUESTION = "Add the chart to Collections, or just show it here?";
+
+/** An answer that is only an answered `offer-choices` call, as the model writes it (R-46). */
+const OFFERED: AgentMessage = {
+  id: "offer",
+  role: "assistant",
+  parts: [
+    {
+      type: "tool-offer-choices",
+      toolCallId: "call-offer",
+      state: "output-available",
+      input: {
+        question: CHOICE_QUESTION,
+        choices: ["Add", "Just show it here"],
+      },
+      output: { shown: true },
+    },
+  ],
+};
+
+const pick = fn();
+
+/**
+ * Offered choices (czjw.160): the question, then one button per choice in a group named by the
+ * question. Tab reaches the first choice, and Enter sends it as the person's own message.
+ */
+export const Choices: Story = {
+  args: { message: OFFERED, onAsk: pick },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(CHOICE_QUESTION)).toBeVisible();
+
+    const group = canvas.getByRole("group", { name: CHOICE_QUESTION });
+    const buttons = within(group).getAllByRole("button");
+    await expect(buttons.map((button) => button.textContent)).toEqual([
+      "Add",
+      "Just show it here",
+    ]);
+
+    await userEvent.tab();
+    await expect(buttons[0]).toHaveFocus();
+    await userEvent.keyboard("{Enter}");
+    await expect(pick).toHaveBeenCalledTimes(1);
+    await expect(pick).toHaveBeenCalledWith("Add");
+  },
+};
+
+/** At 390 px the choices wrap inside the row, and each stays a 44 px target. */
+export const ChoicesOnAPhone: Story = {
+  ...Choices,
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async (context) => {
+    await Choices.play?.(context);
+
+    const group = context.canvas.getByRole("group", {
+      name: CHOICE_QUESTION,
+    });
+
+    await expect(window.innerWidth).toBe(390);
+    await expect(group.scrollWidth).toBe(group.clientWidth);
+
+    await expect(
+      within(group)
+        .getAllByRole("button")
+        .map((button) => button.getBoundingClientRect().height)
+    ).toEqual([44, 44]);
+  },
+};
+
+/** The longest offer the tool accepts: four choices of up to 40 characters. */
+const LONG_CHOICES = [
+  "Add it to the Collections dashboard now",
+  "Show it in this chat and do not save it",
+  "Make a new dashboard for the collections",
+  "Ask me again after I check the figures",
+];
+
+/** At 390 px the longest choices wrap onto more rows, none overflows, and each stays 44 px. */
+export const LongChoicesOnAPhone: Story = {
+  args: {
+    message: {
+      ...OFFERED,
+      parts: [
+        {
+          type: "tool-offer-choices",
+          toolCallId: "call-offer",
+          state: "output-available",
+          input: { question: CHOICE_QUESTION, choices: LONG_CHOICES },
+          output: { shown: true },
+        },
+      ],
+    },
+    onAsk: pick,
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const group = canvas.getByRole("group", { name: CHOICE_QUESTION });
+    const buttons = within(group).getAllByRole("button");
+    const boxes = buttons.map((button) => button.getBoundingClientRect());
+
+    await expect(window.innerWidth).toBe(390);
+    await expect(new Set(boxes.map((box) => box.top)).size).toBeGreaterThan(1);
+    await expect(group.scrollWidth).toBe(group.clientWidth);
+    await expect(
+      boxes.every((box) => box.right <= group.getBoundingClientRect().right)
+    ).toBe(true);
+    await expect(boxes.map((box) => box.height)).toEqual([44, 44, 44, 44]);
+  },
+};
+
+/** An offer the person already answered, or one under an earlier answer: the question, no button. */
+export const ChoicesAnswered: Story = {
+  args: { message: OFFERED },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(CHOICE_QUESTION)).toBeVisible();
+    await expect(canvas.queryByRole("button")).toBeNull();
+  },
+};

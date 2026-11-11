@@ -458,6 +458,101 @@ export const AskNext: Story = {
   },
 };
 
+const CHOICE_QUESTION = "Add the chart to Collections, or just show it here?";
+
+const SHOW_HERE = "Just show it here";
+
+/** A finished turn that ended on an offer of choices (R-46). */
+const OFFERED_CHAT: readonly AgentMessage[] = [
+  {
+    id: "q1",
+    role: "user",
+    parts: [{ type: "text", text: "Show me the collections by month." }],
+  },
+  {
+    id: "a1",
+    role: "assistant",
+    parts: [
+      {
+        type: "tool-offer-choices",
+        toolCallId: "call-offer",
+        state: "output-available",
+        input: { question: CHOICE_QUESTION, choices: ["Add", SHOW_HERE] },
+        output: { shown: true },
+      },
+    ],
+  },
+];
+
+/** The answer to the choice, held open until the play releases it. */
+const sendHeldChoice = fn(async () => {
+  const hold = new Promise<void>((resolve) => {
+    releaseHeld = resolve;
+  });
+
+  return new ReadableStream<UIMessageChunk>({
+    async start(controller) {
+      controller.enqueue({ type: "start" });
+      controller.enqueue({ type: "text-start", id: "answer" });
+      controller.enqueue({
+        type: "text-delta",
+        id: "answer",
+        delta: 'root = Answer([p])\np = Paragraph("Here is the chart.',
+      });
+      await hold;
+      controller.enqueue({ type: "text-delta", id: "answer", delta: '")' });
+      controller.enqueue({ type: "text-end", id: "answer" });
+      controller.enqueue({ type: "finish" });
+      controller.close();
+    },
+  });
+});
+
+/**
+ * A choice tap (czjw.160): it sends the choice once, as the person's own message, and no choice
+ * button stays live while the next answer streams or after it.
+ */
+export const AChoiceTapSendsIt: Story = {
+  args: {
+    initialMessages: OFFERED_CHAT,
+    transport: transportOf(sendHeldChoice),
+  },
+  play: async ({ canvas }) => {
+    const choices = () =>
+      canvas.queryAllByRole("group", { name: CHOICE_QUESTION });
+
+    await userEvent.click(
+      within(
+        await canvas.findByRole("group", { name: CHOICE_QUESTION })
+      ).getByRole("button", { name: SHOW_HERE })
+    );
+    await expect(await canvas.findByText("Here is the chart.")).toBeVisible();
+    await expect(sendHeldChoice).toHaveBeenCalledTimes(1);
+    await expect(sendHeldChoice).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: [
+          expect.anything(),
+          expect.anything(),
+          expect.objectContaining({
+            role: "user",
+            parts: [{ type: "text", text: SHOW_HERE }],
+          }),
+        ],
+      })
+    );
+
+    // While the answer streams, the question stays and no choice is live.
+    await expect(canvas.getByText(CHOICE_QUESTION)).toBeVisible();
+    await expect(choices()).toHaveLength(0);
+
+    // Once it ends (Stop turns back into Send), the offer is no longer the last answer.
+    releaseHeld();
+    await canvas.findByRole("button", { name: "Send" });
+    await expect(choices()).toHaveLength(0);
+    await expect(sendHeldChoice).toHaveBeenCalledTimes(1);
+  },
+};
+
 export const StreamsWordsBeforeTheEnd: Story = {
   name: "Streams words before the answer ends",
   args: { transport: transportOf(sendPartial) },

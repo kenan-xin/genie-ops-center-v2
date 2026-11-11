@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import type { StepWords } from "../../../contracts/index.ts";
+import { OFFER_CHOICES } from "../../services/agent/choices.ts";
 import { FILE_FORMATS } from "../../services/agent/file-kinds.ts";
 import type {
   AgentFileState,
@@ -227,7 +228,8 @@ export function stepTimeline(
   for (const part of parts) {
     const name = toolNameOf(part);
 
-    if (name === null) continue;
+    // An offer of choices shows as buttons under the answer, not as a step (R-46).
+    if (name === null || name === OFFER_CHOICES) continue;
 
     const state =
       name === "make-file" ? fileStateOf(part, files) : stateOf(part);

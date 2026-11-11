@@ -438,6 +438,15 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
           .getByRole("main")
           .getByRole("figure", { name: ANALYTICS_CHART_TITLE });
 
+        /** Taps a choice of the question, which sends it as the person's message (R-46). */
+        const choose = (choice: string) =>
+          activate(
+            page,
+            surface
+              .getByRole("group", { name: ANALYTICS_QUESTION })
+              .getByRole("button", { name: choice, exact: true })
+          );
+
         /** Asks for the chart, and expects the question with nothing added. */
         const ask = async () => {
           await send(page, surface, ANALYTICS_QUESTION_MESSAGE);
@@ -449,7 +458,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
 
         await openEmptyDashboard();
         await ask();
-        await send(page, surface, ANALYTICS_ADD_ANSWER);
+        await choose(ANALYTICS_ADD_ANSWER);
 
         await expect(panel).toBeVisible(FIRST_PAINT);
         await expectNoAxeViolations(page, "dashboard after Add");
@@ -460,7 +469,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
 
         await openEmptyDashboard();
         await ask();
-        await send(page, surface, ANALYTICS_SHOW_ANSWER);
+        await choose(ANALYTICS_SHOW_ANSWER);
 
         await expect(
           surface

@@ -30,7 +30,8 @@ import {
 } from "./answer-sources.ts";
 import { ArtifactCard, type ArtifactCardAction } from "./artifact-card.tsx";
 import { artifactRefsOf } from "./artifact-refs.ts";
-import { QuestionPills } from "./chat-parts.tsx";
+import { ChoiceButtons, QuestionPills } from "./chat-parts.tsx";
+import { choicesOf } from "./choice-parts.ts";
 import { FileCard } from "./file-card.tsx";
 import { fileCallsOf } from "./file-refs.ts";
 import { HandoffCard } from "./handoff-card.tsx";
@@ -434,8 +435,8 @@ export function MessageParts(props: {
   /** Sends the question again after a final refusal. */
   readonly onTryAgain?: (() => void) | undefined;
   /**
-   * Sends a question of Ask next. Conversation sets it only on the last answer, after it ended,
-   * while no refusal shows.
+   * Sends a question of Ask next or an offered choice. Conversation sets it only on the last
+   * answer, after it ended, while no run builds and no refusal shows.
    */
   readonly onAsk?: ((question: string) => void) | undefined;
   /** What an artifact card does; undefined shows no card. */
@@ -489,6 +490,8 @@ export function MessageParts(props: {
 
   const files = props.files ?? NO_FILES;
 
+  const offer = choicesOf(props.message);
+
   return (
     <StepTimeline
       parts={props.message.parts}
@@ -511,6 +514,13 @@ export function MessageParts(props: {
           ) : null
         )}
       </div>
+      {offer === undefined ? null : (
+        <ChoiceButtons
+          question={offer.question}
+          choices={offer.choices}
+          onPick={props.onAsk}
+        />
+      )}
       <HandoffCards message={props.message} labels={labels} />
       {props.artifacts === undefined ? null : (
         <ArtifactCards

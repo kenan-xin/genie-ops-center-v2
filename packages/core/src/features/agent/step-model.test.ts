@@ -166,6 +166,18 @@ describe("stepTimeline", () => {
     expect(stepTimeline([answerText], LABELS, true).thinking).toBe(false);
   });
 
+  it("adds no row for an offer of choices, which shows as buttons", () => {
+    const offer: MessagePart = {
+      type: "tool-offer-choices",
+      toolCallId: "call-offer",
+      state: "output-available",
+      input: { question: "Add it, or just show it here?", choices: ["Add"] },
+      output: { shown: true },
+    };
+
+    expect(stepTimeline([offer], LABELS, false).rows).toEqual([]);
+  });
+
   it("never folds away the running step, even when it is not the last row", () => {
     const running: MessagePart = {
       type: "tool-query-dataset",

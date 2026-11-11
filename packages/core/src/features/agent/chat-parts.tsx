@@ -1,8 +1,8 @@
 "use client";
 
-import { focusRing, infoTint } from "@genie/ui";
+import { Button, focusRing, infoTint } from "@genie/ui";
 import { ArrowRightIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { useId, type ReactNode } from "react";
 
 import type { InboxLink } from "../../services/agent/index.ts";
 
@@ -35,6 +35,51 @@ export function QuestionPills(props: {
           />
         </button>
       ))}
+    </div>
+  );
+}
+
+/**
+ * An offer of choices (R-46, czjw.160): the question, and while `onPick` is set one 44 px button
+ * per choice in a group named by the question. A tap sends the choice as the person's message.
+ */
+export function ChoiceButtons(props: {
+  readonly question: string;
+  readonly choices: readonly string[];
+  readonly onPick?: ((choice: string) => void) | undefined;
+}): ReactNode {
+  const questionId = useId();
+
+  const { onPick } = props;
+
+  return (
+    <div className="grid gap-2">
+      {/* The question is the turn's first sentence, so it reads as an answer's result line does. */}
+      {/* oxlint-disable-next-line shadcn/no-unknown-classes -- Typeset's preset class arrives with typeset.css */}
+      <div className="typeset typeset-chat">
+        <p id={questionId} className="text-lg leading-snug font-semibold">
+          {props.question}
+        </p>
+      </div>
+      {onPick === undefined ? null : (
+        <div
+          role="group"
+          aria-labelledby={questionId}
+          className="flex flex-wrap gap-2"
+        >
+          {props.choices.map((choice) => (
+            <Button
+              key={choice}
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={() => onPick(choice)}
+            >
+              {choice}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
