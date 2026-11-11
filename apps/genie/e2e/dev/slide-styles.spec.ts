@@ -448,3 +448,143 @@ test("a request outside the deck tools gets one sentence of what the agent can c
     await expect(undoButton(page)).toBeDisabled();
   });
 });
+
+/** One slide whose text ends at the slide's right edge, where a corner handle's touch area is widest (P16e-59). */
+const RIGHT_EDGE_DECK: DeckContent = {
+  slides: [
+    {
+      id: "s1",
+      elements: [
+        { kind: "title", text: "Collections are on track for October." },
+        {
+          kind: "text",
+          text: "Every figure comes from the linked payments.",
+          box: { x: 640, y: 136, w: 320, h: 96 },
+        },
+      ],
+    },
+  ],
+};
+
+test("on a phone the one-row dock edits the text, Present stays in the top bar, and the page keeps its width", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    testInfo.project.name !== "phone",
+    "The dock and the top bar's Present show below 768 px only."
+  );
+  test.setTimeout(LOCK_WAIT + 120_000);
+
+  await onFixedDeck(
+    page,
+    async () => {
+      const text = textElement(page);
+
+      await activate(page, text);
+
+      const dock = page.getByRole("toolbar", { name: /style$/ });
+
+      await expect(dock).toBeVisible();
+      // Inside the shell the page scrolls in its content area, never the document.
+      expect(
+        await page.evaluate(() => {
+          const area = document.querySelector("[data-shell-content]");
+
+          return [
+            document.documentElement.scrollWidth - window.innerWidth,
+            area === null ? -1 : area.scrollWidth - area.clientWidth,
+          ];
+        })
+      ).toEqual([0, 0]);
+
+      const tools = await Promise.all(
+        ["Text", "Fill", "Border", "Position", "More"].map((name) =>
+          dock.getByRole("button", { name, exact: true }).boundingBox()
+        )
+      );
+
+      const width = page.viewportSize()?.width ?? 0;
+
+      for (const tool of tools) {
+        expect(tool?.y).toBeCloseTo(tools[0]?.y ?? -1, 0);
+        expect(
+          (tool?.x ?? -1) >= 0 && (tool?.x ?? 0) + (tool?.width ?? 0) <= width
+        ).toBe(true);
+      }
+
+      const start = await text.boundingBox();
+
+      await openStyleTool(page, "Position");
+      await activate(page, page.getByRole("button", { name: "Move left" }));
+
+      const topBar = page.locator("[data-page-top-bar]");
+
+      await expect(topBar.getByRole("button", { name: "Undo" })).toBeEnabled(
+        FIRST_PAINT
+      );
+      await expect
+        .poll(async () => (await text.boundingBox())?.x, FIRST_PAINT)
+        .toBeLessThan((start?.x ?? 0) - 1);
+
+      const present = topBar.getByRole("button", {
+        name: "Present",
+        exact: true,
+      });
+
+      await page.keyboard.press("Escape");
+      await expect(dock).toBeVisible();
+      await expect(present).toBeVisible();
+      await activate(page, present);
+      await expect(
+        page.locator("[data-present-stage] [data-slide-canvas]")
+      ).toBeVisible(FIRST_PAINT);
+    },
+    RIGHT_EDGE_DECK
+  );
+});
+
+test("a background pick that recolors text says so, and its Undo brings the colors back", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 120_000);
+
+  await onFixedDeck(page, async () => {
+    const colorOf = (text: string) =>
+      deckCanvas(page)
+        .getByText(text)
+        .evaluate((element) => getComputedStyle(element).color);
+
+    const title = "Collections are on track for October.";
+    const body = "Every figure comes from the linked payments.";
+
+    const colors = async () => [
+      await backgroundOf(page),
+      await colorOf(title),
+      await colorOf(body),
+    ];
+
+    const before = await colors();
+
+    await activate(
+      page,
+      page.getByRole("button", { name: "Background", exact: true })
+    );
+    await activate(
+      page,
+      page.getByRole("button", { name: "Dark blue #1E3A8A" })
+    );
+
+    const note = page
+      .getByRole("status")
+      .filter({ hasText: "Text colors changed to stay readable." });
+
+    await expect(note).toBeVisible(FIRST_PAINT);
+    await expect.poll(() => backgroundOf(page)).toBe(DARK_BLUE);
+    expect(await colorOf(title)).not.toBe(before[1]);
+
+    await activate(page, note.getByRole("button", { name: "Undo" }));
+    await expect(note).toHaveCount(0, FIRST_PAINT);
+    await expect.poll(colors, FIRST_PAINT).toEqual(before);
+    await expect(undoButton(page)).toBeDisabled();
+  });
+});
