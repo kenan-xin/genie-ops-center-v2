@@ -650,7 +650,8 @@ export async function appendMessage(
   const { run } = turn;
 
   return withTransaction(ctx.tenant, async (tx) => {
-    // The row lock orders concurrent appends to one session, so `seq` follows the commits.
+    // The row lock orders concurrent appends to one session, so `seq` follows the commits. No key
+    // update, because a file job holds `key share` against a delete while its store waits (xok3.75).
     const [owned] = await tx
       .select({ id: agentSession.id, runState: agentSession.runState })
       .from(agentSession)
@@ -664,7 +665,7 @@ export async function appendMessage(
               isNotNull(agentSession.runState)
             )
       )
-      .for("update");
+      .for("no key update");
 
     if (owned === undefined) throw notFound();
 

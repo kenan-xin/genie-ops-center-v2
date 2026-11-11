@@ -365,6 +365,56 @@ describe("the owner-only agent store against a real database", () => {
     expect(left.rows[0]?.n).toBe(0);
   });
 
+  it("appends while a file job holds the chat row against a delete", async () => {
+    const s1 = await session(personA, "File job");
+    // The file job's lock while its store waits, here as long as the test holds it (xok3.75).
+    const holder = await deployment.context.db.$client.connect();
+
+    await holder.query("begin");
+    await holder.query(
+      "select id from agent_session where id = $1 for key share",
+      [s1.id]
+    );
+
+    const { rows: holding } = await holder.query<{ pid: number }>(
+      "select pg_backend_pid() as pid"
+    );
+
+    const pid = holding[0]?.pid ?? -1;
+
+    let settled = false;
+
+    const append = appendMessage(personA, s1.id, {
+      role: "user",
+      parts: text("Thank you."),
+    }).finally(() => (settled = true));
+
+    /** Resolves once a backend waits on the holder: the append is blocked. */
+    async function blocked(): Promise<"blocked" | "appended"> {
+      if (settled) return "appended";
+
+      const { rows } = await deployment.context.db.execute<{ n: number }>(
+        sql`select count(*)::int as n from pg_stat_activity where ${pid} = any(pg_blocking_pids(pid))`
+      );
+
+      if ((rows[0]?.n ?? 0) > 0) return "blocked";
+
+      await new Promise((settle) => setTimeout(settle, 50));
+
+      return blocked();
+    }
+
+    try {
+      expect(
+        await Promise.race([append.then(() => "appended"), blocked()])
+      ).toBe("appended");
+    } finally {
+      await holder.query("rollback");
+      holder.release();
+      await append.catch(() => undefined);
+    }
+  });
+
   it("starts a deleted chat's id again as a new, empty chat", async () => {
     // An agent panel in another tab still holds the id and sends to it (czjw.120 item 13).
     const s1 = await session(personA, "Deleted in Ask");
