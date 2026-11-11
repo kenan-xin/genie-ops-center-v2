@@ -63,3 +63,7 @@ Source: `apps/storybook/stories/expense-claims/`. Existing AppShell, PageHeader,
 - Storybook MCP `test-run`: Workflow passed, including accessibility checks. `pnpm gate:fast`: all 9 targets passed. First run correctly rejected prototype inline copy under production source; moved demo to Storybook rather than weakening translation coverage.
 - Impeccable detector: no findings. Fresh reviewer disposition `ship` at supplied desktop and phone screenshot scope; no material fixes. DESIGN.md unchanged, no new raster assets.
 - User validation of the workflow remains open. This is demo evidence, not production authorization or backend/storage proof.
+
+### Sidebar correction
+
+Ask remains in Workspace. The illustrative Expenses module is assigned to one flat Expenses category; Approvals and My claims are direct page links, alphabetically ordered as the production navigation builder orders category entries. This is a fixed category fixture, not a new admin placement or subcategory mechanism.

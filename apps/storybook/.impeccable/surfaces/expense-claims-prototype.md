@@ -24,3 +24,5 @@ FORM: Local extension, code-led. seed: none (pinned). Owner: “a place to submi
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance
 
 DESIGN.md stays unchanged; no new visual world or raster assets. Prototype policy is illustrative, and role switching is not authentication.
+
+Sidebar correction: Ask alone in Workspace; flat Expenses category contains Approvals and My claims as direct module page links. Category placement is a demo fixture, not a new admin capability.

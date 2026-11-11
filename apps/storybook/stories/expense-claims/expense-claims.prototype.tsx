@@ -53,23 +53,27 @@ const PrototypeLink: ShellLinkComponent = ({ href, children, ...props }) => {
 };
 
 const navigation: ShellNavigation = {
-  workspace: [
-    { id: "core-ask", label: "Ask", href: "/ask" },
-    {
-      id: "my-claims",
-      label: "My claims",
-      href: "/m/expenses/claims",
-      icon: "receipt",
-    },
-    {
-      id: "approvals",
-      label: "Approvals",
-      href: "/m/expenses/approvals",
-      icon: "inbox",
-    },
-  ],
+  workspace: [{ id: "core-ask", label: "Ask", href: "/ask" }],
   pinned: [],
   categories: [
+    {
+      id: "expenses",
+      name: "Expenses",
+      entries: [
+        {
+          id: "approvals",
+          label: "Approvals",
+          href: "/m/expenses/approvals",
+          icon: "inbox",
+        },
+        {
+          id: "my-claims",
+          label: "My claims",
+          href: "/m/expenses/claims",
+          icon: "receipt",
+        },
+      ],
+    },
     {
       id: "finance",
       name: "Invoices and Payments",
