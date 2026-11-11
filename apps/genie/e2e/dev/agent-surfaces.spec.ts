@@ -396,7 +396,7 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
   );
 });
 
-test("on a dashboard, a chart request asks first: Add makes a panel with Undo, and Just show it here makes an artifact", async ({
+test("on a dashboard, a chart request asks first: Add makes a panel with Undo, and Just show it here makes an artifact that opens over the page", async ({
   page,
 }) => {
   test.setTimeout(LOCK_WAIT + 180_000);
@@ -458,7 +458,20 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
 
         await openEmptyDashboard();
         await ask();
-        await choose(ANALYTICS_ADD_ANSWER);
+        await expectNoAxeViolations(page, "question with its choices");
+
+        // czjw.160: the keyboard reaches the choices from the question and Enter sends one.
+        await activate(
+          page,
+          surface.getByText(ANALYTICS_QUESTION, { exact: true })
+        );
+        await page.keyboard.press("Tab");
+        await expect(
+          surface
+            .getByRole("group", { name: ANALYTICS_QUESTION })
+            .getByRole("button", { name: ANALYTICS_ADD_ANSWER, exact: true })
+        ).toBeFocused();
+        await page.keyboard.press("Enter");
 
         await expect(panel).toBeVisible(FIRST_PAINT);
         await expectNoAxeViolations(page, "dashboard after Add");
@@ -468,6 +481,9 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
         await expect(empty).toBeVisible(FIRST_PAINT);
 
         await openEmptyDashboard();
+
+        const dashboardAddress = page.url();
+
         await ask();
         await choose(ANALYTICS_SHOW_ANSWER);
 
@@ -478,6 +494,50 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
         ).toBeVisible(FIRST_PAINT);
         await expect(empty).toBeVisible();
         await expect(panel).toHaveCount(0);
+
+        // czjw.162: the card opens the chart in a sheet over the dashboard. The first read and its
+        // one retry fail, so the panel shows the failed read with Try again first.
+        let failedReads = 0;
+
+        await page.route(
+          (url) =>
+            url.pathname.startsWith("/api/rpc/") &&
+            url.pathname.endsWith("/artifacts"),
+          async (route) => {
+            if (failedReads >= 2) return route.fallback();
+
+            failedReads += 1;
+
+            return route.fulfill({ status: 500, body: "{}" });
+          }
+        );
+
+        const card = surface.getByRole("button", {
+          name: ANALYTICS_CHART_TITLE,
+        });
+
+        await activate(page, card);
+
+        const failed = surface
+          .getByRole("alert")
+          .filter({ hasText: "The artifact could not load." });
+
+        await expect(failed).toBeVisible(FIRST_PAINT);
+        await expectNoAxeViolations(page, "failed artifact read");
+        await activate(page, failed.getByRole("button", { name: "Try again" }));
+
+        const sheet = page.getByRole("dialog", { name: "Artifact" });
+
+        await expect(
+          sheet.getByRole("heading", { name: ANALYTICS_CHART_TITLE })
+        ).toBeVisible(FIRST_PAINT);
+        expect(page.url()).toBe(dashboardAddress);
+        await expectNoAxeViolations(page, "artifact sheet over the dashboard");
+
+        await page.keyboard.press("Escape");
+        await expect(sheet).toHaveCount(0);
+        await expect(surface).toBeVisible();
+        await expect(card).toBeFocused();
       } finally {
         await removeDashboardsNamed(email, [QUESTION_DASHBOARD_NAME]);
       }
