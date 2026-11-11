@@ -1169,6 +1169,175 @@ export const AddTextAfterNudgeRun: Story = {
   },
 };
 
+const RECOLOR_NOTE = "Text colors changed to stay readable.";
+
+/** The deck after a background pick saved, at a hash of its own. */
+const recoloredDeck = { ...deckPage.deck, contentHash: NEW_HASH };
+
+/** Serves the deck page; the background pick answers `NEW_HASH`, and from then on so does a read. */
+function serveRecolor() {
+  serve(deckPage);
+  changeDeck.mockImplementationOnce(async () => {
+    readDeck.mockResolvedValue(recoloredDeck);
+
+    return recoloredDeck;
+  });
+}
+
+/** Picks one Background swatch on the shown slide 1, whose title has no fill. */
+async function pickBackground(canvas: ReturnType<typeof within>, name: string) {
+  await userEvent.click(canvas.getByRole("button", { name: "Background" }));
+  await userEvent.click(await screen.findByRole("button", { name }));
+}
+
+const backgroundStep = (background: string) => ({
+  op: "change-slide-fields",
+  slideId: "s1",
+  background,
+});
+
+/** The status note that holds the recolor sentence; the page's own Undo has the same name. */
+async function findRecolorNote(canvas: ReturnType<typeof within>) {
+  const sentence = await canvas.findByText(RECOLOR_NOTE);
+
+  const note = sentence.closest('[role="status"]');
+
+  if (!(note instanceof HTMLElement)) throw new Error("no status note");
+
+  return within(note);
+}
+
+// czjw.161: a pick that recolors a text says so, and the note's Undo undoes that save only.
+export const RecolorNote: Story = {
+  name: "A background pick that recolors text says so, with Undo",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: serveRecolor,
+  play: async ({ canvas }) => {
+    await pickBackground(canvas, "Dark blue #1E3A8A");
+
+    await waitFor(() =>
+      expect(changeDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: HASH,
+        changes: [
+          backgroundStep("#1E3A8A"),
+          {
+            op: "change-element",
+            slideId: "s1",
+            index: 0,
+            style: { color: "#FFFFFF" },
+          },
+        ],
+      })
+    );
+
+    const note = await findRecolorNote(canvas);
+
+    await userEvent.click(note.getByRole("button", { name: "Undo" }));
+
+    await waitFor(() =>
+      expect(undoDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: NEW_HASH,
+      })
+    );
+    await waitFor(() => expect(canvas.queryByText(RECOLOR_NOTE)).toBeNull());
+  },
+};
+
+// P16e-11: a pick whose texts all stay readable sends one step and shows no note.
+export const NoRecolorNoNote: Story = {
+  name: "A background pick that recolors nothing shows no note",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: serveRecolor,
+  play: async ({ canvas }) => {
+    await pickBackground(canvas, "Light gray #F3F4F6");
+
+    await waitFor(() =>
+      expect(changeDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: HASH,
+        changes: [backgroundStep("#F3F4F6")],
+      })
+    );
+    // The answer renders within a frame; the note would show by then.
+    await pause(300);
+    await expect(canvas.queryByText(RECOLOR_NOTE)).toBeNull();
+  },
+};
+
+// Review Focus 3: any later save moves the hash, so the note goes and never comes back, even when
+// a further save brings the deck back to the recolor's content (the hash is of content only).
+export const RecolorNoteLeavesAfterTheNextSave: Story = {
+  name: "The recolor note leaves after the next save",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: serveRecolor,
+  play: async ({ canvas }) => {
+    await pickBackground(canvas, "Dark blue #1E3A8A");
+    await findRecolorNote(canvas);
+
+    changeDeck.mockResolvedValueOnce(notesDeck("s1", "Say hello.", NEWER_HASH));
+    changeDeck.mockResolvedValueOnce(recoloredDeck);
+
+    const notes = canvas.getByRole("textbox", { name: "Speaker notes" });
+
+    await userEvent.type(notes, "Say hello.");
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2), {
+      timeout: 3000,
+    });
+    await waitFor(() => expect(canvas.queryByText(RECOLOR_NOTE)).toBeNull());
+
+    // Clearing the notes saves the recolor's content again, at its hash: the note stays gone.
+    await userEvent.clear(notes);
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(3), {
+      timeout: 3000,
+    });
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ expectedHash: NEWER_HASH })
+    );
+    await pause(300);
+    await expect(canvas.queryByText(RECOLOR_NOTE)).toBeNull();
+  },
+};
+
+// Review Focus 3: the note's Undo inside a notes pause saves the notes first, which moves the hash,
+// so it undoes nothing: the person's notes stay, and the note goes.
+export const RecolorUndoInsideNotesPause: Story = {
+  name: "The recolor note's Undo inside a notes pause undoes nothing",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: serveRecolor,
+  play: async ({ canvas }) => {
+    await pickBackground(canvas, "Dark blue #1E3A8A");
+
+    const note = await findRecolorNote(canvas);
+
+    changeDeck.mockResolvedValueOnce(notesDeck("s1", "Say hello.", NEWER_HASH));
+
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Speaker notes" }),
+      "Say hello."
+    );
+    await userEvent.click(note.getByRole("button", { name: "Undo" }));
+
+    await waitFor(() =>
+      expect(changeDeck).toHaveBeenLastCalledWith({
+        id: "deck-1",
+        expectedHash: NEW_HASH,
+        changes: [
+          { op: "change-slide-fields", slideId: "s1", notes: "Say hello." },
+        ],
+      })
+    );
+    await waitFor(() => expect(canvas.queryByText(RECOLOR_NOTE)).toBeNull());
+    await pause(300);
+    await expect(undoDeck).not.toHaveBeenCalled();
+  },
+};
+
 // A notes pause that ends while the sheet's Save slide runs waits for it and names its hash.
 export const SaveSlideAndNotesTakeTurns: Story = {
   name: "Save slide and a notes pause take turns",

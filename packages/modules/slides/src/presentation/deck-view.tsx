@@ -451,7 +451,8 @@ export function DeckView(props: DeckViewProps) {
    */
   function pageWrite(
     seenHash: string,
-    send: (expectedHash: string) => Promise<SavedDeck>
+    // `null` when the write chose to send nothing; no hash moved.
+    send: (expectedHash: string) => Promise<SavedDeck | null>
   ): Promise<void> {
     // The run's save queues first, synchronously, so this write lands after it (czjw.141).
     stage.current?.flush();
@@ -467,6 +468,8 @@ export function DeckView(props: DeckViewProps) {
         }
 
         const saved = await send(expectedHash);
+
+        if (saved === null) return;
 
         latestHash.current = saved.contentHash;
         ownMoves.current.push({ from: expectedHash, to: saved.contentHash });
@@ -496,6 +499,18 @@ export function DeckView(props: DeckViewProps) {
   const [refreshNumbers, setRefreshNumbers] = useState<
     readonly number[] | null
   >(null);
+
+  // czjw.161: the hash a background save that recolored text answered; its note shows only there.
+  const [recolorHash, setRecolorHash] = useState<string | null>(null);
+  const [renderedHash, setRenderedHash] = useState(deck.contentHash);
+
+  // The hash is of content only, so a later save can come back to it: once the deck moves to
+  // another hash the note is gone for good, and its Undo never reverts another save.
+  if (renderedHash !== deck.contentHash) {
+    setRenderedHash(deck.contentHash);
+
+    if (deck.contentHash !== recolorHash) setRecolorHash(null);
+  }
 
   // One write runs at a time: a second control must not send a hash the first one moved.
   const busy =
@@ -648,13 +663,24 @@ export function DeckView(props: DeckViewProps) {
     options: {
       readonly expectedHash: string;
       readonly slideNumber?: number;
+      /** A background pick: a recolored text puts the note on the page. */
+      readonly background?: boolean;
     }
   ): Promise<boolean> {
     setFailure(null);
 
-    return pageWrite(options.expectedHash, (expectedHash) =>
-      change.mutateAsync({ changes, expectedHash })
-    ).then(
+    return pageWrite(options.expectedHash, async (expectedHash) => {
+      const saved = await change.mutateAsync({ changes, expectedHash });
+
+      if (
+        options.background === true &&
+        changes.some((step) => step.op === "change-element")
+      ) {
+        setRecolorHash(saved.contentHash);
+      }
+
+      return saved;
+    }).then(
       () => true,
       (error) => {
         setFailure({
@@ -690,6 +716,23 @@ export function DeckView(props: DeckViewProps) {
     setFailure(null);
     pageWrite(deck.contentHash, (expectedHash) =>
       undo.mutateAsync(expectedHash)
+    ).catch((error) => setFailure({ kind: "undo", error }));
+  }
+
+  /**
+   * The note's Undo: only while the recolor is still the newest save. A waiting run or notes pause
+   * saves first and moves the hash, so this Undo then sends nothing and the note goes.
+   */
+  function undoRecolor(): void {
+    const seen = recolorHash;
+
+    if (seen === null) return;
+
+    setFailure(null);
+    pageWrite(seen, (expectedHash) =>
+      expectedHash === seen
+        ? undo.mutateAsync(expectedHash)
+        : Promise.resolve(null)
     ).catch((error) => setFailure({ kind: "undo", error }));
   }
 
@@ -922,6 +965,23 @@ export function DeckView(props: DeckViewProps) {
           </InfoNote>
         </div>
       )}
+      {recolorHash === deck.contentHash ? (
+        <div className="mb-4">
+          <InfoNote size="md" role="status">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              Text colors changed to stay readable.
+              <Button
+                variant="secondary"
+                size="sm"
+                disabled={busy}
+                onClick={undoRecolor}
+              >
+                Undo
+              </Button>
+            </div>
+          </InfoNote>
+        </div>
+      ) : null}
       {/* Undo beside the slide (7.2), also with no slide left, so the last removal is undoable. */}
       {view.canWrite ? (
         <div className="mb-2 flex items-center gap-3">
@@ -1032,6 +1092,7 @@ export function DeckView(props: DeckViewProps) {
                   sendStep(steps, {
                     expectedHash: deck.contentHash,
                     slideNumber: index + 1,
+                    background: true,
                   })
                 }
                 onAdd={(kind) => {
