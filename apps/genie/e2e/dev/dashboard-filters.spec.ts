@@ -40,15 +40,17 @@ async function expectInvoiced(page: Page, amount: string): Promise<void> {
   );
 }
 
-/** The bar's filters as a person reads them: the controls on a desktop, the summary on a phone. */
+/** The bar's filters as a person reads them: the controls on a desktop, the chips on a phone. */
 async function expectBar(page: Page, overdue: boolean): Promise<void> {
   if (onPhone(page)) {
+    const chips = page.getByRole("list", { name: "Applied filters" });
+
     await expect(
-      page.getByText(
-        `All time · Customer: Harbor Foods${overdue ? " · Overdue" : ""}`,
-        { exact: true }
-      )
+      chips.getByText("Harbor Foods", { exact: true })
     ).toBeVisible();
+    await expect(chips.getByText("Overdue", { exact: true })).toHaveCount(
+      overdue ? 1 : 0
+    );
 
     return;
   }
@@ -62,11 +64,18 @@ async function expectBar(page: Page, overdue: boolean): Promise<void> {
     : expect(toggle).toHaveCount(0));
 }
 
+/** On a phone View and Filters are one segmented control above the chips (czjw.159). */
+const viewAndFilters = (page: Page) =>
+  page.getByRole("group", { name: "View and filters" });
+
+const filtersButton = (page: Page) =>
+  viewAndFilters(page).getByRole("button", { name: /^Filters/ });
+
 /** On a phone the filters sit in the Filters sheet; on a desktop in the bar. */
 async function inFilters(page: Page, pick: () => Promise<void>) {
   if (!onPhone(page)) return pick();
 
-  await page.getByRole("button", { name: /^Filters/ }).click();
+  await filtersButton(page).click();
   await pick();
   await page.getByRole("button", { name: "Show results" }).click();
 }
@@ -94,7 +103,9 @@ const addOverdue = (page: Page) =>
 
 /** Runs one view-menu action: a menu item from 768 px, a row of the Views sheet below. */
 async function viewAction(page: Page, current: string, action: RegExp) {
-  await page.getByRole("button", { name: `View: ${current}` }).click();
+  await (onPhone(page) ? viewAndFilters(page) : page)
+    .getByRole("button", { name: `View: ${current}` })
+    .click();
   await page
     .getByRole(onPhone(page) ? "button" : "menuitem", { name: action })
     .click();
@@ -149,17 +160,30 @@ test("two filters survive a reload and open the same view from the copied link",
   test.setTimeout(LOCK_WAIT + 180_000);
 
   await onDashboard(page, async () => {
+    if (onPhone(page)) {
+      // The View half of the segmented control opens the Views sheet.
+      await viewAndFilters(page)
+        .getByRole("button", { name: "View: Dashboard filters" })
+        .click();
+      await expect(page.getByRole("dialog", { name: "Views" })).toBeVisible();
+      await page.keyboard.press("Escape");
+      await expect(page.getByRole("dialog", { name: "Views" })).toHaveCount(0);
+    }
+
     await pickHarbor(page);
     await expectInvoiced(page, HARBOR);
     await addOverdue(page);
     await expectInvoiced(page, HARBOR_OVERDUE);
+    await expectBar(page, true);
 
     // The filters live in the address, not in the stored dashboard (S7-46).
     await expect(page).toHaveURL(
       /[?&]f\.customerName=Harbor(\+|%20)Foods(&|$)/
     );
     await expect(page).toHaveURL(/[?&]f\.overdue=1(&|$)/);
-    await expect(page.getByText("Not saved as default")).toBeVisible();
+    await expect(
+      page.getByText("Not saved as default").filter({ visible: true })
+    ).toBeVisible();
 
     await page.reload();
     await expectInvoiced(page, HARBOR_OVERDUE);
@@ -186,7 +210,7 @@ test("Save as default opens the saved filters from the plain path", async ({
 
     const unsaved = page.getByText("Not saved as default");
 
-    await expect(unsaved).toBeVisible();
+    await expect(unsaved.filter({ visible: true })).toBeVisible();
     await page.getByRole("button", { name: "Save as default" }).click();
     await expect(unsaved).toHaveCount(0);
     // The filters now live in the stored dashboard, so the address holds none.
@@ -226,9 +250,8 @@ test("an updated view made the default opens from the plain path", async ({
 
     const changed = page.getByText("Changed", { exact: true });
 
-    await expect(changed).toBeVisible();
-    // The pointer still rests on the switch it clicked; its hover tint fails contrast (czjw.136).
-    await page.mouse.move(0, 0);
+    await expect(changed.filter({ visible: true })).toBeVisible();
+    // The pointer still rests on the set Overdue switch: its hover keeps 4.5:1 (czjw.136).
     await expectNoAxeViolations(page, "a changed view");
     await page.getByRole("button", { name: "Update view" }).click();
     await expect(changed).toHaveCount(0);
@@ -246,5 +269,35 @@ test("an updated view made the default opens from the plain path", async ({
     await expectBar(page, true);
     await expect(changed).toHaveCount(0);
     await screenshot(page, testInfo, `default-view-${testInfo.project.name}`);
+  });
+});
+
+test("Clear filters keeps the focus on the filter bar", async ({ page }) => {
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  await onDashboard(page, async () => {
+    await pickHarbor(page);
+    await expectInvoiced(page, HARBOR);
+
+    if (onPhone(page)) {
+      await filtersButton(page).click();
+
+      const show = page.getByRole("button", { name: "Show results" });
+
+      await expect(show).toBeVisible();
+      await page.getByRole("button", { name: "Clear all" }).click();
+      // Clear all disables itself, so the focus goes to Show, not to the body (6wz1.98).
+      await expect(show).toBeFocused();
+      await show.click();
+      await expect(filtersButton(page)).toBeFocused();
+    } else {
+      await page.getByRole("button", { name: "Clear filters" }).click();
+      // Clear filters unmounts itself, so the focus goes to the first control (6wz1.98).
+      await expect(
+        page.getByRole("combobox", { name: /^Date:/ }).filter({ visible: true })
+      ).toBeFocused();
+    }
+
+    await expectInvoiced(page, ALL);
   });
 });
