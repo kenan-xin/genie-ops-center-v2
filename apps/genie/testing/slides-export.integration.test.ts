@@ -335,13 +335,12 @@ describe("the slides PowerPoint export", () => {
     vi.setSystemTime(Date.now() + 10_001);
 
     const { pptx } = await exportAs(owner, id);
-    const master = await pptx.xmlOf("ppt/slideLayouts/slideLayout2.xml");
+    // The company name is drawn on each slide, in that slide's footer color (czjw.137).
+    const slide = await pptx.xmlOf("ppt/slides/slide1.xml");
 
-    expect(await pptx.xmlOf("ppt/slides/slide1.xml")).toMatch(
-      /srgbClr val="0f766e"/i
-    );
+    expect(slide).toMatch(/srgbClr val="0f766e"/i);
     expect(pptx.mediaParts).toHaveLength(1);
-    expect(master).toContain("Acme Export");
+    expect(slide).toContain("Acme Export");
   });
 
   it("saves a dark blue slide with white text and a moved chart, reads and exports it the same, and Undo restores the deck", async () => {
