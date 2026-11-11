@@ -184,6 +184,9 @@ export function Conversation(props: {
     id: props.sessionId,
     messages: [...props.initialMessages],
     transport: props.transport,
+    // A fast stream renders once per chunk and passes React's update depth limit (xok3.69); the
+    // AI SDK's documented remedy publishes the messages at most every 50 ms.
+    throttle: 50,
     onData: (part) => {
       if (part.type !== "data-summary") return;
 
