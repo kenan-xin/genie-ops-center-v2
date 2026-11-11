@@ -73,7 +73,9 @@ async function runSession(
 
   if (!(await markRunning(tenant, sessionId, runJobId))) {
     // Stopped before it began: nothing runs, and the run ends `stopped`.
-    if ((await readRunState(tenant, sessionId)) === "stopping") {
+    const read = await readRunState(tenant, sessionId);
+
+    if (read !== "gone" && read.state === "stopping") {
       await endRun(tenant, sessionId, runJobId, null);
     }
 
@@ -107,7 +109,7 @@ async function runSession(
     const limit = AbortSignal.timeout(AGENT_LIMITS.turnMs);
     let failed = false;
 
-    stopWatching = watchRun(person, sessionId, {
+    stopWatching = watchRun(person, sessionId, runJobId, {
       current: () => ({ message: latest, changes }),
       stop,
       logError,
@@ -122,6 +124,7 @@ async function runSession(
         logError,
         // No checkpoint lands after the final save.
         beforeSave: stopWatching,
+        runJobId,
       }
     );
 
@@ -147,13 +150,13 @@ async function runSession(
     await stopWatching();
     await endRun(tenant, sessionId, runJobId, "failed");
 
-    // A chat deleted during its run ends the run; the final save's refusal is no fault.
-    if (
-      !(error instanceof AppError) &&
-      (await readRunState(tenant, sessionId)) !== "gone"
-    ) {
-      throw error;
-    }
+    if (error instanceof AppError) return;
+
+    // A chat deleted, or a run that a new run replaced, ends this run. The refused final save is
+    // no fault.
+    const read = await readRunState(tenant, sessionId);
+
+    if (read !== "gone" && read.jobId === runJobId) throw error;
   }
 }
 
@@ -165,13 +168,14 @@ const WATCH_INTERVAL_MS = 1000;
 
 /**
  * The run's one watch loop (P11-9). Once a second it reads the run state and aborts `stop` when
- * Stop was asked or the chat is gone, then saves the answer so far by its id when it changed. A
+ * Stop was asked, the chat is gone, or the run ended or another job holds it, then saves the answer so far by its id when it changed. A
  * failed save is logged and the loop goes on. Answers the function that ends the loop and waits
  * for a save in progress, so a checkpoint never lands after the final answer.
  */
 function watchRun(
   person: ModuleRequestContext,
   sessionId: string,
+  runJobId: string,
   input: {
     readonly current: () => {
       readonly message: AgentMessage | undefined;
@@ -195,20 +199,33 @@ function watchRun(
       if (watching.signal.aborted) return;
 
       try {
-        const state = await readRunState(person.tenant, sessionId);
+        const read = await readRunState(person.tenant, sessionId);
 
-        if (state === "gone" || state === "stopping") input.stop.abort();
+        if (
+          read === "gone" ||
+          read.jobId !== runJobId ||
+          read.state === null ||
+          read.state === "stopping"
+        ) {
+          input.stop.abort();
+        }
 
         const { message, changes } = input.current();
 
         if (changes !== saved && message !== undefined && message.id !== "") {
           saved = changes;
 
-          await appendMessage(person, sessionId, {
-            id: message.id,
-            role: "assistant",
-            parts: checkpointParts(structuredClone(message.parts)),
-          });
+          await appendMessage(
+            person,
+            sessionId,
+            {
+              id: message.id,
+              role: "assistant",
+              parts: checkpointParts(structuredClone(message.parts)),
+            },
+            [],
+            { run: { jobId: runJobId } }
+          );
         }
       } catch (cause) {
         if (cause instanceof AppError && cause.code === "not-found") {

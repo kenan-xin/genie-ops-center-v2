@@ -387,6 +387,56 @@ describe("a durable agent run on the placeholder test surface", () => {
     }).toEqual({ settled: true, requests: 1, steps: [] });
   });
 
+  it("a run that recovery ended and a new run replaced stops and saves nothing more", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await start(ctx, sessionId);
+
+    const before = recorded.sent.length;
+    const run = runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    await partialWhileRunning(ctx, sessionId);
+
+    // As `recoverRuns` ends a run whose job expired; then the person starts a new run.
+    await deployment.context.db.execute(
+      sql`update agent_session set run_state = null, run_error = 'interrupted' where id = ${sessionId}`
+    );
+
+    const second = await start(ctx, sessionId);
+    const replacedAt = performance.now();
+
+    await run;
+
+    const settled = performance.now() - replacedAt < STOP_BOUND_MS;
+    const [answer] = await answers(ctx, sessionId);
+
+    const { rows } = await deployment.context.db.execute<{
+      run_job_id: string | null;
+      run_state: string | null;
+    }>(
+      sql`select run_job_id, run_state from agent_session where id = ${sessionId}`
+    );
+
+    expect({
+      settled,
+      requests: recorded.sent.length - before,
+      stopped: stoppedMark(answer),
+      final: textsOf(answer).includes(FINAL_ANSWER),
+      job: rows[0]?.run_job_id,
+      state: rows[0]?.run_state,
+      steps: await toolRows(ctx.caller.userId),
+    }).toEqual({
+      settled: true,
+      requests: 1,
+      stopped: false,
+      final: false,
+      job: second,
+      state: "queued",
+      steps: [],
+    });
+  });
+
   it("a job whose starter is not the session's owner ends the run without a model call", async () => {
     const owner = await person();
     const sessionId = await surfaceSession(owner);

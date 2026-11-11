@@ -102,17 +102,23 @@ export async function findOwnRun(ctx: ModuleRequestContext): Promise<
   return row;
 }
 
-/** The session's run state, or `gone` when the session was deleted. */
+/** The session's run state and the job that holds it, or `gone` when the session was deleted. */
 export async function readRunState(
   tenant: TenantContext,
   sessionId: string
-): Promise<"queued" | "running" | "stopping" | null | "gone"> {
+): Promise<
+  | "gone"
+  | {
+      readonly state: "queued" | "running" | "stopping" | null;
+      readonly jobId: string | null;
+    }
+> {
   const [row] = await tenant.db
-    .select({ runState: agentSession.runState })
+    .select({ state: agentSession.runState, jobId: agentSession.runJobId })
     .from(agentSession)
     .where(eq(agentSession.id, sessionId));
 
-  return row === undefined ? "gone" : row.runState;
+  return row ?? "gone";
 }
 
 /** The pg-boss states of a job that still holds its run: waiting, waiting to retry, or running. */

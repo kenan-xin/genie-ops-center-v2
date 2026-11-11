@@ -254,6 +254,8 @@ export async function turnStream(
     readonly logError: (cause: unknown) => void;
     /** Runs in `onEnd`, after the stream ended and before the answer is stored. */
     readonly beforeSave?: () => Promise<void>;
+    /** The run job's id: the answer is stored only while this job holds the session's run. */
+    readonly runJobId?: string;
   }
 ): Promise<ReadableStream<UIMessageChunk>> {
   const { id: sessionId, surface } = session;
@@ -407,7 +409,12 @@ export async function turnStream(
         sessionId,
         { id: responseMessage.id, role: "assistant", parts },
         versions,
-        largestInput > 0 ? { inputTokens: largestInput } : {}
+        {
+          ...(largestInput > 0 && { inputTokens: largestInput }),
+          ...(input.runJobId !== undefined && {
+            run: { jobId: input.runJobId },
+          }),
+        }
       ).catch((cause: unknown) => {
         input.logError(cause);
 

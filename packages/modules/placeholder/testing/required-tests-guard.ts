@@ -178,6 +178,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "a durable agent run on the placeholder test surface a reader sees a partial answer before the run ends",
       "a durable agent run on the placeholder test surface Stop during a slow model call ends the run within about a second and no later tool call runs",
       "a durable agent run on the placeholder test surface deleting the session ends the run",
+      "a durable agent run on the placeholder test surface a run that recovery ended and a new run replaced stops and saves nothing more",
     ],
   },
   {

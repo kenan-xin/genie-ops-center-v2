@@ -1,5 +1,16 @@
 import type { UIMessage } from "ai";
-import { and, asc, desc, eq, gt, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  isNotNull,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
@@ -600,6 +611,8 @@ async function writeVersion(
  * when the session is not the caller's. The answer's artifact versions go in the same transaction,
  * so a failed write stores neither. An assistant message whose id is stored already replaces its
  * parts and keeps its place, so a run's checkpoints and its final answer stay one message (R-42b).
+ * With `turn.run`, the save needs that job to hold the session's run, `stopping` included; a run
+ * that ended or that a new run replaced answers `not-found` and writes nothing.
  */
 export async function appendMessage(
   ctx: ModuleRequestContext,
@@ -610,7 +623,10 @@ export async function appendMessage(
     readonly parts: AgentMessage["parts"];
   },
   versions: readonly PendingVersion[] = [],
-  turn: { readonly inputTokens?: number } = {}
+  turn: {
+    readonly inputTokens?: number;
+    readonly run?: { readonly jobId: string };
+  } = {}
 ): Promise<string> {
   const id = checkedId(sessionId);
 
@@ -619,7 +635,16 @@ export async function appendMessage(
     const [owned] = await tx
       .select({ id: agentSession.id })
       .from(agentSession)
-      .where(ownedBy(ctx, id))
+      .where(
+        turn.run === undefined
+          ? ownedBy(ctx, id)
+          : // A run saves only while its job holds the session's run; `stopping` still saves.
+            and(
+              ownedBy(ctx, id),
+              eq(agentSession.runJobId, turn.run.jobId),
+              isNotNull(agentSession.runState)
+            )
+      )
       .for("update");
 
     if (owned === undefined) throw notFound();
