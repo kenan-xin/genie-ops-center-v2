@@ -27,6 +27,7 @@ import {
   type ArtifactTurn,
   MAKE_ARTIFACT,
 } from "./artifact-tool.ts";
+import { OFFER_CHOICES, offerChoicesInput } from "./choices.ts";
 import { fileTool, MAKE_FILE } from "./file-tool.ts";
 import { HAND_OVER, handOverTool } from "./hand-over.ts";
 import { type SessionTools, sessionTools } from "./surfaces.ts";
@@ -119,9 +120,22 @@ const openRecordTool = defineAgentTool({
   },
 });
 
+const offerChoicesTool = defineAgentTool({
+  name: OFFER_CHOICES,
+  description:
+    "Shows the person a short question with two to four short choices as buttons under your answer, and ends your turn. Call it only when a rule of this chat tells you to let the person choose, and write no other text. A tap sends the choice as the person's own message.",
+  input: offerChoicesInput,
+  run: async () => ({ output: { shown: true }, rowCount: 0 }),
+});
+
 export const COULD_NOT_RUN = "The tool could not run.";
 
-const CORE_TOOLS = [listDatasetsTool, queryDatasetTool, openRecordTool];
+const CORE_TOOLS = [
+  listDatasetsTool,
+  queryDatasetTool,
+  openRecordTool,
+  offerChoicesTool,
+];
 
 /** The dataset a core tool's input names, so a refused call's row still says what it tried. */
 function datasetIn(input: AuditMetadataValue): string | null {
@@ -363,7 +377,7 @@ export async function offersWriteTool(
 }
 
 /**
- * The model's tools for one request: the core read tools, `make-artifact`, `make-file` on Ask
+ * The model's tools for one request: the core tools, `make-artifact`, `make-file` on Ask
  * only, `hand-over` on Ask while a surface accepts a handoff, then the session's offered module
  * tools in order.
  */

@@ -6,11 +6,12 @@ This page explains how the agent works: who owns which part, and how a module ad
 
 The application has one agent (`DEC-29`). Core owns all of it: the agent route, the prompt, the chat sessions, the Ask page and the chat panel. A module may declare an agent surface (tools, instructions, and whether it accepts a handoff), and core runs it; no module runs an agent of its own or changes how the runtime works.
 
-Core also owns five general tools (Spec 7 R-43, R-44a, R-45a):
+Core also owns six general tools (Spec 7 R-43, R-44a, R-45a):
 
 - `list-datasets` tells the model which datasets the person may read, with their fields.
 - `query-dataset` runs one query on one dataset as the person.
 - `open-record` finds the page of the record behind a row, so an answer can link to it.
+- `offer-choices` shows a short question with two to four choices as buttons and ends the turn. A tap sends the choice as the person's own message (R-43, R-46, amended 2026-11-11).
 - `make-artifact` makes a chart or a table that the person opens beside the chat, or the next version of one, from a panel config that the chart gate checks (`DEC-56`).
 - `make-file` queues a file of every row of one query (CSV, Excel, Markdown or PDF), which a core background job makes as the person (R-44a, `DEC-12`).
 

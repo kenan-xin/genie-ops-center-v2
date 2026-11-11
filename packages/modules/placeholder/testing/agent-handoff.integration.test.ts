@@ -308,6 +308,7 @@ describe("the Ask handoff on the placeholder test surface", () => {
         "list-datasets",
         "query-dataset",
         "open-record",
+        "offer-choices",
         "make-artifact",
         "make-file",
         "hand-over",

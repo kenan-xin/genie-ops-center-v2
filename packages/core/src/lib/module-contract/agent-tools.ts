@@ -6,6 +6,7 @@ export const CORE_AGENT_TOOL_NAMES = [
   "list-datasets",
   "query-dataset",
   "open-record",
+  "offer-choices",
 ] as const;
 
 /**

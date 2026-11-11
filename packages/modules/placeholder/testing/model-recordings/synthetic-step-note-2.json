@@ -304,6 +304,38 @@
         {
           "type": "function",
           "function": {
+            "name": "offer-choices",
+            "description": "Shows the person a short question with two to four short choices as buttons under your answer, and ends your turn. Call it only when a rule of this chat tells you to let the person choose, and write no other text. A tap sends the choice as the person's own message.",
+            "parameters": {
+              "$schema": "http://json-schema.org/draft-07/schema#",
+              "type": "object",
+              "properties": {
+                "question": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200,
+                  "description": "The question, in one short sentence."
+                },
+                "choices": {
+                  "minItems": 2,
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "description": "Two to four short answers of a few words each, in the order that the rule gives."
+                }
+              },
+              "required": ["question", "choices"],
+              "additionalProperties": false
+            }
+          }
+        },
+        {
+          "type": "function",
+          "function": {
             "name": "make-artifact",
             "description": "Makes a chart or a table that shows as a card under your answer, from a checked panel config. Use type table for rows, or bar, line, area or donut for a chart. donut and table take a list of exactly one series. A donut series has name, dataset, query, category and value. A table series has name, dataset and query only. A table holds every row of its query, so leave out limit unless the person asks for the first rows. The chat shows the first 5 rows of a table and how many more. bar, line and area take one to eight series with x and y. A bar, line or area chart with two or more series runs each series with exactly one group and one aggregate, and with no select, orderBy or limit. A table that selects a money field also selects the dataset's currency field. To change an artifact of this chat, give its number as artifact: the change makes its next version. An artifact keeps its kind. Answers the artifact's number, its version and its title.",
             "parameters": {

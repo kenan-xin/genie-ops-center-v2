@@ -302,6 +302,7 @@ describe("the invoice answers through the agent", () => {
       "list-datasets",
       "query-dataset",
       "open-record",
+      "offer-choices",
       "make-artifact",
       "make-file",
       "invoices-read-document",

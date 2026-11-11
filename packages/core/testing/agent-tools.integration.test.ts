@@ -96,6 +96,7 @@ describe("the agent's module tools against a real database", () => {
         "list-datasets",
         "query-dataset",
         "open-record",
+        "offer-choices",
         "make-artifact",
         "make-file",
       ];

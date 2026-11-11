@@ -24,6 +24,7 @@ import { reportingDate } from "../settings/reporting-date.ts";
 import { agentAccess } from "./access.ts";
 import { artifactTurn } from "./artifact-tool.ts";
 import { storedArtifactCount } from "./artifacts.ts";
+import { choicesOffered } from "./choices.ts";
 import {
   compactionPlan,
   SUMMARIZE_CHAT,
@@ -341,7 +342,10 @@ export async function turnStream(
     // A call the SDK refuses before `execute` leaves one refused audit row (czjw.31).
     repairToolCall: auditRefusedToolCall(ctx, { id: sessionId }),
     // The summary call takes one of the turn's steps, also when it failed (LC5).
-    stopWhen: isStepCount(AGENT_LIMITS.steps - (plan.compact ? 1 : 0)),
+    stopWhen: [
+      isStepCount(AGENT_LIMITS.steps - (plan.compact ? 1 : 0)),
+      choicesOffered,
+    ],
     // The largest step input decides the next turn's token trigger; `usage` sums all steps (LC1).
     onStepEnd: ({ usage }) => {
       largestInput = Math.max(largestInput, usage.inputTokens ?? 0);

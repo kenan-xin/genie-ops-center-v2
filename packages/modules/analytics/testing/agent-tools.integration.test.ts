@@ -272,7 +272,12 @@ describe("the analytics agent tools", () => {
   });
 
   it("offers the read tools in Ask and the write tools only in a Dashboards session of a writer, with the write rules only there", async () => {
-    const core = ["list-datasets", "query-dataset", "open-record"];
+    const core = [
+      "list-datasets",
+      "query-dataset",
+      "open-record",
+      "offer-choices",
+    ];
 
     const ask = [...core, "make-artifact", "make-file"];
 
