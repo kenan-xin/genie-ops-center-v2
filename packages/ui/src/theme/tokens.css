@@ -23,6 +23,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-control: var(--control);
+  --color-control-foreground: var(--control-foreground);
   --color-ring: var(--ring);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
@@ -44,6 +45,8 @@
   --color-category-modules-fg: var(--category-modules-fg);
   --color-category-module-event-bg: var(--category-module-event-bg);
   --color-category-module-event-fg: var(--category-module-event-fg);
+  /* DESIGN.md "Lift" (6wz1.99): the 1 px shadow under an outlined button, the one resting shadow. */
+  --shadow-lift: var(--lift);
 }
 
 /*
@@ -92,6 +95,8 @@
     --border: #e5e7eb;
     --input: #6b7280;
     --control: #d1d5db;
+    --control-foreground: #1f2937;
+    --lift: 0 1px 2px rgb(17 24 39 / 0.07);
     --ring: var(--primary);
     --primary: #2563eb;
     --primary-foreground: #ffffff;
@@ -137,6 +142,8 @@
     --placeholder: #9ca3af;
     --border: #1f2937;
     --control: #374151;
+    --control-foreground: #f3f4f6;
+    --lift: 0 1px 2px rgb(0 0 0 / 0.5);
     --ring: var(--brand-on-dark);
     --category-session-bg: #083344;
     --category-session-fg: #67e8f9;

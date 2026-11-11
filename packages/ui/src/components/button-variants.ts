@@ -15,8 +15,9 @@ const buttonVariants = cva(
       variant: {
         "primary":
           "border-transparent bg-primary text-primary-foreground not-disabled:not-aria-disabled:hover:bg-primary/94 not-disabled:not-aria-disabled:active:bg-primary/80",
+        // Owner pick C (6wz1.99): a gray-200 hairline, semibold gray-800 text and the lift, the one resting shadow.
         "secondary":
-          "border-input bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
+          "border-border bg-card font-semibold text-control-foreground shadow-lift not-disabled:not-aria-disabled:hover:bg-muted",
         // An empty list filter in the bar: the gray-300 control border, because its text names it (czjw.102).
         "filter":
           "border-control bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
@@ -28,7 +29,7 @@ const buttonVariants = cva(
           "border-transparent bg-destructive text-white not-disabled:not-aria-disabled:hover:bg-destructive/94 not-disabled:not-aria-disabled:active:bg-destructive/80",
         // A destructive action beside others: the secondary outline with red text (DESIGN.md "Danger").
         "danger-outline":
-          "border-input bg-card text-destructive not-disabled:not-aria-disabled:hover:bg-muted dark:text-destructive-on-dark",
+          "border-border bg-card font-semibold text-destructive shadow-lift not-disabled:not-aria-disabled:hover:bg-muted dark:text-destructive-on-dark",
         "ghost":
           "border-transparent text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
         "link":

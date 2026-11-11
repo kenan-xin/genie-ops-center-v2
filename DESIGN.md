@@ -153,7 +153,7 @@ Authority chain: `docs/design/design-system/tokens.md` is the source of truth fo
 
 - Mobile-first utility: phone layout is the base; tables become card lists under 768px, inspectors become sheets
 - One tenant accent, used sparingly: primary button, count pill, active nav row, and the light-theme focus ring. Nothing else takes it.
-- Hairline borders over shadows; only menus and overlays cast shadows
+- Hairline borders over shadows; only menus, overlays and the 1 px lift of an outlined button cast shadows
 - Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE). These are the only two faces that ship for now.
 - Thumb-first controls: one height scale (buttons 32/40/44px, fields 36px on desktop), 44px minimum touch targets under 1024px
 - Motion is 150–220ms ease-out, no bounce, no scale, always `motion-safe:` gated
@@ -184,11 +184,12 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 - **Panel** (#f9fafb, gray-50): the sidebar panel, table header rows, and row hover.
 - **Tile** (#f3f4f6, gray-100): person avatars and mono chip backgrounds — tinted surfaces that stand for identity stay fixed neutral gray.
 - **Hairline** (#e5e7eb, gray-200): card edges, row dividers, and other decorative hairlines; decoration, so 1.4.11 does not reach it. Dark mirror #1f2937 (gray-800).
-- **Control border** (#d1d5db, gray-300): the secondary button border.
+- **Control border** (#d1d5db, gray-300): the border of an empty list filter, a control that its text names (`czjw.102`).
 - **Input border** (#6b7280, gray-500, the `--input` variable): the input border. It is the boundary of a component, so it must hold 3:1 under 1.4.11, and it measures 4.89:1 on white.
 - **Icon muted** (#6b7280, gray-500): icons, labels, and helper text — the lightest text ever gets (dark mirror: gray-400).
 - **Text secondary** (#4b5563, gray-600): helper text and table headers (dark mirror: gray-300).
 - **Text idle** (#374151, gray-700): body text on tinted surfaces, idle navigation rows, ghost buttons.
+- **Control text** (#1f2937, gray-800, the `--control-foreground` variable): the semibold label of a secondary button (dark mirror: gray-100).
 - **Heading** (#111827, gray-900): headings and strong text; dark body text is gray-100 on **Page dark** (#030712, gray-950).
 
 ### Semantic
@@ -242,16 +243,19 @@ Responsive doctrine: mobile first, and no action is available only on desktop. U
 
 ## Elevation & Depth
 
-Hairline-first and nearly flat. Resting surfaces are separated by borders (gray-200 on light, gray-800 on dark) and tonal steps (a white page beside a gray-50 panel), not by shadow. Shadows belong exclusively to things that float above the page: menus, dialogs, sheets, slide-overs, and the mobile drawer. Scrim behind an overlay is a dim (25–40% gray-900) with a 1–2px backdrop blur.
+Hairline-first and nearly flat. Resting surfaces are separated by borders (gray-200 on light, gray-800 on dark) and tonal steps (a white page beside a gray-50 panel), not by shadow. Shadows belong to things that float above the page: menus, dialogs, sheets, slide-overs, and the mobile drawer. The one resting exception is the Lift of an outlined button. Scrim behind an overlay is a dim (25–40% gray-900) with a 1–2px backdrop blur.
 
 ### Shadow Vocabulary
 
 - **Menu** (`box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)`): dropdown menus and the upward-opening user menu.
 - **Overlay** (`box-shadow: 0 25px 50px -12px rgb(17 24 39 / 0.1)`): dialogs, sheets, slide-overs, and the navigation drawer.
+- **Lift** (`box-shadow: 0 1px 2px rgb(17 24 39 / 0.07)`, dark `0 1px 2px rgb(0 0 0 / 0.5)`, the `shadow-lift` token): the secondary and danger-outline buttons.
 
 ### Named Rules
 
 **The Hairline-First Rule.** A resting surface gets a border, not a shadow. If it is not a menu or an overlay, it does not cast.
+
+**Exception: the outlined button (owner, 2026-11-11, `6wz1.99`).** A secondary or danger-outline button carries a gray-200 hairline (gray-800 in dark) and the Lift, so that it reads as a button and not as a field. The label identifies the button, so WCAG 1.4.11 does not ask the hairline for 3:1. No other resting surface casts, and a filled button carries no shadow.
 
 ## Shapes
 
@@ -267,7 +271,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 
 - **Shape:** 8px radius; heights 32px (sm) / 40px (md, the default) / 44px (lg); icon-only variants are squares of the same height with an `aria-label`.
 - **Primary:** brand fill (`--primary`, default #2563eb) with `--primary-foreground` text (white), semibold 0.875rem, 14px horizontal padding.
-- **Secondary:** white fill, gray-300 border, gray-800 text. **Danger:** red-600 fill, white text. **Ghost:** no fill, no border, gray-700 text, 32px height.
+- **Secondary:** white fill, gray-200 hairline, semibold gray-800 text (`--control-foreground`) and the Lift; in dark, a gray-900 fill, a gray-800 hairline and gray-100 text. **Danger outline:** the secondary look with red-600 text (red-400 in dark). **Danger:** red-600 fill, white text. **Ghost:** no fill, no border, gray-700 text, 32px height.
 - **Hover / Focus:** fill variants drop to 94% opacity on hover and 80% on press — the same color, never a derived shade; outline and ghost variants take a gray-50 fill on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
 - **Disabled / Loading:** disabled is 50% opacity with `cursor-not-allowed` and no hover change; use `aria-disabled` instead of the `disabled` attribute when the control must stay focusable to explain why. Loading keeps the label and the width, replaces the leading icon with a spinner, sets `aria-busy="true"`, and ignores a second press. Any action that leaves the page or waits on the network uses the loading state (at least Publish, Save, Send test, the sign-in redirect).
 
@@ -342,7 +346,7 @@ For now the sign-in page and the emails carry text and color branding only. They
 
 - **Don't** derive any tint, shade, or ramp from the tenant color; hover is 94% opacity of the same color, press is 80%.
 - **Don't** use arbitrary text sizes (`text-[13.5px]`, any `text-[Npx]`) in any component.
-- **Don't** put a shadow on a resting surface; hairline borders separate, and shadows belong to menus and overlays.
+- **Don't** put a shadow on a resting surface; hairline borders separate, and shadows belong to menus, overlays and the Lift of an outlined button.
 - **Don't** give a label pill a status color, and don't use emoji as icons — Lucide only, stroke 1.75.
 - **Don't** add a notification navigation entry or a dropdown panel. The header bell, from roadmap Section 6, is the only entry to the Notifications page.
 - **Don't** derive a dark-theme brand color from the tenant color; dark brand text and the dark ring use the fixed brand-on-dark token.

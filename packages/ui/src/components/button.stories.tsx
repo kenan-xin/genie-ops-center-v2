@@ -3,7 +3,7 @@ import { expect, fn, userEvent } from "storybook/test";
 
 // The package entry, not ./button.tsx, so that the stories prove what an app
 // can import.
-import { Button } from "../index.ts";
+import { Button, buttonVariants, focusRing, type ThemeName } from "../index.ts";
 
 const meta = {
   title: "UI/Button",
@@ -248,7 +248,24 @@ export const SmallHitArea: Story = {
   },
 };
 
-const variants = ["primary", "secondary", "danger", "ghost", "link"] as const;
+const variants = [
+  "primary",
+  "secondary",
+  "danger-outline",
+  "danger",
+  "ghost",
+  "link",
+] as const;
+
+// Owner pick C (6wz1.99): the computed hairline and 1 px lift of an outlined button.
+function outlineOf(theme: ThemeName): { border: string; lift: string } {
+  return theme === "dark"
+    ? { border: "rgb(31, 41, 55)", lift: "rgba(0, 0, 0, 0.5) 0px 1px 2px 0px" }
+    : {
+        border: "rgb(229, 231, 235)",
+        lift: "rgba(17, 24, 39, 0.07) 0px 1px 2px 0px",
+      };
+}
 
 export const Variants: Story = {
   render: (args) => (
@@ -258,20 +275,38 @@ export const Variants: Story = {
           {variant}
         </Button>
       ))}
-      <span data-testid="border-input-probe" className="border border-input" />
+      <a
+        href="/"
+        className={`${buttonVariants({ variant: "secondary" })} ${focusRing}`}
+      >
+        Secondary link
+      </a>
     </div>
   ),
-  play: async ({ canvas }) => {
-    // PD-11: the secondary boundary is border-input, not the base border-transparent.
-    const secondary = canvas.getByRole("button", { name: "secondary" });
-    const probe = canvas.getByTestId("border-input-probe");
+  play: async ({ canvas, globals }) => {
+    const { border, lift } = outlineOf(globals["theme"]);
 
-    await expect(getComputedStyle(secondary).borderTopColor).toBe(
-      getComputedStyle(probe).borderTopColor
+    const secondary = getComputedStyle(
+      canvas.getByRole("button", { name: "secondary" })
     );
-    await expect(getComputedStyle(secondary).borderTopColor).not.toBe(
-      "rgba(0, 0, 0, 0)"
+
+    await expect(secondary.borderTopColor).toBe(border);
+    await expect(secondary.fontWeight).toBe("600");
+    await expect(secondary.boxShadow).toContain(lift);
+
+    // A raw buttonVariants class list has no tailwind-merge, so the variant weight must win alone.
+    await expect(
+      getComputedStyle(canvas.getByRole("link", { name: "Secondary link" }))
+        .fontWeight
+    ).toBe("600");
+
+    const dangerOutline = getComputedStyle(
+      canvas.getByRole("button", { name: "danger-outline" })
     );
+
+    await expect(dangerOutline.borderTopColor).toBe(border);
+    await expect(dangerOutline.fontWeight).toBe("600");
+    await expect(dangerOutline.boxShadow).toContain(lift);
   },
 };
 
