@@ -25,6 +25,7 @@ import {
   useEffect,
   useRef,
   useState,
+  type KeyboardEvent,
   type ReactNode,
 } from "react";
 import { useStore } from "zustand";
@@ -48,6 +49,8 @@ import {
   setPanelOpen,
   setPanelWorking,
 } from "./agent-panel-store.ts";
+import type { Read } from "./answer-sources.ts";
+import type { ArtifactRef } from "./artifact-refs.ts";
 import { ChatHistory } from "./chat-history.tsx";
 import { useSessionDetail } from "./session-detail.ts";
 import { surfaceSessionGroups } from "./session-groups.ts";
@@ -79,6 +82,14 @@ const NO_SURFACES: readonly SurfaceView[] = [];
 const LazyAgentChat = lazy(async () => ({
   default: (await import("./agent-chat.tsx")).AgentChat,
 }));
+
+// The artifact sheet and its chart code load only when a card on a record page opens it.
+const LazyArtifactSheet = lazy(async () => ({
+  default: (await import("./artifact-slot.tsx")).ArtifactSheet,
+}));
+
+const focusedElement = () =>
+  document.activeElement instanceof HTMLElement ? document.activeElement : null;
 
 const clearOutbox = () => agentPanelStore.setState({ outbox: null });
 
@@ -213,6 +224,29 @@ export function AgentPanelHost(props: {
     enabled: target !== undefined && used && surfaceSessions.isFetched,
   });
 
+  // A surface chat's card opens its artifact or a read's rows in a sheet over the record page
+  // (czjw.162). Another chat or record closes it.
+  const [slot, setSlot] = useState<{
+    readonly sessionId: string;
+    readonly shown: ArtifactRef | null;
+    readonly rows: Read | null;
+    /** The card or link that opened it, which gets focus back on close. */
+    readonly opener: HTMLElement | null;
+  } | null>(null);
+
+  // A closed panel also closes it, so a read that ends later opens no sheet over a hidden panel.
+  if (slot !== null && (slot.sessionId !== shownId || !open)) setSlot(null);
+
+  const openSlot = slot?.sessionId === shownId ? slot : null;
+
+  const slotArtifacts = useQuery({
+    queryKey: ["agent", "artifacts", shownId],
+    queryFn: () => agent.artifacts({ id: shownId }),
+    enabled: openSlot !== null && openSlot.shown !== null,
+    staleTime: 0,
+    retry: 1,
+  });
+
   const run = shownRead.data?.session.run;
 
   const chip =
@@ -249,6 +283,18 @@ export function AgentPanelHost(props: {
   function close(): void {
     returnFocus.current = docked || bottom;
     setPanelOpen(false);
+  }
+
+  // Base UI stops an Escape inside the portaled artifact sheet (P16d-39); the check is a safety net,
+  // so a key from a portaled dialog that React still passes up never closes the panel.
+  function closeOnEscape(event: KeyboardEvent<HTMLElement>): void {
+    if (
+      event.key === "Escape" &&
+      event.target instanceof Node &&
+      event.currentTarget.contains(event.target)
+    ) {
+      close();
+    }
   }
 
   function newChat(): void {
@@ -289,11 +335,33 @@ export function AgentPanelHost(props: {
           suggestions={page?.suggestions ?? props.suggestions}
           inbox={props.inbox}
           timeZone={props.timeZone}
-          artifacts={{
-            kind: "link",
-            href: (ref) => `/ask/${shownId}?artifact=${ref.artifactId}`,
-            rowsHref: (toolCallId) => `/ask/${shownId}?rows=${toolCallId}`,
-          }}
+          artifacts={
+            target === undefined
+              ? {
+                  kind: "link",
+                  href: (ref) => `/ask/${shownId}?artifact=${ref.artifactId}`,
+                  rowsHref: (toolCallId) =>
+                    `/ask/${shownId}?rows=${toolCallId}`,
+                }
+              : {
+                  kind: "panel",
+                  shown: openSlot?.shown ?? null,
+                  onOpen: (ref) =>
+                    setSlot({
+                      sessionId: shownId,
+                      shown: ref,
+                      rows: null,
+                      opener: focusedElement(),
+                    }),
+                  onOpenRows: (read) =>
+                    setSlot({
+                      sessionId: shownId,
+                      shown: null,
+                      rows: read,
+                      opener: focusedElement(),
+                    }),
+                }
+          }
           headingLevel={3}
           onNewChat={newChat}
           onWorking={setPanelWorking}
@@ -490,6 +558,43 @@ export function AgentPanelHost(props: {
           </>
         )}
       </div>
+      {openSlot !== null &&
+      openSlot.shown !== null &&
+      slotArtifacts.isError &&
+      slotArtifacts.data === undefined ? (
+        <div
+          role="alert"
+          className="flex shrink-0 items-center gap-2 border-t border-border px-4 py-2 text-sm text-muted-foreground"
+        >
+          <p className="flex-1">The artifact could not load.</p>
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => void slotArtifacts.refetch()}
+          >
+            Try again
+          </Button>
+        </div>
+      ) : null}
+      {/* Portaled, and inside the panel's own sheet below 1280 px, so it nests as a dialog. An
+          artifact waits for the chat's artifacts, so the sheet never opens on an empty list. */}
+      {openSlot === null ||
+      (openSlot.shown !== null && slotArtifacts.data === undefined) ? null : (
+        <Suspense fallback={null}>
+          <LazyArtifactSheet
+            artifacts={slotArtifacts.data ?? []}
+            shown={openSlot.shown}
+            rows={openSlot.rows}
+            labels={props.labels}
+            timeZone={props.timeZone}
+            onShow={(ref) => setSlot({ ...openSlot, shown: ref, rows: null })}
+            onClose={() => setSlot(null)}
+            // Base UI would return focus to Try again's row, gone by then, after a failed read.
+            finalFocus={openSlot.opener}
+          />
+        </Suspense>
+      )}
     </section>
   );
 
@@ -500,9 +605,7 @@ export function AgentPanelHost(props: {
         aria-label="Agent panel"
         hidden={!open}
         className={`fixed inset-x-0 bottom-0 z-40 flex-col overflow-hidden rounded-t-xl border-t border-border shadow-xl ${open ? "flex" : "hidden"} ${collapsed ? "" : "h-1/2"}`}
-        onKeyDown={(event) => {
-          if (event.key === "Escape") close();
-        }}
+        onKeyDown={closeOnEscape}
       >
         {panel}
       </aside>
@@ -514,9 +617,7 @@ export function AgentPanelHost(props: {
       aria-label="Agent panel"
       hidden={!open}
       className={`w-100 shrink-0 flex-col border-s border-border ${open ? "flex" : "hidden"}`}
-      onKeyDown={(event) => {
-        if (event.key === "Escape") close();
-      }}
+      onKeyDown={closeOnEscape}
     >
       {panel}
     </aside>

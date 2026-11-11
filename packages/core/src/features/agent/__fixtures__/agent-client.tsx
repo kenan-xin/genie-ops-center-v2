@@ -3,6 +3,7 @@ import { useState, type ReactNode } from "react";
 
 import { ModuleClientProvider } from "../../../lib/rpc/module-client.tsx";
 import type {
+  AgentArtifact,
   AgentFile,
   AgentMessage,
   AgentSessionSummary,
@@ -13,6 +14,8 @@ import type { CheckChart } from "../chart-check.tsx";
 const NO_MESSAGES: readonly AgentMessage[] = [];
 
 const NO_FILES: readonly AgentFile[] = [];
+
+const NO_ARTIFACTS: readonly AgentArtifact[] = [];
 
 function plainSession(id: string): AgentSessionDetail {
   return {
@@ -62,6 +65,9 @@ export function AgentClientStub(props: {
     readonly surface?: string | undefined;
     readonly recordId?: string | undefined;
   }) => Promise<readonly AgentSessionSummary[]>;
+  readonly artifacts?: (input: {
+    readonly id: string;
+  }) => Promise<readonly AgentArtifact[]>;
   readonly stop?: (input: { readonly id: string }) => Promise<void>;
   readonly retry?: (input: { readonly id: string }) => Promise<void>;
   readonly children: ReactNode;
@@ -87,6 +93,7 @@ export function AgentClientStub(props: {
           ? null
           : { session: plainSession(id), messages: saved };
       }),
+    artifacts: props.artifacts ?? (async () => NO_ARTIFACTS),
     stop: props.stop ?? (async () => undefined),
     retry: props.retry ?? (async () => undefined),
     files: props.files ?? (async () => NO_FILES),

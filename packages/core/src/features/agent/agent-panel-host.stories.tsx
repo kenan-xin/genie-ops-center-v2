@@ -4,6 +4,11 @@ import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 import { z } from "zod";
 
+import type {
+  AgentArtifact,
+  AgentMessage,
+} from "../../services/agent/index.ts";
+import type { PanelConfig } from "../../services/charts/panel-config.ts";
 import { ShellContext } from "../shell/shell-context.ts";
 import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
 import { handoffDetail } from "./__fixtures__/handoff.ts";
@@ -462,6 +467,252 @@ export const PhoneSheet: Story = {
       ).toBeNull()
     );
     await expect(agent).toHaveFocus();
+  },
+};
+
+const BAR = {
+  type: "bar",
+  title: "Quantity by record",
+  series: [
+    {
+      name: "Quantity",
+      dataset: "example.items",
+      query: { limit: 10 },
+      x: "label",
+      y: "quantity",
+    },
+  ],
+} as const satisfies PanelConfig;
+
+const CHART_ID = "11111111-1111-4111-8111-111111111111";
+
+const CHART_ARTIFACTS: readonly AgentArtifact[] = [
+  {
+    id: CHART_ID,
+    number: 1,
+    kind: "chart",
+    title: BAR.title,
+    latestVersion: 1,
+    versions: [
+      {
+        version: 1,
+        definition: BAR,
+        request: "Chart the quantity",
+        createdAt: "2026-11-05T08:00:00Z",
+      },
+    ],
+  },
+];
+
+/** A saved surface chat whose answer made a chart. */
+const CHART_CHAT: readonly AgentMessage[] = [
+  {
+    id: "question",
+    role: "user",
+    parts: [{ type: "text", text: "Chart the quantity" }],
+  },
+  {
+    id: "answer",
+    role: "assistant",
+    parts: [
+      {
+        type: "tool-make-artifact",
+        toolCallId: "call-chart",
+        state: "output-available",
+        input: { config: BAR },
+        output: { artifact: 1, version: 1, title: BAR.title },
+      },
+      {
+        type: "data-artifact",
+        id: "call-chart",
+        data: { artifactId: CHART_ID, version: 1 },
+      },
+      { type: "text", text: "Here is the chart." },
+    ],
+  },
+];
+
+const chartChat = handoffDetail(null, CHART_CHAT);
+
+/** The chat's artifacts, read after a pause, as over a network. */
+const slowArtifacts = async () => {
+  await new Promise((resolve) => setTimeout(resolve, 500));
+
+  return CHART_ARTIFACTS;
+};
+
+/** The surface page with that chat; the chart gate draws two bars. */
+function ChartChatFrame(props: {
+  readonly artifacts?: () => Promise<readonly AgentArtifact[]>;
+}) {
+  return (
+    <AgentClientStub
+      sessions={async () => [chartChat.session]}
+      session={async () => chartChat}
+      artifacts={props.artifacts ?? slowArtifacts}
+      chart={async (config) => ({
+        // SAFETY: the story's only chart is BAR.
+        config: config as PanelConfig,
+        data: {
+          kind: "bar",
+          title: BAR.title,
+          x: { key: "label", label: "Record", type: "text" },
+          columns: [{ key: "quantity", label: "Quantity", type: "number" }],
+          rows: [
+            { label: "Alpha", quantity: 3 },
+            { label: "Beta", quantity: 5 },
+          ],
+          datasets: ["example.items"],
+          readAt: "2026-11-05T08:05:00Z",
+          truncated: false,
+        },
+      })}
+    >
+      <Frame page={false} path="/placeholder/r1" />
+    </AgentClientStub>
+  );
+}
+
+/** Opens the panel and the chart card's sheet; returns the card. */
+async function openChartSheet(canvas: {
+  getByRole: typeof screen.getByRole;
+}): Promise<HTMLElement> {
+  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+  const region = await screen.findByRole("region", {
+    name: "Placeholder agent",
+  });
+
+  // The chat's chunk and its saved messages load first.
+  const card = await within(region).findByRole(
+    "button",
+    { name: /^Quantity by record/ },
+    { timeout: 5000 }
+  );
+
+  await userEvent.click(card);
+
+  const sheet = await screen.findByRole(
+    "dialog",
+    { name: "Artifact" },
+    { timeout: 5000 }
+  );
+
+  // The sheet opens on the artifact, never on an empty list while the read is under way.
+  await expect(
+    within(sheet).queryByText("This artifact cannot be shown here yet.")
+  ).toBeNull();
+  await expect(
+    await within(sheet).findByRole("heading", { name: BAR.title })
+  ).toBeVisible();
+
+  return card;
+}
+
+// G1 (czjw.162): on a record page the card opens the artifact in a sheet over the page; Escape
+// closes only the sheet, so the panel stays, and focus goes back to the card.
+export const SurfaceArtifactSheet: Story = {
+  render: () => <ChartChatFrame />,
+  play: async ({ canvas }) => {
+    const card = await openChartSheet(canvas);
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull()
+    );
+    await expect(
+      screen.getByRole("region", { name: "Placeholder agent" })
+    ).toBeVisible();
+    await waitFor(() => expect(card).toHaveFocus());
+  },
+};
+
+/** The first read of the chat's artifacts and its one retry fail; the next read answers. */
+let failedReads = 0;
+
+// G1b (czjw.162): a failed read says so and offers Try again, instead of an empty sheet.
+export const SurfaceArtifactReadFails: Story = {
+  render: () => (
+    <ChartChatFrame
+      artifacts={async () => {
+        if (failedReads < 2) {
+          failedReads += 1;
+          throw new Error("The read failed.");
+        }
+
+        return CHART_ARTIFACTS;
+      }}
+    />
+  ),
+  beforeEach: () => {
+    failedReads = 0;
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+    const region = await screen.findByRole("region", {
+      name: "Placeholder agent",
+    });
+
+    const card = await within(region).findByRole(
+      "button",
+      { name: /^Quantity by record/ },
+      { timeout: 5000 }
+    );
+
+    await userEvent.click(card);
+
+    // The query tries once more before it fails.
+    const alert = await within(region).findByRole(
+      "alert",
+      {},
+      { timeout: 5000 }
+    );
+
+    await expect(alert).toHaveTextContent("The artifact could not load.");
+    await expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull();
+
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Try again" })
+    );
+
+    const sheet = await screen.findByRole(
+      "dialog",
+      { name: "Artifact" },
+      { timeout: 5000 }
+    );
+
+    await expect(
+      await within(sheet).findByRole("heading", { name: BAR.title })
+    ).toBeVisible();
+
+    // Try again is gone by now, so focus goes back to the card.
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull()
+    );
+    await waitFor(() => expect(card).toHaveFocus());
+  },
+};
+
+// G2 (czjw.162): on a phone, Back to the chat closes the sheet, the bottom panel stays, and the
+// card has focus again.
+export const SurfaceArtifactSheetOnAPhone: Story = {
+  globals: phone,
+  render: () => <ChartChatFrame />,
+  play: async ({ canvas }) => {
+    const card = await openChartSheet(canvas);
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Back to the chat" })
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull()
+    );
+    await expect(
+      screen.getByRole("region", { name: "Placeholder agent" })
+    ).toBeVisible();
+    await waitFor(() => expect(card).toHaveFocus());
   },
 };
 

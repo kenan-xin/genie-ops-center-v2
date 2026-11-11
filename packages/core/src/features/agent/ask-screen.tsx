@@ -47,12 +47,10 @@ import type {
   ChatLabels,
 } from "../../services/agent/index.ts";
 import type { Read } from "./answer-sources.ts";
-import { ArtifactPanel } from "./artifact-panel.tsx";
 import type { ArtifactRef } from "./artifact-refs.ts";
-import { ChartCheckProvider } from "./chart-check.tsx";
+import { ArtifactSheet, ArtifactSlot } from "./artifact-slot.tsx";
 import { ChatHistory } from "./chat-history.tsx";
 import { HandoffChip } from "./handoff-card.tsx";
-import { ReadRowsPanel } from "./read-rows-panel.tsx";
 
 /** From this width an open artifact sits in a column beside the chat (AG22). */
 const ARTIFACT_DOCKED = "(min-width: 1280px)";
@@ -292,30 +290,15 @@ export function AskScreen(props: {
     props.onRows(null);
   };
 
-  const artifact = (variant: "column" | "sheet") =>
-    props.rows !== null ? (
-      <ReadRowsPanel
-        read={props.rows}
-        labels={props.labels}
-        variant={variant}
-        timeZone={props.timeZone}
-        onClose={closeSlot}
-      />
-    ) : props.shown === null ? null : (
-      <ChartCheckProvider
-        check={(config) => agent.chart({ config })}
-        timeZone={props.timeZone}
-        datasetTitles={props.labels.datasets}
-      >
-        <ArtifactPanel
-          artifacts={props.artifacts}
-          shown={props.shown}
-          onShow={props.onShow}
-          onClose={() => props.onShow(null)}
-          variant={variant}
-        />
-      </ChartCheckProvider>
-    );
+  const slot = {
+    artifacts: props.artifacts,
+    shown: props.shown,
+    rows: props.rows,
+    labels: props.labels,
+    timeZone: props.timeZone,
+    onShow: props.onShow,
+    onClose: closeSlot,
+  };
 
   return (
     <div className="flex min-h-0 flex-1">
@@ -408,26 +391,11 @@ export function AskScreen(props: {
             aria-label="Artifact panel"
             className="flex w-120 shrink-0 flex-col border-s border-border"
           >
-            {artifact("column")}
+            <ArtifactSlot {...slot} variant="column" />
           </aside>
         )
       ) : (
-        <Sheet
-          open={slotOpen}
-          onOpenChange={(open) => {
-            if (!open) closeSlot();
-          }}
-        >
-          <SheetContent
-            side="right"
-            showCloseButton={false}
-            aria-label={props.rows === null ? "Artifact" : "Rows"}
-            // oxlint-disable-next-line shadcn/no-restyle -- the panel brings its own header and padding
-            className="gap-0 overflow-hidden p-0"
-          >
-            {artifact("sheet")}
-          </SheetContent>
-        </Sheet>
+        <ArtifactSheet {...slot} />
       )}
 
       <Sheet open={historySheet} onOpenChange={setHistorySheet}>
