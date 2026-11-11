@@ -42,6 +42,23 @@ export const TYPE_PX = {
   footer: 12,
 } as const;
 
+/** WCAG 2.2 large text, in canvas pixels; it needs 3:1, other text 4.5:1 (R-52a). */
+export const LARGE_TEXT_PX = 24;
+
+const DEFAULT_TEXT_PX = {
+  title: TYPE_PX.title,
+  text: TYPE_PX.text,
+  bullets: TYPE_PX.bullet,
+} as const;
+
+/** The contrast a text needs, by its size or else its kind's default size: the save's one rule. */
+export function contrastLimit(
+  kind: "title" | "text" | "bullets",
+  fontSize: number | undefined
+): 3 | 4.5 {
+  return (fontSize ?? DEFAULT_TEXT_PX[kind]) >= LARGE_TEXT_PX ? 3 : 4.5;
+}
+
 const MARGIN_X = 40;
 
 const CONTENT_W = 880;

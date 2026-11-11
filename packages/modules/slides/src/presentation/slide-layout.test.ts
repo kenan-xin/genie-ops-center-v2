@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type { ElementKind } from "../contract.ts";
 import {
   CANVAS,
+  contrastLimit,
   elementBoxes,
   figuresDate,
   type Box,
@@ -130,5 +131,17 @@ describe("slideLayout", () => {
 
   it("writes the figures date in UTC", () => {
     expect(figuresDate("2026-10-27")).toBe("27 Oct 2026");
+  });
+});
+
+describe("contrastLimit", () => {
+  it.each([
+    ["title", undefined, 3],
+    ["text", undefined, 4.5],
+    ["bullets", undefined, 4.5],
+    ["text", 24, 3],
+    ["title", 18, 4.5],
+  ] as const)("%s at size %s needs %s:1", (kind, fontSize, limit) => {
+    expect(contrastLimit(kind, fontSize)).toBe(limit);
   });
 });

@@ -59,6 +59,7 @@ import {
   THEME_TEXT,
 } from "../contract.ts";
 import { boxStep, movedBox, resizedBox, SNAP } from "./canvas-adapter.ts";
+import { contrastLimit } from "./slide-layout.ts";
 import type { ShownElement, ShownSlide } from "./views.ts";
 
 /** The swatches of the prototype; any other color goes through the hex field. */
@@ -540,39 +541,52 @@ export function StyleToolbar(props: StyleToolbarProps) {
   );
 }
 
+type TextKind = "title" | "text" | "bullets";
+
+const isText = (kind: ElementKind): kind is TextKind => TEXT_KINDS.has(kind);
+
 /**
  * The color a text needs on what draws behind it, or `undefined` when its own color reaches the
- * flat 4.5:1 (P13-9, P16-4). On the theme background the theme's own text color (`null`); else
- * the theme text or white, whichever has more contrast there.
+ * save's limit for its kind and size (P13-9, P16-4, czjw.161). On the theme background the theme's
+ * own text color (`null`); else the theme text or white, whichever has more contrast there.
  */
 function readableColor(
+  kind: TextKind,
+  fontSize: number | undefined,
   color: string | undefined,
   fill: string | undefined,
   background: string | undefined
 ): string | null | undefined {
+  const needs = contrastLimit(kind, fontSize);
   const behind = fill ?? background ?? THEME_BACKGROUND;
 
-  if (contrastRatio(color ?? THEME_TEXT, behind) >= 4.5) return undefined;
+  if (contrastRatio(color ?? THEME_TEXT, behind) >= needs) return undefined;
 
   if (fill === undefined && background === undefined) return null;
 
-  return contrastRatio(THEME_TEXT, behind) >= contrastRatio("#FFFFFF", behind)
-    ? THEME_TEXT
-    : "#FFFFFF";
+  const best =
+    contrastRatio(THEME_TEXT, behind) >= contrastRatio("#FFFFFF", behind)
+      ? THEME_TEXT
+      : "#FFFFFF";
+
+  // Black or white always reaches 4.58:1, so black repairs what the best one cannot (czjw.138).
+  return contrastRatio(best, behind) >= needs ? best : "#000000";
 }
 
 /**
  * A fill pick with the text color it needs: a title, text or bullet list whose color falls below
- * 4.5:1 on what then draws behind it takes a readable color in the same step (P13-9).
+ * its limit on what then draws behind it takes a readable color in the same step (P13-9).
  */
 export function fillChange(
   element: ShownElement,
   background: string | undefined,
   fill: string | null
 ): StyleChange {
-  if (!TEXT_KINDS.has(element.kind)) return { fill };
+  if (!isText(element.kind)) return { fill };
 
   const color = readableColor(
+    element.kind,
+    element.style?.fontSize,
     element.style?.color,
     fill ?? undefined,
     background
@@ -583,7 +597,7 @@ export function fillChange(
 
 /**
  * A background change with the text colors it needs: each text without a fill whose color falls
- * below 4.5:1 on the new background takes a readable color in the same change, so a hand edit reaches
+ * below its limit on the new background takes a readable color in the same change, so a hand edit reaches
  * what the save allows (P13-9). One change, one Undo entry.
  */
 export function backgroundSteps(
@@ -592,11 +606,13 @@ export function backgroundSteps(
 ): DeckChange[] {
   const texts = slide.elements.flatMap((element, index) => {
     // A text with its own fill draws on that fill, which a background change leaves as it is.
-    if (!TEXT_KINDS.has(element.kind) || element.style?.fill !== undefined) {
+    if (!isText(element.kind) || element.style?.fill !== undefined) {
       return [];
     }
 
     const color = readableColor(
+      element.kind,
+      element.style?.fontSize,
       element.style?.color,
       undefined,
       background ?? undefined

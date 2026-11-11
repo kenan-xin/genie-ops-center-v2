@@ -28,7 +28,7 @@ import {
   THEME_TEXT,
   titleElement,
 } from "./contract.ts";
-import { TYPE_PX } from "./presentation/slide-layout.ts";
+import { contrastLimit } from "./presentation/slide-layout.ts";
 
 /** The chart config and the data the gate answered for it, frozen on the deck (D3). */
 export type FrozenChart = {
@@ -56,15 +56,6 @@ export type StoredSlide = {
   readonly background?: string | undefined;
   readonly notes?: string | undefined;
 };
-
-/** WCAG 2.2 large text, in canvas pixels; it needs 3:1, other text 4.5:1 (R-52a). */
-const LARGE_TEXT_PX = 24;
-
-const DEFAULT_TEXT_PX = {
-  title: TYPE_PX.title,
-  text: TYPE_PX.text,
-  bullets: TYPE_PX.bullet,
-} as const;
 
 /**
  * Each text element whose color is below the contrast limit against its own fill, else the slide
@@ -98,10 +89,7 @@ export function textContrastIssues(slide: {
           ? ["the slide background", slide.background]
           : ["the theme background", THEME_BACKGROUND];
 
-    const needs =
-      (style.fontSize ?? DEFAULT_TEXT_PX[element.kind]) >= LARGE_TEXT_PX
-        ? 3
-        : 4.5;
+    const needs = contrastLimit(element.kind, style.fontSize);
 
     const ratio = contrastRatio(color, behind);
 

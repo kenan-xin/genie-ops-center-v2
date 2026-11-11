@@ -52,6 +52,26 @@ const after = (slide: StoredSlide, changes: DeckChange[]) =>
     .slides[0]!;
 
 describe("backgroundSteps", () => {
+  it("a dark background recolors a small text and keeps a large title", () => {
+    const slide: StoredSlide = {
+      id: "s1",
+      elements: [
+        { kind: "title", text: "Claim", style: { color: "#60A5FA" } },
+        { kind: "text", text: "Sales rose.", style: { color: "#60A5FA" } },
+      ],
+    };
+
+    expect(backgroundSteps(slide, "#1E3A8A")).toEqual([
+      { op: "change-slide-fields", slideId: "s1", background: "#1E3A8A" },
+      {
+        op: "change-element",
+        slideId: "s1",
+        index: 1,
+        style: { color: "#FFFFFF" },
+      },
+    ]);
+  });
+
   it.each(CASES)(
     "background %s from %s texts leaves no text below its limit",
     (color, _name, slide) => {
@@ -91,6 +111,12 @@ describe("fillChange", () => {
         null
       )
     ).toEqual({ fill: null, color: null });
+  });
+
+  it("a gray fill that neither ink nor white can read on takes black", () => {
+    expect(
+      fillChange({ kind: "text", text: "Sales rose." }, undefined, "#777777")
+    ).toEqual({ fill: "#777777", color: "#000000" });
   });
 
   it("a fill on a chart sends only the fill", () => {
