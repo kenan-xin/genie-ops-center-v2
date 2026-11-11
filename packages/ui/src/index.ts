@@ -180,6 +180,8 @@ export { FilterBar } from "./list-header/filter-bar.tsx";
 
 export { FilterSheet } from "./list-header/filter-sheet.tsx";
 
+export { FilterChips, type FilterChip } from "./list-header/filter-chips.tsx";
+
 export { ListFigures } from "./list-header/list-figures.tsx";
 
 export { ListHeader } from "./list-header/list-header.tsx";
@@ -257,6 +259,8 @@ export { RadioGroup, RadioGroupItem } from "./components/radio-group.tsx";
 export { Checkbox } from "./components/checkbox.tsx";
 
 export { ToggleGroup, ToggleGroupItem } from "./components/toggle-group.tsx";
+
+export { ButtonGroup } from "./components/button-group.tsx";
 
 export { Toolbar, ToolbarButton } from "./components/toolbar.tsx";
 

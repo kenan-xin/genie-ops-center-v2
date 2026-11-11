@@ -20,3 +20,4 @@ Business logic, data fetching, a list of one module, and any import of an intern
 - Every control of one place has one height: the field height, 36 px from 1024 px and 44 px under it.
 - A phone shows the count once, in the line above the cards.
 - The controls that do not fit the bar move into More filters, in definition order. Below 768 px every filter sits in the Filters sheet.
+- A phone header can show the applied filters as chips in one row that scrolls sideways. A chip's remove button has a 44 px target, and a remove moves the focus to the next chip, else the previous one, else the row.
