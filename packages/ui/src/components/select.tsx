@@ -7,7 +7,55 @@ import * as React from "react";
 
 import { fieldHeight, focusRing } from "../theme/tokens.ts";
 
-const Select = SelectPrimitive.Root;
+/** The name an open list repeats from its trigger (6wz1.97). */
+type ListName = {
+  readonly "aria-label"?: string | undefined;
+  readonly "aria-labelledby"?: string | undefined;
+};
+
+// Base UI 1.9 names only the trigger, and the APG select-only combobox names
+// its listbox with the trigger's label.
+const SelectListNameContext = React.createContext<{
+  readonly name: ListName;
+  readonly setName: (name: ListName) => void;
+} | null>(null);
+
+// The order of the accessible name computation.
+function listNameOf(trigger: HTMLButtonElement): ListName {
+  const labelledBy = trigger.getAttribute("aria-labelledby");
+
+  if (labelledBy) {
+    return { "aria-labelledby": labelledBy };
+  }
+
+  const label = trigger.getAttribute("aria-label");
+
+  if (label) {
+    return { "aria-label": label };
+  }
+
+  const text = Array.from(trigger.labels ?? [])
+    .map((element) => element.textContent?.trim() ?? "")
+    .filter(Boolean)
+    .join(" ");
+
+  return text ? { "aria-label": text } : {};
+}
+
+// Pointing the list at the trigger gives the chosen value as its name in Chrome
+// and no name in Playwright (P16g-3), so the name is forwarded instead.
+
+function Select<Value, Multiple extends boolean | undefined = false>(
+  props: SelectPrimitive.Root.Props<Value, Multiple>
+): React.JSX.Element {
+  const [name, setName] = React.useState<ListName>({});
+
+  return (
+    <SelectListNameContext.Provider value={{ name, setName }}>
+      <SelectPrimitive.Root {...props} />
+    </SelectListNameContext.Provider>
+  );
+}
 
 function SelectGroup({ className, ...props }: SelectPrimitive.Group.Props) {
   return (
@@ -34,11 +82,22 @@ function SelectTrigger({
   size = "md",
   children,
   ...props
-}: SelectPrimitive.Trigger.Props & {
+}: Omit<SelectPrimitive.Trigger.Props, "ref"> & {
   size?: "sm" | "md" | "lg";
 }) {
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const setName = React.useContext(SelectListNameContext)?.setName;
+
+  // Read the DOM, so a `<label for>` (trigger.labels) counts.
+  React.useLayoutEffect(() => {
+    if (triggerRef.current && setName) {
+      setName(listNameOf(triggerRef.current));
+    }
+  }, [setName, props["aria-label"], props["aria-labelledby"], props.id]);
+
   return (
     <SelectPrimitive.Trigger
+      ref={triggerRef}
       data-slot="select-trigger"
       data-size={size}
       className={cn(
@@ -73,6 +132,8 @@ function SelectContent({
     SelectPrimitive.Positioner.Props,
     "align" | "alignOffset" | "side" | "sideOffset" | "alignItemWithTrigger"
   >) {
+  const listName = React.useContext(SelectListNameContext)?.name ?? {};
+
   return (
     <SelectPrimitive.Portal>
       <SelectPrimitive.Positioner
@@ -93,7 +154,7 @@ function SelectContent({
           {...props}
         >
           <SelectScrollUpButton />
-          <SelectPrimitive.List>{children}</SelectPrimitive.List>
+          <SelectPrimitive.List {...listName}>{children}</SelectPrimitive.List>
           <SelectScrollDownButton />
         </SelectPrimitive.Popup>
       </SelectPrimitive.Positioner>

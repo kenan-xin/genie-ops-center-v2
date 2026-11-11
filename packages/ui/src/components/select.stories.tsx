@@ -163,3 +163,69 @@ export const Dark: Story = {
     await waitFor(() => expect(option).toBeVisible());
   },
 };
+
+/** 6wz1.97: the open list repeats the trigger's aria-labelledby name. */
+export const NamesTheOpenList: Story = {
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("combobox", { name: "Role" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("listbox", { name: "Role" })).toBeVisible()
+    );
+  },
+};
+
+/** 6wz1.97: the open list repeats the trigger's aria-label. */
+export const NamesTheOpenListFromAriaLabel: Story = {
+  render: (args) => (
+    <Select {...args}>
+      <SelectTrigger aria-label="Sort people">
+        <SelectValue placeholder="Pick a role" />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("combobox", { name: "Sort people" })
+    );
+
+    await waitFor(() =>
+      expect(screen.getByRole("listbox", { name: "Sort people" })).toBeVisible()
+    );
+  },
+};
+
+/** 6wz1.97: the open list takes the text of the trigger's `<label for>`. */
+export const NamesTheOpenListFromItsLabel: Story = {
+  render: (args) => (
+    <Field>
+      <FieldLabel htmlFor="role-trigger">Role</FieldLabel>
+      <Select {...args}>
+        <SelectTrigger id="role-trigger">
+          <SelectValue placeholder="Pick a role" />
+        </SelectTrigger>
+        <SelectContent>
+          {items.map((item) => (
+            <SelectItem key={item.value} value={item.value}>
+              {item.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </Field>
+  ),
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("combobox", { name: "Role" }));
+
+    await waitFor(() =>
+      expect(screen.getByRole("listbox", { name: "Role" })).toBeVisible()
+    );
+  },
+};
