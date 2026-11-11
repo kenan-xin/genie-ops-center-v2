@@ -101,6 +101,10 @@ export function handOverTool(
 
   const schema = briefSchema([first.id, ...rest.map(({ id }) => id)]);
 
+  // The sessions this turn shows a card of. Calls of one step run at once, so a refused call
+  // checks and adds with no await between, and a card is never written twice.
+  const carded = new Set<string>();
+
   return tool({
     description: description(targets),
     // The input is parsed inside `execute`, so a refusal answers with its field messages (PC11).
@@ -163,6 +167,9 @@ export function handOverTool(
         if (asker === undefined) throw new AppError(CORE_ERRORS["not-found"]);
 
         const targetSessionId = randomUUID();
+
+        // Before the transaction, so a call refused by this one's run finds it here.
+        carded.add(targetSessionId);
 
         const data: BriefPartData = {
           title: brief.title,
@@ -229,8 +236,10 @@ export function handOverTool(
             if (
               running !== undefined &&
               surface !== undefined &&
-              running.recordId !== null
+              running.recordId !== null &&
+              !carded.has(running.id)
             ) {
+              carded.add(running.id);
               turn.write({
                 type: HANDOFF_PART,
                 id: toolCallId,

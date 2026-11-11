@@ -18,6 +18,7 @@ import {
   startRun,
   withTransaction,
 } from "@genie/core";
+import { startedHandoff } from "@genie/core/features/agent";
 import {
   agentRequest,
   enableModules,
@@ -59,6 +60,11 @@ const REFUSED_ASK = "Hand this over: build the refused placeholder review.";
 const BRIEF_TITLE = "October 2026 board review";
 
 const SURFACE_CHAT_ASK = "Add a first step to this record.";
+
+/** Answered by `synthetic-handoff-parallel-1`: two `hand-over` calls in one step (P16d-5). */
+const PARALLEL_ASK = "Hand this table over twice as a parallel board review.";
+
+const PARALLEL_TITLE = "Parallel board review";
 
 const TABLE = {
   type: "table",
@@ -540,8 +546,8 @@ describe("the Ask handoff on the placeholder test surface", () => {
     const answer = await lastAnswer(ctx, askId);
     const sessions = await sessionsOf(ctx);
 
-    // The live model tried hand-over once more after the refusal (Phase 16, R1), so each call
-    // and each card is checked, not their count: every call is refused, every card is the first.
+    // The live model calls hand-over once more after the refusal (Phase 16, R1). The answer still
+    // shows one card.
     const handOvers = (await toolRows(ctx.caller.userId))
       .map(({ metadata }) => metadata)
       .filter((metadata) => metadata?.["tool"] === "hand-over");
@@ -560,10 +566,8 @@ describe("the Ask handoff on the placeholder test surface", () => {
       building: sessions[0]?.run_state,
       outcomes: [...new Set(handOvers.map((row) => row?.["outcome"]))],
       calls: [...new Set(calls)],
-      cards: [...new Set(cards.map((card) => JSON.stringify(card)))].map(
-        (card) => JSON.parse(card)
-      ),
-    }).toMatchObject({
+      cards,
+    }).toEqual({
       sessions: [building.id, askId],
       records: recordsBefore,
       building: "queued",
@@ -578,5 +582,38 @@ describe("the Ask handoff on the placeholder test surface", () => {
         },
       ],
     });
+  });
+
+  it("two hand-over calls in one step make one record and show one card, the card of the call that ran", async () => {
+    const ctx = await person();
+    const askId = await askChatWithTable(ctx);
+
+    await ask(ctx, askId, PARALLEL_ASK);
+
+    expect(errors).toEqual([]);
+
+    const [, handed] = await sessionsOf(ctx);
+    const answer = await lastAnswer(ctx, askId);
+
+    const cards = partsOf(answer, "data-handoff").map((part) =>
+      "data" in part ? part.data : undefined
+    );
+
+    expect({
+      records: (await recordsLabelled(PARALLEL_TITLE)).length,
+      sessions: (await sessionsOf(ctx)).length,
+      outcomes: (await toolRows(ctx.caller.userId))
+        .map(({ metadata }) => metadata)
+        .filter((metadata) => metadata?.["tool"] === "hand-over")
+        .map((metadata) => metadata?.["outcome"])
+        .toSorted(),
+      cards,
+    }).toEqual({
+      records: 1,
+      sessions: 2,
+      outcomes: ["agent-run-active", "handed-over"],
+      cards: [expect.objectContaining({ sessionId: handed?.id })],
+    });
+    expect(answer && startedHandoff(answer)).toEqual(cards[0]);
   });
 });

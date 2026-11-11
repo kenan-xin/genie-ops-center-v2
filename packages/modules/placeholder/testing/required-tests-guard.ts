@@ -188,6 +188,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the Ask handoff on the placeholder test surface offers hand-over only to a holder of the surface's key",
       "the Ask handoff on the placeholder test surface a refused createRecord saves nothing",
       "the Ask handoff on the placeholder test surface a second handoff while one builds answers with the first one's card",
+      "the Ask handoff on the placeholder test surface two hand-over calls in one step make one record and show one card, the card of the call that ran",
       "the Ask handoff on the placeholder test surface a new chat on a record page is a session of that surface with the surface's tools",
       "the Ask handoff on the placeholder test surface the chat labels hold the surface tool's step words",
     ],
