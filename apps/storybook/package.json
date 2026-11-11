@@ -88,7 +88,7 @@
           "{workspaceRoot}/packages/ui/src/disclosure/disclosure.stories.tsx",
           "{workspaceRoot}/packages/modules/*/package.json",
           "{workspaceRoot}/packages/modules/*/tsconfig.json",
-          "{workspaceRoot}/packages/modules/*/src/**/*",
+          "{workspaceRoot}/packages/modules/placeholder/src/**/*",
           "{workspaceRoot}/tools/generators/**/*",
           "{workspaceRoot}/apps/genie/package.json",
           "{workspaceRoot}/apps/genie/tools/**/*",
