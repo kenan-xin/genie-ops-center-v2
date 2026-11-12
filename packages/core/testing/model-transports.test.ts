@@ -192,6 +192,30 @@ it("does not match when the sent ids do not pair one to one with the recorded id
   );
 });
 
+it("refuses a renamed match that moves an id both requests hold, and names the recording", async () => {
+  const transport = replayModelTransport([
+    recordingWith("swapped", bodyWith("m", ID_A, ID_C)),
+  ]);
+
+  await expect(send(transport, bodyWith("m", ID_C, ID_A))).rejects.toThrow(
+    /swapped/
+  );
+});
+
+it("keeps an id both requests hold at its place, and reports each renamed id and hash", async () => {
+  const transport = replayModelTransport([
+    recordingWith("kept", bodyWith("m", ID_A, HASH_A, ID_C)),
+  ]);
+
+  const answer = await send(transport, bodyWith("m", ID_A, HASH_B, ID_B));
+
+  expect(await answer.json()).toEqual({ answer: "kept" });
+  expect(transport.sent[0]?.renamed).toEqual([
+    { recorded: HASH_A, sent: HASH_B },
+    { recorded: ID_C, sent: ID_B },
+  ]);
+});
+
 it("replays the recording that matches a request, and refuses any other request without its headers", async () => {
   const transport = replayModelTransport([
     recordingFor("first", "first/model"),

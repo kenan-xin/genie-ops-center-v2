@@ -549,6 +549,8 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "rewrites an id split over argument fragments, and keeps each fragment's length and the answer's delay",
       "refuses a request that two recordings answer only by renaming, and names both",
       "does not match when the sent ids do not pair one to one with the recorded ids",
+      "refuses a renamed match that moves an id both requests hold, and names the recording",
+      "keeps an id both requests hold at its place, and reports each renamed id and hash",
       "replays the recording that matches a request, and refuses any other request without its headers",
       "turns a recorded answer into the provider's response and back, streamed and not",
       "loads every recording of a folder in name order, and names a broken file",

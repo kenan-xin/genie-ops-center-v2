@@ -31,6 +31,7 @@ export {
 export {
   type JsonValue,
   type ModelRecording,
+  type RenamedToken,
   type SentModelRequest,
   CORE_MODEL_RECORDINGS,
   guardedModelFetch,

@@ -12,6 +12,8 @@ The recorded test model (`DEC-55`): `model-transports.ts` loads a folder of `*.j
 
 A recording matches its whole request, or the whole request up to a one-to-one renaming of UUIDs and 64-character hashes. A renamed match answers with the sent ids and hashes in place of its own, also inside a tool call that streams in fragments. An exact match wins, and two renamed matches are an error. A handed-over record has a new id each run, and a deck's content hash covers the read time of its figures, so this keeps their recordings stable.
 
+A renamed match keeps every id or hash that both requests hold at its place. When it would move such a token, for example swap two known ids, the transport throws an error that names the recording and the token, so record mode never saves that request either. Re-key the recording, or fix the id that the request sends. The `sent` entry of a renamed match carries `renamed`: each pair it swapped, `{ recorded, sent }`, in the order the sent body first holds them. An exact match carries no `renamed`. A renamed match cannot tell a consistently wrong fresh id from a right one, so a test that relies on a renamed record id pins it against the id it expects, for example the id from a factory or the database.
+
 Only the owner refreshes `model-recordings/`, from a live run in their own shell. The script prints names and statuses, never the key, refuses to run in CI, and changes only files under the directories it is given. It never runs in a gate.
 
 ```sh

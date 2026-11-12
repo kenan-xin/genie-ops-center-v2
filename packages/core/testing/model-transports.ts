@@ -101,10 +101,15 @@ export type JsonValue =
   | readonly JsonValue[]
   | { readonly [key: string]: JsonValue };
 
+/** A recorded id or hash that a renamed match replaced with the sent one. */
+export type RenamedToken = { readonly recorded: string; readonly sent: string };
+
 export type SentModelRequest = {
   readonly url: string;
   readonly authorization: string | null;
   readonly body: unknown;
+  /** Only on a renamed match: each swapped pair, in order of first appearance in the sent body. */
+  readonly renamed?: readonly RenamedToken[];
 };
 
 export type ModelRecording = {
@@ -244,8 +249,14 @@ async function streamEvents(response: Response): Promise<readonly JsonValue[]> {
  * that matches up to a one-to-one renaming of UUIDs and 64-character hashes
  * answers, with the sent tokens in place of its own (P11-43): a handed-over
  * record has a new id each run, and a deck's hash covers the read time of its
- * figures. With a `recorder`, a request that no recording answers is sent live
- * and saved as `live-<hash>.json`, then replayed.
+ * figures. Identity rule: a renamed match may not move a token that the sent
+ * body also holds, so a swapped or misplaced known id throws, naming the
+ * recording, instead of replaying (and record mode never saves it). The entry in
+ * `sent` of a renamed match lists each swapped pair in `renamed`. A renamed
+ * match cannot tell a consistently wrong fresh id from a right one, so a test
+ * that relies on a renamed record id pins it against the id it expects. With a
+ * `recorder`, a request that no recording answers is sent live and saved as
+ * `live-<hash>.json`, then replayed.
  */
 export function replayModelTransport(
   recordings: readonly ModelRecording[],
@@ -272,7 +283,10 @@ export function replayModelTransport(
     const headers = new Headers(init?.headers ?? request?.headers);
     const body = requestBody(init?.body);
 
-    sent.push({ url, authorization: headers.get("authorization"), body });
+    const entry = { url, authorization: headers.get("authorization"), body };
+
+    // Pushed before the match, so a refused request still shows its body.
+    const index = sent.push(entry) - 1;
 
     let recording = known.find(
       (candidate) =>
@@ -282,7 +296,7 @@ export function replayModelTransport(
     );
 
     if (recording === undefined && body !== undefined) {
-      recording = renamedRecording(
+      const renamedMatch = renamedRecording(
         known.filter(
           (candidate) =>
             candidate.request.method === method && candidate.request.url === url
@@ -290,6 +304,11 @@ export function replayModelTransport(
         maskTokens(body),
         maskedOf
       );
+
+      if (renamedMatch !== undefined) {
+        recording = renamedMatch.recording;
+        sent[index] = { ...entry, renamed: renamedMatch.renamed };
+      }
     }
 
     if (
@@ -350,7 +369,9 @@ function renamedRecording(
   candidates: readonly ModelRecording[],
   sent: MaskedBody,
   maskedOf: (recording: ModelRecording) => MaskedBody
-): ModelRecording | undefined {
+):
+  | { readonly recording: ModelRecording; readonly renamed: RenamedToken[] }
+  | undefined {
   if (sent.tokens.length === 0) {
     return undefined;
   }
@@ -372,17 +393,32 @@ function renamedRecording(
     return undefined;
   }
 
-  const renames = new Map(
-    maskedOf(match).tokens.map((token, number) => [
-      token,
-      sent.tokens[number] ?? token,
-    ])
-  );
+  // Equal masked bodies number their tokens alike, so this is in sent order.
+  const renamed = maskedOf(match)
+    .tokens.map((recorded, number) => ({
+      recorded,
+      sent: sent.tokens[number] ?? recorded,
+    }))
+    .filter((pair) => pair.recorded !== pair.sent);
+
+  const moved = renamed.find((pair) => sent.tokens.includes(pair.recorded));
+
+  if (moved !== undefined) {
+    throw new Error(
+      `Recording ${match.name} answers this request only by moving ${moved.recorded}, which the request also sends, to another place. ` +
+        "Re-key the recording, or fix the id that the request sends."
+    );
+  }
+
+  const renames = new Map(renamed.map((pair) => [pair.recorded, pair.sent]));
 
   const rename = (text: string): string =>
     text.replace(TOKEN_PATTERN, (token) => renames.get(token) ?? token);
 
-  return { ...match, response: renamedResponse(match.response, rename) };
+  return {
+    recording: { ...match, response: renamedResponse(match.response, rename) },
+    renamed,
+  };
 }
 
 function renamedResponse(
