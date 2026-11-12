@@ -37,13 +37,21 @@ import {
   SLIDES_CHANGE_MESSAGE,
   SLIDES_CHANGE_NEW_TITLE,
   SLIDES_CHANGE_OLD_TITLE,
+  SLIDES_DATED_CONTENT,
+  SLIDES_DATED_FROZEN_ON,
+  SLIDES_FIGURE_DATED_MESSAGE,
+  SLIDES_FIGURE_READ_MESSAGE,
+  SLIDES_FIGURE_SAME_MESSAGE,
+  SLIDES_FIGURE_WRITE_MESSAGE,
   SLIDES_NOTES_MESSAGE,
   SLIDES_NOTES_TEXT,
   SLIDES_OUT_OF_TOOLS_ANSWER,
   SLIDES_OUT_OF_TOOLS_MESSAGE,
   SLIDES_STYLE_BACKGROUND,
   SLIDES_STYLE_MESSAGE,
+  SLIDES_SAME_CONTENT,
   SLIDES_TITLE_SLIDE_CONTEXT,
+  SLIDES_TYPED_CONTENT,
 } from "./slides-change.ts";
 import { SLIDES_CHAT_KEYS } from "./slides-chat.ts";
 
@@ -120,15 +128,18 @@ beforeEach(async () => {
   ]);
 });
 
-/** Inserts the fixed deck for the given owner. */
-const insertFixedDeck = (ownerUserId: string) =>
+/** Inserts the fixed deck for the given owner, by default with the fixed content and date. */
+const insertFixedDeck = (
+  ownerUserId: string,
+  deck: { readonly content?: unknown; readonly frozenOn?: string } = {}
+) =>
   insertDeck(deployment.context, {
     ownerUserId,
     id: SLIDES_CHANGE_DECK_ID,
     title: SLIDES_CHANGE_DECK_TITLE,
     // SAFETY: the fixture holds the stored deck shape; the store's parse refuses any other.
-    content: SLIDES_CHANGE_CONTENT as never,
-    frozenOn: SLIDES_CHANGE_FROZEN_ON,
+    content: (deck.content ?? SLIDES_CHANGE_CONTENT) as never,
+    frozenOn: deck.frozenOn ?? SLIDES_CHANGE_FROZEN_ON,
   });
 
 /**
@@ -186,12 +197,32 @@ const fixedDeck = async () =>
 const answerParts = async (sessionId: string) =>
   (
     await deployment.context.db.$client.query<{
-      parts: { type: string; state?: string; errorText?: string }[];
+      parts: {
+        type: string;
+        state?: string;
+        errorText?: string;
+        text?: string;
+      }[];
     }>(
       "select parts from agent_message where session_id = $1 and role = 'assistant' order by seq",
       [sessionId]
     )
   ).rows.flatMap(({ parts }) => parts);
+
+/** The text of the stored answer of a session. */
+const answerText = async (sessionId: string): Promise<string> =>
+  (await answerParts(sessionId))
+    .flatMap(({ type, text }) => (type === "text" && text ? [text] : []))
+    .join("\n");
+
+/** The distinct money amounts in a text, in the order of first appearance. */
+const amountsIn = (text: string): string[] => [
+  ...new Set(text.match(/\d{1,3}(?:,\d{3})*\.\d{2}/g)),
+];
+
+/** A session's tool calls as `<tool>:<outcome>`. */
+const toolsOf = async (sessionId: string): Promise<string[]> =>
+  (await toolCalls(sessionId)).map(({ tool, outcome }) => `${tool}:${outcome}`);
 
 /** The stored outputs of a session's `slides-change-deck` calls. */
 const changeOutputs = async (sessionId: string) =>
@@ -406,5 +437,117 @@ describe("the agent panel on the deck editor", () => {
       ],
       undo: 1,
     });
+  });
+
+  it("answers a number typed into the deck from the records first, names the deck's number and asks nothing (czjw.166)", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0014";
+
+    await insertFixedDeck(asker.caller.userId, {
+      content: SLIDES_TYPED_CONTENT,
+    });
+    await chat(session, SLIDES_FIGURE_READ_MESSAGE);
+
+    expect(errors).toEqual([]);
+    const tools = await toolsOf(session);
+    const text = await answerText(session);
+
+    const noQuestion = tools.filter((tool) =>
+      /^(offer-choices|slides-change-deck):/.test(tool)
+    );
+
+    expect(tools).toEqual(
+      expect.arrayContaining([
+        "slides-read-deck:answered",
+        "query-dataset:answered",
+      ])
+    );
+    expect(noQuestion).toEqual([]);
+    // The records' value comes first, then the deck's typed number.
+    expect(amountsIn(text).slice(0, 2)).toEqual(["195,200.00", "180,000.00"]);
+    expect((await fixedDeck())?.undo).toBe(0);
+  });
+
+  it("names one value when the typed number equals the records (czjw.166)", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0015";
+
+    await insertFixedDeck(asker.caller.userId, {
+      content: SLIDES_SAME_CONTENT,
+    });
+    await chat(session, SLIDES_FIGURE_SAME_MESSAGE);
+
+    expect(errors).toEqual([]);
+    const tools = await toolsOf(session);
+    const text = await answerText(session);
+
+    const noQuestion = tools.filter((tool) =>
+      /^(offer-choices|slides-change-deck):/.test(tool)
+    );
+
+    expect(tools).toEqual(
+      expect.arrayContaining([
+        "slides-read-deck:answered",
+        "query-dataset:answered",
+      ])
+    );
+    expect(noQuestion).toEqual([]);
+    expect(amountsIn(text)).toEqual(["195,200.00"]);
+  });
+
+  it("writes the records' value over a different typed number, says so and offers Undo (czjw.166)", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0016";
+
+    await insertFixedDeck(asker.caller.userId, {
+      content: SLIDES_TYPED_CONTENT,
+    });
+    await chat(session, SLIDES_FIGURE_WRITE_MESSAGE);
+
+    expect(errors).toEqual([]);
+    const tools = await toolsOf(session);
+    const text = await answerText(session);
+    const changed = await fixedDeck();
+
+    expect(tools).toEqual(
+      expect.arrayContaining([
+        "query-dataset:answered",
+        "slides-change-deck:answered",
+      ])
+    );
+    expect(tools.filter((tool) => tool.startsWith("offer-choices:"))).toEqual(
+      []
+    );
+    expect(changed?.undo).toBe(1);
+    expect(changed?.s2[0]?.text).toContain("195,200.00");
+    expect(changed?.s2[0]?.text).not.toContain("180,000.00");
+    expect(text).toContain("195,200.00");
+    expect(text).toContain("Undo");
+  });
+
+  it("answers about a deck frozen before the reporting date from the records, with the deck's number and its date (czjw.166)", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0017";
+
+    await insertFixedDeck(asker.caller.userId, {
+      content: SLIDES_DATED_CONTENT,
+      frozenOn: SLIDES_DATED_FROZEN_ON,
+    });
+    await chat(session, SLIDES_FIGURE_DATED_MESSAGE);
+
+    expect(errors).toEqual([]);
+    const tools = await toolsOf(session);
+    const text = await answerText(session);
+
+    const noQuestion = tools.filter((tool) =>
+      /^(offer-choices|slides-change-deck):/.test(tool)
+    );
+
+    expect(tools).toEqual(
+      expect.arrayContaining([
+        "slides-read-deck:answered",
+        "query-dataset:answered",
+      ])
+    );
+    expect(noQuestion).toEqual([]);
+    expect(amountsIn(text).slice(0, 2)).toEqual(["195,200.00", "177,050.00"]);
+    expect(text).toContain("30 Sep 2026");
+    expect((await fixedDeck())?.undo).toBe(0);
   });
 });

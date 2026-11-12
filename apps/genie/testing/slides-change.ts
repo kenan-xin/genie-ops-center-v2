@@ -66,6 +66,80 @@ export const SLIDES_CHANGE_CONTENT = {
   ],
 } as const;
 
+/**
+ * The typed-number decks of `czjw.166`: the demo pack's payments add up to SGD 195,200.00 by the
+ * reporting date and to SGD 177,050.00 by 30 Sep 2026. The recorded requests hold these titles
+ * and messages, so a change here re-records `synthetic-deck-figure-*.json`.
+ */
+export const SLIDES_TYPED_CONTENT = {
+  slides: [
+    SLIDES_CHANGE_CONTENT.slides[0],
+    {
+      id: "s2",
+      elements: [
+        {
+          kind: "title",
+          text: "Collections reached SGD 180,000.00 by October.",
+        },
+        SLIDES_CHANGE_FIGURE,
+      ],
+    },
+  ],
+} as const;
+
+export const SLIDES_SAME_CONTENT = {
+  slides: [
+    SLIDES_CHANGE_CONTENT.slides[0],
+    {
+      id: "s2",
+      elements: [
+        {
+          kind: "title",
+          text: "Collections reached SGD 195,200.00 by October.",
+        },
+        SLIDES_CHANGE_FIGURE,
+      ],
+    },
+  ],
+} as const;
+
+export const SLIDES_DATED_CONTENT = {
+  slides: [
+    SLIDES_CHANGE_CONTENT.slides[0],
+    {
+      id: "s2",
+      elements: [
+        {
+          kind: "title",
+          text: "Collections reached SGD 177,050.00 by September.",
+        },
+        {
+          ...SLIDES_CHANGE_FIGURE,
+          data: {
+            ...SLIDES_CHANGE_FIGURE.data,
+            rows: [{ Collections: 17705000 }],
+            readAt: "2026-09-30T02:00:00.000Z",
+          },
+        },
+      ],
+    },
+  ],
+} as const;
+
+export const SLIDES_DATED_FROZEN_ON = "2026-09-30";
+
+export const SLIDES_FIGURE_READ_MESSAGE =
+  "What collections total does the title of this slide give?";
+
+export const SLIDES_FIGURE_SAME_MESSAGE =
+  "Which collections total is in this slide's title?";
+
+export const SLIDES_FIGURE_WRITE_MESSAGE =
+  "Write the collections total into the title of this slide.";
+
+export const SLIDES_FIGURE_DATED_MESSAGE =
+  "How much does the title of this slide say we collected?";
+
 export const SLIDES_CHANGE_MESSAGE = "Shorten the title of this slide.";
 
 /** The page context of the deck editor on slide `s2`, as `deck-view.tsx` sends it. */

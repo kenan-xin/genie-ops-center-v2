@@ -76,3 +76,18 @@ describe("the Slides surface's You can change line", () => {
     expect(missing).toEqual([]);
   });
 });
+
+describe("the Slides surface's Every number line", () => {
+  it("writes the records' value over a different number, names Undo, and adds no value to a deck frozen before the reporting date", () => {
+    const numbers = SLIDES_SURFACE_INSTRUCTIONS.lines.find((text) =>
+      text.startsWith("Every number in a title, text or bullet")
+    );
+
+    expect(numbers).toContain("write the value from your query-dataset result");
+    expect(numbers).toContain("Undo on the deck brings the old one back");
+    expect(numbers).toContain(
+      "When the deck's figures date is not the reporting date, add no value from the records"
+    );
+    expect(numbers).toContain("use Refresh data first");
+  });
+});

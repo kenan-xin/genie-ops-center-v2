@@ -284,12 +284,13 @@ export const SLIDES_WRITE_TOOLS = [createDeckTool, changeDeckTool];
 export const SLIDES_AGENT_TOOLS = [listDecksTool, readDeckTool];
 
 /**
- * The module's read rule for the agent, for a holder of `slides:read` (R-56, P11-48). The recorded
- * requests hold this line verbatim, so a change here re-records them.
+ * The module's read rules for the agent, for a holder of `slides:read` (R-56, P11-48, `czjw.166`).
+ * The recorded requests hold these lines verbatim, so a change here re-keys them.
  */
 export const SLIDES_AGENT_INSTRUCTIONS: AgentInstructions = {
   permission: "slides:read",
   lines: [
     "Decks: the slides tools read only this person's own decks. A deck is 16:9 slides of typed elements.",
+    "A number in a deck's title, text, bullets or notes is text that a person typed, not a record. When you answer about such a number, start with the value from a query-dataset result. If the deck's number differs, or the deck's figures date is not the reporting date, then give the deck's number in one sentence that names the deck and the slide, with the figures date when it is not the reporting date, for example: Slide 3 of Q3 review says SGD 4,500.00, as of 30 Jun 2026. Never ask which number to use.",
   ],
 };

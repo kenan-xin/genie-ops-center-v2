@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import { SLIDES_SURFACE } from "./agent-surface.ts";
+import { SLIDES_AGENT_INSTRUCTIONS } from "./agent-tools.ts";
 
 /** Every sentence the server refuses a slide with (`contract.ts`, `content.ts`). */
 const RULES = [
@@ -26,5 +27,21 @@ describe("the slides-create-deck input", () => {
     );
 
     expect(RULES.filter((rule) => !schema.includes(rule))).toEqual([]);
+  });
+});
+
+describe("the slides read rules", () => {
+  it("answers a number typed into a deck from a query first, names the deck's number with its date, and never asks", () => {
+    // Anchored on the line's start: the first line also says "typed elements".
+    const rule = SLIDES_AGENT_INSTRUCTIONS.lines.find((line) =>
+      line.startsWith("A number in a deck's title")
+    );
+
+    expect(rule).toContain("is text that a person typed, not a record");
+    expect(rule).toContain("start with the value from a query-dataset result");
+    expect(rule).toContain(
+      "with the figures date when it is not the reporting date"
+    );
+    expect(rule).toContain("Never ask which number to use.");
   });
 });

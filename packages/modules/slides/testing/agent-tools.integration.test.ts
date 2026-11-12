@@ -554,8 +554,8 @@ describe("the slides agent tools", () => {
       ])
     ).toEqual([
       { tools: ask, rules: 0 },
-      { tools: [...ask, ...read], rules: 1 },
-      { tools: [...ask, "hand-over", ...read], rules: 1 },
+      { tools: [...ask, ...read], rules: 2 },
+      { tools: [...ask, "hand-over", ...read], rules: 2 },
       {
         tools: [
           ...core,
@@ -564,7 +564,7 @@ describe("the slides agent tools", () => {
           "slides-create-deck",
           "slides-change-deck",
         ],
-        rules: 10,
+        rules: 11,
       },
     ]);
   });
