@@ -6,7 +6,9 @@ import { z } from "zod";
 
 import {
   activityThrottleWaitMs,
+  loweredEndsInMs,
   warningLeadMs,
+  windowReadMs,
 } from "../../services/auth/idle.ts";
 import { IdleWarningDialog } from "./idle-warning-dialog.tsx";
 import type { IdleWarningStrings } from "./idle-warning-dialog.tsx";
@@ -32,6 +34,12 @@ export type SessionActivityProps = {
    * the application posts `/api/session/activity` and classifies the answer.
    */
   readonly call: () => Promise<SessionActivityResult>;
+  /**
+   * The read of the tenant's current window that slides no session (d8l5.53): the application
+   * sends `GET /api/session/window`. A lower window moves the warning sooner; a raise waits for
+   * the next activity answer.
+   */
+  readonly readWindow: () => Promise<SessionActivityResult>;
   /** Where an unauthenticated answer lands the browser: the sign-in page's expired state. */
   readonly onUnauthenticated: () => void;
   /** The idle warning's copy (R-33, R-41). */
@@ -50,6 +58,9 @@ const CLOCK_STEP_MS = 1_000;
  * sends the others after its answer.
  */
 export const idleWindow = z.object({ idleMinutes: z.number().positive() });
+
+/** A tab opened the lowered warning, so every tab shows it with this countdown. */
+const loweredWarning = z.object({ warnForMs: z.number().nonnegative() });
 
 /**
  * The browser half of the idle rule (R-15, R-15a). The browser counts the idle window from the
@@ -75,9 +86,13 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
   // The latest transport and navigation, read through refs by handlers that outlive a render.
   const transport = useRef(props.call);
 
+  const read = useRef(props.readWindow);
+
   const navigate = useRef(props.onUnauthenticated);
 
   transport.current = props.call;
+
+  read.current = props.readWindow;
 
   navigate.current = props.onUnauthenticated;
 
@@ -91,8 +106,24 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
 
   const [idleMinutes, setIdleMinutes] = useState(props.idleMinutes);
 
-  // When this tab opened the warning, on the monotonic clock; undefined while it is closed.
-  const promptedAt = useRef<number | undefined>(undefined);
+  // The window the count runs on, for handlers that run before a new window renders.
+  const countedMinutes = useRef(idleMinutes);
+
+  // The dialog's countdown when it opened (R-41 speaks it once).
+  const [openedLeadMs, setOpenedLeadMs] = useState(0);
+
+  // The end of the hook's warning, on the monotonic clock; undefined while it is closed.
+  const promptEndsAt = useRef<number | undefined>(undefined);
+
+  // The lower window a read answered, and the end of its warning once it opened (d8l5.53).
+  const loweredMinutes = useRef<number | undefined>(undefined);
+
+  const loweredEndsAt = useRef<number | undefined>(undefined);
+
+  // The lowered check, then the lowered warning's end: one at a time.
+  const loweredTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined
+  );
 
   // Wall clock minus monotonic clock. It moves only when the wall clock is set, or while some
   // devices sleep.
@@ -102,32 +133,180 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
 
   const postIdleSignOut = () => idleForm.current?.requestSubmit();
 
+  const signOutWhenOnline = () => {
+    if (navigator.onLine) postIdleSignOut();
+    else window.addEventListener("online", postIdleSignOut, { once: true });
+  };
+
   const leadMs = warningLeadMs(idleMinutes);
+
+  const warningShows = () =>
+    promptEndsAt.current !== undefined || loweredEndsAt.current !== undefined;
+
+  // The sooner of the hook's end and the lowered end, on the monotonic clock.
+  const warningEndsAt = () =>
+    Math.min(
+      loweredEndsAt.current ?? Infinity,
+      promptEndsAt.current ?? Infinity
+    );
+
+  /** Opens the warning, or shortens an open one, after `mark` recorded its end. */
+  const showWarning = (mark: () => void) => {
+    const opening = !warningShows();
+
+    mark();
+
+    const countdown = warningEndsAt() - performance.now();
+
+    if (opening) {
+      setOpenedLeadMs(countdown);
+      setFailed(false);
+    }
+
+    setRemainingMs(countdown);
+    setOpen(true);
+  };
+
+  const closeUnlessPrompted = () => {
+    if (isPrompted()) return;
+
+    promptEndsAt.current = undefined;
+
+    setOpen(false);
+  };
+
+  const clearLowered = () => {
+    clearTimeout(loweredTimer.current);
+
+    loweredMinutes.current = undefined;
+    loweredEndsAt.current = undefined;
+  };
+
+  const adoptWindow = (minutes: number) => {
+    countedMinutes.current = minutes;
+
+    setIdleMinutes(minutes);
+    clearLowered();
+    closeUnlessPrompted();
+  };
+
+  // One navigation, ever: the routes clear the session cookie on their side, and a repeat would
+  // reload the page the browser is already on.
+  const land = () => {
+    if (unauthenticated.current) return;
+
+    unauthenticated.current = true;
+
+    navigate.current();
+  };
 
   const send = async (): Promise<SessionActivityResult["kind"]> => {
     if (unauthenticated.current) return "unauthenticated";
 
     const result = await transport.current();
 
-    const { kind } = result;
-
     if (result.kind === "active") {
-      setIdleMinutes(result.idleMinutes);
+      adoptWindow(result.idleMinutes);
       // Every answer, not only a change: this tab can hold the new window since its load while
       // an older tab still counts the old one.
       message({ idleMinutes: result.idleMinutes });
+    } else {
+      clearLowered();
+      land();
     }
 
-    // One navigation, ever: the activity route clears the session cookie on its side, and a
-    // repeat would reload the page the browser is already on.
-    if (kind === "unauthenticated" && !unauthenticated.current) {
-      unauthenticated.current = true;
-
-      navigate.current();
-    }
-
-    return kind;
+    return result.kind;
   };
+
+  /** Opens the lowered warning with `endsIn` left, or keeps this tab's sooner end. */
+  const openLowered = (endsIn: number) => {
+    showWarning(() => {
+      loweredEndsAt.current = Math.min(
+        loweredEndsAt.current ?? Infinity,
+        performance.now() + endsIn
+      );
+    });
+
+    clearTimeout(loweredTimer.current);
+
+    loweredTimer.current = setTimeout(
+      signOutWhenOnline,
+      (loweredEndsAt.current ?? 0) - performance.now()
+    );
+  };
+
+  // Derived at each check from the shared count, because input in any tab restarts it.
+  const loweredEndsIn = (lowered: number) =>
+    loweredEndsInMs({
+      remainingMs: getRemainingTime(),
+      countedMinutes: countedMinutes.current,
+      loweredMinutes: lowered,
+    });
+
+  const checkLowered = () => {
+    const lowered = loweredMinutes.current;
+
+    if (lowered === undefined || loweredEndsAt.current !== undefined) return;
+
+    // `getRemainingTime()` runs on `Date.now()`: a clock set forward with no warning shown reads as
+    // no time left, so restart the count as `onIdle` does. A step back stays for `onAction`, which
+    // also resets the throttle. An open warning closes only on Stay signed in (R-33).
+    const offset = Date.now() - performance.now();
+
+    if (!warningShows() && offset - wallOffset.current > CLOCK_STEP_MS) {
+      wallOffset.current = offset;
+
+      reset();
+    }
+
+    const endsIn = loweredEndsIn(lowered);
+
+    const lead = warningLeadMs(lowered);
+
+    if (endsIn > lead + 1_000) {
+      loweredTimer.current = setTimeout(checkLowered, endsIn - lead);
+
+      return;
+    }
+
+    openLowered(endsIn);
+    message({ warnForMs: endsIn });
+  };
+
+  const readAnswered = (result: SessionActivityResult) => {
+    if (result.kind === "unauthenticated") {
+      land();
+
+      return;
+    }
+
+    // A raise waits for the next activity answer, which slides the server session.
+    if (
+      result.idleMinutes >= (loweredMinutes.current ?? countedMinutes.current)
+    )
+      return;
+
+    // Only the window, never `setIdleMinutes`: a new `timeout` restarts the shared count from now
+    // in every tab, which would end the browser count after the server.
+    loweredMinutes.current = result.idleMinutes;
+
+    if (loweredEndsAt.current !== undefined) return;
+
+    // Checked again when it runs, because input in any tab moves the shared count.
+    clearTimeout(loweredTimer.current);
+
+    loweredTimer.current = setTimeout(
+      checkLowered,
+      Math.max(
+        0,
+        loweredEndsIn(result.idleMinutes) - warningLeadMs(result.idleMinutes)
+      )
+    );
+  };
+
+  const answerRead = useRef(readAnswered);
+
+  answerRead.current = readAnswered;
 
   const clockStepped = (): boolean => {
     const offset = Date.now() - performance.now();
@@ -147,58 +326,81 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
     { wait: activityThrottleWaitMs(idleMinutes) }
   );
 
-  const { activate, isPrompted, message, reset } = useIdleTimer({
-    timeout: idleMinutes * 60_000,
-    promptBeforeIdle: leadMs,
-    crossTab: true,
-    syncTimers: 200,
-    events: ["pointerdown", "keydown", "touchstart"],
-    eventsThrottle: 0,
-    stopOnIdle: true,
-    name: "genie-session-idle",
-    onPrompt: () => {
-      promptedAt.current = performance.now();
+  const { activate, getRemainingTime, isPrompted, message, reset } =
+    useIdleTimer({
+      timeout: idleMinutes * 60_000,
+      promptBeforeIdle: leadMs,
+      crossTab: true,
+      syncTimers: 200,
+      events: ["pointerdown", "keydown", "touchstart"],
+      eventsThrottle: 0,
+      stopOnIdle: true,
+      name: "genie-session-idle",
+      onPrompt: () => {
+        showWarning(() => {
+          promptEndsAt.current = performance.now() + leadMs;
+        });
+      },
+      onMessage: (data) => {
+        const sent = idleWindow.safeParse(data);
 
-      setRemainingMs(leadMs);
-      setFailed(false);
-      setOpen(true);
-    },
-    onMessage: (data) => {
-      const sent = idleWindow.safeParse(data);
+        if (sent.success) {
+          adoptWindow(sent.data.idleMinutes);
 
-      if (sent.success) setIdleMinutes(sent.data.idleMinutes);
-    },
-    onActive: () => {
-      promptedAt.current = undefined;
+          return;
+        }
 
-      setFailed(false);
-      setOpen(false);
-    },
-    onAction: () => {
-      // While the warning is open, only Stay signed in extends the session (R-33).
-      if (isPrompted()) return;
+        const warned = loweredWarning.safeParse(data);
 
-      if (clockStepped()) {
-        reset();
-        throttler.cancel();
-        throttler.reset();
-      }
+        if (warned.success) openLowered(warned.data.warnForMs);
+      },
+      onActive: () => {
+        promptEndsAt.current = undefined;
 
-      throttler.maybeExecute();
-    },
-    onIdle: () => {
-      // A clock step and no warning shown: restart the count and let the server rule decide. The
-      // hook marks itself idle after this handler returns, so the reset waits for a microtask.
-      if (promptedAt.current === undefined && clockStepped()) {
-        queueMicrotask(reset);
+        setFailed(false);
 
-        return;
-      }
+        if (loweredEndsAt.current === undefined) setOpen(false);
+      },
+      onAction: () => {
+        // While a warning is open, only Stay signed in extends the session (R-33).
+        if (isPrompted() || loweredEndsAt.current !== undefined) return;
 
-      if (navigator.onLine) postIdleSignOut();
-      else window.addEventListener("online", postIdleSignOut, { once: true });
-    },
-  });
+        if (clockStepped()) {
+          reset();
+          throttler.cancel();
+          throttler.reset();
+        }
+
+        throttler.maybeExecute();
+      },
+      onIdle: () => {
+        // A clock step and no warning shown: restart the count and let the server rule decide. The
+        // hook marks itself idle after this handler returns, so the reset waits for a microtask.
+        if (!warningShows() && clockStepped()) {
+          queueMicrotask(reset);
+
+          return;
+        }
+
+        signOutWhenOnline();
+      },
+    });
+
+  // The read of the window, until a navigation (d8l5.53). The next tick retries a rejection.
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (unauthenticated.current) return;
+
+      read.current().then(
+        (result) => answerRead.current(result),
+        () => undefined
+      );
+    }, windowReadMs(idleMinutes));
+
+    return () => clearInterval(interval);
+  }, [idleMinutes]);
+
+  useEffect(() => () => clearTimeout(loweredTimer.current), []);
 
   // The throttle's leading call, so a document load starts both counts together (R-15a).
   useEffect(() => {
@@ -211,21 +413,19 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
     if (!open) return;
 
     const interval = setInterval(() => {
-      if (!isPrompted()) {
-        promptedAt.current = undefined;
+      if (!isPrompted()) promptEndsAt.current = undefined;
 
+      if (!warningShows()) {
         setOpen(false);
 
         return;
       }
 
-      setRemainingMs(
-        leadMs - (performance.now() - (promptedAt.current ?? performance.now()))
-      );
+      setRemainingMs(warningEndsAt() - performance.now());
     }, 1_000);
 
     return () => clearInterval(interval);
-  }, [open, leadMs, isPrompted]);
+  }, [open, isPrompted]);
 
   const staySignedIn = () => {
     setFailed(false);
@@ -244,7 +444,7 @@ export function SessionActivity(props: SessionActivityProps): JSX.Element {
       <IdleWarningDialog
         open={open}
         remainingMs={remainingMs}
-        leadMs={leadMs}
+        leadMs={openedLeadMs}
         strings={props.warning}
         signOutAction={props.signOutAction}
         failed={failed}

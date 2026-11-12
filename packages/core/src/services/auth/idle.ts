@@ -62,3 +62,30 @@ export function isIdleExpired(input: {
 }): boolean {
   return input.now.getTime() >= idleExpiry(input).getTime();
 }
+
+/** How often an open tab reads the tenant's window: a quarter of the window, at most one minute (d8l5.53). */
+export function windowReadMs(idleMinutes: number): number {
+  return Math.min(60_000, (idleMinutes * 60_000) / 4);
+}
+
+/**
+ * How long the count runs after a read lowered the window (d8l5.53): the end under the lowered
+ * window, never later than the current end, and never sooner than a quarter of the new lead unless
+ * the current end is sooner, so a read never lengthens the count and never signs out without a
+ * warning.
+ */
+export function loweredEndsInMs(input: {
+  readonly remainingMs: number;
+  readonly countedMinutes: number;
+  readonly loweredMinutes: number;
+}): number {
+  const { remainingMs, countedMinutes, loweredMinutes } = input;
+
+  return Math.min(
+    remainingMs,
+    Math.max(
+      remainingMs - (countedMinutes - loweredMinutes) * 60_000,
+      warningLeadMs(loweredMinutes) / 4
+    )
+  );
+}

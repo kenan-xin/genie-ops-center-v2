@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import { z } from "zod";
 
 import { SessionActivity } from "./session-activity.tsx";
 import type { SessionActivityResult } from "./session-activity.tsx";
@@ -45,6 +46,65 @@ const callEndsAfterMount = fn((): Promise<SessionActivityResult> =>
 
 const onUnauthenticated = fn();
 
+/** The window read that slides no session, answering the window the page loaded with. */
+const readSame = fn((): Promise<SessionActivityResult> =>
+  Promise.resolve({ kind: "active", idleMinutes: IDLE_MINUTES })
+);
+
+/** A read whose answer is the given window. */
+function readAnswers(idleMinutes: number) {
+  return fn((): Promise<SessionActivityResult> =>
+    Promise.resolve({ kind: "active", idleMinutes })
+  );
+}
+
+/** The administrator halved the window: 3.75 seconds. */
+const readHalved = readAnswers(IDLE_MINUTES / 2);
+
+/** The administrator doubled the window: 15 seconds. */
+const readDoubled = readAnswers(IDLE_MINUTES * 2);
+
+/** The administrator cut the window by a quarter: 5.625 seconds, a 2.8125 second warning. */
+const readThreeQuarters = readAnswers(IDLE_MINUTES * 0.75);
+
+/** Three quarters at the first read, then the window the page loaded with. */
+const readLoweredOnce = readAnswers(IDLE_MINUTES);
+
+/** The page's window at the first two reads, then half of it. */
+const readHalvedThird = readAnswers(IDLE_MINUTES / 2);
+
+const readExpired = fn((): Promise<SessionActivityResult> =>
+  Promise.resolve({ kind: "unauthenticated" })
+);
+
+/** The cross-tab channel of the idle count: react-idle-timer's `name`. */
+const IDLE_CHANNEL = "genie-session-idle";
+
+/** A `message({ warnForMs })` post of react-idle-timer 5.7.3: action 13 carries the data. */
+const loweredWarningPost = z.object({
+  action: z.literal(13),
+  data: z.object({ warnForMs: z.number() }),
+});
+
+/** The `warnForMs` of each lowered warning the story's own channel heard. */
+const heardWarnings: number[] = [];
+
+/** Listens on the story's own channel, as another tab would. */
+function hearWarnings(): () => void {
+  heardWarnings.length = 0;
+
+  const channel = new BroadcastChannel(IDLE_CHANNEL);
+
+  // The `{ idleMinutes }` posts of the activity answers fail the parse and are left out.
+  channel.addEventListener("message", (event: MessageEvent) => {
+    const posted = loweredWarningPost.safeParse(event.data);
+
+    if (posted.success) heardWarnings.push(posted.data.data.warnForMs);
+  });
+
+  return () => channel.close();
+}
+
 /** The forms the component posted during the story. */
 const submitted: { method: string; action: string }[] = [];
 
@@ -73,6 +133,7 @@ const meta = {
   args: {
     idleMinutes: IDLE_MINUTES,
     call: callActive,
+    readWindow: readSame,
     onUnauthenticated,
     warning: {
       title: "Still there?",
@@ -525,5 +586,180 @@ export const WarningDark: Story = {
   globals: { theme: "dark" },
   play: async () => {
     await openWarning(4_750);
+  },
+};
+
+export const ReadLowersTheWindow: Story = {
+  name: "A read that lowers the window warns on the lowered end and tells the other tabs",
+  args: { readWindow: readHalved },
+  beforeEach: hearWarnings,
+  play: async () => {
+    // The read at 1.875 seconds learns 3.75 seconds: the count ends at 3.75, the old one at 7.5.
+    await openWarning(3_000 - (performance.now() - startedAt));
+    await waitFor(() => expect(submitted).toEqual([idleSignOut]), {
+      timeout: Math.max(0, 5_000 - (performance.now() - startedAt)),
+    });
+
+    await expect(heardWarnings).toHaveLength(1);
+
+    const [warnForMs] = heardWarnings;
+
+    await expect(warnForMs).toBeGreaterThanOrEqual(1_000);
+    await expect(warnForMs).toBeLessThanOrEqual(2_000);
+  },
+};
+
+export const ReadRaiseWaits: Story = {
+  name: "A read that raises the window changes nothing until the next activity answer",
+  args: { readWindow: readDoubled },
+  play: async () => {
+    await at(7_000);
+    await expect(submitted).toEqual([]);
+
+    // The count the tab started with still ends at 7.5 seconds.
+    await waitFor(() => expect(submitted).toEqual([idleSignOut]), {
+      timeout: 1_500,
+    });
+  },
+};
+
+export const ReadRefusalLands: Story = {
+  name: "A read that answers unauthenticated lands the expired session",
+  args: { readWindow: readExpired },
+  play: async () => {
+    await waitFor(() => expect(onUnauthenticated).toHaveBeenCalledTimes(1), {
+      timeout: 3_000,
+    });
+  },
+};
+
+export const LoweredWarningIgnoresInput: Story = {
+  name: "Records no activity while the lowered warning is open",
+  args: { readWindow: readThreeQuarters },
+  play: async () => {
+    // The read at 1.875 seconds learns 5.625 seconds, and the warning opens near 2.8 seconds.
+    await openWarning(3_000 - (performance.now() - startedAt));
+
+    await at(3_000);
+    fire("keydown");
+
+    // A recorded input would make the throttle's trailing call at 3.75 seconds.
+    await at(4_500);
+    await expect(callActive).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const StaySignedInEndsTheLoweredCount: Story = {
+  name: "Stay signed in ends the lowered count",
+  args: { readWindow: readLoweredOnce },
+  beforeEach: () => {
+    readLoweredOnce.mockResolvedValueOnce({
+      kind: "active",
+      idleMinutes: IDLE_MINUTES * 0.75,
+    });
+  },
+  play: async () => {
+    const dialog = await openWarning(3_500);
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Stay signed in" })
+    );
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull(), {
+      timeout: Math.max(0, 4_000 - (performance.now() - startedAt)),
+    });
+
+    // The lowered count would have ended at 5.625 seconds.
+    await at(6_500);
+    await expect(submitted).toEqual([]);
+  },
+};
+
+export const InputBeforeTheLoweredWarningMovesIt: Story = {
+  name: "Input after the read and before the lowered warning moves the warning",
+  args: { readWindow: readThreeQuarters },
+  play: async () => {
+    // The throttle's trailing call for this input is due at 3.75 seconds.
+    await at(100);
+    fire("keydown");
+
+    // The read at 1.875 seconds puts its first check near 2.9 seconds.
+    await at(2_500);
+    fire("keydown");
+
+    // An end fixed at the read would have opened the warning near 2.9 seconds.
+    await at(3_500);
+    await expect(screen.queryByRole("dialog")).toBeNull();
+  },
+};
+
+export const AnotherTabOpensTheLoweredWarning: Story = {
+  name: "A lowered warning another tab opened shows here and signs out on its end",
+  play: async () => {
+    const channel = new BroadcastChannel(IDLE_CHANNEL);
+
+    try {
+      await at(1_000);
+
+      // The wire format of `message()` in react-idle-timer 5.7.3: action 13 carries the data.
+      const post = {
+        action: 13,
+        token: "another-tab",
+        data: { warnForMs: 2_000 },
+      };
+
+      // oxlint-disable-next-line unicorn/require-post-message-target-origin -- a BroadcastChannel takes no origin.
+      channel.postMessage(post);
+
+      await openWarning(600);
+      await waitFor(() => expect(submitted).toEqual([idleSignOut]), {
+        timeout: Math.max(0, 3_600 - (performance.now() - startedAt)),
+      });
+    } finally {
+      channel.close();
+    }
+  },
+};
+
+export const ClockForwardBeforeTheLoweredCheck: Story = {
+  name: "A clock set forward before the lowered check does not sign out",
+  args: { readWindow: readThreeQuarters },
+  beforeEach: hearWarnings,
+  play: async () => {
+    // The read at 1.875 seconds puts its first check near 2.8 seconds.
+    await at(2_000);
+    wallOffset = HOUR;
+
+    // The step reads as no time left: a 0 ms warning here and in every tab, and the sign-out.
+    await at(4_000);
+    await expect(submitted).toEqual([]);
+    await expect(heardWarnings).toEqual([]);
+
+    // The count restarted at the check, so the lowered warning still comes, near 5.6 seconds,
+    // before the hook's own warning near 6.56 seconds.
+    await openWarning(6_200 - (performance.now() - startedAt));
+  },
+};
+
+export const ClockForwardWhileTheWarningShows: Story = {
+  name: "A clock set forward and a lowering read keep the open warning",
+  args: { readWindow: readHalvedThird },
+  beforeEach: () => {
+    const page = { kind: "active", idleMinutes: IDLE_MINUTES } as const;
+
+    readHalvedThird.mockResolvedValueOnce(page).mockResolvedValueOnce(page);
+  },
+  play: async () => {
+    const dialog = await openWarning(4_750);
+
+    // The read at 5.625 seconds lowers the window after the step.
+    await at(5_000);
+    wallOffset = HOUR;
+
+    // Only Stay signed in closes the warning (R-33): no restart of the count, no activity call.
+    await at(7_000);
+    await expect(dialog.isConnected).toBe(true);
+    await expect(dialog).toHaveAttribute("data-open");
+    await expect(callActive).toHaveBeenCalledTimes(1);
   },
 };

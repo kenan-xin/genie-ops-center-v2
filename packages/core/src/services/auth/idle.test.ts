@@ -10,7 +10,9 @@ import {
   formatCountdown,
   idleExpiry,
   isIdleExpired,
+  loweredEndsInMs,
   warningLeadMs,
+  windowReadMs,
 } from "./idle.ts";
 
 /**
@@ -124,5 +126,27 @@ describe("announcedSeconds", () => {
 
   it("speaks a short lead once and never a longer time than remains (I2)", () => {
     expect(new Set(spoken(4_000, 4, 0))).toEqual(new Set([4]));
+  });
+});
+
+describe("windowReadMs", () => {
+  it("reads a quarter of the window, at most once a minute (d8l5.53)", () => {
+    expect(windowReadMs(15)).toBe(60_000);
+    expect(windowReadMs(5)).toBe(60_000);
+    expect(windowReadMs(0.125)).toBe(1_875);
+  });
+});
+
+describe("loweredEndsInMs", () => {
+  it("ends a lowered count at the new end, never later, and never without a warning (d8l5.53)", () => {
+    const lowered = { countedMinutes: 15, loweredMinutes: 5 };
+
+    expect(loweredEndsInMs({ remainingMs: 13 * 60_000, ...lowered })).toBe(
+      180_000
+    );
+    expect(loweredEndsInMs({ remainingMs: 4 * 60_000, ...lowered })).toBe(
+      30_000
+    );
+    expect(loweredEndsInMs({ remainingMs: 20_000, ...lowered })).toBe(20_000);
   });
 });
