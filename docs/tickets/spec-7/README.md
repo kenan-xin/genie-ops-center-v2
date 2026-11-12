@@ -66,6 +66,7 @@ Owner decision, 2026-10-27: full scope for the November 2026 festival, with no s
 | [S7-45](45-speaker-notes-and-presenter-view/index.md) | `czjw.115` | S7-43, S7-44, the Phase 12 import | none | Speaker notes and the presenter view |
 | [S7-46](46-dashboard-filters-in-the-url/index.md) | `czjw.116` | S7-42, S7-44, `czjw.101`, `czjw.102`, the Phase 12 import | none | Dashboard filters, several at once, in the page address |
 | [S7-47](47-dashboard-saved-views/index.md) | `czjw.117` | S7-46 | none | Saved views of a dashboard, with one default |
+| [S7-48](48-new-deck-from-description/index.md) (DRAFT, owner approval pending) | `czjw.174` | S7-40, S7-41, S7-42 | none | New deck from a description |
 | [S7-49](49-background-agent-runs/index.md) | `czjw.175` | S7-40, S7-41, `xok3.83` | none | Long background agent runs |
 | `6wz1.89`, no folder, owned by the Spec 3 epic `6wz1` | `6wz1.89` | none | none | Collapsible, edge-to-edge app sidebar (icon rail) |
 | `xok3.49`, no folder, owned by the Maintenance epic `xok3` | `xok3.49` | none | none | Polish the idle sign-out warning dialog |
@@ -175,6 +176,13 @@ Wave 5 check, 2026-11-08. The same section is the only one Spec 7 owns. Its Ask,
 | Ask history grouped by agent, and the spinner on Ask in the main menu (`ask`, `phone-menu`) | R-42b as amended by `DEC-57` | S7-49 | `../../design/prototypes/agent-runs.prototype.html`, variant E (owner, 2026-11-13) |
 
 No open amendment file under `../../design/` touches wave 5.
+
+Draft check for S7-48, 2026-11-12, waiting for owner approval:
+
+| Screen or state | Requirement | Ticket | Design |
+| --- | --- | --- | --- |
+| Slides list, New deck composer (`slides`) | R-52, R-46 (proposed amendment) | S7-48 | `../../design/prototypes/new-deck-flow.prototype.html`, step 1 |
+| Deck page while drafting and when ready, rename in place (`slides`) | R-42b, R-53 | S7-48 | the same prototype, steps 2 and 3 |
 
 The four prototypes that the owner chose on 2026-11-03 sit in the design workspace, not under `../../design/`: list filters variant C, invoice record variant C, Ask variant B and agent panel variant B. Each ticket names its prototype, and the phase that builds a screen imports its prototype under `../../design/` with an import record.
 
