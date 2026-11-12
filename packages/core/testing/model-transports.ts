@@ -251,7 +251,8 @@ async function streamEvents(response: Response): Promise<readonly JsonValue[]> {
  * record has a new id each run, and a deck's hash covers the read time of its
  * figures. Identity rule: a renamed match may not move a token that the sent
  * body also holds, so a swapped or misplaced known id throws, naming the
- * recording, instead of replaying (and record mode never saves it). The entry in
+ * recording, instead of replaying (and record mode never saves it). A rename onto
+ * a token that another loaded recording holds throws too, naming both. The entry in
  * `sent` of a renamed match lists each swapped pair in `renamed`. A renamed
  * match cannot tell a consistently wrong fresh id from a right one, so a test
  * that relies on a renamed record id pins it against the id it expects. With a
@@ -302,7 +303,8 @@ export function replayModelTransport(
             candidate.request.method === method && candidate.request.url === url
         ),
         maskTokens(body),
-        maskedOf
+        maskedOf,
+        recordings
       );
 
       if (renamedMatch !== undefined) {
@@ -368,7 +370,9 @@ function maskTokens(body: JsonValue): MaskedBody {
 function renamedRecording(
   candidates: readonly ModelRecording[],
   sent: MaskedBody,
-  maskedOf: (recording: ModelRecording) => MaskedBody
+  maskedOf: (recording: ModelRecording) => MaskedBody,
+  // Only the loaded recordings: one that record mode saved holds this run's fresh ids.
+  loaded: readonly ModelRecording[]
 ):
   | { readonly recording: ModelRecording; readonly renamed: RenamedToken[] }
   | undefined {
@@ -408,6 +412,19 @@ function renamedRecording(
       `Recording ${match.name} answers this request only by moving ${moved.recorded}, which the request also sends, to another place. ` +
         "Re-key the recording, or fix the id that the request sends."
     );
+  }
+
+  for (const pair of renamed) {
+    const holder = loaded.find(
+      (other) => other !== match && maskedOf(other).tokens.includes(pair.sent)
+    );
+
+    if (holder !== undefined) {
+      throw new Error(
+        `Recording ${match.name} answers this request only by renaming ${pair.recorded} to ${pair.sent}, which recording ${holder.name} holds. ` +
+          "A known id replays in place of a fresh one: fix the id that the request sends, or re-key the recording."
+      );
+    }
   }
 
   const renames = new Map(renamed.map((pair) => [pair.recorded, pair.sent]));

@@ -271,6 +271,10 @@ describe("the analytics chat beside a dashboard", () => {
     expect(await lastAnswerText(dashboardChat)).toContain(
       OUT_OF_TOOLS_DASHBOARD_ANSWER
     );
+    // A renamed replay answers any dashboard's id, so the chat's own one is compared (xok3.60).
+    expect(JSON.stringify(recorded.sent.at(-1)?.body)).toContain(
+      `This chat belongs to the record ${dashboardId} of its page.`
+    );
     // An answer, no change: each chat only listed its datasets, as the core prompt asks first.
     expect([
       ...(await callsOf(askId)),
@@ -535,6 +539,10 @@ describe("the analytics chat beside a dashboard", () => {
         title,
       }))
     ).toEqual([{ kind: "chart", title: ANALYTICS_CHART_TITLE }]);
+    // A renamed replay answers any dashboard's id, so the chat's own one is compared (xok3.60).
+    expect(JSON.stringify(recorded.sent.at(-1)?.body)).toContain(
+      `This chat belongs to the record ${dashboardId} of its page.`
+    );
     expect(await dashboardOf(dashboardId)).toEqual({
       name: QUESTION_DASHBOARD_NAME,
       titles: [],

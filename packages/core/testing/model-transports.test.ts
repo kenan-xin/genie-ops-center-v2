@@ -202,6 +202,17 @@ it("refuses a renamed match that moves an id both requests hold, and names the r
   );
 });
 
+it("refuses a renamed match onto an id that another loaded recording holds, and names both", async () => {
+  const transport = replayModelTransport([
+    recordingWith("fresh", bodyWith("m", ID_A)),
+    recordingWith("known", bodyWith("other", ID_B)),
+  ]);
+
+  await expect(send(transport, bodyWith("m", ID_B))).rejects.toThrow(
+    /fresh.*known/
+  );
+});
+
 it("keeps an id both requests hold at its place, and reports each renamed id and hash", async () => {
   const transport = replayModelTransport([
     recordingWith("kept", bodyWith("m", ID_A, HASH_A, ID_C)),
