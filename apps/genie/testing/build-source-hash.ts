@@ -77,7 +77,10 @@ function filesUnder(current: string, into: string[]): void {
     const child = join(current, entry.name);
 
     if (entry.isDirectory()) {
-      filesUnder(child, into);
+      // A lint suite can delete a fixture folder mid-walk, so never enter one.
+      if (!TRANSIENT_FIXTURE.test(child)) {
+        filesUnder(child, into);
+      }
     } else if (isBuildSource(child)) {
       into.push(child);
     }
