@@ -13,3 +13,7 @@ Business logic, a module implementation, a schema, a database access, and anythi
 ## What it imports
 
 Every layer: `packages/core`, `packages/ui`, and the included modules. The app is the top of the import direction and nothing internal imports it.
+
+## Build freshness
+
+`tools/build.ts` hashes the build's source tree before `next build` and, when every step passes, writes the hash to `.next/genie-source-hash`. The tests that read `.next` (`testing/build-freshness.ts`) hash the tree again and refuse a build whose hash differs or is missing. The verdict is content, not file time, because Nx restores `.next` from its cache by content. Tests and stories, which the `production` input leaves out, and the two generated registry files do not count.

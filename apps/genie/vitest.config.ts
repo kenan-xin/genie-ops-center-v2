@@ -25,6 +25,9 @@ export default defineConfig({
       ...(preset?.include ?? []),
       "tools/**/*.test.ts",
       "testing/image-scan.test.ts",
+      // The build freshness check and its source hash run over temp trees; they need no build.
+      "testing/build-source-hash.test.ts",
+      "testing/build-freshness.test.ts",
       "testing/shared-empty-image.test.ts",
       "testing/image-ports.test.ts",
       "testing/e2e-ports.test.ts",

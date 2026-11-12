@@ -32,6 +32,8 @@ export default defineConfig({
       "testing/release-smoke.integration.test.ts",
       // Pure logic the unit run (`vitest.config.ts`) already collects.
       "testing/image-scan.test.ts",
+      "testing/build-source-hash.test.ts",
+      "testing/build-freshness.test.ts",
       "testing/shared-empty-image.test.ts",
       "testing/image-ports.test.ts",
       "testing/e2e-ports.test.ts",

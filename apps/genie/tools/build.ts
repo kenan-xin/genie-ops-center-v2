@@ -1,6 +1,12 @@
 import { spawnSync } from "node:child_process";
+import { rmSync, writeFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { pathToFileURL } from "node:url";
+
+import {
+  SOURCE_HASH_FILE,
+  buildSourceHash,
+} from "../testing/build-source-hash.ts";
 
 /**
  * The application build, as one command.
@@ -44,7 +50,16 @@ export const BUILD_STEPS: readonly (readonly [string, readonly string[]])[] = [
   ["node", ["tools/prune-public-migration-sql.mjs"]],
 ];
 
+/**
+ * Records which source the build was made from, for `testing/build-freshness.ts`.
+ * The hash is taken before `next build`, so a source edited during the build
+ * makes the check refuse rather than pass; the old hash goes first, so a failed
+ * build leaves none behind.
+ */
 function main(): void {
+  rmSync(SOURCE_HASH_FILE, { force: true });
+  const sourceHash = buildSourceHash();
+
   for (const [command, args] of BUILD_STEPS) {
     const result = spawnSync(command, [...args], {
       cwd: APP_ROOT,
@@ -58,6 +73,8 @@ function main(): void {
       return;
     }
   }
+
+  writeFileSync(SOURCE_HASH_FILE, `${sourceHash}\n`);
 }
 
 if (
