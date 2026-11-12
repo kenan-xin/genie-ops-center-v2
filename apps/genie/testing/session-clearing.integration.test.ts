@@ -14,9 +14,10 @@ import { startBuiltApp } from "./start-built-app.ts";
 /**
  * R-14 as amended on 2026-10-19: a read refuses an idle session and keeps its row, so every
  * request of the browser agrees (genie-ops-center-v2-lqns), and the row is deleted where the
- * application clears the browser's cookie. The three routes that clear it are driven over the
- * real built server: the session-expired route, the idle branch of sign-out (R-17), and the
- * refused activity call. Each deletes only a row that is still idle, never a live one.
+ * application clears the browser's cookie. The four routes that clear it are driven over the
+ * real built server: the session-expired route, the idle branch of sign-out (R-17), the refused
+ * activity call, and the refused window read. Each deletes only a row that is still idle, never
+ * a live one.
  *
  * The same built server also proves that a state change from another origin is refused, and that
  * the Better Auth catch-all answers 404 outside its allowlist (Spec 2 R-6, R-7).
@@ -125,6 +126,15 @@ const ROUTES = [
         redirect: "manual",
       }),
   },
+  {
+    name: "the refused window read",
+    idleLanding: null,
+    send: (cookie: string) =>
+      fetch(`${server.baseUrl}/api/session/window`, {
+        headers: { cookie },
+        redirect: "manual",
+      }),
+  },
 ] as const;
 
 describe("the routes that clear an idle session's cookie", () => {
@@ -142,6 +152,9 @@ describe("the routes that clear an idle session's cookie", () => {
         new RegExp(`${SESSION_COOKIE}=;`)
       );
       expect(landing(response)).toBe(route.idleLanding);
+
+      // A refusal that is no redirect is the 401 the browser classifies as signed out.
+      if (route.idleLanding === null) expect(response.status).toBe(401);
       expect(await rowCount(token)).toBe(0);
     }
   );
@@ -176,6 +189,24 @@ async function lastActive(token: string): Promise<string | undefined> {
 
   return result.rows[0]?.at;
 }
+
+describe("the window read (d8l5.53)", () => {
+  it("answers a live session's window and never slides it", async () => {
+    const { cookie, token } = await sessionFor("read", 1);
+    const before = await lastActive(token);
+
+    const response = await fetch(`${server.baseUrl}/api/session/window`, {
+      headers: { cookie },
+      redirect: "manual",
+    });
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ idleMinutes: IDLE_MINUTES });
+    // R-15: only the activity call slides a session, so a background read cannot keep it alive.
+    expect(await lastActive(token)).toBe(before);
+    expect(await rowCount(token)).toBe(1);
+  });
+});
 
 describe("a state change from another origin", () => {
   it.each(["/api/session/activity", "/api/session/revoke-others"])(

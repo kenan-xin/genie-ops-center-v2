@@ -1,11 +1,10 @@
-import { sessionCookieName } from "@genie/core";
-
 import { requireAuth } from "../../../../auth.ts";
 import { requireContext } from "../../../../context.ts";
 import {
   crossOriginRefusal,
   stateChangeOriginAllowed,
 } from "../../request-origin.ts";
+import { expiredAnswer } from "../expired-answer.ts";
 
 export const dynamic = "force-dynamic";
 
@@ -27,20 +26,12 @@ async function handler(request: Request): Promise<Response> {
 
   const slid = await auth.recordActivity({ headers: request.headers });
 
-  if (!slid) {
-    // The cookie is cleared below, so an idle row ends here too; a missing row is a no-op.
-    await auth.endIdleSession({ headers: request.headers });
-
-    const cookie = `${sessionCookieName(app.tenant.env.publicUrl)}=; Path=/; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; SameSite=Lax${app.tenant.env.publicUrl.startsWith("https://") ? "; Secure" : ""}`;
-
-    return Response.json(
-      { code: "session_expired" },
-      {
-        status: 401,
-        headers: { "cache-control": "no-store", "set-cookie": cookie },
-      }
-    );
-  }
+  if (!slid)
+    return expiredAnswer({
+      auth,
+      headers: request.headers,
+      publicUrl: app.tenant.env.publicUrl,
+    });
 
   const { sessionIdleMinutes } = await app.tenant.settings.get();
 

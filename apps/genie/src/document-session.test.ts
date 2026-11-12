@@ -56,6 +56,8 @@ const OWNERS = new Set([
   "apps/genie/src/document-session.ts",
   "apps/genie/src/request-principal.ts",
   "apps/genie/src/limited-session.ts",
+  // The refusal shared by the activity call and the window read; it runs inside their handlers.
+  "apps/genie/src/app/api/session/expired-answer.ts",
 ]);
 
 /**
