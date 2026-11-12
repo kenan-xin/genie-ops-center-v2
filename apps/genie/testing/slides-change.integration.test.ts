@@ -550,4 +550,28 @@ describe("the agent panel on the deck editor", () => {
     expect(text).toContain("30 Sep 2026");
     expect((await fixedDeck())?.undo).toBe(0);
   });
+
+  // The store refuses only a figure, chart or table on a dated deck, so a typed title rests on the prompt rule.
+  it("writes no value from the records into a deck frozen before the reporting date, and names Refresh data (czjw.166)", async () => {
+    const session = "5b8e2c4d-1a3f-4e7b-8c9d-0a0a0a0a0018";
+
+    await insertFixedDeck(asker.caller.userId, {
+      content: SLIDES_DATED_CONTENT,
+      frozenOn: SLIDES_DATED_FROZEN_ON,
+    });
+    await chat(session, SLIDES_FIGURE_WRITE_MESSAGE);
+
+    expect(errors).toEqual([]);
+    const tools = await toolsOf(session);
+    const deck = await fixedDeck();
+
+    expect(
+      tools.filter((tool) => tool.startsWith("slides-change-deck:"))
+    ).toEqual([]);
+    expect(deck?.s2[0]?.text).toBe(
+      SLIDES_DATED_CONTENT.slides[1].elements[0].text
+    );
+    expect(deck?.undo).toBe(0);
+    expect(await answerText(session)).toContain("Refresh data");
+  });
 });
