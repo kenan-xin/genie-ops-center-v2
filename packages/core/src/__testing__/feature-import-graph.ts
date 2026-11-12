@@ -138,7 +138,11 @@ function inlineTypeOnlyImports(sourceFile: ts.SourceFile): readonly string[] {
   });
 }
 
-/** True when the file reads `process.env`, by property or by index. */
+/**
+ * True when the file reads `process.env`, by property or by index. The exact `process.env.NODE_ENV`
+ * is not a deployment read: every bundler inlines it as the build's mode (xok3.65). An optional
+ * chain is not that exact form, so it stays a violation.
+ */
 function readsEnvironment(sourceFile: ts.SourceFile): boolean {
   let reads = false;
 
@@ -147,7 +151,14 @@ function readsEnvironment(sourceFile: ts.SourceFile): boolean {
       ts.isPropertyAccessExpression(node) &&
       ts.isIdentifier(node.expression) &&
       node.expression.text === "process" &&
-      node.name.text === "env"
+      node.name.text === "env" &&
+      !(
+        node.questionDotToken === undefined &&
+        ts.isPropertyAccessExpression(node.parent) &&
+        node.parent.questionDotToken === undefined &&
+        node.parent.expression === node &&
+        node.parent.name.text === "NODE_ENV"
+      )
     ) {
       reads = true;
     } else if (

@@ -1,3 +1,4 @@
+import "./openui-devtools-off.ts";
 import {
   type ComponentRenderer,
   createLibrary,

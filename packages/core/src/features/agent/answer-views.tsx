@@ -1,5 +1,6 @@
 "use client";
 
+import "./openui-devtools-off.ts";
 import {
   type ComponentRenderProps,
   useIsStreaming,

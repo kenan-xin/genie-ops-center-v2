@@ -84,17 +84,16 @@ export async function openAgentPanel(page: Page): Promise<Locator> {
   return panel;
 }
 
-/** Keeps the development widgets off the agent panel's Send. Call before the first page. */
+/**
+ * Keeps the TanStack Devtools trigger off the agent panel's Send. Call before the first page. Core
+ * keeps the OpenUI devtools widget off itself (xok3.65).
+ */
 export async function hideDevelopmentWidgets(
   page: Pick<Page, "addInitScript">
 ): Promise<void> {
   await page.addInitScript(() => {
-    // P11: react-lang mounts its Inspect widget in development unless this flag is already set.
-    Object.assign(globalThis, {
-      [Symbol.for("openui.devtools.autoMount")]: true,
-    });
-    // The TanStack Devtools trigger floats at the bottom right in development, over the bubble and
-    // the sheet's Send; its own setting hides it unless the address carries its flag.
+    // P11: the TanStack Devtools trigger floats at the bottom right in development, over the
+    // bubble and the sheet's Send; its own setting hides it unless the address carries its flag.
     localStorage.setItem(
       "tanstack_devtools_settings",
       JSON.stringify({ requireUrlFlag: true })

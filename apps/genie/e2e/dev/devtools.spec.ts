@@ -1,7 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test, type Page } from "@playwright/test";
 
 import { selectedModuleIds } from "../../src/modules.ts";
-import { DEV_DB_PORT } from "./global-setup.ts";
+import { signInAs } from "./ask-support.ts";
+import { seedChat } from "./chat-seed.ts";
+import { ASK_PEOPLE, DEV_DB_PORT } from "./global-setup.ts";
 
 /**
  * The development panels, in a real browser.
@@ -113,4 +117,53 @@ test("puts no secret on the screen", async ({ page }) => {
   expect(shown).not.toContain(String(DEV_DB_PORT));
   expect(shown).not.toContain("postgres://");
   expect(shown).not.toContain("127.0.0.1");
+});
+
+test("keeps the OpenUI devtools widget off, so nothing loads from jsDelivr", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180000);
+
+  const email =
+    testInfo.project.name === "phone" ? ASK_PEOPLE.phone : ASK_PEOPLE.desktop;
+
+  const sessionId = randomUUID();
+  const answer = "The widget stays off.";
+  const cdn: string[] = [];
+
+  await seedChat({
+    email,
+    sessionId,
+    turns: [{ question: "Is the widget off?", answer }],
+  });
+  await signInAs(page, email);
+  await page.route("https://cdn.jsdelivr.net/**", (route) => {
+    cdn.push(route.request().url());
+
+    return route.abort();
+  });
+
+  await page.goto(`/ask/${sessionId}`);
+  await expect(page.getByText(answer, { exact: true })).toBeVisible(
+    FIRST_PAINT
+  );
+
+  // xok3.65: core's value, not `true`, which is what react-lang writes when it mounts the widget.
+  // Polled: the answer shows from the server HTML before the client code runs, and a set flag is
+  // never overwritten, so only core's guard running first can settle this.
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () =>
+          // SAFETY: a read of react-lang's global flag, whatever its type; the poll checks it.
+          (globalThis as Record<symbol, string | boolean | undefined>)[
+            Symbol.for("openui.devtools.autoMount")
+          ]
+      )
+    )
+    .toBe("off by @genie/core");
+  await expect(page.locator("[data-openui-devtools-auto-mount]")).toHaveCount(
+    0
+  );
+  expect(cdn).toEqual([]);
 });

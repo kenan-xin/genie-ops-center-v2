@@ -210,6 +210,43 @@ describe("the browser feature graph probe", () => {
     }
   });
 
+  it("lets the build-inlined process.env.NODE_ENV through and flags every other environment read", () => {
+    const dir = mkdtempSync(join(tmpdir(), "genie-feature-node-env-"));
+
+    const reads = {
+      "mode.ts": `export const dev = process.env.NODE_ENV !== "production";\n`,
+      "named.ts": `export const url = process.env.DATABASE_URL;\n`,
+      "indexed.ts": `export const mode = process.env["NODE_ENV"];\n`,
+      "whole.ts": `export const { NODE_ENV } = process.env;\n`,
+      "optional.ts": `export const mode = process.env?.NODE_ENV;\n`,
+    };
+
+    try {
+      const entry = join(dir, "entry.ts");
+
+      writeFileSync(
+        entry,
+        Object.keys(reads)
+          .map((file) => `import "./${file}";\n`)
+          .join("")
+      );
+
+      for (const [file, source] of Object.entries(reads)) {
+        writeFileSync(join(dir, file), source);
+      }
+
+      const report = analyzeFeatureGraph(entry);
+
+      expect(report.violations.toSorted()).toEqual(
+        ["indexed.ts", "named.ts", "optional.ts", "whole.ts"].map(
+          (file) => `${join(dir, file)} reads process.env`
+        )
+      );
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("refuses an inline type-only import, which Vite keeps as a side-effect import", () => {
     const dir = mkdtempSync(join(tmpdir(), "genie-feature-inline-type-"));
 

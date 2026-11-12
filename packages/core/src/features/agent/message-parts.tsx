@@ -1,5 +1,6 @@
 "use client";
 
+import "./openui-devtools-off.ts";
 import { Button, focusRing } from "@genie/ui";
 import {
   createParser,
