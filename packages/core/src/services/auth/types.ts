@@ -134,9 +134,9 @@ export type AuthMember = {
    */
   readonly sessionState: (input: AuthSessionInput) => Promise<AuthSessionState>;
   /**
-   * The browser activity call (R-15): the one writer of `session.last_active_at`, throttled to
-   * half the idle window by the client. Answers true when it slid the session, or false when the
-   * request holds no live session.
+   * The browser activity call (R-15): the one writer of `session.last_active_at`, throttled by the
+   * client to half the idle window, at most 150 seconds. Answers true when it slid the session, or
+   * false when the request holds no live session.
    */
   readonly recordActivity: (input: AuthSessionInput) => Promise<boolean>;
   /**

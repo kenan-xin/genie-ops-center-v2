@@ -12,12 +12,15 @@ export const signInSettingsSchema = z.object({
   localAccountsEnabled: z.boolean(),
 });
 
+/** The shortest idle window the settings accept; the activity throttle is bounded by half of it. */
+export const MIN_SESSION_IDLE_MINUTES = 5;
+
 /** Sessions (R-73): 5 to 480 whole minutes. */
 export const sessionSettingsSchema = z.object({
   sessionIdleMinutes: z
     .number({ error: IDLE_MESSAGE })
     .int({ error: IDLE_MESSAGE })
-    .min(5, { error: IDLE_MESSAGE })
+    .min(MIN_SESSION_IDLE_MINUTES, { error: IDLE_MESSAGE })
     .max(480, { error: IDLE_MESSAGE }),
 });
 

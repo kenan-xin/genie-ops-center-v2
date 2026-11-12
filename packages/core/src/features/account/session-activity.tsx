@@ -24,7 +24,7 @@ export type SessionActivityProps = {
   /**
    * The tenant's idle window when the page loaded. Each live activity answer replaces it in every
    * tab, so a window an administrator changes reaches the tabs that are already open (`6wz1.92`).
-   * The throttle wait is half of it (R-15).
+   * The throttle wait is half of it, at most 150 seconds (R-15).
    */
   readonly idleMinutes: number;
   /**
@@ -55,9 +55,9 @@ export const idleWindow = z.object({ idleMinutes: z.number().positive() });
  * The browser half of the idle rule (R-15, R-15a). The browser counts the idle window from the
  * last pointer, keyboard, or touch input on its own clock, and one count serves every tab of the
  * browser. Input slides the server session through one activity call, throttled to half the
- * window with a trailing call, so the server window never closes before the browser count. The
- * mount makes the throttle's leading call, so a document load starts both counts together. These
- * calls are the only writers of the session's last activity time.
+ * window, at most 150 seconds, with a trailing call, so the server window never closes before
+ * the browser count. The mount makes the throttle's leading call, so a document load starts both
+ * counts together. These calls are the only writers of the session's last activity time.
  *
  * The warning (R-33) opens before the count ends, records no ambient input, and closes only when
  * Stay signed in reaches the server. When the count ends, the idle sign-out posts once the

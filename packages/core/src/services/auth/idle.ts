@@ -3,6 +3,7 @@
  * clock; every caller passes its own `now`, so the refusal boundary and the throttle window are
  * unit-testable and the request path stays the only place a decision is applied.
  */
+import { MIN_SESSION_IDLE_MINUTES } from "../settings/schemas.ts";
 
 /** The idle window's expiry: the last activity plus the tenant's idle minutes. */
 export function idleExpiry(input: {
@@ -12,14 +13,18 @@ export function idleExpiry(input: {
   return new Date(input.lastActivityAt.getTime() + input.idleMinutes * 60_000);
 }
 
-/** Half the idle window in milliseconds, the throttle the browser's activity call uses (R-15). */
+/**
+ * The throttle the browser's activity call uses (R-15): half the idle window, but never more than
+ * half the shortest window the settings accept, so a lowered window cannot close the server window
+ * between two calls of a person who is active (`d8l5.53`, deviation P16g-6).
+ */
 export function activityThrottleWaitMs(idleMinutes: number): number {
-  return (idleMinutes * 60_000) / 2;
+  return (Math.min(idleMinutes, MIN_SESSION_IDLE_MINUTES) * 60_000) / 2;
 }
 
 /** How long before the idle expiry the warning opens: two minutes, or half the window (R-33). */
 export function warningLeadMs(idleMinutes: number): number {
-  return Math.min(120_000, activityThrottleWaitMs(idleMinutes));
+  return Math.min(120_000, (idleMinutes * 60_000) / 2);
 }
 
 /** The warning's `m:ss` countdown; a partial second rounds up, so `0:00` means expired. */

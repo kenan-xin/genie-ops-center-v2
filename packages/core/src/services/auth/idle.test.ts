@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  MIN_SESSION_IDLE_MINUTES,
+  sessionSettingsSchema,
+} from "../settings/schemas.ts";
+import {
   activityThrottleWaitMs,
   announcedSeconds,
   formatCountdown,
@@ -59,9 +63,27 @@ describe("isIdleExpired", () => {
 });
 
 describe("activityThrottleWaitMs", () => {
-  it("is half the idle window (R-15)", () => {
-    expect(activityThrottleWaitMs(15)).toBe(450_000);
+  it("is half the window, and never more than half the shortest window the settings accept (R-15, d8l5.53)", () => {
+    // A lowered window must not close the server window between two calls of a person who is
+    // active.
+    expect(activityThrottleWaitMs(15)).toBe(150_000);
+    expect(activityThrottleWaitMs(480)).toBe(150_000);
     expect(activityThrottleWaitMs(5)).toBe(150_000);
+    expect(activityThrottleWaitMs(0.125)).toBe(3_750);
+  });
+
+  it("follows the settings minimum", () => {
+    expect(
+      sessionSettingsSchema.safeParse({
+        sessionIdleMinutes: MIN_SESSION_IDLE_MINUTES - 1,
+      }).success
+    ).toBe(false);
+    expect(
+      sessionSettingsSchema.safeParse({
+        sessionIdleMinutes: MIN_SESSION_IDLE_MINUTES,
+      }).success
+    ).toBe(true);
+    expect(activityThrottleWaitMs(480)).toBe(MIN_SESSION_IDLE_MINUTES * 30_000);
   });
 });
 
