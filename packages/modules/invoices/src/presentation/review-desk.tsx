@@ -87,6 +87,30 @@ export function usePageFile(
   const [url, setUrl] = useState(props.fileUrl);
   const [attempt, setAttempt] = useState(0);
   const [failed, setFailed] = useState(false);
+  // A layout switch (the agent panel docks) mounts this hook again on the first link, which may
+  // have expired, so the first failed load asks once for a fresh link before Preview failed.
+  const refreshed = useRef(false);
+
+  const fail = async () => {
+    if (refreshed.current) {
+      setFailed(true);
+
+      return;
+    }
+
+    refreshed.current = true;
+
+    const fresh = await props.refreshUrl().catch(() => null);
+
+    if (fresh === null) {
+      setFailed(true);
+
+      return;
+    }
+
+    setUrl(fresh);
+    setAttempt((last) => last + 1);
+  };
 
   const downloadFresh = async () => {
     const fresh = await props.refreshUrl();
@@ -108,7 +132,7 @@ export function usePageFile(
     url,
     attempt,
     failed,
-    fail: () => setFailed(true),
+    fail: () => void fail(),
     download: () => void downloadFresh(),
     retry: () => void retry(),
   };

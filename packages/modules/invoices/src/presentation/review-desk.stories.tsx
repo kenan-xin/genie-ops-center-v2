@@ -434,6 +434,19 @@ export const PreviewFailedReview: Story = {
   },
 };
 
+// Review fix (P16g): the agent panel docks after the first link expired, the desk mounts again on it,
+// and the first failed load asks once for a fresh link, so the page draws with no Preview failed.
+export const ExpiredLinkLoadsAgain: Story = {
+  args: { view: brokenFile },
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await pinned(canvasElement, READ_KEYS);
+    await expect(
+      canvas.queryByRole("button", { name: "Try again" })
+    ).toBeNull();
+  },
+};
+
 /** The one element that matches, once it is drawn. */
 const drawn = (root: Element, selector: string, what: string) =>
   waitFor(() => {
