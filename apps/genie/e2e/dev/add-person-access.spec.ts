@@ -71,7 +71,8 @@ async function pickWithoutAdministration(
   label: string,
   option: string
 ): Promise<void> {
-  const trigger = page.getByLabel(label, { exact: true });
+  // By role: the open list repeats the trigger's name (6wz1.97), so a label lookup matches both.
+  const trigger = page.getByRole("combobox", { name: label, exact: true });
 
   await trigger.click();
   await expect(trigger).toHaveAttribute("aria-controls", /.+/);

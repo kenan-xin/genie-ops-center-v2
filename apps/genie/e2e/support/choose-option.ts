@@ -10,13 +10,16 @@ import type { Page } from "@playwright/test";
  * selects can offer options of the same name, and under load the list of the previous select is
  * still closing: a page-wide lookup can then bind the click to that list, and Playwright retries
  * the click on the same hidden element until the test times out.
+ *
+ * The combobox is found by its role, not `getByLabel`: the open list repeats the trigger's name
+ * (6wz1.97), so a label lookup matches both while the list shows.
  */
 export async function chooseOption(
   page: Page,
   label: string,
   option: string
 ): Promise<void> {
-  const trigger = page.getByLabel(label, { exact: true });
+  const trigger = page.getByRole("combobox", { name: label, exact: true });
 
   await trigger.click();
   await expect(trigger).toHaveAttribute("aria-controls", /.+/);
