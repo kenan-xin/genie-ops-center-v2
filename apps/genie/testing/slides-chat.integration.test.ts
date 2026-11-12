@@ -224,7 +224,7 @@ describe("the slides chat beside the Slides list", () => {
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
     expect(ended).toMatchObject({ run_state: null, run_error: null });
-    // 7 with these fixtures; a live model at R1 may add a dataset read, within the 10 steps.
+    // 8 with these recordings (R2); a live model may add a dataset read, within the 10 steps.
     expect(runRequests).toBeGreaterThanOrEqual(7);
     expect(runRequests).toBeLessThanOrEqual(10);
 
@@ -258,7 +258,7 @@ describe("the slides chat beside the Slides list", () => {
         .toSorted()
     ).toEqual([
       "list-datasets",
-      ...Array.from({ length: 10 }, () => "query-dataset"),
+      ...Array.from({ length: 6 }, () => "query-dataset"),
       "slides-read-deck",
     ]);
     expect(runCalls.slice(-5)).toEqual(
@@ -297,11 +297,11 @@ describe("the slides chat beside the Slides list", () => {
       }))
     );
     // The overdue balance of each customer in `expected_baseline_answers.json`, SGD 27,350 in all.
-    // The series name is the model's choice (P16-55).
-    expect(rowsOf(2, 2)).toEqual([
-      { "x": "Harbor Foods", "Overdue balances": 1260000 },
-      { "x": "Orchid Retail", "Overdue balances": 825000 },
-      { "x": "ABC Trading", "Overdue balances": 650000 },
+    // A table or a chart and its column names are the model's choice (P16-55).
+    expect(rowsOf(2, 2)).toMatchObject([
+      { customerName: "Harbor Foods", overdue: 1260000 },
+      { customerName: "Orchid Retail", overdue: 825000 },
+      { customerName: "ABC Trading", overdue: 650000 },
     ]);
     const slides = callProcedure(slidesRouter, asker);
     const answer = await slides.exportDeck({ id: deck?.id ?? "" });

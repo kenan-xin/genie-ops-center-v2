@@ -264,17 +264,9 @@ describe("the agent panel on the deck editor", () => {
     await chat(session, SLIDES_STYLE_MESSAGE, SLIDES_TITLE_SLIDE_CONTEXT);
 
     expect(errors).toEqual([]);
-    // The first step lists the datasets and reads the deck at once, so those two can finish in
-    // either order; then one change (P16-58).
-    const calls = await toolCalls(session);
-
-    expect(
-      calls
-        .slice(0, 2)
-        .map(({ tool }) => tool)
-        .toSorted()
-    ).toEqual(["list-datasets", "slides-read-deck"]);
-    expect(calls.slice(2)).toEqual([
+    // A style change needs no data, so the reads before the one change are the model's choice (P16-55).
+    expect(await toolCalls(session)).toEqual([
+      { tool: "slides-read-deck", outcome: "answered" },
       { tool: "slides-change-deck", outcome: "answered" },
     ]);
     expect(await titleSlide()).toMatchObject({
@@ -307,8 +299,8 @@ describe("the agent panel on the deck editor", () => {
 
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
+    // The reads before the one change are the model's choice (P16-55).
     expect(await toolCalls(session)).toEqual([
-      { tool: "list-datasets", outcome: "answered" },
       { tool: "slides-read-deck", outcome: "answered" },
       { tool: "slides-change-deck", outcome: "answered" },
     ]);
@@ -333,10 +325,13 @@ describe("the agent panel on the deck editor", () => {
     );
 
     expect(errors).toEqual([]);
-    // No change: only the datasets list that the core prompt asks first.
-    expect(await toolCalls(session)).toEqual([
-      { tool: "list-datasets", outcome: "answered" },
-    ]);
+    // A request outside the tools needs no list-datasets call (czjw.158) and changes nothing. A
+    // read of the open deck is the model's choice.
+    expect(
+      (await toolCalls(session)).filter(
+        ({ tool }) => tool === "list-datasets" || tool === "slides-change-deck"
+      )
+    ).toEqual([]);
     expect(JSON.stringify(await answerParts(session))).toContain(
       SLIDES_OUT_OF_TOOLS_ANSWER
     );
@@ -351,8 +346,8 @@ describe("the agent panel on the deck editor", () => {
 
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
+    // The reads before the one change are the model's choice (P16-55).
     expect(await toolCalls(session)).toEqual([
-      { tool: "list-datasets", outcome: "answered" },
       { tool: "slides-read-deck", outcome: "answered" },
       { tool: "slides-change-deck", outcome: "answered" },
     ]);
@@ -403,7 +398,6 @@ describe("the agent panel on the deck editor", () => {
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
     expect(await toolCalls(session)).toEqual([
-      { tool: "list-datasets", outcome: "answered" },
       { tool: "slides-read-deck", outcome: "not-found" },
     ]);
     expect(await fixedDeck()).toEqual(before);

@@ -568,7 +568,7 @@ describe("the agent route", () => {
   });
 
   it("Stop during a later step aborts that step's model call and starts no other", async () => {
-    const model = heldModel({ firstStep: recordedEvents("live-f2dde9ba8fc8") });
+    const model = heldModel({ firstStep: recordedEvents("live-0d26acf0879b") });
 
     const ctx = await asker();
 

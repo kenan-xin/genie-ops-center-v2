@@ -66,10 +66,11 @@ const CHANGED = "Quantity by day";
 const OVERDUE_QUESTION = "Which of these is largest?";
 
 /**
- * The answer of `invoices-overdue-4.json`, from the rows that its queries read: the largest
+ * The answer of `invoices-overdue-6.json`, from the rows that its queries read: the largest
  * outstanding amount of the seeded overdue invoices.
  */
-const OVERDUE_ANSWER = "The largest overdue balance is SGD 7,400.00.";
+const OVERDUE_ANSWER =
+  "The largest is Harbor Foods’ invoice INV-2026-10-03, with SGD 7,400.00 overdue.";
 
 const onPhone = (testInfo: TestInfo) => testInfo.project.name === "phone";
 
@@ -384,7 +385,7 @@ test("on a document's review page, the agent answers about that document", async
         // The answer of `document-review-3.json`, which only a read of this document reaches.
         await expect(
           conversationOf(panel).getByText(
-            "This document needs input before it can be saved."
+            "This invoice needs input before it can be saved."
           )
         ).toBeVisible(FIRST_PAINT);
         await expectNoAxeViolations(page, "The answer on the review page");

@@ -152,7 +152,7 @@ test("the overdue invoices answer gives its total first, shows its records card,
         page,
         testInfo,
         "overdue-invoices",
-        "Three customers have five overdue invoices, totaling SGD 27,350.00."
+        "Five overdue invoices have SGD 27,350.00 unpaid."
       );
 
       const title = "Overdue invoices by customer";
@@ -207,7 +207,7 @@ test("the late payer answer shows the counts per customer without links and the 
         page,
         testInfo,
         "repeated-late-payers",
-        "3 customers repeatedly paid late."
+        "3 customers repeatedly pay late."
       );
 
       await expect(firstRows(page, 0)).toHaveCount(3, FIRST_PAINT);
@@ -249,7 +249,7 @@ test("the late payer answer shows the counts per customer without links and the 
 
       const settled = await openCard(
         page,
-        "Settled invoices behind the counts"
+        "Settled invoices behind the late-payment counts"
       );
 
       expect(
@@ -272,11 +272,11 @@ test("the monthly answer states both totals first and shows the chart and the in
         page,
         testInfo,
         "monthly-invoiced-and-collected",
-        "From May to October 2026, we invoiced SGD 236,400.00 and collected SGD 195,200.00."
+        "From May to October, you invoiced SGD 236,400.00 and collected SGD 195,200.00."
       );
 
       await expect(
-        card(page, "Monthly invoices and collections — May to October 2026")
+        card(page, "Monthly invoiced and collected (SGD)")
       ).toBeVisible(FIRST_PAINT);
       await expect(firstRows(page, 0)).toHaveCount(5);
       await capture(page, testInfo, "ask-monthly-invoiced-and-collected");

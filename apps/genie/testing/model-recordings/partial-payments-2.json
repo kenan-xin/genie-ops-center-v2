@@ -24,18 +24,27 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_kSL5wvaxeN5NeGNvUR8GCUa0",
+              "id": "call_jlD2HAsi1nbP1ZHLLdugo9Av",
               "type": "function",
               "function": {
                 "name": "list-datasets",
                 "arguments": "{}"
               }
             }
+          ],
+          "reasoning_details": [
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABq9YOyehtBvf-IJ4woUUWyu7MKEYTqTzmtpinbGL_iGdc5e8Mc-e26_wCU7PltA4xau--25UW6NbUfA3wYRWzBA8hoaOseCeZQqPTyELhPCi7WWxiZEcXoqV5z-DzyJRsVWOOeYgKWSbU5B564HKSYTBYHgXL83-LIe94UJiPnIDjYXVOWq3eZ5p93oB1HHgsJLtUWoWHukaJHT4w-WVaAWfd9yaRpOCuZuK7uEltJsgGBVkNEA7jG-SbPgZV2nqMzJ7CvIUui_sLNUcCYhcg2T6l-z1y7PeLUQKGBGnCtUEGDlkmgkpGdlanQmDd30tBAHIqw0bBJu8qHg75xW2_ENhnNO_DQq-wK0PSnjOWLJSzuwJWHFsgM_q3B95ucM42LQZvPR4NnfLSimoFKc7TQjrz7CUYx52eQtVe507r-RLEFC3vIwI3t8w9LpkHKX1MOR1wnPCnRQK3hy6DL1AAdCgvvZOUgWBp5Hp60YmAwoh4RVabuRxbVnpc1QedojmvOMylx5D9slLc4RhpVOxtST3dn6Qu0WFx--9K1YEa7-oT1T51QvYe-ASh_VrzaBH45DIjxuWehrINLVmW6BL0lgR_whAuA2lUDQNi-7jBmHzdhuCBeXNdaKL8LVlwoE44FuhnczuyepNqj-y7fVKU0k9nt0VCf08nP0IQKNxkkgV478SjWTJWObyHJJy6ZhUUI0aBTPJhJoDUC13abaDeggGPxjqtEeTm0oKfupNhtZyrEWHm0LaH1ib8oXVXZDSEdxUN5fv5N8OsflI-IH1i9ThpYngA0KF3_fpkSc4hBfNo5_yVfeYaTWPyrtGXH5mT_tjXL94GL5z0-ADlA4kkImAH08FrVenk0o5LfWAZS4ZT-9z83R_GTzA4We8HjXA3kRY6MUcO69RJUPB5LV26c9Di_nFVyrAIkIgW76cxq_08cC0M76Mjl8fVnvdEb02PJ_ANy7SZ9xL_bnySFHQ9XnPA_dWOyFHjdCZcKyA7GhKIuPtU-2YtCd16T14xeGPufP5yVslap1OwsO50hIof24hI5pAprkJQcBq-EZxyJ85dgtNvUsOgHDsu24QaQXXCunDVAO5QT4mmtO81yUjsUAkWA6SIyT1vSwe2TzhSQvrd-mnMxHUZdSKtA3CvlToGS97sH1brO0KZW0EzwZqw4tRBk30WXK26S9NAT6RfGsfb_rsAEX3gaMgvAaue09veayttsmeCRTmSaDFgNTF-dfyd1CbXVlpPdRsnFDSfRuzBPaHyN1aLSMjcYfp-mjRKsuRDOeU_bPYcGNmmtMcdp3XHVMHOY9tNNfL2Bzuvi6lhpDR0lm8N4SQV783ybJAaDBpm5QL8Pwc_5RjDAmDCrC-ckmWUfinUtKmShhFj8kxxd3RBBboPMpZ5fWelXzAVsOCB6zGOf1Svmd5HphTaoTwssFpZMT6tRf4prpapAppOSSyO_T5_qdFIkZqhDfC3JZdhMSC5CqttSmER01nUlKMq4aRQZdCMGE1R05ZVImMScWKXToNEjsTOhnaulcoJ5do9d6x-Jv2w6iiD-pjLyZytRcruepwIWYpUc2Yah8PC1DnH3qpe5gy1cvQiVPopAgMsWzcSLQ_fz-PGNe644yQAjDXu0xkoEakzN_MaAWJ3WG2w4sKjUj8PZvFERv4YLR4KKLI-IE8t4TNDUe7mA34BRZCHL18to_JO2NygGECfnMyJd6VLecjdIRUk7Q5oI098mKpPG7xgu8lK-JB3bjEomAzg2KN13ZrFCk3-lAr4QJQidZrtG1oTOE2KgWLt_R6QC7S4I3act8EK5oYjsq-vdQukjh1938M0xco1FBEYeAPGQtTUGXK1KaMHjEeBorL3dRT8Up0uUaypH5TCluonHZOneF9PcO-obd7XNNKB1P9w=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_0057eb1104b5c11a016af583b1e4c487d19b4e4ccdf092b7e7",
+              "format": "openai-responses-v1",
+              "index": 0
+            }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "call_kSL5wvaxeN5NeGNvUR8GCUa0",
+          "tool_call_id": "call_jlD2HAsi1nbP1ZHLLdugo9Av",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"invoiceId\",\"currencyField\":\"currency\"},{\"name\":\"invoices.customers\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"}},\"timeField\":\"firstInvoiceDate\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue, no-due-date or open.\"}},\"timeField\":\"invoiceDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"]},{\"name\":\"invoices.payments\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\"}]}",
           "name": "list-datasets"
         }
@@ -2263,9 +2272,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2278,9 +2287,9 @@
               "reasoning_details": [
                 {
                   "type": "reasoning.encrypted",
-                  "data": "gAAAAABq8yk1B5hSJTFnSJ0hWBAeC9q-osF7sTstMoEI1hGvfkOWGanwlPbmiV2g33PUGwZnNLUKyUNxVUBreCAkSMsLOTO-3fQbyC6iRlizvLLca_8KxeHUeYRKYMq5vFD4YpSuO3b2o1QYIpLyk8GS2pSVYloJ4jNDNLUyent5qUjp9f37JevTKgcQ4uzaWmnYIMj9NKcpSkg8KB242W8xpZxrU1soiSacdqZ8vsRzYxm3AuqRHogrCFmXD5w_SQiB-GHYFsq5VE4lcDpBVr5jYA2c64AS4_fJukAgHk1Cnq8gCX2tKb6tq30zDIYgtcQnNWJsz76Wu66XybJHoo9RCbGLMmBVlbFeh3zCzh0c36bEMrzRqfM5f4Il9LR8O_SLpFBgt_Kt6Blw66B9r2A5eDbqfpokGadaLR1rSFAVvNoVrbaoPdJkNJyt055jnwMvN_90p0S-dPIUeOlXFA8hNtHHD1XxideDQqF7Avi5Aa94JjDKqK_61VjMlt8DXhAcqvvKDp2Dsy_k5N1zkooPnPUGEaNk7flhnOmEX9Ltery2sZhVqB0pV-zDcmQLRHq9jRAQ1norgCQ3u5OrGjlRAQYV2X_Rs5JEXsfjkrluTK-zb7DFcxDObpZXGqkPZ2S8YK3YAlSq4veqxs001LqZdc9t_UaTwAPoh_GYHCw7aQV89wwr4YYPOuIQC95M2IQ5qdh-V6D68_ctuR94XpuPlepM_F7_ENedISdGjsH8NpxFJmtAytRR1ms3VoNQ5FUo4ym-YWWzuqSh-Y77K6L7Ty38fFeN4gj8dUxxZQApYAMVLVaft3zUqGh1tfWyR-BtaWQdhrvlrBa5apEgAjFNhJDnsMhh-0xhpoM3GqQFOXCJ_Dp7rjK_TvsgEwsO_Dp6gPu7xzU1iPyt6C-yrZYh8YCaDV8VRrwpZSFj_CF5hki_eyMtDj0PfWxMPwFv0PEp2P8_cV6gQc-1dW0HVmJYINOhVPweBZOWmJr83dQNAZW9EbIWEs7pTcjY2xgYPxvm7azxwy4H7M42zHVTdX8gveq2AosXhviseLPKDl9nCx1SDVGw8QHxEl7e16yqvgNMidzMCdcBR4IGECnlgMkCrIOWAMo-USdCXqYuFnpVG3CI0aLN1Z2gw7ylteUAYEmRNjKhkVJMXWdvhYSFrjnQmdHRpZdFVHZrGToy6XE7HCohRMkuIPohp7L4HzEyx70moMGMaDL47peet0R_yHRU-vt-Rwoc8yTvhEwcFgRhqZhyQN_KG338bu5pF0OLhqNum3eU9W0c26c5kYNxideFuBzILnTAiUGvT8xxFYo7gTyH2X9iEp6FgOs_ueQSTTuVUO1DO1n5dPKD1FFGeiCB_jyACNeY5BjSpB8LCRbKxNnUceU-vJ5G1XyJ9gwTkLlcXLpM9v3f-rMq3sTkOYqPlHLM6RaSCbJQfT8s7MuRAZlzYF8pT_yBDu_8scSd5_J-q5maAdyY6vJJ0D14Htw7Mfl-tWABr-SLDXcEQ6omh7KTA5nqbwM1RcFwhqdSKaxqvy-pMjL3kXa1XfwtQ7pllXD7SYA81q5LBgiuQPhE61pucTnN6Unkr3Bv9MuktcCXg2TEdJUM00Qg-1tbZqHBJk1fJfgaPQd8tfdEZ0_XOMcnf7jyPwfG838qkxhx1PvbQ86oE5038DLjUOCLA0ynYGz7PNVsycWIMmAnaoGG5s5U3HslD5XdDjdKej79VJ8rDG6LgaHG79MoOYK-d-im_QYus5pH1FmNb9oSLyDS2JubseJssDO7J_imLEn8_EQFOs18BG0sHVqD0AdeHPx4sfh4eaog0r9hPto0YfXPMapAdRJwh4s-yTcgFywdfsF3y-9vUUK-50_P5ZM-0RKtXijYOpMHlmkQbf0u88SpCsSvUwcqXsmIAtOj7aM0CHELMQyw6ro3N1dJK-iN3iX1lJ3m4a2ATwuNUXy208RLwb7kTuosfjOJnPSqE1PvK-es6466ag-2USby0TQ6bxgisJOqThSePGVSQlq_r6G8NXLLEKvonoOxFmwY-gOXCISrz45iGo90-Xb7OjY7ayQIQuvn9S2uScR7nGlwcAG8xT6sYP4DP5fYFAJHGnDaPfg4EHPPtka-s3XbfWWaBXneFoWtLnOnFA==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+                  "data": "gAAAAABq9YO2_mDCqOz7wIkFeC2-f7DaNCTKqPiThjom-uPdsuz4HlA3-z-0LVTyQqj0wmnOs9ESXYF3Pel9vETKe_cbAkjkURoo5XKf7EwdJWf3KmXIhOKnmkkxkk6YALMmniFQB9mtW73jQdc7ZbALZ5mzvryBbgczY1dDpVlfR6sV66NAlRQ31-NwyhQ5S3TnHo_gsacDgTzdezA4gxFIkBuzgB3TX3-FMOha-Xg6MEGbZStHQiOZC4yuE_MoOCK2TShWa3-EHny3fuxOG_vEkToiDdYXu2fZJUirvBMkZC-8-XwrNEvX0y4JSJS-zVqN2rkZbsCmsQ4tqDPgBGnQmSsTGE6wGcXffzv5GRWQtIt6YThz-rtexyf5mh6pSSTPznGx9NKUeX1AjusdMxRhRlu7MASH1kPuDmw-JYwkpHrQuPYBHGLcV1s0YQ7UU1NCmIJLvRHfEPPd1-sjl683VlcYYlWFTDgN5FTf9ZYBdZ1P0t4PSwQedQYvbiysxoXbIcJgR1fZK-gkbC4lWldBw_MaXGpeHABE_KL11YvIDGKqeOD_Zrk4YiHe4bUfCM-Qfo1F88cgar_DKgCo6LRrE7OaGW3iE44BAOeH4_95IiW-oQEbwDz-uZcSCG2ql5PMufPRYPSV5f8v6yDxM6w20EEsPUlWslHSSfKb7ovSSJZ9le4OFOc4NEOz6PdHpmQyjJVAjgk94wD8BGm8e7iYXrZVQR7TpvGpzZ-D9BdM8WBozVRBpDjojeyAGNIfPW42pwoK_P-WsNiDQ-ifmVuqO5Lv5g1tWOcZ3TISu051UnCO5spqCaf-3DIHIxnfqmfzz9cT89SOiuc-izAJyZB0by94vetV90hP--SA5q4jruJbH7TpZethjqi9xV8KPV-xftHcbC6txj03ey68Cf_NGXq8TYqRG3qGN41xd_jKGDhzGNIPmqHcxlNHtgkf-nXFA-TBxmvNorUBWJ7p49zavXIYWZnDORHMtvOCq7eWEpCfHKfSFJ5o3g96Ghg9POvRXA6qZkpZPESgm7A11lVX_z3BamFbIqww6_6O7lkPYd9lWKvVrt9eposJVL1zKiu1pubqmQwAIXPG4xf79HGr9xVn3yqVxydt5nA8sPnh9W6ORb_LfyAsvyP4jI91c5Gb-ctJLo3sC-5SoipZyFo6zvkTnpMREEBG6A2V1TmPkcT7Fa63jZ4hvJzi_3nEgYjRLd_kNpv_z15RmzRwiSZyTHwQKH0RYkLldmQQHW-8Wy9v5Oj5NA9srghTSgWK41kFpn0fHMzw0834g6IxdO07sOrGuLGjkm1zj5riVRhbOztf3UZF-xMnXn693Qq-v_VQo-cva4dn_AaplyeB74VN8afpAY-_k7Uh15ikk3q8m9Hos0KI0wUdsFwznPGVTd0x_CqVscR-SI3ZyQ9S85kKid7JCdfyLmLT8u9g_Vl0gg7L8BShVHQ50BACriyVC-IZALJ3Ux-8fF-FMWOlyVW9jTHS_IiC-k5cU10a1befGY_R_cJmH-QC8BOI673CytgGVKY6V5N2WiTu5PVW4gJztIC3SebmYbaQYhIENtM4VQYvdvIbpMEalPf2LkVIS8xk67uK1W91ErOsR1kDZw046qrMjOnXR5ZGeufFRb6kUU0u2xub5eGQQxDATWe6TLpCTYjEZtZpiBjO1BWoW62x90ByqtkDr0ZKajauhRmlCKKpMDbmlL9wwkEmSfQ6eXXzysoPa_xQgyeeE4P5Lt85viflnCKFFXiwH_E5yY_m7WPpXly84A-3e0pYTV68Wf2H3K4uOCmw45IjZQuCNYmVWV5tkRlymbHPy2MB00xTrTcnO2IuMQgn6Sp0GpPwI47aTxa6otVuPdurMJOv34IUtQ-rk1-n5D8hsi5PRCmGl1P3t4I17pLwzmVPRj1VUAzMSCwFQTFQodfA3Uzrz_QbU6rSaAfgEb7ymXd8jmTjL-bq4VreEwFvm2i6-fo_BBockZ-Kiao5uHo6lx7LnaeUy2qQoTqJpCtYzA5djWt9kgTblC1XN74=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
                   "format": "openai-responses-v1",
-                  "id": "rs_09ea5ff8dde1acb0016af32932b74087d19ac4360537bbf024",
+                  "id": "rs_0057eb1104b5c11a016af583b4260887d1acf0affe7e0bd339",
                   "index": 0
                 }
               ]
@@ -2291,9 +2300,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2305,7 +2314,7 @@
               "tool_calls": [
                 {
                   "index": 0,
-                  "id": "call_uTM8YL7WaQ97S2ygrg3c4Zni",
+                  "id": "call_LzPmj7eQtnnOy9sVeD74gffd",
                   "type": "function",
                   "function": {
                     "name": "query-dataset",
@@ -2320,9 +2329,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2346,9 +2355,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2361,7 +2370,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"totalCents\",\"allocatedCents\",\"currency\"],\"filters\":[{\"field\":\"allocatedCents\",\"op\":\"gt\",\"value\":0},{\"field\":\"outstandingCents\",\"op\":\"gt\",\"value\":0}],\"limit\":1000}}"
+                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"allocatedCents\",\"totalCents\",\"currency\"],\"filters\":[{\"field\":\"allocatedCents\",\"op\":\"gt\",\"value\":0},{\"field\":\"outstandingCents\",\"op\":\"gt\",\"value\":0}]}}"
                   }
                 }
               ]
@@ -2372,9 +2381,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2386,7 +2395,7 @@
               "tool_calls": [
                 {
                   "index": 1,
-                  "id": "call_3sXuGmMGsAP5aUmNzEVbZPgo",
+                  "id": "call_uYd2vkghUVShLwY5Xf5t4efW",
                   "type": "function",
                   "function": {
                     "name": "query-dataset",
@@ -2401,9 +2410,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2427,9 +2436,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2442,7 +2451,7 @@
                 {
                   "index": 1,
                   "function": {
-                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"allocatedCents\",\"op\":\"gt\",\"value\":0},{\"field\":\"outstandingCents\",\"op\":\"gt\",\"value\":0}],\"groupBy\":[{\"field\":\"currency\"}],\"aggregates\":[{\"fn\":\"count\",\"as\":\"count\"},{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"outstanding\"},{\"fn\":\"sum\",\"field\":\"allocatedCents\",\"as\":\"allocated\"}]}}"
+                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"allocatedCents\",\"op\":\"gt\",\"value\":0},{\"field\":\"outstandingCents\",\"op\":\"gt\",\"value\":0}],\"groupBy\":[{\"field\":\"currency\"}],\"aggregates\":[{\"fn\":\"count\",\"as\":\"invoiceCount\"},{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"outstanding\"}]}}"
                   }
                 }
               ]
@@ -2453,9 +2462,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2472,9 +2481,9 @@
         ]
       },
       {
-        "id": "gen-1794320688-eJ8UV0nL3CwRId07mUHr",
+        "id": "gen-1794474930-CidXufnUb0LLQsNtoyxD",
         "object": "chat.completion.chunk",
-        "created": 1794320688,
+        "created": 1794474930,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -2490,24 +2499,24 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 7481,
-          "completion_tokens": 237,
-          "total_tokens": 7718,
-          "cost": 0.0033871,
+          "prompt_tokens": 7724,
+          "completion_tokens": 212,
+          "total_tokens": 7936,
+          "cost": 0.00328625,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 5957,
-            "cache_write_tokens": 1521,
+            "cached_tokens": 6190,
+            "cache_write_tokens": 1531,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.0033871,
-            "upstream_inference_prompt_cost": 0.0022021,
-            "upstream_inference_completions_cost": 0.001185
+            "upstream_inference_cost": 0.00328625,
+            "upstream_inference_prompt_cost": 0.00222625,
+            "upstream_inference_completions_cost": 0.00106
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 24,
+            "reasoning_tokens": 17,
             "image_tokens": 0,
             "audio_tokens": 0
           }

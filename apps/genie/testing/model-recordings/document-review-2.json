@@ -24,18 +24,34 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_WSjVcir6zcCDEjxTOGLH88YY",
+              "id": "call_IDysyl7F75RQGlV7xRV2bIhD",
               "type": "function",
               "function": {
                 "name": "list-datasets",
                 "arguments": "{}"
               }
             }
+          ],
+          "reasoning": "**Figuring out data calls**\n\nI'm thinking I might need to call the list datasets first and read the document in parallel. It makes sense, as when I need data from records, calling the list datasets first would be the right approach. It's just a matter of ensuring I sequence this correctly, so I get everything needed to provide a thorough answer. I'll go ahead with that plan now!",
+          "reasoning_details": [
+            {
+              "type": "reasoning.summary",
+              "summary": "**Figuring out data calls**\n\nI'm thinking I might need to call the list datasets first and read the document in parallel. It makes sense, as when I need data from records, calling the list datasets first would be the right approach. It's just a matter of ensuring I sequence this correctly, so I get everything needed to provide a thorough answer. I'll go ahead with that plan now!",
+              "format": "openai-responses-v1",
+              "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABq9YY1-fTSl9C0ikxoH_fa_5F4FGI-x-vC-Ac_twoWVjhkLPfZSgQxce13Y78hOrmdtM7eYUOfyNYkjZL3RJx6rFrdvi609vdLNTTIAXsTyd9MTzH9SSeIQR2JhhWjE7lsJtCU-3KprkPSfsQ6NdZUn3-FwZbjvSJgPX_hjAD_y367aua48JrUEwMkkDzjGYgOQqV-6aS681d-RUFPjLGDun31RMrKwHrPOsy2_09j4e00fdpcKAjY_ZyD6m5GtBKUDRoGR84EtWWLYfq7vvGHPFiz0PD6vH3FVqEKu31Y5x0ZVFsubjfzao50gNxDRVmv52mnTkhA8wB64JOFCwWvybFXreutBLyQnrZP1jlH82qTCuqIwoYuD_nrclwUruJkxpcRnCBsTwxhpunxtl6aZu7KDW7hp5RIa02bVT1bFgv5M34mwimVPVQT2LCecJ8mtUi-qLUmCVTtqTg1PDRLA4F33Y05G7DXg-wjTzvNAvG_RScGyZHQAVGgdHOWWseNSZojlRHYxj5leWy8yC22unwGLNoOkrQch4ahCVY8A72yCBESWiHJf08PTiYkolueNXYNeQEPtbRHWdD6OAqR9vQVP5UvGQbVh_8LeurqbdkzmX4340lwU_7sGpGfO14AKwl834ZGQ0VLD4VLvreUkwROXdaVrGgLNfTAyRjWrVrsTRsSUGZYUNEceZxzDekXdOoc3KFEQAt_a6agoRpR4G4yoaoz8QdT8K4oTxNJ9EqOMnqg8fKT_bd2uGRo-PfsyXtRdr8VXt2TUPKzveLd1Cp0gxp8E1M5N20phygpZk20dvFG6M0J9iDQeEEVNmvOmexNlERKpQAu6g651zE1Ta37rbOQugqrLnvebOokro_1ZsHIV6okQUoo6qNXa_8YtAn6GtirZswijnLvglM5qJ5RMU74_xQBnPEBDrQ5TulTTylqRkdNQblSTL-BKvNx14dZ6NdakWZYucWsrAGWrOGBbrMxaTh5p59BcimURlOe3hktRwW-CRof5ZGC8VlJWe-12avwN1v1IZ5_c6jNEdnwSCEDJLl9WfMzZ1_svFJTVsYyMUgW6_kIEB-OrR1j6rNo15hqKrUuLMCwAbJF5Wwa6_hcB-X_ReB6-hGrtGkQFi600h3EevdDHKsCYJ-Vyg5Pmw4sF0KNYNnCK21m9knhbqqT2vV6t3atArGKNTF_xaXZfin4-4NPu3g1hFuWOym1upL2xk_gEyXfxek7w5wG_F2pwa1IHp0Km8sYVmdw9BhKvlJxAiULclCkt0iYhRlb0AcANH7dLFj9gTCVrAZHhpkM-vT3uKkihPPLlTR6eLNr7MHbhQQTo8_l8M9mZthdPDTeHAKwCEsqTzQqHD94k97stvVkTUO-M3OCjOOU1yOi44Zn1jJ_haITNiAfjVeWHAb4Ep2SMX2mdj-rHQLMR4WmUAsI0GTQ65EoVBvBjQtauynXMMl00Fo1jGvq8MHey8GiotZ_58pa7auS30279nL-YLmjmOZ4IxiaTjJ5V12EIjjImDCjFLM7lvXMnR0lly6b7MbOuCPRSOBwjQ8WuxsJalNWsucYPZnx9n6TSBNJnFmeRiZCxK3FshlnTmuerb2n4Anl3NIrAdbbDecl0owbHrHZHHTzDcz6VxLGRc-ryxFBuZVnDiC3mSmdeZSG9njh4R_k47UV-XvDXR58Ik78qt86L38STbrLPNT5iJ-6djFLILeHI3HNRQanyEL91MIvjzNvs0vfA9_vuAuj8kz3PDm9f0vYiEp6XHpdOtqisF1seoWQ8E_WnEvsQq0N79sXvVn1zJecvZU0Py8WULzyRB3IdBnDqdz0j5NzMXHRvPavDni4qt-xb38Y2QcjP5e1e8jJpWBiDPZyBl7OE2EDe-v7DBnw8apQLnEcPatZ2RomAeB3rYxQBgU7nvYBhdLIs9RQ5n3MN5Y0v29gPPUIUt5r38JHJmiEnEFFKfWH7POLv8zomSOscXqWY9CjsJIyvS3lTSo1aoAl_hBr4oGsh0ypuR72OfffYhvDId5EbnevpJwXFclb_6ZXNvOzBOgn1USLDKNCx19eUGVDZ_7LBOpkeuIwS6ezuawAnAUGdhPJR9wRm_PfrCJfZ8LlLd0IqTp68YNqj-s3Wt7cOf_dftX2zcv0dM6ElLVWQtmU-RHvQaCR7xCQjBx3i4C9ieJU-YGzULufq9jPhafIvA==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_08d616795739ffe6016af58632f6f487d18dbf095da44e33bd",
+              "format": "openai-responses-v1",
+              "index": 1
+            }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "call_WSjVcir6zcCDEjxTOGLH88YY",
+          "tool_call_id": "call_IDysyl7F75RQGlV7xRV2bIhD",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"invoiceId\",\"currencyField\":\"currency\"},{\"name\":\"invoices.customers\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"}},\"timeField\":\"firstInvoiceDate\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue, no-due-date or open.\"}},\"timeField\":\"invoiceDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"]},{\"name\":\"invoices.payments\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\"}]}",
           "name": "list-datasets"
         }
@@ -2263,9 +2279,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2277,7 +2293,7 @@
               "tool_calls": [
                 {
                   "index": 0,
-                  "id": "call_k3eajaCYNmVZj785Ux2ZKe6Z",
+                  "id": "call_0peUUt1cE3KQPswyTnpjuM56",
                   "type": "function",
                   "function": {
                     "name": "invoices-read-document",
@@ -2292,9 +2308,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2318,9 +2334,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2344,9 +2360,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2370,9 +2386,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2396,9 +2412,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2422,9 +2438,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2448,9 +2464,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2474,9 +2490,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2500,9 +2516,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2526,9 +2542,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2552,9 +2568,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2578,9 +2594,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2604,9 +2620,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2630,9 +2646,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2656,9 +2672,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2682,9 +2698,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2708,9 +2724,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2734,9 +2750,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2760,9 +2776,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2786,9 +2802,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2812,9 +2828,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2838,9 +2854,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2864,9 +2880,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2890,9 +2906,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2916,9 +2932,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2942,9 +2958,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2968,9 +2984,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2994,9 +3010,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3020,9 +3036,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3046,9 +3062,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3072,9 +3088,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3098,9 +3114,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3124,9 +3140,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3150,9 +3166,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3176,9 +3192,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3202,9 +3218,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3228,9 +3244,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3254,9 +3270,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3280,9 +3296,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3306,9 +3322,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3332,9 +3348,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -3350,9 +3366,9 @@
         ]
       },
       {
-        "id": "gen-1794321684-UCkbt7VVb9i3HFBdOJqo",
+        "id": "gen-1794475574-f4bwLgebKAqOSNxTVJwT",
         "object": "chat.completion.chunk",
-        "created": 1794321684,
+        "created": 1794475574,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -3368,20 +3384,20 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 7547,
+          "prompt_tokens": 7815,
           "completion_tokens": 54,
-          "total_tokens": 7601,
-          "cost": 0.0024754,
+          "total_tokens": 7869,
+          "cost": 0.0025308,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 6023,
-            "cache_write_tokens": 1521,
+            "cached_tokens": 6256,
+            "cache_write_tokens": 1556,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.0024754,
-            "upstream_inference_prompt_cost": 0.0022054,
+            "upstream_inference_cost": 0.0025308,
+            "upstream_inference_prompt_cost": 0.0022608,
             "upstream_inference_completions_cost": 0.00027
           },
           "completion_tokens_details": {

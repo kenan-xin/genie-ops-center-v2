@@ -19,7 +19,8 @@ export const SLIDES_CHANGE_FROZEN_ON = "2026-10-27";
 export const SLIDES_CHANGE_OLD_TITLE =
   "Collections grew every month from July to October.";
 
-export const SLIDES_CHANGE_NEW_TITLE = "Collections grew monthly.";
+export const SLIDES_CHANGE_NEW_TITLE =
+  "Collections rose monthly from July to October.";
 
 /**
  * The figure of slide `s2`: `COLLECTIONS_PANEL` with the data that `checkChart` answers for it on
@@ -69,7 +70,7 @@ export const SLIDES_CHANGE_CONTENT = {
 /**
  * The typed-number decks of `czjw.166`: the demo pack's payments add up to SGD 195,200.00 by the
  * reporting date and to SGD 177,050.00 by 30 Sep 2026. The recorded requests hold these titles
- * and messages, so a change here re-records `synthetic-deck-figure-*.json`.
+ * and messages, so a change here re-records `deck-figure-*.json`.
  */
 export const SLIDES_TYPED_CONTENT = {
   slides: [
@@ -174,11 +175,11 @@ export const SLIDES_NOTES_MESSAGE =
 
 export const SLIDES_NOTES_TEXT = "Reminder emails started in September.";
 
-/** A request outside the deck tools, answered by `slides-out-of-tools-2` (R-46a). */
+/** A request outside the deck tools, answered by `slides-out-of-tools-1` (R-46a). */
 export const SLIDES_OUT_OF_TOOLS_MESSAGE = "Add a video to the title slide.";
 
 export const SLIDES_OUT_OF_TOOLS_ANSWER =
-  "I can’t add a video, but I can add an image to the title slide instead.";
+  "I can add an image to the title slide, but I can’t add a video; would you like to use an image instead?";
 
 /**
  * The message of the refused-and-fixed change. It differs from `SLIDES_CHANGE_MESSAGE`, so its

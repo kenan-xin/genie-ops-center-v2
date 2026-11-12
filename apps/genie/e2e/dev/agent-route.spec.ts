@@ -63,6 +63,6 @@ test("a signed-in person's message streams the recorded answer @no-screen", asyn
     .join("");
 
   expect(text).toContain(
-    "I can answer questions about the placeholder records you can read."
+    "I can answer questions about records you have access to."
   );
 });

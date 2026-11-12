@@ -50,7 +50,7 @@ export const ANALYTICS_HANDOFF_TITLE = "Receivables watch";
 
 /** The three panels that `dashboard-build-3` to `-5` add, one per call, in order. */
 export const HANDOFF_PANEL_TITLES = [
-  "Unallocated payments above zero",
+  "Unallocated payments",
   "Monthly collections by currency",
   "Overdue balances by customer and currency",
 ] as const;
@@ -60,9 +60,8 @@ export const QUESTION_DASHBOARD_NAME = "Collections";
 
 export const ANALYTICS_QUESTION_MESSAGE = "Show me the collections by month.";
 
-/** The question that `synthetic-dashboard-question-1` offers, and its two choices. */
-export const ANALYTICS_QUESTION =
-  "Add the collections by month to Collections, or just show it here?";
+/** The question that `dashboard-question-1` offers, and its two choices. */
+export const ANALYTICS_QUESTION = "Add collections by month to this dashboard?";
 
 /** The chart that both answers make, as a panel (Add) or as an artifact (Just show it here). */
 export const ANALYTICS_CHART_TITLE = "Collections by month (SGD)";
@@ -73,22 +72,22 @@ export const ANALYTICS_SHOW_ANSWER = "Just show it here";
 
 /**
  * A request outside the tools in Ask and on a dashboard, and the one-sentence answers of
- * `out-of-tools-ask-2` and `out-of-tools-dashboard-2` (R-46a, S7-44).
+ * `out-of-tools-ask-1` and `out-of-tools-dashboard-1` (R-46a, S7-44).
  */
 export const OUT_OF_TOOLS_ASK_MESSAGE = "Change the logo of this workspace.";
 
 export const OUT_OF_TOOLS_ASK_ANSWER =
-  "I can’t change the workspace logo, but I can help build a dashboard instead.";
+  "I can create charts and tables, but I can’t change the workspace logo.";
 
 export const OUT_OF_TOOLS_DASHBOARD_MESSAGE =
   "Make the panel titles bigger and blue.";
 
 export const OUT_OF_TOOLS_DASHBOARD_ANSWER =
-  "I can rename panel titles, but I can’t change their size or colour; would you like to rename them instead?";
+  "I can change panel titles and panel sizes, but not title font size or color; I can resize the panels instead.";
 
 /**
- * The filter request of `dashboard-filters-1`, the filters the one `set-filters` step of `-3`
- * saves, and the answer of `-4` (S7-46, R-49). One company is a select; a text field takes either.
+ * The filter request of `dashboard-filters-1`, the filters the one `set-filters` step of `-2`
+ * saves, and the answer of `-3` (S7-46, R-49). One company is a select; a text field takes either.
  */
 export const ANALYTICS_FILTER_MESSAGE =
   "Show only Demo Company and the last 3 months.";
@@ -106,7 +105,7 @@ export const ANALYTICS_FILTERS = {
 } as const;
 
 export const ANALYTICS_FILTER_ANSWER =
-  "Collections watch is filtered to Demo Company and the last 3 months.";
+  "Collections watch now filters for Demo Company and the last three months.";
 
 /**
  * The view request of `dashboard-view-1`, the view that the `save-view` step of `-2` saves as `v1`
@@ -123,7 +122,7 @@ export const ANALYTICS_VIEW = {
 } as const;
 
 export const ANALYTICS_VIEW_ANSWER =
-  "Saved Month end as the default view for Collections watch.";
+  "Saved Month end as the default view with the current filters.";
 
 /** The collections figure of slide `s2` in `slides-change.ts`. */
 export const COLLECTIONS_PANEL = {

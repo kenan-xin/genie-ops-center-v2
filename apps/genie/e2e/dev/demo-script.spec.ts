@@ -485,10 +485,9 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           // The result first, with the total (R-44), from `overdue-invoices-*.json`.
           await expect(
-            page.getByText(
-              "Three customers have five overdue invoices, totaling SGD 27,350.00.",
-              { exact: true }
-            )
+            page.getByText("Five overdue invoices have SGD 27,350.00 unpaid.", {
+              exact: true,
+            })
           ).toBeVisible(FIRST_PAINT);
           // The ended answer moves Ask to the chat's own page, and that route change closes a panel
           // opened before it.

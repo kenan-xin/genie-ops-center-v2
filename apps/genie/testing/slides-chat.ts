@@ -20,14 +20,14 @@ export const SLIDES_CHAT_KEYS = [
 export const SLIDES_CHAT_MESSAGE =
   "Create five slides: monthly sales, collections, overdue customers, payment behaviour and collection priorities.";
 
-/** The deck that `slides-handoff-2.json` names and `slides-build-4` to `-8` fill. */
+/** The deck that `slides-handoff-2.json` names and `slides-build-3` to `-7` fill. */
 export const MONTHLY_DECK = {
-  title: "Sales and collections",
+  title: "Sales and collections review",
   slideTitles: [
     "Invoiced sales increased each month from May to October.",
-    "Collections fell in September after rising from May to August.",
+    "Collections peaked in August before falling in September and October.",
     "Harbor Foods has the largest overdue balance.",
-    "Harbor Foods, Orchid Retail and ABC Trading repeatedly paid late.",
-    "Prioritise Harbor Foods and Orchid Retail for collection.",
+    "Harbor Foods and Orchid Retail paid all eligible invoices late.",
+    "Prioritize Harbor Foods and Orchid Retail for collection.",
   ],
 } as const;

@@ -40,11 +40,10 @@ const errors: unknown[] = [];
 const hooks = { logError: (cause: unknown) => errors.push(cause) };
 
 const WHAT_CAN_YOU_DO = [
-  "root = Answer([result, detail], next)",
-  'result = Paragraph("I can answer questions about the placeholder records you can read.")',
-  'detail = Paragraph("I can count and summarize them, make tables and charts, export files, and find record pages. I cannot change records.")',
-  'next = ["How many records can I see?", "Show records by month"]',
-  "",
+  "root = Answer([intro, detail], next)",
+  'intro = Paragraph("I can answer questions about records you have access to.")',
+  'detail = Paragraph("I can also make charts, tables and downloadable files, or find a record’s page. I can’t change records.")',
+  'next = ["What records can I access?", "Can you make a chart?"]',
 ].join("\n");
 
 const RECORDS = "placeholder.records";
@@ -55,7 +54,7 @@ const S1_QUESTION = "How many placeholder records are there?";
 const S1_ANSWER = [
   "root = Answer([result], next)",
   'result = Paragraph("There are 3 placeholder records.")',
-  'next = ["Show the placeholder records", "When were these records written?"]',
+  'next = ["Show the placeholder records", "When were they recorded?"]',
 ].join("\n");
 
 /**
@@ -67,8 +66,8 @@ const S3_QUESTION =
 
 const S3_ANSWER = [
   "root = Answer([result], next)",
-  'result = Paragraph("I can’t determine the count because I don’t have access to those records.")',
-  'next = ["What records can I read?", "What data is available?"]',
+  'result = Paragraph("I can’t count the placeholder records because access was denied.")',
+  'next = ["What data can I access?", "Can you count other records?"]',
 ].join("\n");
 
 /** AC-8: a chart artifact, then a change that makes its version 2. */

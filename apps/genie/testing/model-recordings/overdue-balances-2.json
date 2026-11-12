@@ -24,7 +24,7 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_DdEBPN41naohyNVoOeAYdSdy",
+              "id": "call_jciX7IkRcEJqGkEPsK7OPFQ7",
               "type": "function",
               "function": {
                 "name": "list-datasets",
@@ -35,7 +35,7 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_DdEBPN41naohyNVoOeAYdSdy",
+          "tool_call_id": "call_jciX7IkRcEJqGkEPsK7OPFQ7",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"}},\"timeField\":\"paymentDate\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"currencyField\":\"currency\",\"recordKeyField\":\"invoiceId\"},{\"name\":\"invoices.customers\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"}},\"timeField\":\"firstInvoiceDate\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue, no-due-date or open.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"}},\"timeField\":\"invoiceDate\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"],\"recordKeyField\":\"id\"},{\"name\":\"invoices.payments\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"}},\"timeField\":\"paymentDate\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"currencyField\":\"currency\",\"recordKeyField\":\"id\"}]}",
           "name": "list-datasets"
         },
@@ -44,26 +44,26 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_6OUXqxCmW2a4vHpN20Fj1ErK",
+              "id": "call_Ool0AmVNYPMrLRQmhgC8PXNs",
               "type": "function",
               "function": {
                 "name": "query-dataset",
-                "arguments": "{\"dataset\":\"invoices.customers\",\"query\":{\"filters\":[{\"field\":\"paidLateCount\",\"op\":\"gt\",\"value\":0}],\"orderBy\":[{\"column\":\"paidLateCount\",\"direction\":\"desc\"}],\"select\":[\"id\",\"name\",\"paidLateCount\",\"settledWithDueDateCount\"]}}"
+                "arguments": "{\"dataset\":\"invoices.customers\",\"query\":{\"filters\":[{\"field\":\"paidLateCount\",\"op\":\"gt\",\"value\":0}],\"orderBy\":[{\"column\":\"name\",\"direction\":\"asc\"}],\"select\":[\"id\",\"name\",\"paidLateCount\",\"settledWithDueDateCount\"]}}"
               }
             }
           ],
-          "reasoning": "**Querying customer counts**\n\nI need to find a way to query customers, but I should ensure that the total counts I retrieve might be around or less than 1000. It seems important to set that limit, as it will help in managing data more effectively. If I let it go beyond that, I might end up with overwhelming results. I’ll keep this in mind as I work on my query!",
+          "reasoning": "**Reviewing customer query**\n\nI need to query customer rows, but it seems there are limitations with comparison filters. I'll fetch up to 1000 rows for assessment. It's important to consider that the absence of computed comparison filters might limit my ability to refine the data effectively. I wonder what insights I can still gain from this initial set of rows and how I can best present them for evaluation. I'll have to think through my options!",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Querying customer counts**\n\nI need to find a way to query customers, but I should ensure that the total counts I retrieve might be around or less than 1000. It seems important to set that limit, as it will help in managing data more effectively. If I let it go beyond that, I might end up with overwhelming results. I’ll keep this in mind as I work on my query!",
+              "summary": "**Reviewing customer query**\n\nI need to query customer rows, but it seems there are limitations with comparison filters. I'll fetch up to 1000 rows for assessment. It's important to consider that the absence of computed comparison filters might limit my ability to refine the data effectively. I wonder what insights I can still gain from this initial set of rows and how I can best present them for evaluation. I'll have to think through my options!",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq8yior10POJ1ZErtt7Na0q8J0rb6B9IXeV8uFZnGEbSz_MUxr50PC52Qfwrepqnqaed8kKa0EPad90e08CHF82Gakh9ctSdvI8AkLogD8bU5CcAUFL6wy16VIPbYsXeREMy2cHhm_bVzmvGhApk-RgELMlBhCn_gD0xGPJDHAGB2IAT_yZtRjS_eNUywcy0o_Lnv7oFbk64x3RGRw1lXkt_XFVFVf8mAl5xTNpFliHHeB6lJVgtVDRMAJU6LIayk9xnMU_oRGz-CEEZrYed00uPMPWqXM9B5A2QGZyrLcTezJHL3jbu7uU8_VLizajH5TQ4TPNCw1vsqZjyfzuPgI8l2KrxbD1bX7ej_1wcEGd0y_zua_eHk-t41lkS-48wEF27zTdykhyw-nFm1vcGdDPfmOiT0cep4CUpDL3DOJQ_ov0aanv8tKUMvtCPtKkguKKrQ9a44IMYV8v1bP17FVf1_21sKDxkJOE7XE64BpZOrnqTGAH4xbm1PfkDxN6Iel935TTn-kjMd8y2K3U4-Q5o7-QD4zZq8Rn_g4ReD_Sb1NSqofSpDb9ONk4H_sGX_7JqNtX-xj69J8A9_Clmlr7YXiwK_pmKRtxL_iEKDnK9pJq6LiSe68K_YBFm7uHmcYJsV5_7xM2QmnigMiw7mDArmVzGrHrhLkla8g4E6nlD47BZxkhKtcDjMnOWCHAdc26FFUJbI7z_zOPOSsnI-7NWHCuWCHX7ucOtt_rmzjTzQnPZsoPlNXuq-3jf0VE7iDMGs7uoBfh2peybFHW82zyoeOj8rEZxJSK7gXUkC8JUAMGg1986rNoYSLGZ_L_re8jD_R8bfIZChQKes0fT2AIY8YjfJsgKBQ7Oj7499nMQSC7xK0JtgUsTi9x3nnDGLtPxL9e3C2ZAaBCTByWLK8_NbP_vMoybS4ksCkXv_Gzsh4Wl2Enp5R-PW7IJWLdDmAAjOnOva0ENNwIFmdrCTriW39J6y6v_CveUeiUTs4d6wODBI2vuzWTS5aK76XcorYI_gA6DB0Kx9LrsAApWh1T7aX2dIjfU0Pbo9Tvq1yOpnqO5zv8ECPPwBpHMFArethTPr18Sgv0KNpRfFmiD_niTLWSr2RD52Duvn44m-4Ok1RrJdU1JIFOOlwOArNLgGrmB9p8K0he5p_0iIghj0A2D7PRCiS-c_JgdJV99bobg1uVf_jNYXpvmFGwHqXf6DN8adtpGeZ96rtqscB3JtHjfeHM6A1McrwOa-MwUtAXfC06ragyOZHXz9X3yVb2uWgkO5gd_3Epb3OTV4tgDHJiWh7bpMtV0kH_lSzgExBEdP_WViSlxUMC-kxVWOTvWLtJrmM5DxZYttChB7TVKKJ-6HPMti62Zgc7S6bqDHFAO0P3MZ20bgN6q3vWBrPapi9kU-kIGYYhQgT5uMtCnIxrykzf24Ji0ioTluM4AhIsekwlqJjgZ-aHg4U95FGJAirRN8CoUaxjALusJ0ywJMCYzYs48uXlcEGFGHXs7mEPB3r0pHpS3GUTF5arWUvBRU5yiSGlQ5-v3LVNYSy33NgZ8atEe4v_geZLh3eE-KwJ5hDUufCSuIzSlkdTzETQF_jEmRmCvdu5z7L68fZPZExbMbo49-cfCilIzPf2ADgtRQrxpIW6XEhVNd2CW0JbX20WqNqtqUH3K6sotwP7xt7C1fXxuMHWm5nYtqBat59DelX67pDs3S6_bk-Ts8zgF2wQH-hCyA0ugBN-sehwwJxlYacoMri7O8y39e69tN7a6un8jl5N0uPNsXam4FBIKbtN_0dC8w611K-dDNhlULBi4Nz4-Rf6btyIi5C3V1KtUA5zMMNZ5JHLxsnOvBIQYx3kVt0rPgfvcr5qal5a0zlWwo1i__Hc57BCYgWevUco-hsXGQOyJPonBwwg1UcRYB7Ryz3MBWI6yoWevmYwd18gBAQuavck7tKSoYltkTM5SNcMT4=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_07941d8075f32b88016af328a5b1bc87d1b61b194e16ff2634",
+              "data": "gAAAAABq9YM-727ySDqXFY-7TWQelJ4n0M8sfvm0z_Bm3mBHzlrRXJVob_lBMILEcIdzQB8p29_TMW6kXtdF3yK4XesmFb_2v0CDN_6uQTRkIueWlHjsPhWGMklz8QVBynKYxZ13ma2r2ZmuHqVA-tY5N6yro5jIgdTk8cnf0o82W7HFayu-jx_OxYAVapOBMn6C4b5bnz0kbAxiOLPtq1SxiK2hMLkiIEv1Ybn5cJsokHRR9NZzu_DtXEFt97t6HQCIGqJ2mj0t6Afj6_hVVXrF9407OheYWSwcaS95IHghG_tVlfvQVGBOLANDpwGCcMGmRnn3dCxHazEogy-Pmh7_PZ5zxkIwHYAGL-sEiXyei0FpViyi-65f3AjNKATi6z3D0Pkd_MeDUnIcZZACMo8uDgNVPMwXtGXzXOaww8eo4thtZKbfAjY3FqDwNoBDoqJc321VTkO2HIpHy_QiIopmZou-VdNDxfwIsYAOof487eArhk4iJ6Hy3zFjOjd-N5QpUyBu1IkPZPUKLASG8rMfnvPZQYGAT18aaUlBKWImUNy4pGJVvW81KtUdxJOscuuYSWclxU4LF3AVDnrvnuFtRambyoy9nx5MPM8s_T3_JnwkImmOjRQ5IBhmV1U0AEMNEa2JJ2f354TagRbqytZkKpZI6OXSx-gjH-3u8-qU1C_LobkSx8lIXzPWW_RtIYmsIEU_Cq2GzmsLQVll38DMGCVvoPs5Sib3zBxwgDzhLHR7_jKDC9SzJ46_hPk93kyaP9V7eEzfNO2R1W5734m1zE9lfWsqbwfQ-Yg47zH6NIgUTm5uSMaX5KI25g03OEnT1ocdhOqm2gCkeePRIdfVaYK1ue27Z4h-IIspicj_2Hrr1VOtZmFBKNnnbrp3y262d15vT47zgbJN3iaS2HUnfh5WOEIPK-o7ff8r4xVGYh-Y30hMzVzh4IV3Fv6LMzE3SW2nsMN6SoSAn9OV6AUZvnwkv0V23aw9bMQhHD9bLrGNLV410I-pPd5ezkZ9qnTRU6La5_0W57TfP5261BG6qssVB5eL8zeW0so1oobfIe6fwGj5dDok6sos-sSrF-yJGfx6hB8jCLacztPwDrX0JhiQrKrFBERje9UXUWNp5guag2KpQHvQCJkRL7RBSRoxMq4yFREVxzhtjcctOWRRqwBJB5evz4kzosGu9OcKuGg7s4QpZ3BF_DcfEloEeuu_z01RA6EGkUXnOFpjJW_P52IR3d00suHkU-uvs-9bn7gMO5NewefM3sPSV4_H29D_bvg_m6R1TkbLBvm67LnM2w5-B0Kzo6LyJsGExBXK4Qz93Fb6oErXDpsvvpRaHerUOYwAbibkJjFwtQYc94jjshNs8r641IRS6RxsgnLuKSruUR0e947nDirxZsqKgNOGAUmdfXTqCeNnhonkTFEtyjUuexd41BDfj5YQS8LZfGjIgPXnluyk3Fx6PSrQXAh0JahmuDJupsjH1Ir2q0Qgs7Gjp3QvWRyT7IkkS5s-nPhuO-SN-F7wzGz0TT9D-hkByttCSznF3YIpo_myrXOVFHi-YmJRRJuSlPDAhW_LcUyfqr0kPd4-yGpFLo3vjXQaSHa9p0D2DxD_Jm2QmONMmt2gvY2XgZl-W-uNyDZOdYEx20mKwJ4bu-aLXW6UOx0flXXDlrlHqCCdTuseU7Uag9JfYASGEfPzTY2u5CtikrYci8JRq-nHJAmLWMmfJb9AEzbDnVNzLRSSa7mW3vDhdYRFUUqGzSYBX8g8OR6pRa9EwQddIYOCunqhesuVi6x0JvDSUEyAxn8bRevRkr5Z5r1t4PZyP9Yb5FJN4GX_OAzS4cGHDML89U4Z-Q4ddIp_ZYbaedUTUFE4uG-7nWL_ow9-YI3Azs09d0PTxedt1BQ_IiABxZYwBC5Wu8EZ8SkHGiyuqnyUeLbzRlTxmMPPLW7Zic--adzxVPQotCPnq8Fb9UapbG5NT2PyyxVtExOmqbG33iLnoZ4XSV8IZyvpXUraGMu1abSLK6hPx4v2PkrvbqwG51PxAKtj3xm99zO5MO-LfUYMk5uMJBcnpCwDsMrM9i8tug==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_047839753642a528016af5833d024087d1b711183ab28b09a3",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -71,8 +71,8 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_6OUXqxCmW2a4vHpN20Fj1ErK",
-          "content": "{\"asOf\":\"2026-10-27\",\"rows\":[{\"id\":\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"name\":\"Harbor Foods\",\"paidLateCount\":4,\"settledWithDueDateCount\":4},{\"id\":\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"name\":\"ABC Trading\",\"paidLateCount\":4,\"settledWithDueDateCount\":5},{\"id\":\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\",\"name\":\"Orchid Retail\",\"paidLateCount\":3,\"settledWithDueDateCount\":3},{\"id\":\"3fe89542-9981-4644-85e7-87be1df18f87\",\"name\":\"Meridian Labs\",\"paidLateCount\":2,\"settledWithDueDateCount\":5}],\"columns\":[{\"name\":\"id\",\"type\":\"text\"},{\"name\":\"name\",\"type\":\"text\"},{\"name\":\"paidLateCount\",\"type\":\"number\"},{\"name\":\"settledWithDueDateCount\",\"type\":\"number\"}],\"dataset\":\"invoices.customers\",\"truncated\":false}",
+          "tool_call_id": "call_Ool0AmVNYPMrLRQmhgC8PXNs",
+          "content": "{\"asOf\":\"2026-10-27\",\"rows\":[{\"id\":\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"name\":\"ABC Trading\",\"paidLateCount\":4,\"settledWithDueDateCount\":5},{\"id\":\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"name\":\"Harbor Foods\",\"paidLateCount\":4,\"settledWithDueDateCount\":4},{\"id\":\"3fe89542-9981-4644-85e7-87be1df18f87\",\"name\":\"Meridian Labs\",\"paidLateCount\":2,\"settledWithDueDateCount\":5},{\"id\":\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\",\"name\":\"Orchid Retail\",\"paidLateCount\":3,\"settledWithDueDateCount\":3}],\"columns\":[{\"name\":\"id\",\"type\":\"text\"},{\"name\":\"name\",\"type\":\"text\"},{\"name\":\"paidLateCount\",\"type\":\"number\"},{\"name\":\"settledWithDueDateCount\",\"type\":\"number\"}],\"dataset\":\"invoices.customers\",\"truncated\":false}",
           "name": "query-dataset"
         },
         {
@@ -80,47 +80,68 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_yS30ZyymGVgnhiWMFy9mCzwD",
+              "id": "call_3M9ol1Be2xkFuqizOJuB77gz",
               "type": "function",
               "function": {
-                "name": "make-artifact",
-                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.customers\",\"name\":\"Customers\",\"query\":{\"filters\":[{\"field\":\"id\",\"op\":\"in\",\"values\":[\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]}],\"orderBy\":[{\"column\":\"paidLateCount\",\"direction\":\"desc\"},{\"column\":\"name\",\"direction\":\"asc\"}],\"select\":[\"id\",\"name\",\"paidLateCount\",\"settledWithDueDateCount\"]}}],\"title\":\"Customers who repeatedly pay late\",\"type\":\"table\"}}"
+                "name": "query-dataset",
+                "arguments": "{\"dataset\":\"invoices.customers\",\"query\":{\"aggregates\":[{\"as\":\"customers\",\"fn\":\"count\"}],\"filters\":[{\"field\":\"id\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]}]}}"
               }
             },
             {
-              "id": "call_lRfFmeCs4ZkQ0efHlgKMDzHS",
+              "id": "call_hmaOJxD7L7AMFCQI0szdhJX3",
               "type": "function",
               "function": {
                 "name": "make-artifact",
-                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoices\",\"query\":{\"filters\":[{\"field\":\"customerId\",\"op\":\"in\",\"values\":[\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]},{\"field\":\"paidLate\",\"op\":\"in\",\"values\":[true,false]}],\"orderBy\":[{\"column\":\"customerName\",\"direction\":\"asc\"},{\"column\":\"dueDate\",\"direction\":\"asc\"}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"dueDate\",\"settledOn\",\"paidLate\",\"currency\"]}}],\"title\":\"Settled invoices behind the counts\",\"type\":\"table\"}}"
+                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.customers\",\"name\":\"Customers\",\"query\":{\"filters\":[{\"field\":\"id\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]}],\"orderBy\":[{\"column\":\"name\",\"direction\":\"asc\"}],\"select\":[\"id\",\"name\",\"paidLateCount\",\"settledWithDueDateCount\"]}}],\"title\":\"Customers who repeatedly pay late\",\"type\":\"table\"}}"
+              }
+            },
+            {
+              "id": "call_iYH4YtJDeI3Kg8J1svT7pEe2",
+              "type": "function",
+              "function": {
+                "name": "make-artifact",
+                "arguments": "{\"config\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoices\",\"query\":{\"filters\":[{\"field\":\"customerId\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]},{\"field\":\"paidLate\",\"op\":\"in\",\"values\":[true,false]}],\"orderBy\":[{\"column\":\"customerName\",\"direction\":\"asc\"}],\"select\":[\"id\",\"invoiceNumber\",\"customerName\",\"outstandingCents\",\"dueDate\",\"settledOn\",\"paidLate\",\"currency\"]}}],\"title\":\"Settled invoices behind the late-payment counts\",\"type\":\"table\"}}"
               }
             }
           ],
+          "reasoning": "**Organizing customer data**\n\nI need to create a table to group customer counts using selected IDs from the customer dataset and relate it to the figure invoice table based on settled records. I’ll first count the selected IDs — the computed counts must come from the tool results. Running invoice query counts in parallel could work, informing my customer count while creating tables. I should select the customer ID, name, and count fields while filtering based on whether payments were late. I’ll need to handle both queries simultaneously.",
           "reasoning_details": [
             {
-              "type": "reasoning.encrypted",
-              "data": "gAAAAABq8yiyQ08ODLTrye4vhy9yezcqMpkqI70RypghPGv9LNp6brVxkwBj98_QXEEsCseX13t_I0ltS0VICsn0_vZiJ8YBHOjNkDRpCsMCDaDsGeDl0jnaPDjHwqNu7szGDSfAWfiFQ0m33RegeUSOfj6QSLYRpu53vggN9OCTkfNYhB64TqbyegjZcbfCOrEjoOpVwVo-dNLvw8CLEcIM89JdrE0vyXuCbyh8IvKFoIDUnXYDPxtZDW4IwgCP8vWgxoEvk6FMyPptP-IoAc7yPpoQGlBJJIJERQDzbmTW4mH9FFWGxwPCxDbJdobIUlv9emsYOEdHfjbomDlmWN6nRAxZFDMgrJtKu-8lgU3wrN0xlADaR2JrMc67fbKQzaGpOSAkz-UDBiFGwx6D1xLkzW8mTguOdYQsdkNn6FIL7dh0R0qRSIzle7KNXg_sthKk6JfftynZWRzCP-4hLv65BsEU_G4hKNeFFnbyXzsB7RTVDOj5NMUKWHXppZyHCS5M7BCujz3wSRoU9fns8WpQauipNHd-JwGHv8C9y9TsZD81Knw24_Bygjy405mhJ8lX1DpJJN8fJXJ8TjvhIQZhN8prBsL-x8e7W7i8XdlIj30G2-tBmp1JOKSSB37H_IysrlBedbPe65TP00yy_TbzGv6E2yFthNsIhtxTLbSo88euRf8I1LRpbxRrS3BVoz_5GJM3BQ4DBCfNMk1_uofloT-4Kl5BJagRi5uHZAxJQTPSUpYSRM3IKLbx4welpu9colv15_2djk-jWSuNx3slWSALP7kc7QnMzdN1irHa8Ol6YT8gYy9I8pASoHHBVb_ZrvRzUxN0qUQc_veo7Jk1Cd-A--56495a3oIo1u_aNBEfIAiTa1v9OdMm1PIG7-AJLs__a8MASkgb2tzWt55S7FKPJeF4KDDm0Vtj_AFYCZG-4WMgQ-kgCTwYR-l_Ds4gVdkkZ8uzQdJhvW7MfXy09ZVQ793EaHaNKwxhBNZIjqzKhTRTriLxaIbBREKBVCCHtam0TmNn6WTy6yRzSOnsNW77QCMm2G1BzEtgcAxdJMoJmscBtr2iiUVFWBDALEuk7k30L92wuLyIVbsJea2gIgI_g0SqURhRg7UahLDHz5B_aYBz8SsLN4cNt5-VUUBClgr6fCIVu5o9jOPUZa-xFb-M9nw8vxk13a842vlAeaJkPP0fyAyegFBo1myAIU_yzPzeVVFOOWMUkL3TWeT2I02G9sS5cr-wrG97g2wms9uuBa2O2LoWXg_-9CuVFtQgNM-QLBM7kAg0lIfD4JtBOJQ5Dr5JYai7slNaB-fnZ115OiYgRYXPGvd-pOmw7s9BT35eUBnsGYfzEO83tZK3ePLPhi-8UAi30Txo_b5LFnQR4VnVX4buv1lEQwZPntXwlpgPOEw0zWVDQD5dP2AQcEXvWSaGEBULN9u0ZDJlOfMyJhwM9Varae3fJYEDsCS9YwEWXzxIJKavM4U02a7UZehq7Wiyu4Yiix1OjQ1CvGP2l5orTUMWp2_AyP0SJAdNkfX60fE_JvTZJgIVhsLfPNJG-aP4MYOy0WnptI3-FzWL5V7q1iima-yBm_KH889wubZ6ZNxxN0Z1Hfsi7Xaiwvmd2ICgJz4Y5gQxkCoHBHNYBlgf2_voejkGfNUmKXXy26BnfLw0OEOVHTGwDFk0kfxGx-WBts92tY-8A6BCK2VGuxjH56pPggBdyjyhze-Jt3LQD5FXiGaHCBNTwC5kPMzMjpIHI7BMso8M1xv8lKw3QgRcBNW6-tcG90s8cUvMlvLczsQa0vMcqWKmi1--Izhxkuf98PYmI7tMbw5dZQEC8mfULhEILHxxm7rAgYeFq1y49-gR7QMY1jfILItl2BRyX4gIqawiJ2ErL8U6Ov1QTS9qq_GTJqOxCTQ6FHmwJGmMqhivM5gQTJj86LkdxQsat_ICuIYNTL4HAIrKSsqpqYq9MXqUKUSPrRzHhs75IeIHa9sFLqYKwZA4ZJ2keSSOCVxcSv3dbWp9jDCxMyBI2C_HCcFFkA8GMJfRQdsKt4PZ68vCSI5rJDBpwrqm17TqMPk8FCsXuttGoQLNMrza7D_75CoG5cu18a75QjP9mpX2S4cUBUodaw9kRAxmuVXCdPuoBZSwRgWccOtQw8ZyVbghUaiNOceIwsFShgjsRWakftj9wL9XF-g0HXbaURNFJ3MlgkvTBx7xNeji0zYAQkjPVvDacxur6TBZBvZr2T3Bu4JPt3YnPcrNOUxB9JSqy6mMLfY6ytJNe2I1QdTxNIKjBqLNoF35xTi54rpke5YUzl0ssIEI8pUpaRge2z22IETb2mqlxpTjl1T9BrN57vAJPACcDwNv6Jx_lU1j6JyskEHPmcRcxr_GKQ9L6-lR_Z4-QxNj3Ev46uI6UMaFVGPSQBeEqJW7aYyiTroIEzbJ83ryCagveCaF_iq4iJpiL8B95NHxCPaJmyNZ1ebYZxIq31MxQP9Gq34kll-HZLjv4f9oD73xC9RyhqD022cfSPtBFQWjxvjqWQ3EyMEyp3QR7yscWVEG7CCq3iAysWbH-QWZKMPR7P-A2vr1eu1a8s_h9xJV9HKnrJWX3MQVPA6_huyqRqO398B5VRz9PwvNzTdB34Ukd_XPI8KorDK3XPtHw_VnBi4g1Cap-9Vh1hgKwXNTh23eWrA80dlWnpc8L8m2DwTaRNkowUThR-6KZDKYOzfJ5aAGOqztnr4H0FmpVasD9MuI-i33Guyn9XGOkcoZ_Lqik05li6rNsf1A2FcJkQpvi7FYAl3JoHikhQH6E7yVSPxR6X-yy7axyQM7T2pdokddqPOtOh6L9BgrdwWsQwVz7I-q0ZKe8ok9Xor1YnmJ9HGEeaP6ws9crxrU1yWX_T88YFoGlyV4ZVA0zecKaH-twnulOoFK0XRSaF4Aa6vszDJm74hFuo4qp3rILyh043cRqvisKZEa-Bg2kbb5uCqKOur-rmM4kDR9QplUu8T0AJSTemUUO66WUOfEuIO8s8BGT_bE04bqELw3JM8aeXR4k0LuC7ur_QkKCzdxojUuvSVEBecPeN9sfNwlKUds.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_07941d8075f32b88016af328ac996c87d184f6fffc2740cc87",
+              "type": "reasoning.summary",
+              "summary": "**Organizing customer data**\n\nI need to create a table to group customer counts using selected IDs from the customer dataset and relate it to the figure invoice table based on settled records. I’ll first count the selected IDs — the computed counts must come from the tool results. Running invoice query counts in parallel could work, informing my customer count while creating tables. I should select the customer ID, name, and count fields while filtering based on whether payments were late. I’ll need to handle both queries simultaneously.",
               "format": "openai-responses-v1",
               "index": 0
+            },
+            {
+              "type": "reasoning.encrypted",
+              "data": "gAAAAABq9YNHgWXGTJOZaSmB3e4Lp3TOhzflbA2wVwAm7ACQ6ZaOs-MBZWJjJHk2kB0Umm_Hd9cWTdgQ5KNdmoNTC56k_e__op2xM-Sf5fqgZxtMdmLAO4En7xXFIr-MwGCrdoBBV7B-zVXM5OFjwg1zbVu959R9k0MXMM3mgmn6tq7smlp76KYWycL5acOux8tYtUMFaEumAhJTYv-bHGtLFdWu5kjQT2ppHDykxXCA5-xWDpY4UOsRP9LeeS0-CDDA12zfPxIJk7Moy0ISexyd9mpx0hfM5tyn9liotWTnfbxBCMOUNpmI3N9Sq1cKwkRvS5cfCV2lC0IT3VZFx9NS2uIhYrM5GMi00CTPfrfXHs_fM6B4GUymCD8phEfJGkxPlvNh9Ywn4qwFh1qlHYTd5Pv53ARstlizyYhM6hZQJjjOHCrTVa1eSxE7ki9xHsnyNKSdBOsOZQxKRoSGQi_9pp_nXXaW9kkCh6C1bB-A9DvPOi4YH-xXHvcxVIrJIkSoBKcWMr5BG36bJerB7qDXqO7-qM_BeHLWlZcZq7NiQDUrIeKhIY0p7S7NA3LawGWh_JxdTmt42CnVGAUTnjfZS7XMn1tLdCxgU-lpjHP3sq83RQaqfnH65YebJPC5Qp_FEzK4vJe9PUFGUnvk1UyIegtSNTwz75v1qEjCm_wuWK8u_7Rrvp7esTNLmZ6ewpaD421DNP0fLBwDnYo-JsQglKMqOqU7NQJ_50BRZHypgVObcGxdRyRbqC1vqwzWpIo7rS2dm50Gv8CsiHzL8kuTJCMgp1Q0hEZgeMBC6j5tBeX76EL5j7RNGI5WpaoubXSSVJDt7Xzb5WTKCdaLkTcVTK5hdUHIpHcc5nrav3IeuzOv5sTGNa5ZVWwKX0r_kOIBCMVGwyN9z9y6XYw3F1VHVYlFBI1myS0J3Sj-Y2XPNVqWHtZzCvM1c8C6KDS2ILDznYSoG2VLnV3gk6yuymQCOoxgwrmo5WpeXtKo_nU5lULOdcuEY7SxzhRHkWiv9iZPb9LKx_XAwmjdjSu8gXN3RWEGEVi1JrvSgak7XJGn88Yc5T-JMxQwYNOa9FrDLvP-5aIDxKU0jODj0SrSQO5g398pO9J15Js-r6fM9hBcIpBHwSI07nhqjvdg47h2ecFMSf5TWh17gyceOo38C_FKIlRwhh0P5WXB8uxCfGZaN6E9owlpg-Sq6NB0dMd2K98KHMydb6cnkYIWuyu0tTmBNeUPWGqhQKytcptdAIZccDqqimTvwOqR05X0CEnvitG6CYP9gOZpg-0m1UjnmDSSiH1vp_Hu5FwsDzVyZzsFqDgBd3u6AWHDL1v09EbY7EONLkb07Z7omVkHoSDGwnP2KchhDrQGyQv3-M-YSkhNvtO68RtuOM66moBJDSraIEj0vw1N0TjPNUwtY0V9g_tu6Eq3yCS2CXX9hqTp989-7zq9RU1wJI-4Knvpkd3gsqz9GuPbueO1-6_jaZiv2qbwIwAWrdMlwuyEWwirnAOgP_2xjyP6CLp4hAZagTe3ZytGIpb0XNFg9KXl4835Y6REeRHTx522_EhNw3_l9dZFJiQS8W8M64OYkm9C0jjutBmTNMu5rJLBX4fLLN9jwIKPaqYIWWYzmCIGa25hsCffTXU62yt2-oibkn6EUZrC-NX4ZoE8EhewenyO2hdhMI4QrJ3eSsqPpWJYr3gApEZVIPBXR5NxokkQocunWb_XPeqGLJUGMYWmDPTdGLIDRFdy5VU_4IetPSqvM761hwIOzRQS0tjDGsRv2oycxRitjV7nNazt7T_rj4D0pFqsJ9HuG-PEddRNOjQVOLARzcLwU1Oc8-jS3SisE4lx82BKK-s50zFYZkWFUf9dSJ56q6zToPEVEL0wN3CRmPJJm1tTnO2KKpF4X5Q-AjQXgICVPvj3jX8AVTpxGHKtNf8-iA7wPU0hTgWp7e4dwngYZ6q8qZdDvhtKllAvCRM58x__YvG6S48Zgk4aYarjp-JxzalSeRY4oRrS4132q7H0eSUJE2SpO_bvI6TIH0DDTnYHPgn6oLLdlvWMsfj-jte42ZeJHv4auqOlipGEcL68MXoCb42F8Xij2Dh58NifjGojCBKOQZuDkNb_WBeSZPzBtg6cTQO_82KavX-5kZ7cRIzvHrqvQYDv5xUXPNZAuJHlIHCIiU7tuU-E_Bi9zNpiK8ygWVf9xv0p-11AaAd8wLyGvx1UQaZ0B5WNS5RE0J21Y_i7R46oZ2lRFn_N5mnDMs9-14AuZg2lpWPFa7DXaR9wIRGWCvBMUYR-g1GR9Aytm_eY_Ou3d2unuXeep9hvv0G9zgds3mWT4bAH8A57nHmag_ss5j_Vvc8wbNrrVTGDgpEZlAH5jwfWA9I39qZjP3eIvdYuOYG2GJjPgB7YC1ZQX9-h3Vy4HV6jpeWHhdfcFETMG8ojppq-yCxnkg4F0Tf4Dt2eoBhgJaWwDwPJ6N76UVGCJ3Idj7Pjg95dnhA9Jh2GuXGuASMUgLMsL6pJ7hH7UTs_qtU1BkWVsAqJhqbQD9Nz_zo8JBoH1_tV8GQZJf2PKby64FnMQALpIJO59wLE8gshqzsjHZQkjiiBQVL_m4K6d9UZyuIo-8_5rLYVRw_8xRvzEPAbiJZTJdcrPECXA7e9LkGHWIPvv141LkmBTZkDOmrSTqs3ICdcyycwJZZC2yUm8MVrZ0jTXE2YbIkIEwxQVg6rfKvLKXHVlOmCgYxclFzzDhStPCC4X0HYZDfOBX6_Uf_NM7gVmg-7kIrbY_4bkMIwotA7VpQloLgx1o_KsUenDDGpRYh83VPnv2XECqJFSbGizi2aledueZ0_56iRcnWSq91uYczSaTBeh13zJ20GXDvTnDOLZgL92l9tGyPYqd7Q2tP3KnwZ2PCUST7PBPbqW_teZ6u84MEJ-I4BY8QoBAzM78oXm2NeWrVKyMmFHxLfspy57DSJgxnURuXdG8lCqhYPrwcvJ7NBl1hUiEWEqS-Mw3h-9NHXa3KWWTgxuTunKticz-jIaeyg_n5BncoMJrqwoPXNzhIkvJs0yXNzkThhuKfN7nN0NdbHlDB9sL8I54GpMarzibn5BBz-xrHRWAL6Qq5fcEgrCuSZpX8jidqyWjc3pJCJC3dJTv7D3baVoWCSrogADU_jyQGzANFKEUfQJ9Etd1pf1YVdiEPvM5bCNkv_S8J3cPHtAtXXh-P35ASm9YWUTgBJpDve0g3pH1uj4RY26-bemNuvGzU4_BdVMREKx6BbdARCIV2ljU2kZiFK_zp0BY-kwBFG6hlTpwD-NQ946lrGJW_hVejAsjY-3ggmLaEjH5gYmOXDAYH9.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_047839753642a528016af58340f49887d19bfd89b1df169f0d",
+              "format": "openai-responses-v1",
+              "index": 1
             }
           ]
         },
         {
           "role": "tool",
-          "tool_call_id": "call_yS30ZyymGVgnhiWMFy9mCzwD",
+          "tool_call_id": "call_3M9ol1Be2xkFuqizOJuB77gz",
+          "content": "{\"asOf\":\"2026-10-27\",\"rows\":[{\"customers\":3}],\"columns\":[{\"name\":\"customers\",\"type\":\"number\"}],\"dataset\":\"invoices.customers\",\"truncated\":false}",
+          "name": "query-dataset"
+        },
+        {
+          "role": "tool",
+          "tool_call_id": "call_hmaOJxD7L7AMFCQI0szdhJX3",
           "content": "{\"title\":\"Customers who repeatedly pay late\",\"version\":1,\"artifact\":1}",
           "name": "make-artifact"
         },
         {
           "role": "tool",
-          "tool_call_id": "call_lRfFmeCs4ZkQ0efHlgKMDzHS",
-          "content": "{\"title\":\"Settled invoices behind the counts\",\"version\":1,\"artifact\":2}",
+          "tool_call_id": "call_iYH4YtJDeI3Kg8J1svT7pEe2",
+          "content": "{\"title\":\"Settled invoices behind the late-payment counts\",\"version\":1,\"artifact\":2}",
           "name": "make-artifact"
         },
         {
           "role": "assistant",
-          "content": "root = Answer([result, detail], next)\nresult = Paragraph(\"3 customers repeatedly paid late.\")\ndetail = Paragraph(\"As of 27 Oct 2026, each paid more than half of their fully settled invoices with known due dates late; the cards show the counts and underlying invoices.\")\nnext = [\"Which invoices were paid late?\", \"Show each customer's settled invoices\"]"
+          "content": "root = Answer([result, method, cards], next)\nresult = Paragraph(\"3 customers repeatedly pay late.\")\nmethod = Paragraph(\"As of 27 Oct 2026, each paid more than half of their fully settled invoices with known due dates after the due date.\")\ncards = Paragraph(\"Open the Customers who repeatedly pay late card for the late and total counts, and the Settled invoices card for the invoices behind them.\")\nnext = [\"Which invoices were paid late?\", \"Show these customers’ outstanding invoices\"]"
         },
         {
           "role": "user",
@@ -131,7 +152,7 @@
           "content": null,
           "tool_calls": [
             {
-              "id": "call_vgCVzzToArAwg0Uov0aTicow",
+              "id": "call_Oqj8PDFhRpZpxT9H1NaLLMLH",
               "type": "function",
               "function": {
                 "name": "list-datasets",
@@ -139,18 +160,18 @@
               }
             }
           ],
-          "reasoning": "**Evaluating customer balances**\n\nI need to interpret the unpaid overdue balances of the previous three customers separately, focusing on grouping them by customer and currency along with their invoice records. I’ll use query filters to identify overdue invoices marked as true, then gather customer IDs. After that, I can calculate the totals and counts grouped by currency, making sure to include total amounts per currency as well. It's all about clear organization here!",
+          "reasoning": "**Identifying invoice issues**\n\nI need to recognize these customers with outstanding overdue invoices while considering multiple currencies for grouping their sums. First, I think I should list out the datasets to better manage the information. This way, I can approach the task more systematically and make sure I don't overlook any important details. It feels a bit like organizing a puzzle, ensuring that every piece has a place. Let's get started!",
           "reasoning_details": [
             {
               "type": "reasoning.summary",
-              "summary": "**Evaluating customer balances**\n\nI need to interpret the unpaid overdue balances of the previous three customers separately, focusing on grouping them by customer and currency along with their invoice records. I’ll use query filters to identify overdue invoices marked as true, then gather customer IDs. After that, I can calculate the totals and counts grouped by currency, making sure to include total amounts per currency as well. It's all about clear organization here!",
+              "summary": "**Identifying invoice issues**\n\nI need to recognize these customers with outstanding overdue invoices while considering multiple currencies for grouping their sums. First, I think I should list out the datasets to better manage the information. This way, I can approach the task more systematically and make sure I don't overlook any important details. It feels a bit like organizing a puzzle, ensuring that every piece has a place. Let's get started!",
               "format": "openai-responses-v1",
               "index": 0
             },
             {
               "type": "reasoning.encrypted",
-              "data": "gAAAAABq8yi77HMQbhQRhJBvcAi4jDMoLgWFURlx2QcyHVTZSKQfUd_eBvTToMK-AN5xhQcFfD3TdfNbdiMYvo7XVbn8QZkMZbmw47Aa8dkIDvopWL-HLTKwFV2qBqqy6Nk0rhxI211MZfl2kyzWM13ABu80qDvBx1CFpg5hN7yq8VM4gkWJ9BgIAUSGfbm4z2KHHnvzi2E8fVsDkDd8E4K5stCBt9o4BaaY-Y1g0j2KqxP-ntY28PHBTI63QeeqFCFr_hwxBFQRwFbwD0mMJTE1akJ09mN_7FpsGTU1WQPJH6l0f_sUrA0LBHJIQUKH1FiM6QYnXBrw2I33HNegw02TVU-pq6VlwvMgOJunQra4learDoCRXwgB7c9D8lUmYJ2y1N7gWiTDIa5jsU-JCHl5Zbxzcr_kOLpXi0joP5XImCpihWyza19FjLtgScEEuPHRqt4Zl1Vwhz9yKyivvEO5K6aLhZL1wRVoVKKqHmyuzmdbnBL7AhCThLYROq6EWQTU9wWEZ-uPFWdlO5x5WeMZnD9FmbI1xL5UvX_hx9Z5ymZ1z2npWyc8FeFLn4MJCuYmEvq6AbgwQWtEZOqi1wkmHj30TCi4a0Tj3N4UjtTeNNOoatGsdOCs8se4uhHcpPhqZGQiIp12k7Uh30m_zKOuuNPpoI4wEZqvfCarYVBpVdiTstB-GCgndfvu9Pgja2gggpcniUf7Ol2qXV7-GPS70PHR1JI2CAmP-R0p93IFcBQmQ32u3TNRj_XYrtsxEz3ufp5xebv2rQKP4ZEUF6nIXODH68ut0dSzGjnXvoifTV-tdt4pC-wtMDfK6M0Wfb6uWmCjqZSe7yoF2if0ozFzCbbVFqepFm3Tq6RukwBfCJxU4mxNt9uWgUv2UCwwSJi0lLURhxqwKDI8Ga-AXMUoCg3fYJN99ZGEVOIYEp1wdQyxRBgwMi6gPqcJaVu-Oj4WFiHoZoCgP8L-MK9kfbv6LjYOqeymKMtsO0CRmtKkmXhc_SqaISaMDnbqMyoFGlXVzrTf9muhoqhjflxoiEztSyFMDfe_SK5xLQJNawjtfs3puUwVmevY8fbgYIWSC8Ci0PkU23jToINKiZY-ck5GvW6DokcPjZI5v8Jm9K8lz1AO4QYUhA3VpYmTkU_EeddeFt7u5HNu3WmBs-r229yba_T4VXZVyepIsnll6KnsVFj_XG16u1LPqSSDliXuCLwHev6s68KCYUuNf_JW_R4QORxo9ST-1I9b60iphH24shqPFrfLwHdiE-6KNtHM2Zt48T80TV-wKe0IlrIfja94bLn11GPqZlHr9bfc5gPM22bsMhVHAtLP1eEZ5IexlkUfl8Exy3S-BwY1R87W5xMkFoA8muLMMKgKTwGXn6VYtYzeYMS0ezqhuWhXnMM1PovwrHpLbhWe5HKkiD1SHrPkjMux-ciItC9Vud6kENW3rNkqzXRoLESOeXa9JAgTvrLzG7O2vI2ehPmOMwQ_wHXLIZUzDF3rC5WO0iiQhZDrPfG7y5ZtZri1Zboxw-pRRCtiNA9OgP4wSmymvbbvUPtjSvFQ5RKquv8YWcmNsMAccweZiT4urNf2FAcPg1OfsuOqs1DsR9NsO2X0dTqqRJlz8zb3kaqS4shPgIrQDbYdFTB5ghfc2ZO2AY3fnhDghSnTh0FIaS8K10eDCidF2P-JsY760Wh-5GdnhXxpgAl5zgHvNlCwzpAu8ZJd-FQF47ipEtk0442NvPDPXDtB_Lf1efyXSUMFlcYhcpDTEWuJOFXSQbFIEBnDb6LCH7kH1n04XAaU5abJ8J1mG8laeRmXgZvV35plhZ-AYAoWRfWgat2Jqggz7koLM7zFFHAN6P6Okh9SDAz5zzBFfsPIAxvFRTASma4AQVBLJ31K8xqEGgvnwtLPZ8eYPkgMWgES4hzRndQGkYKX3iG0i73evp7cgElNBHxlDgQ4rJpBcY6J9hMDYTn1vIoQz6uK1Pq_zYP6o4yOFfyoZ8QALaUAjKXLi9TpHWfuZwDzo6iMxBXBNWbgzhmn1FN3CPNSQhmNUQIUb9YADiCniYImxN63Z9_Ri5Od2ujAndPmorh98r0AQWP6vr_TDYwHxiDYpo0kHlMhxOJu3cLHTunnHZlpe7S_NJCWqPjur6LYhTBroy85pwCq7MmFv7jv-B5MHDyx6uxDLw6ZErqH-3hzJ0Mo84M7eiF_7raBDYK9hD1NYYQtpnQxa39pZ14TNMN09cKvIf3PVRTLloOoY74s0Pw2ebms5lH0WJaHN_FQxZid-ah5Z5_a1b2RvaYb8Rr-Wh3qkulEiYCVDdyDHhTd5AIqrD5OPKPCc8zKKE3kncGwh3-bA8RIQ03ogSSUU-lisWEMUokQbGcKGhWnp-7wAwtqzDKiGJn6zFOyFUYu2TKSosMYgs-ksDbF2JE=.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
-              "id": "rs_07941d8075f32b88016af328b90a1c87d1b1032a5f424f25b5",
+              "data": "gAAAAABq9YNOv8Vywc1NRCg0091af37K71POsLI209N6KGQa41E2ny7HOMq8uPO42foF-YDBWZeZhAEh-tzBmPFdas3ml2wGVKjJ_F6lR_rsYfNy6itzhtduhGcQKsUay453jbRZpDzdsGQQEbSXiHwr5nFkgklpxo_POayR0-PKsvxHlXd44N2XgqaybasAEZCHeey-SGCWaCG9hBhOQGZQVPFhBnkTQWvIfTM6zTBIMFdpcmGREUIn2sRqV2VLngynaknRio2TDGtGL1UxXskTelguK57Ey6s6UkHWD0WuJ0XwX_dwgv3A8BQU1LBYaPp_4mNdSlYX8vumWWfoHQy4ejNBWrTYwTCFNnSsPJczZDMrxe9MhDxyyTo2jDQUzMdKhHcaZzX4HLAh_HhHvwQfwtjLLhQX7aHw2ymzfPYHdLEMgO5ZRAeS5d8T2KyK3WgzdPXKvR-E2kwr-b_MjELxy-AVpcAgICqk5fbwsepTweW6SpJJuzQl2mAHK3OUV9D0U0gRrbmDf5L20jlcjTqIhXHnYcurOuNgfkcDkEaI35xlmDYnEC5cNZ7GGgMzwlSvUpSuk0HoV5huFEFA7Y0XH0Gxr4xGZ6LWuX7K_QjXjfD3QdcXh3YeWDuewKUEysiGGIObbonWZrXARgp2Eb1mVaUZgjAJGyR-o5BTgKFRV1wK21lO3H-1yAr37W2f5Nh470_ptMDYtCG8uL9VA1CIrPtYzNmzTw_9uVxnBwDeAoZ0KMMgF6qPemB8pB2SPtOz4WnSPSEAR-6VnngUYnGTovq8ZQ_4S0r9lKUVvjxz-WRtNTVIDHBcFmYpcSwdgXE0eIg5XcO2cj_V5jtdfkgTPAcgFXslaSvrG0gu6K89ZEMakAoVsCeg-p4YETFB1N495FZTLaq21gLCdh-cXWchCAMFoeQKQlKQu7xwDyVat5RLGweJFJZqBlqfsRS6219CvLz2Cbn6KmagUFThOLFqYPYMm-q2ViwUkjkMA77vUNTMsn5V8bdinEJztRnqGt2BCGsuwz81GbjdFqZbuXqaRWbGvxmi5IibY-wKrkUvKLAJMRnhyGkV4pTrR-0zX443AreXXzIHXFEE774NZx9YpEbJAxnUme9B7jwKWLxEtasr7tVp5zlSLaIgl2Emlc7nc5_HfXnLkSRo__H-Im0ngmdO5m8SrZzY23Ln05S9HPSX9sKrN1wGfzUUhP3HmwOi92t5EDREqG1Hr-jUWB5FWSCh8POYRuIYurWy32REXmTNh-3dgbnIVCEA5meAu0BZQe8Si--orv2Uu0C0il4P2Ffjn5ZrWa4RpSkzfEfPD02YCEHpUKIocQqmPHmjnB7qQhCOzgN3NlwGMG_Jp-XNr5CRSLQmF5WsYmxBiudEqBlwXCCBFUwcTtWB5f03W8O3Xy-zB_5q9Iyw8Z2OZfT_ZX9k9voZWJo0DxC8eREtSib-XCb8w2HKg91VzJL_I4Y7M7bMP6bB9DBoB4b4Tf-2mvNbAu7c6t68e5GL81Y4raD-SPZ6pohJci0C9kmRBvPVj7oIIKpTnNBIeGwRCgoyH1KJwIOtj6RdrVNpyACBSqcltfCwZZuHg3OUVN5se4s2-6hwkAoIvJZa-xb8S5s41qCq9IGQhX0d3IYgbgJ6RsrNTp3MPaHAwZJa3Ui-DqM0qSI-_ixVPT7RUidYaJGrSslMPebFVwRF8oMY6gNHb_JQCV3df2-C5BOnUFSUNYnh-Lb5EGbtcn2Q6d9J-UwLcYM9VUMEIOskWGSAp81tcOECHA5sSUMbnOBixXHtVcaBJxky-MsKxz28j71qRHJTkuW3CnZpv8rWFAd6jWvkrFP0CVENkS-KXDAhZW6TdJmkWfx5eFt-7dkvpG1FMUOsVl8pHSK_QJwD8W3eIHtBVO0cFaQkpIYF94Jz0tKLZv-mMvV95uaGMZ-M6rAD51ei6nSVnc36-e9Zk-BMiYxdjPe2ReasSIC0WuLug9O1xAGkLvnrbj22Df5zDB5T142n8BunpJiItul1CHUhRnH47hzS5EIURLpZVI5R5dc_VBCRb2NSuP1vQn0UX9QghO9rgifWpb_q9wP9yisEqmlYeceSKppxXyezI4cj9Cs4-IfXi882hrnS.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+              "id": "rs_047839753642a528016af5834d07ec87d1b93b46040f732c3b",
               "format": "openai-responses-v1",
               "index": 1
             }
@@ -158,7 +179,7 @@
         },
         {
           "role": "tool",
-          "tool_call_id": "call_vgCVzzToArAwg0Uov0aTicow",
+          "tool_call_id": "call_Oqj8PDFhRpZpxT9H1NaLLMLH",
           "content": "{\"datasets\":[{\"name\":\"invoices.allocations\",\"description\":\"One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The allocation id.\"},\"invoiceId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked invoice.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The number of the linked invoice.\"},\"paymentId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the linked payment.\"},\"paymentReference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The reference of the linked payment, null when none.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the customer of both records.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the customer of both records.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the linked payment.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of the payment applied to the invoice.\"},\"automatic\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the link was made automatically and no person changed it.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"invoiceId\",\"currencyField\":\"currency\"},{\"name\":\"invoices.customers\",\"description\":\"Every customer a person may read, with its late-payment counts as of the reporting date. It holds no money, so no figure mixes currencies.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer id.\"},\"name\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer name.\"},\"email\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The customer email, null when none.\"},\"firstInvoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the customer's earliest invoice on or before the reporting date, null when none.\"},\"settledWithDueDateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The fully settled invoices with a known due date: the denominator of repeated late payment, which leaves out part-paid invoices.\"},\"paidLateCount\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"Of the settled invoices with a known due date, those whose last payment came after the due date.\"}},\"timeField\":\"firstInvoiceDate\",\"recordKeyField\":\"id\"},{\"name\":\"invoices.invoices\",\"description\":\"The saved invoices a person may read, dated on or before the reporting date, with the balance as of that date.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice id.\"},\"invoiceNumber\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice number as printed on the invoice.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the invoiced customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the invoiced customer.\"},\"invoiceDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The invoice date, by which invoiced sales are counted.\"},\"dueDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The due date, null when the invoice states none.\"},\"dueDateSource\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none).\"},\"paymentTerms\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment terms, null when blank.\"},\"description\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The invoice description, null when blank.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"totalCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The invoice total in cents, which summed by invoice date is invoiced sales.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of payments dated on or before the reporting date linked to this invoice. Above 0 while outstanding is above 0 means a partial payment.\"},\"outstandingCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The total minus the allocated cents, which summed is outstanding; an unspecified due date stays in it.\"},\"overdue\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when the invoice still has money outstanding and its known due date is before the reporting date. Due on the reporting date is not overdue.\"},\"daysOverdue\":{\"kind\":\"measure\",\"type\":\"number\",\"description\":\"The days from the due date to the reporting date when overdue, else null.\"},\"settledOn\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The date of the last linked payment when nothing is outstanding, else null.\"},\"paidLate\":{\"kind\":\"dimension\",\"type\":\"boolean\",\"description\":\"True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"paid, overdue, no-due-date or open.\"}},\"timeField\":\"invoiceDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\",\"summaryFields\":[\"invoiceNumber\",\"customerName\",\"outstandingCents\"]},{\"name\":\"invoices.payments\",\"description\":\"The saved payments a person may read, dated on or before the reporting date, with the amount not yet linked to an invoice.\",\"fields\":{\"id\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment id.\"},\"customerId\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The id of the paying customer.\"},\"customerName\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The name of the paying customer.\"},\"reference\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment reference, null when none.\"},\"method\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The payment method, null when none.\"},\"paymentDate\":{\"kind\":\"dimension\",\"type\":\"date\",\"description\":\"The payment date, by which collections are counted.\"},\"currency\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"The ISO currency code of the amounts on this row.\"},\"amountCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The payment amount in cents, which summed by payment date is collections.\"},\"allocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The cents of this payment linked to invoices dated on or before the reporting date.\"},\"unallocatedCents\":{\"kind\":\"measure\",\"type\":\"money\",\"description\":\"The amount minus the allocated cents: money received that lowers no invoice balance.\"},\"updatedAt\":{\"kind\":\"dimension\",\"type\":\"instant\",\"description\":\"When the row last changed.\"},\"status\":{\"kind\":\"dimension\",\"type\":\"text\",\"description\":\"allocated, part-allocated or unallocated.\"}},\"timeField\":\"paymentDate\",\"recordKeyField\":\"id\",\"currencyField\":\"currency\"}]}",
           "name": "list-datasets"
         }
@@ -2386,9 +2407,9 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2400,7 +2421,7 @@
               "tool_calls": [
                 {
                   "index": 0,
-                  "id": "call_oYY6vcB1xI0R39RcJ4peiXwi",
+                  "id": "call_zAfmW2QeMDLQYj7c7GsBi2rp",
                   "type": "function",
                   "function": {
                     "name": "query-dataset",
@@ -2415,9 +2436,9 @@
         ]
       },
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2441,9 +2462,9 @@
         ]
       },
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2456,7 +2477,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"customerId\",\"op\":\"in\",\"values\":[\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]},{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"currency\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"overdueBalance\"},{\"fn\":\"count\",\"as\":\"invoiceCount\"}]}}"
+                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"customerId\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]},{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"currency\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"overdueBalance\"}]}}"
                   }
                 }
               ]
@@ -2467,9 +2488,9 @@
         ]
       },
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2481,7 +2502,7 @@
               "tool_calls": [
                 {
                   "index": 1,
-                  "id": "call_V814MMTzXzBrwXFNolEnEpFK",
+                  "id": "call_gUAqebRnT4fJ6XRRqg1FDNJQ",
                   "type": "function",
                   "function": {
                     "name": "query-dataset",
@@ -2496,9 +2517,9 @@
         ]
       },
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2522,9 +2543,9 @@
         ]
       },
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2537,7 +2558,7 @@
                 {
                   "index": 1,
                   "function": {
-                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"customerId\",\"op\":\"in\",\"values\":[\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]},{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"customerName\"},{\"field\":\"currency\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"overdueBalance\"},{\"fn\":\"count\",\"as\":\"invoiceCount\"}]}}"
+                    "arguments": "{\"dataset\":\"invoices.invoices\",\"query\":{\"filters\":[{\"field\":\"customerId\",\"op\":\"in\",\"values\":[\"c80b59c5-187b-4563-8fb8-3bc9538c6ac2\",\"5cbc50b1-c29b-4cdf-8d06-cd25f625aa69\",\"96b4c4fa-20f7-49ac-81f5-4cc79e1ed49c\"]},{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"customerName\"},{\"field\":\"currency\"}],\"aggregates\":[{\"fn\":\"sum\",\"field\":\"outstandingCents\",\"as\":\"overdueBalance\"}]}}"
                   }
                 }
               ]
@@ -2548,9 +2569,9 @@
         ]
       },
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2566,9 +2587,9 @@
         ]
       },
       {
-        "id": "gen-1794320572-GnSsvIKV1lDII3HJGYHW",
+        "id": "gen-1794474831-GvWGxbpGhLkLyP8lrGkC",
         "object": "chat.completion.chunk",
-        "created": 1794320572,
+        "created": 1794474831,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -2584,21 +2605,21 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 10058,
-          "completion_tokens": 358,
-          "total_tokens": 10416,
-          "cost": 0.00417255,
+          "prompt_tokens": 10485,
+          "completion_tokens": 340,
+          "total_tokens": 10825,
+          "cost": 0.0040811,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 8491,
-            "cache_write_tokens": 1564,
+            "cached_tokens": 8937,
+            "cache_write_tokens": 1545,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.00417255,
-            "upstream_inference_prompt_cost": 0.00238255,
-            "upstream_inference_completions_cost": 0.00179
+            "upstream_inference_cost": 0.0040811,
+            "upstream_inference_prompt_cost": 0.0023811,
+            "upstream_inference_completions_cost": 0.0017
           },
           "completion_tokens_details": {
             "reasoning_tokens": 0,

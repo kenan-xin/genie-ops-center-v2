@@ -2243,9 +2243,37 @@
     "status": 200,
     "events": [
       {
-        "id": "gen-1794320589-5ql06oSBOxmJ1YkOaLyJ",
+        "id": "gen-1794474846-5bJMd5EJBphG6t42mIDH",
         "object": "chat.completion.chunk",
-        "created": 1794320589,
+        "created": 1794474846,
+        "model": "openai/gpt-6.1-terra",
+        "provider": "OpenAI",
+        "choices": [
+          {
+            "index": 0,
+            "delta": {
+              "content": "",
+              "role": "assistant",
+              "reasoning": null,
+              "reasoning_details": [
+                {
+                  "type": "reasoning.encrypted",
+                  "data": "gAAAAABq9YNf7qXoVp5aOBe1U6gcG5ddByi0eLkAyuilX_SxNzYkdKVlCPyVZoMaXKZYiM70nOj0v3P3iVcxyIYjtN1-RDa0bzN6DPTbtQtXu3z4IJ1h5cK-jelv0d68QuKPPIiNGHA1ubUvrcQckIsZ29l6QN0W8_zWe7OUS56_YpUI1onCX-I8PbFcNQFbV6ukK2eVCHWYNH_X92keAfAnwvao8gZB0S51Rug-FHMADNlHZz4_ZuWLBdFTxmDjV41NLocvWQD5LnCN1_BsUSgHbIxx857BOggSY_BwjJgsbpZniLxqEP4SNGUH-FfP2hAXzTbyuENbW5OBG4mLGjnHkaMMi0SPme8LHXp7RiOEg8m24x0ur958bMNVcI2ft-ULWvxvb-ctp9jiHO8yyqYWf3Uei9Pwj1apA-_bPvaiv4lzycxtwRRMJdUrIMass42T5FP06Z-XLpFi0k_lrms8hv_2ddoxuW_vJ3-kDcpq9n9TcQcqFEwJG3GuvdLSyT6G8pr4yVC4OEx8VD4DHCmaiSIud3Stbrvw6sFrKkNeCTVLEqYUZbZuTRXpPqzRjwj9h6BaChlJn7jkZvimM9lEQ0blJKIJy1U8K_hAj3egfgklraZPgwQUsQm9Y0VmyQ_kcxUR23lZT2e64mUnR3hc1Nl8FCjCShShMSUaMtgNaoBDbA5mNMppcdwU4ItGIOaU49wX0km0EQr-fBhlyp-Nq-Ft1fiXKFC_04J83YMvu_sAnUakf5Nq8-miDIhrKo8xc7ZD3JkowqhQZ7m4tT6uhMVyF7bTrwazL-RwvdthQjT1VQG9h2vZpku7tsqx0RxrIvD4pybIYkCyfxyREfcok-gqfJB-4dltb3sXtP2DahuIMQvbyuV3yn2TpukUtffM5oHXBMEGxWdtyyY9-ucwrLKNHoUL7_YoB5g8rX6OnySgCM27R7Wq4eOPc5XFXySZtF_K8LND3PViHWO1-q1Oq4s2-_OitmAcSFjWwslfLeM53PNMgeLzzIty7jtZYjC2ZCP_51zne_w3OV8Lafv_ZsbGixQQsQ20Hw9pNpdI232SbFKewNey8uedpRv14KUT83VDCcGXadz2-jzUxJ_ad9oY-6xtzEw7pcYl1SXIns3HJavm76kBSEY1TLWT03ea7F3j03mPRgojFVoIavAlPwmu1H4RuOjOXu32p9yO0o8C7J6Njkn1ycvzuZW19EcckgN8ypew4mq5ZI2MiJNSEISPHs_6LXzsCMjz1E-E1lQ6O83S9-qwovfqS0Y4URRD-RFnuwBBQfGzvN5RnOocjDkaaexZ4DHR-cQI-LkLZNPYi7vHdb4iYOJfVqwGpH7zv3MPelvkRNn1cLHFC7FPjcTnO0LuK7U-NVlIg8_-iokbdhYmNOHrFu7cHrA4PsU_y36ImM9fQetiJbcoj7O0eZ10HyCKnnG3oQhuqwKOLUjxFOQxhadiNBcrA-hjTBNFa4exAs0Y1lLANLt5501fsHakslC_6f0F7f0IfAgA4_vBWu1vE4-hBOXVOWsihVNFUi07mJSvfvZpl7s8folsuCttFUV-toK88Vx72Mm9qB3uoIlNetJmVbfGEi4ivsSC0I6cVi-a6QK_e_Q7iESr6-kQWJOwcjg3CyGa3qW0DpeIT79s92VlaA579IoE-R2Yzho4ieRZ2wPIQQrd5pIT9qCiMpEsy3lnfRm53SoZNDGdVVHrKPbQpM0tQHJOSSfmK4oSaKg9aJzDHa10OfsMhglXAOkS4-R3VQlzJLuv2nCDXMRtGflGvXc-qdvDw4NYtC9gnOAlqd3xjLpEbIDtp1lO9ZEHavzzYXbcwg68v4A7WZyQOPFp9kdoRukwpmFSecA-3cguNXQwMPWdeymkoD3_yeeR0g==.eyJlbmRwb2ludF9zbHVnIjoib3BlbmFpL2dwdC02LjEtdGVycmEtMjAyNjEwMjZ8b3BlbmFpIn0",
+                  "format": "openai-responses-v1",
+                  "id": "rs_0f261f8df9e035d4016af5835f483c87d19632964fc6e1f436",
+                  "index": 0
+                }
+              ]
+            },
+            "finish_reason": null,
+            "native_finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "gen-1794474846-5bJMd5EJBphG6t42mIDH",
+        "object": "chat.completion.chunk",
+        "created": 1794474846,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2257,7 +2285,7 @@
               "tool_calls": [
                 {
                   "index": 0,
-                  "id": "call_DYrp1hdJHdlFEcBmExoGoqw4",
+                  "id": "call_8f3L2OGYqByltT3ywaHe7pox",
                   "type": "function",
                   "function": {
                     "name": "list-datasets",
@@ -2272,9 +2300,9 @@
         ]
       },
       {
-        "id": "gen-1794320589-5ql06oSBOxmJ1YkOaLyJ",
+        "id": "gen-1794474846-5bJMd5EJBphG6t42mIDH",
         "object": "chat.completion.chunk",
-        "created": 1794320589,
+        "created": 1794474846,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2298,9 +2326,9 @@
         ]
       },
       {
-        "id": "gen-1794320589-5ql06oSBOxmJ1YkOaLyJ",
+        "id": "gen-1794474846-5bJMd5EJBphG6t42mIDH",
         "object": "chat.completion.chunk",
-        "created": 1794320589,
+        "created": 1794474846,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2324,9 +2352,9 @@
         ]
       },
       {
-        "id": "gen-1794320589-5ql06oSBOxmJ1YkOaLyJ",
+        "id": "gen-1794474846-5bJMd5EJBphG6t42mIDH",
         "object": "chat.completion.chunk",
-        "created": 1794320589,
+        "created": 1794474846,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "choices": [
@@ -2334,7 +2362,8 @@
             "index": 0,
             "delta": {
               "content": "",
-              "role": "assistant"
+              "role": "assistant",
+              "reasoning": null
             },
             "finish_reason": "tool_calls",
             "native_finish_reason": "completed"
@@ -2342,9 +2371,9 @@
         ]
       },
       {
-        "id": "gen-1794320589-5ql06oSBOxmJ1YkOaLyJ",
+        "id": "gen-1794474846-5bJMd5EJBphG6t42mIDH",
         "object": "chat.completion.chunk",
-        "created": 1794320589,
+        "created": 1794474846,
         "model": "openai/gpt-6.1-terra",
         "provider": "OpenAI",
         "service_tier": "default",
@@ -2360,24 +2389,24 @@
           }
         ],
         "usage": {
-          "prompt_tokens": 5969,
-          "completion_tokens": 15,
-          "total_tokens": 5984,
-          "cost": 0.0004039,
+          "prompt_tokens": 6202,
+          "completion_tokens": 24,
+          "total_tokens": 6226,
+          "cost": 0.00046055,
           "is_byok": false,
           "prompt_tokens_details": {
-            "cached_tokens": 5943,
+            "cached_tokens": 6176,
             "cache_write_tokens": 23,
             "audio_tokens": 0,
             "video_tokens": 0
           },
           "cost_details": {
-            "upstream_inference_cost": 0.0004039,
-            "upstream_inference_prompt_cost": 0.0003289,
-            "upstream_inference_completions_cost": 0.000075
+            "upstream_inference_cost": 0.00046055,
+            "upstream_inference_prompt_cost": 0.00034055,
+            "upstream_inference_completions_cost": 0.00012
           },
           "completion_tokens_details": {
-            "reasoning_tokens": 0,
+            "reasoning_tokens": 7,
             "image_tokens": 0,
             "audio_tokens": 0
           }

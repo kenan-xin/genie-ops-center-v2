@@ -546,7 +546,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
   );
 });
 
-// The replay of `out-of-tools-ask-2` and `out-of-tools-dashboard-2`, through the browser's page context.
+// The replay of `out-of-tools-ask-1` and `out-of-tools-dashboard-1`, through the browser's page context.
 test("Ask answers a request outside its tools with one sentence", async ({
   page,
 }) => {

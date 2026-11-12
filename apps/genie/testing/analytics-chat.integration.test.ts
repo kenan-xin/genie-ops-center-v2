@@ -57,7 +57,7 @@ import { APP_AGENT_RECORDINGS } from "./model-replay.ts";
  * A dashboard changed by the Dashboards agent beside it, with the recorded model (Spec 7 R-42b,
  * R-46, R-47, R-49, AC-13): the write tool saves through the store, so each change has Undo and an
  * audit row. Ask hands a dashboard over and the run adds its panels one by one, and a chart request
- * that names no place offers its choices first (`synthetic-dashboard-question-1`). The modules come in the order of the
+ * that names no place offers its choices first (`dashboard-question-1`). The modules come in the order of the
  * app's generated selection, so the tool list equals the dev e2e list. The replayed follow-up
  * request holds the tool output, so it also proves the output holds no clock.
  */
@@ -275,14 +275,15 @@ describe("the analytics chat beside a dashboard", () => {
     expect(JSON.stringify(recorded.sent.at(-1)?.body)).toContain(
       `This chat belongs to the record ${dashboardId} of its page.`
     );
-    // An answer, no change: each chat only listed its datasets, as the core prompt asks first.
-    expect([
-      ...(await callsOf(askId)),
-      ...(await callsOf(dashboardChat)),
-    ]).toEqual([
-      { tool: "list-datasets", outcome: "answered" },
-      { tool: "list-datasets", outcome: "answered" },
-    ]);
+    // A request outside the tools needs no list-datasets call (czjw.158): no tool call in Ask, and
+    // on the dashboard no change, while a read of the open dashboard is the model's choice.
+    expect(await callsOf(askId)).toEqual([]);
+    expect(
+      (await callsOf(dashboardChat)).filter(
+        ({ tool }) =>
+          tool === "list-datasets" || tool === "analytics-change-dashboard"
+      )
+    ).toEqual([]);
   });
 
   it("adds the recorded panel with one Undo entry and one audit row, and Undo restores the empty dashboard", async () => {
@@ -349,10 +350,17 @@ describe("the analytics chat beside a dashboard", () => {
 
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
-    // The reads before the one change are the model's choice (P16-55).
-    expect(await callsOf(sessionId)).toEqual([
-      { tool: "list-datasets", outcome: "answered" },
-      { tool: "analytics-read-dashboard", outcome: "answered" },
+    // The first step lists the datasets and reads the dashboard at once, so those two can finish
+    // in either order; then one change. The reads are the model's choice (P16-55, P16-58).
+    const calls = await callsOf(sessionId);
+
+    expect(
+      calls
+        .slice(0, 2)
+        .map(({ tool }) => tool)
+        .toSorted()
+    ).toEqual(["analytics-read-dashboard", "list-datasets"]);
+    expect(calls.slice(2)).toEqual([
       { tool: "analytics-change-dashboard", outcome: "answered" },
     ]);
 
@@ -381,17 +389,9 @@ describe("the analytics chat beside a dashboard", () => {
     // First, so a recording miss prints the body the model was sent.
     expect(errors).toEqual([]);
 
-    // The first step lists the datasets and reads the dashboard at once, so those two can finish
-    // in either order; then one change (P16-58).
-    const calls = await callsOf(sessionId);
-
-    expect(
-      calls
-        .slice(0, 2)
-        .map(({ tool }) => tool)
-        .toSorted()
-    ).toEqual(["analytics-read-dashboard", "list-datasets"]);
-    expect(calls.slice(2)).toEqual([
+    // A view needs no data, so the read before the one change is the model's choice (P16-55).
+    expect(await callsOf(sessionId)).toEqual([
+      { tool: "analytics-read-dashboard", outcome: "answered" },
       { tool: "analytics-change-dashboard", outcome: "answered" },
     ]);
 
