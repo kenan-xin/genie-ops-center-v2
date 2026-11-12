@@ -145,6 +145,10 @@ jobs:
       - run: pnpm exec nx run "$PROJECT:test:integration" --nx-bail --parallel=1
         env:
           PROJECT: ${{ matrix.project }}
+      # The dev E2E suite is mandatory but no longer a test:integration
+      # dependency, so local gates run it beside the integration projects.
+      - if: matrix.project == '@genie/app'
+        run: pnpm exec nx run @genie/app:test:e2e:dev
 
   storybook-matrix:
     # The Storybook selection, confidentiality and local-cache matrix: real

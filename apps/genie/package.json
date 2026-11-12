@@ -159,7 +159,6 @@
           "build",
           "build-image",
           "test:e2e:fixture",
-          "test:e2e:dev",
           "test:e2e:setup-gate"
         ]
       },

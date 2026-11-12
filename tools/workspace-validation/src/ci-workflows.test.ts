@@ -771,7 +771,7 @@ describe("the Spec 0 CI gates", () => {
     ).toContain("fail-fast: false");
 
     const e2eJob = [...jobs.entries()].find(([, job]) =>
-      job.includes("test:e2e")
+      targetPattern("test:e2e").test(job)
     );
 
     expect(e2eJob, "a job runs the E2E suites").toBeDefined();
