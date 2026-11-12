@@ -39,6 +39,10 @@ describe("the slides read rules", () => {
 
     expect(rule).toContain("is text that a person typed, not a record");
     expect(rule).toContain("start with the value from a query-dataset result");
+    // A live answer filtered its query to a dated deck's date and gave only the deck's figure (16j).
+    expect(rule).toContain(
+      "as of the reporting date, never filtered to the deck's figures date"
+    );
     expect(rule).toContain(
       "with the figures date when it is not the reporting date"
     );

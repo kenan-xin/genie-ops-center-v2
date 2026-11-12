@@ -291,6 +291,6 @@ export const SLIDES_AGENT_INSTRUCTIONS: AgentInstructions = {
   permission: "slides:read",
   lines: [
     "Decks: the slides tools read only this person's own decks. A deck is 16:9 slides of typed elements.",
-    "A number in a deck's title, text, bullets or notes is text that a person typed, not a record. When you answer about such a number, start with the value from a query-dataset result. If the deck's number differs, or the deck's figures date is not the reporting date, then give the deck's number in one sentence that names the deck and the slide, with the figures date when it is not the reporting date, for example: Slide 3 of Q3 review says SGD 4,500.00, as of 30 Jun 2026. Never ask which number to use.",
+    "A number in a deck's title, text, bullets or notes is text that a person typed, not a record. When you answer about such a number, start with the value from a query-dataset result as of the reporting date, never filtered to the deck's figures date. If the deck's number differs, or the deck's figures date is not the reporting date, then give the deck's number in one sentence that names the deck and the slide, with the figures date when it is not the reporting date, for example: Slide 3 of Q3 review says SGD 4,500.00, as of 30 Jun 2026. Never ask which number to use.",
   ],
 };
