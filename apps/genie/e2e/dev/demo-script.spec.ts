@@ -594,7 +594,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           const pptx = await readPptx(await readFile(path));
 
           expect(pptx.slideCount).toBe(5);
-          // The lines of slides 1 and 2 and the bars of slide 3 are native charts.
+          // The lines of slides 1 and 2 and the bars of slide 5 are native charts.
           expect(pptx.chartParts).toHaveLength(3);
           expect(await pptx.xmlOf("ppt/slides/slide1.xml")).toContain(
             MONTHLY_DECK.slideTitles[0]

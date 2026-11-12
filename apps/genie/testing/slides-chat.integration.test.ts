@@ -313,7 +313,7 @@ describe("the slides chat beside the Slides list", () => {
 
     const pptx = await readPptx(fetched.bytes);
 
-    // The lines of slides 1 and 2 and the bars of slide 3; the tables are text (ruling F2).
+    // The lines of slides 1 and 2 and the bars of slide 5; the tables are text (ruling F2).
     expect(pptx.slideCount).toBe(5);
     expect(pptx.chartParts).toHaveLength(3);
     expect(await pptx.xmlOf(pptx.chartParts[0] ?? "")).toContain(
