@@ -840,7 +840,7 @@ const chatOnPlay: Story["play"] = async ({ canvas }) => {
   const chat = await screen.findByRole("region", { name: "Agent" });
 
   await expect(chat).toHaveTextContent(
-    `About: ${chatOnDashboardPage.dashboard.name}`
+    `This page: ${chatOnDashboardPage.dashboard.name}`
   );
   // The sheet slides in on a phone, so the chip shows once it settles.
   await waitFor(() =>

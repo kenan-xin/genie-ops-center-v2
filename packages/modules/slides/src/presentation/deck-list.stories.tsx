@@ -154,7 +154,7 @@ export const EmptyOnPhone: Story = {
   },
 };
 
-/** The panel opens with the list's own suggestions and the page name as its About line (R-46, D12). */
+/** The panel opens with the list's own suggestions and the page name as its page line (R-46, D12). */
 const chatOnPlay: Story["play"] = async ({ canvas }) => {
   await expect(screen.queryByRole("region", { name: "Agent" })).toBeNull();
   await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
@@ -169,7 +169,7 @@ const chatOnPlay: Story["play"] = async ({ canvas }) => {
       })
     ).toBeVisible()
   );
-  await expect(chat).toHaveTextContent("About: Slides");
+  await expect(chat).toHaveTextContent("This page: Slides");
 };
 
 /**

@@ -126,7 +126,7 @@ test("the agent panel on the deck editor changes the shown slide, and Undo resto
 
         // The page names the open deck and the shown slide (D21).
         await expect(
-          chat.getByText(`About: ${SLIDES_CHANGE_DECK_TITLE}, slide 2`, {
+          chat.getByText(`This page: ${SLIDES_CHANGE_DECK_TITLE}, slide 2`, {
             exact: true,
           })
         ).toBeVisible();

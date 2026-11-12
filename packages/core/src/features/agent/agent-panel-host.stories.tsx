@@ -189,7 +189,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The agent panel: a full-height column from 1280 px that narrows the page, a 480 px sheet from 768 px, and a full-screen sheet below. Its header holds Agent, the page's About line, New chat, Open in Ask and Close. It keeps the tab's chat across page loads, and a page gives it a record context, suggestions and a refresh through `useAgentPage`. The stories stub the agent route; no model runs.",
+          "The agent panel: a full-height column from 1280 px that narrows the page, a 480 px sheet from 768 px, and a full-screen sheet below. Its header holds Agent, New chat, Open in Ask and Close, and the line under it names the page that the agent knows about. It keeps the tab's chat across page loads, and a page gives it a record context, suggestions and a refresh through `useAgentPage`. The stories stub the agent route; no model runs.",
       },
     },
     a11y: { test: "error" },
@@ -832,7 +832,10 @@ export const APageTalksToThePanel: Story = {
 
     const region = await panel();
 
-    await expect(region).toHaveTextContent("About: Monthly review");
+    await expect(region).toHaveTextContent("This page: Monthly review");
+    await expect(
+      screen.queryByRole("button", { name: "Leave this page out of the chat" })
+    ).toBeNull();
     await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(1));
     await expect(sentBody(0)).toEqual({
       context: {
@@ -861,7 +864,7 @@ export const APageTalksToThePanel: Story = {
     );
     await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(2));
     await expect(sentBody(1).context).toBeUndefined();
-    await expect(region).not.toHaveTextContent("About:");
+    await expect(region).not.toHaveTextContent("This page:");
     release();
     await expect(onFinished).toHaveBeenCalledTimes(1);
   },
@@ -869,79 +872,33 @@ export const APageTalksToThePanel: Story = {
 
 const LONG_ABOUT = "Records, Overdue, Customer Example Trading Company";
 
-/** M1: the About line shows its whole text on its own row, in at most two lines (czjw.111). */
-async function expectWholeAbout(): Promise<void> {
+/** M1: the page line shows its whole text on its own row, in at most two lines (czjw.111). */
+async function expectWholePageLine(): Promise<void> {
   const region = await panel();
 
-  const line = await within(region).findByText(`About: ${LONG_ABOUT}`);
+  const line = await within(region).findByText(`This page: ${LONG_ABOUT}`);
 
   await expect(line).toHaveAttribute("title", LONG_ABOUT);
   await expect(line.scrollWidth).toBe(line.clientWidth);
   await expect(line.scrollHeight).toBe(line.clientHeight);
 }
 
-export const ALongAboutLine: Story = {
-  name: "A long About line in the docked panel",
+export const ALongPageLine: Story = {
+  name: "A long page line in the docked panel",
   render: () => <Frame page about={LONG_ABOUT} />,
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Add a chart" }));
-    await expectWholeAbout();
+    await expectWholePageLine();
   },
 };
 
-export const ALongAboutLineOnAPhone: Story = {
-  name: "A long About line on a phone",
+export const ALongPageLineOnAPhone: Story = {
+  name: "A long page line on a phone",
   render: () => <Frame page about={LONG_ABOUT} />,
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Add a chart" }));
-    await expectWholeAbout();
-  },
-};
-
-// PL1, PL2: the person leaves the page out of the chat. The line goes, and the next message sends
-// no context; once the page shows another record, the line and the context come back.
-export const ThePersonLeavesThePageOut: Story = {
-  name: "The person leaves the page out",
-  render: () => <Frame page />,
-  play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Add a chart" }));
-
-    const region = await panel();
-
-    await expect(region).toHaveTextContent("About: Monthly review");
-    await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(1));
-    release();
-    await screen.findByText("Half an answer.");
-
-    await userEvent.click(
-      screen.getByRole("button", { name: "Leave this page out of the chat" })
-    );
-    await expect(region).not.toHaveTextContent("About:");
-
-    await userEvent.type(
-      screen.getByRole("textbox", { name: "Message" }),
-      "And in general?{Enter}"
-    );
-    await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(2));
-    await expect(sentBody(1).context).toBeUndefined();
-    release();
-    await waitFor(() => expect(onFinished).toHaveBeenCalledTimes(2));
-
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Open the next dashboard" })
-    );
-    await expect(region).toHaveTextContent("About: Monthly review");
-
-    await userEvent.type(
-      screen.getByRole("textbox", { name: "Message" }),
-      "And this one?{Enter}"
-    );
-    await waitFor(() => expect(agentRoute).toHaveBeenCalledTimes(3));
-    await expect(sentBody(2).context).toEqual({
-      page: "Dashboard",
-      record: { type: "analytics-dashboard", id: "d2" },
-    });
+    await expectWholePageLine();
   },
 };
 

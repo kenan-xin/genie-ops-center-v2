@@ -327,7 +327,7 @@ test("on the Overdue tab, the agent answers about the overdue invoices only", as
 
       // The list names its dataset and tab filter to the agent, never its rows (I20).
       await expect(
-        panel.getByText("About: Invoices, Overdue", { exact: true })
+        panel.getByText("This page: Invoices, Overdue", { exact: true })
       ).toBeVisible();
 
       await askQuestion(page, OVERDUE_QUESTION);

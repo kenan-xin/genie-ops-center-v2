@@ -14,6 +14,7 @@ import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
+  FileTextIcon,
   Maximize2Icon,
   PlusIcon,
   XIcon,
@@ -42,8 +43,6 @@ import { ShellContext } from "../shell/shell-context.ts";
 import { linkFor } from "../shell/shell-link.ts";
 import {
   agentPanelStore,
-  leaveOutPage,
-  pageLeftOut,
   sentPageContext,
   setBottomPanel,
   setPanelOpen,
@@ -132,7 +131,6 @@ export function AgentPanelHost(props: {
   const working = useStore(agentPanelStore, (state) => state.working);
   const page = useStore(agentPanelStore, (state) => state.page);
   const outbox = useStore(agentPanelStore, (state) => state.outbox);
-  const leftOut = useStore(agentPanelStore, pageLeftOut);
   const docked = useMediaQuery(DOCKED, {});
   const phone = useMediaQuery(PHONE, {});
 
@@ -313,8 +311,8 @@ export function AgentPanelHost(props: {
 
   const Anchor = linkFor(askHref, shell?.linkComponent);
 
-  // The line names the page the next message goes with; a left-out page shows none.
-  const about = leftOut ? undefined : (page?.about ?? page?.context?.page);
+  // The line names the page that the next message goes with.
+  const about = page?.about ?? page?.context?.page;
 
   const name = target?.surface.name ?? "Agent";
 
@@ -473,27 +471,17 @@ export function AgentPanelHost(props: {
           <XIcon aria-hidden="true" strokeWidth={1.75} />
         </Button>
       </header>
-      {/* The page the chat is about, on its own row so its filter shows in full (czjw.111). */}
+      {/* The page the agent knows about, on its own row so its filter shows in full (czjw.111, czjw.165). */}
       {about === undefined || (bottom && collapsed) ? null : (
-        <div className="shrink-0 border-b border-border px-4 py-2">
-          <div className="inline-flex max-w-full items-start gap-1 rounded-lg bg-tile py-1 ps-2.5 pe-1 text-xs text-muted-foreground">
-            <p
-              title={about}
-              className="line-clamp-2 min-w-0 self-center wrap-break-word"
-            >
-              About: {about}
-            </p>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon-sm"
-              aria-label="Leave this page out of the chat"
-              title="Leave this page out of the chat"
-              onClick={leaveOutPage}
-            >
-              <XIcon aria-hidden="true" strokeWidth={1.75} />
-            </Button>
-          </div>
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2 text-sm text-muted-foreground">
+          <FileTextIcon
+            aria-hidden="true"
+            className="size-4 shrink-0"
+            strokeWidth={1.75}
+          />
+          <p title={about} className="line-clamp-2 min-w-0 wrap-break-word">
+            This page: {about}
+          </p>
         </div>
       )}
       <div

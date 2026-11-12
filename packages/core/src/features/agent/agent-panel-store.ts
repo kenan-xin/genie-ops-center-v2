@@ -24,11 +24,6 @@ type AgentPanelState = {
   readonly outbox: { readonly text: string; readonly record: string } | null;
   /** The Agent button that opened the panel, so Close gives it focus back. */
   readonly opener: HTMLElement | null;
-  /**
-   * The page the person left out of the chat, by its hook and its context; it stays out until the
-   * page publishes another context or another page registers.
-   */
-  readonly leftOut: { readonly owner: string; readonly key: string } | null;
   /** The phone bottom panel of a surface page while it shows, so the shell leaves room for it. */
   readonly bottomPanel: "open" | "collapsed" | null;
 };
@@ -39,7 +34,6 @@ const CLOSED: AgentPanelState = {
   page: null,
   outbox: null,
   opener: null,
-  leftOut: null,
   bottomPanel: null,
 };
 
@@ -65,34 +59,9 @@ export function setBottomPanel(
   agentPanelStore.setState({ bottomPanel });
 }
 
-/** True while the person left the current page out of the chat. */
-export function pageLeftOut(state: AgentPanelState): boolean {
-  const { page, leftOut } = state;
-
-  return (
-    page !== null &&
-    leftOut !== null &&
-    leftOut.owner === page.owner &&
-    leftOut.key === JSON.stringify(page.context)
-  );
-}
-
-/** Leaves the current page out of every message until it shows something else. */
-export function leaveOutPage(): void {
-  const { page } = agentPanelStore.getState();
-
-  if (page === null) return;
-
-  agentPanelStore.setState({
-    leftOut: { owner: page.owner, key: JSON.stringify(page.context) },
-  });
-}
-
-/** The context that the next message sends: none when the person left this page out. */
+/** The context that the next message sends: the page's, read when the message goes. */
 export function sentPageContext(): AgentPageContext | undefined {
-  const state = agentPanelStore.getState();
-
-  return pageLeftOut(state) ? undefined : state.page?.context;
+  return agentPanelStore.getState().page?.context;
 }
 
 /** The record a page shows, as one comparable key; "" beside a list or on no page. */
