@@ -738,4 +738,34 @@ Options rejected: a fixed limit in code (one value for every customer, and long 
 
 Trade-off: each turn adds one short compaction call and a queue wait between turns when the worker is busy. Without the deferred cost budget and with no stall guard, a run that makes slow, useless progress is ended only by the person or by the time box, so a deployment that raises the time box also raises what a useless run can spend.
 
-Designed in: Section 7 follow-up (core ticket for chained runs, the loop guard and the run list). The new-deck flow (S7-48) ships on today's limits and gains chaining when that ticket lands. Revisit when the first deployment pays for real model use, when a run costs more than expected (add the cost budget), or when four slots per worker make people wait (raise `AGENT_RUNS_AT_ONCE` or run a second worker). Guard: a run stays a chain of bounded jobs with the short expiry, and `stopRun` stays the one Stop path for every place that shows a run.
+Designed in: Section 7 follow-up (core ticket for chained runs, the loop guard and the run list). Capacity for many concurrent runs and people: `DEC-58`. The new-deck flow (S7-48) ships on today's limits and gains chaining when that ticket lands. Revisit when the first deployment pays for real model use, when a run costs more than expected (add the cost budget), or when four slots per worker make people wait (raise `AGENT_RUNS_AT_ONCE` or run a second worker). Guard: a run stays a chain of bounded jobs with the short expiry, and `stopRun` stays the one Stop path for every place that shows a run.
+
+## DEC-58. Scaling a deployment by adding containers
+
+Question (owner, 2026-11-13, during `DEC-57`): the worker runs at most 4 background agent runs at once (`AGENT_RUNS_AT_ONCE`). Does that limit the system to 4 users, and what does a deployment do when thousands of people use it at once?
+
+Answer to the first part: no. A chat answer streams from the app process through `POST /api/agent` and never uses a worker slot. Only background runs (a handover from Ask, a deck that drafts itself) use the worker, and the 4 is a per-worker number chosen low, not a technical ceiling: a run spends almost all its time waiting for the model, so one Node.js worker can wait on many runs.
+
+Decision (owner, 2026-11-13): a deployment scales by adding containers, with no code change and no new infrastructure. Everything shared already lives in the deployment's one Postgres database (sessions, rate-limit counters in `rate_limit_window`, the pg-boss queue, run state), so:
+
+1. The app scales by running more `app` containers behind the reverse proxy. Each copy is stateless.
+2. Background runs scale by raising the slots per worker and by running more `worker` containers on the same queue; pg-boss gives each job to one worker.
+3. Database connections scale by raising each copy's pool size, then by a connection pooler (PgBouncer) in front of Postgres when the copies multiply.
+4. Postgres scales up first (a bigger server), then out to read replicas for heavy reads. One database per customer (`DEC-33`) keeps one customer's load away from another's.
+5. The model provider's request and token rate is the real ceiling for agent work, and a deployment raises it through its provider account.
+
+To make that true, three changes, fixed now (owner, 2026-11-13: "we need to fix the blockers now"):
+
+- Two blockers for more than one app copy. The download-link key is a random value made per process (`packages/core/src/services/file-storage/token.ts`), so a link signed by one copy fails on another; it becomes one shared secret from the environment. Settings, branding and entitlement changes reach the other copies only when their 10-second cache expires (`DEC-46`); every save now fires a `pg_notify` that clears the same caches in every copy, which is the path `DEC-46` already names for several replicas, and the 10-second expiry stays as the fallback.
+- The scaling numbers become environment settings with today's values as defaults: background run slots per worker (today 4) and the database pool size per copy (today the node-postgres default of 10).
+- The deployment runbook says how to run N app copies and M workers and when to add a pooler, and one load test measures what one app copy and one worker carry.
+
+Why containers and not a new tier: the platform rule is one image, one database, one realm per customer (`DEC-33`), and every shared state was put in Postgres from the start, so copies need nothing new. A message broker, Redis or a separate agent service would add infrastructure that every customer-hosted deployment must run, for load that Postgres and pg-boss carry at our customer sizes (`DEC-12`: revisit when job volume needs a dedicated broker).
+
+Options rejected: a fixed concurrency in code (it cannot follow a customer's size); Redis for caches and rate limits (new infrastructure; `pg_notify` gives the same clearing on the database we already run); a separate agent-run service (a second deployable for the same queue the worker already drains).
+
+Trade-off: `pg_notify` holds one listening connection per copy, and a missed notification (a dropped connection) falls back to the 10-second expiry. The shared download-link secret is one more required secret in `.env`. Postgres stays the single shared component, so its size sets the ceiling before read replicas.
+
+Unverified: the two blockers come from code comments and a code read. Other state held in one process may exist; the load test with two app copies and two workers is where it shows.
+
+Designed in: core ticket for the blockers, the settings and the runbook (filed 2026-11-13). Revisit when one Postgres server is the bottleneck (read replicas, then a pooler in transaction mode), or when the job volume needs a broker (`DEC-12`). Guard: no state that two copies must share lives in process memory; a new cache reads through the tenant context and is cleared by the same notification.
