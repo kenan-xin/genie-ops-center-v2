@@ -187,11 +187,23 @@
   .composer { border-top: 1px solid var(--hairline); padding: 12px 20px; }
   .composer div { border: 1px solid var(--input); border-radius: 8px; padding: 10px 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
   .nav .spin { margin-left: auto; }
-  .agent-h { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: none; padding: 14px 10px 6px; font-size: 12px; font-weight: 600; color: var(--secondary); text-align: left; }
-  .agent-h .n { margin-left: auto; color: var(--muted); font-weight: 500; }
-  .agent-h .chev { transition: transform .15s; display: inline-flex; }
+  /* A group header is a row like Codex's project row: same height and text size as a chat, the
+     agent's icon in a fixed 16 px slot, and the chats indented so their text starts under the name. */
+  .agent-h { display: flex; align-items: center; gap: 8px; width: 100%; height: 32px; margin-top: 6px; padding: 0 10px; border: 0; border-radius: 8px; background: none; font-size: 14px; font-weight: 600; color: var(--heading); text-align: left; }
+  .agent-h:first-child { margin-top: 2px; }
+  .agent-h:hover { background: var(--panel); }
+  .agent-h > svg.i { color: var(--idle); }
+  .agent-h .spin { margin-left: auto; }
+  .agent-h .chev { margin-left: auto; display: inline-flex; color: var(--muted); opacity: 0; transition: opacity .15s, transform .15s; }
+  .agent-h .spin + .chev { margin-left: 6px; }
+  .agent-h:hover .chev, .agent-h:focus-visible .chev, .agent-h[aria-expanded="false"] .chev { opacity: 1; }
   .agent-h[aria-expanded="false"] .chev { transform: rotate(-90deg); }
-  .more { border: 0; background: none; color: var(--muted); font-size: 14px; padding: 6px 10px; }
+  .phone .agent-h { height: 40px; }
+  .phone .agent-h .chev { opacity: 1; }
+  .group .chat { height: 32px; padding-left: 34px; }
+  .phone .group .chat { height: 44px; }
+  .more { display: block; width: 100%; height: 32px; padding: 0 10px 0 34px; border: 0; border-radius: 8px; background: none; color: var(--muted); font-size: 14px; text-align: left; }
+  .more:hover { background: var(--panel); color: var(--idle); }
   .recents-h { border-top: 1px solid var(--hairline); margin-top: 10px !important; padding-top: 14px !important; }
   .bars { margin-top: 14px; border: 1px solid var(--hairline); border-radius: 12px; padding: 18px; display: grid; gap: 10px; }
   .bars div { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; font-size: 14px; color: var(--idle); }
@@ -421,9 +433,10 @@ function variantE() {
     const open = state.expanded[a.key] !== false;
     const shown = state.all[a.key] ? rows : rows.slice(0, 3);
     const working = rows.some(c => c.run === 'working');
-    const tail = !open && working ? '<span class="spin" role="img" aria-label="A chat is working"></span>' : `<span class="n">${rows.length}</span>`;
-    return `<button class="agent-h" data-agent="${a.key}" aria-expanded="${open}"><span class="chev">${ic('chev')}</span>${ic(a.icon)}${a.label}${tail}</button>`
-      + (open ? shown.map(plain).join('') + (rows.length > 3 && !state.all[a.key] ? `<button class="more" data-more="${a.key}">Show more</button>` : '') : '');
+    // No count: the rows show it when open, and a folded group needs only "is anything working".
+    const spin = !open && working ? '<span class="spin" role="img" aria-label="A chat is working"></span>' : '';
+    return `<button class="agent-h" data-agent="${a.key}" aria-expanded="${open}" aria-controls="g-${a.key}">${ic(a.icon)}${a.label}${spin}<span class="chev">${ic('chev')}</span></button>`
+      + (open ? `<div class="group" id="g-${a.key}" role="group" aria-label="${a.label} chats">${shown.map(plain).join('')}${rows.length > 3 && !state.all[a.key] ? `<button class="more" data-more="${a.key}">Show more</button>` : ''}</div>` : '');
   }).join('');
   // Recents sits at the bottom, as in Codex: the newest chats of every agent, each with its
   // agent's icon so a Slides chat reads apart from an Ask chat.
