@@ -69,11 +69,16 @@ const FETCH_BLOCKED_PORTS = new Set([
   6667, 6668, 6669, 6679, 6697, 10080,
 ]);
 
-/** The host port `base` moved by `offset` and past any port fetch refuses. */
+/** Host ports a local service commonly holds: 5355 is LLMNR, which systemd-resolved listens on. */
+const HOST_HELD_PORTS = new Set([5355]);
+
+/** The host port `base` moved by `offset` and past any port fetch refuses or the host holds. */
 export function shiftedPort(base: number, offset: number): number {
   let port = base + offset;
 
-  while (FETCH_BLOCKED_PORTS.has(port)) port += 1;
+  while (FETCH_BLOCKED_PORTS.has(port) || HOST_HELD_PORTS.has(port)) {
+    port += 1;
+  }
 
   return port;
 }

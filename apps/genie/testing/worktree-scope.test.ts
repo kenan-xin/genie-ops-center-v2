@@ -36,4 +36,12 @@ describe("scopedPort", () => {
       expect(port - blocked).toBeLessThan(10);
     }
   );
+
+  it("steps past 5355, the LLMNR port systemd-resolved holds on many Linux hosts", () => {
+    vi.stubEnv("GENIE_WORKTREE_ID", "a");
+
+    const offset = scopedPort(0);
+
+    expect(scopedPort(5355 - offset)).not.toBe(5355);
+  });
 });
