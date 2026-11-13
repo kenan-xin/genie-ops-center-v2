@@ -335,7 +335,7 @@ export function createTenantContext(
   const base: Omit<TenantContext, "auth"> = {
     db,
     env,
-    // `clearAll` stays off the context; only the cache listener calls it (DEC-58).
+    // `clearAll` stays off the context's type, and only the cache listener calls it (DEC-58).
     settings: readers.settings,
     branding: readers.branding,
     entitlements: readers.entitlements,

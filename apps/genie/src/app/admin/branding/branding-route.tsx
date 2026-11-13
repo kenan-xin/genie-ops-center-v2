@@ -12,8 +12,9 @@ import { useRouter } from "next/navigation.js";
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { refusalOf, rpc } from "../../../rpc/client.ts";
 
-// DEC-46: the root layout reads branding through a reader that can serve the old row for 10 s
-// and that no save clears, so a refresh this long after Publish reads the new row.
+// DEC-46: the root layout reads branding through a reader that can serve the old row for 10 s.
+// A save clears that reader in every copy through pg_notify (DEC-58). This delay stays as the
+// fallback for a lost notification, so a refresh this long after Publish reads the new row.
 // A second past the window, so the refresh does not land on the edge of the cache.
 const REFRESH_MARGIN_MS = 1_000;
 

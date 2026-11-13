@@ -91,7 +91,7 @@ A worker uses its pool for agent runs and for every other job type. A run uses a
 
 When the total passes `max_connections`, put PgBouncer between the stack and Postgres. Point `DATABASE_URL` at PgBouncer.
 
-Use PgBouncer in session mode. Transaction mode breaks `LISTEN`, so the copies stop clearing their caches at once. They then fall back to the 10-second expiry. If you must use transaction mode, give the cache listener a direct connection to Postgres. The stack has no setting for this today, so plan it as a code change.
+Use PgBouncer in session mode. Transaction mode breaks `LISTEN`, so the copies stop clearing their caches at once. They then fall back to the 10-second expiry. If you must use transaction mode, give the cache listener a direct connection to Postgres. The stack has no setting for this today, so plan it as a code change (bead `genie-ops-center-v2-xok3.85`).
 
 ### Know the real ceiling
 
