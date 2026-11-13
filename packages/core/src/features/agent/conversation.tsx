@@ -50,6 +50,25 @@ import { refusalOf } from "./transport.ts";
 
 const storedTime = z.object({ createdAt: z.iso.datetime({ offset: true }) });
 
+// `START_PART` of `start-record.ts`, which is server code.
+const startPart = z.object({ description: z.string() });
+
+/**
+ * A record's first message from its page (S7-48) as the person wrote it: the description, not the
+ * instructions that only the model reads. Any other message as it is.
+ */
+function shownUserMessage(message: AgentMessage): AgentMessage {
+  const part = message.parts.find(({ type }) => type === "data-start");
+
+  const parsed = startPart.safeParse(
+    part !== undefined && "data" in part ? part.data : undefined
+  );
+
+  return parsed.success
+    ? { ...message, parts: [{ type: "text", text: parsed.data.description }] }
+    : message;
+}
+
 /** A stored answer's time: its own time minus its question's (AG16). */
 function storedDuration(
   messages: readonly AgentMessage[],
@@ -367,7 +386,10 @@ export function Conversation(props: {
                         <Bubble variant="muted" align="end">
                           <BubbleContent>
                             <span className="sr-only">You: </span>
-                            <MessageParts message={message} streaming={false} />
+                            <MessageParts
+                              message={shownUserMessage(message)}
+                              streaming={false}
+                            />
                           </BubbleContent>
                         </Bubble>
                       </Message>

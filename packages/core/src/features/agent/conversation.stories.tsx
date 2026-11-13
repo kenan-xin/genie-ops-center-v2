@@ -1071,3 +1071,32 @@ export const Refused: Story = {
     );
   },
 };
+
+const DESCRIPTION = "An update on this month's records for the finance team";
+
+// A record started from its list page (S7-48): the first message holds the person's description
+// as a card part, and core's instructions as the text part that only the model reads.
+export const StartedFromPage: Story = {
+  name: "Started from a page",
+  args: {
+    models: null,
+    initialMessages: [
+      {
+        id: "start",
+        role: "user",
+        parts: [
+          { type: "data-start", data: { description: DESCRIPTION } },
+          {
+            type: "text",
+            text: `The person started this record on its page and described it below. Name the record from the description, then build it.\n\nDescription: ${DESCRIPTION}`,
+          },
+        ],
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(DESCRIPTION)).toBeVisible();
+    // Bug caught: core's instructions shown to the person as their own words.
+    await expect(canvas.queryByText(/Name the record/)).toBeNull();
+  },
+};
