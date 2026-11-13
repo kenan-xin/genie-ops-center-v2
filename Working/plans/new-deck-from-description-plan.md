@@ -10,7 +10,7 @@ Execution method: subagent-driven. Bead: `genie-ops-center-v2-czjw.174`. Ticket:
 
 **Tech Stack:** Next.js, oRPC, Drizzle, pg-boss (durable run of S7-40), TanStack Query and Form, zustand panel store, Storybook with Vitest browser tests, Playwright.
 
-**Spec:** the design is `/home/kenan/work/genie-ops-center-v2/Working/prototypes/new-deck-flow.prototype.html`, imported as `docs/design/prototypes/new-deck-flow.prototype.html`. Requirements: Spec 7 R-42, R-42b, R-46, R-52, R-53 (`docs/specs/07-invoice-and-payments.md`), `DEC-29` with its amendments of 2026-11-01 and 2026-11-07, `docs/architecture/agent.md` "Surfaces and the handoff", `docs/modules/slides/README.md`. Gate: do not start Task 1 before the owner rules on OQ-1 (R-46), because Tasks 1 and 2 build option (a). Read the other open questions before Task 4.
+**Spec:** the design is `/home/kenan/work/genie-ops-center-v2/Working/prototypes/new-deck-flow.prototype.html`, imported as `docs/design/prototypes/new-deck-flow.prototype.html`. Requirements: Spec 7 R-42, R-42b, R-46, R-52, R-53 (`docs/specs/07-invoice-and-payments.md`), `DEC-29` with its amendments of 2026-11-01 and 2026-11-07, `docs/architecture/agent.md` "Surfaces and the handoff", `docs/modules/slides/README.md`. Owner answers of 2026-11-13: OQ-1 (a), R-46 amended; OQ-2 (b); OQ-3 keep the normal answer; OQ-5 approved. OQ-4, the step limit, is still open: Tasks 4 to 6 wait for it, and no task changes `AGENT_LIMITS`. The design was polished on 2026-11-13 and re-imported; its screenshots are in `/home/kenan/work/genie-ops-center-v2/Working/screenshots/new-deck-flow/`.
 
 ## Global Constraints
 
@@ -129,7 +129,7 @@ Implementer model: Opus, because the task is judgment-heavy UI with keyboard beh
 - Consumes: `useStartRecordRun("slides")` (Task 2).
 - Produces: `export function NewDeckComposer(props: { saving: boolean; failure: string | null; onCancel: () => void; onSubmit: (description: string) => void }): ReactNode`.
 
-The composer sits under `PageHeader`, not in a dialog. `New deck` toggles it and carries `aria-expanded`. It shows only when `view.canWrite` and `view.chat.kind === "on"`. With `off` or `none`, New deck keeps today's title dialog and `createDeck`, and the existing "Chat is off. You can still make a deck with New deck." note stays. The textarea is a TanStack Form field with `z.string().trim().min(1).max(4000)`. Use `InputGroupTextarea` or `Textarea` from `@genie/ui` after a `docs-show` check. Below 768 px the two buttons take the full width.
+The composer sits under `PageHeader`, not in a dialog. While it is open, it replaces the New deck button: the header shows no New deck. New deck opens it and focuses the textarea. Cancel closes it, brings New deck back and gives it focus. Creating also closes it. It shows only when `view.canWrite` and `view.chat.kind === "on"`. With `off` or `none`, New deck keeps today's title dialog and `createDeck`, and the existing "Chat is off. You can still make a deck with New deck." note stays. The textarea is a TanStack Form field with `z.string().trim().min(1).max(4000)`. Use `InputGroupTextarea` or `Textarea` from `@genie/ui` after a `docs-show` check. Below 768 px the two buttons take the full width.
 
 - [ ] **Step 1: Write the stories with play functions** in `new-deck-composer.stories.tsx`, each named after the bug it catches:
   - `EnterCreates`: typing `  October collections \n` text and Enter calls `onSubmit` once with `"October collections"`. A second Enter while `saving` is true calls nothing more.
@@ -138,7 +138,7 @@ The composer sits under `PageHeader`, not in a dialog. `New deck` toggles it and
   - `ChipFills`: a chip click puts its text in the textarea and focuses it, and calls nothing.
   - `RunActive`: a `failure` shows its message in `role="alert"`, and the typed text stays.
   - `Phone`: the phone viewport shows full-width buttons.
-- [ ] **Step 2: Update `deck-list.stories.tsx`:** `NewDeck` and `NewDeckOnPhone` open the composer when chat is on; `NewDeckChatOff` still opens the title dialog and calls `createDeck({ title })`. Bug caught: a person without chat who loses New deck.
+- [ ] **Step 2: Update `deck-list.stories.tsx`:** `NewDeck` and `NewDeckOnPhone` open the composer when chat is on, New deck is gone from the header, and the textarea has focus; `CancelRestoresNewDeck`: Cancel removes the composer, New deck shows again and has focus (bug caught: focus lost on the page body); `NewDeckChatOff` still opens the title dialog and calls `createDeck({ title })`. Bug caught: a person without chat who loses New deck.
 - [ ] **Step 3: Run** Storybook MCP `test-run` on both files. Expected: FAIL.
 - [ ] **Step 4: Implement** `NewDeckComposer` and wire it in `deck-list.tsx`: `onSubmit` calls `start.mutate(description)`; a refusal maps to `failure` with the error's message (`appCodeOf` from `use-deck.ts` tells the codes apart if a message needs it); Cancel closes the composer and resets the mutation.
 - [ ] **Step 5: Run the stories again.** Expected: PASS. Run `npx impeccable detect` on the touched stories and fix each finding. Then `pnpm gate:fast`.
@@ -156,24 +156,26 @@ Implementer model: Opus, because the task couples polling, disabled editing and 
 **Interfaces:**
 - Consumes: `useRecordRun({ surface: "slides", recordId: deck.id, enabled: view.chat.kind !== "none" })` (Task 2). A person without `core:ask:use` is refused by the `agent` area, so the page never reads the run for that person, and the page looks as it does today.
 - Produces:
-  - `export function draftStatus(input: { run: AgentRunStatus | null; endedHere: boolean; drafted: number; planned: number | null }): string | null`.
+  - `export function draftStatus(input: { run: AgentRunStatus | null; endedHere: boolean; drafted: number }): string | null`. The page does not know the planned count (owner, OQ-2 option b).
   - `export function isUnnamed(input: { run: AgentRunStatus | null; title: string; sessionTitle: string | null }): boolean`: true only while `run` is `building` or `stopping` and `title === sessionTitle`.
   - `useDeck(initial, options?: { fast: boolean })`: `refetchInterval` is `RUN_POLL_MS` when `fast`, else 10,000.
 
 - [ ] **Step 1: Write the failing unit tests** in `draft-status.test.ts`, one table each:
-  - `draftStatus`: building, 0 drafted, no plan: `"Drafting slide 1"`; building, 2 drafted, no plan: `"Drafting slide 3"`; building, 2 drafted, planned 5: `"Drafting 3 of 5"`; building, 5 drafted, planned 5: `"Drafting 5 of 5"` (never 6 of 5); `stopping`: `"Stopping"`; ended here as `saved` or `stopped` with 1: `"1 slide drafted"`, with 4: `"4 slides drafted"`; ended here as `failed` or `interrupted` with 2: `"Drafting did not finish. 2 slides drafted"`; an ended run that this visit did not see end: null.
+  - `draftStatus`: building, 0 drafted: `"Drafting slide 1"`; building, 2 drafted: `"Drafting slide 3"`; `stopping`: `"Stopping"`; ended here as `saved` with 1: `"1 slide drafted"`, with 4: `"4 slides drafted"`; ended here as `stopped` with 1: `"Stopped, 1 slide kept"`, with 3: `"Stopped, 3 slides kept"`; ended here as `failed` or `interrupted` with 2: `"Drafting did not finish. 2 slides drafted"`; an ended run that this visit did not see end: null.
   - `isUnnamed`: true while building with the session's title; false once the title differs; false after the run ended with the provisional title (Review Focus 5).
 - [ ] **Step 2: Write the stories** in `deck-view.stories.tsx`, with the run read mocked at the `agent` client as the existing deck stories mock `slides`:
-  - `DraftingUnnamed`: zero slides; the title is a skeleton with the hidden text `Naming the deck`; the canvas shows `Reading your records` with `role="status"`; the pill reads `Drafting slide 1`; Stop shows and Export and Present do not.
-  - `DraftingNamed`: two slides; the rail shows two thumbnails and one placeholder; the canvas shows slide 2; Add slide, Edit, Undo, Refresh data and the title button are disabled (Review Focus 4).
+  - `DraftingUnnamed`: zero slides; the title is a skeleton with the hidden text `Naming the deck`; the canvas shows `Reading your records` with `role="status"`; the pill reads `Drafting slide 1`; Stop shows and Export, More actions and Present do not.
+  - `DraftingNamed`: two slides; the rail shows two thumbnails and one placeholder after them; the canvas shows slide 2; the title is plain text, not a button; Add slide, Edit, Undo and Refresh data are disabled (Review Focus 4).
   - `StopEndsTheRun`: Stop calls `agent.stop` with the session id once.
-  - `Ready`: after the run ended here as `saved`, the pill reads `2 slides drafted`, Export and Present return, and editing is enabled.
+  - `Stopped`: the run ended here as `stopped` with two slides; the pill reads `Stopped, 2 slides kept` in the gray draft style, the rail shows two slides and no placeholder, and editing is enabled.
+  - `Ready`: after the run ended here as `saved`, the pill reads `2 slides drafted`, Export, More actions and Present return, the `Slide 1 of 2` and Undo row shows, and editing is enabled.
+  - `ReadyEmpty`: the run ended with no slide; Present is disabled, and the canvas shows the existing empty state.
   - `FailedHalfWay`: the run ended here as `failed` with two slides; the pill reads `Drafting did not finish. 2 slides drafted`, the title shows the provisional name, and editing is enabled. The panel's notice offers Try again (S7-41).
   - `NoAgent`: `chat.kind` is `none`; no run is read, and the page shows as today. Bug caught: a deck page that breaks for a person without Ask.
-  - `Drafting` and `Ready` again at the phone viewport, with the panel as a bottom panel.
+  - `Drafting` and `Ready` again at the phone viewport, with the panel as a bottom panel; the slide rail stays above the sheet (the shell's `bottomPanel` padding, P11-52).
   - Existing deck stories get `chat` in their fixture and an `agent` client mock that answers no sessions.
 - [ ] **Step 3: Run** `pnpm nx run @genie/module-slides:test -- draft-status` and Storybook MCP `test-run` on `deck-view.stories.tsx`. Expected: FAIL.
-- [ ] **Step 4: Implement** in `deck-view.tsx`. While `run` is set: pass `fast` to `useDeck`; show the last slide; disable hand edits; show `draftStatus` in a `role="status"` pill and Stop in the header actions. Pass `planned: null` until the owner answers OQ-2. The page's `onFinished` (from `useAgentPage`) also calls `refresh()` of the run. A deck with no run looks as before.
+- [ ] **Step 4: Implement** in `deck-view.tsx`. While `run` is set: pass `fast` to `useDeck`; show the last slide; show one placeholder after the drafted slides in the rail; disable hand edits; show the title as plain text; show `draftStatus` in a `role="status"` pill and Stop in the header actions. Present stays disabled while the deck has no slides. The page's `onFinished` (from `useAgentPage`) also calls `refresh()` of the run. A deck with no run looks as before.
 - [ ] **Step 5: Run the tests and stories again.** Expected: PASS. Run `npx impeccable detect` on the touched stories. Then `pnpm gate:fast`.
 - [ ] **Step 6: Commit** `feat(slides): show the deck page while the agent drafts it`.
 
@@ -186,14 +188,14 @@ Implementer model: Opus, because focus, the hash guard and the form need judgmen
 - Modify: `deck-view.tsx` (replace the Rename dialog and `RenameForm`), `deck-view.stories.tsx` (remove or move the rename dialog stories)
 
 **Interfaces:**
-- Produces: `export function DeckTitle(props: { title: string; disabled: boolean; saving: boolean; failure: string | null; onSave: (title: string) => void }): ReactNode`. `deck-view.tsx` passes `onSave` as one `{ op: "rename", title }` change at the hash the person saw.
+- Produces: `export function DeckTitle(props: { title: string; editable: boolean; saving: boolean; failure: string | null; onSave: (title: string) => void }): ReactNode`. `deck-view.tsx` passes `onSave` as one `{ op: "rename", title }` change at the hash the person saw.
 
 - [ ] **Step 1: Write the stories with play functions:**
   - `EnterSaves`: the button `Rename deck, <title>` turns into an input with the title; Enter calls `onSave` with the trimmed text once.
   - `EscapeCancels`: Escape restores the button with the old title, gives it focus, and calls nothing.
   - `TooLong`: 81 characters show the schema's error and do not save; 80 save.
   - `Unchanged`: Enter on the same title calls nothing and closes the input.
-  - `Disabled`: while drafting, the button is disabled.
+  - `WhileDrafting`: while the run builds, the title is plain text and no rename button exists, because the agent can still rename the deck (design, 2026-11-13).
 - [ ] **Step 2: Run** Storybook MCP `test-run`. Expected: FAIL.
 - [ ] **Step 3: Implement** with TanStack Form and `renameFormSchema`. A refused save (stale hash) keeps the input open with the existing stale message and its Reload.
 - [ ] **Step 4: Run the stories again.** Expected: PASS. Run `npx impeccable detect`. Then `pnpm gate:fast`.
@@ -225,7 +227,7 @@ The orchestrator runs one whole-branch review on Opus, then `pnpm gate:merge` in
 
 1. The start lives in core as `agent.start` (Task 1), because the tech plan says to stop before any new module contract point. It reuses `createRecord` and gates on `acceptsHandoff`, so Slides needs no contract change. Rejected: a Slides procedure that inserts the session (module code writing core tables), and a new `AgentSurface` field for a draft title (a new contract point).
 2. The provisional title is the description, cut to 80 characters, also used as the session's title. The page shows the loading title while the run builds and the deck title still equals the session's title. Rejected: a fixed `New deck` title (a person's own deck can carry it, and a failed run leaves no meaning in the name).
-3. The first message holds a `data-start` part that the chat draws as the person's words and a core text part that asks the model to name and build the record, as the brief does. No surface instruction changes, so no recording is re-keyed. This touches R-46: see OQ-1.
+3. The first message holds a `data-start` part that the chat draws as the person's words and a core text part that asks the model to name and build the record, as the brief does. No surface instruction changes, so no recording is re-keyed. The owner amended R-46 for this on 2026-11-13 (OQ-1).
 4. With chat `off` or `none`, New deck keeps the title dialog.
 5. While a run builds on a deck, the page disables hand edits. This also applies to a deck that Ask handed over (S7-42), which today allows hand edits that make the agent's next change fail.
 6. The page reads the run with its own query (`useRecordRun`), not the panel, so a reload or a return keeps the drafting state. This follows the tech plan's "How pages follow a run". Session summaries gain the run status, so the page can tell a failed run from a finished one.
@@ -236,8 +238,11 @@ The orchestrator runs one whole-branch review on Opus, then `pnpm gate:merge` in
 11. The session takes the deployment's chat model, because no Ask session exists to take one from. The tech plan's "Handed-over run defaults" names the Ask session's model for a handoff only. The composer has no model picker.
 12. A start refused with `agent-run-active` saves nothing, and the composer shows the catalogue message with no link, because `AppError` carries no data but `issues`.
 13. The end-to-end test uses synthetic fixtures. The owner records them live later.
+14. Deviation from the 2026-11-13 design: after Stop, the prototype shows an agent answer "You stopped me after n slides ...". Stop aborts the model call (S7-40), so no model answer follows. The panel shows its existing stopped notice with Try again (S7-41), and the page pill reads "Stopped, n slides kept". Rejected: a fixed core answer written after Stop (new core text in every surface chat, not asked for).
 
 ## Open questions for the owner
+
+Answered on 2026-11-13: OQ-1 (a), OQ-2 (b), OQ-3 keep the normal answer and add no Slides rule, OQ-5 approved. OQ-4 is open.
 
 - OQ-1 (R-46). The agent names the deck and drafts the slides from the core start text, not from words the person typed. R-46 allows a change only when the person's own message asks for it. The brief got such an amendment on 2026-11-08. Options: (a) amend R-46: Create deck with a description is the person's request to name the new record and build it (proposed text in the ticket); (b) show the core sentence in the person's first message so that the person sends it visibly. The plan builds (a) and waits for the ruling before Task 1.
 - OQ-2 ("Drafting n of m"). Nothing tells the page how many slides the agent plans. Options: (a) an optional `plannedSlides` input on `slides-change-deck` and one instruction line, read by the page from the session's tool call; this re-keys every Slides recording, and those go on your refresh list; (b) the plan default: "Drafting slide n" and one placeholder for the slide in progress, a deviation from the prototype; its cost is that, after the last slide, the page shows "Drafting slide n+1" and one more placeholder while the agent writes its answer; (c) a planned count stored on the deck, which is a migration. `draftStatus` already accepts a plan, so (a) or (c) adds one task.
