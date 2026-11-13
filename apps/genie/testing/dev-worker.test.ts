@@ -28,6 +28,7 @@ it("refuses a worker that never says it started, within its bound (xok3.37)", as
       source: {
         DATABASE_URL: `postgres://genie:genie@127.0.0.1:${port}/genie`,
         PUBLIC_URL: "http://127.0.0.1:3000",
+        FILE_LINK_SECRET: "test-file-link-secret-of-at-least-32-chars",
       },
       modules: [],
       histories: [],

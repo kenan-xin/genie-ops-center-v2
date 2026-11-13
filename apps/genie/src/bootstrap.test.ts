@@ -14,6 +14,7 @@ const VALID_SOURCE = {
   // The Section 2 application profile requires the authentication values; the realm address is
   // unreachable, so the built context has an auth member in the `degraded` discovery state.
   BETTER_AUTH_SECRET: "test-better-auth-secret-at-least-32-characters",
+  FILE_LINK_SECRET: "bootstrap-file-link-secret-of-32-chars",
   KEYCLOAK_URL: "http://127.0.0.1:1",
   KEYCLOAK_REALM: "genie",
   KEYCLOAK_CLIENT_ID: "genie-ops-center",

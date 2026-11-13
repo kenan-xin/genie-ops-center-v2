@@ -40,8 +40,8 @@ on `<use>` loses its shapes. A logo that inlines its paths is unaffected.
 
 ## The link-token secret
 
-A download token is an HMAC-SHA256 over a JSON payload, keyed by a random secret the context
-generates once when it is built. The payload is discriminated on `kind`, and a payload without one
+A download token is an HMAC-SHA256 over a JSON payload, keyed by the UTF-8 bytes of
+`FILE_LINK_SECRET`. The payload is discriminated on `kind`, and a payload without one
 is refused:
 
 - `record`: `{ fileId, permission, resourceType, resourceId, expiresAt }`. `fetchLink` reads the
@@ -64,8 +64,12 @@ is refused:
 The app serves every kind at `/api/files/download?token=...`, which answers an empty 404 for every
 refusal.
 
-Section 1's environment contract has no file-link secret, and R-27 keeps
-`BETTER_AUTH_SECRET` out of this section, so a random per-context key is the one choice that needs
-no new variable and stores no credential. A token lives five minutes, so losing outstanding links
-on a restart is acceptable. A later section that runs more than one application replica replaces
-this key with one shared secret from the environment.
+Every app copy and worker of a deployment reads the same `FILE_LINK_SECRET` (at least 32
+characters), so a link one copy or the worker signs opens on any other copy (DEC-58). The
+application and worker profiles refuse to start without it. It is its own secret, never
+`BETTER_AUTH_SECRET`, because the worker does not receive the sign-in secret. A context built
+without it, such as the migrator's, signs and reads no link: signing a link (`createLink`,
+`createOwnerLink`, or `createBrandingMarkLink` when it has a mark to sign) and `fetchLink` throw a
+plain `Error` that names the variable, which the download route logs as a failure rather than
+answering a 404. A token still lives five minutes;
+rotating the secret ends every outstanding link at once.

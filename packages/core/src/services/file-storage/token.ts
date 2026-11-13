@@ -1,4 +1,4 @@
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { z } from "zod";
 
@@ -55,17 +55,6 @@ const payloadSchema = z.discriminatedUnion("kind", [
 ]);
 
 /**
- * The key that signs a download token. Section 1 has no file-link secret of its own in the
- * environment contract, and R-27 keeps `BETTER_AUTH_SECRET` out of this section, so the context
- * generates a random key at build time. A token is short-lived, so losing outstanding links on a
- * restart is acceptable; a later section that runs more than one application replica replaces
- * this with a shared secret (see the service README).
- */
-export function createFileLinkSecret(): Buffer {
-  return randomBytes(32);
-}
-
-/**
  * A refused link: a bad or expired token, or a principal the link does not admit. The download
  * route answers it with a 404 and logs nothing; any other error is a real failure it logs.
  */
@@ -83,12 +72,14 @@ function invalidToken(): Error {
 
 /**
  * Signs the link scope with its expiry (R-38). The payload is JSON, so a permission or a resource
- * id that holds `:` cannot be split apart, and the whole payload is bound by an HMAC-SHA256.
+ * id that holds `:` cannot be split apart, and the whole payload is bound by an HMAC-SHA256
+ * keyed by the UTF-8 bytes of `FILE_LINK_SECRET`. Every app copy and worker of a deployment holds
+ * the same secret, so a link one copy signs opens on any other (DEC-58).
  */
 export function signFileLink(
   scope: FileLinkScope,
   expiresAt: Date,
-  secret: Buffer
+  secret: string
 ): string {
   const body =
     scope.kind === "record"
@@ -118,7 +109,7 @@ export function signFileLink(
  * non-JSON or wrongly typed payload, and an expiry that has passed are all refused with the same
  * message. The payload is parsed with a schema, so a forged body never reaches the caller.
  */
-export function readFileLink(token: string, secret: Buffer): FileLinkScope {
+export function readFileLink(token: string, secret: string): FileLinkScope {
   const [payload, signature, ...rest] = token.split(".");
 
   if (payload === undefined || signature === undefined || rest.length > 0) {

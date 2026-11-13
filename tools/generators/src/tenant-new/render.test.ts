@@ -503,6 +503,7 @@ describe("the rendered deployment folder", () => {
     expect(required).toEqual([
       "BETTER_AUTH_SECRET",
       "DATABASE_URL",
+      "FILE_LINK_SECRET",
       "IMAGE_TAG",
       "KEYCLOAK_CLIENT_ID",
       "KEYCLOAK_CLIENT_SECRET",
@@ -699,6 +700,7 @@ describe("the rendered compose file under docker compose", () => {
     PUBLIC_URL: "https://example.invalid",
     // The Section 2 application profile requires the authentication values.
     BETTER_AUTH_SECRET: "test-better-auth-secret-at-least-32-characters",
+    FILE_LINK_SECRET: "test-file-link-secret-of-at-least-32-chars",
     KEYCLOAK_URL: "https://id.example.invalid",
     KEYCLOAK_REALM: "genie",
     KEYCLOAK_CLIENT_ID: "genie-ops-center",

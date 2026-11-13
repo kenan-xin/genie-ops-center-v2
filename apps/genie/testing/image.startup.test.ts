@@ -10,6 +10,7 @@ import {
   markSetupDone,
   startDisposableDeployment,
   startDisposablePostgres,
+  TEST_FILE_LINK_SECRET,
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -343,6 +344,8 @@ describe("the built image", () => {
         `DATABASE_URL=${reachableFromContainer(fresh.url)}`,
         "-e",
         "PUBLIC_URL=https://example.invalid",
+        "-e",
+        `FILE_LINK_SECRET=${TEST_FILE_LINK_SECRET}`,
         IMAGE,
         "worker",
       ]);

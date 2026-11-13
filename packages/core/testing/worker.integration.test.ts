@@ -28,7 +28,7 @@ import {
 } from "../src/services/migrator/index.ts";
 import { runWorker } from "../src/services/worker/index.ts";
 import { insertUser } from "./access-fixtures.ts";
-import { startDisposablePostgres } from "./index.ts";
+import { startDisposablePostgres, TEST_FILE_LINK_SECRET } from "./index.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- the cases keep setup/assertion pairs together. */
 
@@ -109,6 +109,7 @@ function source(databaseUrl: string, additional: Record<string, string> = {}) {
   return {
     DATABASE_URL: databaseUrl,
     PUBLIC_URL: "https://test.example.invalid",
+    FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     ...additional,
   };
 }
@@ -287,6 +288,25 @@ describe("the core pg-boss worker", () => {
     await applicationMigrate;
     controller.abort();
     await worker;
+  });
+
+  it("refuses to start without FILE_LINK_SECRET and names it without any value (DEC-58)", async () => {
+    const lines: string[] = [];
+    const code = await runWorker({
+      source: {
+        DATABASE_URL: "postgres://genie:never-shown@127.0.0.1:1/genie",
+        PUBLIC_URL: "https://test.example.invalid",
+      },
+      modules: [],
+      histories: [],
+      output: () => {},
+      errorOutput: (line) => lines.push(line),
+      signal: new AbortController().signal,
+    });
+
+    expect(code).toBe(1);
+    expect(lines.join("\n")).toContain("FILE_LINK_SECRET");
+    expect(lines.join("\n")).not.toContain("never-shown");
   });
 
   it("starts its own migrator and pg-boss schema without an application process", async () => {

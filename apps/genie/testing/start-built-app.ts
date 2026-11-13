@@ -52,7 +52,7 @@ async function waitForReady(
  * `PUBLIC_URL` is supplied as well as `DATABASE_URL`, because environment
  * validation requires both and the process would otherwise exit before either
  * transport could be exercised. The Section 2 application profile also requires
- * the authentication values; unless the caller's environment names a realm, a
+ * the authentication values and `FILE_LINK_SECRET` (both from `TEST_AUTH_ENV`); unless the caller's environment names a realm, a
  * throwaway discovery stub answers, so health is `ok` and only a test that
  * proves sign-in uses a real realm.
  */

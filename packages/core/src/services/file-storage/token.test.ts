@@ -2,9 +2,9 @@ import { createHmac } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
-import { createFileLinkSecret, readFileLink, signFileLink } from "./token.ts";
+import { readFileLink, signFileLink } from "./token.ts";
 
-const secret = createFileLinkSecret();
+const secret = "unit-file-link-secret-of-32-characters";
 
 const later = () => new Date(Date.now() + 60_000);
 

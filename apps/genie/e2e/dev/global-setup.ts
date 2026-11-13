@@ -316,7 +316,11 @@ async function startReadingWorker(): Promise<void> {
   ]);
 
   readingWorker = await startWorker({
-    source: { DATABASE_URL: databaseUrl(), PUBLIC_URL: publicUrl() },
+    source: {
+      DATABASE_URL: databaseUrl(),
+      PUBLIC_URL: publicUrl(),
+      FILE_LINK_SECRET: TEST_AUTH_ENV.FILE_LINK_SECRET,
+    },
     modules: selectedModules,
     histories: [],
     timeoutMs: WORKER_START_MS,

@@ -21,7 +21,6 @@ import { createPostgresFileBlobStore } from "./adapters/postgres.ts";
 import type { FileBlobStore, FileStorageDatabase } from "./blob-store.ts";
 import { sanitizeUploadedSvg } from "./sanitize-svg.ts";
 import {
-  createFileLinkSecret,
   FileLinkRefusedError,
   type FileLinkScope,
   readFileLink,
@@ -228,16 +227,32 @@ async function assertCan(
  */
 export function createFileStorage(
   db: FileStorageDatabase,
-  env: Pick<DeploymentEnvironment, "fileStorageAdapter" | "fileMaxBytes">,
+  env: Pick<
+    DeploymentEnvironment,
+    "fileStorageAdapter" | "fileMaxBytes" | "fileLinkSecret"
+  >,
   publicUrl: PublicUrlBuilder,
   branding: BrandingReader
 ): FileStorage {
   const blobStore = createBlobStore(env.fileStorageAdapter, db);
-  const secret = createFileLinkSecret();
+
+  /**
+   * The shared link key (DEC-58). A context built without it (the migrator, a command) signs and
+   * reads no link: a plain `Error`, so the download route logs a configuration fault, not a 404.
+   */
+  function linkSecret(): string {
+    if (env.fileLinkSecret === undefined) {
+      throw new Error(
+        "FILE_LINK_SECRET is not set; this process cannot sign file links."
+      );
+    }
+
+    return env.fileLinkSecret;
+  }
 
   function linkFor(scope: FileLinkScope): TokenizedFileLink {
     const expiresAt = new Date(Date.now() + FILE_LINK_TTL_MS);
-    const token = signFileLink(scope, expiresAt, secret);
+    const token = signFileLink(scope, expiresAt, linkSecret());
 
     return { token, url: publicUrl(FILE_DOWNLOAD_PATH, { token }), expiresAt };
   }
@@ -363,7 +378,7 @@ export function createFileStorage(
     },
     async fetchLink(input) {
       // Verify first: a forged token costs no `can()` work (Section 2 reads the database there).
-      const scope = readFileLink(input.token, secret);
+      const scope = readFileLink(input.token, linkSecret());
 
       if (scope.kind === "branding") {
         if (!input.principal.authenticated) {

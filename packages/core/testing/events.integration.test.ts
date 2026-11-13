@@ -15,7 +15,7 @@ import { stopJobQueue } from "../src/services/job-queue/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import { runWorker } from "../src/services/worker/index.ts";
 import { databaseClient } from "./database-client.ts";
-import { startDisposableDeployment } from "./index.ts";
+import { startDisposableDeployment, TEST_FILE_LINK_SECRET } from "./index.ts";
 import { startDisposablePostgres } from "./postgres.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- integration fixtures group contract data and setup together. */
@@ -380,6 +380,7 @@ beforeAll(async () => {
     source: {
       DATABASE_URL: databaseUrl,
       PUBLIC_URL: "https://test.example.invalid",
+      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     },
     modules: [eventModule, queueGateModule],
     histories: [],
@@ -862,6 +863,7 @@ describe("the typed event bus against Testcontainers Postgres", () => {
     const source = {
       DATABASE_URL: deployment.context.env.databaseUrl,
       PUBLIC_URL: deployment.context.env.publicUrl,
+      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     };
     const emitter = runtimeContext(deployment.context);
     await registerModules(emitter, [abandonModule]);

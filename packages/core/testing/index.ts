@@ -93,6 +93,10 @@ export {
   renderClientFile,
 } from "./client-files.ts";
 
+/** The `FILE_LINK_SECRET` every test deployment and test worker shares, so a link signed by one verifies in another (DEC-58). */
+export const TEST_FILE_LINK_SECRET =
+  "test-file-link-secret-of-at-least-32-chars";
+
 export type DisposableDeployment = {
   readonly context: TenantContext;
   /** Closes the pool and removes the container. Always call it, in a `finally` or an `afterAll`. */
@@ -125,6 +129,7 @@ export async function startDisposableDeployment(
     {
       DATABASE_URL: postgres.url,
       PUBLIC_URL: "https://test.example.invalid",
+      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
       ...options.env,
     },
     silentLogger(),

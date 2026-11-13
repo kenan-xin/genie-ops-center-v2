@@ -8,6 +8,7 @@ const GRANTED_KEY = "placeholder:read";
 
 import { FILE_DOWNLOAD_PATH } from "../src/services/file-storage/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
+import { TEST_FILE_LINK_SECRET } from "./index.ts";
 
 const PUBLIC_URL = "https://customer.example.invalid";
 
@@ -23,6 +24,7 @@ function contextWithPublicUrl(): ReturnType<typeof createTenantContext> {
     {
       DATABASE_URL: "postgres://genie:genie@localhost:5432/genie",
       PUBLIC_URL,
+      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     },
     silentLogger(),
     []

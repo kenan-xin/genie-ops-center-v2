@@ -253,6 +253,8 @@ export async function startEntraStack(tenant: EntraTenant): Promise<void> {
     "-e",
     "BETTER_AUTH_SECRET=entra-run-better-auth-secret-at-least-32-characters",
     "-e",
+    "FILE_LINK_SECRET=entra-run-file-link-secret-at-least-32-characters",
+    "-e",
     `KEYCLOAK_URL=${KEYCLOAK_URL}`,
     "-e",
     `KEYCLOAK_REALM=${REALM}`,
