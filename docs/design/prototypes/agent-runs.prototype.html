@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Question: where does a person see their background agent runs (DEC-57)?
+     Three variants on the real shell, switched by ?variant=A|B|C and the bottom bar.
+     A: sidebar row + popover. B: floating dock. C: a Runs page. State is in memory. -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Background runs, prototype</title>
+<style>
+  :root {
+    --primary: #2563eb; --primary-fg: #fff; --info-tint: #eff6ff;
+    --page: #fff; --panel: #f9fafb; --tile: #f3f4f6; --hairline: #e5e7eb;
+    --control-border: #d1d5db; --input: #6b7280; --muted: #6b7280;
+    --secondary: #4b5563; --idle: #374151; --control-fg: #1f2937; --heading: #111827;
+    --success: #047857; --success-tint: #ecfdf5; --danger-text: #b91c1c; --danger-tint: #fef2f2;
+    --warning: #92400e; --warning-tint: #fffbeb;
+    --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { font-family: var(--font); color: var(--heading); background: #eceef1; font-size: 14px; }
+  ::selection { background: #bfdbfe; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+
+  .bar { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: #111827; color: #e5e7eb; font-size: 12px; flex-wrap: wrap; }
+  .bar b { color: #fff; }
+  .seg { display: inline-flex; background: #1f2937; border-radius: 8px; padding: 2px; }
+  .seg button { border: 0; background: none; color: #d1d5db; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .seg button[aria-pressed="true"] { background: #fff; color: #111827; }
+  .bar .sp { flex: 1; }
+  .stage { height: calc(100% - 44px); overflow: hidden; display: grid; place-items: start center; padding: 10px; }
+
+  .app { background: var(--page); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; display: grid; grid-template-columns: 220px 1fr; width: 1240px; height: 700px; box-shadow: 0 8px 24px rgba(17,24,39,.08); position: relative; }
+  .app.phone { grid-template-columns: 1fr; width: 390px; height: 780px; }
+  .side { background: var(--panel); border-right: 1px solid var(--hairline); padding: 14px 8px 10px; display: flex; flex-direction: column; gap: 2px; position: relative; }
+  .phone .side { display: none; }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 0 8px 14px; }
+  .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--primary); display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
+  .brand small { display: block; color: var(--muted); font-size: 12px; }
+  .cat { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted); padding: 10px 12px 6px; text-transform: uppercase; }
+  .nav { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 8px; color: var(--idle); border: 1px solid transparent; background: none; width: 100%; text-align: left; }
+  .nav:hover { background: var(--tile); }
+  .nav.on { background: var(--page); color: var(--primary); border-color: var(--hairline); font-weight: 600; }
+  .nav .count { margin-left: auto; }
+  .grow { flex: 1; }
+  .user { display: flex; align-items: center; gap: 10px; padding: 10px 8px 0; border-top: 1px solid var(--hairline); margin-top: 8px; }
+  .av { width: 32px; height: 32px; border-radius: 50%; background: var(--tile); display: grid; place-items: center; font-weight: 600; font-size: 12px; color: var(--idle); }
+  .user small { display: block; color: var(--muted); font-size: 12px; }
+
+  .count { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 9999px; background: var(--primary); color: var(--primary-fg); font-size: 12px; font-weight: 600; display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+  .count.done { background: var(--success-tint); color: var(--success); }
+  .live { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex: none; }
+  .live.on { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+
+  .main { display: flex; flex-direction: column; min-width: 0; min-height: 0; position: relative; }
+  .topbar { display: none; height: 54px; border-bottom: 1px solid var(--hairline); align-items: center; gap: 10px; padding: 0 10px; }
+  .phone .topbar { display: flex; }
+  .topbar .title { flex: 1; font-weight: 600; font-size: 16px; }
+  .icon-btn { width: 44px; height: 44px; border: 0; background: none; border-radius: 8px; display: grid; place-items: center; color: var(--idle); position: relative; }
+  .icon-btn:hover { background: var(--tile); }
+  .icon-btn .count { position: absolute; top: 4px; right: 2px; height: 18px; min-width: 18px; font-size: 11px; padding: 0 5px; }
+  .content { flex: 1; overflow: auto; padding: 20px 28px; }
+  .phone .content { padding: 14px 16px; }
+  .crumb { color: var(--secondary); font-size: 13px; }
+  h1 { font-size: 20px; letter-spacing: -.025em; margin: 2px 0 4px; }
+  .sub { color: var(--secondary); font-size: 13px; margin: 0 0 18px; }
+  .ghost-rows div { height: 44px; border-bottom: 1px solid var(--hairline); display: flex; align-items: center; gap: 12px; color: var(--idle); }
+  .ghost-rows span { color: var(--secondary); margin-left: auto; font-size: 13px; }
+
+  /* A run row, shared by all variants */
+  .run { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 10px; padding: 12px 14px; border-bottom: 1px solid var(--hairline); align-items: start; }
+  .run:last-child { border-bottom: 0; }
+  .run .ic { width: 28px; height: 28px; border-radius: 8px; background: var(--tile); display: grid; place-items: center; color: var(--idle); grid-row: span 2; }
+  .run a { color: var(--heading); font-weight: 600; text-decoration: none; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .run .right .pill { display: none; }
+  .run .meta .pill { margin-right: 6px; vertical-align: 1px; }
+  .run a:hover { color: var(--primary); text-decoration: underline; text-underline-offset: 3px; }
+  .run .meta { grid-column: 2 / 4; color: var(--secondary); font-size: 12.5px; line-height: 1.45; }
+  .run .step { color: var(--idle); }
+  .run .who { color: var(--muted); }
+  .pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; padding: 2px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .pill.working { background: var(--info-tint); color: #1d4ed8; }
+  .pill.working .dot { animation: pulse 1.2s ease-in-out infinite; }
+  .pill.finished { background: var(--success-tint); color: var(--success); }
+  .pill.stopped { background: var(--tile); color: var(--idle); }
+  .pill.failed { background: var(--danger-tint); color: var(--danger-text); }
+  .pill.timeout { background: var(--warning-tint); color: var(--warning); }
+  .stop { border: 1px solid var(--control-border); background: var(--page); color: var(--control-fg); border-radius: 8px; height: 32px; padding: 0 10px; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .stop:hover { background: var(--panel); }
+  .phone .stop { height: 40px; }
+  .run .right { display: flex; align-items: center; gap: 8px; }
+  .group-h { padding: 10px 14px 6px; font-size: 12px; font-weight: 600; color: var(--secondary); display: flex; justify-content: space-between; }
+  .empty { padding: 28px 16px; text-align: center; color: var(--secondary); }
+
+  /* Variant A: sidebar row + popover */
+  .pop { position: absolute; left: 228px; bottom: 64px; width: 400px; max-height: 520px; overflow: auto; background: var(--page); border: 1px solid var(--hairline); border-radius: 12px; box-shadow: 0 12px 32px rgba(17,24,39,.16); z-index: 5; animation: rise .22s var(--ease); }
+  .pop-h { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--hairline); position: sticky; top: 0; background: var(--page); }
+  .pop-h b { font-size: 15px; }
+  .pop-h small { color: var(--muted); font-size: 12px; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .scrim { position: absolute; inset: 0; background: rgba(17,24,39,.32); z-index: 4; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; overflow: auto; background: var(--page); border-radius: 16px 16px 0 0; z-index: 5; animation: rise .26s var(--ease); }
+  .grab { width: 36px; height: 4px; border-radius: 2px; background: var(--control-border); margin: 8px auto 2px; }
+
+  /* Variant B: floating dock */
+  .dock { position: absolute; right: 18px; bottom: 18px; z-index: 5; }
+  .dock-pill { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px 0 12px; border-radius: 9999px; background: var(--heading); color: #fff; border: 0; box-shadow: 0 8px 20px rgba(17,24,39,.22); font-weight: 600; }
+  .dock-pill .live { background: #93c5fd; }
+  .dock-pill .fin { color: #6ee7b7; font-weight: 600; }
+  .dock-card { width: 380px; max-height: 480px; overflow: auto; background: var(--page); border: 1px solid var(--hairline); border-radius: 14px; box-shadow: 0 16px 40px rgba(17,24,39,.2); animation: rise .22s var(--ease); }
+  .phone .dock { right: 12px; left: 12px; bottom: 12px; }
+  .phone .dock-pill { margin-left: auto; }
+  .phone .dock-card { width: 100%; }
+  .dock-wrap { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; }
+
+  /* Variant C: a Runs page */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hairline); margin-bottom: 4px; }
+  .tab { border: 0; background: none; padding: 10px 12px; font-weight: 600; color: var(--secondary); border-bottom: 2px solid transparent; margin-bottom: -1px; }
+  .tab[aria-selected="true"] { color: var(--heading); border-bottom-color: var(--heading); }
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 12px; font-weight: 600; color: var(--secondary); padding: 10px 12px; border-bottom: 1px solid var(--hairline); background: var(--panel); }
+  td { padding: 12px; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+  td a { color: var(--heading); font-weight: 600; text-decoration: none; }
+  td .meta { color: var(--secondary); font-size: 12.5px; margin-top: 2px; }
+  td.num { color: var(--secondary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tbl { border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+  .phone .tbl { border: 0; }
+  .phone table, .phone thead { display: none; }
+  .cards { display: none; }
+  .phone .cards { display: block; border: 1px solid var(--hairline); border-radius: 12px; }
+  .note { margin-top: 14px; color: var(--secondary); font-size: 12.5px; display: flex; gap: 8px; align-items: flex-start; }
+
+  @media (prefers-reduced-motion: reduce) { .pop, .sheet, .dock-card { animation: none; } .live.on, .pill.working .dot { animation: none; } }
+</style>
+</head>
+<body>
+<div class="bar" role="toolbar" aria-label="Prototype controls">
+  <b>Background runs</b>
+  <div class="seg" id="variant">
+    <button data-v="A">A Sidebar</button><button data-v="B">B Dock</button><button data-v="C">C Runs page</button>
+  </div>
+  <div class="seg" id="role"><button data-r="member">Member</button><button data-r="admin">Administrator</button></div>
+  <div class="seg" id="open"><button data-o="closed">Closed</button><button data-o="open">Open</button></div>
+  <span class="sp"></span>
+  <div class="seg" id="size"><button data-s="desktop">Desktop</button><button data-s="phone">Phone</button></div>
+</div>
+<div class="stage"><div class="app" id="app"></div></div>
+
+<script>
+const P = {
+  runs: '<path d="M12 6v6l4 2"/><circle cx="12" cy="12" r="10"/>',
+  deck: '<path d="M2 3h20M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3M7 21l5-5 5 5"/>',
+  chart: '<path d="M3 3v18h18"/><path d="M7 16v-4M12 16V8M17 16v-7"/>',
+  doc: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>',
+  ask: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  inv: '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 6v12M15 9h-4.5a1.5 1.5 0 0 0 0 3h3a1.5 1.5 0 0 1 0 3H9"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  close: '<path d="M18 6 6 18M6 6l12 12"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  spark: '<path d="M9.94 14.06 4 20M12 3v4M12 17v4M3 12h4M17 12h4"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+};
+const ic = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
+
+const MINE = [
+  { id: 1, kind: 'deck', title: 'October collections update', status: 'working', step: 'Drafting slide 4: Next steps for November', time: 'Started 6 min ago' },
+  { id: 2, kind: 'chart', title: 'Overdue invoices by customer', status: 'working', step: 'Reading 1,240 invoices', time: 'Started 2 min ago' },
+  { id: 3, kind: 'deck', title: 'Q3 board summary', status: 'finished', step: '9 slides drafted', time: 'Finished 14 min ago', fresh: true },
+  { id: 4, kind: 'chart', title: 'Payments forecast', status: 'timeout', step: 'Reached the 2-hour limit after 6 charts', time: 'Ended 3 h ago' },
+  { id: 5, kind: 'deck', title: 'Supplier onboarding', status: 'stopped', step: 'Stopped by you, 3 slides kept', time: 'Ended yesterday, 16:40' },
+];
+const OTHERS = [
+  { id: 11, kind: 'deck', title: 'Vendor risk review', status: 'working', owner: 'Priya Nair', step: '', time: 'Started 1 h 52 min ago' },
+  { id: 12, kind: 'chart', title: 'Cash position', status: 'failed', owner: 'Daniel Okafor', step: '', time: 'Ended 40 min ago' },
+];
+const LABEL = { working: 'Working', finished: 'Finished', stopped: 'Stopped', failed: 'Did not finish', timeout: 'Time limit' };
+
+const q = new URLSearchParams(location.search);
+const state = { v: q.get('variant') || 'A', role: 'member', open: true, size: 'desktop', mine: MINE.map(r => ({ ...r })), others: OTHERS.map(r => ({ ...r })), seen: false, tab: 'mine' };
+const app = document.getElementById('app');
+
+const active = () => state.mine.filter(r => r.status === 'working').length;
+const fresh = () => state.seen ? 0 : state.mine.filter(r => r.fresh).length;
+
+function row(r, admin) {
+  // An administrator sees the record, status, owner and time, never the step text (DEC-57 item 10).
+  const stepText = admin ? '' : `<span class="step">${r.step}</span><br>`;
+  // The pill sits first on the meta line, so the title gets the full width.
+  const who = r.owner ? `<span class="who">${r.owner}</span> &middot; ` : '';
+  const stop = r.status === 'working' ? `<button class="stop" data-stop="${r.id}" aria-label="Stop ${r.title}">${ic('stop')}Stop</button>` : '';
+  return `<div class="run"><span class="ic">${ic(r.kind)}</span>
+    <div><a href="#">${r.title}</a></div>
+    <div class="right"><span class="pill ${r.status}"><span class="dot"></span>${LABEL[r.status]}</span>${stop}</div>
+    <div class="meta"><span class="pill ${r.status}"><span class="dot"></span>${LABEL[r.status]}</span>${stepText}${who}${r.time}</div></div>`;
+}
+
+function list(admin) {
+  const rows = state.mine;
+  const on = rows.filter(r => r.status === 'working'), off = rows.filter(r => r.status !== 'working');
+  let html = '';
+  html += `<div class="group-h"><span>Working (${on.length})</span><span>Up to 3 at once</span></div>` + (on.length ? on.map(r => row(r)).join('') : '<div class="empty">No run is working.</div>');
+  html += `<div class="group-h"><span>Ended in the last 24 hours</span></div>` + off.map(r => row(r)).join('');
+  if (admin) html += `<div class="group-h"><span>Everyone else</span><span>${ic('lock')} Messages hidden</span></div>` + state.others.map(r => row(r, true)).join('');
+  return html;
+}
+
+function side(extraNav) {
+  const n = active(), f = fresh();
+  const runRow = state.v === 'A'
+    ? `<button class="nav ${state.open ? 'on' : ''}" id="runs-btn" aria-expanded="${state.open}" aria-haspopup="dialog">${n ? '<span class="live on"></span>' : ic('runs')}Runs${f ? `<span class="count done" style="margin-left:auto">${f} finished</span>` : ''}${n ? `<span class="count" ${f ? 'style="margin-left:6px"' : ''}>${n}</span>` : ''}</button>`
+    : '';
+  return `<nav class="side" aria-label="Workspace">
+    <div class="brand"><div class="logo">G</div><div><b>Genie</b><small>Workspace</small></div></div>
+    <div class="cat">Workspace</div>
+    <div class="nav">${ic('ask')}Ask</div>
+    <div class="nav">${ic('doc')}Documents</div>
+    <div class="nav">${ic('inv')}Invoices</div>
+    <div class="nav ${state.v === 'C' ? '' : 'on'}">${ic('deck')}Slides</div>
+    ${extraNav || ''}
+    <div class="grow"></div>
+    ${runRow}
+    <div class="user"><div class="av">AL</div><div><b>Alex Lim</b><small>${state.role === 'admin' ? 'Tenant administrator' : 'Workspace member'}</small></div></div>
+  </nav>`;
+}
+
+function topbar(title) {
+  const n = active(), f = fresh();
+  const btn = state.v === 'A' ? `<button class="icon-btn" id="runs-btn" aria-label="Runs, ${n} working">${ic('runs')}${n ? `<span class="count">${n}</span>` : ''}</button>` : '';
+  return `<div class="topbar"><button class="icon-btn" aria-label="Open navigation">${ic('menu')}</button><span class="title">${title}</span>${btn}<button class="icon-btn" aria-label="Agent">${ic('spark')}</button></div>`;
+}
+
+const PAGE = `<div class="crumb">Workspace</div><h1>Slides</h1><p class="sub">Your own decks of slides. Only you can open them.</p>
+  <div class="ghost-rows"><div>${ic('deck')}Collections review<span>2 slides</span></div><div>${ic('deck')}Q3 board summary<span>9 slides</span></div><div>${ic('deck')}Supplier onboarding<span>3 slides</span></div><div>${ic('deck')}October collections update<span>3 slides, drafting</span></div></div>`;
+
+function variantA() {
+  const phone = state.size === 'phone';
+  const admin = state.role === 'admin';
+  const head = `<div class="pop-h"><div><b>Runs</b><br><small>${admin ? 'Yours, then everyone in this deployment' : 'Your agent work in the background'}</small></div><button class="icon-btn" id="close" aria-label="Close">${ic('close')}</button></div>`;
+  const panel = !state.open ? '' : phone
+    ? `<div class="scrim" id="close-scrim"></div><div class="sheet" role="dialog" aria-label="Runs"><div class="grab"></div>${head}${list(admin)}</div>`
+    : `<div class="pop" role="dialog" aria-label="Runs">${head}${list(admin)}</div>`;
+  return side() + `<div class="main">${topbar('Slides')}<div class="content">${PAGE}</div></div>` + panel;
+}
+
+function variantB() {
+  const admin = state.role === 'admin';
+  const n = active(), f = fresh();
+  const pill = `<button class="dock-pill" id="runs-btn" aria-expanded="${state.open}">${n ? '<span class="live on"></span>' : ''}${n} working${f ? ` <span class="fin">&middot; ${f} finished</span>` : ''}${ic('chev')}</button>`;
+  const card = state.open ? `<div class="dock-card" role="dialog" aria-label="Runs"><div class="pop-h"><div><b>Runs</b><br><small>${admin ? 'Yours, then everyone in this deployment' : 'Your agent work in the background'}</small></div><button class="icon-btn" id="close" aria-label="Close">${ic('close')}</button></div>${list(admin)}</div>` : '';
+  return side() + `<div class="main">${topbar('Slides')}<div class="content">${PAGE}</div><div class="dock"><div class="dock-wrap">${card}${pill}</div></div></div>`;
+}
+
+function variantC() {
+  const admin = state.role === 'admin';
+  const n = active(), f = fresh();
+  const nav = `<div class="cat">You</div><button class="nav on" id="runs-btn">${n ? '<span class="live on"></span>' : ic('runs')}Runs${n ? `<span class="count">${n}</span>` : ''}</button>`;
+  const rowsOf = (rows, adminView) => rows.map(r => `<tr><td><a href="#">${r.title}</a><div class="meta">${adminView ? '' : r.step}</div></td>${admin ? `<td>${r.owner || 'You'}</td>` : ''}<td><span class="pill ${r.status}"><span class="dot"></span>${LABEL[r.status]}</span></td><td class="num">${r.time}</td><td>${r.status === 'working' ? `<button class="stop" data-stop="${r.id}">${ic('stop')}Stop</button>` : ''}</td></tr>`).join('');
+  const showOthers = admin && state.tab === 'all';
+  const rows = showOthers ? state.others : state.mine;
+  const tabs = admin ? `<div class="tabs" role="tablist"><button class="tab" role="tab" data-tab="mine" aria-selected="${state.tab === 'mine'}">Mine</button><button class="tab" role="tab" data-tab="all" aria-selected="${state.tab === 'all'}">Everyone</button></div>` : '';
+  const page = `<div class="crumb">You</div><h1>Runs</h1><p class="sub">Agent work that goes on in the background. Ended runs stay here for 24 hours.</p>${tabs}
+    <div class="tbl"><table><thead><tr><th>Record</th>${admin ? '<th>Person</th>' : ''}<th>Status</th><th>Time</th><th></th></tr></thead><tbody>${rowsOf(rows, showOthers)}</tbody></table>
+    <div class="cards">${rows.map(r => row(r, showOthers)).join('')}</div></div>
+    ${showOthers ? `<p class="note">${ic('lock')}<span>You see the record, the person and the status. What they asked the agent stays private. Stopping a run writes an audit entry.</span></p>` : ''}`;
+  return side(nav) + `<div class="main">${topbar('Runs')}<div class="content">${page}</div></div>`;
+}
+
+function fit() {
+  const phone = state.size === 'phone';
+  const w = phone ? 390 : 1240, h = phone ? 780 : 700;
+  app.style.zoom = Math.min(1, (innerWidth - 20) / w, (innerHeight - 64) / h);
+}
+addEventListener('resize', fit);
+
+function render() {
+  app.className = 'app' + (state.size === 'phone' ? ' phone' : '');
+  fit();
+  app.innerHTML = state.v === 'A' ? variantA() : state.v === 'B' ? variantB() : variantC();
+  for (const [id, key, val] of [['variant', 'v', state.v], ['role', 'r', state.role], ['open', 'o', state.open ? 'open' : 'closed'], ['size', 's', state.size]])
+    document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset[key] === val)));
+  document.getElementById('open').style.display = state.v === 'C' ? 'none' : '';
+  history.replaceState(null, '', '?variant=' + state.v);
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button, #close-scrim');
+  if (!t) return;
+  if (t.dataset.v) { state.v = t.dataset.v; state.open = true; }
+  else if (t.dataset.r) state.role = t.dataset.r;
+  else if (t.dataset.o) state.open = t.dataset.o === 'open';
+  else if (t.dataset.s) state.size = t.dataset.s;
+  else if (t.dataset.tab) state.tab = t.dataset.tab;
+  else if (t.dataset.stop) {
+    const id = +t.dataset.stop;
+    const r = state.mine.find(x => x.id === id) || state.others.find(x => x.id === id);
+    Object.assign(r, { status: 'stopped', step: r.owner ? '' : 'Stopped by you, work kept', time: 'Ended just now' });
+  }
+  else if (t.id === 'runs-btn') { state.open = state.v === 'C' ? true : !state.open; state.seen = true; }
+  else if (t.id === 'close' || t.id === 'close-scrim') state.open = false;
+  else return;
+  render();
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && state.open && state.v !== 'C') { state.open = false; render(); } });
+render();
+</script>
+</body>
+</html>
