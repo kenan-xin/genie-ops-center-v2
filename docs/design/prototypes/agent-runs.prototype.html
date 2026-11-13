@@ -183,6 +183,10 @@
   .agent-h .chev { transition: transform .15s; display: inline-flex; }
   .agent-h[aria-expanded="false"] .chev { transform: rotate(-90deg); }
   .more { border: 0; background: none; color: var(--muted); font-size: 13px; padding: 6px 10px; }
+  .recents-h { border-top: 1px solid var(--hairline); margin-top: 10px !important; padding-top: 14px !important; }
+  .bars { margin-top: 14px; border: 1px solid var(--hairline); border-radius: 12px; padding: 18px; display: grid; gap: 10px; }
+  .bars div { display: grid; grid-template-columns: 110px 1fr; align-items: center; gap: 10px; font-size: 13px; color: var(--idle); }
+  .bars i { display: block; height: 14px; border-radius: 4px; background: var(--primary); }
   .rec-meta { color: var(--muted); font-size: 12px; margin-left: auto; white-space: nowrap; }
   .deckpage { display: grid; grid-template-columns: 1fr 340px; height: 100%; min-height: 0; }
   .phone .deckpage { grid-template-columns: 1fr; position: relative; }
@@ -287,7 +291,7 @@ function side(extraNav) {
     <div class="nav ${'DE'.includes(state.v) && state.onAsk && !state.recordChat ? 'on' : ''}" ${'DE'.includes(state.v) ? 'id="ask-nav" role="button" tabindex="0"' : ''} ${'DE'.includes(state.v) && active() ? `aria-label="Ask, ${active()} working"` : ''}>${ic('ask')}Ask${'DE'.includes(state.v) && active() ? '<span class="spin" aria-hidden="true"></span>' : ''}</div>
     <div class="nav">${ic('doc')}Documents</div>
     <div class="nav">${ic('inv')}Invoices</div>
-    <div class="nav ${state.v === 'C' || ('DE'.includes(state.v) && state.onAsk && !state.recordChat) ? '' : 'on'}" ${'DE'.includes(state.v) ? 'id="slides-nav" role="button" tabindex="0"' : ''}>${ic('deck')}Slides</div>
+    <div class="nav ${state.v === 'C' || ('DE'.includes(state.v) && state.onAsk && !state.recordChat) || state.recordChat?.kind === 'chart' ? '' : 'on'}" ${'DE'.includes(state.v) ? 'id="slides-nav" role="button" tabindex="0"' : ''}>${ic('deck')}Slides</div>
     ${extraNav || ''}
     <div class="grow"></div>
     ${runRow}
@@ -353,10 +357,11 @@ const CHATS = [
   { id: 10, kind: 'ask', title: 'Which invoices are overdue?', group: 'Earlier' },
 ];
 
-function chatRow(c) {
+function chatRow(c, everyIcon) {
   const mark = c.run === 'working' ? '<span class="spin" role="img" aria-label="Working"></span>'
     : c.unseen ? '<span class="fresh-dot" role="img" aria-label="Finished, not opened yet"></span>' : '';
-  const kind = c.kind === 'ask' ? '' : `<span class="kind" title="${c.kind === 'deck' ? 'Slides' : 'Dashboard'}">${ic(c.kind)}</span>`;
+  // In Recents every row carries its agent's icon, Ask included, so the rows line up and read apart.
+  const kind = c.kind === 'ask' && !everyIcon ? '' : `<span class="kind" title="${{ ask: 'Ask', deck: 'Slides', chart: 'Dashboards' }[c.kind]}">${ic(c.kind)}</span>`;
   return `<button class="chat ${c.id === state.cur ? 'cur' : ''} ${c.unseen ? 'unseen' : ''}" data-chat="${c.id}">${kind}<span class="t">${c.title}</span>${mark}</button>`;
 }
 
@@ -398,20 +403,27 @@ function variantE() {
       <p class="legend">The spinner on <b>Ask</b> means a chat of yours is working. Ask lists your chats by agent.</p></div></div>`;
   }
   const phone = state.size === 'phone';
+  // Inside an agent's group the agent is known, so a row drops its icon. A folded group keeps a
+  // spinner when one of its chats works, so a run is never hidden by folding.
+  const plain = c => chatRow(c).replace(/<span class="kind"[^>]*>.*?<\/svg><\/span>/, '');
   const sections = AGENTS.map(a => {
     const rows = CHATS.filter(c => c.kind === a.key);
     const open = state.expanded[a.key] !== false;
     const shown = state.all[a.key] ? rows : rows.slice(0, 3);
-    const working = rows.filter(c => c.run === 'working').length;
-    return `<button class="agent-h" data-agent="${a.key}" aria-expanded="${open}"><span class="chev">${ic('chev')}</span>${ic(a.icon)}${a.label}${working ? '<span class="spin" aria-hidden="true"></span>' : ''}<span class="n">${rows.length}</span></button>`
-      + (open ? shown.map(c => chatRow(c).replace(/<span class="kind"[^>]*>.*?<\/svg><\/span>/, '')).join('') + (rows.length > 3 && !state.all[a.key] ? `<button class="more" data-more="${a.key}">Show more</button>` : '') : '');
+    const working = rows.some(c => c.run === 'working');
+    const tail = !open && working ? '<span class="spin" role="img" aria-label="A chat is working"></span>' : `<span class="n">${rows.length}</span>`;
+    return `<button class="agent-h" data-agent="${a.key}" aria-expanded="${open}"><span class="chev">${ic('chev')}</span>${ic(a.icon)}${a.label}${tail}</button>`
+      + (open ? shown.map(plain).join('') + (rows.length > 3 && !state.all[a.key] ? `<button class="more" data-more="${a.key}">Show more</button>` : '') : '');
   }).join('');
+  // Recents sits at the bottom, as in Codex: the newest chats of every agent, each with its
+  // agent's icon so a Slides chat reads apart from an Ask chat.
+  const recents = `<h3 class="recents-h">Recents</h3>` + CHATS.slice(0, 6).map(c => chatRow(c, true)).join('');
   const c = CHATS.find(x => x.id === state.cur && x.kind === 'ask') || CHATS.find(x => x.kind === 'ask');
   const conv = `<section class="conv" aria-label="Conversation"><div class="conv-h"><span class="t">${c.title}</span></div>
     <div class="msgs"><div class="you">${c.title}</div><div style="color:var(--idle);line-height:1.55">Northwind Traders owes the most this quarter: SGD 48,900 across 6 invoices.</div></div>
     <div class="composer"><div><span>Ask a question</span>${ic('send')}</div></div></section>`;
   const hist = `<aside class="hist" aria-label="Chat history"><div class="hist-h"><b>Chats</b><button class="newchat">New chat</button></div>
-    <div class="search">${ic('search')}Search chats</div><nav aria-label="Chats">${sections}</nav></aside>`;
+    <div class="search">${ic('search')}Search chats</div><nav aria-label="Chats">${sections}${recents}</nav></aside>`;
   return side() + `<div class="main">${topbar('Ask')}<div class="ask">${hist}${phone ? '' : conv}</div></div>`;
 }
 
@@ -419,12 +431,21 @@ function recordPage() {
   const c = state.recordChat;
   const a = AGENTS.find(x => x.key === c.kind);
   const working = c.run === 'working';
-  const panel = `<aside class="panel" aria-label="Agent"><div class="panel-h"><span class="live ${working ? 'on' : ''}"></span><div style="flex:1;min-width:0"><b>${a.label} agent</b><small>${c.title}</small></div>${working ? `<button class="stop" data-stopchat="${c.id}">${ic('stop')}Stop</button>` : ''}</div>
-    <div class="msgs"><span class="ctx">${ic(a.icon)}Context: this ${a.record}, slide 4 selected</span><div class="you">A short update for the finance team on October collections.</div>
-    <ul class="steps"><li><span class="ok">${ic('ok')}</span>Read the payments and invoices of October</li>${working ? '<li class="now"><span class="spin"></span>Drafting slide 4</li>' : `<li><span class="ok">${ic('ok')}</span>Drafted 4 slides</li>`}</ul></div>
+  const deck = a.key === 'deck';
+  // The chip names only what the page really holds: the record, and the part the person selected.
+  const ctx = deck ? `This deck${working ? '' : ', slide 1 selected'}` : 'This dashboard, no filter set';
+  const first = deck ? 'A short update for the finance team on October collections.' : 'Show overdue invoices by customer, largest first.';
+  const steps = deck
+    ? `<li><span class="ok">${ic('ok')}</span>Read the payments and invoices of October</li>${working ? '<li class="now"><span class="spin"></span>Drafting slide 4</li>' : `<li><span class="ok">${ic('ok')}</span>Drafted 4 slides</li>`}`
+    : `<li><span class="ok">${ic('ok')}</span>Read 1,240 invoices</li>${working ? '<li class="now"><span class="spin"></span>Building the customer chart</li>' : `<li><span class="ok">${ic('ok')}</span>Added 2 charts</li>`}`;
+  const panel = `<aside class="panel" aria-label="${a.label} agent"><div class="panel-h"><span class="live ${working ? 'on' : ''}"></span><div style="flex:1;min-width:0"><b>${a.label} agent</b><small>${c.title}</small></div>${working ? `<button class="stop" data-stopchat="${c.id}">${ic('stop')}Stop</button>` : ''}</div>
+    <div class="msgs"><span class="ctx">${ic(a.icon)}${ctx}</span><div class="you">${first}</div><ul class="steps">${steps}</ul></div>
     <div class="composer"><div><span>Ask for a change to this ${a.record}</span>${ic('send')}</div></div></aside>`;
-  const page = `<div class="content"><div class="crumb"><button class="back" id="back-ask">${ic('back')}Chats</button></div><h1>${c.title}</h1><p class="sub">${working ? 'Drafting slide 4' : '4 slides'}</p>
-    <div class="canvas"><h2>Next steps for November.</h2><hr><p style="color:var(--idle)">Chase the three largest overdue invoices first.</p></div></div>`;
+  const body = deck
+    ? `<div class="canvas"><h2>October collections are up on September.</h2><hr><p style="color:var(--idle)">SGD 195,200 collected, 8% more than September.</p></div>`
+    : `<div class="bars" role="img" aria-label="Overdue amount by customer">${[92, 74, 51, 38, 22].map((v, i) => `<div><span>${['Northwind', 'Halcyon', 'Mercer & Co', 'Avalon', 'Brightway'][i]}</span><i style="width:${v}%"></i></div>`).join('')}</div>`;
+  // The back link names where it goes: the chats of Ask, which is where the person came from.
+  const page = `<div class="content"><div class="crumb"><button class="back" id="back-ask">${ic('back')}Back to chats</button></div><h1>${c.title}</h1><p class="sub">${working ? (deck ? 'Drafting slide 4' : 'Building a chart') : (deck ? '4 slides' : '2 charts')}</p>${body}</div>`;
   return side() + `<div class="main">${topbar(a.label)}<div class="deckpage">${page}${panel}</div></div>`;
 }
 
@@ -457,6 +478,7 @@ document.addEventListener('click', e => {
   const chat = e.target.closest('[data-chat]');
   // E: a Slides or Dashboards chat opens on its record page; an Ask chat opens in Ask.
   if (chat && state.v === 'E') { const c = CHATS.find(x => x.id === +chat.dataset.chat); c.unseen = false; if (c.kind === 'ask') state.cur = c.id; else state.recordChat = c; render(); return; }
+  if (chat && state.v === 'D') { state.cur = +chat.dataset.chat; }
   // Opening the chat is what marks it read, on every size.
   if (chat) { state.cur = +chat.dataset.chat; state.phoneOpen = true; const c = CHATS.find(x => x.id === state.cur); c.unseen = false; render(); return; }
   if (e.target.closest('#back')) { state.phoneOpen = false; render(); return; }
