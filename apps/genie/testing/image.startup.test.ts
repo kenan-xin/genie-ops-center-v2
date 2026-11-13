@@ -872,16 +872,23 @@ describe("the running Section 1 image processes", () => {
     await Promise.all([appImage?.stop(), workerImage?.stop()]);
   });
 
-  type ProcessSessions = { pools: number; sessions: number; named: boolean };
+  type ProcessSessions = {
+    pools: number;
+    sessions: number;
+    named: boolean;
+    listeners: number;
+  };
 
   /**
    * Every server session of the processes under test, grouped by process. A pool names itself
-   * `<process>:<8 hex>`, so `pools` counts the distinct pool ids of one process. The role is unique
-   * to this block, so an unnamed session shows up under the key "".
+   * `<process>:<8 hex>`, so `pools` counts the distinct pool ids of one process. The tenant cache
+   * listener is one more session outside the pool, named `<process>:<8 hex>:cache` (DEC-58), so it
+   * is counted in `listeners` and not as a pool. The role is unique to this block, so an unnamed
+   * session shows up under the key "".
    */
   async function connectionCounts(): Promise<Record<string, ProcessSessions>> {
     const result = await pool().query<ProcessSessions & { process: string }>(
-      "select split_part(application_name, ':', 1) as process, count(distinct application_name)::int as pools, count(*)::int as sessions, bool_and(application_name ~ '^genie-[a-z]+:[0-9a-f]{8}$') as named from pg_stat_activity where datname = current_database() and usename = $1 group by 1 order by 1",
+      "select split_part(application_name, ':', 1) as process, count(distinct application_name) filter (where application_name !~ ':cache$')::int as pools, count(*) filter (where application_name !~ ':cache$')::int as sessions, bool_and(application_name ~ '^genie-[a-z]+:[0-9a-f]{8}(:cache)?$') as named, count(*) filter (where application_name ~ ':cache$')::int as listeners from pg_stat_activity where datname = current_database() and usename = $1 group by 1 order by 1",
       [runtimeRole]
     );
 
@@ -900,6 +907,9 @@ describe("the running Section 1 image processes", () => {
     // is proved by one distinct pool id per process, and no unnamed session.
     const POOL_MAX = 10;
 
+    // The app and the worker each hold one cache listener beside their pool; a command holds none.
+    const LISTENING = new Set(["genie-app", "genie-worker"]);
+
     const onePoolEach = (
       counts: Record<string, ProcessSessions>,
       names: readonly string[]
@@ -912,21 +922,23 @@ describe("the running Section 1 image processes", () => {
           entry !== undefined &&
           entry.named &&
           entry.pools === 1 &&
+          entry.listeners === (LISTENING.has(name) ? 1 : 0) &&
           entry.sessions >= 1 &&
           entry.sessions <= POOL_MAX
         );
       });
 
-    // The setup waits for the app's health only, so the worker may still be starting. Wait until
-    // both processes hold a session, then assert on that reading.
+    // The setup waits for the app's health only, so the worker may still be starting, and each
+    // process opens its cache listener after its migrations. Wait until both processes hold their
+    // listener, then assert on that reading.
     let liveCounts = await connectionCounts();
     const liveDeadline = Date.now() + 60000;
 
     /* eslint-disable no-await-in-loop */
     while (
       Date.now() < liveDeadline &&
-      (liveCounts["genie-app"] === undefined ||
-        liveCounts["genie-worker"] === undefined)
+      (liveCounts["genie-app"]?.listeners !== 1 ||
+        liveCounts["genie-worker"]?.listeners !== 1)
     ) {
       await new Promise((resolve) => setTimeout(resolve, 250));
       liveCounts = await connectionCounts();
