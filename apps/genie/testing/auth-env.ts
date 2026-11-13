@@ -1,5 +1,3 @@
-import { TEST_FILE_LINK_SECRET } from "@genie/core/testing";
-
 /**
  * The Section 2 authentication values a disposable test deployment starts with. `KEYCLOAK_URL`
  * points at a closed port, so discovery never answers: the app builds its instance, answers
@@ -12,7 +10,4 @@ export const TEST_AUTH_ENV = {
   KEYCLOAK_REALM: "genie",
   KEYCLOAK_CLIENT_ID: "genie-ops-center",
   KEYCLOAK_CLIENT_SECRET: "test-client-secret",
-  // The application profile requires the shared link key too (DEC-58); the same value as the
-  // core test deployments, so a link one signs opens in the other.
-  FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
 };

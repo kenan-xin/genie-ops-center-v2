@@ -67,7 +67,6 @@ const ENV: DeploymentEnvironment = {
   mailFrom: undefined,
   resendApiKey: undefined,
   smtpUrl: undefined,
-  fileLinkSecret: undefined,
 };
 
 /** Captures the lines one logger writes, so a test reads what a log file would hold. */

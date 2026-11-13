@@ -19,7 +19,6 @@ import {
   insertUser,
   markSetupDone,
   startDisposableDeployment,
-  TEST_FILE_LINK_SECRET,
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -72,7 +71,6 @@ beforeAll(async () => {
     {
       DATABASE_URL: t().env.databaseUrl,
       PUBLIC_URL: t().env.publicUrl,
-      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     },
     { error: () => {}, info: () => {}, debug: () => {} },
     ["invoices"]

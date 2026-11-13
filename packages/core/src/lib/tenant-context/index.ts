@@ -139,11 +139,6 @@ export type DeploymentEnvironment = {
   /** The `SMTP_URL` connection string, present exactly when `MAIL_PROVIDER=smtp`. */
   readonly smtpUrl: string | undefined;
   /**
-   * `FILE_LINK_SECRET`, the key every app copy and worker signs file links with (DEC-58). The
-   * application and worker profiles require it; without it the file store signs no link.
-   */
-  readonly fileLinkSecret: string | undefined;
-  /**
    * The Section 2 authentication values, present exactly when the profile that builds this
    * context consumes them (the application profile requires them; a worker, a command or a test
    * may omit them). The member `auth` is built iff this is present.

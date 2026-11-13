@@ -8,7 +8,7 @@ const GRANTED_KEY = "placeholder:read";
 
 import { FILE_DOWNLOAD_PATH } from "../src/services/file-storage/index.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
-import { TEST_FILE_LINK_SECRET } from "./index.ts";
+import { startDisposableDeployment } from "./index.ts";
 
 const PUBLIC_URL = "https://customer.example.invalid";
 
@@ -24,7 +24,6 @@ function contextWithPublicUrl(): ReturnType<typeof createTenantContext> {
     {
       DATABASE_URL: "postgres://genie:genie@localhost:5432/genie",
       PUBLIC_URL,
-      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     },
     silentLogger(),
     []
@@ -88,11 +87,14 @@ describe("PUBLIC_URL link construction (Spec 1 AC-14)", () => {
       `${PUBLIC_URL}/api/files/download?token=download-token`
     );
 
-    // The file store's own link goes through the same builder.
-    const context = contextWithPublicUrl();
+    // The file store's own link goes through the same builder. Signing reads the link key from
+    // the database (DEC-58), so this half runs on a real one.
+    const deployment = await startDisposableDeployment([], {
+      env: { PUBLIC_URL },
+    });
 
     try {
-      const link = await context.fileStorage.createLink({
+      const link = await deployment.context.fileStorage.createLink({
         fileId: "file-1",
         principal: createRequestPrincipal(
           { userId: "u1", groups: [], authenticated: true },
@@ -110,7 +112,7 @@ describe("PUBLIC_URL link construction (Spec 1 AC-14)", () => {
         `${PUBLIC_URL}${FILE_DOWNLOAD_PATH}?${new URLSearchParams({ token: link.token }).toString()}`
       );
     } finally {
-      await context.db.$client.end();
+      await deployment.stop();
     }
-  });
+  }, 120000);
 });

@@ -12,6 +12,7 @@ import {
   jsonb,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -255,6 +256,21 @@ export const fileBlob = pgTable("file_blob", {
   bytes: bytea("bytes").notNull(),
   createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
 });
+
+/**
+ * The one key that signs every file download link (DEC-58, amended 2026-11-13). The app generates
+ * it on first use, so every app copy and worker on this database signs and opens the same links.
+ * Only `services/file-storage/` reads it.
+ */
+export const fileLinkKey = pgTable(
+  "file_link_key",
+  {
+    id: smallint("id").primaryKey().default(1),
+    secret: bytea("secret").notNull(),
+    createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+  },
+  (table) => [check("file_link_key_one_row", sql`${table.id} = 1`)]
+);
 
 /** A module's non-secret connection to a customer system, with a secret reference. */
 export const tenantIntegration = pgTable("tenant_integration", {

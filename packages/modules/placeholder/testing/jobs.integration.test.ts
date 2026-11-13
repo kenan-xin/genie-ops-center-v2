@@ -8,7 +8,6 @@ import {
   enableModules,
   insertPersonWith,
   startDisposableDeployment,
-  TEST_FILE_LINK_SECRET,
 } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -65,7 +64,6 @@ beforeAll(async () => {
     source: {
       DATABASE_URL: deployment.context.env.databaseUrl,
       PUBLIC_URL: deployment.context.env.publicUrl,
-      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     },
     modules: [placeholderModule],
     histories: [],

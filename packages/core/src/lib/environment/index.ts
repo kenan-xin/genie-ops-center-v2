@@ -186,14 +186,6 @@ const schema = z.object({
     .optional()
     .transform(unsetWhenBlank)
     .meta({ secret: true }),
-  // The key of every file download link (DEC-58). Every app copy and worker of a deployment shares
-  // it, so a link one copy signs opens on another. Optional here so `genie-ops migrate` starts
-  // without it; the application and worker profiles require it.
-  FILE_LINK_SECRET: z
-    .string()
-    .min(32, "at least 32 characters")
-    .optional()
-    .meta({ secret: true }),
   // Section 2 authentication values (environment contract, Required). They are optional in the
   // base schema so `genie-ops migrate` and the worker still start without them; the application
   // profile requires them, and the Section 2 commands validate their own consuming profile.
@@ -286,12 +278,9 @@ function mailConfiguration(value: {
  *   test use this, so `genie-ops migrate` runs without sign-in or realm credentials.
  * - `application`: `core` plus the Section 2 authentication values, which the app must refuse to
  *   start without (`BETTER_AUTH_SECRET`, `KEYCLOAK_URL`, `KEYCLOAK_REALM`, `KEYCLOAK_CLIENT_ID`,
- *   `KEYCLOAK_CLIENT_SECRET`). A valid set does not require the realm to exist yet. It also
- *   requires `FILE_LINK_SECRET`.
- * - `worker`: `core` plus `FILE_LINK_SECRET`, because a worker signs file links for the app
- *   copies to serve (DEC-58).
+ *   `KEYCLOAK_CLIENT_SECRET`). A valid set does not require the realm to exist yet.
  */
-export type EnvironmentProfile = "core" | "application" | "worker";
+export type EnvironmentProfile = "core" | "application";
 
 /** The values the base schema parses to, before the profile decides what is required. */
 type ParsedEnvironment = z.infer<typeof schema>;
@@ -306,39 +295,29 @@ const authSchema = z.object({
 });
 
 /**
- * The variables the profile requires and the source lacks, all in one list so one error names
- * every one of them (environment contract, Required).
- */
-function missingForProfile(
-  value: ParsedEnvironment,
-  profile: EnvironmentProfile
-): string[] {
-  if (profile === "core") return [];
-
-  const missing =
-    profile === "application"
-      ? (authSchema.safeParse(value).error?.issues ?? [])
-          .map((issue) => issue.path.join("."))
-          .filter((name) => name !== "")
-      : [];
-
-  if (value.FILE_LINK_SECRET === undefined) missing.push("FILE_LINK_SECRET");
-
-  return missing;
-}
-
-/**
- * The Section 2 authentication values. The application profile requires all five, which
- * `missingForProfile` checked first. Any other profile passes them through only when all five
- * are present, so a context built by a test or a command with the full set still builds its
- * Better Auth member while a partial set is ignored.
+ * The Section 2 authentication values. The application profile requires all five. Any other
+ * profile passes them through only when all five are present, so a context built by a test or a
+ * command with the full set still builds its Better Auth member while a partial set is ignored.
  */
 function authConfiguration(
-  value: ParsedEnvironment
+  value: ParsedEnvironment,
+  profile: EnvironmentProfile
 ): AuthEnvironment | undefined {
   const parsed = authSchema.safeParse(value);
 
-  if (!parsed.success) return undefined;
+  if (!parsed.success) {
+    if (profile === "application") {
+      const missing = parsed.error.issues
+        .map((issue) => issue.path.join("."))
+        .filter((name) => name !== "");
+
+      throw new Error(
+        `The environment is not valid. ${missing.join(", ")}: required by the Section 2 application profile. No value is shown, because a value can hold a secret.`
+      );
+    }
+
+    return undefined;
+  }
 
   const base: AuthEnvironment = {
     betterAuthSecret: parsed.data.BETTER_AUTH_SECRET,
@@ -407,15 +386,7 @@ export function validateEnvironment(
     );
   }
 
-  const missing = missingForProfile(value, profile);
-
-  if (missing.length > 0) {
-    throw new Error(
-      `The environment is not valid. ${missing.join(", ")}: required by the ${profile} profile. No value is shown, because a value can hold a secret.`
-    );
-  }
-
-  const auth = authConfiguration(value);
+  const auth = authConfiguration(value, profile);
 
   const environment: DeploymentEnvironment = {
     databaseUrl: value.DATABASE_URL,
@@ -430,7 +401,6 @@ export function validateEnvironment(
     logLevel: value.LOG_LEVEL,
     port: value.PORT,
     runtimeMode: runtimeModeOf(),
-    fileLinkSecret: value.FILE_LINK_SECRET,
     ...mailConfiguration(value),
   };
 

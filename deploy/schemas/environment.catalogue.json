@@ -28,11 +28,6 @@
       "secret": true
     },
     {
-      "name": "FILE_LINK_SECRET",
-      "required": false,
-      "secret": true
-    },
-    {
       "name": "FILE_MAX_BYTES",
       "required": false,
       "secret": false,

@@ -94,7 +94,6 @@ function contextWith(
         mailFrom: undefined,
         resendApiKey: undefined,
         smtpUrl: undefined,
-        fileLinkSecret: undefined,
       },
       ...readersWithModuleEnabled(),
       cacheListener: {

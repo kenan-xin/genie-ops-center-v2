@@ -33,7 +33,6 @@ const ENV: DeploymentEnvironment = {
   mailFrom: undefined,
   resendApiKey: undefined,
   smtpUrl: undefined,
-  fileLinkSecret: undefined,
 };
 
 type Script = {

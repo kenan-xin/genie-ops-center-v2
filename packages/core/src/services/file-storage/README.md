@@ -40,8 +40,8 @@ on `<use>` loses its shapes. A logo that inlines its paths is unaffected.
 
 ## The link-token secret
 
-A download token is an HMAC-SHA256 over a JSON payload, keyed by the UTF-8 bytes of
-`FILE_LINK_SECRET`. The payload is discriminated on `kind`, and a payload without one
+A download token is an HMAC-SHA256 over a JSON payload, keyed by the deployment's link key. The
+payload is discriminated on `kind`, and a payload without one
 is refused:
 
 - `record`: `{ fileId, permission, resourceType, resourceId, expiresAt }`. `fetchLink` reads the
@@ -64,12 +64,16 @@ is refused:
 The app serves every kind at `/api/files/download?token=...`, which answers an empty 404 for every
 refusal.
 
-Every app copy and worker of a deployment reads the same `FILE_LINK_SECRET` (at least 32
-characters), so a link one copy or the worker signs opens on any other copy (DEC-58). The
-application and worker profiles refuse to start without it. It is its own secret, never
-`BETTER_AUTH_SECRET`, because the worker does not receive the sign-in secret. A context built
-without it, such as the migrator's, signs and reads no link: signing a link (`createLink`,
-`createOwnerLink`, or `createBrandingMarkLink` when it has a mark to sign) and `fetchLink` throw a
-plain `Error` that names the variable, which the download route logs as a failure rather than
-answering a 404. A token still lives five minutes;
-rotating the secret ends every outstanding link at once.
+The link key is 32 random bytes in the one row of `file_link_key` (DEC-58, amended 2026-11-13).
+The store loads it on its first sign or read: it inserts a new key with `on conflict do nothing`,
+then reads the row. The first process on the database writes the key, and every app copy and
+worker reads that same key, so a link one copy signs opens on any other. The store keeps the key in
+memory for the life of the process. Concurrent first callers share one load, and a failed load is
+not kept, so the next call tries again. Building the context opens no connection (R-19).
+
+The key comes from Node's `randomBytes`, never from SQL, because `random()` is not
+cryptographically secure and `pgcrypto` is not on every Postgres. It is not an environment
+variable: the app makes it for itself, and a person who reads the database already holds the files.
+It is never `BETTER_AUTH_SECRET`, because the worker does not receive the sign-in secret. The key
+never appears in a log line or an error message. A token lives five minutes. Rotation is not
+built: a later `genie-ops` step deletes the row, and every copy restarts.

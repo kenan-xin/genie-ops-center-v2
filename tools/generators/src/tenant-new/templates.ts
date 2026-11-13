@@ -111,9 +111,6 @@ services:
       # The secret of the genie-admin service client. Add person on a local-accounts realm and the
       # genie-ops idp set and admin add commands use it. Unset in client-only mode.
       KEYCLOAK_ADMIN_CLIENT_SECRET: \${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
-      # The key of every file download link. The app and the worker must hold the same value, so a
-      # link one signs opens on the other (DEC-58).
-      FILE_LINK_SECRET: \${FILE_LINK_SECRET:?set FILE_LINK_SECRET in .env}
       # The optional values of the environment contract. A value the service does not list never
       # reaches the container, and a blank value stays unset, so the documented default applies.
       AGENT_RUNS_AT_ONCE: \${AGENT_RUNS_AT_ONCE:-}
@@ -150,8 +147,6 @@ services:
       DATABASE_URL: \${DATABASE_URL:?set DATABASE_URL in .env}
       PUBLIC_URL: \${PUBLIC_URL:?set PUBLIC_URL in .env}
       WORKER_HEARTBEAT_PATH: /tmp/genie-worker-heartbeat
-      # The same link key as the app: the worker signs links that the app serves (DEC-58).
-      FILE_LINK_SECRET: \${FILE_LINK_SECRET:?set FILE_LINK_SECRET in .env}
       # The worker sends the email of durable handlers, runs file jobs and waits on the migrator
       # lock, so it reads the same optional values as the app, except the sign-in ones.
       AGENT_RUNS_AT_ONCE: \${AGENT_RUNS_AT_ONCE:-}

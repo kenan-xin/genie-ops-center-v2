@@ -25,7 +25,6 @@ Required means required by the consuming runtime/feature below, not by every ima
 | `DATABASE_URL` | Application, worker, and database-backed operator commands; never build. |
 | `PUBLIC_URL` | Application from Section 0; workers/commands that generate public links or provision redirect URIs. |
 | `BETTER_AUTH_SECRET` | Section 2 authentication runtime and commands that use its cryptographic services; not Section 0/1, the standalone migrator, or a worker without that consumer. |
-| `FILE_LINK_SECRET` | Application and worker. Both sign file download links, and the application serves them (`DEC-58`). Not `migrate`, other `genie-ops` commands, or build. |
 | `KEYCLOAK_URL`, `KEYCLOAK_REALM` | Section 2 application identity integration and commands/jobs that call or provision that realm. |
 | `KEYCLOAK_CLIENT_ID`, `KEYCLOAK_CLIENT_SECRET` | Section 2 application sign-in and the setup realm step that provisions this client. |
 | `KEYCLOAK_ADMIN_CLIENT_SECRET` | Section 2 application realm-management operations and operator steps/commands that provision or use the service client; not every CLI command or worker; not in client-only mode (ADR 0010). Its client id is fixed at `genie-admin` by both realm templates, so there is no `KEYCLOAK_ADMIN_CLIENT_ID`. |
@@ -42,7 +41,6 @@ The table below defines the values; the tables above define when each is require
 | `DATABASE_URL` | Postgres URL of the deployment's one database. |
 | `PUBLIC_URL` | The one public address, for example `https://genie.example.com`. Cookies, callbacks, and email links derive from it. The application never inspects the request hostname (`DEC-19`). A production image refuses an `http://` address unless its host is loopback (`localhost`, `127.0.0.1`, `[::1]`), because the Secure flag and the `__Host-` cookie name follow the scheme (Spec 2 R-4a). |
 | `BETTER_AUTH_SECRET` | Random string, at least 32 characters. Signs session cookies. |
-| `FILE_LINK_SECRET` | Random string, at least 32 characters. Signs file download links. Every app copy and worker of one deployment holds the same value. |
 | `KEYCLOAK_URL` | Base URL of the Keycloak server that holds this customer's realm: the bundled Keycloak, Genie's shared server, or the customer's server. Written without a trailing slash. It must equal the address setup used (Specification 02 R-54c). |
 | `STACK_PROFILES` | The Compose profiles the stack was started with, which the compose file passes from `COMPOSE_PROFILES`. Read by the start-up guard of Specification 02 R-54c, which refuses client-only mode while `bundled-keycloak` is active. Never set by hand. |
 | `KEYCLOAK_REALM` | The realm name. |
@@ -111,7 +109,8 @@ The Keycloak server administrator is not in `.env`. The operator creates it once
 ## Rules
 
 - The image holds no credential and no secret. Every secret enters at run time from the environment. `MODULE_INCLUDE` is the only build argument, because a build argument stays readable in the image history, and an image is passed to customers and stored in a registry.
-- Fixed runtime secrets are read at initialization of their consuming runtime. Setup-only credentials are consumed by their applicable step, and integration `secret_ref` values use the core call-time resolver. Secrets are never logged, echoed in an error, or returned by the health endpoint. `BETTER_AUTH_SECRET` and `FILE_LINK_SECRET` are fixed runtime secrets: the application and the worker read `FILE_LINK_SECRET` at start, and a start error names it but never shows its value.
+- Fixed runtime secrets are read at initialization of their consuming runtime. Setup-only credentials are consumed by their applicable step, and integration `secret_ref` values use the core call-time resolver. Secrets are never logged, echoed in an error, or returned by the health endpoint.
+- A signing key that the application generates for itself, such as the download-link key, lives in the deployment's database and is not an environment variable (`DEC-58`, amended 2026-11-13). An operator-supplied credential always enters from the environment.
 - `KEYCLOAK_URL` is one address for the browser and the app. The browser is redirected to it and the app fetches the realm's discovery document from it, so it must be the address Keycloak advertises as its issuer, and the app container must resolve and reach it. Never give the app an internal compose alias: the issuer would not match and the browser could not follow the redirect.
 - A value that is a list (`GENIE_CHAT_API_ALLOWED_ORIGINS`, `AUTH_TRUSTED_PROXIES`) is parsed and each entry validated at start, so a typo fails the boot and not a request.
 - The compose file in `customers/<slug>/deploy/` is committed and holds no secret and no host-specific value; `.env` is never committed and holds every secret and host-specific value.

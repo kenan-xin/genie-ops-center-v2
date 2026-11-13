@@ -1,6 +1,6 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 
-import { eq, inArray } from "drizzle-orm";
+import { DrizzleQueryError, eq, inArray } from "drizzle-orm";
 
 import type {
   PermissionKey,
@@ -13,7 +13,7 @@ import type {
 } from "../../lib/tenant-context/index.ts";
 import type { BrandingReader } from "../../lib/tenant-context/readers.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { file } from "../../schema.ts";
+import { file, fileLinkKey } from "../../schema.ts";
 import { can } from "../authorization/index.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
 import type { BrandingImageSlot } from "../branding/schemas.ts";
@@ -222,37 +222,71 @@ async function assertCan(
 }
 
 /**
+ * Reads the link key, after the first caller on this database made it (DEC-58, amended
+ * 2026-11-13). Whichever copy inserts first wins; `on conflict do nothing` makes every other copy
+ * read that row. The key comes from `randomBytes`, never from SQL: `random()` is not
+ * cryptographically secure, and `pgcrypto` is not on every customer's Postgres.
+ *
+ * shortcut: the key is never rotated; a later `genie-ops` step deletes the row and every copy
+ * restarts.
+ */
+async function loadFileLinkKey(db: FileStorageDatabase): Promise<Buffer> {
+  try {
+    await db
+      .insert(fileLinkKey)
+      .values({ id: 1, secret: randomBytes(32) })
+      .onConflictDoNothing({ target: fileLinkKey.id });
+
+    const [row] = await db
+      .select({ secret: fileLinkKey.secret })
+      .from(fileLinkKey)
+      .where(eq(fileLinkKey.id, 1));
+
+    if (row === undefined) throw new Error("the row is missing");
+
+    return row.secret;
+  } catch (error) {
+    // Drizzle's query error holds its parameters, which hold the key. Pass on the driver's error.
+    const driverError =
+      error instanceof DrizzleQueryError ? error.cause : error;
+
+    // oxlint-disable-next-line preserve-caught-error -- the caught error's message holds the key
+    throw new Error("The file link key could not be loaded.", {
+      cause: driverError,
+    });
+  }
+}
+
+/**
  * Builds the context's file store. It writes no global and no second connection: the metadata
  * goes through the caller's transaction and the bytes through the selected adapter (R-33).
  */
 export function createFileStorage(
   db: FileStorageDatabase,
-  env: Pick<
-    DeploymentEnvironment,
-    "fileStorageAdapter" | "fileMaxBytes" | "fileLinkSecret"
-  >,
+  env: Pick<DeploymentEnvironment, "fileStorageAdapter" | "fileMaxBytes">,
   publicUrl: PublicUrlBuilder,
   branding: BrandingReader
 ): FileStorage {
   const blobStore = createBlobStore(env.fileStorageAdapter, db);
+  let loadingKey: Promise<Buffer> | undefined;
 
   /**
-   * The shared link key (DEC-58). A context built without it (the migrator, a command) signs and
-   * reads no link: a plain `Error`, so the download route logs a configuration fault, not a 404.
+   * The deployment's one link key (DEC-58), loaded on first use and kept for the life of the
+   * process. Concurrent first callers share one load, and a failed load is dropped so the next
+   * call retries. The build itself opens no connection (R-19).
    */
-  function linkSecret(): string {
-    if (env.fileLinkSecret === undefined) {
-      throw new Error(
-        "FILE_LINK_SECRET is not set; this process cannot sign file links."
-      );
-    }
+  function linkKey(): Promise<Buffer> {
+    loadingKey ??= loadFileLinkKey(db).catch((cause: unknown) => {
+      loadingKey = undefined;
+      throw cause;
+    });
 
-    return env.fileLinkSecret;
+    return loadingKey;
   }
 
-  function linkFor(scope: FileLinkScope): TokenizedFileLink {
+  async function linkFor(scope: FileLinkScope): Promise<TokenizedFileLink> {
     const expiresAt = new Date(Date.now() + FILE_LINK_TTL_MS);
-    const token = signFileLink(scope, expiresAt, linkSecret());
+    const token = signFileLink(scope, expiresAt, await linkKey());
 
     return { token, url: publicUrl(FILE_DOWNLOAD_PATH, { token }), expiresAt };
   }
@@ -378,7 +412,7 @@ export function createFileStorage(
     },
     async fetchLink(input) {
       // Verify first: a forged token costs no `can()` work (Section 2 reads the database there).
-      const scope = readFileLink(input.token, linkSecret());
+      const scope = readFileLink(input.token, await linkKey());
 
       if (scope.kind === "branding") {
         if (!input.principal.authenticated) {

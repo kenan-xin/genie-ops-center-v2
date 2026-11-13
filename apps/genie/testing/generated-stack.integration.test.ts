@@ -82,7 +82,6 @@ describe("the generated customer stack smoke", () => {
         KEYCLOAK_REALM: SMOKE_REALM,
         KEYCLOAK_CLIENT_ID: "genie-ops-center",
         BETTER_AUTH_SECRET: "smoke-better-auth-secret-at-least-32-chars",
-        FILE_LINK_SECRET: "smoke-file-link-secret-at-least-32-chars",
         RESEND_API_KEY: SECRET_VALUE,
         S3_SECRET_ACCESS_KEY: SECRET_VALUE,
         KC_DB: "postgres",

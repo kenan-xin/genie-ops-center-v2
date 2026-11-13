@@ -444,7 +444,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
   let io: LineSinks = options;
 
   try {
-    const env = validateEnvironment(options.source, "worker");
+    const env = validateEnvironment(options.source);
 
     // From here every line is a tenant-bound JSON line, like the application's (R-75).
     io = jsonLineSinks(env, options);
@@ -459,8 +459,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
       options.source,
       logger,
       compiledModuleIds,
-      "genie-worker",
-      "worker"
+      "genie-worker"
     );
   } catch (caught) {
     io.errorOutput(

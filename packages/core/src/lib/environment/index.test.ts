@@ -1,10 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import {
-  environmentCatalogue,
-  type EnvironmentProfile,
-  validateEnvironment,
-} from "./index.ts";
+import { validateEnvironment } from "./index.ts";
 
 const MINIMAL = {
   DATABASE_URL: "postgres://genie:secret@db:5432/genie",
@@ -195,7 +191,6 @@ describe("validateEnvironment", () => {
       "chatAllowedOrigins",
       "databasePoolSize",
       "databaseUrl",
-      "fileLinkSecret",
       "fileMaxBytes",
       "fileStorageAdapter",
       "lockTimeoutMs",
@@ -365,69 +360,10 @@ describe("DATABASE_POOL_SIZE and AGENT_RUNS_AT_ONCE (DEC-58)", () => {
   });
 });
 
-describe("FILE_LINK_SECRET (DEC-58)", () => {
-  const AUTH = {
-    BETTER_AUTH_SECRET: "auth-secret-value-of-at-least-32-chars",
-    KEYCLOAK_URL: "https://id.example.com",
-    KEYCLOAK_REALM: "genie",
-    KEYCLOAK_CLIENT_ID: "genie-ops-center",
-    KEYCLOAK_CLIENT_SECRET: "client-secret-value",
-  };
-
-  it("is required by the application profile, named without any secret value", () => {
-    const message = failureOf({ ...MINIMAL, ...AUTH }, "application");
-
-    expect(message).toContain("FILE_LINK_SECRET");
-
-    for (const value of [...Object.values(AUTH), "genie:secret"]) {
-      expect(message).not.toContain(value);
-    }
-  });
-
-  it("is listed in the same error as a missing authentication value", () => {
-    const { KEYCLOAK_REALM: _, ...partial } = AUTH;
-    const message = failureOf({ ...MINIMAL, ...partial }, "application");
-
-    expect(message).toContain("KEYCLOAK_REALM");
-    expect(message).toContain("FILE_LINK_SECRET");
-  });
-
-  it("is required by the worker profile, which needs no authentication value", () => {
-    expect(failureOf(MINIMAL, "worker")).toContain("FILE_LINK_SECRET");
-
-    const env = validateEnvironment(
-      { ...MINIMAL, FILE_LINK_SECRET: "l".repeat(32) },
-      "worker"
-    );
-
-    expect(env.fileLinkSecret).toBe("l".repeat(32));
-    expect(env.auth).toBeUndefined();
-  });
-
-  it("is not required by the core profile", () => {
-    expect(validateEnvironment(MINIMAL, "core").fileLinkSecret).toBeUndefined();
-  });
-
-  it("refuses a value shorter than 32 characters", () => {
-    expect(
-      failureOf({ ...MINIMAL, FILE_LINK_SECRET: "l".repeat(31) })
-    ).toContain("FILE_LINK_SECRET: at least 32 characters");
-  });
-
-  it("is catalogued as an optional secret", () => {
-    expect(
-      environmentCatalogue.find(({ name }) => name === "FILE_LINK_SECRET")
-    ).toEqual({ name: "FILE_LINK_SECRET", required: false, secret: true });
-  });
-});
-
 /** The message of the failure a broken environment raises. */
-function failureOf(
-  source: Record<string, string | undefined>,
-  profile?: EnvironmentProfile
-): string {
+function failureOf(source: Record<string, string | undefined>): string {
   try {
-    validateEnvironment(source, profile);
+    validateEnvironment(source);
   } catch (error) {
     return error instanceof Error ? error.message : String(error);
   }

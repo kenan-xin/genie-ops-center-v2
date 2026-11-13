@@ -73,13 +73,13 @@ function invalidToken(): Error {
 /**
  * Signs the link scope with its expiry (R-38). The payload is JSON, so a permission or a resource
  * id that holds `:` cannot be split apart, and the whole payload is bound by an HMAC-SHA256
- * keyed by the UTF-8 bytes of `FILE_LINK_SECRET`. Every app copy and worker of a deployment holds
- * the same secret, so a link one copy signs opens on any other (DEC-58).
+ * keyed by the deployment's link key from the database, so a link one app copy signs opens on any
+ * other (DEC-58).
  */
 export function signFileLink(
   scope: FileLinkScope,
   expiresAt: Date,
-  secret: string
+  secret: Buffer
 ): string {
   const body =
     scope.kind === "record"
@@ -109,7 +109,7 @@ export function signFileLink(
  * non-JSON or wrongly typed payload, and an expiry that has passed are all refused with the same
  * message. The payload is parsed with a schema, so a forged body never reaches the caller.
  */
-export function readFileLink(token: string, secret: string): FileLinkScope {
+export function readFileLink(token: string, secret: Buffer): FileLinkScope {
   const [payload, signature, ...rest] = token.split(".");
 
   if (payload === undefined || signature === undefined || rest.length > 0) {

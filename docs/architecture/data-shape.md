@@ -96,6 +96,8 @@ A null scope means the whole tenant. `can(user, permission, resource?)` collects
 
 `file_blob`: id, bytes (bytea), created_at. One row per file stored with the `postgres` adapter. Kept in its own table so `file` scans never load bytes.
 
+`file_link_key`: id (smallint, always 1), secret (bytea), created_at. One row. It holds the key that signs every file download link. The first app copy or worker that signs or opens a link makes the key with 32 random bytes and stores it, so every copy uses the same key (`DEC-58`, amended 2026-11-13). Only the file store reads it.
+
 ### Integrations
 
 `tenant_integration`: id, module_id, kind (text, for example `s3`, `sharepoint`, `smb`, `http`), name, config (jsonb, non-secret values such as host, bucket, base path), secret_ref (nullable; a name in the server environment, never a credential), status (`active`, `disabled`, `error`), last_checked_at, last_error, created_by_user_id, created_at, updated_at. A module reads its own integrations through core and uses them to reach a customer system that is not Genie's file store. Credentials never enter `tenant_integration` or a module table. A key that an administrator types is stored as plain text in `tenant_integration_key`: id, name (unique), value (text), updated_by_user_id, created_at, updated_at. Only the core integrations service reads and writes it (`DEC-53`, accepted risk). Core ships no integration screen: the first module that needs a connector ships the screen through its pages slot, and core lifts it into Tenant Settings when a second module needs one.

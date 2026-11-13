@@ -108,6 +108,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0015_tenant_cache_notify.sql",
     import.meta.url
   ),
+  "0016_file_link_key": new URL(
+    "../../../drizzle/0016_file_link_key.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */

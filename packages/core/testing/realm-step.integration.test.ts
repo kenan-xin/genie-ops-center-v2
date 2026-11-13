@@ -26,7 +26,6 @@ import {
   renderClientFile,
   startDisposablePostgres,
   STUDIO_CLIENT_FILE,
-  TEST_FILE_LINK_SECRET,
 } from "./index.ts";
 import {
   KEYCLOAK_BOOTSTRAP_PASSWORD,
@@ -1169,7 +1168,6 @@ describe("client-only mode against a real Keycloak (R-54a, R-54c)", () => {
         KEYCLOAK_REALM: realm,
         KEYCLOAK_CLIENT_ID: "genie-ops-center",
         KEYCLOAK_CLIENT_SECRET: "client-secret-value",
-        FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
       },
       silentLogger(),
       [],
@@ -1336,7 +1334,6 @@ describe("the R-54c address repair (R-54c)", () => {
         KEYCLOAK_REALM: realm,
         KEYCLOAK_CLIENT_ID: "genie-ops-center",
         KEYCLOAK_CLIENT_SECRET: "client-secret-value",
-        FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
       },
       silentLogger(),
       [],

@@ -62,9 +62,10 @@ Every copy reads the same `.env`. Keep one `.env` for the stack and never give o
 
 | Variable | Default | What it does |
 | --- | --- | --- |
-| `FILE_LINK_SECRET` | none, required | Signs file download links. One copy signs a link and another copy opens it, so every copy needs the same value. Use at least 32 characters. Without it, a copy refuses to start. |
 | `DATABASE_POOL_SIZE` | `10` | The most database connections one copy opens. The worker's job queue (pg-boss) uses the same pool. |
 | `AGENT_RUNS_AT_ONCE` | `4` | Worker only. The count of background agent runs one worker runs at the same time. |
+
+File download links need no value in `.env`. One copy signs a link and another copy opens it. The first copy that signs a link stores one link key in the database, and every app copy and worker reads that same key.
 
 A run spends most of its time on a wait for the model. You can raise `AGENT_RUNS_AT_ONCE` well above 4 before you add a worker.
 

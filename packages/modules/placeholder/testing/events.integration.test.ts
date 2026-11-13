@@ -1,9 +1,6 @@
 import { withTransaction, type TenantContext } from "@genie/core";
 import type { TenantTransaction } from "@genie/core";
-import {
-  startDisposableDeployment,
-  TEST_FILE_LINK_SECRET,
-} from "@genie/core/testing";
+import { startDisposableDeployment } from "@genie/core/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { ZodType } from "zod";
 
@@ -100,7 +97,6 @@ beforeAll(async () => {
     source: {
       DATABASE_URL: deployment.context.env.databaseUrl,
       PUBLIC_URL: deployment.context.env.publicUrl,
-      FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
     },
     modules: [placeholderModule],
     histories: [],

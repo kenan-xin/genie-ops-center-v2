@@ -1,10 +1,10 @@
-import { createHmac } from "node:crypto";
+import { createHmac, randomBytes } from "node:crypto";
 
 import { describe, expect, it } from "vitest";
 
 import { readFileLink, signFileLink } from "./token.ts";
 
-const secret = "unit-file-link-secret-of-32-characters";
+const secret = randomBytes(32);
 
 const later = () => new Date(Date.now() + 60_000);
 

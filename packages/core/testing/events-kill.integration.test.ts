@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { runWorker } from "../src/services/worker/index.ts";
 import { killCaseModule } from "./events-kill-module.ts";
-import { startDisposableDeployment, TEST_FILE_LINK_SECRET } from "./index.ts";
+import { startDisposableDeployment } from "./index.ts";
 
 /* oxlint-disable anti-slop/require-readable-spacing -- process setup and database assertions stay together. */
 
@@ -95,7 +95,6 @@ describe("durable event recovery after a process kill", () => {
       source: {
         DATABASE_URL: deployment.context.env.databaseUrl,
         PUBLIC_URL: deployment.context.env.publicUrl,
-        FILE_LINK_SECRET: TEST_FILE_LINK_SECRET,
       },
       modules: [killCaseModule],
       histories: [],
