@@ -25,9 +25,9 @@ function plainSession(id: string): AgentSessionDetail {
     surface: "core:ask",
     recordId: null,
     runState: null,
+    run: null,
     updatedAt: "2026-10-27T02:00:00.000Z",
     handedFromSessionId: null,
-    run: null,
     agentName: null,
     address: null,
   };
