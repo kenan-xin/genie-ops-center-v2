@@ -57,6 +57,12 @@ One shared constant, `focusRing`, holds the exact class string. In this design t
 
 The string names no color, so it needs no `dark:` variant. Every interactive element appends it; no component writes its own ring classes.
 
+## Scrollbars
+
+One rule in `packages/ui/src/theme/tokens.css` styles every scrollbar in the app and in Storybook (owner, 2026-11-13, `6wz1.104`). The `::-webkit-scrollbar` is 6px wide and high, the track is transparent, and the buttons are hidden. The thumb is `--control` with a full radius: gray-300 in light, gray-700 in dark. On hover the thumb is `--input`, gray-500 in both themes, because the dark theme does not override `--input`. The rule reads variables that change per theme, so it needs no `dark:` variant.
+
+Firefox gets `scrollbar-width: thin` and `scrollbar-color: var(--control) transparent` only inside `@supports not selector(::-webkit-scrollbar)`. Chromium ignores the `::-webkit` rules when the standard properties are set, and then it shows its arrow buttons again. For the same reason, no element sets `scrollbar-width` or `scrollbar-color` itself.
+
 ## Color roles
 
 The tenant primary color fills solid surfaces and the focus ring, and nothing else. Those are the primary button and the count pill (`bg-blue-600`), the active navigation row's text and icon and the tenant letter tile (`text-blue-700`, `text-blue-600`), and the ring (`ring-blue-500`). In this tree `blue-600` is the default value of the shadcn `--primary` variable, which Branding fills per request, and the export maps those classes to `bg-primary`, `text-primary`, `text-primary-foreground`, and `ring-ring`. A tinted surface that stands for identity or a label stays a fixed neutral gray: the avatar and monogram tile, every label pill, and the chrome pills (Admin portal, Administrator). So no tint ramp is derived from the tenant color, and `packages/ui` needs no color-space computation and no per-step contrast check. A tint that carries state or meaning keeps its blue and is not brand: a selected or focused table row, and an informational notice block. The test is whether the tenant's color would be wrong there. Only `--primary` and `--primary-foreground` are computed. A hover or active state is the same color at reduced opacity, `bg-primary/94` on hover and `bg-primary/80` on press, never a derived shade, which is what keeps the no-ramp rule true for buttons. Pills and semantic tones keep their Tailwind values.

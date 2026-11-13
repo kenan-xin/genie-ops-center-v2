@@ -194,4 +194,33 @@
   :is(h1, main)[tabindex="-1"]:focus {
     outline: none;
   }
+
+  /*
+   * tokens.md "Scrollbars" (6wz1.104): thin, no track, no arrows. --control and --input
+   * flip per theme, so no dark rule. Chromium ignores ::-webkit once the standard pair is
+   * set and keeps its arrows, so the pair applies only where ::-webkit is unknown (Firefox).
+   */
+  @supports not selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--control) transparent;
+    }
+  }
+  *::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: var(--control);
+    border-radius: 9999px;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: var(--input);
+  }
+  *::-webkit-scrollbar-button {
+    display: none;
+  }
 }

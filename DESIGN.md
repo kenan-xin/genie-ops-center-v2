@@ -327,6 +327,10 @@ Skeleton blocks match the shape they replace and animate only when motion is all
 
 Lucide, 16px in text and pills, 20px in navigation and buttons, stroke 1.75. No emoji as icons.
 
+### Scrollbars
+
+Every scrolling surface shows a thin, quiet scrollbar (owner, 2026-11-13, `6wz1.104`). It is 6px wide, with no track and no arrow buttons. The thumb is a gray pill: gray-300 in light, gray-700 in dark, and gray-500 on hover in both themes. The token layer sets it once for the whole app and Storybook. No component styles its own scrollbar.
+
 ### Sign-in Page and Emails
 
 For now the sign-in page and the emails carry text and color branding only. They show the company name as text, never the logo, and the sign-in page has no background image. Image branding on these two surfaces returns with a public branding asset route. Emails stay light in both themes.
