@@ -102,7 +102,7 @@ R-16. The emitted variables must be carried on the document root in a style elem
 
 R-17. Resolving the theme must not flash the wrong theme before hydration. The resolved theme is written on the document root by the server when it is known, and the client corrects it before paint when the organization's default theme is `system`. A person has no theme preference: theme belongs to the organization (owner decision 2026-10-19). Revised 2026-10-22 (owner, spec 03 critique F-10): the theme is a `data-theme` attribute on `<html>`, and the app stylesheet declares `@custom-variant dark (&:where([data-theme=dark], [data-theme=dark] *))`. Every `dark:` class then follows the attribute, not the operating system setting.
 
-R-18. A branding change must show on the next page load in a process whose branding reader cache has expired, within the 10 second window of `DEC-46`. Nothing invalidates the cache on save, and no process restarts.
+R-18. A branding change must show on the next page load in a process whose branding reader cache has expired, within the 10 second window of `DEC-46`. Nothing invalidates the cache on save, and no process restarts. Amended 2026-11-13 (`DEC-58`): a branding save now clears the reader in every process through `pg_notify`. The 10-second window stays as the fallback.
 
 ### Primitives (item 3)
 

@@ -17,6 +17,8 @@ A stack is three containers from the same image plus Keycloak:
 
 Postgres, the mail server, and the reverse proxy with the certificate are supplied by the host. They are not part of the stack.
 
+The application and the worker can each run as several copies. "Run several app copies and workers" below tells how.
+
 ## Choose the hosting mode
 
 The hosting mode changes no code, no command, and no configuration file. It decides who does the operator work. Record it in the customer's runbook, never in `tenant.yaml` (`DEC-35`).
@@ -35,6 +37,64 @@ Around a hundred customers, upgrade work by hand becomes the bottleneck. ADR 000
 
 1. Keep one deployment per customer and add a rollout tool. Kubernetes with one namespace per customer applies the same image tag to every namespace in one command. The Helm values file in `customers/<slug>/deploy/` exists for this path.
 2. Return to many customers in one process. Every read of the database, settings, branding, and files goes through the tenant context (`DEC-34`), so this path changes how the context is built and nothing else. It needs a new ADR, because it brings back the shared database server and the isolation tests it requires.
+
+## Run several app copies and workers
+
+One customer's stack carries more people when it runs more `app` and `worker` containers on the same database (`DEC-58`). Each copy keeps no shared state in memory. Sessions, rate limits, the job queue and run state live in Postgres. A save to settings, branding, modules or categories clears the caches of every copy at once.
+
+A chat answer streams from an app copy and uses no worker slot. Only background agent runs use the worker.
+
+### Check the compose file first
+
+The generated `compose.yaml` allows several copies. Make sure that it still has these three properties:
+
+- No service sets `container_name`. Two copies cannot have the same container name.
+- No service publishes a fixed host port under `ports`. Two copies cannot bind the same host port.
+- The `app` service joins the `proxy` network under the alias `<slug>-app`.
+
+If a hand-edited file breaks one of these, fix it before you scale. Remove `container_name`. Replace a published port with the `proxy` network alias (`reverse-proxy.md`, step 4).
+
+The reverse proxy needs no change. Docker's DNS answers the alias `<slug>-app` with the address of every running copy, so the proxy spreads new connections across them.
+
+### Set the values in `.env`
+
+Every copy reads the same `.env`. Keep one `.env` for the stack and never give one copy its own file.
+
+| Variable | Default | What it does |
+| --- | --- | --- |
+| `FILE_LINK_SECRET` | none, required | Signs file download links. One copy signs a link and another copy opens it, so every copy needs the same value. Use at least 32 characters. Without it, a copy refuses to start. |
+| `DATABASE_POOL_SIZE` | `10` | The most database connections one copy opens. The worker's job queue (pg-boss) uses the same pool. |
+| `AGENT_RUNS_AT_ONCE` | `4` | Worker only. The count of background agent runs one worker runs at the same time. |
+
+A run spends most of its time on a wait for the model. You can raise `AGENT_RUNS_AT_ONCE` well above 4 before you add a worker.
+
+### Start the copies
+
+1. Run `docker compose up -d --scale app=<N> --scale worker=<M>`. `<N>` is the count of app copies and `<M>` is the count of workers.
+2. Run `docker compose ps`. Make sure that every copy shows `healthy`.
+3. Pass the same two `--scale` flags on every later `docker compose up`, the upgrade included. Without them, Compose goes back to one copy of each.
+
+A `docker compose exec app ...` command runs in the first app copy. That is correct for every `genie-ops` command.
+
+### Count the database connections
+
+Each app copy and each worker opens its pool plus one more connection. That connection waits for the notification that clears the caches. Its name is `<pool name>:cache`.
+
+The stack needs (`<N>` + `<M>`) × (`DATABASE_POOL_SIZE` + 1) connections at most. Keep that number below the Postgres `max_connections` setting. Keep a margin for `genie-ops` commands, backups and your own sessions. If Keycloak keeps its database on the same Postgres server, also count the connections of Keycloak.
+
+Example: 3 app copies and 2 workers with the default pool size need 5 × 11 = 55 connections.
+
+A worker uses its pool for agent runs and for every other job type. A run uses a pool connection only while it queries the database, not while it waits for the model. The default pool is enough for most workers. For a safe upper bound, set `DATABASE_POOL_SIZE` above `AGENT_RUNS_AT_ONCE` plus the count of other job types. Then no job loop waits for a connection. The app and the worker read the same `.env`, so a higher value applies to the app copies too. Count it in the total.
+
+### Add a connection pooler
+
+When the total passes `max_connections`, put PgBouncer between the stack and Postgres. Point `DATABASE_URL` at PgBouncer.
+
+Use PgBouncer in session mode. Transaction mode breaks `LISTEN`, so the copies stop clearing their caches at once. They then fall back to the 10-second expiry. If you must use transaction mode, give the cache listener a direct connection to Postgres. The stack has no setting for this today, so plan it as a code change.
+
+### Know the real ceiling
+
+The model provider's limit on requests and tokens is the real ceiling for agent work. More copies do not raise it. Raise it through the provider account.
 
 ## Before you start
 
@@ -108,7 +168,7 @@ An upgrade is a short planned maintenance window (`DEC-9` as amended 2026-10-20)
 1. Build and push the new version with the build script, or hand over the new image file.
 2. Announce the window to the tenant administrators. Take a backup set ("Backups") and record its time.
 3. On the host, change `IMAGE_TAG` in `.env` to the new version.
-4. Run `docker compose pull` and `docker compose up -d`. The new container applies the migration histories under one lock before it serves.
+4. Run `docker compose pull` and `docker compose up -d`. A stack that runs several copies passes its `--scale` flags here too ("Run several app copies and workers"). The new container applies the migration histories under one lock before it serves.
    If a migration fails, its transaction rolls back and the new container never becomes healthy. Nothing serves until you act. Read the container log and record the cause. Set `IMAGE_TAG` back to the previous version and run `docker compose up -d` again. Make sure that the previous version is healthy, then fix the cause and plan a new window. If the previous image refuses to start, for example because the new release installed a module that the previous image omits, restore the backup set of step 2.
 5. If the release notes name a new `genie-ops setup` step, run `docker compose exec app genie-ops setup` again. Until that run completes, the application shows the not-set-up page, because setup is complete only when every step the running image knows is done, or skipped in client-only mode (`../core/roadmap.md`, Section 1 items 2 and 5).
 6. A module that the new image adds arrives disabled. An administrator configures it and enables it on the Modules page, or you run `docker compose exec app genie-ops module enable <module-id>` on the administrator's request. Nobody gets access to it until then (`DEC-50`).

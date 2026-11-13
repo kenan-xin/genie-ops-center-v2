@@ -399,7 +399,7 @@ Generated-module authorized success tests and the matching generator-template up
 | Events point runtime on the placeholder module | Section 1 item 9a | The bus arrives with `emit`, `on`, `provide`, and `capability` |
 | Jobs point runtime on the placeholder module | Section 1 item 9 | The pg-boss worker process |
 | Entitlement filter on the registry | Section 1 item 1 | `tenant_module.enabled` and its reader |
-| Settings, branding, and entitlement readers on the tenant context | Section 1 item 1 | 10 second expiry, no invalidation on save (`DEC-46`) |
+| Settings, branding, and entitlement readers on the tenant context | Section 1 item 1 | 10 second expiry, no invalidation on save (`DEC-46`). Amended 2026-11-13 (`DEC-58`): every save clears the readers in every process through `pg_notify`, with the expiry as the fallback. |
 | File store on the tenant context | Section 1 item 7 | `FileStorage` with the `postgres` adapter (`DEC-20`) |
 | Deployment tables | Section 1 item 1 | `../architecture/data-shape.md`, Deployment tables |
 | `genie-ops migrate`, the pending-migration count, Squawk, and `drizzle-kit check` | Section 1 item 4 | `DEC-43` |
