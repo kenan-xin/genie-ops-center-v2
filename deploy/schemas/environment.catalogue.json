@@ -1,6 +1,12 @@
 {
   "variables": [
     {
+      "name": "AGENT_RUNS_AT_ONCE",
+      "required": false,
+      "secret": false,
+      "default": 4
+    },
+    {
       "name": "AUTH_TRUSTED_PROXIES",
       "required": false,
       "secret": false
@@ -9,6 +15,12 @@
       "name": "BETTER_AUTH_SECRET",
       "required": false,
       "secret": true
+    },
+    {
+      "name": "DATABASE_POOL_SIZE",
+      "required": false,
+      "secret": false,
+      "default": 10
     },
     {
       "name": "DATABASE_URL",

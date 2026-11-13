@@ -85,6 +85,8 @@ function contextWith(
         chatAllowedOrigins: [],
         authTrustedProxies: [],
         lockTimeoutMs: 120000,
+        databasePoolSize: 10,
+        agentRunsAtOnce: 4,
         logLevel: "info",
         port: 3000,
         runtimeMode: "production",

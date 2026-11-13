@@ -169,6 +169,23 @@ describe("createTenantContext", () => {
     }
   });
 
+  it("sizes the pool from DATABASE_POOL_SIZE, 10 by default (DEC-58)", async () => {
+    const byDefault = createTenantContext(MINIMAL, silentLogger(), []);
+
+    const sized = createTenantContext(
+      { ...MINIMAL, DATABASE_POOL_SIZE: "3" },
+      silentLogger(),
+      []
+    );
+
+    try {
+      expect(byDefault.db.$client.options.max).toBe(10);
+      expect(sized.db.$client.options.max).toBe(3);
+    } finally {
+      await Promise.all([byDefault.db.$client.end(), sized.db.$client.end()]);
+    }
+  });
+
   it("refuses an invalid environment and names the variable", () => {
     expect(() =>
       createTenantContext(

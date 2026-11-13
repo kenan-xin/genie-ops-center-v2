@@ -72,14 +72,6 @@ const POLL_INTERVAL_MS = 1000;
  */
 const MAX_EVENT_HANDLERS_IN_FLIGHT = 16;
 
-/**
- * How many `core.agent-run` jobs one worker runs at once (czjw.123). A run waits on its model
- * for up to three minutes, so a single loop holds every other person's run behind it. Each
- * loop is a plain `drain`, and pg-boss gives each fetch a different job. One run per person
- * stays the partial unique index (R-42b).
- */
-const AGENT_RUNS_AT_ONCE = 4;
-
 /** Below Docker's default 10 s stop grace, so the worker stops pg-boss itself before SIGKILL. */
 const DEFAULT_SHUTDOWN_TIMEOUT_MS = 8000;
 
@@ -599,7 +591,7 @@ async function serve(
     // Core owns its jobs, so no entitlement gates them.
     ...CORE_JOBS.flatMap((job) =>
       Array.from(
-        { length: job === AGENT_RUN_JOB ? AGENT_RUNS_AT_ONCE : 1 },
+        { length: job === AGENT_RUN_JOB ? context.env.agentRunsAtOnce : 1 },
         () => jobLoop(job, async () => true)
       )
     ),

@@ -24,6 +24,8 @@ const ENV: DeploymentEnvironment = {
   chatAllowedOrigins: [],
   authTrustedProxies: [],
   lockTimeoutMs: 1000,
+  databasePoolSize: 10,
+  agentRunsAtOnce: 4,
   logLevel: "silent",
   port: 3000,
   runtimeMode: "production",

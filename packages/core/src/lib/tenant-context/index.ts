@@ -116,6 +116,15 @@ export type DeploymentEnvironment = {
   readonly chatAllowedOrigins: readonly string[];
   readonly authTrustedProxies: readonly string[];
   readonly lockTimeoutMs: number;
+  /** `DATABASE_POOL_SIZE`: the most database connections this process's pool opens (DEC-58). */
+  readonly databasePoolSize: number;
+  /**
+   * `AGENT_RUNS_AT_ONCE`: how many `core.agent-run` jobs one worker runs at once (czjw.123). A run
+   * waits on its model for up to three minutes, so a single loop holds every other person's run
+   * behind it. Each loop is a plain `drain`, and pg-boss gives each fetch a different job. One run
+   * per person stays the partial unique index (R-42b).
+   */
+  readonly agentRunsAtOnce: number;
   readonly logLevel: string;
   readonly port: number;
   /** The validated runtime mode (`NODE_ENV`); only `development` logs a working link (R-49). */
@@ -264,6 +273,7 @@ export function createTenantContext(
 
   const pool = new Pool({
     connectionString: env.databaseUrl,
+    max: env.databasePoolSize,
     application_name:
       applicationName === undefined
         ? undefined

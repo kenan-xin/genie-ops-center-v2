@@ -164,6 +164,10 @@ const schema = z.object({
       "each entry is one ip address or cidr range, never the whole internet"
     ),
   LOCK_TIMEOUT_MS: wholeNumber.default(120000),
+  // DEC-58: a deployment scales by adding copies, so the pool and the run slots are per process.
+  // A blank value is unset, so a compose file can pass `${DATABASE_POOL_SIZE:-}`.
+  DATABASE_POOL_SIZE: z.preprocess(unsetWhenBlank, wholeNumber.default(10)),
+  AGENT_RUNS_AT_ONCE: z.preprocess(unsetWhenBlank, wholeNumber.default(4)),
   LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
   PORT: wholeNumber
     .refine((port) => port <= 65535, "a port below 65536")
@@ -421,6 +425,8 @@ export function validateEnvironment(
     chatAllowedOrigins: value.GENIE_CHAT_API_ALLOWED_ORIGINS,
     authTrustedProxies: value.AUTH_TRUSTED_PROXIES,
     lockTimeoutMs: value.LOCK_TIMEOUT_MS,
+    databasePoolSize: value.DATABASE_POOL_SIZE,
+    agentRunsAtOnce: value.AGENT_RUNS_AT_ONCE,
     logLevel: value.LOG_LEVEL,
     port: value.PORT,
     runtimeMode: runtimeModeOf(),

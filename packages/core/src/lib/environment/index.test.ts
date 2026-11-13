@@ -190,8 +190,10 @@ describe("validateEnvironment", () => {
     });
 
     expect(Object.keys(env).toSorted()).toEqual([
+      "agentRunsAtOnce",
       "authTrustedProxies",
       "chatAllowedOrigins",
+      "databasePoolSize",
       "databaseUrl",
       "fileLinkSecret",
       "fileMaxBytes",
@@ -323,6 +325,42 @@ describe("validateEnvironment", () => {
     } finally {
       if (previous === undefined) delete process.env.NODE_ENV;
       else process.env.NODE_ENV = previous;
+    }
+  });
+});
+
+describe("DATABASE_POOL_SIZE and AGENT_RUNS_AT_ONCE (DEC-58)", () => {
+  it("defaults an unset or blank value to today's pool size and run slots", () => {
+    for (const value of [undefined, "", "  "]) {
+      const env = validateEnvironment({
+        ...MINIMAL,
+        DATABASE_POOL_SIZE: value,
+        AGENT_RUNS_AT_ONCE: value,
+      });
+
+      expect(env.databasePoolSize).toBe(10);
+      expect(env.agentRunsAtOnce).toBe(4);
+    }
+  });
+
+  it("reads a whole number", () => {
+    const env = validateEnvironment({
+      ...MINIMAL,
+      DATABASE_POOL_SIZE: "25",
+      AGENT_RUNS_AT_ONCE: "25",
+    });
+
+    expect(env.databasePoolSize).toBe(25);
+    expect(env.agentRunsAtOnce).toBe(25);
+  });
+
+  it("refuses zero or a word and names the variable", () => {
+    for (const name of ["DATABASE_POOL_SIZE", "AGENT_RUNS_AT_ONCE"]) {
+      for (const value of ["0", "abc"]) {
+        expect(() =>
+          validateEnvironment({ ...MINIMAL, [name]: value })
+        ).toThrow(name);
+      }
     }
   });
 });
