@@ -495,6 +495,9 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
         ),
     });
 
+    // Saves in other copies clear this worker's readers from now on (DEC-58).
+    await context.cacheListener.start();
+
     if (!options.signal.aborted)
       await serve(boss, context, logger, run, eventLog);
 
@@ -508,6 +511,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
   } finally {
     await boss.stop({ graceful: false });
     await stopJobQueue(context.jobQueue);
+    await context.cacheListener.stop();
     await context.db.$client.end();
   }
 }

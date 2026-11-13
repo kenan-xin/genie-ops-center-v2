@@ -97,6 +97,10 @@ function contextWith(
         fileLinkSecret: undefined,
       },
       ...readersWithModuleEnabled(),
+      cacheListener: {
+        start: () => Promise.reject(new Error("the router started a listener")),
+        stop: () => Promise.reject(new Error("the router stopped a listener")),
+      },
       jobQueue: {
         enqueue: () => Promise.reject(new Error("the router enqueued a job")),
         schedule: () => Promise.reject(new Error("the router scheduled a job")),

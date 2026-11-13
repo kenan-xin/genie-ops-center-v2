@@ -11,6 +11,7 @@ describe("TenantContext", () => {
       | "branding"
       | "entitlements"
       | "categories"
+      | "cacheListener"
       | "jobQueue"
       | "events"
       | "capabilities"

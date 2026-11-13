@@ -44,6 +44,7 @@ import {
   type EnvironmentSource,
   validateEnvironment,
 } from "../environment/index.ts";
+import { type CacheListener, createCacheListener } from "./cache-listener.ts";
 import { createTenantReaders, type TenantReaders } from "./readers.ts";
 import { registerContextLogger } from "./with-transaction.ts";
 
@@ -169,6 +170,11 @@ export type TenantContext = {
   readonly entitlements: TenantReaders["entitlements"];
   /** The navigation category reader: the category rows and each module's placement (DEC-51). */
   readonly categories: TenantReaders["categories"];
+  /**
+   * The one connection that clears the four readers when another app copy or worker saves
+   * (DEC-58). Only the app and worker entrypoints start it; a command or test relies on the expiry.
+   */
+  readonly cacheListener: CacheListener;
   /** The pg-boss job queue over this context's pool (D-11). It starts on first use. */
   readonly jobQueue: JobQueue;
   /** The typed event bus (R-53). Emission happens through `withTransaction`. */
@@ -271,14 +277,18 @@ export function createTenantContext(
 ): TenantContext {
   const env = validateEnvironment(source, profile);
 
+  const poolName =
+    applicationName === undefined
+      ? undefined
+      : `${applicationName}:${randomBytes(4).toString("hex")}`;
+  const connectionTimeoutMillis =
+    env.lockTimeoutMs + CONNECTION_TIMEOUT_MARGIN_MS;
+
   const pool = new Pool({
     connectionString: env.databaseUrl,
     max: env.databasePoolSize,
-    application_name:
-      applicationName === undefined
-        ? undefined
-        : `${applicationName}:${randomBytes(4).toString("hex")}`,
-    connectionTimeoutMillis: env.lockTimeoutMs + CONNECTION_TIMEOUT_MARGIN_MS,
+    application_name: poolName,
+    connectionTimeoutMillis,
   });
 
   pool.on("connect", (client) => {
@@ -335,6 +345,14 @@ export function createTenantContext(
     branding: readers.branding,
     entitlements: readers.entitlements,
     categories: readers.categories,
+    // Built here, opened only by `start` (R-19).
+    cacheListener: createCacheListener({
+      connectionString: env.databaseUrl,
+      applicationName: poolName === undefined ? undefined : `${poolName}:cache`,
+      connectionTimeoutMillis,
+      clearAll: readers.clearAll,
+      logger,
+    }),
     jobQueue,
     events: createEventBus({
       jobQueue,

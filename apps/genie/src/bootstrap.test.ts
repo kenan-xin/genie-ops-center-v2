@@ -179,7 +179,7 @@ describe("runBootstrap failure handling", () => {
     expect(Date.now() - started).toBeLessThan(BUDGET_BOUND_MS);
   });
 
-  it("publishes the context only after migrations succeed", async () => {
+  it("starts the cache listener and publishes the context only after migrations succeed", async () => {
     const order: string[] = [];
 
     await runBootstrap({
@@ -192,12 +192,15 @@ describe("runBootstrap failure handling", () => {
       migrate: async () => {
         order.push("migrate");
       },
+      startCacheListener: async () => {
+        order.push("listen");
+      },
       publish: () => order.push("publish"),
       exit: vi.fn(),
       budgetMs: BUDGET_MS,
     });
 
-    expect(order).toEqual(["connect", "migrate", "publish"]);
+    expect(order).toEqual(["connect", "migrate", "listen", "publish"]);
   });
 });
 
@@ -231,6 +234,7 @@ describe("runBootstrap production wiring", () => {
       // The Keycloak guards read the same database, so they are stubbed too; their own
       // integration tests drive them against a real one.
       keycloakGuards: async () => {},
+      startCacheListener: async () => {},
       publish: (context) => {
         published = context;
       },
@@ -359,6 +363,7 @@ describe("runBootstrap migration diagnostics", () => {
       // The Keycloak guards read the database the environment names; this run stubs migration, so
       // it stubs the guards too and asserts only the migration diagnostics.
       keycloakGuards: async () => {},
+      startCacheListener: async () => {},
       publish: () => {},
       exit: () => {
         throw new Error("a successful bootstrap must not exit");

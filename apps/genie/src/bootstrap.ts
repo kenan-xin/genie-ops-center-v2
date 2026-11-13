@@ -74,6 +74,11 @@ export type BootstrapOptions = {
    * guards always run in production.
    */
   readonly keycloakGuards?: (context: AppContext) => Promise<void>;
+  /**
+   * Injected only by a test whose context is a fixture or names no reachable database. The image
+   * never passes this, so production always starts the tenant cache listener (DEC-58).
+   */
+  readonly startCacheListener?: (context: AppContext) => Promise<void>;
   readonly publish?: (context: AppContext) => void;
   readonly exit?: (code: number) => void;
   /** One total budget for diagnostics, cleanup and log flushing (R-19b amendment). */
@@ -119,6 +124,12 @@ async function runFailureShutdown(input: {
   const context = input.context;
 
   if (context !== undefined) {
+    // The listener stops before the pool closes, as its own step, so a failing stop cannot skip
+    // the pool end.
+    await withinBudget(
+      Promise.resolve().then(() => context.tenant.cacheListener.stop()),
+      remaining()
+    );
     // Started inside the promise chain so a synchronous throw from `end`
     // becomes a rejection `withinBudget` already swallows.
     await withinBudget(
@@ -292,6 +303,12 @@ export async function runBootstrap(
         }));
 
     await migrate(ready);
+
+    // Saves in other app copies and workers clear this copy's readers from now on (DEC-58).
+    await (
+      options.startCacheListener ??
+      ((started: AppContext) => started.tenant.cacheListener.start())
+    )(ready);
 
     // R-54c: after migrations and before the app serves, refuse a stack that points at a different
     // Keycloak than setup recorded, or that runs client-only mode with its own Keycloak. R-54d:

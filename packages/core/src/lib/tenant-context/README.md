@@ -20,6 +20,12 @@ same logger the factory already owns. That logger stays off the context object i
 a folder-private map, so the context keeps its two fixed members and no logger member reaches a
 caller.
 
+The cache listener lives here too (DEC-58). It is one dedicated `pg.Client` per context, built by
+the factory and opened only when the app or worker entrypoint calls `start` after its migrations.
+It runs `LISTEN` on the channel the four tenant tables notify on commit, clears every reader on each
+notification and once after each (re)connect, and reconnects with a capped backoff. A command or a
+test never starts it and relies on the ten-second expiry.
+
 ## What must not go here
 
 A connection singleton, a settings read, a branding read, or any database access at import time.

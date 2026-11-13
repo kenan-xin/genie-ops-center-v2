@@ -156,6 +156,17 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     ],
   },
   {
+    file: "testing/tenant-cache-listener.integration.test.ts",
+    reason:
+      "DEC-58 requires a save in one app copy to clear every other copy's tenant caches, a dropped listener to reconnect and clear, and the ten-second expiry as the fallback",
+    cases: [
+      "tenant cache listener a save in one context clears the cache of another context within a second",
+      "tenant cache listener a missed notification still expires in ten seconds",
+      "tenant cache listener a dropped connection reconnects and clears the caches",
+      "tenant cache listener stop before start is a no-op, and stop ends the listener backend",
+    ],
+  },
+  {
     file: "testing/with-transaction.integration.test.ts",
     reason:
       "D-5 and D-6's withTransaction seam, bead 1ia.14's acceptance, requires the transaction and after-commit cases to run",
