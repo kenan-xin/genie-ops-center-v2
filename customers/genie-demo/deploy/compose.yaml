@@ -26,7 +26,9 @@ services:
       FILE_LINK_SECRET: ${FILE_LINK_SECRET:?set FILE_LINK_SECRET in .env}
       # The optional values of the environment contract. A value the service does not list never
       # reaches the container, and a blank value stays unset, so the documented default applies.
+      AGENT_RUNS_AT_ONCE: ${AGENT_RUNS_AT_ONCE:-}
       AUTH_TRUSTED_PROXIES: ${AUTH_TRUSTED_PROXIES:-}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-}
       FILE_MAX_BYTES: ${FILE_MAX_BYTES:-}
       FILE_STORAGE_ADAPTER: ${FILE_STORAGE_ADAPTER:-}
       GENIE_CHAT_API_ALLOWED_ORIGINS: ${GENIE_CHAT_API_ALLOWED_ORIGINS:-}
@@ -66,6 +68,8 @@ services:
       FILE_LINK_SECRET: ${FILE_LINK_SECRET:?set FILE_LINK_SECRET in .env}
       # The worker sends the email of durable handlers, runs file jobs and waits on the migrator
       # lock, so it reads the same optional values as the app, except the sign-in ones.
+      AGENT_RUNS_AT_ONCE: ${AGENT_RUNS_AT_ONCE:-}
+      DATABASE_POOL_SIZE: ${DATABASE_POOL_SIZE:-}
       FILE_MAX_BYTES: ${FILE_MAX_BYTES:-}
       FILE_STORAGE_ADAPTER: ${FILE_STORAGE_ADAPTER:-}
       GENIE_CHAT_API_ALLOWED_ORIGINS: ${GENIE_CHAT_API_ALLOWED_ORIGINS:-}
