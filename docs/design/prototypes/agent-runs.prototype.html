@@ -27,6 +27,15 @@
   html, body { margin: 0; height: 100%; overflow: hidden; }
   body { font-family: var(--font); color: var(--heading); background: var(--tile); font-size: 14px; }
   ::selection { background: #bfdbfe; }
+  /* A thin, quiet scrollbar like the Codex sidebar: no track, a gray thumb that darkens on hover. */
+  /* Chromium uses the standard properties when set and then ignores the ::-webkit rules, which
+     keeps its arrow buttons; so the standard pair applies only where ::-webkit is unknown (Firefox). */
+  @supports not selector(::-webkit-scrollbar) { * { scrollbar-width: thin; scrollbar-color: var(--control-border) transparent; } }
+  *::-webkit-scrollbar { width: 6px; height: 6px; }
+  *::-webkit-scrollbar-track { background: transparent; }
+  *::-webkit-scrollbar-thumb { background: var(--control-border); border-radius: 9999px; }
+  *::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+  *::-webkit-scrollbar-button { display: none; }
   button { font: inherit; color: inherit; cursor: pointer; }
   :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
