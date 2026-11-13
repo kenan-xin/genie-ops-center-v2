@@ -18,8 +18,16 @@ import { READER_WINDOW_MS } from "./reader-window.ts";
  * The Tenant Settings service (`services/settings/`) also writes `tenant_settings` and
  * `tenant_module.config`, and its page reads them fresh. The Branding service
  * (`services/branding/`) writes `tenant_branding` through `applyBranding` and its page reads the
- * row fresh too; no save clears these caches.
+ * row fresh too.
+ *
+ * A save reaches every app copy through the database (DEC-58): a statement trigger on each of the
+ * four tables sends `pg_notify` on `TENANT_CACHE_CHANNEL` when its transaction commits, and the
+ * context's listener calls `clearAll`. The ten-second expiry stays as the fallback for a lost
+ * notification.
  */
+
+/** The channel the four tables' triggers notify on commit (migration 0015, DEC-58). */
+export const TENANT_CACHE_CHANNEL = "genie_tenant_cache";
 
 /** The Drizzle client every reader reads through. The pool and its `$client` stay on the context. */
 type TenantDatabase = NodePgDatabase<Record<string, never>>;
@@ -73,6 +81,7 @@ export type TenantReaders = {
 /** One cached read: the reader a caller holds. */
 type CachedReader<TValue> = {
   readonly get: () => Promise<TValue>;
+  readonly clear: () => void;
 };
 
 /** A filled cache: the value and the moment it was filled, so expiry is `filledAt + 10s`. */
@@ -82,29 +91,38 @@ type CacheEntry<TValue> = {
 };
 
 /**
- * One process-local cache per reader (DEC-46). The first read fills it, every read before the
- * ten-second deadline serves the filled value without touching the database, and a read at or
- * after the deadline fills it again. Nothing invalidates it early: no save clears it, no
- * notification channel exists, and no process restarts on a change.
+ * One process-local cache per reader (DEC-46, amended by DEC-58). The first read fills it, every
+ * read before the ten-second deadline serves the filled value without touching the database, and a
+ * read at or after the deadline fills it again. A save clears it early through `clear`, called by
+ * the notification listener; the expiry stays as the fallback.
  *
  * A concurrent second read while the first is still in flight shares the one query rather than
- * opening a second, so two callers never race a duplicate fill.
+ * opening a second, so two callers never race a duplicate fill. A clear bumps the generation: a
+ * fill that started before it may have read the old row, so it answers its own callers but stores
+ * nothing, and a read after the clear starts a new fill instead of joining it.
  */
 function createCachedReader<TValue>(
   load: () => Promise<TValue>
 ): CachedReader<TValue> {
   let entry: CacheEntry<TValue> | undefined;
   let pending: Promise<TValue> | undefined;
+  let generation = 0;
 
   async function fill(): Promise<TValue> {
+    const started = generation;
+
     try {
       const value = await load();
 
-      entry = { value, filledAt: Date.now() };
+      if (started === generation) {
+        entry = { value, filledAt: Date.now() };
+      }
 
       return value;
     } finally {
-      pending = undefined;
+      if (started === generation) {
+        pending = undefined;
+      }
     }
   }
 
@@ -122,6 +140,11 @@ function createCachedReader<TValue>(
       pending ??= fill();
 
       return pending;
+    },
+    clear(): void {
+      generation += 1;
+      entry = undefined;
+      pending = undefined;
     },
   };
 }
@@ -152,7 +175,7 @@ function singletonRow<TValue>(rows: readonly TValue[], table: string): TValue {
 export function createTenantReaders(input: {
   readonly db: TenantDatabase;
   readonly compiledModuleIds: readonly string[];
-}): TenantReaders {
+}): TenantReaders & { readonly clearAll: () => void } {
   const settings = createCachedReader(async () => {
     const rows = await input.db.select().from(tenantSettings).limit(1);
 
@@ -217,5 +240,16 @@ export function createTenantReaders(input: {
     },
   };
 
-  return { settings, branding, entitlements, categories };
+  // Any notification clears every cache: the four tables change a few times a year.
+  function clearAll(): void {
+    settings.clear();
+    branding.clear();
+    categoryRows.clear();
+
+    for (const placement of byModule.values()) {
+      placement.clear();
+    }
+  }
+
+  return { settings, branding, entitlements, categories, clearAll };
 }

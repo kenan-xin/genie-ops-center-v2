@@ -1,6 +1,11 @@
+import pg from "pg";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
+import {
+  createTenantReaders,
+  TENANT_CACHE_CHANNEL,
+} from "../src/lib/tenant-context/readers.ts";
 import { silentLogger } from "../src/services/logging/index.ts";
 import {
   migrationPlan,
@@ -54,7 +59,27 @@ async function readerContext() {
     await postgres.stop();
   });
 
-  return context;
+  return { context, url: postgres.url };
+}
+
+/** Readers over the context's own client, built directly so the test holds `clearAll`. */
+function clearableReaders(
+  context: Awaited<ReturnType<typeof readerContext>>["context"]
+) {
+  return createTenantReaders({
+    db: context.db,
+    compiledModuleIds: ["placeholder"],
+  });
+}
+
+/** A raw client on the deployment URL, closed after the test. */
+async function rawClient(url: string): Promise<pg.Client> {
+  const client = new pg.Client({ connectionString: url });
+
+  await client.connect();
+  cleanups.push(() => client.end());
+
+  return client;
 }
 
 /**
@@ -85,7 +110,7 @@ function readerReads(
 
 describe("tenant context readers", () => {
   it("serves cached settings branding and entitlement values without a second database read", async () => {
-    const context = await readerContext();
+    const { context } = await readerContext();
     const query = vi.spyOn(context.db.$client, "query");
 
     expect((await context.settings.get()).sessionIdleMinutes).toBe(15);
@@ -99,7 +124,7 @@ describe("tenant context readers", () => {
   });
 
   it("rereads settings branding and entitlements after ten seconds without save invalidation", async () => {
-    const context = await readerContext();
+    const { context } = await readerContext();
     const query = vi.spyOn(context.db.$client, "query");
 
     vi.useFakeTimers();
@@ -134,7 +159,7 @@ describe("tenant context readers", () => {
   });
 
   it("answers false for a module the image did not compile, even with an enabled row", async () => {
-    const context = await readerContext();
+    const { context } = await readerContext();
 
     await context.db.$client.query(
       "insert into tenant_module (module_id, enabled) values ('retired-module', true)"
@@ -147,7 +172,7 @@ describe("tenant context readers", () => {
   });
 
   it("serves the category list and each module's placement from one cached read each, and rereads after ten seconds", async () => {
-    const context = await readerContext();
+    const { context } = await readerContext();
     const pool = context.db.$client;
 
     await pool.query(
@@ -206,5 +231,92 @@ describe("tenant context readers", () => {
       "Clinical",
       "Money",
     ]);
+  });
+
+  it("a clear makes the next read fetch the changed row before ten seconds", async () => {
+    const { context } = await readerContext();
+    const readers = clearableReaders(context);
+
+    expect((await readers.settings.get()).sessionIdleMinutes).toBe(15);
+    expect((await readers.categories.list()).map((row) => row.name)).toEqual(
+      []
+    );
+
+    await context.db.$client.query(
+      "update tenant_settings set session_idle_minutes = 30"
+    );
+    await context.db.$client.query(
+      "insert into category (name, position) values ('Finance', 1)"
+    );
+
+    readers.clearAll();
+
+    expect((await readers.settings.get()).sessionIdleMinutes).toBe(30);
+    expect((await readers.categories.list()).map((row) => row.name)).toEqual([
+      "Finance",
+    ]);
+  });
+
+  it("a fill that started before a clear does not store its value", async () => {
+    const { context, url } = await readerContext();
+    const readers = clearableReaders(context);
+    const saver = await rawClient(url);
+
+    // The save is uncommitted while the fill reads, so the fill deterministically reads the old row.
+    await saver.query("begin");
+    await saver.query("update tenant_settings set session_idle_minutes = 30");
+
+    const staleFill = readers.settings.get();
+
+    readers.clearAll();
+
+    expect((await staleFill).sessionIdleMinutes).toBe(15);
+
+    await saver.query("commit");
+
+    expect((await readers.settings.get()).sessionIdleMinutes).toBe(30);
+  });
+
+  it("a committed save notifies genie_tenant_cache with the table name, a rolled back save does not", async () => {
+    const { context, url } = await readerContext();
+    const listener = await rawClient(url);
+    const payloads: string[] = [];
+
+    listener.on("notification", (message) => {
+      if (message.channel === TENANT_CACHE_CHANNEL) {
+        payloads.push(message.payload ?? "");
+      }
+    });
+    await listener.query(`listen ${TENANT_CACHE_CHANNEL}`);
+
+    const pool = context.db.$client;
+
+    await pool.query("update tenant_settings set session_idle_minutes = 30");
+    await pool.query("update tenant_branding set company_name = 'Changed'");
+    await pool.query("update tenant_module set enabled = false");
+    await pool.query("insert into category (name, position) values ('A', 1)");
+
+    await vi.waitFor(() => {
+      expect(payloads.toSorted()).toEqual([
+        "category",
+        "tenant_branding",
+        "tenant_module",
+        "tenant_settings",
+      ]);
+    });
+
+    payloads.length = 0;
+
+    const saver = await rawClient(url);
+
+    await saver.query("begin");
+    await saver.query("update tenant_settings set session_idle_minutes = 45");
+    await saver.query("rollback");
+    // One session's notifications arrive in commit order, so the marker proves nothing came first.
+    await saver.query(`select pg_notify('${TENANT_CACHE_CHANNEL}', 'marker')`);
+
+    await vi.waitFor(() => {
+      expect(payloads).toEqual(["marker"]);
+    });
   });
 });

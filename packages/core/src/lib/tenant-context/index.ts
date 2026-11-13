@@ -330,7 +330,11 @@ export function createTenantContext(
   const base: Omit<TenantContext, "auth"> = {
     db,
     env,
-    ...readers,
+    // `clearAll` stays off the context; only the cache listener calls it (DEC-58).
+    settings: readers.settings,
+    branding: readers.branding,
+    entitlements: readers.entitlements,
+    categories: readers.categories,
     jobQueue,
     events: createEventBus({
       jobQueue,
