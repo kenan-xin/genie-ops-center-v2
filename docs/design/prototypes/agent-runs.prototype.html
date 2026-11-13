@@ -1,7 +1,9 @@
 <!DOCTYPE html>
 <!-- PROTOTYPE, throwaway. Question: where does a person see their background agent runs (DEC-57)?
      Three variants on the real shell, switched by ?variant=A|B|C and the bottom bar.
-     A: sidebar row + popover. B: floating dock. C: a Runs page. State is in memory. -->
+     A: sidebar row + popover. B: floating dock. C: a Runs page.
+     D: no run list; the Ask chat history is the list, a working chat shows a spinner, and the
+     Ask nav row carries the same spinner on every page (owner idea, 2026-11-13). State is in memory. -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -136,14 +138,51 @@
   .phone .cards { display: block; border: 1px solid var(--hairline); border-radius: 12px; }
   .note { margin-top: 14px; color: var(--secondary); font-size: 12.5px; display: flex; gap: 8px; align-items: flex-start; }
 
-  @media (prefers-reduced-motion: reduce) { .pop, .sheet, .dock-card { animation: none; } .live.on, .pill.working .dot { animation: none; } }
+  /* Variant D: the chat history is the run list */
+  .spin { width: 14px; height: 14px; flex: none; border-radius: 50%; border: 2px solid #bfdbfe; border-top-color: var(--primary); animation: spin .9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .fresh-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--primary); flex: none; }
+  .ask { display: grid; grid-template-columns: 272px 1fr; height: 100%; min-height: 0; }
+  .phone .ask { grid-template-columns: 1fr; }
+  .hist { border-right: 1px solid var(--hairline); display: flex; flex-direction: column; min-height: 0; padding: 14px 0 0; }
+  .phone .hist { border-right: 0; }
+  .hist-h { display: flex; align-items: center; justify-content: space-between; padding: 0 14px 10px; }
+  .hist-h b { font-size: 15px; }
+  .newchat { border: 1px solid var(--control-border); background: var(--page); border-radius: 8px; height: 32px; padding: 0 10px; font-weight: 600; font-size: 13px; }
+  .search { margin: 0 12px 4px; height: 36px; border: 1px solid var(--input); border-radius: 8px; padding: 0 10px; display: flex; align-items: center; gap: 8px; color: var(--muted); }
+  .hist nav { overflow: auto; padding: 0 12px 12px; }
+  .hist h3 { font-size: 12px; font-weight: 600; color: var(--muted); margin: 0; padding: 14px 10px 6px; }
+  .chat { display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px; border-radius: 8px; color: var(--idle); border: 1px solid transparent; background: none; width: 100%; text-align: left; }
+  .phone .chat { height: 44px; }
+  .chat:hover { background: var(--panel); }
+  .chat.cur { background: var(--panel); border-color: var(--hairline); color: var(--heading); font-weight: 600; }
+  .chat .t { min-width: 0; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chat .kind { color: var(--muted); display: inline-flex; }
+  .chat.unseen .t { color: var(--heading); font-weight: 600; }
+  .conv { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  .phone .conv { display: none; }
+  .conv-h { display: flex; align-items: center; gap: 10px; padding: 12px 20px; border-bottom: 1px solid var(--hairline); }
+  .conv-h .t { flex: 1; font-weight: 600; font-size: 15px; }
+  .conv-h .rec { color: var(--primary); font-weight: 600; text-decoration: none; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+  .msgs { flex: 1; overflow: auto; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+  .you { align-self: flex-end; max-width: 70%; background: var(--panel); border-radius: 12px; padding: 10px 12px; line-height: 1.5; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; color: var(--secondary); }
+  .steps li { display: flex; gap: 8px; align-items: center; }
+  .steps li.now { color: var(--heading); font-weight: 600; }
+  .ok { color: var(--success); }
+  .composer { border-top: 1px solid var(--hairline); padding: 12px 20px; }
+  .composer div { border: 1px solid var(--input); border-radius: 8px; padding: 10px 12px; color: var(--muted); display: flex; justify-content: space-between; align-items: center; }
+  .nav .spin { margin-left: auto; }
+  .legend { margin: 10px 12px 0; padding: 10px 12px; border-radius: 8px; background: var(--info-tint); color: #1e3a8a; font-size: 12.5px; line-height: 1.45; }
+
+  @media (prefers-reduced-motion: reduce) { .spin { animation-duration: 3s; } .pop, .sheet, .dock-card { animation: none; } .live.on, .pill.working .dot { animation: none; } }
 </style>
 </head>
 <body>
 <div class="bar" role="toolbar" aria-label="Prototype controls">
   <b>Background runs</b>
   <div class="seg" id="variant">
-    <button data-v="A">A Sidebar</button><button data-v="B">B Dock</button><button data-v="C">C Runs page</button>
+    <button data-v="A">A Sidebar</button><button data-v="B">B Dock</button><button data-v="C">C Runs page</button><button data-v="D">D Chat history</button>
   </div>
   <div class="seg" id="role"><button data-r="member">Member</button><button data-r="admin">Administrator</button></div>
   <div class="seg" id="open"><button data-o="closed">Closed</button><button data-o="open">Open</button></div>
@@ -165,6 +204,9 @@ const P = {
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   spark: '<path d="M9.94 14.06 4 20M12 3v4M12 17v4M3 12h4M17 12h4"/>',
   chev: '<path d="m6 9 6 6 6-6"/>',
+  ok: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  send: '<path d="m5 12 7-7 7 7M12 19V5"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
   lock: '<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
 };
 const ic = (n) => `<svg class="i" viewBox="0 0 24 24" aria-hidden="true">${P[n]}</svg>`;
@@ -183,7 +225,7 @@ const OTHERS = [
 const LABEL = { working: 'Working', finished: 'Finished', stopped: 'Stopped', failed: 'Did not finish', timeout: 'Time limit' };
 
 const q = new URLSearchParams(location.search);
-const state = { v: q.get('variant') || 'A', role: 'member', open: true, size: 'desktop', mine: MINE.map(r => ({ ...r })), others: OTHERS.map(r => ({ ...r })), seen: false, tab: 'mine' };
+const state = { onAsk: true, cur: 1, v: q.get('variant') || 'A', role: 'member', open: true, size: 'desktop', mine: MINE.map(r => ({ ...r })), others: OTHERS.map(r => ({ ...r })), seen: false, tab: 'mine' };
 const app = document.getElementById('app');
 
 const active = () => state.mine.filter(r => r.status === 'working').length;
@@ -219,10 +261,10 @@ function side(extraNav) {
   return `<nav class="side" aria-label="Workspace">
     <div class="brand"><div class="logo">G</div><div><b>Genie</b><small>Workspace</small></div></div>
     <div class="cat">Workspace</div>
-    <div class="nav">${ic('ask')}Ask</div>
+    <div class="nav ${state.v === 'D' && state.onAsk ? 'on' : ''}" ${state.v === 'D' ? 'id="ask-nav" role="button" tabindex="0"' : ''} ${state.v === 'D' && active() ? `aria-label="Ask, ${active()} working"` : ''}>${ic('ask')}Ask${state.v === 'D' && active() ? '<span class="spin" aria-hidden="true"></span>' : ''}</div>
     <div class="nav">${ic('doc')}Documents</div>
     <div class="nav">${ic('inv')}Invoices</div>
-    <div class="nav ${state.v === 'C' ? '' : 'on'}">${ic('deck')}Slides</div>
+    <div class="nav ${state.v === 'C' || (state.v === 'D' && state.onAsk) ? '' : 'on'}" ${state.v === 'D' ? 'id="slides-nav" role="button" tabindex="0"' : ''}>${ic('deck')}Slides</div>
     ${extraNav || ''}
     <div class="grow"></div>
     ${runRow}
@@ -233,7 +275,9 @@ function side(extraNav) {
 function topbar(title) {
   const n = active(), f = fresh();
   const btn = state.v === 'A' ? `<button class="icon-btn" id="runs-btn" aria-label="Runs, ${n} working">${ic('runs')}${n ? `<span class="count">${n}</span>` : ''}</button>` : '';
-  return `<div class="topbar"><button class="icon-btn" aria-label="Open navigation">${ic('menu')}</button><span class="title">${title}</span>${btn}<button class="icon-btn" aria-label="Agent">${ic('spark')}</button></div>`;
+  // D on a phone: the navigation is in a drawer, so the menu button carries the spinner.
+  const menuSpin = state.v === 'D' && n ? '<span class="spin" style="position:absolute;top:6px;right:6px;width:12px;height:12px" aria-hidden="true"></span>' : '';
+  return `<div class="topbar"><button class="icon-btn" aria-label="Open navigation${state.v === 'D' && n ? `, ${n} chats working` : ''}">${ic('menu')}${menuSpin}</button><span class="title">${title}</span>${btn}<button class="icon-btn" aria-label="Agent">${ic('spark')}</button></div>`;
 }
 
 const PAGE = `<div class="crumb">Workspace</div><h1>Slides</h1><p class="sub">Your own decks of slides. Only you can open them.</p>
@@ -272,6 +316,45 @@ function variantC() {
   return side(nav) + `<div class="main">${topbar('Runs')}<div class="content">${page}</div></div>`;
 }
 
+// Ask's chat history, with surface chats listed beside Ask chats. Each chat knows its run state.
+const CHATS = [
+  { id: 1, kind: 'deck', title: 'October collections update', group: 'Today', run: 'working' },
+  { id: 2, kind: 'chart', title: 'Overdue invoices by customer', group: 'Today', run: 'working' },
+  { id: 3, kind: 'deck', title: 'Q3 board summary', group: 'Today', run: 'finished', unseen: true },
+  { id: 6, kind: 'ask', title: 'Who owes us the most this quarter?', group: 'Today' },
+  { id: 4, kind: 'chart', title: 'Payments forecast', group: 'Earlier', run: 'timeout' },
+  { id: 5, kind: 'deck', title: 'Supplier onboarding', group: 'Earlier' },
+  { id: 7, kind: 'ask', title: 'Summarize the October payment runs', group: 'Earlier' },
+];
+
+function chatRow(c) {
+  const mark = c.run === 'working' ? '<span class="spin" role="img" aria-label="Working"></span>'
+    : c.unseen ? '<span class="fresh-dot" role="img" aria-label="Finished, not opened yet"></span>' : '';
+  const kind = c.kind === 'ask' ? '' : `<span class="kind" title="${c.kind === 'deck' ? 'Slides' : 'Dashboard'}">${ic(c.kind)}</span>`;
+  return `<button class="chat ${c.id === state.cur ? 'cur' : ''} ${c.unseen ? 'unseen' : ''}" data-chat="${c.id}">${kind}<span class="t">${c.title}</span>${mark}</button>`;
+}
+
+function variantD() {
+  const phone = state.size === 'phone';
+  if (!state.onAsk) {
+    return side() + `<div class="main">${topbar('Slides')}<div class="content">${PAGE}
+      <p class="legend">The spinner on <b>Ask</b> in the menu means a chat of yours is working. Open Ask to see which one.</p></div></div>`;
+  }
+  const groups = ['Today', 'Earlier'].map(g => `<h3>${g}</h3>` + CHATS.filter(c => c.group === g).map(chatRow).join('')).join('');
+  const c = CHATS.find(x => x.id === state.cur) || CHATS[0];
+  const working = c.run === 'working';
+  const conv = `<section class="conv" aria-label="Conversation">
+    <div class="conv-h"><span class="t">${c.title}</span>${c.kind === 'ask' ? '' : `<a class="rec" href="#">${ic(c.kind)}Open ${c.kind === 'deck' ? 'deck' : 'dashboard'}</a>`}
+      ${working ? `<button class="stop" data-stopchat="${c.id}">${ic('stop')}Stop</button>` : ''}</div>
+    <div class="msgs"><div class="you">A short update for the finance team on October collections.</div>
+      <ul class="steps"><li><span class="ok">${ic('ok')}</span>Read the payments and invoices of October</li><li><span class="ok">${ic('ok')}</span>Named the deck</li>
+      ${working ? '<li class="now"><span class="spin"></span>Drafting slide 4: Next steps for November</li>' : `<li><span class="ok">${ic('ok')}</span>${c.run === 'stopped' ? 'Stopped, work kept' : 'Drafted 4 slides'}</li>`}</ul></div>
+    <div class="composer"><div><span>${working ? 'You can type while the agent works' : 'Ask for a change'}</span>${ic('send')}</div></div></section>`;
+  const hist = `<aside class="hist" aria-label="Chat history"><div class="hist-h"><b>Chats</b><button class="newchat">New chat</button></div>
+    <div class="search">${ic('search')}Search chats</div><nav aria-label="Chats">${groups}</nav></aside>`;
+  return side() + `<div class="main">${topbar('Ask')}<div class="ask">${hist}${phone ? '' : conv}</div></div>`;
+}
+
 function fit() {
   const phone = state.size === 'phone';
   const w = phone ? 390 : 1240, h = phone ? 780 : 700;
@@ -282,14 +365,21 @@ addEventListener('resize', fit);
 function render() {
   app.className = 'app' + (state.size === 'phone' ? ' phone' : '');
   fit();
-  app.innerHTML = state.v === 'A' ? variantA() : state.v === 'B' ? variantB() : variantC();
+  app.innerHTML = state.v === 'A' ? variantA() : state.v === 'B' ? variantB() : state.v === 'C' ? variantC() : variantD();
   for (const [id, key, val] of [['variant', 'v', state.v], ['role', 'r', state.role], ['open', 'o', state.open ? 'open' : 'closed'], ['size', 's', state.size]])
     document.querySelectorAll(`#${id} button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset[key] === val)));
-  document.getElementById('open').style.display = state.v === 'C' ? 'none' : '';
+  document.getElementById('open').style.display = state.v === 'C' || state.v === 'D' ? 'none' : '';
+  document.getElementById('role').style.display = state.v === 'D' ? 'none' : '';
   history.replaceState(null, '', '?variant=' + state.v);
 }
 
 document.addEventListener('click', e => {
+  const nav = e.target.closest('#ask-nav, #slides-nav');
+  if (nav) { state.onAsk = nav.id === 'ask-nav'; render(); return; }
+  const chat = e.target.closest('[data-chat]');
+  if (chat) { state.cur = +chat.dataset.chat; const c = CHATS.find(x => x.id === state.cur); c.unseen = false; render(); return; }
+  const sc = e.target.closest('[data-stopchat]');
+  if (sc) { const c = CHATS.find(x => x.id === +sc.dataset.stopchat); c.run = 'stopped'; state.mine.find(r => r.id === c.id && (r.status = 'stopped')); render(); return; }
   const t = e.target.closest('button, #close-scrim');
   if (!t) return;
   if (t.dataset.v) { state.v = t.dataset.v; state.open = true; }
