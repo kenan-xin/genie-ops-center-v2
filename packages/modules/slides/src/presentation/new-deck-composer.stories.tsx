@@ -83,6 +83,21 @@ export const EnterCreates: Story = {
   },
 };
 
+// Bug caught: Cancel during the create closes the composer, yet the new deck still opens.
+export const CancelWaitsForTheDeck: Story = {
+  play: async ({ args, canvas }) => {
+    const cancel = canvas.getByRole("button", { name: "Cancel" });
+
+    await expect(cancel).toBeEnabled();
+
+    await userEvent.type(textbox(canvas), "October collections{Enter}");
+
+    await expect(args.onSubmit).toHaveBeenCalledOnce();
+    await expect(cancel).toBeDisabled();
+    await expect(args.onCancel).not.toHaveBeenCalled();
+  },
+};
+
 // Bug caught: Shift and Enter creates the deck instead of starting a new line.
 export const ShiftEnterIsANewLine: Story = {
   play: async ({ args, canvas }) => {

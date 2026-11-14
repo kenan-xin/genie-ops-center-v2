@@ -141,10 +141,12 @@ export function NewDeckComposer(props: {
           >
             Enter creates. Shift and Enter start a new line.
           </p>
+          {/* The page opens the deck once it exists, so a Cancel while it is created changes nothing. */}
           <Button
             type="button"
             variant="ghost"
             className="max-md:flex-1"
+            disabled={props.saving}
             onClick={props.onCancel}
           >
             Cancel
