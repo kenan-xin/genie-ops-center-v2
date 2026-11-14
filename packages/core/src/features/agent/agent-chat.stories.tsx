@@ -20,6 +20,10 @@ const SAVED: readonly AgentMessage[] = [
 
 const loadSaved = fn(async () => SAVED);
 
+const markSeen = fn(
+  async (_input: { readonly sessionId: string }) => undefined
+);
+
 /**
  * The one wiring of an agent chat, which both frames render. Without `initialMessages` it reads the
  * chat's saved messages, so a chat the panel reopens continues (`czjw.60`).
@@ -39,7 +43,7 @@ const meta = {
   },
   decorators: [
     (Story) => (
-      <AgentClientStub messages={loadSaved}>
+      <AgentClientStub messages={loadSaved} markSeen={markSeen}>
         <Story />
       </AgentClientStub>
     ),
@@ -68,5 +72,7 @@ export const ContinuesASavedChat: Story = {
       await canvas.findByText("There are three records.")
     ).toBeVisible();
     await expect(loadSaved).toHaveBeenCalledWith({ id: args.sessionId });
+    // An Ask chat that never ran has no unseen mark to clear (R12).
+    await expect(markSeen).not.toHaveBeenCalled();
   },
 };

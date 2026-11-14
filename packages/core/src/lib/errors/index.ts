@@ -78,7 +78,7 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "agent-run-limit":
     "You already have 3 runs working. Wait for one to finish, or stop one.",
   "agent-record-busy":
-    "A run already works on this record. Wait for it to finish, or stop it.",
+    "A run already works on this record. Wait for it to finish.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

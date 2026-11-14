@@ -26,9 +26,10 @@ export function runPollInterval(
 export const HISTORY_KEY = ["agent", "history"];
 
 /**
- * Clears the open chat's unseen mark (R12): when the chat shows with a saved session, and again
- * when its run leaves building or stopping while it shows, so a run the person watched end gets
- * no dot. A hidden chat (the closed panel keeps it mounted) marks nothing.
+ * Clears the open chat's unseen mark (R12): when the chat shows with a session that has a run, and
+ * again when its run leaves building or stopping while it shows, so a run the person watched end
+ * gets no dot. A hidden chat (the closed panel keeps it mounted) or a chat that never ran marks
+ * nothing.
  */
 export function useMarkSeen(
   sessionId: string,
@@ -46,13 +47,13 @@ export function useMarkSeen(
     onSuccess: () => queryClient.invalidateQueries({ queryKey: HISTORY_KEY }),
   });
 
-  // A null read is a chat not saved yet, which markSeen would answer not-found.
-  const saved = detail !== null && detail !== undefined;
+  // A chat not saved yet (a null read) or that never ran has no unseen mark to clear.
+  const ran = (detail?.session.run ?? null) !== null;
   const working = runPollInterval(detail) !== false;
 
   useEffect(() => {
-    if (visible && saved && !working) mutate();
-  }, [mutate, sessionId, visible, saved, working]);
+    if (visible && ran && !working) mutate();
+  }, [mutate, sessionId, visible, ran, working]);
 }
 
 /**
