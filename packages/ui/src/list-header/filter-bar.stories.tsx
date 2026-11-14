@@ -83,6 +83,8 @@ export const OptionPlaceholderAndSet: Story = {
       await screen.findByRole("option", { name: "Northwind Traders" })
     );
     await waitFor(() => expect(param("customer")).toBe("c-2"));
+    // The closed list fades out before it unmounts; until then its options also match.
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
 
     const set = canvas.getByLabelText("Customer: Northwind Traders");
 
