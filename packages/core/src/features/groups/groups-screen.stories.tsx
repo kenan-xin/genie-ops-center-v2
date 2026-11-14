@@ -971,8 +971,8 @@ export const DeleteIsAnOutlineWithRedText: Story = {
     );
 
     await expect(remove.backgroundColor).toBe(edit.backgroundColor);
-    // The destructive token as text (red-600), not white on a red fill.
-    await expect(remove.color).toBe("rgb(220, 38, 38)");
+    // The danger-outline label: --destructive-text (red-700), not white on a red fill.
+    await expect(remove.color).toBe("rgb(185, 28, 28)");
   },
 };
 

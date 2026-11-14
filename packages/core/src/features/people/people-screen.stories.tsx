@@ -1091,8 +1091,8 @@ export const RemoveConfirmsBeforeItFires: Story = {
 
     const remove = inspector.getByRole("button", { name: /Remove/ });
 
-    // An outline with red text, as the inspector capture draws it, not a solid red fill.
-    await expect(getComputedStyle(remove).color).toBe("rgb(220, 38, 38)");
+    // An outline whose label is --destructive-text (red-700), not a solid red fill.
+    await expect(getComputedStyle(remove).color).toBe("rgb(185, 28, 28)");
     await userEvent.click(remove);
 
     const confirm = within(
