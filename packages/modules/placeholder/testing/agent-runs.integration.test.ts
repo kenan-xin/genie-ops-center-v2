@@ -12,6 +12,8 @@ import {
   createAgentRouter,
   handleAgentChat,
   isContinueMessage,
+  isRunEndMessage,
+  loopText,
   type ModuleRequestContext,
   principalFor,
   readAuditPage,
@@ -45,7 +47,8 @@ import { placeholderWithSurface } from "./test-surface.ts";
 
 /**
  * The durable agent run on the placeholder's test surface (Spec 7 R-42b, AC-13, S7-40), with the
- * synthetic timing fixtures `synthetic-run-slow-*` and the synthetic chain `synthetic-chain-*`.
+ * synthetic timing fixtures `synthetic-run-slow-*`, the synthetic chain `synthetic-chain-*` and the
+ * synthetic loop `synthetic-loop-*`.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -119,6 +122,9 @@ const CHAIN_ANSWER = [
   "root = Answer([result])",
   'result = Paragraph("The placeholder record has all its steps.")',
 ].join("\n");
+
+/** The request that `synthetic-loop-1` to `-3` answer with the same step call each time. */
+const LOOP_REQUEST = "Note the first step of the placeholder record.";
 
 /** A surface session of the person, on a new record, holding the one request. */
 async function surfaceSession(
@@ -773,6 +779,36 @@ describe("a durable agent run on the placeholder test surface", () => {
       roles: ["user", "assistant", "continue", "assistant"],
       stopped: false,
       answer: CHAIN_ANSWER,
+    });
+  });
+
+  it("a run that repeats a tool call ends stopped and says why", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx, LOOP_REQUEST);
+
+    await start(ctx, sessionId);
+
+    const before = recorded.sent.length;
+
+    await runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    const { messages } = await readOwnSession(ctx, sessionId);
+
+    expect({
+      run: await runColumns(sessionId),
+      requests: recorded.sent.length - before,
+      roles: messages.map(({ role }) => role),
+      last: textsOf(messages.at(-1)),
+      marked: isRunEndMessage(messages.at(-1)),
+      // The third call's tool already ran in the step the guard stopped after.
+      toolCalls: (await toolRows(ctx.caller.userId)).length,
+    }).toEqual({
+      run: { run_state: null, run_error: "stopped" },
+      requests: 3,
+      roles: ["user", "assistant", "assistant"],
+      last: [loopText("placeholder-surface-step")],
+      marked: true,
+      toolCalls: 3,
     });
   });
 

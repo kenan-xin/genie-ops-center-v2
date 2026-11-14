@@ -20,7 +20,10 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { z } from "zod";
 
-import { isContinueMessage } from "../../services/agent/continue.ts";
+import {
+  isContinueMessage,
+  isRunEndMessage,
+} from "../../services/agent/continue.ts";
 import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
   AgentFile,
@@ -244,9 +247,12 @@ export function Conversation(props: {
     chat.setMessages([...run.messages]);
   }, [run?.messages]);
 
+  // The time box or the loop guard also ends a run `stopped`; its last answer then says why.
   const ended =
     run?.status === "stopped"
-      ? "You stopped this work."
+      ? isRunEndMessage(chat.messages.at(-1))
+        ? "This work stopped before it finished."
+        : "You stopped this work."
       : run?.status === "interrupted"
         ? "A restart interrupted this work."
         : run?.status === "failed"

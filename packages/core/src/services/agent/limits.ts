@@ -12,3 +12,6 @@ export const AGENT_LIMITS = {
 
 /** How many runs one person may have working at once (DEC-57). */
 export const AGENT_RUNS_PER_PERSON = 3;
+
+/** A run ends at this many identical tool calls in a row (DEC-57 item 3, R11). */
+export const LOOP_REPEATS = 3;

@@ -538,6 +538,8 @@ export {
   stopRun,
   CONTINUE_TEXT,
   isContinueMessage,
+  isRunEndMessage,
+  loopText,
   TIME_LIMIT_TEXT,
   listSurfaces,
   type SurfaceView,

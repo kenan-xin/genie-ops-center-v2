@@ -31,12 +31,13 @@ import {
   summarizeChat,
   summaryMessage,
 } from "./compaction.ts";
-import { isContinueMessage } from "./continue.ts";
+import { isContinueMessage, turnEndOf } from "./continue.ts";
 import { CHAT_TITLE_LIMIT } from "./contract.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { chatLabels } from "./labels.ts";
 import { AGENT_LIMITS } from "./limits.ts";
+import { priorToolCalls, repeatedCallGuard } from "./loop-guard.ts";
 import {
   type AgentPageContext,
   agentPageContextSchema,
@@ -249,6 +250,11 @@ export type TurnEnd =
   | "choices"
   | "cut";
 
+/** How a turn ended, with the tool that a repeated call names. */
+export type TurnEnded =
+  | { readonly end: Exclude<TurnEnd, "repeated-call"> }
+  | { readonly end: "repeated-call"; readonly toolName: string };
+
 /**
  * One turn of a session after the person's message is stored: the history, the compaction, the
  * model call with the session surface's tools, and the answer as an AI SDK UI message stream that
@@ -272,7 +278,9 @@ export async function turnStream(
     /** The run job's id: the answer is stored only while this job holds the session's run. */
     readonly runJobId?: string;
     /** Runs in `onEnd`, before the answer is stored, with how the turn ended. */
-    readonly onTurnEnd?: (end: TurnEnd) => void;
+    readonly onTurnEnd?: (ended: TurnEnded) => void;
+    /** A run's loop guard (R11); interactive chat turns have none. */
+    readonly loopGuard?: { readonly enabled: true };
     /** A run's turn limit: the next turn goes on with the work, so a partial it cut has no stopped mark (R9). */
     readonly turnLimit?: AbortSignal;
   }
@@ -350,6 +358,12 @@ export async function turnStream(
 
   const tools = await agentToolSet(ctx, { id: sessionId, surface }, turn);
 
+  // From the messages this turn sends, so a compaction's dropped calls no longer count (R11).
+  const guard =
+    input.loopGuard === undefined
+      ? undefined
+      : repeatedCallGuard(priorToolCalls(sent));
+
   let largestInput = 0;
 
   // The summary call takes one of the turn's steps, also when it failed (LC5).
@@ -378,7 +392,11 @@ export async function turnStream(
     tools,
     // A call the SDK refuses before `execute` leaves one refused audit row (czjw.31).
     repairToolCall: auditRefusedToolCall(ctx, { id: sessionId }),
-    stopWhen: [isStepCount(stepCap), choicesOffered],
+    stopWhen: [
+      isStepCount(stepCap),
+      choicesOffered,
+      ...(guard === undefined ? [] : [guard.stopWhen]),
+    ],
     // The largest step input decides the next turn's token trigger; `usage` sums all steps (LC1).
     onStepEnd: (step) => {
       largestInput = Math.max(largestInput, step.usage.inputTokens ?? 0);
@@ -429,21 +447,19 @@ export async function turnStream(
     onEnd: async ({ responseMessage, isAborted, isCancelled }) => {
       await input.beforeSave?.();
 
-      // Choices first: offering them also ends its step on tool calls.
-      if (isAborted || isCancelled === true) {
-        input.onTurnEnd?.("cut");
-      } else if (
-        lastStep !== undefined &&
-        (await choicesOffered({ steps: [lastStep] }))
-      ) {
-        input.onTurnEnd?.("choices");
-      } else {
-        input.onTurnEnd?.(
-          steps >= stepCap && lastStep?.finishReason === "tool-calls"
-            ? "step-limit"
-            : "answered"
-        );
-      }
+      const cut = isAborted || isCancelled === true;
+
+      input.onTurnEnd?.(
+        turnEndOf({
+          cut,
+          choices:
+            !cut &&
+            lastStep !== undefined &&
+            (await choicesOffered({ steps: [lastStep] })),
+          repeated: guard?.repeated(),
+          capped: steps >= stepCap && lastStep?.finishReason === "tool-calls",
+        })
+      );
 
       if (responseMessage.parts.length === 0) return;
 

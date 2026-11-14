@@ -5,6 +5,7 @@ import {
   continueMessage,
   isContinueMessage,
   runTurnOutcome,
+  turnEndOf,
 } from "./continue.ts";
 
 describe("the continue message of a run's next turn", () => {
@@ -19,6 +20,31 @@ describe("the continue message of a run's next turn", () => {
       continued: isContinueMessage({ id: "m2", ...continueMessage() }),
       person: isContinueMessage(person),
     }).toEqual({ continued: true, person: false });
+  });
+});
+
+describe("how a turn ended", () => {
+  it("a repeat on the capped step is a repeated call that names its tool, and the run does not continue", () => {
+    const ended = turnEndOf({
+      cut: false,
+      choices: false,
+      repeated: { toolName: "placeholder-surface-step", input: "{}" },
+      capped: true,
+    });
+
+    expect({
+      ended,
+      outcome: runTurnOutcome({
+        end: ended.end,
+        deadlinePassed: false,
+        stopAsked: false,
+        turnLimitPassed: false,
+        failed: false,
+      }),
+    }).toEqual({
+      ended: { end: "repeated-call", toolName: "placeholder-surface-step" },
+      outcome: "repeated-call",
+    });
   });
 });
 
@@ -68,6 +94,12 @@ describe("what a run does after a turn", () => {
       "failed",
     ],
     ["a capped turn", { end: "step-limit" }, "continue"],
+    ["a repeated call", { end: "repeated-call" }, "repeated-call"],
+    [
+      "a repeated call with Stop",
+      { end: "repeated-call", stopAsked: true },
+      "stopped",
+    ],
     [
       "a capped turn with a stream error",
       { end: "step-limit", failed: true },

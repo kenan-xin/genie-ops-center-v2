@@ -6,6 +6,8 @@ import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 import {
   CONTINUE_TEXT,
   continueMessage,
+  runEndMessage,
+  TIME_LIMIT_TEXT,
 } from "../../services/agent/continue.ts";
 import type { AgentMessage } from "../../services/agent/index.ts";
 import type { AgentRunStatus } from "../../services/agent/runs.ts";
@@ -177,6 +179,31 @@ export const Failed: Story = endedEarly(
 );
 
 export const FailedOnAPhone: Story = { ...Failed, globals: phone };
+
+// DEC-57: the time box, not the person, stopped the run, so the chat says only why.
+export const EndedAtTheTimeLimit: Story = {
+  args: {
+    status: "stopped",
+    messages: [
+      BRIEF_MESSAGE,
+      PARTIAL_ANSWER,
+      { id: "time-limit-1", ...runEndMessage("time-limit", TIME_LIMIT_TEXT) },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByText(TIME_LIMIT_TEXT)).toBeVisible();
+    await expect(canvas.queryByText("You stopped this work.")).toBeNull();
+    await userEvent.click(canvas.getByRole("button", { name: "Try again" }));
+    await expect(onTryAgain).toHaveBeenCalledOnce();
+  },
+};
+
+export const EndedAtTheTimeLimitOnAPhone: Story = {
+  ...EndedAtTheTimeLimit,
+  globals: phone,
+};
 
 // Review Focus 5: the read that saw the end replaces the last checkpoint.
 export const EndsBetweenPolls: Story = {

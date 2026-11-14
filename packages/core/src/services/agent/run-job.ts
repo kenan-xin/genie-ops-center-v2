@@ -21,14 +21,16 @@ import { pgErrorCode, pgErrorConstraint } from "../../utils/error-cause.ts";
 import { enqueueJob } from "../job-queue/module-jobs.ts";
 import { modelFor } from "../models/index.ts";
 import { agentAccess } from "./access.ts";
-import { turnStream, type TurnEnd } from "./chat.ts";
+import { turnStream, type TurnEnded } from "./chat.ts";
 import {
   CONTINUE_PART,
   continueMessage,
+  runEndMessage,
   runTurnOutcome,
   TIME_LIMIT_TEXT,
 } from "./continue.ts";
 import { AGENT_LIMITS, AGENT_RUNS_PER_PERSON } from "./limits.ts";
+import { loopText } from "./loop-guard.ts";
 import {
   AGENT_RUN_JOB_NAME,
   endRun,
@@ -57,8 +59,9 @@ export const AGENT_RUN_EXPIRE_SECONDS = AGENT_LIMITS.turnMs / 1000 + 60;
  * The job's handler: one bounded turn of a run (DEC-57 item 2). Only the session's owner runs it, as
  * themselves; a run that is no longer `queued` does not start. The turn reads the stored history,
  * calls the session's model and stores the answer. A turn that reached the step cap with tool calls
- * pending, or that the turn limit cut, queues the next turn (R9). The run ends at the time box as
- * Stop ends it, with the time limit message (R8); `failed` after a stream error or a refusal. An
+ * pending, or that the turn limit cut, queues the next turn (R9). The run ends at the time box or
+ * at a repeated tool call as Stop ends it, with a message that says why (R8, R11); `failed` after
+ * a stream error or a refusal. An
  * error that is not a refusal is thrown, so the worker logs it.
  */
 async function runSession(
@@ -111,17 +114,16 @@ async function runSession(
   let changes = 0;
   let stopWatching = NOT_WATCHING;
 
-  // The run's last answer says that it reached the time box; the run ends as Stop ends it (R8).
-  const endAtTimeLimit = async () => {
-    await appendMessage(
-      person,
-      sessionId,
-      { role: "assistant", parts: [{ type: "text", text: TIME_LIMIT_TEXT }] },
-      [],
-      { run: { jobId: runJobId } }
-    );
+  // The run's last answer says why it ended; the run ends as Stop ends it (R8).
+  const endWith = async (message: ReturnType<typeof runEndMessage>) => {
+    await appendMessage(person, sessionId, message, [], {
+      run: { jobId: runJobId },
+    });
     await endRun(tenant, sessionId, runJobId, "stopped");
   };
+
+  const endAtTimeLimit = () =>
+    endWith(runEndMessage("time-limit", TIME_LIMIT_TEXT));
 
   try {
     if (session.remainingMs !== null && session.remainingMs <= 0) {
@@ -151,7 +153,7 @@ async function runSession(
         : AbortSignal.timeout(session.remainingMs);
 
     let failed = false;
-    let turnEnd: TurnEnd | undefined;
+    let turnEnd: TurnEnded | undefined;
 
     stopWatching = watchRun(person, sessionId, runJobId, {
       current: () => ({ message: latest, changes }),
@@ -173,10 +175,11 @@ async function runSession(
         // No checkpoint lands after the final save.
         beforeSave: stopWatching,
         runJobId,
-        onTurnEnd: (end) => {
-          turnEnd = end;
+        onTurnEnd: (ended) => {
+          turnEnd = ended;
         },
         turnLimit: limit,
+        loopGuard: { enabled: true },
       }
     );
 
@@ -194,7 +197,7 @@ async function runSession(
     await stopWatching();
 
     const outcome = runTurnOutcome({
-      end: turnEnd,
+      end: turnEnd?.end,
       deadlinePassed: deadline?.aborted === true,
       stopAsked: stop.signal.aborted,
       turnLimitPassed: limit.aborted,
@@ -203,6 +206,11 @@ async function runSession(
 
     if (outcome === "time-limit") {
       await endAtTimeLimit();
+    } else if (
+      outcome === "repeated-call" &&
+      turnEnd?.end === "repeated-call"
+    ) {
+      await endWith(runEndMessage("repeated-call", loopText(turnEnd.toolName)));
     } else if (outcome === "continue") {
       // Null when Stop came during the turn's last step: the run then ends `stopped`.
       if ((await continueRun(person, sessionId, runJobId)) === null) {

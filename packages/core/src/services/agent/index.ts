@@ -90,7 +90,10 @@ export { AGENT_RUN_JOB, continueRun, startRun } from "./run-job.ts";
 export {
   CONTINUE_TEXT,
   isContinueMessage,
+  isRunEndMessage,
   TIME_LIMIT_TEXT,
 } from "./continue.ts";
+
+export { loopText } from "./loop-guard.ts";
 
 export { AGENT_RUN_JOB_NAME, stopRun } from "./runs.ts";
