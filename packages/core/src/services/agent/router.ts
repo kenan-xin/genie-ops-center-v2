@@ -7,9 +7,10 @@ import { agentContract } from "./contract.ts";
 import { listOwnFiles, ownFileLink } from "./files.ts";
 import { withRecordPaths } from "./record-paths.ts";
 import { retryRun } from "./run-job.ts";
-import { stopRun } from "./runs.ts";
+import { countActiveRuns, markSeen, stopRun } from "./runs.ts";
 import {
   deleteOwnSession,
+  listOwnHistory,
   listOwnSessions,
   readOwnSession,
   readOwnSessionDetail,
@@ -38,6 +39,13 @@ export function createAgentRouter() {
   return os.router({
     sessions: os.sessions.handler(({ context, input }) =>
       listOwnSessions(context, input)
+    ),
+    history: os.history.handler(({ context }) => listOwnHistory(context)),
+    markSeen: os.markSeen.handler(({ context, input }) =>
+      markSeen(context, input.sessionId)
+    ),
+    activeRuns: os.activeRuns.handler(({ context }) =>
+      countActiveRuns(context)
     ),
     session: os.session.handler(({ context, input }) =>
       readOwnSessionDetail(context, input.id)

@@ -39,6 +39,62 @@
         }
       }
     },
+    "/agent/history": {
+      "get": {
+        "operationId": "agent.history",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
+    "/agent/sessions/{sessionId}/seen": {
+      "post": {
+        "operationId": "agent.markSeen",
+        "parameters": [
+          {
+            "name": "sessionId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "not": {}
+                    },
+                    {
+                      "not": {}
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/agent/active-runs": {
+      "get": {
+        "operationId": "agent.activeRuns",
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/agent/sessions/{id}": {
       "get": {
         "operationId": "agent.session",

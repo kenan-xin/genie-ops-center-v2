@@ -9,14 +9,25 @@ export type SurfaceView = {
   readonly acceptsHandoff: boolean;
 };
 
-/** recordPage with its one `:param` segment replaced by the encoded id. */
-export function recordAddress(recordPage: string, recordId: string): string {
-  return recordPage
+/**
+ * recordPage with its one `:param` segment replaced by the encoded id; with a session, `?chat=` opens
+ * the agent panel on that chat (R14).
+ */
+export function recordAddress(
+  recordPage: string,
+  recordId: string,
+  sessionId?: string
+): string {
+  const path = recordPage
     .split("/")
     .map((segment) =>
       segment.startsWith(":") ? encodeURIComponent(recordId) : segment
     )
     .join("/");
+
+  return sessionId === undefined
+    ? path
+    : `${path}?chat=${encodeURIComponent(sessionId)}`;
 }
 
 /** The surface whose recordPage matches `path`, with the decoded id; undefined for any other path. */

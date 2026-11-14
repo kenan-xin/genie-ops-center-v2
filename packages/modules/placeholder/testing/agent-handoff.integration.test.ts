@@ -417,7 +417,7 @@ describe("the Ask handoff on the placeholder test surface", () => {
           sessionId: target?.id,
           title: BRIEF_TITLE,
           agentName: "Placeholder agent",
-          address: `/placeholder/${record?.id}`,
+          address: `/placeholder/${record?.id}?chat=${target?.id}`,
         },
       ],
       output: [{ handedTo: "Placeholder agent", title: BRIEF_TITLE }],

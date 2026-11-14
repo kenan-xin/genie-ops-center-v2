@@ -5,6 +5,7 @@ import type { CheckedChart } from "../charts/index.ts";
 import type { AgentArtifact } from "./artifacts.ts";
 import type { AgentFile } from "./files.ts";
 import type {
+  AgentHistoryEntry,
   AgentMessage,
   AgentSessionDetail,
   AgentSessionSummary,
@@ -37,6 +38,19 @@ export const agentContract = {
         .optional()
     )
     .output(z.custom<readonly AgentSessionSummary[]>()),
+  // Ask's history: the caller's newest 200 chats of every surface, with run status (DEC-57).
+  history: oc
+    .route({ method: "GET", path: "/agent/history" })
+    .output(z.custom<readonly AgentHistoryEntry[]>()),
+  // Clears the unseen mark of one of the caller's chats; another person's is `not-found` (R12).
+  markSeen: oc
+    .route({ method: "POST", path: "/agent/sessions/{sessionId}/seen" })
+    .input(z.object({ sessionId: z.string() }))
+    .output(z.void()),
+  // How many of the caller's runs work, for the menu's spinner (R15).
+  activeRuns: oc
+    .route({ method: "GET", path: "/agent/active-runs" })
+    .output(z.custom<{ readonly count: number }>()),
   // One of the caller's sessions with its run status and messages, which a page polls while it
   // builds (P11-32); null for an id not saved yet or another person's.
   session: oc

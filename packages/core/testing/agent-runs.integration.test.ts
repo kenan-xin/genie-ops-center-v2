@@ -5,9 +5,11 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { z } from "zod";
 
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
+import { callProcedure } from "../src/lib/rpc/call-procedure.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import { agentSession } from "../src/schema.ts";
 import { CONTINUE_TEXT } from "../src/services/agent/continue.ts";
+import { createAgentRouter } from "../src/services/agent/index.ts";
 import {
   AGENT_RUN_JOB,
   continueRun,
@@ -17,6 +19,7 @@ import {
 import {
   AGENT_RUN_JOB_NAME,
   endRun,
+  recoverRuns,
   stopRun,
 } from "../src/services/agent/runs.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
@@ -364,5 +367,113 @@ describe("continuing an agent run", () => {
       after: { run_state: null, run_error: "stopped" },
       texts: [CONTINUE_TEXT],
     });
+  });
+});
+
+const ASK_USE = ["core:ask:use"];
+
+function agent(ctx: ModuleRequestContext) {
+  return callProcedure(createAgentRouter(), ctx);
+}
+
+async function seenColumns(sessionId: string) {
+  const { rows } = await deployment.context.db.execute<{
+    unseen: boolean;
+    updated: string;
+  }>(
+    sql`select run_unseen as unseen, updated_at::text as updated from agent_session where id = ${sessionId}`
+  );
+
+  return rows[0];
+}
+
+/** The run list's unseen dot and the menu's run count (DEC-57 items 9 and 11, R12, R15). */
+describe("the run list", () => {
+  it("a run that ends sets unseen, and markSeen clears it", async () => {
+    const ctx = await person(deployment.context, ASK_USE);
+
+    // endRun, after a continued turn and a call from a job that no longer holds the run.
+    const ended = await sessionOf(ctx);
+    const first = await runningRun(ctx, ended.id);
+    const next = await continueRun(ctx, ended.id, first);
+
+    await endRun(deployment.context, ended.id, first, null);
+    const beforeEnd = (await seenColumns(ended.id))?.unseen;
+
+    await endRun(deployment.context, ended.id, next ?? "", null);
+
+    // Stop of a queued run ends it at once.
+    const stopped = await sessionOf(ctx);
+
+    await start(ctx, stopped.id);
+    await stopRun(ctx, stopped.id);
+
+    // Recovery of a run whose job is gone.
+    const recovered = await sessionOf(ctx);
+
+    await deployment.context.db.execute(
+      sql`update agent_session set run_state = 'running', run_job_id = ${randomUUID()} where id = ${recovered.id}`
+    );
+    await recoverRuns(
+      deployment.context,
+      await bossOf(deployment.context.jobQueue)
+    );
+
+    expect({
+      beforeEnd,
+      ended: (await seenColumns(ended.id))?.unseen,
+      stopped: (await seenColumns(stopped.id))?.unseen,
+      recovered: (await seenColumns(recovered.id))?.unseen,
+    }).toEqual({
+      beforeEnd: false,
+      ended: true,
+      stopped: true,
+      recovered: true,
+    });
+
+    const updated = (await seenColumns(ended.id))?.updated;
+
+    await agent(ctx).markSeen({ sessionId: ended.id });
+
+    // markSeen keeps the chat's place in the list.
+    expect(await seenColumns(ended.id)).toEqual({ unseen: false, updated });
+
+    // A new run of a chat that ended unseen is not "ended unseen".
+    await start(ctx, stopped.id);
+    expect((await seenColumns(stopped.id))?.unseen).toBe(false);
+  });
+
+  it("markSeen on another person's chat is not-found", async () => {
+    const owner = await person(deployment.context, ASK_USE);
+    const session = await sessionOf(owner);
+
+    await deployment.context.db.execute(
+      sql`update agent_session set run_unseen = true where id = ${session.id}`
+    );
+
+    const other = await person(deployment.context, ASK_USE);
+
+    await expect(
+      agent(other).markSeen({ sessionId: session.id })
+    ).rejects.toMatchObject({ code: "not-found" });
+    expect((await seenColumns(session.id))?.unseen).toBe(true);
+  });
+
+  it("activeRuns counts only the caller's runs", async () => {
+    const ctx = await person(deployment.context, ASK_USE);
+
+    await runningRun(ctx, (await sessionOf(ctx)).id);
+    await start(ctx, (await sessionOf(ctx)).id);
+
+    const ended = await sessionOf(ctx);
+
+    await start(ctx, ended.id);
+    await stopRun(ctx, ended.id);
+
+    const other = await person(deployment.context, ASK_USE);
+
+    await start(other, (await sessionOf(other)).id);
+
+    expect(await agent(ctx).activeRuns()).toEqual({ count: 2 });
   });
 });

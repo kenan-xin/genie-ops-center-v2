@@ -218,7 +218,11 @@ export function handOverTool(
           sessionId: targetSessionId,
           title: brief.title,
           agentName: target.surface.name,
-          address: recordAddress(target.surface.recordPage, recordId),
+          address: recordAddress(
+            target.surface.recordPage,
+            recordId,
+            targetSessionId
+          ),
         };
       } catch (error) {
         if (error instanceof AppError) {

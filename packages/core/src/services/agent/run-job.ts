@@ -538,6 +538,8 @@ export async function startRun(
         runState: "queued",
         runJobId: jobId,
         runError: null,
+        // A new run of a chat is not a run that ended unseen.
+        runUnseen: false,
         runDeadlineAt: sql`clock_timestamp() + make_interval(mins => ${agentRunTimeBoxMinutes})`,
         updatedAt: sql`clock_timestamp()`,
       })

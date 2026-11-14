@@ -1,11 +1,14 @@
 export {
+  AGENT_HISTORY_LIMIT,
   AGENT_SESSION_LIST_LIMIT,
+  type AgentHistoryEntry,
   type AgentMessage,
   type AgentSessionSummary,
   appendMessage,
   createOwnSession,
   deleteOwnSession,
   findOwnSession,
+  listOwnHistory,
   listOwnSessions,
   type OwnHistory,
   readOwnHistory,
@@ -96,4 +99,10 @@ export {
 
 export { loopText } from "./loop-guard.ts";
 
-export { AGENT_RUN_JOB_NAME, stopRun } from "./runs.ts";
+export {
+  AGENT_RUN_JOB_NAME,
+  type AgentRunStatus,
+  countActiveRuns,
+  markSeen,
+  stopRun,
+} from "./runs.ts";

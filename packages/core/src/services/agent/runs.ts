@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import type { PgBoss } from "pg-boss";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
@@ -17,8 +17,8 @@ export const AGENT_RUN_JOB_NAME = "core.agent-run";
 /**
  * Stops the caller's run. A `queued` run ends at once as `stopped`, because a queued run can wait
  * behind other runs, and the person must not wait for its turn; its job then finds no queued run
- * and does nothing. A `running` run becomes `stopping`, and the job ends it within about a second
- * (R-42b). A session with no run is left as it is, because Stop can race the
+ * and does nothing, and is marked unseen as every run end is (R12). A `running` run becomes
+ * `stopping`, and the job ends it within about a second (R-42b). A session with no run is left as it is, because Stop can race the
  * end of a run. Another person's or an unknown session is `not-found`.
  */
 export async function stopRun(
@@ -35,6 +35,7 @@ export async function stopRun(
     .set({
       runState: sql`case when ${agentSession.runState} = 'queued' then null else 'stopping' end`,
       runError: sql`case when ${agentSession.runState} = 'queued' then 'stopped' else ${agentSession.runError} end`,
+      runUnseen: sql`${agentSession.runState} = 'queued' or ${agentSession.runUnseen}`,
     })
     .where(and(owned, inArray(agentSession.runState, ["queued", "running"])))
     .returning({ id: agentSession.id });
@@ -47,6 +48,45 @@ export async function stopRun(
     .where(owned);
 
   if (found === undefined) throw new AppError(CORE_ERRORS["not-found"]);
+}
+
+/**
+ * Clears the unseen mark of one of the caller's chats (R12). It keeps `updated_at`, so the chat
+ * keeps its place in the history. Another person's or an unknown session is `not-found`.
+ */
+export async function markSeen(
+  ctx: ModuleRequestContext,
+  sessionId: string
+): Promise<void> {
+  const seen = await ctx.tenant.db
+    .update(agentSession)
+    .set({ runUnseen: false })
+    .where(
+      and(
+        eq(agentSession.id, checkedId(sessionId)),
+        eq(agentSession.userId, ctx.caller.userId)
+      )
+    )
+    .returning({ id: agentSession.id });
+
+  if (seen.length === 0) throw new AppError(CORE_ERRORS["not-found"]);
+}
+
+/** The caller's runs that hold a run state, `stopping` too, as `startRun` counts them (R15). */
+export async function countActiveRuns(
+  ctx: ModuleRequestContext
+): Promise<{ readonly count: number }> {
+  const [row] = await ctx.tenant.db
+    .select({ count: count() })
+    .from(agentSession)
+    .where(
+      and(
+        eq(agentSession.userId, ctx.caller.userId),
+        isNotNull(agentSession.runState)
+      )
+    );
+
+  return { count: row?.count ?? 0 };
 }
 
 export type AgentRunStatus =
@@ -102,7 +142,8 @@ const LIVE_JOB_STATES: ReadonlySet<string> = new Set([
 /**
  * Ends every run that no live job holds (R-42b): its job is gone, or completed, cancelled or
  * failed, as after a crash or an expiry. The run ends `stopped` when Stop was asked, else
- * `interrupted`. A run whose job is still live is left alone, because another worker may hold it.
+ * `interrupted`, and is marked unseen (R12). A run whose job is still live is left alone, because
+ * another worker may hold it.
  */
 export async function recoverRuns(
   tenant: TenantContext,
@@ -127,6 +168,7 @@ export async function recoverRuns(
       .set({
         runState: null,
         runError: sql`case when ${agentSession.runState} = 'stopping' then 'stopped' else 'interrupted' end`,
+        runUnseen: true,
       })
       .where(
         and(
@@ -165,7 +207,8 @@ export async function markRunning(
 
 /**
  * Ends the run of this job: `run_state` null, and `run_error` `stopped` when Stop was asked, else
- * `code`. Nothing for a session with no run, or with the run of another job.
+ * `code`, and marks the chat unseen until its owner opens it (R12). Nothing for a session with no
+ * run, or with the run of another job.
  */
 export async function endRun(
   tenant: TenantContext,
@@ -178,6 +221,7 @@ export async function endRun(
     .set({
       runState: null,
       runError: sql`case when ${agentSession.runState} = 'stopping' then 'stopped' else ${code}::text end`,
+      runUnseen: true,
     })
     .where(
       and(

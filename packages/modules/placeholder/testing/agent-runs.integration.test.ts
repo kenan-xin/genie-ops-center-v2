@@ -970,3 +970,105 @@ describe("a durable agent run on the placeholder test surface", () => {
     });
   });
 });
+
+function hoursAgo(hours: number): Date {
+  return new Date(Date.now() - hours * 3_600_000);
+}
+
+/** Ask's history as the run list (DEC-57 item 11, R13, R14). */
+describe("the run list on the placeholder test surface", () => {
+  it("history lists every surface's chats, newest first, with run status, unseen flag and the record link", async () => {
+    const ctx = await person();
+
+    const record = await insertPlaceholderRecord(deployment.context, {
+      label: "Saved record",
+    });
+
+    const ask = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      updatedAt: hoursAgo(3),
+    });
+
+    const saved = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: record.id,
+      runJobId: randomUUID(),
+      runUnseen: true,
+      updatedAt: hoursAgo(2),
+    });
+
+    // A surface no module of this deployment declares, as when its module is not in the image.
+    const unlisted = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "slides",
+      recordId: randomUUID(),
+      updatedAt: hoursAgo(1),
+    });
+
+    const building = await insertPlaceholderRecord(deployment.context, {
+      label: "Building record",
+    });
+
+    const { id: running } = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: building.id,
+    });
+
+    // The start moves the chat to the top of the list.
+    await runningRun(ctx, running);
+
+    const other = await person();
+
+    await insertAgentSession(deployment.context, {
+      userId: other.caller.userId,
+    });
+
+    const history = await callProcedure(createAgentRouter(), ctx).history();
+
+    expect(
+      history.map(({ id, surface, run, unseen, agentName, address }) => ({
+        id,
+        surface,
+        run,
+        unseen,
+        agentName,
+        address,
+      }))
+    ).toEqual([
+      {
+        id: running,
+        surface: "placeholder",
+        run: "building",
+        unseen: false,
+        agentName: "Placeholder agent",
+        address: `/placeholder/${building.id}?chat=${running}`,
+      },
+      {
+        id: unlisted.id,
+        surface: "slides",
+        run: null,
+        unseen: false,
+        agentName: null,
+        address: null,
+      },
+      {
+        id: saved.id,
+        surface: "placeholder",
+        run: "saved",
+        unseen: true,
+        agentName: "Placeholder agent",
+        address: `/placeholder/${record.id}?chat=${saved.id}`,
+      },
+      {
+        id: ask.id,
+        surface: "core:ask",
+        run: null,
+        unseen: false,
+        agentName: null,
+        address: null,
+      },
+    ]);
+  });
+});

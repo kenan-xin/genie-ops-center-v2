@@ -405,10 +405,62 @@ export async function readOwnSessionDetail(
       address:
         surface === undefined || row.recordId === null
           ? null
-          : recordAddress(surface.recordPage, row.recordId),
+          : recordAddress(surface.recordPage, row.recordId, row.id),
     },
     messages,
   };
+}
+
+// shortcut: 200 newest, page it when a person has more (R13).
+export const AGENT_HISTORY_LIMIT = 200;
+
+export type AgentHistoryEntry = AgentSessionSummary & {
+  readonly run: AgentRunStatus | null;
+  /** The run ended while the person had not opened the chat (R12). */
+  readonly unseen: boolean;
+  /** The surface's name; null on Ask or when the surface is not listed. */
+  readonly agentName: string | null;
+  /** The record's page opened on this chat; null on Ask or when the surface is not listed. */
+  readonly address: string | null;
+};
+
+/**
+ * Ask's history as the run list (DEC-57 item 11): the caller's newest chats of every surface, latest
+ * message first. A chat of a surface that is not listed (its module is off) stays in the list, with
+ * no agent name and no address.
+ */
+export async function listOwnHistory(
+  ctx: ModuleRequestContext
+): Promise<readonly AgentHistoryEntry[]> {
+  const [rows, surfaces] = await Promise.all([
+    ctx.tenant.db
+      .select({
+        ...summaryColumns,
+        runError: agentSession.runError,
+        runJobId: agentSession.runJobId,
+        runUnseen: agentSession.runUnseen,
+      })
+      .from(agentSession)
+      .where(eq(agentSession.userId, ctx.caller.userId))
+      .orderBy(desc(agentSession.updatedAt), desc(agentSession.id))
+      .limit(AGENT_HISTORY_LIMIT),
+    listSurfaces(ctx),
+  ]);
+
+  return rows.map((row) => {
+    const surface = surfaces.find(({ id }) => id === row.surface);
+
+    // summary() answers a new object, so adding to it changes nothing shared.
+    return Object.assign(summary(row), {
+      run: runStatus(row),
+      unseen: row.runUnseen,
+      agentName: surface?.name ?? null,
+      address:
+        surface === undefined || row.recordId === null
+          ? null
+          : recordAddress(surface.recordPage, row.recordId, row.id),
+    });
+  });
 }
 
 /** What the model reads of a session: its summary, and only the messages after the summary. */
