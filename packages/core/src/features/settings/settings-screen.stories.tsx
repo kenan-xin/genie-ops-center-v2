@@ -56,6 +56,7 @@ const meta = {
     onSaveModelKey: saved(),
     onRemoveModelKey: saved(),
     onSaveModels: saved(),
+    onSaveAgentRuns: saved(),
     onSaveModule: saved(),
     onTargetChange: fn(),
   } satisfies TenantSettingsScreenProps,
@@ -1067,6 +1068,59 @@ export const AiModelsSaveRefusedMarksTheField: Story = {
     await expect(
       canvas.getByText("The AI models were not saved. Your change is kept.")
     ).toBeVisible();
+  },
+};
+
+const timeLimit = () =>
+  within(document.body).getByRole("spinbutton", {
+    name: "Time limit for a background run",
+  });
+
+/** The time box of one background run sits with the AI settings and saves on its own (DEC-57). */
+export const AiRunsTimeLimitSaves: Story = {
+  name: "AI settings: time limit for background runs",
+  play: async ({ args, canvas }) => {
+    await userEvent.click(
+      within(
+        canvas.getByRole("navigation", { name: "Settings sections" })
+      ).getByRole("button", { name: "Background runs" })
+    );
+    await expect(timeLimit()).toHaveValue(120);
+    await expect(
+      canvas.getByText(
+        "A run stops when it reaches this limit. The work it finished stays. Default 120 minutes."
+      )
+    ).toBeVisible();
+
+    await userEvent.clear(timeLimit());
+    await userEvent.type(timeLimit(), "30");
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(args.onSaveAgentRuns).toHaveBeenCalledWith({ timeBoxMinutes: 30 })
+    );
+  },
+};
+
+export const AiRunsTimeLimitSavesOnPhone: Story = {
+  ...AiRunsTimeLimitSaves,
+  name: "AI settings: time limit for background runs on a phone",
+  globals: phone,
+};
+
+/** A time limit under 10 minutes shows the schema's message and leaves Save disabled (DEC-57). */
+export const AiRunsTimeLimitOutOfRange: Story = {
+  args: { target: { section: "ai-runs" } },
+  play: async ({ args, canvas }) => {
+    await userEvent.clear(timeLimit());
+    await userEvent.type(timeLimit(), "5");
+    await userEvent.tab();
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "Enter a whole number of minutes from 10 to 1440."
+    );
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(args.onSaveAgentRuns).not.toHaveBeenCalled();
   },
 };
 

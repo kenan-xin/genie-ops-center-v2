@@ -24,6 +24,17 @@ export const sessionSettingsSchema = z.object({
     .max(480, { error: IDLE_MESSAGE }),
 });
 
+const TIME_BOX_MESSAGE = "Enter a whole number of minutes from 10 to 1440.";
+
+/** The time box of one background agent run (DEC-57): 10 to 1440 whole minutes. */
+export const agentRunSettingsSchema = z.object({
+  timeBoxMinutes: z
+    .number({ error: TIME_BOX_MESSAGE })
+    .int({ error: TIME_BOX_MESSAGE })
+    .min(10, { error: TIME_BOX_MESSAGE })
+    .max(1440, { error: TIME_BOX_MESSAGE }),
+});
+
 /** Reporting (R-9): a whole date, or null for today in the tenant's default time zone. */
 export const reportingSettingsSchema = z.object({
   reportingDate: z.iso

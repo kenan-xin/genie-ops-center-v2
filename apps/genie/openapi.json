@@ -2680,6 +2680,35 @@
         }
       }
     },
+    "/settings/ai/runs": {
+      "patch": {
+        "operationId": "settings.saveAgentRuns",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "timeBoxMinutes": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "timeBoxMinutes"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/settings/modules/{moduleId}": {
       "patch": {
         "operationId": "settings.saveModule",

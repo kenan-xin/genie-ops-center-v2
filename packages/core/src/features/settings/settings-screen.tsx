@@ -20,7 +20,11 @@ import {
 } from "react";
 import { z } from "zod";
 
-import { AiConnectionSection, AiModelsSection } from "./ai-sections.tsx";
+import {
+  AiConnectionSection,
+  AiModelsSection,
+  AiRunsSection,
+} from "./ai-sections.tsx";
 import {
   ReportingSection,
   SectionFooter,
@@ -47,12 +51,15 @@ const AI_CONNECTION = "ai-connection";
 
 const AI_MODELS = "ai-models";
 
+const AI_RUNS = "ai-runs";
+
 const CORE_FIELDS = new Map<string, readonly string[]>([
   [SIGN_IN, ["onboardingMode", "localAccountsEnabled"]],
   [SESSIONS, ["sessionIdleMinutes"]],
   [REPORTING, ["reportingDate"]],
   [AI_CONNECTION, ["apiKey"]],
   [AI_MODELS, ["allowedModels", "chatModel", "documentModel"]],
+  [AI_RUNS, ["timeBoxMinutes"]],
 ]);
 
 type Section = {
@@ -196,6 +203,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
       disabled: false,
     },
     { id: AI_MODELS, title: "AI models", group: "tenant", disabled: false },
+    { id: AI_RUNS, title: "Background runs", group: "tenant", disabled: false },
     ...(settings?.modules ?? []).map((module): Section => ({
       id: module.moduleId,
       title: module.title,
@@ -547,6 +555,34 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
         </SectionCard>
       );
     }
+
+    if (current.id === AI_RUNS)
+      return (
+        <SectionCard
+          title="Background runs"
+          description="How long the assistant may work on one background task."
+          lastChanged={lastChangedText(
+            settings.core.lastChanged,
+            props.timeZone
+          )}
+          headingRef={heading}
+        >
+          <AiRunsSection
+            key={`${sectionKey}:${settings.core.lastChanged?.at ?? ""}`}
+            values={{ timeBoxMinutes: settings.core.agentRunTimeBoxMinutes }}
+            issues={
+              failure !== null && failure.sectionId === current.id
+                ? failure.issues
+                : undefined
+            }
+            onDirtyChange={onDirtyChange}
+            onSubmit={(values) =>
+              save(AI_RUNS, () => props.onSaveAgentRuns(values))()
+            }
+            footer={footer}
+          />
+        </SectionCard>
+      );
 
     const module = moduleOf(current.id);
 

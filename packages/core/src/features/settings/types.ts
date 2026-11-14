@@ -45,6 +45,9 @@ export type ModelSettingsInput = {
   readonly documentModel: string;
 };
 
+/** The time box of one background agent run, in whole minutes (DEC-57). */
+export type AgentRunsInput = { readonly timeBoxMinutes: number };
+
 export type TenantSettingsScreenProps = {
   /** Undefined while the first read runs. */
   readonly settings: SettingsView | undefined;
@@ -76,6 +79,7 @@ export type TenantSettingsScreenProps = {
   readonly onSaveModelKey: (input: ModelKeyInput) => Promise<void>;
   readonly onRemoveModelKey: () => Promise<void>;
   readonly onSaveModels: (input: ModelSettingsInput) => Promise<void>;
+  readonly onSaveAgentRuns: (input: AgentRunsInput) => Promise<void>;
   readonly onSaveModule: (
     moduleId: string,
     values: Record<string, ConfigValue | null>

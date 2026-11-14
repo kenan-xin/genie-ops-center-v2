@@ -55,6 +55,7 @@ export const FIXTURE_SETTINGS: SettingsView = {
     chatModel: null,
     documentModel: null,
     modelKeyStored: false,
+    agentRunTimeBoxMinutes: 120,
     aiState: "no-key",
     lastChanged: { by: "Ada Lovelace", at: "2026-10-20T09:30:00.000Z" },
   },

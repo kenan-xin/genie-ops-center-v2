@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  type AgentRunsInput,
   type ModelKeyInput,
   type ModelSettingsInput,
   type ReportingInput,
@@ -75,6 +76,14 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     notSaved: () => t("settings.notSaved.models"),
   });
 
+  const agentRuns = useAdminWrite({
+    write: (input: AgentRunsInput) => rpc.settings.saveAgentRuns(input),
+    invalidate: [["settings"]],
+    saved: savedIn("Background runs"),
+    refused: onScreen,
+    notSaved: () => t("settings.notSaved.agentRuns"),
+  });
+
   const keySave = useAdminWrite({
     write: (input: ModelKeyInput) => rpc.settings.saveModelKey(input),
     invalidate: [["settings"]],
@@ -141,6 +150,9 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
       }}
       onSaveModels={async (input) => {
         await models.mutateAsync(input);
+      }}
+      onSaveAgentRuns={async (input) => {
+        await agentRuns.mutateAsync(input);
       }}
       onSaveModelKey={async (input) => {
         await keySave.mutateAsync(input);

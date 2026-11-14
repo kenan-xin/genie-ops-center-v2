@@ -48,6 +48,7 @@ import {
 import { type AiState, aiStateOf } from "../models/state.ts";
 import { ModuleManagementError } from "../module-management/index.ts";
 import {
+  agentRunSettingsSchema,
   modelKeySchema,
   modelSettingsSchema,
   reportingSettingsSchema,
@@ -78,6 +79,8 @@ export type CoreSettingsView = {
   readonly documentModel: string | null;
   /** Whether the model provider key is stored. The value is never part of a settings read (R-17). */
   readonly modelKeyStored: boolean;
+  /** How many minutes one background agent run may work (DEC-57). */
+  readonly agentRunTimeBoxMinutes: number;
   /** Whether AI features work, and why not: the one rule `modelFor` shares (R-20). */
   readonly aiState: AiState;
   readonly lastChanged: LastChanged;
@@ -134,6 +137,7 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
       allowedModels: tenantSettings.allowedModels,
       chatModel: tenantSettings.chatModel,
       documentModel: tenantSettings.documentModel,
+      agentRunTimeBoxMinutes: tenantSettings.agentRunTimeBoxMinutes,
       updatedAt: tenantSettings.updatedAt,
       updatedBy: user.name,
     })
@@ -155,6 +159,7 @@ async function readCore(tenant: TenantContext): Promise<CoreSettingsView> {
     chatModel: row.chatModel,
     documentModel: row.documentModel,
     modelKeyStored: keyStored,
+    agentRunTimeBoxMinutes: row.agentRunTimeBoxMinutes,
     aiState: aiStateOf({
       keyStored,
       chatModel: row.chatModel,
@@ -262,10 +267,11 @@ type SettingsField =
   | "reportingDate"
   | "allowedModels"
   | "chatModel"
-  | "documentModel";
+  | "documentModel"
+  | "agentRunTimeBoxMinutes";
 
 type CoreSection = {
-  readonly id: "sign-in" | "sessions" | "reporting" | "ai-models";
+  readonly id: "sign-in" | "sessions" | "reporting" | "ai-models" | "ai-runs";
   readonly title: string;
 };
 
@@ -457,6 +463,30 @@ export async function saveModelSettings(
     { id: "ai-models", title: "AI models" },
     input.actorUserId,
     parsed.data,
+    () => {}
+  );
+}
+
+/**
+ * The time box of one background agent run (DEC-57). A run reads it when it starts, so a save
+ * changes the next run's deadline, never a running one.
+ */
+export async function saveAgentRunSettings(
+  tenant: TenantContext,
+  input: { readonly actorUserId: string; readonly timeBoxMinutes: number }
+): Promise<{ readonly changed: boolean }> {
+  const parsed = agentRunSettingsSchema.safeParse(input);
+
+  if (!parsed.success)
+    throw new AppError(CORE_ERRORS["settings-invalid"], {
+      issues: issuesOf(parsed.error),
+    });
+
+  return saveCore(
+    tenant,
+    { id: "ai-runs", title: "Background runs" },
+    input.actorUserId,
+    { agentRunTimeBoxMinutes: parsed.data.timeBoxMinutes },
     () => {}
   );
 }

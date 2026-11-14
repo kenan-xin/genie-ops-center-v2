@@ -1,6 +1,10 @@
 import { expect, it } from "vitest";
 
-import { modelKeySchema, modelSettingsSchema } from "./schemas.ts";
+import {
+  agentRunSettingsSchema,
+  modelKeySchema,
+  modelSettingsSchema,
+} from "./schemas.ts";
 
 type ModelSettings = {
   readonly allowedModels: string[];
@@ -94,6 +98,34 @@ it("checks model settings: one issue per broken rule, none for a valid set", () 
   ];
 
   for (const row of rows) expect(issues(row.input)).toEqual(row.issues);
+});
+
+function timeBoxRefusal(timeBoxMinutes: number) {
+  const result = agentRunSettingsSchema.safeParse({ timeBoxMinutes });
+
+  return result.success
+    ? null
+    : result.error.issues.map(({ path, message }) => ({
+        path: path.join("."),
+        message,
+      }));
+}
+
+it("accepts a run time box of whole minutes from 10 to 1440 only", () => {
+  const refused = [
+    {
+      path: "timeBoxMinutes",
+      message: "Enter a whole number of minutes from 10 to 1440.",
+    },
+  ];
+
+  expect([9, 10, 1440, 1441, 90.5].map(timeBoxRefusal)).toEqual([
+    refused,
+    null,
+    null,
+    refused,
+    refused,
+  ]);
 });
 
 it("refuses a key with a character a key cannot hold, and keeps a trimmed key", () => {

@@ -7,6 +7,7 @@ import { settingsContract } from "./contract.ts";
 import {
   readSettings,
   removeModelKey,
+  saveAgentRunSettings,
   saveModelKey,
   saveModelSettings,
   saveModuleSettings,
@@ -54,6 +55,13 @@ export function createSettingsRouter(modules: readonly Module[]) {
       saveModelSettings(context.tenant, {
         ...input,
         actorUserId: context.caller.userId,
+      })
+    ),
+
+    saveAgentRuns: managed.saveAgentRuns.handler(({ context, input }) =>
+      saveAgentRunSettings(context.tenant, {
+        actorUserId: context.caller.userId,
+        timeBoxMinutes: input.timeBoxMinutes,
       })
     ),
 

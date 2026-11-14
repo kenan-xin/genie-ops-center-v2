@@ -7,6 +7,7 @@ export { TenantSettingsScreen } from "./settings-screen.tsx";
 export { resolveSettingsTarget } from "./settings-target.ts";
 
 export type {
+  AgentRunsInput,
   CoreSettingsView,
   LastChangedView,
   ModelKeyInput,

@@ -20,6 +20,7 @@ import { isEqual, uniq } from "es-toolkit";
 import { useEffect, useState, type ReactNode } from "react";
 
 import {
+  agentRunSettingsSchema,
   modelKeySchema,
   modelSettingsSchema,
 } from "../../services/settings/schemas.ts";
@@ -31,6 +32,7 @@ import {
   useServerIssues,
 } from "./core-sections.tsx";
 import type {
+  AgentRunsInput,
   ModelKeyInput,
   ModelSettingsInput,
   SettingsIssue,
@@ -136,6 +138,85 @@ export function AiConnectionSection(props: {
         }}
         onClose={() => setConfirming(false)}
       />
+    </>
+  );
+}
+
+/** The time box of one background run (DEC-57). An emptied field holds NaN, which the schema refuses. */
+export function AiRunsSection(props: SectionProps<AgentRunsInput>) {
+  const form = useForm({
+    defaultValues: props.values,
+    validators: { onChange: agentRunSettingsSchema },
+    listeners: { onChange: clearServerError },
+    onSubmit: async ({ value }) => props.onSubmit(value),
+  });
+
+  useServerIssues(form, props.issues);
+
+  const footer = useFooterState(form, props.onDirtyChange);
+
+  return (
+    <>
+      <div className="px-5 py-5">
+        <form.Field name="timeBoxMinutes">
+          {(field) => {
+            const issue: { message?: string } | undefined =
+              field.state.meta.errors[0];
+
+            const message =
+              field.state.meta.isTouched ||
+              field.state.meta.errorMap.onServer !== undefined
+                ? issue?.message
+                : undefined;
+
+            return (
+              <div
+                data-field="timeBoxMinutes"
+                className="flex flex-col gap-1.5"
+              >
+                <FieldLabel htmlFor="core-timeBoxMinutes">
+                  Time limit for a background run
+                </FieldLabel>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="core-timeBoxMinutes"
+                    type="number"
+                    inputMode="numeric"
+                    className="max-w-30"
+                    value={
+                      Number.isNaN(field.state.value)
+                        ? ""
+                        : String(field.state.value)
+                    }
+                    aria-invalid={message === undefined ? undefined : true}
+                    aria-describedby={
+                      message === undefined
+                        ? "core-timeBoxMinutes-help"
+                        : "core-timeBoxMinutes-error"
+                    }
+                    onChange={(event) =>
+                      field.handleChange(event.target.valueAsNumber)
+                    }
+                    onBlur={field.handleBlur}
+                  />
+                  <span className="text-sm text-muted-foreground">minutes</span>
+                </div>
+                {message === undefined ? (
+                  <FieldDescription id="core-timeBoxMinutes-help">
+                    A run stops when it reaches this limit. The work it finished
+                    stays. Default 120 minutes.
+                  </FieldDescription>
+                ) : (
+                  <FieldError id="core-timeBoxMinutes-error">
+                    {message}
+                  </FieldError>
+                )}
+              </div>
+            );
+          }}
+        </form.Field>
+      </div>
+      {props.footer(footer)}
     </>
   );
 }

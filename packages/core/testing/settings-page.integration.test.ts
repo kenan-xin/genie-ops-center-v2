@@ -1,3 +1,5 @@
+import { randomUUID } from "node:crypto";
+
 import type { QueryResultRow } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -6,6 +8,7 @@ import { moduleLedgerTable } from "../src/lib/module-contract/ledger.ts";
 import type { Module } from "../src/lib/module-contract/module.ts";
 import { createTenantContext } from "../src/lib/tenant-context/index.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
+import { startRun } from "../src/services/agent/run-job.ts";
 import type { AuditMetadataValue } from "../src/services/audit/index.ts";
 import {
   principalFor,
@@ -15,6 +18,7 @@ import { silentLogger } from "../src/services/logging/index.ts";
 import { setModuleEnabledIn } from "../src/services/module-management/index.ts";
 import {
   readSettings,
+  saveAgentRunSettings,
   saveModelSettings,
   saveModuleSettings,
   saveReportingSettings,
@@ -22,6 +26,7 @@ import {
   saveSignInSettings,
 } from "../src/services/settings/index.ts";
 import {
+  insertAgentSession,
   insertPersonWith,
   insertUser,
   startDisposableDeployment,
@@ -126,7 +131,8 @@ beforeEach(async () => {
     `update tenant_settings set onboarding_mode = 'invite', local_accounts_enabled = false,
        realm_supports_local_accounts = true, session_idle_minutes = 15,
        reporting_date = null, allowed_models = '{}'::text[], chat_model = null,
-       document_model = null, updated_by_user_id = null`
+       document_model = null, agent_run_time_box_minutes = 120,
+       updated_by_user_id = null`
   );
   since = await clock();
 });
@@ -179,6 +185,18 @@ async function moduleRow(id: string) {
     enabled: boolean;
     config: AuditMetadataValue;
   }>("select enabled, config from tenant_module where module_id = $1", [id]);
+
+  return row;
+}
+
+/** A run's deadline, and its time box in whole minutes from the start. */
+async function deadline(sessionId: string) {
+  const [row] = await query<{ at: Date; minutes: number }>(
+    `select run_deadline_at as at,
+       round(extract(epoch from run_deadline_at - updated_at) / 60)::int as minutes
+       from agent_session where id = $1`,
+    [sessionId]
+  );
 
   return row;
 }
@@ -335,6 +353,71 @@ describe("core section saves", () => {
     } finally {
       await second.db.$client.end();
     }
+  });
+
+  it("saving the time box changes the next run's deadline, not a running one", async () => {
+    const { userId } = await insertPersonWith(deployment.context, []);
+
+    const runFor = async () => {
+      const session = await insertAgentSession(deployment.context, {
+        userId,
+        surface: "placeholder",
+        recordId: randomUUID(),
+      });
+
+      // A fresh context reads the settings from the database, not from another one's 10 s cache.
+      const tenant = createTenantContext(
+        {
+          DATABASE_URL: deployment.context.env.databaseUrl,
+          PUBLIC_URL: deployment.context.env.publicUrl,
+        },
+        silentLogger(),
+        []
+      );
+
+      const caller = principalFor({
+        tenant,
+        modules: [],
+        userId,
+        authenticated: true,
+      });
+
+      try {
+        await withTransaction(tenant, (tx) =>
+          startRun({ tenant, caller }, tx, session.id)
+        );
+      } finally {
+        await tenant.db.$client.end();
+      }
+
+      return session.id;
+    };
+
+    const running = await runFor();
+    const before = await deadline(running);
+
+    await expect(
+      saveAgentRunSettings(deployment.context, {
+        actorUserId,
+        timeBoxMinutes: 30,
+      })
+    ).resolves.toEqual({ changed: true });
+
+    const next = await runFor();
+
+    expect(before?.minutes).toBe(120);
+    expect(await deadline(running)).toEqual(before);
+    expect((await deadline(next))?.minutes).toBe(30);
+    expect(await auditRows()).toMatchObject([
+      {
+        action: "core:settings_updated",
+        target_id: "ai-runs",
+        metadata: {
+          section: "ai-runs",
+          changes: { agentRunTimeBoxMinutes: { from: 120, to: 30 } },
+        },
+      },
+    ]);
   });
 
   it("refuses a chat default outside the allowed models with settings-invalid and the chatModel issue, and writes nothing", async () => {

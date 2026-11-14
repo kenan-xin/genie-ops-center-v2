@@ -52,6 +52,12 @@ export const settingsContract = {
     )
     .output(saved),
 
+  // The time box of one background agent run (DEC-57).
+  saveAgentRuns: oc
+    .route({ method: "PATCH", path: "/settings/ai/runs" })
+    .input(z.object({ timeBoxMinutes: z.number() }))
+    .output(saved),
+
   saveModule: oc
     .route({ method: "PATCH", path: "/settings/modules/{moduleId}" })
     .input(
