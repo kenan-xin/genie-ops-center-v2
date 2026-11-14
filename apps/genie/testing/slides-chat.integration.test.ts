@@ -243,7 +243,8 @@ describe("the slides chat beside the Slides list", () => {
     expect(askRequests).toHaveLength(3);
     expect(JSON.stringify(askRequests.at(-1)?.body)).not.toContain(deck?.id);
     expect(await handoffCards(askId)).toMatchObject([
-      { address: `/m/slides/decks/${deck?.id}` },
+      // The link names the handed-over chat, so the deck page opens its panel on it (DEC-57, R14).
+      { address: `/m/slides/decks/${deck?.id}?chat=${target.id}` },
     ]);
 
     // The reads are the model's choice (P16-58), then five changes with the hash of the answer
