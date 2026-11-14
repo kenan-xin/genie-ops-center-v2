@@ -1,7 +1,13 @@
 "use client";
 
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { useModuleClient } from "../../lib/rpc/module-client.tsx";
 import { agentContract } from "../../services/agent/contract.ts";
@@ -12,6 +18,7 @@ import type {
   InboxLink,
 } from "../../services/agent/index.ts";
 import type { AgentPageContext } from "../../services/agent/page-context.ts";
+import { ACTIVE_RUNS_KEY } from "./active-runs.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
@@ -92,6 +99,25 @@ export function AgentChat(props: {
 
   useMarkSeen(props.sessionId, saved.data, props.visible ?? true);
 
+  const queryClient = useQueryClient();
+
+  // A send that starts an answer is a run the menu counts, so its spinner shows at once. Only the
+  // change to working reads again; `Conversation` reports on every change of this callback.
+  const wasWorking = useRef(false);
+  const parentOnWorking = props.onWorking;
+
+  const onWorking = useCallback(
+    (working: boolean) => {
+      if (working && !wasWorking.current) {
+        void queryClient.invalidateQueries({ queryKey: ACTIVE_RUNS_KEY });
+      }
+
+      wasWorking.current = working;
+      parentOnWorking?.(working);
+    },
+    [queryClient, parentOnWorking]
+  );
+
   const stop = useMutation({
     mutationFn: () => agent.stop({ id: props.sessionId }),
     onSettled: () => void saved.refetch(),
@@ -100,7 +126,11 @@ export function AgentChat(props: {
   const retry = useMutation({
     mutationFn: () => agent.retry({ id: props.sessionId }),
     // An old Stop failure is no longer true once the run starts again.
-    onSuccess: () => stop.reset(),
+    onSuccess: () => {
+      stop.reset();
+      // A new run started, so the menu's spinner shows now.
+      void queryClient.invalidateQueries({ queryKey: ACTIVE_RUNS_KEY });
+    },
     // Returned, so Try again stays pending until the read shows the new run (Review Focus 3).
     onSettled: () => saved.refetch(),
   });
@@ -179,8 +209,12 @@ export function AgentChat(props: {
       artifacts={props.artifacts}
       headingLevel={props.headingLevel}
       onNewChat={props.onNewChat}
-      onWorking={props.onWorking}
-      onHandoff={props.onHandoff}
+      onWorking={onWorking}
+      onHandoff={(card) => {
+        // The handoff started a run, so the menu's spinner shows now, not at the next 30 s read.
+        void queryClient.invalidateQueries({ queryKey: ACTIVE_RUNS_KEY });
+        props.onHandoff?.(card);
+      }}
       run={
         read === undefined || read === null || read.session.run === null
           ? undefined

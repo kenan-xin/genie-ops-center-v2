@@ -1,6 +1,12 @@
 "use client";
 
-import { focusRing, Tooltip, TooltipContent, TooltipTrigger } from "@genie/ui";
+import {
+  focusRing,
+  Spinner,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@genie/ui";
 import {
   Banknote,
   Blocks,
@@ -47,7 +53,10 @@ export type NavigationRailProps = {
   readonly chrome: ShellChrome;
   readonly navigation: ShellNavigation;
   readonly currentPath: string;
-  readonly strings: Pick<ShellStrings, "workspace" | "pinned" | "categories">;
+  readonly strings: Pick<
+    ShellStrings,
+    "workspace" | "pinned" | "categories" | "entryWorking"
+  >;
   readonly linkComponent?: ShellLinkComponent | undefined;
   /** The 60 px icon rail: icons only, each label as hidden text and a tooltip on the right. */
   readonly rail?: boolean | undefined;
@@ -136,7 +145,7 @@ function RailLink({
     <Anchor
       {...rest}
       aria-current={active ? "page" : undefined}
-      className={`flex size-10 items-center justify-center rounded-lg motion-safe:transition-colors ${focusRing} ${active ? rowActive : rowIdle}`}
+      className={`relative flex size-10 items-center justify-center rounded-lg motion-safe:transition-colors ${focusRing} ${active ? rowActive : rowIdle}`}
     />
   );
 }
@@ -152,8 +161,31 @@ function Row(props: {
   readonly grip?: boolean;
   readonly linkComponent: ShellLinkComponent | undefined;
   readonly rail: boolean;
+  /** The template that names an entry while its chats work; only workspace rows pass it. */
+  readonly entryWorking?: string;
 }) {
   const isActive = props.link.href === props.active;
+  const working = props.link.working ?? 0;
+
+  // The spinner names the entry and its label leaves the accessible name, so a reader hears
+  // "Ask, 2 working" once (R15).
+  const workingName =
+    working > 0 && props.entryWorking !== undefined
+      ? props.entryWorking
+          .replace("{label}", props.link.label)
+          .replace("{count}", String(working))
+      : undefined;
+
+  const spinner =
+    workingName === undefined ? null : (
+      <Spinner
+        role="img"
+        aria-label={workingName}
+        label={workingName}
+        className="shrink-0"
+      />
+    );
+
   const Anchor = linkFor(props.link.href, props.linkComponent);
 
   const iconClass = `size-5 shrink-0 ${isActive ? "text-primary dark:text-brand-on-dark" : "text-muted-foreground"}`;
@@ -176,7 +208,13 @@ function Row(props: {
           }
         >
           <RailIcon aria-hidden strokeWidth={1.75} className={iconClass} />
-          <span className="sr-only">{props.link.label}</span>
+          {workingName === undefined ? (
+            <span className="sr-only">{props.link.label}</span>
+          ) : (
+            <span className="absolute top-0 right-0 rounded-full bg-muted">
+              {spinner}
+            </span>
+          )}
         </TooltipTrigger>
         <TooltipContent side="right">{props.link.label}</TooltipContent>
       </Tooltip>
@@ -208,10 +246,16 @@ function Row(props: {
       )}
       <Tooltip>
         <TooltipTrigger render={<span className="min-w-0 flex-1" />}>
-          <span className="block truncate">{props.link.label}</span>
+          <span
+            aria-hidden={workingName === undefined ? undefined : true}
+            className="block truncate"
+          >
+            {props.link.label}
+          </span>
         </TooltipTrigger>
         <TooltipContent>{props.link.label}</TooltipContent>
       </Tooltip>
+      {spinner}
     </Anchor>
   );
 }
@@ -382,6 +426,7 @@ export function NavigationRail(props: NavigationRailProps) {
               defaultIcon={Box}
               linkComponent={props.linkComponent}
               rail={rail}
+              entryWorking={strings.entryWorking}
             />
           ))}
         </nav>

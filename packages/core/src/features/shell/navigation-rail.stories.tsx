@@ -113,6 +113,7 @@ const meta = {
       workspace: "Workspace",
       pinned: "Pinned",
       categories: "Categories",
+      entryWorking: "{label}, {count} working",
     },
   },
   decorators: [

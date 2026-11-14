@@ -161,6 +161,10 @@ async function shellProps(
       pageContent: t("pageContent"),
       account: t("account"),
       ask: t("ask"),
+      // Kept templates: the shell fills in the entry and the count of working chats.
+      entryWorking: t("entryWorking", { label: "{label}", count: "{count}" }),
+      openNavigationOneWorking: t("openNavigationOneWorking"),
+      openNavigationWorking: t("openNavigationWorking", { count: "{count}" }),
       changePassword: t("changePassword"),
       opensInNewTab: t("opensInNewTab"),
       helpAndSupport: t("helpAndSupport"),

@@ -25,6 +25,8 @@ export type ShellLink = {
   readonly label: string;
   readonly href: string;
   readonly icon?: NavigationIcon | undefined;
+  /** How many of the person's chats work, which the entry shows as a spinner (Ask's, R15). */
+  readonly working?: number | undefined;
 };
 
 export type ShellCategory = {
@@ -85,6 +87,11 @@ export type ShellStrings = {
   readonly account: string;
   /** Core's Ask page, which is no rail link, so its phone top bar is named here (5.3). */
   readonly ask: string;
+  /** A menu entry's name while chats work, a template with `{label}` and `{count}` (R15). */
+  readonly entryWorking: string;
+  /** The phone menu button's name while one chat works, then a template with `{count}`. */
+  readonly openNavigationOneWorking: string;
+  readonly openNavigationWorking: string;
   readonly changePassword: string;
   readonly opensInNewTab: string;
   readonly helpAndSupport: string;

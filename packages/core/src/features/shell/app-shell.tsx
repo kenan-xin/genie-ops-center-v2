@@ -24,6 +24,7 @@ import {
 } from "react";
 import { useStore } from "zustand";
 
+import { useActiveRuns } from "../agent/active-runs.ts";
 import { AgentButton } from "../agent/agent-button.tsx";
 import { agentPanelStore } from "../agent/agent-panel-store.ts";
 import { activeHref, isAskPath, shellLinks } from "./active-link.ts";
@@ -74,7 +75,7 @@ function fromTyping(target: EventTarget | null): boolean {
  * so the drawer never shows the rail toggle.
  */
 function Panel(
-  props: AppShellProps & {
+  props: ShellProps & {
     readonly rail?: boolean;
     readonly toggle?: ReactNode;
   }
@@ -104,7 +105,7 @@ function Panel(
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
         <NavigationRail
           chrome={props.chrome}
-          navigation={props.navigation}
+          navigation={withWorking(props.navigation, props.working)}
           currentPath={props.currentPath}
           strings={props.strings}
           linkComponent={props.linkComponent}
@@ -124,16 +125,54 @@ function Panel(
   );
 }
 
+type ShellProps = AppShellProps & {
+  /** How many of the person's runs work, shown on Ask in the menu (R15). */
+  readonly working: number;
+};
+
+/** The navigation with Ask's entry carrying the count of working runs. */
+function withWorking(
+  navigation: ShellNavigation,
+  working: number
+): ShellNavigation {
+  if (working === 0) return navigation;
+
+  return {
+    ...navigation,
+    workspace: navigation.workspace.map((link) =>
+      link.id === "core-ask" ? { ...link, working } : link
+    ),
+  };
+}
+
+function ShellWithRuns(props: AppShellProps) {
+  return <Shell {...props} working={useActiveRuns()} />;
+}
+
 /**
- * The signed-in frame (R-27, R-35, R-38, R-40). From `lg` the panel is an aside beside the
+ * The signed-in frame (R-27, R-35, R-38, R-40). Only in the workspace chrome with the agent panel,
+ * which the app passes for a person who may use the agent now, does it read the person's working
+ * runs (R15), because the agent router refuses anyone else.
+ */
+export function AppShell(props: AppShellProps) {
+  // The admin chrome has no Ask entry, so it shows no spinner and reads nothing.
+  return props.agentPanel === undefined || props.chrome === "admin" ? (
+    <Shell {...props} working={0} />
+  ) : (
+    <ShellWithRuns {...props} />
+  );
+}
+
+/**
+ * The frame itself (R-27, R-35, R-38, R-40). From `lg` the panel is an aside beside the
  * content; below `lg` a top bar shows the title and opens the same panel in a drawer, the only
  * navigation there. The page brings its own `<main>` and `<h1>`; the shell adds neither.
  * Internal links render through `linkComponent`, and a plain anchor is the default (NAV-1).
  * A new `currentPath` closes the drawer and starts the content area at the top, so a host that
  * keeps the shell in a layout gets the behavior of a document load (R-38).
  */
-export function AppShell(props: AppShellProps) {
-  const { strings } = props;
+function Shell(props: ShellProps) {
+  const { strings, working } = props;
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [shownPath, setShownPath] = useState(props.currentPath);
   const content = useRef<HTMLDivElement>(null);
@@ -295,12 +334,29 @@ export function AppShell(props: AppShellProps) {
           >
             <button
               type="button"
-              aria-label={strings.openNavigation}
+              aria-label={
+                working === 0
+                  ? strings.openNavigation
+                  : working === 1
+                    ? strings.openNavigationOneWorking
+                    : strings.openNavigationWorking.replace(
+                        "{count}",
+                        String(working)
+                      )
+              }
               aria-expanded={drawerOpen}
               onClick={() => setDrawerOpen(true)}
-              className={iconButton}
+              className={`relative ${iconButton}`}
             >
               <Menu aria-hidden strokeWidth={1.75} className="size-5" />
+              {/* The menu is in the drawer here, so its button carries Ask's spinner as a dot. */}
+              {working === 0 ? null : (
+                <span
+                  data-shell-working-dot=""
+                  aria-hidden="true"
+                  className="absolute top-2.5 right-2.5 size-2 rounded-full bg-primary ring-2 ring-background motion-safe:animate-pulse"
+                />
+              )}
             </button>
             <TenantMark identity={props.identity} size="sm" />
             <p

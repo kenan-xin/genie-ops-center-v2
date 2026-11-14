@@ -5,7 +5,7 @@ import {
   useState,
   type ComponentPropsWithRef,
 } from "react";
-import { expect, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { AgentClientStub } from "../agent/__fixtures__/agent-client.tsx";
 import { AgentPanelHost } from "../agent/agent-panel-host.tsx";
@@ -79,6 +79,9 @@ const strings: ShellStrings = {
   pageContent: "Page content",
   account: "Account",
   ask: "Ask",
+  entryWorking: "{label}, {count} working",
+  openNavigationOneWorking: "Open navigation, 1 chat working",
+  openNavigationWorking: "Open navigation, {count} chats working",
   changePassword: "Change password",
   opensInNewTab: "Opens in a new tab",
   helpAndSupport: "Help and support",
@@ -1105,6 +1108,216 @@ export const ActionBarAboveThePhoneAgentPanel: Story = {
       within(panel).getByRole("button", { name: "Show less" })
     );
     await expectBarUsable();
+  },
+};
+
+const askNavigation: ShellNavigation = {
+  ...navigation,
+  workspace: [
+    { id: "core-ask", label: "Ask", href: "/ask" },
+    ...navigation.workspace,
+  ],
+};
+
+/** The agent client with `agent.activeRuns` answering `count`, the person's working runs (R15). */
+const withRuns = (count: number): NonNullable<Meta["decorators"]> => [
+  (Story) => (
+    <AgentClientStub activeRuns={async () => ({ count })}>
+      <Story />
+    </AgentClientStub>
+  ),
+];
+
+/**
+ * DEC-57 item 11: while the person's runs work, Ask in the main menu shows a spinner on every page,
+ * in the open menu and in the 60 px rail.
+ */
+export const AskShowsASpinnerWhileRunsWork: Story = {
+  name: "Ask shows a spinner while runs work",
+  globals: wide,
+  decorators: withRuns(2),
+  beforeEach: resetAgentPanel,
+  args: { agentPanel, navigation: askNavigation },
+  play: async ({ canvas }) => {
+    const aside = canvas.getByRole("complementary", { name: "Navigation" });
+
+    await expect(
+      await within(aside).findByRole("img", { name: "Ask, 2 working" })
+    ).toBeVisible();
+    // The spinner names the entry, so the link is not read as "Ask Ask, 2 working".
+    await expect(
+      within(aside).getByRole("link", { name: "Ask, 2 working" })
+    ).toHaveAttribute("href", "/ask");
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Collapse menu" })
+    );
+
+    await expect(
+      within(aside).getByRole("img", { name: "Ask, 2 working" })
+    ).toBeVisible();
+    await expect(
+      within(aside).getByRole("link", { name: "Ask, 2 working" })
+    ).toBeVisible();
+  },
+};
+
+export const AskShowsNoSpinnerWithNoRuns: Story = {
+  name: "Ask shows no spinner with no runs",
+  globals: wide,
+  decorators: withRuns(0),
+  beforeEach: resetAgentPanel,
+  args: { agentPanel, navigation: askNavigation },
+  play: async ({ canvas }) => {
+    const aside = canvas.getByRole("complementary", { name: "Navigation" });
+
+    await expect(
+      within(aside).getByRole("link", { name: "Ask" })
+    ).toBeVisible();
+    await expect(
+      within(aside).queryByRole("img", { name: /working/ })
+    ).toBeNull();
+  },
+};
+
+/** On a phone the menu is in a drawer, so its button carries the dot and says how many work. */
+export const PhoneMenuButtonShowsADot: Story = {
+  name: "Phone menu button shows a dot",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  decorators: withRuns(2),
+  beforeEach: resetAgentPanel,
+  args: { agentPanel, navigation: askNavigation },
+  play: async ({ canvas }) => {
+    const button = await canvas.findByRole("button", {
+      name: "Open navigation, 2 chats working",
+    });
+
+    const dot = button.querySelector("[data-shell-working-dot]");
+
+    if (dot === null) throw new Error("The menu button shows no dot.");
+    await expect(dot).toBeVisible();
+
+    await userEvent.click(button);
+
+    const drawer = await screen.findByRole("dialog", { name: "Navigation" });
+
+    await expect(
+      within(drawer).getByRole("img", { name: "Ask, 2 working" })
+    ).toBeInTheDocument();
+  },
+};
+
+export const PhoneMenuButtonShowsNoDotWithNoRuns: Story = {
+  name: "Phone menu button shows no dot with no runs",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  decorators: withRuns(0),
+  beforeEach: resetAgentPanel,
+  args: { agentPanel, navigation: askNavigation },
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole("button", {
+      name: "Open navigation",
+    });
+
+    await expect(button.querySelector("[data-shell-working-dot]")).toBeNull();
+  },
+};
+
+let runsRead = 0;
+
+/** A read that answers 2, then is refused, as when the person loses Ask mid-session. */
+const runsThenRefused = async () => {
+  runsRead += 1;
+
+  if (runsRead > 1) throw new Error("forbidden");
+
+  return { count: 2 };
+};
+
+/** A refused read drops the spinner rather than keep the last count. */
+export const RefusedRunsReadShowsNoSpinner: Story = {
+  name: "Refused runs read shows no spinner",
+  globals: wide,
+  decorators: [
+    (Story) => (
+      <AgentClientStub activeRuns={runsThenRefused}>
+        <Story />
+      </AgentClientStub>
+    ),
+  ],
+  beforeEach: () => {
+    runsRead = 0;
+    resetAgentPanel();
+  },
+  args: { agentPanel, navigation: askNavigation },
+  play: async ({ canvas }) => {
+    const aside = canvas.getByRole("complementary", { name: "Navigation" });
+
+    await within(aside).findByRole("img", { name: "Ask, 2 working" });
+    // Window focus reads the runs again, as the person coming back to the tab does.
+    window.dispatchEvent(new Event("visibilitychange"));
+    window.dispatchEvent(new Event("focus"));
+
+    await waitFor(() =>
+      expect(within(aside).getByRole("link", { name: "Ask" })).toBeVisible()
+    );
+    await expect(
+      within(aside).queryByRole("img", { name: /working/ })
+    ).toBeNull();
+  },
+};
+
+const adminRuns = fn(async () => ({ count: 2 }));
+
+/** The admin chrome has no Ask entry, so it never reads the runs (R15). */
+export const NoRunsReadOnAdminPages: Story = {
+  name: "No runs read on admin pages",
+  globals: wide,
+  decorators: [
+    (Story) => (
+      <AgentClientStub activeRuns={adminRuns}>
+        <Story />
+      </AgentClientStub>
+    ),
+  ],
+  beforeEach: () => {
+    adminRuns.mockClear();
+    resetAgentPanel();
+  },
+  args: {
+    agentPanel,
+    chrome: "admin",
+    currentPath: "/admin/people",
+    navigation: askNavigation,
+  },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("link", { name: "People" })).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect(adminRuns).not.toHaveBeenCalled();
+  },
+};
+
+const activeRuns = fn(async () => ({ count: 2 }));
+
+/**
+ * A person who may not use the agent now gets no agent panel, and the shell never asks for their
+ * runs: the agent router would refuse them (R15).
+ */
+export const NoRunsReadWithoutTheAgent: Story = {
+  name: "No runs read without the agent",
+  globals: wide,
+  decorators: [
+    (Story) => (
+      <AgentClientStub activeRuns={activeRuns}>
+        <Story />
+      </AgentClientStub>
+    ),
+  ],
+  beforeEach: () => activeRuns.mockClear(),
+  args: { navigation: askNavigation },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByRole("link", { name: "Ask" })).toBeVisible();
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    await expect(activeRuns).not.toHaveBeenCalled();
   },
 };
 

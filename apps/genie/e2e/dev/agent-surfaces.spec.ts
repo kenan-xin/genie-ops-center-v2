@@ -226,6 +226,142 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
   );
 });
 
+/** Ask's history, behind Show chats below the large breakpoint. */
+async function openAskHistory(page: Page): Promise<Locator> {
+  if (onPhone(page)) {
+    await activate(
+      page,
+      page.getByRole("button", { name: "Show chats" }).filter({ visible: true })
+    );
+  }
+
+  return page.getByRole("navigation", { name: "Chats" });
+}
+
+/**
+ * Ask in the main menu while `count` runs work (R15): from `lg` the entry in the aside, below it
+ * the menu button of the top bar.
+ */
+function menuRuns(page: Page, count: number): Locator {
+  if (!onPhone(page)) {
+    return page
+      .getByRole("complementary", { name: "Navigation" })
+      .getByRole("link", {
+        name: count === 0 ? "Ask" : `Ask, ${count} working`,
+        exact: true,
+      });
+  }
+
+  return page.getByRole("button", {
+    name:
+      count === 0
+        ? "Open navigation"
+        : count === 1
+          ? "Open navigation, 1 chat working"
+          : `Open navigation, ${count} chats working`,
+    exact: true,
+  });
+}
+
+test("Ask history groups chats by agent and opens a surface chat on its record page", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + 180_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await removeOwnDecks(SLIDES_PEOPLE.chat);
+
+      try {
+        const askId = await handOverDeck(page);
+        const handed = await handedOverFrom(askId);
+
+        if (handed === undefined) throw new Error("Ask handed nothing over.");
+
+        // The handoff started a run, so Ask in the menu shows it on the deck page (DEC-57 item 11).
+        await expect(
+          chip(page.getByRole("region", { name: "Slides agent" }), "Building")
+        ).toBeVisible(FIRST_PAINT);
+
+        if (onPhone(page)) {
+          // The record page's own top bar replaces the menu button on a phone (follow-up bead).
+          await expect(
+            page.locator(
+              '[data-shell-top-bar] button[aria-label^="Open navigation"]'
+            )
+          ).toBeHidden();
+        } else {
+          await expect(menuRuns(page, 1)).toBeVisible();
+        }
+
+        // Leave the deck while it builds, so the person never sees the run end (DEC-57 item 11).
+        await page.goto("/ask");
+
+        // Ask's page shows the menu, so the running deck shows there: the rail's spinner from
+        // `lg`, the menu button's dot below it.
+        await expect(menuRuns(page, 1)).toBeVisible(FIRST_PAINT);
+
+        if (onPhone(page)) {
+          await expect(page.locator("[data-shell-working-dot]")).toBeVisible();
+          // Outside the repository, so `next dev` does not reload on the write.
+          await page.screenshot({
+            path: test.info().outputPath("phone-menu-dot.png"),
+          });
+        }
+
+        const row = (await openAskHistory(page))
+          .getByRole("group", { name: "Slides chats" })
+          .locator(`a[href$="?chat=${handed.id}"]`);
+
+        const unseen = row.getByRole("img", {
+          name: "Finished, not opened yet",
+        });
+
+        // Ask reads its history every 5 s while a chat works, so the dot comes without a reload.
+        await expect(unseen).toBeVisible({ timeout: 60_000 });
+
+        const seen = page.waitForResponse(
+          (response) =>
+            response.url().endsWith("/api/rpc/agent/markSeen") && response.ok()
+        );
+
+        await activate(page, row);
+
+        // The record page opens with the Slides agent on that chat (R14).
+        await expect(
+          page.getByRole("heading", { level: 1, name: MONTHLY_DECK.title })
+        ).toBeVisible(FIRST_PAINT);
+        expect(new URL(page.url()).searchParams.get("chat")).toBe(handed.id);
+
+        const surface = page.getByRole("region", { name: "Slides agent" });
+
+        await expect(
+          surface.getByText("From Ask", { exact: true })
+        ).toBeVisible(FIRST_PAINT);
+        await seen;
+
+        await page.goBack();
+        // The run ended, so the menu shows no spinner or dot.
+        await expect(menuRuns(page, 0)).toBeVisible(FIRST_PAINT);
+
+        const back = (await openAskHistory(page))
+          .getByRole("group", { name: "Slides chats" })
+          .locator(`a[href$="?chat=${handed.id}"]`);
+
+        await expect(back).toBeVisible(FIRST_PAINT);
+        await expect(
+          back.getByRole("img", { name: "Finished, not opened yet" })
+        ).toHaveCount(0);
+        await expectNoAxeViolations(page, "Ask history after the run");
+      } finally {
+        await removeOwnDecks(SLIDES_PEOPLE.chat);
+      }
+    },
+    LOCK_WAIT
+  );
+});
+
 test("the Ask screen hands a deck over: the deck opens with its panel, and Ask shows the card", async ({
   page,
 }) => {
