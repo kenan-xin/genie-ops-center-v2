@@ -112,6 +112,10 @@ const CORE_MIGRATION_FILES: MigrationFiles = {
     "../../../drizzle/0016_file_link_key.sql",
     import.meta.url
   ),
+  "0017_agent_background_runs": new URL(
+    "../../../drizzle/0017_agent_background_runs.sql",
+    import.meta.url
+  ),
 };
 
 /** Core's own history. Core applies first, then each included module in registry order (R-25). */

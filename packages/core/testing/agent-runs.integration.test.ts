@@ -52,7 +52,8 @@ async function sessionOf(ctx: ModuleRequestContext) {
   return insertAgentSession(deployment.context, {
     userId: ctx.caller.userId,
     surface: "placeholder",
-    recordId: "record-1",
+    // One run per record: each session builds a record of its own.
+    recordId: randomUUID(),
   });
 }
 
@@ -116,34 +117,6 @@ describe("starting an agent run", () => {
       runState: "queued",
       runJobId: jobId,
     });
-  });
-
-  it("a second run for the same person is refused by the index", async () => {
-    const ctx = await person();
-    const first = await sessionOf(ctx);
-    const second = await sessionOf(ctx);
-
-    await start(ctx, first.id);
-
-    await expect(start(ctx, second.id)).rejects.toMatchObject({
-      code: "agent-run-active",
-    });
-    expect(await runColumns(second.id)).toEqual({
-      runState: null,
-      runJobId: null,
-    });
-    expect(await jobsNaming(second.id)).toEqual([]);
-
-    await expect(start(ctx, first.id)).rejects.toMatchObject({
-      code: "agent-run-active",
-    });
-
-    const other = await person();
-    const theirs = await sessionOf(other);
-
-    await start(other, theirs.id);
-
-    expect((await runColumns(theirs.id))?.runState).toBe("queued");
   });
 
   it("an enqueue failure leaves run_state null", async () => {

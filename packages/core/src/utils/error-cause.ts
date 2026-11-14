@@ -50,6 +50,27 @@ export function pgErrorCode(error: Error | undefined): string | undefined {
 }
 
 /**
+ * The constraint a failed write broke, as Postgres names it, or `undefined`. Walks the chain as
+ * `pgErrorCode` does, and reads only the name.
+ */
+export function pgErrorConstraint(
+  error: Error | undefined
+): string | undefined {
+  for (let current = error; current !== undefined;) {
+    if ("constraint" in current) {
+      const constraint: unknown = current.constraint;
+
+      // oxlint-disable-next-line anti-slop/no-runtime-typeof -- the boundary parse of a driver error
+      if (typeof constraint === "string") return constraint;
+    }
+
+    current = current.cause instanceof Error ? current.cause : undefined;
+  }
+
+  return undefined;
+}
+
+/**
  * The innermost message in an error's cause chain: the driver's own text with no wrapper above
  * it, so a persisted step detail never repeats drizzle's SQL and parameters (R-66, R-77).
  */

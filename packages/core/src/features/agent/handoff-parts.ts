@@ -26,7 +26,7 @@ export function handoffCardsOf(message: AgentMessage): readonly Card[] {
 
 /**
  * The card of an answer whose `hand-over` call returned, so the page opens only for a new handoff.
- * Undefined when the call failed, as a second handoff while one builds does, or there is no card.
+ * Undefined when the call failed, as a fourth handoff while 3 runs build does, or there is no card.
  */
 export function startedHandoff(
   message: AgentMessage

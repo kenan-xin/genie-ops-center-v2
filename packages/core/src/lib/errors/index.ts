@@ -74,6 +74,11 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
     "That model is not allowed here. Pick one of the allowed models.",
   "agent-run-active":
     "Work is still building. Wait for it to finish, or stop it.",
+  // The 3 must match AGENT_RUNS_PER_PERSON in services/agent/limits.ts.
+  "agent-run-limit":
+    "You already have 3 runs working. Wait for one to finish, or stop one.",
+  "agent-record-busy":
+    "A run already works on this record. Wait for it to finish, or stop it.",
 } as const);
 
 /** The entry an error outside the catalogue maps to (R-46). */

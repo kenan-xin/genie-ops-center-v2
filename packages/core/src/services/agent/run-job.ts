@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { setTimeout as sleep } from "node:timers/promises";
 
 import { readUIMessageStream } from "ai";
-import { and, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, count, eq, gt, isNotNull, isNull, ne, sql } from "drizzle-orm";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import { ASK_SURFACE } from "../../lib/module-contract/agent-tools.ts";
@@ -17,12 +17,12 @@ import {
   withTransaction,
 } from "../../lib/tenant-context/with-transaction.ts";
 import { agentMessage, agentSession } from "../../schema.ts";
-import { pgErrorCode } from "../../utils/error-cause.ts";
+import { pgErrorCode, pgErrorConstraint } from "../../utils/error-cause.ts";
 import { enqueueJob } from "../job-queue/module-jobs.ts";
 import { modelFor } from "../models/index.ts";
 import { agentAccess } from "./access.ts";
 import { turnStream } from "./chat.ts";
-import { AGENT_LIMITS } from "./limits.ts";
+import { AGENT_LIMITS, AGENT_RUNS_PER_PERSON } from "./limits.ts";
 import {
   AGENT_RUN_JOB_NAME,
   endRun,
@@ -268,8 +268,8 @@ export const RETRY_TEXT = "Try again.";
  * order (czjw.126): `not-found` for a malformed id, `forbidden` without agent access, `ai-off`,
  * `not-found` for a session that is not the caller's, `module-disabled` when its surface's module
  * is off, `model-not-allowed` for its model. Then `not-found` for a session that never ran;
- * `agent-run-active` while one of the caller's runs builds, or while a sent message's answer can
- * still stream. Beside `startRun`, because `runs.ts` is imported by this file at load time.
+ * `agent-run-active` while a sent message's answer can still stream; then `startRun`'s refusals.
+ * Beside `startRun`, because `runs.ts` is imported by this file at load time.
  */
 export async function retryRun(
   ctx: ModuleRequestContext,
@@ -348,9 +348,11 @@ export async function retryRun(
 
 /**
  * Queues a run of the caller's own session in the caller's transaction, so the job and the
- * `queued` state commit together, and answers the job id. A session that already runs, or a second
- * run of the same person, is refused with `agent-run-active`; another person's session is
- * `not-found`.
+ * `queued` state commit together, and answers the job id. The run must end by its deadline, the
+ * time box setting from now (DEC-57). Refused, before anything is saved: `agent-run-limit` when the
+ * person already has `AGENT_RUNS_PER_PERSON` runs, `agent-record-busy` when another run works on
+ * the session's record, `agent-run-active` for a session that already runs, `not-found` for
+ * another person's session.
  */
 export async function startRun(
   ctx: ModuleRequestContext,
@@ -361,6 +363,30 @@ export async function startRun(
     eq(agentSession.id, checkedId(sessionId)),
     eq(agentSession.userId, ctx.caller.userId)
   );
+
+  // Before the lock: a cache miss takes a second pool connection, which must not wait behind it.
+  const { agentRunTimeBoxMinutes } = await ctx.tenant.settings.get();
+
+  // One person's starts take turns, also across app copies, so the count below, a statement of its
+  // own after the lock, sees every start that committed before (R2).
+  await tx.execute(
+    sql`select pg_advisory_xact_lock(hashtextextended('core.agent-run:' || ${ctx.caller.userId}, 0))`
+  );
+
+  const [active] = await tx
+    .select({ runs: count() })
+    .from(agentSession)
+    .where(
+      and(
+        eq(agentSession.userId, ctx.caller.userId),
+        isNotNull(agentSession.runState),
+        ne(agentSession.id, sessionId)
+      )
+    );
+
+  if ((active?.runs ?? 0) >= AGENT_RUNS_PER_PERSON) {
+    throw new AppError(CORE_ERRORS["agent-run-limit"]);
+  }
 
   // The id is made first, so the job's data can name the run it belongs to.
   const jobId = randomUUID();
@@ -385,14 +411,19 @@ export async function startRun(
         runState: "queued",
         runJobId: jobId,
         runError: null,
+        runDeadlineAt: sql`clock_timestamp() + make_interval(mins => ${agentRunTimeBoxMinutes})`,
         updatedAt: sql`clock_timestamp()`,
       })
       .where(and(owned, isNull(agentSession.runState)))
       .returning({ id: agentSession.id });
   } catch (error) {
-    // The partial unique index allows one run per person (R-42b).
-    if (error instanceof Error && pgErrorCode(error) === "23505") {
-      throw new AppError(CORE_ERRORS["agent-run-active"], { cause: error });
+    // The partial unique index allows one run per record (R3).
+    if (
+      error instanceof Error &&
+      pgErrorCode(error) === "23505" &&
+      pgErrorConstraint(error) === "agent_session_one_run_per_record_idx"
+    ) {
+      throw new AppError(CORE_ERRORS["agent-record-busy"], { cause: error });
     }
 
     throw error;

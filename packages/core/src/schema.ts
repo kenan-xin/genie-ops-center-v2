@@ -151,13 +151,24 @@ export const tenantSettings = pgTable(
       .default(sql`'{}'::text[]`),
     chatModel: text("chat_model"),
     documentModel: text("document_model"),
+    // The longest a background agent run may work, in minutes (DEC-57); a run keeps the value it
+    // started with.
+    agentRunTimeBoxMinutes: integer("agent_run_time_box_minutes")
+      .notNull()
+      .default(120),
     updatedByUserId: text("updated_by_user_id").references(() => user.id),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },
   // A constant unique key makes the row a singleton (data-shape rule 4 keeps every non-user key
   // a UUID, so it is not the primary key), so the seed can use `INSERT ... ON CONFLICT DO
   // NOTHING` and no second row can race in.
-  () => [uniqueIndex("tenant_settings_singleton_idx").on(sql`(true)`)]
+  (table) => [
+    uniqueIndex("tenant_settings_singleton_idx").on(sql`(true)`),
+    check(
+      "tenant_settings_agent_run_time_box_check",
+      sql`${table.agentRunTimeBoxMinutes} between 10 and 1440`
+    ),
+  ]
 );
 
 /**
@@ -575,7 +586,8 @@ export const userPreference = pgTable("user_preference", {
  * One boss-agent chat (Spec 7 R-41), owner-only: every read and write in `services/agent/store.ts`
  * filters on `user_id`. No default id: the browser makes it, so a new chat has its link at once.
  * A session belongs to one surface: Ask, or a module's surface and one of its records. The run
- * columns hold a background run's state on the server; one run per person (R-42b).
+ * columns hold a background run's state on the server: up to 3 runs per person, which `startRun`
+ * counts, and one run per record, which an index holds (DEC-57).
  */
 export const agentSession = pgTable(
   "agent_session",
@@ -606,14 +618,20 @@ export const agentSession = pgTable(
     runError: text("run_error", {
       enum: ["stopped", "interrupted", "failed"],
     }),
+    /** When the run must end: its start and the time box of that moment (DEC-57). */
+    runDeadlineAt: timestamp("run_deadline_at", withTimeZone),
+    /** A run ended that the person has not seen yet. */
+    runUnseen: boolean("run_unseen").notNull().default(false),
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", withTimeZone).notNull().defaultNow(),
   },
   (table) => [
     index("agent_session_user_updated_idx").on(table.userId, table.updatedAt),
-    uniqueIndex("agent_session_one_run_per_user_idx")
-      .on(table.userId)
-      .where(sql`${table.runState} is not null`),
+    uniqueIndex("agent_session_one_run_per_record_idx")
+      .on(table.surface, table.recordId)
+      .where(
+        sql`${table.runState} is not null and ${table.recordId} is not null`
+      ),
     check(
       "agent_session_run_state_check",
       sql`${table.runState} in ('queued', 'running', 'stopping')`

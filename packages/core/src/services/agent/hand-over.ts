@@ -18,7 +18,6 @@ import {
   briefText,
 } from "./brief.ts";
 import { startRun } from "./run-job.ts";
-import { findOwnRun } from "./runs.ts";
 import { findOwnSession, insertHandedSession } from "./store.ts";
 import { recordAddress } from "./surface-address.ts";
 import type { HandoffTarget } from "./surfaces.ts";
@@ -104,10 +103,6 @@ export function handOverTool(
 
   const schema = briefSchema([first.id, ...rest.map(({ id }) => id)]);
 
-  // The sessions this turn shows a card of. Calls of one step run at once, so a refused call
-  // checks and adds with no await between, and a card is never written twice.
-  const carded = new Set<string>();
-
   return tool({
     description: handOverDescription(targets),
     // The input is parsed inside `execute`, so a refusal answers with its field messages (PC11).
@@ -171,9 +166,6 @@ export function handOverTool(
 
         const targetSessionId = randomUUID();
 
-        // Before the transaction, so a call refused by this one's run finds it here.
-        carded.add(targetSessionId);
-
         const data: BriefPartData = {
           title: brief.title,
           goal: brief.goal,
@@ -230,35 +222,7 @@ export function handOverTool(
         };
       } catch (error) {
         if (error instanceof AppError) {
-          // One build per person: the card leads to the work that builds now (P11-24).
-          if (error.code === "agent-run-active") {
-            const running = await findOwnRun(ctx);
-
-            const surface = targets.find(({ id }) => id === running?.surface);
-
-            if (
-              running !== undefined &&
-              surface !== undefined &&
-              running.recordId !== null &&
-              !carded.has(running.id)
-            ) {
-              carded.add(running.id);
-              turn.write({
-                type: HANDOFF_PART,
-                id: toolCallId,
-                data: {
-                  sessionId: running.id,
-                  title: running.title,
-                  agentName: surface.surface.name,
-                  address: recordAddress(
-                    surface.surface.recordPage,
-                    running.recordId
-                  ),
-                },
-              });
-            }
-          }
-
+          // A refused run writes no card (R6).
           await record(error.code);
 
           throw new Error(refusalText(error), { cause: error });

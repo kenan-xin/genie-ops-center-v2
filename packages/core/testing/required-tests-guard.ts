@@ -631,11 +631,23 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
     reason: "Spec 7 R-42b, AC-13: the durable run (S7-40)",
     cases: [
       "starting an agent run startRun queues one job that names only the session, with no retry",
-      "starting an agent run a second run for the same person is refused by the index",
       "starting an agent run an enqueue failure leaves run_state null",
       "starting an agent run the job of a stopped run leaves the run that replaced it alone",
       "starting an agent run Stop on a queued run ends it stopped without a model call",
       "starting an agent run Try again is refused while AI is off and stores nothing",
+    ],
+  },
+  {
+    file: "testing/agent-run-limits.integration.test.ts",
+    reason:
+      "DEC-57: up to 3 runs per person and one run per record, also from two app copies at once, and the migration that brings old runs under both limits (S7-49)",
+    cases: [
+      "run limits a fourth run of one person is refused with agent-run-limit and saves nothing",
+      "run limits two app copies starting a person's fourth run at once start only one",
+      "run limits two runs on one record are refused with agent-record-busy, also from two copies at once",
+      "run limits a stopped run frees its slot",
+      "run limits startRun sets the run deadline from the time box setting",
+      "the background runs migration the migration keeps the newest active run on a record and ends the others",
     ],
   },
   {

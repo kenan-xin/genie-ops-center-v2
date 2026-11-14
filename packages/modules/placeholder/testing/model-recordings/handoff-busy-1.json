@@ -144,7 +144,7 @@
         {
           "role": "tool",
           "tool_call_id": "toolu_013KwnrLZeundENZBN9xLUGT",
-          "content": "Error: Work is still building. Wait for it to finish, or stop it.",
+          "content": "Error: You already have 3 runs working. Wait for one to finish, or stop one.",
           "name": "hand-over"
         }
       ],

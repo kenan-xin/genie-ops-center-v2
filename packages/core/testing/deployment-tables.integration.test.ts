@@ -96,6 +96,7 @@ const DEPLOYMENT_TABLES = {
       allowed_models: { default: "'{}'::text[]" },
       chat_model: { nullable: true },
       document_model: { nullable: true },
+      agent_run_time_box_minutes: { default: "120" },
       updated_by_user_id: { nullable: true },
       updated_at: {},
     },
@@ -876,6 +877,8 @@ describe("the Section 3 navigation tables", () => {
     expected.tenant_settings[0].allowed_models = [];
     expected.tenant_settings[0].chat_model = null;
     expected.tenant_settings[0].document_model = null;
+    // The background runs migration gives the existing row the default time box.
+    expected.tenant_settings[0].agent_run_time_box_minutes = 120;
 
     expect(await read()).toEqual(expected);
     expect(await foreignKeys(client, "tenant_module")).toEqual([

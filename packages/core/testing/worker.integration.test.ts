@@ -431,8 +431,12 @@ describe("the core pg-boss worker", () => {
       histories: migrationPlan([]),
       compiledModuleIds: [],
     });
+    // startRun reads the time box from the settings row the seed step writes.
+    await context.db.$client.query(
+      "insert into tenant_settings default values"
+    );
 
-    // One person per run, because each person holds at most one run.
+    // One person per run, so no person's limit plays a part.
     const runSession = async (
       runState: string | null,
       runJobId: string | null
@@ -547,6 +551,10 @@ describe("the core pg-boss worker", () => {
       histories: migrationPlan([]),
       compiledModuleIds: [],
     });
+    // startRun reads the time box from the settings row the seed step writes.
+    await context.db.$client.query(
+      "insert into tenant_settings default values"
+    );
 
     const queue = await boss(context);
     await queue.createQueue(AGENT_RUN_JOB_NAME);

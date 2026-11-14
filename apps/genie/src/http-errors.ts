@@ -40,6 +40,8 @@ const STATUS_BY_CODE = new Map<string, number>([
   ["ai-off", 409],
   ["model-not-allowed", 400],
   ["agent-run-active", 409],
+  ["agent-run-limit", 409],
+  ["agent-record-busy", 409],
 ]);
 
 /**

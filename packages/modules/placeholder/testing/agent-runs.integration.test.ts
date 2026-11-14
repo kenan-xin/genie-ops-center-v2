@@ -639,7 +639,7 @@ describe("a durable agent run on the placeholder test surface", () => {
     expect((await messageTexts(sessionId)).at(-1)).toBe("Try again.");
   });
 
-  it("Try again stores the message and queues a run, and is refused while another run builds", async () => {
+  it("Try again stores the message and queues a run, and is refused while 3 other runs build", async () => {
     const ctx = await person();
 
     const interrupted = await insertAgentSession(deployment.context, {
@@ -660,6 +660,9 @@ describe("a durable agent run on the placeholder test surface", () => {
       messages: ["Try again."],
     });
 
+    await start(ctx, await surfaceSession(ctx));
+    await start(ctx, await surfaceSession(ctx));
+
     const blocked = await insertAgentSession(deployment.context, {
       userId: ctx.caller.userId,
       surface: "placeholder",
@@ -669,7 +672,7 @@ describe("a durable agent run on the placeholder test surface", () => {
     });
 
     await expect(retry(ctx, blocked.id)).rejects.toMatchObject({
-      code: "agent-run-active",
+      code: "agent-run-limit",
     });
     expect(await messageTexts(blocked.id)).toEqual([]);
 

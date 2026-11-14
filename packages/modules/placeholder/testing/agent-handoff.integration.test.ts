@@ -211,6 +211,38 @@ async function sessionsOf(ctx: ModuleRequestContext) {
   return SESSION_ROWS.parse(rows);
 }
 
+/** `count` surface sessions of the person, each on a record of its own, whose runs are queued. */
+async function buildingRuns(
+  ctx: ModuleRequestContext,
+  count: number
+): Promise<string[]> {
+  const ids: string[] = [];
+
+  for (let index = 0; index < count; index += 1) {
+    // oxlint-disable-next-line no-await-in-loop -- one session after another, in creation order.
+    const record = await insertPlaceholderRecord(deployment.context, {
+      label: `Building record ${index + 1}`,
+    });
+
+    // oxlint-disable-next-line no-await-in-loop -- one session after another, in creation order.
+    const session = await insertAgentSession(deployment.context, {
+      userId: ctx.caller.userId,
+      surface: "placeholder",
+      recordId: record.id,
+      title: record.label,
+      modelId: RUN_MODEL,
+    });
+
+    // oxlint-disable-next-line no-await-in-loop -- one session after another, in creation order.
+    await withTransaction(deployment.context, async (tx) =>
+      startRun(ctx, tx, session.id)
+    );
+    ids.push(session.id);
+  }
+
+  return ids;
+}
+
 async function recordsLabelled(label: string) {
   const { rows } = await deployment.context.db.execute(
     sql`select id from placeholder_record where label = ${label}`
@@ -518,24 +550,9 @@ describe("the Ask handoff on the placeholder test surface", () => {
     });
   });
 
-  it("a second handoff while one builds answers with the first one's card", async () => {
+  it("a fourth handoff while 3 runs build is refused with the limit and shows no card", async () => {
     const ctx = await person();
-
-    const firstRecord = await insertPlaceholderRecord(deployment.context, {
-      label: "First record",
-    });
-
-    const building = await insertAgentSession(deployment.context, {
-      userId: ctx.caller.userId,
-      surface: "placeholder",
-      recordId: firstRecord.id,
-      title: "First record",
-      modelId: RUN_MODEL,
-    });
-
-    await withTransaction(deployment.context, async (tx) =>
-      startRun(ctx, tx, building.id)
-    );
+    const building = await buildingRuns(ctx, 3);
 
     const recordsBefore = (await recordsLabelled(BRIEF_TITLE)).length;
     const askId = await askChatWithTable(ctx);
@@ -547,8 +564,7 @@ describe("the Ask handoff on the placeholder test surface", () => {
     const answer = await lastAnswer(ctx, askId);
     const sessions = await sessionsOf(ctx);
 
-    // The live model calls hand-over once more after the refusal (Phase 16, R1). The answer still
-    // shows one card.
+    // The live model calls hand-over once more after the refusal (Phase 16, R1).
     const handOvers = (await toolRows(ctx.caller.userId))
       .map(({ metadata }) => metadata)
       .filter((metadata) => metadata?.["tool"] === "hand-over");
@@ -557,43 +573,36 @@ describe("the Ask handoff on the placeholder test surface", () => {
       "state" in part ? part.state : undefined
     );
 
-    const cards = partsOf(answer, "data-handoff").map((part) =>
-      "data" in part ? part.data : undefined
-    );
-
     expect({
       sessions: sessions.map(({ id }) => id),
       records: (await recordsLabelled(BRIEF_TITLE)).length,
-      building: sessions[0]?.run_state,
+      building: sessions.map(({ run_state }) => run_state),
       outcomes: [...new Set(handOvers.map((row) => row?.["outcome"]))],
       calls: [...new Set(calls)],
-      cards,
+      cards: partsOf(answer, "data-handoff"),
     }).toEqual({
-      sessions: [building.id, askId],
+      sessions: [...building, askId],
       records: recordsBefore,
-      building: "queued",
-      outcomes: ["agent-run-active"],
+      building: ["queued", "queued", "queued", null],
+      outcomes: ["agent-run-limit"],
       calls: ["output-error"],
-      cards: [
-        {
-          sessionId: building.id,
-          title: "First record",
-          agentName: "Placeholder agent",
-          address: `/placeholder/${firstRecord.id}`,
-        },
-      ],
+      cards: [],
     });
   });
 
-  it("two hand-over calls in one step make one record and show one card, the card of the call that ran", async () => {
+  it("two hand-over calls in one step with 2 runs building make one record and show one card, the card of the call that ran", async () => {
     const ctx = await person();
+
+    // The third run starts; the fourth is refused.
+    await buildingRuns(ctx, 2);
+
     const askId = await askChatWithTable(ctx);
 
     await ask(ctx, askId, PARALLEL_ASK);
 
     expect(errors).toEqual([]);
 
-    const [, handed] = await sessionsOf(ctx);
+    const [, , , handed] = await sessionsOf(ctx);
     const answer = await lastAnswer(ctx, askId);
 
     const cards = partsOf(answer, "data-handoff").map((part) =>
@@ -611,8 +620,8 @@ describe("the Ask handoff on the placeholder test surface", () => {
       cards,
     }).toEqual({
       records: 1,
-      sessions: 2,
-      outcomes: ["agent-run-active", "handed-over"],
+      sessions: 4,
+      outcomes: ["agent-run-limit", "handed-over"],
       cards: [expect.objectContaining({ sessionId: handed?.id })],
     });
     expect(answer && startedHandoff(answer)).toEqual(cards[0]);

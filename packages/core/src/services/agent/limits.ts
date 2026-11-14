@@ -9,3 +9,6 @@ export const AGENT_LIMITS = {
   steps: 10,
   turnMs: 180_000,
 } as const;
+
+/** How many runs one person may have working at once (DEC-57). */
+export const AGENT_RUNS_PER_PERSON = 3;
