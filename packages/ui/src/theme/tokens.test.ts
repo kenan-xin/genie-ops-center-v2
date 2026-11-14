@@ -166,7 +166,7 @@ describe("the hover state layer against DESIGN.md, Hover", () => {
     );
 
     const offenders = files.filter((file) =>
-      /hover:bg-(muted|card|tile|background|border)\b/.test(
+      /hover\]?:bg-(muted|card|tile|background|border)\b/.test(
         readFileSync(join(root, file), "utf8")
       )
     );

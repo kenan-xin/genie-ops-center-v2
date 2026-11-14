@@ -17,7 +17,7 @@ const bubbleVariants = cva(
         muted:
           "*:data-[slot=bubble-content]:rounded-xl *:data-[slot=bubble-content]:rounded-br-sm *:data-[slot=bubble-content]:bg-tile *:data-[slot=bubble-content]:px-3.5 *:data-[slot=bubble-content]:py-2.25",
         ghost:
-          "border-none *:data-[slot=bubble-content]:rounded-none *:data-[slot=bubble-content]:bg-transparent *:data-[slot=bubble-content]:p-0 [&>[data-slot=bubble-content]:is(button,a):hover]:bg-muted [&>[data-slot=bubble-content]:is(button,a):hover]:text-foreground dark:[&>[data-slot=bubble-content]:is(button,a):hover]:bg-muted/50",
+          "border-none *:data-[slot=bubble-content]:rounded-none *:data-[slot=bubble-content]:bg-transparent *:data-[slot=bubble-content]:p-0 [&>[data-slot=bubble-content]:is(button,a):hover]:bg-hover [&>[data-slot=bubble-content]:is(button,a):hover]:text-foreground",
       },
     },
     defaultVariants: {
