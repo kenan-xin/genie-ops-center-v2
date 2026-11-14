@@ -8,6 +8,7 @@ import {
   agentSession,
 } from "../../schema.ts";
 import type { PanelConfig } from "../charts/panel-config.ts";
+import { CONTINUE_PART } from "./continue.ts";
 import { checkedId } from "./store.ts";
 
 /**
@@ -128,8 +129,9 @@ export async function listOwnArtifacts(
       version: agentArtifactVersion.version,
       definition: agentArtifactVersion.definition,
       createdAt: agentArtifactVersion.createdAt,
-      // The question is the latest user message before the answer that made the version.
-      request: sql<AgentMessageParts | null>`(select q.parts from agent_message q where q.session_id = ${answer.sessionId} and q.role = 'user' and q.seq < ${answer.seq} order by q.seq desc limit 1)`,
+      // The question is the latest user message before the answer that made the version, never a
+      // run's continue message.
+      request: sql<AgentMessageParts | null>`(select q.parts from agent_message q where q.session_id = ${answer.sessionId} and q.role = 'user' and not (q.parts @> ${JSON.stringify([{ type: CONTINUE_PART }])}::jsonb) and q.seq < ${answer.seq} order by q.seq desc limit 1)`,
     })
     .from(agentArtifactVersion)
     .innerJoin(answer, eq(answer.id, agentArtifactVersion.messageId))

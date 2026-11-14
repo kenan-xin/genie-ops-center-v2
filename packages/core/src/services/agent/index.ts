@@ -85,6 +85,12 @@ export { moduleInstructionLines } from "./instructions.ts";
 
 export { AGENT_LIMITS, handleAgentChat } from "./chat.ts";
 
-export { AGENT_RUN_JOB, startRun } from "./run-job.ts";
+export { AGENT_RUN_JOB, continueRun, startRun } from "./run-job.ts";
+
+export {
+  CONTINUE_TEXT,
+  isContinueMessage,
+  TIME_LIMIT_TEXT,
+} from "./continue.ts";
 
 export { AGENT_RUN_JOB_NAME, stopRun } from "./runs.ts";

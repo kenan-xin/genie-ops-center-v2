@@ -3,7 +3,8 @@ import type { AgentMessage } from "./store.ts";
 type Part = AgentMessage["parts"][number];
 
 /**
- * The mark of an answer that Stop or the turn limit ended (P03-1). A data part needs no column,
+ * The mark of an answer that Stop, the time box or a chat's turn limit ended (P03-1). A run's turn
+ * that its turn limit cut goes on in the next turn and has no mark (R9). A data part needs no column,
  * and `convertToModelMessages` leaves it out of the next turn's history.
  */
 export const STOPPED_PART = {
@@ -11,7 +12,7 @@ export const STOPPED_PART = {
   data: {},
 } as const satisfies Part;
 
-/** Whether Stop or the turn limit ended this answer. */
+/** Whether Stop, the time box or a chat's turn limit ended this answer. */
 export function isStopped(message: AgentMessage): boolean {
   return message.parts.some(({ type }) => type === STOPPED_PART.type);
 }
@@ -35,11 +36,13 @@ const FINISHED_STATES: ReadonlySet<string> = new Set([
 /**
  * What a stopped answer keeps (P03-2): every part that is not a tool call, each tool call that
  * finished, and an artifact card and version only when its `make-artifact` call returned. A call
- * that Stop cut off goes, so no step shows that never ends. The stopped mark comes last, once.
+ * that Stop cut off goes, so no step shows that never ends. The stopped mark comes last, once,
+ * unless `marked` is false: a run's turn that its turn limit cut goes on in the next turn (R9).
  */
 export function keptOnStop<V extends { readonly toolCallId: string }>(
   parts: AgentMessage["parts"],
-  versions: readonly V[]
+  versions: readonly V[],
+  marked = true
 ) {
   const returned = new Set(
     parts.flatMap((part) =>
@@ -58,7 +61,7 @@ export function keptOnStop<V extends { readonly toolCallId: string }>(
   });
 
   return {
-    parts: [...kept, STOPPED_PART],
+    parts: marked ? [...kept, STOPPED_PART] : kept,
     versions: versions.filter(({ toolCallId }) => returned.has(toolCallId)),
   };
 }

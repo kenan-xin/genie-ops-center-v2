@@ -12,6 +12,8 @@ Factories for this module's tables, and the real-database integration tests of i
 
 `model-recordings/synthetic-run-slow-1.json` and `synthetic-run-slow-2.json` are synthetic timing fixtures of a durable agent run on the test surface in `test-surface.ts` (S7-40). The first answers "Build the placeholder record step by step." with a 16-part note, one event every 300 ms, then one call of `placeholder-surface-step`. The second answers the request that carries the tool result with the final answer. They stay synthetic when the recordings are refreshed, because a test needs their timing.
 
+`model-recordings/synthetic-chain-1.json` to `synthetic-chain-11.json` are a synthetic run of two turns on the test surface (S7-49). The first ten answer "Build the placeholder record in eleven steps." with one call of `placeholder-surface-step` each, so the first turn reaches the step cap; the eleventh answers the second turn, whose last message is the run's continue message, with the final answer. Their requests are what a scripted transport received from a real run, never written by hand. Make them again the same way when a request changes.
+
 ## What must not go here
 
 A unit test, which lives beside its source under `src/`. A core table factory. A database mock: every test here takes a disposable Postgres with the real migration histories applied.

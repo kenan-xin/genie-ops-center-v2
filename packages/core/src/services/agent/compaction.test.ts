@@ -5,6 +5,7 @@ import {
   COMPACTION_INPUT_TOKENS,
   compactionPlan,
 } from "./compaction.ts";
+import { continueMessage } from "./continue.ts";
 import type { AgentMessage, OwnHistory } from "./store.ts";
 
 function user(index: number): AgentMessage {
@@ -194,6 +195,16 @@ describe("the transcript the summary call reads", () => {
         "Assistant step: Made a CSV file.",
         "Assistant: Here they are.",
       ].join("\n")
+    );
+
+    expect(
+      chatTranscript({
+        previous: null,
+        covered: [user(1), { id: "c1", ...continueMessage() }, answer(1)],
+        labels: { steps: {}, datasets: {}, fields: {} },
+      })
+    ).toBe(
+      ["Messages:", "Person: Question 1", "Assistant: Answer 1"].join("\n")
     );
 
     for (const name of [

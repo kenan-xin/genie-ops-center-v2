@@ -533,8 +533,12 @@ export {
   AGENT_LIMITS,
   handleAgentChat,
   AGENT_RUN_JOB,
+  continueRun,
   startRun,
   stopRun,
+  CONTINUE_TEXT,
+  isContinueMessage,
+  TIME_LIMIT_TEXT,
   listSurfaces,
   type SurfaceView,
 } from "./services/agent/index.ts";

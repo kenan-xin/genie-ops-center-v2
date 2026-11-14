@@ -81,6 +81,16 @@ describe("keptOnStop", () => {
       parts.map((part) => ("toolCallId" in part ? part.toolCallId : part.type))
     ).toEqual(["call-1", "call-2", "data-stopped"]);
   });
+
+  it("a run's turn that its turn limit cut keeps its finished parts with no stopped mark (R9)", () => {
+    const { parts } = keptOnStop(
+      [text("Reading"), read("call-1", "input-available"), STOPPED_PART],
+      [],
+      false
+    );
+
+    expect(parts).toEqual([text("Reading")]);
+  });
 });
 
 describe("checkpointParts", () => {

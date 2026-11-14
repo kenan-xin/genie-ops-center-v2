@@ -21,7 +21,13 @@ import { pgErrorCode, pgErrorConstraint } from "../../utils/error-cause.ts";
 import { enqueueJob } from "../job-queue/module-jobs.ts";
 import { modelFor } from "../models/index.ts";
 import { agentAccess } from "./access.ts";
-import { turnStream } from "./chat.ts";
+import { turnStream, type TurnEnd } from "./chat.ts";
+import {
+  CONTINUE_PART,
+  continueMessage,
+  runTurnOutcome,
+  TIME_LIMIT_TEXT,
+} from "./continue.ts";
 import { AGENT_LIMITS, AGENT_RUNS_PER_PERSON } from "./limits.ts";
 import {
   AGENT_RUN_JOB_NAME,
@@ -48,9 +54,11 @@ import { offeredSessionTools } from "./tools.ts";
 export const AGENT_RUN_EXPIRE_SECONDS = AGENT_LIMITS.turnMs / 1000 + 60;
 
 /**
- * The job's handler. Only the session's owner runs it, as themselves; a run that is no longer
- * `queued` does not start. The turn reads the stored request, calls the session's model and stores
- * the answer, then the run ends: `failed` after a stream error, a refusal or the turn limit. An
+ * The job's handler: one bounded turn of a run (DEC-57 item 2). Only the session's owner runs it, as
+ * themselves; a run that is no longer `queued` does not start. The turn reads the stored history,
+ * calls the session's model and stores the answer. A turn that reached the step cap with tool calls
+ * pending, or that the turn limit cut, queues the next turn (R9). The run ends at the time box as
+ * Stop ends it, with the time limit message (R8); `failed` after a stream error or a refusal. An
  * error that is not a refusal is thrown, so the worker logs it.
  */
 async function runSession(
@@ -65,6 +73,10 @@ async function runSession(
       surface: agentSession.surface,
       recordId: agentSession.recordId,
       modelId: agentSession.modelId,
+      // By the database's clock, as `startRun` set the deadline; null for no deadline.
+      remainingMs: sql<
+        number | null
+      >`(extract(epoch from (${agentSession.runDeadlineAt} - clock_timestamp())) * 1000)::int`,
     })
     .from(agentSession)
     .where(eq(agentSession.id, sessionId));
@@ -99,7 +111,25 @@ async function runSession(
   let changes = 0;
   let stopWatching = NOT_WATCHING;
 
+  // The run's last answer says that it reached the time box; the run ends as Stop ends it (R8).
+  const endAtTimeLimit = async () => {
+    await appendMessage(
+      person,
+      sessionId,
+      { role: "assistant", parts: [{ type: "text", text: TIME_LIMIT_TEXT }] },
+      [],
+      { run: { jobId: runJobId } }
+    );
+    await endRun(tenant, sessionId, runJobId, "stopped");
+  };
+
   try {
+    if (session.remainingMs !== null && session.remainingMs <= 0) {
+      await endAtTimeLimit();
+
+      return;
+    }
+
     const access = await agentAccess(person);
 
     if (!access.permitted || access.ai !== "on") {
@@ -114,7 +144,14 @@ async function runSession(
     });
 
     const limit = AbortSignal.timeout(AGENT_LIMITS.turnMs);
+
+    const deadline =
+      session.remainingMs === null
+        ? undefined
+        : AbortSignal.timeout(session.remainingMs);
+
     let failed = false;
+    let turnEnd: TurnEnd | undefined;
 
     stopWatching = watchRun(person, sessionId, runJobId, {
       current: () => ({ message: latest, changes }),
@@ -127,11 +164,19 @@ async function runSession(
       { id: sessionId, surface: session.surface, recordId: session.recordId },
       {
         model,
-        abortSignal: AbortSignal.any([stop.signal, limit]),
+        abortSignal: AbortSignal.any([
+          stop.signal,
+          limit,
+          ...(deadline === undefined ? [] : [deadline]),
+        ]),
         logError,
         // No checkpoint lands after the final save.
         beforeSave: stopWatching,
         runJobId,
+        onTurnEnd: (end) => {
+          turnEnd = end;
+        },
+        turnLimit: limit,
       }
     );
 
@@ -147,12 +192,30 @@ async function runSession(
     }
 
     await stopWatching();
-    await endRun(
-      tenant,
-      sessionId,
-      runJobId,
-      failed || limit.aborted ? "failed" : null
-    );
+
+    const outcome = runTurnOutcome({
+      end: turnEnd,
+      deadlinePassed: deadline?.aborted === true,
+      stopAsked: stop.signal.aborted,
+      turnLimitPassed: limit.aborted,
+      failed,
+    });
+
+    if (outcome === "time-limit") {
+      await endAtTimeLimit();
+    } else if (outcome === "continue") {
+      // Null when Stop came during the turn's last step: the run then ends `stopped`.
+      if ((await continueRun(person, sessionId, runJobId)) === null) {
+        await endRun(tenant, sessionId, runJobId, null);
+      }
+    } else {
+      await endRun(
+        tenant,
+        sessionId,
+        runJobId,
+        outcome === "failed" ? "failed" : null
+      );
+    }
   } catch (error) {
     await stopWatching();
     await endRun(tenant, sessionId, runJobId, "failed");
@@ -260,6 +323,60 @@ export const AGENT_RUN_JOB: JobDeclaration<AgentRunData> = {
   handler: runSession,
 };
 
+/**
+ * Hands a run whose turn still has work to its next turn (DEC-57 item 2): in one transaction, the
+ * hidden continue message, a new job, and the run back to `queued` under the new job, so Stop between
+ * two turns ends the run at once and the queued job does nothing. Only while this job's run is
+ * `running`; answers null otherwise (Stop was asked, or the run ended or moved on). The run keeps
+ * its slot and its deadline, so no limit is checked. Takes the person, because the job runs as its
+ * starter, who must be the session's owner.
+ */
+export async function continueRun(
+  person: ModuleRequestContext,
+  sessionId: string,
+  runJobId: string
+): Promise<string | null> {
+  return withTransaction(person.tenant, async (tx) => {
+    const [row] = await tx
+      .select({ id: agentSession.id })
+      .from(agentSession)
+      .where(
+        and(
+          eq(agentSession.id, sessionId),
+          eq(agentSession.runJobId, runJobId),
+          eq(agentSession.runState, "running")
+        )
+      )
+      .for("update");
+
+    if (row === undefined) return null;
+
+    await tx.insert(agentMessage).values({ sessionId, ...continueMessage() });
+
+    const jobId = randomUUID();
+
+    const sent = await enqueueJob(
+      person,
+      AGENT_RUN_JOB,
+      { sessionId, runJobId: jobId },
+      { tx, id: jobId, expireInSeconds: AGENT_RUN_EXPIRE_SECONDS }
+    );
+
+    if (sent !== jobId) throw new Error("The agent run job was not queued.");
+
+    await tx
+      .update(agentSession)
+      .set({
+        runState: "queued",
+        runJobId: jobId,
+        updatedAt: sql`clock_timestamp()`,
+      })
+      .where(eq(agentSession.id, sessionId));
+
+    return jobId;
+  });
+}
+
 export const RETRY_TEXT = "Try again.";
 
 /**
@@ -320,6 +437,8 @@ export async function retryRun(
         and(
           eq(agentMessage.sessionId, id),
           eq(agentMessage.role, "user"),
+          // A run's continue message is answered by the run, never by the chat route.
+          sql`not (${agentMessage.parts} @> ${JSON.stringify([{ type: CONTINUE_PART }])}::jsonb)`,
           eq(agentMessage.createdAt, agentSession.updatedAt),
           gt(
             agentMessage.createdAt,

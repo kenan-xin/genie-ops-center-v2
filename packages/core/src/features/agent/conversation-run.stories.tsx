@@ -3,6 +3,10 @@ import type { ChatTransport, UIMessageChunk } from "ai";
 import { useEffect, useState } from "react";
 import { expect, fn, userEvent, waitFor, within } from "storybook/test";
 
+import {
+  CONTINUE_TEXT,
+  continueMessage,
+} from "../../services/agent/continue.ts";
 import type { AgentMessage } from "../../services/agent/index.ts";
 import type { AgentRunStatus } from "../../services/agent/runs.ts";
 import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
@@ -189,6 +193,30 @@ export const EndsBetweenPolls: Story = {
 
 export const EndsBetweenPollsOnAPhone: Story = {
   ...EndsBetweenPolls,
+  globals: phone,
+};
+
+// DEC-57: a run's second turn starts with a continue message that the person never sees.
+export const ContinuedInASecondTurn: Story = {
+  args: {
+    status: "saved",
+    messages: [
+      BRIEF_MESSAGE,
+      PARTIAL_ANSWER,
+      { id: "continue-1", ...continueMessage() },
+      FULL_ANSWER,
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(await canvas.findByText(FULL_TEXT)).toBeVisible();
+    await expect(canvas.queryByText(CONTINUE_TEXT)).toBeNull();
+  },
+};
+
+export const ContinuedInASecondTurnOnAPhone: Story = {
+  ...ContinuedInASecondTurn,
   globals: phone,
 };
 

@@ -31,6 +31,7 @@ import {
   summarizeChat,
   summaryMessage,
 } from "./compaction.ts";
+import { isContinueMessage } from "./continue.ts";
 import { CHAT_TITLE_LIMIT } from "./contract.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
@@ -238,6 +239,17 @@ export async function handleAgentChat(
 }
 
 /**
+ * How a turn ended: an answer, the step cap with tool calls still pending, a repeated tool call
+ * (the loop guard), a question with choices, or cut by an abort or a cancel before its end.
+ */
+export type TurnEnd =
+  | "answered"
+  | "step-limit"
+  | "repeated-call"
+  | "choices"
+  | "cut";
+
+/**
  * One turn of a session after the person's message is stored: the history, the compaction, the
  * model call with the session surface's tools, and the answer as an AI SDK UI message stream that
  * stores the answer when it ends. The agent route and the run job `core.agent-run` share it, so
@@ -259,6 +271,10 @@ export async function turnStream(
     readonly beforeSave?: () => Promise<void>;
     /** The run job's id: the answer is stored only while this job holds the session's run. */
     readonly runJobId?: string;
+    /** Runs in `onEnd`, before the answer is stored, with how the turn ended. */
+    readonly onTurnEnd?: (end: TurnEnd) => void;
+    /** A run's turn limit: the next turn goes on with the work, so a partial it cut has no stopped mark (R9). */
+    readonly turnLimit?: AbortSignal;
   }
 ): Promise<ReadableStream<UIMessageChunk>> {
   const { id: sessionId, surface } = session;
@@ -320,6 +336,13 @@ export async function turnStream(
     }
   }
 
+  // A run's continue message that a person's message follows was never answered; the person's
+  // message replaces it.
+  sent = sent.filter(
+    (message, index) =>
+      !(isContinueMessage(message) && sent[index + 1]?.role === "user")
+  );
+
   const turn = artifactTurn(
     sessionId,
     await storedArtifactCount(ctx, sessionId)
@@ -328,6 +351,15 @@ export async function turnStream(
   const tools = await agentToolSet(ctx, { id: sessionId, surface }, turn);
 
   let largestInput = 0;
+
+  // The summary call takes one of the turn's steps, also when it failed (LC5).
+  const stepCap = AGENT_LIMITS.steps - (plan.compact ? 1 : 0);
+
+  let steps = 0;
+
+  let lastStep:
+    | Parameters<typeof choicesOffered>[0]["steps"][number]
+    | undefined;
 
   const result = streamText({
     model,
@@ -346,14 +378,12 @@ export async function turnStream(
     tools,
     // A call the SDK refuses before `execute` leaves one refused audit row (czjw.31).
     repairToolCall: auditRefusedToolCall(ctx, { id: sessionId }),
-    // The summary call takes one of the turn's steps, also when it failed (LC5).
-    stopWhen: [
-      isStepCount(AGENT_LIMITS.steps - (plan.compact ? 1 : 0)),
-      choicesOffered,
-    ],
+    stopWhen: [isStepCount(stepCap), choicesOffered],
     // The largest step input decides the next turn's token trigger; `usage` sums all steps (LC1).
-    onStepEnd: ({ usage }) => {
-      largestInput = Math.max(largestInput, usage.inputTokens ?? 0);
+    onStepEnd: (step) => {
+      largestInput = Math.max(largestInput, step.usage.inputTokens ?? 0);
+      steps += 1;
+      lastStep = step;
     },
     maxRetries: 0,
     // A client disconnect stops the model call too; `onEnd` still stores what streamed.
@@ -395,15 +425,35 @@ export async function turnStream(
     },
     // The library awaits this in the stream's flush, so the response closes after the answer
     // is stored. Stop cancels the stream, the turn limit aborts it: either one stores what
-    // finished before it, with a stopped mark (P8, P03-1, P03-2).
+    // finished before it, with a stopped mark, except a run's turn limit (P8, P03-1, P03-2, R9).
     onEnd: async ({ responseMessage, isAborted, isCancelled }) => {
       await input.beforeSave?.();
+
+      // Choices first: offering them also ends its step on tool calls.
+      if (isAborted || isCancelled === true) {
+        input.onTurnEnd?.("cut");
+      } else if (
+        lastStep !== undefined &&
+        (await choicesOffered({ steps: [lastStep] }))
+      ) {
+        input.onTurnEnd?.("choices");
+      } else {
+        input.onTurnEnd?.(
+          steps >= stepCap && lastStep?.finishReason === "tool-calls"
+            ? "step-limit"
+            : "answered"
+        );
+      }
 
       if (responseMessage.parts.length === 0) return;
 
       const { parts, versions } =
         isAborted || isCancelled === true
-          ? keptOnStop(responseMessage.parts, turn.pending)
+          ? keptOnStop(
+              responseMessage.parts,
+              turn.pending,
+              input.turnLimit?.aborted !== true
+            )
           : { parts: responseMessage.parts, versions: turn.pending };
 
       // A failed store errors the stream; log it, because no onError sees a flush failure.

@@ -7,12 +7,18 @@ import { z } from "zod";
 import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
 import { withTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 import { agentSession } from "../src/schema.ts";
+import { CONTINUE_TEXT } from "../src/services/agent/continue.ts";
 import {
   AGENT_RUN_JOB,
+  continueRun,
   retryRun,
   startRun,
 } from "../src/services/agent/run-job.ts";
-import { AGENT_RUN_JOB_NAME, stopRun } from "../src/services/agent/runs.ts";
+import {
+  AGENT_RUN_JOB_NAME,
+  endRun,
+  stopRun,
+} from "../src/services/agent/runs.ts";
 import { principalFor } from "../src/services/authorization/grant-reader.ts";
 import { bossOf } from "../src/services/job-queue/index.ts";
 import {
@@ -76,12 +82,32 @@ async function runColumns(sessionId: string) {
   return row;
 }
 
+/** The text part of every message of the session, in order; a continue message's comes second. */
 async function messageTexts(sessionId: string) {
   const { rows } = await deployment.context.db.execute<{ text: string }>(
-    sql`select parts->0->>'text' as text from agent_message where session_id = ${sessionId} order by seq`
+    sql`select (select p->>'text' from jsonb_array_elements(parts) p where p->>'type' = 'text' limit 1) as text from agent_message where session_id = ${sessionId} order by seq`
   );
 
   return rows.map(({ text }) => text);
+}
+
+/** A run whose first turn runs: started, and taken by its job as the worker takes it. */
+async function runningRun(ctx: ModuleRequestContext, sessionId: string) {
+  const jobId = await start(ctx, sessionId);
+
+  await deployment.context.db.execute(
+    sql`update agent_session set run_state = 'running' where id = ${sessionId}`
+  );
+
+  return jobId;
+}
+
+async function deadlineOf(sessionId: string) {
+  const { rows } = await deployment.context.db.execute<{ deadline: string }>(
+    sql`select run_deadline_at::text as deadline from agent_session where id = ${sessionId}`
+  );
+
+  return rows[0]?.deadline;
 }
 
 async function jobsNaming(sessionId: string) {
@@ -216,5 +242,127 @@ describe("starting an agent run", () => {
     expect(rows).toEqual([
       { run_state: null, run_error: "stopped", messages: 0 },
     ]);
+  });
+});
+
+/** A run as a chain of bounded turns (DEC-57 item 2, S7-49). */
+describe("continuing an agent run", () => {
+  it("continueRun moves the run to a new queued job of the owner with a hidden continue message, and keeps the deadline", async () => {
+    const ctx = await person();
+    const session = await sessionOf(ctx);
+    const first = await runningRun(ctx, session.id);
+    const deadline = await deadlineOf(session.id);
+
+    const next = await continueRun(ctx, session.id, first);
+
+    const boss = await bossOf(deployment.context.jobQueue);
+    const [job] = await boss.findJobs(AGENT_RUN_JOB_NAME, { id: next ?? "" });
+
+    const { rows } = await deployment.context.db.execute<{ types: string[] }>(
+      sql`select array(select p->>'type' from jsonb_array_elements(parts) p) as types from agent_message where session_id = ${session.id} order by seq desc limit 1`
+    );
+
+    expect({
+      fresh: next !== null && next !== first,
+      run: await runColumns(session.id),
+      job: { data: job?.data, expireInSeconds: job?.expireInSeconds },
+      texts: await messageTexts(session.id),
+      types: rows[0]?.types,
+      deadline: await deadlineOf(session.id),
+    }).toEqual({
+      fresh: true,
+      run: { runState: "queued", runJobId: next },
+      job: {
+        data: {
+          "sessionId": session.id,
+          "runJobId": next,
+          "genie:startedBy": ctx.caller.userId,
+        },
+        expireInSeconds: 240,
+      },
+      texts: [CONTINUE_TEXT],
+      types: ["data-continue", "text"],
+      deadline,
+    });
+  });
+
+  it("an enqueue failure in continueRun stores no continue message and leaves the run running", async () => {
+    const broken = {
+      ...deployment.context,
+      jobQueue: { ...deployment.context.jobQueue },
+    };
+
+    const ctx = await person(broken);
+    const session = await sessionOf(ctx);
+    // The broken queue refuses a start too, so the first turn is set by SQL.
+    const first = randomUUID();
+
+    await deployment.context.db.execute(
+      sql`update agent_session set run_state = 'running', run_job_id = ${first} where id = ${session.id}`
+    );
+
+    await expect(continueRun(ctx, session.id, first)).rejects.toThrow();
+    expect({
+      run: await runColumns(session.id),
+      texts: await messageTexts(session.id),
+    }).toEqual({ run: { runState: "running", runJobId: first }, texts: [] });
+  });
+
+  it("continueRun after Stop queues nothing, and the run then ends stopped, not stuck in stopping", async () => {
+    const ctx = await person();
+    const session = await sessionOf(ctx);
+    const first = await runningRun(ctx, session.id);
+
+    // Stop during the turn's last step: the job ends the turn before its watch loop saw Stop.
+    await stopRun(ctx, session.id);
+
+    const next = await continueRun(ctx, session.id, first);
+
+    expect({
+      next,
+      jobs: (await jobsNaming(session.id)).length,
+      texts: await messageTexts(session.id),
+    }).toEqual({ next: null, jobs: 1, texts: [] });
+
+    await endRun(deployment.context, session.id, first, null);
+
+    const { rows } = await deployment.context.db.execute<{
+      run_state: string | null;
+      run_error: string | null;
+    }>(
+      sql`select run_state, run_error from agent_session where id = ${session.id}`
+    );
+
+    expect(rows).toEqual([{ run_state: null, run_error: "stopped" }]);
+  });
+
+  it("Stop between turns ends the run at once and the queued job does nothing", async () => {
+    const ctx = await person();
+    const session = await sessionOf(ctx);
+    const first = await runningRun(ctx, session.id);
+
+    await continueRun(ctx, session.id, first);
+    await stopRun(ctx, session.id);
+
+    const ended = await runColumns(session.id);
+
+    await runQueuedAgentRun(deployment.context, [], session.id);
+
+    const { rows } = await deployment.context.db.execute<{
+      run_state: string | null;
+      run_error: string | null;
+    }>(
+      sql`select run_state, run_error from agent_session where id = ${session.id}`
+    );
+
+    expect({
+      ended: ended?.runState,
+      after: rows[0],
+      texts: await messageTexts(session.id),
+    }).toEqual({
+      ended: null,
+      after: { run_state: null, run_error: "stopped" },
+      texts: [CONTINUE_TEXT],
+    });
   });
 });

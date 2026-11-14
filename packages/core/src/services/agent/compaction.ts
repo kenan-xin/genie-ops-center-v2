@@ -2,6 +2,7 @@ import { generateText, type LanguageModel } from "ai";
 import { z } from "zod";
 
 import { rowText, stepTimeline } from "../../features/agent/step-model.ts";
+import { isContinueMessage } from "./continue.ts";
 import { HISTORY_MESSAGES } from "./history.ts";
 import type { ChatLabels } from "./labels.ts";
 import type { AgentMessage, OwnHistory } from "./store.ts";
@@ -151,8 +152,13 @@ export function chatTranscript(input: {
   readonly covered: readonly AgentMessage[];
   readonly labels: ChatLabels;
 }): string {
-  const lines = input.covered.flatMap(({ role, parts }) =>
-    parts.flatMap((part) => partLine(role, part, input.labels) ?? [])
+  // A run's continue message is no request of the person's, so the summary never names it.
+  const lines = input.covered.flatMap((message) =>
+    isContinueMessage(message)
+      ? []
+      : message.parts.flatMap(
+          (part) => partLine(message.role, part, input.labels) ?? []
+        )
   );
 
   const messages = ["Messages:", ...lines].join("\n");

@@ -7,8 +7,11 @@ import {
   AppError,
   appendMessage,
   callProcedure,
+  CONTINUE_TEXT,
+  continueRun,
   createAgentRouter,
   handleAgentChat,
+  isContinueMessage,
   type ModuleRequestContext,
   principalFor,
   readAuditPage,
@@ -16,6 +19,7 @@ import {
   registerModuleRuntime,
   startRun,
   stopRun,
+  TIME_LIMIT_TEXT,
   validateModule,
   withTransaction,
 } from "@genie/core";
@@ -41,7 +45,7 @@ import { placeholderWithSurface } from "./test-surface.ts";
 
 /**
  * The durable agent run on the placeholder's test surface (Spec 7 R-42b, AC-13, S7-40), with the
- * synthetic timing fixtures `synthetic-run-slow-*`.
+ * synthetic timing fixtures `synthetic-run-slow-*` and the synthetic chain `synthetic-chain-*`.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -105,8 +109,22 @@ async function person(): Promise<ModuleRequestContext> {
   };
 }
 
+/**
+ * The request that `synthetic-chain-1` to `-10` answer with one call of `placeholder-surface-step`
+ * per step, so the first turn reaches the step cap; `synthetic-chain-11` answers the second turn.
+ */
+const CHAIN_REQUEST = "Build the placeholder record in eleven steps.";
+
+const CHAIN_ANSWER = [
+  "root = Answer([result])",
+  'result = Paragraph("The placeholder record has all its steps.")',
+].join("\n");
+
 /** A surface session of the person, on a new record, holding the one request. */
-async function surfaceSession(ctx: ModuleRequestContext): Promise<string> {
+async function surfaceSession(
+  ctx: ModuleRequestContext,
+  request = RUN_REQUEST
+): Promise<string> {
   const record = await insertPlaceholderRecord(deployment.context, {
     label: "Built record",
   });
@@ -120,10 +138,29 @@ async function surfaceSession(ctx: ModuleRequestContext): Promise<string> {
 
   await appendMessage(ctx, session.id, {
     role: "user",
-    parts: [{ type: "text", text: RUN_REQUEST }],
+    parts: [{ type: "text", text: request }],
   });
 
   return session.id;
+}
+
+/** A run whose first turn runs: started, and taken by its job as the worker takes it. */
+async function runningRun(ctx: ModuleRequestContext, sessionId: string) {
+  const jobId = await start(ctx, sessionId);
+
+  await deployment.context.db.execute(
+    sql`update agent_session set run_state = 'running' where id = ${sessionId}`
+  );
+
+  return jobId;
+}
+
+async function runJobOf(sessionId: string) {
+  const { rows } = await deployment.context.db.execute<{
+    run_job_id: string | null;
+  }>(sql`select run_job_id from agent_session where id = ${sessionId}`);
+
+  return rows[0]?.run_job_id;
 }
 
 async function start(ctx: ModuleRequestContext, sessionId: string) {
@@ -148,10 +185,10 @@ async function retry(ctx: ModuleRequestContext, sessionId: string) {
   return callProcedure(createAgentRouter(), ctx).retry({ id: sessionId });
 }
 
-/** The first text of every message of the session, in order. */
+/** The first text part of every message of the session, in order; a continue message's comes second. */
 async function messageTexts(sessionId: string) {
   const { rows } = await deployment.context.db.execute<{ text: string }>(
-    sql`select parts->0->>'text' as text from agent_message where session_id = ${sessionId} order by seq`
+    sql`select (select p->>'text' from jsonb_array_elements(parts) p where p->>'type' = 'text' limit 1) as text from agent_message where session_id = ${sessionId} order by seq`
   );
 
   return rows.map(({ text }) => text);
@@ -265,6 +302,13 @@ const SENT_SYSTEM = z.object({
 });
 
 const SYSTEM_PARTS = z.array(z.object({ text: z.string() }));
+
+/** The messages of a sent request after its system message. */
+function sentMessages(index: number) {
+  return SENT_SYSTEM.parse(recorded.sent[index]?.body).messages.filter(
+    ({ role }) => role !== "system"
+  );
+}
 
 /** The person's agent tool rows, newest first, read by an auditor through the audit reader. */
 async function toolRows(actorId: string) {
@@ -684,6 +728,169 @@ describe("a durable agent run on the placeholder test surface", () => {
 
     await expect(retry(ctx, neverRan.id)).rejects.toMatchObject({
       code: "not-found",
+    });
+  });
+
+  it("a run that reaches the step cap continues in a second turn and ends with one answer", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx, CHAIN_REQUEST);
+
+    const first = await start(ctx, sessionId);
+    const before = recorded.sent.length;
+
+    await runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    const between = {
+      run: await runColumns(sessionId),
+      requests: recorded.sent.length - before,
+      job: await runJobOf(sessionId),
+    };
+
+    await runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    const { messages } = await readOwnSession(ctx, sessionId);
+
+    expect({
+      between: { ...between, newJob: between.job !== first },
+      run: await runColumns(sessionId),
+      requests: recorded.sent.length - before,
+      lastSent: sentMessages(recorded.sent.length - 1).at(-1),
+      roles: messages.map((message) =>
+        isContinueMessage(message) ? "continue" : message.role
+      ),
+      stopped: messages.some(stoppedMark),
+      answer: textsOf(messages.at(-1)).at(-1),
+    }).toEqual({
+      between: {
+        run: { run_state: "queued", run_error: null },
+        requests: 10,
+        job: between.job,
+        newJob: true,
+      },
+      run: { run_state: null, run_error: null },
+      requests: 11,
+      lastSent: { role: "user", content: CONTINUE_TEXT },
+      roles: ["user", "assistant", "continue", "assistant"],
+      stopped: false,
+      answer: CHAIN_ANSWER,
+    });
+  });
+
+  it("a turn after the deadline ends the run stopped with the time limit message and calls no model", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await start(ctx, sessionId);
+    await deployment.context.db.execute(
+      sql`update agent_session set run_deadline_at = now() - interval '1 minute' where id = ${sessionId}`
+    );
+
+    const before = recorded.sent.length;
+
+    await runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    const stored = await answers(ctx, sessionId);
+
+    expect({
+      run: await runColumns(sessionId),
+      requests: recorded.sent.length - before,
+      answers: stored.map(textsOf),
+    }).toEqual({
+      run: { run_state: null, run_error: "stopped" },
+      requests: 0,
+      answers: [[TIME_LIMIT_TEXT]],
+    });
+  });
+
+  it("a deadline that passes during a turn stops the run with the time limit message", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await start(ctx, sessionId);
+    // `synthetic-run-slow-1` streams its note for about 4.8 s before its tool call.
+    await deployment.context.db.execute(
+      sql`update agent_session set run_deadline_at = clock_timestamp() + interval '2 seconds' where id = ${sessionId}`
+    );
+
+    const before = recorded.sent.length;
+
+    await runQueuedAgentRun(deployment.context, MODULES, sessionId);
+
+    const stored = await answers(ctx, sessionId);
+    const note = textsOf(stored[0]).join("");
+
+    expect({
+      run: await runColumns(sessionId),
+      requests: recorded.sent.length - before,
+      partOfNote: note !== "" && note !== NOTE && NOTE.startsWith(note),
+      stopped: stoppedMark(stored[0]),
+      last: textsOf(stored.at(-1)),
+      steps: await toolRows(ctx.caller.userId),
+    }).toEqual({
+      run: { run_state: null, run_error: "stopped" },
+      requests: 1,
+      partOfNote: true,
+      stopped: true,
+      last: [TIME_LIMIT_TEXT],
+      steps: [],
+    });
+  });
+
+  it("Try again works at once after a run stopped right after a continue message", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await continueRun(ctx, sessionId, await runningRun(ctx, sessionId));
+    await stopRun(ctx, sessionId);
+    // The continue message is the session's latest change, as a person's unanswered message is.
+    await deployment.context.db.execute(
+      sql`update agent_session set updated_at = (select max(created_at) from agent_message where session_id = ${sessionId}) where id = ${sessionId}`
+    );
+    await retry(ctx, sessionId);
+
+    expect({
+      texts: await messageTexts(sessionId),
+      state: (await runColumns(sessionId))?.run_state,
+    }).toEqual({
+      texts: [RUN_REQUEST, CONTINUE_TEXT, "Try again."],
+      state: "queued",
+    });
+  });
+
+  it("a continue message that a person's message follows is not sent to the model", async () => {
+    const ctx = await person();
+    const sessionId = await surfaceSession(ctx);
+
+    await continueRun(ctx, sessionId, await runningRun(ctx, sessionId));
+    await stopRun(ctx, sessionId);
+
+    const before = recorded.sent.length;
+
+    const response = await handleAgentChat(
+      ctx,
+      agentRequest({
+        sessionId,
+        message: {
+          id: "client-message-1",
+          role: "user",
+          parts: [{ type: "text", text: "Make it shorter." }],
+        },
+      }),
+      { logError: () => {} }
+    );
+
+    // Reading the answer sends the request; no recording answers it, and only its body counts.
+    await response.text();
+
+    expect({
+      requests: recorded.sent.length - before,
+      sent: sentMessages(before),
+    }).toEqual({
+      requests: 1,
+      sent: [
+        { role: "user", content: RUN_REQUEST },
+        { role: "user", content: "Make it shorter." },
+      ],
     });
   });
 

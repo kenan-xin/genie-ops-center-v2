@@ -20,6 +20,7 @@ import { Fragment, useEffect, useRef, useState, type ReactNode } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
 import { z } from "zod";
 
+import { isContinueMessage } from "../../services/agent/continue.ts";
 import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
   AgentFile,
@@ -60,12 +61,17 @@ function storedDuration(
     : undefined;
 }
 
-/** The text of the question before an answer, which Try again sends again (AG17). */
+/**
+ * The text of the question before an answer, which Try again sends again (AG17). A run's hidden
+ * continue message is no question.
+ */
 function questionBefore(
   messages: readonly AgentMessage[],
   index: number
 ): string | undefined {
-  const question = messages[index - 1];
+  const question = messages
+    .slice(0, index)
+    .findLast((message) => !isContinueMessage(message));
 
   if (question?.role !== "user") return undefined;
 
@@ -343,8 +349,9 @@ export function Conversation(props: {
               >
                 {chat.messages.map((message, index) => (
                   <Fragment key={message.id}>
-                    {message.role === "user" &&
-                    briefPartOf(message) !== undefined ? (
+                    {/* A run's continue message is for the model only (DEC-57). */}
+                    {isContinueMessage(message) ? null : message.role ===
+                        "user" && briefPartOf(message) !== undefined ? (
                       <BriefCard
                         brief={briefPartOf(message)!}
                         askHref={run?.askHref}

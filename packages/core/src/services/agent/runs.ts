@@ -171,7 +171,7 @@ export async function endRun(
   tenant: TenantContext,
   sessionId: string,
   runJobId: string,
-  code: "failed" | null
+  code: "failed" | "stopped" | null
 ): Promise<void> {
   await tenant.db
     .update(agentSession)
