@@ -66,6 +66,7 @@ Owner decision, 2026-10-27: full scope for the November 2026 festival, with no s
 | [S7-45](45-speaker-notes-and-presenter-view/index.md) | `czjw.115` | S7-43, S7-44, the Phase 12 import | none | Speaker notes and the presenter view |
 | [S7-46](46-dashboard-filters-in-the-url/index.md) | `czjw.116` | S7-42, S7-44, `czjw.101`, `czjw.102`, the Phase 12 import | none | Dashboard filters, several at once, in the page address |
 | [S7-47](47-dashboard-saved-views/index.md) | `czjw.117` | S7-46 | none | Saved views of a dashboard, with one default |
+| [S7-49](49-background-agent-runs/index.md) | `czjw.175` | S7-40, S7-41, `xok3.83` | none | Long background agent runs |
 | `6wz1.89`, no folder, owned by the Spec 3 epic `6wz1` | `6wz1.89` | none | none | Collapsible, edge-to-edge app sidebar (icon rail) |
 | `xok3.49`, no folder, owned by the Maintenance epic `xok3` | `xok3.49` | none | none | Polish the idle sign-out warning dialog |
 
@@ -101,6 +102,8 @@ graph LR
 ```
 
 Three lanes run in wave 2: the invoice module (S7-06 to S7-09), the agent (S7-10, S7-11) and the editors (S7-12, S7-13). S7-12 and S7-13 build their editors after S7-04 and add their agent tools after S7-10.
+
+S7-49 (`DEC-57`, added 2026-11-14) depends on S7-40, S7-41 and `xok3.83` (`DEC-58`).
 
 ## Follow-up tickets of the wave 4 review (2026-11-03)
 
@@ -169,6 +172,7 @@ Wave 5 check, 2026-11-08. The same section is the only one Spec 7 owns. Its Ask,
 | Slides editor, position and style controls (`slides`) | R-52a | S7-43 | `../../design/prototypes/slide-editor-controls.prototype.html`, variant A, picked by the run, owner review at G3 (owner, 2026-11-08) |
 | Slides editor notes field and presenter window (`slides`, `slides-present`) | R-55a | S7-45 | `../../design/prototypes/presenter-window.prototype.html`, variant A, picked by the run, owner review at G3 (owner, 2026-11-08) |
 | Dashboards filter bar and view menu (`dashboards`) | R-49, R-49a | S7-46, S7-47 | `../../design/prototypes/dashboard-filters.prototype.html`, variant A, picked by the run, owner review at G3 (owner, 2026-11-08); it starts from the list header variant A |
+| Ask history grouped by agent, and the spinner on Ask in the main menu (`ask`, `phone-menu`) | R-42b as amended by `DEC-57` | S7-49 | `../../design/prototypes/agent-runs.prototype.html`, variant E (owner, 2026-11-13) |
 
 No open amendment file under `../../design/` touches wave 5.
 

@@ -25,4 +25,4 @@ Out of scope: position and style (S7-43), the "You can change" lines (S7-44).
 
 ## Acceptance
 
-End to end at phone and desktop with the scripted fixtures: ask for slides in Ask, the deck page opens at once and fills slide by slide, Ask history has no Slides chat, and the deck page lists the chat under Slides chats; the same for a dashboard. On a dashboard, a chart request asks first, Add makes a panel with Undo, and "Just show it here" makes an artifact. After R1, the same tests pass on the live recordings. The shared definition of done in the [index](../README.md) also applies.
+End to end at phone and desktop with the scripted fixtures: ask for slides in Ask, the deck page opens at once and fills slide by slide, Ask history has no Slides chat (amended by `DEC-57`, 2026-11-13: S7-49 lists the Slides chat in Ask's history under Slides), and the deck page lists the chat under Slides chats; the same for a dashboard. On a dashboard, a chart request asks first, Add makes a panel with Undo, and "Just show it here" makes an artifact. After R1, the same tests pass on the live recordings. The shared definition of done in the [index](../README.md) also applies.
