@@ -48,7 +48,7 @@ function ComboboxTrigger({
         variant === "filter-set"
           ? "border-primary/40 bg-primary/8 font-semibold text-primary dark:text-brand-on-dark"
           : variant === "filter"
-            ? "border-control bg-card text-foreground hover:bg-muted"
+            ? "border-control bg-card text-foreground hover:bg-hover"
             : "border-input bg-card text-foreground",
         focusRing,
         className

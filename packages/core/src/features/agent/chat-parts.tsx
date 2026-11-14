@@ -10,7 +10,7 @@ import type { InboxLink } from "../../services/agent/index.ts";
 
 export const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
-const pillClass = `inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-start text-sm text-muted-foreground hover:border-input hover:bg-muted hover:text-foreground lg:min-h-8 ${focusRing}`;
+const pillClass = `inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-start text-sm text-muted-foreground hover:border-input hover:bg-hover hover:text-foreground lg:min-h-8 ${focusRing}`;
 
 /** Questions as pill buttons with an arrow: a new chat's starters and Ask next (czjw.120 item 8). */
 export function QuestionPills(props: {

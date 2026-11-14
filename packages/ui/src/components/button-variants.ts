@@ -17,10 +17,10 @@ const buttonVariants = cva(
           "border-transparent bg-primary text-primary-foreground not-disabled:not-aria-disabled:hover:bg-primary/94 not-disabled:not-aria-disabled:active:bg-primary/80",
         // Owner pick C (6wz1.99): a gray-200 hairline, semibold gray-800 text and the lift, the one resting shadow.
         "secondary":
-          "border-border bg-card font-semibold text-control-foreground shadow-lift not-disabled:not-aria-disabled:hover:bg-muted",
+          "border-border bg-card font-semibold text-control-foreground shadow-lift not-disabled:not-aria-disabled:hover:bg-hover",
         // An empty list filter in the bar: the gray-300 control border, because its text names it (czjw.102).
         "filter":
-          "border-control bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
+          "border-control bg-card text-foreground not-disabled:not-aria-disabled:hover:bg-hover",
         // A filter control with a set value: tinted and semibold, where an empty one stays
         // secondary (Spec 7 R-37a, czjw.65). Hover makes the border solid and keeps the 8% tint.
         // Blue-600 text reads 4.63:1 on it, and 4.24:1 on a 14% tint (czjw.136). A darker tint
@@ -31,9 +31,9 @@ const buttonVariants = cva(
           "border-transparent bg-destructive text-white not-disabled:not-aria-disabled:hover:bg-destructive/94 not-disabled:not-aria-disabled:active:bg-destructive/80",
         // A destructive action beside others: the secondary outline with red text (DESIGN.md "Danger").
         "danger-outline":
-          "border-border bg-card font-semibold text-destructive shadow-lift not-disabled:not-aria-disabled:hover:bg-muted dark:text-destructive-on-dark",
+          "border-border bg-card font-semibold text-destructive-text shadow-lift not-disabled:not-aria-disabled:hover:bg-hover",
         "ghost":
-          "border-transparent text-foreground not-disabled:not-aria-disabled:hover:bg-muted",
+          "border-transparent text-foreground not-disabled:not-aria-disabled:hover:bg-hover",
         "link":
           "border-transparent text-primary underline-offset-4 not-disabled:not-aria-disabled:hover:underline dark:text-brand-on-dark",
       },

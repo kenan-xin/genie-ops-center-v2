@@ -330,7 +330,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
           type="button"
           aria-current={active ? "true" : undefined}
           onClick={() => open(section.id)}
-          className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm motion-safe:transition-colors md:min-h-10 ${focusRing} ${active ? "bg-card font-semibold text-primary ring-1 ring-border dark:text-brand-on-dark" : "font-medium text-foreground hover:bg-muted"}`}
+          className={`flex min-h-11 w-full items-center gap-2 rounded-lg px-3 text-left text-sm motion-safe:transition-colors md:min-h-10 ${focusRing} ${active ? "bg-card font-semibold text-primary ring-1 ring-border dark:text-brand-on-dark" : "font-medium text-foreground hover:bg-hover"}`}
         >
           <span className="min-w-0 flex-1 truncate">{section.title}</span>
           {active && dirty ? (

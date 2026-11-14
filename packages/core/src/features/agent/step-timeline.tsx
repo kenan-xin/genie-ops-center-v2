@@ -284,7 +284,7 @@ export function StepTimeline(props: {
         <button
           type="button"
           aria-expanded={open}
-          className={`flex h-7 items-center gap-2 justify-self-start rounded-full ps-1 pe-2.5 text-xs font-medium hover:bg-tile max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
+          className={`flex h-7 items-center gap-2 justify-self-start rounded-full ps-1 pe-2.5 text-xs font-medium hover:bg-hover max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
           onClick={() => setOpen(!open)}
         >
           <AgentMark />

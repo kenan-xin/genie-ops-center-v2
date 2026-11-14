@@ -214,7 +214,7 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                     <button
                       type="button"
                       onClick={() => setEditing(category.id)}
-                      className={`min-h-11 min-w-0 flex-1 truncate rounded-lg px-2 text-left text-sm font-semibold hover:bg-muted ${focusRing}`}
+                      className={`min-h-11 min-w-0 flex-1 truncate rounded-lg px-2 text-left text-sm font-semibold hover:bg-hover ${focusRing}`}
                     >
                       <span className="sr-only">Rename </span>
                       {category.name}

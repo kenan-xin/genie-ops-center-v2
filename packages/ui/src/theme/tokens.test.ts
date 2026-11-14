@@ -1,3 +1,6 @@
+import { globSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -94,6 +97,83 @@ describe("the fixed token layer against tokens.md", () => {
     expect(focusRing).toBe(
       "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     );
+  });
+});
+
+/** The `#rrggbb` a `rgb(r g b / alpha)` state layer shows over an opaque surface. */
+function over(layer: string, surface: string): string {
+  const [r = 0, g = 0, b = 0, alpha = 1] = (layer.match(/[\d.]+/g) ?? []).map(
+    Number
+  );
+
+  const digits = surface.replace("#", "");
+
+  return `#${[r, g, b]
+    .map((value, index) => {
+      const base = Number.parseInt(digits.slice(index * 2, index * 2 + 2), 16);
+
+      return Math.round(base * (1 - alpha) + value * alpha)
+        .toString(16)
+        .padStart(2, "0");
+    })
+    .join("")}`;
+}
+
+// Owner, 2026-11-14: a gray-50 hover was invisible on the gray-50 panel and on the dark card.
+describe("the hover state layer against DESIGN.md, Hover", () => {
+  const surfaces = {
+    light: [colorRoles.light.card, colorRoles.light.muted],
+    dark: [colorRoles.dark.card, colorRoles.dark.background],
+  } as const;
+
+  it("shows on every surface a control sits on and keeps its labels at 4.5:1", () => {
+    for (const theme of ["light", "dark"] as const) {
+      const roles = colorRoles[theme];
+
+      for (const surface of surfaces[theme]) {
+        const hovered = over(roles.hover, surface);
+
+        expect(
+          contrastRatio(hovered, surface),
+          `${theme} hover on ${surface}`
+        ).toBeGreaterThanOrEqual(1.1);
+
+        for (const text of [
+          roles.foreground,
+          roles["control-foreground"],
+          roles["destructive-text"],
+        ]) {
+          expect(
+            contrastRatio(text, hovered),
+            `${theme} ${text} on the hover over ${surface}`
+          ).toBeGreaterThanOrEqual(4.5);
+        }
+      }
+    }
+  });
+
+  it("is the only hover fill: no surface color is used as one", () => {
+    const root = join(import.meta.dirname, "../../../..");
+
+    const files = globSync(
+      [
+        "packages/*/src/**/*.{ts,tsx}",
+        "packages/modules/*/src/**/*.{ts,tsx}",
+        "apps/genie/src/**/*.{ts,tsx}",
+        "customers/*/app/**/*.{ts,tsx}",
+      ],
+      { cwd: root }
+    );
+
+    const offenders = files.filter((file) =>
+      /hover:bg-(muted|card|tile|background|border)\b/.test(
+        readFileSync(join(root, file), "utf8")
+      )
+    );
+
+    expect(files.length).toBeGreaterThan(100);
+
+    expect(offenders).toEqual([]);
   });
 });
 

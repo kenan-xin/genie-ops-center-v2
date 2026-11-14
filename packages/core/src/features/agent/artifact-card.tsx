@@ -212,7 +212,7 @@ export function ArtifactCard(props: {
     open = { kind: "link", href };
 
     control = (
-      <a href={href} className={`${ownFrame} hover:bg-muted`}>
+      <a href={href} className={`${ownFrame} hover:bg-hover`}>
         <Body artifact={artifact} end="Open in Ask" rows={rows} />
       </a>
     );
@@ -227,7 +227,7 @@ export function ArtifactCard(props: {
       <button
         type="button"
         aria-pressed={shown}
-        className={`${ownFrame} hover:bg-muted aria-pressed:border-primary`}
+        className={`${ownFrame} hover:bg-hover aria-pressed:border-primary`}
         onClick={() => action.onOpen(ref)}
       >
         <Body

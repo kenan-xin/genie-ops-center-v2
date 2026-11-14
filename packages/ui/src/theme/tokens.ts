@@ -15,6 +15,7 @@ export type ColorRole =
   | "muted"
   | "muted-foreground"
   | "tile"
+  | "hover"
   | "success"
   | "placeholder"
   | "border"
@@ -26,7 +27,8 @@ export type ColorRole =
   | "primary-foreground"
   | "destructive"
   | "brand-on-dark"
-  | "destructive-on-dark";
+  | "destructive-on-dark"
+  | "destructive-text";
 
 const lightRoles = {
   "background": "#ffffff",
@@ -36,6 +38,8 @@ const lightRoles = {
   "muted-foreground": "#4b5563",
   // DESIGN.md "Tile": a neutral gray tile, such as the person's chat message (czjw.120).
   "tile": "#f3f4f6",
+  // DESIGN.md "Hover": a see-through state layer, visible on white, the gray-50 panel and a card.
+  "hover": "rgb(17 24 39 / 0.06)",
   // tokens.md "Status is semantic": emerald success, such as the done mark of the steps pill.
   "success": "#047857",
   // czjw.65: lighter than muted text, so a hint never reads as an entered value.
@@ -52,6 +56,8 @@ const lightRoles = {
   "destructive": "#dc2626",
   "brand-on-dark": "#60a5fa",
   "destructive-on-dark": "#f87171",
+  // tokens.md "Button": the danger outline label, readable on the hover layer.
+  "destructive-text": "#b91c1c",
 } as const satisfies Record<ColorRole, string>;
 
 export const colorRoles: Readonly<
@@ -67,7 +73,9 @@ export const colorRoles: Readonly<
     "muted": "#111827",
     "muted-foreground": "#9ca3af",
     "tile": "#1f2937",
+    "hover": "rgb(255 255 255 / 0.08)",
     "success": "#6ee7b7",
+    "destructive-text": "#f87171",
     "placeholder": "#9ca3af",
     "border": "#1f2937",
     "control": "#374151",

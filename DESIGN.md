@@ -181,7 +181,8 @@ The theme is a `data-theme` attribute on `<html>`, and the stylesheet declares `
 ### Neutral
 
 - **Page** (#ffffff): the page canvas. In dark, the sidebar shares the page surface (gray-950) so the border, not a fill change, separates them.
-- **Panel** (#f9fafb, gray-50): the sidebar panel, table header rows, and row hover.
+- **Panel** (#f9fafb, gray-50): the sidebar panel and table header rows. Never a hover fill: a gray-50 hover is invisible on a gray-50 panel and in dark mode.
+- **Hover** (`--hover`, `bg-hover`): the one hover fill of every neutral control and row. It is a see-through state layer, gray-900 at 6% in light and white at 8% in dark, so a hover shows on white, on the gray-50 panel and on a dark card alike (owner, 2026-11-14).
 - **Tile** (#f3f4f6, gray-100): person avatars and mono chip backgrounds — tinted surfaces that stand for identity stay fixed neutral gray.
 - **Hairline** (#e5e7eb, gray-200): card edges, row dividers, and other decorative hairlines; decoration, so 1.4.11 does not reach it. Dark mirror #1f2937 (gray-800).
 - **Control border** (#d1d5db, gray-300): the border of an empty list filter, a control that its text names (`czjw.102`).
@@ -272,7 +273,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 - **Shape:** 8px radius; heights 32px (sm) / 40px (md, the default) / 44px (lg); icon-only variants are squares of the same height with an `aria-label`.
 - **Primary:** brand fill (`--primary`, default #2563eb) with `--primary-foreground` text (white), semibold 0.875rem, 14px horizontal padding.
 - **Secondary:** white fill, gray-200 hairline, semibold gray-800 text (`--control-foreground`) and the Lift; in dark, a gray-900 fill, a gray-800 hairline and gray-100 text. **Danger outline:** the secondary look with red-600 text (red-400 in dark). **Danger:** red-600 fill, white text. **Ghost:** no fill, no border, gray-700 text, 32px height.
-- **Hover / Focus:** fill variants drop to 94% opacity on hover and 80% on press — the same color, never a derived shade; outline and ghost variants take a gray-50 fill on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
+- **Hover / Focus:** fill variants drop to 94% opacity on hover and 80% on press — the same color, never a derived shade; secondary, outline, ghost and danger-outline variants take the `bg-hover` state layer on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
 - **Disabled / Loading:** disabled is 50% opacity with `cursor-not-allowed` and no hover change; use `aria-disabled` instead of the `disabled` attribute when the control must stay focusable to explain why. Loading keeps the label and the width, replaces the leading icon with a spinner, sets `aria-busy="true"`, and ignores a second press. Any action that leaves the page or waits on the network uses the loading state (at least Publish, Save, Send test, the sign-in redirect).
 
 ### Chips
@@ -300,12 +301,12 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 ### Navigation
 
 - **Style:** rounded-lg rows, 0.875rem; 44px minimum height under 1024px (touch), 40px nav rows and 32px tree rows on desktop. Group labels are 0.75rem semibold uppercase, wide tracking, gray-500.
-- **States:** idle gray-700 text with a gray-200/60 hover fill; active row is an 8px-rounded white row with a hairline ring and brand text and icon (`text-primary`, brand-on-dark in dark, `aria-current="page"`). Icons 20px in nav rows (16px in tree rows), gray-500 idle, brand-colored when active.
+- **States:** idle gray-700 text with the `bg-hover` fill on hover; active row is an 8px-rounded white row with a hairline ring and brand text and icon (`text-primary`, brand-on-dark in dark, `aria-current="page"`). Icons 20px in nav rows (16px in tree rows), gray-500 idle, brand-colored when active.
 - **Mobile treatment:** the hamburger opens the drawer (84vw, max 320px) over a dimmed scrim; route change or scrim tap closes it. Category collapse state persists per device, not per account.
 
 ### Tables and Card Lists
 
-Header row: 0.75rem semibold gray-600 on gray-50. Body rows: 0.875rem, 12px vertical padding on desktop (16px on phones), gray-50 hover, hairline dividers. A clickable row is keyboard-reachable: `tabindex="0"` with a role, Enter and Space open it, it takes the shared focus ring, and buttons inside stay in the tab order after the row. Under 768px every table becomes a card list with no horizontal scrolling.
+Header row: 0.75rem semibold gray-600 on gray-50. Body rows: 0.875rem, 12px vertical padding on desktop (16px on phones), `bg-hover` on hover, hairline dividers. A clickable row is keyboard-reachable: `tabindex="0"` with a role, Enter and Space open it, it takes the shared focus ring, and buttons inside stay in the tab order after the row. Under 768px every table becomes a card list with no horizontal scrolling.
 
 ### Overlays
 
@@ -349,6 +350,7 @@ For now the sign-in page and the emails carry text and color branding only. They
 ### Don't:
 
 - **Don't** derive any tint, shade, or ramp from the tenant color; hover is 94% opacity of the same color, press is 80%.
+- **Don't** leave a pointer target without a visible hover change, and don't use a surface color (`bg-muted`, `bg-card`, `bg-tile`) as a hover fill; use `bg-hover`.
 - **Don't** use arbitrary text sizes (`text-[13.5px]`, any `text-[Npx]`) in any component.
 - **Don't** put a shadow on a resting surface; hairline borders separate, and shadows belong to menus, overlays and the Lift of an outlined button.
 - **Don't** give a label pill a status color, and don't use emoji as icons — Lucide only, stroke 1.75.

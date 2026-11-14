@@ -58,7 +58,7 @@ export type AppShellProps = {
   readonly agentPanel?: ReactNode;
 };
 
-const iconButton = `flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-border/60 motion-safe:transition-colors ${focusRing}`;
+const iconButton = `flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-hover motion-safe:transition-colors ${focusRing}`;
 
 /** A key event from a place where the person types, where Ctrl+B must not move the menu. */
 function fromTyping(target: EventTarget | null): boolean {

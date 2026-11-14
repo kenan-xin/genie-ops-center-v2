@@ -185,7 +185,7 @@ export function HandoffChip(props: {
   return (
     <a
       href={props.card.address}
-      className={`inline-flex h-8 max-w-56 shrink-0 items-center gap-2 rounded-full border border-border px-3 text-xs font-medium hover:bg-muted max-lg:h-11 ${focusRing}`}
+      className={`inline-flex h-8 max-w-56 shrink-0 items-center gap-2 rounded-full border border-border px-3 text-xs font-medium hover:bg-hover max-lg:h-11 ${focusRing}`}
     >
       <span
         aria-hidden="true"

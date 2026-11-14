@@ -17,7 +17,7 @@ function sessionClass(current: boolean): string {
   return `flex h-11 min-w-0 items-center rounded-lg px-3 text-sm lg:h-9 ${
     current
       ? "bg-background font-semibold text-foreground ring-1 ring-border ring-inset"
-      : "text-muted-foreground hover:bg-tile hover:text-foreground"
+      : "text-muted-foreground hover:bg-hover hover:text-foreground"
   } ${focusRing}`;
 }
 

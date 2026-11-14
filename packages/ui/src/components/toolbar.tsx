@@ -30,7 +30,7 @@ function ToolbarButton({
   return (
     <ToolbarPrimitive.Button
       className={cn(
-        "flex min-h-13 min-w-15 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-semibold text-muted-foreground not-disabled:hover:bg-muted data-popup-open:bg-primary/8 data-popup-open:text-primary [&_svg]:size-5",
+        "flex min-h-13 min-w-15 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-semibold text-muted-foreground not-disabled:hover:bg-hover data-popup-open:bg-primary/8 data-popup-open:text-primary [&_svg]:size-5",
         focusRing,
         className
       )}

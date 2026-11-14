@@ -249,7 +249,7 @@ export function ViewMenu(props: ViewMenuProps) {
                   <button
                     type="button"
                     aria-current={current ? "true" : undefined}
-                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                    className="flex min-h-11 w-full items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                     onClick={inSheet(() =>
                       props.onSelect(choice.id === NONE ? null : choice.id)
                     )}
@@ -274,7 +274,7 @@ export function ViewMenu(props: ViewMenuProps) {
                 <button
                   type="button"
                   disabled={action.disabled}
-                  className={`flex min-h-11 w-full items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hover:bg-transparent ${action.destructive === true ? "text-destructive" : ""}`}
+                  className={`flex min-h-11 w-full items-start gap-2 rounded-md px-2 py-2 text-sm hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hover:bg-transparent ${action.destructive === true ? "text-destructive" : ""}`}
                   onClick={inSheet(action.onSelect)}
                 >
                   <action.icon

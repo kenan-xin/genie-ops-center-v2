@@ -30,6 +30,7 @@
   --color-destructive: var(--destructive);
   --color-brand-on-dark: var(--brand-on-dark);
   --color-destructive-on-dark: var(--destructive-on-dark);
+  --color-destructive-text: var(--destructive-text);
   --color-sign-in-background: var(--sign-in-background);
   --color-category-session-bg: var(--category-session-bg);
   --color-category-session-fg: var(--category-session-fg);
@@ -74,6 +75,14 @@
 }
 
 /*
+ * DESIGN.md "Hover": the state layer paints over the control's own fill instead of replacing it,
+ * so a white button, a gray-50 panel row and a dark card each darken or lighten by the same step.
+ */
+@utility bg-hover {
+  background-image: linear-gradient(var(--hover), var(--hover));
+}
+
+/*
  * The fixed layer of tokens.md, "Color roles". It sits in a cascade layer, so the
  * unlayered per-request style of the root layout always wins (R-12, R-13).
  */
@@ -88,6 +97,8 @@
     --muted-foreground: #4b5563;
     /* DESIGN.md "Tile": a neutral gray tile, such as the person's chat message (czjw.120). */
     --tile: #f3f4f6;
+    /* DESIGN.md "Hover": a see-through state layer, so a hover shows on white, on the gray-50 panel and on a card alike. */
+    --hover: rgb(17 24 39 / 0.06);
     /* tokens.md "Status is semantic": emerald success as an icon or text, such as a done mark. */
     --success: #047857;
     /* czjw.65: placeholder text, lighter than muted text and still 4.83:1 on white. */
@@ -104,6 +115,8 @@
     --brand-on-dark: #60a5fa;
     /* Error text in dark only (6wz1.71): red-600 measures 3.67:1 on the dark card. */
     --destructive-on-dark: #f87171;
+    /* tokens.md "Button": red text on a neutral surface, 5.73:1 on the --hover layer where red-600 gives 4.28:1. */
+    --destructive-text: #b91c1c;
     /* Event categories (DESIGN.md exception, tokens.md "Category colors"): fixed, never brand. */
     --category-session-bg: #ecfeff;
     --category-session-fg: #155e75;
@@ -138,6 +151,8 @@
     --muted: #111827;
     --muted-foreground: #9ca3af;
     --tile: #1f2937;
+    --hover: rgb(255 255 255 / 0.08);
+    --destructive-text: #f87171;
     --success: #6ee7b7;
     --placeholder: #9ca3af;
     --border: #1f2937;

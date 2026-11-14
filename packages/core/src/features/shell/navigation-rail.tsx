@@ -83,7 +83,7 @@ const navRow = "lg:h-10";
 
 const treeRow = "lg:h-8";
 
-const rowIdle = "font-medium text-foreground hover:bg-border/60";
+const rowIdle = "font-medium text-foreground hover:bg-hover";
 
 // A category is a group caption that also collapses its group (6wz1.102): the caption's type,
 // 44 px tall under lg like every row, and its own hover tone instead of a row fill.

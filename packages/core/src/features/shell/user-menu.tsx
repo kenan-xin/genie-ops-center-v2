@@ -58,7 +58,7 @@ function FooterButton({
     <button
       {...props}
       type="button"
-      className={`flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg py-2 text-left hover:bg-border/60 data-popup-open:bg-border/60 motion-safe:transition-colors ${rail ? "justify-center" : "px-2"} ${focusRing}`}
+      className={`flex min-h-11 w-full min-w-0 items-center gap-3 rounded-lg py-2 text-left hover:bg-hover data-popup-open:bg-hover motion-safe:transition-colors ${rail ? "justify-center" : "px-2"} ${focusRing}`}
     />
   );
 }

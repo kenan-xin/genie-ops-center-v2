@@ -147,7 +147,7 @@ function Rows(props: {
                 key={item.id}
                 className={cn(
                   "flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm motion-safe:transition-colors",
-                  on ? infoTint : !stop && "hover:bg-muted"
+                  on ? infoTint : !stop && "hover:bg-hover"
                 )}
               >
                 {item.readOnly === true ? (
