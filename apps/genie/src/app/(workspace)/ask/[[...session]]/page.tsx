@@ -4,7 +4,8 @@ import {
   AppError,
   ASK_PERMISSION,
   listOwnArtifacts,
-  listOwnSessions,
+  listOwnHistory,
+  listSurfaces,
   type ModuleRequestContext,
   readOwnSession,
 } from "@genie/core";
@@ -76,8 +77,9 @@ export default async function AskPage(props: Props) {
 
     const t = await getTranslations("pages");
 
-    const [sessions, branding, current, chat] = await Promise.all([
-      listOwnSessions(ctx),
+    const [sessions, surfaces, branding, current, chat] = await Promise.all([
+      listOwnHistory(ctx),
+      listSurfaces(ctx),
       ctx.tenant.branding.get(),
       id === undefined ? undefined : currentSession(ctx, id),
       chatLabels(ctx),
@@ -96,6 +98,7 @@ export default async function AskPage(props: Props) {
         <h1 className="sr-only">{t("ask.title")}</h1>
         <AskRoute
           sessions={sessions}
+          surfaces={surfaces}
           currentId={current?.session.id}
           title={current?.session.title ?? "New chat"}
           initialMessages={current?.messages ?? []}

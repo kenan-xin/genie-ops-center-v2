@@ -11,7 +11,7 @@ import type {
 import type { PanelConfig } from "../../services/charts/panel-config.ts";
 import { ShellContext } from "../shell/shell-context.ts";
 import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
-import { handoffDetail } from "./__fixtures__/handoff.ts";
+import { HANDOFF_CARD, handoffDetail } from "./__fixtures__/handoff.ts";
 import { AgentButton } from "./agent-button.tsx";
 import {
   AGENT_PANEL_SESSION_KEY,
@@ -127,11 +127,14 @@ function Frame(props: {
   readonly about?: string;
   /** The page's path, which turns on a surface's agent on its record page. */
   readonly path?: string;
+  /** The address's `?chat=`, which the app passes to the panel (R14). */
+  readonly chat?: string;
 }) {
   const [page, setPage] = useState(props.page);
 
-  // The app's router moves the path, as a link to another record does.
+  // The app's router moves the path, as a link to another record does; `?chat=` goes apart.
   const [path, setPath] = useState(props.path ?? "/dashboards/d1");
+  const [chat, setChat] = useState(props.chat);
 
   return (
     <ShellContext.Provider
@@ -145,6 +148,16 @@ function Frame(props: {
         <main className="min-w-0 flex-1 p-4">
           <h1 className="text-xl font-bold">Example page</h1>
           <AgentButton />
+          {props.chat === undefined ? null : (
+            <>
+              <button type="button" onClick={() => setChat(undefined)}>
+                Clear the chat parameter
+              </button>
+              <button type="button" onClick={() => setChat(props.chat)}>
+                Set the chat parameter again
+              </button>
+            </>
+          )}
           {page ? (
             <>
               <TestPage about={props.about} />
@@ -163,9 +176,13 @@ function Frame(props: {
           timeZone="UTC"
           surfaces={SURFACES}
           path={path}
+          initialSessionId={chat}
           navigate={(href) => {
+            const url = new URL(href, "http://story");
+
             navigate(href);
-            setPath(href);
+            setPath(url.pathname);
+            setChat(url.searchParams.get("chat") ?? undefined);
           }}
         />
       </div>
@@ -407,8 +424,168 @@ export const PickAnotherRecordsChat: Story = {
     await userEvent.click(
       await screen.findByRole("button", { name: "Older chat" })
     );
-    await expect(navigate).toHaveBeenCalledWith("/placeholder/r2");
+    await expect(navigate).toHaveBeenCalledWith(
+      `/placeholder/r2?chat=${OLDER_R2}`
+    );
     await expect(await screen.findByText("The older chat")).toBeVisible();
+  },
+};
+
+/** Two chats of record r2, each answering its own line, on r2's page with `?chat=` the older. */
+function GivenChatFrame() {
+  return (
+    <AgentClientStub
+      sessions={async () => [
+        r2Chat(NEWER_R2, "Newer chat", "2026-10-27T03:00:00.000Z"),
+        r2Chat(OLDER_R2, "Older chat", "2026-10-27T01:00:00.000Z"),
+      ]}
+      session={async ({ id }) => ({
+        session: r2Chat(id, "Chat", "2026-10-27T01:00:00.000Z"),
+        messages: [
+          {
+            id: `answer-${id}`,
+            role: "assistant",
+            parts: [
+              {
+                type: "text",
+                text: `root = Answer([p])\np = Paragraph("${id === OLDER_R2 ? "The older chat" : "The newer chat"}")`,
+              },
+            ],
+          },
+        ],
+      })}
+    >
+      <Frame page={false} path="/placeholder/r2" chat={OLDER_R2} />
+    </AgentClientStub>
+  );
+}
+
+// R14: Ask's link to a surface chat opens its record page with the panel on that chat, not the newest.
+export const PanelOpensOnTheGivenChat: Story = {
+  name: "Panel opens on the given chat",
+  render: () => <GivenChatFrame />,
+  play: async () => {
+    // The panel opens by itself; no click on Agent.
+    await expect(await screen.findByText("The older chat")).toBeVisible();
+    await expect(screen.queryByText("The newer chat")).toBeNull();
+  },
+};
+
+// Review fix: leaving `?chat=` and coming back to the same value opens that chat again, over a pick.
+export const TheSameChatParameterAgainBeatsAPick: Story = {
+  name: "The same chat parameter again beats a pick",
+  render: () => <GivenChatFrame />,
+  play: async ({ canvas }) => {
+    await screen.findByText("The older chat");
+    await userEvent.click(screen.getByRole("tab", { name: "Chats" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Newer chat" })
+    );
+    await expect(await screen.findByText("The newer chat")).toBeVisible();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear the chat parameter" })
+    );
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Set the chat parameter again" })
+    );
+    await expect(await screen.findByText("The older chat")).toBeVisible();
+    await expect(screen.queryByText("The newer chat")).toBeNull();
+  },
+};
+
+const markSeen = fn(
+  async (_input: { readonly sessionId: string }) => undefined
+);
+
+/** Whether the stubbed run has ended; each story sets it. */
+let runEnded = false;
+
+const runReads = fn();
+
+/** The handed-over chat, building until `runEnded`, with `markSeen` watched (R12). */
+function RunFrame() {
+  return (
+    <AgentClientStub
+      sessions={async () => [handoffDetail("building").session]}
+      session={async () => {
+        const read = handoffDetail(runEnded ? "saved" : "building");
+
+        runReads(read.session.run);
+
+        return read;
+      }}
+      markSeen={markSeen}
+    >
+      <Frame page={false} path="/placeholder/r1" />
+    </AgentClientStub>
+  );
+}
+
+// Review Focus 5: the person watches the run end, so the chat gets no unseen dot afterwards.
+export const ARunThatEndsWhileOpenMarksItSeen: Story = {
+  name: "A run that ends while open marks it seen",
+  beforeEach: () => {
+    runEnded = false;
+    markSeen.mockClear();
+  },
+  render: () => <RunFrame />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+    const region = await screen.findByRole("region", {
+      name: "Placeholder agent",
+    });
+
+    await within(region.querySelector("header")!).findByText("Building");
+    // A building run has no unseen mark to clear yet.
+    await expect(markSeen).not.toHaveBeenCalled();
+
+    runEnded = true;
+    await within(region.querySelector("header")!).findByText(
+      "Saved",
+      {},
+      { timeout: 4000 }
+    );
+    await waitFor(() =>
+      expect(markSeen).toHaveBeenCalledWith({
+        sessionId: HANDOFF_CARD.sessionId,
+      })
+    );
+  },
+};
+
+// R12: a run that ends while the panel is closed was not watched, so its chat stays unseen.
+export const ARunThatEndsWithThePanelClosedStaysUnseen: Story = {
+  name: "A run that ends with the panel closed stays unseen",
+  beforeEach: () => {
+    runEnded = false;
+    markSeen.mockClear();
+    runReads.mockClear();
+  },
+  render: () => <RunFrame />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+    const region = await screen.findByRole("region", {
+      name: "Placeholder agent",
+    });
+
+    await within(region.querySelector("header")!).findByText("Building");
+    await userEvent.click(
+      screen.getByRole("button", { name: "Close the agent panel" })
+    );
+
+    runEnded = true;
+    // The closed panel keeps its chat, which still reads the run and sees it end.
+    await waitFor(() => expect(runReads).toHaveBeenCalledWith("saved"), {
+      timeout: 4000,
+    });
+    await expect(markSeen).not.toHaveBeenCalled();
+
+    // Opening the chat is what marks it seen.
+    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await waitFor(() => expect(markSeen).toHaveBeenCalledTimes(1));
   },
 };
 

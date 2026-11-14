@@ -8,7 +8,7 @@ import {
   type ShellLinkComponent,
 } from "@genie/core/features/shell";
 import linkModule from "next/link.js";
-import { usePathname, useRouter } from "next/navigation.js";
+import { usePathname, useRouter, useSearchParams } from "next/navigation.js";
 import type { ComponentProps } from "react";
 
 // NodeNext types this CommonJS default import as the whole module, while Next's bundler can hand
@@ -34,7 +34,10 @@ export function NextAppShell(
  * surface's agent, and a handoff opens the page that builds (S7-41).
  */
 export function NextAgentPanelHost(
-  props: Omit<ComponentProps<typeof AgentPanelHost>, "path" | "navigate">
+  props: Omit<
+    ComponentProps<typeof AgentPanelHost>,
+    "path" | "navigate" | "initialSessionId"
+  >
 ) {
   const router = useRouter();
 
@@ -42,6 +45,8 @@ export function NextAgentPanelHost(
     <AgentPanelHost
       {...props}
       path={usePathname()}
+      // Ask's link to a surface chat names it, so the panel opens on that chat (R14).
+      initialSessionId={useSearchParams().get("chat") ?? undefined}
       navigate={(href) => router.push(href)}
     />
   );

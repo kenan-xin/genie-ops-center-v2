@@ -487,11 +487,13 @@ export {
 
 export {
   AGENT_SESSION_LIST_LIMIT,
+  type AgentHistoryEntry,
   type AgentMessage,
   type AgentSessionSummary,
   appendMessage,
   createOwnSession,
   findOwnSession,
+  listOwnHistory,
   listOwnSessions,
   type OwnHistory,
   readOwnHistory,

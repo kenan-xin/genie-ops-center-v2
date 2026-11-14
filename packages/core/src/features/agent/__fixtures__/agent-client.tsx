@@ -70,6 +70,7 @@ export function AgentClientStub(props: {
   }) => Promise<readonly AgentArtifact[]>;
   readonly stop?: (input: { readonly id: string }) => Promise<void>;
   readonly retry?: (input: { readonly id: string }) => Promise<void>;
+  readonly markSeen?: (input: { readonly sessionId: string }) => Promise<void>;
   readonly children: ReactNode;
 }): ReactNode {
   const [client] = useState(
@@ -96,6 +97,7 @@ export function AgentClientStub(props: {
     artifacts: props.artifacts ?? (async () => NO_ARTIFACTS),
     stop: props.stop ?? (async () => undefined),
     retry: props.retry ?? (async () => undefined),
+    markSeen: props.markSeen ?? (async () => undefined),
     files: props.files ?? (async () => NO_FILES),
     fileLink:
       props.fileLink ??

@@ -19,6 +19,8 @@ export {
 
 export { AgentChat } from "./agent-chat.tsx";
 
+export { HISTORY_KEY } from "./session-detail.ts";
+
 export { latestHandoff, startedHandoff } from "./handoff-parts.ts";
 
 export type { HandoffCardData } from "../../services/agent/hand-over.ts";

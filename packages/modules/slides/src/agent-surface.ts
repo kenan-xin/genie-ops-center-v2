@@ -29,6 +29,8 @@ export const SLIDES_SURFACE_INSTRUCTIONS: AgentInstructions = {
 /** The Slides agent of the deck page (DEC-29, amended 2026-11-07; S7-42). */
 export const SLIDES_SURFACE: AgentSurface = {
   name: "Slides agent",
+  label: "Slides",
+  icon: "presentation",
   recordPage: "/m/slides/decks/:id",
   tools: SLIDES_WRITE_TOOLS,
   instructions: SLIDES_SURFACE_INSTRUCTIONS,

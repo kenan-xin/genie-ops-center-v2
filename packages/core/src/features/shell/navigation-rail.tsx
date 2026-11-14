@@ -67,8 +67,8 @@ const CORE_ICONS = new Map<string, LucideIcon>([
   ["core-categories", Tags],
 ]);
 
-// The icons a module entry may name (module contract, Navigation row).
-const MODULE_ICONS: Readonly<Record<NavigationIcon, LucideIcon>> = {
+// The icons a module entry or an agent surface may name (module contract, Navigation row).
+export const MODULE_ICONS: Readonly<Record<NavigationIcon, LucideIcon>> = {
   "banknote": Banknote,
   "inbox": Inbox,
   "layout-dashboard": LayoutDashboard,

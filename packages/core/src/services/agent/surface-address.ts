@@ -1,10 +1,15 @@
+import type { NavigationIcon } from "../../lib/module-contract/module.ts";
+
 /**
- * A surface as the screens see it, and the address of one of its records. This file imports
- * nothing, so the browser bundle can use it.
+ * A surface as the screens see it, and the address of one of its records. This file imports only
+ * types, so the browser bundle can use it.
  */
 export type SurfaceView = {
   readonly id: string;
   readonly name: string;
+  /** The short group label in Ask's history; without one, `name`. */
+  readonly label?: string | undefined;
+  readonly icon?: NavigationIcon | undefined;
   readonly recordPage: string;
   readonly acceptsHandoff: boolean;
 };

@@ -188,8 +188,10 @@ test("the agent panel and Ask share a chat, and only New chat starts another", a
   ).toBeVisible(FIRST_PAINT);
   await expect(agentButton(page)).toHaveCount(0);
 
-  // R-42a: Ask's history lists the panel's first chat too.
-  const listed = (await historyOf(page)).locator(`a[href="/ask/${sessionId}"]`);
+  // R-42a: Ask's history lists the panel's first chat too, in Ask's group and in Recents.
+  const listed = (await historyOf(page))
+    .locator(`a[href="/ask/${sessionId}"]`)
+    .first();
 
   await expect(listed).toContainText(QUESTION);
   await listed.click();
@@ -396,7 +398,10 @@ test("the chat header menu renames a chat and deletes it", async ({
   await page.reload();
   await expect(page.locator(`p[title="${renamed}"]`)).toBeVisible(FIRST_PAINT);
 
-  const listed = (await historyOf(page)).locator(`a[href="/ask/${sessionId}"]`);
+  // The chat sits in Ask's group and in Recents (DEC-57 item 11).
+  const listed = (await historyOf(page))
+    .locator(`a[href="/ask/${sessionId}"]`)
+    .first();
 
   await expect(listed).toContainText(renamed);
 

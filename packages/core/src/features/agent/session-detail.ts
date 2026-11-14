@@ -1,6 +1,7 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 import { useModuleClient } from "../../lib/rpc/module-client.tsx";
 import { agentContract } from "../../services/agent/contract.ts";
@@ -19,6 +20,39 @@ export function runPollInterval(
   const run = detail?.session.run;
 
   return run === "building" || run === "stopping" ? RUN_POLL_MS : false;
+}
+
+/** The query key of Ask's history (`agent.history`), which a seen chat refreshes. */
+export const HISTORY_KEY = ["agent", "history"];
+
+/**
+ * Clears the open chat's unseen mark (R12): when the chat shows with a saved session, and again
+ * when its run leaves building or stopping while it shows, so a run the person watched end gets
+ * no dot. A hidden chat (the closed panel keeps it mounted) marks nothing.
+ */
+export function useMarkSeen(
+  sessionId: string,
+  detail:
+    | { readonly session: { readonly run: AgentRunStatus | null } }
+    | null
+    | undefined,
+  visible: boolean
+): void {
+  const agent = useModuleClient(agentContract);
+  const queryClient = useQueryClient();
+
+  const { mutate } = useMutation({
+    mutationFn: () => agent.markSeen({ sessionId }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: HISTORY_KEY }),
+  });
+
+  // A null read is a chat not saved yet, which markSeen would answer not-found.
+  const saved = detail !== null && detail !== undefined;
+  const working = runPollInterval(detail) !== false;
+
+  useEffect(() => {
+    if (visible && saved && !working) mutate();
+  }, [mutate, sessionId, visible, saved, working]);
 }
 
 /**

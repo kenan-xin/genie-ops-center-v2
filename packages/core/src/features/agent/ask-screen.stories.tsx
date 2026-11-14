@@ -5,8 +5,8 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type {
   AgentArtifact,
+  AgentHistoryEntry,
   AgentMessage,
-  AgentSessionSummary,
   InboxLink,
 } from "../../services/agent/index.ts";
 import type { AgentRunStatus } from "../../services/agent/runs.ts";
@@ -22,7 +22,7 @@ import { Conversation } from "./conversation.tsx";
 
 const OVERDUE = "Which customers currently have overdue invoices?";
 
-const SESSIONS: readonly AgentSessionSummary[] = [
+const SESSIONS: readonly AgentHistoryEntry[] = [
   {
     id: "00000000-0000-4000-8000-000000000001",
     title: OVERDUE,
@@ -31,6 +31,10 @@ const SESSIONS: readonly AgentSessionSummary[] = [
     recordId: null,
     runState: null,
     updatedAt: new Date().toISOString(),
+    run: null,
+    unseen: false,
+    agentName: null,
+    address: null,
   },
   {
     id: "00000000-0000-4000-8000-000000000002",
@@ -40,6 +44,10 @@ const SESSIONS: readonly AgentSessionSummary[] = [
     recordId: null,
     runState: null,
     updatedAt: "2026-10-29T16:30:00.000Z",
+    run: null,
+    unseen: false,
+    agentName: null,
+    address: null,
   },
 ];
 
@@ -229,7 +237,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 272 px gray column with Chats, New chat and Hide chats in its top row, then Search chats and the groups Today and Earlier; a long title ends with an ellipsis. Hide chats removes it fully, and the header then gains Show chats. One 56 px header holds the title, which ends with an ellipsis, and Chat actions: Rename and Delete for a saved chat, each behind its dialog. Below 1024 px the header also holds Show chats, which opens the history as a left sheet, and New chat, and the menu offers a new chat's model. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
+          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 272 px gray column with Chats, New chat and Hide chats in its top row, then Search chats, the chats grouped by agent and Recents (see Agent history); a long title ends with an ellipsis. Hide chats removes it fully, and the header then gains Show chats. One 56 px header holds the title, which ends with an ellipsis, and Chat actions: Rename and Delete for a saved chat, each behind its dialog. Below 1024 px the header also holds Show chats, which opens the history as a left sheet, and New chat, and the menu offers a new chat's model. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
       },
     },
     a11y: { test: "error" },
@@ -244,6 +252,7 @@ const meta = {
   globals: desktop,
   args: {
     sessions: SESSIONS,
+    surfaces: [],
     currentId: SESSIONS[0]?.id,
     title: OVERDUE,
     sessionHref: (id: string) => `/ask/${id}`,
@@ -376,10 +385,16 @@ export const SearchChats: Story = {
   play: async ({ canvas }) => {
     const search = canvas.getByRole("searchbox", { name: "Search chats" });
 
-    const titles = () =>
-      within(canvas.getByRole("navigation", { name: "Chats" }))
-        .queryAllByRole("link")
-        .map((link) => link.textContent);
+    // Ask's group only: Recents lists the same chats again.
+    const titles = () => {
+      const ask = canvas.queryByRole("group", { name: "Ask chats" });
+
+      return ask === null
+        ? []
+        : within(ask)
+            .queryAllByRole("link")
+            .map((link) => link.textContent);
+    };
 
     await userEvent.type(search, "overdue");
     await expect(titles()).toEqual([OVERDUE]);
@@ -400,7 +415,7 @@ const artifactPanel = () => screen.queryByRole("region", { name: "Artifact" });
 const LONG_TITLE =
   "Which customers with overdue items in the north region also paid late last quarter, and by how many days on average?";
 
-const LONG_SESSIONS: readonly AgentSessionSummary[] = [
+const LONG_SESSIONS: readonly AgentHistoryEntry[] = [
   {
     ...SESSIONS[1]!,
     id: "00000000-0000-4000-8000-000000000009",
@@ -453,8 +468,8 @@ export const ALongChatTitleOnAPhone: Story = {
   },
 };
 
-// C2 (czjw.120 item 19): the search box and the rows share both edges, Hide chats ends on that
-// edge, and the row text starts under the heading.
+// C2 (czjw.120 item 19): the search box and the group rows share both edges, Hide chats ends on
+// that edge, and the group's icon starts under the heading (variant E indents the chats below it).
 export const RailEdges: Story = {
   name: "Rail edges",
   play: async () => {
@@ -469,12 +484,12 @@ export const RailEdges: Story = {
       .closest('[data-slot="input-group"]')
       ?.getBoundingClientRect();
 
-    const link = rail.getByRole("link", { name: OVERDUE });
+    const group = rail.getByRole("button", { name: "Ask" });
 
-    const row = link.getBoundingClientRect();
+    const row = group.getBoundingClientRect();
 
     const rowText = (
-      link.querySelector("span") ?? link
+      group.querySelector("svg") ?? group
     ).getBoundingClientRect();
 
     const hide = rail

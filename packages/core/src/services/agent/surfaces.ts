@@ -18,9 +18,10 @@ export async function listSurfaces(
   return providers.map(({ moduleId, implementation }) => {
     // SAFETY: validateModule checked the agent-surface provision against AgentSurface, and `list`
     // answers only providers of that name.
-    const { name, recordPage, acceptsHandoff } = implementation as AgentSurface;
+    const { name, label, icon, recordPage, acceptsHandoff } =
+      implementation as AgentSurface;
 
-    return { id: moduleId, name, recordPage, acceptsHandoff };
+    return { id: moduleId, name, label, icon, recordPage, acceptsHandoff };
   });
 }
 

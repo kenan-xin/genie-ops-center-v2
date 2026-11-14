@@ -15,7 +15,7 @@ import type { AgentPageContext } from "../../services/agent/page-context.ts";
 import type { ArtifactCardAction } from "./artifact-card.tsx";
 import type { CheckChart } from "./chart-check.tsx";
 import { Conversation } from "./conversation.tsx";
-import { useSessionDetail } from "./session-detail.ts";
+import { useMarkSeen, useSessionDetail } from "./session-detail.ts";
 import {
   AGENT_ROUTE,
   agentTransport,
@@ -55,6 +55,8 @@ export function AgentChat(props: {
   /** An answer handed work over to a surface; see `Conversation`. */
   readonly onHandoff?: ((card: HandoffCardData) => void) | undefined;
   readonly onWorking?: ((working: boolean) => void) | undefined;
+  /** Whether the person sees the chat; only a shown chat clears its unseen mark (R12). Default true. */
+  readonly visible?: boolean | undefined;
   /** The model a frame chooses itself; see `Conversation`. */
   readonly model?:
     | { readonly value: string; readonly onChange: (model: string) => void }
@@ -87,6 +89,8 @@ export function AgentChat(props: {
   // A chat the panel reopens is read fresh each time, so it continues after a page load (czjw.60).
   // The read holds the run, and polls each second while it builds (R-42b, P11-32).
   const saved = useSessionDetail(props.sessionId);
+
+  useMarkSeen(props.sessionId, saved.data, props.visible ?? true);
 
   const stop = useMutation({
     mutationFn: () => agent.stop({ id: props.sessionId }),

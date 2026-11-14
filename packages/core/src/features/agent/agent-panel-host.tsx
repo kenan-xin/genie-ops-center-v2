@@ -124,6 +124,8 @@ export function AgentPanelHost(props: {
   readonly path?: string | undefined;
   /** Opens a page through the app's router. */
   readonly navigate?: ((href: string) => void) | undefined;
+  /** The address's `?chat=` on a record page, which opens the panel on that chat (R14). */
+  readonly initialSessionId?: string | undefined;
 }): ReactNode {
   const shell = use(ShellContext);
   const agent = useModuleClient(agentContract);
@@ -193,6 +195,26 @@ export function AgentPanelHost(props: {
   if (target !== undefined && fresh.recordId !== target.recordId) {
     setFresh({ recordId: target.recordId, id: crypto.randomUUID() });
   }
+
+  // A new `?chat=` beats an earlier pick on this record, so Ask's link always opens its chat. Only
+  // a surface's record page takes it; every change is tracked, so leaving and coming back to the
+  // same `?chat=` counts as new.
+  const chatParam = target === undefined ? undefined : props.initialSessionId;
+
+  const [adopted, setAdopted] = useState<string | undefined>(undefined);
+
+  if (chatParam !== adopted) {
+    setAdopted(chatParam);
+
+    if (target !== undefined && chatParam !== undefined) {
+      setPicked({ recordId: target.recordId, id: chatParam });
+      setTab("chat");
+    }
+  }
+
+  useEffect(() => {
+    if (chatParam !== undefined) setPanelOpen(true);
+  }, [chatParam]);
 
   const surfaceSessions = useQuery({
     queryKey: ["agent", "sessions", target?.surface.id, target?.recordId],
@@ -363,6 +385,10 @@ export function AgentPanelHost(props: {
           headingLevel={3}
           onNewChat={newChat}
           onWorking={setPanelWorking}
+          visible={
+            open &&
+            (target === undefined || (tab === "chat" && !(bottom && collapsed)))
+          }
           pending={
             outbox === null
               ? undefined
@@ -524,7 +550,6 @@ export function AgentPanelHost(props: {
               <ChatHistory
                 sessions={surfaceSessions.data ?? []}
                 currentId={shownId}
-                timeZone={props.timeZone}
                 groups={(sessions) =>
                   surfaceSessionGroups(sessions, target.recordId)
                 }
@@ -537,7 +562,11 @@ export function AgentPanelHost(props: {
                     setPicked({ recordId: session.recordId, id: session.id });
                     setTab("chat");
                     props.navigate?.(
-                      recordAddress(target.surface.recordPage, session.recordId)
+                      recordAddress(
+                        target.surface.recordPage,
+                        session.recordId,
+                        session.id
+                      )
                     );
                   }
                 }}

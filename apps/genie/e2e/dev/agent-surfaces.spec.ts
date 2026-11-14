@@ -127,7 +127,10 @@ async function countsUntil(
 const chip = (surface: Locator, text: "Building" | "Saved") =>
   surface.locator("header").getByText(text, { exact: true });
 
-/** The Ask chat is in Ask history, and the chat it handed over to is not (R-42). */
+/**
+ * The Ask chat is in Ask's group of the history, and the chat it handed over to never opens in Ask:
+ * it links to its record page (R-42, DEC-57 item 11).
+ */
 async function expectAskHistory(
   page: Page,
   askId: string,
@@ -145,10 +148,18 @@ async function expectAskHistory(
 
   const history = page.getByRole("navigation", { name: "Chats" });
 
-  await expect(history.locator(`a[href="/ask/${askId}"]`)).toHaveCount(1, {
+  await expect(
+    history
+      .getByRole("group", { name: "Ask chats" })
+      .locator(`a[href="/ask/${askId}"]`)
+  ).toHaveCount(1, {
     timeout: FIRST_PAINT.timeout,
   });
   await expect(history.locator(`a[href="/ask/${surfaceId}"]`)).toHaveCount(0);
+  // It is listed in its agent's group, as a link to its record page on that chat (R14).
+  await expect(
+    history.locator(`[role="group"] a[href$="?chat=${surfaceId}"]`)
+  ).toHaveCount(1);
 }
 
 /** The record page's Chats tab lists the handed-over chat under On this page (R-42). */

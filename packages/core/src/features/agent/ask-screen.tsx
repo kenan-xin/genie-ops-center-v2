@@ -43,13 +43,14 @@ import {
 import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
   AgentArtifact,
-  AgentSessionSummary,
+  AgentHistoryEntry,
   ChatLabels,
 } from "../../services/agent/index.ts";
+import type { SurfaceView } from "../../services/agent/surface-address.ts";
 import type { Read } from "./answer-sources.ts";
 import type { ArtifactRef } from "./artifact-refs.ts";
 import { ArtifactSheet, ArtifactSlot } from "./artifact-slot.tsx";
-import { ChatHistory } from "./chat-history.tsx";
+import { AgentHistory } from "./chat-history.tsx";
 import { HandoffChip } from "./handoff-card.tsx";
 
 /** From this width an open artifact sits in a column beside the chat (AG22). */
@@ -158,14 +159,17 @@ function RenameChat(props: {
  * 1024 px the model of a new chat (czjw.120 items 12 and 13).
  */
 export function AskScreen(props: {
-  readonly sessions: readonly AgentSessionSummary[];
+  /** Every agent's chats, newest first (`agent.history`, DEC-57 item 11). */
+  readonly sessions: readonly AgentHistoryEntry[];
+  /** The listed surfaces, which name the history's groups. */
+  readonly surfaces: readonly SurfaceView[];
   readonly currentId: string | undefined;
   /** The session title, or "New chat". */
   readonly title: string;
   readonly sessionHref: (id: string) => string;
   readonly newChatHref: string;
   readonly aiOn: boolean;
-  /** The tenant's zone for each chat's day. */
+  /** The tenant's zone, for an artifact's dates. */
   readonly timeZone: string;
   /** Dataset titles and field labels, for the artifact's caption and a read's rows. */
   readonly labels: ChatLabels;
@@ -275,11 +279,11 @@ export function AskScreen(props: {
   };
 
   const history = (
-    <ChatHistory
-      sessions={props.sessions}
+    <AgentHistory
+      entries={props.sessions}
+      surfaces={props.surfaces}
       currentId={props.currentId}
-      sessionHref={props.sessionHref}
-      timeZone={props.timeZone}
+      askHref={props.sessionHref}
     />
   );
 

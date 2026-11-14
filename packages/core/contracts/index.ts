@@ -1,7 +1,10 @@
 import type { ZodType } from "zod";
 
 import type { PermissionKey } from "../src/lib/module-contract/keys.ts";
-import type { ModuleRequestContext } from "../src/lib/module-contract/module.ts";
+import type {
+  ModuleRequestContext,
+  NavigationIcon,
+} from "../src/lib/module-contract/module.ts";
 import type { TenantTransaction } from "../src/lib/tenant-context/with-transaction.ts";
 
 /**
@@ -149,6 +152,10 @@ export type DocumentInbox = {
 export type AgentSurface = {
   /** The agent's name a person reads, for example "Slides agent". */
   readonly name: string;
+  /** The short name of the agent's group in Ask's history, for example "Slides"; without one, `name`. */
+  readonly label?: string;
+  /** The icon of the agent's chats in Ask's history, usually its navigation entry's; without one, a generic agent icon. */
+  readonly icon?: NavigationIcon;
   /** A workspace page path of the module with one parameter, for example "/m/slides/decks/:id". */
   readonly recordPage: string;
   /** The surface's own tools. Read tools stay in `agent-tools`, which a surface session also gets. */

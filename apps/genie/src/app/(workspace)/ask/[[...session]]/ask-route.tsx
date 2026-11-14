@@ -2,16 +2,18 @@
 
 import type {
   AgentArtifact,
+  AgentHistoryEntry,
   AgentMessage,
-  AgentSessionSummary,
   ChatLabels,
   InboxLink,
+  SurfaceView,
 } from "@genie/core";
 import {
   AgentChat,
   type ArtifactRef,
   AskScreen,
   type HandoffCardData,
+  HISTORY_KEY,
   latestHandoff,
   type Read,
   readsOf,
@@ -23,7 +25,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { rpc } from "../../../../rpc/client.ts";
 
-const SESSION_LIST_KEY = ["agent", "sessions"];
+/** How often Ask reads its history again while one of the chats works (DEC-57 item 11). */
+const HISTORY_POLL_MS = 5000;
 
 /**
  * The browser half of Ask (R-42, R-42a, R-45a, R-18, R-20). The server has read the list, the
@@ -31,7 +34,9 @@ const SESSION_LIST_KEY = ["agent", "sessions"];
  * client owns the new chat's id, the shown artifact, and the refresh an answer earns.
  */
 export function AskRoute(props: {
-  readonly sessions: readonly AgentSessionSummary[];
+  /** Every agent's chats, newest first (`agent.history`). */
+  readonly sessions: readonly AgentHistoryEntry[];
+  readonly surfaces: readonly SurfaceView[];
   readonly currentId: string | undefined;
   readonly title: string;
   readonly initialMessages: readonly AgentMessage[];
@@ -59,10 +64,17 @@ export function AskRoute(props: {
     latestHandoff(props.initialMessages)
   );
 
+  // The spinners and dots follow each run: read again while one builds or stops.
   const sessions = useQuery({
-    queryKey: SESSION_LIST_KEY,
-    queryFn: () => rpc.agent.sessions(),
+    queryKey: HISTORY_KEY,
+    queryFn: () => rpc.agent.history(),
     initialData: props.sessions,
+    refetchInterval: (query) =>
+      query.state.data?.some(
+        ({ run }) => run === "building" || run === "stopping"
+      )
+        ? HISTORY_POLL_MS
+        : false,
   });
 
   // The browser makes the id of a new chat (P3), and one id lasts for this mount.
@@ -149,6 +161,7 @@ export function AskRoute(props: {
   return (
     <AskScreen
       sessions={sessions.data}
+      surfaces={props.surfaces}
       currentId={currentId}
       title={title}
       sessionHref={(id) => `/ask/${id}`}
@@ -167,10 +180,10 @@ export function AskRoute(props: {
           : null
       }
       onRenamed={() =>
-        void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY })
+        void queryClient.invalidateQueries({ queryKey: HISTORY_KEY })
       }
       onDeleted={() => {
-        void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
+        void queryClient.invalidateQueries({ queryKey: HISTORY_KEY });
         startNewChat();
       }}
       handoff={handoff}
@@ -202,7 +215,7 @@ export function AskRoute(props: {
             router.push(card.address);
           }}
           onFinished={(id) => {
-            void queryClient.invalidateQueries({ queryKey: SESSION_LIST_KEY });
+            void queryClient.invalidateQueries({ queryKey: HISTORY_KEY });
             void queryClient.invalidateQueries({
               queryKey: ["agent", "artifacts", id],
             });
