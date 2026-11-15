@@ -88,7 +88,7 @@ describe("briefProblems", () => {
         path: "datasets.0",
         message: "No dataset has this name. Call list-datasets for the names.",
       },
-      { path: "artifacts.0", message: "This chat has no artifact 3." },
+      { path: "artifacts.0", message: "This chat has no chart or table 3." },
     ]);
     expect(briefProblems(FULL_BRIEF, known)).toEqual([]);
   });

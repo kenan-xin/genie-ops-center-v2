@@ -27,7 +27,7 @@ export const ANALYTICS_SURFACE_INSTRUCTIONS: AgentInstructions = {
 
 /** The Dashboards agent of the dashboard page (DEC-29, amended 2026-11-07; S7-42). */
 export const ANALYTICS_SURFACE: AgentSurface = {
-  name: "Dashboards agent",
+  name: "Dashboards",
   label: "Dashboards",
   icon: "layout-dashboard",
   recordPage: "/m/analytics/dashboards/:id",

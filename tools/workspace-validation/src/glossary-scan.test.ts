@@ -30,39 +30,6 @@ const CUSTOMER_APP = /^customers\/[^/]+\/app\//;
  * these strings and lower their rows; the ledger goes once it is empty.
  */
 const PENDING_SWEEP = {
-  "packages/core/src/features/agent/agent-button.tsx": {
-    agent: 3,
-  },
-  "packages/core/src/features/agent/agent-panel-host.tsx": {
-    agent: 4,
-    artifact: 1,
-  },
-  "packages/core/src/features/agent/artifact-panel.tsx": {
-    "artifact": 6,
-    "the chat": 1,
-    "artifacts": 1,
-  },
-  "packages/core/src/features/agent/artifact-slot.tsx": {
-    artifact: 1,
-  },
-  "packages/core/src/features/agent/ask-screen.tsx": {
-    "artifact": 1,
-    "the chat": 2,
-  },
-  "packages/core/src/features/agent/composer.tsx": {
-    "ask about your": 2,
-  },
-  "packages/core/src/features/agent/handoff-card.tsx": {
-    "passed to the": 1,
-  },
-  "packages/core/src/features/agent/message-parts.tsx": {
-    artifacts: 1,
-  },
-  "packages/core/src/features/agent/read-rows-panel.tsx": {
-    "the chat": 1,
-    "rows read from": 2,
-    "new read": 1,
-  },
   "packages/core/src/features/audit/audit-log.tsx": {
     "path": 1,
     "clear all": 1,
@@ -82,26 +49,8 @@ const PENDING_SWEEP = {
   "packages/core/src/lib/module-contract/validate.ts": {
     "system role": 1,
   },
-  "packages/core/src/services/agent/brief.ts": {
-    artifact: 1,
-  },
-  "packages/core/src/services/agent/file-job.ts": {
-    agent: 1,
-  },
-  "packages/core/src/services/agent/loop-guard.ts": {
-    agent: 1,
-  },
-  "packages/core/src/services/agent/run-job.ts": {
-    agent: 3,
-  },
-  "packages/core/src/services/agent/store.ts": {
-    agent: 1,
-  },
   "packages/core/src/services/mailer/templates.tsx": {
     enabled: 1,
-  },
-  "packages/modules/analytics/src/agent-surface.ts": {
-    agent: 1,
   },
   "packages/modules/analytics/src/errors.ts": {
     "remove a panel": 1,
@@ -115,9 +64,6 @@ const PENDING_SWEEP = {
   },
   "packages/modules/placeholder/src/module.ts": {
     enabled: 1,
-  },
-  "packages/modules/slides/src/agent-surface.ts": {
-    agent: 1,
   },
   "packages/modules/slides/src/presentation/deck-list.tsx": {
     "chat is off": 2,

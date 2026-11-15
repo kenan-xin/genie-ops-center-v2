@@ -918,24 +918,24 @@ export const OpensAndClosesTheAgentPanel: Story = {
   beforeEach: resetAgentPanel,
   args: { agentPanel },
   play: async ({ canvas }) => {
-    const button = canvas.getByRole("button", { name: "Agent" });
+    const button = canvas.getByRole("button", { name: "Ask" });
 
     await expect(button).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(button);
 
-    const region = await canvas.findByRole("region", { name: "Agent" });
+    const region = await canvas.findByRole("region", { name: "Ask" });
 
     await expect(
-      within(region).getByRole("heading", { level: 2, name: "Agent" })
+      within(region).getByRole("heading", { level: 2, name: "Ask" })
     ).toBeVisible();
     await expect(button).toHaveAttribute("aria-expanded", "true");
 
     await userEvent.click(
-      within(region).getByRole("button", { name: "Close the agent panel" })
+      within(region).getByRole("button", { name: "Close Ask" })
     );
     await waitFor(() =>
       expect(
-        canvas.queryByRole("region", { name: "Agent" }),
+        canvas.queryByRole("region", { name: "Ask" }),
         "after Close"
       ).toBeNull()
     );
@@ -944,7 +944,7 @@ export const OpensAndClosesTheAgentPanel: Story = {
     await userEvent.click(button);
 
     const newChat = await within(
-      await canvas.findByRole("region", { name: "Agent" })
+      await canvas.findByRole("region", { name: "Ask" })
     ).findByRole("button", { name: "New chat" });
 
     await userEvent.click(newChat);
@@ -954,7 +954,7 @@ export const OpensAndClosesTheAgentPanel: Story = {
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
       expect(
-        canvas.queryByRole("region", { name: "Agent" }),
+        canvas.queryByRole("region", { name: "Ask" }),
         "after Escape"
       ).toBeNull()
     );
@@ -1009,10 +1009,10 @@ export const RoomAboveThePhoneAgentPanel: Story = {
     ),
   },
   play: async ({ canvas, canvasElement }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
     const panel = await canvas.findByRole("complementary", {
-      name: "Agent panel",
+      name: "Ask",
     });
 
     const content = element(canvasElement, "[data-shell-content]");
@@ -1036,7 +1036,7 @@ export const RoomAboveThePhoneAgentPanel: Story = {
 
     // Closed, the page gets its own bottom space back.
     await userEvent.click(
-      within(panel).getByRole("button", { name: "Close the agent panel" })
+      within(panel).getByRole("button", { name: "Close Ask" })
     );
     await waitFor(() => expect(content).not.toHaveAttribute("data-agent-room"));
   },
@@ -1070,10 +1070,10 @@ export const ActionBarAboveThePhoneAgentPanel: Story = {
     ),
   },
   play: async ({ canvas, canvasElement }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
     const panel = await canvas.findByRole("complementary", {
-      name: "Agent panel",
+      name: "Ask",
     });
 
     const content = element(canvasElement, "[data-shell-content]");
@@ -1330,10 +1330,10 @@ export const NoAgentOnAsk: Story = {
   args: { agentPanel, currentPath: "/ask" },
   play: async ({ canvas }) => {
     await expect(
-      canvas.queryByRole("button", { name: "Agent", hidden: true })
+      canvas.queryByRole("button", { name: "Ask", hidden: true })
     ).toBeNull();
     await expect(
-      canvas.queryByRole("region", { name: "Agent", hidden: true })
+      canvas.queryByRole("region", { name: "Ask", hidden: true })
     ).toBeNull();
   },
 };

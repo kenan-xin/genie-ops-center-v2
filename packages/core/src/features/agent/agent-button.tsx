@@ -25,7 +25,7 @@ export function AgentButton(props: { readonly compact?: boolean }): ReactNode {
       variant="ghost"
       size="filter"
       className={props.compact === true ? "max-md:w-11" : undefined}
-      aria-label={workingOutOfSight ? "Agent, working" : "Agent"}
+      aria-label={workingOutOfSight ? "Ask, working" : "Ask"}
       aria-expanded={open}
       onClick={(event) =>
         agentPanelStore.setState({ open: !open, opener: event.currentTarget })
@@ -35,7 +35,7 @@ export function AgentButton(props: { readonly compact?: boolean }): ReactNode {
         aria-hidden="true"
         className={`size-2 shrink-0 rounded-full ${working ? "bg-primary motion-safe:animate-pulse" : "bg-muted-foreground"}`}
       />
-      <span className={label}>Agent</span>
+      <span className={label}>Ask</span>
       {workingOutOfSight ? (
         <span className={`text-muted-foreground ${label ?? ""}`}>
           · Working

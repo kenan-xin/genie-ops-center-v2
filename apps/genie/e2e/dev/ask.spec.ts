@@ -77,7 +77,7 @@ async function historyOf(page: Page): Promise<Locator> {
 }
 
 const agentButton = (page: Page) =>
-  page.getByRole("button", { name: "Agent", exact: true });
+  page.getByRole("button", { name: "Ask", exact: true });
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
@@ -154,7 +154,7 @@ test("the agent panel and Ask share a chat, and only New chat starts another", a
   await expectNoAxeViolations(page, "The open agent panel");
 
   // czjw.60: on the same page, opening again continues the chat, and only New chat starts one.
-  await panel.getByRole("button", { name: "Close the agent panel" }).click();
+  await panel.getByRole("button", { name: "Close Ask" }).click();
   await expect(panel).toBeHidden();
 
   const reopened = await openAgentPanel(page);
@@ -222,7 +222,7 @@ test("a reopened agent panel shows the earlier message after a link and a reload
 
   await ask(page);
   await expectAnswer(page);
-  await panel.getByRole("button", { name: "Close the agent panel" }).click();
+  await panel.getByRole("button", { name: "Close Ask" }).click();
   await expect(panel).toBeHidden();
 
   // A page load on Ask, which shows no panel, then back and a reload: the tab keeps the chat.
@@ -260,13 +260,19 @@ test("Ask shows the version that the panel made after an earlier visit", async (
   ).toBeVisible(FIRST_PAINT);
   await panel.getByRole("link", { name: "Open in Ask", exact: true }).click();
 
-  const artifact = page.getByRole("region", { name: "Artifact", exact: true });
+  const artifact = page.getByRole("region", {
+    name: "Chart or table",
+    exact: true,
+  });
+
   const conversation = page.getByRole("log", { name: "Conversation" });
 
   await conversation
     .getByRole("button", { name: "Quantity by record" })
     .click(FIRST_PAINT);
-  await expect(artifact.getByText("Version 1 of 1")).toBeVisible(FIRST_PAINT);
+  await expect(
+    artifact.getByRole("heading", { name: "Quantity by record" })
+  ).toBeVisible(FIRST_PAINT);
 
   // Back is a client-side move, so the app's query cache stays.
   await page.goBack();

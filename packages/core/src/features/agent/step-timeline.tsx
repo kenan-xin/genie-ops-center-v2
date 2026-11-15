@@ -27,7 +27,7 @@ import {
 /**
  * An answer's steps as a vertical timeline (czjw.81, prototype variant B): "Thinking" before the
  * first step, the active step with its time and the slow line, older steps folded behind "+n
- * earlier steps", and, once the answer ended, one strip "Used 5 steps · 38s" that opens the list.
+ * earlier steps", and, once the answer ended, one strip "Worked for 38 seconds" that opens the list.
  * A final refusal shows a box under the answer with Try again. Under reduced motion every node
  * stands still and the words carry the state.
  */
@@ -274,10 +274,11 @@ export function StepTimeline(props: {
       </div>
     );
   } else if (rows.length > 0) {
-    const time =
+    // An answer with no stored time keeps its step count.
+    const worked =
       props.durationMs === undefined
-        ? ""
-        : ` · ${durationLabel(props.durationMs)}`;
+        ? steps(rows.length)
+        : `Worked for ${durationLabel(props.durationMs)}`;
 
     stepsView = (
       <div className="grid gap-2">
@@ -295,9 +296,7 @@ export function StepTimeline(props: {
               strokeWidth={2.5}
             />
           ) : null}
-          {failed === null
-            ? `Used ${steps(rows.length)}${time}`
-            : `${rowText(failed)} · ${steps(rows.length)}${time}`}
+          {failed === null ? worked : `${rowText(failed)} · ${worked}`}
           <ChevronRightIcon
             aria-hidden="true"
             className={`size-4 motion-safe:transition-transform ${open ? "rotate-90" : ""}`}

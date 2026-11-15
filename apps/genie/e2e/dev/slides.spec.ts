@@ -18,6 +18,7 @@ import { withDeploymentLock } from "../support/lock.ts";
 import {
   FIRST_PAINT,
   hideDevelopmentWidgets,
+  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import { LEDGER_LOCK, LOCK_WAIT, onPhone } from "./dev-support.ts";
@@ -28,11 +29,7 @@ import {
   resetChangeDeck,
   slideOverflowFailures,
 } from "./slides-support.ts";
-import {
-  closeSurfaceDatabase,
-  handOverWholeDeck,
-  openSurfaceAgent,
-} from "./surface-support.ts";
+import { closeSurfaceDatabase, handOverWholeDeck } from "./surface-support.ts";
 
 test.skip(
   !(
@@ -122,7 +119,7 @@ test("the agent panel on the deck editor changes the shown slide, and Undo resto
 
         await expect(title(SLIDES_CHANGE_OLD_TITLE)).toBeVisible();
 
-        const chat = await openSurfaceAgent(page, "Slides agent");
+        const chat = await openAgentPanel(page);
 
         // The page names the open deck and the shown slide (D21).
         await expect(
@@ -146,9 +143,7 @@ test("the agent panel on the deck editor changes the shown slide, and Undo resto
         if (onPhone(page)) {
           await send.tap({ timeout: 15_000 });
           // The sheet covers the phone screen, so close it to see the slide; it keeps streaming.
-          await chat
-            .getByRole("button", { name: "Close the agent panel" })
-            .tap();
+          await chat.getByRole("button", { name: "Close Ask" }).tap();
         } else {
           await send.click({ timeout: 15_000 });
         }

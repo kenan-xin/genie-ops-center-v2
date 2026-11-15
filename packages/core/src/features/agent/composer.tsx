@@ -5,7 +5,6 @@ import {
   InputGroupAddon,
   InputGroupButton,
   InputGroupTextarea,
-  useMediaQuery,
 } from "@genie/ui";
 import { ArrowUpIcon, SquareIcon } from "lucide-react";
 import { useId, type ReactNode } from "react";
@@ -13,19 +12,6 @@ import { useId, type ReactNode } from "react";
 const MESSAGE_LIMIT = 4000;
 
 const HINT = "Enter sends. Shift and Enter start a new line.";
-
-/** The desktop placeholder from the readable dataset titles, at most three (czjw.120 item 12, P08-7). */
-export function askPlaceholder(titles: readonly string[]): string {
-  const named = titles.slice(0, 3).map((title) => title.toLowerCase());
-
-  const last = named.pop();
-
-  if (last === undefined) return "Ask a question";
-
-  return named.length === 0
-    ? `Ask about your ${last}`
-    : `Ask about your ${named.join(", ")} or ${last}`;
-}
 
 /**
  * The agent composer of both frames (I18, AG20, czjw.120 items 9 to 12): one bordered `InputGroup`
@@ -41,16 +27,12 @@ export function Composer(props: {
   readonly busy: boolean;
   /** The model picker of a new chat, inside the composer; undefined hides it. */
   readonly picker?: ReactNode;
-  /** The titles of the datasets the person can read, for the desktop placeholder. */
-  readonly datasetTitles?: readonly string[] | undefined;
   /** While a background run builds: "Building" and Stop take Send's place (R-42b). */
   readonly building?:
     | { readonly stopping: boolean; readonly onStop: () => void }
     | undefined;
 }): ReactNode {
   const hintId = useId();
-
-  const wide = useMediaQuery("(min-width: 768px)", {});
 
   const empty = props.value.trim() === "";
 
@@ -63,7 +45,8 @@ export function Composer(props: {
           aria-describedby={hintId}
           rows={1}
           maxLength={MESSAGE_LIMIT}
-          placeholder={askPlaceholder(wide ? (props.datasetTitles ?? []) : [])}
+          // One placeholder at every width (P05-17).
+          placeholder="Ask a question"
           // oxlint-disable-next-line shadcn/no-restyle -- Composer 1: a 52 px text area on top that grows, then scrolls
           className="max-h-48 min-h-13 px-4 pt-3.5 pb-0"
           value={props.value}

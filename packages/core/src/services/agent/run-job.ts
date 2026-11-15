@@ -107,7 +107,7 @@ async function runSession(
   const person = { tenant, caller };
 
   const logError = (cause: unknown) =>
-    contextLoggerOf(tenant)?.error({ err: cause }, "agent run error");
+    contextLoggerOf(tenant)?.error({ err: cause }, "Ask run error");
 
   const stop = new AbortController();
   let latest: AgentMessage | undefined;
@@ -370,7 +370,7 @@ export async function continueRun(
       { tx, id: jobId, expireInSeconds: AGENT_RUN_EXPIRE_SECONDS }
     );
 
-    if (sent !== jobId) throw new Error("The agent run job was not queued.");
+    if (sent !== jobId) throw new Error("The Ask run job was not queued.");
 
     await tx
       .update(agentSession)
@@ -525,7 +525,7 @@ export async function startRun(
     { tx, id: jobId, expireInSeconds: AGENT_RUN_EXPIRE_SECONDS }
   );
 
-  if (sent !== jobId) throw new Error("The agent run job was not queued.");
+  if (sent !== jobId) throw new Error("The Ask run job was not queued.");
 
   let moved: readonly { readonly id: string }[];
 

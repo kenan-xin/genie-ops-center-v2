@@ -392,7 +392,7 @@ export function AskScreen(props: {
       {docked ? (
         !slotOpen ? null : (
           <aside
-            aria-label="Artifact panel"
+            aria-label="Side panel"
             className="flex w-120 shrink-0 flex-col border-s border-border"
           >
             <ArtifactSlot {...slot} variant="column" />
@@ -428,7 +428,7 @@ export function AskScreen(props: {
       <ConfirmDialog
         open={dialog === "delete"}
         title="Delete this chat?"
-        description="This deletes the chat, its tables and charts, and the files it made. You cannot undo this."
+        description="This deletes this chat, its tables and charts, and the files it made. You cannot undo this."
         confirmLabel="Delete chat"
         danger
         onConfirm={() => {
@@ -441,7 +441,7 @@ export function AskScreen(props: {
       >
         {remove.isError ? (
           <p role="alert" className="text-sm text-destructive">
-            The chat could not be deleted. Try again.
+            This chat could not be deleted. Try again.
           </p>
         ) : null}
       </ConfirmDialog>

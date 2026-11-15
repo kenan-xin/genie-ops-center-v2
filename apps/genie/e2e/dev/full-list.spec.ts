@@ -127,7 +127,10 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
       // 2. The full list opens as the table artifact, which holds every row.
       await more.click();
 
-      const panel = page.getByRole("region", { name: "Artifact", exact: true });
+      const panel = page.getByRole("region", {
+        name: "Chart or table",
+        exact: true,
+      });
 
       await expect(
         panel.getByRole("heading", { name: "All invoices", exact: true })
@@ -152,8 +155,8 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
         .getByRole("button", {
           name:
             testInfo.project.name === "phone"
-              ? "Back to the chat"
-              : "Close the artifact",
+              ? "Back to chat"
+              : "Close the table",
         })
         .click();
 

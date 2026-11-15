@@ -37,13 +37,13 @@ export function briefOf(
 const day = (iso: string) =>
   formatChartValue({ key: "day", label: "Day", type: "date" }, iso);
 
+// No line names the surface: the person met only Ask (P05-21).
 function statusText(
-  agentName: string,
   read: "loading" | "deleted" | AgentRunStatus | null
 ): string {
   switch (read) {
     case "building":
-      return `${agentName} is working`;
+      return "Ask is working";
     case "stopping":
       return "Stopping";
     case "saved":
@@ -57,13 +57,12 @@ function statusText(
     case "deleted":
       return "Its chat was deleted";
     default:
-      return `Handing over to the ${agentName}`;
+      return "Handing over";
   }
 }
 
 /** What Ask passed, as a fold under the card (R-42b: the person sees the brief). */
 function BriefFold(props: {
-  readonly agentName: string;
   readonly brief: FoldBrief;
   readonly labels: ChatLabels;
 }): ReactNode {
@@ -95,7 +94,7 @@ function BriefFold(props: {
           strokeWidth={1.75}
           className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
         />
-        What Ask passed to the {props.agentName}
+        What Ask passed on
       </summary>
       <dl className="grid gap-1.5 px-4 pb-3 ps-9 text-xs">
         {rows.map(([term, values]) =>
@@ -131,7 +130,6 @@ export function HandoffCard(props: {
   const run = read?.session.run ?? null;
 
   const status = statusText(
-    card.agentName,
     read === undefined ? "loading" : read === null ? "deleted" : run
   );
 
@@ -162,11 +160,7 @@ export function HandoffCard(props: {
         </a>
       </div>
       {brief === undefined ? null : (
-        <BriefFold
-          agentName={card.agentName}
-          brief={brief}
-          labels={props.labels}
-        />
+        <BriefFold brief={brief} labels={props.labels} />
       )}
     </div>
   );
@@ -191,7 +185,7 @@ export function HandoffChip(props: {
         aria-hidden="true"
         className="size-2 shrink-0 rounded-full bg-primary motion-safe:animate-pulse"
       />
-      <span className="truncate">{props.card.agentName} is working</span>
+      <span className="truncate">Ask is working</span>
     </a>
   );
 }

@@ -19,6 +19,7 @@ import { openNavigation } from "../support/shell.ts";
 import {
   askQuestion,
   hideDevelopmentWidgets,
+  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import {
@@ -56,11 +57,7 @@ import {
   SLIDES_PEOPLE,
 } from "./global-setup.ts";
 import { closeSlidesDatabase, removeOwnDecks } from "./slides-support.ts";
-import {
-  closeSurfaceDatabase,
-  handOverWholeDeck,
-  openSurfaceAgent,
-} from "./surface-support.ts";
+import { closeSurfaceDatabase, handOverWholeDeck } from "./surface-support.ts";
 
 test.skip(
   !["invoices", "analytics", "slides", "placeholder"].every((id) =>
@@ -157,7 +154,7 @@ async function sendToDashboardsAgent(
   page: Page,
   message: string
 ): Promise<void> {
-  const chat = await openSurfaceAgent(page, "Dashboards agent");
+  const chat = await openAgentPanel(page);
 
   await chat
     .getByRole("textbox", { name: "Message", exact: true })
@@ -165,7 +162,7 @@ async function sendToDashboardsAgent(
   await activate(page, chat.getByRole("button", { name: "Send" }));
 
   if (onPhone(page)) {
-    await chat.getByRole("button", { name: "Close the agent panel" }).tap();
+    await chat.getByRole("button", { name: "Close Ask" }).tap();
   }
 }
 
@@ -501,7 +498,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
             .click();
 
           const sources = page
-            .getByRole("region", { name: "Artifact", exact: true })
+            .getByRole("region", { name: "Chart or table", exact: true })
             .getByRole("group", {
               name: "Overdue invoices by customer",
               exact: true,

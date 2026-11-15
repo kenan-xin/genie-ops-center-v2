@@ -309,7 +309,7 @@ export async function deleteOwnSession(
       await insertAuditRow(tx, {
         actorUserId: ctx.caller.userId,
         action: AGENT_FILES_DELETED_ACTION,
-        summary: "Agent files deleted with their chat",
+        summary: "Files from Ask deleted with their chat",
         metadata: { sessionId: checked, fileCount: fileIds.length },
       });
     }

@@ -57,7 +57,7 @@ export function handOverDescription(
     .map(({ id, surface }) => `${id} (${surface.name})`)
     .join(", ");
 
-  return `Hands the building of one new record over to the agent of the page that builds it, and opens that page. Call it only when the person's own message asks to build such a record. Pass a short brief: a title, the goal with only what the person asked for, the facts from this chat with their dataset and date, the datasets to read, the period, the numbers of this chat's artifacts to pass, and what you leave out. That agent reads the datasets again. The agents that take work: ${agents}. Answers the agent's name and the title. Then tell the person in one sentence that this agent builds it on its own page.`;
+  return `Hands the building of one new record over to the page that builds it, and opens that page. Call it only when the person's own message asks to build such a record. Pass a short brief: a title, the goal with only what the person asked for, the facts from this chat with their dataset and date, the datasets to read, the period, the numbers of this chat's artifacts to pass, and what you leave out. That agent reads the datasets again. The pages that take work: ${agents}. Answers the page's name and the title. Then tell the person in one sentence that this agent builds it on its own page.`;
 }
 
 function invalid(issues: readonly { path: string; message: string }[]) {

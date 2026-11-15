@@ -68,10 +68,10 @@ export const Building: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(
-      await canvas.findByText("Placeholder agent is working")
-    ).toBeVisible();
+    await expect(await canvas.findByText("Ask is working")).toBeVisible();
     await opensTheRecord(canvas);
+    // G2: the card names no surface (P05-21).
+    await expect(canvas.queryByText(/Placeholder agent/)).toBeNull();
   },
 };
 
@@ -124,9 +124,7 @@ export const ItsChatWasDeleted: Story = {
     await expect(await canvas.findByText("Its chat was deleted")).toBeVisible();
     await expect(canvas.getByText("October placeholder review")).toBeVisible();
     await opensTheRecord(canvas);
-    await expect(
-      canvas.queryByText("What Ask passed to the Placeholder agent")
-    ).toBeNull();
+    await expect(canvas.queryByText("What Ask passed on")).toBeNull();
   },
 };
 
@@ -139,9 +137,7 @@ export const WhatAskPassed: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await userEvent.click(
-      await canvas.findByText("What Ask passed to the Placeholder agent")
-    );
+    await userEvent.click(await canvas.findByText("What Ask passed on"));
 
     for (const text of [
       "Goal",

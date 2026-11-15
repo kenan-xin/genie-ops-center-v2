@@ -54,7 +54,6 @@ import {
   handedOverFrom,
   handOverDeck,
   insertEmptyDashboard,
-  openSurfaceAgent,
   removeDashboardsNamed,
   send,
   warm,
@@ -195,7 +194,7 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
       try {
         const askId = await handOverDeck(page);
 
-        const surface = page.getByRole("region", { name: "Slides agent" });
+        const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         await expect(chip(surface, "Building")).toBeVisible(FIRST_PAINT);
 
@@ -281,7 +280,10 @@ test("Ask history groups chats by agent and opens a surface chat on its record p
 
         // The handoff started a run, so Ask in the menu shows it on the deck page (DEC-57 item 11).
         await expect(
-          chip(page.getByRole("region", { name: "Slides agent" }), "Building")
+          chip(
+            page.getByRole("region", { name: "Ask", exact: true }),
+            "Building"
+          )
         ).toBeVisible(FIRST_PAINT);
 
         if (onPhone(page)) {
@@ -334,7 +336,7 @@ test("Ask history groups chats by agent and opens a surface chat on its record p
         ).toBeVisible(FIRST_PAINT);
         expect(new URL(page.url()).searchParams.get("chat")).toBe(handed.id);
 
-        const surface = page.getByRole("region", { name: "Slides agent" });
+        const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         await expect(
           surface.getByText("From Ask", { exact: true })
@@ -399,7 +401,7 @@ test("the Ask screen hands a deck over: the deck opens with its panel, and Ask s
         ).toBeVisible(FIRST_PAINT);
 
         // `AskRoute.onHandoff` opens the panel, so the deck arrives with its agent.
-        const surface = page.getByRole("region", { name: "Slides agent" });
+        const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         await expect(surface).toBeVisible();
         await expect(
@@ -423,7 +425,7 @@ test("the Ask screen hands a deck over: the deck opens with its panel, and Ask s
           FIRST_PAINT
         );
         await expect(
-          card.getByText("What Ask passed to the Slides agent", { exact: true })
+          card.getByText("What Ask passed on", { exact: true })
         ).toBeVisible();
       } finally {
         await removeOwnDecks(SLIDES_PEOPLE.chat);
@@ -446,7 +448,7 @@ test("Stop on a building deck ends the run with the stopped notice", async ({
       try {
         await handOverDeck(page);
 
-        const surface = page.getByRole("region", { name: "Slides agent" });
+        const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         await activate(
           page,
@@ -499,7 +501,7 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
           page.getByRole("heading", { level: 1, name: ANALYTICS_HANDOFF_TITLE })
         ).toBeVisible(FIRST_PAINT);
 
-        const surface = page.getByRole("region", { name: "Dashboards agent" });
+        const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         await expect(chip(surface, "Building")).toBeVisible(FIRST_PAINT);
 
@@ -556,7 +558,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
       try {
         await signInAs(page, email);
 
-        const surface = page.getByRole("region", { name: "Dashboards agent" });
+        const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         /**
          * Opens the agent of a new empty dashboard. The question fixtures hold version 1 of the
@@ -574,7 +576,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
           );
           // On a record page the Agent button opens the surface's own agent.
           await openUntilVisible(
-            page.getByRole("button", { name: "Agent", exact: true }),
+            page.getByRole("button", { name: "Ask", exact: true }),
             surface
           );
         };
@@ -636,7 +638,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
 
         await expect(
           surface
-            .getByRole("list", { name: "Artifacts" })
+            .getByRole("list", { name: "Charts and tables" })
             .getByText(ANALYTICS_CHART_TITLE)
         ).toBeVisible(FIRST_PAINT);
         await expect(empty).toBeVisible();
@@ -667,13 +669,13 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
 
         const failed = surface
           .getByRole("alert")
-          .filter({ hasText: "The artifact could not load." });
+          .filter({ hasText: "The chart or table could not load." });
 
         await expect(failed).toBeVisible(FIRST_PAINT);
         await expectNoAxeViolations(page, "failed artifact read");
         await activate(page, failed.getByRole("button", { name: "Try again" }));
 
-        const sheet = page.getByRole("dialog", { name: "Artifact" });
+        const sheet = page.getByRole("dialog", { name: "Chart or table" });
 
         await expect(
           sheet.getByRole("heading", { name: ANALYTICS_CHART_TITLE })
@@ -740,7 +742,7 @@ test("the Dashboards agent answers a request outside its tools with one sentence
           QUESTION_DASHBOARD_NAME
         );
 
-        const surface = await openSurfaceAgent(page, "Dashboards agent");
+        const surface = await openAgentPanel(page);
 
         const answer = page.waitForResponse(
           (response) =>

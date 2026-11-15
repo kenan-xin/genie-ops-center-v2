@@ -12,6 +12,7 @@ import { withDeploymentLock } from "../support/lock.ts";
 import {
   FIRST_PAINT,
   hideDevelopmentWidgets,
+  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import { LEDGER_LOCK, LOCK_WAIT, onPhone } from "./dev-support.ts";
@@ -24,7 +25,7 @@ import {
   resetChangeDeck,
   undoLengthOf,
 } from "./slides-support.ts";
-import { closeSurfaceDatabase, openSurfaceAgent } from "./surface-support.ts";
+import { closeSurfaceDatabase } from "./surface-support.ts";
 
 test.skip(
   !(
@@ -102,7 +103,7 @@ async function onFixedDeck(
 
 /** Sends one message to the Slides agent and waits for its answer to end. */
 async function sendToSlidesAgent(page: Page, text: string): Promise<Locator> {
-  const chat = await openSurfaceAgent(page, "Slides agent");
+  const chat = await openAgentPanel(page);
 
   await chat.getByRole("textbox", { name: "Message", exact: true }).fill(text);
 
@@ -151,7 +152,7 @@ test("a chat request makes the title slide dark blue with white text, and Undo r
     const chat = await sendToSlidesAgent(page, SLIDES_STYLE_MESSAGE);
 
     if (onPhone(page)) {
-      await chat.getByRole("button", { name: "Close the agent panel" }).tap();
+      await chat.getByRole("button", { name: "Close Ask" }).tap();
     }
 
     // The page reads the deck again when the answer ends, under the 10 s poll.

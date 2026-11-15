@@ -101,5 +101,5 @@ export function repeatedCallGuard(prior: readonly ToolCallKey[]) {
 
 /** The answer of a run that the loop guard ended (DEC-57 item 3, R8). */
 export function loopText(toolName: string): string {
-  return `This run stopped because the agent called ${toolName} ${LOOP_REPEATS} times in a row with the same input. The work it finished is saved.`;
+  return `This run stopped because Ask called ${toolName} ${LOOP_REPEATS} times in a row with the same input. The work it finished is saved.`;
 }

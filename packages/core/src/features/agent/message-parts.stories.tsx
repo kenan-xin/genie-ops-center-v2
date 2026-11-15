@@ -670,9 +670,7 @@ export const StoppedAnswer: Story = {
     await expect(
       canvas.getByText("Stopped. Ask again when you are ready.")
     ).toBeVisible();
-    await expect(
-      canvas.getByRole("button", { name: /^Used 1 step/ })
-    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "1 step" })).toBeVisible();
   },
 };
 

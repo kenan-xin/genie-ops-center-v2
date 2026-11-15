@@ -791,7 +791,7 @@ async function starterSends(canvas: ReturnType<typeof within>) {
   );
 
   // The chip opens the shell's agent panel and sends through it.
-  const chat = within(await screen.findByRole("region", { name: "Agent" }));
+  const chat = within(await screen.findByRole("region", { name: "Ask" }));
 
   // The conversation loads in its own chunk once the panel opens.
   const sent = await within(await chat.findByRole("log")).findByText(
@@ -834,10 +834,10 @@ export const EmptyOnPhone: Story = {
 
 /** The panel opens with the dashboard's name and its own suggestions (R-49, AG9). */
 const chatOnPlay: Story["play"] = async ({ canvas }) => {
-  await expect(screen.queryByRole("region", { name: "Agent" })).toBeNull();
-  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+  await expect(screen.queryByRole("region", { name: "Ask" })).toBeNull();
+  await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
-  const chat = await screen.findByRole("region", { name: "Agent" });
+  const chat = await screen.findByRole("region", { name: "Ask" });
 
   await expect(chat).toHaveTextContent(
     `This page: ${chatOnDashboardPage.dashboard.name}`

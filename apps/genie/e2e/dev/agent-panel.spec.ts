@@ -139,7 +139,7 @@ async function screenshot(page: Page, testInfo: TestInfo, name: string) {
   });
 }
 
-test("the Agent button opens the panel, which pushes the page on a desktop and fills a phone", async ({
+test("the Ask button opens the panel, which pushes the page on a desktop and fills a phone", async ({
   page,
 }, testInfo) => {
   await start(page, testInfo, "/account");
@@ -151,7 +151,7 @@ test("the Agent button opens the panel, which pushes the page on a desktop and f
   await openAgentPanel(page);
 
   if (onPhone(testInfo)) {
-    await expectFillsViewport(page, "Agent");
+    await expectFillsViewport(page, "Ask");
   } else {
     // R-42: from 1280 px the panel is a 400 px column beside the page, never over it.
     const box = await content.boundingBox();
@@ -238,7 +238,7 @@ test("the timeline groups reads and folds one fixed step", async ({
   await askQuestion(page, CHART_QUESTION);
 
   // Four tool calls: the list, two reads of one dataset, and a refused chart that was fixed.
-  const strip = panel.getByRole("button", { name: /^Used 3 steps/ });
+  const strip = panel.getByRole("button", { name: /^Worked for / });
   const steps = panel.getByRole("list", { name: "Steps" });
 
   await expect(strip).toBeVisible(FIRST_PAINT);
@@ -278,7 +278,10 @@ test("a change makes version 2, the panel steps back to version 1, and a phone o
   await expect(second).toBeEnabled(FIRST_PAINT);
   await second.click();
 
-  const artifact = page.getByRole("region", { name: "Artifact", exact: true });
+  const artifact = page.getByRole("region", {
+    name: "Chart or table",
+    exact: true,
+  });
 
   // The chat's artifacts load again when the answer ends, so version 2 can show a moment later.
   await expect(artifact.getByText("Version 2 of 2")).toBeVisible(FIRST_PAINT);
@@ -286,9 +289,9 @@ test("a change makes version 2, the panel steps back to version 1, and a phone o
   await expect(artifact.getByText("Version 1 of 2")).toBeVisible();
 
   if (onPhone(testInfo)) {
-    await expectFillsViewport(page, "Artifact");
+    await expectFillsViewport(page, "Chart or table");
     await expectNoAxeViolations(page, "The artifact sheet");
-    await artifact.getByRole("button", { name: "Back to the chat" }).click();
+    await artifact.getByRole("button", { name: "Back to chat" }).click();
     await expect(artifact).toBeHidden();
   } else {
     // AG22: from 1280 px the artifact is a column beside the conversation.
@@ -349,7 +352,7 @@ test("on the Overdue tab, the agent answers about the overdue invoices only", as
       ).toBeVisible();
       await log.getByRole("link", { name: "See the 1 row" }).first().click();
       await expect(
-        page.getByRole("heading", { name: "Rows read from Invoices" })
+        page.getByRole("heading", { name: "Rows from Invoices" })
       ).toBeVisible(FIRST_PAINT);
     },
     LOCK_WAIT
@@ -432,8 +435,8 @@ test("Open in Ask continues the panel's chat, with its artifact", async ({
   );
   await expect(
     page
-      .getByRole("region", { name: "Artifact", exact: true })
-      .getByText("Version 1 of 1")
+      .getByRole("region", { name: "Chart or table", exact: true })
+      .getByRole("heading", { name: CHART })
   ).toBeVisible(FIRST_PAINT);
   await expectNoAxeViolations(page, "Ask opened on the panel's artifact");
 });

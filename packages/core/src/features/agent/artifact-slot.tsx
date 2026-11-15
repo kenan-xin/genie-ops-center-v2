@@ -73,7 +73,7 @@ export function ArtifactSheet(
       <SheetContent
         side="right"
         showCloseButton={false}
-        aria-label={props.rows === null ? "Artifact" : "Rows"}
+        aria-label={props.rows === null ? "Chart or table" : "Rows"}
         finalFocus={() => props.finalFocus ?? true}
         // oxlint-disable-next-line shadcn/no-restyle -- the panel brings its own header and padding
         className="gap-0 overflow-hidden p-0"

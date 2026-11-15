@@ -10,6 +10,7 @@ import { withDeploymentLock } from "../support/lock.ts";
 import {
   FIRST_PAINT,
   hideDevelopmentWidgets,
+  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import {
@@ -24,7 +25,7 @@ import {
   DEMO_ACCOUNT_EMAIL,
   DEV_MODULES,
 } from "./global-setup.ts";
-import { closeSurfaceDatabase, openSurfaceAgent } from "./surface-support.ts";
+import { closeSurfaceDatabase } from "./surface-support.ts";
 
 declare global {
   interface Window {
@@ -140,7 +141,7 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
         );
 
         // The Dashboards agent of this dashboard (R-42): a column from 1280 px, a bottom panel below.
-        const chat = await openSurfaceAgent(page, "Dashboards agent");
+        const chat = await openAgentPanel(page);
 
         // Before the chat change, so a reload of either the chat path or the refresh drops it.
         await page.evaluate(() => {
@@ -160,9 +161,7 @@ test("a dashboard built by chat refreshes after a payment is saved, and Undo rem
         if (testInfo.project.name === "phone") {
           await send.tap({ timeout: 15_000 });
           // The sheet covers the phone screen, so close it to see the dashboard.
-          await chat
-            .getByRole("button", { name: "Close the agent panel" })
-            .tap();
+          await chat.getByRole("button", { name: "Close Ask" }).tap();
         } else {
           await send.click({ timeout: 15_000 });
         }

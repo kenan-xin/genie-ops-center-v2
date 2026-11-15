@@ -285,7 +285,7 @@ export const HandoffChipWhileItBuilds: Story = {
   parameters: { handoffRun: "building" },
   play: async ({ canvasElement }) => {
     const chip = await within(canvasElement).findByRole("link", {
-      name: "Placeholder agent is working",
+      name: "Ask is working",
     });
 
     await expect(chip).toHaveAttribute("href", "/placeholder/r1");
@@ -305,7 +305,7 @@ export const NoHandoffChipOnceSaved: Story = {
     await waitFor(() => expect(handoffReads).toHaveBeenCalled());
     await expect(
       within(canvasElement).queryByRole("link", {
-        name: "Placeholder agent is working",
+        name: "Ask is working",
       })
     ).toBeNull();
   },
@@ -410,7 +410,8 @@ export const SearchChats: Story = {
   },
 };
 
-const artifactPanel = () => screen.queryByRole("region", { name: "Artifact" });
+const artifactPanel = () =>
+  screen.queryByRole("region", { name: "Chart or table" });
 
 const LONG_TITLE =
   "Which customers with overdue items in the north region also paid late last quarter, and by how many days on average?";
@@ -529,7 +530,7 @@ export const AnArtifactOpensOnlyWhenAsked: Story = {
 
     await userEvent.click(card);
 
-    const panel = await screen.findByRole("region", { name: "Artifact" });
+    const panel = await screen.findByRole("region", { name: "Chart or table" });
 
     await expect(within(panel).getByText("Version 2 of 2")).toBeVisible();
     // Beside the chat, not over it.
@@ -547,7 +548,7 @@ export const OpensOnTheArtifactItWasSentTo: Story = {
   name: "Opens on the artifact it was sent to",
   args: { shown: latestRef(ARTIFACTS, TABLE_ID) },
   play: async () => {
-    const panel = await screen.findByRole("region", { name: "Artifact" });
+    const panel = await screen.findByRole("region", { name: "Chart or table" });
 
     await expect(
       within(panel).getByRole("heading", { level: 2, name: "Balances" })
@@ -562,18 +563,18 @@ export const RowsOpenBesideTheChat: Story = {
   args: { rows: readsOf([GROUPED_READ])[0] ?? null },
   play: async () => {
     const slot = await screen.findByRole("complementary", {
-      name: "Artifact panel",
+      name: "Side panel",
     });
 
     await expect(
-      within(slot).getByRole("heading", { name: "Rows read from Items" })
+      within(slot).getByRole("heading", { name: "Rows from Items" })
     ).toBeVisible();
 
     await userEvent.click(
       within(slot).getByRole("button", { name: "Close the rows" })
     );
     await expect(
-      screen.queryByRole("complementary", { name: "Artifact panel" })
+      screen.queryByRole("complementary", { name: "Side panel" })
     ).toBeNull();
   },
 };

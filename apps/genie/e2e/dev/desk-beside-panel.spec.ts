@@ -195,7 +195,7 @@ test("the record desk keeps its PDF clear beside the docked agent panel (6wz1.96
 
   await page.setViewportSize({ width: 1440, height: 900 });
   await expect(
-    page.getByRole("region", { name: "Agent", exact: true })
+    page.getByRole("region", { name: "Ask", exact: true })
   ).toBeVisible();
   // P16g-5: at 1440 px with the panel docked the record desk is narrow, with its sheet.
   await expect(

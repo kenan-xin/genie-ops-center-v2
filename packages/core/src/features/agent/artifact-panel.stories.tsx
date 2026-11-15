@@ -189,7 +189,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'An artifact of the chat (R-45a, `DEC-56`). The panel is controlled: `shown` names the artifact and version, and `onShow` asks the frame for another. The kind registry draws the body; chart and table go through the chart gate, so the figures are the viewer\'s own. "Copy the rows" puts the rows on the clipboard as tab-separated text, and "Download the rows" saves them as CSV with formula cells escaped. `variant` `column` closes with "Close the artifact"; `sheet` goes "Back to the chat".',
+          'A chart or table of the chat (R-45a, `DEC-56`). The panel is controlled: `shown` names the artifact and version, and `onShow` asks the frame for another. The kind registry draws the body; chart and table go through the chart gate, so the figures are the viewer\'s own. "Copy the rows" puts the rows on the clipboard as tab-separated text, and "Download the rows" saves them as CSV with formula cells escaped. `variant` `column` closes with "Close the chart" or "Close the table"; `sheet` goes "Back to chat".',
       },
     },
     a11y: { test: "error" },
@@ -246,7 +246,7 @@ export const EveryArtifactOfTheChat: Story = {
     ).toBeVisible();
 
     await userEvent.click(
-      canvas.getByRole("button", { name: "All artifacts in this chat" })
+      canvas.getByRole("button", { name: "All charts and tables in this chat" })
     );
 
     const menu = within(canvasElement.ownerDocument.body);
@@ -314,9 +314,7 @@ export const AsASheet: Story = {
   name: "As a sheet",
   args: { variant: "sheet" },
   play: async ({ args, canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Back to the chat" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Back to chat" }));
 
     await expect(args.onClose).toHaveBeenCalled();
   },
@@ -346,11 +344,12 @@ export const AKindWithNoView: Story = {
   },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByText("This artifact cannot be shown here yet.")
+      canvas.getByText("This chart or table cannot be shown here yet.")
     ).toBeVisible();
     await expect(
       canvas.getByRole("button", { name: "Copy the rows" })
     ).toBeDisabled();
-    await expect(canvas.getByText("Version 1")).toBeVisible();
+    // One version: no version steps and no version footer.
+    await expect(canvas.queryByText(/^Version/)).toBeNull();
   },
 };

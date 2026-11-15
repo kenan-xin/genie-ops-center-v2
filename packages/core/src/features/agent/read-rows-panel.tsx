@@ -92,7 +92,7 @@ export function ReadRowsPanel(props: {
       <Button
         variant="ghost"
         size="icon"
-        aria-label="Back to the chat"
+        aria-label="Back to chat"
         onClick={props.onClose}
       >
         <ArrowLeftIcon aria-hidden="true" />
@@ -117,7 +117,7 @@ export function ReadRowsPanel(props: {
         )}
         <div className="grid min-w-0 flex-1">
           <h2 className="truncate text-base font-semibold">
-            Rows read from {title}
+            Rows from {title}
           </h2>
           <p className="text-xs text-muted-foreground">
             {rowsText(read.rows.length, read.truncated)} · as of{" "}
@@ -130,7 +130,7 @@ export function ReadRowsPanel(props: {
       {/* Focusable, so a keyboard scrolls a long list that holds no link (WCAG 2.1.1). */}
       <div
         role="group"
-        aria-label={`Rows read from ${title}`}
+        aria-label={`Rows from ${title}`}
         tabIndex={0}
         className={`grid min-h-0 flex-1 content-start gap-3 overflow-auto p-4 ${focusRing}`}
       >
@@ -143,7 +143,7 @@ export function ReadRowsPanel(props: {
       </div>
 
       <footer className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-        From the answer itself, not a new read.
+        From this answer.
       </footer>
     </section>
   );

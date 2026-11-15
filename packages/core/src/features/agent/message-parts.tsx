@@ -206,7 +206,7 @@ function RowsLink(props: {
 
 /**
  * How an answer counted (czjw.108, method-fold variant A): one plain sentence per read with its
- * key words in bold, then its rows and its date; with two reads, each gets a "Read n" label. A
+ * key words in bold, then its rows and its date; with two reads, each gets a "Read <dataset>" label. A
  * read that matched nothing and a refused read say so.
  */
 function MethodPanel(props: {
@@ -223,7 +223,7 @@ function MethodPanel(props: {
       id={props.id}
       className="mt-1.5 grid gap-3 rounded-lg bg-muted px-3.5 py-3 text-sm text-muted-foreground"
     >
-      {reads.map((read, index) => {
+      {reads.map((read) => {
         const title = labels.datasets[read.dataset] ?? read.dataset;
 
         return (
@@ -235,7 +235,7 @@ function MethodPanel(props: {
                   className="size-3.5"
                   strokeWidth={1.75}
                 />
-                Read {index + 1}: {title}
+                Read {title}
               </p>
             ) : null}
             <p>
@@ -374,7 +374,7 @@ function ArtifactCards(props: {
   if (cards.length === 0) return null;
 
   return (
-    <ul aria-label="Artifacts" className="grid gap-2">
+    <ul aria-label="Charts and tables" className="grid gap-2">
       {cards.map((artifact) => (
         <li key={artifact.toolCallId}>
           <ArtifactCard

@@ -156,10 +156,10 @@ export const EmptyOnPhone: Story = {
 
 /** The panel opens with the list's own suggestions and the page name as its page line (R-46, D12). */
 const chatOnPlay: Story["play"] = async ({ canvas }) => {
-  await expect(screen.queryByRole("region", { name: "Agent" })).toBeNull();
-  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+  await expect(screen.queryByRole("region", { name: "Ask" })).toBeNull();
+  await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
-  const chat = await screen.findByRole("region", { name: "Agent" });
+  const chat = await screen.findByRole("region", { name: "Ask" });
 
   // The sheet slides in on a phone, so the chip shows once its opening transition ends.
   await waitFor(() =>

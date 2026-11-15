@@ -249,14 +249,14 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const panel = () => screen.findByRole("region", { name: "Agent" });
+const panel = () => screen.findByRole("region", { name: "Ask" });
 
 // FR2: the agent keeps working with the panel closed, and the button says so (R-42).
 export const WorksWithThePanelClosed: Story = {
   name: "Works with the panel closed",
   render: () => <Frame page={false} />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await panel();
 
     await userEvent.type(
@@ -265,16 +265,14 @@ export const WorksWithThePanelClosed: Story = {
     );
     await screen.findByText("Half an");
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Close the agent panel" })
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Close Ask" }));
     await expect(
-      await canvas.findByRole("button", { name: "Agent, working" })
+      await canvas.findByRole("button", { name: "Ask, working" })
     ).toHaveAttribute("aria-expanded", "false");
 
     release();
     await expect(
-      await canvas.findByRole("button", { name: "Agent" })
+      await canvas.findByRole("button", { name: "Ask" })
     ).toBeVisible();
   },
 };
@@ -287,12 +285,16 @@ const phone = { viewport: { value: "phone390", isRotated: false } };
 export const SurfacePage: Story = {
   render: () => <Frame page={false} path="/placeholder/r1" />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
     const region = await screen.findByRole("region", {
-      name: "Placeholder agent",
+      name: "Ask",
     });
 
+    // G3: the panel is Ask on a surface page too; no surface's name heads it (P05-21).
+    await expect(
+      within(region).getByRole("heading", { level: 2 })
+    ).toHaveTextContent(/^Ask$/);
     await expect(
       within(region).getByRole("tab", { name: "This chat" })
     ).toBeVisible();
@@ -322,8 +324,8 @@ export const SurfacePageOnAPhone: Story = { ...SurfacePage, globals: phone };
 export const OtherPage: Story = {
   render: () => <Frame page={false} path="/invoices" />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
-    await screen.findByRole("region", { name: "Agent" });
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
+    await screen.findByRole("region", { name: "Ask" });
     await expect(openInAsk()).toBeVisible();
   },
 };
@@ -349,16 +351,16 @@ export const AfterAHandoff: Story = {
     );
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
     const region = await screen.findByRole("region", {
-      name: "Placeholder agent",
+      name: "Ask",
     });
 
     const header = () => within(region.querySelector("header")!);
 
     await expect(await header().findByText("Building")).toBeVisible();
-    // The agent's name shows in full beside the chip, also at 390 px (Phase 11 capture).
+    // The title shows in full beside the chip, also at 390 px (Phase 11 capture).
     const name = region.querySelector("h2 .truncate")!;
     await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
     // One row: the shell's collapsed-panel offset (P11-65) assumes a header of about 62 px.
@@ -419,7 +421,7 @@ export const PickAnotherRecordsChat: Story = {
     </AgentClientStub>
   ),
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await userEvent.click(await screen.findByRole("tab", { name: "Chats" }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Older chat" })
@@ -531,10 +533,10 @@ export const ARunThatEndsWhileOpenMarksItSeen: Story = {
   },
   render: () => <RunFrame />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
     const region = await screen.findByRole("region", {
-      name: "Placeholder agent",
+      name: "Ask",
     });
 
     await within(region.querySelector("header")!).findByText("Building");
@@ -565,16 +567,14 @@ export const ARunThatEndsWithThePanelClosedStaysUnseen: Story = {
   },
   render: () => <RunFrame />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
     const region = await screen.findByRole("region", {
-      name: "Placeholder agent",
+      name: "Ask",
     });
 
     await within(region.querySelector("header")!).findByText("Building");
-    await userEvent.click(
-      screen.getByRole("button", { name: "Close the agent panel" })
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Close Ask" }));
 
     runEnded = true;
     // The closed panel keeps its chat, which still reads the run and sees it end.
@@ -584,7 +584,7 @@ export const ARunThatEndsWithThePanelClosedStaysUnseen: Story = {
     await expect(markSeen).not.toHaveBeenCalled();
 
     // Opening the chat is what marks it seen.
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await waitFor(() => expect(markSeen).toHaveBeenCalledTimes(1));
   },
 };
@@ -594,8 +594,8 @@ export const PhoneSheet: Story = {
   globals: phone,
   render: () => <Frame page={false} path="/placeholder/r1" />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
-    await screen.findByRole("region", { name: "Placeholder agent" });
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
+    await screen.findByRole("region", { name: "Ask" });
     await expect(
       document.querySelector('[data-slot="sheet-overlay"]')
     ).toBeNull();
@@ -615,14 +615,12 @@ export const PhoneSheet: Story = {
     ).toBeVisible();
 
     // czjw.151: Close and Escape both give focus back to Agent.
-    const agent = canvas.getByRole("button", { name: "Agent" });
+    const agent = canvas.getByRole("button", { name: "Ask" });
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Close the agent panel" })
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Close Ask" }));
     await waitFor(() =>
       expect(
-        screen.queryByRole("region", { name: "Placeholder agent" }),
+        screen.queryByRole("region", { name: "Ask" }),
         "after Close"
       ).toBeNull()
     );
@@ -631,7 +629,7 @@ export const PhoneSheet: Story = {
     await userEvent.click(agent);
 
     const newChat = await within(
-      await screen.findByRole("region", { name: "Placeholder agent" })
+      await screen.findByRole("region", { name: "Ask" })
     ).findByRole("button", { name: "New chat" });
 
     await userEvent.click(newChat);
@@ -639,7 +637,7 @@ export const PhoneSheet: Story = {
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
       expect(
-        screen.queryByRole("region", { name: "Placeholder agent" }),
+        screen.queryByRole("region", { name: "Ask" }),
         "after Escape"
       ).toBeNull()
     );
@@ -754,10 +752,10 @@ function ChartChatFrame(props: {
 async function openChartSheet(canvas: {
   getByRole: typeof screen.getByRole;
 }): Promise<HTMLElement> {
-  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+  await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
   const region = await screen.findByRole("region", {
-    name: "Placeholder agent",
+    name: "Ask",
   });
 
   // The chat's chunk and its saved messages load first.
@@ -771,13 +769,13 @@ async function openChartSheet(canvas: {
 
   const sheet = await screen.findByRole(
     "dialog",
-    { name: "Artifact" },
+    { name: "Chart or table" },
     { timeout: 5000 }
   );
 
   // The sheet opens on the artifact, never on an empty list while the read is under way.
   await expect(
-    within(sheet).queryByText("This artifact cannot be shown here yet.")
+    within(sheet).queryByText("This chart or table cannot be shown here yet.")
   ).toBeNull();
   await expect(
     await within(sheet).findByRole("heading", { name: BAR.title })
@@ -795,11 +793,11 @@ export const SurfaceArtifactSheet: Story = {
 
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull()
+      expect(
+        screen.queryByRole("dialog", { name: "Chart or table" })
+      ).toBeNull()
     );
-    await expect(
-      screen.getByRole("region", { name: "Placeholder agent" })
-    ).toBeVisible();
+    await expect(screen.getByRole("region", { name: "Ask" })).toBeVisible();
     await waitFor(() => expect(card).toHaveFocus());
   },
 };
@@ -825,10 +823,10 @@ export const SurfaceArtifactReadFails: Story = {
     failedReads = 0;
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
     const region = await screen.findByRole("region", {
-      name: "Placeholder agent",
+      name: "Ask",
     });
 
     const card = await within(region).findByRole(
@@ -846,8 +844,10 @@ export const SurfaceArtifactReadFails: Story = {
       { timeout: 5000 }
     );
 
-    await expect(alert).toHaveTextContent("The artifact could not load.");
-    await expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull();
+    await expect(alert).toHaveTextContent("The chart or table could not load.");
+    await expect(
+      screen.queryByRole("dialog", { name: "Chart or table" })
+    ).toBeNull();
 
     await userEvent.click(
       within(alert).getByRole("button", { name: "Try again" })
@@ -855,7 +855,7 @@ export const SurfaceArtifactReadFails: Story = {
 
     const sheet = await screen.findByRole(
       "dialog",
-      { name: "Artifact" },
+      { name: "Chart or table" },
       { timeout: 5000 }
     );
 
@@ -866,13 +866,15 @@ export const SurfaceArtifactReadFails: Story = {
     // Try again is gone by now, so focus goes back to the card.
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull()
+      expect(
+        screen.queryByRole("dialog", { name: "Chart or table" })
+      ).toBeNull()
     );
     await waitFor(() => expect(card).toHaveFocus());
   },
 };
 
-// G2 (czjw.162): on a phone, Back to the chat closes the sheet, the bottom panel stays, and the
+// G2 (czjw.162): on a phone, Back to chat closes the sheet, the bottom panel stays, and the
 // card has focus again.
 export const SurfaceArtifactSheetOnAPhone: Story = {
   globals: phone,
@@ -880,15 +882,13 @@ export const SurfaceArtifactSheetOnAPhone: Story = {
   play: async ({ canvas }) => {
     const card = await openChartSheet(canvas);
 
-    await userEvent.click(
-      screen.getByRole("button", { name: "Back to the chat" })
-    );
+    await userEvent.click(screen.getByRole("button", { name: "Back to chat" }));
     await waitFor(() =>
-      expect(screen.queryByRole("dialog", { name: "Artifact" })).toBeNull()
+      expect(
+        screen.queryByRole("dialog", { name: "Chart or table" })
+      ).toBeNull()
     );
-    await expect(
-      screen.getByRole("region", { name: "Placeholder agent" })
-    ).toBeVisible();
+    await expect(screen.getByRole("region", { name: "Ask" })).toBeVisible();
     await waitFor(() => expect(card).toHaveFocus());
   },
 };
@@ -899,7 +899,7 @@ export const OpenInAsk: Story = {
   name: "Open in Ask",
   render: () => <Frame page={false} />,
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await panel();
 
     await expect(openInAsk()).toHaveAttribute("href", "/ask");
@@ -939,7 +939,7 @@ export const OpenInAskAfterAPageLoad: Story = {
     sessionStorage.setItem(STORED_KEY, SAVED_ID);
   },
   play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await panel();
 
     await expect(openInAsk()).toHaveAttribute("href", `/ask/${SAVED_ID}`);
@@ -978,7 +978,7 @@ export const AnotherPersonOnTheSameTab: Story = {
   render: () => <TwoSignIns />,
   play: async ({ canvas }) => {
     const ask = async () => {
-      await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+      await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
       await userEvent.type(
         await screen.findByRole("textbox", { name: "Message" }),

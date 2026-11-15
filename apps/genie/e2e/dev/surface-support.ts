@@ -11,9 +11,9 @@ import {
   SLIDES_CHAT_MESSAGE,
 } from "../../testing/slides-chat.ts";
 import {
+  askPanel,
   FIRST_PAINT,
   openAgentPanel,
-  openUntilVisible,
   signInAs,
 } from "./ask-support.ts";
 import { devTenant } from "./chat-seed.ts";
@@ -55,21 +55,6 @@ export async function send(
   const { sessionId } = (await sent).postDataJSON() as { sessionId: string };
 
   return sessionId;
-}
-
-/** On a record page, the Agent button opens the surface's own agent, named `name`. */
-export async function openSurfaceAgent(
-  page: Page,
-  name: "Slides agent" | "Dashboards agent"
-): Promise<Locator> {
-  const surface = page.getByRole("region", { name, exact: true });
-
-  await openUntilVisible(
-    page.getByRole("button", { name: "Agent", exact: true }),
-    surface
-  );
-
-  return surface;
 }
 
 /**
@@ -119,10 +104,7 @@ export async function handOverWholeDeck(page: Page): Promise<void> {
   await handOverDeck(page);
 
   await expect(
-    page
-      .getByRole("region", { name: "Slides agent" })
-      .locator("header")
-      .getByText("Saved", { exact: true })
+    askPanel(page).locator("header").getByText("Saved", { exact: true })
   ).toBeVisible(FIRST_PAINT);
   await expect(
     page

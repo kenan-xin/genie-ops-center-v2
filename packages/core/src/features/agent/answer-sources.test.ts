@@ -225,7 +225,7 @@ describe("the sentence of a read", () => {
     [
       "eq on a boolean",
       [{ field: "paid", op: "eq", value: true }],
-      "Listed the items with Paid yes.",
+      "Listed the items with Paid.",
     ],
     [
       "two filters",

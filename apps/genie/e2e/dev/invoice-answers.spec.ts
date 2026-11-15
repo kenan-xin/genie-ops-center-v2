@@ -79,7 +79,7 @@ async function openCard(page: Page, title: string) {
   await card(page, title).click();
 
   return page
-    .getByRole("region", { name: "Artifact", exact: true })
+    .getByRole("region", { name: "Chart or table", exact: true })
     .getByRole("group", { name: title, exact: true });
 }
 
@@ -243,7 +243,7 @@ test("the late payer answer shows the counts per customer without links and the 
       // A phone opens the artifact as a sheet over the chat, so it closes before the next card.
       await page
         .getByRole("button", {
-          name: onPhone(page) ? "Back to the chat" : "Close the artifact",
+          name: onPhone(page) ? "Back to chat" : "Close the table",
         })
         .click();
 

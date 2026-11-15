@@ -494,7 +494,6 @@ export function Conversation(props: {
               onSend={() => send(draft)}
               onStop={() => void chat.stop()}
               busy={busy}
-              datasetTitles={Object.values(props.labels.datasets)}
               picker={
                 showPicker ? (
                   <Select

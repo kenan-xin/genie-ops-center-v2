@@ -9,6 +9,7 @@ import {
   focusRing,
 } from "@genie/ui";
 import { chartRows, type ChartTextRows } from "@genie/ui/chart-data";
+import { upperFirst } from "es-toolkit";
 import {
   ArrowLeftIcon,
   ChevronDownIcon,
@@ -84,16 +85,34 @@ export function ArtifactPanel(props: {
     }
   };
 
+  const kind = view?.label ?? "Chart or table";
+
   const closeLabel =
-    props.variant === "column" ? "Close the artifact" : "Back to the chat";
+    props.variant === "column"
+      ? `Close the ${kind.toLowerCase()}`
+      : "Back to chat";
 
   const CloseIcon = props.variant === "column" ? XIcon : ArrowLeftIcon;
 
   const Icon = view?.icon;
 
+  const versions = artifact?.versions.length ?? 0;
+
+  // The footer: the version while there are several, and the request it was made for.
+  const footer = upperFirst(
+    [
+      versions < 2 || version === undefined
+        ? null
+        : `Version ${version.version}`,
+      version?.request == null ? null : `made for "${version.request}"`,
+    ]
+      .filter((part) => part !== null)
+      .join(", ")
+  );
+
   return (
     <section
-      aria-label="Artifact"
+      aria-label="Chart or table"
       className="flex h-full min-h-0 flex-col bg-card text-card-foreground"
     >
       <header className="flex items-start gap-2 border-b border-border p-3">
@@ -107,12 +126,11 @@ export function ArtifactPanel(props: {
         )}
         <div className="grid min-w-0 flex-1">
           <h2 className="truncate text-base font-semibold">
-            {artifact?.title ?? "Artifact"}
+            {artifact?.title ?? "Chart or table"}
           </h2>
           {artifact === undefined ? null : (
             <p className="text-xs text-muted-foreground">
-              {view?.label ?? "Artifact"} · {index + 1} of{" "}
-              {props.artifacts.length} in this chat
+              {kind} · {index + 1} of {props.artifacts.length} in this chat
             </p>
           )}
         </div>
@@ -122,7 +140,7 @@ export function ArtifactPanel(props: {
               <Button
                 variant="ghost"
                 size="icon"
-                aria-label="All artifacts in this chat"
+                aria-label="All charts and tables in this chat"
               />
             }
           >
@@ -156,32 +174,37 @@ export function ArtifactPanel(props: {
 
       {artifact === undefined || version === undefined ? (
         <p className="p-4 text-sm text-muted-foreground">
-          This artifact cannot be shown here yet.
+          This chart or table cannot be shown here yet.
         </p>
       ) : (
         <>
           <div className="flex flex-wrap items-center gap-1 border-b border-border px-3 py-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Previous version"
-              disabled={versionIndex === 0}
-              onClick={() => step(-1)}
-            >
-              <ChevronLeftIcon aria-hidden="true" />
-            </Button>
-            <span className="text-sm tabular-nums">
-              Version {version.version} of {artifact.latestVersion}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Next version"
-              disabled={versionIndex === artifact.versions.length - 1}
-              onClick={() => step(1)}
-            >
-              <ChevronRightIcon aria-hidden="true" />
-            </Button>
+            {/* No version steps while one version exists (G26). */}
+            {versions < 2 ? null : (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Previous version"
+                  disabled={versionIndex === 0}
+                  onClick={() => step(-1)}
+                >
+                  <ChevronLeftIcon aria-hidden="true" />
+                </Button>
+                <span className="text-sm tabular-nums">
+                  Version {version.version} of {artifact.latestVersion}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Next version"
+                  disabled={versionIndex === versions - 1}
+                  onClick={() => step(1)}
+                >
+                  <ChevronRightIcon aria-hidden="true" />
+                </Button>
+              </>
+            )}
             <span className="ms-auto flex items-center gap-1">
               <span role="status" className="text-xs text-muted-foreground">
                 {copied ? "Rows copied" : ""}
@@ -224,18 +247,18 @@ export function ArtifactPanel(props: {
           >
             {view === undefined ? (
               <p className="text-sm text-muted-foreground">
-                This artifact cannot be shown here yet.
+                This chart or table cannot be shown here yet.
               </p>
             ) : (
               view.render(version.definition)
             )}
           </div>
 
-          <footer className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
-            {version.request === null
-              ? `Version ${version.version}`
-              : `Version ${version.version}, made for "${version.request}"`}
-          </footer>
+          {footer === "" ? null : (
+            <footer className="border-t border-border px-4 py-2 text-xs text-muted-foreground">
+              {footer}
+            </footer>
+          )}
         </>
       )}
     </section>

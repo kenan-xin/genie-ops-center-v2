@@ -102,8 +102,8 @@ const openInAsk = "Open in Ask";
  * It keeps the tab's chat, also after a page load, and only New chat starts another (AG7). A
  * page reaches it only through `useAgentPage`. Closed, the chat stays mounted, so an answer goes on.
  *
- * On a surface's record page it is that surface's agent (R-42, S7-41): the surface's name, a
- * Building or Saved chip, the tabs This chat and Chats with this record's chats first, and no Open
+ * On a surface's record page it is that surface's panel (R-42, S7-41), still titled Ask with the
+ * page line naming the page (P05-21): a Building or Saved chip, the tabs This chat and Chats with this record's chats first, and no Open
  * in Ask. A new chat there is bound to the surface and the record. Below 768 px it is a bottom
  * panel with no backdrop, so the record that builds stays in view.
  */
@@ -336,7 +336,8 @@ export function AgentPanelHost(props: {
   // The line names the page that the next message goes with.
   const about = page?.about ?? page?.context?.page;
 
-  const name = target?.surface.name ?? "Agent";
+  // Ask on every page; the page line names a surface's page (P05-21).
+  const name = "Ask";
 
   const chat =
     used && (target === undefined || surfaceSessions.isFetched) ? (
@@ -440,7 +441,7 @@ export function AgentPanelHost(props: {
             New chat
           </Button>
         ) : (
-          // An icon beside the chip, so the surface's name shows in full at 390 px.
+          // An icon beside the chip, so the title and the chip fit one row at 390 px.
           <Button
             type="button"
             variant="ghost"
@@ -491,7 +492,7 @@ export function AgentPanelHost(props: {
           type="button"
           variant="ghost"
           size="icon"
-          aria-label="Close the agent panel"
+          aria-label="Close Ask"
           onClick={close}
         >
           <XIcon aria-hidden="true" strokeWidth={1.75} />
@@ -545,7 +546,7 @@ export function AgentPanelHost(props: {
               className={`min-h-0 flex-1 flex-col ${tab === "chats" ? "flex" : "hidden"}`}
             >
               <p className="px-6 pt-3 text-xs text-muted-foreground">
-                Only {name} chats. Ask chats stay in Ask.
+                Only {target.surface.name} chats. Ask chats stay in Ask.
               </p>
               <ChatHistory
                 sessions={surfaceSessions.data ?? []}
@@ -583,7 +584,7 @@ export function AgentPanelHost(props: {
           role="alert"
           className="flex shrink-0 items-center gap-2 border-t border-border px-4 py-2 text-sm text-muted-foreground"
         >
-          <p className="flex-1">The artifact could not load.</p>
+          <p className="flex-1">The chart or table could not load.</p>
           <Button
             type="button"
             variant="secondary"
@@ -619,7 +620,7 @@ export function AgentPanelHost(props: {
   if (bottom) {
     return (
       <aside
-        aria-label="Agent panel"
+        aria-label="Ask"
         hidden={!open}
         className={`fixed inset-x-0 bottom-0 z-40 flex-col overflow-hidden rounded-t-xl border-t border-border shadow-xl ${open ? "flex" : "hidden"} ${collapsed ? "" : "h-1/2"}`}
         onKeyDown={closeOnEscape}
@@ -631,7 +632,7 @@ export function AgentPanelHost(props: {
 
   return docked ? (
     <aside
-      aria-label="Agent panel"
+      aria-label="Ask"
       hidden={!open}
       className={`w-100 shrink-0 flex-col border-s border-border ${open ? "flex" : "hidden"}`}
       onKeyDown={closeOnEscape}

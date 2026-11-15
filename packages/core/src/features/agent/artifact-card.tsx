@@ -149,7 +149,9 @@ function Body(props: {
       <span className="grid min-w-0 flex-1">
         <span className="truncate text-sm font-semibold">{artifact.title}</span>
         <span className="text-xs text-muted-foreground">
-          {artifact.kind === "table" ? "Table" : "Chart"} · v{artifact.version}
+          {artifact.kind === "table" ? "Table" : "Chart"}
+          {/* A first version has no later one beside it, so it needs no tag. */}
+          {artifact.version > 1 ? ` · v${artifact.version}` : null}
           {props.rows === undefined ? null : ` · ${props.rows}`}
         </span>
       </span>

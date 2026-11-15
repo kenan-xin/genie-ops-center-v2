@@ -199,7 +199,8 @@ function filterText(filter: DatasetFilter, field: ChatFieldLabel): string {
 
   switch (filter.op) {
     case "eq":
-      return `${label} ${shown(filter.value)}`;
+      // A true flag reads as its label: "Overdue", not "Overdue yes".
+      return filter.value === true ? label : `${label} ${shown(filter.value)}`;
     case "neq":
       return `${label} not ${shown(filter.value)}`;
     case "gt":

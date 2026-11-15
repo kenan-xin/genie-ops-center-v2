@@ -24,7 +24,7 @@ const close = fn();
 /**
  * The rows one read of an answer returned (czjw.108, method-fold variant A): its source, row count
  * and date, what each row is, and the rows with their field labels. It draws the answer's own
- * rows and reads nothing. In Ask it is a column beside the chat, or a sheet with Back to the chat.
+ * rows and reads nothing. In Ask it is a column beside the chat, or a sheet with Back to chat.
  */
 const meta = {
   title: "Core/Agent/ReadRowsPanel",
@@ -34,7 +34,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The rows of one read, from the answer itself (czjw.108). The header reads "Rows read from <Title>" and "<n> rows · as of <day> · the rows this answer used", a note says whether each row is one group or one record, and the table labels each column by its field or measure, never by a name. `variant` `column` closes with "Close the rows"; `sheet` goes back with "Back to the chat".',
+          'The rows of one read, from the answer itself (czjw.108). The header reads "Rows from <Title>" and "<n> rows · as of <day> · the rows this answer used", a note says whether each row is one group or one record, and the table labels each column by its field or measure, never by a name. `variant` `column` closes with "Close the rows"; `sheet` goes back with "Back to chat".',
       },
     },
     a11y: { test: "error" },
@@ -69,7 +69,7 @@ export const RowsOfAGroupedRead: Story = {
   name: "Rows of a grouped read",
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("heading", { name: "Rows read from Items" })
+      canvas.getByRole("heading", { name: "Rows from Items" })
     ).toBeVisible();
     await expect(
       canvas.getByText("6 rows · as of 27 Oct 2026 · the rows this answer used")
@@ -114,9 +114,7 @@ export const RowsOnAPhone: Story = {
   args: { variant: "sheet" },
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Back to the chat" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Back to chat" }));
     await expect(close).toHaveBeenCalled();
   },
 };

@@ -638,7 +638,7 @@ export const ArtifactCardsInAsk: Story = {
     },
   },
   play: async ({ canvas }) => {
-    const cards = canvas.getByRole("list", { name: "Artifacts" });
+    const cards = canvas.getByRole("list", { name: "Charts and tables" });
 
     // The cards follow the prose of the answer.
     await expect(
@@ -652,7 +652,9 @@ export const ArtifactCardsInAsk: Story = {
 
     await expect(shown).toHaveAttribute("aria-pressed", "true");
     await expect(shown).toHaveTextContent("Showing");
-    await expect(shown).toHaveTextContent("Chart · v1");
+    await expect(shown).toHaveTextContent("Chart");
+    // A first version shows no tag.
+    await expect(shown).not.toHaveTextContent("v1");
 
     await userEvent.click(
       within(cards).getByRole("button", { name: /^Records/ })
@@ -679,9 +681,11 @@ function rowEdges(root: HTMLElement) {
   const canvas = within(root);
 
   return {
-    steps: rectOf(canvas.getByRole("button", { name: /^Used \d+ steps?/ })),
+    steps: rectOf(
+      canvas.getByRole("button", { name: /^Worked for |^\d+ steps?$/ })
+    ),
     prose: rectOf(canvas.getByText(PROSE)),
-    cards: rectOf(canvas.getByRole("list", { name: "Artifacts" })),
+    cards: rectOf(canvas.getByRole("list", { name: "Charts and tables" })),
     question: rectOf(
       canvas
         .getByText("Chart the quantity and list the records")

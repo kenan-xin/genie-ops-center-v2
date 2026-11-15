@@ -72,12 +72,16 @@ export async function openUntilVisible(
   }).toPass(FIRST_PAINT);
 }
 
-/** Opens the agent panel with the Agent button: a column from 1280 px, a sheet below (AG11). */
+/** The Ask panel, also on a surface's record page (P05-21). */
+export const askPanel = (page: Page): Locator =>
+  page.getByRole("region", { name: "Ask", exact: true });
+
+/** Opens the Ask panel with the Ask button: a column from 1280 px, a sheet below (AG11). */
 export async function openAgentPanel(page: Page): Promise<Locator> {
-  const panel = page.getByRole("region", { name: "Agent", exact: true });
+  const panel = askPanel(page);
 
   await openUntilVisible(
-    page.getByRole("button", { name: "Agent", exact: true }),
+    page.getByRole("button", { name: "Ask", exact: true }),
     panel
   );
 

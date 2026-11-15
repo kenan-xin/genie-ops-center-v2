@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  durationLabel,
   elapsedLabel,
   isSlow,
   type MessagePart,
@@ -216,5 +217,13 @@ describe("stepTimeline", () => {
     expect(elapsedLabel(3000)).toBe("3s");
     expect(isSlow(19_999)).toBe(false);
     expect(isSlow(20_000)).toBe(true);
+  });
+
+  it("words a finished answer's time, singular for one", () => {
+    expect(durationLabel(1000)).toBe("1 second");
+    // A fast answer still worked for some time, never "0 seconds".
+    expect(durationLabel(300)).toBe("1 second");
+    expect(durationLabel(60_000)).toBe("1 minute");
+    expect(durationLabel(125_000)).toBe("2 minutes 5 seconds");
   });
 });

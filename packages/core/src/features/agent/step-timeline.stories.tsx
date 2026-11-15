@@ -166,7 +166,9 @@ export const Working: Story = {
 export const Done: Story = {
   args: { durationMs: 38_000 },
   play: async ({ canvas }) => {
-    const strip = canvas.getByRole("button", { name: "Used 5 steps · 38s" });
+    const strip = canvas.getByRole("button", {
+      name: "Worked for 38 seconds",
+    });
 
     await expect(strip).toHaveAttribute("aria-expanded", "false");
     await expect(canvas.queryByRole("list", { name: "Steps" })).toBeNull();
@@ -178,6 +180,17 @@ export const Done: Story = {
         "listitem"
       )
     ).toHaveLength(5);
+  },
+};
+
+// G1: one second is singular.
+export const DoneInOneSecond: Story = {
+  name: "Done in one second",
+  args: { durationMs: 1000 },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("button", { name: "Worked for 1 second" })
+    ).toBeVisible();
   },
 };
 
@@ -193,7 +206,7 @@ export const Fixed: Story = {
   },
   play: async ({ canvas }) => {
     await userEvent.click(
-      canvas.getByRole("button", { name: "Used 2 steps · 12s" })
+      canvas.getByRole("button", { name: "Worked for 12 seconds" })
     );
     await expect(
       canvas.getByText("Made a chart, fixed 1 problem")
@@ -222,7 +235,7 @@ export const Failed: Story = {
     ).toBeVisible();
     await expect(
       canvas.getByRole("button", {
-        name: "Could not make a chart · 2 steps · 31s",
+        name: "Could not make a chart · Worked for 31 seconds",
       })
     ).toBeVisible();
 
@@ -256,7 +269,7 @@ export const FileStillMaking: Story = {
     files: { f1: "running" },
   },
   play: async ({ canvas }) => {
-    await expect(canvas.getByText(/^Used 3 steps/)).toBeVisible();
+    await expect(canvas.getByText("3 steps")).toBeVisible();
 
     const list = canvas.getByRole("list", { name: "Steps" });
 

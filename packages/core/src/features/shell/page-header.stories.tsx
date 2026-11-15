@@ -407,7 +407,7 @@ export const InShellPhoneTopBarActions: Story = {
 
     await expect(bar.getByRole("button", { name: "Undo" })).toBeVisible();
     await expect(bar.getByRole("button", { name: "Present" })).toBeVisible();
-    await expect(bar.getByRole("button", { name: "Agent" })).toBeVisible();
+    await expect(bar.getByRole("button", { name: "Ask" })).toBeVisible();
     // The record's name keeps 96 px before it truncates.
     await expect(
       bar.getByText("Tenant administrator").getBoundingClientRect().width
@@ -453,7 +453,7 @@ export const InShellPhoneIconActions: Story = {
 
     await expect(
       bar.getAllByRole("button").map((button) => button.ariaLabel)
-    ).toEqual(["Undo", "Edit dashboard", "More", "Agent"]);
+    ).toEqual(["Undo", "Edit dashboard", "More", "Ask"]);
     await expect(
       bar.getByText(/^Receivables overview/u).getBoundingClientRect().width
     ).toBeGreaterThanOrEqual(96);

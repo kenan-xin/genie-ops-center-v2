@@ -150,7 +150,7 @@ export type DocumentInbox = {
  * record, for example a deck. Core runs it; a module declares at most one.
  */
 export type AgentSurface = {
-  /** The agent's name a person reads, for example "Slides agent". */
+  /** The surface's name, which Ask's hand-over tool and the surface's Chats tab name, for example "Slides". */
   readonly name: string;
   /** The short name of the agent's group in Ask's history, for example "Slides"; without one, `name`. */
   readonly label?: string;

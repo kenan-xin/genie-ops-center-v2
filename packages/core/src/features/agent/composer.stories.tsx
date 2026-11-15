@@ -25,7 +25,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The agent composer (I18, AG20). The group draws the one focus ring; the textbox draws none. Send is disabled until the text holds more than spaces, and Enter sends. While `busy`, the button is "Stop the answer". A `picker` sits in the tools row, left of the button. The keyboard hint is the textbox\'s description only. From 768 px the placeholder names up to three `datasetTitles` (czjw.120 items 9 to 12).',
+          'The agent composer (I18, AG20). The group draws the one focus ring; the textbox draws none. Send is disabled until the text holds more than spaces, and Enter sends. While `busy`, the button is "Stop the answer". A `picker` sits in the tools row, left of the button. The keyboard hint is the textbox\'s description only. The placeholder is "Ask a question" at every width (P05-17).',
       },
     },
     a11y: { test: "error" },
@@ -43,7 +43,6 @@ const meta = {
       onStop={args.onStop}
       busy={args.busy}
       picker={args.picker}
-      datasetTitles={args.datasetTitles}
     />
   ),
 } satisfies Meta<typeof Composer>;
@@ -103,22 +102,19 @@ export const OneFocusRing: Story = {
   },
 };
 
-const titles = ["Items", "Orders", "Places", "Notes"];
-
-export const PlaceholderNamesTheDatasets: Story = {
-  name: "Placeholder names the datasets",
-  args: { datasetTitles: titles },
+// G4: "Ask a question" at every width (P05-17).
+export const PlaceholderOnADesktop: Story = {
+  name: "Placeholder on a desktop",
   globals: { viewport: { value: "desktop1440", isRotated: false } },
   play: async ({ canvas }) => {
     await expect(
       canvas.getByRole("textbox", { name: "Message" })
-    ).toHaveAttribute("placeholder", "Ask about your items, orders or places");
+    ).toHaveAttribute("placeholder", "Ask a question");
   },
 };
 
 export const PlaceholderOnAPhone: Story = {
   name: "Placeholder on a phone",
-  args: { datasetTitles: titles },
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas }) => {
     await expect(

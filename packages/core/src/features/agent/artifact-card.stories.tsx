@@ -219,9 +219,10 @@ export const CutTable: Story = {
       name: "995+ more rows, open the full list",
     });
 
+    // G5: no version tag while one version exists.
     await expect(
       canvas.getByRole("button", { name: /^Records/ })
-    ).toHaveTextContent("Table · v1 · 1,000+ rows");
+    ).toHaveTextContent("Table · 1,000+ rows");
     await expect(canvas.getByText("Amount: Total")).toBeVisible();
 
     await userEvent.click(more);

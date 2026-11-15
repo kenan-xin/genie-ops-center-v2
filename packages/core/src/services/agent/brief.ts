@@ -97,7 +97,7 @@ export function briefProblems(
         : [
             {
               path: `artifacts.${index}`,
-              message: `This chat has no artifact ${number}.`,
+              message: `This chat has no chart or table ${number}.`,
             },
           ]
     ),

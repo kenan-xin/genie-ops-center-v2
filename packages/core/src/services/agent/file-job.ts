@@ -108,7 +108,7 @@ async function audit(
     action: AGENT_FILE_MADE_ACTION,
     targetType: made.fileId === null ? null : "file",
     targetId: made.fileId,
-    summary: `Agent file ${row.format} of ${row.dataset}`,
+    summary: `File from Ask: ${row.format} of ${row.dataset}`,
     metadata: {
       sessionId: row.sessionId,
       agentFileId: row.id,
