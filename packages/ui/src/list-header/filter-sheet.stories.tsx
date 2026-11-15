@@ -90,7 +90,7 @@ export const AppliesAtOnce: Story = {
     const filters = canvas.getByRole("button", { name: "Filters 1 set" });
 
     await waitFor(() => expect(filters).toHaveFocus());
-    await expect(filters.getBoundingClientRect().height).toBe(44);
+    await expect(filters.getBoundingClientRect().height).toBe(40);
   },
 };
 

@@ -266,12 +266,63 @@ export const InvoicesLikePhone: Story = {
     await expect(
       canvas.getByRole("button", { name: "Filters" }).getBoundingClientRect()
         .height
-    ).toBe(44);
+    ).toBe(40);
 
     // The count shows once on a phone: in the line above the cards, not again under them (czjw.102).
     await expect(
       canvas.getAllByText("6 invoices").filter((text) => text.checkVisibility())
     ).toHaveLength(1);
+  },
+};
+
+// The visible one of the controls a phone and a desktop header both render.
+const visible = (elements: readonly HTMLElement[]) =>
+  elements.find((element) => element.checkVisibility())!;
+
+const box = (element: Element) => element.getBoundingClientRect();
+
+// The search field's visible box is its input group, not the bare input inside it.
+const searchBox = (inputs: readonly HTMLElement[]) =>
+  visible(inputs).closest<HTMLElement>("[data-slot=input-group]")!;
+
+/** 6wz1.114 on a phone: Upload and Filters share one row, the search box sits below, all 40 px. */
+export const ControlsLineUpOnPhone: Story = {
+  args: { actions: upload },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const action = visible(canvas.getAllByRole("button", { name: "Upload" }));
+    const filters = visible(canvas.getAllByRole("button", { name: "Filters" }));
+
+    const search = searchBox(
+      canvas.getAllByRole("searchbox", { name: "Search invoices" })
+    );
+
+    await expect(box(action).top).toBe(box(filters).top);
+    await expect(box(search).top).toBeGreaterThanOrEqual(box(filters).bottom);
+
+    await expect(
+      [action, filters, search].map((control) => box(control).height)
+    ).toEqual([40, 40, 40]);
+  },
+};
+
+/** 6wz1.114 on a desktop: the bar's search, filters and Upload share one row, all 36 px. */
+export const ControlsLineUpOnDesktop: Story = {
+  args: { actions: upload },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const controls = [
+      searchBox(canvas.getAllByRole("searchbox", { name: "Search invoices" })),
+      visible(canvas.getAllByLabelText(/^Customer: /)),
+      visible(canvas.getAllByLabelText("Invoice date: Any invoice date")),
+      visible(canvas.getAllByRole("button", { name: "Upload" })),
+    ];
+
+    await expect(spread(controls)).toBe(0);
+
+    await expect(controls.map((control) => box(control).height)).toEqual([
+      36, 36, 36, 36,
+    ]);
   },
 };
 

@@ -27,7 +27,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shadcn Select on the Base UI primitive (`@base-ui/react/select`). Pass `items` so that the trigger shows the label, not the stored value. The trigger shares the Input boundary and the sm 32, md 40 and lg 44 px heights; the popup is a `rounded-md` card with a shadow and no motion beyond a fade. Enter or Space opens it, arrows move, Enter picks.",
+          "The shadcn Select on the Base UI primitive (`@base-ui/react/select`). Pass `items` so that the trigger shows the label, not the stored value. The trigger shares the Input boundary and the sm 32, md 36 from `lg` and 40 under it, and lg 44 px heights; the popup is a `rounded-md` card with a shadow and no motion beyond a fade. Enter or Space opens it, arrows move, Enter picks.",
       },
     },
   },

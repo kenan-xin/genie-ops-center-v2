@@ -80,21 +80,21 @@ components:
     backgroundColor: "{colors.primary}"
     textColor: "{colors.primary-foreground}"
     rounded: "{rounded.control}"
-    height: "40px"
+    height: "36px"
     padding: "0 14px"
     typography: "{typography.control}"
   button-secondary:
     backgroundColor: "{colors.page}"
     textColor: "#1f2937"
     rounded: "{rounded.control}"
-    height: "40px"
+    height: "36px"
     padding: "0 12px"
     typography: "{typography.control}"
   button-danger:
     backgroundColor: "{colors.danger}"
     textColor: "#ffffff"
     rounded: "{rounded.control}"
-    height: "40px"
+    height: "36px"
     padding: "0 14px"
     typography: "{typography.control}"
   button-ghost:
@@ -129,7 +129,7 @@ components:
     backgroundColor: "{colors.page}"
     textColor: "{colors.primary}"
     rounded: "{rounded.control}"
-    height: "40px"
+    height: "36px"
     typography: "{typography.secondary}"
   count-pill:
     backgroundColor: "{colors.primary}"
@@ -155,7 +155,7 @@ Authority chain: `docs/design/design-system/tokens.md` is the source of truth fo
 - One tenant accent, used sparingly: primary button, count pill, active nav row, and the light-theme focus ring. Nothing else takes it.
 - Hairline borders over shadows; only menus, overlays and the 1 px lift of an outlined button cast shadows
 - Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE). These are the only two faces that ship for now.
-- Thumb-first controls: one height scale (buttons 32/40/44px, fields 36px on desktop), 44px minimum touch targets under 1024px
+- Thumb-first controls: one height scale (buttons and fields 36px from 1024px and 40px under it, 32px dense, 44px large), 44px minimum touch targets under 1024px
 - Motion is 150–220ms ease-out, no bounce, no scale, always `motion-safe:` gated
 - WCAG 2.1 AA with measured contrast pinned in the token file (default ring 5.17:1 on white, dark ring 7.92:1 on gray-950, input border 4.89:1)
 
@@ -270,7 +270,7 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 
 ### Buttons
 
-- **Shape:** 8px radius; heights 32px (sm) / 40px (md, the default) / 44px (lg); icon-only variants are squares of the same height with an `aria-label`.
+- **Shape:** 8px radius; heights 32px (sm) / 36px from 1024px and 40px under it (md, the default, the same as a field) / 44px (lg); icon-only variants are squares of the same height with an `aria-label`.
 - **Primary:** brand fill (`--primary`, default #2563eb) with `--primary-foreground` text (white), semibold 0.875rem, 14px horizontal padding.
 - **Secondary:** white fill, gray-200 hairline, semibold gray-800 text (`--control-foreground`) and the Lift; in dark, a gray-900 fill, a gray-800 hairline and gray-100 text. **Danger outline:** the secondary look with red-600 text (red-400 in dark). **Danger:** red-600 fill, white text. **Ghost:** no fill, no border, gray-700 text, 32px height.
 - **Hover / Focus:** fill variants drop to 94% opacity on hover and 80% on press — the same color, never a derived shade; secondary, outline, ghost and danger-outline variants take the `bg-hover` state layer on hover. Focus is always the shared 2px opaque ring at 2px offset, in `--ring`.
@@ -293,14 +293,14 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 
 ### Inputs / Fields
 
-- **Style:** one field height for every input, input group, select, combobox and date field: 36px on desktop (from 1024px) and 44px under it, border included (the `fieldHeight` class). A field beside a 40px button keeps its own height and the row aligns centers. 8px radius, 1px gray-500 border (`--input`, 4.89:1 on white, because the border is a component boundary under 1.4.11), white background, 12px horizontal padding.
+- **Style:** one field height for every input, input group, select, combobox and date field: the md control height, 36px from 1024px and 40px under it, border included (the `controlHeights.md` class), so a field and a button in one row line up. Under 1024px a field's text is 16px at every root size, so iOS Safari does not zoom on focus. 8px radius, 1px gray-500 border (`--input`, 4.89:1 on white, because the border is a component boundary under 1.4.11), white background, 12px horizontal padding.
 - **Placeholder:** gray-500, dark gray-400 (`--placeholder`), regular. A format hint such as `DD Mon YYYY`, never a realistic value, so an empty field never reads as filled in.
 - **Focus:** the border takes the `--ring` color, plus the shared ring.
 - **Labels / Helper / Error:** label above the control (semibold small gray-800), helper text below in small gray-600, field error below in small red-700 with `aria-describedby`. Form-level error block carries `role="alert"`; informational notice block `role="status"`. A changed field carries a small blue dot on its label while unsaved; required fields are marked in the label.
 
 ### Navigation
 
-- **Style:** rounded-lg rows, 0.875rem; 44px minimum height under 1024px (touch), 40px nav rows and 32px tree rows on desktop. Group labels are 0.75rem semibold uppercase, wide tracking, gray-500.
+- **Style:** rounded-lg rows, 0.875rem; 44px minimum height under 1024px (touch), 36px nav rows and 32px tree rows on desktop. Group labels are 0.75rem semibold uppercase, wide tracking, gray-500.
 - **States:** idle gray-700 text with the `bg-hover` fill on hover; active row is an 8px-rounded white row with a hairline ring and brand text and icon (`text-primary`, brand-on-dark in dark, `aria-current="page"`). Icons 20px in nav rows (16px in tree rows), gray-500 idle, brand-colored when active.
 - **Mobile treatment:** the hamburger opens the drawer (84vw, max 320px) over a dimmed scrim; route change or scrim tap closes it. Category collapse state persists per device, not per account.
 

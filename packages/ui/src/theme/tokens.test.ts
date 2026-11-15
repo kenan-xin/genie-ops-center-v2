@@ -8,10 +8,16 @@ import {
   categoryChipClasses,
   chartColors,
   colorRoles,
-  fieldHeight,
-  fieldHeightPx,
+  controlHeights,
+  controlHeightsPx,
   focusRing,
+  groupControlHeights,
+  iconControlSizes,
+  rowHeight,
   spacingPx,
+  touchAreaPx,
+  touchAreas,
+  touchAreaY,
 } from "./tokens.ts";
 
 function linear(value: number): number {
@@ -69,15 +75,6 @@ function distance(a: string, b: string): number {
 }
 
 describe("the fixed token layer against tokens.md", () => {
-  it("gives every field 36 px from lg and 44 px under it, in the class it ships", () => {
-    const { desktop, touch } = fieldHeightPx;
-
-    expect(fieldHeight).toBe(
-      `h-${touch / spacingPx} min-h-${touch / spacingPx} lg:h-${desktop / spacingPx} lg:min-h-${desktop / spacingPx}`
-    );
-    expect(fieldHeightPx).toEqual({ desktop: 36, touch: 44 });
-  });
-
   // czjw.65 (I6): a placeholder must read, but never as a value the person entered.
   it("keeps the placeholder readable on the card and apart from the value text", () => {
     for (const theme of ["light", "dark"] as const) {
@@ -97,6 +94,88 @@ describe("the fixed token layer against tokens.md", () => {
     expect(focusRing).toBe(
       "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
     );
+  });
+});
+
+/** The Tailwind spacing step of a px value. */
+const step = (px: number) => px / spacingPx;
+
+/** The spacing step a touch area reaches out from a control of `px` to 44 px. */
+const inset = (px: number) => (touchAreaPx - px) / 2 / spacingPx;
+
+/** The spacing step of an input group's control: `px` less the group's two 1 px borders. */
+const inner = (px: number) => step(px - 2);
+
+// 6wz1.114, owner: 36 px from lg, 40 px visible under it with a 44 px touch area, 32 px dense.
+describe("the control heights against tokens.md, Control heights", () => {
+  const { sm, md, lg } = controlHeightsPx;
+
+  it("gives buttons and fields one md height: 36 px from lg, 40 px under it", () => {
+    expect(controlHeightsPx).toEqual({
+      sm: 32,
+      md: { desktop: 36, phone: 40 },
+      lg: 44,
+    });
+
+    expect(controlHeights).toEqual({
+      sm: `h-${step(sm)} min-h-${step(sm)}`,
+      md: `h-${step(md.phone)} min-h-${step(md.phone)} lg:h-${step(md.desktop)} lg:min-h-${step(md.desktop)}`,
+      lg: `h-${step(lg)} min-h-${step(lg)}`,
+    });
+    expect(iconControlSizes).toEqual({
+      sm: `size-${step(sm)}`,
+      md: `size-${step(md.phone)} lg:size-${step(md.desktop)}`,
+    });
+    expect(rowHeight).toBe(
+      `min-h-${step(touchAreaPx)} lg:min-h-${step(md.desktop)}`
+    );
+  });
+
+  it("reaches a 44 px touch area from each size, under the control's own content", () => {
+    expect(touchAreaPx).toBe(44);
+    expect(touchAreas).toEqual({
+      sm: `relative isolate after:absolute after:-inset-${inset(sm)} after:-z-10`,
+      md: `relative isolate max-lg:after:absolute max-lg:after:-inset-${inset(md.phone)} max-lg:after:-z-10`,
+    });
+    expect(touchAreaY).toBe(
+      `relative isolate max-lg:before:absolute max-lg:before:inset-x-0 max-lg:before:-inset-y-${inset(md.phone)} max-lg:before:-z-10`
+    );
+  });
+
+  it("sizes an input group's control to its control height less the group's two 1 px borders", () => {
+    expect(groupControlHeights).toEqual({
+      sm: `h-${inner(sm)} min-h-${inner(sm)}`,
+      md: `h-${inner(md.phone)} min-h-${inner(md.phone)} lg:h-${inner(md.desktop)} lg:min-h-${inner(md.desktop)}`,
+      lg: `h-${inner(lg)} min-h-${inner(lg)}`,
+    });
+  });
+
+  it("states the md height in DESIGN.md's front matter", () => {
+    const design = readFileSync(
+      join(import.meta.dirname, "../../../..", "DESIGN.md"),
+      "utf8"
+    );
+
+    const lines = design.split("\n");
+    const open = lines.indexOf("---");
+    const front = lines.slice(open + 1, lines.indexOf("---", open + 1));
+
+    for (const name of [
+      "button-primary",
+      "button-secondary",
+      "button-danger",
+      "input",
+      "nav-row-active",
+    ]) {
+      const start = front.indexOf(`  ${name}:`);
+
+      const height = front
+        .slice(start + 1)
+        .find((line) => /^\s+height: "\d+px"$/.test(line));
+
+      expect(start, name).toBeGreaterThanOrEqual(0);
+      expect(height?.trim(), name).toBe(`height: "${md.desktop}px"`);
+    }
   });
 });
 

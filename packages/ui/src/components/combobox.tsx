@@ -7,7 +7,7 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
 import { ChevronDownIcon } from "lucide-react";
 
-import { fieldHeight, focusRing } from "../theme/tokens.ts";
+import { controlHeights, focusRing } from "../theme/tokens.ts";
 import { Input } from "./input.tsx";
 
 const Combobox = ComboboxPrimitive.Root;
@@ -44,7 +44,7 @@ function ComboboxTrigger({
       data-slot="combobox-trigger"
       className={cn(
         "flex w-full items-center justify-between gap-2 rounded-lg border px-3 text-sm whitespace-nowrap motion-safe:transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50",
-        fieldHeight,
+        controlHeights.md,
         variant === "filter-set"
           ? "border-primary/40 bg-primary/8 font-semibold text-primary dark:text-brand-on-dark"
           : variant === "filter"

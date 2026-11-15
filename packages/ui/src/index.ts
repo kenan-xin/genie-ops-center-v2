@@ -246,7 +246,15 @@ export { ThemeProvider } from "./theme/theme-provider.tsx";
 
 export type { ThemeProviderProps } from "./theme/theme-provider.tsx";
 
-export { focusRing } from "./theme/tokens.ts";
+export {
+  controlHeights,
+  fieldText,
+  focusRing,
+  iconControlSizes,
+  rowHeight,
+  touchAreas,
+  touchAreaY,
+} from "./theme/tokens.ts";
 
 export type { CategoryTone } from "./theme/tokens.ts";
 

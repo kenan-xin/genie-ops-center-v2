@@ -5,6 +5,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import type * as React from "react";
 
+import { groupControlHeights } from "../theme/tokens.ts";
 import { Button } from "./button.tsx";
 
 /*
@@ -106,14 +107,6 @@ function InputGroupText({ className, ...props }: React.ComponentProps<"span">) {
   );
 }
 
-// The Input sizes less the group's two 1 px borders, so the group is as high as an Input:
-// md the field height (tokens.ts `fieldHeight`), sm 32 px, lg 44 px.
-const groupInputSizes = {
-  sm: "h-7.5 min-h-7.5",
-  md: "h-10.5 min-h-10.5 lg:h-8.5 lg:min-h-8.5",
-  lg: "h-10.5 min-h-10.5 text-base",
-} as const;
-
 // The bare primitive, not `Input`: the group draws the border, the fill and the focus ring.
 
 function InputGroupInput({
@@ -121,14 +114,15 @@ function InputGroupInput({
   size = "md",
   ...props
 }: Omit<InputPrimitive.Props, "size"> & {
-  size?: keyof typeof groupInputSizes;
+  size?: keyof typeof groupControlHeights;
 }) {
   return (
     <InputPrimitive
       data-slot="input-group-control"
       className={cn(
         "w-full min-w-0 flex-1 bg-transparent px-3 text-sm text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed",
-        groupInputSizes[size],
+        groupControlHeights[size],
+        size === "lg" && "text-base",
         className
       )}
       {...props}

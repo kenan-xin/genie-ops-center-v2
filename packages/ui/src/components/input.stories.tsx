@@ -28,7 +28,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shadcn Input on the Base UI primitive (`@base-ui/react/input`), fitted to the tokens.md scale: sm 32 px, md (default) the field height of 36 px from `lg` and 44 px under it, lg 44 px, a `border-input` boundary and one focus ring. Pair it with `Field` and `FieldLabel htmlFor`; `aria-invalid` turns the boundary red and `aria-describedby` points at a `FieldError`.",
+          "The shadcn Input on the Base UI primitive (`@base-ui/react/input`), fitted to the tokens.md scale: sm 32 px, md (default) 36 px from `lg` and 40 px under it, lg 44 px, a `border-input` boundary and one focus ring. Pair it with `Field` and `FieldLabel htmlFor`; `aria-invalid` turns the boundary red and `aria-describedby` points at a `FieldError`.",
       },
     },
   },
@@ -148,7 +148,7 @@ export const OneFieldHeightPhone: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
   render: () => fieldKinds,
   play: async ({ canvasElement }) => {
-    await expect(fieldHeights(canvasElement)).toEqual([44, 44, 44, 44]);
+    await expect(fieldHeights(canvasElement)).toEqual([40, 40, 40, 40]);
   },
 };
 

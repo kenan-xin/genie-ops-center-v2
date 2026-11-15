@@ -83,6 +83,15 @@
 }
 
 /*
+ * A field's text under lg (6wz1.114): a fixed 16px, not a rem, so iOS Safari does not zoom on
+ * focus at the compact (14px) or default (15px) root size.
+ */
+@utility field-text {
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+/*
  * The fixed layer of tokens.md, "Color roles". It sits in a cascade layer, so the
  * unlayered per-request style of the root layout always wins (R-12, R-13).
  */

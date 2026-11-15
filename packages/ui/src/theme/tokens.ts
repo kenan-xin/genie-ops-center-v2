@@ -108,18 +108,57 @@ export const typeScale: Readonly<
 
 export const spacingPx = 4;
 
-export const controlHeightsPx = { sm: 32, md: 40, lg: 44 } as const;
+/**
+ * 6wz1.114: one height scale for buttons and fields. md is 36 px from `lg` and 40 px under it,
+ * sm (32 px) is for dense places only, lg is 44 px.
+ */
+export const controlHeightsPx = {
+  sm: 32,
+  md: { desktop: 36, phone: 40 },
+  lg: 44,
+} as const;
 
-export const defaultControlHeight = "md";
+/** 6wz1.114: the touch area every control reaches under `lg`, its box or its `::after`. */
+export const touchAreaPx = 44;
+
+/** 6wz1.114: the height classes of `controlHeightsPx`, border included. */
+export const controlHeights = {
+  sm: "h-8 min-h-8",
+  md: "h-10 min-h-10 lg:h-9 lg:min-h-9",
+  lg: "h-11 min-h-11",
+} as const;
+
+/** 6wz1.114: an icon-only control, a square of its control height. */
+export const iconControlSizes = {
+  sm: "size-8",
+  md: "size-10 lg:size-9",
+} as const;
 
 /**
- * 6wz1.94: one height for every field (input, input group, select, combobox, date fields), the
- * outer box with its border: 36 px from `lg`, 44 px touch under it. Buttons keep `controlHeightsPx`.
+ * 6wz1.114: an invisible box that reaches 44 px around a smaller control, drawn under its own
+ * content (`isolate`, `-z-10`), so a tap on a native field inside still reaches the field.
  */
-export const fieldHeightPx = { desktop: 36, touch: 44 } as const;
+export const touchAreas = {
+  sm: "relative isolate after:absolute after:-inset-1.5 after:-z-10",
+  md: "relative isolate max-lg:after:absolute max-lg:after:-inset-0.5 max-lg:after:-z-10",
+} as const;
 
-/** The class of `fieldHeightPx`. */
-export const fieldHeight = "h-11 min-h-11 lg:h-9 lg:min-h-9";
+/** 6wz1.114: for a control flush beside its neighbors (a tab, a joined button): up and down only. */
+export const touchAreaY =
+  "relative isolate max-lg:before:absolute max-lg:before:inset-x-0 max-lg:before:-inset-y-0.5 max-lg:before:-z-10";
+
+/** 6wz1.114: a stacked list row: 44 px under `lg`, where its own box is its touch area; md from `lg`. */
+export const rowHeight = "min-h-11 lg:min-h-9";
+
+/** 6wz1.114: the control inside an input group: its control height less the group's two 1 px borders. */
+export const groupControlHeights = {
+  sm: "h-7.5 min-h-7.5",
+  md: "h-9.5 min-h-9.5 lg:h-8.5 lg:min-h-8.5",
+  lg: "h-10.5 min-h-10.5",
+} as const;
+
+/** 6wz1.114: a field's text: 16 px under `lg` at every root preset, so iOS Safari does not zoom on focus. */
+export const fieldText = "field-text lg:text-sm";
 
 export const radiusPx = { menu: 6, control: 8, card: 12 } as const;
 
