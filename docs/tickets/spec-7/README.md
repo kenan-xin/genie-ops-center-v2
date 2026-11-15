@@ -66,7 +66,7 @@ Owner decision, 2026-10-27: full scope for the November 2026 festival, with no s
 | [S7-45](45-speaker-notes-and-presenter-view/index.md) | `czjw.115` | S7-43, S7-44, the Phase 12 import | none | Speaker notes and the presenter view |
 | [S7-46](46-dashboard-filters-in-the-url/index.md) | `czjw.116` | S7-42, S7-44, `czjw.101`, `czjw.102`, the Phase 12 import | none | Dashboard filters, several at once, in the page address |
 | [S7-47](47-dashboard-saved-views/index.md) | `czjw.117` | S7-46 | none | Saved views of a dashboard, with one default |
-| [S7-48](48-new-deck-from-description/index.md) | `czjw.174` | S7-40, S7-41, S7-42 | none | New deck from a description |
+| [S7-48](48-new-deck-from-description/index.md) | `czjw.174` | S7-40, S7-41, S7-42, S7-49 | none | New deck from a description |
 | [S7-49](49-background-agent-runs/index.md) | `czjw.175` | S7-40, S7-41, `xok3.83` | none | Long background agent runs |
 | `6wz1.89`, no folder, owned by the Spec 3 epic `6wz1` | `6wz1.89` | none | none | Collapsible, edge-to-edge app sidebar (icon rail) |
 | `xok3.49`, no folder, owned by the Maintenance epic `xok3` | `xok3.49` | none | none | Polish the idle sign-out warning dialog |

@@ -10,7 +10,7 @@ Execution method: subagent-driven. Bead: `genie-ops-center-v2-czjw.174`. Ticket:
 
 **Tech Stack:** Next.js, oRPC, Drizzle, pg-boss (durable run of S7-40), TanStack Query and Form, zustand panel store, Storybook with Vitest browser tests, Playwright.
 
-**Spec:** the design is `/home/kenan/work/genie-ops-center-v2/Working/prototypes/new-deck-flow.prototype.html`, imported as `docs/design/prototypes/new-deck-flow.prototype.html`. Requirements: Spec 7 R-42, R-42b, R-46, R-52, R-53 (`docs/specs/07-invoice-and-payments.md`), `DEC-29` with its amendments of 2026-11-01 and 2026-11-07, `docs/architecture/agent.md` "Surfaces and the handoff", `docs/modules/slides/README.md`. Owner answers of 2026-11-13: OQ-1 (a), R-46 amended; OQ-2 (b); OQ-3 keep the normal answer; OQ-5 approved. OQ-4, the step limit, is still open: Tasks 4 to 6 wait for it, and no task changes `AGENT_LIMITS`. The design was polished on 2026-11-13 and re-imported; its screenshots are in `/home/kenan/work/genie-ops-center-v2/Working/screenshots/new-deck-flow/`.
+**Spec:** the design is `/home/kenan/work/genie-ops-center-v2/Working/prototypes/new-deck-flow.prototype.html`, imported as `docs/design/prototypes/new-deck-flow.prototype.html`. Requirements: Spec 7 R-42, R-42b, R-46, R-52, R-53 (`docs/specs/07-invoice-and-payments.md`), `DEC-29` with its amendments of 2026-11-01 and 2026-11-07, `docs/architecture/agent.md` "Surfaces and the handoff", `docs/modules/slides/README.md`. Owner answers of 2026-11-13: OQ-1 (a), R-46 amended; OQ-2 (b); OQ-3 keep the normal answer; OQ-5 approved. OQ-4, the step limit, is settled by `DEC-57` (S7-49, `czjw.175`, in `develop` since 2026-11-14): a run is a chain of bounded turns, so no task changes `AGENT_LIMITS`. Tasks 4 to 6 build on branch `feature/new-deck-drafting`, rebased on `develop` with S7-49. The design was polished on 2026-11-13 and re-imported; its screenshots are in `/home/kenan/work/genie-ops-center-v2/Working/screenshots/new-deck-flow/`.
 
 ## Global Constraints
 
@@ -27,11 +27,20 @@ Execution method: subagent-driven. Bead: `genie-ops-center-v2-czjw.174`. Ticket:
 - Tech plan wave 5, "How pages follow a run": TanStack Query reads the run every second while it is set, and the deck query refetches on the same tick.
 - Each implementer and reviewer prompt forbids pushes, merges, new worktrees and subagent dispatch. Implementers and reviewers do not commit. The orchestrator commits once per task after its reviews pass, with a `feat(...)`, `test(...)` or `docs(...)` subject.
 - A failed check uses `superpowers:systematic-debugging`. Tests follow the `meaningful-tests` skill: each test names the bug it catches.
-- Advisor: when an implementer reports BLOCKED, or a second fix round fails, consult once with `Working/ask-advisor.sh "<question>"` (absolute path in every implementer prompt), follow the advice for one more attempt, then report BLOCKED. The playbook that runs this plan ships that script; it does not exist in this worktree yet.
+- Advisor: when an implementer reports BLOCKED, or a second fix round fails, the orchestrator consults the native advisor once, follows the advice for one more attempt, then reports BLOCKED. `Working/ask-advisor.sh` does not exist in this worktree.
+- Storybook MCP may not answer in a subagent. Then run the story tests headless: `pnpm nx run @genie/storybook:test-storybook --output-style=static -- <story file name>`.
+
+### What S7-49 (`DEC-57`) changed for Tasks 4 to 6
+
+- A run is a chain of bounded turns. Between turns, `continueRun` moves `run_state` from `running` to `queued` in one transaction, so `runStatus` answers `building` for the whole chain, and the page never sees an end between turns.
+- A run that the time box or the loop guard ends, ends `stopped` like Stop, with a last answer that says why (`data-run-end`). The page pill reads `Stopped, n slides kept` for all three causes, and the panel shows the reason.
+- A person may have up to 3 runs (`agent-run-limit`), and one run may work on a record (`agent-record-busy`). A start makes a new record, so only `agent-run-limit` can refuse it. The composer shows the catalogue message.
+- Ask's history lists every agent's chats, marks a working chat with a spinner, and opens a surface chat on its record page with `?chat=<session>`. The start answers the same address.
+- The panel clears the chat's unseen mark when it shows the ended run (`useMarkSeen`). The deck page does not mark it.
 
 ## Review Focus
 
-1. A start that is refused (a run already builds for this person, AI turned off after the page loaded, a surface the person may not write) must save no deck and no session. Task 1 pins each refusal with a row count.
+1. A start that is refused (the person already has 3 runs, AI turned off after the page loaded, a surface the person may not write) must save no deck and no session. Task 1 pins each refusal with a row count.
 2. Two quick Enter presses or a double click must create one deck. Task 3 pins it in a play function.
 3. A reload or a return to the deck page during the build must still show the drafting state and Stop, also when the panel never opened. Task 2 reads the run without the panel, and Task 6 walks away and back.
 4. A hand edit during the build moves the content hash, and the agent's next change is then refused. Task 4 disables hand edits while the run builds and pins it in a story.
@@ -161,7 +170,7 @@ Implementer model: Opus, because the task couples polling, disabled editing and 
   - `useDeck(initial, options?: { fast: boolean })`: `refetchInterval` is `RUN_POLL_MS` when `fast`, else 10,000.
 
 - [ ] **Step 1: Write the failing unit tests** in `draft-status.test.ts`, one table each:
-  - `draftStatus`: building, 0 drafted: `"Drafting slide 1"`; building, 2 drafted: `"Drafting slide 3"`; `stopping`: `"Stopping"`; ended here as `saved` with 1: `"1 slide drafted"`, with 4: `"4 slides drafted"`; ended here as `stopped` with 1: `"Stopped, 1 slide kept"`, with 3: `"Stopped, 3 slides kept"`; ended here as `failed` or `interrupted` with 2: `"Drafting did not finish. 2 slides drafted"`; an ended run that this visit did not see end: null.
+  - `draftStatus` (a `stopped` run may come from Stop, the time box or the loop guard; all read the same): building, 0 drafted: `"Drafting slide 1"`; building, 2 drafted: `"Drafting slide 3"`; `stopping`: `"Stopping"`; ended here as `saved` with 1: `"1 slide drafted"`, with 4: `"4 slides drafted"`; ended here as `stopped` with 1: `"Stopped, 1 slide kept"`, with 3: `"Stopped, 3 slides kept"`; ended here as `failed` or `interrupted` with 2: `"Drafting did not finish. 2 slides drafted"`; an ended run that this visit did not see end: null.
   - `isUnnamed`: true while building with the session's title; false once the title differs; false after the run ended with the provisional title (Review Focus 5).
 - [ ] **Step 2: Write the stories** in `deck-view.stories.tsx`, with the run read mocked at the `agent` client as the existing deck stories mock `slides`:
   - `DraftingUnnamed`: zero slides; the title is a skeleton with the hidden text `Naming the deck`; the canvas shows `Reading your records` with `role="status"`; the pill reads `Drafting slide 1`; Stop shows and Export, More actions and Present do not.
@@ -208,12 +217,12 @@ Implementer model: Opus, because the fixtures must match whole model requests an
 **Files:**
 - Create: `apps/genie/testing/slides-describe.ts`, `apps/genie/testing/model-recordings/synthetic-new-deck-1.json` and its next steps, `apps/genie/e2e/dev/new-deck.spec.ts`
 
-Write the fixtures by hand from `slides-build-*.json`, as the wave 5 synthetic fixtures are. The description is `DESCRIBED_DECK.description`; the run reads the deck, then sends one change with a `rename` step to `DESCRIBED_DECK.title` and the first `add-slide`, then one `add-slide` per slide, three slides in all, each answer about 1.5 s apart like the build fixtures. The header comment of `slides-describe.ts` says that the fixtures are synthetic and that R1 records them live.
+Write the fixtures by hand from the current `slides-build-*.json` (re-keyed by S7-49), as the wave 5 synthetic fixtures are, and read `synthetic-chain-*.json` for the request shape of a background turn. The run fits in one turn of 10 steps; S7-49's own tests prove the chain of turns. The description is `DESCRIBED_DECK.description`; the run reads the deck, then sends one change with a `rename` step to `DESCRIBED_DECK.title` and the first `add-slide`, then one `add-slide` per slide, three slides in all, each answer about 1.5 s apart like the build fixtures. The header comment of `slides-describe.ts` says that the fixtures are synthetic and that R1 records them live.
 
 - [ ] **Step 1: Write `new-deck.spec.ts`** with `surface-support.ts` and `ask-support.ts` helpers, at both projects:
   - Main path: Slides list, New deck, type the description, Enter. The deck page opens, the panel is open (bottom panel on phone) with the description as the first message, the title shows the skeleton and then `DESCRIBED_DECK.title`, the slide count rises step by step (`countsUntil`), the pill reads `Drafting ...` and then `3 slides drafted`, and Export and Present return. Rename in place to `Collections review` with Enter; the list shows the new name. `expectNoAxeViolations` on the list and the deck page.
-  - Stop: Stop after the first slide shows; the run ends, the deck keeps its slides so far, and the pill reads `<n> slides drafted`.
-  - Leave and return: go to the Slides list while it drafts, open the deck again, then `page.reload()` while it still drafts; the page shows the drafting status and Stop with no panel opened after the reload, and the deck ends with three slides. Bug caught: a run tied to the page, and a page that follows the run only through the panel.
+  - Stop: Stop after the first slide shows; the run ends, the deck keeps its slides so far, and the pill reads `Stopped, <n> slide(s) kept`.
+  - Leave and return: go to Ask while it drafts; its history shows the deck's chat under Slides with the working spinner (reuse the S7-49 helpers in `ask.spec.ts` or `ask-support.ts`). Open the chat from the history; the deck page opens with the drafting status. Then `page.reload()` while it still drafts; the page shows the drafting status and Stop with no panel opened after the reload, and the deck ends with three slides. Bug caught: a run tied to the page, and a page that follows the run only through the panel.
 - [ ] **Step 2: Run** `pnpm nx run @genie/app:test:e2e:dev -- new-deck.spec.ts` in the background (its `global-setup.ts` starts the stack, `next dev` with `GENIE_E2E_MODEL_RECORDINGS`, and a worker) with a log in `Working/logs/new-deck-e2e.log`, and poll the log. Expected: PASS at both projects. A fixture miss names the request that found no recording; fix the fixture, never the code under test.
 - [ ] **Step 3: Commit** `test(slides): prove a deck drafted from a description`.
 
@@ -236,13 +245,14 @@ The orchestrator runs one whole-branch review on Opus, then `pnpm gate:merge` in
 9. Rename in place replaces the Rename dialog on the deck page, at both viewports.
 10. The start writes no extra audit row. The deck's own create row and each tool call's row stay.
 11. The session takes the deployment's chat model, because no Ask session exists to take one from. The tech plan's "Handed-over run defaults" names the Ask session's model for a handoff only. The composer has no model picker.
-12. A start refused with `agent-run-active` saves nothing, and the composer shows the catalogue message with no link, because `AppError` carries no data but `issues`.
+12. A start refused with `agent-run-limit` (3 runs, `DEC-57`) saves nothing, and the composer shows the catalogue message with no link, because `AppError` carries no data but `issues`.
 13. The end-to-end test uses synthetic fixtures. The owner records them live later.
 14. Deviation from the 2026-11-13 design: after Stop, the prototype shows an agent answer "You stopped me after n slides ...". Stop aborts the model call (S7-40), so no model answer follows. The panel shows its existing stopped notice with Try again (S7-41), and the page pill reads "Stopped, n slides kept". Rejected: a fixed core answer written after Stop (new core text in every surface chat, not asked for).
+15. After the rebase on S7-49 (2026-11-15): the start answers the address with `?chat=<session>`, as the handoff does; the deck page reads `Stopped, n slides kept` also after a time box or a loop-guard end; the deck page does not clear the unseen mark (the panel does); the end-to-end run fits in one turn.
 
 ## Open questions for the owner
 
-Answered on 2026-11-13: OQ-1 (a), OQ-2 (b), OQ-3 keep the normal answer and add no Slides rule, OQ-5 approved. OQ-4 is open.
+Answered on 2026-11-13: OQ-1 (a), OQ-2 (b), OQ-3 keep the normal answer and add no Slides rule, OQ-5 approved. OQ-4 is settled by `DEC-57`: chained turns, `AGENT_LIMITS` unchanged.
 
 - OQ-1 (R-46). The agent names the deck and drafts the slides from the core start text, not from words the person typed. R-46 allows a change only when the person's own message asks for it. The brief got such an amendment on 2026-11-08. Options: (a) amend R-46: Create deck with a description is the person's request to name the new record and build it (proposed text in the ticket); (b) show the core sentence in the person's first message so that the person sends it visibly. The plan builds (a) and waits for the ruling before Task 1.
 - OQ-2 ("Drafting n of m"). Nothing tells the page how many slides the agent plans. Options: (a) an optional `plannedSlides` input on `slides-change-deck` and one instruction line, read by the page from the session's tool call; this re-keys every Slides recording, and those go on your refresh list; (b) the plan default: "Drafting slide n" and one placeholder for the slide in progress, a deviation from the prototype; its cost is that, after the last slide, the page shows "Drafting slide n+1" and one more placeholder while the agent writes its answer; (c) a planned count stored on the deck, which is a migration. `draftStatus` already accepts a plan, so (a) or (c) adds one task.
