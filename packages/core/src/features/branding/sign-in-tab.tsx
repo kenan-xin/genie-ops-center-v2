@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  FieldError,
-  FieldLabel,
-  focusRing,
-  SwitchField,
-  Textarea,
-} from "@genie/ui";
+import { FieldError, FieldLabel, SwitchField, Textarea } from "@genie/ui";
 
 import { signInContrastPairs } from "../../lib/branding/contrast-pairs.ts";
 import {
@@ -41,17 +35,6 @@ export function SignInTab(props: {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end gap-3">
-        <input
-          type="color"
-          aria-label="Pick the background color"
-          value={
-            HEX_COLOR.test(background) ? background.toLowerCase() : "#ffffff"
-          }
-          className={`h-10 w-12 cursor-pointer rounded-lg border bg-background p-1 ${focusRing}`}
-          onChange={(event) =>
-            props.onChange("loginBackgroundColor", event.target.value)
-          }
-        />
         <div className="w-48">
           <TextField
             id="branding-sign-in-background"
@@ -59,6 +42,12 @@ export function SignInTab(props: {
             value={background}
             error={props.issues["loginBackgroundColor"]}
             description="Empty keeps the page background."
+            swatch={{
+              label: "Pick the background color",
+              value: HEX_COLOR.test(background)
+                ? background.toLowerCase()
+                : "#ffffff",
+            }}
             onChange={(value) =>
               props.onChange(
                 "loginBackgroundColor",

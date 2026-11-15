@@ -103,6 +103,31 @@ const step = (px: number) => px / spacingPx;
 /** The spacing step of an input group's control: `px` less the group's two 1 px borders. */
 const inner = (px: number) => step(px - 2);
 
+/** A hand-set control height, behind any variant: the classes `controlHeights` owns (6wz1.114). */
+const CONTROL_HEIGHT = /(?<=^|[\s"'`:])(?:min-)?h-(?:9|10)(?![\w./-])/gm;
+
+function found(source: string): string[] {
+  return [...source.matchAll(CONTROL_HEIGHT)].map(([match]) => match);
+}
+
+/** Hits of `CONTROL_HEIGHT` that size something other than a control. */
+const NOT_A_CONTROL: readonly (readonly [
+  path: string,
+  className: string,
+  reason: string,
+])[] = [
+  [
+    "packages/core/src/features/shell/offline-bar.tsx",
+    "min-h-10",
+    "the offline banner is a status bar, not a control",
+  ],
+  [
+    "packages/core/src/features/roles/roles-screen.tsx",
+    "min-h-9",
+    "the legend bar of a permission group is a caption, not a control",
+  ],
+];
+
 // 6wz1.114, owner: 36 px from lg, 40 px visible under it with a 44 px touch area, 32 px dense.
 describe("the control heights against tokens.md, Control heights", () => {
   const { sm, md, lg } = controlHeightsPx;
@@ -147,6 +172,71 @@ describe("the control heights against tokens.md, Control heights", () => {
       md: `h-${inner(md.phone)} min-h-${inner(md.phone)} lg:h-${inner(md.desktop)} lg:min-h-${inner(md.desktop)}`,
       lg: `h-${inner(lg)} min-h-${inner(lg)}`,
     });
+  });
+
+  it("finds a control height behind any variant, and nothing that only looks like one", () => {
+    for (const source of [
+      "h-9",
+      "h-10",
+      "min-h-10",
+      "lg:min-h-10",
+      "md:min-h-10",
+      "lg:h-9",
+      "data-[size=lg]:lg:min-h-10",
+      "h-10!",
+      "`flex h-10 ${x}`",
+    ]) {
+      expect(found(source), source).toHaveLength(1);
+    }
+
+    for (const source of [
+      "h-10.5",
+      "h-8.5",
+      "max-h-10",
+      "size-10",
+      "h-100",
+      "min-h-11",
+      "lg:h-11",
+    ]) {
+      expect(found(source), source).toEqual([]);
+    }
+  });
+
+  it("leaves no hand-set control height outside the tokens", () => {
+    const root = join(import.meta.dirname, "../../../..");
+
+    const files = globSync(
+      [
+        "packages/*/src/**/*.{ts,tsx}",
+        "packages/modules/*/src/**/*.{ts,tsx}",
+        "apps/genie/src/**/*.{ts,tsx}",
+        "customers/*/app/**/*.{ts,tsx}",
+      ],
+      { cwd: root }
+    ).filter(
+      (file) =>
+        !/\.(test|stories)\.|\/testing\/|\/__fixtures__\//.test(file) &&
+        // tokens.ts defines the classes.
+        file !== "packages/ui/src/theme/tokens.ts"
+    );
+
+    const hits = files.flatMap((file) =>
+      found(readFileSync(join(root, file), "utf8")).map(
+        (match) => `${file} ${match}`
+      )
+    );
+
+    const allowed = NOT_A_CONTROL.map(
+      ([path, className]) => `${path} ${className}`
+    );
+
+    expect(files.length).toBeGreaterThan(100);
+
+    expect(hits.filter((hit) => !allowed.includes(hit))).toEqual([]);
+
+    for (const row of allowed) {
+      expect(hits, `stale row: ${row}`).toContain(row);
+    }
   });
 
   it("states the md height in DESIGN.md's front matter", () => {

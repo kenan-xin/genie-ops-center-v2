@@ -484,12 +484,14 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     // Section 2, outside R-41's scope, but in the application the catalogue owns.
     "apps/genie/src/app/admin/audit/audit-log-route.tsx": 2,
     "packages/core/src/features/branding/branding-screen.tsx": 15,
-    "packages/core/src/features/branding/colors-tab.tsx": 5,
+    // -1 here and in sign-in-tab.tsx: the swatch label moved into the `swatch` prop (6wz1.115),
+    // which this scan does not read. It is still inline English.
+    "packages/core/src/features/branding/colors-tab.tsx": 4,
     "packages/core/src/features/branding/contrast-pills.tsx": 2,
     "packages/core/src/features/branding/identity-tab.tsx": 4,
     "packages/core/src/features/branding/image-slot.tsx": 13,
     "packages/core/src/features/branding/previews.tsx": 6,
-    "packages/core/src/features/branding/sign-in-tab.tsx": 6,
+    "packages/core/src/features/branding/sign-in-tab.tsx": 5,
     "packages/core/src/features/categories/assign-items.tsx": 11,
     "packages/core/src/features/categories/categories-screen.tsx": 15,
     // 2026-11-15: -1, "No one holds <module> yet" became the one literal "Not assigned to anyone yet" (G10).

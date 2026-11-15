@@ -71,10 +71,11 @@ function InputGroupAddon({
       data-align={align}
       className={cn(inputGroupAddonVariants({ align }), className)}
       onClick={(event) => {
-        // A press on the addon's text focuses the field; a press on its button stays the button's.
+        // A press on the addon's text focuses the field; a press on a control in it stays the control's.
         if (
           event.target instanceof Element &&
-          event.target.closest("button") !== null
+          event.target.closest("button, input, select, textarea, label, a") !==
+            null
         )
           return;
 

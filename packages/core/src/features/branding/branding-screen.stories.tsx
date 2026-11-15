@@ -449,6 +449,87 @@ export const KeyboardFocusRingsOnDark: Story = {
   globals: { theme: "dark" },
 };
 
+/**
+ * ADM-19: the swatch sits inside its field box, before the hex value, on the field's height, and
+ * its label reaches a 44 px touch area past the box.
+ */
+async function expectSwatchInField(
+  canvas: HTMLElement,
+  swatchName: string,
+  fieldName: string,
+  height: 40 | 36
+) {
+  const swatch = within(canvas).getByLabelText(swatchName);
+  const group = swatch.closest<HTMLElement>("[data-slot=input-group]");
+  const label = swatch.closest("label");
+
+  await expect(group, swatchName).toBeInstanceOf(HTMLElement);
+  await expect(label, swatchName).toBeInstanceOf(HTMLElement);
+
+  if (group === null || label === null) return;
+
+  await expect(
+    within(group).getByRole("textbox", { name: fieldName })
+  ).toBeVisible();
+
+  const box = group.getBoundingClientRect();
+  const swatchBox = label.getBoundingClientRect();
+
+  await expect(box.height).toBe(height);
+  await expect(swatchBox.top + swatchBox.height / 2).toBeCloseTo(
+    box.top + box.height / 2,
+    0
+  );
+
+  // A press on the swatch stays the swatch's: it opens the picker, not the hex input.
+  await user.click(swatch);
+  await expect(
+    within(group).getByRole("textbox", { name: fieldName })
+  ).not.toHaveFocus();
+
+  if (height !== 40) return;
+
+  // On a phone, a tap just above the field box, over the swatch, opens the picker. The boxes are
+  // read again at the probe: the page can still scroll after the tab switch.
+  await waitFor(() => {
+    const top = group.getBoundingClientRect().top;
+    const { left, width } = label.getBoundingClientRect();
+
+    return expect(
+      document.elementFromPoint(left + width / 2, top - 1.5)?.closest("label")
+    ).toBe(label);
+  });
+}
+
+/** Both color fields, on the Colors tab and the Sign-in tab, at the field height of the viewport. */
+async function colorFields(canvas: HTMLElement, height: 40 | 36) {
+  await user.click(within(canvas).getByRole("tab", { name: "Colors" }));
+  await expectSwatchInField(
+    canvas,
+    "Pick the primary color",
+    "Primary color",
+    height
+  );
+
+  await user.click(within(canvas).getByRole("tab", { name: "Sign-in" }));
+  await expectSwatchInField(
+    canvas,
+    "Pick the background color",
+    "Background color",
+    height
+  );
+}
+
+export const ColorFieldOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => colorFields(canvasElement, 40),
+};
+
+export const ColorFieldOnDesktop: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvasElement }) => colorFields(canvasElement, 36),
+};
+
 export const Uploading: Story = {
   args: { onUpload: fn(() => new Promise<never>(() => {})) },
   play: async ({ canvas }) => {

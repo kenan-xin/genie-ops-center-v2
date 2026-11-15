@@ -77,7 +77,7 @@ export function FileCard(props: {
       aria-label={props.title}
       className="grid gap-2 rounded-lg border border-border bg-card px-3 py-2"
     >
-      <div className="flex min-h-10 items-center gap-3">
+      <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
           className="grid size-8 shrink-0 place-items-center rounded-md bg-muted"

@@ -1,7 +1,7 @@
 "use client";
 
 import {
-  focusRing,
+  controlHeights,
   HelpDisclosure,
   RadioGroup,
   RadioGroupItem,
@@ -41,26 +41,23 @@ export function ColorsTab(props: {
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end gap-3">
-        <input
-          type="color"
-          aria-label="Pick the primary color"
-          value={valid ? color.toLowerCase() : "#000000"}
-          className={`h-10 w-12 cursor-pointer rounded-lg border bg-background p-1 ${focusRing}`}
-          onChange={(event) => props.onColor(event.target.value)}
-        />
         <div className="w-48">
           <TextField
             id="branding-primary-color"
             label="Primary color"
             value={color}
             error={props.issues["primaryColor"]}
+            swatch={{
+              label: "Pick the primary color",
+              value: valid ? color.toLowerCase() : "#000000",
+            }}
             onChange={props.onColor}
           />
         </div>
         {valid ? (
           <span
             data-branding-preview={props.scope}
-            className="flex h-10 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground"
+            className={`flex ${controlHeights.md} items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-primary-foreground`}
           >
             Aa <span className="font-mono text-xs">{foregroundFor(color)}</span>
           </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import { buttonVariants, focusRing, IconTile } from "@genie/ui";
+import { buttonVariants, focusRing, IconTile, rowHeight } from "@genie/ui";
 import { formatChartValue } from "@genie/ui/chart-data";
 import { ChevronRightIcon, ForwardIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -87,7 +87,7 @@ function BriefFold(props: {
   return (
     <details className="group border-t border-border">
       <summary
-        className={`flex min-h-11 cursor-pointer list-none items-center gap-1.5 px-4 text-xs font-medium text-muted-foreground hover:text-foreground lg:min-h-9 [&::-webkit-details-marker]:hidden ${focusRing}`}
+        className={`flex ${rowHeight} cursor-pointer list-none items-center gap-1.5 px-4 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden ${focusRing}`}
       >
         <ChevronRightIcon
           aria-hidden="true"
