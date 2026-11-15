@@ -8,7 +8,9 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
   focusRing,
+  iconControlSizes,
   StickyActionBar,
+  touchAreas,
 } from "@genie/ui";
 import { ChevronLeft } from "lucide-react";
 import { use, type ReactNode } from "react";
@@ -80,7 +82,7 @@ function PageTopBar(props: {
       <Anchor
         href={crumb.parent.href}
         aria-label={props.backTo.replace("{page}", crumb.parent.label)}
-        className={`flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-hover ${focusRing}`}
+        className={`flex ${iconControlSizes.md} ${touchAreas.md} shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-hover ${focusRing}`}
       >
         <ChevronLeft aria-hidden="true" strokeWidth={1.75} className="size-5" />
       </Anchor>

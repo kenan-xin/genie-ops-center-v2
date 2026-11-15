@@ -3,6 +3,7 @@
 import {
   Button,
   focusRing,
+  iconControlSizes,
   Kbd,
   Sheet,
   SheetContent,
@@ -10,6 +11,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  touchAreas,
   useMediaQuery,
 } from "@genie/ui";
 import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
@@ -59,7 +61,7 @@ export type AppShellProps = {
   readonly agentPanel?: ReactNode;
 };
 
-const iconButton = `flex size-11 shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-hover motion-safe:transition-colors ${focusRing}`;
+const iconButton = `flex ${iconControlSizes.md} ${touchAreas.md} shrink-0 items-center justify-center rounded-lg text-foreground hover:bg-hover motion-safe:transition-colors ${focusRing}`;
 
 /** A key event from a place where the person types, where Ctrl+B must not move the menu. */
 function fromTyping(target: EventTarget | null): boolean {
@@ -346,7 +348,7 @@ function Shell(props: ShellProps) {
               }
               aria-expanded={drawerOpen}
               onClick={() => setDrawerOpen(true)}
-              className={`relative ${iconButton}`}
+              className={iconButton}
             >
               <Menu aria-hidden strokeWidth={1.75} className="size-5" />
               {/* The menu is in the drawer here, so its button carries Ask's spinner as a dot. */}

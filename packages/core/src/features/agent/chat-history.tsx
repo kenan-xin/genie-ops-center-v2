@@ -6,6 +6,7 @@ import {
   InputGroupAddon,
   InputGroupInput,
   InputGroupText,
+  rowHeight,
   Spinner,
 } from "@genie/ui";
 import {
@@ -30,7 +31,7 @@ import {
 } from "./session-groups.ts";
 
 function sessionClass(current: boolean): string {
-  return `flex h-11 min-w-0 items-center gap-2 rounded-lg px-3 text-sm lg:h-9 ${
+  return `flex min-w-0 items-center gap-2 rounded-lg px-3 text-sm ${rowHeight} ${
     current
       ? "bg-background font-semibold text-foreground ring-1 ring-border ring-inset"
       : "text-muted-foreground hover:bg-hover hover:text-foreground"
@@ -275,7 +276,7 @@ export function AgentHistory(props: {
                       type="button"
                       aria-expanded={open}
                       aria-controls={open ? id : undefined}
-                      className={`group flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-hover lg:h-9 ${focusRing}`}
+                      className={`group flex w-full items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-hover ${rowHeight} ${focusRing}`}
                       onClick={() => setFolded(toggle(folded, group.key))}
                     >
                       <AgentIcon

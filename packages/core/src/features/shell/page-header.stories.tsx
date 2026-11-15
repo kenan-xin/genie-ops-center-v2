@@ -227,7 +227,16 @@ export const BreadcrumbFromTheRoute: Story = {
  * name (design review 2.1). The trail hides; the title stays for a screen reader.
  */
 export const BreadcrumbPhone: Story = {
-  decorators: [inShell],
+  decorators: [
+    inShell,
+    // The top bar's -mt-4 cancels the shell content's 16 px padding, so with no shell the bar
+    // sits 16 px above the page and a point 1.5 px over its edge is off the viewport.
+    (Story) => (
+      <div className="p-4">
+        <Story />
+      </div>
+    ),
+  ],
   args: { title: "Roles", breadcrumb: rolesTrail },
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas, canvasElement }) => {
@@ -248,11 +257,17 @@ export const BreadcrumbPhone: Story = {
     await expect(back).toHaveAttribute("href", "/admin/roles");
     const box = back.getBoundingClientRect();
 
-    await expect(box.height).toBeGreaterThanOrEqual(44);
+    await expect(box.height).toBe(40);
     // A tap lands on it: an `sr-only` header keeps its box but clips it away.
     await expect(
       back.contains(
         document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      )
+    ).toBe(true);
+    // The 44 px touch area reaches past the 40 px box, so a tap just above it lands too.
+    await expect(
+      back.contains(
+        document.elementFromPoint(box.x + box.width / 2, box.y - 1.5)
       )
     ).toBe(true);
     await expect(

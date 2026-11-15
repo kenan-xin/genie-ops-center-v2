@@ -2,6 +2,8 @@
 
 import {
   focusRing,
+  iconControlSizes,
+  rowHeight,
   Spinner,
   Tooltip,
   TooltipContent,
@@ -85,12 +87,12 @@ export const MODULE_ICONS: Readonly<Record<NavigationIcon, LucideIcon>> = {
   "receipt": Receipt,
 };
 
-// Rows are 44px under lg (touch targets), then 40px nav rows and 32px tree rows.
-const rowBase = `flex min-h-11 items-center gap-2.5 rounded-lg px-3 text-sm motion-safe:transition-colors lg:min-h-0 ${focusRing}`;
+// Rows are 44px under lg (touch targets), then 36px nav rows and 32px tree rows.
+const rowBase = `flex items-center gap-2.5 rounded-lg px-3 text-sm motion-safe:transition-colors ${focusRing}`;
 
-const navRow = "lg:h-10";
+const navRow = rowHeight;
 
-const treeRow = "lg:h-8";
+const treeRow = "min-h-11 lg:min-h-0 lg:h-8";
 
 const rowIdle = "font-medium text-foreground hover:bg-hover";
 
@@ -145,7 +147,7 @@ function RailLink({
     <Anchor
       {...rest}
       aria-current={active ? "page" : undefined}
-      className={`relative flex size-10 items-center justify-center rounded-lg motion-safe:transition-colors ${focusRing} ${active ? rowActive : rowIdle}`}
+      className={`relative flex ${iconControlSizes.md} items-center justify-center rounded-lg motion-safe:transition-colors ${focusRing} ${active ? rowActive : rowIdle}`}
     />
   );
 }
