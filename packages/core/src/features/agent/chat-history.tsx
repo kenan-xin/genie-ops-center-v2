@@ -275,7 +275,7 @@ export function AgentHistory(props: {
                       type="button"
                       aria-expanded={open}
                       aria-controls={open ? id : undefined}
-                      className={`group flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-tile lg:h-9 ${focusRing}`}
+                      className={`group flex h-11 w-full items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-hover lg:h-9 ${focusRing}`}
                       onClick={() => setFolded(toggle(folded, group.key))}
                     >
                       <AgentIcon
@@ -317,7 +317,7 @@ export function AgentHistory(props: {
                       {!all && group.entries.length > SHOWN ? (
                         <button
                           type="button"
-                          className={`flex h-11 w-full items-center rounded-lg px-3 text-left text-sm text-muted-foreground hover:bg-tile hover:text-foreground lg:h-8 ${focusRing}`}
+                          className={`flex h-11 w-full items-center rounded-lg px-3 text-left text-sm text-muted-foreground hover:bg-hover hover:text-foreground lg:h-8 ${focusRing}`}
                           onClick={() => setMore(toggle(more, group.key))}
                         >
                           Show more
