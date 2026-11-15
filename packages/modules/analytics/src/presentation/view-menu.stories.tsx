@@ -18,7 +18,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The view switcher at the start of the dashboard filter bar, variant A (Spec 7 R-49a, S7-47). "View: <name>" opens the views ("Dashboard filters" and each saved view, the default one with a Default badge), then the actions on the selected view: Make default (or the disabled "Default view" line), Remove view, Save as view and Save as default. Without a view only Save as view shows. A menu from 768 px; the same content in a bottom sheet on a phone. `place` picks the menu, from 768 px, or the bottom sheet, on a phone.',
+          'The view switcher at the start of the dashboard filter bar, variant A (Spec 7 R-49a, S7-47). "View: <name>" opens the views ("Dashboard filters" and each saved view, the default one with a Default badge), then the actions on the selected view: Make default (or the disabled "Default view" line), Delete view, Save as view and Save as default. Without a view only Save as view shows. A menu from 768 px; the same content in a bottom sheet on a phone. `place` picks the menu, from 768 px, or the bottom sheet, on a phone.',
       },
     },
     // Base UI's focus guards are aria-hidden on purpose (they hand focus on), so only they skip
@@ -114,7 +114,7 @@ export const NoView: Story = {
       ).toBeVisible()
     );
     await expect(
-      menu.queryByRole("menuitem", { name: /^Remove view/ })
+      menu.queryByRole("menuitem", { name: /^Delete view/ })
     ).toBeNull();
     await expect(
       menu.queryByRole("menuitem", { name: /^Save as default/ })
@@ -134,7 +134,7 @@ export const OnPhone: Story = {
 
     const sheet = within(await screen.findByRole("dialog", { name: "Views" }));
 
-    await userEvent.click(sheet.getByRole("button", { name: /^Remove view/ }));
+    await userEvent.click(sheet.getByRole("button", { name: /^Delete view/ }));
 
     await expect(args.onRemove).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());

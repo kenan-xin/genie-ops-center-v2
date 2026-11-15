@@ -124,7 +124,7 @@ test("the presenter window follows the audience window and moves it back", async
     const presenterAt = (number: number) =>
       presenter
         .getByRole("toolbar", { name: "Presentation" })
-        .getByText(`${number} / 2`, { exact: true });
+        .getByText(`Slide ${number} of 2`, { exact: true });
 
     const audienceAt = (number: number) =>
       page
@@ -145,7 +145,7 @@ test("the presenter window follows the audience window and moves it back", async
     await expect(presenterAt(2)).toBeVisible(FIRST_PAINT);
     await expect(
       presenter
-        .getByRole("region", { name: "Now showing" })
+        .getByRole("region", { name: "Current slide" })
         .getByText(SLIDES_CHANGE_OLD_TITLE)
     ).toBeVisible();
     await expect(

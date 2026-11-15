@@ -352,7 +352,8 @@ test("a text color below the contrast limit is refused, names the element and sa
 
     await expect(
       page.getByText(
-        /Title "Collections are on track for…": #F3F4F6 on the theme background #FFFFFF is 1\.1:1/
+        'Title "Collections are on track for…": this text color is too close to the background to read. Pick a color with more contrast, or give the text a fill.',
+        { exact: false }
       )
     ).toBeVisible(FIRST_PAINT);
     await expect(undoButton(page)).toBeDisabled();
@@ -459,7 +460,7 @@ const RIGHT_EDGE_DECK: DeckContent = {
         { kind: "title", text: "Collections are on track for October." },
         {
           kind: "text",
-          text: "Every figure comes from the linked payments.",
+          text: "Every figure comes from the allocated payments.",
           box: { x: 640, y: 136, w: 320, h: 96 },
         },
       ],
@@ -556,7 +557,7 @@ test("a background pick that recolors text says so, and its Undo brings the colo
         .evaluate((element) => getComputedStyle(element).color);
 
     const title = "Collections are on track for October.";
-    const body = "Every figure comes from the linked payments.";
+    const body = "Every figure comes from the allocated payments.";
 
     const colors = async () => [
       await backgroundOf(page),

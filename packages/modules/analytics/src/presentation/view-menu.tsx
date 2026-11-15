@@ -114,7 +114,7 @@ export function ViewMenu(props: ViewMenuProps) {
                 onSelect: props.onMakeDefault,
               },
           {
-            label: "Remove view",
+            label: "Delete view",
             line: "Undo restores it",
             icon: Trash2Icon,
             onSelect: props.onRemove,

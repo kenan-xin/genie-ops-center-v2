@@ -82,26 +82,26 @@ export function textContrastIssues(slide: {
     const style = element.style ?? {};
     const color = style.color ?? THEME_TEXT;
 
-    const [where, behind] =
+    const [where, behind, fix] =
       style.fill !== undefined
-        ? ["its fill", style.fill]
-        : slide.background !== undefined
-          ? ["the slide background", slide.background]
-          : ["the theme background", THEME_BACKGROUND];
+        ? ["its fill", style.fill, "change its fill"]
+        : [
+            "the background",
+            slide.background ?? THEME_BACKGROUND,
+            "give the text a fill",
+          ];
 
-    const needs = contrastLimit(element.kind, style.fontSize);
-
-    const ratio = contrastRatio(color, behind);
-
-    if (ratio >= needs) return [];
-
-    // Rounded down, so a refused pair never shows the limit itself.
-    const shown = (Math.floor(ratio * 10) / 10).toFixed(1);
+    if (
+      contrastRatio(color, behind) >=
+      contrastLimit(element.kind, style.fontSize)
+    ) {
+      return [];
+    }
 
     return [
       {
         index,
-        message: `${elementName(element)}: ${color} on ${where} ${behind} is ${shown}:1, and this text needs ${needs}:1. Pick a color with more contrast, or give the text a fill.`,
+        message: `${elementName(element)}: this text color is too close to ${where} to read. Pick a color with more contrast, or ${fix}.`,
       },
     ];
   });

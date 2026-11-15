@@ -230,7 +230,7 @@ function PanelActions(props: PanelActionsProps) {
           variant="destructive"
           onClick={() => onChange([{ op: "remove-panel", panelId: panel.id }])}
         >
-          Remove panel
+          Delete panel
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

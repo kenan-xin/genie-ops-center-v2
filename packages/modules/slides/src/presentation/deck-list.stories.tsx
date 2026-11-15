@@ -195,7 +195,7 @@ export const ChatOnPhone: Story = {
 
 const chatOffPlay: Story["play"] = async ({ canvas }) => {
   await expect(
-    canvas.getByText("Chat is off. You can still make a deck with New deck.")
+    canvas.getByText("AI is off. You can still make a deck with New deck.")
   ).toBeVisible();
   await expect(canvas.queryByRole("complementary")).toBeNull();
 };
@@ -226,15 +226,13 @@ export const ChatOffReadOnly: Story = {
   globals: desktop,
   beforeEach: () => serve(chatOffReader),
   play: async ({ canvas }) => {
-    await expect(canvas.getByRole("status")).toHaveTextContent(
-      /^Chat is off\.$/
-    );
+    await expect(canvas.getByRole("status")).toHaveTextContent(/^AI is off\.$/);
   },
 };
 
 const noChatPlay: Story["play"] = async ({ canvas }) => {
   await expect(canvas.queryByRole("complementary")).toBeNull();
-  await expect(canvas.queryByText(/Chat is off/)).toBeNull();
+  await expect(canvas.queryByText(/AI is off/)).toBeNull();
 };
 
 /** A person who may not ask (no `core:ask:use`): no chat and no note. */

@@ -112,7 +112,8 @@ const withChart = (chart: Omit<Extra, "text">): DeckContent => ({
   ],
 });
 
-const NEEDS = "Pick a color with more contrast, or give the text a fill.";
+const TOO_CLOSE_TO_BACKGROUND =
+  "this text color is too close to the background to read. Pick a color with more contrast, or give the text a fill.";
 
 const slides = (count: number) =>
   Array.from({ length: count }, (_, index) => largestSlide(`s${index + 1}`));
@@ -219,7 +220,12 @@ describe("the deck content schema", () => {
     [
       "refuses light gray text on the theme background",
       styled({}, { style: { color: "#F3F4F6" } }),
-      `slides.0.elements.1.style: Text "Sales rose.": #F3F4F6 on the theme background #FFFFFF is 1.1:1, and this text needs 4.5:1. ${NEEDS}`,
+      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
+    ],
+    [
+      "names the fill when the text sits on its own fill",
+      styled({}, { style: { color: "#F3F4F6", fill: "#FFFFFF" } }),
+      'slides.0.elements.1.style: Text "Sales rose.": this text color is too close to its fill to read. Pick a color with more contrast, or change its fill.',
     ],
     [
       "checks white text against its own fill first",
@@ -229,7 +235,7 @@ describe("the deck content schema", () => {
     [
       "refuses a dark background under default text",
       styled({ style: { color: "#FFFFFF" } }, {}, { background: "#1E3A8A" }),
-      `slides.0.elements.1.style: Text "Sales rose.": #111827 on the slide background #1E3A8A is 1.7:1, and this text needs 4.5:1. ${NEEDS}`,
+      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
     ],
     [
       "allows 3:1 for text of size 24",
@@ -239,7 +245,7 @@ describe("the deck content schema", () => {
     [
       "needs 4.5:1 for text of size 18",
       styled({}, { style: { color: "#909090", fontSize: 18 } }),
-      `slides.0.elements.1.style: Text "Sales rose.": #909090 on the theme background #FFFFFF is 3.1:1, and this text needs 4.5:1. ${NEEDS}`,
+      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
     ],
     [
       "names a long text by its first 28 characters",
@@ -250,7 +256,7 @@ describe("the deck content schema", () => {
           style: { color: "#F3F4F6" },
         }
       ),
-      `slides.0.elements.1.style: Text "Most of the rise is one cust…": #F3F4F6 on the theme background #FFFFFF is 1.1:1, and this text needs 4.5:1. ${NEEDS}`,
+      `slides.0.elements.1.style: Text "Most of the rise is one cust…": ${TOO_CLOSE_TO_BACKGROUND}`,
     ],
     [
       "parses 20 slides of the largest allowed shape",

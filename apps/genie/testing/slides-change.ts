@@ -54,7 +54,10 @@ export const SLIDES_CHANGE_CONTENT = {
       id: "s1",
       elements: [
         { kind: "title", text: "Collections are on track for October." },
-        { kind: "text", text: "Every figure comes from the linked payments." },
+        {
+          kind: "text",
+          text: "Every figure comes from the allocated payments.",
+        },
       ],
     },
     {

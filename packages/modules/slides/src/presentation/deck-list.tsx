@@ -249,8 +249,8 @@ export function DeckList(props: DeckListProps) {
         {view.chat.kind === "off" ? (
           <InfoNote size="md" role="status">
             {view.canWrite
-              ? "Chat is off. You can still make a deck with New deck."
-              : "Chat is off."}
+              ? "AI is off. You can still make a deck with New deck."
+              : "AI is off."}
           </InfoNote>
         ) : null}
       </div>

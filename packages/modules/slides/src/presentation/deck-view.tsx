@@ -398,7 +398,7 @@ function RailMenu(props: {
           disabled={props.busy}
           onClick={() => props.onRemove(current)}
         >
-          Remove slide
+          Delete slide
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

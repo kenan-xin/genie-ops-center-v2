@@ -59,7 +59,7 @@
         {
           "role": "tool",
           "tool_call_id": "call_AqjderneCX2q3UdWwPTCtEK2",
-          "content": "{\"id\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"title\":\"Collections review\",\"figuresAsOf\":\"2026-10-27\",\"contentHash\":\"3b9482492b96d7ec89279261ae79484f3ee7a126a295fd887018e9d6edccf50e\",\"slides\":[{\"id\":\"s1\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections are on track for October.\"},{\"kind\":\"text\",\"text\":\"Every figure comes from the linked payments.\"}]},{\"id\":\"s2\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections reached SGD 195,200.00 by October.\"},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Collections\",\"series\":[{\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"fn\":\"sum\",\"field\":\"amountCents\"}]},\"value\":\"collections\",\"dataset\":\"invoices.payments\"}]}}]}]}",
+          "content": "{\"id\":\"7c1e4b2a-5d3f-4e6a-9b8c-0a0a0a0a0002\",\"title\":\"Collections review\",\"figuresAsOf\":\"2026-10-27\",\"contentHash\":\"3b9482492b96d7ec89279261ae79484f3ee7a126a295fd887018e9d6edccf50e\",\"slides\":[{\"id\":\"s1\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections are on track for October.\"},{\"kind\":\"text\",\"text\":\"Every figure comes from the allocated payments.\"}]},{\"id\":\"s2\",\"elements\":[{\"kind\":\"title\",\"text\":\"Collections reached SGD 195,200.00 by October.\"},{\"kind\":\"figure\",\"chart\":{\"type\":\"kpi\",\"title\":\"Collections\",\"series\":[{\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"fn\":\"sum\",\"field\":\"amountCents\"}]},\"value\":\"collections\",\"dataset\":\"invoices.payments\"}]}}]}]}",
           "name": "slides-read-deck"
         },
         {

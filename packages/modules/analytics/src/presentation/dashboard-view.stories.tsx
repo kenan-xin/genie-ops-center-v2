@@ -728,16 +728,16 @@ export const MakeDefault: Story = {
   },
 };
 
-// Remove view goes back to the dashboard filters, not to the default view.
+// Delete view goes back to the dashboard filters, not to the default view.
 export const RemoveView: Story = {
-  name: "Remove view",
+  name: "Delete view",
   args: { view: viewsDashboardPage },
   globals: desktop,
   beforeEach: openViews(null, "v2"),
   play: async ({ canvas }) => {
     await pickView(canvas, "North region");
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: /^Remove view/ })
+      await screen.findByRole("menuitem", { name: /^Delete view/ })
     );
 
     await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
@@ -1267,12 +1267,12 @@ export const EditActions: Story = {
     });
     changeDashboard.mockClear();
 
-    // Remove panel
+    // Delete panel
     await userEvent.click(
       canvas.getByRole("button", { name: "Actions for Invoiced sales" })
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Remove panel" })
+      await screen.findByRole("menuitem", { name: "Delete panel" })
     );
 
     await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
@@ -1348,7 +1348,7 @@ export const RefusedEdit: Story = {
       canvas.getByRole("button", { name: "Actions for Invoiced sales" })
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Remove panel" })
+      await screen.findByRole("menuitem", { name: "Delete panel" })
     );
 
     const alert = await canvas.findByRole("alert");
@@ -1386,7 +1386,7 @@ export const VersionConflict: Story = {
       canvas.getByRole("button", { name: "Actions for Invoiced sales" })
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Remove panel" })
+      await screen.findByRole("menuitem", { name: "Delete panel" })
     );
 
     const alert = await canvas.findByRole("alert");
@@ -1631,7 +1631,7 @@ export const EditOnPhone: Story = {
     );
 
     await expect(
-      await screen.findByRole("menuitem", { name: "Remove panel" })
+      await screen.findByRole("menuitem", { name: "Delete panel" })
     ).toBeInTheDocument();
   },
 };

@@ -300,7 +300,7 @@ export function DashboardView(props: DashboardViewProps) {
               title="No panels yet"
               description={
                 starters
-                  ? "Ask the chat for a chart, a figure or a table. You can move them after."
+                  ? "Ask for a chart, a figure or a table. You can move them after."
                   : "This dashboard has no panels."
               }
               action={
@@ -357,7 +357,7 @@ export function DashboardView(props: DashboardViewProps) {
         </div>
         {view.chat.kind === "off" ? (
           <InfoNote size="md" role="status">
-            Chat is off. You can still change this dashboard by hand.
+            AI is off. You can still change this dashboard by hand.
           </InfoNote>
         ) : null}
       </div>

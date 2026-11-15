@@ -430,7 +430,7 @@ const slideActionsPlay: Story["play"] = async ({ canvas }) => {
     canvas.getByRole("button", { name: "Actions for slide 1" })
   );
   await userEvent.click(
-    await screen.findByRole("menuitem", { name: "Remove slide" })
+    await screen.findByRole("menuitem", { name: "Delete slide" })
   );
 
   await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));

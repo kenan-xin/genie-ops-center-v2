@@ -118,7 +118,7 @@ async function shownByAudience(index: number) {
   const dialog = await presenter();
 
   await waitFor(() =>
-    expect(dialog.getByText(`${index + 1} / 5`)).toBeVisible()
+    expect(dialog.getByText(`Slide ${index + 1} of 5`)).toBeVisible()
   );
 
   return dialog;
@@ -132,7 +132,10 @@ export const Presenter: Story = {
       "Audience window follows"
     );
     await expect(
-      dialog.getByRole("region", { name: "Next" })
+      dialog.getByRole("region", { name: "Current slide" })
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("region", { name: "Next slide" })
     ).toHaveTextContent("Slide 3");
 
     const notes = dialog.getByRole("region", { name: "Notes for slide 2" });
@@ -149,7 +152,7 @@ export const LastSlide: Story = {
     const dialog = await shownByAudience(4);
 
     await expect(
-      dialog.getByRole("region", { name: "Next" })
+      dialog.getByRole("region", { name: "Next slide" })
     ).toHaveTextContent("This is the last slide. Exit returns to the deck.");
   },
 };
@@ -180,7 +183,7 @@ export const LongNotes: Story = {
 
     // The current slide keeps about 62 percent of the width, 16:9, whatever the notes hold.
     const slide = dialog
-      .getByRole("region", { name: "Now showing" })
+      .getByRole("region", { name: "Current slide" })
       .querySelector<HTMLElement>("[data-slide-canvas]")!;
 
     const rect = slide.getBoundingClientRect();
@@ -192,7 +195,7 @@ export const LongNotes: Story = {
 
     // The notes never squeeze the next slide either: its whole 16:9 box shows.
     const next = dialog
-      .getByRole("region", { name: "Next" })
+      .getByRole("region", { name: "Next slide" })
       .querySelector<HTMLElement>("[data-slide-canvas]")!
       .getBoundingClientRect();
 
@@ -202,7 +205,7 @@ export const LongNotes: Story = {
     notes.focus();
     await userEvent.keyboard(" ");
     await new Promise((resolve) => setTimeout(resolve, 200));
-    await expect(dialog.getByText("3 / 5")).toBeVisible();
+    await expect(dialog.getByText("Slide 3 of 5")).toBeVisible();
   },
 };
 
@@ -234,7 +237,7 @@ export const Keys: Story = {
     const dialog = await shownByAudience(1);
 
     await userEvent.keyboard("{ArrowRight}");
-    await waitFor(() => expect(dialog.getByText("3 / 5")).toBeVisible());
+    await waitFor(() => expect(dialog.getByText("Slide 3 of 5")).toBeVisible());
     await waitFor(() =>
       expect(heard).toContainEqual({
         kind: "show",
@@ -247,7 +250,7 @@ export const Keys: Story = {
     const before = heard.length;
 
     fromAudience(0);
-    await waitFor(() => expect(dialog.getByText("1 / 5")).toBeVisible());
+    await waitFor(() => expect(dialog.getByText("Slide 1 of 5")).toBeVisible());
     await new Promise((resolve) => setTimeout(resolve, 200));
     await expect(heard).toHaveLength(before);
 

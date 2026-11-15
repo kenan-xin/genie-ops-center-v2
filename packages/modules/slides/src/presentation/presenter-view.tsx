@@ -284,7 +284,7 @@ export function PresenterView(props: PresenterViewProps) {
             tabIndex={-1}
             className="grid min-h-0 flex-1 gap-4 overflow-y-auto px-5 py-4 outline-none md:grid-cols-8 md:overflow-hidden"
           >
-            <Panel label="Now showing" className="max-md:h-56 md:col-span-5">
+            <Panel label="Current slide" className="max-md:h-56 md:col-span-5">
               {/* The slide takes the largest 16:9 box of the cell. */}
               <div
                 ref={setStage}
@@ -299,7 +299,7 @@ export function PresenterView(props: PresenterViewProps) {
             </Panel>
             <div className="flex min-h-0 flex-col gap-4 md:col-span-3">
               <Panel
-                label="Next"
+                label="Next slide"
                 aside={next === undefined ? undefined : `Slide ${index + 2}`}
                 className="shrink-0"
               >
@@ -367,9 +367,9 @@ export function PresenterView(props: PresenterViewProps) {
               <span
                 aria-live="polite"
                 aria-atomic="true"
-                className="min-w-14 px-1.5 text-center text-sm text-white tabular-nums"
+                className="min-w-24 px-1.5 text-center text-sm whitespace-nowrap text-white tabular-nums"
               >
-                {count === 0 ? 0 : index + 1} / {count}
+                Slide {count === 0 ? 0 : index + 1} of {count}
               </span>
               <Button
                 variant="ghost"

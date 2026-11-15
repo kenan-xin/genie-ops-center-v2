@@ -52,27 +52,8 @@ const PENDING_SWEEP = {
   "packages/core/src/services/mailer/templates.tsx": {
     enabled: 1,
   },
-  "packages/modules/analytics/src/errors.ts": {
-    "remove a panel": 1,
-  },
-  "packages/modules/analytics/src/presentation/dashboard-view.tsx": {
-    "the chat": 1,
-    "chat is off": 1,
-  },
-  "packages/modules/analytics/src/presentation/view-menu.tsx": {
-    "remove view": 1,
-  },
   "packages/modules/placeholder/src/module.ts": {
     enabled: 1,
-  },
-  "packages/modules/slides/src/presentation/deck-list.tsx": {
-    "chat is off": 2,
-  },
-  "packages/modules/slides/src/presentation/deck-view.tsx": {
-    "remove slide": 1,
-  },
-  "packages/modules/slides/src/presentation/presenter-view.tsx": {
-    "now showing": 1,
   },
   "packages/ui/src/list-header/filter-sheet.tsx": {
     "clear all": 1,

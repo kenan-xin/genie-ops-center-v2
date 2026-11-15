@@ -112,7 +112,7 @@ export function useDashboardFilters(
     last.current = { named, under };
 
     // An unknown view (removed, undone, a stale link) leaves, so a view that reuses its id is not
-    // selected by it. As Remove view, it falls to "Dashboard filters", not to the default view.
+    // selected by it. As Delete view, it falls to "Dashboard filters", not to the default view.
     if (
       named !== undefined &&
       !dashboard.views.some(({ id }) => id === named)

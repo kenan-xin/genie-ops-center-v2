@@ -397,7 +397,7 @@ describe("the slides deck procedures", () => {
         {
           path: "slides.0.elements.0.style",
           message:
-            'Title "A claim": #F3F4F6 on the theme background #FFFFFF is 1.1:1, and this text needs 3:1. Pick a color with more contrast, or give the text a fill.',
+            'Title "A claim": this text color is too close to the background to read. Pick a color with more contrast, or give the text a fill.',
         },
       ],
     });
