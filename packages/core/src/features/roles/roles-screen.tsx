@@ -33,7 +33,7 @@ import type { ReactNode } from "react";
 
 import { TENANT_ADMINISTRATOR_ROLE } from "../../lib/module-contract/system-roles.ts";
 import { accessHref } from "../access/access-link.ts";
-import { overviewRows } from "../access/overview-view.ts";
+import { overviewRows, pausedLabel } from "../access/overview-view.ts";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   CopyIcon,
@@ -60,7 +60,7 @@ import type {
 /** The human reason a stored key no longer grants, shown beside it in the form and the detail. */
 function unavailableReasonLabel(reason: UnavailableKey["reason"]): string {
   return reason === "module-disabled"
-    ? "the module is switched off"
+    ? "the module is off"
     : "the key is retired";
 }
 
@@ -96,7 +96,7 @@ function RoleFormDialog(props: {
     props.state.mode === "edit"
       ? "Edit role"
       : props.state.mode === "copy"
-        ? "New role from copy"
+        ? "Copy as new role"
         : "New role";
 
   return (
@@ -106,12 +106,7 @@ function RoleFormDialog(props: {
         if (!next) props.onCancel();
       }}
     >
-      {/* A copy keeps its dialog name "Copy role"; the heading reads "New role from copy". */}
-      <DialogContent
-        {...(props.state.mode === "copy"
-          ? { "aria-label": "Copy role", "aria-labelledby": undefined }
-          : {})}
-      >
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
@@ -229,7 +224,7 @@ function RoleFormBody(props: {
                 <legend className="float-left flex min-h-9 w-full items-center gap-2 bg-muted px-3 text-sm font-semibold text-foreground">
                   {group.moduleName}
                   <StatusPill tone={group.entitled ? "success" : "neutral"}>
-                    {group.entitled ? "Entitled" : "Not entitled"}
+                    {group.entitled ? "Module on" : "Module off"}
                   </StatusPill>
                 </legend>
                 <Button
@@ -244,7 +239,7 @@ function RoleFormBody(props: {
                     )
                   }
                 >
-                  {all ? "Clear all" : "Select all"}
+                  {all ? "Deselect all" : "Select all"}
                   <span className="sr-only"> {group.moduleName}</span>
                 </Button>
                 {group.keys.map((entry) => (
@@ -306,14 +301,11 @@ function deleteDescription(assignmentCount: number): string {
     : `Its ${assignmentCount} assignments go with it.`;
 }
 
-/** "System · <module name>" or "Custom"; the phone card says only "System" (mockups). */
-function kindPill(role: Role, compact = false) {
-  if (role.kind !== "system") return <LabelPill>Custom</LabelPill>;
-
-  if (compact) return <LabelPill>System</LabelPill>;
-
-  // The read names the module, also one that is switched off and so not in the catalogue (d8l5.48).
-  return <LabelPill>System · {role.moduleName ?? "Core"}</LabelPill>;
+/** "Built-in" or "Custom", one fact on the table and the card (G13, ADM-4L). */
+function kindPill(role: Role) {
+  return (
+    <LabelPill>{role.kind === "system" ? "Built-in" : "Custom"}</LabelPill>
+  );
 }
 
 const HOLDERS_SHOWN = 10;
@@ -331,7 +323,7 @@ function HolderList(props: {
   if (props.holders === undefined) {
     return (
       <p role="status" className="mt-1 text-sm text-muted-foreground">
-        Loading the holders…
+        Loading assignments…
       </p>
     );
   }
@@ -356,7 +348,7 @@ function HolderList(props: {
   if (rows.length === 0) {
     return (
       <p className="mt-1 text-sm text-foreground">
-        Nobody holds this role yet.
+        Not assigned to anyone yet.
       </p>
     );
   }
@@ -396,9 +388,11 @@ function HolderList(props: {
                       <span className="wrap-anywhere">{`One record · ${row.record}`}</span>
                     </LabelPill>
                   )}
-                  {row.notInEffect.length === 0 ? null : (
-                    <StatusPill tone="neutral">Not in effect</StatusPill>
-                  )}
+                  {row.notInEffect.map((reason) => (
+                    <StatusPill key={reason} tone="neutral">
+                      {pausedLabel(reason)}
+                    </StatusPill>
+                  ))}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {row.path}
@@ -468,7 +462,7 @@ function RoleDetailView(props: {
               loading={props.pending}
               onClick={props.onCopy}
             >
-              <CopyIcon /> Copy role
+              <CopyIcon /> Copy as new role
             </Button>
           ) : (
             <>
@@ -506,9 +500,9 @@ function RoleDetailView(props: {
           detail.name === TENANT_ADMINISTRATOR_ROLE ? (
             <div className="mt-2">
               <InfoNote>
-                When a module is entitled, its admin permission is appended to
-                this role automatically, so administrators always reach every
-                entitled module&apos;s admin screens. Member use of a
+                When a module is on, its admin permission is appended to this
+                role automatically, so administrators always reach the admin
+                screens of every module that is on. Member use of a
                 module&apos;s records is still a separate grant.
               </InfoNote>
             </div>
@@ -523,7 +517,7 @@ function RoleDetailView(props: {
                   {group.moduleName}
                 </span>
                 <StatusPill tone={group.entitled ? "success" : "neutral"}>
-                  {group.entitled ? "Entitled" : "Not entitled"}
+                  {group.entitled ? "Module on" : "Module off"}
                 </StatusPill>
               </div>
               <ul className="mt-1">
@@ -576,7 +570,7 @@ function RoleDetailView(props: {
               id={holdersHeadingId}
               className="text-base font-semibold text-foreground"
             >
-              Who holds this role
+              Assigned to
             </h3>
             {props.onOpenInAccess === undefined ? null : (
               <Button variant="secondary" onClick={props.onOpenInAccess}>
@@ -585,7 +579,7 @@ function RoleDetailView(props: {
             )}
           </div>
           <p className="text-sm text-muted-foreground">
-            A role held through a group changes for every member of that group.
+            A role assigned via a group changes for every member of that group.
           </p>
           <HolderList
             roleId={detail.id}
@@ -613,7 +607,7 @@ function RoleDetailView(props: {
 }
 
 /**
- * The Roles directory and detail (R-33, R-33b). A system role is read-only and copyable; a custom
+ * The Roles directory and detail (R-33, R-33b). A built-in role is read-only and copyable; a custom
  * role is editable and deletable. The detail shows each module's entitlement state and warns on a
  * key that no longer exists, offering its removal from a custom role without touching the role,
  * its assignments or its group memberships.
@@ -776,8 +770,8 @@ export function RolesScreen(props: RolesScreenProps) {
             </InputGroupAddon>
           </InputGroup>
           <HelpDisclosure label="How roles work" iconOnly>
-            A system role is read-only and copyable. A custom role is editable.
-            Access gives a role to a person or a group.
+            A built-in role is read-only and can be copied as a new role. A
+            custom role is editable. Access gives a role to a person or a group.
           </HelpDisclosure>
         </div>
         <Button
@@ -857,7 +851,7 @@ export function RolesScreen(props: RolesScreenProps) {
                 </IconTile>
               ),
               title: (role) => role.name,
-              badge: (role) => kindPill(role, true),
+              badge: (role) => kindPill(role),
               detail: (role) =>
                 role.description === "" ? null : role.description,
               facts: (role) => [
@@ -868,7 +862,7 @@ export function RolesScreen(props: RolesScreenProps) {
             // G42: the mockup's row menu. A system role is only copied; a custom one is edited too.
             actions={(role) => {
               const copy = {
-                label: "Copy",
+                label: "Copy as new role",
                 onSelect: () =>
                   openForm({
                     mode: "copy",
@@ -902,7 +896,7 @@ export function RolesScreen(props: RolesScreenProps) {
                     },
                   ];
             }}
-            footer="System roles are seeded by modules and cannot be edited. Copy one to start a custom role."
+            footer="Built-in roles cannot be edited. Copy one as a new role to change it."
           />
         </div>
       )}

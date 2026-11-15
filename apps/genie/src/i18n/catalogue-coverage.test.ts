@@ -492,7 +492,8 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     "packages/core/src/features/branding/sign-in-tab.tsx": 6,
     "packages/core/src/features/categories/assign-items.tsx": 11,
     "packages/core/src/features/categories/categories-screen.tsx": 15,
-    "packages/core/src/features/modules/modules-screen.tsx": 15,
+    // 2026-11-15: -1, "No one holds <module> yet" became the one literal "Not assigned to anyone yet" (G10).
+    "packages/core/src/features/modules/modules-screen.tsx": 14,
     // +3 for the Reporting section's label, helper and Use today button (Spec 7 R-9).
     // +1 for the reporting date's calendar button name (owner I8, czjw.66).
     "packages/core/src/features/settings/core-sections.tsx": 14,

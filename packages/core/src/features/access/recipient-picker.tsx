@@ -21,7 +21,7 @@ export type PickerChoice<V> = {
   /** Unique in the list, for example "group:g-ops". */
   readonly key: string;
   readonly name: string;
-  /** A member count, an email, a module description, or "Switched off". */
+  /** A member count, an email, a module description, or "Module off". */
   readonly detail: string;
   readonly value: V;
 };

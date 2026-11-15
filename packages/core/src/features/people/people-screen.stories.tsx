@@ -209,13 +209,13 @@ export const AccessTabListsEveryPath: Story = {
     await expect(sheet.getByText("Invoices · Viewer")).toBeVisible();
     await expect(
       sheet.getByText(
-        "Direct assignment · also through Finance team · added by Alex Morgan"
+        "Direct · also assigned via Finance team · added by Alex Morgan"
       )
     ).toBeVisible();
     await expect(sheet.getByText("Invoices · Finance")).toBeVisible();
     await expect(
       sheet.getByText(
-        "via Finance team · also through a direct assignment · added by Alex Morgan"
+        "Assigned via Finance team · also assigned via Direct · added by Alex Morgan"
       )
     ).toBeVisible();
 
@@ -224,10 +224,7 @@ export const AccessTabListsEveryPath: Story = {
 
     await expect(former).not.toBeNull();
     await expect(
-      within(former ?? document.body).getByText("Not in effect")
-    ).toBeVisible();
-    await expect(
-      within(former ?? document.body).getByText("The group is archived")
+      within(former ?? document.body).getByText("Paused: Group archived")
     ).toBeVisible();
 
     await userEvent.click(

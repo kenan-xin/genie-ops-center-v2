@@ -251,7 +251,7 @@ export const Default: Story = {
     // Roles and access: both grants with count, scope, and arrival.
     await expect(canvas.getByText("Solutions editor")).toBeInTheDocument();
     await expect(canvas.getByText("2 permissions")).toBeInTheDocument();
-    await expect(canvas.getByText("Whole tenant")).toBeInTheDocument();
+    await expect(canvas.getByText("All records")).toBeInTheDocument();
     await expect(canvas.getByText("Direct")).toBeInTheDocument();
     await expect(canvas.getByText("Contract viewer")).toBeInTheDocument();
     await expect(canvas.getByText("Vendor agreements")).toBeInTheDocument();

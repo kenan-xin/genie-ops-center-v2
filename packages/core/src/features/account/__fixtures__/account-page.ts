@@ -60,7 +60,7 @@ export const FIXTURE_ROLE_GRANTS: readonly AccountRoleGrant[] = [
     roleName: "Solutions editor",
     moduleName: "solutions",
     permissionCount: 2,
-    scopeLabel: "Whole tenant",
+    scopeLabel: "All records",
     via: null,
   },
   {

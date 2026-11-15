@@ -31,7 +31,11 @@ import { fmtDate } from "../audit/helpers.ts";
 import { PageLink } from "../shell/page-link.tsx";
 import { AccessHelp } from "./access-help.tsx";
 import { accessHref } from "./access-link.ts";
-import { type OverviewRow, overviewRows } from "./overview-view.ts";
+import {
+  type OverviewRow,
+  overviewRows,
+  pausedLabel,
+} from "./overview-view.ts";
 import {
   ChoicePicker,
   groupChoices,
@@ -113,7 +117,7 @@ function roleGroups(
                   ? role.description
                   : role.kind === "custom"
                     ? "Custom role"
-                    : "System role",
+                    : "Built-in role",
               value: { type: "role", id: role.id } as const,
             },
           ]
@@ -150,7 +154,7 @@ function moduleGroups(
               name: row.name,
               detail: row.enabled
                 ? (row.description ?? row.name)
-                : "Switched off",
+                : "Module off",
               value: { type: "module", id: row.id } as const,
             },
           ]
@@ -204,14 +208,16 @@ const Pill = (props: { readonly children: ReactNode }) => (
   <span className="mt-1 flex flex-wrap gap-1">{props.children}</span>
 );
 
+// One pill per reason, so several reasons wrap inside a phone card instead of one long pill.
 const NotInEffect = (props: { readonly row: OverviewRow }) =>
   props.row.notInEffect.length === 0 ? null : (
-    <StatusPill tone="warning">Not in effect</StatusPill>
-  );
-
-const Reasons = (props: { readonly row: OverviewRow }) =>
-  props.row.notInEffect.length === 0 ? null : (
-    <Muted>{props.row.notInEffect.join(" · ")}</Muted>
+    <span className="flex flex-wrap gap-1">
+      {props.row.notInEffect.map((reason) => (
+        <StatusPill key={reason} tone="warning">
+          {pausedLabel(reason)}
+        </StatusPill>
+      ))}
+    </span>
   );
 
 const ModuleCell = (props: { readonly row: OverviewRow }) => (
@@ -246,7 +252,7 @@ const PathCell = (props: { readonly row: OverviewRow }) => (
   <>
     {props.row.path}
     {props.row.alsoThrough.length === 0 ? null : (
-      <Muted>also through {props.row.alsoThrough.join(", ")}</Muted>
+      <Muted>also assigned via {props.row.alsoThrough.join(", ")}</Muted>
     )}
   </>
 );
@@ -280,14 +286,17 @@ function columnsOf(timeZone: string): readonly DataTableColumn<OverviewRow>[] {
                 <NotInEffect row={row} />
               </Pill>
             )}
-            <Reasons row={row} />
           </span>
         </span>
       ),
     },
     { id: "module", header: "Module", cell: (row) => <ModuleCell row={row} /> },
     { id: "role", header: "Role", cell: (row) => <RoleCell row={row} /> },
-    { id: "path", header: "Path", cell: (row) => <PathCell row={row} /> },
+    {
+      id: "path",
+      header: "Assigned via",
+      cell: (row) => <PathCell row={row} />,
+    },
     {
       id: "added",
       header: "Added",
@@ -304,7 +313,7 @@ function CardFacts(props: {
   const facts = [
     ["Module", <ModuleCell key="m" row={props.row} />],
     ["Role", <RoleCell key="r" row={props.row} />],
-    ["Path", <PathCell key="p" row={props.row} />],
+    ["Assigned via", <PathCell key="p" row={props.row} />],
     ["Added", <AddedCell key="a" row={props.row} timeZone={props.timeZone} />],
   ] as const;
 
@@ -312,7 +321,7 @@ function CardFacts(props: {
     <dl className="mt-2 flex flex-col gap-1.5">
       {facts.map(([term, value]) => (
         <div key={term} className="flex gap-3">
-          <dt className="w-16 shrink-0 pt-0.5 text-xs text-muted-foreground">
+          <dt className="w-20 shrink-0 pt-0.5 text-xs text-muted-foreground">
             {term}
           </dt>
           <dd className="min-w-0 wrap-anywhere">{value}</dd>
@@ -364,14 +373,14 @@ function Results(
 
   const to = page.from + page.paths.length - 1;
 
-  const label = byHolder ? `Holders of ${name}` : `Assignments for ${name}`;
+  const label = byHolder ? `Assigned to ${name}` : `Assignments for ${name}`;
 
   const nobody =
     props.subject.type === "role"
-      ? `Nobody holds ${name} yet.`
+      ? `${name} is not assigned to anyone yet.`
       : props.subject.type === "module"
-        ? `Nobody holds a role of ${name}.`
-        : `${name} holds no role.`;
+        ? `No role of ${name} is assigned to anyone.`
+        : `No role is assigned to ${name}.`;
 
   return (
     <section
@@ -391,8 +400,9 @@ function Results(
               <b className="font-semibold tabular-nums">{page.total}</b>{" "}
             </>
           )}
-          {byHolder ? "holder" : "assignment"}
-          {page.total === 1 ? "" : "s"} {byHolder ? "of" : "for"}{" "}
+          {byHolder
+            ? "assigned to"
+            : `assignment${page.total === 1 ? "" : "s"} for`}{" "}
           <b className="font-semibold">{name}</b>
         </p>
         {page.total === 0 ? null : (
@@ -444,11 +454,8 @@ function Results(
             card={{
               media: (row) => <WhoIcon row={row} />,
               title: (row) => row.holder.name,
-              badge: (row) => <NotInEffect row={row} />,
-              detail: (row) =>
-                row.notInEffect.length === 0
-                  ? null
-                  : row.notInEffect.join(" · "),
+              // The detail line spans the card, so several paused pills wrap there; the badge slot does not shrink.
+              detail: (row) => <NotInEffect row={row} />,
               content: (row) => (
                 <CardFacts row={row} timeZone={props.timeZone} />
               ),
@@ -485,8 +492,8 @@ function Results(
       <p className="flex gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground md:px-5">
         <HelpIcon aria-hidden="true" className="size-4 shrink-0" />
         <span>
-          Access adds up. Removing one path leaves the others, which the Path
-          column names. What changed and when is in the{" "}
+          Access adds up. Removing one assignment leaves the others, which the
+          Assigned via column names. What changed and when is in the{" "}
           {props.auditLogHref === undefined ? (
             "audit log"
           ) : (

@@ -62,6 +62,7 @@ import {
   type RowRemoval,
 } from "./remove-access-dialog.tsx";
 import { RoleChoice } from "./role-choice.tsx";
+import { UnsavedMark } from "./unsaved-mark.tsx";
 
 export type GrantsScreenProps = {
   readonly catalogue: readonly GrantRow[] | undefined;
@@ -104,7 +105,7 @@ const EMPTY_COPY = {
   group: {
     title: "Choose a group",
     description:
-      "A group is the normal path. Your identity provider keeps its members current, so access follows people when they join or leave.",
+      "A group is the normal way to give access. Your identity provider keeps its members current, so access follows people when they join or leave.",
   },
   user: {
     title: "Choose a person",
@@ -118,8 +119,7 @@ const KIND_LABEL = { group: "Groups", user: "People" } as const;
 const plural = (count: number, word: string) =>
   `${count} ${word}${count === 1 ? "" : "s"}`;
 
-const offReason = (row: GrantRow) =>
-  `${row.name} is switched off for this deployment.`;
+const offReason = (row: GrantRow) => `${row.name} is off for this deployment.`;
 
 function nameOf(
   recipient: AccessRecipient,
@@ -131,7 +131,7 @@ function nameOf(
   return list?.find((entry) => entry.id === recipient.id)?.name ?? "";
 }
 
-/** "Tenant administrator (Core administration, whole tenant)", "Finance (Invoices, one record, INV-2026-0142)" (P4, AD10). */
+/** "Tenant administrator (Core, all records)", "Finance (Invoices, one record, INV-2026-0142)" (P4, AD10). */
 function notShownLabel(
   path: AccessPath,
   catalogue: readonly GrantRow[],
@@ -142,7 +142,7 @@ function notShownLabel(
 
   const scope =
     path.scope === null
-      ? "whole tenant"
+      ? "all records"
       : label === undefined
         ? "one record"
         : `one record, ${label}`;
@@ -157,7 +157,7 @@ const inheritedId = (entry: InheritedRowView) =>
   `inherited:${entry.path.assignmentId}:${entry.row.id}`;
 
 /**
- * One read-only Granted row for a path that is not the editable one (d8l5.42): "Through <group>"
+ * One read-only Granted row for a path that is not the editable one (d8l5.42): "Assigned via <group>"
  * opens the group on Grants, "Included in <role>" opens Advanced access.
  */
 function inheritedItem(
@@ -182,7 +182,7 @@ function inheritedItem(
     readOnly: true,
     note: (
       <>
-        {source.kind === "group" ? "Through " : "Included in "}
+        {source.kind === "group" ? "Assigned via " : "Included in "}
         <button
           type="button"
           className={`font-medium text-foreground underline ${focusRing}`}
@@ -194,7 +194,9 @@ function inheritedItem(
     ),
     pills: (
       <>
-        {row.enabled ? null : <StatusPill tone="warning">Inactive</StatusPill>}
+        {row.enabled ? null : (
+          <StatusPill tone="warning">Paused: Module off</StatusPill>
+        )}
         {record === null ? null : (
           <LabelPill>
             <span className="wrap-anywhere">{`One record · ${record}`}</span>
@@ -204,11 +206,7 @@ function inheritedItem(
     ),
   };
 
-  const description = row.enabled
-    ? row.description
-    : `Inactive, the ${row.name} module is off`;
-
-  if (description !== null) item.description = description;
+  if (row.description !== null) item.description = row.description;
 
   // A group path also names its role. A role source already names it in the note.
   if (source.kind === "group") {
@@ -252,9 +250,12 @@ function itemsOf(input: {
     const savedRoleId =
       row.id in input.draft.add ? undefined : shown?.shown.role.id;
 
-    const description = row.enabled
-      ? row.description
-      : `Inactive, the ${row.name} module is off`;
+    // A module that is off: "Module off" in Catalog, "Paused: Module off" on a Granted assignment (G6, G9).
+    const offPill = input.granted.has(row.id) ? (
+      <StatusPill tone="warning">Paused: Module off</StatusPill>
+    ) : (
+      <StatusPill tone="neutral">Module off</StatusPill>
+    );
 
     const item: DraftItem = {
       id: row.id,
@@ -262,10 +263,10 @@ function itemsOf(input: {
       group: row.group === "core" ? "Core" : "Modules",
       pills: (
         <>
-          {row.enabled ? null : (
-            <StatusPill tone="warning">Inactive</StatusPill>
-          )}
-          {staged ? <StatusPill tone="neutral">Pending</StatusPill> : null}
+          {row.enabled ? null : offPill}
+          {staged ? (
+            <UnsavedMark removal={input.draft.remove.includes(row.id)} />
+          ) : null}
         </>
       ),
       control: (
@@ -281,12 +282,12 @@ function itemsOf(input: {
       ),
     };
 
-    if (description !== null) item.description = description;
+    if (row.description !== null) item.description = row.description;
 
     if (!row.enabled) item.blockedReason = offReason(row);
 
     if (also.length > 0 && !input.granted.has(row.id)) {
-      item.note = `Also through ${also.join(", ")}`;
+      item.note = `Also assigned via ${also.join(", ")}`;
     }
 
     return [
@@ -677,7 +678,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                 {props.recipient.type === "user" ? (
                   <p>
                     This screen writes the roles given to {name} directly. Group
-                    paths change on Groups.
+                    assignments change on Groups.
                   </p>
                 ) : null}
                 {view.notShown.length === 0 ? null : (
@@ -725,7 +726,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
           <div className="md:flex-1">
             <FormActionBar failure={failure}>
               <Button variant="secondary" disabled={saving} onClick={clear}>
-                Cancel
+                Discard
               </Button>
               <Button
                 loading={saving}
@@ -734,7 +735,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                   else void save();
                 }}
               >
-                {saving ? "Saving…" : "Save changes"}
+                {saving ? "Saving…" : "Save"}
               </Button>
             </FormActionBar>
           </div>

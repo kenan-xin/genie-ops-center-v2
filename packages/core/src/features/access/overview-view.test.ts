@@ -125,8 +125,8 @@ const also = (shown: AccessPath) =>
 describe("overviewRows", () => {
   it("names a person's other live whole-tenant paths to the module, from every path, not the page", () => {
     expect(also(direct)).toEqual(["Finance team"]);
-    expect(also(viaFinance)).toEqual(["a direct assignment"]);
-    expect(also(scoped)).toEqual(["a direct assignment", "Finance team"]);
+    expect(also(viaFinance)).toEqual(["Direct"]);
+    expect(also(scoped)).toEqual(["Direct", "Finance team"]);
     expect(also(slides)).toEqual([]);
     expect(also(askDirect)).toEqual(["Operations"]);
     expect(also(admin)).toEqual([]);
@@ -151,12 +151,12 @@ describe("overviewRows", () => {
       ])
     ).toEqual([
       ["Invoices", "Group, 12 members", [], []],
-      ["Invoices", "Direct assignment", [], []],
-      ["Invoices", "Group", [], ["The group is archived"]],
+      ["Invoices", "Direct", [], []],
+      ["Invoices", "Group", [], ["Group archived"]],
     ]);
   });
 
-  it("names each role's module in a person lookup, and the row's module in its reason", () => {
+  it("names each role's module in a person lookup, and its paused reason (G9)", () => {
     const rows = overviewRows({
       subject: person,
       paths: [direct, askDirect, admin, analyticsOff],
@@ -167,10 +167,10 @@ describe("overviewRows", () => {
     });
 
     expect(rows.map((row) => [row.module, row.path, row.notInEffect])).toEqual([
-      ["Invoices", "Direct assignment", []],
-      ["Ask", "Direct assignment", []],
-      ["Core administration", "via Finance team", []],
-      ["Analytics", "via Finance team", ["The Analytics module is off"]],
+      ["Invoices", "Direct", []],
+      ["Ask", "Direct", []],
+      ["Core", "Finance team", []],
+      ["Analytics", "Finance team", ["Module off"]],
     ]);
   });
 
@@ -189,7 +189,7 @@ describe("overviewRows", () => {
 
     expect(rows.map((row) => row.path)).toEqual([
       "Group, 12 members",
-      "Direct assignment",
+      "Direct",
     ]);
   });
 

@@ -170,7 +170,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
 
   const sheet = await openAdvancedAccess(page);
 
-  await chooseOption(page, "Role", "S2-13 reader (Core administration)");
+  await chooseOption(page, "Role", "S2-13 reader (Core)");
   await sheet.getByRole("button", { name: "Add to the list" }).click();
   await saveAdvancedAccess(page, sheet);
 

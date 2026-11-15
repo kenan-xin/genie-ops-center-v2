@@ -27,7 +27,7 @@ const onDeleteRole = fn();
 const onRemoveUnavailableKey = fn();
 
 /**
- * The Roles directory and detail (R-33, R-33b). System roles are read-only and copyable; custom
+ * The Roles directory and detail (R-33, R-33b). Built-in roles are read-only and copied as a new role; custom
  * roles are editable. The detail warns on a key the catalogue no longer holds and lets a custom
  * role remove it without deleting the role or its assignments.
  */
@@ -82,7 +82,7 @@ export const Default: Story = {
 
     await expect(table.getByText("Tenant administrator")).toBeInTheDocument();
     await expect(table.getByText("Invoice approver")).toBeInTheDocument();
-    await expect(table.getByText("System · Core")).toBeInTheDocument();
+    await expect(table.getByText("Built-in")).toBeInTheDocument();
     await expect(table.getByText("Custom")).toBeInTheDocument();
     await expect(canvas.getByPlaceholderText("Search roles")).toBeVisible();
   },
@@ -147,8 +147,8 @@ export const Phone: Story = {
     const cards = list.getAllByRole("listitem");
     const first = within(cards[0]!);
     const name = first.getByRole("button", { name: /^Tenant administrator/ });
-    // G56: the phone card says only "System", as the mockup does.
-    const kind = first.getByText("System", { exact: true });
+    // G56: the phone card says only "Built-in", as the table does.
+    const kind = first.getByText("Built-in", { exact: true });
 
     await expect(
       new Set(cards.map((card) => card.getBoundingClientRect().height)).size
@@ -189,8 +189,8 @@ export const Dark: Story = {
   globals: { theme: "dark" },
 };
 
-/** G40: a module's system role names the module by its display name, not its id. */
-export const KindNamesTheModule: Story = {
+/** C2, ADM-4L: the Kind pill says only "Built-in" or "Custom"; the module leaves the pill. */
+export const KindIsBuiltInOrCustom: Story = {
   args: {
     roles: [
       ...FIXTURE_ROLES,
@@ -214,8 +214,16 @@ export const KindNamesTheModule: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Roles" }));
 
-    await expect(table.getByText("System · Fixture")).toBeVisible();
-    await expect(table.getByText("System · Dormant")).toBeVisible();
+    const fixture = within(table.getByRole("row", { name: /^Fixture user/ }));
+
+    await expect(fixture.getByText("Built-in", { exact: true })).toBeVisible();
+    await expect(fixture.queryByText(/Fixture$/)).toBeNull();
+    await expect(
+      within(table.getByRole("row", { name: /^Dormant user/ })).getByText(
+        "Built-in",
+        { exact: true }
+      )
+    ).toBeVisible();
   },
 };
 
@@ -227,7 +235,7 @@ export const RowMenuMatchesTheKind: Story = {
     );
     await expect(
       (await screen.findAllByRole("menuitem")).map((item) => item.textContent)
-    ).toEqual(["Copy"]);
+    ).toEqual(["Copy as new role"]);
     await userEvent.keyboard("{Escape}");
 
     await userEvent.click(
@@ -286,11 +294,11 @@ export const RowCopyOffersTheUnavailableKey: Story = {
       canvas.getByRole("button", { name: "Actions for Invoice approver" })
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Copy" })
+      await screen.findByRole("menuitem", { name: "Copy as new role" })
     );
 
     const dialog = within(
-      await screen.findByRole("dialog", { name: "Copy role" })
+      await screen.findByRole("dialog", { name: "Copy as new role" })
     );
 
     await expect(dialog.getByText("retired:key")).toBeInTheDocument();
@@ -321,7 +329,7 @@ export const SystemRoleIsReadOnlyAndCopyable: Story = {
   },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("button", { name: /Copy role/ })
+      canvas.getByRole("button", { name: /Copy as new role/ })
     ).toBeInTheDocument();
     await expect(
       canvas.queryByRole("button", { name: /Edit role/ })
@@ -369,13 +377,13 @@ export const HoldersNone: Story = {
   },
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByText("Nobody holds this role yet.")
+      await canvas.findByText("Not assigned to anyone yet.")
     ).toBeVisible();
     await expect(
       canvas.getByRole("button", { name: "Manage in Access" })
     ).toBeVisible();
     await expect(
-      canvas.queryByRole("list", { name: "Who holds this role" })
+      canvas.queryByRole("list", { name: "Assigned to" })
     ).toBeNull();
   },
 };
@@ -390,15 +398,15 @@ export const HoldersListed: Story = {
   },
   play: async ({ canvas }) => {
     const list = await canvas.findByRole("list", {
-      name: "Who holds this role",
+      name: "Assigned to",
     });
 
     const items = within(list).getAllByRole("listitem");
 
     await expect(items.map((item) => item.textContent)).toEqual([
       "Dry runGroup, 1 member",
-      "Ada LovelaceDirect assignment",
-      "Zoe BrandtDirect assignment",
+      "Ada LovelaceDirect",
+      "Zoe BrandtDirect",
     ]);
     await expect(
       within(list).getByRole("link", { name: "Dry run" })
@@ -420,7 +428,7 @@ export const HoldersPastTen: Story = {
   },
   play: async ({ canvas }) => {
     const list = await canvas.findByRole("list", {
-      name: "Who holds this role",
+      name: "Assigned to",
     });
 
     const items = within(list).getAllByRole("listitem");
@@ -442,10 +450,12 @@ export const CopyPrefillsTheKeysAndCreatesACustomRole: Story = {
   play: async ({ canvas }) => {
     onCreateRole.mockClear();
 
-    await userEvent.click(canvas.getByRole("button", { name: /Copy role/ }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: /Copy as new role/ })
+    );
 
     const dialog = within(
-      await screen.findByRole("dialog", { name: "Copy role" })
+      await screen.findByRole("dialog", { name: "Copy as new role" })
     );
 
     await expect(dialog.getByLabelText("Role name")).toHaveValue(
@@ -695,7 +705,7 @@ export const DisabledModuleKeyShowsTheReasonAndRemoves: Story = {
     onRemoveUnavailableKey.mockClear();
 
     await expect(
-      canvas.getByText("Unavailable, the module is switched off")
+      canvas.getByText("Unavailable, the module is off")
     ).toBeInTheDocument();
 
     await userEvent.click(canvas.getByRole("button", { name: "Remove" }));

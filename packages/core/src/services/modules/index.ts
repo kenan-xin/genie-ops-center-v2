@@ -108,7 +108,7 @@ export async function switchModule(
         actorUserId: input.actorUserId,
         targetType: "module",
         targetId: input.moduleId,
-        summary: `${input.enabled ? "Switched on" : "Switched off"} ${displayName}`,
+        summary: `${input.enabled ? "Turned on" : "Turned off"} ${displayName}`,
       });
     }
 

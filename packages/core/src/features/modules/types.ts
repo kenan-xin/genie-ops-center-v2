@@ -37,7 +37,7 @@ export type AccessLabels = {
   readonly group: (groupName: string) => string;
   /** The name of the spinner beside an enable switch while its call runs. */
   readonly saving: (moduleName: string) => string;
-  /** The phone row: its visible label, for example "Who can open it". */
+  /** The phone row: its visible label, for example "Assigned to". */
   readonly whoCanOpen: string;
   /** Read after the label by a screen reader, for example "for Placeholder". */
   readonly whoCanOpenFor: (moduleName: string) => string;

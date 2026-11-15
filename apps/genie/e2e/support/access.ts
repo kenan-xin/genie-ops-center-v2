@@ -44,7 +44,7 @@ export async function saveAdvancedAccess(
     answer.url().includes("/api/rpc/roles/saveAdvanced")
   );
 
-  await sheet.getByRole("button", { name: "Save changes" }).click();
+  await sheet.getByRole("button", { name: "Save" }).click();
   expect((await response).status()).toBe(200);
   await expect(sheet).toBeHidden();
 }

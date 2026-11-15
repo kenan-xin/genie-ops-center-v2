@@ -155,7 +155,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
             : detail.isError
               ? "The role could not be read."
               : holders.isError || recipients.isError
-                ? "The holders could not be read."
+                ? "The assignments could not be read."
                 : undefined
         }
         onCreateRole={(input) => saveRole(null, input)}

@@ -20,7 +20,7 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "unauthenticated": "You need to sign in to do that.",
   "invalid-input": "The request was not valid.",
   "request-too-large": "The request is too large.",
-  "module-disabled": "That module is switched off for this deployment.",
+  "module-disabled": "That module is off for this deployment.",
   "mail-not-configured":
     "Email is not configured for this deployment, so this action cannot send a notification.",
   "mail-delivery-failed":
@@ -33,7 +33,7 @@ export const CORE_ERROR_MESSAGES = Object.freeze({
   "group-seen":
     "A directory group that has been seen can only be archived, not deleted.",
   "system-role":
-    "A system role cannot be edited or deleted. Copy it to change its permissions.",
+    "A built-in role cannot be edited or deleted. Copy it as a new role to change its permissions.",
   "role-name-taken": "A role with that name already exists.",
   "directory-group-exists":
     "A directory group with that exact claim value already exists.",

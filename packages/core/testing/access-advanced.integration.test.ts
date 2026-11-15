@@ -602,7 +602,7 @@ describe("the Advanced access reads", () => {
       expect(option).toMatchObject({
         kind: "system",
         moduleId: null,
-        moduleName: "Core administration",
+        moduleName: "Core",
         enabled: true,
         wholeTenant: true,
         recordType: null,
@@ -789,8 +789,8 @@ describe("custom roles", () => {
         option.recordType,
       ])
     ).toEqual([
-      ["Access auditor", "Core administration", true, null],
-      ["Access manager", "Core administration", true, null],
+      ["Access auditor", "Core", true, null],
+      ["Access manager", "Core", true, null],
       ["Dormant approver", "Dormant", false, "dormant-record"],
       ["Fixture approver", "Fixture", true, "fixture-record"],
       ["Pair approver", "Pair", true, null],

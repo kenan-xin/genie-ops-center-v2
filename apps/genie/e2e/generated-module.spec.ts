@@ -34,8 +34,7 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 const id = process.env.GENIE_MODULE_UNDER_TEST;
 
 /** `packages/core/src/lib/errors/index.ts`'s fixed message for `module-disabled`. */
-const MODULE_DISABLED_MESSAGE =
-  "That module is switched off for this deployment.";
+const MODULE_DISABLED_MESSAGE = "That module is off for this deployment.";
 
 /** The label the generator derives from an id, which is what navigation shows. */
 const displayName =

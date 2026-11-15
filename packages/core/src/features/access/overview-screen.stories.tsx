@@ -107,7 +107,7 @@ const invoices: AccessSubject = { type: "module", id: "invoices" };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
-/** The header line. Case-sensitive, so the table caption ("Holders of …") does not match. */
+/** The header line. Case-sensitive, so the table caption ("Assigned to …") does not match. */
 const header = (canvas: ReturnType<typeof within>, words: string) =>
   canvas.findByText(new RegExp(words));
 
@@ -178,16 +178,16 @@ export const ByPerson: Story = {
     const row = (text: string) => rowOf(table.getByText(text));
 
     const viaFinance = table
-      .getAllByText("via Finance team")
+      .getAllByText("Finance team")
       .map(rowOf)
       .find((cells) => cells.queryByText("Finance") !== null);
 
     await expect(
-      viaFinance?.getByText("also through a direct assignment, Operations")
+      viaFinance?.getByText("also assigned via Direct, Operations")
     ).toBeVisible();
 
     await expect(
-      row("The Analytics module is off").getByText("Not in effect")
+      row("Paused: Module off").getByText("Analytics viewer")
     ).toBeVisible();
     await expect(row("Analytics viewer").getByText("Analytics")).toBeVisible();
     const record = table.getByText("a0774a4a-a630-41ba-8364-bcb715ff0c6a");
@@ -200,7 +200,7 @@ export const ByPerson: Story = {
 
     const direct = row("Invoices and Payments user");
 
-    await expect(direct.getByText("Direct assignment")).toBeVisible();
+    await expect(direct.getByText("Direct")).toBeVisible();
     await expect(direct.getByText("1 Oct 2026")).toBeVisible();
     await expect(direct.getByText("by Jordan Lee")).toBeVisible();
 
@@ -223,7 +223,7 @@ export const ByPersonPhone: Story = {
     const card = within(list.getAllByRole("listitem")[0] ?? document.body);
 
     await Promise.all(
-      ["Module", "Role", "Path", "Added"].map((term) =>
+      ["Module", "Role", "Assigned via", "Added"].map((term) =>
         expect(card.getByText(term)).toBeVisible()
       )
     );
@@ -247,8 +247,8 @@ export const ByPersonPhone: Story = {
 export const ByModule: Story = {
   args: { initial: invoices },
   play: async ({ canvas }) => {
-    await expect(await header(canvas, "holders of")).toHaveTextContent(
-      "21 holders of Invoices"
+    await expect(await header(canvas, "assigned to")).toHaveTextContent(
+      "21 assigned to Invoices"
     );
     // A module is no recipient, so its lookup links nowhere (O8).
     await expect(
@@ -304,7 +304,7 @@ export const SearchNarrowsTheCount: Story = {
 
     await waitFor(() =>
       expect(canvas.getByRole("status")).toHaveTextContent(
-        "7 of 21 holders of Invoices"
+        "7 of 21 assigned to Invoices"
       )
     );
 
@@ -312,7 +312,7 @@ export const SearchNarrowsTheCount: Story = {
 
     await waitFor(() =>
       expect(canvas.getByRole("status")).toHaveTextContent(
-        /^21 holders of Invoices$/
+        /^21 assigned to Invoices$/
       )
     );
   },
@@ -337,7 +337,9 @@ export const HoldsNoRole: Story = {
     await expect(await header(canvas, "assignments for")).toHaveTextContent(
       "0 assignments for Alex Morgan"
     );
-    await expect(canvas.getByText("Alex Morgan holds no role.")).toBeVisible();
+    await expect(
+      canvas.getByText("No role is assigned to Alex Morgan.")
+    ).toBeVisible();
     await expect(
       canvas.queryByRole("searchbox", { name: "Search these results" })
     ).toBeNull();
@@ -366,18 +368,18 @@ export const ByRole: Story = {
     await expect(
       canvas.getByRole("button", { name: "By role" })
     ).toHaveAttribute("aria-pressed", "true");
-    await expect(await header(canvas, "holders of")).toHaveTextContent(
-      "2 holders of Auditor"
+    await expect(await header(canvas, "assigned to")).toHaveTextContent(
+      "2 assigned to Auditor"
     );
     await expect(
       canvas.getByRole("combobox", { name: "Choose a role" })
     ).toHaveTextContent("Auditor");
 
     const table = within(
-      canvas.getByRole("table", { name: "Holders of Auditor" })
+      canvas.getByRole("table", { name: "Assigned to Auditor" })
     );
 
-    await expect(table.getByText("Direct assignment")).toBeVisible();
+    await expect(table.getByText("Direct")).toBeVisible();
     await expect(table.getByText("Group, 12 members")).toBeVisible();
     await expect(
       canvas.queryByRole("link", { name: "Change access" })

@@ -87,14 +87,14 @@ export const Disabled: Story = {
     roles: fixtureRow("analytics").roles,
     defaultRoleId: "r-analytics-editor",
     value: "r-analytics-viewer",
-    disabledReason: "Analytics is switched off for this deployment.",
+    disabledReason: "Analytics is off for this deployment.",
   },
   play: async ({ canvas }) => {
     const choice = canvas.getByRole("combobox", { name: "Role for Analytics" });
 
     await expect(choice).toBeDisabled();
     await expect(choice).toHaveAccessibleDescription(
-      "Analytics is switched off for this deployment."
+      "Analytics is off for this deployment."
     );
   },
 };

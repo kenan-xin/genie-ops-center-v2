@@ -136,11 +136,11 @@ test("lists every compiled module and switches one off through the confirm dialo
         );
 
         // A desktop cell names three holders; "+N" opens the full list, one line per role (DR-26).
-        // A phone card has one "Who can open it" row instead, the whole row a link to Access (R-85).
+        // A phone card has one "Assigned to" row instead, the whole row a link to Access (R-85).
         const expectHolderList = async () => {
           if (project === "phone") {
             const who = page.getByRole("link", {
-              name: /^Who can open it for Placeholder/,
+              name: /^Assigned to Placeholder/,
             });
 
             await expect(who).toHaveAttribute(
@@ -156,12 +156,12 @@ test("lists every compiled module and switches one off through the confirm dialo
             page.getByRole("link", { name: "Manage in Access for Placeholder" })
           ).toHaveAttribute("href", "/admin/access?module=placeholder");
           await page
-            .getByRole("button", { name: /more holders of Placeholder$/ })
+            .getByRole("button", { name: /more assigned to Placeholder$/ })
             .filter({ visible: true })
             .click();
 
           const holderList = page.getByRole("dialog", {
-            name: "Holders of Placeholder",
+            name: "Assigned to Placeholder",
           });
 
           await expect(holderList.getByRole("listitem")).toHaveCount(holders);
@@ -182,31 +182,31 @@ test("lists every compiled module and switches one off through the confirm dialo
         await toggle.click();
 
         const confirm = page.getByRole("dialog", {
-          name: "Switch off Placeholder?",
+          name: "Turn off Placeholder?",
         });
 
         await expect(confirm).toContainText(
-          "Members lose Placeholder from their navigation until it is switched on again. Its data stays."
+          "Members lose Placeholder from their navigation until it is turned on again. Its data stays."
         );
         await expect(
           confirm.getByRole("button", { name: "Cancel" })
         ).toBeFocused();
         await expectNoAxeViolations(page, "switch-off confirm");
-        await confirm.getByRole("button", { name: "Switch off" }).click();
+        await confirm.getByRole("button", { name: "Turn off" }).click();
 
         await expect(page.getByText(SAVED)).toBeVisible();
         await expect(toggle).not.toBeChecked();
         await expectOneMore("core:module_disabled", disabledBefore);
         expect(await placeholderEnabled()).toBe("f");
 
-        // Off keeps its holders, muted, beside an Off pill (R-86).
+        // Module off keeps its assignments, muted, beside a Module off pill (R-86).
         await expectHolderList();
         await expect(
           page
             .getByRole("row")
             .or(page.getByRole("listitem"))
             .filter({ has: toggle })
-            .getByText("Off", { exact: true })
+            .getByText("Module off", { exact: true })
         ).toBeVisible();
 
         // Home opens at once, inside the reader window, and lands in the shell whichever answer the

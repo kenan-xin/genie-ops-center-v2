@@ -356,8 +356,6 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | `packages/modules/analytics/src/agent-surface.ts` | `artifact`, `dashboard filters`, `default view` | model-facing surface instructions, 25 recordings; the surface name is not excepted |
 | `packages/modules/slides/src/agent-surface.ts` | `artifact` | model-facing surface instructions, 46 recordings; the surface name is not excepted |
 | `packages/modules/invoices/src/datasets.ts` | `linked payment` | model-facing dataset descriptions, 91 recordings; titles and labels are not excepted |
-| `packages/core/src/features/access/advanced-access-sheet.tsx` | `save changes` | a save label that bead `czjw.193` (Phase 16) rebuilds |
-| `packages/core/src/features/access/grants-screen.tsx` | `save changes` | a save label that bead `czjw.193` (Phase 16) rebuilds |
 | `packages/core/src/features/roles/roles-screen.tsx` | `save role`, `create role` | a save label that bead `czjw.193` (Phase 16) rebuilds |
 | `packages/modules/invoices/src/presentation/invoice-review-form.tsx` | `save as paid`, `save as unpaid` | a save label that bead `czjw.193` (Phase 16) rebuilds |
 | `packages/modules/invoices/src/presentation/payment-review-form.tsx` | `save as unallocated`, `/^Save the payment$/` | a save label that bead `czjw.193` (Phase 16) rebuilds |

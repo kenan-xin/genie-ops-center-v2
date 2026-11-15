@@ -58,7 +58,7 @@ export const CORE_ROLE_DESCRIPTIONS: ReadonlyMap<string, string> = new Map([
     "Full control of people, groups, roles, branding, settings, and the audit log.",
   ],
   [AUDITOR_ROLE, "Read-only access to the audit log."],
-  [ASK_USER_ROLE, "Use Ask and the agent."],
+  [ASK_USER_ROLE, "Use Ask."],
 ]);
 
 const CORE_ROLES = [

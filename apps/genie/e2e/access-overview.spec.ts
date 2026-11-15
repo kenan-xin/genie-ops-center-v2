@@ -8,8 +8,8 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 /**
  * S2-22 through the real realm and the real database: the Overview tab of Access reads nothing
- * before a choice, shows both group paths of a person with "also through", names who added a
- * group's path, and pages and searches the holders of a module (AC-28, R-37b, R-37d).
+ * before a choice, shows both group assignments of a person with "also assigned via", names who
+ * added a group's assignment, and pages and searches who is assigned to a module (AC-28, R-37b, R-37d).
  *
  * The phone and desktop projects share one database, so the person and the two groups are scoped
  * to the project, and the setup deletes what an earlier run left.
@@ -102,12 +102,13 @@ test("the Overview shows a person's two group paths, who added a path, and a mod
   const paths = resultRows(page, `Assignments for ${person}`);
 
   await expect(paths).toHaveCount(2);
-  await expect(paths.filter({ hasText: `via ${groupA}` })).toContainText(
-    `also through ${groupB}`
-  );
-  await expect(paths.filter({ hasText: `via ${groupB}` })).toContainText(
-    `also through ${groupA}`
-  );
+  // The Assigned via column names the group; the other path reads "also assigned via" (G10).
+  await expect(
+    paths.filter({ hasText: `also assigned via ${groupB}` })
+  ).toContainText(groupA);
+  await expect(
+    paths.filter({ hasText: `also assigned via ${groupA}` })
+  ).toContainText(groupB);
   await expectNoAxeViolations(page, "Overview by person");
 
   // E2b: a group's own path names who added it.
@@ -118,10 +119,10 @@ test("the Overview shows a person's two group paths, who added a path, and a mod
 
   await expect(own).toHaveCount(1);
   await expect(own).toContainText("Placeholder user");
-  await expect(own).toContainText("Direct assignment");
+  await expect(own).toContainText("Direct");
   await expect(own).toContainText(`by ${adder}`);
 
-  // E3: the holders of Placeholder page by ten, and a search starts again at page 1.
+  // E3: the people and groups assigned to Placeholder page by ten, and a search starts again at page 1.
   await page.getByRole("button", { name: "By module" }).click();
   await pick(page, MODULES, "Placeholder");
 
@@ -134,10 +135,10 @@ test("the Overview shows a person's two group paths, who added a path, and a mod
   await expect(pager).toHaveText("1–2 of 2");
   // d8l5.45: the header counts the matches of the search against all holders.
   await expect(
-    page.getByRole("status").filter({ hasText: /holders of Placeholder/ })
-  ).toHaveText(/^2 of \d+ holders of Placeholder$/);
+    page.getByRole("status").filter({ hasText: /assigned to Placeholder/ })
+  ).toHaveText(/^2 of \d+ assigned to Placeholder$/);
 
-  const holders = resultRows(page, "Holders of Placeholder");
+  const holders = resultRows(page, "Assigned to Placeholder");
 
   await expect(holders).toHaveCount(2);
   await expect(holders.filter({ hasText: groupA })).toContainText(

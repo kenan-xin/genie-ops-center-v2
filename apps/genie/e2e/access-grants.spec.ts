@@ -63,7 +63,7 @@ async function save(
     answer.url().includes("/api/rpc/roles/saveGrants")
   );
 
-  await bar.getByRole("button", { name: "Save changes" }).click();
+  await bar.getByRole("button", { name: "Save" }).click();
 
   if (confirm !== undefined) {
     const dialog = page.getByRole("dialog");
@@ -157,7 +157,7 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
         `Remove Placeholder from ${group}?`
       );
       await expect(dialog).toContainText(
-        `${group} holds no role of Placeholder after you save.`
+        `${group} has no role of Placeholder after you save.`
       );
       await expectNoAxeViolations(page, "Grants Remove confirmation");
     });
@@ -179,12 +179,12 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
     ).toContainText(`Placeholder user through ${group} stays.`);
     await save(page, async (dialog) => {
       const stays = dialog
-        .getByRole("list", { name: "Paths that stay" })
+        .getByRole("list", { name: "Assignments that stay" })
         .getByRole("listitem");
 
       await expect(stays).toHaveCount(1);
       await expect(stays).toContainText("Placeholder user");
-      await expect(stays).toContainText(`Through ${group}`);
+      await expect(stays).toContainText(`Assigned via ${group}`);
     });
 
     const [direct] = await queryDatabase(
@@ -218,7 +218,7 @@ test("Granted shows inherited access read-only, with its source", async ({
   await expect(
     page
       .getByRole("group", { name: "Catalog", exact: true })
-      .getByText("Also through Tenant administrator")
+      .getByText("Also assigned via Tenant administrator")
   ).toBeVisible();
   await granted
     .getByRole("button", { name: "Tenant administrator" })

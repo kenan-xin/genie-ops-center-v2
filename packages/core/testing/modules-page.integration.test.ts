@@ -198,7 +198,7 @@ describe("the modules page service against a real database", () => {
         action: "core:module_enabled",
         target_type: "module",
         target_id: "fixture",
-        summary: "Switched on Fixture",
+        summary: "Turned on Fixture",
         metadata: {},
       },
     ]);
@@ -230,8 +230,8 @@ describe("the modules page service against a real database", () => {
 
     expect((await auditRows()).map((row) => [row.action, row.summary])).toEqual(
       [
-        ["core:module_enabled", "Switched on Fixture"],
-        ["core:module_disabled", "Switched off Fixture"],
+        ["core:module_enabled", "Turned on Fixture"],
+        ["core:module_disabled", "Turned off Fixture"],
       ]
     );
   });

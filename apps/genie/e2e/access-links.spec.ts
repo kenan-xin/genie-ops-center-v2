@@ -89,10 +89,8 @@ test("the navigation entry and Manage in Access open Access with the person chos
   const inspector = await openPerson(page, name);
 
   await inspector.getByRole("tab", { name: /^Access/ }).click();
-  await expect(
-    inspector.getByText("Core administration · E2E links limited")
-  ).toBeVisible();
-  await expect(inspector.getByText(/^Direct assignment/)).toBeVisible();
+  await expect(inspector.getByText("Core · E2E links limited")).toBeVisible();
+  await expect(inspector.getByText(/^Direct/)).toBeVisible();
   await inspector.getByRole("button", { name: "Manage in Access" }).click();
 
   await expect(page).toHaveURL(
@@ -174,7 +172,7 @@ test("the Modules link opens the Overview with the module chosen", async ({
     .getByRole("link", {
       name:
         project === "phone"
-          ? /^Who can open it for Placeholder/
+          ? /^Assigned to Placeholder/
           : "Manage in Access for Placeholder",
     })
     .filter({ visible: true })
@@ -310,7 +308,7 @@ test("a people manager reads a person's access read-only", async ({
       .filter({ visible: true })
   ).toBeVisible();
   await expect(
-    page.getByRole("link", { name: /Manage in Access|Who can open it/ })
+    page.getByRole("link", { name: /Manage in Access|Assigned to/ })
   ).toHaveCount(0);
   await expect(
     (await openNavigation(page)).getByRole("link", {
@@ -322,9 +320,7 @@ test("a people manager reads a person's access read-only", async ({
   const inspector = await openPerson(page, memberName(project));
 
   await inspector.getByRole("tab", { name: /^Access/ }).click();
-  await expect(
-    inspector.getByText("Core administration · E2E links limited")
-  ).toBeVisible();
+  await expect(inspector.getByText("Core · E2E links limited")).toBeVisible();
   await expect(
     inspector.getByRole("button", { name: "Manage in Access" })
   ).toHaveCount(0);

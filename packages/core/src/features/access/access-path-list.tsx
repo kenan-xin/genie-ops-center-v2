@@ -8,7 +8,7 @@ import type {
   AccessRecipient,
 } from "../../services/roles/effective-access.ts";
 import type { GrantRow } from "../../services/roles/grants.ts";
-import { overviewRows } from "./overview-view.ts";
+import { overviewRows, pausedLabel } from "./overview-view.ts";
 
 /** The reads that the inspector Access tab shows, passed only to a viewer with the Roles key (LK4). */
 export type InspectorAccess = {
@@ -28,7 +28,7 @@ export type InspectorAccess = {
 export function AccessPathList(
   props: InspectorAccess & {
     readonly recipient: AccessRecipient;
-    /** The sentence for no path, for example "This person holds no role yet." */
+    /** The sentence for no assignment, for example "No role is assigned to this person yet." */
     readonly empty: string;
     /** Opens the group of a "via" path; without it the name is plain text. */
     readonly onOpenGroup?: ((groupId: string) => void) | undefined;
@@ -70,7 +70,7 @@ export function AccessPathList(
         const tail = [
           ...(row.alsoThrough.length === 0
             ? []
-            : [`also through ${row.alsoThrough.join(", ")}`]),
+            : [`also assigned via ${row.alsoThrough.join(", ")}`]),
           ...(row.addedBy === null ? [] : [`added by ${row.addedBy}`]),
         ].join(" · ");
 
@@ -91,14 +91,16 @@ export function AccessPathList(
                 </LabelPill>
               )}
               {row.custom ? <LabelPill>Custom role</LabelPill> : null}
-              {row.notInEffect.length === 0 ? null : (
-                <StatusPill tone="neutral">Not in effect</StatusPill>
-              )}
+              {row.notInEffect.map((reason) => (
+                <StatusPill key={reason} tone="neutral">
+                  {pausedLabel(reason)}
+                </StatusPill>
+              ))}
             </span>
             <span className="text-xs text-muted-foreground wrap-anywhere">
               {viaGroup ? (
                 <>
-                  via{" "}
+                  Assigned via{" "}
                   <button
                     type="button"
                     className={`font-medium text-foreground underline ${focusRing}`}
@@ -109,14 +111,16 @@ export function AccessPathList(
                   {tail === "" ? "" : ` · ${tail}`}
                 </>
               ) : (
-                [row.path, tail].filter((part) => part !== "").join(" · ")
+                [
+                  row.holder.id === props.recipient.id
+                    ? row.path
+                    : `Assigned via ${row.path}`,
+                  tail,
+                ]
+                  .filter((part) => part !== "")
+                  .join(" · ")
               )}
             </span>
-            {row.notInEffect.length === 0 ? null : (
-              <span className="text-xs text-muted-foreground">
-                {row.notInEffect.join(". ")}
-              </span>
-            )}
           </li>
         );
       })}

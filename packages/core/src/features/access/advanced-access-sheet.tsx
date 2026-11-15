@@ -46,6 +46,7 @@ import {
 } from "./advanced-view.ts";
 import { moduleNameOf, REFUSAL } from "./grants-view.ts";
 import { RecordPicker } from "./record-picker.tsx";
+import { UnsavedMark } from "./unsaved-mark.tsx";
 
 export type AdvancedAccessSheetProps = {
   readonly open: boolean;
@@ -71,7 +72,7 @@ export type AdvancedAccessSheetProps = {
 const GUARD_REASON = {
   "self-protection": "You cannot remove your own Tenant administrator role",
   "last-administrator":
-    "Last active Tenant administrator path. Give the role to somebody else first.",
+    "Last active Tenant administrator assignment. Give the role to somebody else first.",
 } as const;
 
 const GROUPS = [
@@ -88,7 +89,7 @@ const optionLabel = (option: AdvancedOption, group: string) =>
   }${option.enabled ? "" : ", module off"}`;
 
 const scopeText = (scope: Scope | null, label: string | null | undefined) =>
-  scope === null ? "Whole tenant" : `One record · ${label ?? scope.id}`;
+  scope === null ? "All records" : `One record · ${label ?? scope.id}`;
 
 const sameScope = (left: Scope | null, right: Scope | null) =>
   left === null || right === null
@@ -137,14 +138,11 @@ function RoleRow(props: {
           </LabelPill>
           {props.custom ? <LabelPill>Custom role</LabelPill> : null}
           {props.inactive === true ? (
-            <StatusPill tone="warning">Inactive</StatusPill>
+            <StatusPill tone="warning">Paused: Module off</StatusPill>
           ) : null}
-          {props.state === "pending" ? (
-            <StatusPill tone="neutral">Pending</StatusPill>
-          ) : null}
-          {props.state === "pending-removal" ? (
-            <StatusPill tone="neutral">Pending removal</StatusPill>
-          ) : null}
+          {props.state === undefined ? null : (
+            <UnsavedMark removal={props.state === "pending-removal"} />
+          )}
         </div>
         {props.reason === undefined ? null : (
           // Amber, as the design draws the reason: Remove is blocked (tokens.md, Warning note).
@@ -161,7 +159,7 @@ function RoleRow(props: {
 }
 
 /**
- * Advanced access (R-37c): core administration, the Auditor role, a module role at one record,
+ * Advanced access (R-37c): the core roles, the Auditor role, a module role at one record,
  * and custom roles for one recipient. Every change is staged, and one Save writes them all through
  * the role-assignment service. A guarded Tenant administrator row keeps Remove disabled with its
  * reason (R-38). The draft lives here and is dropped on close (AD11).
@@ -301,8 +299,7 @@ export function AdvancedAccessSheet(
         <SheetHeader>
           <SheetTitle>Advanced access</SheetTitle>
           <SheetDescription>
-            Core administration, the Auditor role, a module role at one record,
-            and custom roles for{" "}
+            Core roles, a module role at one record, and custom roles for{" "}
             <b className="font-semibold text-foreground">
               {props.recipientName}
             </b>
@@ -330,7 +327,7 @@ export function AdvancedAccessSheet(
         >
           {off.length === 0 ? null : (
             <WarningNote size="sm" role="status">
-              {listOf(off)} {off.length === 1 ? "is" : "are"} switched off, so{" "}
+              {listOf(off)} {off.length === 1 ? "is" : "are"} off, so{" "}
               {off.length === 1 ? "its" : "their"} roles take no new grant here.
               Removal still works.
             </WarningNote>
@@ -340,7 +337,7 @@ export function AdvancedAccessSheet(
             <h3 className={CAPTION}>Advanced roles of {props.recipientName}</h3>
             {props.rows.length + draft.add.length === 0 ? (
               <p className="py-2 text-muted-foreground">
-                {props.recipientName} holds no advanced role.
+                No advanced role is assigned to {props.recipientName}.
               </p>
             ) : (
               <ul>
@@ -490,7 +487,7 @@ export function AdvancedAccessSheet(
                     }}
                   >
                     <ToggleGroupItem value="tenant">
-                      Whole tenant
+                      All records
                     </ToggleGroupItem>
                     <ToggleGroupItem value="record">One record</ToggleGroupItem>
                   </ToggleGroup>
@@ -548,7 +545,7 @@ export function AdvancedAccessSheet(
               disabled={total === 0}
               onClick={() => void save()}
             >
-              {saving ? "Saving…" : "Save changes"}
+              {saving ? "Saving…" : "Save"}
             </Button>
           </FormActionBar>
         </div>

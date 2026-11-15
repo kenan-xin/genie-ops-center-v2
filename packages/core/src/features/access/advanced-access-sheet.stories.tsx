@@ -22,7 +22,7 @@ const meta = {
       story: { inline: false, iframeHeight: 640 },
       description: {
         component:
-          "Advanced access on the Grants tab (R-37c): core administration, the Auditor role, a module role at one record, and custom roles for one recipient. Every change is staged as Pending, and one Save writes them all. Remove is disabled in place on a guarded Tenant administrator row (R-38). A refused save keeps every staged change.",
+          "Advanced access on the Grants tab (R-37c): the core roles, the Auditor role, a module role at one record, and custom roles for one recipient. Every change is staged with the unsaved mark, and one Save writes them all. Remove is disabled in place on a guarded Tenant administrator row (R-38). A refused save keeps every staged change.",
       },
     },
     a11y: { test: "error" },
@@ -76,7 +76,7 @@ export const ListsAdvancedRoles: Story = {
 
     const approver = rowOf(body, "Invoice approver");
 
-    await expect(approver.getByText("Whole tenant")).toBeVisible();
+    await expect(approver.getByText("All records")).toBeVisible();
     await expect(approver.getByText("Custom role")).toBeVisible();
     await expect(body.getByText("Nothing to save yet.")).toBeVisible();
   },
@@ -131,19 +131,19 @@ export const RemoveAndUndo: Story = {
 
     await userEvent.click(body.getByRole("button", { name: "Remove Finance" }));
     await expect(
-      rowOf(body, "Finance").getByText("Pending removal")
-    ).toBeVisible();
+      rowOf(body, "Finance").getByText("(unsaved removal)")
+    ).toBeInTheDocument();
 
     await userEvent.click(body.getByRole("button", { name: "Undo" }));
     await expect(
-      rowOf(body, "Finance").queryByText("Pending removal")
+      rowOf(body, "Finance").queryByText("(unsaved removal)")
     ).toBeNull();
 
     await userEvent.click(
       body.getByRole("button", { name: "Remove Invoice approver" })
     );
     await expect(body.getByText("1 unsaved change")).toBeVisible();
-    await userEvent.click(body.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(body.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(args.onSave).toHaveBeenCalledWith({
@@ -171,7 +171,7 @@ export const GuardedLastAdministrator: Story = {
     const row = rowOf(await sheet(), "Tenant administrator");
 
     const reason =
-      "Last active Tenant administrator path. Give the role to somebody else first.";
+      "Last active Tenant administrator assignment. Give the role to somebody else first.";
 
     const remove = row.getByRole("button", {
       name: "Remove Tenant administrator",
@@ -234,10 +234,10 @@ export const AddsOneRecord: Story = {
 
     const added = rowOf(body, "Placeholder user");
 
-    await expect(added.getByText("Pending")).toBeVisible();
+    await expect(added.getByText("(unsaved)")).toBeInTheDocument();
     await expect(added.getByText("One record · North depot")).toBeVisible();
 
-    await userEvent.click(body.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(body.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(args.onSave).toHaveBeenCalledWith({
         add: [
@@ -323,7 +323,7 @@ export const ModuleOff: Story = {
 
     await expect(
       body.getByText(
-        "Analytics is switched off, so its roles take no new grant here. Removal still works."
+        "Analytics is off, so its roles take no new grant here. Removal still works."
       )
     ).toBeVisible();
 
@@ -343,7 +343,7 @@ export const SaveInFlight: Story = {
     const body = await sheet();
 
     await userEvent.click(body.getByRole("button", { name: "Remove Finance" }));
-    await userEvent.click(body.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(body.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(args.onSave).toHaveBeenCalled());
 
     await userEvent.keyboard("{Escape}");
@@ -368,14 +368,14 @@ export const RefusedSave: Story = {
     const body = await sheet();
 
     await userEvent.click(body.getByRole("button", { name: "Remove Finance" }));
-    await userEvent.click(body.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(body.getByRole("button", { name: "Save" }));
 
     await expect(await body.findByRole("alert")).toHaveTextContent(
       "That change would leave no active tenant administrator."
     );
     await expect(
-      rowOf(body, "Finance").getByText("Pending removal")
-    ).toBeVisible();
+      rowOf(body, "Finance").getByText("(unsaved removal)")
+    ).toBeInTheDocument();
     await expect(body.getByText("1 unsaved change")).toBeVisible();
     await expect(args.onClose).not.toHaveBeenCalled();
   },

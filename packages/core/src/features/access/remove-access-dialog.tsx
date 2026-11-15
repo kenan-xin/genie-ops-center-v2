@@ -16,12 +16,10 @@ export type RowRemoval = {
 type Recipient = { readonly type: "user" | "group"; readonly name: string };
 
 const goesAs = (path: AccessPath) =>
-  path.scope === null ? "Direct assignment" : "Direct assignment, one record";
+  path.scope === null ? "Direct" : "Direct, one record";
 
 const staysAs = (path: AccessPath) =>
-  path.holder.type === "group"
-    ? `Through ${path.holder.name}`
-    : "Direct assignment";
+  path.holder.type === "group" ? `Assigned via ${path.holder.name}` : "Direct";
 
 function PathList(props: {
   readonly heading: string;
@@ -57,8 +55,8 @@ function PathList(props: {
 
 function noPathSentence(recipient: Recipient, row: string): string {
   return recipient.type === "user"
-    ? `${recipient.name} holds no other role of ${row}. After you save, ${recipient.name} no longer reaches ${row}.`
-    : `${recipient.name} holds no role of ${row} after you save. Members who reach ${row} directly or through another group keep that path.`;
+    ? `${recipient.name} has no other role of ${row}. After you save, ${recipient.name} no longer reaches ${row}.`
+    : `${recipient.name} has no role of ${row} after you save. Members who reach ${row} directly or through another group keep that access.`;
 }
 
 /**
@@ -89,7 +87,7 @@ export function RemoveAccessDialog(props: {
   const description = props.removals.some(
     (removal) => removal.pathsThatStay.length > 0
   )
-    ? `The direct ${roleCount === 1 ? "role goes" : "roles go"}. Access continues through the paths that stay.`
+    ? `The direct ${roleCount === 1 ? "role goes" : "roles go"}. Access continues through the assignments that stay.`
     : "The roles below go when you save.";
 
   const level = several ? "h4" : "h3";
@@ -118,7 +116,7 @@ export function RemoveAccessDialog(props: {
             />
             {removal.pathsThatStay.length > 0 ? (
               <PathList
-                heading="Paths that stay"
+                heading="Assignments that stay"
                 level={level}
                 paths={removal.pathsThatStay}
                 detail={staysAs}

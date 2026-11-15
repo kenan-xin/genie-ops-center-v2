@@ -48,7 +48,9 @@ const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:
 
 /** The pill a switched-off module carries, in the table's cell and on the card. */
 function offPill(module: ModuleView) {
-  return module.enabled ? null : <StatusPill tone="neutral">Off</StatusPill>;
+  return module.enabled ? null : (
+    <StatusPill tone="neutral">Module off</StatusPill>
+  );
 }
 
 /** The id in quiet mono under the name, not a chip (fix list "Modules page on phones" (1)). */
@@ -153,7 +155,7 @@ function holderList(
 }
 
 /**
- * The phone row (fix list (4)): "Who can open it" over the holder summary, at least 44 px high. With
+ * The phone row (fix list (4)): "Assigned to" over the holder summary, at least 44 px high. With
  * `href` the whole row is one link to Access, where the full list lives: a button inside a link is
  * invalid. Without it (no `core:roles:manage`, R-37e) the same band is plain text.
  */
@@ -226,9 +228,7 @@ function Access(props: {
       className={`grid gap-1 text-sm ${module.enabled ? "" : "text-muted-foreground"}`}
     >
       {module.holders.length === 0 ? (
-        <p className="text-muted-foreground">
-          No one holds {module.displayName} yet
-        </p>
+        <p className="text-muted-foreground">Not assigned to anyone yet</p>
       ) : (
         <div className="flex flex-wrap items-center gap-x-2">
           <span>{holderList(principals, labels)}</span>
@@ -395,7 +395,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
         </InputGroup>
         <HelpDisclosure label="What a module is here" iconOnly>
           Every module compiled into this deployment is listed, on or off.
-          Switching one off hides it and refuses its routes; its data stays.
+          Turning one off hides it and refuses its routes; its data stays.
           Access is read from role assignments, so nothing on this page grants
           it.
         </HelpDisclosure>
@@ -426,8 +426,8 @@ export function ModulesScreen(props: ModulesScreenProps) {
               header: "Module",
               cell: (module) => <Identity module={module} />,
             },
-            // The capture puts the switch right after the module, under "Enabled".
-            { id: "enabled", header: "Enabled", cell: enabledControl },
+            // The capture puts the switch right after the module, under "Status" (G6).
+            { id: "enabled", header: "Status", cell: enabledControl },
             { id: "category", header: "Category", cell: categoryPicker },
             { id: "access", header: "Access", cell: access },
           ]}
@@ -470,9 +470,9 @@ export function ModulesScreen(props: ModulesScreenProps) {
 
       <ConfirmDialog
         open={confirm.open && confirming !== undefined}
-        title={`Switch off ${confirming?.displayName ?? ""}?`}
-        description={`Members lose ${confirming?.displayName ?? ""} from their navigation until it is switched on again. Its data stays.`}
-        confirmLabel="Switch off"
+        title={`Turn off ${confirming?.displayName ?? ""}?`}
+        description={`Members lose ${confirming?.displayName ?? ""} from their navigation until it is turned on again. Its data stays.`}
+        confirmLabel="Turn off"
         danger
         onConfirm={() => {
           if (confirming) props.onSwitch(confirming.id, false);

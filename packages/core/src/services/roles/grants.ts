@@ -172,7 +172,7 @@ export async function grantRows(
   rows.push({
     id: ASK_ROW,
     name: "Ask",
-    description: "The agent chat on every page.",
+    description: "Ask on every page.",
     group: "core",
     enabled: true,
     useKey: ASK_PERMISSION,

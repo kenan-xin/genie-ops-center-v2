@@ -46,12 +46,12 @@ const meta = {
     },
     accessLabels: {
       more: (count) => `+${count}`,
-      showAll: (count, module) => `+${count} more holders of ${module}`,
-      title: (module) => `Holders of ${module}`,
+      showAll: (count, module) => `+${count} more assigned to ${module}`,
+      title: (module) => `Assigned to ${module}`,
       group: (group) => `${group} (group)`,
       saving: (module) => `Saving ${module}`,
-      whoCanOpen: "Who can open it",
-      whoCanOpenFor: (module) => `for ${module}`,
+      whoCanOpen: "Assigned to",
+      whoCanOpenFor: (module) => module,
       nobody: "No one yet",
       manage: "Manage in Access",
       category: "Category",
@@ -136,7 +136,12 @@ export const Phone: Story = {
 
     // (1) The switch shares the name's line; the id is quiet mono under it, not a chip; no tile.
     const toggle = card.getByRole("switch", { name: "Fixture on" });
-    const title = card.getByText("Fixture", { exact: true });
+
+    // The "Assigned to" row names the module for a screen reader only, so skip hidden text.
+    const title = card.getByText("Fixture", {
+      exact: true,
+      ignore: "script, style, .sr-only",
+    });
 
     await expect(toggle).toBeChecked();
     await expect(
@@ -203,12 +208,12 @@ const switchOffConfirms: Story["play"] = async ({ args, canvas }) => {
   await userEvent.click(canvas.getByRole("switch", { name: "Fixture on" }));
 
   let dialog = within(
-    await screen.findByRole("dialog", { name: "Switch off Fixture?" })
+    await screen.findByRole("dialog", { name: "Turn off Fixture?" })
   );
 
   await expect(
     dialog.getByText(
-      "Members lose Fixture from their navigation until it is switched on again. Its data stays."
+      "Members lose Fixture from their navigation until it is turned on again. Its data stays."
     )
   ).toBeInTheDocument();
   // Cancel holds the focus, so Enter does not switch the module off (R-83).
@@ -222,9 +227,9 @@ const switchOffConfirms: Story["play"] = async ({ args, canvas }) => {
 
   await userEvent.click(canvas.getByRole("switch", { name: "Fixture on" }));
   dialog = within(
-    await screen.findByRole("dialog", { name: "Switch off Fixture?" })
+    await screen.findByRole("dialog", { name: "Turn off Fixture?" })
   );
-  await userEvent.click(dialog.getByRole("button", { name: "Switch off" }));
+  await userEvent.click(dialog.getByRole("button", { name: "Turn off" }));
 
   await expect(args.onSwitch).toHaveBeenCalledTimes(1);
   await expect(args.onSwitch).toHaveBeenCalledWith("fixture", false);
@@ -312,7 +317,11 @@ export const SwitchedOffKeepsHolders: Story = {
   play: async ({ canvas }) => {
     const row = within(canvas.getByRole("row", { name: /Dormant/ }));
 
-    await expect(row.getByText("Off")).toBeInTheDocument();
+    // C3: one module-off word on the pill, under the "Status" column (G6).
+    await expect(row.getByText("Module off")).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("columnheader", { name: "Status" })
+    ).toBeInTheDocument();
     await expect(row.getByText(/Night shift/)).toBeInTheDocument();
     await expect(
       row.getByRole("switch", { name: "Dormant on" })
@@ -334,7 +343,7 @@ export const ManyHolders: Story = {
     ).toBeInTheDocument();
 
     const more = area.getByRole("button", {
-      name: "+12 more holders of Crowded",
+      name: "+12 more assigned to Crowded",
     });
 
     await expect(more).toHaveTextContent("+12");
@@ -346,7 +355,7 @@ export const ManyHolders: Story = {
     await userEvent.keyboard("{Enter}");
 
     const popup = within(
-      await screen.findByRole("dialog", { name: "Holders of Crowded" })
+      await screen.findByRole("dialog", { name: "Assigned to Crowded" })
     );
 
     await expect(popup.getAllByRole("listitem")).toHaveLength(15);
@@ -359,7 +368,7 @@ export const ManyHolders: Story = {
 };
 
 /**
- * (4) On a phone "Who can open it" is one row that links to Access: three holders, groups first,
+ * (4) On a phone "Assigned to" is one row that links to Access: three holders, groups first,
  * and "+12". The full list lives in Access, because a button inside the link is not allowed.
  */
 export const ManyHoldersOnPhone: Story = {
@@ -369,7 +378,7 @@ export const ManyHoldersOnPhone: Story = {
     const list = within(canvas.getByRole("list", { name: "Modules" }));
 
     const who = list.getByRole("link", {
-      name: /^Who can open it for Crowded/,
+      name: /^Assigned to Crowded/,
     });
 
     await expect(who).toHaveAttribute("href", "/admin/access?module=crowded");
@@ -417,7 +426,7 @@ export const NobodyHolds: Story = {
     const row = within(canvas.getByRole("row", { name: /Reporting exports/ }));
 
     await expect(
-      row.getByText("No one holds Reporting exports yet")
+      row.getByText("Not assigned to anyone yet")
     ).toBeInTheDocument();
     await expect(
       row.getByRole("link", { name: "Manage in Access for Reporting exports" })
@@ -476,7 +485,7 @@ export const NoAccessLinkWithoutTheKeyOnPhone: Story = {
   globals: phone,
   play: async ({ canvas }) => {
     await expect(
-      canvas.queryByRole("link", { name: /Who can open it/ })
+      canvas.queryByRole("link", { name: /Assigned to/ })
     ).toBeNull();
     await expect(
       canvas.getByRole("list", { name: "Modules" })

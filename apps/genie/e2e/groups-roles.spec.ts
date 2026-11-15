@@ -157,7 +157,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   const sheet = await openAdvancedAccess(page);
 
-  await chooseOption(page, "Role", "E2E reader (Core administration)");
+  await chooseOption(page, "Role", "E2E reader (Core)");
   await sheet.getByRole("button", { name: "Add to the list" }).click();
   await saveAdvancedAccess(page, sheet);
 
@@ -204,10 +204,8 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   // The Access tab is read before the archive, so the archive must reload it.
   await archivedInspector.getByRole("tab", { name: /^Access/ }).click();
-  await expect(
-    archivedInspector.getByText("Core administration · E2E reader")
-  ).toBeVisible();
-  await expect(archivedInspector.getByText("Not in effect")).toHaveCount(0);
+  await expect(archivedInspector.getByText("Core · E2E reader")).toBeVisible();
+  await expect(archivedInspector.getByText(/^Paused/)).toHaveCount(0);
   await page.getByRole("button", { name: "Archive group" }).click();
 
   const archiveDialog = page.getByRole("dialog", {
@@ -240,7 +238,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await page.getByRole("checkbox", { name: /^Show archived/ }).check();
   await archivedInspector.getByRole("tab", { name: /^Access/ }).click();
   await expect(
-    archivedInspector.getByText("The group is archived")
+    archivedInspector.getByText("Paused: Group archived")
   ).toBeVisible();
 
   // A second jit person with the same claim is now refused: no non-archived mapped group remains.
@@ -522,10 +520,10 @@ test("Role detail links back to Roles through the page header trail", async ({
     "select id from role where name = 'Auditor'"
   );
 
-  const holders = page.getByRole("list", { name: "Who holds this role" });
+  const holders = page.getByRole("list", { name: "Assigned to" });
   const line = holders.getByRole("listitem").filter({ hasText: holder });
 
-  await expect(line).toContainText("Direct assignment");
+  await expect(line).toContainText("Direct");
   await expect(line.getByRole("link", { name: holder })).toHaveAttribute(
     "href",
     `/admin/people?selected=${holderId}`
@@ -536,7 +534,7 @@ test("Role detail links back to Roles through the page header trail", async ({
   );
   await page.goBack();
   await expect(
-    page.getByRole("heading", { name: "Who holds this role" })
+    page.getByRole("heading", { name: "Assigned to" })
   ).toBeVisible();
 
   // Tenant administrator: the seeded group, with its member count, and no "See all" under ten.
@@ -568,8 +566,8 @@ test("Role detail links back to Roles through the page header trail", async ({
 });
 
 // d8l5.48: the e2e database stored no description for Placeholder user, so the line comes from the
-// module's declaration, and the pill names the module by its display name.
-test("a module role shows its declared line and its module's name", async ({
+// module's declaration, and the kind pill says "Built-in" (ADM-4L).
+test("a module role shows its declared line and the Built-in pill", async ({
   page,
 }, testInfo) => {
   const line = "Open the placeholder workspace only.";
@@ -594,10 +592,8 @@ test("a module role shows its declared line and its module's name", async ({
     has: page.getByRole("heading", { level: 2, name: "Placeholder user" }),
   });
 
-  // Exact, because a plain text match ignores case and would pass the lower-case module id.
-  await expect(
-    header.getByText("System · Placeholder", { exact: true })
-  ).toBeVisible();
+  // The kind pill says only "Built-in" (G13, ADM-4L); exact, so a longer line with the word does not pass.
+  await expect(header.getByText("Built-in", { exact: true })).toBeVisible();
   await expect(header.getByText(line, { exact: true })).toBeVisible();
   await expectNoAxeViolations(page, "Role detail of a module role");
 });

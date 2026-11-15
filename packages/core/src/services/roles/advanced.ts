@@ -50,7 +50,7 @@ export type AdvancedOption = {
   readonly roleName: string;
   readonly kind: "system" | "custom";
   readonly moduleId: string | null;
-  /** The module display name, or "Core administration" for a core role. */
+  /** The module display name, or "Core" for a core role. */
   readonly moduleName: string;
   readonly enabled: boolean;
   readonly wholeTenant: boolean;
@@ -114,7 +114,7 @@ export async function readAdministratorGuards(input: {
   });
 }
 
-const CORE_ADMINISTRATION = "Core administration";
+const CORE_ADMINISTRATION = "Core";
 
 /** `Tenant administrator`, then `Auditor`, then any other core system role by name. */
 const CORE_ORDER: readonly string[] = [TENANT_ADMINISTRATOR_ROLE, AUDITOR_ROLE];

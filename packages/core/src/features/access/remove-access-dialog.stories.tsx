@@ -77,27 +77,27 @@ const dialog = async (name: string) => {
   return within(element);
 };
 
-/** T10: the role that goes, the group path that stays, and Cancel focused. */
+/** T10: the role that goes, the group assignment that stays, and Cancel focused. */
 export const PathsStay: Story = {
   play: async ({ args }) => {
     const body = await dialog("Remove Invoices from Jamie Chen?");
 
     await expect(
       body.getByText(
-        "The direct role goes. Access continues through the paths that stay."
+        "The direct role goes. Access continues through the assignments that stay."
       )
     ).toBeVisible();
 
     const goes = within(body.getByRole("list", { name: "Roles that go" }));
 
-    await expect(goes.getByRole("listitem")).toHaveTextContent(
-      "ViewerDirect assignment"
+    await expect(goes.getByRole("listitem")).toHaveTextContent("ViewerDirect");
+
+    const stays = within(
+      body.getByRole("list", { name: "Assignments that stay" })
     );
 
-    const stays = within(body.getByRole("list", { name: "Paths that stay" }));
-
     await expect(stays.getByRole("listitem")).toHaveTextContent(
-      "FinanceThrough Finance team"
+      "FinanceAssigned via Finance team"
     );
     // The dialog moves its first focus a frame after it shows.
     await waitFor(() =>
@@ -146,10 +146,10 @@ export const NoPathPerson: Story = {
 
     await expect(
       body.getByText(
-        "Sam Rivera holds no other role of Slides. After you save, Sam Rivera no longer reaches Slides."
+        "Sam Rivera has no other role of Slides. After you save, Sam Rivera no longer reaches Slides."
       )
     ).toBeVisible();
-    await expect(body.queryByText("Paths that stay")).toBeNull();
+    await expect(body.queryByText("Assignments that stay")).toBeNull();
   },
 };
 

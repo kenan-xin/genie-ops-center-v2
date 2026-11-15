@@ -72,7 +72,7 @@ export const FIXTURE_ROWS: readonly GrantRow[] = [
   {
     id: "core:ask",
     name: "Ask",
-    description: "The agent chat on every page.",
+    description: "Ask on every page.",
     group: "core",
     enabled: true,
     useKey: "core:ask:use",
@@ -228,12 +228,12 @@ export const ADVANCED_CATALOGUE: AdvancedCatalogue = {
     option({
       roleId: "r-tenant-admin",
       roleName: "Tenant administrator",
-      moduleName: "Core administration",
+      moduleName: "Core",
     }),
     option({
       roleId: "r-auditor",
       roleName: "Auditor",
-      moduleName: "Core administration",
+      moduleName: "Core",
     }),
   ],
   record: [
@@ -251,7 +251,7 @@ export const ADVANCED_CATALOGUE: AdvancedCatalogue = {
       roleId: "r-access-manager",
       roleName: "Access manager",
       kind: "custom",
-      moduleName: "Core administration",
+      moduleName: "Core",
     }),
     option({
       roleId: "r-invoice-approver",

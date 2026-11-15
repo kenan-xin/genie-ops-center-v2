@@ -60,7 +60,7 @@ const opens = (row: GrantRow, path: AccessPath) =>
 
 /**
  * The module that a path's role belongs to, by name (O16): the catalogue row that owns the role,
- * else the row of the role's module, else "Core administration" for a core role.
+ * else the row of the role's module, else "Core" for a core role (A-6).
  */
 export function moduleNameOf(
   path: AccessPath,
@@ -71,7 +71,7 @@ export function moduleNameOf(
     catalogue.find((row) => row.id === path.role.moduleId)?.name ??
     // shortcut: a module with no Grants row shows its key, not its name; pass module names in if one ships such a role.
     path.role.moduleId ??
-    "Core administration"
+    "Core"
   );
 }
 

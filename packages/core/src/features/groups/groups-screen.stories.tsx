@@ -822,7 +822,7 @@ export const AccessCardIsNeverADeadEnd: Story = {
     await userEvent.click(inspector.getByRole("tab", { name: /^Access/ }));
     await expect(inspector.getByText("Invoices · Viewer")).toBeVisible();
     await expect(
-      inspector.getByText("Direct assignment · added by Alex Morgan")
+      inspector.getByText("Direct · added by Alex Morgan")
     ).toBeVisible();
     await expect(
       inspector.queryByRole("button", { name: "Remove" })

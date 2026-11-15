@@ -30,63 +30,12 @@ const CUSTOMER_APP = /^customers\/[^/]+\/app\//;
  * these strings and lower their rows; the ledger goes once it is empty.
  */
 const PENDING_SWEEP = {
-  "apps/genie/src/app/admin/roles/roles-route.tsx": {
-    holders: 1,
-  },
   "apps/genie/src/messages/en.json": {
-    "path": 1,
     "local groups": 1,
     "display label": 1,
     "local group": 1,
-    "holders": 2,
-    "who can open it": 1,
     "/\\bGenie\\b(?! Ops Center)/": 1,
-    "whole tenant": 1,
     "disabled": 1,
-  },
-  "packages/core/src/features/access/access-help.tsx": {
-    path: 1,
-  },
-  "packages/core/src/features/access/access-path-list.tsx": {
-    "not in effect": 1,
-  },
-  "packages/core/src/features/access/advanced-access-sheet.tsx": {
-    "path": 1,
-    "whole tenant": 2,
-    "inactive": 1,
-    "core administration": 1,
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 1,
-    "holds no advanced role": 1,
-  },
-  "packages/core/src/features/access/grants-screen.tsx": {
-    "path": 1,
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 1,
-    "whole tenant": 1,
-    "inactive": 4,
-    "paths": 1,
-  },
-  "packages/core/src/features/access/grants-view.ts": {
-    "core administration": 1,
-  },
-  "packages/core/src/features/access/overview-screen.tsx": {
-    "system role": 1,
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 1,
-    "not in effect": 1,
-    "path": 3,
-    "holders": 1,
-    "nobody holds": 2,
-    "holds no role": 1,
-  },
-  "packages/core/src/features/access/overview-view.ts": {
-    "disabled": 1,
-    "direct assignment": 3,
-  },
-  "packages/core/src/features/access/remove-access-dialog.tsx": {
-    "direct assignment": 3,
-    "holds no other role": 1,
-    "holds no role": 1,
-    "path": 1,
-    "paths": 2,
   },
   "packages/core/src/features/account/account-page.tsx": {
     "/\\bGenie\\b(?! Ops Center)/": 1,
@@ -148,11 +97,6 @@ const PENDING_SWEEP = {
     "edit label": 1,
     "local groups": 1,
   },
-  "packages/core/src/features/modules/modules-screen.tsx": {
-    "no one holds": 1,
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 4,
-    "enabled": 1,
-  },
   "packages/core/src/features/people/people-screen.tsx": {
     "disabled": 3,
     "disable": 5,
@@ -165,20 +109,6 @@ const PENDING_SWEEP = {
     "clear all": 1,
     "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 2,
   },
-  "packages/core/src/features/roles/roles-screen.tsx": {
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 1,
-    "role from copy": 1,
-    "copy role": 2,
-    "entitled": 5,
-    "not entitled": 2,
-    "clear all": 1,
-    "holders": 1,
-    "nobody holds": 1,
-    "not in effect": 1,
-    "who holds": 1,
-    "system role": 1,
-    "system roles": 1,
-  },
   "packages/core/src/features/settings/ai-sections.tsx": {
     "remove key": 2,
   },
@@ -187,10 +117,6 @@ const PENDING_SWEEP = {
     "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 3,
     "the assistant": 1,
     "enabled": 1,
-  },
-  "packages/core/src/lib/errors/index.ts": {
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 1,
-    "system role": 1,
   },
   "packages/core/src/lib/module-contract/validate.ts": {
     "system role": 1,
@@ -214,9 +140,6 @@ const PENDING_SWEEP = {
   "packages/core/src/services/agent/store.ts": {
     agent: 1,
   },
-  "packages/core/src/services/authorization/roles.ts": {
-    agent: 1,
-  },
   "packages/core/src/services/groups/index.ts": {
     "display label": 2,
     "local group": 6,
@@ -224,20 +147,11 @@ const PENDING_SWEEP = {
   "packages/core/src/services/mailer/templates.tsx": {
     enabled: 1,
   },
-  "packages/core/src/services/modules/index.ts": {
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 2,
-  },
   "packages/core/src/services/people/index.ts": {
     "/\\bGenie\\b(?! Ops Center)/": 1,
     "disabled": 1,
     "enabled": 1,
     "re-enabled": 1,
-  },
-  "packages/core/src/services/roles/advanced.ts": {
-    "core administration": 1,
-  },
-  "packages/core/src/services/roles/grants.ts": {
-    agent: 1,
   },
   "packages/modules/analytics/src/agent-surface.ts": {
     agent: 1,

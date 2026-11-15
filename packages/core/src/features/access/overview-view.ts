@@ -27,10 +27,13 @@ export type OverviewRow = {
 };
 
 const REASON = {
-  "group-archived": () => "The group is archived",
-  "person-disabled": () => "The person is disabled",
-  "module-off": (module: string) => `The ${module} module is off`,
+  "group-archived": () => "Group archived",
+  "person-disabled": () => "Account suspended",
+  "module-off": () => "Module off",
 } as const;
+
+/** One pill per reason of an assignment that grants nothing now: "Paused: Module off" (G9). */
+export const pausedLabel = (reason: string) => `Paused: ${reason}`;
 
 /** A path reaches the module of `row`: its use key, or for a core role the same role (O4). */
 const reachesSame = (row: AccessPath, other: AccessPath) =>
@@ -39,7 +42,7 @@ const reachesSame = (row: AccessPath, other: AccessPath) =>
     : other.role.permissions.includes(`${row.role.moduleId}:use`);
 
 /**
- * "Also through" of a person's row (O4, R-37d): every other holder's live, whole-tenant path to the
+ * "Also assigned via" of a person's row (O4, R-37d): every other holder's live, whole-tenant path to the
  * same module, read from every path of the person, so a path on another page still counts. A
  * direct assignment comes first, then the group names in read order.
  */
@@ -58,7 +61,7 @@ function alsoThroughOf(
   );
 
   const direct = others.some((other) => other.holder.type === "user")
-    ? ["a direct assignment"]
+    ? ["Direct"]
     : [];
 
   const groups = others.flatMap((other) =>
@@ -117,7 +120,7 @@ export function overviewRows(input: {
   const pathOf = (path: AccessPath) => {
     // A module or a role is no holder: each row says how its holder holds it.
     if (subject.type === "module" || subject.type === "role") {
-      if (path.holder.type === "user") return "Direct assignment";
+      if (path.holder.type === "user") return "Direct";
 
       const members = input.recipients.groups.find(
         (group) => group.id === path.holder.id
@@ -128,9 +131,10 @@ export function overviewRows(input: {
       return `Group, ${members} ${members === 1 ? "member" : "members"}`;
     }
 
+    // The Assigned via column (G10): "Direct" or the group's name.
     return path.holder.type === subject.type && path.holder.id === subject.id
-      ? "Direct assignment"
-      : `via ${path.holder.name}`;
+      ? "Direct"
+      : path.holder.name;
   };
 
   return input.paths.map((path) => {
@@ -151,7 +155,7 @@ export function overviewRows(input: {
         subject.type === "user"
           ? alsoThroughOf(path, input.personPaths ?? input.paths)
           : [],
-      notInEffect: path.notInEffect.map((reason) => REASON[reason](module)),
+      notInEffect: path.notInEffect.map((reason) => REASON[reason]()),
       addedAt: path.addedAt,
       addedBy: path.addedBy?.name ?? null,
     };

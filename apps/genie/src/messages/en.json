@@ -53,7 +53,7 @@
     "access": {
       "title": "Access",
       "description": "Choose a group or a person. Then give them modules and pick the role they hold in each.",
-      "overviewDescription": "Who reaches which module, with which role, and through which path.",
+      "overviewDescription": "Who reaches which module, with which role, and how it is assigned.",
       "notSaved": "The access changes were not saved."
     },
     "ask": {
@@ -107,12 +107,12 @@
       "description": "The modules this deployment carries. Who can open a module is set in Access.",
       "access": {
         "more": "+{count}",
-        "showAll": "+{count} more holders of {module}",
-        "title": "Holders of {module}",
+        "showAll": "+{count} more assigned to {module}",
+        "title": "Assigned to {module}",
         "group": "{group} (group)",
         "saving": "Saving {module}",
-        "whoCanOpen": "Who can open it",
-        "whoCanOpenFor": "for {module}",
+        "whoCanOpen": "Assigned to",
+        "whoCanOpenFor": "{module}",
         "nobody": "No one yet",
         "manage": "Manage in Access",
         "category": "Category"
@@ -193,7 +193,7 @@
     "home": "Go to home"
   },
   "account": {
-    "wholeTenant": "Whole tenant"
+    "wholeTenant": "All records"
   },
   "signIn": {
     "heading": "Sign in to {productName}",

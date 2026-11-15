@@ -40,7 +40,7 @@ async function opens(page: Page, path: string, heading: string) {
   return (await denied.count()) === 0;
 }
 
-test("Advanced access gives core administration and a role at one record, and Remove takes each away", async ({
+test("Advanced access gives a core role and a role at one record, and Remove takes each away", async ({
   page,
   browser,
 }, testInfo) => {
@@ -78,16 +78,12 @@ test("Advanced access gives core administration and a role at one record, and Re
       .getByRole("option", { name: new RegExp(`· ${member}$`) })
       .click();
 
-    // E1, E3: Tenant administrator for the whole tenant. The staged add passes axe first.
+    // E1, E3: Tenant administrator for all records. The staged add passes axe first.
     let sheet = await openAdvancedAccess(page);
 
-    await chooseOption(
-      page,
-      "Role",
-      "Tenant administrator (Core administration)"
-    );
+    await chooseOption(page, "Role", "Tenant administrator (Core)");
     await sheet.getByRole("button", { name: "Add to the list" }).click();
-    await expect(sheet.getByText("Pending", { exact: true })).toBeVisible();
+    await expect(sheet.getByText("(unsaved)", { exact: true })).toBeAttached();
     await expectNoAxeViolations(page, "Advanced access with an add pending");
     await saveAdvancedAccess(page, sheet);
 

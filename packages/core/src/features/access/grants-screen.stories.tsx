@@ -195,9 +195,7 @@ export const AddPending: Story = {
     await tickAndMove("Placeholder", /^Add 1$/);
     await expect(pendingBar().getByText("1 to add")).toBeVisible();
 
-    await userEvent.click(
-      pendingBar().getByRole("button", { name: "Save changes" })
-    );
+    await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
     await expect(screen.queryByRole("dialog")).toBeNull();
     await waitFor(() =>
       expect(args.onSave).toHaveBeenCalledWith({
@@ -219,9 +217,7 @@ export const RemoveConfirm: Story = {
       pendingBar().getByText("Finance through Finance team stays.")
     ).toBeVisible();
 
-    await userEvent.click(
-      pendingBar().getByRole("button", { name: "Save changes" })
-    );
+    await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
 
     const dialog = await screen.findByRole("dialog", {
       name: "Remove Invoices from Jamie Chen?",
@@ -250,9 +246,7 @@ export const RemoveLast: Story = {
   args: { initial: person("p-sam") },
   play: async () => {
     await tickAndMove("Slides", /^Remove 1$/);
-    await userEvent.click(
-      pendingBar().getByRole("button", { name: "Save changes" })
-    );
+    await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
 
     const dialog = await screen.findByRole("dialog", {
       name: "Remove Slides from Sam Rivera?",
@@ -262,8 +256,38 @@ export const RemoveLast: Story = {
   },
 };
 
+/** G6, G9: Finance team holds the switched-off Analytics, so its Granted row is a paused assignment. */
 export const ModuleOff: Story = {
   args: { initial: group("g-finance") },
+  play: async ({ canvas }) => {
+    const granted = within(
+      await canvas.findByRole("group", { name: "Granted" })
+    );
+
+    await expect(granted.getByText("Paused: Module off")).toBeVisible();
+    await expect(
+      within(canvas.getByRole("group", { name: "Catalog" })).queryByText(
+        "Module off"
+      )
+    ).toBeNull();
+  },
+};
+
+/** G6: a group without Analytics sees the module, not an assignment, as off in Catalog. */
+export const ModuleOffInCatalog: Story = {
+  args: { initial: group("g-ops") },
+  play: async ({ canvas }) => {
+    const catalog = within(
+      await canvas.findByRole("group", { name: "Catalog" })
+    );
+
+    await expect(catalog.getByText("Module off")).toBeVisible();
+    await expect(
+      within(canvas.getByRole("group", { name: "Granted" })).queryByText(
+        /^Paused/
+      )
+    ).toBeNull();
+  },
 };
 
 export const CoreAsk: Story = {
@@ -271,7 +295,7 @@ export const CoreAsk: Story = {
   play: async ({ canvas }) => {
     await expect(
       await canvas.findByText(
-        "Not shown here: Tenant administrator (Core administration, whole tenant)"
+        "Not shown here: Tenant administrator (Core, all records)"
       )
     ).toBeVisible();
   },
@@ -297,10 +321,12 @@ export const ThroughGroupIsReadOnly: Story = {
     await expect(
       grantedPane().getAllByRole("button", { name: "Finance team" })
     ).toHaveLength(2);
+    // G10: a group source reads "Assigned via <group>".
+    await expect(grantedPane().getAllByText(/^Assigned via/)).toHaveLength(2);
     await expect(
       grantedPane().queryByRole("checkbox", { name: "Invoices" })
     ).toBeNull();
-    await expect(grantedPane().getByText("Inactive")).toBeVisible();
+    await expect(grantedPane().getByText("Paused: Module off")).toBeVisible();
 
     const catalog = within(canvas.getByRole("group", { name: "Catalog" }));
 
@@ -310,7 +336,9 @@ export const ThroughGroupIsReadOnly: Story = {
     await expect(
       grantedPane().getByRole("checkbox", { name: "Invoices" })
     ).toBeVisible();
-    await expect(grantedPane().getByText("Pending")).toBeVisible();
+    // C1: a staged row shows the unsaved dot with "(unsaved)", never "Pending" (G15).
+    await expect(grantedPane().getByText("(unsaved)")).toBeInTheDocument();
+    await expect(grantedPane().queryByText("Pending")).toBeNull();
     await expect(
       grantedPane().getAllByRole("button", { name: "Finance team" })
     ).toHaveLength(2);
@@ -365,7 +393,7 @@ export const ThroughCoreRoleIsReadOnly: Story = {
     await expect(grantedPane().getByText(/Included in/)).toBeVisible();
     await expect(
       within(canvas.getByRole("group", { name: "Catalog" })).getByText(
-        "Also through Tenant administrator"
+        "Also assigned via Tenant administrator"
       )
     ).toBeVisible();
 
@@ -386,7 +414,7 @@ export const SaveRefused: Story = {
   args: {
     initial: group("g-ops"),
     refusal:
-      "The access changes were not saved. Invoices is switched off for this deployment. Your changes are still here.",
+      "The access changes were not saved. Invoices is off for this deployment. Your changes are still here.",
   },
   play: async ({ canvas }) => {
     await userEvent.click(
@@ -395,14 +423,12 @@ export const SaveRefused: Story = {
     await userEvent.click(
       await screen.findByRole("option", { name: "Finance" })
     );
-    await userEvent.click(
-      pendingBar().getByRole("button", { name: "Save changes" })
-    );
+    await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
 
     const alert = await pendingBar().findByRole("alert");
 
     await expect(alert).toHaveTextContent(
-      "Invoices is switched off for this deployment."
+      "Invoices is off for this deployment."
     );
     await waitFor(() => expect(alert).toHaveFocus());
     await expect(pendingBar().getByText("1 unsaved change")).toBeVisible();
@@ -427,9 +453,7 @@ export const SaveInFlight: Story = {
     await userEvent.click(
       await screen.findByRole("option", { name: "Finance" })
     );
-    await userEvent.click(
-      pendingBar().getByRole("button", { name: "Save changes" })
-    );
+    await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(choice.closest("[inert]")).not.toBeNull());
     await expect(
@@ -497,8 +521,13 @@ export const CoreRoleLinkOpensAdvancedAccess: Story = {
 
     await expect(row).not.toBeNull();
     await waitFor(() =>
-      expect(within(row ?? document.body).getByText("Pending")).toBeVisible()
+      expect(
+        within(row ?? document.body).getByText("(unsaved)")
+      ).toBeInTheDocument()
     );
+    await expect(
+      within(row ?? document.body).queryByText("Pending")
+    ).toBeNull();
     await expect(args.onSaveAdvanced).not.toHaveBeenCalled();
   },
 };

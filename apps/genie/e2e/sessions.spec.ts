@@ -96,7 +96,7 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
 
   // Roles and access: the seeded reader role, tenant-wide and direct (R-27 loader).
   await expect(page.getByText("E2E reader")).toBeVisible();
-  await expect(page.getByText("Whole tenant")).toBeVisible();
+  await expect(page.getByText("All records")).toBeVisible();
   await expect(page.getByText("Direct", { exact: true })).toBeVisible();
 
   // Per-session sign-out, from the row's overflow menu (R-23): the dialog names the device, and
