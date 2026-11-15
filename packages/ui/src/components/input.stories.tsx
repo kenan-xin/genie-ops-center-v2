@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent } from "storybook/test";
+import { expect, type screen, userEvent } from "storybook/test";
 
 // The package entry, not ./input.tsx, so that the stories prove what an app
 // can import.
@@ -149,6 +149,111 @@ export const OneFieldHeightPhone: Story = {
   render: () => fieldKinds,
   play: async ({ canvasElement }) => {
     await expect(fieldHeights(canvasElement)).toEqual([40, 40, 40, 40]);
+  },
+};
+
+// 6wz1.114 (T2-a): under lg a field box reaches 44 px through its touch area, and the area sits
+// under the native field, so a tap on the field still lands on the <input> (caret, iOS keyboard).
+async function expectFieldTouchArea(input: HTMLElement) {
+  const box = input.closest<HTMLElement>(
+    "[data-slot=input-box], [data-slot=input-group]"
+  );
+
+  await expect(box).not.toBeNull();
+
+  if (box === null) return;
+
+  const area = box.getBoundingClientRect();
+  const centerX = area.left + area.width / 2;
+  const field = input.getBoundingClientRect();
+
+  await expect(document.elementFromPoint(centerX, area.top - 1.5)).toBe(box);
+  await expect(document.elementFromPoint(centerX, area.bottom + 1.5)).toBe(box);
+  await expect(
+    document.elementFromPoint(
+      field.left + field.width / 2,
+      field.top + field.height / 2
+    )
+  ).toBe(input);
+
+  await userEvent.click(box);
+  await expect(input).toHaveFocus();
+}
+
+export const FieldTouchAreaOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  render: () => (
+    // The padding keeps the taps above the first field inside the viewport.
+    <div className="flex flex-col gap-6 p-4">
+      <Input aria-label="Name" />
+      <InputGroup>
+        <InputGroupInput aria-label="Amount" />
+        <InputGroupAddon align="inline-end">
+          <InputGroupText>SGD</InputGroupText>
+        </InputGroupAddon>
+      </InputGroup>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    await expectFieldTouchArea(canvas.getByRole("textbox", { name: "Name" }));
+    await expectFieldTouchArea(canvas.getByRole("textbox", { name: "Amount" }));
+  },
+};
+
+// 6wz1.114 (T2-b): a field reads 16 px under lg at every root preset, so iOS Safari does not zoom
+// on focus, and text-sm of the root from lg.
+const fieldTexts = (
+  <div className="flex flex-col gap-4">
+    <Input aria-label="Name" />
+    <InputGroup>
+      <InputGroupInput aria-label="Amount" />
+    </InputGroup>
+    <Textarea aria-label="Note" />
+    <DatePicker
+      aria-label="Due date"
+      pickLabel="Choose the due date"
+      value=""
+      onValueChange={() => {}}
+    />
+  </div>
+);
+
+const fieldFontSizes = (canvas: { getByRole: typeof screen.getByRole }) =>
+  ["Name", "Amount", "Note", "Due date"].map(
+    (name) => getComputedStyle(canvas.getByRole("textbox", { name })).fontSize
+  );
+
+export const PhoneFieldText: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  // The Compact preset: a root that follows it would read 14 px.
+  beforeEach: () => {
+    document.documentElement.style.fontSize = "14px";
+
+    return () => {
+      document.documentElement.style.fontSize = "";
+    };
+  },
+  render: () => fieldTexts,
+  play: async ({ canvas }) => {
+    await expect(fieldFontSizes(canvas)).toEqual([
+      "16px",
+      "16px",
+      "16px",
+      "16px",
+    ]);
+  },
+};
+
+export const DesktopFieldText: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: () => fieldTexts,
+  play: async ({ canvas }) => {
+    await expect(fieldFontSizes(canvas)).toEqual([
+      "13.125px",
+      "13.125px",
+      "13.125px",
+      "13.125px",
+    ]);
   },
 };
 

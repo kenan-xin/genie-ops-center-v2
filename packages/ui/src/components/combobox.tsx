@@ -7,7 +7,12 @@ import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
 import { ChevronDownIcon } from "lucide-react";
 
-import { controlHeights, focusRing } from "../theme/tokens.ts";
+import {
+  controlHeights,
+  focusRing,
+  rowHeight,
+  touchAreas,
+} from "../theme/tokens.ts";
 import { Input } from "./input.tsx";
 
 const Combobox = ComboboxPrimitive.Root;
@@ -45,6 +50,7 @@ function ComboboxTrigger({
       className={cn(
         "flex w-full items-center justify-between gap-2 rounded-lg border px-3 text-sm whitespace-nowrap motion-safe:transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50",
         controlHeights.md,
+        touchAreas.md,
         variant === "filter-set"
           ? "border-primary/40 bg-primary/8 font-semibold text-primary dark:text-brand-on-dark"
           : variant === "filter"
@@ -112,7 +118,8 @@ function ComboboxItem({ className, ...props }: ComboboxPrimitive.Item.Props) {
       data-slot="combobox-item"
       className={cn(
         // The same 44 px row and --border highlight as SelectItem (DR-02).
-        "relative flex min-h-11 w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-sm text-foreground select-none data-highlighted:bg-border data-disabled:pointer-events-none data-disabled:opacity-50 lg:min-h-10",
+        "relative flex w-full cursor-default items-center gap-2 rounded-md px-2 py-1 text-sm text-foreground select-none data-highlighted:bg-border data-disabled:pointer-events-none data-disabled:opacity-50",
+        rowHeight,
         focusRing,
         className
       )}

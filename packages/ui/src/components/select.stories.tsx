@@ -164,6 +164,33 @@ export const Dark: Story = {
   },
 };
 
+/**
+ * 6wz1.114 (T2-c): under lg a tap 1.5 px above the md trigger still opens the list, and one
+ * below reaches it too, which a bordered trigger 2 px short of 44 px misses.
+ */
+export const TriggerTouchAreaOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const trigger = canvas.getByRole("combobox", { name: "Role" });
+    const area = trigger.getBoundingClientRect();
+
+    const tapped = document.elementFromPoint(
+      area.left + area.width / 2,
+      area.top - 1.5
+    );
+
+    await expect(tapped).toBe(trigger);
+    await expect(
+      document.elementFromPoint(area.left + area.width / 2, area.bottom + 1.5)
+    ).toBe(trigger);
+
+    if (tapped === null) return;
+
+    await userEvent.click(tapped);
+    await waitFor(() => expect(screen.getByRole("listbox")).toBeVisible());
+  },
+};
+
 /** 6wz1.97: the open list repeats the trigger's aria-labelledby name. */
 export const NamesTheOpenList: Story = {
   play: async ({ canvas }) => {

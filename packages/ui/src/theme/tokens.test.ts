@@ -133,9 +133,11 @@ describe("the control heights against tokens.md, Control heights", () => {
 
   it("reaches a 44 px touch area from each size, under the control's own content", () => {
     expect(touchAreaPx).toBe(44);
+    const area = step(touchAreaPx);
+
     expect(touchAreas).toEqual({
-      sm: `relative isolate after:absolute after:-inset-${inset(sm)} after:-z-10`,
-      md: `relative isolate max-lg:after:absolute max-lg:after:-inset-${inset(md.phone)} max-lg:after:-z-10`,
+      sm: `relative isolate after:absolute after:top-1/2 after:left-1/2 after:-z-10 after:size-full after:min-h-${area} after:min-w-${area} after:-translate-1/2`,
+      md: `relative isolate max-lg:after:absolute max-lg:after:top-1/2 max-lg:after:left-1/2 max-lg:after:-z-10 max-lg:after:size-full max-lg:after:min-h-${area} max-lg:after:min-w-${area} max-lg:after:-translate-1/2`,
     });
     expect(touchAreaY).toBe(
       `relative isolate max-lg:before:absolute max-lg:before:inset-x-0 max-lg:before:-inset-y-${inset(md.phone)} max-lg:before:-z-10`

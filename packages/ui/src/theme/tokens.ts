@@ -136,11 +136,13 @@ export const iconControlSizes = {
 
 /**
  * 6wz1.114: an invisible box that reaches 44 px around a smaller control, drawn under its own
- * content (`isolate`, `-z-10`), so a tap on a native field inside still reaches the field.
+ * content (`isolate`, `-z-10`), so a tap on a native field inside still reaches the field. It is
+ * centered at 44 px minimum, not set by negative insets, because insets count from inside the
+ * border and leave a bordered control 2 px short.
  */
 export const touchAreas = {
-  sm: "relative isolate after:absolute after:-inset-1.5 after:-z-10",
-  md: "relative isolate max-lg:after:absolute max-lg:after:-inset-0.5 max-lg:after:-z-10",
+  sm: "relative isolate after:absolute after:top-1/2 after:left-1/2 after:-z-10 after:size-full after:min-h-11 after:min-w-11 after:-translate-1/2",
+  md: "relative isolate max-lg:after:absolute max-lg:after:top-1/2 max-lg:after:left-1/2 max-lg:after:-z-10 max-lg:after:size-full max-lg:after:min-h-11 max-lg:after:min-w-11 max-lg:after:-translate-1/2",
 } as const;
 
 /** 6wz1.114: for a control flush beside its neighbors (a tab, a joined button): up and down only. */
