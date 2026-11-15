@@ -29,4 +29,4 @@ Design rounds and the core section each one serves. The rounds carry no numberin
 | `shell` | Section 3 |
 | `design-system/tokens.md` | Section 3 |
 
-`history/` holds the review and handover records of past rounds. Each starts with a line that says it is a record and not current. `research/` holds the evidence a decision cites.
+`history/` holds the review and handover records of past rounds. Each starts with a line that says it is a record and not current. `research/` holds the evidence a decision cites. `audits/` holds the design fidelity audits of the build, one file per audit, with each class of drift and where it goes.
