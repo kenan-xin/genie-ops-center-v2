@@ -50,7 +50,7 @@
   "pages": {
     "access": {
       "title": "Access",
-      "description": "Choose a group or a person. Then give them modules and pick the role they hold in each.",
+      "description": "Choose a group or a person. Then give them modules and pick a role in each.",
       "overviewDescription": "Who reaches which module, with which role, and how it is assigned.",
       "notSaved": "The access changes were not saved."
     },
