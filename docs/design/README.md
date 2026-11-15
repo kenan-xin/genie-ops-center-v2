@@ -4,7 +4,7 @@ Delivered by the design owner: the fixed token layer, the shell, one design per 
 
 What belongs here: what only the design owner can decide. That is the token layer, the shell, each screen's layout, states, and copy, and the sample data that renders them. What the product is, what it stores, and what a module may do lives in `../core/`, `../architecture/`, and `../modules/`. A design file cites those files. It never restates them. A limit, a status list, or a column has one home, and a design file names that home.
 
-Naming: a `user` row is shown as "person" in every screen. The product is "Genie Ops Center", never bare "Genie".
+Naming: the words on screen, with the banned words and their allowed exceptions, live in `design-system/terminology.md`. For example, a `user` row is shown as "person", and the product is "Genie Ops Center", never bare "Genie".
 
 Sample values: `blue-600` is the default value of the shadcn `--primary` variable that each tenant's Branding fills per request. The sample colors in this tree are reference values of the fixed layer, not brand choices; creative identity is the tenant's contribution, and the fixed layer carries none.
 

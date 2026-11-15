@@ -346,6 +346,7 @@ For now the sign-in page and the emails carry text and color branding only. They
 - **Do** route every destructive path through the shared ConfirmDialog with Cancel focused by default.
 - **Do** turn every table into a card list under 768px — one card per row, actions in an overflow menu, no horizontal scrolling.
 - **Do** use the loading state for any action that leaves the page or waits on the network.
+- **Do** write every label and message with the words of `docs/design/design-system/terminology.md`; a banned word fails the scan.
 
 ### Don't:
 
