@@ -18,7 +18,8 @@ set -eu
 root=$(cd "$(dirname "$0")/.." && pwd)
 expected_context=desktop-linux
 max_cache_bytes=20000000000
-ports="3000 5913"
+
+. "$root/scripts/gate-preflight-lib.sh"
 
 fail() {
   echo "gate-preflight: $1: $2"
@@ -66,34 +67,14 @@ if [ "${size:-0}" -gt "$max_cache_bytes" ]; then
     fail "build cache is still $size bytes after a prune" "free Docker disk space by hand"
 fi
 
-# 3. No other gate or Nx e2e run. The launch command line of this script can
-# itself contain gate:merge, so this process and its ancestors do not count.
-ancestors=" "
-pid=$$
-while [ "$pid" -gt 1 ] 2> /dev/null; do
-  ancestors="$ancestors$pid "
-  pid=$(ps -o ppid= -p "$pid" | tr -d ' ')
-done
-others=$(pgrep -f 'gate:merge|ci:develop|ci:pr|test:e2e' || true)
-for other in $others; do
-  case "$ancestors" in
-    *" $other "*) ;;
-    *) fail "another gate or e2e run is active (pid $other)" "wait until it ends" ;;
-  esac
+# 3. No other gate or Nx e2e run (other_gate_runs in gate-preflight-lib.sh).
+for other in $(other_gate_runs); do
+  fail "another gate or e2e run is active (pid $other)" "wait until it ends"
 done
 
-# 4. Ports free on 127.0.0.1 and [::1], also through a wildcard listener.
-listeners() {
-  if command -v ss > /dev/null 2>&1; then
-    ss -Hltn | awk '{print $4}'
-  else
-    lsof -nP -iTCP -sTCP:LISTEN | awk 'NR > 1 {print $9}'
-  fi
-}
-for port in $ports; do
-  if listeners | grep -Eq "^(127\.0\.0\.1|\[::1\]|0\.0\.0\.0|\[::\]|\*):$port\$"; then
-    fail "port $port is in use" "stop the server on it, or wait for the run that owns it"
-  fi
+# 4. Ports free (busy_ports in gate-preflight-lib.sh).
+for port in $(busy_ports); do
+  fail "port $port is in use" "stop the server on it, or wait for the run that owns it"
 done
 
 # 5. Push access, so that a passed gate can be pushed.

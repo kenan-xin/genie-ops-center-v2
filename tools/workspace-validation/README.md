@@ -8,7 +8,8 @@ The checks that read across the whole workspace rather than one package: the
 affected-graph assertions, the CI workflow wiring, the clean-checkout registry
 generation, the generator entrypoint resolution, the repository hygiene rules,
 the lint scope, the token scan of Spec 3 R-4 (no arbitrary pixel text size and
-no `next/font` in the trees that ship), and the `validate` target's own input list.
+no `next/font` in the trees that ship), the `validate` target's own input list,
+and the tests of the gate preflight helpers in `scripts/gate-preflight-lib.sh`.
 
 ## What must not go here
 
