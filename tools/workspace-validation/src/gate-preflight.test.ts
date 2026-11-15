@@ -1,6 +1,12 @@
 import { type ChildProcess, execFileSync, spawn } from "node:child_process";
 import { once } from "node:events";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { type AddressInfo, createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -115,6 +121,28 @@ describe("other_gate_runs", () => {
     const pid = await plant("node", [driver]);
 
     expect(runLib("other_gate_runs")).toContain(pid);
+  });
+
+  it("reports pnpm running a gate script before its first Nx stage", async () => {
+    const folder = mkdtempSync(join(tmpdir(), "gate-preflight-"));
+    folders.push(folder);
+    const pnpm = join(folder, "pnpm");
+    symlinkSync(process.execPath, pnpm);
+
+    const pnpmCjs = join(folder, "pnpm.cjs");
+    writeFileSync(pnpmCjs, "setTimeout(() => {}, 60000);\n");
+
+    const native = await plant(pnpm, [
+      "-e",
+      "setTimeout(() => {}, 60000)",
+      "ci:develop",
+    ]);
+
+    const viaNode = await plant("node", [pnpmCjs, "run", "gate:merge"]);
+
+    expect(runLib("other_gate_runs")).toEqual(
+      expect.arrayContaining([native, viaNode])
+    );
   });
 });
 

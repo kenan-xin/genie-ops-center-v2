@@ -7,7 +7,8 @@
 # gate driver scripts/gate-merge.mjs, whose arguments name none), its
 # executable is node or pnpm, and its first argument is an Nx, pnpm, gate or
 # Playwright entry, so a polling shell or an agent CLI whose prompt names a
-# target never counts. The executable is read from the arguments, because
+# target never counts. pnpm (native or pnpm.cjs) counts when one argument is
+# exactly a gate script name. The executable is read from the arguments, because
 # ps -o comm= prints node-MainThread for a node process.
 other_gate_runs() {
   ancestors=" "
@@ -21,6 +22,11 @@ other_gate_runs() {
       exe = $2
       sub(/.*\//, "", exe)
       if (exe != "node" && exe != "pnpm") next
+      if (index(skip, " " $1 " ")) next
+      # pnpm running a gate script counts before its first Nx stage starts.
+      if (exe == "pnpm" || $3 ~ /\/pnpm(\.cjs)?$/)
+        for (i = 3; i <= NF; i++)
+          if ($i ~ /^(gate:merge|ci:develop|ci:pr|test:e2e[^ ]*)$/) { print $1; next }
       if ($3 !~ /(\/nx\.js|\/bin\/nx|\/pnpm\.cjs|\/pnpm|scripts\/gate-merge\.mjs)$/ && $3 !~ /\/playwright/) next
       if (index(skip, " " $1 " ")) next
       print $1
