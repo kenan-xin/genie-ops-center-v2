@@ -206,7 +206,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "Spec 7 R-42b: the start of a surface run from a record page (S7-48)",
     cases: [
       "the start of a surface run from a record page a start saves the record, the session with the description and a queued run",
-      "the start of a surface run from a record page a second start while the first run is queued is refused and saves nothing",
+      "the start of a surface run from a record page a fourth start while 3 runs are queued is refused and saves nothing",
       "the start of a surface run from a record page with AI off a start is refused ai-off and saves nothing",
       "the start of a surface run from a record page a surface the person may not start is refused and saves nothing",
       "the start of a surface run from a record page a createRecord that throws saves no record, no session and no run",

@@ -31,8 +31,8 @@ export function startText(description: string): string {
 /**
  * Before any write: `forbidden` without agent access, `ai-off` while models are off, `not-found`
  * for a surface that is not listed or takes no new record, `forbidden` without the surface's
- * instruction key. In the transaction: the module's refusal, or `agent-run-active` while another
- * of the person's runs builds.
+ * instruction key. In the transaction: the module's refusal, or `agent-run-limit` while the person
+ * already has 3 runs (DEC-57).
  */
 export async function startRecordRun(
   ctx: ModuleRequestContext,
@@ -99,6 +99,6 @@ export async function startRecordRun(
   return {
     sessionId,
     recordId,
-    address: recordAddress(surface.recordPage, recordId),
+    address: recordAddress(surface.recordPage, recordId, sessionId),
   };
 }

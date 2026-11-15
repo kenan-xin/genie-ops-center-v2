@@ -173,7 +173,7 @@ describe("the start of a surface run from a record page", () => {
       started: {
         sessionId: sessions[0]?.id,
         recordId: record?.id,
-        address: `/placeholder/${record?.id}`,
+        address: `/placeholder/${record?.id}?chat=${sessions[0]?.id}`,
       },
       sessions: [
         {
@@ -199,23 +199,23 @@ describe("the start of a surface run from a record page", () => {
     ]);
   });
 
-  it("a second start while the first run is queued is refused and saves nothing", async () => {
+  it("a fourth start while 3 runs are queued is refused and saves nothing", async () => {
     const ctx = await person();
 
-    await startRecordRun(ctx, {
-      surface: "placeholder",
-      description: "First review",
-    });
+    for (const description of ["First", "Second", "Third"]) {
+      // oxlint-disable-next-line no-await-in-loop -- each start counts the runs before it.
+      await startRecordRun(ctx, { surface: "placeholder", description });
+    }
 
-    const before = await savedBy(ctx, "Second review");
+    const before = await savedBy(ctx, "Fourth review");
 
     await expect(
       startRecordRun(ctx, {
         surface: "placeholder",
-        description: "Second review",
+        description: "Fourth review",
       })
-    ).rejects.toMatchObject({ code: "agent-run-active" });
-    expect(await savedBy(ctx, "Second review")).toEqual(before);
+    ).rejects.toMatchObject({ code: "agent-run-limit" });
+    expect(await savedBy(ctx, "Fourth review")).toEqual(before);
   });
 
   it("with AI off a start is refused ai-off and saves nothing", async () => {

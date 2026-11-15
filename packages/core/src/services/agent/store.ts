@@ -419,7 +419,6 @@ export async function readOwnSessionDetail(
 export const AGENT_HISTORY_LIMIT = 200;
 
 export type AgentHistoryEntry = AgentSessionSummary & {
-  readonly run: AgentRunStatus | null;
   /** The run ended while the person had not opened the chat (R12). */
   readonly unseen: boolean;
   /** The surface's name; null on Ask or when the surface is not listed. */
