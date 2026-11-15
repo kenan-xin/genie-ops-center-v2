@@ -416,8 +416,8 @@ export async function setGroupLabel(
       targetId: input.groupId,
       summary:
         label === null
-          ? "Cleared a group display label"
-          : `Set the group display label to ${label}`,
+          ? "Cleared the name of a directory group"
+          : `Renamed a directory group to ${label}`,
       metadata: { displayLabel: label },
     });
   });
@@ -453,7 +453,7 @@ export async function createLocalGroup(
       actorUserId: input.actorUserId,
       targetType: "group",
       targetId: row.id,
-      summary: `Created the local group ${name}`,
+      summary: `Created the group ${name}`,
       metadata: { name },
     });
 
@@ -496,7 +496,7 @@ export async function updateLocalGroup(
       actorUserId: input.actorUserId,
       targetType: "group",
       targetId: input.groupId,
-      summary: `Updated the local group ${name}`,
+      summary: `Updated the group ${name}`,
       metadata: { name },
     });
   });
@@ -534,7 +534,7 @@ export async function deleteLocalGroup(
       actorUserId: input.actorUserId,
       targetType: "group",
       targetId: input.groupId,
-      summary: "Deleted a local group with its members and assignments",
+      summary: "Deleted a group with its members and assignments",
     });
   });
 }
@@ -575,7 +575,7 @@ export async function addLocalGroupMembers(
       actorUserId: input.actorUserId,
       targetType: "group",
       targetId: input.groupId,
-      summary: `Added ${userIds.length} member(s) to a local group`,
+      summary: `Added ${userIds.length} member(s) to a group`,
       metadata: { userIds },
     });
   });
@@ -622,7 +622,7 @@ export async function removeLocalGroupMembers(
       actorUserId: input.actorUserId,
       targetType: "group",
       targetId: input.groupId,
-      summary: `Removed ${userIds.length} member(s) from a local group`,
+      summary: `Removed ${userIds.length} member(s) from a group`,
       metadata: { userIds },
     });
   });
@@ -651,7 +651,7 @@ export async function removeAllLocalGroupMembers(
       actorUserId: input.actorUserId,
       targetType: "group",
       targetId: input.groupId,
-      summary: "Removed every member from a local group",
+      summary: "Removed every member from a group",
     });
   });
 }

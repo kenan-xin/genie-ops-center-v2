@@ -37,7 +37,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Groups directory and inspector. A directory group's value and members come from the identity provider; only its label is editable. Archiving keeps the assignments and stops them granting.",
+          "The Groups directory and inspector. A directory group's value and members come from the identity provider; only its name can be changed. Archiving keeps the assignments and stops them granting.",
       },
     },
     a11y: { test: "error" },
@@ -65,7 +65,7 @@ const meta = {
     onDeleteGroup,
     onDeleteLocalGroup,
     onCreateLocalGroup,
-    labelHint: "Add a display label",
+    labelHint: "Add a name",
   } satisfies GroupsScreenProps,
 } satisfies Meta<typeof GroupsScreen>;
 
@@ -77,14 +77,14 @@ type Story = StoryObj<typeof meta>;
 export const HelpIsIconOnly: Story = {
   play: async ({ canvas }) => {
     const help = canvas.getByRole("button", {
-      name: "Directory and local groups",
+      name: "Groups and directory groups",
     });
 
     await expect(help.textContent).toBe("");
   },
 };
 
-/** G26: the Sync column reads relative, "Stale · <when>", and "Managed in Genie" (mockup). */
+/** G26: the Sync column reads relative, "Missing from directory · <when>", and is empty for a group made here. */
 export const SyncColumnIsRelative: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Groups" }));
@@ -94,7 +94,11 @@ export const SyncColumnIsRelative: Story = {
     ).toBeVisible();
     await expect(table.getByText("1 h ago")).toBeVisible();
     await expect(table.getByText("1 Jan 2026")).toBeVisible();
-    await expect(table.getByText("Managed in Genie")).toBeVisible();
+    await expect(
+      within(table.getByRole("row", { name: /Operations/ }))
+        .getAllByRole("cell")
+        .at(-1)
+    ).toBeEmptyDOMElement();
   },
 };
 
@@ -111,9 +115,9 @@ export const StaleGroupWarns: Story = {
       sheet.getByText("This group no longer arrives in sign-in tokens.")
     ).toBeVisible();
     await expect(
-      sheet.getByText(/Last seen 1 Jan 2026\..*the 1 person last seen in it/)
+      sheet.getByText(/Last synced 1 Jan 2026\..*the 1 person last seen in it/)
     ).toBeVisible();
-    await expect(sheet.getByText("Stale")).toBeVisible();
+    await expect(sheet.getByText("Missing from directory")).toBeVisible();
   },
 };
 
@@ -132,8 +136,8 @@ export const Default: Story = {
     const table = within(canvas.getByRole("table", { name: "Groups" }));
 
     await expect(table.getByText("Finance managers")).toBeInTheDocument();
-    await expect(table.getByText("Not seen yet")).toBeInTheDocument();
-    await expect(table.getByText("Stale")).toBeInTheDocument();
+    await expect(table.getByText("Not synced yet")).toBeInTheDocument();
+    await expect(table.getByText("Missing from directory")).toBeInTheDocument();
     await expect(table.getByText("Operations")).toBeInTheDocument();
 
     // The archived group stays behind the Show archived toggle.
@@ -174,7 +178,7 @@ export const UnlabelledGroupIdAsksForALabel: Story = {
     await waitFor(() => expect(tip).toBeVisible());
     // Only the unlabelled id shows its short form; a label or a readable name shows as it is.
     await expect(table.getByText("39545f73…")).toBeVisible();
-    await expect(canvas.queryAllByText("Add a display label")).toHaveLength(0);
+    await expect(canvas.queryAllByText("Add a name")).toHaveLength(0);
   },
 };
 
@@ -200,10 +204,10 @@ export const UnlabelledGroupAsksForALabelInTheInspector: Story = {
     );
 
     await userEvent.click(
-      inspector.getByRole("button", { name: "Add a display label" })
+      inspector.getByRole("button", { name: "Add a name" })
     );
 
-    await expect(inspector.getByLabelText("Display label")).toBeVisible();
+    await expect(inspector.getByLabelText("Name")).toBeVisible();
   },
 };
 
@@ -243,7 +247,7 @@ export const PhoneSearchTakesTheRow: Story = {
     const field = search.getBoundingClientRect();
 
     const help = canvas
-      .getByRole("button", { name: "Directory and local groups" })
+      .getByRole("button", { name: "Groups and directory groups" })
       .getBoundingClientRect();
 
     await expect(help.top + help.height / 2).toBeGreaterThan(field.top);
@@ -287,7 +291,7 @@ export const Phone: Story = {
 
     await expect(bar).not.toBeNull();
     await expect(
-      within(bar!).getByRole("button", { name: "New local group" })
+      within(bar!).getByRole("button", { name: "New group" })
     ).toBeVisible();
     await expect(
       canvas.queryByRole("button", { name: "Add directory group" })
@@ -319,7 +323,9 @@ export const Phone: Story = {
         name.getBoundingClientRect().top - kind.getBoundingClientRect().top
       )
     ).toBeLessThan(6);
-    await expect(first.getByText(/2 members · 3 roles · synced/)).toBeVisible();
+    await expect(
+      first.getByText(/2 members · 3 roles · last synced/)
+    ).toBeVisible();
 
     // One member and one role read in the singular.
     await expect(list.getByText(/1 member · 0 roles/)).toBeInTheDocument();
@@ -401,10 +407,7 @@ export const AddDirectoryGroup: Story = {
       dialog.getByLabelText("Claim value"),
       "0a1b-object-id"
     );
-    await userEvent.type(
-      dialog.getByLabelText("Display label"),
-      "Readable name"
-    );
+    await userEvent.type(dialog.getByLabelText("Name"), "Readable name");
     await userEvent.click(dialog.getByRole("button", { name: "Add group" }));
 
     expect(onAddDirectoryGroup).toHaveBeenCalledWith(
@@ -444,23 +447,21 @@ export const AddDirectoryGroupRefusedStaysOpen: Story = {
 export const NewLocalGroupRefusedStaysOpen: Story = {
   args: {
     onCreateLocalGroup: fn(() =>
-      Promise.reject(new Error("The local group was not created."))
+      Promise.reject(new Error("The group was not created."))
     ),
   },
   play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("button", { name: "New local group" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "New group" }));
 
     const dialog = within(
-      await screen.findByRole("dialog", { name: "New local group" })
+      await screen.findByRole("dialog", { name: "New group" })
     );
 
     await userEvent.type(dialog.getByLabelText("Name"), "Night shift");
     await userEvent.click(dialog.getByRole("button", { name: "Create group" }));
 
     await expect(await dialog.findByRole("alert")).toHaveTextContent(
-      "The local group was not created."
+      "The group was not created."
     );
     await expect(dialog.getByLabelText("Name")).toHaveValue("Night shift");
   },
@@ -478,7 +479,7 @@ export const LabelShowsAndValueStaysInTheInspector: Story = {
 
     // The label names the header; the raw value stays whole after the relative sync (R-24c, G32).
     await expect(
-      inspector.getByText("Synced 1 h ago · 0a1b2c3d-ob-id")
+      inspector.getByText("Last synced 1 h ago · 0a1b2c3d-ob-id")
     ).toBeInTheDocument();
   },
 };
@@ -583,7 +584,7 @@ export const LocalGroupDeleteConfirmNamesBothCounts: Story = {
 
     // One role reads in the singular.
     await expect(
-      inspector.getByText("1 role through this group")
+      inspector.getByText("1 role assigned via this group")
     ).toBeInTheDocument();
     await userEvent.click(
       inspector.getByRole("button", { name: "Delete group" })
@@ -768,8 +769,12 @@ export const RemovesOneMemberFromTheGroup: Story = {
       grace.getByText("grace@example.invalid").getBoundingClientRect().top
     );
 
+    // Each row's button names its member (WCAG 2.4.6), so two members give two names.
+    await expect(
+      members.getByRole("button", { name: "Remove Ada Lovelace from group" })
+    ).toBeVisible();
     await userEvent.click(
-      grace.getByRole("button", { name: "Remove from group" })
+      grace.getByRole("button", { name: "Remove Grace Hopper from group" })
     );
 
     // The capture confirms one removal first: nothing is written until the confirm agrees.
@@ -816,10 +821,13 @@ export const AccessCardIsNeverADeadEnd: Story = {
     );
 
     await expect(
-      inspector.getByText("1 role through this group")
+      inspector.getByText("1 role assigned via this group")
     ).toBeInTheDocument();
 
-    await userEvent.click(inspector.getByRole("tab", { name: /^Access/ }));
+    await userEvent.click(inspector.getByRole("tab", { name: /^Roles/ }));
+    await expect(
+      inspector.getByRole("heading", { name: "Assigned roles (1)" })
+    ).toBeVisible();
     await expect(inspector.getByText("Invoices · Viewer")).toBeVisible();
     await expect(
       inspector.getByText("Direct · added by Alex Morgan")
@@ -849,7 +857,7 @@ export const AccessCardWithoutTheKey: Story = {
     );
 
     await expect(
-      inspector.getByText("1 role through this group")
+      inspector.getByText("1 role assigned via this group")
     ).toBeInTheDocument();
     await expect(
       inspector.queryByRole("button", { name: "Open in Access" })
@@ -857,7 +865,6 @@ export const AccessCardWithoutTheKey: Story = {
     await expect(
       inspector.queryByRole("button", { name: "See roles" })
     ).toBeNull();
-    await expect(inspector.queryByRole("tab", { name: /^Access/ })).toBeNull();
     await expect(inspector.queryByRole("tab", { name: /^Roles/ })).toBeNull();
   },
 };
@@ -879,7 +886,7 @@ export const ArchivedGroupOffersNoOpenInAccess: Story = {
       await screen.findByRole("dialog", { name: "Ex-contractors" })
     );
 
-    await expect(inspector.getByRole("tab", { name: /^Access/ })).toBeVisible();
+    await expect(inspector.getByRole("tab", { name: /^Roles/ })).toBeVisible();
     await expect(
       inspector.queryByRole("button", { name: "Open in Access" })
     ).toBeNull();
@@ -902,9 +909,8 @@ export const LocalHeaderNamesTheKindOnce: Story = {
         title.getBoundingClientRect().top - pill.getBoundingClientRect().top
       )
     ).toBeLessThan(8);
-    await expect(inspector.queryByText(/Local group/)).toBeNull();
 
-    const card = inspector.getByText("1 role through this group");
+    const card = inspector.getByText("1 role assigned via this group");
 
     const help = inspector.getByRole("button", {
       name: "How group access works",

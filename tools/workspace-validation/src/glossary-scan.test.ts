@@ -30,19 +30,6 @@ const CUSTOMER_APP = /^customers\/[^/]+\/app\//;
  * these strings and lower their rows; the ledger goes once it is empty.
  */
 const PENDING_SWEEP = {
-  "apps/genie/src/messages/en.json": {
-    "local groups": 1,
-    "display label": 1,
-    "local group": 1,
-    "/\\bGenie\\b(?! Ops Center)/": 1,
-    "disabled": 1,
-  },
-  "packages/core/src/features/account/account-page.tsx": {
-    "/\\bGenie\\b(?! Ops Center)/": 1,
-    "you hold": 2,
-    "what you hold": 1,
-    "hold no roles": 1,
-  },
   "packages/core/src/features/agent/agent-button.tsx": {
     agent: 3,
   },
@@ -80,34 +67,8 @@ const PENDING_SWEEP = {
     "path": 1,
     "clear all": 1,
   },
-  "packages/core/src/features/break-glass/break-glass-account.tsx": {
-    "/\\bGenie\\b(?! Ops Center)/": 1,
-  },
   "packages/core/src/features/categories/assign-items.tsx": {
     "who can open it": 1,
-  },
-  "packages/core/src/features/groups/groups-screen.tsx": {
-    "not seen yet": 2,
-    "stale": 2,
-    "/\\bGenie\\b(?! Ops Center)/": 1,
-    "never synced": 1,
-    "local group": 4,
-    "holds no role": 1,
-    "display label": 2,
-    "edit label": 1,
-    "local groups": 1,
-  },
-  "packages/core/src/features/people/people-screen.tsx": {
-    "disabled": 3,
-    "disable": 5,
-    "remove person": 1,
-    "holds no role": 1,
-    "enable": 2,
-    "re-enable": 2,
-    "local group": 1,
-    "local groups": 1,
-    "clear all": 1,
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 2,
   },
   "packages/core/src/features/settings/ai-sections.tsx": {
     "remove key": 2,
@@ -120,10 +81,6 @@ const PENDING_SWEEP = {
   },
   "packages/core/src/lib/module-contract/validate.ts": {
     "system role": 1,
-  },
-  "packages/core/src/services/administrators/index.ts": {
-    enable: 1,
-    disabled: 1,
   },
   "packages/core/src/services/agent/brief.ts": {
     artifact: 1,
@@ -140,18 +97,8 @@ const PENDING_SWEEP = {
   "packages/core/src/services/agent/store.ts": {
     agent: 1,
   },
-  "packages/core/src/services/groups/index.ts": {
-    "display label": 2,
-    "local group": 6,
-  },
   "packages/core/src/services/mailer/templates.tsx": {
     enabled: 1,
-  },
-  "packages/core/src/services/people/index.ts": {
-    "/\\bGenie\\b(?! Ops Center)/": 1,
-    "disabled": 1,
-    "enabled": 1,
-    "re-enabled": 1,
   },
   "packages/modules/analytics/src/agent-surface.ts": {
     agent: 1,

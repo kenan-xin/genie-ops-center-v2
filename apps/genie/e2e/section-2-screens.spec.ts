@@ -95,7 +95,7 @@ test("a disabled person is refused after the realm authenticated them (R-11, R-1
 
   expect(new URL(page.url()).searchParams.get("error")).toBe("access_disabled");
   await expect(page.getByTestId("sign-in-banner")).toHaveText(
-    "Access for this account is disabled."
+    "This account cannot sign in. Ask your administrator."
   );
 
   expect(

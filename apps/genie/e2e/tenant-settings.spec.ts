@@ -143,7 +143,7 @@ test("changes onboarding mode, local accounts and idle minutes, one core:setting
         await expect(local).toBeDisabled();
         await expect(
           page.getByText(
-            "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm."
+            "The tenant realm is brokered only. Ask your Genie Ops Center operator to add local accounts to the realm."
           )
         ).toBeVisible();
         await expectNoAxeViolations(page, "Sign-in & accounts");

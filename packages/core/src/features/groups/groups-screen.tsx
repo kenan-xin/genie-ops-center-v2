@@ -98,12 +98,12 @@ function syncPill(group: Group) {
   if (group.source !== "idp") return null;
 
   if (group.lastSeenAt === null)
-    return <StatusPill tone="neutral">Not seen yet</StatusPill>;
+    return <StatusPill tone="neutral">Not synced yet</StatusPill>;
 
   if (group.stale) {
     return (
       <StatusPill tone="warning">
-        <WarningIcon className="mr-1 size-3" /> Stale
+        <WarningIcon className="mr-1 size-3" /> Missing from directory
       </StatusPill>
     );
   }
@@ -111,12 +111,9 @@ function syncPill(group: Group) {
   return null;
 }
 
-/** The table's Sync column (mockup): "1 h ago", "Stale · 26 d ago", or "Managed in Genie". */
+/** The table's Sync column: "1 h ago", "Missing from directory · 26 d ago", or empty for a group made here. */
 function syncCell(group: Group, viewer: GroupsViewer) {
-  if (group.source !== "idp" && !group.archived)
-    return (
-      <span className="text-xs text-muted-foreground">Managed in Genie</span>
-    );
+  if (group.source !== "idp" && !group.archived) return null;
 
   const pill = syncPill(group);
 
@@ -239,8 +236,8 @@ export function GroupInspector(
                 <p className="text-xs text-muted-foreground wrap-anywhere">
                   {/* The value stays whole, so it can be matched to the provider (R-24c). */}
                   {group.lastSeenAt === null
-                    ? "Never synced"
-                    : `Synced ${ago(group.lastSeenAt, viewer)}`}{" "}
+                    ? "Not synced yet"
+                    : `Last synced ${ago(group.lastSeenAt, viewer)}`}{" "}
                   · {group.externalId ?? ""}
                 </p>
               ) : null}
@@ -265,7 +262,7 @@ export function GroupInspector(
               <p className="mt-0.5">
                 {group.lastSeenAt === null
                   ? ""
-                  : `Last seen ${ago(group.lastSeenAt, viewer)}. `}
+                  : `Last synced ${ago(group.lastSeenAt, viewer)}. `}
                 It was renamed or removed in the identity provider. Its roles
                 still apply to the {group.memberCount}{" "}
                 {group.memberCount === 1 ? "person" : "people"} last seen in it.
@@ -288,8 +285,8 @@ export function GroupInspector(
                 </p>
                 <p className="text-xs text-muted-foreground">
                   {group.assignmentCount}{" "}
-                  {group.assignmentCount === 1 ? "role" : "roles"} through this
-                  group
+                  {group.assignmentCount === 1 ? "role" : "roles"} assigned via
+                  this group
                 </p>
               </div>
             </div>
@@ -305,7 +302,7 @@ export function GroupInspector(
             is not archived. Archiving keeps the assignments and stops them
             granting.{" "}
             {group.source === "local"
-              ? "A local group is managed here: you choose its members."
+              ? "You choose the members of this group here."
               : "A directory group's members come from the identity provider."}
           </HelpDisclosure>
 
@@ -322,7 +319,7 @@ export function GroupInspector(
               </TabsTrigger>
               {props.access === undefined ? null : (
                 <TabsTrigger value="access">
-                  Access{" "}
+                  Roles{" "}
                   {props.access.paths === undefined ? null : (
                     <LabelPill>{props.access.paths.length}</LabelPill>
                   )}
@@ -418,6 +415,7 @@ export function GroupInspector(
                           <Button
                             variant="ghost"
                             size="sm"
+                            aria-label={`Remove ${member.name} from group`}
                             disabled={blocked}
                             title={blocked ? LAST_ADMIN_REASON : undefined}
                             loading={props.pending}
@@ -426,11 +424,11 @@ export function GroupInspector(
                               setConfirm("removeOne");
                             }}
                           >
-                            Remove from group
+                            Remove
                           </Button>
                         ) : member.syncedAt === null ? null : (
                           <span className="shrink-0 text-xs text-muted-foreground">
-                            synced {ago(member.syncedAt, viewer)}
+                            last synced {ago(member.syncedAt, viewer)}
                           </span>
                         )}
                       </li>
@@ -442,10 +440,16 @@ export function GroupInspector(
 
             {props.access === undefined ? null : (
               <TabsContent value="access">
+                <h3 className="mb-2 text-sm font-semibold text-foreground">
+                  Assigned roles
+                  {props.access.paths === undefined
+                    ? ""
+                    : ` (${props.access.paths.length})`}
+                </h3>
                 <AccessPathList
                   {...props.access}
                   recipient={{ type: "group", id: group.id }}
-                  empty="This group holds no role yet."
+                  empty="No roles assigned yet."
                 />
               </TabsContent>
             )}
@@ -454,7 +458,7 @@ export function GroupInspector(
           {editing === "label" ? (
             <div className="rounded-lg border border-input p-3">
               <Field>
-                <FieldLabel htmlFor={labelId}>Display label</FieldLabel>
+                <FieldLabel htmlFor={labelId}>Name</FieldLabel>
                 <Input
                   id={labelId}
                   value={labelDraft}
@@ -551,7 +555,7 @@ export function GroupInspector(
           ) : (
             <>
               <Button variant="secondary" onClick={() => setEditing("label")}>
-                <PencilIcon /> Edit label
+                <PencilIcon /> Rename
               </Button>
               {group.lastSeenAt === null ? (
                 <Button
@@ -711,11 +715,11 @@ export function GroupsScreen(props: GroupsScreenProps) {
               </InputGroupText>
             </InputGroupAddon>
           </InputGroup>
-          <HelpDisclosure label="Directory and local groups" iconOnly>
+          <HelpDisclosure label="Groups and directory groups" iconOnly>
             A directory group&apos;s value and members come from the identity
-            provider; only its label is editable here. A group not seen yet can
-            be deleted. Both kinds carry roles. A role assigned to a group
-            reaches every member.
+            provider; only its name can be changed here. A directory group not
+            synced yet can be deleted. Both kinds carry roles. A role assigned
+            to a group reaches every member.
           </HelpDisclosure>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
@@ -742,7 +746,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
             loading={props.pending}
             onClick={() => setDialog("local")}
           >
-            <PlusIcon /> New local group
+            <PlusIcon /> New group
           </Button>
           {/* A phone keeps the filter line one row: the secondary action moves in here. */}
           <DropdownMenu>
@@ -862,18 +866,18 @@ export function GroupsScreen(props: GroupsScreenProps) {
                 `${group.memberCount} member${group.memberCount === 1 ? "" : "s"}`,
                 `${group.assignmentCount} role${group.assignmentCount === 1 ? "" : "s"}`,
                 ...(group.source === "idp" && group.lastSeenAt !== null
-                  ? [`synced ${ago(group.lastSeenAt, props.viewer)}`]
+                  ? [`last synced ${ago(group.lastSeenAt, props.viewer)}`]
                   : []),
               ],
             }}
-            footer="Directory groups arrive in the sign-in token and are refreshed at every sign-in. A group that stops arriving is marked stale and keeps its roles."
+            footer="Directory groups arrive in the sign-in token and are refreshed at every sign-in. A group that stops arriving shows Missing from directory and keeps its roles."
           />
         </div>
       )}
 
       <StickyActionBar>
         <Button loading={props.pending} onClick={() => setDialog("local")}>
-          <PlusIcon /> New local group
+          <PlusIcon /> New group
         </Button>
       </StickyActionBar>
 
@@ -907,7 +911,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
           onChange={setExternalId}
         />
         <TextField
-          label="Display label"
+          label="Name"
           hint="Optional. Shown in lists in place of the value."
           value={labelDraft}
           onChange={setLabelDraft}
@@ -916,7 +920,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
 
       <GroupFormDialog
         open={dialog === "local"}
-        title="New local group"
+        title="New group"
         submitLabel="Create group"
         submitDisabled={name.trim() === ""}
         failure={form.failure}

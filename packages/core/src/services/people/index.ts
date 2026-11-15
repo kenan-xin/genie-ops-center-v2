@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
@@ -8,7 +8,13 @@ import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { contextLoggerOf } from "../../lib/tenant-context/with-transaction.ts";
 import { withTransaction } from "../../lib/tenant-context/with-transaction.ts";
 import type { TenantTransaction } from "../../lib/tenant-context/with-transaction.ts";
-import { account, groupMember, session, user } from "../../schema.ts";
+import {
+  account,
+  auditEvent,
+  groupMember,
+  session,
+  user,
+} from "../../schema.ts";
 import { writeAdminAuditEvent, writeAuthAuditEvent } from "../audit/index.ts";
 import { describeUserAgent } from "../auth/user-agent.ts";
 import {
@@ -58,9 +64,14 @@ export type PersonRow = {
   readonly name: string;
   readonly email: string;
   readonly status: PersonStatus;
+  /**
+   * Read-side only: a `disabled` person whose latest suspend or deactivate audit row is the
+   * deactivate. Both writers store `disabled`, so the stored status cannot tell them apart.
+   */
+  readonly deactivated: boolean;
   /** R-51a: fixed at creation and read from the account's own provider row. */
   readonly accountType: AccountType;
-  /** Server-derived: the identity provider label, or "Genie (local password)". */
+  /** Server-derived: the identity provider label, or "Genie Ops Center (local password)". */
   readonly identitySource: string;
   readonly groups: readonly PersonGroupChipRow[];
   /** The number of role assignments the person holds, direct and through groups. */
@@ -123,9 +134,12 @@ export type AssignablePerson = {
 
 function identitySourceOf(accountType: AccountType): string {
   return accountType === "local"
-    ? "Genie (local password)"
+    ? "Genie Ops Center (local password)"
     : "External identity provider";
 }
+
+/** The two writers that ban a person; the latest one says which state the screen shows. */
+const BAN_ACTIONS = ["core:person_disabled", "core:person_removed"];
 
 function statusOf(status: string | null, banned: boolean): PersonStatus {
   if (banned) return "disabled";
@@ -147,6 +161,7 @@ type RawPerson = {
   readonly roleCount: number;
   readonly setPasswordSentAt: string | null;
   readonly invitationSentAt: string | null;
+  readonly lastBanAction: string | null;
 };
 
 /**
@@ -179,16 +194,23 @@ const PERSON_COLUMNS = `
   (select max(e.occurred_at)::text from audit_event e
     where e.action = 'core:set_password_sent' and e.target_id = u.id) as "setPasswordSentAt",
   (select max(e.occurred_at)::text from audit_event e
-    where e.action = 'core:invitation_sent' and e.target_id = u.id) as "invitationSentAt"`;
+    where e.action = 'core:invitation_sent' and e.target_id = u.id) as "invitationSentAt",
+  (select e.action from audit_event e
+    where e.action in ('core:person_disabled', 'core:person_removed') and e.target_id = u.id
+    order by e.occurred_at desc limit 1) as "lastBanAction"`;
 
 function normalizePerson(row: RawPerson): PersonRow {
   const accountType = row.local ? "local" : "brokered";
+
+  const status = statusOf(row.status, row.banned === true);
 
   return {
     id: row.id,
     name: row.name,
     email: row.email,
-    status: statusOf(row.status, row.banned === true),
+    status,
+    deactivated:
+      status === "disabled" && row.lastBanAction === "core:person_removed",
     accountType,
     identitySource: identitySourceOf(accountType),
     groups: row.groups ?? [],
@@ -897,13 +919,13 @@ export async function disablePerson(
       actorUserId: input.actorUserId,
       targetType: "user",
       targetId: input.personId,
-      summary: `Disabled ${person.email}`,
+      summary: `Suspended ${person.email}`,
       metadata: { email: person.email },
     });
   });
 }
 
-/** Re-enable a disabled person. */
+/** Unsuspend a suspended person, or reactivate a deactivated one: one write, two words. */
 export async function enablePerson(
   tenant: TenantContext,
   input: { readonly actorUserId: string; readonly personId: string }
@@ -912,6 +934,23 @@ export async function enablePerson(
     await lockAdministratorGuard(tx);
 
     const person = await loadPersonForWrite(tx, input.personId);
+
+    const [lastBan] = await tx
+      .select({ action: auditEvent.action })
+      .from(auditEvent)
+      .where(
+        and(
+          eq(auditEvent.targetId, input.personId),
+          inArray(auditEvent.action, BAN_ACTIONS)
+        )
+      )
+      .orderBy(desc(auditEvent.occurredAt))
+      .limit(1);
+
+    const verb =
+      person.banned === true && lastBan?.action === "core:person_removed"
+        ? "Reactivated"
+        : "Unsuspended";
 
     // A person who never signed in returns to `pending`, not `active`: the R-38 count and the
     // resend controls both depend on "pending means has not signed in yet" (R-10).
@@ -929,7 +968,7 @@ export async function enablePerson(
       actorUserId: input.actorUserId,
       targetType: "user",
       targetId: input.personId,
-      summary: `Re-enabled ${person.email}`,
+      summary: `${verb} ${person.email}`,
       metadata: { email: person.email },
     });
   });
@@ -971,7 +1010,7 @@ export async function removePerson(
       actorUserId: input.actorUserId,
       targetType: "user",
       targetId: input.personId,
-      summary: `Removed ${person.email}`,
+      summary: `Deactivated ${person.email}`,
       metadata: { email: person.email },
     });
   });

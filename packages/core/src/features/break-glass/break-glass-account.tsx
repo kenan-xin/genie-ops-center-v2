@@ -8,6 +8,7 @@ import {
   AccountLayout,
 } from "../account/account-layout.tsx";
 import type { AccountSession } from "../account/types.ts";
+import { fmtDate, fmtDateTime } from "../audit/helpers.ts";
 import {
   BreakGlassPasswordForm,
   RateLimitNotice,
@@ -45,14 +46,6 @@ export type BreakGlassAccountProps = {
   readonly onRevokeSession?: ((sessionId: string) => void) | undefined;
   readonly onRevokeOtherSessions?: (() => void) | undefined;
 };
-
-function formatInstant(value: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone,
-  }).format(new Date(value));
-}
 
 function SessionsBlock(props: {
   readonly sessions: readonly AccountSession[];
@@ -106,7 +99,7 @@ function SessionsBlock(props: {
             </div>
             <span className="text-sm text-muted-foreground">
               {session.ipAddress} · signed in{" "}
-              {formatInstant(session.signedInAt, props.timeZone)}
+              {fmtDateTime(session.signedInAt, props.timeZone)}
             </span>
           </li>
         ))}
@@ -237,7 +230,7 @@ function AuthenticatorBlock(props: {
               <span className="block text-muted-foreground">
                 {props.enrolledAt === null
                   ? "Enrollment date unknown"
-                  : `Since ${formatInstant(props.enrolledAt, props.timeZone)}`}
+                  : `Since ${fmtDate(props.enrolledAt, props.timeZone)}`}
                 . Re-enrolling replaces the current app.
               </span>
             </span>
@@ -274,7 +267,7 @@ export function BreakGlassAccount(props: BreakGlassAccountProps): JSX.Element {
         </AccountCardRow>
         <AccountCardRow>
           <p className="text-sm text-muted-foreground">
-            Identity source: Genie (local password and authenticator)
+            Identity source: Genie Ops Center (local password and authenticator)
           </p>
         </AccountCardRow>
       </AccountCard>

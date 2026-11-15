@@ -46,7 +46,7 @@ const meta = {
     modulesHref: "/admin/modules",
     localAccountsNotes: {
       managed:
-        "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm.",
+        "The tenant realm is brokered only. Ask your Genie Ops Center operator to add local accounts to the realm.",
       customer:
         "Local accounts are not available because sign-in uses the company's own realm.",
     },
@@ -186,7 +186,7 @@ export const BrokeredOnly: Story = {
     ).toHaveAttribute("aria-disabled", "true");
     await expect(
       canvas.getByText(
-        "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm."
+        "The tenant realm is brokered only. Ask your Genie Ops Center operator to add local accounts to the realm."
       )
     ).toBeVisible();
   },

@@ -75,7 +75,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   const addDialog = page.getByRole("dialog", { name: "Add directory group" });
 
   await addDialog.getByLabel("Claim value").fill(GROUP_VALUE);
-  await addDialog.getByLabel("Display label").fill(GROUP_LABEL);
+  await addDialog.getByLabel("Name").fill(GROUP_LABEL);
 
   const [addResponse] = await Promise.all([
     page.waitForResponse((response) =>
@@ -91,7 +91,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
     page.getByText(GROUP_LABEL, { exact: true }).filter({ visible: true })
   ).toBeVisible();
   await expect(
-    page.getByText("Not seen yet").filter({ visible: true }).first()
+    page.getByText("Not synced yet").filter({ visible: true }).first()
   ).toBeVisible();
 
   // A refused add keeps its dialog, the typed value and the reason, readable in dark (U-1,
@@ -203,7 +203,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   const archivedInspector = page.getByRole("dialog", { name: GROUP_LABEL });
 
   // The Access tab is read before the archive, so the archive must reload it.
-  await archivedInspector.getByRole("tab", { name: /^Access/ }).click();
+  await archivedInspector.getByRole("tab", { name: /^Roles/ }).click();
   await expect(archivedInspector.getByText("Core · E2E reader")).toBeVisible();
   await expect(archivedInspector.getByText(/^Paused/)).toHaveCount(0);
   await page.getByRole("button", { name: "Archive group" }).click();
@@ -236,7 +236,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   // (R-32).
   await expect(archivedInspector).toHaveCount(0);
   await page.getByRole("checkbox", { name: /^Show archived/ }).check();
-  await archivedInspector.getByRole("tab", { name: /^Access/ }).click();
+  await archivedInspector.getByRole("tab", { name: /^Roles/ }).click();
   await expect(
     archivedInspector.getByText("Paused: Group archived")
   ).toBeVisible();
@@ -277,7 +277,7 @@ test("a closed or deleted group's detail is not read again", async ({
   });
   await page.goto("/admin/groups");
 
-  const newLocalGroup = page.getByRole("button", { name: "New local group" });
+  const newLocalGroup = page.getByRole("button", { name: "New group" });
 
   // The opener stays busy until the write's reloads finish, so a detail read would be over too.
   const settled = () =>
@@ -286,7 +286,7 @@ test("a closed or deleted group's detail is not read again", async ({
   const createLocalGroup = async (name: string) => {
     await newLocalGroup.click();
 
-    const dialog = page.getByRole("dialog", { name: "New local group" });
+    const dialog = page.getByRole("dialog", { name: "New group" });
 
     await dialog.getByLabel("Name").fill(name);
     await Promise.all([
@@ -360,7 +360,7 @@ test("a closed or deleted group's detail is not read again", async ({
   );
 });
 
-test("a local group adds a member from one search and removes them from the row", async ({
+test("a group adds a member from one search and removes them from the row", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
@@ -386,9 +386,9 @@ test("a local group adds a member from one search and removes them from the row"
 
   await signInThroughKeycloak(page, { email: adminEmail });
   await page.goto("/admin/groups");
-  await page.getByRole("button", { name: "New local group" }).click();
+  await page.getByRole("button", { name: "New group" }).click();
 
-  const dialog = page.getByRole("dialog", { name: "New local group" });
+  const dialog = page.getByRole("dialog", { name: "New group" });
 
   await dialog.getByLabel("Name").fill(name);
   await dialog.getByRole("button", { name: "Create group" }).click();
@@ -423,7 +423,7 @@ test("a local group adds a member from one search and removes them from the row"
   await expectNoAxeViolations(page, "Group inspector with one member");
 
   // One removal confirms first, as the capture shows.
-  await row.getByRole("button", { name: "Remove from group" }).click();
+  await row.getByRole("button", { name: /^Remove .+ from group$/ }).click();
   await Promise.all([
     page.waitForResponse((response) =>
       response.url().includes("/api/rpc/groups/removeMembers")
@@ -599,7 +599,7 @@ test("a module role shows its declared line and the Built-in pill", async ({
 });
 
 // Owner, 2026-10-27: the help beside each search is an icon, named by its topic.
-test("the help buttons on People, Roles and Groups are icons named by their topic", async ({
+test("the help buttons on Roles and Groups are icons named by their topic", async ({
   page,
 }, testInfo) => {
   await signInThroughKeycloak(page, {
@@ -608,9 +608,8 @@ test("the help buttons on People, Roles and Groups are icons named by their topi
 
   /* eslint-disable no-await-in-loop -- one tab visits the three pages in turn. */
   for (const [path, topic] of [
-    ["/admin/people", "Pending, disabled, removed"],
     ["/admin/roles", "How roles work"],
-    ["/admin/groups", "Directory and local groups"],
+    ["/admin/groups", "Groups and directory groups"],
   ] as const) {
     await page.goto(path);
 

@@ -74,15 +74,15 @@
     },
     "groups": {
       "title": "Groups",
-      "description": "Directory groups from the identity provider, and local groups you manage here.",
-      "addLabelHint": "Add a display label",
+      "description": "Directory groups from the identity provider, and groups you manage here.",
+      "addLabelHint": "Add a name",
       "searchLabel": "Search groups",
       "noMatch": {
         "title": "No groups match",
         "description": "Clear the search and the archived filter to see every group."
       },
       "notAdded": "The group was not added.",
-      "notCreated": "The local group was not created."
+      "notCreated": "The group was not created."
     },
     "roles": {
       "title": "Roles",
@@ -142,7 +142,7 @@
       "title": "Tenant settings",
       "description": "Sign-in, sessions, and the settings each module exposes for this tenant.",
       "localAccounts": {
-        "managed": "The tenant realm is brokered only. Ask your Genie operator to add local accounts to the realm.",
+        "managed": "The tenant realm is brokered only. Ask your Genie Ops Center operator to add local accounts to the realm.",
         "customer": "Local accounts are not available because sign-in uses the company's own realm."
       },
       "notSaved": {
@@ -209,7 +209,7 @@
       "keycloakUnavailable": "The identity provider is unavailable. Try again shortly.",
       "keycloakIssuerMismatch": "The identity provider is not the one this deployment was set up with. Contact your administrator.",
       "notRegistered": "This account is not registered for this service.",
-      "accessDisabled": "Access for this account is disabled.",
+      "accessDisabled": "This account cannot sign in. Ask your administrator.",
       "sessionExpired": "You were signed out after {minutes} minutes of inactivity. Sign in again.",
       "sessionMissing": "Sign in to continue.",
       "signedOut": "You are signed out.",

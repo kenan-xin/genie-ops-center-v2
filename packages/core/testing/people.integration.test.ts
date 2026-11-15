@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { eq, inArray } from "drizzle-orm";
+import { desc, eq, inArray } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -396,6 +396,70 @@ describe("the People writers against a real database", () => {
       .where(eq(auditEvent.action, "core:person_removed"));
 
     expect(removalAudit.length).toBeGreaterThan(0);
+  });
+
+  it("reads Deactivated from the latest suspend or deactivate row, and Reactivate undoes it", async () => {
+    await insertTenantAdministrator();
+
+    const actor = await manager();
+
+    const email = `deactivated-${Date.now()}@example.invalid`;
+
+    const { id: personId } = await addPerson(deployment.context, [], {
+      actorUserId: actor,
+      email,
+      roleIds: [],
+      sendInvitation: false,
+    });
+
+    const shown = async () => {
+      const person = await readPerson(deployment.context, personId);
+
+      return { status: person?.status, deactivated: person?.deactivated };
+    };
+
+    // Suspend, then deactivate: the later deactivate row wins.
+    await disablePerson(deployment.context, { actorUserId: actor, personId });
+    await removePerson(deployment.context, { actorUserId: actor, personId });
+    expect(await shown()).toEqual({ status: "disabled", deactivated: true });
+
+    // Reactivate, then suspend: the later suspend row wins.
+    await enablePerson(deployment.context, { actorUserId: actor, personId });
+    expect(await shown()).toEqual({ status: "pending", deactivated: false });
+
+    const [reactivated] = await deployment.context.db
+      .select({ summary: auditEvent.summary })
+      .from(auditEvent)
+      .where(eq(auditEvent.action, "core:person_enabled"))
+      .orderBy(desc(auditEvent.occurredAt))
+      .limit(1);
+
+    expect(reactivated?.summary).toBe(`Reactivated ${email}`);
+
+    await disablePerson(deployment.context, { actorUserId: actor, personId });
+    expect(await shown()).toEqual({ status: "disabled", deactivated: false });
+
+    // A banned row with no lifecycle audit row at all reads Suspended.
+    const { id: bareId } = await addPerson(deployment.context, [], {
+      actorUserId: actor,
+      email: `bare-${email}`,
+      roleIds: [],
+      sendInvitation: false,
+    });
+
+    await deployment.context.db
+      .update(user)
+      .set({ banned: true, status: "disabled" })
+      .where(eq(user.id, bareId));
+
+    const bare = (await listPeople(deployment.context)).find(
+      (person) => person.id === bareId
+    );
+
+    expect({ status: bare?.status, deactivated: bare?.deactivated }).toEqual({
+      status: "disabled",
+      deactivated: false,
+    });
   });
 });
 

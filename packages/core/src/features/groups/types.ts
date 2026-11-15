@@ -23,7 +23,7 @@ export type GroupsViewer = {
   readonly nowIso: string;
 };
 
-/** The label a group shows: the display label when set, the name otherwise (R-24c). */
+/** The name a group shows: the name set here when there is one, the stored name otherwise (R-24c). */
 export function groupLabel(group: Group): string {
   return group.displayLabel ?? group.name;
 }

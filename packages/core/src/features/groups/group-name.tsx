@@ -11,7 +11,7 @@ export function looksLikeId(value: string): boolean {
 /**
  * A group's label as a list shows it. A value that looks like an id shows its first 8 characters
  * and an ellipsis; the tooltip and screen readers get the full value. It never invents a name: the
- * administrator sets a display label on the Groups page (R-24c).
+ * administrator renames the group on the Groups page (R-24c).
  */
 export function GroupName(props: {
   readonly value: string;

@@ -88,7 +88,7 @@ test("the navigation entry and Manage in Access open Access with the person chos
   // E1: the member's Access tab, then Manage in Access.
   const inspector = await openPerson(page, name);
 
-  await inspector.getByRole("tab", { name: /^Access/ }).click();
+  await inspector.getByRole("tab", { name: /^Roles/ }).click();
   await expect(inspector.getByText("Core · E2E links limited")).toBeVisible();
   await expect(inspector.getByText(/^Direct/)).toBeVisible();
   await inspector.getByRole("button", { name: "Manage in Access" }).click();
@@ -319,7 +319,7 @@ test("a people manager reads a person's access read-only", async ({
 
   const inspector = await openPerson(page, memberName(project));
 
-  await inspector.getByRole("tab", { name: /^Access/ }).click();
+  await inspector.getByRole("tab", { name: /^Roles/ }).click();
   await expect(inspector.getByText("Core · E2E links limited")).toBeVisible();
   await expect(
     inspector.getByRole("button", { name: "Manage in Access" })

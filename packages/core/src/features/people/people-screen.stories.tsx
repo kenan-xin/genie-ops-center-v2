@@ -82,17 +82,6 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-/** The help sits beside the search as an icon, named by its topic (people-groups-and-roles spec). */
-export const HelpIsIconOnly: Story = {
-  play: async ({ canvas }) => {
-    const help = canvas.getByRole("button", {
-      name: "Pending, disabled, removed",
-    });
-
-    await expect(help.textContent).toBe("");
-  },
-};
-
 export const Default: Story = {
   play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "People" }));
@@ -104,7 +93,7 @@ export const Default: Story = {
     // The three statuses render as pills.
     await expect(table.getAllByText("Active").length).toBeGreaterThan(0);
     await expect(table.getAllByText("Pending").length).toBe(2);
-    await expect(table.getByText("Disabled")).toBeInTheDocument();
+    await expect(table.getByText("Suspended")).toBeInTheDocument();
   },
 };
 
@@ -150,7 +139,7 @@ export const GroupsSyncedIsRelative: Story = {
     const sheet = within(await screen.findByRole("dialog"));
 
     await userEvent.click(sheet.getByRole("tab", { name: /Groups/ }));
-    await expect(sheet.getByText("Synced 1 d ago")).toBeVisible();
+    await expect(sheet.getByText("Last synced 1 d ago")).toBeVisible();
   },
 };
 
@@ -204,8 +193,11 @@ export const AccessTabListsEveryPath: Story = {
   play: async ({ args }) => {
     const sheet = within(await screen.findByRole("dialog"));
 
-    await userEvent.click(sheet.getByRole("tab", { name: /Access/ }));
+    await userEvent.click(sheet.getByRole("tab", { name: /^Roles/ }));
 
+    await expect(
+      sheet.getByRole("heading", { name: "Assigned roles (3)" })
+    ).toBeVisible();
     await expect(sheet.getByText("Invoices · Viewer")).toBeVisible();
     await expect(
       sheet.getByText(
@@ -241,7 +233,6 @@ export const NoAccessTabWithoutTheKey: Story = {
     const sheet = within(await screen.findByRole("dialog"));
 
     await expect(sheet.getByRole("tab", { name: /Profile/ })).toBeVisible();
-    await expect(sheet.queryByRole("tab", { name: /Access/ })).toBeNull();
     await expect(sheet.queryByRole("tab", { name: /Roles/ })).toBeNull();
     await expect(
       sheet.queryByRole("button", { name: "Manage in Access" })
@@ -271,7 +262,7 @@ export const AccessTabsFitOnPhone: Story = {
     const sheet = within(await screen.findByRole("dialog"));
     const tabs = sheet.getByRole("tablist", { name: "Person detail" });
 
-    await expect(sheet.getByRole("tab", { name: /Access/ })).toHaveTextContent(
+    await expect(sheet.getByRole("tab", { name: /^Roles/ })).toHaveTextContent(
       "11"
     );
     await expect(tabs.scrollWidth).toBeLessThanOrEqual(
@@ -286,7 +277,7 @@ export const ViaGroupOpensTheGroup: Story = {
   play: async ({ args }) => {
     const sheet = within(await screen.findByRole("dialog"));
 
-    await userEvent.click(sheet.getByRole("tab", { name: /Access/ }));
+    await userEvent.click(sheet.getByRole("tab", { name: /^Roles/ }));
     await userEvent.click(sheet.getByRole("button", { name: "Finance team" }));
     await expect(args.onOpenGroup).toHaveBeenCalledWith("g-finance");
   },
@@ -472,16 +463,6 @@ export const PhoneSearchTakesTheRow: Story = {
     await expect(search.getBoundingClientRect().width).toBeGreaterThanOrEqual(
       300
     );
-
-    // The icon-only help stays beside the search, not on a row of its own.
-    const field = search.getBoundingClientRect();
-
-    const help = canvas
-      .getByRole("button", { name: "Pending, disabled, removed" })
-      .getBoundingClientRect();
-
-    await expect(help.top + help.height / 2).toBeGreaterThan(field.top);
-    await expect(help.top + help.height / 2).toBeLessThan(field.bottom);
   },
 };
 
@@ -541,12 +522,12 @@ export const RowMenuNamesTheRefusal: Story = {
   play: async ({ canvas }) => {
     onRemovePerson.mockClear();
 
-    // The viewer's own row keeps Disable and Remove, refused with the server's reason (R-38).
+    // The viewer's own row keeps Suspend and Deactivate, refused with the server's reason (R-38).
     await userEvent.click(
       canvas.getByRole("button", { name: "Actions for ada@example.com" })
     );
 
-    for (const name of ["Disable", "Remove"]) {
+    for (const name of ["Suspend", "Deactivate"]) {
       // oxlint-disable-next-line no-await-in-loop -- one menu item at a time.
       const item = await screen.findByRole("menuitem", { name });
 
@@ -566,25 +547,55 @@ export const RowMenuNamesTheRefusal: Story = {
       canvas.getByRole("button", { name: "Actions for dan@example.com" })
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Re-enable" })
+      await screen.findByRole("menuitem", { name: "Unsuspend" })
     );
     await userEvent.click(
       canvas.getByRole("button", { name: "Actions for dan@example.com" })
     );
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Remove" })
+      await screen.findByRole("menuitem", { name: "Deactivate" })
     );
 
     const confirm = within(
-      await screen.findByRole("dialog", { name: "Remove Dan Disabled?" })
+      await screen.findByRole("dialog", { name: "Deactivate Dan Disabled?" })
     );
 
-    await userEvent.click(
-      confirm.getByRole("button", { name: "Remove person" })
-    );
+    await userEvent.click(confirm.getByRole("button", { name: "Deactivate" }));
 
     expect(onEnablePerson).toHaveBeenCalledWith("u-dan");
     expect(onRemovePerson).toHaveBeenCalledWith("u-dan");
+  },
+};
+
+/** A deactivated person reads Deactivated, and the way back is Reactivate, not Unsuspend (Okta). */
+export const DeactivatedPersonOffersReactivate: Story = {
+  args: {
+    // Dan is the last fixture person.
+    people: [
+      ...FIXTURE_PEOPLE.slice(0, -1),
+      { ...FIXTURE_PEOPLE.at(-1)!, deactivated: true },
+    ],
+  },
+  play: async ({ args, canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "People" }));
+
+    await expect(table.getByText("Deactivated")).toBeInTheDocument();
+    await expect(table.queryByText("Suspended")).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Actions for dan@example.com" })
+    );
+
+    const reactivate = await screen.findByRole("menuitem", {
+      name: "Reactivate",
+    });
+
+    await expect(
+      screen.queryByRole("menuitem", { name: "Unsuspend" })
+    ).toBeNull();
+    await userEvent.click(reactivate);
+
+    await expect(args.onEnablePerson).toHaveBeenCalledWith("u-dan");
   },
 };
 
@@ -598,9 +609,9 @@ export const RowMenuConfirmReturnsFocusToTheMenu: Story = {
 
     await userEvent.click(trigger);
     await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Disable" })
+      await screen.findByRole("menuitem", { name: "Suspend" })
     );
-    await screen.findByRole("dialog", { name: "Disable Bea Brokered?" });
+    await screen.findByRole("dialog", { name: "Suspend Bea Brokered?" });
 
     // Escape cancels the confirm, and keyboard focus goes back to the row's menu (primitives L-5).
     await userEvent.keyboard("{Escape}");
@@ -623,15 +634,15 @@ export const DisableFromTheInspector: Story = {
     });
 
     await userEvent.click(
-      within(inspector).getByRole("button", { name: "Disable" })
+      within(inspector).getByRole("button", { name: "Suspend" })
     );
-    await screen.findByRole("dialog", { name: "Disable Bea Brokered?" });
+    await screen.findByRole("dialog", { name: "Suspend Bea Brokered?" });
 
     // One Escape closes only the confirm dialog, and focus returns to the control in the sheet.
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
       expect(
-        screen.queryByRole("dialog", { name: "Disable Bea Brokered?" })
+        screen.queryByRole("dialog", { name: "Suspend Bea Brokered?" })
       ).not.toBeInTheDocument()
     );
     await expect(
@@ -639,26 +650,26 @@ export const DisableFromTheInspector: Story = {
     ).toBeInTheDocument();
     await waitFor(() =>
       expect(
-        within(inspector).getByRole("button", { name: "Disable" })
+        within(inspector).getByRole("button", { name: "Suspend" })
       ).toHaveFocus()
     );
     await expect(onDisablePerson).not.toHaveBeenCalled();
 
     // Confirming fires the write.
     await userEvent.click(
-      within(inspector).getByRole("button", { name: "Disable" })
+      within(inspector).getByRole("button", { name: "Suspend" })
     );
     await userEvent.click(
       within(
-        await screen.findByRole("dialog", { name: "Disable Bea Brokered?" })
-      ).getByRole("button", { name: "Disable" })
+        await screen.findByRole("dialog", { name: "Suspend Bea Brokered?" })
+      ).getByRole("button", { name: "Suspend" })
     );
     await expect(onDisablePerson).toHaveBeenCalledWith("u-bea");
 
     // The next Escape closes the sheet.
     await waitFor(() =>
       expect(
-        screen.queryByRole("dialog", { name: "Disable Bea Brokered?" })
+        screen.queryByRole("dialog", { name: "Suspend Bea Brokered?" })
       ).not.toBeInTheDocument()
     );
     await userEvent.keyboard("{Escape}");
@@ -745,7 +756,7 @@ export const AddPersonStartsAtNoAccess: Story = {
     ).toBeNull();
     await expect(
       access.getByText(
-        "Switched off: Analytics. Switch a module on in Modules before you give access to it."
+        "Module off: Analytics. Turn a module on in Modules before you give access to it."
       )
     ).toBeVisible();
     await expect(
@@ -836,7 +847,7 @@ export const ManyModulesFindAModule: Story = {
     await expect(dialog.getByText("Modules · 10")).toBeVisible();
     await expect(
       dialog.getByText(
-        "Switched off: Travel, Fleet. Switch a module on in Modules before you give access to it."
+        "Module off: Travel, Fleet. Turn a module on in Modules before you give access to it."
       )
     ).toBeVisible();
 
@@ -1041,10 +1052,10 @@ export const SelfAndLastAdministratorDisableIsBlocked: Story = {
     );
 
     await expect(
-      inspector.getByRole("button", { name: "Disable" })
+      inspector.getByRole("button", { name: "Suspend" })
     ).toBeDisabled();
     await expect(
-      inspector.getByRole("button", { name: "Remove" })
+      inspector.getByRole("button", { name: "Deactivate" })
     ).toBeDisabled();
     await expect(
       inspector.getByText(
@@ -1056,7 +1067,7 @@ export const SelfAndLastAdministratorDisableIsBlocked: Story = {
   },
 };
 
-/** The captures pin Disable and Remove under every tab, not only under Profile. */
+/** The captures pin Suspend and Deactivate under every tab, not only under Profile. */
 export const ActionsStayUnderEveryTab: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /Bea Brokered/ }));
@@ -1068,10 +1079,10 @@ export const ActionsStayUnderEveryTab: Story = {
     await userEvent.click(inspector.getByRole("tab", { name: /Groups/ }));
     await expect(inspector.getByText(DISABLE_REMOVE_NOTE)).toBeVisible();
     await expect(
-      inspector.getByRole("button", { name: "Disable" })
+      inspector.getByRole("button", { name: "Suspend" })
     ).toBeVisible();
     await expect(
-      inspector.getByRole("button", { name: "Remove" })
+      inspector.getByRole("button", { name: "Deactivate" })
     ).toBeVisible();
   },
 };
@@ -1086,21 +1097,19 @@ export const RemoveConfirmsBeforeItFires: Story = {
       await screen.findByRole("dialog", { name: "Dan Disabled" })
     );
 
-    const remove = inspector.getByRole("button", { name: /Remove/ });
+    const remove = inspector.getByRole("button", { name: /Deactivate/ });
 
     // An outline whose label is --destructive-text (red-700), not a solid red fill.
     await expect(getComputedStyle(remove).color).toBe("rgb(185, 28, 28)");
     await userEvent.click(remove);
 
     const confirm = within(
-      await screen.findByRole("dialog", { name: "Remove Dan Disabled?" })
+      await screen.findByRole("dialog", { name: "Deactivate Dan Disabled?" })
     );
 
     await expect(confirm.getByText(/Every session ends/)).toBeInTheDocument();
 
-    await userEvent.click(
-      confirm.getByRole("button", { name: "Remove person" })
-    );
+    await userEvent.click(confirm.getByRole("button", { name: "Deactivate" }));
 
     expect(onRemovePerson).toHaveBeenCalledWith("u-dan");
   },

@@ -28,7 +28,7 @@ export const ADMIN_ADD_BREAK_GLASS =
 
 /** The named cause a banned target is refused with, naming the way back. */
 export const ADMIN_ADD_DISABLED =
-  "admin add cannot add a disabled person; enable them in People first";
+  "admin add cannot add a suspended or deactivated person; unsuspend or reactivate them in People first";
 
 /** The named cause an erased target is refused with. */
 export const ADMIN_ADD_ERASED = "admin add cannot add an erased person";

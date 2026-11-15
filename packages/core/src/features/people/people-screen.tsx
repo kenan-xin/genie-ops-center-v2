@@ -95,9 +95,9 @@ export const LAST_ADMIN_REASON =
 export const SELF_REASON =
   "You cannot change your own access. Ask another administrator.";
 
-/** The line above Disable and Remove; a refusal takes its place (design captures). */
+/** The line above Suspend and Deactivate; a refusal takes its place (design captures). */
 export const DISABLE_REMOVE_NOTE =
-  "Disabling keeps history and assignments. Removing drops their groups and direct roles and keeps their name and audit trail.";
+  "Suspending keeps history and assignments. Deactivating drops their groups and direct roles and keeps their name and audit trail.";
 
 function fmtDateTime(
   iso: string | null,
@@ -141,17 +141,28 @@ const ONBOARDING_LABEL: Record<
   jit: "Just-in-time",
 };
 
+/** The stored status, with a deactivated person told apart from a suspended one (both `disabled`). */
+type ShownStatus = PersonStatus | "deactivated";
+
 const STATUS_TONE = {
   active: "success",
   pending: "neutral",
   disabled: "danger",
-} as const satisfies Record<PersonStatus, string>;
+  deactivated: "danger",
+} as const satisfies Record<ShownStatus, string>;
 
-const STATUS_LABEL: Record<PersonStatus, string> = {
+const STATUS_LABEL: Record<ShownStatus, string> = {
   active: "Active",
   pending: "Pending",
-  disabled: "Disabled",
+  disabled: "Suspended",
+  deactivated: "Deactivated",
 };
+
+type Lifecycle = Pick<Person, "status" | "deactivated">;
+
+function shownStatus(person: Lifecycle): ShownStatus {
+  return person.deactivated ? "deactivated" : person.status;
+}
 
 const SORT_ITEMS = [
   { value: "name", label: "Name" },
@@ -165,7 +176,8 @@ const STATUS_FILTER_ITEMS = [
   { value: "all", label: "All" },
   { value: "active", label: "Active" },
   { value: "pending", label: "Pending" },
-  { value: "disabled", label: "Disabled" },
+  { value: "disabled", label: "Suspended" },
+  { value: "deactivated", label: "Deactivated" },
 ] as const;
 
 type StatusFilter = (typeof STATUS_FILTER_ITEMS)[number]["value"];
@@ -174,7 +186,9 @@ const TABS = ["profile", "groups", "access", "sessions"] as const;
 
 type ConfirmKind = "disable" | "remove";
 
-function statusPill(status: PersonStatus) {
+function statusPill(person: Lifecycle) {
+  const status = shownStatus(person);
+
   return (
     <StatusPill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</StatusPill>
   );
@@ -206,7 +220,7 @@ function accountTypeLabel(accountType: AccountType): string {
     : "Brokered through the identity provider";
 }
 
-/** The Disable and Remove confirms, each always rendered and opened by `confirm`. */
+/** The Suspend and Deactivate confirms, each always rendered and opened by `confirm`. */
 function PersonConfirms(props: {
   readonly name: string;
   readonly confirm: ConfirmKind | null;
@@ -217,18 +231,18 @@ function PersonConfirms(props: {
     <>
       <ConfirmDialog
         open={props.confirm === "disable"}
-        title={`Disable ${props.name}?`}
+        title={`Suspend ${props.name}?`}
         description="They can no longer sign in but keep their history and their roles."
-        confirmLabel="Disable"
+        confirmLabel="Suspend"
         danger
         onConfirm={() => props.onConfirm("disable")}
         onClose={props.onClose}
       />
       <ConfirmDialog
         open={props.confirm === "remove"}
-        title={`Remove ${props.name}?`}
+        title={`Deactivate ${props.name}?`}
         description="Every session ends, they are banned from signing in again, and their group memberships and direct roles go. Their name, email and audit trail stay."
-        confirmLabel="Remove person"
+        confirmLabel="Deactivate"
         danger
         onConfirm={() => props.onConfirm("remove")}
         onClose={props.onClose}
@@ -263,7 +277,7 @@ export function PersonInspector(props: {
   readonly onManageAccess?: (() => void) | undefined;
   /** Opens the group a role comes through; without it the group name is plain text. */
   readonly onOpenGroup?: ((groupId: string) => void) | undefined;
-  /** The local groups Add to group offers; with the two callbacks only for a group manager (G16). */
+  /** The groups made here that Add to group offers; with the two callbacks only for a group manager (G16). */
   readonly localGroups?: readonly PersonGroupOption[] | undefined;
   readonly onAddToGroup?: ((groupId: string) => void) | undefined;
   readonly onRemoveFromGroup?: ((groupId: string) => void) | undefined;
@@ -309,7 +323,7 @@ export function PersonInspector(props: {
                 <SheetTitle className="min-w-0 wrap-anywhere">
                   {person.name}
                 </SheetTitle>
-                {statusPill(person.status)}
+                {statusPill(person)}
               </div>
               <span className="text-sm text-muted-foreground wrap-anywhere">
                 {person.email}
@@ -332,7 +346,7 @@ export function PersonInspector(props: {
               </TabsTrigger>
               {props.access === undefined ? null : (
                 <TabsTrigger value="access">
-                  Access{" "}
+                  Roles{" "}
                   {props.access.paths === undefined ? null : (
                     <LabelPill>{props.access.paths.length}</LabelPill>
                   )}
@@ -436,14 +450,19 @@ export function PersonInspector(props: {
               <TabsContent value="access">
                 <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Assigned roles
+                      {props.access.paths === undefined
+                        ? ""
+                        : ` (${props.access.paths.length})`}
+                    </h3>
                     <p className="text-xs text-muted-foreground">
                       Everything this person can do, and where each grant comes
                       from. Read-only here.
                     </p>
                     <HelpDisclosure label="How this adds up">
-                      A role held directly belongs to this person. A role held
-                      through a group stays while they are a member of that
-                      group.
+                      A direct role belongs to this person. A role assigned via
+                      a group stays while they are a member of that group.
                     </HelpDisclosure>
                   </div>
                   {props.onManageAccess === undefined ? null : (
@@ -455,12 +474,12 @@ export function PersonInspector(props: {
                 <AccessPathList
                   {...props.access}
                   recipient={{ type: "user", id: person.id }}
-                  empty="This person holds no role yet."
+                  empty="No roles assigned yet."
                   onOpenGroup={props.onOpenGroup}
                 />
                 <p className="mt-3 text-xs text-muted-foreground">
                   Access is granted and taken back in one place, the Access
-                  screen. A role held through a group changes for every member
+                  screen. A role assigned via a group changes for every member
                   of that group.
                 </p>
               </TabsContent>
@@ -478,7 +497,7 @@ export function PersonInspector(props: {
           </Tabs>
         </div>
 
-        {/* The captures pin Disable and Remove under every tab, with the refusal above them. */}
+        {/* The captures pin Suspend and Deactivate under every tab, with the refusal above them. */}
         <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">
           {blocked ? (
             <p className="text-sm text-foreground">{blockedReason}</p>
@@ -494,7 +513,7 @@ export function PersonInspector(props: {
                 loading={props.pending}
                 onClick={props.onEnable}
               >
-                Re-enable
+                {person.deactivated ? "Reactivate" : "Unsuspend"}
               </Button>
             ) : (
               <Button
@@ -504,7 +523,7 @@ export function PersonInspector(props: {
                 loading={props.pending}
                 onClick={() => setConfirm("disable")}
               >
-                Disable
+                Suspend
               </Button>
             )}
             <Button
@@ -514,7 +533,7 @@ export function PersonInspector(props: {
               loading={props.pending}
               onClick={() => setConfirm("remove")}
             >
-              Remove
+              Deactivate
             </Button>
           </div>
         </div>
@@ -591,9 +610,9 @@ function PersonSessions(props: {
 }
 
 /**
- * The Groups tab: directory groups, then local groups, each under its own heading. With the group
- * callbacks (a caller who manages groups), each local group has Remove and Add to group picks a
- * local group the person is not in (design spec, Groups tab; G16). Directory membership stays
+ * The Groups tab: directory groups, then groups made here, each under its own heading. With the
+ * group callbacks (a caller who manages groups), each group made here has Remove and Add to group
+ * picks one the person is not in (design spec, Groups tab; G16). Directory membership stays
  * read-only: the identity provider owns it.
  */
 function PersonGroups(props: {
@@ -627,7 +646,7 @@ function PersonGroups(props: {
             onValueChange={(value) => setChoice(value)}
           >
             <SelectTrigger id={pickerId}>
-              <SelectValue placeholder="Choose a local group" />
+              <SelectValue placeholder="Choose a group" />
             </SelectTrigger>
             <SelectContent>
               {choiceItems.map((item) => (
@@ -666,7 +685,7 @@ function PersonGroups(props: {
 
   const sections = [
     { source: "idp", title: "Directory groups", Icon: DirectoryIcon },
-    { source: "local", title: "Local groups", Icon: LocalIcon },
+    { source: "local", title: "Groups", Icon: LocalIcon },
   ] as const;
 
   return (
@@ -691,7 +710,7 @@ function PersonGroups(props: {
               <h3 className="text-sm font-semibold text-foreground">{title}</h3>
               {source === "idp" && syncedAt !== null ? (
                 <span className="shrink-0 text-xs text-muted-foreground">
-                  Synced {signedInAgo(syncedAt, props.viewer)}
+                  Last synced {signedInAgo(syncedAt, props.viewer)}
                 </span>
               ) : null}
             </div>
@@ -805,7 +824,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
         return false;
       }
 
-      if (statusFilter !== "all" && person.status !== statusFilter)
+      if (statusFilter !== "all" && shownStatus(person) !== statusFilter)
         return false;
 
       if (
@@ -825,7 +844,11 @@ export function PeopleScreen(props: PeopleScreenProps) {
         left.name.localeCompare(right.name, undefined, { sensitivity: "base" })
       );
     } else if (sort === "status") {
-      sorted.sort((left, right) => left.status.localeCompare(right.status));
+      sorted.sort((left, right) =>
+        STATUS_LABEL[shownStatus(left)].localeCompare(
+          STATUS_LABEL[shownStatus(right)]
+        )
+      );
     } else {
       sorted.sort((left, right) =>
         (right.lastSignInAt ?? "").localeCompare(left.lastSignInAt ?? "")
@@ -856,16 +879,16 @@ export function PeopleScreen(props: PeopleScreenProps) {
     return [
       person.status === "disabled"
         ? {
-            label: "Re-enable",
+            label: person.deactivated ? "Reactivate" : "Unsuspend",
             onSelect: () => props.onEnablePerson?.(person.id),
           }
         : {
-            label: "Disable",
+            label: "Suspend",
             onSelect: () => setConfirm({ kind: "disable", person }),
             ...refused,
           },
       {
-        label: "Remove",
+        label: "Deactivate",
         danger: true,
         onSelect: () => setConfirm({ kind: "remove", person }),
         ...refused,
@@ -899,11 +922,6 @@ export function PeopleScreen(props: PeopleScreenProps) {
               </InputGroupText>
             </InputGroupAddon>
           </InputGroup>
-          <HelpDisclosure label="Pending, disabled, removed" iconOnly>
-            Pending ends at first sign-in. Disable keeps history; Remove ends
-            sessions and bans. Replacing a name with an anonymous one is an
-            operator command.
-          </HelpDisclosure>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-2">
@@ -999,7 +1017,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
             />
           )}
           <Button variant="link" size="sm" onClick={clearFilters}>
-            Clear all
+            Clear filters
           </Button>
         </div>
       )}
@@ -1066,7 +1084,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
               {
                 id: "status",
                 header: "Status",
-                cell: (person) => statusPill(person.status),
+                cell: (person) => statusPill(person),
               },
               { id: "groups", header: "Groups", cell: groupPills },
               {
@@ -1084,7 +1102,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
                 </Avatar>
               ),
               title: (person) => person.name,
-              badge: (person) => statusPill(person.status),
+              badge: (person) => statusPill(person),
               detail: (person) => person.email,
               facts: (person) => [
                 `${person.roleCount} role${person.roleCount === 1 ? "" : "s"}`,
@@ -1533,8 +1551,8 @@ export function AddPersonDialog(props: {
               )}
               {switchedOff.length === 0 ? null : (
                 <p className="text-sm text-muted-foreground">
-                  Switched off:{" "}
-                  {switchedOff.map((entry) => entry.name).join(", ")}. Switch a
+                  Module off:{" "}
+                  {switchedOff.map((entry) => entry.name).join(", ")}. Turn a
                   module on in Modules before you give access to it.
                 </p>
               )}

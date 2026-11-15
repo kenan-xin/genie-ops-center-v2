@@ -149,15 +149,15 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
     })
   ).toBeVisible();
 
-  await inspector.getByRole("button", { name: /Remove/ }).click();
+  await inspector.getByRole("button", { name: /Deactivate/ }).click();
 
   const confirm = page.getByRole("dialog", {
-    name: `Remove E2E Added ${project}?`,
+    name: `Deactivate E2E Added ${project}?`,
   });
 
   await expect(confirm.getByText(/Every session ends/)).toBeVisible();
 
-  await confirm.getByRole("button", { name: "Remove person" }).click();
+  await confirm.getByRole("button", { name: "Deactivate" }).click();
 
   await expect
     .poll(
@@ -183,7 +183,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   const self = page.getByRole("dialog", { name: "E2E Person" });
 
-  await expect(self.getByRole("button", { name: "Disable" })).toBeDisabled();
+  await expect(self.getByRole("button", { name: "Suspend" })).toBeDisabled();
   await expect(
     self.getByText(
       "You cannot change your own access. Ask another administrator."

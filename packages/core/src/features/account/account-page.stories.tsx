@@ -84,6 +84,25 @@ export const LastActiveReadsAgainstTheClock: Story = {
   },
 };
 
+/** Dates read en-GB through core's helper (SHELL-14), not the US "Nov 3, 2026, 9:05 AM". */
+export const SignedInDatesAreEnGb: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  args: {
+    sessions: FIXTURE_ACCOUNT_PAGE.sessions.map((session) =>
+      session.isCurrent
+        ? { ...session, signedInAt: "2026-11-03T09:05:00.000Z" }
+        : session
+    ),
+  },
+  play: async ({ canvasElement }) => {
+    const current = within(
+      sessionTable(canvasElement).getByRole("row", { name: /THIS DEVICE/ })
+    );
+
+    await expect(current.getByText("3 Nov, 09:05")).toBeVisible();
+  },
+};
+
 /**
  * At desktop width each session row keeps one line per fact: the chip sits beside the device, as
  * in the design, so no Status column takes the width that would wrap the dates.
@@ -132,7 +151,7 @@ export const DesktopSessionRowsDoNotWrap: Story = {
 
     const dated = table
       .getAllByRole("cell")
-      .filter((cell) => /\d{4}/.test(cell.textContent ?? ""));
+      .filter((cell) => /\d{2}:\d{2}/.test(cell.textContent ?? ""));
 
     await expect(dated.length).toBeGreaterThan(0);
     await expect(dated.map(lines)).toEqual(dated.map(() => 1));
@@ -256,7 +275,7 @@ export const Default: Story = {
     await expect(canvas.getByText("Contract viewer")).toBeInTheDocument();
     await expect(canvas.getByText("Vendor agreements")).toBeInTheDocument();
     await expect(
-      canvas.getByText("Through Field engineers")
+      canvas.getByText("Assigned via Field engineers")
     ).toBeInTheDocument();
 
     // Read-only: the help says who changes roles.

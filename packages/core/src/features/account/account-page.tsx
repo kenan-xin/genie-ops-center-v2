@@ -9,7 +9,7 @@ import {
 import { useState } from "react";
 import type { JSX } from "react";
 
-import { relativeTime } from "../audit/helpers.ts";
+import { fmtDateTime, relativeTime } from "../audit/helpers.ts";
 import {
   AccountCard,
   AccountCardRow,
@@ -38,14 +38,6 @@ function initialsOf(name: string): string {
   const initials = parts.map((part) => part[0]?.toUpperCase() ?? "");
 
   return initials.join("") || "?";
-}
-
-function formatInstant(value: string, timeZone: string): string {
-  return new Intl.DateTimeFormat("en", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone,
-  }).format(new Date(value));
 }
 
 function sourceLabel(source: AccountGroup["source"]): string {
@@ -103,7 +95,7 @@ function ProfileBlock(props: {
         <HelpDisclosure label="Where your profile comes from">
           <p>
             Name, email, and groups come from the company directory; changes are
-            made in the company directory, not in Genie.
+            made in the company directory, not in Genie Ops Center.
           </p>
         </HelpDisclosure>
         {props.accountManagementUrl === null ? null : (
@@ -130,7 +122,7 @@ function SessionsBlock(props: {
   readonly onAskRevokeOthers: () => void;
 }) {
   const others = props.sessions.filter((session) => !session.isCurrent);
-  const instant = (value: string) => formatInstant(value, props.timeZone);
+  const instant = (value: string) => fmtDateTime(value, props.timeZone);
 
   // Last active reads against the injected clock, as the capture shows ("Now", "1 h ago").
   const ago = (value: string) =>
@@ -238,12 +230,12 @@ function RolesBlock(props: {
   return (
     <AccountCard
       title="Roles and access"
-      description="What you hold, where it applies, and how it arrived."
+      description="Your roles, where each applies, and how it was assigned."
     >
       {props.roleGrants.length === 0 ? (
         <AccountCardRow>
           <p className="text-sm text-muted-foreground">
-            You hold no roles yet.
+            No roles assigned to you yet.
           </p>
         </AccountCardRow>
       ) : (
@@ -267,7 +259,7 @@ function RolesBlock(props: {
                   {grant.scopeLabel}
                 </span>
                 <span className="text-muted-foreground">
-                  {grant.via === null ? "Direct" : `Through ${grant.via}`}
+                  {grant.via === null ? "Direct" : `Assigned via ${grant.via}`}
                 </span>
               </span>
             </li>
