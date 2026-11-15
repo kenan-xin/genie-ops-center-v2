@@ -7,11 +7,8 @@ import { expect, type Page } from "@playwright/test";
  */
 const WCAG_21_AA = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"];
 
-/** Runs axe over the current page and fails with the rule ids and targets it reports. */
-export async function expectNoAxeViolations(
-  page: Page,
-  label: string
-): Promise<void> {
+/** Waits until no overlay is entering or leaving and every finite animation has finished. */
+export async function waitForSettledScreen(page: Page): Promise<void> {
   // An overlay that is still fading in reads as low contrast. Base UI marks one entering or leaving
   // with these attributes before its transition starts, so both settle before axe measures.
   await page.waitForFunction(
@@ -31,6 +28,14 @@ export async function expectNoAxeViolations(
         .map((animation) => animation.finished.catch(() => undefined))
     )
   );
+}
+
+/** Runs axe over the current page and fails with the rule ids and targets it reports. */
+export async function expectNoAxeViolations(
+  page: Page,
+  label: string
+): Promise<void> {
+  await waitForSettledScreen(page);
 
   // Next streams the <title> after the page content (xok3.31), so axe waits for it. A page with no
   // title at all still reaches axe, which reports `document-title`.
