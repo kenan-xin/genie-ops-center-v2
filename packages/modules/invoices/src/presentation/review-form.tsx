@@ -312,7 +312,7 @@ export function ReviewCustomerInput(props: CustomerInputProps): ReactNode {
 }
 
 /**
- * The reason Save waits for, or "Ready to save", on its own line right above Discard and Save, in
+ * The reason Save waits for, or "Ready to save", on its own line right above Delete and Save, in
  * one bar that stays on screen (design review 4.6, czjw.98): fixed at the bottom below `md`, where
  * the shell keeps the page clear of it, and sticky from `md`. The shell's scroll area pads its
  * bottom by 2 rem (`pb-8`), and a sticky box stops at that padding edge, so the bar sticks 2 rem
@@ -325,7 +325,7 @@ export function ReviewSaveBar(props: {
   readonly pending: boolean;
   readonly label: string;
   readonly discarding: boolean;
-  /** Null hides Discard. */
+  /** Null hides Delete, the stored document's (G24). */
   readonly onDiscard: (() => void) | null;
 }): ReactNode {
   const { reason } = props;
@@ -357,7 +357,7 @@ export function ReviewSaveBar(props: {
             loading={props.discarding}
             onClick={props.onDiscard}
           >
-            Discard
+            Delete
           </Button>
         )}
         <Button

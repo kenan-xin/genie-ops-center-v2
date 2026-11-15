@@ -22,7 +22,7 @@ export function DuplicateNotice(props: {
           Keep and save
         </Button>
         <Button variant="secondary" onClick={props.onDiscard}>
-          Discard
+          Delete
         </Button>
       </div>
     </div>

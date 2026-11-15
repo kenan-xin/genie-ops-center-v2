@@ -164,7 +164,7 @@ export function OriginTag(props: { readonly tag: OriginTagKind }): ReactNode {
     case "needs-input":
       return <Badge variant="warning">Needs your input</Badge>;
     case "unspecified":
-      return <Badge variant="neutral">Unspecified</Badge>;
+      return <Badge variant="neutral">No due date</Badge>;
     case "paid-in-full":
       return <Badge variant="neutral">None, paid in full</Badge>;
   }

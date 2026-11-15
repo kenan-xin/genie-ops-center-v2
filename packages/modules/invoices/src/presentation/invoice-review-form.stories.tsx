@@ -128,7 +128,7 @@ export const MissingDueDate: Story = {
 
     await expect(save).toHaveAttribute("aria-disabled", "true");
     await expect(
-      canvas.getByText("Choose a due date or mark it unspecified to save.")
+      canvas.getByText("Enter a due date or choose No due date to save.")
     ).toBeVisible();
 
     await userEvent.click(
@@ -151,9 +151,7 @@ export const MissingDueDate: Story = {
     await userEvent.type(due, "25 Nov 2026");
     await expect(save).not.toHaveAttribute("aria-disabled", "true");
 
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await expect(save).not.toHaveAttribute("aria-disabled", "true");
   },
 };
@@ -229,9 +227,7 @@ export const DueDateSourcesUnspecified: Story = {
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await userEvent.click(saveButton(canvas, "Save as unpaid"));
 
     await waitFor(() =>
@@ -331,9 +327,7 @@ export const AmountFormatted: Story = {
     await userEvent.tab();
     await expect(total).toHaveValue("4,200.00");
 
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await userEvent.click(saveButton(canvas, "Save as unpaid"));
 
     await waitFor(() =>
@@ -357,9 +351,7 @@ export const NewCustomer: Story = {
 
     await expect(create).toBeVisible();
 
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await expect(
       canvas.getByText("Confirm the new customer to save.")
     ).toBeVisible();
@@ -413,9 +405,7 @@ export const PossibleDuplicate: Story = {
     });
   },
   play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await userEvent.click(saveButton(canvas, "Save as unpaid"));
 
     await expect(
@@ -453,9 +443,7 @@ export const SaveRefused: Story = {
 
     await userEvent.clear(total);
     await userEvent.type(total, "4000.00");
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
 
     const reads = getDocumentReview.mock.calls.length;
 

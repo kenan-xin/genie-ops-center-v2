@@ -94,7 +94,7 @@ export function reasonOf(
 const linked = alias(invoice, "linked");
 
 /**
- * The record saved from a document, as What we found shows it (LH30): its customer, currency and
+ * The record saved from a document, as Extracted details shows it (LH30): its customer, currency and
  * amount, and its invoice numbers, which for a payment are the invoices it links to. Valid in a
  * select that left joins `invoice`, `payment` and the record's `customer`.
  */
@@ -117,7 +117,7 @@ const record = {
 };
 
 /**
- * What the inbox shows under What we found: the saved record when one exists, else the checked
+ * What the inbox shows under Extracted details: the saved record when one exists, else the checked
  * values of the stored reading, or null before a reading. A seeded history document has a record
  * and no reading (`czjw.82`).
  */
@@ -191,7 +191,7 @@ function filtersOf(params: DocumentListParams, timeZone: string): SQL[] {
   return conditions;
 }
 
-/** The statuses of the address's tab, Needs you when it names none, or none for All (LH20). */
+/** The statuses of the address's tab, or of the resting tab (All, none) when it names none. */
 function tabStatusesOf(params: DocumentListParams): readonly string[] {
   const { items } = documentListDefinition.tabs;
   const value = params.status ?? items[0].value;

@@ -178,10 +178,12 @@ export const documentListDefinition = {
   tabs: {
     param: "status",
     field: "status",
+    // All first, so All is the resting tab (G22); the values stay for the addresses and counts.
     items: [
+      { value: "all", label: "All", statuses: [] },
       {
         value: "needs-you",
-        label: "Needs you",
+        label: "To review",
         tone: "warning",
         statuses: [
           "needs-input",
@@ -191,10 +193,10 @@ export const documentListDefinition = {
           "could-not-read",
         ],
       },
-      { value: "reading", label: "Reading", statuses: ["reading"] },
+      { value: "reading", label: "Processing", statuses: ["reading"] },
       {
         value: "done",
-        label: "Done",
+        label: "Processed",
         statuses: [
           "linked-automatically",
           "saved",
@@ -202,7 +204,6 @@ export const documentListDefinition = {
           "duplicate",
         ],
       },
-      { value: "all", label: "All", statuses: [] },
     ],
   },
   sorts: [

@@ -551,7 +551,7 @@ export const paymentListParams = z.object({
 
 export type PaymentListParams = z.infer<typeof paymentListParams>;
 
-/** The Documents inbox tabs, Needs you first as the resting tab (LH20), and its sorts. */
+/** The Documents inbox tabs (All rests, G22), and its sorts. */
 export const DOCUMENT_LIST_TABS = [
   "needs-you",
   "reading",

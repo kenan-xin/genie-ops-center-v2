@@ -264,7 +264,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         const invoice = copyOf("01", label);
 
         await uploadFiles(page, [invoice]);
-        await expectStatus(page, invoice, "Needs your input");
+        await expectStatus(page, invoice, "To review");
 
         await openReview(page, invoice, "Review the invoice");
 
@@ -312,7 +312,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         const saveInvoice = await saveButton(page, "Save as unpaid");
 
         await expect(
-          page.getByText("Choose a due date or mark it unspecified to save.")
+          page.getByText("Enter a due date or choose No due date to save.")
         ).toBeVisible();
         await expect(saveInvoice).toHaveAttribute("aria-disabled", "true");
         // Playwright waits for an `aria-disabled` button to enable, so the blocked press is forced.
@@ -448,7 +448,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         const duplicate = duplicateOf(partial, project);
 
         await uploadFiles(page, [duplicate]);
-        await expectStatus(page, duplicate, "Duplicate (nothing added)");
+        await expectStatus(page, duplicate, "Duplicate, nothing added");
         await expect(rowOf(page, duplicate.name)).toContainText(
           `Same file as ${partial.name}`
         );
@@ -475,7 +475,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         const receipt = copyOf("06", label);
 
         await uploadFiles(page, [receipt]);
-        await expectStatus(page, receipt, "Needs your input");
+        await expectStatus(page, receipt, "To review");
 
         await openReview(page, receipt, "Review the paid receipt");
 
@@ -505,23 +505,18 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await uploadFiles(page, [purchaseOrder]);
         await expectStatus(page, purchaseOrder, "Kept as a reference");
 
-        // E4 (czjw.64): Discard ends in a card, and Upload another reads 07 again in place.
+        // E4 (czjw.64): Delete ends in a card, and Upload another reads 07 again in place.
         await openReview(page, purchaseOrder, "Review the purchase order");
-        await page
-          .getByRole("button", { name: "Discard", exact: true })
-          .click();
+        await page.getByRole("button", { name: "Delete", exact: true }).click();
         await page
           .getByRole("alertdialog")
           .or(page.getByRole("dialog"))
-          .getByRole("button", { name: "Discard", exact: true })
+          .getByRole("button", { name: "Delete", exact: true })
           .click();
         await expect(
-          page.getByText(
-            `Discarded ${purchaseOrder.name}. Nothing was added.`,
-            {
-              exact: true,
-            }
-          )
+          page.getByText(`Deleted ${purchaseOrder.name}. Nothing was added.`, {
+            exact: true,
+          })
         ).toBeVisible({ timeout: SAVE_TIMEOUT });
 
         const again = copyOf("07", label);

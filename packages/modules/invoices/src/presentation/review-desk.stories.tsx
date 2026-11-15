@@ -174,7 +174,9 @@ export const Invoice: Story = {
 
     const side = panel(canvasElement);
 
-    await expect(side.getByText("Not on the page")).toBeVisible();
+    await expect(
+      side.getByRole("heading", { name: "Not on the document" })
+    ).toBeVisible();
     await expect(side.getByText("2 fields")).toBeVisible();
     await expect(
       within(card(canvasElement, "dueDate")).getByText("Needs your input")
@@ -182,11 +184,12 @@ export const Invoice: Story = {
     await expect(
       canvasElement.querySelector('[data-pin-card="dueDate"]')
     ).toBeNull();
+    // P05-24: the field chip keeps "Needs your input"; the status pill says "To review".
     await expect(
-      canvas.getAllByText("Needs your input").length
-    ).toBeGreaterThanOrEqual(2);
+      canvas.getByText("To review", { selector: '[data-slot="badge"]' })
+    ).toBeVisible();
     await expect(
-      side.getByText("Choose a due date or mark it unspecified to save.")
+      side.getByText("Enter a due date or choose No due date to save.")
     ).toBeVisible();
 
     // T4.2: Save and Enter both go to the due choice and save nothing.
@@ -208,11 +211,11 @@ export const Invoice: Story = {
     await expect(saveInvoice).not.toHaveBeenCalled();
 
     // T4.3: a valid choice clears the blocker and saves once.
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await expect(
-      within(card(canvasElement, "dueDate")).getByText("Unspecified")
+      within(card(canvasElement, "dueDate")).getByText("No due date", {
+        selector: '[data-slot="badge"]',
+      })
     ).toBeVisible();
     await expect(canvas.getAllByText("Ready to save")).toHaveLength(2);
 
@@ -299,9 +302,7 @@ export const LostQuote: Story = {
       canvasElement.querySelector('[data-pin-line="currency"]')
     ).toBeNull();
 
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await userEvent.click(
       canvas.getByRole("button", { name: "Save as unpaid" })
     );
@@ -487,13 +488,13 @@ export const Reading: Story = {
 
     await expect(
       side.getByText(
-        "Reading the document. Fields that are not on the page, and the split of a payment, show here when the reading finishes."
+        "Reading the document. Fields that are not on the document, and the split of a payment, show here when the reading finishes."
       )
     ).toBeVisible();
     await expect(
       side.getByText("Wait for the reading to finish.")
     ).toBeVisible();
-    await expect(canvas.queryByRole("button", { name: "Discard" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Delete" })).toBeNull();
 
     const type = canvas.getByRole("combobox", { name: "Type" });
 
@@ -535,7 +536,7 @@ export const Reading: Story = {
     ).toBeNull();
     await expect(
       panel(canvasElement).getByText(
-        "Choose a due date or mark it unspecified to save."
+        "Enter a due date or choose No due date to save."
       )
     ).toBeVisible();
 
@@ -565,9 +566,7 @@ export const Saved: Story = {
   play: async ({ canvas, canvasElement }) => {
     await pinned(canvasElement, READ_KEYS);
     await userEvent.type(canvas.getByLabelText("Description"), " and support");
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await userEvent.click(
       canvas.getByRole("button", { name: "Save as unpaid" })
     );
@@ -616,7 +615,7 @@ export const Saved: Story = {
     await expect(
       canvas.queryByRole("button", { name: "Save as unpaid" })
     ).toBeNull();
-    await expect(canvas.queryByRole("button", { name: "Discard" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Delete" })).toBeNull();
   },
 };
 
@@ -716,7 +715,7 @@ export const InvoiceOnPhone: Story = {
     await expect(summary.getByText("INV-LIVE-001")).toBeVisible();
     await expect(summary.getByText("Needs your input")).toBeVisible();
     await expect(
-      canvas.getByText("Choose a due date or mark it unspecified to save.")
+      canvas.getByText("Enter a due date or choose No due date to save.")
     ).toBeVisible();
     const save = canvas.getByRole("button", { name: "Save as unpaid" });
 
@@ -845,9 +844,7 @@ export const SavedOnPhone: Story = {
     await onStep(canvas, 1, 9);
     await pickField(canvas, "Due date");
     await onStep(canvas, 7, 9);
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await pickField(canvas, "Save as unpaid");
     await onStep(canvas, 9, 9);
     await userEvent.click(
@@ -871,7 +868,7 @@ export const SavedOnPhone: Story = {
       "The summary"
     );
 
-    await expect(within(summary).getByText("Unspecified")).toBeVisible();
+    await expect(within(summary).getByText("No due date")).toBeVisible();
     // The result card keeps Upload another, whose file input is not a field.
     await expect(canvasElement.querySelector("[data-field]")).toBeNull();
     await expect(
@@ -893,9 +890,7 @@ export const EnterOnAStepOnPhone: Story = {
     // Clear the due date blocker, so that a submit would really save.
     await pickField(canvas, "Due date");
     await onStep(canvas, 7, 9);
-    await userEvent.click(
-      canvas.getByRole("radio", { name: "Mark as unspecified" })
-    );
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await pickField(canvas, "Invoice number");
     await onStep(canvas, 2, 9);
     await userEvent.type(canvas.getByLabelText("Invoice number"), "{Enter}");

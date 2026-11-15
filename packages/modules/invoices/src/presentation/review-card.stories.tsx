@@ -106,11 +106,8 @@ export const NeedsInput: Story = {
             <span>Enter a due date</span>
           </div>
           <div className="flex items-center gap-2">
-            <RadioGroupItem
-              value="unspecified"
-              aria-label="Mark as unspecified"
-            />
-            <span>Mark as unspecified</span>
+            <RadioGroupItem value="unspecified" aria-label="No due date" />
+            <span>No due date</span>
           </div>
         </RadioGroup>
       ),

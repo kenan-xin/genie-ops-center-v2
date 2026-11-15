@@ -52,7 +52,7 @@ export function StatusPill(props: {
 const PANEL_TITLE = "Before you save";
 
 const READING_NOTE =
-  "Reading the document. Fields that are not on the page, and the split of a payment, show here when the reading finishes.";
+  "Reading the document. Fields that are not on the document, and the split of a payment, show here when the reading finishes.";
 
 const ALL_FOUND =
   "Every field was found on the page. Select a card to see its line.";
@@ -286,7 +286,7 @@ export function ReviewDesk(
             )}
             {reading ? null : offPage.length > 0 ? (
               <CardGroup
-                title="Not on the page"
+                title="Not on the document"
                 count={countText(offPage.length)}
               >
                 {offPage.map(cardOf)}

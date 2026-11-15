@@ -113,32 +113,6 @@ const PENDING_SWEEP = {
   "packages/modules/analytics/src/presentation/view-menu.tsx": {
     "remove view": 1,
   },
-  "packages/modules/invoices/src/presentation/document-inbox.tsx": {
-    "what we found": 1,
-    "needs you": 2,
-    "payment evidence": 1,
-  },
-  "packages/modules/invoices/src/presentation/document-kind.ts": {
-    "payment evidence": 1,
-  },
-  "packages/modules/invoices/src/presentation/document-review.tsx": {
-    "classified as": 2,
-  },
-  "packages/modules/invoices/src/presentation/invoice-review-form.tsx": {
-    unspecified: 4,
-  },
-  "packages/modules/invoices/src/presentation/list-definitions.ts": {
-    "needs you": 1,
-  },
-  "packages/modules/invoices/src/presentation/review-desk.tsx": {
-    "not on the page": 2,
-  },
-  "packages/modules/invoices/src/presentation/review-fields.tsx": {
-    unspecified: 1,
-  },
-  "packages/modules/invoices/src/presentation/review-pager.tsx": {
-    "not on the page": 1,
-  },
   "packages/modules/placeholder/src/module.ts": {
     enabled: 1,
   },

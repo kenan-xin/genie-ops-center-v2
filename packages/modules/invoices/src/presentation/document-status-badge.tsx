@@ -7,44 +7,44 @@ export type DocumentStatusBadgeProps = {
   readonly status: InboxStatus | "duplicate";
 };
 
-/** R-37's status words, exactly. `duplicate` is the upload answer, not a stored status. */
-const LABEL: Record<DocumentStatusBadgeProps["status"], string> = {
-  "reading": "Reading",
-  "could-not-read": "Could not read",
-  "needs-input": "Needs your input",
-  "linked-automatically": "Allocated automatically",
-  "confirm-split": "Confirm the split",
-  "possible-duplicate": "Possible duplicate",
-  "duplicate": "Duplicate (nothing added)",
-  "no-match": "No matching invoice",
-  "kept-as-reference": "Kept as a reference",
-  "saved": "Saved",
-};
+type Status = "Processing" | "To review" | "Processed" | "Failed";
 
-const VARIANT: Record<
+/**
+ * The four statuses of the glossary (G22), each reading state's reason under it (P05-14).
+ * `duplicate` is the upload answer, not a stored status.
+ */
+const WORDS: Record<
   DocumentStatusBadgeProps["status"],
-  "success" | "warning" | "danger" | "neutral"
+  readonly [Status, string | null]
 > = {
-  "reading": "neutral",
-  "could-not-read": "danger",
-  "needs-input": "warning",
-  "linked-automatically": "success",
-  "confirm-split": "warning",
-  "possible-duplicate": "warning",
-  "duplicate": "neutral",
-  "no-match": "warning",
-  "kept-as-reference": "neutral",
-  "saved": "success",
+  "reading": ["Processing", null],
+  "could-not-read": ["Failed", "Could not read"],
+  "needs-input": ["To review", null],
+  "confirm-split": ["To review", "Confirm the split"],
+  "possible-duplicate": ["To review", "Possible duplicate"],
+  "no-match": ["To review", "No matching invoice"],
+  "linked-automatically": ["Processed", "Allocated automatically"],
+  "saved": ["Processed", null],
+  "kept-as-reference": ["Processed", "Kept as a reference"],
+  "duplicate": ["Processed", "Duplicate, nothing added"],
 };
 
-/** One inbox status in the pill tones of `tokens.md` (R-37). */
+const VARIANT = {
+  "Processing": "neutral",
+  "Failed": "danger",
+  "To review": "warning",
+  "Processed": "success",
+} as const satisfies Record<Status, string>;
+
+/** One inbox status in the pill tones of `tokens.md`, with its reason as a muted line (R-37). */
 export function DocumentStatusBadge(props: DocumentStatusBadgeProps) {
   const { status } = props;
+  const [word, reason] = WORDS[status];
 
-  // A turning icon, so a Reading row does not look stuck (design review 3.3). `Spinner` would add a
-  // second status word for a screen reader; the pill's word is the status.
-  return (
-    <Badge variant={VARIANT[status]}>
+  // A turning icon, so a Processing row does not look stuck (design review 3.3). `Spinner` would
+  // add a second status word for a screen reader; the pill's word is the status.
+  const pill = (
+    <Badge variant={VARIANT[word]}>
       {status === "reading" ? (
         <Loader2Icon
           aria-hidden="true"
@@ -52,7 +52,16 @@ export function DocumentStatusBadge(props: DocumentStatusBadgeProps) {
           className="motion-safe:animate-spin"
         />
       ) : null}
-      {LABEL[status]}
+      {word}
     </Badge>
+  );
+
+  return reason === null ? (
+    pill
+  ) : (
+    <span className="inline-flex flex-col items-start gap-0.5">
+      {pill}
+      <span className="text-xs text-muted-foreground">{reason}</span>
+    </span>
   );
 }

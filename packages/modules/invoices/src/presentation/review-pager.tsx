@@ -437,7 +437,7 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
                 .map(rowOf)}
             </FieldGroup>
             {steps.some((candidate) => candidate.item?.sources.length === 0) ? (
-              <FieldGroup title="Not on the page">
+              <FieldGroup title="Not on the document">
                 {steps
                   .filter((candidate) => candidate.item?.sources.length === 0)
                   .map(rowOf)}

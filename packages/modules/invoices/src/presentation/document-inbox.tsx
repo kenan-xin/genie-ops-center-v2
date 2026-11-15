@@ -70,9 +70,10 @@ const DEFINITION = withOptions(
   DOCUMENT_KINDS.map((kind) => ({ value: kind, label: kindText(kind) }))
 );
 
-/** The statuses that wait for the person, the Needs you tab (decision 11, LH20). */
+/** The statuses that wait for the person, the To review tab (decision 11, LH20). */
 const NEEDS_YOU = new Set<string>(
-  documentListDefinition.tabs.items[0].statuses
+  documentListDefinition.tabs.items.find((item) => item.value === "needs-you")
+    ?.statuses
 );
 
 const LEAVE_WARNING =
@@ -111,7 +112,7 @@ export function pollWaitMs(tick: number): number {
   return POLL_WAITS_MS[Math.min(tick, POLL_WAITS_MS.length - 1)] ?? 15_000;
 }
 
-/** The one line of "What we found", in the order of R-37 and decision 11. */
+/** The one line of "Extracted details", in the order of R-37 and decision 11. */
 function foundText(row: InboxRow): string {
   if (row.status === "duplicate") return `Same file as ${row.sameAs}`;
 
@@ -308,6 +309,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
     // The new rows show under All with no filter, at the top under the default sort (LH20, I13).
     // `clear` also drops a search still waiting for its pause, which would hide them again.
     state.clear();
+    // "all" on purpose, though All rests: a named tab reads page one fresh, never the stale server seed.
     state.set({ sort: undefined, status: "all" });
 
     for (const file of Array.from(files)) uploads.addItem(file);
@@ -317,7 +319,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
 
   const data = view;
 
-  // This visit's Duplicate rows are done, so they show under All and Done.
+  // This visit's Duplicate rows are processed, so they show under All and Processed.
   const rows: readonly InboxRow[] =
     state.tab === "all" || state.tab === "done"
       ? [...duplicates, ...listed]
@@ -394,7 +396,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
   const columns: readonly DataTableColumn<InboxRow>[] = [
     { id: "document", header: "Document", cell: documentLabel },
     { id: "type", header: "Type", cell: (row) => kindText(row.kind) },
-    { id: "found", header: "What we found", cell: (row) => foundText(row) },
+    { id: "found", header: "Extracted details", cell: (row) => foundText(row) },
     {
       id: "uploaded",
       header: "Uploaded",
@@ -463,8 +465,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
           inboxEmpty
             ? "Nothing uploaded yet."
             : needYou === 0
-              ? "No document needs you."
-              : `${needYou} ${needYou === 1 ? "needs" : "need"} you.`
+              ? "Nothing to review."
+              : `${needYou} to review.`
         }
         actions={upload}
       />
@@ -533,7 +535,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
           <EmptyState
             variant="framed"
             title="No documents yet"
-            description="Uploaded invoices, receipts and payment evidence show here with their reading status."
+            description="Uploaded invoices, receipts and payments show here with their status."
           />
         ) : (
           <div
@@ -558,7 +560,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 card: {
                   title: documentLabel,
                   badge: (row) => <DocumentStatusBadge status={row.status} />,
-                  // The order of variant C: what we found, the type and upload day, then Updated.
+                  // The order of variant C: extracted details, the type and upload day, then Updated.
                   detail: foundText,
                   facts: (row) => [
                     kindText(row.kind),
@@ -576,9 +578,10 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 onMore: list.showMore,
               }}
               empty={
-                state.tab === "needs-you" && !filtered
+                // The tab is in the address now, so only a filter hides this text.
+                state.tab === "needs-you" && !narrowed
                   ? {
-                      title: "Nothing needs you.",
+                      title: "No documents to review.",
                       description:
                         "Documents that wait for your review or a retry show here.",
                     }

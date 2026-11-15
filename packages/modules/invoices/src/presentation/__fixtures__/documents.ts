@@ -170,7 +170,7 @@ const NEEDS_YOU = new Set([
   "could-not-read",
 ]);
 
-/** Page one under Needs you, the resting tab, as the page loader reads it (LH20). */
+/** Page one under the To review tab, as `listDocuments` reads it; All is the resting tab (G22). */
 export const needsYouDocumentInbox: DocumentInboxView = {
   ...defaultDocumentInbox,
   rows: defaultDocumentInbox.rows.filter((row) => NEEDS_YOU.has(row.status)),

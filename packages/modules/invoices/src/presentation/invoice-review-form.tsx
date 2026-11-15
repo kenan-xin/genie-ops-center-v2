@@ -293,7 +293,7 @@ export function dueTagOf(
 
 function dueDisplay(kind: "invoice" | "paid-receipt", due: DueChoice): string {
   if (due.kind === "unspecified")
-    return kind === "paid-receipt" ? "None, paid in full" : "Unspecified";
+    return kind === "paid-receipt" ? "None, paid in full" : "No due date";
 
   const day = dayFromText(dueText(due)?.trim() ?? "");
 
@@ -318,7 +318,7 @@ function dueCheck(reading: StoredReading | null, due: DueChoice): FieldCheck {
   if (reading?.fields.dueDate === undefined)
     return {
       ...base,
-      issue: "Choose a due date or mark it unspecified to save.",
+      issue: "Enter a due date or choose No due date to save.",
       focusId: due.kind === "person" ? "review-due-date" : "review-due-person",
     };
 
@@ -646,12 +646,9 @@ function DueControl(props: {
             )
           : null}
         <div className="flex items-start gap-2">
-          <RadioGroupItem
-            value="unspecified"
-            aria-label="Mark as unspecified"
-          />
+          <RadioGroupItem value="unspecified" aria-label="No due date" />
           <span>
-            Mark as unspecified{" "}
+            No due date{" "}
             <span className="text-muted-foreground">
               (counts in outstanding, never overdue)
             </span>

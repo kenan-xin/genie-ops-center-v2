@@ -70,7 +70,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). A read invoice, paid receipt or payment opens on the review desk, and below 1024 px on the pager (`czjw.98`); the type choice, a purchase order and a reader keep the document on the left and its fields on the right. The file name shows once, shortened, in the line under the title. A person opens the review from the inbox, changes the type, discards an unsaved document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
+          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). A read invoice, paid receipt or payment opens on the review desk, and below 1024 px on the pager (`czjw.98`); the type choice, a purchase order and a reader keep the document on the left and its fields on the right. The file name shows once, shortened, in the line under the title. A person opens the review from the inbox, changes the type, deletes the stored document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
       },
     },
     a11y: { test: "error" },
@@ -199,11 +199,11 @@ export const ReadOnly: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByText("Customer")).toBeVisible();
     await expect(canvas.queryByRole("combobox", { name: "Type" })).toBeNull();
-    await expect(canvas.queryByRole("button", { name: "Discard" })).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Delete" })).toBeNull();
   },
 };
 
-/** Upload 01 once its type is Payment evidence. */
+/** Upload 01 once its type is Payment. */
 const invoiceAsPayment: DocumentReviewView = {
   ...invoiceReview,
   document: { ...invoiceReview.document, kind: "payment" },
@@ -249,7 +249,7 @@ export const ChangeType: Story = {
 
     await userEvent.click(canvas.getByRole("combobox", { name: "Type" }));
     await userEvent.click(
-      await screen.findByRole("option", { name: "Payment evidence" })
+      await screen.findByRole("option", { name: "Payment" })
     );
 
     await waitFor(() =>
@@ -301,7 +301,7 @@ export const Discard: Story = {
     );
   },
   play: async ({ canvas, canvasElement }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Discard" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Delete" }));
 
     const first = await screen.findByRole("dialog");
     const cancel = within(first).getByRole("button", { name: "Cancel" });
@@ -312,12 +312,12 @@ export const Discard: Story = {
     await expect(discardDocument).not.toHaveBeenCalled();
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
 
-    await userEvent.click(canvas.getByRole("button", { name: "Discard" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Delete" }));
 
     const second = await screen.findByRole("dialog");
 
     await userEvent.click(
-      within(second).getByRole("button", { name: "Discard" })
+      within(second).getByRole("button", { name: "Delete" })
     );
 
     await waitFor(() =>
@@ -327,13 +327,13 @@ export const Discard: Story = {
     );
     // The button is busy until the discard finishes, so it cannot be sent twice.
     await expect(
-      canvas.getByRole("button", { name: "Discard" })
+      canvas.getByRole("button", { name: "Delete" })
     ).toHaveAttribute("aria-busy", "true");
     releaseDiscard?.();
 
     // czjw.64: the result card says what happened and offers the next step.
     const discarded = await canvas.findByText(
-      `Discarded ${LONG_LABEL}. Nothing was added.`
+      `Deleted ${LONG_LABEL}. Nothing was added.`
     );
 
     await expect(discarded).toBeVisible();
@@ -531,7 +531,7 @@ export const AiOff: Story = {
   play: async ({ canvas }) => {
     await expect(
       canvas.getByText(
-        /· not classified\. AI was off\. Fill in the fields by hand\./u
+        /· Not classified\. AI was off\. Fill in the fields by hand\./u
       )
     ).toBeVisible();
   },

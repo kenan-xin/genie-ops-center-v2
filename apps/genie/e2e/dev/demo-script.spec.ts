@@ -280,7 +280,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           await openInbox(page);
           await uploadFiles(page, [invoice]);
-          await expectStatus(page, invoice, "Needs your input");
+          await expectStatus(page, invoice, "To review");
           await openReview(page, invoice, "Review the invoice");
 
           // Below 1024 px the review shows one field at a time, so the pager goes to the due date.
@@ -378,7 +378,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           await openInbox(page);
           await uploadFiles(page, [duplicate]);
-          await expectStatus(page, duplicate, "Duplicate (nothing added)");
+          await expectStatus(page, duplicate, "Duplicate, nothing added");
         });
 
         await test.step("7. upload 05, 06 and 07, save each, and read the final totals", async () => {
@@ -396,7 +396,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           await openInbox(page);
           await uploadFiles(page, [receipt]);
-          await expectStatus(page, receipt, "Needs your input");
+          await expectStatus(page, receipt, "To review");
           await openReview(page, receipt, "Review the paid receipt");
 
           const savePaid = await saveButton(page, "Save as paid");

@@ -42,16 +42,21 @@ const desktop = { viewport: { value: "desktop", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
-const STATUS_WORDS = [
-  "Reading",
-  "Could not read",
-  "Needs your input",
-  "Allocated automatically",
-  "Confirm the split",
-  "Possible duplicate",
-  "No matching invoice",
-  "Kept as a reference",
-  "Saved",
+/** F1: the four statuses (G22), each reading state's reason as the line under its pill. */
+const STATUS_COUNTS = {
+  "Processing": 1,
+  "Failed": 1,
+  "To review": 4,
+  "Processed": 3,
+} as const;
+
+const REASONS = [
+  ["Failed", "Could not read"],
+  ["Processed", "Allocated automatically"],
+  ["To review", "Confirm the split"],
+  ["To review", "Possible duplicate"],
+  ["To review", "No matching invoice"],
+  ["Processed", "Kept as a reference"],
 ] as const;
 
 /** A fresh query cache per story, with no retries so a refused call reports at once. */
@@ -89,13 +94,13 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Documents inbox at `/m/invoices/documents` (Spec 7 R-20, R-23, R-37) on the list header (variant C, `czjw.73`): the status tabs Needs you, Reading, Done and All with their counts, a search, the type and the upload date range, and the columns Document, Type, What we found, Uploaded, Status and Updated. Needs you is the resting tab, and a tab with no rows shows no count (`czjw.68`). An upload moves the list to All. The list polls the rows that are Reading. Uploads go one at a time in the chosen order; an exact copy adds a Duplicate (nothing added) row for this visit, and a refusal shows beside its file name while the next file still uploads. A Could not read row offers Retry. With AI off the page says that a person fills the fields by hand.",
+          "The Documents inbox at `/m/invoices/documents` (Spec 7 R-20, R-23, R-37) on the list header (variant C, `czjw.73`): the status tabs All, To review, Processing and Processed with their counts, a search, the type and the upload date range, and the columns Document, Type, Extracted details, Uploaded, Status and Updated. All is the resting tab, and a tab with no rows shows no count (`czjw.68`). A status pill is Processing, To review, Processed or Failed, with the reason as a muted line under it (G22). An upload moves the list to All. The list polls the rows that are Processing. Uploads go one at a time in the chosen order; an exact copy adds a Processed row with the reason Duplicate, nothing added, for this visit, and a refusal shows beside its file name while the next file still uploads. A Failed row offers Retry. With AI off the page says that a person fills the fields by hand.",
       },
     },
     a11y: { test: "error" },
   },
   decorators: [withQuery],
-  args: { view: needsYouDocumentInbox },
+  args: { view: defaultDocumentInbox },
   // Each story leaves the address as it found it.
   beforeEach: () => {
     const before = window.location.href;
@@ -171,7 +176,7 @@ const documents = (canvas: Canvas) =>
 /** A status pill; the Reading group's heading and caption say "Reading" too. */
 const BADGE = '[data-slot="badge"]';
 
-/** Every word shows once in the table or the card list, whichever the width draws. */
+/** Every status and reason shows in the table or the card list, whichever the width draws. */
 async function expectStatusWords(
   canvas: Canvas,
   role: "table" | "list"
@@ -180,15 +185,26 @@ async function expectStatusWords(
 
   await waitFor(() =>
     expect(
-      within(list).queryAllByText("Saved", { selector: BADGE })
-    ).toHaveLength(1)
+      within(list).queryAllByText("Processed", { selector: BADGE })
+    ).toHaveLength(STATUS_COUNTS.Processed)
   );
   await Promise.all(
-    STATUS_WORDS.map((word) =>
+    Object.entries(STATUS_COUNTS).map(([word, count]) =>
       expect(
         within(list).queryAllByText(word, { selector: BADGE })
-      ).toHaveLength(1)
+      ).toHaveLength(count)
     )
+  );
+  await Promise.all(
+    REASONS.map(([status, reason]) => {
+      const line = within(list).getByText(reason);
+
+      return expect(
+        within(line.parentElement ?? line).getByText(status, {
+          selector: BADGE,
+        })
+      ).toBeVisible();
+    })
   );
 }
 
@@ -215,23 +231,25 @@ const NEEDS_REVIEW = defaultDocumentInbox.rows.filter((row) =>
   )
 );
 
-// Needs you is the resting tab, and the server page is its page one (LH20). D3: Review and Retry
-// show under Needs you and under All.
+// All is the resting tab, and the server page is its page one (G22). D3: Review and Retry show
+// under All and under To review.
 export const Default: Story = {
   globals: desktop,
   beforeEach: () => serve(defaultDocumentInbox),
   play: async ({ canvas }) => {
-    await expect(
-      canvas.getByRole("tab", { name: "Needs you 5" })
-    ).toHaveAttribute("aria-selected", "true");
+    await expect(canvas.getByRole("tab", { name: "All 9" })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expectStatusWords(canvas, "table");
     await expectRowActions(canvas);
 
-    await userEvent.click(canvas.getByRole("tab", { name: "All 9" }));
+    serve(needsYouDocumentInbox);
+    await userEvent.click(canvas.getByRole("tab", { name: "To review 5" }));
     await expect(listDocuments).toHaveBeenCalledWith({
       after: null,
-      params: { status: "all" },
+      params: { status: "needs-you" },
     });
-    await expectStatusWords(canvas, "table");
     await expectRowActions(canvas);
     await expect(
       canvas.getByRole("columnheader", { name: /Updated/ })
@@ -243,30 +261,34 @@ export const Default: Story = {
 export const DefaultOnPhone: Story = {
   name: "Default on a phone",
   globals: phone,
-  beforeEach: () => {
-    serve(defaultDocumentInbox);
-    atAddress("?status=all");
-  },
+  beforeEach: () => serve(defaultDocumentInbox),
   play: ({ canvas }) => expectStatusWords(canvas, "list"),
 };
 
-/** D1: an empty Needs you shows no count, no 0, and says so (`czjw.68`). */
+/** D1: an empty To review shows no count, no 0, and says so (`czjw.68`). */
 async function nothingNeedsYou(canvas: Canvas): Promise<void> {
-  await expect(await canvas.findByText("Nothing needs you.")).toBeVisible();
+  await expect(
+    await canvas.findByText("No documents to review.")
+  ).toBeVisible();
   await expect(canvas.queryAllByText(/^0$/)).toEqual([]);
-  await expect(canvas.queryByText(/Needs you 0/)).toBeNull();
+  await expect(canvas.queryByText(/To review 0/)).toBeNull();
 }
 
 export const NothingNeedsYou: Story = {
   name: "Nothing needs you",
   args: { view: nothingNeedsYouDocumentInbox },
   globals: desktop,
-  beforeEach: () => serve(nothingNeedsYouDocumentInbox),
+  beforeEach: () => {
+    serve(nothingNeedsYouDocumentInbox);
+    atAddress("?status=needs-you");
+  },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("tab", { name: "Needs you" })
+      canvas.getByRole("tab", { name: "To review" })
     ).toHaveAttribute("aria-selected", "true");
-    await expect(canvas.getByRole("tab", { name: "Done 30" })).toBeVisible();
+    await expect(
+      canvas.getByRole("tab", { name: "Processed 30" })
+    ).toBeVisible();
     await nothingNeedsYou(canvas);
   },
 };
@@ -275,10 +297,13 @@ export const NothingNeedsYouOnPhone: Story = {
   name: "Nothing needs you on a phone",
   args: { view: nothingNeedsYouDocumentInbox },
   globals: phone,
-  beforeEach: () => serve(nothingNeedsYouDocumentInbox),
+  beforeEach: () => {
+    serve(nothingNeedsYouDocumentInbox);
+    atAddress("?status=needs-you");
+  },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("heading", { name: "Needs you" })
+      canvas.getByRole("heading", { name: "To review" })
     ).toBeVisible();
     await nothingNeedsYou(canvas);
   },
@@ -301,6 +326,7 @@ export const UploadShowsAll: Story = {
       ...defaultDocumentInbox,
       rows: [NEW_UPLOAD, ...defaultDocumentInbox.rows],
     });
+    atAddress("?status=needs-you");
   },
   play: async ({ canvas }) => {
     await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
@@ -320,9 +346,9 @@ export const UploadShowsAll: Story = {
   },
 };
 
-// A return to the default tab reads page one again, not the server page of the first visit.
+// A return to the resting tab reads page one again, not the server page of the first visit.
 export const BackToNeedsYouAfterUpload: Story = {
-  name: "Back to Needs you after an upload",
+  name: "Back to All after an upload",
   globals: desktop,
   beforeEach: () => {
     serve({
@@ -337,8 +363,10 @@ export const BackToNeedsYouAfterUpload: Story = {
     await waitFor(() => expect(param("status")).toBe("all"));
     await waitFor(() => expect(uploadDocument).toHaveBeenCalledTimes(1));
 
-    await userEvent.click(canvas.getByRole("tab", { name: /^Needs you/ }));
+    await userEvent.click(canvas.getByRole("tab", { name: /^To review/ }));
+    await userEvent.click(canvas.getByRole("tab", { name: /^All/ }));
 
+    await waitFor(() => expect(param("status")).toBeNull());
     await waitFor(() =>
       expect(listDocuments).toHaveBeenCalledWith({ after: null, params: {} })
     );
@@ -369,7 +397,7 @@ export const EmptyTabAfterFirstUpload: Story = {
       await canvas.findByRole("link", { name: "new.pdf" })
     ).toBeVisible();
 
-    await userEvent.click(canvas.getByRole("tab", { name: "Done" }));
+    await userEvent.click(canvas.getByRole("tab", { name: "Processed" }));
 
     await expect(
       await canvas.findByText("No document matches these filters.")
@@ -517,7 +545,7 @@ export const Uploads: Story = {
     );
 
     await expect(
-      await table.findByText("Duplicate (nothing added)")
+      await table.findByText("Duplicate, nothing added")
     ).toBeVisible();
     await expect(table.getByText("Same file as a.pdf")).toBeVisible();
     // An upload moves the list to All, where this visit's Duplicate rows show.
@@ -718,7 +746,7 @@ export const Retry: Story = {
     // The row reads again.
     await waitFor(() =>
       expect(
-        documents(canvas).getByText("Reading", { selector: BADGE })
+        documents(canvas).getByText("Processing", { selector: BADGE })
       ).toBeVisible()
     );
   },
@@ -748,9 +776,9 @@ export const RetryRefused: Story = {
   },
 };
 
-/** The finished row's status word, read from the Needs you group it moves to. */
+/** A finished row's status word, To review, the tab it moves to. */
 const needsYouRow = (canvas: Canvas) =>
-  documents(canvas).getByText("Needs your input");
+  documents(canvas).getAllByText("To review", { selector: BADGE })[0];
 
 /** The stale times of each list read, for the one-reload check. */
 const listTimes: number[] = [];

@@ -8,7 +8,7 @@ export function kindText(kind: DocumentKind | null): string {
     case "invoice":
       return "Invoice";
     case "payment":
-      return "Payment evidence";
+      return "Payment";
     case "paid-receipt":
       return "Paid receipt";
     case "purchase-order":

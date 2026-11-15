@@ -75,14 +75,14 @@ type ExpectedRow = {
   /** The uploaded copy's file name, which is the row's label. */
   readonly label: string;
   readonly status: string;
-  /** Parts of "What we found" that the row must show. */
+  /** Parts of "Extracted details" and the reason that the row must show. */
   readonly text: readonly string[];
 };
 
 /**
- * Waits until every expected row shows with its status and its found text. A row is the one row
- * with that status whose text holds the label, so the Duplicate row can share its label with the
- * row it copies.
+ * Waits until every expected row shows with its status and its texts. A row matches when it has
+ * that status and its text holds the label and every expected text, so the Duplicate row and the
+ * Kept as a reference row it copies, both Processed with one label, match whatever their order.
  */
 async function expectInboxRows(
   page: Page,
@@ -93,10 +93,20 @@ async function expectInboxRows(
     const shown = await shownRows(page);
 
     const problems = expected.flatMap((row) => {
-      const match = shown.find(
+      const labelled = shown.filter(
         (candidate) =>
           candidate.status === row.status && candidate.text.includes(row.label)
       );
+
+      if (
+        labelled.some((candidate) =>
+          row.text.every((text) => candidate.text.includes(text))
+        )
+      )
+        return [];
+
+      // No full match: name what the first row with this status and label lacks.
+      const match = labelled[0];
 
       if (match === undefined) {
         const statuses = shown.map((candidate) => candidate.status).join(", ");
@@ -145,9 +155,9 @@ test("the inbox and a review page load with no hydration warning", async ({
   };
 
   await signIn(page);
-  // The resting tab, then All, which holds a row on a fresh database too.
+  // To review, then the resting tab All last, which holds a row to open on a fresh database too.
+  await load("/m/invoices/documents?status=needs-you");
   await load("/m/invoices/documents");
-  await load("/m/invoices/documents?status=all");
 
   const review = await page
     .getByRole("main")
@@ -161,7 +171,7 @@ test("the inbox and a review page load with no hydration warning", async ({
   expect(messages.filter((text) => HYDRATION_MESSAGE.test(text))).toEqual([]);
 });
 
-test("Done reads its first page, and a scroll to the end reads the rest", async ({
+test("Processed reads its first page, and a scroll to the end reads the rest", async ({
   page,
 }) => {
   test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
@@ -268,7 +278,7 @@ test("the inbox search, type and upload date narrow the rows on the server", asy
           .getByLabel("Document type: All types")
           .filter({ visible: true })
           .click();
-        await page.getByRole("option", { name: "Payment evidence" }).click();
+        await page.getByRole("option", { name: "Payment" }).click();
       });
       await expect(page).toHaveURL(/[?&]type=payment(&|$)/);
       await expect
@@ -276,8 +286,7 @@ test("the inbox search, type and upload date narrow the rows on the server", asy
           const texts = await shownTexts();
 
           return (
-            texts.length > 0 &&
-            texts.every((text) => text.includes("Payment evidence"))
+            texts.length > 0 && texts.every((text) => text.includes("Payment"))
           );
         })
         .toBe(true);
@@ -333,23 +342,23 @@ test("uploads live documents and shows their statuses", async ({
         [
           {
             label: invoice.name,
-            status: "Needs your input",
+            status: "To review",
             text: [`ABC Trading · ${MONEY.format(5000)}`],
           },
           {
             label: split.name,
-            status: "Confirm the split",
-            text: ["→ 2 invoices"],
+            status: "To review",
+            text: ["Confirm the split", "→ 2 invoices"],
           },
           {
             label: unmatched.name,
-            status: "No matching invoice",
-            text: ["Meridian Labs"],
+            status: "To review",
+            text: ["No matching invoice", "Meridian Labs"],
           },
           {
             label: purchaseOrder.name,
-            status: "Kept as a reference",
-            text: ["No figure changes"],
+            status: "Processed",
+            text: ["Kept as a reference", "No figure changes"],
           },
         ],
         READING_TIMEOUT
@@ -363,8 +372,11 @@ test("uploads live documents and shows their statuses", async ({
         [
           {
             label: purchaseOrder.name,
-            status: "Duplicate (nothing added)",
-            text: [`Same file as ${purchaseOrder.name}`],
+            status: "Processed",
+            text: [
+              "Duplicate, nothing added",
+              `Same file as ${purchaseOrder.name}`,
+            ],
           },
         ],
         READING_TIMEOUT
@@ -393,7 +405,7 @@ test("has no accessibility violations with rows", async ({
         [
           {
             label: invoice.name,
-            status: "Needs your input",
+            status: "To review",
             text: [`ABC Trading · ${MONEY.format(5000)}`],
           },
         ],

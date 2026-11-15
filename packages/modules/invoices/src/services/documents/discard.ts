@@ -43,7 +43,7 @@ export async function discardDocument(
       { tenant: ctx.tenant, caller: ctx.caller, tx },
       "invoices:document-discarded",
       { type: RECORD_TYPES.document, id },
-      "Discarded a document.",
+      "Deleted a document.",
       { fileName: document.fileName ?? "Document" }
     );
 

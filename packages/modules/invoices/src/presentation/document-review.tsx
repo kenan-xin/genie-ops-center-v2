@@ -146,8 +146,8 @@ export function DocumentReview(props: {
 
   const about =
     kind === null
-      ? `not classified${data.document.reason === null ? "" : `. ${reasonSentence(data.document.reason)}`}`
-      : `classified as ${kindText(kind)} · select a field to see where it came from`;
+      ? `Not classified${data.document.reason === null ? "" : `. ${reasonSentence(data.document.reason)}`}`
+      : `Read as ${kindText(kind)} · Select a field to see where it came from.`;
 
   const meta = (
     <>
@@ -162,7 +162,7 @@ export function DocumentReview(props: {
         <PageHeader title={title} breadcrumb={TRAIL} />
         <ReviewResult
           tone="discarded"
-          title={`Discarded ${label}. Nothing was added.`}
+          title={`Deleted ${label}. Nothing was added.`}
           canUpload={data.canWrite}
         />
       </main>
@@ -271,16 +271,16 @@ export function DocumentReview(props: {
   const discardError =
     discard.error === null ? null : (
       <p role="alert" className="text-sm text-destructive">
-        {`${label} was not discarded. ${discard.error.message}`}
+        {`${label} was not deleted. ${discard.error.message}`}
       </p>
     );
 
   const discardDialog = (
     <ConfirmDialog
       open={discardOpen}
-      title={`Discard ${label}?`}
-      description="The file is removed and nothing is added. You can upload it again later."
-      confirmLabel="Discard"
+      title={`Delete ${label}?`}
+      description="The file is deleted and nothing is added. You can upload it again later."
+      confirmLabel="Delete"
       danger
       onConfirm={() => {
         setDiscardOpen(false);
@@ -296,8 +296,8 @@ export function DocumentReview(props: {
       (kind === "invoice" || kind === "paid-receipt" || kind === "payment"))
   ) {
     const deskAbout = reading
-      ? "not classified yet"
-      : `classified as ${kindText(kind ?? "invoice")}`;
+      ? "Not classified yet"
+      : `Read as ${kindText(kind ?? "invoice")}`;
 
     return (
       <main>
@@ -308,7 +308,7 @@ export function DocumentReview(props: {
             meta: (
               <>
                 <span title={label}>{shortName(label)}</span>
-                {` · ${deskAbout} · select a field to see its line on the page`}
+                {` · ${deskAbout} · Select a field to see its line on the page.`}
               </>
             ),
             breadcrumb: TRAIL,
@@ -424,7 +424,7 @@ export function DocumentReview(props: {
                       loading={discard.isPending}
                       onClick={() => setDiscardOpen(true)}
                     >
-                      Discard
+                      Delete
                     </Button>
                   </div>
                 </div>

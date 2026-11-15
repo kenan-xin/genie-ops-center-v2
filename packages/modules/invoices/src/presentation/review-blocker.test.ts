@@ -13,7 +13,7 @@ const ready = { kind: "ready" } as const;
 
 const PAYMENT = { open, amountCents: 825_000, currency: "SGD" };
 
-const DUE = "Choose a due date or mark it unspecified to save.";
+const DUE = "Enter a due date or choose No due date to save.";
 
 describe("what blocks a review save", () => {
   // T1.1, T1.2: the first field in list order, and "Enter" only for an empty one.
