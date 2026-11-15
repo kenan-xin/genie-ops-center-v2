@@ -3,14 +3,18 @@
 // until a screen needs them.
 import { cn } from "cn";
 
-/** Joins its direct children into one control: one outer border, square inner corners. */
+/**
+ * Joins its direct children into one control: one outer border, square inner corners. A child's
+ * touch area keeps the child's own width, so it reaches up and down only and never takes a joined
+ * neighbor's taps (6wz1.114). The `*:data-slot:` selector reaches a select or menu trigger too.
+ */
 function ButtonGroup({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       role="group"
       data-slot="button-group"
       className={cn(
-        "flex w-fit items-stretch *:focus-visible:relative *:focus-visible:z-10 *:data-slot:rounded-r-none [&>[data-slot]:not(:has(~[data-slot]))]:rounded-r-lg! [&>[data-slot]~[data-slot]]:rounded-l-none [&>[data-slot]~[data-slot]]:border-l-0",
+        "flex w-fit items-stretch *:focus-visible:relative *:focus-visible:z-10 *:data-slot:rounded-r-none [&>[data-slot]:not(:has(~[data-slot]))]:rounded-r-lg! [&>[data-slot]~[data-slot]]:rounded-l-none [&>[data-slot]~[data-slot]]:border-l-0 *:data-slot:max-lg:after:min-w-0",
         className
       )}
       {...props}

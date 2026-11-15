@@ -1,10 +1,11 @@
 // No "use client": server components (the app home page) call this too.
 import { cva } from "class-variance-authority";
 
-import { controlHeights } from "../theme/tokens.ts";
-
-// A 32 px control owns an invisible 44 px hit area (tokens.md, "Buttons").
-const hitArea = "relative after:absolute after:-inset-1.5";
+import {
+  controlHeights,
+  iconControlSizes,
+  touchAreas,
+} from "../theme/tokens.ts";
 
 // Each variant names its own border color, because a caller that builds a link from this class list
 // gets no tailwind-merge, and a base `border-transparent` would then hide the secondary border.
@@ -38,15 +39,15 @@ const buttonVariants = cva(
           "border-transparent text-primary underline-offset-4 not-disabled:not-aria-disabled:hover:underline dark:text-brand-on-dark",
       },
       size: {
-        "sm": `h-8 min-h-8 px-3 ${hitArea}`,
-        "md": "h-10 min-h-10 px-4",
-        "lg": "h-11 min-h-11 px-5",
+        "sm": `${controlHeights.sm} px-3 ${touchAreas.sm}`,
+        "md": `${controlHeights.md} px-4 ${touchAreas.md}`,
+        "lg": `${controlHeights.lg} px-5`,
         // A button that sits among fields, as a list filter control: the field height (R-37a).
-        "filter": `${controlHeights.md} px-3`,
-        "icon": "size-11 lg:size-10",
-        "icon-sm": `size-8 ${hitArea}`,
+        "filter": `${controlHeights.md} px-3 ${touchAreas.md}`,
+        "icon": `${iconControlSizes.md} ${touchAreas.md}`,
+        "icon-sm": `${iconControlSizes.sm} ${touchAreas.sm}`,
         // The 36 px Send and Stop of the agent composer (czjw.120 item 10).
-        "icon-send": `size-9 ${hitArea}`,
+        "icon-send": `size-9 ${touchAreas.sm}`,
       },
     },
     defaultVariants: {

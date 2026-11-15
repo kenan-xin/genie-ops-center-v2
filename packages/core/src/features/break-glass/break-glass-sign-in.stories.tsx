@@ -210,10 +210,10 @@ export const AuthenticatorCode: Story = {
     );
     await expect(onUseDifferentAccount).toHaveBeenCalled();
 
-    // The return link is a real tap target, not a line of text.
+    // The return link is a real tap target, not a line of text: the md height (6wz1.114).
     await expect(
       heightOf(canvas.getByRole("button", { name: "Use a different account" }))
-    ).toBeGreaterThanOrEqual(40);
+    ).toBeGreaterThanOrEqual(36);
   },
 };
 

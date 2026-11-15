@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent } from "storybook/test";
+import { expect, fn, screen, userEvent } from "storybook/test";
 
 // The package entry, not ./button.tsx, so that the stories prove what an app
 // can import.
@@ -13,7 +13,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shadcn Button on the Base UI primitive (`@base-ui/react/button`), fitted to the tokens.md scale: sm 32 px, md 40 px, lg 44 px, five variants, one focus ring. It renders a native button, so a pointer, Enter and Space activate it. `disabled` leaves the tab order; `focusableWhenDisabled` keeps it there. `loading` keeps the label and the width and drops a press.",
+          "The shadcn Button on the Base UI primitive (`@base-ui/react/button`), fitted to the tokens.md scale: sm 32 px, md 36 px from `lg` and 40 px under it with a 44 px touch area, lg 44 px, five variants, one focus ring. It renders a native button, so a pointer, Enter and Space activate it. `disabled` leaves the tab order; `focusableWhenDisabled` keeps it there. `loading` keeps the label and the width and drops a press.",
       },
     },
   },
@@ -31,7 +31,7 @@ export const Default: Story = {
   play: async ({ args, canvas }) => {
     const button = canvas.getByRole("button", { name: "Save" });
 
-    await expect(button.getBoundingClientRect().height).toBe(40);
+    await expect(button.getBoundingClientRect().height).toBe(36);
 
     await userEvent.click(button);
     await expect(args.onClick).toHaveBeenCalledOnce();
@@ -197,33 +197,82 @@ export const FocusableWhenDisabledSubmitDoesNotSubmit: Story = {
   },
 };
 
+const sizes: Story["render"] = (args) => (
+  <div className="flex items-center gap-4">
+    <Button {...args} size="sm">
+      Small
+    </Button>
+    <Button {...args} size="md">
+      Medium
+    </Button>
+    <Button {...args} size="lg">
+      Large
+    </Button>
+    <Button {...args} size="icon" aria-label="Icon">
+      <svg aria-hidden="true" viewBox="0 0 16 16" />
+    </Button>
+    <Button {...args} size="icon-sm" aria-label="Small icon">
+      <svg aria-hidden="true" viewBox="0 0 16 16" />
+    </Button>
+  </div>
+);
+
+const heightsOf = (canvas: { getAllByRole: typeof screen.getAllByRole }) =>
+  canvas.getAllByRole("button").map((b) => b.getBoundingClientRect().height);
+
+// 6wz1.114 (T3-a): md and icon are 36 px from lg and 40 px under it; sm 32 px and lg 44 px at both.
 export const Sizes: Story = {
   globals: { viewport: { value: "desktop", isRotated: false } },
+  render: sizes,
+  play: async ({ canvas }) => {
+    await expect(heightsOf(canvas)).toEqual([32, 36, 44, 36, 32]);
+  },
+};
+
+export const SizesOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  render: sizes,
+  play: async ({ canvas }) => {
+    await expect(heightsOf(canvas)).toEqual([32, 40, 44, 40, 32]);
+  },
+};
+
+// 6wz1.114 (T3-b): under lg a 40 px md or icon button reaches 44 px, so a tap 1.5 px above or below
+// it still lands on it. The 40 px wide icon button also reaches 44 px sideways; a labelled button
+// is wider than 44 px already, so its own box is its area across.
+export const TouchAreaOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
   render: (args) => (
-    <div className="flex items-center gap-4">
-      <Button {...args} size="sm">
-        Small
-      </Button>
-      <Button {...args} size="md">
-        Medium
-      </Button>
-      <Button {...args} size="lg">
-        Large
-      </Button>
-      <Button {...args} size="icon" aria-label="Icon">
-        <svg aria-hidden="true" viewBox="0 0 16 16" />
-      </Button>
-      <Button {...args} size="icon-sm" aria-label="Small icon">
+    // The gap and the padding keep each probe off the other button and inside the viewport.
+    <div className="flex items-center gap-6 p-4">
+      <Button {...args}>Save</Button>
+      <Button {...args} size="icon" aria-label="More">
         <svg aria-hidden="true" viewBox="0 0 16 16" />
       </Button>
     </div>
   ),
   play: async ({ canvas }) => {
-    const heights = canvas
-      .getAllByRole("button")
-      .map((b) => b.getBoundingClientRect().height);
+    const misses = ["Save", "More"].flatMap((name) => {
+      const button = canvas.getByRole("button", { name });
+      const { left, right, top, bottom } = button.getBoundingClientRect();
+      const x = (left + right) / 2;
+      const y = (top + bottom) / 2;
 
-    await expect(heights).toEqual([32, 40, 44, 40, 32]);
+      const probes: [string, number, number][] = [
+        ["above", x, top - 1.5],
+        ["below", x, bottom + 1.5],
+      ];
+
+      if (name === "More") {
+        probes.push(["left", left - 1.5, y], ["right", right + 1.5, y]);
+      }
+
+      return probes.flatMap(([side, px, py]) =>
+        document.elementFromPoint(px, py) === button ? [] : [`${name} ${side}`]
+      );
+    });
+
+    await expect(misses).toEqual([]);
   },
 };
 

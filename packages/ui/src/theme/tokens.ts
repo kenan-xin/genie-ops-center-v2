@@ -145,9 +145,12 @@ export const touchAreas = {
   md: "relative isolate max-lg:after:absolute max-lg:after:top-1/2 max-lg:after:left-1/2 max-lg:after:-z-10 max-lg:after:size-full max-lg:after:min-h-11 max-lg:after:min-w-11 max-lg:after:-translate-1/2",
 } as const;
 
-/** 6wz1.114: for a control flush beside its neighbors (a tab, a joined button): up and down only. */
+/**
+ * 6wz1.114: for a control flush beside its neighbors (a tab, a joined button): up and down only.
+ * Centered at 44 px minimum for the reason of `touchAreas` (P06-21).
+ */
 export const touchAreaY =
-  "relative isolate max-lg:before:absolute max-lg:before:inset-x-0 max-lg:before:-inset-y-0.5 max-lg:before:-z-10";
+  "relative isolate max-lg:before:absolute max-lg:before:inset-x-0 max-lg:before:top-1/2 max-lg:before:-z-10 max-lg:before:h-full max-lg:before:min-h-11 max-lg:before:-translate-y-1/2";
 
 /** 6wz1.114: a stacked list row: 44 px under `lg`, where its own box is its touch area; md from `lg`. */
 export const rowHeight = "min-h-11 lg:min-h-9";

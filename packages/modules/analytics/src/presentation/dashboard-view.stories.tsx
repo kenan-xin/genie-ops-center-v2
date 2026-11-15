@@ -1505,7 +1505,8 @@ export const HeaderOnPhone: Story = {
     const edit = visibleButton(canvasElement, "Edit dashboard");
 
     await expect(edit).toHaveTextContent(/^$/u);
-    await expect(edit.getBoundingClientRect().width).toBe(44);
+    // The 40 px icon button of 6wz1.114, with its 44 px touch area.
+    await expect(edit.getBoundingClientRect().width).toBe(40);
     await userEvent.click(edit);
     await expect(edit).toHaveAttribute("aria-pressed", "true");
     await expect(

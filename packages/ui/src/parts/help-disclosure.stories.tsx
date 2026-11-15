@@ -19,7 +19,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'Contextual help (tokens.md, "Help disclosure"). A labelled button opens one 320 px callout beside it, only on a press. Escape, a click outside and the Close link close it, and focus returns to the button. Under 640 px the callout pins to the viewport, 16 px from each side. In a toolbar, `iconOnly` drops the button to its icon, 44 px square under `sm` and 40 px from `sm`, with the label in `aria-label` and in a tooltip on hover and keyboard focus.',
+          'Contextual help (tokens.md, "Help disclosure"). A labelled button opens one 320 px callout beside it, only on a press. Escape, a click outside and the Close link close it, and focus returns to the button. Under 640 px the callout pins to the viewport, 16 px from each side. In a toolbar, `iconOnly` drops the button to its icon, 40 px square with a 44 px touch area under `lg` and 36 px from `lg`, with the label in `aria-label` and in a tooltip on hover and keyboard focus.',
       },
     },
   },
@@ -180,8 +180,8 @@ export const IconOnly: Story = {
     const tip = await screen.findByText("How access works");
 
     await waitFor(() => expect(tip).toBeVisible());
-    await expect(trigger.getBoundingClientRect().height).toBe(40);
-    await expect(trigger.getBoundingClientRect().width).toBe(40);
+    await expect(trigger.getBoundingClientRect().height).toBe(36);
+    await expect(trigger.getBoundingClientRect().width).toBe(36);
   },
 };
 
@@ -223,11 +223,25 @@ export const Hint: Story = {
 export const IconOnlyOnPhone: Story = {
   args: { iconOnly: true },
   globals: { viewport: { value: "mobile1", isRotated: false } },
+  // Room above, so that a point 1.5 px over the edge is on the page.
+  decorators: [
+    (Story) => (
+      <div className="p-4">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvas }) => {
     const trigger = canvas.getByRole("button", { name: "How access works" });
 
-    await expect(trigger.getBoundingClientRect().height).toBe(44);
-    await expect(trigger.getBoundingClientRect().width).toBe(44);
+    const rect = trigger.getBoundingClientRect();
+
+    await expect(rect.height).toBe(40);
+    await expect(rect.width).toBe(40);
+    // 6wz1.114 (T3-f): the 40 px square reaches 44 px.
+    await expect(
+      document.elementFromPoint(rect.left + rect.width / 2, rect.top - 1.5)
+    ).toBe(trigger);
   },
 };
 

@@ -11,7 +11,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The shadcn Tabs on Base UI, fitted to tokens.md: a 40 px trigger, one focus ring, a primary underline on the active tab. Arrow keys move the focus between tabs, and Enter or Space selects the focused one.",
+          "The shadcn Tabs on Base UI, fitted to tokens.md: a 36 px trigger from `lg`, 40 px under it with a touch area that reaches 44 px up and down only, so a flush neighbor keeps its taps, one focus ring, a primary underline on the active tab. Arrow keys move the focus between tabs, and Enter or Space selects the focused one.",
       },
     },
   },
@@ -37,7 +37,7 @@ export const Default: Story = {
     const first = canvas.getByRole("tab", { name: "Members (3)" });
     const second = canvas.getByRole("tab", { name: "Roles (1)" });
 
-    await expect(first.getBoundingClientRect().height).toBe(40);
+    await expect(first.getBoundingClientRect().height).toBe(36);
     await expect(
       canvas.getByRole("tabpanel").getBoundingClientRect().top
     ).toBeGreaterThanOrEqual(
@@ -65,5 +65,33 @@ export const Dark: Story = {
     await expect(
       canvas.getByRole("tab", { name: "Members (3)" })
     ).toHaveAttribute("aria-selected", "true");
+  },
+};
+
+// 6wz1.114 (T3-c): under lg a 40 px trigger reaches 44 px up and down, and never sideways into its
+// flush neighbor (the list has gap-0 under sm).
+export const TabsOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  // Room above, so that a point 1.5 px over the edge is on the page.
+  decorators: [
+    (Story) => (
+      <div className="p-4">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const first = canvas.getByRole("tab", { name: "Members (3)" });
+    const second = canvas.getByRole("tab", { name: "Roles (1)" });
+    const a = first.getBoundingClientRect();
+    const b = second.getBoundingClientRect();
+    const y = (a.top + a.bottom) / 2;
+
+    await expect(a.height).toBe(40);
+    await expect(
+      document.elementFromPoint((a.left + a.right) / 2, a.top - 1.5)
+    ).toBe(first);
+    await expect(document.elementFromPoint(b.left + 1, y)).toBe(second);
+    await expect(document.elementFromPoint(a.right - 1, y)).toBe(first);
   },
 };

@@ -4,7 +4,7 @@ import { cn } from "cn";
 import { XIcon } from "lucide-react";
 import { useRef } from "react";
 
-import { focusRing } from "../theme/tokens.ts";
+import { controlHeights, focusRing } from "../theme/tokens.ts";
 
 export type FilterChip = {
   readonly id: string;
@@ -35,19 +35,20 @@ export function FilterChips(props: {
   }
 
   return (
-    // A row that scrolls sideways also clips up and down; py-1 keeps the 4 px that the remove
-    // target reaches above and below a 36 px chip.
+    // A row that scrolls sideways also clips up and down; py-1.5 keeps the 6 px that the remove
+    // target reaches above and below a 32 px chip.
     <ul
       ref={list}
       aria-label={props.label}
       tabIndex={-1}
-      className={cn("flex gap-2 overflow-x-auto py-1", focusRing)}
+      className={cn("flex gap-2 overflow-x-auto py-1.5", focusRing)}
     >
       {props.chips.map((chip) => (
         <li key={chip.id} className="shrink-0">
           <span
             className={cn(
-              "inline-flex h-9 items-center gap-1 rounded-full border px-3 text-sm font-medium whitespace-nowrap",
+              controlHeights.sm,
+              "inline-flex items-center gap-1 rounded-full border px-3 text-sm font-medium whitespace-nowrap",
               chip.set
                 ? "border-primary/40 bg-primary/8 font-semibold text-primary dark:text-brand-on-dark"
                 : "border-border bg-card text-foreground",

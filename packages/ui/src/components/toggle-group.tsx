@@ -7,7 +7,7 @@ import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
 import { cn } from "cn";
 
-import { focusRing } from "../theme/tokens.ts";
+import { controlHeights, focusRing, touchAreas } from "../theme/tokens.ts";
 
 function ToggleGroup<Value extends string>({
   className,
@@ -28,7 +28,9 @@ function ToggleGroupItem({ className, ...props }: TogglePrimitive.Props) {
     <TogglePrimitive
       data-slot="toggle-group-item"
       className={cn(
-        "relative inline-flex h-8 shrink-0 items-center justify-center rounded-full border border-input bg-card px-3 text-sm font-medium whitespace-nowrap text-foreground select-none after:absolute after:-inset-1.5 motion-safe:transition-colors not-data-pressed:hover:bg-hover data-pressed:border-transparent data-pressed:bg-primary data-pressed:text-primary-foreground disabled:pointer-events-none disabled:opacity-50",
+        controlHeights.sm,
+        touchAreas.sm,
+        "inline-flex shrink-0 items-center justify-center rounded-full border border-input bg-card px-3 text-sm font-medium whitespace-nowrap text-foreground select-none motion-safe:transition-colors not-data-pressed:hover:bg-hover data-pressed:border-transparent data-pressed:bg-primary data-pressed:text-primary-foreground disabled:pointer-events-none disabled:opacity-50",
         focusRing,
         className
       )}

@@ -174,7 +174,7 @@ export const Desktop: Story = {
     });
 
     await expect(actions).toHaveFocus();
-    await expect(actions.getBoundingClientRect().height).toBe(40);
+    await expect(actions.getBoundingClientRect().height).toBe(36);
 
     await userEvent.keyboard("{Enter}");
     await userEvent.click(

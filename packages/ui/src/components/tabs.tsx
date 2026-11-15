@@ -3,7 +3,7 @@
 import { Tabs as TabsPrimitive } from "@base-ui/react/tabs";
 import { cn } from "cn";
 
-import { focusRing } from "../theme/tokens.ts";
+import { controlHeights, focusRing, touchAreaY } from "../theme/tokens.ts";
 
 function Tabs({ className, ...props }: TabsPrimitive.Root.Props) {
   return (
@@ -50,7 +50,10 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
     <TabsPrimitive.Tab
       data-slot="tabs-trigger"
       className={cn(
-        "relative inline-flex h-10 min-h-10 items-center justify-center gap-1.5 rounded-lg px-2 text-sm sm:px-3 font-medium whitespace-nowrap text-muted-foreground motion-safe:transition-colors hover:text-foreground data-active:font-semibold data-active:text-foreground disabled:pointer-events-none disabled:opacity-50",
+        controlHeights.md,
+        // Up and down only: a tab sits flush beside its neighbor under sm, and the underline uses after:.
+        touchAreaY,
+        "inline-flex items-center justify-center gap-1.5 rounded-lg px-2 text-sm sm:px-3 font-medium whitespace-nowrap text-muted-foreground motion-safe:transition-colors hover:text-foreground data-active:font-semibold data-active:text-foreground disabled:pointer-events-none disabled:opacity-50",
         "after:absolute after:inset-x-0 after:-bottom-px after:h-0.5 after:bg-primary after:opacity-0 dark:after:bg-brand-on-dark data-active:after:opacity-100",
         focusRing,
         className

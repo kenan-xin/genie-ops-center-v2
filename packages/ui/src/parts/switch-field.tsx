@@ -3,6 +3,7 @@
 import { useId } from "react";
 
 import { Switch } from "../components/switch.tsx";
+import { rowHeight } from "../theme/tokens.ts";
 
 export type SwitchFieldProps = {
   readonly label: string;
@@ -24,7 +25,9 @@ export function SwitchField({
   const descriptionId = useId();
 
   return (
-    <label className="flex min-h-11 items-center justify-between gap-4 text-foreground lg:min-h-10">
+    <label
+      className={`flex ${rowHeight} items-center justify-between gap-4 text-foreground`}
+    >
       <span className="flex flex-col">
         <span id={labelId} className="text-sm font-medium">
           {label}

@@ -96,7 +96,7 @@ export const Desktop: Story = {
     await userEvent.tab();
 
     await expect(add).toHaveFocus();
-    await expect(add.getBoundingClientRect().height).toBe(40);
+    await expect(add.getBoundingClientRect().height).toBe(36);
     await expect(getComputedStyle(add).boxShadow).toContain("rgb(37, 99, 235)");
   },
 };
@@ -113,6 +113,33 @@ export const Phone: Story = {
       "data-slot",
       "dialog-footer"
     );
+  },
+};
+
+// 6wz1.114 (T3-e): the email field, Cancel and Add share one height, 40 px under lg, 36 px from lg.
+const lineUpHeights = async () => {
+  await openFromKeyboard();
+
+  return [
+    screen
+      .getByRole("textbox", { name: "Email" })
+      .closest("[data-slot=input-box]")!,
+    screen.getByRole("button", { name: "Cancel" }),
+    screen.getByRole("button", { name: "Add" }),
+  ].map((el) => el.getBoundingClientRect().height);
+};
+
+export const FieldAndFooterLineUpOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async () => {
+    await expect(await lineUpHeights()).toEqual([40, 40, 40]);
+  },
+};
+
+export const FieldAndFooterLineUpOnDesktop: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async () => {
+    await expect(await lineUpHeights()).toEqual([36, 36, 36]);
   },
 };
 

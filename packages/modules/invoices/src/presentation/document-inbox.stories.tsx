@@ -286,8 +286,9 @@ export const NothingNeedsYou: Story = {
     await expect(
       canvas.getByRole("tab", { name: "To review" })
     ).toHaveAttribute("aria-selected", "true");
+    // The counts arrive after the selected tab, so wait for them.
     await expect(
-      canvas.getByRole("tab", { name: "Processed 30" })
+      await canvas.findByRole("tab", { name: "Processed 30" })
     ).toBeVisible();
     await nothingNeedsYou(canvas);
   },

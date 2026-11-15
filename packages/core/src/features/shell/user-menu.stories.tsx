@@ -227,7 +227,7 @@ const desktop = { viewport: { value: "desktop", isRotated: false } };
 
 const noFill = "rgba(0, 0, 0, 0)";
 
-/** The design source's rows: 40px high, icon 17px inside the popup's edge. */
+/** The rows from lg: the 36 px row height (6wz1.114), icon 17px inside the popup's edge. */
 export const ItemsMatchTheCapture: Story = {
   globals: desktop,
   play: async ({ canvasElement }) => {
@@ -245,7 +245,7 @@ export const ItemsMatchTheCapture: Story = {
         ),
       ]);
 
-    await expect(rows).toEqual(rows.map(() => [40, 17]));
+    await expect(rows).toEqual(rows.map(() => [36, 17]));
   },
 };
 

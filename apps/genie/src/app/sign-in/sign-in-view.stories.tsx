@@ -107,7 +107,7 @@ export const SsoAndLocalAccounts: Story = {
 
     for (const link of links) {
       // oxlint-disable-next-line no-await-in-loop -- two links, each read once.
-      await expect(link.offsetHeight).toBe(40);
+      await expect(link.offsetHeight).toBe(36);
       // oxlint-disable-next-line no-await-in-loop -- two links, each read once.
       await expect(link.offsetWidth).toBe(stack.offsetWidth);
     }
@@ -176,7 +176,7 @@ export const SsoOnlyPhone: Story = {
   },
 };
 
-// DESIGN.md: 44 px touch targets under 1024 px; the 40 px default returns on desktop.
+// DESIGN.md: 44 px touch targets under 1024 px; the 36 px md height returns on desktop (6wz1.114).
 export const SsoAndLocalAccountsPhone: Story = {
   args: BESIDE_SSO_ARGS,
   globals: phone,

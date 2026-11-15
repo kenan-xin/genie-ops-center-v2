@@ -11,7 +11,7 @@ import {
   type Modifiers,
 } from "react-day-picker";
 
-import { focusRing } from "../theme/tokens.ts";
+import { controlHeights, focusRing } from "../theme/tokens.ts";
 import { buttonVariants } from "./button-variants.ts";
 
 /*
@@ -61,7 +61,8 @@ function Calendar({
         nav: "absolute inset-x-0 top-0 flex items-center justify-between",
         button_previous: navButton,
         button_next: navButton,
-        month_caption: "flex h-11 items-center justify-center px-12 lg:h-10",
+        // The height of its icon buttons, so the caption lines up with them.
+        month_caption: `flex ${controlHeights.md} items-center justify-center px-12`,
         caption_label: "text-sm font-medium select-none",
         month_grid: "border-collapse",
         weekdays: "flex",

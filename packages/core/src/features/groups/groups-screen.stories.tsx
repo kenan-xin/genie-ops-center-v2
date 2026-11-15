@@ -257,6 +257,15 @@ export const PhoneSearchTakesTheRow: Story = {
 
 export const Phone: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
+  // The shell's phone content padding (app-shell.tsx, px-4): bare, an icon button's 44 px touch
+  // area at the right edge would scroll the page 2 px, which the shell never does (6wz1.114).
+  decorators: [
+    (Story) => (
+      <div className="px-4">
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvas, canvasElement }) => {
     const list = within(canvas.getByRole("list", { name: "Groups" }));
 

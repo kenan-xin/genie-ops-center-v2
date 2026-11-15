@@ -100,9 +100,6 @@ describe("the fixed token layer against tokens.md", () => {
 /** The Tailwind spacing step of a px value. */
 const step = (px: number) => px / spacingPx;
 
-/** The spacing step a touch area reaches out from a control of `px` to 44 px. */
-const inset = (px: number) => (touchAreaPx - px) / 2 / spacingPx;
-
 /** The spacing step of an input group's control: `px` less the group's two 1 px borders. */
 const inner = (px: number) => step(px - 2);
 
@@ -140,7 +137,7 @@ describe("the control heights against tokens.md, Control heights", () => {
       md: `relative isolate max-lg:after:absolute max-lg:after:top-1/2 max-lg:after:left-1/2 max-lg:after:-z-10 max-lg:after:size-full max-lg:after:min-h-${area} max-lg:after:min-w-${area} max-lg:after:-translate-1/2`,
     });
     expect(touchAreaY).toBe(
-      `relative isolate max-lg:before:absolute max-lg:before:inset-x-0 max-lg:before:-inset-y-${inset(md.phone)} max-lg:before:-z-10`
+      `relative isolate max-lg:before:absolute max-lg:before:inset-x-0 max-lg:before:top-1/2 max-lg:before:-z-10 max-lg:before:h-full max-lg:before:min-h-${area} max-lg:before:-translate-y-1/2`
     );
   });
 

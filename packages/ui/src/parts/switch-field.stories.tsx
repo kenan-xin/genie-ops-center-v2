@@ -11,7 +11,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A labelled switch row (tokens.md, Buttons). The whole row is one `<label>`: it names the switch, and a click on its text toggles it. The row is 44 px high below `lg` and 40 px from `lg`. Space toggles the focused switch.",
+          "A labelled switch row (tokens.md, Buttons). The whole row is one `<label>`: it names the switch, and a click on its text toggles it. The row is at least 44 px high below `lg` and 36 px from `lg`, taller when a description adds a line. Space toggles the focused switch.",
       },
     },
   },
@@ -35,9 +35,10 @@ export const Default: Story = {
 
     await expect(toggle).toHaveAttribute("aria-checked", "false");
     await expect(toggle).toHaveAccessibleDescription("Sent on Monday morning.");
-    await expect(toggle.closest("label")!.getBoundingClientRect().height).toBe(
-      40
-    );
+    // Two lines of text-sm: 37.5 px, so the exact pin sits on OneLine.
+    await expect(
+      toggle.closest("label")!.getBoundingClientRect().height
+    ).toBeGreaterThanOrEqual(36);
 
     await userEvent.tab();
     await expect(toggle).toHaveFocus();
@@ -51,6 +52,20 @@ export const Default: Story = {
 
     await userEvent.click(canvas.getByText("Email me a weekly summary"));
     await expect(toggle).toHaveAttribute("aria-checked", "false");
+  },
+};
+
+// 6wz1.114 (T3-g): a one-line row is the md height from lg, set by the row height alone.
+export const OneLine: Story = {
+  render: (args) => <SwitchField label={args.label} />,
+  play: async ({ canvas }) => {
+    const toggle = canvas.getByRole("switch", {
+      name: "Email me a weekly summary",
+    });
+
+    await expect(toggle.closest("label")!.getBoundingClientRect().height).toBe(
+      36
+    );
   },
 };
 
