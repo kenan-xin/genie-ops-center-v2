@@ -44,7 +44,8 @@ export async function saveAdvancedAccess(
     answer.url().includes("/api/rpc/roles/saveAdvanced")
   );
 
-  await sheet.getByRole("button", { name: "Save" }).click();
+  // Exact: a staged row's Remove is named "..., not saved yet".
+  await sheet.getByRole("button", { name: "Save", exact: true }).click();
   expect((await response).status()).toBe(200);
   await expect(sheet).toBeHidden();
 }

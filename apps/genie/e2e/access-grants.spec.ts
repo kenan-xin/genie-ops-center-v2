@@ -233,7 +233,7 @@ test("Granted shows inherited access read-only, with its source", async ({
 
   await page.getByRole("button", { name: "People", exact: true }).click();
   await pickRecipient(page, "user", "e2e.baseline-admin@example.invalid");
-  await expect(granted.getByText(/Through/).first()).toBeVisible();
+  await expect(granted.getByText(/Assigned via/).first()).toBeVisible();
   await expect(granted.getByRole("checkbox", { name: "Ask" })).toHaveCount(0);
   await expectNoAxeViolations(page, "Grants with inherited rows");
   await granted

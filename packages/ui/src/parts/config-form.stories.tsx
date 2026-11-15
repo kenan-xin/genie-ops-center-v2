@@ -41,7 +41,7 @@ const fields: readonly ConfigFormField[] = [
   { id: "pageSize", title: "Page size", description: "Rows per page." },
   {
     id: "enabled",
-    title: "Enabled",
+    title: "Sample setting",
     description: "Turns the sample feature on.",
   },
   { id: "mode", title: "Mode", description: "How much the workspace shows." },
@@ -106,7 +106,7 @@ export const AllFiveKinds: Story = {
       canvas.getByRole("spinbutton", { name: "Page size" })
     ).toHaveAccessibleDescription("Rows per page. From 1 to 100.");
     await expect(
-      canvas.getByRole("switch", { name: "Enabled" })
+      canvas.getByRole("switch", { name: "Sample setting" })
     ).toHaveAttribute("aria-checked", "false");
     await expect(
       canvas.getByRole("combobox", { name: "Mode" })
@@ -275,7 +275,7 @@ export const StringListLimit: Story = {
 
 export const ResetRestores: Story = {
   play: async ({ args, canvas }) => {
-    const toggle = canvas.getByRole("switch", { name: "Enabled" });
+    const toggle = canvas.getByRole("switch", { name: "Sample setting" });
 
     await userEvent.click(toggle);
     await expect(toggle).toHaveAttribute("aria-checked", "true");
@@ -330,13 +330,15 @@ export const NewValuesReset: Story = {
     );
   },
   play: async ({ args, canvas }) => {
-    await userEvent.click(canvas.getByRole("switch", { name: "Enabled" }));
+    await userEvent.click(
+      canvas.getByRole("switch", { name: "Sample setting" })
+    );
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(args.onDirtyChange).toHaveBeenLastCalledWith(false)
     );
     await expect(
-      canvas.getByRole("switch", { name: "Enabled" })
+      canvas.getByRole("switch", { name: "Sample setting" })
     ).toHaveAttribute("aria-checked", "true");
     await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
   },
@@ -425,7 +427,7 @@ export const Disabled: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByRole("textbox", { name: "Title" })).toBeDisabled();
     await expect(
-      canvas.getByRole("switch", { name: "Enabled" })
+      canvas.getByRole("switch", { name: "Sample setting" })
     ).toHaveAttribute("aria-disabled", "true");
   },
 };

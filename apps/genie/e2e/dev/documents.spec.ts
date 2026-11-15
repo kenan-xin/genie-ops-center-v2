@@ -180,23 +180,36 @@ test("Processed reads its first page, and a scroll to the end reads the rest", a
     LEDGER_LOCK,
     async () => {
       await signIn(page);
+
+      // The server seeds the resting tab, All, so until Processed's own page one arrives the list
+      // shows All's rows and the seed's count (czjw.210). The total comes from that page one.
+      const pageOne = page.waitForResponse(
+        (response) =>
+          response.url().endsWith("/api/rpc/invoices/listDocuments") &&
+          (response.request().postData() ?? "").includes('"status":"done"')
+      );
+
       // The mount ping means no dev-server reload can replace the list during the scroll.
       await openInbox(page, "done");
 
-      // The seeded history documents are Done, so Done holds more than one page of 50 (LH6).
-      // A phone shows the count above the cards and in the footer; the hidden layout is skipped.
-      const first = page
-        .getByText(/^Showing 50 of \d+ documents$/)
-        .filter({ visible: true })
-        .first();
-
-      await expect(first).toBeVisible(FIRST_PAINT);
-
       const total = Number(
-        /of (\d+)/.exec((await first.textContent()) ?? "")?.[1]
+        /"done":(\d+)/.exec(await (await pageOne).text())?.[1]
       );
 
-      // At least the history, not exactly: uploads the run kept as Done add to it (czjw.86).
+      // A changed response shape fails here, not as a missing "Showing 50 of NaN".
+      expect(total).toBeGreaterThan(0);
+
+      // The seeded history documents are Processed, so Processed holds more than one page of 50
+      // (LH6). A phone shows the count above the cards and in the footer; the hidden layout is
+      // skipped.
+      await expect(
+        page
+          .getByText(`Showing 50 of ${total} documents`, { exact: true })
+          .filter({ visible: true })
+          .first()
+      ).toBeVisible(FIRST_PAINT);
+
+      // At least the history, not exactly: uploads the run kept as Processed add to it (czjw.86).
       expect(total).toBeGreaterThanOrEqual(HISTORY_DOCUMENTS);
 
       // No click on Show more: reaching the end of the list reads the next page (czjw.70).

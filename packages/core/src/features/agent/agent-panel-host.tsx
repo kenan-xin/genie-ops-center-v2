@@ -70,7 +70,7 @@ export const AGENT_PANEL_STORED_KEY = "genie.agent-panel.stored";
 /** From this width the panel is a column beside the page (AG11). */
 const DOCKED = "(min-width: 1280px)";
 
-/** Below this width a surface's agent is a bottom panel over its record (P11-30). */
+/** Below this width Ask on a surface is a bottom panel over its record (P11-30). */
 const PHONE = "(max-width: 767px)";
 
 const ASK_HREF = "/ask";

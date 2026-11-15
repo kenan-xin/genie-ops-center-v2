@@ -273,7 +273,7 @@ async function expectModuleChosen(page: Page): Promise<void> {
     "true"
   );
   await expect(
-    page.getByRole("status").filter({ hasText: /holders? of Placeholder/ })
+    page.getByRole("status").filter({ hasText: /assigned to Placeholder/ })
   ).toBeVisible();
 }
 

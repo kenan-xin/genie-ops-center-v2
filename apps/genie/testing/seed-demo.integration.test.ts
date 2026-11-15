@@ -478,13 +478,13 @@ describe("the demo seed command on a database that is not ready", () => {
 
   const cases = [
     {
-      name: "the module switched off",
+      name: "the module off",
       deployment: () => ready,
       enabled: false,
       roles: true,
       email: DEMO_EMAIL,
       refusal:
-        "Invoices and Payments is switched off on this deployment. An administrator switches it on in Admin > Modules, then you run the seed again.",
+        "Invoices and Payments is off on this deployment. An administrator turns it on in Admin > Modules, then you run the seed again.",
     },
     {
       name: "no person with the address",
@@ -514,7 +514,7 @@ describe("the demo seed command on a database that is not ready", () => {
       roles: false,
       email: DEMO_EMAIL,
       refusal:
-        "the invoices module has no roles on this deployment. Switching the module on in Admin > Modules creates them.",
+        "the invoices module has no roles on this deployment. Turning the module on in Admin > Modules creates them.",
     },
     {
       name: "no module tables",

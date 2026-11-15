@@ -29,7 +29,7 @@ export const FIXTURE_PLACEHOLDER: ModuleSettingsView = {
   fields: [
     { id: "title", title: "Title" },
     { id: "pageSize", title: "Page size" },
-    { id: "enabled", title: "Enabled" },
+    { id: "enabled", title: "Sample setting" },
     { id: "mode", title: "Mode" },
     { id: "tags", title: "Tags" },
   ],

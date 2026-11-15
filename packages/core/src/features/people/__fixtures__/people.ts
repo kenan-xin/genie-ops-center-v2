@@ -42,7 +42,7 @@ export const FIXTURE_MANY_ROWS: readonly GrantRow[] = [
       ["Contracts", "Agreements, renewals and obligations"],
       ["Approvals", "Requests that need a sign-off"],
       ["Procurement", "Purchase requests and orders"],
-      ["Assets", "Equipment and who holds it"],
+      ["Assets", "Equipment and who it is assigned to"],
       ["Timesheets", "Hours worked per project"],
       ["Travel", "Trips, bookings and claims"],
       ["Learning", "Courses and certificates"],

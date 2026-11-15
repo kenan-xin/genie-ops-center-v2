@@ -25,22 +25,6 @@ const NOT_SHIPPED =
 
 const CUSTOMER_APP = /^customers\/[^/]+\/app\//;
 
-/**
- * Hits still on screen, by path, then phrase, then count. Tasks 4 to 10 of phase 05 swept
- * every row, so it stays empty until Task 11 deletes it.
- */
-const PENDING_SWEEP: Record<string, Record<string, number>> = {};
-
-/** The count of a `<path> <phrase>` key in a nested count record. */
-function countOf(
-  counts: Record<string, Record<string, number>>,
-  key: string
-): number | undefined {
-  const split = key.indexOf(" ");
-
-  return counts[key.slice(0, split)]?.[key.slice(split + 1)];
-}
-
 /** Tracked and untracked, unignored shipped source files of the scanned trees, by path. */
 function shippedFiles(): ReadonlyMap<string, string> {
   const listed = execFileSync(
@@ -268,7 +252,7 @@ describe("the glossary scan", () => {
     expect(() => readGlossary(markdown)).toThrow(message);
   });
 
-  it("finds no banned word on screen outside the sweep ledger, and no stale exception", () => {
+  it("finds no banned word on screen, and no stale exception", () => {
     const glossary = readGlossary(
       readFileSync(join(WORKSPACE_ROOT, GLOSSARY), "utf8")
     );
@@ -280,41 +264,8 @@ describe("the glossary scan", () => {
     expect(glossary.banned.length).toBeGreaterThan(30);
 
     const { hits, staleExceptions, unusedScopes } = bannedHits(files, glossary);
-    const counts: Record<string, Record<string, number>> = {};
 
-    for (const { path, phrase } of hits) {
-      const byPhrase = (counts[path] ??= {});
-
-      byPhrase[phrase] = (byPhrase[phrase] ?? 0) + 1;
-    }
-
-    const pending = new Map(
-      Object.entries(PENDING_SWEEP).flatMap(([path, byPhrase]) =>
-        Object.entries(byPhrase).map(([phrase, count]) => [
-          `${path} ${phrase}`,
-          count,
-        ])
-      )
-    );
-
-    const unledgered = hits.filter(
-      ({ path, phrase }) =>
-        counts[path]?.[phrase] !== pending.get(`${path} ${phrase}`)
-    );
-
-    // A sweep that forgets to lower its row sees it here.
-    const staleRows = [...pending].flatMap(([key, count]) => {
-      const found = countOf(counts, key) ?? 0;
-
-      return count > found
-        ? [`stale ledger row: ${key} ledger ${count}, found ${found}`]
-        : [];
-    });
-
-    expect(
-      counts,
-      [...unledgered.map(formatHit), ...staleRows].join("\n")
-    ).toEqual(PENDING_SWEEP);
+    expect(hits.map(formatHit)).toEqual([]);
     expect(staleExceptions).toEqual([]);
     expect(unusedScopes).toEqual([]);
   });

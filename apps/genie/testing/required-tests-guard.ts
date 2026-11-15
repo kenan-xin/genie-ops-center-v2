@@ -237,7 +237,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the demo seed command draws every starter panel through the chart gate as the demo account, also for one customer",
       "the demo seed command on an earlier demo deployment removes only the earlier seed's extra grants and keeps an administrator's grant",
       "the demo seed command on an earlier demo deployment removes nothing and changes no row on the next run",
-      "the demo seed command on a database that is not ready refuses the module switched off and writes nothing",
+      "the demo seed command on a database that is not ready refuses the module off and writes nothing",
       "the demo seed command on a database that is not ready refuses no person with the address and writes nothing",
       "the demo seed command on a database that is not ready refuses a missing planned role and writes nothing",
       "the demo seed command on a database that is not ready refuses no role of the module and writes nothing",

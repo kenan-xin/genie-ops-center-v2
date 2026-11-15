@@ -163,7 +163,7 @@ async function readSources(
 
   if (!(await tenant.entitlements.isEnabled("invoices"))) {
     throw new DemoSeedRefused(
-      "Invoices and Payments is switched off on this deployment. An administrator switches it on in Admin > Modules, then you run the seed again."
+      "Invoices and Payments is off on this deployment. An administrator turns it on in Admin > Modules, then you run the seed again."
     );
   }
 

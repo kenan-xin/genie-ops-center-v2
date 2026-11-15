@@ -172,7 +172,10 @@ test("lists every compiled module and switches one off through the confirm dialo
 
         await expectHolderList();
         await expect(
-          page.getByRole("button", { name: /assign|grant/i })
+          // The "+n more assigned to" count opens a read-only list, no action.
+          page.getByRole("button", {
+            name: /^(?!\+\d+ more assigned to ).*(?:assign|grant)/i,
+          })
         ).toHaveCount(0);
         await expectNoAxeViolations(page, "Modules page");
 

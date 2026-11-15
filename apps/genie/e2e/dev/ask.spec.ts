@@ -76,8 +76,11 @@ async function historyOf(page: Page): Promise<Locator> {
   return sheet;
 }
 
+// Not the "Ask" group toggle of the chat history, which shares the name.
 const agentButton = (page: Page) =>
-  page.getByRole("button", { name: "Ask", exact: true });
+  page
+    .getByRole("button", { name: "Ask", exact: true })
+    .and(page.locator(':not(nav[aria-label="Chats"] *)'));
 
 test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
@@ -182,7 +185,7 @@ test("the agent panel and Ask share a chat, and only New chat starts another", a
   await expect(openInAsk).toHaveAttribute("href", `/ask/${secondId}`);
   await openInAsk.click();
   await expect(page).toHaveURL(`/ask/${secondId}`, FIRST_PAINT);
-  // Ask is the chat, so the Agent button steps aside there (AG10).
+  // Ask is the chat, so the Ask button steps aside there (AG10).
   await expect(
     page.getByRole("textbox", { name: "Message", exact: true })
   ).toBeVisible(FIRST_PAINT);
@@ -430,7 +433,7 @@ test("the chat header menu renames a chat and deletes it", async ({
   expect(response?.status()).toBe(404);
 });
 
-test("a person without Ask gets no Agent button and the denied page on Ask", async ({
+test("a person without Ask gets no Ask button and the denied page on Ask", async ({
   page,
 }) => {
   // Two pages that a development server may compile on first use.

@@ -19,8 +19,8 @@ const items: readonly TransferItem[] = [
     control: roleControl("Analytics"),
     description: "Dashboards and saved questions.",
     group: "Modules",
-    blockedReason: "Analytics is switched off for this deployment.",
-    pills: <StatusPill tone="warning">Inactive</StatusPill>,
+    blockedReason: "Analytics is off for this deployment.",
+    pills: <StatusPill tone="warning">Paused: Module off</StatusPill>,
   },
   {
     id: "invoices",
@@ -42,13 +42,13 @@ const items: readonly TransferItem[] = [
     control: roleControl("Slides"),
     description: "Decks built from records.",
     group: "Modules",
-    note: "Also through Finance team",
+    note: "Also assigned via Finance team",
   },
   {
     id: "ask",
     label: "Ask",
     control: roleControl("Ask"),
-    description: "The agent chat on every page.",
+    description: "Ask on every page.",
     group: "Core",
   },
 ];
@@ -193,7 +193,7 @@ export const Search: Story = {
 
     await userEvent.type(
       catalog.getByRole("textbox", { name: "Search Catalog" }),
-      "agent"
+      "every page"
     );
 
     await expect(

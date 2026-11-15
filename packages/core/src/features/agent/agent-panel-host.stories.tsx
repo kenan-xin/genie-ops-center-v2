@@ -125,7 +125,7 @@ function Frame(props: {
   readonly page: boolean;
   readonly person?: string;
   readonly about?: string;
-  /** The page's path, which turns on a surface's agent on its record page. */
+  /** The page's path, which turns on Ask for a surface on its record page. */
   readonly path?: string;
   /** The address's `?chat=`, which the app passes to the panel (R14). */
   readonly chat?: string;
@@ -193,8 +193,8 @@ function Frame(props: {
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 /**
- * The agent panel of every signed-in page (R-42, `czjw.81`): from 1280 px a 400 px column beside
- * the page, below that a sheet. The Agent button opens it, and shows the agent's work while the
+ * The Ask panel of every signed-in page (R-42, `czjw.81`): from 1280 px a 400 px column beside
+ * the page, below that a sheet. The Ask button opens it, and shows Ask's work while the
  * panel is closed. A page talks to it only through `useAgentPage`.
  */
 const meta = {
@@ -206,7 +206,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The agent panel: a full-height column from 1280 px that narrows the page, a 480 px sheet from 768 px, and a full-screen sheet below. Its header holds Agent, New chat, Open in Ask and Close, and the line under it names the page that the agent knows about. It keeps the tab's chat across page loads, and a page gives it a record context, suggestions and a refresh through `useAgentPage`. The stories stub the agent route; no model runs.",
+          "The Ask panel: a full-height column from 1280 px that narrows the page, a 480 px sheet from 768 px, and a full-screen sheet below. Its header holds Ask, New chat, Open in Ask and Close, and the line under it names the page that Ask knows about. It keeps the tab's chat across page loads, and a page gives it a record context, suggestions and a refresh through `useAgentPage`. The stories stub the agent route; no model runs.",
       },
     },
     a11y: { test: "error" },
@@ -281,7 +281,7 @@ const openInAsk = () => screen.getByRole("link", { name: "Open in Ask" });
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
-// T6.2: on a surface's record page the panel is that surface's agent, and a new chat binds to it.
+// T6.2: on a surface's record page the panel is Ask for that surface, and a new chat binds to it.
 export const SurfacePage: Story = {
   render: () => <Frame page={false} path="/placeholder/r1" />,
   play: async ({ canvas }) => {
@@ -589,7 +589,7 @@ export const ARunThatEndsWithThePanelClosedStaysUnseen: Story = {
   },
 };
 
-// T6.5: on a phone the surface's agent is a bottom panel that leaves the record in view.
+// T6.5: on a phone Ask on a surface is a bottom panel that leaves the record in view.
 export const PhoneSheet: Story = {
   globals: phone,
   render: () => <Frame page={false} path="/placeholder/r1" />,

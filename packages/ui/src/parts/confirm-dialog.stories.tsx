@@ -23,13 +23,13 @@ const Remove = ({ danger, onConfirm, onClose }: Args) => {
   return (
     <>
       <Button variant="secondary" onClick={() => setOpen(true)}>
-        Remove
+        Deactivate
       </Button>
       <ConfirmDialog
         open={open}
-        title="Remove Alex Morgan?"
-        description="Alex loses access right away. This cannot be undone."
-        confirmLabel="Remove person"
+        title="Deactivate Alex Morgan?"
+        description="Alex can no longer sign in."
+        confirmLabel="Deactivate person"
         danger={danger}
         onConfirm={onConfirm}
         onClose={() => {
@@ -63,10 +63,10 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 const openConfirm = async () => {
-  await userEvent.click(screen.getByRole("button", { name: "Remove" }));
+  await userEvent.click(screen.getByRole("button", { name: "Deactivate" }));
 
   const dialog = await screen.findByRole("dialog", {
-    name: "Remove Alex Morgan?",
+    name: "Deactivate Alex Morgan?",
   });
 
   // The popup fades in, so wait until it paints.
@@ -76,7 +76,7 @@ const openConfirm = async () => {
 };
 
 const confirmButton = () =>
-  screen.getByRole("button", { name: "Remove person" });
+  screen.getByRole("button", { name: "Deactivate person" });
 
 export const Default: Story = {
   play: async ({ args }) => {
@@ -103,7 +103,9 @@ export const EscapeCancels: Story = {
     );
     await expect(args.onClose).toHaveBeenCalledTimes(1);
     await expect(args.onConfirm).not.toHaveBeenCalled();
-    await expect(screen.getByRole("button", { name: "Remove" })).toHaveFocus();
+    await expect(
+      screen.getByRole("button", { name: "Deactivate" })
+    ).toHaveFocus();
   },
 };
 
@@ -157,13 +159,15 @@ export const InsideASheet: Story = {
 
     await waitFor(() =>
       expect(
-        screen.queryByRole("dialog", { name: "Remove Alex Morgan?" })
+        screen.queryByRole("dialog", { name: "Deactivate Alex Morgan?" })
       ).not.toBeInTheDocument()
     );
     await expect(
       screen.getByRole("dialog", { name: "Alex Morgan" })
     ).toBeInTheDocument();
-    await expect(screen.getByRole("button", { name: "Remove" })).toHaveFocus();
+    await expect(
+      screen.getByRole("button", { name: "Deactivate" })
+    ).toHaveFocus();
 
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>

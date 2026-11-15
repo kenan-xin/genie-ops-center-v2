@@ -343,7 +343,7 @@ export const CHARTS = {
     columns: same("invoiceNumber", "customerName", "outstandingCents"),
   },
   manualDueDates: {
-    title: "Due dates entered by a person",
+    title: "Due dates entered by hand",
     types: TABLE,
     dataset: INVOICES,
     columns: same(

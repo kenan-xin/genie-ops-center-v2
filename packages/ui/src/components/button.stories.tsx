@@ -18,7 +18,7 @@ const meta = {
     },
   },
   args: {
-    children: "Save changes",
+    children: "Save",
     onClick: fn(),
   },
 } satisfies Meta<typeof Button>;
@@ -29,7 +29,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   play: async ({ args, canvas }) => {
-    const button = canvas.getByRole("button", { name: "Save changes" });
+    const button = canvas.getByRole("button", { name: "Save" });
 
     await expect(button.getBoundingClientRect().height).toBe(40);
 
@@ -40,7 +40,7 @@ export const Default: Story = {
 
 export const ActivatesFromTheKeyboard: Story = {
   play: async ({ args, canvas }) => {
-    const button = canvas.getByRole("button", { name: "Save changes" });
+    const button = canvas.getByRole("button", { name: "Save" });
 
     await userEvent.tab();
     await expect(button).toHaveFocus();
@@ -57,7 +57,7 @@ export const ActivatesFromTheKeyboard: Story = {
 export const Disabled: Story = {
   args: { disabled: true },
   play: async ({ args, canvas }) => {
-    const button = canvas.getByRole("button", { name: "Save changes" });
+    const button = canvas.getByRole("button", { name: "Save" });
 
     await expect(button).toBeDisabled();
 
@@ -78,7 +78,7 @@ export const FocusableWhenDisabled: Story = {
     title: "Nothing to save yet",
   },
   play: async ({ args, canvas }) => {
-    const button = canvas.getByRole("button", { name: "Save changes" });
+    const button = canvas.getByRole("button", { name: "Save" });
 
     await userEvent.tab();
     await expect(button).toHaveFocus();
@@ -94,24 +94,24 @@ export const Loading: Story = {
     <div className="flex gap-4">
       <Button {...args}>
         <svg data-icon="inline-start" aria-hidden="true" viewBox="0 0 16 16" />
-        Save changes
+        Save
       </Button>
       <Button {...args} loading>
         <svg data-icon="inline-start" aria-hidden="true" viewBox="0 0 16 16" />
-        Save changes
+        Save
       </Button>
     </div>
   ),
   play: async ({ args, canvas }) => {
-    const idle = canvas.getAllByRole("button", { name: "Save changes" }).at(0);
-    const busy = canvas.getAllByRole("button", { name: "Save changes" }).at(1);
+    const idle = canvas.getAllByRole("button", { name: "Save" }).at(0);
+    const busy = canvas.getAllByRole("button", { name: "Save" }).at(1);
 
     if (!idle || !busy) {
       throw new Error("Loading renders two buttons");
     }
 
     await expect(busy).toHaveAttribute("aria-busy", "true");
-    await expect(busy).toHaveTextContent("Save changes");
+    await expect(busy).toHaveTextContent("Save");
     await expect(busy.getBoundingClientRect().width).toBe(
       idle.getBoundingClientRect().width
     );
@@ -124,15 +124,15 @@ export const Loading: Story = {
 export const LoadingWithoutIcon: Story = {
   render: (args) => (
     <div className="flex gap-4">
-      <Button {...args}>Save changes</Button>
+      <Button {...args}>Save</Button>
       <Button {...args} loading>
-        Save changes
+        Save
       </Button>
     </div>
   ),
   play: async ({ args, canvas }) => {
     const [idle, busy] = canvas.getAllByRole("button", {
-      name: "Save changes",
+      name: "Save",
     });
 
     if (!idle || !busy) {
@@ -155,7 +155,7 @@ export const LoadingSubmitDoesNotSubmit: Story = {
   render: (args) => (
     <form onSubmit={(event) => event.preventDefault()}>
       <Button {...args} type="submit" loading onClick={undefined}>
-        Save changes
+        Save
       </Button>
     </form>
   ),
@@ -163,7 +163,7 @@ export const LoadingSubmitDoesNotSubmit: Story = {
     const onSubmit = fn();
     canvasElement.querySelector("form")?.addEventListener("submit", onSubmit);
 
-    await userEvent.click(canvas.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await expect(onSubmit).not.toHaveBeenCalled();
   },
 };
@@ -176,14 +176,14 @@ export const FocusableWhenDisabledSubmitDoesNotSubmit: Story = {
     <form>
       <input aria-label="Name" />
       <Button {...args} type="submit">
-        Save changes
+        Save
       </Button>
     </form>
   ),
   play: async ({ canvas, canvasElement }) => {
     const onSubmit = fn((event: Event) => event.preventDefault());
     canvasElement.querySelector("form")?.addEventListener("submit", onSubmit);
-    const button = canvas.getByRole("button", { name: "Save changes" });
+    const button = canvas.getByRole("button", { name: "Save" });
 
     await userEvent.click(button, { pointerEventsCheck: 0 });
     await userEvent.type(
@@ -238,7 +238,7 @@ export const SmallHitArea: Story = {
     ),
   ],
   play: async ({ canvas }) => {
-    const button = canvas.getByRole("button", { name: "Save changes" });
+    const button = canvas.getByRole("button", { name: "Save" });
     const rect = button.getBoundingClientRect();
 
     // The 32 px control owns the 44 px around it: 4 px above its edge is still it.

@@ -32,7 +32,7 @@ export const Medium: Story = {
     <div className="grid gap-4">
       <InfoNote {...args} />
       <WarningNote size="md">
-        Your access to this workspace is disabled.
+        This account cannot sign in. Ask your administrator.
       </WarningNote>
     </div>
   ),

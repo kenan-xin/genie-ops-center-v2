@@ -574,7 +574,7 @@ test("on a dashboard, a chart request asks first: Add makes a panel with Undo, a
             `/m/analytics/dashboards/${id}`,
             QUESTION_DASHBOARD_NAME
           );
-          // On a record page the Agent button opens the surface's own agent.
+          // On a record page the Ask button opens Ask for that surface.
           await openUntilVisible(
             page.getByRole("button", { name: "Ask", exact: true }),
             surface

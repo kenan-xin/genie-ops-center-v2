@@ -38,7 +38,7 @@ const Pills = () => (
   <div className="flex flex-wrap items-center gap-2">
     <StatusPill tone="success">Active</StatusPill>
     <StatusPill tone="neutral">Pending</StatusPill>
-    <StatusPill tone="danger">Disabled</StatusPill>
+    <StatusPill tone="danger">Suspended</StatusPill>
     <StatusPill tone="warning">Review</StatusPill>
     <LabelPill>Finance</LabelPill>
     <MonoChip>r-admin</MonoChip>
@@ -48,7 +48,7 @@ const Pills = () => (
 
 const check: NonNullable<Story["play"]> = async ({ canvas }) => {
   await Promise.all(
-    ["Active", "Pending", "Disabled", "Review", "Finance"].map((name) =>
+    ["Active", "Pending", "Suspended", "Review", "Finance"].map((name) =>
       expect(canvas.getByText(name)).toBeVisible()
     )
   );

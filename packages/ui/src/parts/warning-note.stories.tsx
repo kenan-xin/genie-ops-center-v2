@@ -19,10 +19,10 @@ const meta = {
     size: "md",
     children: (
       <>
-        <p className="font-semibold">Expense approvals is switched off.</p>
+        <p className="font-semibold">Expense approvals is off.</p>
         <p>
           Its settings stay editable, so the tenant can be prepared before the
-          module is enabled.
+          module is turned on.
         </p>
       </>
     ),
@@ -38,7 +38,7 @@ export const Medium: Story = {
   play: async ({ canvas }) => {
     const note = canvas.getByRole("status");
 
-    await expect(note).toHaveTextContent("Expense approvals is switched off.");
+    await expect(note).toHaveTextContent("Expense approvals is off.");
     await expect(note.querySelectorAll("svg")).toHaveLength(1);
     // tokens.md: md is text-sm on 14 px by 12 px padding.
     await expect(getComputedStyle(note).paddingRight).toBe("14px");

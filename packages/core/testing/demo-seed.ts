@@ -113,7 +113,7 @@ async function readAccess(
   for (const moduleId of input.moduleIds) {
     if (!roles.some((row) => row.moduleId === moduleId)) {
       throw new DemoSeedRefused(
-        `the ${moduleId} module has no roles on this deployment. Switching the module on in Admin > Modules creates them.`
+        `the ${moduleId} module has no roles on this deployment. Turning the module on in Admin > Modules creates them.`
       );
     }
   }
