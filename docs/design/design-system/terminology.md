@@ -74,7 +74,7 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 
 - Concept: whether a module is on in this deployment.
 - Say: the state is "Module on" or "Module off", with one grey pill "Module off". The action is "Turn on" or "Turn off" ("Turn off <module>?"). The Modules column is "Status".
-- Never: `entitled`, `not entitled`, `/\bswitch(?:es|ed|ing)?\b(?:\s+\S+){0,3}?\s+(?:on|off)\b/i` (a form of "switch" followed by "on" or "off").
+- Never: `entitled`, `not entitled`, `entitlement`, `entitlements`, `/\bswitch(?:es|ed|ing)?\b(?:\s+\S+){0,3}?\s+(?:on|off)\b/i` (a form of "switch" followed by "on" or "off").
 - Applies in: all.
 - Source: owner 2026-11-14 15:19, ADM-1.
 - Example: the dialog title is "Turn off Invoices?", not "Switch Invoices off?".
@@ -312,7 +312,7 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | `the chat` | "chat", "this chat", "New chat", "Chats", "Delete this chat?" | all | G2 |
 | `chat is off` | "AI is off." | all | G3 |
 | `/\bGenie\b(?! Ops Center)/` | "Genie Ops Center" | all | G4 |
-| `entitled`, `not entitled`, `/\bswitch(?:es\|ed\|ing)?\b(?:\s+\S+){0,3}?\s+(?:on\|off)\b/i` | "Module on", "Module off", "Turn on", "Turn off", "Status" | all | G6 |
+| `entitled`, `not entitled`, `entitlement`, `entitlements`, `/\bswitch(?:es\|ed\|ing)?\b(?:\s+\S+){0,3}?\s+(?:on\|off)\b/i` | "Module on", "Module off", "Turn on", "Turn off", "Status" | all | G6 |
 | `enable`, `enabled`, `disable`, `disabled`, `re-enable`, `re-enabled` | a module: "Turn on", "Module on"; a person: "Unsuspend", "Suspended" | all | G7 |
 | `remove person` | "Suspend", "Unsuspend", "Deactivate" | all | G8 |
 | `not in effect`, `inactive` | "Paused: <reason>" | all | G9 |

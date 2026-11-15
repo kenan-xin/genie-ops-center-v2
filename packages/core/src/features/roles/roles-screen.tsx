@@ -555,7 +555,7 @@ function RoleDetailView(props: {
                       </>
                     ) : null}
                     {detail.entitlementAdded.includes(entry.key) ? (
-                      <LabelPill>Added by entitlement</LabelPill>
+                      <LabelPill>Added when the module was turned on</LabelPill>
                     ) : null}
                   </li>
                 ))}

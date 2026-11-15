@@ -172,7 +172,7 @@ function routerProblems(
     return gated
       ? []
       : [
-          `Procedure "${name}" of module "${moduleId}" does not run the entitlement gate and the session check before input validation.`,
+          `Procedure "${name}" of module "${moduleId}" does not run the module-on check and the session check before input validation.`,
         ];
   }
 

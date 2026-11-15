@@ -415,7 +415,7 @@ describe("validateModule", () => {
     const router = os.router({ records: { list: early.handler(() => []) } });
 
     expect(validateModule({ ...validModule, router })).toEqual([
-      'Procedure "records.list" of module "fixture" does not run the entitlement gate and the session check before input validation.',
+      'Procedure "records.list" of module "fixture" does not run the module-on check and the session check before input validation.',
     ]);
   });
 
