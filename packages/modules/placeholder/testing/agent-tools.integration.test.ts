@@ -462,7 +462,7 @@ describe("the agent tools on the placeholder", () => {
       action: "core:agent_tool_called",
       targetType: "dataset",
       targetId: RECORDS,
-      summary: `Agent tool query-dataset on ${RECORDS}`,
+      summary: `Ask used query-dataset on ${RECORDS}`,
       metadata: {
         sessionId: SESSION_ID,
         tool: "query-dataset",

@@ -343,7 +343,6 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | --- | --- | --- |
 | `packages/core/src/services/agent/prompt.ts` | `*` | model-facing system prompt, 195 recordings |
 | `packages/core/src/services/agent/compaction.ts` | `*` | model-facing summary prompt, 4 recordings |
-| `packages/core/src/services/agent/tools.ts` | `*` | model-facing tool text |
 | `packages/core/src/services/agent/artifact-tool.ts` | `*` | model-facing tool text |
 | `packages/core/src/services/agent/file-tool.ts` | `*` | model-facing tool text |
 | `packages/core/src/services/agent/hand-over.ts` | `*` | model-facing tool text |

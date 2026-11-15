@@ -189,7 +189,7 @@ export async function writeToolAudit(
     action: AGENT_TOOL_AUDIT_ACTION,
     targetType: call.dataset === null ? null : "dataset",
     targetId: call.dataset,
-    summary: `Agent tool ${call.tool}${call.dataset === null ? "" : ` on ${call.dataset}`}`,
+    summary: `Ask used ${call.tool}${call.dataset === null ? "" : ` on ${call.dataset}`}`,
     metadata,
   }).catch((cause: unknown) => {
     throw new Error(COULD_NOT_RUN, { cause });
