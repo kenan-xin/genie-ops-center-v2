@@ -30,14 +30,14 @@ export function historySentence(row: HistoryRow, other: LinkedRecord): string {
   const after = formatMoney(row.amountAfterCents, row.currency);
 
   if (row.action === "linked") {
-    const how = row.automatic ? "automatically" : "by a person";
+    const how = row.automatic ? "automatically" : "by hand";
 
-    return `${name} linked ${how} for ${after}.`;
+    return `${name} allocated ${how} for ${after}.`;
   }
 
   if (row.action === "changed") {
-    return `Link to ${other} ${label} changed from ${before} to ${after}.`;
+    return `Allocation to ${other} ${label} changed from ${before} to ${after}.`;
   }
 
-  return `${name} unlinked. ${before} returns to the payment as unallocated.`;
+  return `${name} allocation removed. ${before} returns to the payment as unallocated.`;
 }

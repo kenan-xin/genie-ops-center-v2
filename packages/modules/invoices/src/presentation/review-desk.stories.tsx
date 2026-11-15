@@ -366,7 +366,7 @@ export const PaymentSplit: Story = {
     await userEvent.clear(sep);
     await userEvent.type(sep, "4,000.00");
     await expect(
-      split.getByText(`Linked ${SGD(805000)}. Unallocated ${SGD(20000)}.`)
+      split.getByText(`Allocated ${SGD(805000)}. Unallocated ${SGD(20000)}.`)
     ).toBeVisible();
 
     // T5.2: a link above its open amount, then a link of 0.00, each named and focused by Save.
@@ -376,7 +376,7 @@ export const PaymentSplit: Story = {
     await userEvent.type(sep, "4,300.00");
     await expect(
       side.getByText(
-        `The link to INV-2026-09-04 is more than its open ${SGD(420000)}.`
+        `The allocation to INV-2026-09-04 is more than its open ${SGD(420000)}.`
       )
     ).toBeVisible();
     await userEvent.click(save);
@@ -815,7 +815,7 @@ export const PaymentSavedOnPhone: Story = {
       canvas.getByRole("button", { name: "Save the payment" })
     );
     await expect(
-      await canvas.findByText(/^Payment saved: .* linked/u, {}, PAGE_TIMEOUT)
+      await canvas.findByText(/^Payment saved: .* allocated/u, {}, PAGE_TIMEOUT)
     ).toBeVisible();
 
     const summary = await drawn(

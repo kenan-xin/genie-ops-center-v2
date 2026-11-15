@@ -118,7 +118,7 @@ function fieldRow(canvasElement: HTMLElement, field: string) {
 type Canvas = ReturnType<typeof within>;
 
 const linkBox = (canvas: Canvas, number: string) =>
-  canvas.getByRole("checkbox", { name: `Link to ${number}` });
+  canvas.getByRole("checkbox", { name: `Allocate to ${number}` });
 
 const amountFor = (canvas: Canvas, number: string) =>
   canvas.getByLabelText(`Amount for ${number}`);
@@ -134,7 +134,7 @@ export const Split: Story = {
     await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4,050.00");
     await expect(amountFor(canvas, "INV-2026-09-04")).toHaveValue("4,200.00");
     await expect(
-      canvas.getByText(`Linked ${SGD(825000)}. Unallocated ${SGD(0)}.`)
+      canvas.getByText(`Allocated ${SGD(825000)}. Unallocated ${SGD(0)}.`)
     ).toBeVisible();
     await expect(savePayment).not.toHaveBeenCalled();
 
@@ -168,10 +168,14 @@ export const SplitGroups: Story = {
     const named = canvas.getByRole("region", { name: "Named on this payment" });
 
     await expect(
-      within(named).getByRole("checkbox", { name: "Link to INV-2026-08-04" })
+      within(named).getByRole("checkbox", {
+        name: "Allocate to INV-2026-08-04",
+      })
     ).toBeChecked();
     await expect(
-      within(named).getByRole("checkbox", { name: "Link to INV-2026-09-04" })
+      within(named).getByRole("checkbox", {
+        name: "Allocate to INV-2026-09-04",
+      })
     ).toBeChecked();
 
     const fold = canvas.getByRole("button", {
@@ -180,7 +184,7 @@ export const SplitGroups: Story = {
 
     await expect(fold).toHaveAttribute("aria-expanded", "false");
     await expect(
-      canvas.queryByRole("checkbox", { name: "Link to INV-2026-10-04" })
+      canvas.queryByRole("checkbox", { name: "Allocate to INV-2026-10-04" })
     ).toBeNull();
 
     await userEvent.click(fold);
@@ -223,7 +227,7 @@ export const Suggestions: Story = {
 
     await userEvent.click(
       within(suggested).getByRole("checkbox", {
-        name: "Link to INV-2026-10-04",
+        name: "Allocate to INV-2026-10-04",
       })
     );
     await expect(amountFor(canvas, "INV-2026-10-04")).toHaveValue("4,350.00");
@@ -262,7 +266,7 @@ export const Overpayment: Story = {
     await expect(linkBox(canvas, "INV-2026-09-04")).not.toBeChecked();
     await expect(amountFor(canvas, "INV-2026-08-04")).toHaveValue("4,050.00");
     await expect(
-      canvas.getByText(`Linked ${SGD(405000)}. Unallocated ${SGD(420000)}.`)
+      canvas.getByText(`Allocated ${SGD(405000)}. Unallocated ${SGD(420000)}.`)
     ).toBeVisible();
 
     await userEvent.click(
@@ -333,10 +337,12 @@ export const CustomerChange: Story = {
       })
     );
     await expect(
-      await canvas.findByRole("checkbox", { name: "Link to INV-2026-10-06" })
+      await canvas.findByRole("checkbox", {
+        name: "Allocate to INV-2026-10-06",
+      })
     ).not.toBeChecked();
     await expect(
-      canvas.queryByRole("checkbox", { name: "Link to INV-2026-08-04" })
+      canvas.queryByRole("checkbox", { name: "Allocate to INV-2026-08-04" })
     ).toBeNull();
 
     // Either label: the payload below, not the label, proves which links are sent.
@@ -382,7 +388,7 @@ export const TooManyLinks: Story = {
   beforeEach: () => serve(manyOpenReview),
   play: async ({ canvas }) => {
     for (const box of canvas.getAllByRole("checkbox", {
-      name: /^Link to INV-MANY-/u,
+      name: /^Allocate to INV-MANY-/u,
     })) {
       // oxlint-disable-next-line no-await-in-loop -- each check fills its amount from the rest.
       await userEvent.click(box);
@@ -391,7 +397,7 @@ export const TooManyLinks: Story = {
     const save = canvas.getByRole("button", { name: "Save the payment" });
 
     await expect(
-      canvas.getByText("Link at most 20 invoices in one save.")
+      canvas.getByText("Allocate to at most 20 invoices in one save.")
     ).toBeVisible();
     await expect(save).toHaveAttribute("aria-disabled", "true");
   },

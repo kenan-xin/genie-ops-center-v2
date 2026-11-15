@@ -448,7 +448,7 @@ describe("the analytics panels on real data", () => {
         },
         {
           field: "automatic",
-          label: "Linked automatically",
+          label: "Allocated automatically",
           kind: "toggle",
           datasets: ["invoices.allocations"],
         },

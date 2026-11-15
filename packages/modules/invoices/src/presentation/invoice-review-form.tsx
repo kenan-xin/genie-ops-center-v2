@@ -262,7 +262,7 @@ function savedMessage(
   saved: { readonly number: string; readonly dueDate: string | null }
 ): string {
   if (kind === "paid-receipt") {
-    return `${saved.number} saved as a paid receipt: one invoice, one payment and one link.`;
+    return `${saved.number} saved as a paid receipt: one invoice, one payment and one allocation.`;
   }
 
   return saved.dueDate === null

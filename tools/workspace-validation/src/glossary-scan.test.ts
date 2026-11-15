@@ -113,34 +113,6 @@ const PENDING_SWEEP = {
   "packages/modules/analytics/src/presentation/view-menu.tsx": {
     "remove view": 1,
   },
-  // The descriptions are model-facing (91 recordings): sweep only the titles and labels, then
-  // add `link` and `linked` to the datasets.ts exception row.
-  "packages/modules/invoices/src/datasets.ts": {
-    "linked": 11,
-    "links": 1,
-    "payment links": 1,
-    "link": 3,
-  },
-  "packages/modules/invoices/src/errors.ts": {
-    "links": 3,
-    "payment links": 1,
-    "link": 1,
-    "linked": 1,
-  },
-  "packages/modules/invoices/src/module.ts": {
-    links: 2,
-  },
-  "packages/modules/invoices/src/permissions.ts": {
-    links: 1,
-  },
-  "packages/modules/invoices/src/presentation/allocations.tsx": {
-    "by a person": 1,
-    "link": 2,
-  },
-  "packages/modules/invoices/src/presentation/automatic-links.tsx": {
-    link: 3,
-    linked: 1,
-  },
   "packages/modules/invoices/src/presentation/document-inbox.tsx": {
     "what we found": 1,
     "needs you": 2,
@@ -152,62 +124,11 @@ const PENDING_SWEEP = {
   "packages/modules/invoices/src/presentation/document-review.tsx": {
     "classified as": 2,
   },
-  "packages/modules/invoices/src/presentation/document-status-badge.tsx": {
-    linked: 1,
-  },
-  "packages/modules/invoices/src/presentation/history-text.ts": {
-    "by a person": 1,
-    "linked": 1,
-    "link": 1,
-    "unlinked": 1,
-  },
-  "packages/modules/invoices/src/presentation/invoice-list.tsx": {
-    "balances as of": 1,
-  },
-  "packages/modules/invoices/src/presentation/invoice-record.tsx": {
-    "by a person": 1,
-    "balances as of": 1,
-    "linked": 1,
-  },
   "packages/modules/invoices/src/presentation/invoice-review-form.tsx": {
-    link: 1,
     unspecified: 4,
   },
-  "packages/modules/invoices/src/presentation/link-dialogs.tsx": {
-    "link": 8,
-    "linked": 2,
-    "not linked": 1,
-    "links": 1,
-  },
   "packages/modules/invoices/src/presentation/list-definitions.ts": {
-    "linked": 2,
-    "not linked": 1,
     "needs you": 1,
-  },
-  "packages/modules/invoices/src/presentation/payment-links.tsx": {
-    link: 4,
-    linked: 1,
-    links: 1,
-  },
-  "packages/modules/invoices/src/presentation/payment-list.tsx": {
-    "linked": 2,
-    "not linked": 1,
-    "amounts as of": 1,
-  },
-  "packages/modules/invoices/src/presentation/payment-record.tsx": {
-    "link": 1,
-    "amounts as of": 1,
-  },
-  "packages/modules/invoices/src/presentation/payment-review-form.tsx": {
-    linked: 1,
-  },
-  "packages/modules/invoices/src/presentation/record-parts.tsx": {
-    linked: 1,
-    link: 1,
-  },
-  "packages/modules/invoices/src/presentation/review-blocker.ts": {
-    link: 2,
-    links: 1,
   },
   "packages/modules/invoices/src/presentation/review-desk.tsx": {
     "not on the page": 2,
@@ -216,12 +137,7 @@ const PENDING_SWEEP = {
     unspecified: 1,
   },
   "packages/modules/invoices/src/presentation/review-pager.tsx": {
-    "linked": 2,
     "not on the page": 1,
-  },
-  "packages/modules/invoices/src/services/ledger/allocations.ts": {
-    link: 3,
-    linked: 1,
   },
   "packages/modules/placeholder/src/module.ts": {
     enabled: 1,

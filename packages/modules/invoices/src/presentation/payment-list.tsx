@@ -75,7 +75,7 @@ const figuresOf = (summary: readonly PaymentListSummary[]) =>
       {
         label: "Payments",
         value: String(entry.count),
-        note: `${entry.notLinkedCount} not linked`,
+        note: `${entry.notLinkedCount} unallocated`,
       },
     ],
   }));
@@ -178,13 +178,13 @@ export function PaymentList(props: PaymentListProps) {
     <main>
       <PageHeader
         title="Payments"
-        meta={`Amounts as of ${formatDay(view.asOf)}, the reporting date.`}
+        meta={`Figures as of ${formatDay(view.asOf)}.`}
       />
       {view.rows.length === 0 ? (
         <EmptyState
           variant="framed"
           title="No payments to show"
-          description="Saved payments show here with the amount not yet linked to an invoice."
+          description="Saved payments show here with the amount not yet allocated to an invoice."
         />
       ) : (
         <div className="flex flex-col gap-4">

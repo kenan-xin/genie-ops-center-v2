@@ -16,12 +16,12 @@ export const INVOICE_ERRORS = defineModuleErrors("invoices", {
   },
   "link-mismatch": {
     message:
-      "A payment links only to an invoice of the same customer and the same currency.",
+      "A payment is allocated only to an invoice of the same customer and the same currency.",
     status: 400,
   },
   "link-exists": {
     message:
-      "That payment is already linked to that invoice. Change the link instead.",
+      "That payment is already allocated to that invoice. Change the allocation instead.",
     status: 409,
   },
   "document-kind-mismatch": {
@@ -50,11 +50,11 @@ export const INVOICE_ERRORS = defineModuleErrors("invoices", {
     status: 409,
   },
   "reduction-invalid": {
-    message: "A reduction must lower one of the links of this invoice.",
+    message: "A reduction must lower one of the allocations of this invoice.",
     status: 400,
   },
   "reductions-insufficient": {
-    message: "The reduced links still exceed the new total. Reduce more.",
+    message: "The reduced allocations still exceed the new total. Reduce more.",
     status: 409,
   },
 });

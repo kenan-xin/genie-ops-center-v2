@@ -223,7 +223,8 @@ export async function linkPayment(
     })
     .returning({ id: allocation.id });
 
-  if (created === undefined) throw new Error("the link insert returned no row");
+  if (created === undefined)
+    throw new Error("the allocation insert returned no row");
 
   await recordChange(ctx, tx, {
     allocationId: created.id,
@@ -233,7 +234,7 @@ export async function linkPayment(
     beforeCents: 0,
     afterCents: input.amountCents,
     automatic: input.automatic,
-    summary: "Linked a payment to an invoice.",
+    summary: "Allocated a payment to an invoice.",
     metadata: {
       paymentId: input.paymentId,
       allocationId: created.id,
@@ -316,7 +317,7 @@ export async function changeAllocation(
     beforeCents: link.amountCents,
     afterCents: input.amountCents,
     automatic: false,
-    summary: "Changed the amount of a link.",
+    summary: "Changed the amount of an allocation.",
     metadata: {
       paymentId: link.paymentId,
       allocationId: link.id,
@@ -344,7 +345,7 @@ export async function unlinkAllocation(
     beforeCents: link.amountCents,
     afterCents: 0,
     automatic: link.automatic,
-    summary: "Removed a link.",
+    summary: "Removed an allocation.",
     metadata: {
       paymentId: link.paymentId,
       allocationId: link.id,

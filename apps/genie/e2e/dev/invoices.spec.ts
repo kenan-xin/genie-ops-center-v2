@@ -121,9 +121,7 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
     async () => {
       await signIn(page);
       await openList(page, "/m/invoices/invoices", "Invoices");
-      await expect(
-        page.getByText("Balances as of 27 Oct 2026, the reporting date.")
-      ).toBeVisible();
+      await expect(page.getByText("Figures as of 27 Oct 2026.")).toBeVisible();
 
       const expected = readDemoCsv("04_Demo_Guide/expected_invoice_status.csv");
 
@@ -416,7 +414,7 @@ test("INV-2026-09-03 opens from its row without a document load and shows its ba
         .getByRole("listitem");
 
       await expect(history).toHaveCount(1);
-      await expect(history).toContainText("Payment TXN-PAY-2026-026 linked");
+      await expect(history).toContainText("Payment TXN-PAY-2026-026 allocated");
       await expect(history).toContainText(`for ${sgd(2000)}.`);
 
       await expectNoAxeViolations(page, "invoice record page");
@@ -447,9 +445,7 @@ test("the Payments list shows every seeded payment and the payment linked to INV
       await openList(page, "/m/invoices/payments", "Payments");
       // A hard load can leave a hidden copy of the page (`xok3.55`), so only the shown line counts.
       await expect(
-        page
-          .getByText("Amounts as of 27 Oct 2026, the reporting date.")
-          .filter({ visible: true })
+        page.getByText("Figures as of 27 Oct 2026.").filter({ visible: true })
       ).toBeVisible();
 
       const payments = readDemoCsv("01_History_Datasets/payments.csv");

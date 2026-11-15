@@ -376,7 +376,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         const partial = copyOf("02", label);
 
         await uploadFiles(page, [partial]);
-        await expectStatus(page, partial, "Linked automatically");
+        await expectStatus(page, partial, "Allocated automatically");
 
         await expectTotalsAfter("02_Payment_Partial_Existing_Invoice.pdf");
 
@@ -420,11 +420,11 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
 
         await september.fill("4,000.00");
         await expect(
-          page.getByText(`Linked ${sgd(8050)}. Unallocated ${sgd(200)}.`)
+          page.getByText(`Allocated ${sgd(8050)}. Unallocated ${sgd(200)}.`)
         ).toBeVisible();
         await september.fill("4,200.00");
         await expect(
-          page.getByText(`Linked ${sgd(8250)}. Unallocated ${sgd(0)}.`)
+          page.getByText(`Allocated ${sgd(8250)}. Unallocated ${sgd(0)}.`)
         ).toBeVisible();
 
         await (await saveButton(page, "Save the payment")).click();
@@ -572,11 +572,11 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
 
         await page
           .getByRole("button", {
-            name: "Undo the automatic link to HF-SEP-FINAL-PART",
+            name: "Undo the automatic allocation to HF-SEP-FINAL-PART",
           })
           .click();
         await expect(
-          page.getByText("The link to HF-SEP-FINAL-PART is removed.")
+          page.getByText("The allocation to HF-SEP-FINAL-PART is removed.")
         ).toBeVisible({ timeout: SAVE_TIMEOUT });
 
         // S2: the automatic row leaves the Payments card, not only its toast.

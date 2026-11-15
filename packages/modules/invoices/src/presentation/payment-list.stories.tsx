@@ -140,7 +140,7 @@ async function updatedAndFigures(
     "In 2 payments"
   );
   await expect(note(canvasElement, "SGD", "Payments")).toHaveTextContent(
-    "2 not linked"
+    "2 unallocated"
   );
   await expect(canvas.queryByRole("button", { name: "Show more" })).toBeNull();
 }
@@ -153,7 +153,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Payments list at `/m/invoices/payments`, read from `invoices.payments` as of the reporting date (Spec 7 R-59, R-60). The caption names the reporting date because `PageHeader` hides its description below `lg`. The page is one `ListHeader` (variant C, `czjw.73`): one figure card per currency, the link tabs (Linked is Allocated, Not linked is Part allocated or Unallocated), the search, customer and payment-date filters, and the table, with Updated in the tenant's time zone, newest first. The status is R-31's Allocated, Part allocated or Unallocated. Below 768 px the rows are cards, and the tabs and filters sit in one Filters sheet. The tab, the filters and the sort live in the page address (`status`, `q`, `customer`, `date`, `sort`) and run on the server through `listPayments`. Unallocated and Status do not sort.",
+          "The Payments list at `/m/invoices/payments`, read from `invoices.payments` as of the reporting date (Spec 7 R-59, R-60). The caption names the reporting date because `PageHeader` hides its description below `lg`. The page is one `ListHeader` (variant C, `czjw.73`): one figure card per currency, the tabs All, Allocated and Unallocated (Allocated holds Allocated payments, Unallocated holds Part allocated and Unallocated ones), the search, customer and payment-date filters, and the table, with Updated in the tenant's time zone, newest first. The status is R-31's Allocated, Part allocated or Unallocated. Below 768 px the rows are cards, and the tabs and filters sit in one Filters sheet. The tab, the filters and the sort live in the page address (`status`, `q`, `customer`, `date`, `sort`) and run on the server through `listPayments`. Unallocated and Status do not sort.",
       },
     },
     a11y: { test: "error" },
@@ -225,7 +225,7 @@ export const FilterByLink: Story = {
   globals: desktop,
   beforeEach: atAddress("", notLinkedPaymentPage),
   play: async ({ canvas, canvasElement }) => {
-    await userEvent.click(canvas.getByRole("tab", { name: "Not linked 2" }));
+    await userEvent.click(canvas.getByRole("tab", { name: "Unallocated 2" }));
 
     await expect(listPayments).toHaveBeenCalledWith({
       after: null,
@@ -238,7 +238,7 @@ export const FilterByLink: Story = {
       canvas.getByRole("link", { name: "TRF-1003-204" })
     ).toBeVisible();
     await expect(
-      canvas.getByRole("tab", { name: "Not linked 2" })
+      canvas.getByRole("tab", { name: "Unallocated 2" })
     ).toHaveAttribute("aria-selected", "true");
     await expect(listAddress()).toEqual(["status=not-linked"]);
     // The strip stays the whole ledger's on every tab (czjw.112).
@@ -262,10 +262,9 @@ export const FiltersFromTheAddress: Story = {
         params: { q: "TRF-0921", status: "linked" },
       })
     );
-    await expect(canvas.getByRole("tab", { name: "Linked 1" })).toHaveAttribute(
-      "aria-selected",
-      "true"
-    );
+    await expect(
+      canvas.getByRole("tab", { name: "Allocated 1" })
+    ).toHaveAttribute("aria-selected", "true");
     await expect(canvas.getByRole("searchbox")).toHaveValue("TRF-0921");
     await waitFor(() =>
       expect(canvas.queryByRole("link", { name: "TRF-1003-204" })).toBeNull()
@@ -298,7 +297,7 @@ export const FiltersOnAPhone: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Filters" }));
     await userEvent.click(
-      await screen.findByRole("radio", { name: /^Not linked/ })
+      await screen.findByRole("radio", { name: /^Unallocated/ })
     );
 
     await expect(listPayments).toHaveBeenCalledWith({

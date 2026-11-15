@@ -109,7 +109,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One invoice at `/m/invoices/invoices/:id`, read as of the reporting date, on the document desk (Spec 7 R-9, R-32, R-38a, R-59, R-60, decisions 4 and 9). The page header holds the customer and Correct the total. The Figures strip leads with Outstanding and its status, then Total with its origin, Paid with the count of linked payments, and the due date with where it came from. From 1280 px the PDF shows in the page with each read field pinned beside its line, and the payments and their history sit in a drawer, as cards. Below 1280 px the page comes first and the record opens in a bottom sheet. A writer of the invoice gets Undo on an automatic link, without a confirmation, and Change amount and Remove link on every link; Remove link asks first. A writer also gets Correct the total; a new total below the links answers `choose-links`, and the dialog asks for the new amount of each link and sends the lowered ones (R-32, decision 13). A refusal stays inside the open dialog. After each change the page reads the invoice again, and the page does not load again. An invoice dated after the reporting date shows a note instead of a balance.",
+          "One invoice at `/m/invoices/invoices/:id`, read as of the reporting date, on the document desk (Spec 7 R-9, R-32, R-38a, R-59, R-60, decisions 4 and 9). The page header holds the customer and Correct the total. The Figures strip leads with Outstanding and its status, then Total with its origin, Paid with the count of allocations, and the due date with where it came from. From 1280 px the PDF shows in the page with each read field pinned beside its line, and the payments and their history sit in a drawer, as cards. Below 1280 px the page comes first and the record opens in a bottom sheet. A writer of the invoice gets Undo on an automatic allocation, without a confirmation, and Change amount and Remove allocation on every allocation; Remove allocation asks first. A writer also gets Correct the total; a new total below the allocations answers `choose-links`, and the dialog asks for the new amount of each allocation and sends the lowered ones (R-32, decision 13). A refusal stays inside the open dialog. After each change the page reads the invoice again, and the page does not load again. An invoice dated after the reporting date shows a note instead of a balance.",
       },
     },
     a11y: { test: "error" },
@@ -137,7 +137,7 @@ export const Default: Story = {
         .map((term) => term.textContent)
     ).toEqual(["Outstanding", "Total", "Paid", "Due date"]);
     await expect(within(figures).getByText(/^Overdue/)).toBeVisible();
-    await expect(within(figures).getByText("2 payments linked")).toBeVisible();
+    await expect(within(figures).getByText("2 allocations")).toBeVisible();
 
     const drawer = canvas.getByRole("complementary", {
       name: "Payments and history",
@@ -200,7 +200,7 @@ export const UndoKeepsThePage: Story = {
     await pageDrawn(canvasElement);
     await userEvent.click(
       canvas.getByRole("button", {
-        name: "Undo the automatic link to HF-SEP-FINAL-PART",
+        name: "Undo the automatic allocation to HF-SEP-FINAL-PART",
       })
     );
     await waitFor(() => expect(refetchedAfter(unlinkAllocation)).toBe(true));
@@ -224,7 +224,7 @@ export const PaidOnPhone: Story = {
   beforeEach: () => serve(linkedInFullInvoiceRecord),
 };
 
-const META = "Harbor Foods · Balances as of 27 Oct 2026, the reporting date.";
+const META = "Harbor Foods · Figures as of 27 Oct 2026.";
 
 // A phone shows the page first (variant C): the meta line and Correct the total wait in the sheet.
 export const PageFirstOnPhone: Story = {
@@ -283,17 +283,17 @@ export const AutomaticLink: Story = {
 
     await expect(
       undo.map((button) => button.getAttribute("aria-label"))
-    ).toEqual(["Undo the automatic link to TRF-0921-118"]);
+    ).toEqual(["Undo the automatic allocation to TRF-0921-118"]);
     await expect(
       within(canvas.getByRole("list", { name: "Payments" })).getByText(
-        /By a person/
+        /By hand/
       )
     ).toBeVisible();
 
     // A double click while the first unlink runs sends one call, so no refusal shows beside the success.
     await userEvent.dblClick(
       canvas.getByRole("button", {
-        name: "Undo the automatic link to TRF-0921-118",
+        name: "Undo the automatic allocation to TRF-0921-118",
       })
     );
 
@@ -326,7 +326,7 @@ export const AutomaticLinkOnPhone: Story = {
 
     await userEvent.click(
       within(list).getByRole("button", {
-        name: "Undo the automatic link to TRF-0921-118",
+        name: "Undo the automatic allocation to TRF-0921-118",
       })
     );
 
@@ -336,14 +336,14 @@ export const AutomaticLinkOnPhone: Story = {
   },
 };
 
-/** Opens Remove link for the person's link, and answers the open confirmation with Cancel focused. */
+/** Opens Remove allocation for the allocation made by hand, and answers the open confirmation with Cancel focused. */
 async function openRemove(canvas: ReturnType<typeof within>) {
   await openDetails(canvas);
   await userEvent.click(
     canvas.getByRole("button", { name: "Actions for TRF-0930-140" })
   );
   await userEvent.click(
-    await screen.findByRole("menuitem", { name: "Remove link" })
+    await screen.findByRole("menuitem", { name: "Remove allocation" })
   );
 
   const dialog = await screen.findByRole("dialog");
@@ -352,7 +352,7 @@ async function openRemove(canvas: ReturnType<typeof within>) {
   await waitFor(() =>
     expect(
       within(dialog).getByRole("heading", {
-        name: "Remove the link to TRF-0930-140?",
+        name: "Remove the allocation to TRF-0930-140?",
       })
     ).toBeVisible()
   );
@@ -379,16 +379,16 @@ export const RemoveLink: Story = {
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await expect(unlinkAllocation).not.toHaveBeenCalled();
-    // The closing dialog kept its words to the end, never "Remove the link to ?".
+    // The closing dialog kept its words to the end, never "Remove the allocation to ?".
     // The node is detached now, so the check reads the text it last held.
     await expect(
-      within(first).queryByText("Remove the link to TRF-0930-140?")
+      within(first).queryByText("Remove the allocation to TRF-0930-140?")
     ).not.toBeNull();
 
     const second = await openRemove(canvas);
 
     await userEvent.click(
-      within(second).getByRole("button", { name: "Remove link" })
+      within(second).getByRole("button", { name: "Remove allocation" })
     );
 
     await waitFor(() =>
@@ -469,7 +469,7 @@ export const CorrectTotal: Story = {
 const [first, second] = linkedInFullInvoiceRecord.allocations;
 
 const INSUFFICIENT =
-  "The reduced links still exceed the new total. Reduce more.";
+  "The reduced allocations still exceed the new total. Reduce more.";
 
 /** The first answer asks which of the two links, of 3,000.00 and 2,000.00, to lower. */
 function askForLinks() {
@@ -502,7 +502,7 @@ async function lowerFirstLink(
 
   await expect(
     await within(dialog).findByText(
-      "The links add up to SGD 500.00 more than the new total. Lower one or more links."
+      "The allocations add up to SGD 500.00 more than the new total. Lower one or more allocations."
     )
   ).toBeVisible();
 

@@ -46,7 +46,7 @@ const STATUS_WORDS = [
   "Reading",
   "Could not read",
   "Needs your input",
-  "Linked automatically",
+  "Allocated automatically",
   "Confirm the split",
   "Possible duplicate",
   "No matching invoice",

@@ -223,7 +223,7 @@ function Summary(props: { readonly model: ReviewModel }): ReactNode {
         <div className="flex flex-col gap-1 px-3 py-2.5">
           <dt className="text-xs font-semibold text-muted-foreground">Split</dt>
           <dd className="text-sm">
-            {`Linked ${splitSummary.linked} · ${splitSummary.count === 1 ? "1 invoice" : `${splitSummary.count} invoices`}`}
+            {`Allocated ${splitSummary.linked} · ${splitSummary.count === 1 ? "1 invoice" : `${splitSummary.count} invoices`}`}
           </dd>
         </div>
       )}
@@ -450,7 +450,7 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
                   detail={
                     model.splitSummary === null
                       ? ""
-                      : `Linked ${model.splitSummary.linked}`
+                      : `Allocated ${model.splitSummary.linked}`
                   }
                   state={
                     passed.has("split")

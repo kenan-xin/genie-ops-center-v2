@@ -85,7 +85,7 @@ async function changeAndRefuse(canvas: ReturnType<typeof within>) {
   await waitFor(() =>
     expect(
       within(dialog).getByRole("heading", {
-        name: "Change the link to INV-2026-09-03",
+        name: "Change the allocation to INV-2026-09-03",
       })
     ).toBeVisible()
   );
@@ -125,7 +125,7 @@ const LINK_REFUSAL =
 async function chooseInvoice(canvas: ReturnType<typeof within>) {
   await openDetails(canvas);
   await userEvent.click(
-    canvas.getByRole("button", { name: "Link to an invoice" })
+    canvas.getByRole("button", { name: "Allocate to an invoice" })
   );
 
   const dialog = await screen.findByRole("dialog");
@@ -133,7 +133,7 @@ async function chooseInvoice(canvas: ReturnType<typeof within>) {
   await waitFor(() =>
     expect(
       within(dialog).getByRole("heading", {
-        name: `Link ${formatDay(partAllocatedPaymentRecord.payment.paymentDate)} to an invoice`,
+        name: `Allocate ${formatDay(partAllocatedPaymentRecord.payment.paymentDate)} to an invoice`,
       })
     ).toBeVisible()
   );
@@ -173,7 +173,9 @@ function refuseLinkOnce() {
 async function linkAndRefuse(canvas: ReturnType<typeof within>) {
   const dialog = await chooseInvoice(canvas);
 
-  await userEvent.click(within(dialog).getByRole("button", { name: "Link" }));
+  await userEvent.click(
+    within(dialog).getByRole("button", { name: "Allocate" })
+  );
   await expect(await within(dialog).findByRole("alert")).toHaveTextContent(
     LINK_REFUSAL
   );
@@ -217,7 +219,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One payment at `/m/invoices/payments/:id`, read as of the reporting date, on the document desk (Spec 7 R-9, R-32, R-38a, R-59, R-60, decisions 4 and 9). The page header holds the customer. The Figures strip leads with Unallocated and its status, or with Amount when nothing is unallocated, then Allocated and the payment date. From 1280 px the PDF shows in the page with each read field pinned beside its line, and the invoices and their history sit in a drawer, as cards. Below 1280 px the page comes first and the record opens in a bottom sheet. A writer gets Undo on an automatic link, Change amount and Remove link on every link, and Link to an invoice while money is unallocated. A refusal stays inside the open dialog, and after each change the page reads the payment again.",
+          "One payment at `/m/invoices/payments/:id`, read as of the reporting date, on the document desk (Spec 7 R-9, R-32, R-38a, R-59, R-60, decisions 4 and 9). The page header holds the customer. The Figures strip leads with Unallocated and its status, or with Amount when nothing is unallocated, then Allocated and the payment date. From 1280 px the PDF shows in the page with each read field pinned beside its line, and the invoices and their history sit in a drawer, as cards. Below 1280 px the page comes first and the record opens in a bottom sheet. A writer gets Undo on an automatic allocation, Change amount and Remove allocation on every allocation, and Allocate to an invoice while money is unallocated. A refusal stays inside the open dialog, and after each change the page reads the payment again.",
       },
     },
     a11y: { test: "error" },
@@ -329,7 +331,7 @@ export const ChangeAmount: Story = {
     // The closing dialog kept its title to the end, never an empty dialog.
     // The node is detached now, so the check reads the text it last held.
     await expect(
-      within(dialog).queryByText("Change the link to INV-2026-09-03")
+      within(dialog).queryByText("Change the allocation to INV-2026-09-03")
     ).not.toBeNull();
     await waitFor(() => expect(refetchedAfter(changeAllocation)).toBe(true));
     await expect(getPaymentRecord).toHaveBeenLastCalledWith({
@@ -365,7 +367,9 @@ export const LinkInvoice: Story = {
   play: async ({ canvas }) => {
     const dialog = await chooseInvoice(canvas);
 
-    await userEvent.click(within(dialog).getByRole("button", { name: "Link" }));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Allocate" })
+    );
 
     await waitFor(() =>
       expect(linkPayment).toHaveBeenCalledWith({
@@ -400,16 +404,28 @@ export const LinkInvoiceRefusedOnPhone: Story = {
 };
 
 // B7.5 and B8.5 at 390: a reader without write sees the cards, and no Undo, no menu and no Link.
+// One allocation, so the count reads in the singular (E3).
+const oneAllocationRecord = {
+  ...readOnlyPaymentRecord,
+  allocations: readOnlyPaymentRecord.allocations.slice(0, 1),
+};
 
 export const ReadOnly: Story = {
   name: "Read only",
   globals: phone,
-  args: { view: readOnlyPaymentRecord },
-  beforeEach: () => serve(readOnlyPaymentRecord),
+  args: { view: oneAllocationRecord },
+  beforeEach: () => serve(oneAllocationRecord),
   play: async ({ canvas }) => {
     await openDetails(canvas);
 
     const list = canvas.getByRole("list", { name: "Invoices" });
+    const section = list.closest("section");
+
+    if (!(section instanceof HTMLElement)) {
+      throw new Error("The Invoices list sits outside its section.");
+    }
+
+    await expect(within(section).getByText("1 allocation")).toBeVisible();
 
     await expect(within(list).getByText(/Automatic/)).toBeVisible();
     await expect(canvas.queryAllByRole("button", { name: /Undo/ })).toEqual([]);
@@ -417,7 +433,7 @@ export const ReadOnly: Story = {
       canvas.queryAllByRole("button", { name: /^Actions for/ })
     ).toEqual([]);
     await expect(
-      canvas.queryByRole("button", { name: "Link to an invoice" })
+      canvas.queryByRole("button", { name: "Allocate to an invoice" })
     ).toBeNull();
   },
 };

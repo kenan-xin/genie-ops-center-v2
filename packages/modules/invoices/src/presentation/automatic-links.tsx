@@ -40,13 +40,13 @@ export function AutomaticLinks(props: {
     onSuccess: (_answer, link) => {
       setFailure(null);
       setFeedback(
-        `Link removed. ${formatMoney(link.amountCents, link.currency)} is unallocated on ${linkPaymentLabel(link)}.`
+        `Allocation removed. ${formatMoney(link.amountCents, link.currency)} is unallocated on ${linkPaymentLabel(link)}.`
       );
 
       return queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY });
     },
     onError: (error) => {
-      setFailure(`The link was not removed. ${error.message}`);
+      setFailure(`The allocation was not removed. ${error.message}`);
     },
   });
 
@@ -63,7 +63,7 @@ export function AutomaticLinks(props: {
     <div className="flex flex-col gap-3 text-sm">
       {saved.automaticLinks.length === 0 ? null : (
         <div className="flex flex-col gap-2">
-          <h2 className="text-sm font-semibold">Linked automatically</h2>
+          <h2 className="text-sm font-semibold">Allocated automatically</h2>
           {saved.automaticLinks.map((link) => {
             const label = linkPaymentLabel(link);
 
@@ -83,7 +83,7 @@ export function AutomaticLinks(props: {
                       undo.isPending &&
                       undo.variables?.allocationId === link.allocationId
                     }
-                    aria-label={`Undo the link of ${label} to ${link.invoiceNumber}`}
+                    aria-label={`Undo the allocation of ${label} to ${link.invoiceNumber}`}
                     onClick={() => undo.mutate(link)}
                   >
                     Undo

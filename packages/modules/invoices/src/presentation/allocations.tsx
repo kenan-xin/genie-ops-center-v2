@@ -20,7 +20,7 @@ export const LINKS_LABEL: Record<LinkedRecord, string> = {
   invoice: "Invoices",
 };
 
-const how = (row: Linked) => (row.automatic ? "Automatic" : "By a person");
+const how = (row: Linked) => (row.automatic ? "Automatic" : "By hand");
 
 function OtherRecord(props: {
   readonly row: Linked;
@@ -70,7 +70,7 @@ export function AllocationTable(props: AllocationTableProps) {
       <Button
         variant="secondary"
         size="sm"
-        aria-label={`Undo the automatic link to ${labelOf(row, other)}`}
+        aria-label={`Undo the automatic allocation to ${labelOf(row, other)}`}
         onClick={() => actions.onUndo(row)}
       >
         Undo
@@ -116,7 +116,7 @@ export function AllocationTable(props: AllocationTableProps) {
           : [
               { label: "Change amount", onSelect: () => actions.onChange(row) },
               {
-                label: "Remove link",
+                label: "Remove allocation",
                 danger: true,
                 onSelect: () => actions.onRemove(row),
               },

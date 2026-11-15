@@ -54,7 +54,7 @@ function copyOf(
     case "automatic":
     case "confirm":
       return {
-        headline: "Confirm the link",
+        headline: "Confirm the allocation",
         sentence: `The payment names ${numberOf(proposal.invoiceId)}. Check the amount, then save.`,
       };
     case "overpayment": {
@@ -78,7 +78,7 @@ function copyOf(
       return {
         headline: "No matching invoice",
         sentence:
-          "Save the payment unallocated, or link it to an invoice below.",
+          "Save the payment unallocated, or allocate it to an invoice below.",
       };
   }
 }
@@ -87,7 +87,7 @@ const NAMED_HINT =
   "Invoices that this payment names. Their amounts are filled in for you.";
 
 const OTHERS_HINT =
-  "Open invoices of this customer that the payment does not name. Link one only if the payment named the wrong invoice.";
+  "Open invoices of this customer that the payment does not name. Allocate to one only if the payment named the wrong invoice.";
 
 /** An info icon beside a group title: hover, focus and a tap show its one sentence (DEC-25). */
 function GroupInfo(props: { readonly label: string; readonly hint: string }) {
@@ -173,7 +173,7 @@ export function LinksEditor(props: {
                 )
               }
             />
-            <span className="ml-2">{`Link to ${row.number}`}</span>
+            <span className="ml-2">{`Allocate to ${row.number}`}</span>
           </FieldLabel>
           {suggested(row.invoiceId) ? (
             <Badge variant="neutral">Same amount</Badge>
@@ -294,11 +294,13 @@ export function LinksEditor(props: {
       {amountCents === undefined ||
       !currencyCode.safeParse(props.currency).success ? null : (
         <p aria-live="polite">
-          {`Linked ${formatMoney(check.allocatedCents, props.currency)}. Unallocated ${formatMoney(check.unallocatedCents, props.currency)}.`}
+          {`Allocated ${formatMoney(check.allocatedCents, props.currency)}. Unallocated ${formatMoney(check.unallocatedCents, props.currency)}.`}
         </p>
       )}
       {amountCents !== undefined && check.abovePayment ? (
-        <FieldError>The links add up to more than the payment.</FieldError>
+        <FieldError>
+          The allocations add up to more than the payment.
+        </FieldError>
       ) : null}
     </section>
   );

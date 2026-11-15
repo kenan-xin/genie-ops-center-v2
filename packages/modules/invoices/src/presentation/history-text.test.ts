@@ -18,7 +18,7 @@ const ROW: HistoryRow = {
   amountAfterCents: 150_000,
 };
 
-const BY_A_PERSON = { ...ROW, automatic: false };
+const BY_HAND = { ...ROW, automatic: false };
 
 const CHANGED = {
   ...ROW,
@@ -48,32 +48,32 @@ describe("historySentence", () => {
     [
       ROW,
       "payment",
-      "Payment TRF-0921-118 linked automatically for SGD 1,500.00.",
+      "Payment TRF-0921-118 allocated automatically for SGD 1,500.00.",
     ],
     [
-      BY_A_PERSON,
+      BY_HAND,
       "payment",
-      "Payment TRF-0921-118 linked by a person for SGD 1,500.00.",
+      "Payment TRF-0921-118 allocated by hand for SGD 1,500.00.",
     ],
     [
       ROW,
       "invoice",
-      "Invoice INV-2026-09-03 linked automatically for SGD 1,500.00.",
+      "Invoice INV-2026-09-03 allocated automatically for SGD 1,500.00.",
     ],
     [
       CHANGED,
       "payment",
-      "Link to payment TRF-0921-118 changed from SGD 1,500.00 to SGD 1,200.00.",
+      "Allocation to payment TRF-0921-118 changed from SGD 1,500.00 to SGD 1,200.00.",
     ],
     [
       UNLINKED,
       "invoice",
-      "Invoice INV-2026-09-03 unlinked. SGD 1,200.00 returns to the payment as unallocated.",
+      "Invoice INV-2026-09-03 allocation removed. SGD 1,200.00 returns to the payment as unallocated.",
     ],
     [
       NO_REFERENCE,
       "payment",
-      "Payment 2 Oct 2026 linked automatically for SGD 1,500.00.",
+      "Payment 2 Oct 2026 allocated automatically for SGD 1,500.00.",
     ],
   ] as const)(
     "%# names the other record and the amounts in words",

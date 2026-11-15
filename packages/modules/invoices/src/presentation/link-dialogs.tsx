@@ -74,7 +74,7 @@ function ChangeLinkForm(props: {
   const refusal =
     change.error === null
       ? null
-      : messageOf(change.error, "The link was not changed.");
+      : messageOf(change.error, "The allocation was not changed.");
 
   return (
     <form
@@ -134,7 +134,7 @@ export function ChangeLinkDialog(props: {
         {shown === null ? null : (
           <>
             <DialogHeader>
-              <DialogTitle>{`Change the link to ${labelOf(shown, other)}`}</DialogTitle>
+              <DialogTitle>{`Change the allocation to ${labelOf(shown, other)}`}</DialogTitle>
             </DialogHeader>
             <ChangeLinkForm
               key={shown.id}
@@ -352,13 +352,13 @@ function LinkInvoiceForm(props: {
         message={
           link.error === null
             ? null
-            : messageOf(link.error, "The payment was not linked.")
+            : messageOf(link.error, "The payment was not allocated.")
         }
       />
       <DialogFooter>
         {cancel}
         <Button type="submit" loading={link.isPending}>
-          Link
+          Allocate
         </Button>
       </DialogFooter>
     </form>
@@ -386,7 +386,7 @@ export function LinkInvoiceDialog(props: {
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{`Link ${payment.label} to an invoice`}</DialogTitle>
+          <DialogTitle>{`Allocate ${payment.label} to an invoice`}</DialogTitle>
         </DialogHeader>
         <LinkInvoiceForm
           payment={payment}
@@ -507,7 +507,7 @@ function CorrectTotalForm(props: {
       {choice === null ? null : (
         <>
           <WarningNote>
-            {`The links add up to ${formatMoney(choice.excessCents, invoice.currency)} more than the new total. Lower one or more links.`}
+            {`The allocations add up to ${formatMoney(choice.excessCents, invoice.currency)} more than the new total. Lower one or more allocations.`}
           </WarningNote>
           {choice.allocations.map((link) => (
             <AmountField
@@ -609,7 +609,7 @@ export function RecordLinks(props: {
     onMutate: () => setFeedback(null),
     onSuccess: (_answer, row) => {
       setFeedback(
-        `The link to ${labelOf(row, other)} is removed. ${formatMoney(row.amountCents, row.currency)} returns to the payment as unallocated.`
+        `The allocation to ${labelOf(row, other)} is removed. ${formatMoney(row.amountCents, row.currency)} returns to the payment as unallocated.`
       );
 
       return refresh();
@@ -634,7 +634,7 @@ export function RecordLinks(props: {
   return (
     <div className="flex flex-col gap-2">
       {rows.length === 0 ? (
-        <p>{`No ${other} is linked yet.`}</p>
+        <p>No allocations yet.</p>
       ) : (
         <AllocationTable
           rows={rows}
@@ -658,7 +658,7 @@ export function RecordLinks(props: {
       )}
       {unlink.error === null ? null : (
         <p role="alert" className="text-sm text-destructive">
-          {`The link to ${unlink.variables === undefined ? "" : labelOf(unlink.variables, other)} was not removed. ${messageOf(unlink.error, "Try again.")}`}
+          {`The allocation to ${unlink.variables === undefined ? "" : labelOf(unlink.variables, other)} was not removed. ${messageOf(unlink.error, "Try again.")}`}
         </p>
       )}
       {canWrite ? (
@@ -676,9 +676,9 @@ export function RecordLinks(props: {
           />
           <ConfirmDialog
             open={removing !== null}
-            title={`Remove the link to ${removed === null ? "" : labelOf(removed, other)}?`}
+            title={`Remove the allocation to ${removed === null ? "" : labelOf(removed, other)}?`}
             description={`${removed === null ? "" : formatMoney(removed.amountCents, removed.currency)} returns to the payment as unallocated.`}
-            confirmLabel="Remove link"
+            confirmLabel="Remove allocation"
             danger
             onConfirm={() => {
               if (removing !== null) removeLink(removing);

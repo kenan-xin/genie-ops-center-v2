@@ -12,7 +12,7 @@ const LABEL: Record<DocumentStatusBadgeProps["status"], string> = {
   "reading": "Reading",
   "could-not-read": "Could not read",
   "needs-input": "Needs your input",
-  "linked-automatically": "Linked automatically",
+  "linked-automatically": "Allocated automatically",
   "confirm-split": "Confirm the split",
   "possible-duplicate": "Possible duplicate",
   "duplicate": "Duplicate (nothing added)",

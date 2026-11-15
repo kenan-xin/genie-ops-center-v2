@@ -118,11 +118,11 @@ function ShownPayment(props: { readonly initial: ShownView }) {
   const linkAction = canLink ? (
     <Button variant="secondary" size="sm" onClick={() => setLinking(true)}>
       <LinkIcon aria-hidden="true" />
-      Link to an invoice
+      Allocate to an invoice
     </Button>
   ) : undefined;
 
-  const meta = `${payment.customerName} · Amounts as of ${formatDay(view.asOf)}, the reporting date.`;
+  const meta = `${payment.customerName} · Figures as of ${formatDay(view.asOf)}.`;
 
   return (
     <main>

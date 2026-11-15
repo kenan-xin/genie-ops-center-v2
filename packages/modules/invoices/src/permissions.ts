@@ -8,7 +8,7 @@ export const INVOICES_PERMISSIONS = [
   { key: "invoices:read", label: "Read invoices, payments and customers" },
   {
     key: "invoices:write",
-    label: "Save invoices and payments and change their links",
+    label: "Save invoices and payments and change their allocations",
   },
   { key: "invoices:use", label: "Use the Invoices and Payments workspace" },
 ] as const satisfies Module["permissions"];

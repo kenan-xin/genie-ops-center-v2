@@ -29,7 +29,7 @@ const DUE_DATE_SOURCE: Record<
   string
 > = {
   document: "From the document",
-  person: "Entered by a person",
+  person: "Entered by hand",
 };
 
 function dueDate(invoice: InvoiceDetail): Figure {
@@ -120,7 +120,7 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
       ? "entered"
       : view.fields.find((row) => row.field === "amount")?.origin;
 
-  const meta = `${invoice.customerName} · Balances as of ${formatDay(view.asOf)}, the reporting date.`;
+  const meta = `${invoice.customerName} · Figures as of ${formatDay(view.asOf)}.`;
 
   const correct = view.canWrite ? (
     <Button variant="secondary" onClick={() => setCorrecting(true)}>
@@ -177,7 +177,7 @@ function ShownInvoice(props: { readonly initial: ShownView }) {
               {
                 label: "Paid",
                 value: money(invoice.allocatedCents),
-                note: `${linked} ${linked === 1 ? "payment" : "payments"} linked`,
+                note: `${linked} ${linked === 1 ? "allocation" : "allocations"}`,
               },
               dueDate(invoice),
             ]}

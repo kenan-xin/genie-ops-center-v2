@@ -566,7 +566,7 @@ export const SavedWithAutomaticLink: Story = {
 
     await userEvent.click(
       canvas.getByRole("button", {
-        name: "Undo the link of HF-SEP-FINAL-PART to INV-LIVE-001",
+        name: "Undo the allocation of HF-SEP-FINAL-PART to INV-LIVE-001",
       })
     );
 
@@ -577,7 +577,7 @@ export const SavedWithAutomaticLink: Story = {
     );
     await expect(
       await canvas.findByText(
-        "Link removed. SGD 3,000.00 is unallocated on HF-SEP-FINAL-PART."
+        "Allocation removed. SGD 3,000.00 is unallocated on HF-SEP-FINAL-PART."
       )
     ).toBeVisible();
     await waitFor(() =>
@@ -595,7 +595,7 @@ export const LinkedAutomatically: Story = {
   play: async ({ canvas }) => {
     await expect(
       canvas.getByRole("button", {
-        name: "Undo the link of HF-SEP-FINAL-PART to INV-2026-09-03",
+        name: "Undo the allocation of HF-SEP-FINAL-PART to INV-2026-09-03",
       })
     ).toBeVisible();
   },
@@ -619,7 +619,7 @@ export const SavedReadOnly: Story = {
     ).toBeVisible();
     await expect(
       canvas.queryByRole("button", {
-        name: "Undo the link of HF-SEP-FINAL-PART to INV-LIVE-001",
+        name: "Undo the allocation of HF-SEP-FINAL-PART to INV-LIVE-001",
       })
     ).toBeNull();
   },

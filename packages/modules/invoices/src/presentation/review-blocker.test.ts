@@ -95,7 +95,7 @@ describe("what blocks a review save", () => {
       })
     ).toEqual({
       key: "split",
-      reason: `The link to INV-2026-09-04 is more than its open ${formatMoney(420_000, "SGD")}.`,
+      reason: `The allocation to INV-2026-09-04 is more than its open ${formatMoney(420_000, "SGD")}.`,
       focusId: `link-${sep}`,
     });
   });
@@ -114,7 +114,7 @@ describe("what blocks a review save", () => {
       })
     ).toEqual({
       key: "split",
-      reason: `The links add up to ${formatMoney(25_000, "SGD")} more than the payment. Reduce one to save.`,
+      reason: `The allocations add up to ${formatMoney(25_000, "SGD")} more than the payment. Reduce one to save.`,
       focusId: `link-${aug}`,
     });
   });

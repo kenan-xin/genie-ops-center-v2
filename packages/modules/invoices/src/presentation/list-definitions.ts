@@ -124,10 +124,10 @@ export const paymentListDefinition = {
     field: "status",
     items: [
       { value: "all", label: "All", statuses: [] },
-      { value: "linked", label: "Linked", statuses: ["allocated"] },
+      { value: "linked", label: "Allocated", statuses: ["allocated"] },
       {
         value: "not-linked",
-        label: "Not linked",
+        label: "Unallocated",
         tone: "warning",
         statuses: ["part-allocated", "unallocated"],
       },

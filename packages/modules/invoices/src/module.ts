@@ -85,7 +85,7 @@ export const invoicesModule = {
     displayName: "Invoices and Payments",
     version: "0.0.0",
     description:
-      "Customers, invoices, payments and their links, with the datasets that answer questions about them.",
+      "Customers, invoices, payments and their allocations, with the datasets that answer questions about them.",
   },
 
   schema: {
@@ -121,7 +121,7 @@ export const invoicesModule = {
     {
       name: "Invoices and Payments editor",
       description:
-        "Read and save invoices and payments, and change their links.",
+        "Read and save invoices and payments, and change their allocations.",
       permissions: ["invoices:use", "invoices:read", "invoices:write"],
     },
     {

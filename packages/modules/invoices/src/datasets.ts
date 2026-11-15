@@ -250,7 +250,7 @@ export const paymentsDataset: DatasetDeclaration = {
       "The payment amount in cents, which summed by payment date is collections."
     ),
     allocatedCents: money(
-      "Linked",
+      "Allocated",
       "The cents of this payment linked to invoices dated on or before the reporting date."
     ),
     unallocatedCents: money(
@@ -388,12 +388,12 @@ export const customersDataset: DatasetDeclaration = {
 
 export const allocationsDataset: DatasetDeclaration = {
   name: "invoices.allocations",
-  title: "Payment links",
+  title: "Payment allocations",
   description:
     "One row per link of a payment to an invoice, both dated on or before the reporting date, under the read scope of the invoice.",
   permission: "invoices:read",
   fields: {
-    id: text("Link id", "The allocation id."),
+    id: text("Allocation id", "The allocation id."),
     invoiceId: text("Invoice id", "The id of the linked invoice."),
     invoiceNumber: text("Invoice", "The number of the linked invoice."),
     paymentId: text("Payment id", "The id of the linked payment."),
@@ -410,7 +410,7 @@ export const allocationsDataset: DatasetDeclaration = {
       "The cents of the payment applied to the invoice."
     ),
     automatic: flag(
-      "Linked automatically",
+      "Allocated automatically",
       "True when the link was made automatically and no person changed it."
     ),
   },

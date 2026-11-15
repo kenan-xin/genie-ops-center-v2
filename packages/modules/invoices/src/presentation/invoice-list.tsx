@@ -204,7 +204,7 @@ export function InvoiceList(props: InvoiceListProps) {
     <main>
       <PageHeader
         title="Invoices"
-        meta={`Balances as of ${formatDay(view.asOf)}, the reporting date.`}
+        meta={`Figures as of ${formatDay(view.asOf)}.`}
       />
       {view.rows.length === 0 ? (
         <EmptyState

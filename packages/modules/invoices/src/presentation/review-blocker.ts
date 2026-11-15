@@ -64,7 +64,9 @@ export function splitBlocker(input: {
     return block("The open invoices did not load. Press Load again to save.");
 
   if (drafts.length > MAX_PAYMENT_LINKS)
-    return block(`Link at most ${MAX_PAYMENT_LINKS} invoices in one save.`);
+    return block(
+      `Allocate to at most ${MAX_PAYMENT_LINKS} invoices in one save.`
+    );
 
   const rows = drafts.map((draft) => ({
     draft,
@@ -90,7 +92,7 @@ export function splitBlocker(input: {
 
   if (above?.row !== undefined)
     return block(
-      `The link to ${above.row.number} is more than its open ${formatMoney(above.row.openCents, currency)}.`,
+      `The allocation to ${above.row.number} is more than its open ${formatMoney(above.row.openCents, currency)}.`,
       above.draft.invoiceId
     );
 
@@ -98,7 +100,7 @@ export function splitBlocker(input: {
 
   if (sum > amountCents)
     return block(
-      `The links add up to ${formatMoney(sum - amountCents, currency)} more than the payment. Reduce one to save.`,
+      `The allocations add up to ${formatMoney(sum - amountCents, currency)} more than the payment. Reduce one to save.`,
       drafts[0]?.invoiceId
     );
 

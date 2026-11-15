@@ -155,9 +155,7 @@ async function updatedAndFigures(
   canvasElement: HTMLElement
 ) {
   // The caption writes the date as the table does (design review 1.1).
-  await expect(
-    canvas.getByText("Balances as of 27 Oct 2026, the reporting date.")
-  ).toBeVisible();
+  await expect(canvas.getByText("Figures as of 27 Oct 2026.")).toBeVisible();
   // 08:40 UTC is 16:40 in Asia/Singapore (Review Focus 5), the time under its day (czjw.102).
   const time = canvas.getAllByText(/16:40$/).filter(isVisible);
 

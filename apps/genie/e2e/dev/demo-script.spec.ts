@@ -320,7 +320,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           const figures = page.getByRole("region", { name: "Figures" });
 
           // The due date's source note sits beside its value, outside the `dd`.
-          await expect(figures).toContainText("Entered by a person");
+          await expect(figures).toContainText("Entered by hand");
           await expect(figures).toContainText("Open");
           await expect(figures).not.toContainText("Overdue");
         });
@@ -330,7 +330,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
 
           await openInbox(page);
           await uploadFiles(page, [partial]);
-          await expectStatus(page, partial, "Linked automatically");
+          await expectStatus(page, partial, "Allocated automatically");
         });
 
         await test.step("5. upload 03, confirm the split and save one payment", async () => {

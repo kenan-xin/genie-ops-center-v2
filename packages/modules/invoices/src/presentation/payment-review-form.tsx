@@ -267,7 +267,7 @@ export function usePaymentReview(input: {
       const linked = check.allocatedCents;
 
       input.onSaved(
-        `Payment saved: ${formatMoney(linked, sent.data.currency)} linked, ${formatMoney(sent.data.amountCents - linked, sent.data.currency)} unallocated.`
+        `Payment saved: ${formatMoney(linked, sent.data.currency)} allocated, ${formatMoney(sent.data.amountCents - linked, sent.data.currency)} unallocated.`
       );
       await queryClient.invalidateQueries({ queryKey: DOCUMENTS_QUERY });
     } catch (error) {

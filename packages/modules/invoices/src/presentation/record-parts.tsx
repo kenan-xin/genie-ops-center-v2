@@ -6,8 +6,8 @@ import { RecordLinks } from "./link-dialogs.tsx";
 import type { AllocationRow, HistoryRow } from "./views.ts";
 
 /**
- * A record's links and their history, in the desk's drawer (`cards`) or in its phone sheet
- * (`auto`, a table from 768 px): the links with their count and action, then History, newest first
+ * A record's allocations and their history, in the desk's drawer (`cards`) or in its phone sheet
+ * (`auto`, a table from 768 px): the allocations with their count and action, then History, newest first
  * (R-38a, prototype variant C).
  */
 export function RecordSide(props: {
@@ -17,7 +17,7 @@ export function RecordSide(props: {
   readonly history: readonly HistoryRow[];
   readonly canWrite: boolean;
   readonly timeZone: string;
-  /** An action on the links, such as "Link to an invoice". */
+  /** An action on the allocations, such as "Allocate to an invoice". */
   readonly linkAction?: ReactNode;
   readonly layout: "auto" | "cards";
 }): ReactNode {
@@ -34,7 +34,7 @@ export function RecordSide(props: {
           </h2>
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground tabular-nums">
-              {`${props.allocations.length} linked`}
+              {`${props.allocations.length} ${props.allocations.length === 1 ? "allocation" : "allocations"}`}
             </span>
             {props.linkAction}
           </div>
@@ -54,7 +54,7 @@ export function RecordSide(props: {
           History
         </h2>
         {props.history.length === 0 ? (
-          <p className="text-sm">No link has changed yet.</p>
+          <p className="text-sm">No allocation has changed yet.</p>
         ) : (
           <HistoryList
             rows={props.history}
