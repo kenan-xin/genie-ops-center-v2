@@ -26,39 +26,10 @@ const NOT_SHIPPED =
 const CUSTOMER_APP = /^customers\/[^/]+\/app\//;
 
 /**
- * Hits still on screen, by path, then phrase, then count. Tasks 4 to 10 of phase 05 sweep
- * these strings and lower their rows; the ledger goes once it is empty.
+ * Hits still on screen, by path, then phrase, then count. Tasks 4 to 10 of phase 05 swept
+ * every row, so it stays empty until Task 11 deletes it.
  */
-const PENDING_SWEEP = {
-  "packages/core/src/features/audit/audit-log.tsx": {
-    "path": 1,
-    "clear all": 1,
-  },
-  "packages/core/src/features/categories/assign-items.tsx": {
-    "who can open it": 1,
-  },
-  "packages/core/src/features/settings/ai-sections.tsx": {
-    "remove key": 2,
-  },
-  "packages/core/src/features/settings/settings-screen.tsx": {
-    "disabled": 1,
-    "/\\bswitch(?:es|ed|ing)?\\b(?:\\s+\\S+){0,3}?\\s+(?:on|off)\\b/i": 3,
-    "the assistant": 1,
-    "enabled": 1,
-  },
-  "packages/core/src/lib/module-contract/validate.ts": {
-    "system role": 1,
-  },
-  "packages/core/src/services/mailer/templates.tsx": {
-    enabled: 1,
-  },
-  "packages/modules/placeholder/src/module.ts": {
-    enabled: 1,
-  },
-  "packages/ui/src/list-header/filter-sheet.tsx": {
-    "clear all": 1,
-  },
-} satisfies Record<string, Record<string, number>>;
+const PENDING_SWEEP: Record<string, Record<string, number>> = {};
 
 /** The count of a `<path> <phrase>` key in a nested count record. */
 function countOf(

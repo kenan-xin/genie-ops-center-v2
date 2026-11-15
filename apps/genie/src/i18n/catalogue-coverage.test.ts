@@ -504,7 +504,7 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     // +3 for the "AI is off" note and its two reasons (Spec 7 R-20).
     // +2 for the Background runs section's title and description (DEC-57).
     "packages/core/src/features/settings/settings-screen.tsx": 29,
-    // Spec 7 R-17: the write-only key field's label and help, Remove key, and the remove confirm.
+    // Spec 7 R-17: the write-only key field's label and help, Delete key, and the delete confirm.
     // +2 for the AI models list's label and help (Spec 7 R-18).
     // +3 for the run time limit's label, unit and help (DEC-57).
     "packages/core/src/features/settings/ai-sections.tsx": 11,

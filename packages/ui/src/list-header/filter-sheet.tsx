@@ -139,12 +139,12 @@ export function FilterSheet(props: {
             disabled={count === 0}
             onClick={() => {
               state.clear();
-              // Clear all can disable itself, and the first control of a sheet can be a radio
+              // Clear filters can disable itself, and the first control of a sheet can be a radio
               // group, so the focus goes to its neighbor Show (WCAG 2.4.3).
               showButton.current?.focus();
             }}
           >
-            Clear all
+            Clear filters
           </Button>
           <SheetClose
             render={<Button ref={showButton} size="lg" className="flex-1" />}

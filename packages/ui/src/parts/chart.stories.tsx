@@ -50,7 +50,7 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const CAPTION = "Source: placeholder.records · Read 30 Oct 2026, 06:05";
+const CAPTION = "Source: placeholder.records · as of 30 Oct 2026, 06:05";
 
 /** The computed form of a slot color, as `getComputedStyle` answers it. */
 function slotColor(theme: ThemeName, slot: number): string {

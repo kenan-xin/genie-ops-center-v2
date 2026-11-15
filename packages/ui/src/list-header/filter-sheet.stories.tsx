@@ -94,12 +94,12 @@ export const AppliesAtOnce: Story = {
   },
 };
 
-/** Clear all is off with nothing set, and resets the status to the resting tab. */
+/** Clear filters is off with nothing set, and resets the status to the resting tab. */
 export const ClearAll: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Filters" }));
 
-    const clear = await screen.findByRole("button", { name: "Clear all" });
+    const clear = await screen.findByRole("button", { name: "Clear filters" });
 
     await expect(clear).toBeDisabled();
     await userEvent.click(screen.getByRole("radio", { name: "Paid 21" }));
@@ -107,7 +107,7 @@ export const ClearAll: Story = {
     await userEvent.click(clear);
     await waitFor(() => expect(param("status")).toBeNull());
     await expect(screen.getByRole("radio", { name: "All 36" })).toBeChecked();
-    // 6wz1.98: Clear all disables itself, so the focus moves to Show, not the body.
+    // 6wz1.98: Clear filters disables itself, so the focus moves to Show, not the body.
     await waitFor(() =>
       expect(
         screen.getByRole("button", { name: "Show 6 invoices" })

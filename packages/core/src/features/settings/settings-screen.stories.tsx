@@ -382,10 +382,8 @@ export const DisabledModule: Story = {
       canvas.getByRole("navigation", { name: "Settings sections" })
     );
 
-    await expect(nav.getByText("Disabled")).toBeVisible();
-    await expect(
-      canvas.getByText("Placeholder is switched off.")
-    ).toBeVisible();
+    await expect(nav.getByText("Module off")).toBeVisible();
+    await expect(canvas.getByText("Placeholder is off.")).toBeVisible();
     await expect(canvas.getByRole("link", { name: "Modules" })).toHaveAttribute(
       "href",
       "/admin/modules"
@@ -395,7 +393,7 @@ export const DisabledModule: Story = {
   },
 };
 
-/** The Modules link in the switched-off note leaves the page, so an edited section asks first. */
+/** The Modules link in the "<module> is off." note leaves the page, so an edited section asks first. */
 export const ModulesLinkConfirmsWhenDirty: Story = {
   args: disabledModule,
   play: async ({ canvas }) => {
@@ -879,7 +877,7 @@ export const AiKeySavesAndClearsTheField: Story = {
 
     await expect(canvas.getByText("Not stored")).toBeVisible();
     await expect(
-      canvas.getByRole("button", { name: "Remove key" })
+      canvas.getByRole("button", { name: "Delete key" })
     ).toBeDisabled();
     await expect(field).toHaveAttribute("type", "password");
 
@@ -927,12 +925,12 @@ export const AiKeyRemoveConfirms: Story = {
     target: { section: "ai-connection" },
   },
   play: async ({ args, canvas }) => {
-    const remove = canvas.getByRole("button", { name: "Remove key" });
+    const remove = canvas.getByRole("button", { name: "Delete key" });
 
     await userEvent.click(remove);
 
     const dialog = await screen.findByRole("dialog", {
-      name: "Remove the model provider key?",
+      name: "Delete the model provider key?",
     });
 
     await userEvent.click(
@@ -945,9 +943,9 @@ export const AiKeyRemoveConfirms: Story = {
     await userEvent.click(
       within(
         await screen.findByRole("dialog", {
-          name: "Remove the model provider key?",
+          name: "Delete the model provider key?",
         })
-      ).getByRole("button", { name: "Remove key" })
+      ).getByRole("button", { name: "Delete key" })
     );
     await waitFor(() => expect(args.onRemoveModelKey).toHaveBeenCalledTimes(1));
   },
@@ -979,7 +977,7 @@ export const AiModelsSave: Story = {
     target: { section: "ai-models" },
   },
   play: async ({ args, canvas }) => {
-    // AI is on, so no section carries the switched-off note (R-20).
+    // AI is on, so no section carries the "AI is off." note (R-20).
     await expect(canvas.queryByText("AI is off.")).toBeNull();
 
     fireEvent.change(canvas.getByRole("textbox", { name: "Allowed models" }), {

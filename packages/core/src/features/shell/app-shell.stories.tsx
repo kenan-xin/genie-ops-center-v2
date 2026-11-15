@@ -113,7 +113,7 @@ const meta = {
       logoDarkUrl: null,
       markUrl: null,
     },
-    user: { name: "Alex Morgan", roleLabel: "Member" },
+    user: { name: "Alex Morgan", email: "alex.morgan@acme.example" },
     menu: {
       accountHref: "/account",
       changePasswordHref: null,
@@ -658,7 +658,7 @@ const longNames = {
     logoDarkUrl: null,
     markUrl: null,
   },
-  user: { name: LONG, roleLabel: "Member" },
+  user: { name: LONG, email: "alex.morgan@acme.example" },
   currentPath: "/long",
   navigation: {
     ...navigation,

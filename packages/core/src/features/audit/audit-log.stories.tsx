@@ -295,7 +295,9 @@ export const ActiveFilterChipsAndClearAll: Story = {
       canvas.getByRole("button", { name: /^Filters/ })
     ).toHaveTextContent("2");
 
-    await userEvent.click(canvas.getByRole("button", { name: "Clear all" }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear filters" })
+    );
 
     await expect(canvas.queryByText("Operator rows")).not.toBeInTheDocument();
     await expect(canvas.getByLabelText("Search summary or target")).toHaveValue(

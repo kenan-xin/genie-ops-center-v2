@@ -1132,7 +1132,7 @@ export const StatusFilterNarrowsTheList: Story = {
     await expect(table.getByText("Bea Brokered")).toBeInTheDocument();
     await expect(table.queryByText("Ada Admin")).not.toBeInTheDocument();
 
-    // The active filter renders as a removable chip with a Clear all.
+    // The active filter renders as a removable chip with Clear filters.
     await expect(canvas.getByText("Status: Pending")).toBeInTheDocument();
 
     await userEvent.click(

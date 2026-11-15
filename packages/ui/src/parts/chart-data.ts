@@ -190,7 +190,7 @@ export function formatReadTime(instant: string, timeZone: string): string {
 }
 
 /**
- * "Source: <sources> · Read <time>", plus the row cap when the read was cut (R-16). `source` drops
+ * "Source: <sources> · as of <time>" (G25), plus the row cap when the read was cut (R-16). `source` drops
  * the read time, where the page names it once (6.1).
  */
 export function chartCaption(
@@ -206,7 +206,7 @@ export function chartCaption(
   const caption =
     form === "source"
       ? source
-      : `${source} · Read ${formatReadTime(data.readAt, timeZone)}`;
+      : `${source} · as of ${formatReadTime(data.readAt, timeZone)}`;
 
   return data.truncated
     ? `${caption} · First ${data.rows.length.toLocaleString(LOCALE)} rows`

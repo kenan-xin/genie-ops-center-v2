@@ -56,7 +56,8 @@ export type ShellIdentity = {
   readonly markUrl: string | null;
 };
 
-export type ShellUser = { readonly name: string; readonly roleLabel: string };
+/** The account menu's person: the name, with the email under it, or nothing when it is empty (G30). */
+export type ShellUser = { readonly name: string; readonly email: string };
 
 export type ShellMenu = {
   readonly accountHref: string;

@@ -212,7 +212,7 @@ describe("validateModule", () => {
       'Permission transformation "0001" renames "fixture:read", which the module still declares; a rename must not merge two keys.',
       'Permission transformation "0002" changes "core:people:manage", which is not a key of "fixture".',
       'Permission transformation "0003" renames to "fixture:missing", which the module does not declare.',
-      'Permission transformation "0004" renames the core system role "Tenant administrator".',
+      'Permission transformation "0004" renames the core built-in role "Tenant administrator".',
       'Permission transformation "0004" is declared twice.',
     ]);
   });
@@ -231,7 +231,7 @@ describe("validateModule", () => {
     } as const;
 
     expect(validateModule(broken)).toEqual([
-      'Permission transformation "0001" renames the core system role "Ask user".',
+      'Permission transformation "0001" renames the core built-in role "Ask user".',
     ]);
   });
 

@@ -140,7 +140,7 @@ export function AssignItems(props: AssignItemsProps) {
       </div>
       <p className="text-sm text-muted-foreground">
         Pick the category each module sits under. A module without one stands
-        under Other. Filing a module never changes who can open it.
+        under Other. Filing a module never changes who it is assigned to.
       </p>
       <div className="grid gap-2 sm:flex sm:items-center">
         {/* The captures draw a magnifier inside every list search. */}

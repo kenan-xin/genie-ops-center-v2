@@ -97,7 +97,7 @@ export function SettingsRoute(props: { readonly timeZone: string }) {
     invalidate: [["settings"]],
     saved: (result) =>
       result.changed
-        ? "Model provider key removed. Written to the audit log."
+        ? "Model provider key deleted. Written to the audit log."
         : undefined,
     refused: onScreen,
     notSaved: () => t("settings.notSaved.modelKeyRemoval"),

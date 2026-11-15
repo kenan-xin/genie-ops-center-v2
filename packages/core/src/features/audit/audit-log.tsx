@@ -146,8 +146,8 @@ function HelpNote(): JSX.Element {
       </p>
       <p>
         A target opens only while the record still exists and its module returns
-        a path. A target that no longer exists shows without a link and reads
-        Removed.
+        an address for it. A target that no longer exists shows without a link
+        and reads Removed.
       </p>
       <p>
         A person an operator erased appears under an anonymized name. Their
@@ -235,7 +235,7 @@ function FilterChips(props: {
         size="sm"
         onClick={() => props.onChange(EMPTY_AUDIT_FILTERS)}
       >
-        Clear all
+        Clear filters
       </Button>
     </div>
   );

@@ -121,6 +121,7 @@ async function shellProps(
   const model = await shellModel();
 
   const person = session.user;
+  const personName = person.name.trim();
   const chrome = shellChrome(requested, model.isAdministrator);
 
   return {
@@ -128,10 +129,9 @@ async function shellProps(
     navigation: model.navigation,
     identity: model.identity,
     user: {
-      name: person.name.trim() || person.email,
-      roleLabel: model.isAdministrator
-        ? t("roleAdministrator")
-        : t("roleMember"),
+      name: personName || person.email,
+      // A person without a name shows the email as the name, so not twice (G30).
+      email: personName === "" ? "" : person.email,
     },
     menu: shellMenu({
       chrome,

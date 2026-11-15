@@ -192,7 +192,7 @@ function moduleNotification(
       ),
     ],
     action: { label: `Open ${moduleName}`, url: value(variables, "link") },
-    footer: `You received this email because ${companyName} enabled ${moduleName}.`,
+    footer: `You received this email because ${companyName} turned on ${moduleName}.`,
   };
 }
 

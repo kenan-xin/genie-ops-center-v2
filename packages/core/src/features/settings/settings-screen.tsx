@@ -351,7 +351,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
             </>
           ) : null}
           {section.disabled ? (
-            <StatusPill tone="warning">Disabled</StatusPill>
+            <StatusPill tone="neutral">Module off</StatusPill>
           ) : null}
           <ChevronRight
             aria-hidden
@@ -382,7 +382,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
       <div className="mt-4 border-t border-border px-3 pt-2">
         <HelpDisclosure label="Which modules appear here">
           <p>
-            A module appears here only when it declares settings. Switching a
+            A module appears here only when it declares settings. Turning a
             module on or off happens on the Modules page.
           </p>
         </HelpDisclosure>
@@ -560,7 +560,7 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
       return (
         <SectionCard
           title="Background runs"
-          description="How long the assistant may work on one background task."
+          description="How long Ask may work on one background task."
           lastChanged={lastChangedText(
             settings.core.lastChanged,
             props.timeZone
@@ -597,11 +597,11 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
         extra={
           module.enabled ? null : (
             <WarningNote size="md" role="status">
-              <p className="font-semibold">{module.title} is switched off.</p>
+              <p className="font-semibold">{module.title} is off.</p>
               <p className="mt-0.5">
                 Its settings stay editable, so the tenant can be prepared before
-                the module is enabled. Saving here changes settings only: it
-                never switches the module on. That happens on{" "}
+                the module is turned on. Saving here changes settings only: it
+                never turns the module on. That happens on{" "}
                 <a
                   href={props.modulesHref}
                   onClick={(event) => {

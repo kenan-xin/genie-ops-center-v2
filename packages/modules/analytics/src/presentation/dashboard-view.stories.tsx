@@ -193,7 +193,7 @@ export const Panels: Story = {
     await expect(
       await canvas.findByText(/^Figures as of \d+ \w{3} \d{4}, \d{2}:\d{2}\.$/)
     ).toBeVisible();
-    await expect(canvas.queryByText(/ · Read /)).toBeNull();
+    await expect(canvas.queryByText(/ · as of /)).toBeNull();
     await expect(canvas.getByRole("button", { name: "More" })).toBeVisible();
   },
 };

@@ -109,13 +109,13 @@ describe("chartCaption", () => {
 
   it("names every dataset and the read time in the tenant zone", () =>
     expect(chartCaption(read, "Asia/Singapore")).toBe(
-      "Source: placeholder.records, invoices.payments · Read 30 Oct 2026, 14:05"
+      "Source: placeholder.records, invoices.payments · as of 30 Oct 2026, 14:05"
     ));
 
   it("names the sources by title when the chart has them, so a stored chart without keeps its names", () =>
     expect(
       chartCaption({ ...read, sources: ["Records", "Payments"] }, "UTC")
-    ).toBe("Source: Records, Payments · Read 30 Oct 2026, 06:05"));
+    ).toBe("Source: Records, Payments · as of 30 Oct 2026, 06:05"));
 
   it("drops the read time for a source-only caption", () =>
     expect(

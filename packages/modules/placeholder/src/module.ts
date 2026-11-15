@@ -250,7 +250,7 @@ export const placeholderModule = {
     fields: {
       title: { id: "title", title: "Title" },
       pageSize: { id: "pageSize", title: "Page size" },
-      enabled: { id: "enabled", title: "Enabled" },
+      enabled: { id: "enabled", title: "Sample setting" },
       mode: { id: "mode", title: "Mode" },
       tags: { id: "tags", title: "Tags" },
     },

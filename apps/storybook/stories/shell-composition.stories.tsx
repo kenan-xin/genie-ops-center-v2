@@ -36,7 +36,7 @@ const meta = {
       logoDarkUrl: null,
       markUrl: null,
     },
-    user: { name: "Alex Morgan", roleLabel: "Administrator" },
+    user: { name: "Alex Morgan", email: "alex.morgan@acme.example" },
     menu: {
       accountHref: "/account",
       changePasswordHref: null,

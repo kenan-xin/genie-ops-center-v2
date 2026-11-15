@@ -4,7 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { UserMenu } from "./user-menu.tsx";
 
 /**
- * The shell's user footer (R-32): the person, their role, and a menu that opens upward with
+ * The shell's user footer (R-32): the person's name with their email under it (G30), and a menu that opens upward with
  * Account, Change password (local accounts), the chrome switch (administrators), Help and support
  * (when branding has a contact) and Sign out, which posts the sign-out form.
  */
@@ -13,7 +13,7 @@ const meta = {
   component: UserMenu,
   tags: ["autodocs"],
   args: {
-    user: { name: "Alex Morgan", roleLabel: "Member" },
+    user: { name: "Alex Morgan", email: "alex.morgan@acme.example" },
     menu: {
       accountHref: "/account",
       changePasswordHref: null,
@@ -65,8 +65,8 @@ export const Member: Story = {
 
     // The tooltip fades in, so wait until it paints.
     await waitFor(() => expect(tip).toBeVisible());
-    // The role reads as plain muted text under the name, not as a pill (UI-1 finding 6).
-    await expect(canvas.getByText("Member")).toHaveClass(
+    // The email reads as plain muted text under the name, not as a pill (UI-1 finding 6, G30).
+    await expect(canvas.getByText("alex.morgan@acme.example")).toHaveClass(
       "text-muted-foreground"
     );
     await userEvent.click(trigger(canvasElement));
@@ -90,7 +90,7 @@ export const Member: Story = {
 
 export const AdministratorLocalAccount: Story = {
   args: {
-    user: { name: "Priya Nair", roleLabel: "Administrator" },
+    user: { name: "Priya Nair", email: "priya.nair@acme.example" },
     menu: {
       accountHref: "/account",
       changePasswordHref:
@@ -176,6 +176,31 @@ export const EscapeCloses: Story = {
   },
 };
 
+/** A person with no name shows the email as the name, so the footer never repeats it (G30). */
+export const NoEmailLine: Story = {
+  args: { user: { name: "alex.morgan@acme.example", email: "" } },
+  play: async ({ canvasElement }) => {
+    await expect(
+      canvasElement.querySelectorAll(
+        "[data-shell-user-menu] span.text-muted-foreground"
+      )
+    ).toHaveLength(0);
+  },
+};
+
+/** The rail keeps the name alone for a screen reader when there is no email line. */
+export const NoEmailLineInTheRail: Story = {
+  args: {
+    rail: true,
+    user: { name: "alex.morgan@acme.example", email: "" },
+  },
+  play: async ({ canvasElement }) => {
+    await expect(
+      canvasElement.querySelector("[data-shell-user-menu] .sr-only")
+    ).toHaveTextContent(/^alex\.morgan@acme\.example$/);
+  },
+};
+
 export const Dark: Story = {
   globals: { theme: "dark" },
 };
@@ -185,7 +210,7 @@ export const LongNameStopsBeforeTheChevron: Story = {
   args: {
     user: {
       name: "Test Tenant administrator of the night shift",
-      roleLabel: "Administrator",
+      email: "night.shift@acme.example",
     },
   },
   play: async ({ canvasElement, canvas }) => {

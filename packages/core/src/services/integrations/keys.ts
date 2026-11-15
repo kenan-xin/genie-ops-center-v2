@@ -57,7 +57,7 @@ function postgresFailure(
  * error is not kept as a cause: its message and parameters carry the key (DEC-53, R-17).
  */
 function failureMessage(
-  verb: "stored" | "removed",
+  verb: "stored" | "deleted",
   name: IntegrationKeyName,
   error: Error | undefined
 ): string {
@@ -156,7 +156,7 @@ export async function removeIntegrationKey(
         actorUserId: input.actorUserId,
         targetType: "integration_key",
         targetId: input.name,
-        summary: `Removed the ${INTEGRATION_KEYS[input.name]}`,
+        summary: `Deleted the ${INTEGRATION_KEYS[input.name]}`,
         metadata: { name: input.name },
       });
 
@@ -166,7 +166,7 @@ export async function removeIntegrationKey(
     // oxlint-disable-next-line preserve-caught-error -- DEC-53: a cause carries the key in its message and params
     throw new Error(
       failureMessage(
-        "removed",
+        "deleted",
         input.name,
         error instanceof Error ? error : undefined
       )

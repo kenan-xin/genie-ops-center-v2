@@ -64,8 +64,8 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
 
   await page.goto("/account");
 
-  // Profile: the person the directory synced.
-  await expect(page.getByText(email)).toBeVisible();
+  // Profile: the person the directory synced. The shell footer also shows the email (G30).
+  await expect(page.getByRole("main").getByText(email)).toBeVisible();
 
   // Sessions: phone uses cards while desktop exposes the responsive table in the built app.
   const sessionsList = page.getByRole("list", { name: "Sessions" });
@@ -293,7 +293,7 @@ test("an idle reload of the account page clears the cookie and lands on the expi
   const current = await currentSessionId(page, email);
 
   await page.goto("/account");
-  await expect(page.getByText(email)).toBeVisible();
+  await expect(page.getByRole("main").getByText(email)).toBeVisible();
 
   // As above: no activity call from the landing may slide the session after the idle time.
   await page.waitForLoadState("networkidle");

@@ -29,8 +29,6 @@
     "backTo": "Back to {page}",
     "helpAndSupport": "Help and support",
     "signOut": "Sign out",
-    "roleAdministrator": "Administrator",
-    "roleMember": "Workspace member",
     "adminGroups": {
       "peopleAndAccess": "People and access",
       "tenant": "Tenant",
@@ -152,7 +150,7 @@
         "models": "The AI models were not saved.",
         "agentRuns": "The time limit for a background run was not saved.",
         "modelKey": "The model provider key was not stored.",
-        "modelKeyRemoval": "The model provider key was not removed.",
+        "modelKeyRemoval": "The model provider key was not deleted.",
         "module": "The {module} settings were not saved."
       }
     },

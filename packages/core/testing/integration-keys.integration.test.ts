@@ -128,7 +128,7 @@ describe("the integration key store against a real database", () => {
         action: "core:integration_key_removed",
         targetType: "integration_key",
         targetId: NAME,
-        summary: "Removed the model provider key",
+        summary: "Deleted the model provider key",
         metadata: { name: NAME },
       },
     ]);

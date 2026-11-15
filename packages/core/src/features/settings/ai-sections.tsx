@@ -116,7 +116,7 @@ export function AiConnectionSection(props: {
                     disabled={!props.keyStored}
                     onClick={() => setConfirming(true)}
                   >
-                    Remove key
+                    Delete key
                   </Button>
                 </div>
               </div>
@@ -128,9 +128,9 @@ export function AiConnectionSection(props: {
 
       <ConfirmDialog
         open={confirming}
-        title="Remove the model provider key?"
+        title="Delete the model provider key?"
         description="AI features turn off at once. To turn them on again, store a key again."
-        confirmLabel="Remove key"
+        confirmLabel="Delete key"
         danger
         onConfirm={() => {
           setConfirming(false);

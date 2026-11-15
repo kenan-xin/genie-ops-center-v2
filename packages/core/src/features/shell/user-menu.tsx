@@ -94,7 +94,7 @@ export function UserMenu(props: UserMenuProps) {
           </span>
           {props.rail === true ? (
             <span className="sr-only">
-              {user.name}, {user.roleLabel}
+              {user.email === "" ? user.name : `${user.name}, ${user.email}`}
             </span>
           ) : (
             <>
@@ -110,9 +110,15 @@ export function UserMenu(props: UserMenuProps) {
                   </TooltipTrigger>
                   <TooltipContent>{user.name}</TooltipContent>
                 </Tooltip>
-                <span className="block max-w-full truncate text-xs text-muted-foreground">
-                  {user.roleLabel}
-                </span>
+                {user.email === "" ? null : (
+                  // title: a long email truncates, so the full text stays reachable.
+                  <span
+                    title={user.email}
+                    className="block max-w-full truncate text-xs text-muted-foreground"
+                  >
+                    {user.email}
+                  </span>
+                )}
               </span>
               <ChevronsUpDown
                 aria-hidden

@@ -123,7 +123,7 @@ const NAMED = {
   "module-notification": {
     subject: "Records has an update",
     action: "Open Records",
-    body: "You received this email because Renamed Co enabled Records.",
+    body: "You received this email because Renamed Co turned on Records.",
   },
 } satisfies Record<
   (typeof MAIL_TEMPLATE_IDS)[number],

@@ -285,8 +285,8 @@ test("Clear filters keeps the focus on the filter bar", async ({ page }) => {
       const show = page.getByRole("button", { name: "Show results" });
 
       await expect(show).toBeVisible();
-      await page.getByRole("button", { name: "Clear all" }).click();
-      // Clear all disables itself, so the focus goes to Show, not to the body (6wz1.98).
+      await page.getByRole("button", { name: "Clear filters" }).click();
+      // Clear filters disables itself, so the focus goes to Show, not to the body (6wz1.98).
       await expect(show).toBeFocused();
       await show.click();
       await expect(filtersButton(page)).toBeFocused();

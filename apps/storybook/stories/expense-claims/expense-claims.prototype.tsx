@@ -789,7 +789,7 @@ export function ExpenseClaimsPrototype() {
         }}
         user={{
           name: "Demo workspace",
-          roleLabel: "Expense claims demo",
+          email: "demo@acme.example",
         }}
         menu={{
           accountHref: "/account",

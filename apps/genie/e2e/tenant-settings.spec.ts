@@ -65,7 +65,7 @@ const resetAiSettings = () =>
 const navigator = (page: Page) =>
   page.getByRole("navigation", { name: "Settings sections" });
 
-/** A navigator row: its name starts with the section title, then a Disabled pill or (unsaved). */
+/** A navigator row: its name starts with the section title, then a Module off pill or (unsaved). */
 const sectionRow = (page: Page, title: string) =>
   navigator(page).getByRole("button", {
     name: new RegExp(
@@ -347,7 +347,7 @@ test("the placeholder section renders five kinds, refuses an invalid value and s
           page.getByRole("textbox", { name: "Title" })
         ).toBeVisible();
         await expect(
-          page.getByRole("switch", { name: "Enabled" })
+          page.getByRole("switch", { name: "Sample setting" })
         ).toBeVisible();
         await expect(
           page.getByRole("combobox", { name: "Mode" })
@@ -391,9 +391,7 @@ test("the placeholder section renders five kinds, refuses an invalid value and s
         await brokeredGenieOps("invite", ["module", "disable", "placeholder"]);
         await page.reload();
         await openSection(page, "Placeholder");
-        await expect(
-          page.getByText("Placeholder is switched off.")
-        ).toBeVisible();
+        await expect(page.getByText("Placeholder is off.")).toBeVisible();
         await title.fill("Prepared");
         await saveAndExpect(page, "Placeholder", action);
         expect(
@@ -536,16 +534,16 @@ test("stores and removes the model key write-only, saves the AI models, and show
         // Removing the key turns AI off again, and the removal is its own audit event.
         const removedBefore = await auditCount("core:integration_key_removed");
 
-        await page.getByRole("button", { name: "Remove key" }).click();
+        await page.getByRole("button", { name: "Delete key" }).click();
 
         const confirm = page.getByRole("dialog", {
-          name: "Remove the model provider key?",
+          name: "Delete the model provider key?",
         });
 
-        await confirm.getByRole("button", { name: "Remove key" }).click();
+        await confirm.getByRole("button", { name: "Delete key" }).click();
         await expect(
           page.getByText(
-            "Model provider key removed. Written to the audit log."
+            "Model provider key deleted. Written to the audit log."
           )
         ).toBeVisible();
         await expect(

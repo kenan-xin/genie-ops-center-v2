@@ -738,7 +738,7 @@ function transformationProblems(
   if (change.kind === "rename-role") {
     return [change.from, change.to].flatMap((name) =>
       CORE_SYSTEM_ROLES.has(name)
-        ? [`${label} renames the core system role "${name}".`]
+        ? [`${label} renames the core built-in role "${name}".`]
         : []
     );
   }

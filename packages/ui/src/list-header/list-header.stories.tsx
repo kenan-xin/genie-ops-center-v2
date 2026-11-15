@@ -300,7 +300,7 @@ const paymentsLike: ListDefinition = {
       { value: "all", label: "All" },
       { value: "allocated", label: "Allocated" },
       { value: "part-allocated", label: "Part allocated" },
-      { value: "unallocated", label: "Not linked", tone: "warning" },
+      { value: "unallocated", label: "Unallocated", tone: "warning" },
     ],
   },
 };
@@ -320,7 +320,7 @@ const paymentArgs = {
         },
         { label: "Allocated", value: "SGD 96,040.00", note: "In 25 payments" },
         { label: "Unallocated", value: "SGD 8,150.00", note: "In 7 payments" },
-        { label: "Payments", value: "29", note: "4 not linked" },
+        { label: "Payments", value: "29", note: "4 unallocated" },
       ],
     },
   ],
@@ -335,7 +335,7 @@ export const PaymentsLike: Story = {
   args: paymentArgs,
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("tab", { name: "Not linked 4" })
+      canvas.getByRole("tab", { name: "Unallocated 4" })
     ).toBeVisible();
     await expect(canvas.getByRole("table", { name: "Payments" })).toBeVisible();
   },
@@ -383,9 +383,9 @@ const documentsLike: ListDefinition = {
   tabs: {
     param: "status",
     items: [
-      { value: "needs-you", label: "Needs you" },
-      { value: "reading", label: "Reading" },
-      { value: "done", label: "Done" },
+      { value: "needs-you", label: "To review" },
+      { value: "reading", label: "Processing" },
+      { value: "done", label: "Processed" },
       { value: "all", label: "All" },
     ],
   },
@@ -401,20 +401,20 @@ const documentArgs = {
   counts: { "needs-you": 0, "reading": 1, "done": 30, "all": 36 },
   figures: undefined,
   empty: {
-    title: "Nothing needs you.",
+    title: "No documents to review.",
     description: "New uploads show here while they are read.",
   },
 };
 
-/** H3: the inbox configuration with no figures; an empty Needs you shows no count and its empty text. */
+/** H3: the inbox configuration with no figures; an empty To review shows no count and its empty text. */
 export const DocumentsLike: Story = {
   args: { ...documentArgs, page: { ...page, loaded: 0 } },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("tab", { name: "Needs you" })
+      canvas.getByRole("tab", { name: "To review" })
     ).toHaveAttribute("aria-selected", "true");
     await expect(canvas.queryByRole("region", { name: "Figures" })).toBeNull();
-    await expect(canvas.getByText("Nothing needs you.")).toBeVisible();
+    await expect(canvas.getByText("No documents to review.")).toBeVisible();
     await expect(canvas.getByLabelText("Type: All types")).toBeVisible();
   },
 };
@@ -424,9 +424,9 @@ export const DocumentsLikePhone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("heading", { name: "Needs you" })
+      canvas.getByRole("heading", { name: "To review" })
     ).toBeVisible();
-    await expect(canvas.getByText("Nothing needs you.")).toBeVisible();
+    await expect(canvas.getByText("No documents to review.")).toBeVisible();
   },
 };
 
