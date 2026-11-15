@@ -14,7 +14,10 @@ export type ChangeFailure =
       readonly slideNumber?: number | undefined;
       readonly error: unknown;
     }
-  | { readonly kind: "undo" | "refresh" | "export"; readonly error: unknown }
+  | {
+      readonly kind: "undo" | "refresh" | "export" | "stop";
+      readonly error: unknown;
+    }
   /** The person's slide is no longer in the deck, so only a reload helps. */
   | { readonly kind: "stale" };
 
@@ -57,6 +60,10 @@ function refusalOf(failure: ChangeFailure): Refusal {
       issues,
       reload,
     };
+  }
+
+  if (failure.kind === "stop") {
+    return { message: `The agent was not stopped. ${message}`, issues, reload };
   }
 
   if (failure.kind === "export") {

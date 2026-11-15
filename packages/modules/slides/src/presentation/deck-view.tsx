@@ -2,10 +2,13 @@
 
 import {
   type AgentPageContext,
+  type AgentRunStatus,
   useAgentPage,
+  useRecordRun,
 } from "@genie/core/features/agent/panel";
 import { PageHeader } from "@genie/core/features/shell";
 import {
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -29,11 +32,20 @@ import {
   SheetDescription,
   SheetHeader,
   SheetTitle,
+  Skeleton,
   Textarea,
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { isEqual } from "es-toolkit";
-import { ChevronDown, Pencil, Play, Presentation, Undo2 } from "lucide-react";
+import {
+  ChevronDown,
+  Loader2,
+  Pencil,
+  Play,
+  Presentation,
+  Square,
+  Undo2,
+} from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -50,6 +62,12 @@ import {
 } from "../contract.ts";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
 import { presenterPath } from "./deck-sync.ts";
+import {
+  draftStatus,
+  isDrafting,
+  isUnnamed,
+  slideCount,
+} from "./draft-status.ts";
 import { NotesField, type NotesFieldHandle } from "./notes-field.tsx";
 import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
@@ -154,6 +172,13 @@ const addSlideSchema = z.object({
 });
 
 const ADD_HELP = "State the finding of this slide in one sentence.";
+
+/** The draft pill's tone: gray while it drafts or after a stop, green when saved (DESIGN.md). */
+function pillVariant(run: AgentRunStatus | null) {
+  if (run === "saved") return "success";
+
+  return run === "failed" || run === "interrupted" ? "warning" : "neutral";
+}
 
 /** The Rename deck dialog's form, with the deck's title schema (CLAUDE.md, Forms). */
 function RenameForm(props: {
@@ -452,14 +477,43 @@ function PresentButton(props: {
 /** One deck: its toolbar, its slide rail, the shown slide and the hand edits (R-52 to R-54). */
 export function DeckView(props: DeckViewProps) {
   const { view } = props;
-  const deckQuery = useDeck(view.deck);
+
+  // The `agent` area refuses a person without Ask, so the page then reads no run (S7-48).
+  const recordRun = useRecordRun({
+    surface: "slides",
+    recordId: view.deck.id,
+    enabled: view.chat.kind !== "none",
+  });
+
+  // While the agent may change the deck, a hand edit would move its hash and refuse the agent's
+  // next change (Review Focus 4), so the page only watches.
+  const drafting = isDrafting(recordRun.run);
+  const deckQuery = useDeck(view.deck, { fast: drafting });
   const deck = deckQuery.data ?? view.deck;
+  // Until the first read of the run lands, a run may be building, so editing waits for it too.
+  const editable = view.canWrite && !drafting && !recordRun.loading;
   const change = useDeckChange(deck);
   const undo = useUndoDeck(deck);
   const refresh = useRefreshDeck(deck);
   const upload = useUploadDeckImage(deck);
   const exporting = useExportDeck(deck);
   const [shown, setShown] = useState(0);
+
+  // While drafting, the slide count the page last followed, so each new slide shows as it lands,
+  // and the slide shown before the run, which shows again when it ends (a new deck's first).
+  const [following, setFollowing] = useState<{
+    readonly count: number;
+    readonly from: number;
+  } | null>(null);
+
+  if (drafting && following?.count !== deck.slides.length) {
+    setFollowing({ count: deck.slides.length, from: following?.from ?? shown });
+    setShown(Math.max(deck.slides.length - 1, 0));
+  } else if (!drafting && following !== null) {
+    setFollowing(null);
+    setShown(following.from);
+  }
+
   // A notes save answers the next hash before the page renders it, so two pauses never share one.
   const latestHash = useRef(deck.contentHash);
 
@@ -585,8 +639,30 @@ export function DeckView(props: DeckViewProps) {
     context,
     about:
       current === undefined ? deck.title : `${deck.title}, slide ${index + 1}`,
-    onFinished: () => void deckQuery.refetch(),
+    onFinished: () => {
+      void deckQuery.refetch();
+      recordRun.refresh();
+    },
   });
+
+  const status = draftStatus({
+    run: recordRun.run,
+    endedHere: recordRun.endedHere,
+    drafted: deck.slides.length,
+  });
+
+  const unnamed = isUnnamed({
+    run: recordRun.run,
+    title: deck.title,
+    sessionTitle: recordRun.sessionTitle,
+  });
+
+  const pill =
+    status === null ? null : (
+      <Badge role="status" variant={pillVariant(recordRun.run)}>
+        {status}
+      </Badge>
+    );
 
   // The open slide can go while the sheet is open. Its snapshot stays, and a reload is the way out.
   useEffect(() => {
@@ -912,78 +988,105 @@ export function DeckView(props: DeckViewProps) {
       {/* 7.2: Present is the main action, Export beside it, the rest in More. The meta line is the
           readable figures date at every width; the scaled slide footer is tiny on a phone. */}
       <PageHeader
-        title={deck.title}
+        // The agent names the deck first; until then its title is the chat's (S7-48).
+        title={unnamed ? "Naming the deck" : deck.title}
+        titlePending={unnamed}
         meta={
-          <span data-figures-date="">
-            {deck.slides.length === 1
-              ? "1 slide"
-              : `${deck.slides.length} slides`}{" "}
-            · Figures as of {figuresDate(deck.figuresAsOf)}
-          </span>
+          <>
+            {pill}
+            {drafting ? null : (
+              <span data-figures-date="">
+                {pill === null ? slideCount(deck.slides.length) : null} ·
+                Figures as of {figuresDate(deck.figuresAsOf)}
+              </span>
+            )}
+          </>
         }
-        actions={presentButton}
+        // While the agent drafts, Stop is the page's one action, in the header at every width.
+        actions={drafting ? undefined : presentButton}
         // Below 768 px Undo and Present sit in the top bar, so the editor dock cannot cover them (czjw.156).
         topBarActions={
-          <>
-            {view.canWrite ? (
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="Undo"
-                disabled={!deck.canUndo || busy}
-                loading={undo.isPending}
-                onClick={undoLast}
-              >
-                <Undo2 aria-hidden />
-              </Button>
-            ) : null}
-            {presentButton}
-          </>
+          drafting ? undefined : (
+            <>
+              {editable ? (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Undo"
+                  disabled={!deck.canUndo || busy}
+                  loading={undo.isPending}
+                  onClick={undoLast}
+                >
+                  <Undo2 aria-hidden />
+                </Button>
+              ) : null}
+              {presentButton}
+            </>
+          )
         }
         secondaryActions={
-          <>
+          drafting ? (
             <Button
               variant="secondary"
-              disabled={current === undefined || busy}
-              onClick={exportToPowerPoint}
+              loading={recordRun.stopping || recordRun.run === "stopping"}
+              onClick={recordRun.stop}
             >
-              {exporting.isPending ? "Exporting…" : "Export to PowerPoint"}
+              <Square aria-hidden="true" data-icon="inline-start" />
+              Stop
             </Button>
-            {view.canWrite ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger
-                  disabled={busy}
-                  render={
-                    <Button
-                      variant="secondary"
-                      size="icon"
-                      aria-label="More"
-                      loading={refresh.isPending}
-                    />
-                  }
-                >
-                  <span aria-hidden="true">⋯</span>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={openAdd}>
-                    Add slide
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    disabled={!hasFigures(deck)}
-                    onClick={refreshData}
+          ) : (
+            <>
+              <Button
+                variant="secondary"
+                disabled={current === undefined || busy}
+                onClick={exportToPowerPoint}
+              >
+                {exporting.isPending ? "Exporting…" : "Export to PowerPoint"}
+              </Button>
+              {editable ? (
+                <DropdownMenu>
+                  <DropdownMenuTrigger
+                    disabled={busy}
+                    render={
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        aria-label="More"
+                        loading={refresh.isPending}
+                      />
+                    }
                   >
-                    Refresh data
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={openRename}>
-                    Rename deck
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : null}
-          </>
+                    <span aria-hidden="true">⋯</span>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={openAdd}>
+                      Add slide
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      disabled={!hasFigures(deck)}
+                      onClick={refreshData}
+                    >
+                      Refresh data
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={openRename}>
+                      Rename deck
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              ) : null}
+            </>
+          )
         }
       />
       {pageRefusal}
+      {drafting && recordRun.stopError !== null ? (
+        <div className="mb-4">
+          <ChangeRefusal
+            failure={{ kind: "stop", error: recordRun.stopError }}
+            onReload={reload}
+          />
+        </div>
+      ) : null}
       {popupBlocked ? (
         <div className="mb-4">
           <InfoNote size="md" role="status">
@@ -1018,7 +1121,7 @@ export function DeckView(props: DeckViewProps) {
       ) : null}
       {/* Undo beside the slide (7.2), also with no slide left, so the last removal is undoable.
           Below 768 px Undo is in the top bar. */}
-      {view.canWrite ? (
+      {editable ? (
         <div className="mb-2 flex items-center gap-3 max-md:hidden">
           <span className="text-sm text-muted-foreground">
             {current === undefined
@@ -1036,7 +1139,7 @@ export function DeckView(props: DeckViewProps) {
           </Button>
         </div>
       ) : null}
-      {current === undefined ? (
+      {current === undefined && !drafting ? (
         <EmptyState
           variant="framed"
           title="No slides yet"
@@ -1079,7 +1182,7 @@ export function DeckView(props: DeckViewProps) {
                     images={deck.images}
                   />
                 </div>
-                {view.canWrite ? (
+                {editable ? (
                   <div className="absolute top-0.5 right-0.5">
                     <RailMenu
                       slide={slide}
@@ -1117,8 +1220,36 @@ export function DeckView(props: DeckViewProps) {
                 ) : null}
               </div>
             ))}
+            {/* The page does not know the planned count, so one placeholder follows the drafted slides. */}
+            {drafting ? (
+              <div className="flex w-32 shrink-0 items-start gap-1.5 md:w-auto">
+                <span
+                  aria-hidden="true"
+                  className="w-4 shrink-0 text-end text-xs font-semibold text-muted-foreground tabular-nums"
+                >
+                  {deck.slides.length + 1}
+                </span>
+                <div className="flex aspect-video min-w-0 flex-1">
+                  <Skeleton className="flex-1" />
+                </div>
+                <span className="sr-only">
+                  Slide {deck.slides.length + 1}, not drafted yet
+                </span>
+              </div>
+            ) : null}
           </nav>
-          {view.canWrite ? (
+          {current === undefined ? (
+            <div
+              role="status"
+              className="flex aspect-video min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-muted p-4 text-center text-sm text-muted-foreground"
+            >
+              <Loader2
+                aria-hidden="true"
+                className="size-4 motion-safe:animate-spin"
+              />
+              Reading your records…
+            </div>
+          ) : editable ? (
             <div data-shown-slide="" className="grid min-w-0 flex-1 gap-2">
               <SlideEditorBar
                 slide={current}
@@ -1341,7 +1472,7 @@ export function DeckView(props: DeckViewProps) {
               key={editing.slide.id}
               // The words stay as the sheet opened them (R-53).
               slide={editing.slide}
-              saving={busy}
+              saving={busy || drafting}
               onClose={closeEditor}
               onUpload={upload}
               onSave={saveSlide}
@@ -1366,7 +1497,7 @@ export function DeckView(props: DeckViewProps) {
           {renaming === null ? null : (
             <RenameForm
               initialTitle={renaming.title}
-              saving={busy}
+              saving={busy || drafting}
               failure={failure}
               onReload={reload}
               onClose={() => {
@@ -1394,7 +1525,7 @@ export function DeckView(props: DeckViewProps) {
           </DialogHeader>
           {adding === null ? null : (
             <AddSlideForm
-              saving={busy}
+              saving={busy || drafting}
               failure={failure}
               onReload={reload}
               onClose={() => {

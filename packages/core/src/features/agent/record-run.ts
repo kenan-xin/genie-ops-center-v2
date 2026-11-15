@@ -77,6 +77,12 @@ export type RecordRunHandle = {
   readonly run: AgentRunStatus | null;
   /** This mount saw the run go from building or stopping to an end. */
   readonly endedHere: boolean;
+  /** Enabled, and the first read of the record's chats has not landed, so `run` is not known yet. */
+  readonly loading: boolean;
+  /** A `stop()` is on its way. */
+  readonly stopping: boolean;
+  /** Why the last `stop()` failed; null when it did not. */
+  readonly stopError: Error | null;
   readonly stop: () => void;
   readonly refresh: () => void;
 };
@@ -129,6 +135,10 @@ export function useRecordRun(input: {
     sessionTitle: found?.title ?? null,
     run,
     endedHere: next.endedHere,
+    // A failed read ends the wait, so a page that locks on `loading` never stays locked.
+    loading: enabled && sessions.isPending,
+    stopping: stopRun.isPending,
+    stopError: stopRun.error,
     stop: () => {
       if (sessionId !== null) stopRun.mutate(sessionId);
     },

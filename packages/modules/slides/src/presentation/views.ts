@@ -52,4 +52,6 @@ export type DeckPageView = {
   readonly timeZone: string;
   readonly theme: Omit<DeckTheme, "logoFileId">;
   readonly logoUrl: string | null;
+  /** Whether the page may read the deck's agent run: none for a person without Ask. */
+  readonly chat: ChatAvailability;
 };

@@ -1,5 +1,6 @@
 "use client";
 
+import { RUN_POLL_MS } from "@genie/core/features/agent/panel";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
   useMutation,
@@ -53,9 +54,13 @@ export function narrowDeck(view: SavedDeck): DeckView {
 
 /**
  * One deck as the page reads it, starting from the loader's answer. It asks again every 10 seconds
- * and on focus, so a change from another tab shows (as the analytics twin does).
+ * and on focus, so a change from another tab shows (as the analytics twin does). While the agent
+ * drafts it (`fast`), it asks on the run's tick, so each new slide shows as the run reads it.
  */
-export function useDeck(initial: DeckView): UseQueryResult<DeckView> {
+export function useDeck(
+  initial: DeckView,
+  options?: { readonly fast: boolean }
+): UseQueryResult<DeckView> {
   const slides = useModuleClient(slidesContract);
   const queryClient = useQueryClient();
   const queryKey = deckQueryKey(initial.id);
@@ -75,7 +80,7 @@ export function useDeck(initial: DeckView): UseQueryResult<DeckView> {
       return overlapped ? (state?.data ?? read) : read;
     },
     initialData: initial,
-    refetchInterval: 10_000,
+    refetchInterval: options?.fast === true ? RUN_POLL_MS : 10_000,
     refetchOnWindowFocus: true,
   });
 }

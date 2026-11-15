@@ -1,3 +1,9 @@
+import type { AgentSessionSummary } from "@genie/core";
+import {
+  AgentPanelHost,
+  resetAgentPanel,
+} from "@genie/core/features/agent/panel";
+import { AppShell } from "@genie/core/features/shell";
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import {
@@ -10,9 +16,14 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   deckPage,
+  draftedDeckPage,
   emptyDeckPage,
+  noChatDeckPage,
+  PROVISIONAL_TITLE,
+  startedDeckPage,
   tableWithVisualSlide,
   titleOnlySlide,
+  unnamedDraftedDeckPage,
 } from "./__fixtures__/decks.ts";
 import { DeckView } from "./deck-view.tsx";
 import { deckQueryKey } from "./use-deck.ts";
@@ -31,6 +42,15 @@ const uploadDeckImage = fn();
 // The stub answers for the server's export, so the story never loads the builder (D8).
 const exportDeck = fn();
 
+/** `agent.sessions`: the deck's chats, whose run the page follows (S7-48). */
+const sessions = fn();
+
+/** `agent.stop`: Stop on the page ends the deck's run. */
+const stop = fn();
+
+/** `agent.session`: the chat the phone panel opens. */
+const session = fn();
+
 /** The fixture deck's content hash, which every write names (R-53). */
 const HASH = "0".repeat(64);
 
@@ -38,14 +58,29 @@ const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
-/** A fresh query cache per story, with no retries so a refusal reports at once. */
-function withQuery(Story: () => ReactNode) {
-  const [client] = useState(
-    () =>
-      new QueryClient({
-        defaultOptions: { queries: { retry: false, gcTime: 0 } },
-      })
-  );
+/**
+ * A fresh query cache per story, with no retries so a refusal reports at once. The deck's first run
+ * read has landed with no chat, as on a page open for a while, so a story can edit at once; the
+ * page still reads `agent.sessions` again on mount. A story with `parameters.runRead: "pending"`
+ * starts before that read.
+ */
+function withQuery(
+  Story: () => ReactNode,
+  context: { readonly parameters: { readonly runRead?: "pending" } }
+) {
+  const [client] = useState(() => {
+    const fresh = new QueryClient({
+      defaultOptions: { queries: { retry: false, gcTime: 0 } },
+    });
+
+    if (context.parameters.runRead !== "pending") {
+      // Kept until the page subscribes; a gcTime of 0 would drop it first.
+      fresh.setQueryDefaults(["agent", "sessions"], { gcTime: 60_000 });
+      fresh.setQueryData(["agent", "sessions", "slides", "deck-1"], []);
+    }
+
+    return fresh;
+  });
 
   return (
     <QueryClientProvider client={client}>
@@ -58,6 +93,17 @@ function withQuery(Story: () => ReactNode) {
             refreshDeck,
             uploadDeckImage,
             exportDeck,
+          },
+          agent: {
+            sessions,
+            stop,
+            session,
+            messages: async () => [],
+            artifacts: async () => [],
+            files: async () => [],
+            markSeen: async () => undefined,
+            activeRuns: async () => ({ count: 0 }),
+            retry: async () => undefined,
           },
         }}
       >
@@ -113,6 +159,11 @@ function serve(page: DeckPageView) {
     .mockResolvedValue({ deck: page.deck, changedSlides: [] });
   uploadDeckImage.mockReset().mockResolvedValue({ fileId: "image-2" });
   exportDeck.mockReset();
+  resetAgentPanel();
+  // A deck with no chat of the agent, as every deck made by hand.
+  sessions.mockReset().mockResolvedValue([]);
+  stop.mockReset().mockResolvedValue(undefined);
+  session.mockReset().mockResolvedValue(null);
 }
 
 /** B6.7: the control at the centre of the viewport's hit test is the control itself. */
@@ -1883,4 +1934,488 @@ export const ExportRefusedOnPhone: Story = {
   globals: phone,
   beforeEach: () => serve(deckPage),
   play: exportPlay,
+};
+
+// S7-48: the deck page while the agent drafts it. The run is read at the `agent` client, as the
+// page reads it in the app, with no panel open unless the story says so (Review Focus 3).
+
+const SESSION = "session-1";
+
+/** The deck's chat with its run in the given state, as `agent.sessions` answers it. */
+function chatOf(
+  run: AgentSessionSummary["run"],
+  title = PROVISIONAL_TITLE
+): AgentSessionSummary {
+  return {
+    id: SESSION,
+    title,
+    modelId: "openai/gpt-6.1-terra",
+    surface: "slides",
+    recordId: "deck-1",
+    runState:
+      run === "building" ? "running" : run === "stopping" ? "stopping" : null,
+    run,
+    updatedAt: "2026-11-15T09:00:00.000Z",
+  };
+}
+
+/** The deck and its run: building on the first read, then `end` on every later read. */
+function serveRun(page: DeckPageView, end?: AgentSessionSummary["run"]) {
+  serve(page);
+  sessions.mockResolvedValue([chatOf(end ?? "building")]);
+
+  if (end !== undefined) sessions.mockResolvedValueOnce([chatOf("building")]);
+}
+
+/** The run's poll ends a run within about a second; the end shows once the page reads it. */
+const RUN_END = { timeout: 4000 };
+
+/** The draft pill, once the run's read reached the page. */
+const pill = (canvas: ReturnType<typeof within>, text: string, wait = {}) =>
+  waitFor(() => {
+    const found = canvas.getByText(text);
+
+    expect(found.closest("[role=status]")).not.toBeNull();
+
+    return found;
+  }, wait);
+
+/** Every control that edits the deck by hand: none may be enabled while the run builds. */
+const HAND_EDITS =
+  /^(Undo|Add slide|Add element|Background|Edit slide|Refresh data|Rename deck|More|Actions for slide \d+)$/;
+
+function enabledHandEdits(canvas: ReturnType<typeof within>) {
+  return canvas
+    .queryAllByRole("button", { name: HAND_EDITS })
+    .filter((button: HTMLElement) => !button.hasAttribute("disabled"));
+}
+
+export const DraftingUnnamed: Story = {
+  name: "Drafting, not named yet",
+  args: { view: startedDeckPage },
+  globals: desktop,
+  beforeEach: () => serveRun(startedDeckPage),
+  play: async ({ canvas, canvasElement }) => {
+    await pill(canvas, "Drafting slide 1");
+
+    // Review Focus 5 start: the provisional title is not shown as the deck's name.
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: "Naming the deck" })
+    ).toHaveClass("sr-only");
+    await expect(
+      canvasElement.querySelector(
+        "[data-shell-page-header] [data-slot=skeleton]"
+      )
+    ).toBeVisible();
+    await expect(canvas.queryByText(PROVISIONAL_TITLE)).toBeNull();
+
+    await expect(
+      canvas.getByText(/Reading your records/).closest("[role=status]")
+    ).not.toBeNull();
+    await expect(canvas.queryByText("No slides yet")).toBeNull();
+
+    await expect(canvas.getByRole("button", { name: "Stop" })).toBeVisible();
+
+    for (const name of ["Export to PowerPoint", "More", "Present"]) {
+      expect(canvas.queryByRole("button", { name })).toBeNull();
+    }
+  },
+};
+
+export const DraftingNamed: Story = {
+  name: "Drafting, named",
+  args: { view: draftedDeckPage },
+  globals: desktop,
+  beforeEach: () => serveRun(draftedDeckPage),
+  play: async ({ canvas }) => {
+    await pill(canvas, "Drafting slide 3");
+
+    const rail = within(canvas.getByRole("navigation", { name: "Slides" }));
+
+    // Bug caught: the rail hides the slide in work, or shows the planned count it cannot know.
+    await expect(
+      rail.getAllByRole("button", { name: /^Slide \d: / })
+    ).toHaveLength(2);
+    await expect(
+      rail.getByText("Slide 3, not drafted yet")
+    ).toBeInTheDocument();
+
+    // The newest slide shows, so the person watches the draft grow.
+    await expect(
+      rail.getByRole("button", {
+        name: "Slide 2: Collections narrowed the gap to the plan line",
+      })
+    ).toHaveAttribute("aria-current", "true");
+
+    // Plain text: renaming opens only when the run ends.
+    await expect(
+      canvas.getByRole("heading", {
+        level: 1,
+        name: "October collections update",
+      })
+    ).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: /Rename/ })).toBeNull();
+
+    // Review Focus 4: a hand edit moves the hash and the agent's next change is refused.
+    await expect(enabledHandEdits(canvas)).toEqual([]);
+    await expect(canvas.queryByRole("textbox")).toBeNull();
+  },
+};
+
+export const StopEndsTheRun: Story = {
+  name: "Stop ends the run",
+  args: { view: draftedDeckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serveRun(draftedDeckPage);
+    // The stop is still on its way while the story looks.
+    stop.mockImplementation(() => new Promise(() => {}));
+  },
+  play: async ({ canvas }) => {
+    await pill(canvas, "Drafting slide 3");
+
+    const button = canvas.getByRole("button", { name: "Stop" });
+
+    // Bug caught: a double click sends two stops.
+    await userEvent.dblClick(button);
+
+    await expect(stop).toHaveBeenCalledTimes(1);
+    await expect(stop).toHaveBeenCalledWith({ id: SESSION });
+
+    // Bug caught: the spinner hides the label (DESIGN.md: a loading button keeps its label).
+    await waitFor(() => expect(button).toHaveAttribute("aria-busy", "true"));
+    await expect(within(button).getByText("Stop")).toBeVisible();
+  },
+};
+
+export const StopFails: Story = {
+  name: "Stop fails",
+  args: { view: draftedDeckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serveRun(draftedDeckPage);
+    stop.mockRejectedValue(new Error("The connection dropped."));
+  },
+  play: async ({ canvas }) => {
+    await pill(canvas, "Drafting slide 3");
+    await userEvent.click(canvas.getByRole("button", { name: "Stop" }));
+
+    // Bug caught: a failed stop leaves Stop spinning and silent until a reload.
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      "The agent was not stopped. The connection dropped."
+    );
+    await waitFor(() =>
+      expect(canvas.getByRole("button", { name: "Stop" })).not.toHaveAttribute(
+        "aria-busy"
+      )
+    );
+    await userEvent.click(canvas.getByRole("button", { name: "Stop" }));
+    await expect(stop).toHaveBeenCalledTimes(2);
+  },
+};
+
+export const LockedUntilTheRunIsRead: Story = {
+  name: "Locked until the run is read",
+  args: { view: draftedDeckPage },
+  globals: desktop,
+  parameters: { runRead: "pending" },
+  beforeEach: () => {
+    serve(draftedDeckPage);
+    // A reload mid-build: the first read of the deck's chats has not landed.
+    sessions.mockImplementation(() => new Promise(() => {}));
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("heading", {
+        level: 1,
+        name: "October collections update",
+      })
+    ).toBeVisible();
+    await expect(sessions).toHaveBeenCalled();
+
+    // Bug caught (Review Focus 4): the page is editable for one request after a reload mid-build.
+    await expect(enabledHandEdits(canvas)).toEqual([]);
+    await expect(canvas.queryByRole("textbox")).toBeNull();
+  },
+};
+
+export const Stopped: Story = {
+  args: { view: draftedDeckPage },
+  globals: desktop,
+  beforeEach: () => serveRun(draftedDeckPage, "stopped"),
+  play: async ({ canvas }) => {
+    const found = await pill(canvas, "Stopped, 2 slides kept", RUN_END);
+
+    // The gray draft style of DESIGN.md, not the success green.
+    await expect(found.closest("[data-slot=badge]")).toHaveClass("bg-gray-100");
+
+    const rail = within(canvas.getByRole("navigation", { name: "Slides" }));
+
+    await expect(
+      rail.getAllByRole("button", { name: /^Slide \d: / })
+    ).toHaveLength(2);
+    await expect(rail.queryByText(/not drafted yet/)).toBeNull();
+
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: "More" })).toBeEnabled();
+  },
+};
+
+const readyPlay: Story["play"] = async ({ canvas }) => {
+  await pill(canvas, "2 slides drafted", RUN_END);
+
+  for (const name of ["Export to PowerPoint", "More", "Present"]) {
+    expect(canvas.getByRole("button", { name })).toBeEnabled();
+  }
+
+  await expect(canvas.queryByRole("button", { name: "Stop" })).toBeNull();
+};
+
+export const Ready: Story = {
+  args: { view: draftedDeckPage },
+  globals: desktop,
+  beforeEach: () => serveRun(draftedDeckPage, "saved"),
+  play: async (context) => {
+    await readyPlay(context);
+
+    const { canvas } = context;
+
+    // The deck opens at its first slide, as a deck made by hand does.
+    await expect(canvas.getByText("Slide 1 of 2")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeEnabled();
+  },
+};
+
+export const ReadyEmpty: Story = {
+  name: "Ready with no slide",
+  args: { view: startedDeckPage },
+  globals: desktop,
+  beforeEach: () => serveRun(startedDeckPage, "saved"),
+  play: async ({ canvas }) => {
+    await pill(canvas, "0 slides drafted", RUN_END);
+    await expect(canvas.getByText("No slides yet")).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Present" })
+    ).toBeDisabled();
+    // Review Focus 5: the run ended without a rename, so the title shows at last.
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: PROVISIONAL_TITLE })
+    ).toBeVisible();
+  },
+};
+
+export const FailedHalfWay: Story = {
+  name: "Failed half way",
+  args: { view: unnamedDraftedDeckPage },
+  globals: desktop,
+  beforeEach: () => serveRun(unnamedDraftedDeckPage, "failed"),
+  play: async ({ canvas }) => {
+    await pill(canvas, "Drafting did not finish. 2 slides drafted", RUN_END);
+
+    // Review Focus 5: no loading title for ever after a failure.
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: PROVISIONAL_TITLE })
+    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Undo" })).toBeEnabled();
+    await expect(canvas.getByRole("button", { name: "More" })).toBeEnabled();
+  },
+};
+
+/** Lets a story read the deck's run again at once, as the 10 s idle poll does. */
+function withRunRefetch(Story: () => ReactNode) {
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const handler = () => {
+      void queryClient.refetchQueries({ queryKey: ["agent", "sessions"] });
+    };
+
+    window.addEventListener("refetch-run", handler);
+
+    return () => window.removeEventListener("refetch-run", handler);
+  }, [queryClient]);
+
+  return <Story />;
+}
+
+export const PanelRunKeepsTheShownSlide: Story = {
+  name: "A run from the panel keeps the shown slide",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRunRefetch],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const third = canvas.getByRole("button", { name: /^Slide 3: / });
+
+    await userEvent.click(third);
+
+    // The person asks the agent for a change in the panel; the page sees the run, then its end.
+    sessions
+      .mockResolvedValueOnce([chatOf("building", deckPage.deck.title)])
+      .mockResolvedValue([chatOf("saved", deckPage.deck.title)]);
+    window.dispatchEvent(new Event("refetch-run"));
+
+    await pill(canvas, "Drafting slide 6");
+    await pill(canvas, "5 slides drafted", RUN_END);
+
+    // Bug caught: the end of a run sends the person back to slide 1.
+    await expect(
+      canvas.getByRole("button", { name: /^Slide 3: / })
+    ).toHaveAttribute("aria-current", "true");
+  },
+};
+
+export const NoAgent: Story = {
+  name: "No agent for this person",
+  args: { view: noChatDeckPage },
+  globals: desktop,
+  beforeEach: () => serve(noChatDeckPage),
+  play: async ({ canvas, canvasElement }) => {
+    // Bug caught: a deck page that breaks, or asks the refused `agent` area, for a person without Ask.
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: "Receivables at a glance" })
+    ).toBeVisible();
+    await expect(
+      canvasElement.querySelector("[data-figures-date]")
+    ).toHaveTextContent("5 slides · Figures as of 27 Oct 2026");
+    await expect(canvas.getByRole("button", { name: "Present" })).toBeEnabled();
+    await expect(sessions).not.toHaveBeenCalled();
+  },
+};
+
+const DECK_PATH = "/m/slides/decks/deck-1";
+
+/** The app's shell with the agent panel, so the phone panel is a bottom sheet over the page. */
+function withShell(Story: () => ReactNode) {
+  return (
+    <AppShell
+      chrome="workspace"
+      currentPath={DECK_PATH}
+      navigation={{
+        workspace: [
+          { id: "slides-decks", label: "Slides", href: "/m/slides/decks" },
+        ],
+        pinned: [],
+        categories: [],
+        admin: [],
+      }}
+      identity={{
+        companyName: "Genie Ops",
+        productName: "Ops Center",
+        logoLightUrl: null,
+        logoDarkUrl: null,
+        markUrl: null,
+      }}
+      user={{ name: "Alex Morgan", roleLabel: "Member" }}
+      menu={{
+        accountHref: "/account",
+        changePasswordHref: null,
+        switchTarget: null,
+        supportHref: null,
+        signOutAction: "/api/auth/sign-out",
+      }}
+      strings={{
+        workspace: "Workspace",
+        adminPortal: "Admin portal",
+        pinned: "Pinned",
+        categories: "Categories",
+        navigation: "Navigation",
+        openNavigation: "Open navigation",
+        closeNavigation: "Close navigation",
+        collapseMenu: "Collapse menu",
+        expandMenu: "Expand menu",
+        menuShortcut: "Ctrl B",
+        backTo: "Back to {page}",
+        offline: "You are offline.",
+        pageContent: "Page content",
+        account: "Account",
+        ask: "Ask",
+        entryWorking: "{label}, {count} working",
+        openNavigationOneWorking: "Open navigation, 1 chat working",
+        openNavigationWorking: "Open navigation, {count} chats working",
+        changePassword: "Change password",
+        opensInNewTab: "Opens in a new tab",
+        helpAndSupport: "Help and support",
+        signOut: "Sign out",
+      }}
+      agentPanel={
+        <AgentPanelHost
+          person="person-1"
+          models={null}
+          labels={{ steps: {}, datasets: {}, fields: {} }}
+          suggestions={[]}
+          inbox={[]}
+          timeZone="UTC"
+          surfaces={[
+            {
+              id: "slides",
+              name: "Slides agent",
+              recordPage: "/m/slides/decks/:id",
+              acceptsHandoff: false,
+            },
+          ]}
+          path={DECK_PATH}
+        />
+      }
+    >
+      <Story />
+    </AppShell>
+  );
+}
+
+/** P11-52: with the bottom panel open, the end of the page scrolls into view above it. */
+async function pageEndAbovePanel(
+  canvas: ReturnType<typeof within>,
+  canvasElement: HTMLElement
+) {
+  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+
+  const panel = await canvas.findByRole("complementary", {
+    name: "Agent panel",
+  });
+
+  const content = canvasElement.querySelector<HTMLElement>(
+    "[data-shell-content]"
+  )!;
+
+  const rail = canvas.getByRole("navigation", { name: "Slides" });
+  const slide = canvasElement.querySelector<HTMLElement>("[data-shown-slide]")!;
+
+  await waitFor(() => {
+    content.scrollTo({ top: content.scrollHeight });
+
+    for (const part of [rail, slide]) {
+      expect(part.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+        panel.getBoundingClientRect().top
+      );
+    }
+  });
+}
+
+export const DraftingOnPhone: Story = {
+  name: "Drafting on a phone",
+  args: { view: draftedDeckPage },
+  globals: phone,
+  parameters: { layout: "fullscreen" },
+  decorators: [withShell],
+  beforeEach: () => serveRun(draftedDeckPage),
+  play: async ({ canvas, canvasElement }) => {
+    await pill(canvas, "Drafting slide 3");
+    await expect(canvas.getByRole("button", { name: "Stop" })).toBeVisible();
+    await pageEndAbovePanel(canvas, canvasElement);
+  },
+};
+
+export const ReadyOnPhone: Story = {
+  name: "Ready on a phone",
+  args: { view: draftedDeckPage },
+  globals: phone,
+  parameters: { layout: "fullscreen" },
+  decorators: [withShell],
+  beforeEach: () => serveRun(draftedDeckPage, "saved"),
+  play: async ({ canvas, canvasElement }) => {
+    await pill(canvas, "2 slides drafted", RUN_END);
+    await expect(canvas.queryByRole("button", { name: "Stop" })).toBeNull();
+    await pageEndAbovePanel(canvas, canvasElement);
+  },
 };

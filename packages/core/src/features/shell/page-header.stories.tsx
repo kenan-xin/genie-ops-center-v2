@@ -62,6 +62,28 @@ export const WithStatus: Story = {
   },
 };
 
+/**
+ * A title the page does not know yet, such as a record the agent still names: a skeleton shows in
+ * its place, and the heading keeps the title as hidden text.
+ */
+export const PendingTitle: Story = {
+  args: { title: "Naming the record", titlePending: true },
+  play: async ({ canvas, canvasElement }) => {
+    // Bug caught: a screen reader hears no heading, or the eye reads the placeholder words.
+    const heading = canvas.getByRole("heading", {
+      level: 1,
+      name: "Naming the record",
+    });
+
+    await expect(heading).toHaveClass("sr-only");
+    await expect(
+      canvasElement.querySelector(
+        "[data-shell-page-header] [data-slot=skeleton]"
+      )
+    ).toBeVisible();
+  },
+};
+
 export const InShellDesktop: Story = {
   decorators: [inShell],
   args: { actions: <Button>Add person</Button> },
