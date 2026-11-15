@@ -110,6 +110,7 @@
         "{workspaceRoot}/docs/core/*.md",
         "{workspaceRoot}/docs/runbooks/*.md",
         "{workspaceRoot}/docs/tickets/spec-0/08-module-and-tenant-generators/*.md",
+        "{workspaceRoot}/docs/design/design-system/terminology.md",
         "{workspaceRoot}/**/.gitignore",
         "{workspaceRoot}/**/.nxignore",
         "{workspaceRoot}/apps/genie/tools/**/*",

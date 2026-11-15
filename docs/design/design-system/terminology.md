@@ -350,6 +350,23 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | `packages/modules/invoices/src/services/reading/model-reading.ts` | `*` | model-facing reading prompt, 6 recordings |
 | `packages/core/src/lib/module-contract/validate.ts` | `agent` | developer-facing errors that name contract fields (agent surface, agent tool) |
 | `packages/core/src/services/authorization/roles.ts` | `/\bGenie\b(?! Ops Center)/` | the seeded group "Genie Administrators" is stored data and an identity provider group name |
+| `packages/modules/invoices/src/agent-instructions.ts` | `link`, `artifact` | model-facing module instructions, 65 recordings |
+| `packages/modules/invoices/src/agent-tools.ts` | `link` | model-facing tool text, 65 recordings |
+| `packages/modules/analytics/src/agent-tools.ts` | `default view` | model-facing tool text, 29 recordings |
+| `packages/modules/analytics/src/agent-surface.ts` | `artifact`, `dashboard filters`, `default view` | model-facing surface instructions, 25 recordings; the surface name is not excepted |
+| `packages/modules/slides/src/agent-surface.ts` | `artifact` | model-facing surface instructions, 46 recordings; the surface name is not excepted |
+| `packages/modules/invoices/src/datasets.ts` | `linked payment` | model-facing dataset descriptions, 91 recordings; titles and labels are not excepted |
+| `packages/core/src/features/access/advanced-access-sheet.tsx` | `save changes` | a save label that bead `czjw.193` (Phase 16) rebuilds |
+| `packages/core/src/features/access/grants-screen.tsx` | `save changes` | a save label that bead `czjw.193` (Phase 16) rebuilds |
+| `packages/core/src/features/roles/roles-screen.tsx` | `save role`, `create role` | a save label that bead `czjw.193` (Phase 16) rebuilds |
+| `packages/modules/invoices/src/presentation/invoice-review-form.tsx` | `save as paid`, `save as unpaid` | a save label that bead `czjw.193` (Phase 16) rebuilds |
+| `packages/modules/invoices/src/presentation/payment-review-form.tsx` | `save as unallocated`, `/^Save the payment$/` | a save label that bead `czjw.193` (Phase 16) rebuilds |
+| `packages/modules/invoices/src/presentation/review-pager.tsx` | `looks right` | a save label that bead `czjw.193` (Phase 16) rebuilds |
+| `packages/modules/analytics/src/presentation/filters-bar.tsx` | `save as view`, `save as new view`, `save as default`, `dashboard filters` | saved-view words that bead `czjw.192` (Phase 19) rebuilds |
+| `packages/modules/analytics/src/presentation/view-menu.tsx` | `save as view`, `save as default`, `default view`, `dashboard filters` | saved-view words that bead `czjw.192` (Phase 19) rebuilds |
+| `apps/genie/src/app/api/session/expired-answer.ts` | `path` | CLI or protocol syntax |
+| `packages/core/src/services/keycloak/local-accounts.ts` | `enable` | CLI or protocol syntax |
+| `packages/core/src/services/ops/index.ts` | `enable`, `disable` | CLI or protocol syntax |
 
 ## What the scan reads
 
@@ -364,8 +381,10 @@ The scan tests each string on its own. So a regular expression with `^` and `$` 
 To ban a new word, add one row to the banned words table and add or update its entry above. The scan reads the table, so it picks up the new row with no code change.
 
 - A plain phrase matches without regard to case, on whole words. Write it in lowercase, in backticks.
+- A phrase that contains another phrase counts under both rows. For example, "Re-enable" is a hit for `re-enable` and for `enable`.
 - A cell of the form `/regex/flags` is a JavaScript regular expression. In a table cell, write each `|` of the regular expression as `\|`.
-- Applies in is `all`, or path prefixes in backticks, separated by commas.
+- Applies in is `all`, or path prefixes in backticks, separated by commas. Each prefix ends in `/`, and a prefix under which no scanned file sits fails the scan.
+- An exception Path that ends in `/` is a folder, and the row covers every file under it.
 
 The scan parses a row by these rules:
 

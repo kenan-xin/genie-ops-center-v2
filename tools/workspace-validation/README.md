@@ -8,8 +8,10 @@ The checks that read across the whole workspace rather than one package: the
 affected-graph assertions, the CI workflow wiring, the clean-checkout registry
 generation, the generator entrypoint resolution, the repository hygiene rules,
 the lint scope, the token scan of Spec 3 R-4 (no arbitrary pixel text size and
-no `next/font` in the trees that ship), the `validate` target's own input list,
-and the tests of the gate preflight helpers in `scripts/gate-preflight-lib.sh`.
+no `next/font` in the trees that ship), the glossary scan (no banned word of
+`docs/design/design-system/terminology.md` in a string that a person reads in
+the trees that ship), the `validate` target's own input list, and the tests of
+the gate preflight helpers in `scripts/gate-preflight-lib.sh`.
 
 ## What must not go here
 
@@ -19,7 +21,8 @@ run only under the `validate` target and never ship.
 ## What it imports
 
 The Node standard library, the workspace-policy helpers from `@genie/generators`
-(the classifier, the module naming and test rules, and the README rule), and
+(the classifier, the module naming and test rules, and the README rule),
+`typescript` (the glossary scan parses sources with its compiler API), and
 `vitest`. Nothing else, and nothing imports this project: it is a leaf, so a
 change to a document it reads can never mark an app or the Storybook host
 affected.

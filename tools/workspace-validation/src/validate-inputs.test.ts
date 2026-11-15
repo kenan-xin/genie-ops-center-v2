@@ -55,7 +55,7 @@ describe("the validate target's inputs", () => {
     expect(inputs).not.toContain("!{workspaceRoot}/packages/modules/README.md");
   });
 
-  it("declares the active canonical docs the generator-command check reads", () => {
+  it("declares the active canonical docs the generator-command check and the glossary scan read", () => {
     const inputs = validateInputs();
 
     for (const input of [
@@ -66,6 +66,8 @@ describe("the validate target's inputs", () => {
       "{workspaceRoot}/docs/core/*.md",
       "{workspaceRoot}/docs/runbooks/*.md",
       "{workspaceRoot}/docs/tickets/spec-0/08-module-and-tenant-generators/*.md",
+      // The glossary scan reads its two tables.
+      "{workspaceRoot}/docs/design/design-system/terminology.md",
     ]) {
       expect(inputs).toContain(input);
     }
