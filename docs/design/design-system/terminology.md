@@ -91,10 +91,10 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 ### G8. A person's lifecycle
 
 - Concept: the states a person moves through.
-- Say: "Suspend", "Suspended", "Unsuspend". "Deactivate", "Deactivated". "Pending" only for a person who has not signed in yet.
+- Say: "Suspend", "Suspended", "Unsuspend". "Deactivate", "Deactivated", "Reactivate". The way back is one action: "Unsuspend" for a suspended person, "Reactivate" for a deactivated one. The audit writes "Unsuspended <email>" or "Reactivated <email>". "Pending" only for a person who has not signed in yet.
 - Never: `remove person`.
 - Applies in: all.
-- Source: Q3, ADM-6, ADM-7.
+- Source: Q3, ADM-6, ADM-7, P05-58.
 - Example: the person menu says "Deactivate", not "Remove person".
 
 ### G9. An assignment that does not apply now
@@ -314,8 +314,8 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | `chat is off` | "AI is off." | all | G3 |
 | `/\bGenie\b(?! Ops Center)/` | "Genie Ops Center" | all | G4 |
 | `entitled`, `not entitled`, `entitlement`, `entitlements`, `/\bswitch(?:es\|ed\|ing)?\b(?:\s+\S+){0,3}?\s+(?:on\|off)\b/i` | "Module on", "Module off", "Turn on", "Turn off", "Status" | all | G6 |
-| `enable`, `enabled`, `disable`, `disabled`, `re-enable`, `re-enabled` | a module: "Turn on", "Module on"; a person: "Unsuspend", "Suspended" | all | G7 |
-| `remove person` | "Suspend", "Unsuspend", "Deactivate" | all | G8 |
+| `enable`, `enabled`, `disable`, `disabled`, `re-enable`, `re-enabled` | a module: "Turn on", "Module on"; a person: "Unsuspend", "Suspended", "Reactivate" | all | G7 |
+| `remove person` | "Suspend", "Unsuspend", "Deactivate", "Reactivate" | all | G8 |
 | `not in effect`, `inactive` | "Paused: <reason>" | all | G9 |
 | `holder`, `holders`, `who holds`, `nobody holds`, `no one holds`, `holds no role`, `holds no other role`, `holds no advanced role`, `hold no roles`, `you hold`, `what you hold`, `they hold`, `who can open it`, `given directly`, `direct assignment`, `change who has it` | "Assigned roles (n)", "Assigned to", "Not assigned to anyone", "Assigned via", "Direct", "Manage in Access" | all | G10 |
 | `/\bgrant(?:s\|ed\|ing)?\b/` | "assigned", "Assigned via", "Assigned to", "gives access" | all | G10 |
