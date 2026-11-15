@@ -323,7 +323,7 @@ export const ModuleOff: Story = {
 
     await expect(
       body.getByText(
-        "Analytics is off, so its roles take no new grant here. Removal still works."
+        "Analytics is off, so its roles cannot be assigned here. Removal still works."
       )
     ).toBeVisible();
 

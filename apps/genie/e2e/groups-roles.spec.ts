@@ -212,9 +212,7 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
     name: new RegExp(`Archive ${GROUP_LABEL}`),
   });
 
-  await expect(
-    archiveDialog.getByText(/1 assignment stops granting/)
-  ).toBeVisible();
+  await expect(archiveDialog.getByText(/1 assignment is paused/)).toBeVisible();
 
   const [archiveResponse] = await Promise.all([
     page.waitForResponse((response) =>

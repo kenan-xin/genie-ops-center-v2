@@ -37,7 +37,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Groups directory and inspector. A directory group's value and members come from the identity provider; only its name can be changed. Archiving keeps the assignments and stops them granting.",
+          "The Groups directory and inspector. A directory group's value and members come from the identity provider; only its name can be changed. Archiving keeps the assignments and pauses them.",
       },
     },
     a11y: { test: "error" },
@@ -519,7 +519,7 @@ export const ArchiveConfirmNamesTheAssignmentCount: Story = {
     );
 
     await expect(
-      confirm.getByText(/3 assignments stop granting/)
+      confirm.getByText(/3 assignments are paused/)
     ).toBeInTheDocument();
 
     await userEvent.click(
@@ -547,7 +547,7 @@ export const ArchiveConfirmUsesTheSingularForOne: Story = {
     );
 
     await expect(
-      confirm.getByText(/Its 1 assignment stops granting/)
+      confirm.getByText(/Its 1 assignment is paused/)
     ).toBeInTheDocument();
   },
 };

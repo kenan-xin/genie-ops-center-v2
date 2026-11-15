@@ -669,8 +669,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                   }}
                   availableLabel="Catalog"
                   grantedLabel="Granted"
-                  emptyAvailable="Every module is granted."
-                  emptyGranted="Nothing granted yet. Add rows from Catalog."
+                  emptyAvailable="Every module is in Granted."
+                  emptyGranted="Nothing in Granted yet. Add rows from Catalog."
                   searchLabel="Search modules"
                 />
               </div>

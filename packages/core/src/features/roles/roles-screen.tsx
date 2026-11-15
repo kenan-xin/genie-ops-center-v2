@@ -503,7 +503,7 @@ function RoleDetailView(props: {
                 When a module is on, its admin permission is appended to this
                 role automatically, so administrators always reach the admin
                 screens of every module that is on. Member use of a
-                module&apos;s records is still a separate grant.
+                module&apos;s records still needs its own role.
               </InfoNote>
             </div>
           ) : null}

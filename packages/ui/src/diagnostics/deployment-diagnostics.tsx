@@ -59,10 +59,7 @@ export function DeploymentDiagnostics(props: DeploymentDiagnosticsProps) {
           />
         </Fact>
         <Fact label="Permissions">
-          <Ids
-            values={props.permissions}
-            emptyMessage="No permissions granted."
-          />
+          <Ids values={props.permissions} emptyMessage="No permissions." />
         </Fact>
         <Fact label="User">
           No user is signed in. Section 0 has no identity yet.

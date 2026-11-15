@@ -110,9 +110,10 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 
 - Concept: the people and groups a role or module is assigned to.
 - Say: "Assigned roles (n)" as the heading of a person's Roles tab and of a group's roles. "Assigned to" as a column, count or section, and "Not assigned to anyone". "Assigned via" with "Direct" or the group name. "Assigned <date> by <name>". "Manage in Access".
-- Never: `holder`, `holders`, `who holds`, `nobody holds`, `no one holds`, `holds no role`, `holds no other role`, `holds no advanced role`, `hold no roles`, `you hold`, `what you hold`, `they hold`, `who can open it`, `given directly`, `direct assignment`, `change who has it`.
+- Never: `holder`, `holders`, `who holds`, `nobody holds`, `no one holds`, `holds no role`, `holds no other role`, `holds no advanced role`, `hold no roles`, `you hold`, `what you hold`, `they hold`, `who can open it`, `given directly`, `direct assignment`, `change who has it`, `/\bgrant(?:s|ed|ing)?\b/`, that is "grant", "grants", "granted" or "granting" in lowercase.
 - Applies in: all.
-- Source: owner 2026-11-14 15:19, ADM-3, A-7.
+- Source: owner 2026-11-14 15:19, ADM-3, A-7, C05-4.
+- Note: the capitalised Access names "Grants" (the tab), "Granted" (the list) and "Grant to" stay until bead `d8l5.59` decides them. The ban is case-sensitive, so it passes those names and catches the word in a sentence. For giving access, say "gives access".
 - Example: an empty role shows "Not assigned to anyone", not "Nobody holds this role".
 
 ### G11. The access route of a role
@@ -317,6 +318,7 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | `remove person` | "Suspend", "Unsuspend", "Deactivate" | all | G8 |
 | `not in effect`, `inactive` | "Paused: <reason>" | all | G9 |
 | `holder`, `holders`, `who holds`, `nobody holds`, `no one holds`, `holds no role`, `holds no other role`, `holds no advanced role`, `hold no roles`, `you hold`, `what you hold`, `they hold`, `who can open it`, `given directly`, `direct assignment`, `change who has it` | "Assigned roles (n)", "Assigned to", "Not assigned to anyone", "Assigned via", "Direct", "Manage in Access" | all | G10 |
+| `/\bgrant(?:s\|ed\|ing)?\b/` | "assigned", "Assigned via", "Assigned to", "gives access" | all | G10 |
 | `path`, `paths` | the words of G10 | `packages/core/src/features/`, `packages/ui/src/`, `packages/modules/`, `apps/genie/src/` | G11 |
 | `whole tenant`, `everywhere` | "All records" or the record id | all | G12 |
 | `system role`, `system roles`, `copy role`, `role from copy`, `core administration` | "Built-in role", "Custom role", "Copy as new role", "Core" | all | G13 |

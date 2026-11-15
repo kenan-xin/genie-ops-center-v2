@@ -344,7 +344,7 @@ test("a category is created, renamed, reordered, assigned to a module and delete
         ).toBeVisible();
         await expect(
           page.getByText(
-            "A category never grants access. Who can open a module is set in Access."
+            "A category never gives access. Who can open a module is set in Access."
           )
         ).toHaveCount(1);
         await expect(

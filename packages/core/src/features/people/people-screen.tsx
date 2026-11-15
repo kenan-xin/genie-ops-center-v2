@@ -457,8 +457,8 @@ export function PersonInspector(props: {
                         : ` (${props.access.paths.length})`}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      Everything this person can do, and where each grant comes
-                      from. Read-only here.
+                      Everything this person can do, and how each role is
+                      assigned. Read-only here.
                     </p>
                     <HelpDisclosure label="How this adds up">
                       A direct role belongs to this person. A role assigned via
@@ -478,7 +478,7 @@ export function PersonInspector(props: {
                   onOpenGroup={props.onOpenGroup}
                 />
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Access is granted and taken back in one place, the Access
+                  Roles are assigned and removed in one place, the Access
                   screen. A role assigned via a group changes for every member
                   of that group.
                 </p>

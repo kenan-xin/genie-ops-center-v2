@@ -161,7 +161,7 @@ export async function assignRoleInTransaction(
     actorUserId: input.actorUserId,
     targetType: "role-assignment",
     targetId: row.id,
-    summary: `Granted the ${roleName} role to ${input.principal.type} ${input.principal.id}`,
+    summary: `Assigned the ${roleName} role to ${input.principal.type} ${input.principal.id}`,
     metadata: {
       roleId: input.roleId,
       principalType: input.principal.type,

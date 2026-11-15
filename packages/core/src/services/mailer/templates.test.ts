@@ -78,7 +78,7 @@ const TEXT_PARTS = {
     action: `Accept invitation: ${VARIABLES.invitationUrl}`,
   },
   "role-granted": {
-    heading: "Role granted",
+    heading: "Role assigned",
     action: `Open ${ACME.productName}: ${VARIABLES.link}`,
   },
   "role-removed": {
@@ -106,7 +106,7 @@ const NAMED = {
     body: "Grace Hopper invited you to join Renamed Co on Renamed Ops.",
   },
   "role-granted": {
-    subject: "You were granted the Administrator role",
+    subject: "You were assigned the Administrator role",
     action: "Open Renamed Ops",
     body: "You now have the Administrator role at Renamed Co.",
   },

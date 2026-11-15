@@ -86,7 +86,7 @@ test("the devtools open and report this deployment truthfully", async ({
   await expect(fact(page, "Modules").getByRole("listitem")).toHaveText([
     ...selectedModuleIds,
   ]);
-  await expect(fact(page, "Permissions")).toHaveText("No permissions granted.");
+  await expect(fact(page, "Permissions")).toHaveText("No permissions.");
   await expect(fact(page, "User")).toHaveText(
     "No user is signed in. Section 0 has no identity yet."
   );

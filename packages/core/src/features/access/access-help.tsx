@@ -22,7 +22,7 @@ export function AccessHelp(props: {
         their groups. Removing one assignment leaves the others, and no rule
         denies access.
       </p>
-      <p>A module that is off keeps its grants and takes no new one.</p>
+      <p>A module that is off keeps its assignments and takes no new one.</p>
     </HelpDisclosure>
   );
 }

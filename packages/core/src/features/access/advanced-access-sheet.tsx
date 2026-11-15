@@ -328,8 +328,8 @@ export function AdvancedAccessSheet(
           {off.length === 0 ? null : (
             <WarningNote size="sm" role="status">
               {listOf(off)} {off.length === 1 ? "is" : "are"} off, so{" "}
-              {off.length === 1 ? "its" : "their"} roles take no new grant here.
-              Removal still works.
+              {off.length === 1 ? "its" : "their"} roles cannot be assigned
+              here. Removal still works.
             </WarningNote>
           )}
 

@@ -396,7 +396,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
         <HelpDisclosure label="What a module is here" iconOnly>
           Every module compiled into this deployment is listed, on or off.
           Turning one off hides it and refuses its routes; its data stays.
-          Access is read from role assignments, so nothing on this page grants
+          Access is read from role assignments, so nothing on this page gives
           it.
         </HelpDisclosure>
       </div>

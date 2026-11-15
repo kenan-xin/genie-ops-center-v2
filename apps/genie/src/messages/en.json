@@ -124,7 +124,7 @@
     "categories": {
       "title": "Categories",
       "description": "Headings that group modules in the navigation.",
-      "notice": "A category never grants access. Who can open a module is set in Access.",
+      "notice": "A category never gives access. Who can open a module is set in Access.",
       "help": {
         "label": "How categories work",
         "what": "A category groups what people already see in the navigation.",

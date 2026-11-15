@@ -50,7 +50,7 @@ function register(
 export function registerRoleEventHandlers(tenant: TenantContext): void {
   register(tenant, coreRoleGranted, {
     kind: "role-granted",
-    title: (roleName) => `You were granted the ${roleName} role`,
+    title: (roleName) => `You were assigned the ${roleName} role`,
     body: (roleName) => `You now have the ${roleName} role.`,
     templateId: "role-granted",
   });

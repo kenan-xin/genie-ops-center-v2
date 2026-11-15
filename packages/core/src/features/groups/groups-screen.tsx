@@ -266,7 +266,7 @@ export function GroupInspector(
                 It was renamed or removed in the identity provider. Its roles
                 still apply to the {group.memberCount}{" "}
                 {group.memberCount === 1 ? "person" : "people"} last seen in it.
-                Archive it to stop its grants.
+                Archive it to pause its assignments.
               </p>
             </WarningNote>
           ) : null}
@@ -299,8 +299,7 @@ export function GroupInspector(
 
           <HelpDisclosure label="How group access works">
             A role assigned to this group reaches every member while the group
-            is not archived. Archiving keeps the assignments and stops them
-            granting.{" "}
+            is not archived. Archiving keeps the assignments and pauses them.{" "}
             {group.source === "local"
               ? "You choose the members of this group here."
               : "A directory group's members come from the identity provider."}
@@ -587,8 +586,8 @@ export function GroupInspector(
           open={confirm === "archive"}
           title={`Archive ${groupLabel(group)}?`}
           description={`Its ${group.assignmentCount} assignment${
-            group.assignmentCount === 1 ? " stops" : "s stop"
-          } granting while it is archived. The rows are kept and restore brings them back.`}
+            group.assignmentCount === 1 ? " is" : "s are"
+          } paused while it is archived. The rows are kept and restore brings them back.`}
           confirmLabel="Archive group"
           danger
           onConfirm={() => {

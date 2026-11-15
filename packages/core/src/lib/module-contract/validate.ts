@@ -579,7 +579,7 @@ export function validateModule(module: Module): readonly string[] {
     for (const key of role.permissions) {
       if (!declared.has(key)) {
         problems.push(
-          `Default role "${role.name}" grants "${key}", which this module does not declare.`
+          `Default role "${role.name}" carries "${key}", which this module does not declare.`
         );
       }
     }

@@ -78,7 +78,7 @@ export const NothingCompiled: Story = {
   args: { ...FIXTURE, modules: [], permissions: [] },
   play: async ({ canvas }) => {
     await expect(canvas.getByText("No modules in this image.")).toBeVisible();
-    await expect(canvas.getByText("No permissions granted.")).toBeVisible();
+    await expect(canvas.getByText("No permissions.")).toBeVisible();
   },
 };
 

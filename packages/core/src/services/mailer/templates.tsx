@@ -109,8 +109,8 @@ function roleGranted(
   const roleName = value(variables, "roleName");
 
   return {
-    subject: `You were granted the ${roleName} role`,
-    heading: "Role granted",
+    subject: `You were assigned the ${roleName} role`,
+    heading: "Role assigned",
     preview: `You now have the ${roleName} role at ${companyName}.`,
     paragraphs: [
       greeting(variables),
