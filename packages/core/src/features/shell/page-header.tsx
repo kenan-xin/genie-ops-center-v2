@@ -36,6 +36,11 @@ export type PageHeaderProps = {
    * in its place, and `title` is the heading's hidden text.
    */
   readonly titlePending?: boolean;
+  /**
+   * The page's own heading in place of the title line's, such as a title renamed in place. It must
+   * render the page's one `<h1>`, and it shows at every width; `title` still names the top bar.
+   */
+  readonly heading?: ReactNode;
   /** A status pill beside the title, such as "Needs your input"; it hides with the title below `lg` in a shell. */
   readonly status?: ReactNode;
   readonly description?: string;
@@ -187,8 +192,9 @@ export function PageHeader(props: PageHeaderProps) {
   const hiddenIfCompact = compact ? "max-lg:hidden" : "";
 
   const showsBelowLg =
-    !compact &&
-    (props.meta !== undefined || props.secondaryActions !== undefined);
+    props.heading !== undefined ||
+    (!compact &&
+      (props.meta !== undefined || props.secondaryActions !== undefined));
 
   // Below the width where the header shows nothing, take it out of the flow so a page's gap does not
   // leave an empty band under the top bar.
@@ -225,7 +231,12 @@ export function PageHeader(props: PageHeaderProps) {
           {crumb === undefined || Anchor === undefined ? null : (
             <Trail crumb={crumb} Anchor={Anchor} inShell={inShell} />
           )}
-          {props.status === undefined && props.titlePending !== true ? (
+          {props.heading !== undefined ? (
+            <div className="flex items-center gap-2">
+              {props.heading}
+              {props.status}
+            </div>
+          ) : props.status === undefined && props.titlePending !== true ? (
             <h1 className={`text-xl font-bold ${hideBelowLg}`}>
               {props.title}
             </h1>

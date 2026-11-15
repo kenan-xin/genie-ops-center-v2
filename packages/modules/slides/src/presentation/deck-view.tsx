@@ -51,7 +51,6 @@ import { z } from "zod";
 
 import {
   type DeckChange,
-  deckTitle,
   type ElementBox,
   type ElementInput,
   slideInput,
@@ -62,6 +61,7 @@ import {
 } from "../contract.ts";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
 import { presenterPath } from "./deck-sync.ts";
+import { DeckTitle } from "./deck-title.tsx";
 import {
   draftStatus,
   isDrafting,
@@ -111,8 +111,11 @@ type MenuTarget = EditTarget & {
 };
 
 type RenameTarget = {
-  readonly title: string;
   readonly expectedHash: string;
+  /** Set from Enter until the answer, so a second Enter sends no second rename. */
+  readonly sending: boolean;
+  /** The page's `failure` is this rename's, so it shows under the input, not on the page. */
+  readonly refused: boolean;
 };
 
 type AddTarget = {
@@ -161,8 +164,6 @@ function refreshNote(numbers: readonly number[]): string {
   return `Figures changed on slides ${numberList(numbers)}. Check that their titles still state the finding.`;
 }
 
-const renameFormSchema = z.object({ title: deckTitle });
-
 const addSlideSchema = z.object({
   title: titleElement.shape.text,
   text: z
@@ -178,76 +179,6 @@ function pillVariant(run: AgentRunStatus | null) {
   if (run === "saved") return "success";
 
   return run === "failed" || run === "interrupted" ? "warning" : "neutral";
-}
-
-/** The Rename deck dialog's form, with the deck's title schema (CLAUDE.md, Forms). */
-function RenameForm(props: {
-  readonly initialTitle: string;
-  readonly saving: boolean;
-  readonly failure: ChangeFailure | null;
-  readonly onReload: () => void;
-  readonly onClose: () => void;
-  readonly onSubmit: (title: string) => void;
-}) {
-  const titleId = useId();
-  const errorId = useId();
-  const [attempted, setAttempted] = useState(false);
-
-  const form = useForm({
-    defaultValues: { title: props.initialTitle },
-    validators: {
-      onMount: renameFormSchema,
-      onChange: renameFormSchema,
-      onSubmit: renameFormSchema,
-    },
-    onSubmitInvalid: () => setAttempted(true),
-    onSubmit: ({ value }) => props.onSubmit(value.title),
-  });
-
-  return (
-    <form
-      className="grid gap-4"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void form.handleSubmit();
-      }}
-    >
-      <form.Field name="title">
-        {(field) => {
-          const issue = issueOf(field.state.meta.errors);
-
-          const show =
-            issue !== undefined && (attempted || field.state.meta.isTouched);
-
-          return (
-            <Field>
-              <FieldLabel htmlFor={titleId}>Title</FieldLabel>
-              <Input
-                id={titleId}
-                value={field.state.value}
-                onValueChange={field.handleChange}
-                onBlur={field.handleBlur}
-                aria-invalid={show ? true : undefined}
-                aria-describedby={describedBy(show ? errorId : undefined)}
-              />
-              {show ? <FieldError id={errorId}>{issue}</FieldError> : null}
-            </Field>
-          );
-        }}
-      </form.Field>
-      {props.failure === null ? null : (
-        <ChangeRefusal failure={props.failure} onReload={props.onReload} />
-      )}
-      <DialogFooter>
-        <Button type="button" variant="secondary" onClick={props.onClose}>
-          Cancel
-        </Button>
-        <Button type="submit" loading={props.saving}>
-          Save
-        </Button>
-      </DialogFooter>
-    </form>
-  );
 }
 
 /** The Add slide dialog's form, with the title and optional text element schemas. */
@@ -594,6 +525,9 @@ export function DeckView(props: DeckViewProps) {
   const [adding, setAdding] = useState<AddTarget | null>(null);
   const [failure, setFailure] = useState<ChangeFailure | null>(null);
 
+  // A run that starts while the title is open closes it: its hash is stale once the agent saves.
+  if (!editable && renaming !== null) setRenaming(null);
+
   const [refreshNumbers, setRefreshNumbers] = useState<
     readonly number[] | null
   >(null);
@@ -705,7 +639,11 @@ export function DeckView(props: DeckViewProps) {
     }
 
     if (renaming !== null) {
-      setRenaming({ ...renaming, expectedHash: fresh.contentHash });
+      setRenaming({
+        ...renaming,
+        expectedHash: fresh.contentHash,
+        refused: false,
+      });
     }
 
     if (adding !== null) {
@@ -900,33 +838,34 @@ export function DeckView(props: DeckViewProps) {
     if (presenter !== null) setPresenting(true);
   }
 
-  function openRename(): void {
+  /** The title's input keeps the hash the page showed when it opened (R-53). */
+  function editTitle(open: boolean): void {
     setFailure(null);
-    setRenaming({ title: deck.title, expectedHash: deck.contentHash });
+    setRenaming(
+      open
+        ? { expectedHash: deck.contentHash, sending: false, refused: false }
+        : null
+    );
   }
 
   function submitRename(title: string): void {
-    if (renaming === null) return;
+    if (renaming === null || renaming.sending) return;
 
-    const trimmed = title.trim();
-
-    if (trimmed === "") return;
-
-    if (trimmed === renaming.title) {
-      setRenaming(null);
-
-      return;
-    }
+    // The answer acts only on this input: after an Escape and a reopen, `renaming` is another one.
+    const sent: RenameTarget = { ...renaming, sending: true, refused: false };
 
     setFailure(null);
-    pageWrite(renaming.expectedHash, (expectedHash) =>
-      change.mutateAsync({
-        changes: [{ op: "rename", title: trimmed }],
-        expectedHash,
-      })
+    setRenaming(sent);
+    pageWrite(sent.expectedHash, (expectedHash) =>
+      change.mutateAsync({ changes: [{ op: "rename", title }], expectedHash })
     ).then(
-      () => setRenaming(null),
-      (error) => setFailure({ kind: "change", error })
+      () => setRenaming((now) => (now === sent ? null : now)),
+      (error) => {
+        setRenaming((now) =>
+          now === sent ? { ...sent, sending: false, refused: true } : now
+        );
+        setFailure({ kind: "change", error });
+      }
     );
   }
 
@@ -968,7 +907,7 @@ export function DeckView(props: DeckViewProps) {
   const pageRefusal =
     failure !== null &&
     editing === null &&
-    renaming === null &&
+    renaming?.refused !== true &&
     adding === null ? (
       <div className="mb-4">
         <ChangeRefusal failure={failure} onReload={reload} />
@@ -991,6 +930,23 @@ export function DeckView(props: DeckViewProps) {
         // The agent names the deck first; until then its title is the chat's (S7-48).
         title={unnamed ? "Naming the deck" : deck.title}
         titlePending={unnamed}
+        heading={
+          unnamed ? undefined : (
+            <DeckTitle
+              title={deck.title}
+              editable={editable}
+              editing={renaming !== null}
+              saving={renaming?.sending === true}
+              failure={
+                renaming?.refused !== true || failure === null ? null : (
+                  <ChangeRefusal failure={failure} onReload={reload} />
+                )
+              }
+              onEditingChange={editTitle}
+              onSave={submitRename}
+            />
+          )
+        }
         meta={
           <>
             {pill}
@@ -1067,9 +1023,6 @@ export function DeckView(props: DeckViewProps) {
                       onClick={refreshData}
                     >
                       Refresh data
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={openRename}>
-                      Rename deck
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -1480,35 +1433,6 @@ export function DeckView(props: DeckViewProps) {
           )}
         </SheetContent>
       </Sheet>
-
-      <Dialog
-        open={renaming !== null}
-        onOpenChange={(open) => {
-          if (!open) {
-            setRenaming(null);
-            setFailure(null);
-          }
-        }}
-      >
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Rename deck</DialogTitle>
-          </DialogHeader>
-          {renaming === null ? null : (
-            <RenameForm
-              initialTitle={renaming.title}
-              saving={busy || drafting}
-              failure={failure}
-              onReload={reload}
-              onClose={() => {
-                setRenaming(null);
-                setFailure(null);
-              }}
-              onSubmit={submitRename}
-            />
-          )}
-        </DialogContent>
-      </Dialog>
 
       <Dialog
         open={adding !== null}

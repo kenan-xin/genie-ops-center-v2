@@ -377,6 +377,49 @@ export const CompactBelowLgPhone: Story = {
   },
 };
 
+/**
+ * A heading the page renders itself, such as a title renamed in place: it shows at every width,
+ * also below `lg` in a shell, where the plain title is for screen readers only.
+ */
+export const OwnHeadingPhone: Story = {
+  decorators: [
+    (Story) => (
+      <PageTrailProvider value={rolesTrail}>
+        <Story />
+      </PageTrailProvider>
+    ),
+    inShell,
+  ],
+  args: {
+    title: "Tenant administrator",
+    heading: (
+      <h1 className="text-xl font-bold">
+        <button type="button" className="min-h-11">
+          Tenant administrator <Pencil aria-hidden className="inline size-4" />
+        </button>
+      </h1>
+    ),
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas, canvasElement }) => {
+    // Bug caught: the control sits in a clipped `sr-only` header, so a phone can tab to it but
+    // never see or tap it.
+    const button = canvas.getByRole("button", { name: "Tenant administrator" });
+    const box = button.getBoundingClientRect();
+
+    await expect(button).toBeVisible();
+    await expect(
+      button.contains(
+        document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2)
+      )
+    ).toBe(true);
+    // The page keeps one h1: the plain title does not render beside the page's own.
+    await expect(
+      canvasElement.querySelectorAll("[data-shell-page-header] h1")
+    ).toHaveLength(1);
+  },
+};
+
 /** The deck page's case: the phone top bar holds Undo and Present, so no bottom bar can cover them. */
 const topBarArgs = {
   title: "Roles",

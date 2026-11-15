@@ -3,7 +3,7 @@ import {
   AgentPanelHost,
   resetAgentPanel,
 } from "@genie/core/features/agent/panel";
-import { AppShell } from "@genie/core/features/shell";
+import { AppShell, PageTrailProvider } from "@genie/core/features/shell";
 import { ModuleClientProvider } from "@genie/core/rpc/client";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import {
@@ -138,7 +138,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One deck at `/m/slides/decks/:id` (Spec 7 R-52, R-54). The header names the slide count and the figures date; Present is the main action, Export to PowerPoint sits beside it, and Add slide, Refresh data and Rename deck sit in More (7.2). Undo sits above the shown slide, also when no slide is left. A rail of numbered slide previews selects the shown slide (7.3): from 768 px a column on the left, below it a strip that scrolls sideways above the slide. The slide keeps its 16:9 shape at every width.",
+          "One deck at `/m/slides/decks/:id` (Spec 7 R-52, R-54). The header names the slide count and the figures date; Present is the main action, Export to PowerPoint sits beside it, and Add slide and Refresh data sit in More (7.2). The title renames in place: Enter saves at the hash the page showed, Escape cancels. Undo sits above the shown slide, also when no slide is left. A rail of numbered slide previews selects the shown slide (7.3): from 768 px a column on the left, below it a strip that scrolls sideways above the slide. The slide keeps its 16:9 shape at every width.",
       },
     },
     a11y: { test: "error" },
@@ -203,9 +203,9 @@ export const Deck: Story = {
   globals: desktop,
   beforeEach: () => serve(deckPage),
   play: async ({ canvas, canvasElement }) => {
-    await expect(
-      canvas.getByText("Receivables at a glance", { selector: "h1" })
-    ).toBeVisible();
+    await expect(canvas.getByRole("heading", { level: 1 })).toHaveTextContent(
+      "Receivables at a glance"
+    );
     await expect(
       canvasElement.querySelector("[data-figures-date]")
     ).toHaveTextContent("5 slides · Figures as of 27 Oct 2026");
@@ -217,9 +217,16 @@ export const Deck: Story = {
       canvas.getByRole("button", { name: "Export to PowerPoint" })
     ).toBeVisible();
 
-    for (const name of ["Rename deck", "Add slide", "Refresh data"]) {
+    for (const name of ["Add slide", "Refresh data"]) {
       expect(canvas.queryByRole("button", { name })).toBeNull();
     }
+
+    // The title renames in place, so More holds no Rename deck.
+    await expect(
+      canvas.getByRole("button", {
+        name: "Rename deck, Receivables at a glance",
+      })
+    ).toBeVisible();
 
     // Undo sits beside the slide, above it.
     const undo = canvas.getByRole("button", { name: "Undo" });
@@ -236,10 +243,13 @@ export const Deck: Story = {
 
     // The menu fades in, so its items show once the opening transition ends.
     await waitFor(() => {
-      for (const name of ["Add slide", "Refresh data", "Rename deck"]) {
+      for (const name of ["Add slide", "Refresh data"]) {
         expect(screen.getByRole("menuitem", { name })).toBeVisible();
       }
     });
+    await expect(
+      screen.queryByRole("menuitem", { name: "Rename deck" })
+    ).toBeNull();
 
     await userEvent.keyboard("{Escape}");
   },
@@ -1850,6 +1860,122 @@ export const ReloadRenewsTheHash: Story = {
   },
 };
 
+const RENAME = "Rename deck, Receivables at a glance";
+
+// Bug caught: the rename is not one `rename` change, or it is sent at a hash the person never saw.
+export const RenameInPlace: Story = {
+  name: "Rename in place",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockResolvedValue({
+      ...deckPage.deck,
+      title: "Collections review",
+      contentHash: NEW_HASH,
+    });
+  },
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole("button", { name: RENAME });
+    const buttonWidth = button.getBoundingClientRect().width;
+
+    await userEvent.click(button);
+
+    // Bug caught: the header's column shrink-wraps the input to a few characters of the title.
+    await expect(
+      canvas
+        .getByRole("textbox", { name: "Deck title" })
+        .getBoundingClientRect().width
+    ).toBeGreaterThanOrEqual(buttonWidth);
+
+    await userEvent.keyboard("Collections review{Enter}");
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce());
+    await expect(changeDeck).toHaveBeenCalledWith({
+      id: "deck-1",
+      changes: [{ op: "rename", title: "Collections review" }],
+      expectedHash: HASH,
+    });
+
+    // The saved title shows, and focus returns to it.
+    const renamed = await canvas.findByRole("button", {
+      name: "Rename deck, Collections review",
+    });
+
+    await expect(renamed).toHaveFocus();
+    await expect(
+      canvas.queryByRole("textbox", { name: "Deck title" })
+    ).toBeNull();
+  },
+};
+
+// R-53: a rename keeps the hash it opened at; a refusal keeps the typed title, and Reload renews it.
+export const RenameRefusedKeepsTheInput: Story = {
+  name: "Rename refused keeps the input",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockRejectedValue(
+      Object.assign(new Error(DECK_CHANGED), {
+        data: { appCode: "slides:deck-changed", requestId: "req-6" },
+      })
+    );
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await userEvent.click(canvas.getByRole("button", { name: RENAME }));
+
+    const input = canvas.getByRole("textbox", { name: "Deck title" });
+
+    await userEvent.keyboard("Collections review");
+
+    // Another writer moves the deck while the input is open.
+    await refetchWith(
+      changedDeck(deckPage, deckPage.deck.slides),
+      canvasElement
+    );
+    await userEvent.keyboard("{Enter}");
+
+    // Bug caught: the save takes the newer hash it never showed, and overwrites the other writer.
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce());
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ expectedHash: HASH })
+    );
+
+    const alert = await canvas.findByRole("alert");
+
+    await expect(alert).toHaveTextContent(DECK_CHANGED);
+    await expect(input).toHaveValue("Collections review");
+
+    const reloaded = changedDeck(deckPage, deckPage.deck.slides, {
+      hash: NEWER_HASH,
+      figuresAsOf: "2026-10-29",
+    });
+
+    readDeck.mockResolvedValue(reloaded.deck);
+    changeDeck.mockResolvedValue({
+      ...reloaded.deck,
+      title: "Collections review",
+    });
+
+    await userEvent.click(
+      within(alert).getByRole("button", { name: "Reload" })
+    );
+
+    await waitFor(() => expect(canvas.queryByRole("alert")).toBeNull());
+    await expect(input).toHaveValue("Collections review");
+
+    await userEvent.click(input);
+    await userEvent.keyboard("{Enter}");
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck).toHaveBeenLastCalledWith(
+      expect.objectContaining({ expectedHash: NEWER_HASH })
+    );
+  },
+};
+
 // C1 (M-c): a refetch that removes the open slide shows the deck-changed line, not an empty sheet.
 export const VanishedSlide: Story = {
   name: "Vanished slide",
@@ -1982,7 +2108,7 @@ const pill = (canvas: ReturnType<typeof within>, text: string, wait = {}) =>
 
 /** Every control that edits the deck by hand: none may be enabled while the run builds. */
 const HAND_EDITS =
-  /^(Undo|Add slide|Add element|Background|Edit slide|Refresh data|Rename deck|More|Actions for slide \d+)$/;
+  /^(Undo|Add slide|Add element|Background|Edit slide|Refresh data|Rename deck(, .+)?|More|Actions for slide \d+)$/;
 
 function enabledHandEdits(canvas: ReturnType<typeof within>) {
   return canvas
@@ -2265,6 +2391,41 @@ export const PanelRunKeepsTheShownSlide: Story = {
   },
 };
 
+// Bug caught: a title left open across a run reopens after it, takes focus and sends the pre-run hash.
+export const RunClosesTheTitle: Story = {
+  name: "A run closes the open title",
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRunRefetch],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Rename deck, Receivables at a glance",
+      })
+    );
+    await userEvent.keyboard("Half typed");
+
+    // The person asks the agent in the panel while the title is open.
+    sessions
+      .mockResolvedValueOnce([chatOf("building", deckPage.deck.title)])
+      .mockResolvedValue([chatOf("saved", deckPage.deck.title)]);
+    window.dispatchEvent(new Event("refetch-run"));
+
+    await pill(canvas, "Drafting slide 6");
+    await pill(canvas, "5 slides drafted", RUN_END);
+
+    await expect(
+      canvas.queryByRole("textbox", { name: "Deck title" })
+    ).toBeNull();
+    await expect(
+      canvas.getByRole("button", {
+        name: "Rename deck, Receivables at a glance",
+      })
+    ).toBeVisible();
+  },
+};
+
 export const NoAgent: Story = {
   name: "No agent for this person",
   args: { view: noChatDeckPage },
@@ -2403,6 +2564,47 @@ export const DraftingOnPhone: Story = {
     await pill(canvas, "Drafting slide 3");
     await expect(canvas.getByRole("button", { name: "Stop" })).toBeVisible();
     await pageEndAbovePanel(canvas, canvasElement);
+  },
+};
+
+/** The deck page's route trail, as core gives it to a module page (R-1a). */
+function withTrail(Story: () => ReactNode) {
+  return (
+    <PageTrailProvider
+      value={{
+        parent: { label: "Slides", href: "/m/slides/decks" },
+        current: deckPage.deck.title,
+      }}
+    >
+      <Story />
+    </PageTrailProvider>
+  );
+}
+
+export const RenameOnPhone: Story = {
+  name: "Rename on a phone",
+  args: { view: deckPage },
+  globals: phone,
+  parameters: { layout: "fullscreen" },
+  decorators: [withTrail, withShell],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const button = canvas.getByRole("button", { name: RENAME });
+
+    // Bug caught: below 1024 px the shell hides the header title, so the rename cannot be seen or tapped.
+    await expect(button).toBeVisible();
+    await expect(isHittable(button)).toBe(true);
+
+    await userEvent.click(button);
+    await userEvent.keyboard("Collections review{Enter}");
+
+    await waitFor(() =>
+      expect(changeDeck).toHaveBeenCalledWith(
+        expect.objectContaining({
+          changes: [{ op: "rename", title: "Collections review" }],
+        })
+      )
+    );
   },
 };
 
