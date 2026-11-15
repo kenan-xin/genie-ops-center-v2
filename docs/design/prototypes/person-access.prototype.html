@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Person sheet, Access tab, redesign for the G3 dry run of follow-up 11 (owner, 2026-11-14, row A-9: "it looks bad").
+     Question: how does a person's access read clearly in the person sheet, in the words of role-detail.prototype.html (f658adc)?
+     Switch with ?view=phone|desktop, ?viewer=people|roles|self and ?access=three|one|none, or the bar at the top.
+     Facts it keeps: each access path (role, module, scope, through a group or given directly, given by and when, paused with reason),
+     read-only for a people manager (d8l5.43), Change in Access for a roles manager, your own account cannot change its own access.
+     Words follow the glossary of bead 6wz1.110. World: DESIGN.md; secondary buttons pick C. Icons: Lucide (ISC). Data: fictional. No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: person sheet, Access tab</title>
+<style>
+:root{--fg:#111827;--panel:#f9fafb;--tile:#f3f4f6;--hair:#e5e7eb;--muted:#4b5563;--icon:#6b7280;--idle:#374151;--primary:#2563eb;--ok:#047857;--okt:#ecfdf5;--danger:#b91c1c;--font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);color:var(--fg);background:#e9ebef;padding:16px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}a{color:inherit}:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 auto 16px;max-width:1280px}.ctl .t{font-weight:700;margin-right:6px}
+.seg{display:inline-flex;background:#fff;border-radius:10px;padding:3px;gap:2px;border:1px solid var(--hair)}
+.seg button{border:0;background:none;height:32px;padding:0 10px;border-radius:8px;font-weight:600;font-size:.8125rem;color:var(--idle)}
+.seg button[aria-pressed=true]{background:var(--fg);color:#fff}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}.i20{width:20px;height:20px}
+.phone{width:390px;height:844px;margin:0 auto;border-radius:32px;box-shadow:0 0 0 10px #1f2937,0 30px 60px -20px rgb(0 0 0/.45);overflow:hidden;position:relative;background:#fff}
+.desk{max-width:1280px;height:820px;margin:0 auto;border-radius:12px;overflow:hidden;position:relative;background:var(--panel);box-shadow:0 20px 40px -20px rgb(0 0 0/.35)}
+.desk .page{padding:28px 32px;color:var(--muted)}.desk .page h1{color:var(--fg);font-size:1.5rem;margin:0 0 16px}
+.desk .page .row{height:52px;border-bottom:1px solid var(--hair);background:#fff}
+.desk .scrim{position:absolute;inset:0;background:rgb(17 24 39/.25)}
+.sheet{position:absolute;top:0;bottom:0;right:0;width:480px;background:#fff;display:flex;flex-direction:column;box-shadow:0 25px 50px -12px rgb(17 24 39/.18)}
+.phone .sheet{width:100%;}
+.sh-head{display:flex;gap:12px;align-items:flex-start;padding:16px 12px 12px 20px}
+.av{width:44px;height:44px;border-radius:50%;background:var(--tile);display:grid;place-items:center;font-weight:700;font-size:.875rem;color:var(--idle);flex:none}
+.sh-head .nm{flex:1;min-width:0}.sh-head b{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:1.125rem}
+.sh-head .em{font-size:.875rem;color:var(--muted);margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ib{width:44px;height:44px;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--idle)}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;background:var(--tile);color:var(--idle);font-size:.75rem;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--okt);color:var(--ok)}.pill.warn{background:#fffbeb;color:#92400e}
+.tabs{display:flex;gap:4px;padding:0 12px;border-bottom:1px solid var(--hair);overflow-x:auto}
+.tab{border:0;background:none;height:44px;padding:0 10px;font-weight:600;font-size:.875rem;color:var(--muted);display:flex;gap:6px;align-items:center;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tab[aria-selected=true]{color:var(--fg);border-color:var(--primary)}
+.tab .c{font-size:.75rem;background:var(--tile);border-radius:999px;padding:0 7px;color:var(--idle)}
+.body{flex:1;overflow:auto;padding:16px 20px}
+.h2{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:4px}
+.h2 h2{font-size:1rem;margin:0}
+.sub{font-size:.875rem;color:var(--muted);margin:0 0 6px}
+.help{display:inline-flex;gap:6px;align-items:center;border:0;background:none;color:var(--primary);font-weight:600;font-size:.8125rem;padding:4px 0;min-height:32px}
+.helpbox{padding:10px 12px;border-radius:8px;background:var(--panel);font-size:.875rem;color:var(--idle);line-height:1.5;margin:4px 0 8px}
+.list{list-style:none;margin:8px 0 0;padding:0;border:1px solid var(--hair);border-radius:12px}
+.list li{padding:12px 14px;border-bottom:1px solid var(--hair);display:grid;gap:3px}.list li:last-child{border-bottom:0}
+.list .r{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.list .r a{font-weight:600;font-size:.9375rem;text-decoration:none}.list .r a:hover{text-decoration:underline}
+.list .m{font-size:.8125rem;color:var(--muted)}
+.list .m a{color:var(--primary);font-weight:600;text-decoration:none}
+.empty{border:1px dashed var(--hair);border-radius:12px;padding:20px;text-align:center;color:var(--muted);font-size:.9375rem;margin-top:12px}.empty b{display:block;color:var(--fg);margin-bottom:4px}
+.foot{border-top:1px solid var(--hair);padding:12px 20px 24px;display:grid;gap:10px}
+.note{font-size:.875rem;color:var(--muted);display:flex;gap:8px;align-items:flex-start}
+.btns{display:flex;gap:8px}.phone .btns .btn2{flex:1;justify-content:center}
+.btn2{height:40px;border-radius:8px;border:1px solid var(--hair);background:#fff;padding:0 14px;font-weight:600;font-size:.875rem;display:inline-flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgb(17 24 39/.07);color:#1f2937;white-space:nowrap}
+.phone .btn2{height:44px}.btn2.dz{color:var(--danger)}
+.link{font-weight:600;font-size:.875rem;color:var(--primary);text-decoration:none;display:inline-flex;gap:6px;align-items:center}
+.notes{max-width:1280px;margin:16px auto 0;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:16px 20px;font-size:.9375rem;line-height:1.55}.notes h3{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px}.notes h3:first-child{margin-top:0}.notes ul{margin:0;padding-left:18px}
+
+.tbl{width:100%;border-collapse:collapse;margin-top:8px;font-size:.875rem;border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.tbl th{text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel);padding:8px 12px;border-bottom:1px solid var(--hair);white-space:nowrap}
+.tbl td{padding:10px 12px;border-bottom:1px solid var(--hair);vertical-align:top}.tbl tr:last-child td{border-bottom:0}
+.tbl td a{font-weight:600;text-decoration:none}.tbl td a:hover{text-decoration:underline}.tbl .sm{display:block;font-size:.75rem;color:var(--muted);margin-top:2px}
+.stack{list-style:none;margin:8px 0 0;padding:0;border:1px solid var(--hair);border-radius:12px}
+.stack li{padding:12px 14px;border-bottom:1px solid var(--hair)}.stack li:last-child{border-bottom:0}
+.stack .t{display:flex;justify-content:space-between;gap:8px;align-items:center}.stack .t a{font-weight:600;text-decoration:none}
+.stack dl{display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:8px 0 0;font-size:.8125rem}.stack dt{color:var(--muted)}.stack dd{margin:0}
+.st{font-size:.75rem;font-weight:600}.tbl .nw{white-space:nowrap}.st.on{color:var(--ok)}.st.off{color:#92400e}
+.sec{display:flex;justify-content:space-between;align-items:center;gap:8px}.sec h2{font-size:.9375rem;margin:0}
+</style></head><body>
+<div class="ctl"><span class="t">Person sheet, Access tab</span><div class="seg" id="v"></div><div class="seg" id="w"></div><div class="seg" id="a"></div></div>
+<div id="app"></div><div class="notes" id="notes"></div>
+<script>
+const I={x:'<path d="M18 6 6 18M6 6l12 12"/>',help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',arrow:'<path d="M5 12h14M12 5l7 7-7 7"/>',info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'};
+const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+const q=new URLSearchParams(location.search);
+const S={view:q.get('view')||'phone',viewer:q.get('viewer')||'people',access:q.get('access')||'three',help:false};
+const ROWS=[
+ {role:'Invoices and Payments editor',module:'Invoices and Payments',scope:'Everywhere',how:'Through <a href="#">Finance team</a>',date:'1 Jun 2026',by:'Priya Nair'},
+ {role:'Slides user',module:'Slides',scope:'Everywhere',how:'Given directly',date:'16 Sep 2026',by:'Alex Morgan'},
+ {role:'Invoices and Payments viewer',module:'Invoices and Payments',scope:'Only on INV-1042',how:'Given directly',date:'2 Oct 2026',by:'Alex Morgan',paused:'Module off'}];
+function sheet(){
+ const rows=S.access==='none'?[]:S.access==='one'?[{role:'Limited links admin',module:'Core',scope:'Everywhere',how:'Given directly',date:'11 Nov 2026',by:'Priya Nair',custom:1}]:ROWS;
+ const dir=r=>r.how==='Given directly'?'Direct':r.how.replace('Through ','')+' <span class="sm" style="display:inline">(group)</span>';
+ const sc=r=>r.scope==='Everywhere'?'All records':r.scope.replace('Only on ','');
+ const st=r=>r.paused?`<span class="st off">Paused</span><span class="sm">${r.paused}</span>`:'<span class="st on">Active</span>';
+ const list=rows.length===0?`<div class="empty"><b>No roles assigned</b>This person can sign in but sees no modules.</div>`:
+ S.view==='phone'?`<ul class="stack" aria-label="Assigned roles">${rows.map(r=>`<li><div class="t"><a href="#">${r.role}</a>${r.paused?'<span class="st off">Paused</span>':''}</div><dl><dt>Scope</dt><dd>${sc(r)}</dd><dt>Assigned via</dt><dd>${dir(r)}</dd><dt>Assigned</dt><dd>${r.date} by ${r.by}</dd>${r.paused?`<dt>Paused</dt><dd>${r.paused}</dd>`:''}</dl></li>`).join('')}</ul>`:
+ `<table class="tbl"><thead><tr><th>Role</th><th>Scope</th><th>Assigned via</th></tr></thead><tbody>${rows.map(r=>`<tr><td><a href="#">${r.role}</a>${r.paused?`<span class="sm"><span class="st off">Paused</span> · ${r.paused}</span>`:''}<span class="sm">${r.date} by ${r.by}</span></td><td class="nw">${sc(r)}</td><td>${dir(r)}</td></tr>`).join('')}</tbody></table>`;
+ const self=S.viewer==='self';
+ const foot=self?`<div class="foot"><div class="note">${ic('lock')}<span>Only another administrator can change your own account.</span></div></div>`:
+  S.viewer==='roles'?`<div class="foot"><div class="btns"><button class="btn2">Disable</button><button class="btn2 dz">Remove</button></div></div>`:
+  `<div class="foot"><div class="btns"><button class="btn2">Disable</button><button class="btn2 dz">Remove</button></div></div>`;
+ const change=S.viewer==='roles'&&!self?`<a class="link" href="#">Manage in Access ${ic('arrow')}</a>`:S.viewer==='people'?`<span class="pill">View only</span>`:'';
+ return `<aside class="sheet" role="dialog" aria-label="Riley Chen"><div class="sh-head"><span class="av">RC</span><div class="nm"><b>Riley Chen <span class="pill ok">Active</span></b><div class="em">riley.chen@example.com</div></div><button class="ib" aria-label="Close">${ic('x','i20')}</button></div>
+ <div class="tabs" role="tablist"><button class="tab" role="tab">Profile</button><button class="tab" role="tab">Groups <span class="c">1</span></button><button class="tab" role="tab" aria-selected="true">Access <span class="c">${rows.length}</span></button><button class="tab" role="tab">Sessions <span class="c">1</span></button></div>
+ <div class="body"><div class="sec"><h2>Assigned roles (${rows.length})</h2>${change}</div><button class="help" data-a="help" aria-expanded="${S.help}">${ic('help')}How access adds up</button>
+ ${S.help?`<div class="helpbox">A person has the roles assigned to them directly plus the roles of their groups. A role covers all records unless its scope names one. A paused role gives no access until its reason is fixed.</div>`:''}
+ ${list}</div>${foot}</aside>`;
+}
+function render(){
+ const sh=sheet();
+ document.getElementById('app').innerHTML=S.view==='phone'?`<div class="phone">${sh}</div>`:`<div class="desk"><div class="page"><h1>People</h1>${'<div class="row"></div>'.repeat(10)}</div><div class="scrim"></div>${sh}</div>`;
+ document.getElementById('v').innerHTML=[['phone','Phone'],['desktop','Desktop']].map(([k,l])=>`<button data-view="${k}" aria-pressed="${S.view===k}">${l}</button>`).join('');
+ document.getElementById('w').innerHTML=[['people','People manager'],['roles','Roles manager'],['self','Your own account']].map(([k,l])=>`<button data-viewer="${k}" aria-pressed="${S.viewer===k}">${l}</button>`).join('');
+ document.getElementById('a').innerHTML=[['three','3 roles'],['one','1 role'],['none','No roles']].map(([k,l])=>`<button data-access="${k}" aria-pressed="${S.access===k}">${l}</button>`).join('');
+ document.getElementById('notes').innerHTML=`<h3>Pattern</h3><ul><li>The standard assignments table of identity consoles (Okta Assignments, Microsoft Entra Assigned roles, AWS IAM Permissions): Role, Scope, Assigned via (Direct or a group), with who assigned it and when under the role. Active is the normal case, so only Paused shows, with its reason.</li><li>On a phone the same fields stack per role as a label and value list, the usual mobile form of a table.</li><li>Standard words: "Assigned roles", "Direct", "Finance team (group)", "All records", "Active" or "Paused" with its reason, "Manage in Access".</li><li>The glossary of bead 6wz1.110 must adopt these words, and the role detail page must use them too.</li></ul><h3>Try</h3>Switch the viewer and the number of roles. Open "How does access add up?".`;
+ const u=new URL(location);Object.entries({view:S.view,viewer:S.viewer,access:S.access}).forEach(([k,v])=>u.searchParams.set(k,v));history.replaceState(null,'',u);
+}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-view],[data-viewer],[data-access],[data-a]');if(!t)return;e.preventDefault();const d=t.dataset;if(d.view)S.view=d.view;if(d.viewer)S.viewer=d.viewer;if(d.access)S.access=d.access;if(d.a==='help')S.help=!S.help;render()});
+render();
+</script></body></html>

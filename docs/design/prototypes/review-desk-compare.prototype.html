@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Document review desk: polished current layout vs one form, for owner question 6 of the follow-up 11 G3 dry run
+     (owner, 2026-11-15: "design prototypes and let me see before I decide, show me polished vs one form").
+     Same document (demo file 01, an invoice with no due date), same fields, same rules, desktop 1280 and phone 390.
+     Polished keeps today's layout with the recorded fixes: 32 px fields (6wz1.114), chips only where a field needs attention,
+     panel spacing (czjw.186), icons on the text edge (6wz1.113), a fixed Save label (question 12), a cleaner phone wizard.
+     One form follows Dext, Ramp and Bill.com: the document beside one form; needs-attention first; the same form under the image on a phone.
+     Selecting or hovering a field marks its line on the document in both. Controls: ?v=polished|form, ?view=desktop|phone.
+     World: DESIGN.md. Icons: Lucide (ISC). Data: fictional demo document. No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: review desk, polished vs one form</title>
+<style>
+@font-face{font-family:"Plus Jakarta Sans";src:url("fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");font-weight:200 800}
+:root{--fg:#111827;--muted:#4b5563;--soft:#6b7280;--hair:#e5e7eb;--ctl:#d1d5db;--input:#6b7280;--tile:#f3f4f6;--panel:#f9fafb;--p:#2563eb;--pt:rgb(37 99 235/.10);--warn:#92400e;--warnbg:#fffbeb;--hover:rgb(17 24 39/.06);--font:"Plus Jakarta Sans",system-ui,sans-serif}
+*{box-sizing:border-box}html,body{margin:0}body{font-family:var(--font);color:var(--fg);background:#e9ebef;padding:16px;-webkit-font-smoothing:antialiased}
+button,input,select{font:inherit;color:inherit}button{cursor:pointer}:focus-visible{outline:2px solid var(--p);outline-offset:2px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;max-width:1280px;margin:0 auto 12px}.ctl .t{font-weight:700;margin-right:6px}
+.seg{display:inline-flex;background:#fff;border-radius:10px;padding:3px;gap:2px;border:1px solid var(--hair)}
+.seg button{border:0;background:none;height:32px;padding:0 12px;border-radius:8px;font-weight:600;font-size:.8125rem;color:#374151}.seg button[aria-pressed=true]{background:var(--fg);color:#fff}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.desk{width:1280px;height:800px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 20px 40px -20px rgb(0 0 0/.35);display:grid;grid-template-columns:220px 1fr}
+.side{background:var(--panel);border-right:1px solid var(--hair);padding:16px 12px;font-size:.875rem;color:#374151}.side b{display:block;margin-bottom:18px}.side div{padding:8px 10px;border-radius:8px}.side .on{background:#fff;color:var(--p);font-weight:600;box-shadow:inset 0 0 0 1px var(--hair)}
+.main{display:flex;flex-direction:column;min-width:0}
+.ph{padding:16px 24px 12px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.crumb{font-size:.8125rem;color:var(--muted)}.ph h1{font-size:1.25rem;margin:4px 0 2px;display:flex;gap:10px;align-items:center}.ph .sub{font-size:.8125rem;color:var(--muted)}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;font-size:.75rem;font-weight:600;background:var(--tile);color:#374151}.pill.warn{background:var(--warnbg);color:var(--warn)}
+.body{flex:1;min-height:0;display:grid;gap:16px;padding:0 24px 0}
+/* the document */
+.viewer{background:var(--tile);border-radius:12px;position:relative;overflow:hidden;display:flex;justify-content:center;align-items:flex-start;padding:24px}
+.doc{width:340px;background:#fff;box-shadow:0 1px 3px rgb(17 24 39/.12);font-size:8px;color:#374151;position:relative}
+.doc .band{background:#4f46e5;color:#fff;font-size:6px;font-weight:700;padding:5px 14px;letter-spacing:.04em}
+.doc .in{padding:14px 18px 40px}.doc h4{font-size:11px;margin:0 0 8px;color:var(--fg)}.doc .s{font-size:6px;color:var(--soft);margin-bottom:8px}
+.doc .ln{display:flex;justify-content:space-between;padding:4px 4px;border-bottom:1px solid #f1f1f1;border-radius:2px;margin:0 -4px}.doc .ln b{color:var(--fg)}
+.doc .tot{background:#eef2ff;padding:8px 6px;display:flex;justify-content:space-between;margin:8px -4px 0;border-radius:3px;font-weight:700}.doc .tot b{font-size:11px}
+.doc .hl{background:var(--pt);box-shadow:0 0 0 1.5px var(--p)}
+/* fields */
+.f{display:grid;gap:4px}.f .lr{display:flex;justify-content:space-between;align-items:center;gap:8px}.f label{font-size:.8125rem;font-weight:600}
+.in32{height:32px;border:1px solid var(--input);border-radius:8px;padding:0 10px;font-size:.8125rem;background:#fff;width:100%;display:flex;align-items:center;gap:8px}
+.in32 .pre{color:var(--soft);font-size:.75rem;font-weight:600}.in32.ph-{color:#6b7280}
+.loc{border:0;background:none;color:var(--soft);width:24px;height:24px;border-radius:6px;display:grid;place-items:center}.loc:hover{background:var(--hover);color:var(--fg)}
+.need{border:1px solid #fcd34d;background:var(--warnbg);border-radius:10px;padding:12px;display:grid;gap:8px}
+.need .msg{font-size:.8125rem;color:var(--warn);display:flex;gap:6px}
+.rad{display:flex;gap:8px;align-items:center;font-size:.8125rem}.rad input{margin:0}
+.btn{height:36px;border-radius:8px;border:0;background:var(--p);color:#fff;padding:0 16px;font-weight:600;font-size:.875rem}.btn[aria-disabled=true]{opacity:.5}
+.btn2{height:36px;border-radius:8px;border:1px solid var(--hair);background:#fff;padding:0 14px;font-weight:600;font-size:.875rem;box-shadow:0 1px 2px rgb(17 24 39/.07)}
+.foot{display:flex;align-items:center;gap:12px;border-top:1px solid var(--hair);padding:12px 24px;background:#fff}.foot .why{flex:1;font-size:.8125rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+/* polished layout */
+.pol .body{grid-template-columns:minmax(0,1fr) 340px}
+.f,.frow,.need,.card{min-width:0}.f,.card{grid-template-columns:minmax(0,1fr)}.frow{grid-template-columns:minmax(0,1fr) auto}
+.pol .stage{display:grid;grid-template-columns:auto 250px;gap:0;align-items:start;position:relative}
+.pol .viewer{display:grid;grid-template-columns:minmax(0,1fr) 240px;gap:28px;padding:24px}
+.pol .viewer .doc{width:300px}
+.pol .cards{display:grid;gap:8px;align-content:start;position:relative;z-index:1}
+.card{background:#fff;border:1px solid var(--hair);border-radius:10px;padding:10px;display:grid;gap:6px}.card.on{box-shadow:0 0 0 2px var(--p)}
+.pol svg.lead{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.pnl{border:1px solid var(--hair);border-radius:12px;padding:20px 24px;display:grid;gap:14px;align-content:start;background:#fff}
+.pnl h3{font-size:.9375rem;margin:0}.pnl .cap{font-size:.75rem;color:var(--muted);display:flex;justify-content:space-between}
+/* one form layout */
+.frm .body{grid-template-columns:1fr 400px}
+.frm .viewer{padding:24px}
+.col{display:flex;flex-direction:column;min-height:0;border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.col .scroll{flex:1;overflow:auto;padding:20px 24px;display:grid;gap:16px;align-content:start}
+.col h3{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:4px 0 -6px}
+.frow{display:grid;grid-template-columns:1fr auto;gap:6px;align-items:end}.frow.on .in32{border-color:var(--p);box-shadow:0 0 0 1px var(--p)}
+/* phone */
+.phone{width:390px;height:844px;margin:0 auto;border-radius:32px;box-shadow:0 0 0 10px #1f2937,0 30px 60px -20px rgb(0 0 0/.45);overflow:hidden;background:#fff;display:flex;flex-direction:column}
+.pbar{display:flex;align-items:center;gap:8px;padding:14px 12px 10px;border-bottom:1px solid var(--hair)}.pbar b{flex:1;font-size:1rem}
+.pscroll{flex:1;overflow:auto}
+.thumb{background:var(--tile);padding:12px;display:flex;justify-content:center;position:relative}.thumb .doc{width:300px;font-size:7px}
+.pfoot{border-top:1px solid var(--hair);padding:10px 16px 26px;display:flex;gap:8px;background:#fff}.pfoot>*{flex:1;height:40px}
+.step{font-size:.8125rem;color:var(--muted);display:flex;justify-content:space-between;padding:12px 16px 0}
+.dots{display:flex;gap:4px;padding:8px 16px 0}.dots i{flex:1;height:4px;border-radius:2px;background:var(--hair)}.dots i.on{background:var(--p)}
+.zoom{margin:12px 16px;border:1px solid var(--hair);border-radius:10px;background:var(--panel);padding:14px;font-size:.8125rem}.zoom .ln{display:flex;justify-content:space-between;background:var(--pt);box-shadow:0 0 0 1.5px var(--p);padding:8px;border-radius:6px}
+.notes{max-width:1280px;margin:16px auto 0;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:16px 20px;font-size:.9375rem;line-height:1.55;display:grid;grid-template-columns:1fr 1fr;gap:20px}.notes h3{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0 0 6px}.notes ul{margin:0;padding-left:18px}
+</style></head><body>
+<div class="ctl"><span class="t">PROTOTYPE: review desk</span>
+<div class="seg" id="vv"><button data-v="polished">A. Polished (today's layout)</button><button data-v="form">B. One form</button></div>
+<div class="seg" id="ww"><button data-w="desktop">Desktop 1280</button><button data-w="phone">Phone 390</button></div>
+<span style="font-size:.8125rem;color:#4b5563">Hover or click a field: its line lights up on the document.</span></div>
+<div id="stage"></div>
+<div class="notes"><div><h3>A. Polished</h3><ul>
+<li>Keeps the floating cards with leader lines and the "Before you save" panel.</li>
+<li>Fixes: 32 px fields, chips only on fields that need you, 24 px panel padding, Save says "Save".</li>
+<li>Phone keeps the step wizard, now 7 steps with a progress bar and the zoomed line of the document.</li>
+<li>Cost: two places to look (cards and panel); the wizard hides the other fields; leader lines get busy on long invoices.</li></ul></div>
+<div><h3>B. One form</h3><ul>
+<li>Document on the left, one form on the right: what needs you first, then the fields from the document, then optional ones.</li>
+<li>Each field has a locate button; hover or focus lights its line on the document. No leader lines.</li>
+<li>Phone: the same form under a document preview; tap the preview to open it full screen. No wizard.</li>
+<li>Matches Dext, Ramp and Bill.com. Cost: loses the "cards pinned to the page" picture of today.</li></ul></div></div>
+<script>
+const I={warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',loc:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3"/><path d="M12 19v3"/><path d="M2 12h3"/><path d="M19 12h3"/>',cal:'<rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h18"/>',info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',back:'<path d="m15 18-6-6 6-6"/>',chev:'<path d="m6 9 6 6 6-6"/>'};
+const ic=n=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+const F=[{k:'cur',l:'Currency',v:'SGD',ln:'cur'},{k:'cus',l:'Customer',v:'ABC Trading',ln:'cus'},{k:'num',l:'Invoice number',v:'INV-LIVE-001',ln:'num'},{k:'date',l:'Invoice date',v:'26 Oct 2026',ln:'date',cal:1},{k:'desc',l:'Description',v:'Additional consulting project - October 2026',ln:'desc'},{k:'tot',l:'Total',v:'5,000.00',pre:'SGD',ln:'tot'}];
+const q=new URLSearchParams(location.search);let v=q.get('v')||'form',w=q.get('view')||'desktop',on=null;
+function doc(){const h=k=>on===k?' hl':'';return `<div class="doc"><div class="band">FICTIONAL DEMO DOCUMENT · NOT VALID FOR PAYMENT</div><div class="in"><h4>CUSTOMER INVOICE</h4><div class="s">GENIE (DEMO) · Synthetic business record · Singapore · <span class="${h('cur')}" data-ln="cur">Currency: SGD</span></div><div class="ln${h('cus')}" data-ln="cus"><span>Bill to</span><b>ABC Trading</b></div><div class="ln${h('num')}" data-ln="num"><span>Invoice number</span><b>INV-LIVE-001</b></div><div class="ln${h('date')}" data-ln="date"><span>Invoice date</span><b>2026-10-26</b></div><div class="ln"><span>Subtotal</span><b>SGD 5,000.00</b></div><div class="ln"><span>Tax</span><b>SGD 0.00</b></div><div style="margin-top:10px;font-size:6px;color:#6b7280">DESCRIPTION</div><div class="ln${h('desc')}" data-ln="desc"><span>Additional consulting project - October 2026</span></div><div class="tot${h('tot')}" data-ln="tot"><span>TOTAL (SGD)</span><b>5,000.00</b></div><div style="margin-top:10px;font-size:6px;color:#9ca3af">Please quote the invoice reference in correspondence.</div></div></div>`;}
+function input(f){return `<div class="in32">${f.pre?`<span class="pre">${f.pre}</span>`:''}<span style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${f.v}</span>${f.cal?ic('cal'):''}</div>`;}
+const due=`<div class="need"><div class="lr" style="display:flex;justify-content:space-between"><label style="font-size:.8125rem;font-weight:600">Due date</label><span class="pill warn">Needs you</span></div><div class="msg">${ic('warn')}<span>The document gives no due date and no payment terms.</span></div><label class="rad"><input type="radio" name="d"> Enter a due date</label><label class="rad"><input type="radio" name="d"> No due date (counts as outstanding, never overdue)</label></div>`;
+const terms=`<div class="f"><div class="lr"><label>Payment terms</label><span style="font-size:.75rem;color:var(--soft)">Optional</span></div><div class="in32" style="color:#6b7280">Not on the document</div></div>`;
+const head=`<div class="ph"><div><div class="crumb">Documents › Review</div><h1>Review the invoice <span class="pill warn">1 field needs you</span></h1><div class="sub">01_Invoice_Missing_Due_Date.pdf · Invoice</div></div><div style="display:flex;gap:12px;align-items:center"><span style="font-size:.8125rem;color:var(--muted)">Agent</span></div></div>`;
+const foot=`<div class="foot"><span class="why">${ic('info')}Choose a due date or "No due date" to save.</span><button class="btn2">Discard</button><button class="btn" aria-disabled="true">Save</button></div>`;
+function polishedDesk(){
+  const cards=F.map(f=>`<div class="card${on===f.k?' on':''}" data-k="${f.k}"><div class="f"><div class="lr"><label>${f.l}</label></div>${input(f)}</div></div>`).join('');
+  return `<div class="desk pol"><div class="side"><b>Genie Ops Center</b><div>Ask</div><div>Dashboards</div><div class="on">Documents</div><div>Invoices</div><div>Payments</div></div><div class="main">${head}<div class="body"><div class="viewer" style="position:relative"><svg class="lead" id="lead"></svg><div style="display:flex;justify-content:center">${doc()}</div><div class="cards" id="cards">${cards}</div></div><div class="pnl"><h3>Before you save</h3><div class="cap"><span>Not on the page</span><span>2 fields</span></div>${due}${terms}</div></div>${foot}</div></div>`;
+}
+function formDesk(){
+  const rows=F.map(f=>`<div class="frow${on===f.k?' on':''}" data-k="${f.k}"><div class="f"><label>${f.l}</label>${input(f)}</div><button class="loc" aria-label="Show ${f.l} on the document">${ic('loc')}</button></div>`).join('');
+  return `<div class="desk frm"><div class="side"><b>Genie Ops Center</b><div>Ask</div><div>Dashboards</div><div class="on">Documents</div><div>Invoices</div><div>Payments</div></div><div class="main">${head}<div class="body"><div class="viewer">${doc()}</div><div class="col"><div class="scroll"><div class="f"><label>Type</label><div class="in32"><span style="flex:1">Invoice</span>${ic('chev')}</div></div><h3>Needs you</h3>${due}<h3>From the document</h3>${rows}<h3>Optional</h3>${terms}</div></div></div>${foot}</div></div>`;
+}
+function polishedPhone(){
+  const f=F[1];
+  return `<div class="phone"><div class="pbar">${ic('back')}<b>Review the invoice</b></div><div class="step"><span>Step 2 of 7 · Customer</span><span>1 needs you</span></div><div class="dots">${Array.from({length:7},(_,i)=>`<i class="${i<2?'on':''}"></i>`).join('')}</div><div class="zoom"><div style="font-size:.75rem;color:var(--soft);margin-bottom:6px">On the document</div><div class="ln"><span>Bill to</span><b>ABC Trading</b></div></div><div style="padding:0 16px"><div class="card"><div class="f"><label>Customer</label><div class="in32" style="height:40px">ABC Trading</div></div></div></div><div style="flex:1"></div><div class="pfoot"><button class="btn2">Previous</button><button class="btn">Next</button></div></div>`;
+}
+function formPhone(){
+  const rows=F.map(f=>`<div class="frow" data-k="${f.k}"><div class="f"><label>${f.l}</label>${input(f).replace('class="in32"','class="in32" style="height:40px;font-size:1rem"')}</div><button class="loc" style="width:40px;height:40px" aria-label="Show ${f.l} on the document">${ic('loc')}</button></div>`).join('');
+  return `<div class="phone frm"><div class="pbar">${ic('back')}<b>Review the invoice</b><span class="pill warn">1 needs you</span></div><div class="pscroll"><div class="thumb" style="height:190px;overflow:hidden">${doc()}<span style="position:absolute;right:12px;bottom:10px;background:#fff;border:1px solid var(--hair);border-radius:8px;padding:4px 8px;font-size:.75rem;font-weight:600">Open document</span></div><div style="padding:16px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px"><h3 style="font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0">Needs you</h3>${due}<h3 style="font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0">From the document</h3>${rows}<h3 style="font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:0">Optional</h3>${terms}</div></div><div class="pfoot"><button class="btn2">Discard</button><button class="btn" aria-disabled="true">Save</button></div></div>`;
+}
+function leaders(){
+  const svg=document.getElementById('lead');if(!svg)return;const box=svg.getBoundingClientRect();let h='';
+  document.querySelectorAll('#cards .card').forEach(c=>{const k=c.dataset.k;const ln=document.querySelector(`.doc [data-ln="${k}"]`);if(!ln)return;const a=ln.getBoundingClientRect(),b=c.getBoundingClientRect();const x1=a.right-box.left+4,y1=a.top+a.height/2-box.top,x2=b.left-box.left,y2=b.top+18-box.top,mx=(x1+x2)/2;const act=on===k;h+=`<path d="M${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}" fill="none" stroke="${act?'#2563eb':'#9ca3af'}" stroke-width="${act?1.5:1}"/><circle cx="${x1}" cy="${y1}" r="2" fill="${act?'#2563eb':'#9ca3af'}"/>`;});
+  svg.innerHTML=h;
+}
+function render(){
+  const st=document.getElementById('stage');
+  st.innerHTML=w==='phone'?(v==='polished'?polishedPhone():formPhone()):(v==='polished'?polishedDesk():formDesk());
+  document.querySelectorAll('#vv button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===v));
+  document.querySelectorAll('#ww button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.w===w));
+  leaders();
+  st.querySelectorAll('[data-k]').forEach(el=>{const pick=()=>{if(on!==el.dataset.k){on=el.dataset.k;render();}};el.onmouseenter=pick;el.onclick=pick;});
+}
+document.getElementById('vv').onclick=e=>{if(e.target.dataset.v){v=e.target.dataset.v;on=null;render();}};
+document.getElementById('ww').onclick=e=>{if(e.target.dataset.w){w=e.target.dataset.w;on=null;render();}};
+if(q.get('on'))on=q.get('on');
+render();
+</script></body></html>

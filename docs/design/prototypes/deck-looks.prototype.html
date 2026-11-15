@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Deck looks for generated slides, bead czjw.183 (owner, 2026-11-15: "slides look bad, unimpressive, too simple,
+     lacking style and design"). Owner answers: audience is both leadership and the finance team; the customer's brand color and font lead.
+     Question: which deck look should the Slides agent build every deck in?
+     Three looks, same six slides, same data (dev ledger, 27 Oct 2026): Split panel, Brand band, Card grid.
+     Kept facts: slide rules (one title, one text or bullet list, at most two visuals), 16:9, "Figures as of" footer, brand primary color
+     and font only (no derived shades: tints are the brand color at reduced opacity), shapes PowerPoint can rebuild (solid fills, rounded
+     rectangles, lines, text, native charts). Chart labels keep clear of the axes (czjw.182).
+     Controls: ?look=split|band|cards, ?brand=blue|green|violet, ?view=desktop|phone. World: DESIGN.md. Data: fictional demo ledger. No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: deck looks</title>
+<style>
+@font-face{font-family:"Plus Jakarta Sans";src:url("fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");font-weight:200 800;font-display:swap}
+:root{--fg:#111827;--muted:#4b5563;--soft:#6b7280;--hair:#e5e7eb;--tile:#f3f4f6;--panel:#f9fafb;--b:#2563eb;--font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);color:var(--fg);background:#e9ebef;padding:16px;-webkit-font-smoothing:antialiased}
+button{font:inherit;cursor:pointer}:focus-visible{outline:2px solid var(--b);outline-offset:2px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;max-width:1240px;margin:0 auto 14px}.ctl .t{font-weight:700;margin-right:6px}
+.seg{display:inline-flex;background:#fff;border-radius:10px;padding:3px;gap:2px;border:1px solid var(--hair);flex-wrap:wrap}
+.seg button{border:0;background:none;height:32px;padding:0 10px;border-radius:8px;font-weight:600;font-size:.8125rem;color:#374151}
+.seg button[aria-pressed=true]{background:var(--fg);color:#fff}
+.intro{max-width:1240px;margin:0 auto 14px;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:14px 18px;font-size:.9375rem;line-height:1.5}
+.intro b{font-size:1.0625rem}.intro .k{font-size:.6875rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--b);margin-right:8px}
+.grid{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.phone .grid{max-width:390px;grid-template-columns:1fr;gap:12px}
+.cap{font-size:.75rem;color:var(--muted);margin:6px 2px 0}
+/* A slide: 16:9, everything sized in container units so it scales like a real slide. */
+.sl{container-type:inline-size;aspect-ratio:16/9;position:relative;overflow:hidden;background:#fff;border-radius:6px;box-shadow:0 1px 2px rgb(17 24 39/.08),0 8px 24px -12px rgb(17 24 39/.25)}
+.sl *{box-sizing:border-box}
+.h{font-weight:700;letter-spacing:-.01em;line-height:1.15;margin:0}
+.p{margin:0;line-height:1.45}
+.ft{position:absolute;left:5cqw;right:5cqw;bottom:3cqw;display:flex;justify-content:space-between;font-size:1.25cqw;color:var(--soft)}
+.num{font-weight:800;letter-spacing:-.02em;line-height:1;font-variant-numeric:tabular-nums}
+.num .cur{font-size:.36em;font-weight:700;letter-spacing:0;margin-right:.3em;position:relative;top:-.95em}
+.lab{font-size:1.5cqw;color:var(--muted);font-weight:600}
+.chart{width:100%;height:100%;display:block}
+.chart text{font-family:var(--font);fill:#6b7280}
+.tb{width:100%;border-collapse:collapse;font-size:1.55cqw;font-variant-numeric:tabular-nums}
+.tb th{text-align:left;font-weight:600;color:var(--muted);font-size:1.3cqw;padding:.6cqw .8cqw;border-bottom:.15cqw solid var(--fg)}
+.tb td{padding:.75cqw .8cqw;border-bottom:.1cqw solid var(--hair)}.tb td.r,.tb th.r{text-align:right}
+.tb tr.hot td{font-weight:700}
+.bl{margin:0;padding:0;list-style:none;display:grid;gap:1.8cqw}
+.bl li{display:grid;grid-template-columns:3.2cqw 1fr;gap:1.4cqw;align-items:start;font-size:2.1cqw;line-height:1.35}
+.bl .n{width:3.2cqw;height:3.2cqw;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:1.5cqw}
+
+/* ---------- Look 1: Split panel ---------- */
+.split .pan{position:absolute;inset:0 auto 0 0;width:40%;background:var(--b);color:#fff;padding:6cqw 4.5cqw;display:flex;flex-direction:column;gap:2.4cqw}
+.split .pan .h{font-size:3.3cqw}.split .pan .p{font-size:1.75cqw;opacity:.88}
+.split .pan .ey{font-size:1.25cqw;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.75}
+.split .con{position:absolute;inset:0 0 0 40%;padding:6cqw 5cqw 8cqw;display:flex;flex-direction:column;justify-content:center;gap:2cqw}
+.split .ft{left:44%}.split .ft.on{left:4.5cqw;right:auto;color:rgb(255 255 255/.75)}
+.split.title .pan{width:100%;justify-content:flex-end;padding:7cqw 7cqw 9cqw}
+.split.title .pan .h{font-size:6.2cqw;max-width:70%}.split.title .pan .p{font-size:2.1cqw}
+.split.title .pan::after{content:"";position:absolute;right:7cqw;top:7cqw;width:14cqw;height:14cqw;border:1.2cqw solid rgb(255 255 255/.22);border-radius:50%}
+.split .num{font-size:9cqw;color:var(--b)}
+.split .two{display:grid;grid-template-columns:1fr 1fr;gap:3cqw}.split .two .num{font-size:4.4cqw;white-space:nowrap}
+.split .two>div{display:grid;gap:1cqw;padding-top:2cqw;border-top:.4cqw solid var(--b)}.split .two>div+div{border-top-color:rgb(17 24 39/.25)}.split .two>div+div .num{color:var(--fg)}
+.split .bl .n{background:var(--b);color:#fff}
+
+/* ---------- Look 2: Brand band ---------- */
+.band .top{position:absolute;inset:0 0 auto 0;height:24%;background:var(--b);color:#fff;padding:0 5cqw;display:flex;align-items:center}
+.band .top .h{font-size:3.3cqw;max-width:88%}
+.band .con{position:absolute;inset:24% 0 0 0;padding:4cqw 5cqw 7cqw;display:grid;grid-template-columns:1fr 1.5fr;gap:4cqw;align-items:center}
+.band .con.one{grid-template-columns:1fr}
+.band .con .p{font-size:1.85cqw;color:#374151}
+.band .num{font-size:9.5cqw;color:var(--b)}
+.band .two{display:grid;grid-template-columns:1fr 1fr;gap:2.4cqw}
+.band .two>div{background:rgb(37 99 235/.08);background:color-mix(in srgb,var(--b) 8%,transparent);border-radius:1.4cqw;padding:3cqw;display:grid;gap:1cqw}.band .two .num{font-size:5cqw}
+.band .two>div+div{background:var(--tile)}.band .two>div+div .num{color:var(--fg)}
+.band.title .top{height:100%;align-items:flex-end;padding:0 7cqw 10cqw}
+.band.title .top .h{font-size:6.2cqw;max-width:72%}
+.band.title .sub{position:absolute;left:7cqw;bottom:5.5cqw;color:rgb(255 255 255/.85);font-size:2cqw}
+.band.title .top::before{content:"";position:absolute;left:7cqw;top:7cqw;width:10cqw;height:.9cqw;background:#fff;border-radius:1cqw}
+.band .ft.on{color:rgb(255 255 255/.75)}
+.band .bl .n{background:var(--b);color:#fff}
+
+/* ---------- Look 3: Card grid ---------- */
+.cards{background:var(--tile)}
+.cards .hd{position:absolute;left:5cqw;right:5cqw;top:5cqw;display:grid;gap:1.4cqw}
+.cards .hd .ey{display:flex;gap:1cqw;align-items:center;font-size:1.25cqw;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--b)}
+.cards .hd .ey i{width:1.2cqw;height:1.2cqw;border-radius:.3cqw;background:var(--b)}
+.cards .hd .h{font-size:3.3cqw;max-width:90%}
+.cards .con{position:absolute;left:5cqw;right:5cqw;top:23cqw;bottom:7cqw;display:grid;grid-template-columns:1fr 1.6fr;gap:2cqw}
+.cards .con.one{grid-template-columns:1fr}.cards .con.even{grid-template-columns:1.25fr 1.25fr 1fr}
+.cards .con.even .num{font-size:4.4cqw;white-space:nowrap}
+.cards .cd{min-height:0;overflow:hidden;background:#fff;border-radius:1.6cqw;padding:2.6cqw;display:flex;flex-direction:column;gap:1cqw;justify-content:center;box-shadow:0 .1cqw .3cqw rgb(17 24 39/.06)}
+.cards .cd>.chart{flex:1;min-height:0}
+.cards .cd .p{font-size:1.75cqw;color:#374151}
+.cards .num{font-size:6.4cqw;color:var(--b)}.cards .cd.alt .num{color:var(--fg)}
+.cards.title{background:#fff}
+.cards.title .blk{position:absolute;inset:4cqw;border-radius:2cqw;background:rgb(37 99 235/.08);background:color-mix(in srgb,var(--b) 9%,transparent);padding:6cqw;display:flex;flex-direction:column;justify-content:flex-end;gap:2cqw}
+.cards.title .h{font-size:6cqw;max-width:75%}.cards.title .p{font-size:2cqw;color:var(--muted)}
+.cards.title .blk::before{content:"";width:10cqw;height:.9cqw;border-radius:1cqw;background:var(--b)}
+.cards .bl .n{background:color-mix(in srgb,var(--b) 14%,transparent);color:var(--b)}
+.notes{max-width:1240px;margin:16px auto 0;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:16px 20px;font-size:.9375rem;line-height:1.55}.notes h3{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px}.notes h3:first-child{margin-top:0}.notes ul{margin:0;padding-left:18px}
+</style></head><body>
+<div class="ctl"><span class="t">PROTOTYPE: deck looks</span>
+<div class="seg" id="lk"><button data-l="split">1 Split panel</button><button data-l="band">2 Brand band</button><button data-l="cards">3 Card grid</button></div>
+<div class="seg" id="br"><button data-b="blue">Brand: blue</button><button data-b="green">green</button><button data-b="violet">violet</button></div>
+<div class="seg" id="vw"><button data-v="desktop">Desktop</button><button data-v="phone">Phone 390</button></div></div>
+<div class="intro" id="intro"></div>
+<div id="root"><div class="grid" id="grid"></div></div>
+<div class="notes"><h3>Same in every look</h3><ul>
+<li>Six slide layouts the Slides agent chooses from: Title, Big number, Chart with insight, Two figures, Table with note, Priorities list. Each stays inside today's slide rules.</li>
+<li>The title is the finding, in one sentence. Numbers are big and in the brand color; the comparison number is neutral.</li>
+<li>Only the customer's brand color and font. Tints are that color at 8 to 14 percent, never a made-up shade, so any brand works (switch the brand above).</li>
+<li>Every shape exists in PowerPoint: solid fills, rounded rectangles, lines, text and native charts, so the export can match.</li>
+<li>Charts: two series as brand color and neutral grey, a short legend, month labels that keep clear of the axis, and no source line inside the chart (the footer carries "Figures as of").</li>
+<li>White text sits on the brand color only when it reaches 4.5:1; the deck's existing text check recolors it otherwise.</li></ul>
+<h3>Default, not a limit (owner, 2026-11-15)</h3><ul><li>The picked look is the default: every deck starts in it, built from the customer's brand, and it must look good with no prompt at all.</li><li>A person can still ask for any style ("make it dark and minimal", "use our green and a serif", "playful, for an all-hands"), as Claude does for slides. The agent then changes the deck's theme (colors, fonts, background, accent, layout weight) for that deck only, and the export follows.</li></ul>
+<h3>Not decided here</h3><ul><li>How the agent picks a layout per slide, and the dark background option, follow the look you pick.</li></ul></div>
+<script>
+const BR={blue:'#2563eb',green:'#047857',violet:'#6d28d9'};
+const LOOKS={split:{name:'Split panel',lead:true,line:'A solid brand panel holds the claim on the left; the evidence sits on white at the right. Strong in a boardroom, calm enough for a team update.'},band:{name:'Brand band',line:'A brand band across the top carries the claim; the evidence fills a clean white field below. Closest to familiar corporate decks.'},cards:{name:'Card grid',line:'Each piece of evidence sits in its own white card on a soft grey ground, like a polished dashboard. Easy to scan, lighter in a boardroom.'}};
+const q=new URLSearchParams(location.search);let look=q.get('look')||'split',brand=q.get('brand')||'blue',view=q.get('view')||'desktop';
+const M=['May','Jun','Jul','Aug','Sep','Oct'],INV=[34.9,36.7,38.5,40.3,42.1,43.9],COL=[31.3,36.55,38.35,40.15,30.7,18.15];
+function chart(){
+  const W=400,H=230,L=46,R=10,T=26,B=30,mx=48,y=v=>T+(H-T-B)*(1-v/mx),x=i=>L+14+i*((W-L-R-14)/5);
+  const g=[0,15,30,45].map(v=>`<line x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}" stroke="#e5e7eb"/><text x="${L-8}" y="${y(v)+4}" font-size="11" text-anchor="end">${v?v+'k':'0'}</text>`).join('');
+  const xl=M.map((m,i)=>`<text x="${x(i)}" y="${H-8}" font-size="11" text-anchor="middle">${m}</text>`).join('');
+  const pl=(a,c,o)=>`<polyline fill="none" stroke="${c}" stroke-opacity="${o}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" points="${a.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`+a.map((v,i)=>`<circle cx="${x(i)}" cy="${y(v)}" r="3.5" fill="${c}" fill-opacity="${o}"/>`).join('');
+  const lg=`<circle cx="${L}" cy="10" r="4" fill="var(--b)"/><text x="${L+9}" y="14" font-size="11" style="fill:#374151">Invoiced sales</text><circle cx="${L+110}" cy="10" r="4" fill="#9ca3af"/><text x="${L+119}" y="14" font-size="11" style="fill:#374151">Collections</text><text x="${W-R}" y="14" font-size="11" text-anchor="end">SGD</text>`;
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Invoiced sales and collections, May to October 2026">${g}${xl}${pl(COL,'#9ca3af',1)}${pl(INV,'var(--b)',1)}${lg}</svg>`;
+}
+const TBL=`<table class="tb"><thead><tr><th>Customer</th><th>Invoice</th><th class="r">SGD</th><th class="r">Days late</th></tr></thead><tbody><tr class="hot"><td>Orchid Retail</td><td>INV-2026-08-04</td><td class="r">4,050</td><td class="r">70</td></tr><tr><td>Harbor Foods</td><td>INV-2026-09-03</td><td class="r">5,200</td><td class="r">40</td></tr><tr><td>Orchid Retail</td><td>INV-2026-09-04</td><td class="r">4,200</td><td class="r">27</td></tr><tr><td>ABC Trading</td><td>INV-2026-10-01</td><td class="r">6,500</td><td class="r">12</td></tr><tr><td>Harbor Foods</td><td>INV-2026-10-03</td><td class="r">7,400</td><td class="r">10</td></tr></tbody></table>`;
+const LIST=`<ol class="bl"><li><span class="n">1</span><span>Call Orchid Retail about the August invoice, now 70 days late.</span></li><li><span class="n">2</span><span>Agree a payment plan with Harbor Foods for SGD 12,600.</span></li><li><span class="n">3</span><span>Remind ABC Trading before its invoice reaches 30 days.</span></li><li><span class="n">4</span><span>Match the October payments that are still to arrive.</span></li></ol>`;
+const S=[
+ {k:'title',lay:'Title',t:'Receivables review',s:'May to October 2026 · Figures as of 27 Oct 2026'},
+ {k:'big',lay:'Big number',t:'SGD 27,350 is overdue across three customers',fig:['27,350','Overdue · 5 invoices'],tx:'Harbor Foods holds almost half: SGD 12,600 over two invoices.'},
+ {k:'chart',lay:'Chart with insight',t:'Invoiced sales rose every month, to SGD 43,900 in October',tx:'Collections fell behind from September. October is still incomplete.'},
+ {k:'two',lay:'Two figures',t:'Collections covered 83% of invoicing since May',figs:[['236,400','Invoiced'],['195,200','Collected']],tx:'SGD 41,200 is still outstanding.'},
+ {k:'table',lay:'Table with note',t:'Five invoices are overdue; the oldest is 70 days late',tx:'Sorted by days late. Bold marks the oldest.'},
+ {k:'list',lay:'Priorities list',t:'Collection priorities for November'}];
+const money=v=>`<span class="cur">SGD</span>${v}`;
+function foot(n,on){return `<div class="ft ${on?'on':''}"><span>Figures as of 27 Oct 2026</span><span>E2E · ${n} / 6</span></div>`;}
+function split(s,n){
+  if(s.k==='title')return `<div class="sl split title"><div class="pan"><span class="ey">E2E · Finance</span><h3 class="h">${s.t}</h3><p class="p">${s.s}</p></div></div>`;
+  const pan=`<div class="pan"><span class="ey">${['','Overdue','Trend','Coverage','Overdue invoices','Next steps'][n-1]}</span><h3 class="h">${s.t}</h3>${s.tx?`<p class="p">${s.tx}</p>`:''}</div>`;
+  let c='';
+  if(s.k==='big')c=`<div class="num">${money(s.fig[0])}</div><div class="lab">${s.fig[1]}</div>`;
+  if(s.k==='chart')c=`<div style="height:70%">${chart()}</div>`;
+  if(s.k==='two')c=`<div class="two">${s.figs.map(f=>`<div><div class="num">${money(f[0])}</div><div class="lab">${f[1]}</div></div>`).join('')}</div>`;
+  if(s.k==='table')c=TBL;
+  if(s.k==='list')c=LIST;
+  return `<div class="sl split">${pan}<div class="con">${c}</div>${foot(n)}</div>`;
+}
+function band(s,n){
+  if(s.k==='title')return `<div class="sl band title"><div class="top"><h3 class="h">${s.t}</h3></div><p class="sub">${s.s}</p></div>`;
+  const top=`<div class="top"><h3 class="h">${s.t}</h3></div>`;
+  let c='';
+  if(s.k==='big')c=`<div class="con"><div><div class="num">${money(s.fig[0])}</div><div class="lab">${s.fig[1]}</div></div><p class="p">${s.tx}</p></div>`;
+  if(s.k==='chart')c=`<div class="con"><p class="p">${s.tx}</p><div style="height:100%">${chart()}</div></div>`;
+  if(s.k==='two')c=`<div class="con one"><div class="two">${s.figs.map(f=>`<div><div class="num">${money(f[0])}</div><div class="lab">${f[1]}</div></div>`).join('')}</div><p class="p">${s.tx}</p></div>`;
+  if(s.k==='table')c=`<div class="con" style="grid-template-columns:1fr 2.4fr"><p class="p">${s.tx}</p>${TBL}</div>`;
+  if(s.k==='list')c=`<div class="con one">${LIST}</div>`;
+  return `<div class="sl band">${top}${c}${foot(n)}</div>`;
+}
+function cards(s,n){
+  if(s.k==='title')return `<div class="sl cards title"><div class="blk"><h3 class="h">${s.t}</h3><p class="p">${s.s}</p></div></div>`;
+  const hd=`<div class="hd"><span class="ey"><i></i>${['','Overdue','Trend','Coverage','Overdue invoices','Next steps'][n-1]}</span><h3 class="h">${s.t}</h3></div>`;
+  let c='';
+  if(s.k==='big')c=`<div class="con"><div class="cd"><div class="num">${money(s.fig[0])}</div><div class="lab">${s.fig[1]}</div></div><div class="cd"><p class="p">${s.tx}</p></div></div>`;
+  if(s.k==='chart')c=`<div class="con"><div class="cd"><p class="p">${s.tx}</p></div><div class="cd">${chart()}</div></div>`;
+  if(s.k==='two')c=`<div class="con even">${s.figs.map((f,i)=>`<div class="cd ${i?'alt':''}"><div class="num">${money(f[0])}</div><div class="lab">${f[1]}</div></div>`).join('')}<div class="cd"><p class="p">${s.tx}</p></div></div>`;
+  if(s.k==='table')c=`<div class="con" style="grid-template-columns:1fr 2.6fr"><div class="cd"><p class="p">${s.tx}</p></div><div class="cd">${TBL}</div></div>`;
+  if(s.k==='list')c=`<div class="con one"><div class="cd">${LIST}</div></div>`;
+  return `<div class="sl cards">${hd}${c}${foot(n)}</div>`;
+}
+function render(){
+  document.documentElement.style.setProperty('--b',BR[brand]);
+  const f={split,band,cards}[look],L=LOOKS[look];
+  document.getElementById('intro').innerHTML=`${L.lead?'<span class="k">Lead option</span>':''}<b>${L.name}</b><br>${L.line}`;
+  document.getElementById('grid').innerHTML=S.map((s,i)=>`<figure style="margin:0">${f(s,i+1)}<figcaption class="cap">${i+1}. ${s.lay}</figcaption></figure>`).join('');
+  document.getElementById('root').className=view==='phone'?'phone':'';
+  for(const [id,attr,val] of [['lk','l',look],['br','b',brand],['vw','v',view]])document.querySelectorAll(`#${id} button`).forEach(b=>b.setAttribute('aria-pressed',b.dataset[attr]===val));
+}
+document.getElementById('lk').onclick=e=>{if(e.target.dataset.l){look=e.target.dataset.l;render();}};
+document.getElementById('br').onclick=e=>{if(e.target.dataset.b){brand=e.target.dataset.b;render();}};
+document.getElementById('vw').onclick=e=>{if(e.target.dataset.v){view=e.target.dataset.v;render();}};
+render();
+</script></body></html>

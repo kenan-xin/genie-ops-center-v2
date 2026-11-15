@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Agent run progress, fixed version, for the G3 dry run of follow-up 11 (owner, 2026-11-15: "no indication the
+     agent is working ... looks stuck"). Beads czjw.181 (progress) and 6wz1.113 (one icon column).
+     Question: does the run always look alive, and say where it is, from the first step to the answer?
+     Rules shown: while a run goes there is always exactly one live last row (the running step, or Thinking, or Writing slide n of m)
+     with a spinner and a ticking time; finished steps keep a check; when the answer starts the steps fold into "Worked for 24s";
+     every icon sits in one 20 px column and every label starts at the same edge. Reduced motion: static glyph, the time still ticks.
+     Controls: Play, Pause, Restart, jump to a moment, reduced motion, width. World: DESIGN.md. Icons: Lucide (ISC). No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: agent run progress</title>
+<style>
+:root{--fg:#111827;--panel:#f9fafb;--tile:#f3f4f6;--hair:#e5e7eb;--muted:#4b5563;--icon:#6b7280;--idle:#374151;--primary:#2563eb;--ok:#047857;--font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);color:var(--fg);background:#e9ebef;padding:16px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 auto 12px;max-width:980px}.ctl .t{font-weight:700;margin-right:6px}
+.seg{display:inline-flex;background:#fff;border-radius:10px;padding:3px;gap:2px;border:1px solid var(--hair);flex-wrap:wrap}
+.seg button{border:0;background:none;height:32px;padding:0 10px;border-radius:8px;font-weight:600;font-size:.8125rem;color:var(--idle)}
+.seg button[aria-pressed=true]{background:var(--fg);color:#fff}
+.wrap{display:flex;gap:24px;justify-content:center;align-items:flex-start;flex-wrap:wrap;max-width:980px;margin:0 auto}
+.pane{background:#fff;border-radius:12px;box-shadow:0 20px 40px -20px rgb(0 0 0/.35);overflow:hidden;display:flex;flex-direction:column;height:640px}
+.pane.w390{width:390px}.pane.w440{width:440px}
+.ph{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid var(--hair);font-weight:700}
+.ph .st{font-size:.75rem;font-weight:600;color:var(--muted);background:var(--tile);border-radius:999px;padding:2px 8px}
+.conv{flex:1;overflow:auto;padding:16px;display:flex;flex-direction:column;gap:16px}
+.me{align-self:flex-end;background:var(--tile);border-radius:12px 12px 4px 12px;padding:8px 12px;font-size:.9375rem;max-width:80%}
+/* One icon column: 20 px, then a 10 px gap, then the label edge. */
+.tl{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+.r{display:grid;grid-template-columns:16px 1fr auto;column-gap:10px;align-items:center;min-height:32px;font-size:.875rem}
+.r .lb{min-width:0;color:var(--idle)}.r .tm{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.r.done .gl{color:var(--icon)}
+.r.live .lb{color:var(--fg);font-weight:600}
+.r.live{row-gap:4px;padding:4px 0 6px}
+.sub{grid-column:2/-1;font-size:.75rem;color:var(--muted)}
+.bar{display:flex;gap:3px;grid-column:2/-1;max-width:220px}.bar i{flex:1;height:4px;border-radius:2px;background:var(--hair)}.bar i.on{background:var(--primary)}
+/* Icons start at the text edge, not centered in their column; -1px offsets the glyph's own side bearing (6wz1.113). */
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;display:block;margin-left:-1px}
+.fold .ic:last-of-type{margin-left:0}
+.spin{width:16px;height:16px;margin:0;border-radius:50%;border:2px solid #bfdbfe;border-top-color:var(--primary);animation:sp .8s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+.shim{background:linear-gradient(90deg,var(--fg) 0%,var(--fg) 40%,#9ca3af 50%,var(--fg) 60%,var(--fg) 100%);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent!important;animation:sh 1.6s linear infinite}
+@keyframes sh{from{background-position:100% 0}to{background-position:-100% 0}}
+.rm .spin{animation:none;border:0;width:16px;height:16px}.rm .spin::before{content:"";display:block;width:16px;height:16px;border-radius:50%;border:2px dashed var(--primary)}
+.rm .shim{animation:none;color:var(--fg)!important;background:none}
+.fold{display:grid;grid-template-columns:16px auto auto 1fr;column-gap:10px;align-items:center;min-height:32px;font-size:.875rem;color:var(--muted);border:0;background:none;padding:0;text-align:left;border-radius:8px}
+.fold:hover{background:rgb(17 24 39/.06)}
+.spark{color:var(--primary)}
+.ans{font-size:.9375rem;line-height:1.55;margin:0}.ans b{font-weight:700}
+.comp{border-top:1px solid var(--hair);padding:12px 16px}
+.box{border:1px solid #6b7280;border-radius:12px;padding:10px 12px;min-height:72px;display:flex;flex-direction:column;justify-content:space-between;color:var(--muted);font-size:.875rem}
+.box .row{display:flex;justify-content:flex-end}.sq{width:36px;height:36px;border-radius:8px;border:0;background:var(--primary);display:grid;place-items:center}.sq span{width:12px;height:12px;background:#fff;border-radius:2px}
+.send{width:36px;height:36px;border-radius:8px;border:0;background:#93c5fd;display:grid;place-items:center;color:#fff}
+.side{max-width:420px;background:#fff;border-radius:12px;padding:16px 20px;font-size:.9375rem;line-height:1.55;border:1px solid var(--hair)}
+.side h3{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 6px}.side h3:first-child{margin-top:0}.side ul{margin:0;padding-left:18px}
+.now{font-weight:700;color:var(--primary)}
+</style></head><body>
+<div class="ctl"><span class="t">PROTOTYPE: run progress</span>
+<div class="seg"><button id="play">Play</button><button id="pause">Pause</button><button id="restart">Restart</button></div>
+<div class="seg" id="jump"></div>
+<div class="seg"><button id="rm" aria-pressed="false">Reduced motion</button></div>
+<div class="seg" id="wd"><button data-w="w390" aria-pressed="true">Phone 390</button><button data-w="w440">Panel 440</button></div></div>
+<div class="wrap">
+<section class="pane w390" id="pane"><div class="ph">Slides agent <span class="st" id="pst">Working</span></div><div class="conv" id="conv"></div>
+<div class="comp"><div class="box"><span>Ask about this deck</span><div class="row" id="btn"></div></div></div></section>
+<aside class="side"><h3>Moment</h3><p class="now" id="now"></p>
+<h3>What is fixed</h3><ul>
+<li>The list never shows only check marks while the run goes. The last row is always alive: the running step, or "Thinking" between steps, or "Writing slide 6 of 9".</li>
+<li>The live row has a real spinner and a time that ticks each second, so a slow step reads as slow, not stuck.</li>
+<li>Repeated reads stay one row, "Reading Invoices", with "4 reads" under it, instead of a ×4 chip that vanishes.</li>
+<li>Writing shows where it is: "Writing slide 6 of 9" with a 9-part bar.</li>
+<li>When the answer starts, the steps fold into one line "Worked for 24s · 7 steps", which opens them again.</li>
+<li>One icon column: every check, spinner and the sparkle start at the same left edge as the answer text below, and every label starts at the same edge (6wz1.113). Icons are not centered in a wider column, which pushed them right.</li>
+<li>The answer is one body size; only the key figure is bold (czjw.184).</li>
+<li>The header says "Working" while it runs and "Saved" after; Stop is the one square button in the composer.</li>
+<li>Reduced motion: the spinner is a still dashed ring and the text does not shimmer; the time still ticks.</li></ul>
+<h3>Words</h3><ul><li>Steps in the user's terms: "Looked up the data", "Read the deck", "Reading Invoices", "Thinking", "Writing slide 6 of 9", "Checking every number".</li></ul></aside>
+</div>
+<script>
+const I={check:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',spark:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',chev:'<path d="m9 18 6-6-6-6"/>',up:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>'};
+const ic=n=>`<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+// Each moment: done steps (label, seconds), the live row, how long it lasts.
+const M=[
+ {name:'Start',done:[],live:{k:'think',lb:'Thinking'},dur:2},
+ {name:'Looking up',done:[],live:{k:'step',lb:'Looking up the data'},dur:2},
+ {name:'Reading the deck',done:[['Looked up the data',1]],live:{k:'step',lb:'Reading the deck'},dur:2},
+ {name:'Reading Invoices',done:[['Looked up the data',1],['Read the deck',1]],live:{k:'step',lb:'Reading Invoices',sub:'4 reads'},dur:4},
+ {name:'Thinking',done:[['Looked up the data',1],['Read the deck',1],['Read Invoices · 4 reads',3]],live:{k:'think',lb:'Thinking'},dur:4},
+ {name:'Writing slide 6',done:[['Looked up the data',1],['Read the deck',1],['Read Invoices · 4 reads',3],['Planned 4 new slides',4]],live:{k:'write',lb:'Writing slide 6 of 9',n:6,m:9},dur:3},
+ {name:'Writing slide 9',done:[['Looked up the data',1],['Read the deck',1],['Read Invoices · 4 reads',3],['Planned 4 new slides',4]],live:{k:'write',lb:'Writing slide 9 of 9',n:9,m:9},dur:3},
+ {name:'Checking',done:[['Looked up the data',1],['Read the deck',1],['Read Invoices · 4 reads',3],['Planned 4 new slides',4],['Wrote slides 6 to 9',8]],live:{k:'step',lb:'Checking every number'},dur:3},
+ {name:'Answer',answer:true,dur:99}
+];
+let i=0,t=0,playing=true,timer=null;
+const conv=document.getElementById('conv');
+function liveRow(l){
+  const icon='<div class="spin" aria-hidden="true"></div>';
+  const lb=l.k==='think'?`<span class="lb shim">${l.lb}</span>`:`<span class="lb">${l.lb}</span>`;
+  let extra='';
+  if(l.sub)extra=`<div class="sub">${l.sub}</div>`;
+  if(l.k==='write')extra=`<div class="bar" aria-hidden="true">${Array.from({length:l.m},(_,j)=>`<i class="${j<l.n?'on':''}"></i>`).join('')}</div>`;
+  return `<li class="r live" role="status">${icon}${lb}<span class="tm">${t}s</span>${extra}</li>`;
+}
+function render(){
+  const m=M[i];
+  document.getElementById('now').textContent=`${i+1}. ${m.name}`;
+  document.querySelectorAll('#jump button').forEach((b,j)=>b.setAttribute('aria-pressed',j===i));
+  let h='<div class="me">add 4 more slides</div>';
+  if(m.answer){
+    h+=`<button class="fold" aria-expanded="false"><span class="spark">${ic('spark')}</span><span>Worked for 24s · 7 steps</span>${ic('chev')}<span></span></button>`;
+    h+=`<p class="ans">Added four slides, so the deck now has <b>9 slides</b>. Slides 6 to 9 cover payment behaviour, the largest overdue balances, collections by customer and next steps. Every number was checked against its chart.</p>`;
+    document.getElementById('pst').textContent='Saved';
+    document.getElementById('btn').innerHTML=`<button class="send" aria-label="Send">${ic('up')}</button>`;
+  } else {
+    h+='<ol class="tl" aria-label="Progress">'+m.done.map(([lb,s])=>`<li class="r done"><span class="gl">${ic('check')}</span><span class="lb">${lb}</span><span class="tm">${s}s</span></li>`).join('')+liveRow(m.live)+'</ol>';
+    document.getElementById('pst').textContent='Working';
+    document.getElementById('btn').innerHTML='<button class="sq" aria-label="Stop"><span></span></button>';
+  }
+  conv.innerHTML=h;
+}
+function tick(){ if(!playing)return; t++; if(t>=M[i].dur && i<M.length-1){i++;t=0;} render(); }
+function go(){ clearInterval(timer); timer=setInterval(tick,1000); }
+document.getElementById('jump').innerHTML=M.map((m,j)=>`<button data-j="${j}">${j+1}</button>`).join('');
+document.getElementById('jump').onclick=e=>{if(e.target.dataset.j){i=+e.target.dataset.j;t=0;render();}};
+document.getElementById('play').onclick=()=>{playing=true;};
+document.getElementById('pause').onclick=()=>{playing=false;};
+document.getElementById('restart').onclick=()=>{i=0;t=0;playing=true;render();};
+document.getElementById('rm').onclick=e=>{const on=e.target.getAttribute('aria-pressed')!=='true';e.target.setAttribute('aria-pressed',on);document.getElementById('pane').classList.toggle('rm',on);};
+document.getElementById('wd').onclick=e=>{if(!e.target.dataset.w)return;const p=document.getElementById('pane');p.classList.remove('w390','w440');p.classList.add(e.target.dataset.w);document.querySelectorAll('#wd button').forEach(b=>b.setAttribute('aria-pressed',b===e.target));};
+if(matchMedia('(prefers-reduced-motion: reduce)').matches){document.getElementById('pane').classList.add('rm');document.getElementById('rm').setAttribute('aria-pressed','true');}
+const q=new URLSearchParams(location.search);if(q.get('moment')){i=Math.min(M.length-1,Math.max(0,+q.get('moment')-1));playing=false;}
+render();go();
+</script></body></html>

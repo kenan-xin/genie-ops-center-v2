@@ -2,6 +2,14 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-15
+
+### Added, the follow-up 13 prototypes, owner picks
+
+- Seven prototypes that the owner approved during the follow-up 11 dry run: the phone deck page (`czjw.176`), role detail and person access with the standard access words and assignments table (`d8l5.61`), Edit slide as one stacked form (`czjw.180`), agent progress with one live last row (`czjw.181`), deck look 1 Split panel (`czjw.183`), and the review desk as one form (`czjw.187`).
+- Each file is copied as it is at its named commit on `chore/prototype-phone-adapt`. The review desk comparison now opens One form by default.
+- Files: `prototypes/deck-phone.prototype.html`, `role-detail.prototype.html`, `person-access.prototype.html`, `edit-slide.prototype.html`, `agent-progress.prototype.html`, `deck-looks.prototype.html`, `review-desk-compare.prototype.html`, and `prototypes/fonts/`. Record: `imports/2026-11-15-follow-up-13-prototypes.md`.
+
 ## 2026-11-12
 
 ### Changed, the category name is the caption in the workspace menu

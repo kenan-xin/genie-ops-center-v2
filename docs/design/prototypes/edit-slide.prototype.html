@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Edit slide sheet, redesign for the G3 dry run of follow-up 11 (owner, 2026-11-15, E5: "this is sloppily designed").
+     Question: how does the Edit slide sheet read as one familiar form, with no holes, and say what each part can do?
+     Switch with ?view=phone|desktop and ?state=chart|image|full|bullets|nobody, or the bar at the top.
+     Facts it keeps (packages/modules/slides/src/contract.ts, slide-editor.tsx): title 90 characters, one text (280) or one bullet
+     list (5 items of 80), at most two charts or images, image upload PNG or JPEG with required alt text (200), figures and charts
+     come from the agent and only their removal is done here. World: DESIGN.md; secondary buttons pick C. Icons: Lucide (ISC).
+     Data: fictional. No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: Edit slide sheet</title>
+<style>
+:root{--fg:#111827;--panel:#f9fafb;--tile:#f3f4f6;--hair:#e5e7eb;--ctl:#d1d5db;--input:#6b7280;--muted:#4b5563;--icon:#6b7280;--idle:#374151;--primary:#2563eb;--ptint:#eff6ff;--danger:#b91c1c;--hover:rgb(17 24 39/.06);--font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);color:var(--fg);background:#e9ebef;padding:16px;-webkit-font-smoothing:antialiased}
+button,input,textarea{font:inherit;color:inherit}button{cursor:pointer}:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 auto 16px;max-width:1280px}.ctl .t{font-weight:700;margin-right:6px}
+.seg{display:inline-flex;background:#fff;border-radius:10px;padding:3px;gap:2px;border:1px solid var(--hair)}
+.seg button{border:0;background:none;height:32px;padding:0 10px;border-radius:8px;font-weight:600;font-size:.8125rem;color:var(--idle)}
+.seg button[aria-pressed=true]{background:var(--fg);color:#fff}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}.i20{width:20px;height:20px}
+.phone{width:390px;height:844px;margin:0 auto;border-radius:32px;box-shadow:0 0 0 10px #1f2937,0 30px 60px -20px rgb(0 0 0/.45);overflow:hidden;position:relative;background:#fff}
+.desk{max-width:1280px;height:820px;margin:0 auto;border-radius:12px;overflow:hidden;position:relative;background:var(--panel);box-shadow:0 20px 40px -20px rgb(0 0 0/.35)}
+.desk .page{padding:28px 32px}.desk .page h1{font-size:1.5rem;margin:0 0 16px}.desk .page .cv{width:640px;aspect-ratio:16/9;background:#fff;border:1px solid var(--hair);border-radius:12px}
+.scrim{position:absolute;inset:0;background:rgb(17 24 39/.25)}
+.sheet{position:absolute;top:0;bottom:0;right:0;width:440px;background:#fff;display:flex;flex-direction:column;box-shadow:0 25px 50px -12px rgb(17 24 39/.18)}
+.phone .sheet{width:100%;top:24px;border-radius:16px 16px 0 0}
+.grab{width:36px;height:4px;border-radius:2px;background:var(--ctl);margin:8px auto 0}
+.head{display:flex;gap:8px;align-items:flex-start;padding:12px 8px 12px 20px;border-bottom:1px solid var(--hair)}
+.head .tt{flex:1;min-width:0}.head h2{font-size:1.125rem;margin:6px 0 2px}.head p{margin:0;font-size:.875rem;color:var(--muted)}
+.ib{width:44px;height:44px;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--idle);flex:none}.ib:hover{background:var(--hover)}
+.body{flex:1;overflow:auto;padding:16px 20px 24px;display:flex;flex-direction:column;gap:20px;align-content:start}
+.prev{container-type:inline-size;overflow:hidden;width:100%;aspect-ratio:16/9;border:1px solid var(--hair);border-radius:8px;background:#fff;padding:5% 6%;display:flex;flex-direction:column;gap:4%;box-shadow:0 1px 2px rgb(17 24 39/.05)}
+.prev .pt{font-weight:700;font-size:3.4cqw;line-height:1.25;border-bottom:2px solid var(--primary);padding-bottom:4%}
+.prev .pb{display:grid;grid-template-columns:1fr 1fr;gap:6%;flex:1;min-height:0}.prev .px{font-size:2.3cqw;color:var(--idle);line-height:1.35}.prev .px ul{margin:0;padding-left:12px}
+.prev .pv{display:grid;gap:6%;grid-auto-rows:1fr}.prev .pv>div{border:1px solid var(--hair);border-radius:4px;display:grid;place-items:center;color:var(--icon);overflow:hidden}
+.prev.one .pb{grid-template-columns:1fr}
+.cap{font-size:.75rem;color:var(--muted);margin-top:6px}
+.phone .prev{max-width:240px}.phone .pvw{display:flex;gap:12px;align-items:flex-end}.phone .pvw .cap{margin:0}
+.f{display:grid;gap:6px}.f label,.sec h3{font-weight:600;font-size:.875rem;margin:0}
+.f .row{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.cnt{font-size:.75rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.inp{width:100%;border:1px solid var(--input);border-radius:8px;padding:8px 12px;font-size:.9375rem;background:#fff;min-height:36px}.phone .inp{min-height:44px}
+textarea.inp{resize:vertical;line-height:1.45}
+.hint{font-size:.8125rem;color:var(--muted);margin:0}
+.sec{display:grid;gap:8px}.sec .row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.lnk{border:0;background:none;color:var(--primary);font-weight:600;font-size:.8125rem;padding:4px 0;display:inline-flex;gap:6px;align-items:center}
+.list{list-style:none;margin:0;padding:0;border:1px solid var(--hair);border-radius:12px}
+.list li{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;padding:10px 6px 10px 12px;border-bottom:1px solid var(--hair)}.list li:last-child{border-bottom:0}
+.th{width:56px;height:36px;border-radius:6px;background:var(--tile);display:grid;place-items:center;color:var(--icon);overflow:hidden}
+.th.img{background:linear-gradient(135deg,#bfdbfe,#93c5fd 60%,#60a5fa)}
+.nm{min-width:0}.nm b{display:block;font-weight:600;font-size:.875rem;overflow-wrap:anywhere}.nm span{font-size:.8125rem;color:var(--muted)}
+.li-alt{grid-column:1/-1;padding:0 6px 4px 0}
+.btn2{height:40px;border-radius:8px;border:1px solid var(--hair);background:#fff;padding:0 14px;font-weight:600;font-size:.875rem;display:inline-flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgb(17 24 39/.07);color:#1f2937;white-space:nowrap;justify-content:center}
+.btn2:hover{background-image:linear-gradient(var(--hover),var(--hover))}.btn2[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+.btn{height:40px;border-radius:8px;border:0;background:var(--primary);color:#fff;padding:0 16px;font-weight:600;font-size:.875rem}
+.phone .btn,.phone .btn2{height:44px}
+.add{justify-self:start}
+.why{display:flex;gap:8px;font-size:.8125rem;color:var(--muted);align-items:flex-start;margin:0}
+.agent{display:flex;gap:8px;align-items:flex-start;font-size:.8125rem;color:var(--idle);background:var(--panel);border-radius:8px;padding:10px 12px;margin:0}
+.agent a{color:var(--primary);font-weight:600;text-decoration:none}
+.bodyadd{display:flex;gap:8px;flex-wrap:wrap}
+.bl{display:grid;gap:6px}.bl .bi{display:flex;gap:6px;align-items:center}.bl .bi .inp{flex:1}
+.foot{border-top:1px solid var(--hair);padding:12px 20px 16px;display:flex;gap:8px;justify-content:flex-end;background:#fff}
+.phone .foot{padding-bottom:28px}.phone .foot>*{flex:1}
+.notes{max-width:1280px;margin:16px auto 0;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:16px 20px;font-size:.9375rem;line-height:1.55}.notes h3{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px}.notes h3:first-child{margin-top:0}.notes ul{margin:0;padding-left:18px}
+</style></head><body>
+<div class="ctl"><span class="t">PROTOTYPE: Edit slide</span>
+<div class="seg" id="vv"><button data-v="desktop">Desktop 1440</button><button data-v="phone">Phone 390</button></div>
+<div class="seg" id="ss"><button data-s="chart">One chart</button><button data-s="image">Chart + image</button><button data-s="full">Two figures (full)</button><button data-s="bullets">Bullets</button><button data-s="nobody">No text yet</button></div></div>
+<div id="stage"></div>
+<div class="notes">
+<h3>What changed from the build</h3>
+<ul>
+<li>No holes: the form stacks from the top with one 20 px gap. The build's body is a grid that fills the sheet, so its rows stretched apart.</li>
+<li>A live preview of the slide at the top shows each change before Save, as slide tools do.</li>
+<li>The header names the slide ("Slide 4 of 5") and closes with X. The odd line "Its stored figures stay as they are" is gone; the charts section says it plainly instead.</li>
+<li>The title wraps on two lines, so the whole sentence is visible while you edit it. Title and Text show a character count against the limit (90, 280), so a long title is never a surprise at Save.</li>
+<li>"Charts and images" is one titled list with a count ("1 of 2"). Each row has a thumbnail, its name, its kind and source, and a labelled Remove icon button.</li>
+<li>Charts come from the agent: one line says so and links to the Slides agent, instead of leaving the user to guess why a chart has no fields.</li>
+<li>Add image is a left-aligned secondary button with an icon and the accepted types. On a full slide it stays visible but disabled, with the reason under it.</li>
+<li>An image row carries its required Alt text field right under it.</li>
+<li>Text or bullets: one body block. With none, two buttons "Add text" and "Add bullets". With text, a "Use bullets" link switches the kind and keeps the words.</li>
+<li>Footer: Cancel and Save slide, right-aligned on desktop, two equal buttons on a phone. The phone sheet is the house bottom sheet with a grab handle.</li>
+</ul>
+<h3>Words</h3>
+<ul><li>"Charts and images", "Remove", "Add image", "Alt text", "Use bullets", "Use text": plain, and the same in the Add element menu.</li></ul>
+</div>
+<script>
+const I={x:'<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',trash:'<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/>',chart:'<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="m19 9-5 5-4-4-3 3"/>',fig:'<path d="M4 19V9"/><path d="M10 19V5"/><path d="M16 19v-7"/><path d="M3 21h18"/>',imgplus:'<path d="M16 5h6"/><path d="M19 2v6"/><path d="M21 11.5V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7.5"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/><circle cx="9" cy="9" r="2"/>',img:'<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',spark:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',plus:'<path d="M5 12h14"/><path d="M12 5v14"/>',list:'<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>'};
+const ic=(n,c='ic')=>`<svg class="${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+const q=new URLSearchParams(location.search);let view=q.get('view')||'desktop',state=q.get('state')||'chart';
+const chart={k:'chart',name:'Monthly collections (SGD)',meta:'Chart · from Payments'};
+const chart2={k:'figure',name:'Overdue balance (SGD)',meta:'Figure · from Invoices'};
+const image={k:'image',name:'collections-team.jpg',meta:'Image · PNG or JPEG',alt:'The collections team at the October review'};
+function model(){
+  const title='Collections peaked in August and fell in the following months.';
+  const text='Collections are grouped by payment date; the latest month is incomplete.';
+  if(state==='image')return{title,body:{k:'text',v:text},vis:[chart,image]};
+  if(state==='full')return{title,body:{k:'text',v:text},vis:[chart,chart2]};
+  if(state==='bullets')return{title,body:{k:'bullets',v:['August was the peak month','September and October fell','October is still incomplete']},vis:[chart]};
+  if(state==='nobody')return{title,body:null,vis:[chart]};
+  return{title,body:{k:'text',v:text},vis:[chart]};
+}
+function preview(m){
+  const b=m.body?(m.body.k==='text'?`<div class="px">${m.body.v}</div>`:`<div class="px"><ul>${m.body.v.map(x=>`<li>${x}</li>`).join('')}</ul></div>`):'';
+  const v=m.vis.length?`<div class="pv">${m.vis.map(x=>`<div style="${x.k==='image'?'background:linear-gradient(135deg,#bfdbfe,#60a5fa);border:0':''}">${x.k==='image'?'':ic(x.k==='chart'?'chart':'fig','ic i20')}</div>`).join('')}</div>`:'';
+  return `<div class="pvw"><div class="prev ${b&&v?'':'one'}" aria-label="Preview of slide 4"><div class="pt" id="pvt">${m.title}</div><div class="pb">${b}${v}</div></div><p class="cap">Preview. Changes show here before you save.</p></div>`;
+}
+function bodyBlock(m){
+  if(!m.body)return `<div class="sec"><h3>Text</h3><p class="hint">This slide has no text yet. A slide holds one text or one bullet list.</p><div class="bodyadd"><button class="btn2">${ic('plus')}Add text</button><button class="btn2">${ic('list')}Add bullets</button></div></div>`;
+  if(m.body.k==='text')return `<div class="f"><div class="row"><label for="tx">Text</label><span class="cnt">${m.body.v.length} / 280</span></div><textarea class="inp" id="tx" rows="3">${m.body.v}</textarea><div class="row"><button class="lnk">${ic('list')}Use bullets</button><button class="lnk" style="color:var(--danger)">Remove text</button></div></div>`;
+  return `<div class="f"><div class="row"><label>Bullets</label><span class="cnt">${m.body.v.length} of 5</span></div><div class="bl">${m.body.v.map((x,i)=>`<div class="bi"><input class="inp" aria-label="Bullet ${i+1}" value="${x}"><button class="ib" aria-label="Remove bullet ${i+1}">${ic('trash')}</button></div>`).join('')}</div><div class="row"><button class="lnk">${ic('plus')}Add a bullet</button><button class="lnk">Use text</button></div></div>`;
+}
+function visBlock(m){
+  const full=m.vis.length>=2,hasData=m.vis.some(v=>v.k!=='image');
+  const rows=m.vis.map((v,i)=>`<li><div class="th ${v.k==='image'?'img':''}">${v.k==='image'?'':ic(v.k==='chart'?'chart':'fig','ic i20')}</div><div class="nm"><b>${v.name}</b><span>${v.meta}</span></div><button class="ib" aria-label="Remove ${v.name}">${ic('trash')}</button>${v.k==='image'?`<div class="li-alt"><div class="f"><div class="row"><label for="alt${i}">Alt text</label><span class="cnt">${v.alt.length} / 200</span></div><input class="inp" id="alt${i}" value="${v.alt}"><p class="hint">Describe the image for people who cannot see it.</p></div></div>`:''}</li>`).join('');
+  return `<div class="sec"><div class="row"><h3>Charts and images</h3><span class="cnt">${m.vis.length} of 2</span></div><ul class="list">${rows}</ul>${hasData?`<p class="agent">${ic('spark')}<span>Charts and figures come from your data. To change one, <a href="#">ask the Slides agent</a>.</span></p>`:''}<button class="btn2 add" ${full?'aria-disabled="true" aria-describedby="why"':''}>${ic('imgplus')}Add image</button>${full?`<p class="why" id="why">${ic('info')}<span>A slide holds two charts or images. Remove one to add an image.</span></p>`:`<p class="hint">PNG or JPEG.</p>`}</div>`;
+}
+function sheet(){
+  const m=model();
+  return `<section class="sheet" role="dialog" aria-labelledby="st">${view==='phone'?'<div class="grab"></div>':''}<div class="head"><div class="tt"><h2 id="st">Edit slide 4</h2><p>Slide 4 of 5 · Sales, collections and overdue customers</p></div><button class="ib" aria-label="Close">${ic('x','ic i20')}</button></div>
+  <div class="body">${preview(m)}<div class="f"><div class="row"><label for="ti">Title</label><span class="cnt" id="tic">${m.title.length} / 90</span></div><textarea class="inp" id="ti" rows="2" maxlength="90" style="resize:none">${m.title}</textarea><p class="hint">The finding of this slide, in one sentence.</p></div>${bodyBlock(m)}${visBlock(m)}</div>
+  <div class="foot"><button class="btn2">Cancel</button><button class="btn">Save slide</button></div></section>`;
+}
+function render(){
+  const st=document.getElementById('stage');
+  st.innerHTML=view==='phone'?`<div class="phone"><div class="scrim"></div>${sheet()}</div>`:`<div class="desk"><div class="page"><h1>Sales, collections and overdue customers</h1><div class="cv"></div></div><div class="scrim"></div>${sheet()}</div>`;
+  document.querySelectorAll('#vv button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.v===view));
+  document.querySelectorAll('#ss button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.s===state));
+  const ti=document.getElementById('ti');ti.addEventListener('input',()=>{document.getElementById('pvt').textContent=ti.value;document.getElementById('tic').textContent=ti.value.length+' / 90';});
+}
+document.getElementById('vv').onclick=e=>{if(e.target.dataset.v){view=e.target.dataset.v;render();}};
+document.getElementById('ss').onclick=e=>{if(e.target.dataset.s){state=e.target.dataset.s;render();}};
+render();
+</script></body></html>

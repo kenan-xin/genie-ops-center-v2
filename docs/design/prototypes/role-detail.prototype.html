@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Role detail, redesign for the G3 dry run of follow-up 11 (owner, 2026-11-14, row A-8: the built page is not acceptable).
+     Question: how does role detail show who holds the role, what it allows, and the module admin rule, clearly at 390 and 1440?
+     Switch with ?view=phone|desktop and ?holders=listed|none|many, or the bar at the top.
+     Facts it keeps: the role name, kind (System · Core), description, Copy role, permissions by module with Entitled,
+     the admin permission added by entitlement, holders (groups first, then people), scope (whole tenant or one record),
+     member count, who gave the role and when (role_assignment.created_by_user_id, created_at), Not in effect,
+     "See all <n> in Access" past ten, Manage in Access.
+     World: DESIGN.md. Secondary buttons use the owner's pick C (hairline, semibold, 1 px lift). Icons: Lucide (ISC).
+     Data: fictional sample people and groups. No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: role detail redesign</title>
+<style>
+:root{--bg:#fff;--fg:#111827;--panel:#f9fafb;--tile:#f3f4f6;--hair:#e5e7eb;--muted:#4b5563;--icon:#6b7280;--idle:#374151;--primary:#2563eb;--info:#eff6ff;--ok:#047857;--okt:#ecfdf5;--font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:"JetBrains Mono",ui-monospace,monospace}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);color:var(--fg);background:#e9ebef;padding:16px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;cursor:pointer}a{color:inherit}:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+.ctl{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:0 auto 16px;max-width:1440px}
+.seg{display:inline-flex;background:var(--tile);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;height:34px;padding:0 12px;border-radius:8px;font-weight:600;font-size:.8125rem;color:var(--idle)}
+.seg button[aria-pressed=true]{background:#fff;color:var(--fg);box-shadow:0 1px 2px rgb(0 0 0/.08)}
+.ctl .t{font-weight:700;margin-right:8px}
+.frame{margin:0 auto;background:#fff;overflow:hidden;box-shadow:0 20px 40px -20px rgb(0 0 0/.35)}
+.frame.phone{width:390px;min-height:844px;border-radius:32px;box-shadow:0 0 0 10px #1f2937,0 30px 60px -20px rgb(0 0 0/.45)}
+.frame.desktop{max-width:1440px;border-radius:12px;display:grid;grid-template-columns:240px 1fr}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}.i20{width:20px;height:20px}
+/* shell */
+.side{background:var(--panel);border-right:1px solid var(--hair);padding:14px 10px;display:flex;flex-direction:column;gap:2px;font-size:.875rem}
+.side .org{display:flex;gap:10px;align-items:center;padding:4px 8px 14px}.side .org i{width:32px;height:32px;border-radius:8px;background:var(--primary);display:block}
+.side .grp{font-size:.6875rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--icon);padding:12px 10px 4px}
+.side a{display:flex;gap:10px;align-items:center;height:36px;padding:0 10px;border-radius:8px;text-decoration:none;color:var(--idle)}
+.side a.on{background:#fff;color:var(--primary);box-shadow:0 0 0 1px var(--hair)}
+.appbar{height:56px;display:flex;align-items:center;gap:4px;padding:0 8px;border-bottom:1px solid var(--hair)}
+.appbar b{flex:1;font-size:1rem;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:44px;height:44px;border:0;background:none;border-radius:10px;display:grid;place-items:center;color:var(--idle)}
+/* page */
+.main{padding:16px;display:grid;gap:16px;align-content:start}
+.desktop .main{padding:24px 32px 40px;gap:20px}
+.crumb{font-size:.8125rem;color:var(--muted);display:flex;gap:6px;align-items:center}.crumb a{text-decoration:none;color:var(--muted)}.crumb a:hover{text-decoration:underline}
+.head{display:flex;gap:16px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.head h1{font-size:1.25rem;letter-spacing:-.025em;margin:0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.desktop .head h1{font-size:1.5rem}
+.head p{margin:6px 0 0;color:var(--muted);font-size:.9375rem;max-width:60ch}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;background:var(--tile);color:var(--idle);font-size:.75rem;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--okt);color:var(--ok)}.pill.info{background:var(--info);color:#1d4ed8}.pill.warn{background:#fffbeb;color:#92400e}
+.btn2{height:40px;border-radius:8px;border:1px solid var(--hair);background:#fff;padding:0 14px;font-weight:600;font-size:.875rem;display:inline-flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgb(17 24 39/.07);color:#1f2937;white-space:nowrap}
+.btn2:hover{background:var(--panel)}
+.phone .btn2{height:44px}
+.cols{display:grid;gap:16px}
+.desktop .cols{grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:20px;align-items:start}
+.card{border:1px solid var(--hair);border-radius:12px;background:#fff}
+.card>header{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:16px 20px 12px}
+.card h2{font-size:1rem;margin:0;display:flex;gap:8px;align-items:center}
+.count{font-size:.75rem;font-weight:700;background:var(--tile);color:var(--idle);border-radius:999px;padding:1px 8px}
+.card .lead{margin:0;padding:0 20px 12px;font-size:.875rem;color:var(--muted)}
+/* holders */
+.hl{list-style:none;margin:0;padding:0;border-top:1px solid var(--hair)}
+.hl li{display:flex;gap:12px;align-items:flex-start;padding:12px 20px;border-bottom:1px solid var(--hair)}
+.hl li:last-child{border-bottom:0}
+.av{width:36px;height:36px;border-radius:50%;background:var(--tile);display:grid;place-items:center;color:var(--idle);flex:none;font-size:.75rem;font-weight:700}
+.av.grp{border-radius:10px}
+.hl .who{min-width:0;flex:1}
+.hl .n{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hl .n a{font-weight:600;font-size:.9375rem;text-decoration:none}.hl .n a:hover{text-decoration:underline}
+.hl .meta{font-size:.8125rem;color:var(--muted);margin-top:2px}
+.card footer{padding:12px 20px;border-top:1px solid var(--hair);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.link{font-weight:600;font-size:.875rem;color:var(--primary);text-decoration:none;display:inline-flex;gap:6px;align-items:center}.link:hover{text-decoration:underline}
+.empty{padding:20px;text-align:center;color:var(--muted);font-size:.9375rem;border-top:1px solid var(--hair)}
+.empty b{display:block;color:var(--fg);margin-bottom:4px}
+/* permissions */
+.mod{border-top:1px solid var(--hair);padding:12px 20px 14px}
+.mod .mh{display:flex;gap:8px;align-items:center;font-weight:600;font-size:.875rem;margin-bottom:6px}
+.perm{display:flex;justify-content:space-between;gap:12px;align-items:baseline;padding:5px 0;font-size:.9375rem}
+.perm .k{font-family:var(--mono);font-size:.75rem;color:var(--icon);white-space:nowrap}
+.perm .auto{display:block;font-size:.75rem;color:var(--muted);margin-top:1px}
+.help{display:inline-flex;gap:6px;align-items:center;border:0;background:none;color:var(--primary);font-weight:600;font-size:.8125rem;padding:4px 0;min-height:32px}
+.helpbox{margin:0 20px 12px;padding:10px 12px;border-radius:8px;background:var(--panel);font-size:.875rem;color:var(--idle);line-height:1.5}
+.keys{display:flex;align-items:center;gap:8px;font-size:.8125rem;color:var(--muted)}
+.sw{width:36px;height:22px;border-radius:999px;background:#d1d5db;border:0;position:relative;padding:0}.sw::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .15s ease-out}
+.sw[aria-checked=true]{background:var(--primary)}.sw[aria-checked=true]::after{left:17px}
+.phone .full{width:100%;justify-content:center}
+.note{max-width:1440px;margin:16px auto 0;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:16px 20px;font-size:.9375rem;line-height:1.55}
+.note h3{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:12px 0 6px}.note h3:first-child{margin-top:0}.note ul{margin:0;padding-left:18px}
+</style></head><body>
+<div class="ctl"><span class="t">Role detail (prototype)</span><div class="seg" id="vw"></div><div class="seg" id="hd"></div></div>
+<div id="app"></div>
+<div class="note" id="note"></div>
+<script>
+const I={back:'<path d="m15 18-6-6 6-6"/>',copy:'<rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16V4a2 2 0 0 1 2-2h12"/>',key:'<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4M21 2l-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',arrow:'<path d="M5 12h14M12 5l7 7-7 7"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',chev:'<path d="m9 18 6-6-6-6"/>'};
+const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+const q=new URLSearchParams(location.search);
+const S={view:q.get('view')||'phone',holders:q.get('holders')||'listed',keys:false,help:false};
+const H=[
+ {g:1,name:'Genie Administrators',kind:'Group',members:5,scope:'Everywhere',date:'1 Jun 2026',by:'Priya Nair'},
+ {g:1,name:'IT Operations',kind:'Directory group',members:12,scope:'Everywhere',date:'9 Sep 2026',by:'Leila Haddad'},
+ {g:0,name:'Alex Morgan',kind:'Person',scope:'Everywhere',date:'16 Sep 2026',by:'Priya Nair'},
+ {g:0,name:'Sam Okafor',kind:'Person',scope:'Only on INV-1042',date:'2 Oct 2026',by:'Alex Morgan',off:true}];
+const PERM=[{m:'Core',rows:[['Manage people','core:people:manage'],['Manage groups','core:groups:manage'],['Manage roles','core:roles:manage'],['Manage branding','core:branding:manage'],['Manage tenant settings','core:settings:manage'],['Read the audit log','core:audit:read'],['Use Ask','core:ask:use']]},{m:'Invoices and Payments',rows:[['Administer Invoices and Payments','invoices:admin',1]]},{m:'Slides',rows:[['Administer Slides','slides:admin',1]]}];
+const initials=n=>n.split(' ').map(w=>w[0]).join('').slice(0,2);
+function holders(){
+ const list=S.holders==='none'?[]:S.holders==='many'?[...H,...Array.from({length:8},(_,i)=>({g:0,name:['Jordan Lee','Mina Park','Omar Said','Ravi Shah','Tess Burke','Lin Wei','Noah Cruz','Ada Quinn'][i],kind:'Person',scope:'Everywhere',date:'3 Nov 2026',by:'Priya Nair'}))]:H;
+ const total=S.holders==='many'?14:list.length; const shown=list.slice(0,10);
+ const body=list.length===0?`<div class="empty"><b>Not assigned to anyone</b>Assign it to a group or a person in Access.</div>`:
+ `<ul class="hl">${shown.map(h=>`<li><span class="av ${h.g?'grp':''}">${h.g?ic('users'):initials(h.name)}</span><div class="who"><div class="n"><a href="#">${h.name}</a>${h.scope==='Everywhere'?'':`<span class="pill">${h.scope.replace('Only on ','')}</span>`}${h.off?'<span class="pill warn">Paused</span>':''}</div><div class="meta">${h.g?`${h.kind} · ${h.members} members`:'Person · Direct'}</div><div class="meta">Assigned ${h.date} by ${h.by}</div></div></li>`).join('')}</ul>`;
+ const foot=`<footer>${total>10?`<a class="link" href="#">See all ${total} assignments ${ic('arrow')}</a>`:'<span class="meta" style="font-size:.8125rem;color:var(--muted)">Every member of an assigned group has this role.</span>'}<button class="btn2 ${S.view==='phone'?'full':''}">${ic('key')}Manage in Access</button></footer>`;
+ return `<section class="card" aria-labelledby="h-holders"><header><h2 id="h-holders">Assigned to <span class="count">${total}</span></h2></header>${body}${foot}</section>`;
+}
+function perms(){
+ const n=PERM.reduce((a,m)=>a+m.rows.length,0);
+ return `<section class="card" aria-labelledby="h-perm"><header><h2 id="h-perm">What this role allows</h2><span class="keys">Show keys <button class="sw" role="switch" aria-checked="${S.keys}" aria-label="Show permission keys" data-a="keys"></button></span></header>
+ <p class="lead">${n} permissions: Core and ${PERM.length-1} modules. <button class="help" data-a="help" aria-expanded="${S.help}">${ic('help')}Why does it include module admin?</button></p>
+ ${S.help?`<div class="helpbox">A tenant administrator runs the whole admin portal, so this role gets the admin screens of every module that is on. It does not open the records inside a module, such as invoices. For that, give the module's own role.</div>`:''}
+ ${PERM.map(m=>`<div class="mod"><div class="mh">${m.m}${m.m==='Core'?'':'<span class="pill ok">Module on</span>'}</div>${m.rows.map(([l,k,auto])=>`<div class="perm"><span>${l}${auto?'<span class="auto">Added automatically for administrators</span>':''}</span>${S.keys?`<span class="k">${k}</span>`:''}</div>`).join('')}</div>`).join('')}</section>`;
+}
+function render(){
+ const phone=S.view==='phone';
+ const head=`${phone?'':`<div class="crumb"><a href="#">Roles</a>${ic('chev')}<span>Tenant administrator</span></div>`}<div class="head"><div><h1>Tenant administrator <span class="pill">Built-in role</span></h1><p>Full control of people, groups, roles, branding, settings and the audit log. Built-in roles cannot be edited. Copy one to make your own version.</p></div><button class="btn2">${ic('copy')}Copy as new role</button></div>`;
+ const main=`<main class="main">${head}<div class="cols">${phone?holders()+perms():perms()+holders()}</div></main>`;
+ document.getElementById('app').innerHTML=phone?`<div class="frame phone"><div class="appbar"><button class="ib" aria-label="Back to roles">${ic('back','i20')}</button><b>Roles</b></div>${main}</div>`:`<div class="frame desktop"><nav class="side" aria-label="Admin"><div class="org"><i></i><div><b style="font-size:.875rem">Harbor Point</b><div style="font-size:.75rem;color:var(--muted)">Admin portal</div></div></div><div class="grp">People and access</div><a href="#">${ic('user','i20')}People</a><a href="#">${ic('users','i20')}Groups</a><a class="on" href="#">${ic('shield','i20')}Roles</a><a href="#">${ic('key','i20')}Access</a></nav>${main}</div>`;
+ document.getElementById('vw').innerHTML=['phone','desktop'].map(v=>`<button data-view="${v}" aria-pressed="${S.view===v}">${v==='phone'?'Phone 390':'Desktop 1440'}</button>`).join('');
+ document.getElementById('hd').innerHTML=[['listed','4 holders'],['many','14 holders'],['none','No holders']].map(([k,l])=>`<button data-holders="${k}" aria-pressed="${S.holders===k}">${l}</button>`).join('');
+ document.getElementById('note').innerHTML=`<h3>What changed from the build</h3><ul><li>Standard words (owner, 2026-11-14), the same as the person Access tab: "Assigned to", "Direct", "Group" or "Directory group", "Assigned &lt;date&gt; by &lt;name&gt;", the record id as the scope pill, "Paused", "Manage in Access". Older notes below name earlier words.</li><li>Clarify pass: "Built-in role" instead of "System · Core", "Copy as new role", "Who has this role", "Only on INV-1042" when a role is limited to one record, and nothing when it works everywhere, instead of "Whole tenant", "Group made here" and "Group from your directory" instead of "Local" and "Directory group", "Paused: account turned off" instead of "Not in effect", "Change who has it" instead of "Manage in Access", "Module on" instead of "Entitled". The pause reason is an example; the build shows the real one.</li><li>On a phone, "Who holds this role" comes first, because that is why people open the page. On a desktop the two cards sit side by side.</li><li>Each holder shows its scope pill and "given &lt;date&gt; by &lt;name&gt;", as the design does. Groups say "Local group · 5 members" and show a square tile, people show initials.</li><li>The heading has a count, and Manage in Access sits at the foot of the card, full width on a phone.</li><li>The long blue box becomes one help link in the theme color, with plain words.</li><li>"Permissions" becomes "What this role allows". The raw keys hide behind a Keys switch.</li><li>"Entitled" becomes "Switched on", and "Added by entitlement" becomes a quiet line under the permission.</li></ul><h3>Try</h3>Switch the view and the holder count. Turn on Keys. Open "Why are module admin rights here?".`;
+ const u=new URL(location);u.searchParams.set('view',S.view);u.searchParams.set('holders',S.holders);history.replaceState(null,'',u);
+}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-view],[data-holders],[data-a]');if(!t)return;e.preventDefault();if(t.dataset.view)S.view=t.dataset.view;if(t.dataset.holders)S.holders=t.dataset.holders;if(t.dataset.a==='keys')S.keys=!S.keys;if(t.dataset.a==='help')S.help=!S.help;render()});
+render();
+</script></body></html>

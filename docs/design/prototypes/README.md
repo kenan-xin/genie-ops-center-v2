@@ -14,6 +14,17 @@ Open [Slide editor controls](slide-editor-controls.prototype.html), [Presenter w
 
 Open [Phone adapt](phone-adapt.prototype.html) and [Secondary button](secondary-button.prototype.html) directly in a browser. The owner picked on 2026-11-11: `phone-adapt.prototype.html?screen=filters&variant=A`, `?screen=editor&variant=A` and `?screen=notes&variant=C`, and `secondary-button.prototype.html?variant=C`. Use these addresses, because the files open variant A and `before`. Their data is fictional sample data. The [import record](../imports/2026-11-11-phone-adapt-and-secondary-button.md) lists the picks and their beads.
 
+The owner approved seven prototypes during the follow-up 11 dry run (2026-11-14 and 2026-11-15). Open each one directly in a browser:
+
+- [Phone deck page](deck-phone.prototype.html), `?state=<state>` (`czjw.176`).
+- [Role detail](role-detail.prototype.html) and [Person access](person-access.prototype.html), `?view=phone|desktop` (`d8l5.61`).
+- [Edit slide](edit-slide.prototype.html), one stacked form, `?state=chart|image|full|bullets|nobody` (`czjw.180`).
+- [Agent progress](agent-progress.prototype.html), `?moment=<n>` (`czjw.181`).
+- [Deck looks](deck-looks.prototype.html), the pick is look 1, Split panel, `?look=split`, the default (`czjw.183`).
+- [Review desk compare](review-desk-compare.prototype.html), the pick is One form, `?v=form`, the default (`czjw.187`).
+
+Their data is fictional sample data. `fonts/` holds the font that two of them load. The [import record](../imports/2026-11-15-follow-up-13-prototypes.md) lists the commits and the picks.
+
 The Access prototype lives beside its spec: [Access, role-per-row model](../sections/access/access.prototype.html), switched by `?screen=grants&state=<state>`. Its [import record](../imports/2026-11-03-access-role-per-row.md) lists the states.
 
 Canonical designs:
