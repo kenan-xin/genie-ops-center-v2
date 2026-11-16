@@ -499,6 +499,14 @@ async function expectSwatchInField(
       document.elementFromPoint(left + width / 2, top - 1.5)?.closest("label")
     ).toBe(label);
   });
+
+  // A tap at the hex input's left edge reaches the input: the swatch's touch area stops before it.
+  const hex = within(group).getByRole("textbox", { name: fieldName });
+  const hexBox = hex.getBoundingClientRect();
+
+  await expect(
+    document.elementFromPoint(hexBox.left + 1, hexBox.top + hexBox.height / 2)
+  ).toBe(hex);
 }
 
 /** Both color fields, on the Colors tab and the Sign-in tab, at the field height of the viewport. */

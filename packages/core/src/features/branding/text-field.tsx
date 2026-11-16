@@ -46,7 +46,11 @@ export function TextField(props: {
       ) : (
         <InputGroup>
           <InputGroupAddon>
-            <label className={`flex cursor-pointer ${touchAreas.md}`}>
+            {/* Under `lg` the label is as wide as its 44 px touch area, so that area ends where the
+                hex input starts; -ml-2 cancels the addon's pl-2 so the swatch moves only 2 px. */}
+            <label
+              className={`flex cursor-pointer justify-center max-lg:-ml-2 max-lg:w-11 ${touchAreas.md}`}
+            >
               <input
                 type="color"
                 aria-label={props.swatch.label}
