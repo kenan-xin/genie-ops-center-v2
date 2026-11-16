@@ -204,6 +204,11 @@ const CASES = `<!doctype html>
       .radio { position: relative; display: flex; flex: none; box-sizing: border-box; width: 16px; height: 16px; border: 1px solid #2563eb; border-radius: 50%; background: #2563eb; }
       .radio-indicator { display: flex; width: 16px; height: 16px; align-items: center; justify-content: center; }
       .radio-dot { position: absolute; top: 50%; left: 50%; width: 8px; height: 8px; transform: translate(-50%, -50%); border-radius: 50%; background: #fff; }
+      .described { display: flex; align-items: flex-start; gap: 8px; }
+      .described .lucide { margin-top: 2px; }
+      .media { display: flex; align-items: flex-start; gap: 12px; }
+      .media .box { margin-top: 2px; }
+      .stack { display: flex; flex-direction: column; }
       .hidden-input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; white-space: nowrap; clip-path: inset(50%); }
     </style>
   </head>
@@ -231,6 +236,9 @@ const CASES = `<!doctype html>
     <div class="case"><div class="center-column"><p class="full">Centered column answer.</p><div class="row full"><span class="box indent"></span>Read the deck</div></div></div>
     <div class="case"><div class="row"><span class="switch" role="switch" aria-checked="true" aria-label="Email me" data-checked><span class="switch-thumb"></span></span><input type="checkbox" class="hidden-input" checked aria-hidden="true" tabindex="-1"><span>Email me</span></div><div class="row"><span class="radio" role="radio" aria-checked="true" aria-label="Monthly" data-checked><span class="radio-indicator"><span class="radio-dot"></span></span></span><input type="radio" class="hidden-input" checked aria-hidden="true" tabindex="-1"><span>Monthly</span></div></div>
     <div class="case"><div class="row"><span class="box indent"></span>Monthly report<input type="checkbox" class="hidden-input" aria-hidden="true" tabindex="-1"></div><p>Sent on the first day.</p></div>
+    <div class="case"><div class="described" role="menuitem">${glyph("plus", PLUS)}<div><div>Save as view</div><div>Keeps the filters</div></div></div><div class="described" role="menuitem">${glyph("x", X)}<div><div>Delete view</div><div>Undo restores it</div></div></div></div>
+    <div class="case"><table><tbody><tr><td><span class="media"><span class="box"></span><span class="stack"><span>Contractors</span><span>Directory group</span></span></span></td></tr></tbody></table></div>
+    <div class="case"><div class="media"><span class="stack"><span>Fixture</span><span>Records that prove the module</span></span><span class="box"></span></div></div>
   </body>
 </html>`;
 
@@ -242,8 +250,9 @@ const ALLOW = [
 // label, a centered slot, the 2026-11-07 gutter, a full-width row in a centered column and a row
 // that holds a visually hidden input), and the allowed layouts give none: an icon-only button, a
 // menu, a filled button, a table, an empty state, a trailing chevron, an alert, a step row with a
-// hidden count, a hidden icon, an allow entry, a rotating glyph, a checked switch and a checked
-// radio.
+// hidden count, a hidden icon, an allow entry, a rotating glyph, a checked switch, a checked
+// radio, a list whose labels carry a description under them (P07-33), and a table cell's media and a
+// trailing box beside a stack of text blocks (P07-34).
 test("the icon check finds each known case and nothing in the allowed layouts @no-screen", async ({
   page,
 }) => {
@@ -279,7 +288,7 @@ test("the icon check finds each known case and nothing in the allowed layouts @n
     still: of("Loading still"),
   }).toEqual({
     fontPinned: true,
-    units: 21,
+    units: 25,
     problems: [
       'center +10.0 px box: box 16x16 in "Two lines" against text "Two lines"',
       'center -6.0 px box: lucide-info in "Colors changed.Undo" against text "Colors changed."',

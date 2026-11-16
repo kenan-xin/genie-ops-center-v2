@@ -84,7 +84,8 @@
         "default",
         "^default",
         "storybookOwners",
-        { "runtime": "node tools/generators/src/selection/print.ts" }
+        { "runtime": "node tools/generators/src/selection/print.ts" },
+        { "env": "GENIE_ICON_ALIGNMENT" }
       ]
     },
     "validate": {

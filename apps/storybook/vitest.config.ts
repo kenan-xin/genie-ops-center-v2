@@ -6,6 +6,8 @@ import { unitTestPreset } from "@genie/config/vitest/unit";
 import { storybookTest } from "@storybook/addon-vitest/vitest-plugin";
 import { defineConfig, mergeConfig } from "vitest/config";
 
+import { iconAlignmentOn } from "./testing/test-storybook.ts";
+
 const here = dirname(fileURLToPath(import.meta.url));
 
 export default defineConfig({
@@ -42,6 +44,12 @@ export default defineConfig({
             configDir: join(here, ".storybook"),
           }),
         ],
+        test: {
+          // The icon alignment check after every story test (6wz1.113). The
+          // selection matrix turns it off in its nested runs (P07-6).
+          setupFiles: ["./testing/icon-alignment-check.setup.ts"],
+          provide: { iconAlignment: iconAlignmentOn() },
+        },
       }),
     ],
   },

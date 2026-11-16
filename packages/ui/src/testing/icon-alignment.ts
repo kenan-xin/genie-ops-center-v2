@@ -522,6 +522,30 @@ export function measureIconAlignment(
       return column ?? document.body;
     };
 
+    // A line in another unit's row, right of that unit, is that row's label column: a description
+    // under a menu label or a step's details. It is no column edge for the rows around it (P07-33).
+    // The unit's own row never holds a candidate line, so the answer is the same for every unit.
+    const unitRows = allUnits.map((unit) => ({
+      right: unit.box.right,
+      row: rowOf(unit.element),
+    }));
+
+    const iconRowLines = new Map<Line, boolean>();
+
+    const inIconRow = (line: Line): boolean => {
+      let known = iconRowLines.get(line);
+
+      if (known === undefined) {
+        known = unitRows.some(
+          ({ right, row }) =>
+            right <= line.rect.left + 1 && row?.contains(line.node) === true
+        );
+        iconRowLines.set(line, known);
+      }
+
+      return known;
+    };
+
     const childOf = (row: Element, node: Node): Node => {
       let child = node;
 
@@ -618,7 +642,8 @@ export function measureIconAlignment(
               line.rect.left <= first.rect.left + 1 &&
               !insideBox(line.parent) &&
               startsOnEdge(line) &&
-              isLead(line.rect, line.node, column)
+              isLead(line.rect, line.node, column) &&
+              !inIconRow(line)
           )
           .toSorted(
             (a, b) =>
@@ -706,8 +731,14 @@ export function measureIconAlignment(
         }
       }
 
-      // Rule 5, gutter: the icon hangs beside a stack of text blocks (P07-11, P07-23).
-      if (beside && !row.matches(GUTTER_FREE)) {
+      // Rule 5, gutter: the icon hangs beside a stack of text blocks (P07-11, P07-23). A table
+      // cell's media and a trailing unit are no gutter (P07-34).
+      if (
+        beside &&
+        ink.left < first.rect.left &&
+        !row.matches(GUTTER_FREE) &&
+        row.closest("td, th, [role=cell], [role=gridcell]") === null
+      ) {
         const lineChild = childOf(row, first.node);
         let held = false;
 

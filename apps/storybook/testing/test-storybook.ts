@@ -35,6 +35,20 @@ export const VITEST_ARGS = [
 export const RETRY_NOTICE =
   "Storybook component tests: the first run hit the Vitest browser import race (vitest-dev/vitest#11171); running once more.";
 
+/**
+ * The icon alignment check's switch (6wz1.113): on unless `GENIE_ICON_ALIGNMENT=off`. The
+ * selection matrix turns it off in its nested runs (P07-6). `vitest.config.ts` gives the browser
+ * the same value, and the variable is an Nx input of the cached target.
+ */
+export const iconAlignmentOn = (env: NodeJS.ProcessEnv = process.env) =>
+  env.GENIE_ICON_ALIGNMENT !== "off";
+
+/** The line `main()` prints before Vitest starts, so a passing run shows the check's state. */
+export const iconAlignmentNotice = (on: boolean) =>
+  on
+    ? "icon alignment check: on, 390 and 1440 (6wz1.113)"
+    : "icon alignment check: off";
+
 /** Whether a failed run is worth one more attempt: it failed only on the import race. */
 function isRetryable(run: Run): boolean {
   return run.status !== 0 && isBrowserImportRace(run.output);
@@ -107,6 +121,8 @@ function runVitest(extraArgs: readonly string[]): Promise<Run> {
 
 export async function main(): Promise<number> {
   const extraArgs = process.argv.slice(2);
+
+  process.stdout.write(`${iconAlignmentNotice(iconAlignmentOn())}\n`);
 
   const result = await runWithRetry(
     () => runVitest(extraArgs),

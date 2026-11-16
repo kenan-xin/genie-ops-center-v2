@@ -55,3 +55,9 @@ A change inside a core or ui component leaves it cached; `build-storybook` and
   (`nx test:integration @genie/storybook`).
 - The `storybook` project runs the component tests from the stories themselves
   (`test-storybook`). The two collections are separate and must not be merged.
+- `testing/icon-alignment-check.setup.ts` measures icon alignment after every
+  story test at 1440 and 390 and fails the story on an icon more than 1 px out
+  of line. `stories/icon-alignment-check.stories.tsx` is its canary.
+  `GENIE_ICON_ALIGNMENT=off` turns it off; only the selection matrix's nested
+  runs do. See "Icon alignment check" in
+  `docs/architecture/ui-development.md`.

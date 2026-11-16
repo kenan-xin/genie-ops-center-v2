@@ -175,6 +175,9 @@ function run(
   env.NX_CACHE_DIRECTORY = join(stage, ".nxcache");
   env.NX_WORKSPACE_DATA_DIRECTORY = join(stage, ".nxdata");
   env.NX_DAEMON = "false";
+  // The matrix proves selection and caching; the icon check would add its cost to every nested
+  // story run (P07-6). One value for every run, so the cache test still hits.
+  env.GENIE_ICON_ALIGNMENT = "off";
 
   if (moduleInclude === undefined) delete env.MODULE_INCLUDE;
   else env.MODULE_INCLUDE = moduleInclude;
