@@ -413,7 +413,8 @@ export function StyleToolbar(props: StyleToolbarProps) {
           })
         }
       >
-        <SelectTrigger aria-label="Font size" className="w-20">
+        {/* C06-1: a toolbar is a dense place, so the selects take the 32 px of its buttons and chips. */}
+        <SelectTrigger aria-label="Font size" size="sm" className="w-20">
           <SelectValue placeholder="Size" />
         </SelectTrigger>
         <SelectContent>
@@ -437,7 +438,7 @@ export function StyleToolbar(props: StyleToolbarProps) {
           })
         }
       >
-        <SelectTrigger aria-label="Weight" className="w-32">
+        <SelectTrigger aria-label="Weight" size="sm" className="w-32">
           <SelectValue placeholder="Weight" />
         </SelectTrigger>
         <SelectContent>

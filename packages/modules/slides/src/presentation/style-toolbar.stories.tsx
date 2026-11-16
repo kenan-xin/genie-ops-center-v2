@@ -114,6 +114,33 @@ export const ChartControls: Story = {
   },
 };
 
+/** Each control's height and top edge, rounded to the 0.1 px a layout can drift by. */
+function boxes(controls: readonly Element[]) {
+  return controls.map((control) => {
+    const { height, top } = control.getBoundingClientRect();
+
+    return {
+      name: control.getAttribute("aria-label") ?? control.textContent?.trim(),
+      height: Math.round(height * 10) / 10,
+      top: Math.round(top * 10) / 10,
+    };
+  });
+}
+
+// C06-1: a toolbar is a dense place, so every control of the row is 32 px on one top edge.
+export const DenseRow: Story = {
+  name: "On a desktop every control of the toolbar is 32 px on one top edge",
+  globals: desktop,
+  play: async ({ canvas }) => {
+    const toolbar = canvas.getByRole("toolbar", { name: "Title style" });
+    const rows = boxes([...toolbar.querySelectorAll("button")]);
+
+    await expect(rows).toHaveLength(11);
+    await expect(rows.filter(({ height }) => height !== 32)).toEqual([]);
+    await expect(new Set(rows.map(({ top }) => top)).size).toBe(1);
+  },
+};
+
 /** The dock's tools in order, after it checks one row of 52 by 60 px targets at the bottom. */
 async function dockTools(canvasElement: HTMLElement, name: string) {
   const toolbar = within(canvasElement).getByRole("toolbar", { name });
@@ -239,6 +266,25 @@ export const PhoneTextCard: Story = {
     await expect(
       within(toolbar).getByRole("button", { name: "Text" })
     ).toHaveFocus();
+  },
+};
+
+// C06-1: the Text card's size, weight and alignment share one line on a phone wider than 390 px.
+export const PhoneTextCardRow: Story = {
+  name: "On a phone the Text card's size, weight and alignment are all 32 px",
+  globals: phone,
+  play: async ({ canvasElement }) => {
+    const card = within(await openTool(canvasElement, "Text"));
+
+    const rows = boxes([
+      card.getByRole("combobox", { name: "Font size" }),
+      card.getByRole("combobox", { name: "Weight" }),
+      ...within(card.getByRole("group", { name: "Alignment" })).getAllByRole(
+        "button"
+      ),
+    ]);
+
+    await expect(rows.filter(({ height }) => height !== 32)).toEqual([]);
   },
 };
 

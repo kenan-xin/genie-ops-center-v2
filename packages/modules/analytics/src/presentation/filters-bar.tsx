@@ -239,7 +239,6 @@ function StatusRow(props: {
   readonly onSaveAsNewView: () => void;
 }) {
   const bar = props.place === "bar";
-  const size = bar ? "sm" : "filter";
 
   return (
     <div
@@ -260,7 +259,8 @@ function StatusRow(props: {
         <span className={bar ? "contents" : "flex items-center gap-3"}>
           <Button
             variant={bar ? "primary" : "link"}
-            size={size}
+            // C06-1: the field height of the filters (R-37a), on the bar and the phone row alike.
+            size="filter"
             loading={props.saving}
             onClick={props.onUpdateView}
           >
@@ -268,7 +268,7 @@ function StatusRow(props: {
           </Button>
           <Button
             variant={bar ? "secondary" : "link"}
-            size={size}
+            size="filter"
             onClick={props.onSaveAsNewView}
           >
             Save as new view
@@ -277,7 +277,7 @@ function StatusRow(props: {
       ) : (
         <Button
           variant={bar ? "secondary" : "link"}
-          size={size}
+          size="filter"
           loading={props.saving}
           onClick={props.onSaveAsDefault}
         >

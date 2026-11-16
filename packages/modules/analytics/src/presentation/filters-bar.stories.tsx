@@ -256,6 +256,31 @@ export const RemoveChipOnPhone: Story = {
   },
 };
 
+// C06-1: a filter bar takes the field height (R-37a), its save button too. At 1920 the status
+// shares the filters' line; at 1440 it wraps below them.
+export const StatusInBarLinesUp: Story = {
+  name: "The bar's save button takes the filters' height",
+  globals: { viewport: { value: "desktop1920", isRotated: false } },
+  beforeEach: opened(TWO_SET),
+  play: async ({ canvas }) => {
+    const save = await canvas.findByRole("button", { name: "Save as default" });
+    const bar = save.closest(".border-b")!;
+
+    const rows = [...bar.querySelectorAll("button")].map((button) => {
+      const { height, top } = button.getBoundingClientRect();
+
+      return {
+        name: button.getAttribute("aria-label") ?? button.textContent?.trim(),
+        height: Math.round(height * 10) / 10,
+        top: Math.round(top * 10) / 10,
+      };
+    });
+
+    await expect(rows.filter(({ height }) => height !== 36)).toEqual([]);
+    await expect(new Set(rows.map(({ top }) => top)).size).toBe(1);
+  },
+};
+
 // 6wz1.98: Clear filters unmounts itself, so the focus goes to the first control, not the body.
 export const ClearFiltersKeepsFocus: Story = {
   name: "Clear filters keeps the focus",
