@@ -258,6 +258,31 @@ export const BlockedRowGranted: Story = {
   },
 };
 
+/** R-5: on desktop, a press beside the 16 px select-all box still ticks it. */
+export const SelectAllHitArea: Story = {
+  play: async ({ canvasElement }) => {
+    // Under lg the box's own 44 px touch area would catch the press and prove nothing.
+    await expect(window.innerWidth).toBeGreaterThanOrEqual(1024);
+
+    const box = bucket(canvasElement, "Catalog").getByRole("checkbox", {
+      name: "Select all shown in Catalog",
+    });
+
+    const rect = box.getBoundingClientRect();
+
+    // userEvent does no hit-testing, so find what a press 6 px right of the box lands on.
+    const target = canvasElement.ownerDocument.elementFromPoint(
+      rect.right + 6,
+      rect.top + rect.height / 2
+    );
+
+    if (target === null) throw new Error("Nothing is beside the box.");
+
+    await userEvent.click(target);
+    await expect(box).toBeChecked();
+  },
+};
+
 /** T4: the phone form is one list with one search, Granted first, and moves both ways. */
 export const Roster: Story = {
   args: { layout: "roster" },

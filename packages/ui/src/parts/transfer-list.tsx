@@ -387,10 +387,13 @@ export function TransferList(props: TransferListProps) {
               ) : null}
             </div>
             <div className="flex items-center gap-3 border-b border-border px-3 py-2">
-              <Checkbox
-                aria-label={`Select all shown in ${label[side]}`}
-                {...selectAll(quick)}
-              />
+              {/* The label spreads over the row's padding, so the 16 px box gets a desktop hit area without moving. */}
+              <label className="-mx-3 -my-2 flex cursor-pointer items-center self-stretch px-3">
+                <Checkbox
+                  aria-label={`Select all shown in ${label[side]}`}
+                  {...selectAll(quick)}
+                />
+              </label>
               <SearchField
                 label={`Search ${label[side]}`}
                 value={query[side]}
