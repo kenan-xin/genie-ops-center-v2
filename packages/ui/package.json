@@ -17,6 +17,7 @@
     "./chart": "./src/parts/chart.tsx",
     "./chart-data": "./src/parts/chart-data.ts",
     "./list-params": "./src/list-header/list-params.ts",
+    "./testing/icon-alignment": "./src/testing/icon-alignment.ts",
     "./fonts.css": "./src/fonts/fonts.css",
     "./fonts/*": "./src/fonts/*"
   },
