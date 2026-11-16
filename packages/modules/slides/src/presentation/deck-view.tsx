@@ -589,6 +589,7 @@ export function DeckView(props: DeckViewProps) {
     run: recordRun.run,
     title: deck.title,
     sessionTitle: recordRun.sessionTitle,
+    handedOver: recordRun.handedOver,
   });
 
   const pill =

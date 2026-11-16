@@ -20,6 +20,8 @@ export type RecordRun = {
   readonly sessionId: string;
   readonly title: string;
   readonly run: AgentRunStatus | null;
+  /** The chat was handed over from Ask, so the record's title is the brief's, not a placeholder. */
+  readonly handedOver: boolean;
 };
 
 /** The record's chat whose run builds or stops, else its newest chat, else null. */
@@ -41,7 +43,12 @@ export function recordRunOf(
 
   return found === undefined
     ? null
-    : { sessionId: found.id, title: found.title, run: found.run };
+    : {
+        sessionId: found.id,
+        title: found.title,
+        run: found.run,
+        handedOver: found.handedFromSessionId !== null,
+      };
 }
 
 export type SeenRun = {
@@ -74,6 +81,8 @@ export function seenRun(
 export type RecordRunHandle = {
   readonly sessionId: string | null;
   readonly sessionTitle: string | null;
+  /** The followed chat was handed over from Ask; false with no chat. */
+  readonly handedOver: boolean;
   readonly run: AgentRunStatus | null;
   /** This mount saw the run go from building or stopping to an end. */
   readonly endedHere: boolean;
@@ -133,6 +142,7 @@ export function useRecordRun(input: {
   return {
     sessionId,
     sessionTitle: found?.title ?? null,
+    handedOver: found?.handedOver ?? false,
     run,
     endedHere: next.endedHere,
     // A failed read ends the wait, so a page that locks on `loading` never stays locked.

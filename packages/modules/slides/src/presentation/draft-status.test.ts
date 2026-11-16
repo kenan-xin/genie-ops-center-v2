@@ -34,18 +34,21 @@ describe("the deck page's draft pill", () => {
 describe("the deck title while the agent names it", () => {
   // Bug caught (Review Focus 5): the loading title stays for ever when the run ends without a rename.
   it.each([
-    ["building", "New deck", "New deck", true],
-    ["stopping", "New deck", "New deck", true],
-    ["building", "October collections", "New deck", false],
-    ["saved", "New deck", "New deck", false],
-    ["stopped", "New deck", "New deck", false],
-    ["failed", "New deck", "New deck", false],
-    ["interrupted", "New deck", "New deck", false],
-    [null, "New deck", null, false],
+    ["building", "New deck", "New deck", false, true],
+    ["stopping", "New deck", "New deck", false, true],
+    ["building", "October collections", "New deck", false, false],
+    // Bug caught: a deck handed over from Ask shares the brief's title with its chat and never
+    // renames, so it showed "Naming the deck" for its whole build.
+    ["building", "Q3 review", "Q3 review", true, false],
+    ["saved", "New deck", "New deck", false, false],
+    ["stopped", "New deck", "New deck", false, false],
+    ["failed", "New deck", "New deck", false, false],
+    ["interrupted", "New deck", "New deck", false, false],
+    [null, "New deck", null, false, false],
   ] as const)(
-    "%s run, title %s, chat %s: unnamed %s",
-    (run, title, sessionTitle, unnamed) => {
-      expect(isUnnamed({ run, title, sessionTitle })).toBe(unnamed);
+    "%s run, title %s, chat %s, handed over %s: unnamed %s",
+    (run, title, sessionTitle, handedOver, unnamed) => {
+      expect(isUnnamed({ run, title, sessionTitle, handedOver })).toBe(unnamed);
     }
   );
 });

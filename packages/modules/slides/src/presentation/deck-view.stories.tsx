@@ -2082,6 +2082,7 @@ function chatOf(
       run === "building" ? "running" : run === "stopping" ? "stopping" : null,
     run,
     updatedAt: "2026-11-15T09:00:00.000Z",
+    handedFromSessionId: null,
   };
 }
 
@@ -2145,6 +2146,32 @@ export const DraftingUnnamed: Story = {
     for (const name of ["Export to PowerPoint", "More", "Present"]) {
       expect(canvas.queryByRole("button", { name })).toBeNull();
     }
+  },
+};
+
+export const DraftingHandedOver: Story = {
+  name: "Drafting, handed over from Ask",
+  args: { view: startedDeckPage },
+  globals: desktop,
+  beforeEach: () => {
+    serve(startedDeckPage);
+    // Ask's hand-over gives the deck and its chat the brief's title, and the build never renames.
+    sessions.mockResolvedValue([
+      { ...chatOf("building"), handedFromSessionId: "ask-session-1" },
+    ]);
+  },
+  play: async ({ canvas, canvasElement }) => {
+    await pill(canvas, "Drafting slide 1");
+
+    // Bug caught: a handed-over deck showed "Naming the deck" for its whole build.
+    await expect(
+      canvas.getByRole("heading", { level: 1, name: PROVISIONAL_TITLE })
+    ).toBeVisible();
+    await expect(
+      canvasElement.querySelector(
+        "[data-shell-page-header] [data-slot=skeleton]"
+      )
+    ).toBeNull();
   },
 };
 
@@ -2529,10 +2556,10 @@ async function pageEndAbovePanel(
   canvas: ReturnType<typeof within>,
   canvasElement: HTMLElement
 ) {
-  await userEvent.click(canvas.getByRole("button", { name: "Agent" }));
+  await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
 
   const panel = await canvas.findByRole("complementary", {
-    name: "Agent panel",
+    name: "Ask",
   });
 
   const content = canvasElement.querySelector<HTMLElement>(

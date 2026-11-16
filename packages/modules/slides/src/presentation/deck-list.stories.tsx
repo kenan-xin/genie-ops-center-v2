@@ -1,3 +1,4 @@
+import { CORE_ERROR_MESSAGES } from "@genie/core/errors";
 import {
   AgentButton,
   AgentPanelHost,
@@ -342,7 +343,7 @@ export const CancelRestoresNewDeck: Story = {
   },
 };
 
-const REFUSAL = "Work is still building. Wait for it to finish, or stop it.";
+const REFUSAL = CORE_ERROR_MESSAGES["agent-run-limit"];
 
 // Bug caught: a refused start is silent, Enter stays dead after the same refusal, or its message stays after Cancel.
 export const NewDeckRefused: Story = {

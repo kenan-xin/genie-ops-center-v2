@@ -298,10 +298,14 @@ describe("the start of a surface run from a record page", () => {
 
     const runOf = async () =>
       (await agent(ctx).sessions({ surface: "placeholder", recordId })).map(
-        ({ id, run }) => ({ id, run })
+        ({ id, run, handedFromSessionId }) => ({ id, run, handedFromSessionId })
       );
 
-    expect(await runOf()).toEqual([{ id: sessionId, run: "building" }]);
+    // Bug caught: the list read loses whether a chat was handed over, so the deck page hides the
+    // title of every deck handed over from Ask (S7-48).
+    expect(await runOf()).toEqual([
+      { id: sessionId, run: "building", handedFromSessionId: null },
+    ]);
 
     const [session] = await sessionsOf(ctx);
 
@@ -311,6 +315,8 @@ describe("the start of a surface run from a record page", () => {
       { sessionId, runJobId: session?.run_job_id ?? "" }
     );
 
-    expect(await runOf()).toEqual([{ id: sessionId, run: "failed" }]);
+    expect(await runOf()).toEqual([
+      { id: sessionId, run: "failed", handedFromSessionId: null },
+    ]);
   });
 });

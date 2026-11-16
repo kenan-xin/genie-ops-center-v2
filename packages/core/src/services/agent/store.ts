@@ -56,6 +56,8 @@ export type AgentSessionSummary = {
   readonly run: AgentRunStatus | null;
   /** ISO instant. */
   readonly updatedAt: string;
+  /** The Ask chat this session was handed over from; null when it started on its own surface. */
+  readonly handedFromSessionId: string | null;
 };
 
 export const AGENT_SESSION_LIST_LIMIT = 50;
@@ -72,6 +74,7 @@ const summaryColumns = {
   runError: agentSession.runError,
   runJobId: agentSession.runJobId,
   updatedAt: agentSession.updatedAt,
+  handedFromSessionId: agentSession.handedFromSessionId,
 };
 
 function notFound(): AppError {
@@ -95,6 +98,7 @@ function summary(row: {
   readonly runError: "stopped" | "interrupted" | "failed" | null;
   readonly runJobId: string | null;
   readonly updatedAt: Date;
+  readonly handedFromSessionId: string | null;
 }): AgentSessionSummary {
   return {
     id: row.id,
@@ -105,6 +109,7 @@ function summary(row: {
     runState: row.runState,
     run: runStatus(row),
     updatedAt: row.updatedAt.toISOString(),
+    handedFromSessionId: row.handedFromSessionId,
   };
 }
 
@@ -364,7 +369,6 @@ export async function readOwnSession(
 }
 
 export type AgentSessionDetail = AgentSessionSummary & {
-  readonly handedFromSessionId: string | null;
   /** The surface's name and the record's page; null on Ask or when the surface is not listed. */
   readonly agentName: string | null;
   readonly address: string | null;
@@ -385,10 +389,7 @@ export async function readOwnSessionDetail(
   if (!uuid.safeParse(id).success) return null;
 
   const [row] = await ctx.tenant.db
-    .select({
-      ...summaryColumns,
-      handedFromSessionId: agentSession.handedFromSessionId,
-    })
+    .select(summaryColumns)
     .from(agentSession)
     .where(ownedBy(ctx, id));
 
@@ -404,7 +405,6 @@ export async function readOwnSessionDetail(
   return {
     session: {
       ...summary(row),
-      handedFromSessionId: row.handedFromSessionId,
       agentName: surface?.name ?? null,
       address:
         surface === undefined || row.recordId === null

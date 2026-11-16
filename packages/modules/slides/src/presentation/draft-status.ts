@@ -40,12 +40,17 @@ export function draftStatus(input: {
 /**
  * The deck still has the title its start gave it, the chat's, while the agent may rename it. After
  * any end the title shows as it is, so a run that never renamed leaves no loading title (Review
- * Focus 5).
+ * Focus 5). A deck handed over from Ask already has the brief's title, which the chat shares.
  */
 export function isUnnamed(input: {
   readonly run: AgentRunStatus | null;
   readonly title: string;
   readonly sessionTitle: string | null;
+  readonly handedOver: boolean;
 }): boolean {
-  return isDrafting(input.run) && input.title === input.sessionTitle;
+  return (
+    isDrafting(input.run) &&
+    !input.handedOver &&
+    input.title === input.sessionTitle
+  );
 }

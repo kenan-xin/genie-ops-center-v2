@@ -1,3 +1,4 @@
+import { CORE_ERROR_MESSAGES } from "@genie/core/errors";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn, userEvent } from "storybook/test";
@@ -8,7 +9,7 @@ const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
-const REFUSAL = "Work is still building. Wait for it to finish, or stop it.";
+const REFUSAL = CORE_ERROR_MESSAGES["agent-run-limit"];
 
 type Props = Parameters<typeof NewDeckComposer>[0];
 

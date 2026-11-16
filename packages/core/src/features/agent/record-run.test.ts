@@ -21,6 +21,7 @@ function session(
     runState: null,
     run,
     updatedAt,
+    handedFromSessionId: null,
   };
 }
 
@@ -37,6 +38,7 @@ describe("recordRunOf", () => {
         sessionId: "building",
         title: "Chat building",
         run: "building",
+        handedOver: false,
       },
     },
     {
@@ -46,7 +48,12 @@ describe("recordRunOf", () => {
         session("other", "record-2", "building", "2026-11-13T10:00:00.000Z"),
         session("mine", RECORD, "stopped", "2026-11-13T09:00:00.000Z"),
       ],
-      answer: { sessionId: "mine", title: "Chat mine", run: "stopped" },
+      answer: {
+        sessionId: "mine",
+        title: "Chat mine",
+        run: "stopped",
+        handedOver: false,
+      },
     },
     {
       // Bug: with no run the page shows an old chat's end state, not the latest one.
@@ -55,7 +62,28 @@ describe("recordRunOf", () => {
         session("old", RECORD, "saved", "2026-11-13T08:00:00.000Z"),
         session("new", RECORD, "failed", "2026-11-13T09:00:00.000Z"),
       ],
-      answer: { sessionId: "new", title: "Chat new", run: "failed" },
+      answer: {
+        sessionId: "new",
+        title: "Chat new",
+        run: "failed",
+        handedOver: false,
+      },
+    },
+    {
+      // Bug: the page cannot tell a chat handed over from Ask, whose title is the brief's.
+      case: "a chat handed over from Ask says so",
+      sessions: [
+        {
+          ...session("handed", RECORD, "building", "2026-11-13T09:00:00.000Z"),
+          handedFromSessionId: "ask-1",
+        },
+      ],
+      answer: {
+        sessionId: "handed",
+        title: "Chat handed",
+        run: "building",
+        handedOver: true,
+      },
     },
     {
       // Bug: a record with no chat reads as one with a run, so the page shows Stop.

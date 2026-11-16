@@ -17,6 +17,7 @@ function chat(id: string, updatedAt: string): AgentSessionSummary {
     runState: null,
     run: null,
     updatedAt,
+    handedFromSessionId: null,
   };
 }
 
