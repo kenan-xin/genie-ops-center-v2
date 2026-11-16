@@ -107,12 +107,21 @@ test("the agent panel on the deck editor changes the shown slide, and Undo resto
           })
         ).toBeVisible(FIRST_PAINT);
 
-        await activate(page, railButton(page, 2));
-        await expect(railButton(page, 2)).toHaveAttribute(
-          "aria-current",
-          "true",
-          { timeout: FIRST_PAINT.timeout }
-        );
+        // The heading shows before the page hydrates, and a press before hydration is lost
+        // (P07-20), so it repeats until the rail marks slide 2.
+        await expect(async () => {
+          if (
+            (await railButton(page, 2).getAttribute("aria-current")) !== "true"
+          ) {
+            await activate(page, railButton(page, 2));
+          }
+
+          await expect(railButton(page, 2)).toHaveAttribute(
+            "aria-current",
+            "true",
+            { timeout: 2_000 }
+          );
+        }).toPass(FIRST_PAINT);
 
         const title = (text: string) =>
           deckCanvas(page).getByText(text, { exact: true });
