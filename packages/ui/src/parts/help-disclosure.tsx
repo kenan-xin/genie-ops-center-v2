@@ -63,15 +63,17 @@ export function HelpDisclosure(props: {
       ) : (
         <PopoverTrigger
           // A grid or flex-column parent would stretch the button and center its label. The negative
-          // margin hangs the padding and the 1 px border, so the icon starts on the text column.
+          // margin hangs the 16 px of start padding, so the box stops on the parent's padding edge:
+          // a card's `overflow-hidden` clipped a 17 px hang and the touch area's left pixel with it
+          // (6wz1.114, C06-6). The icon hangs the border's 1 px, so it starts on the text column.
           render={
             <Button
               variant="ghost"
-              className="-ms-4.25 w-fit justify-self-start"
+              className="-ms-4 w-fit justify-self-start"
             />
           }
         >
-          <Icon aria-hidden="true" />
+          <Icon aria-hidden="true" className="-ms-px" />
           {props.label}
         </PopoverTrigger>
       )}

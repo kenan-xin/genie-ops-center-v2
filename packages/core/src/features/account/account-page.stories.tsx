@@ -188,6 +188,38 @@ export const SessionsHeaderStacksOnPhone: Story = {
 };
 
 /**
+ * 6wz1.114 (C06-6): each help disclosure reaches its 44 px touch area to the left. The probe is the
+ * touch check's own: the outermost whole pixel of the area's left edge, at the middle.
+ */
+export const HelpTouchAreaOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const short = [
+      "Where your profile comes from",
+      "How your roles change",
+    ].filter((name) => {
+      const trigger = canvas.getByRole("button", { name });
+
+      trigger.scrollIntoView({ block: "center", behavior: "instant" });
+
+      const rect = trigger.getBoundingClientRect();
+
+      const x = Math.ceil(
+        rect.left + rect.width / 2 - Math.max(rect.width, 44) / 2
+      );
+
+      return !trigger.contains(
+        document.elementFromPoint(x, rect.top + rect.height / 2)
+      );
+    });
+
+    await expect(short).toEqual([]);
+  },
+};
+
+/**
  * The page header sits as on every admin page: at the content's left edge, not centered, with the
  * 24 px gap above the first card, and the subtitle names what the page holds.
  */
