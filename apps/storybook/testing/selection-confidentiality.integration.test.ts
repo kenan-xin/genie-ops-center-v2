@@ -858,9 +858,13 @@ describe("the development server and the MCP addon", () => {
 // A quiet empty pass is refused by the wrapper's `--passWithNoTests=false` and
 // by the generated-module case below, which reads passed tests from a report.
 describe("the component-test layer", () => {
-  it("runs again when the selection changes, and reuses an identical one", () => {
+  // The first selection's full run gets its own 300 s budget: two full nested
+  // runs do not fit one test's budget on the CI runner (xok3.96).
+  beforeAll(() => {
     ran(TEST_TASK, SECOND_ID);
+  });
 
+  it("runs again when the selection changes, and reuses an identical one", () => {
     const changed = ran(TEST_TASK, "placeholder");
 
     expect(servedFromCache(changed.output, TEST_TASK), changed.output).toBe(
