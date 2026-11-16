@@ -27,6 +27,7 @@ const FIXTURE = `<!doctype html>
       .stack { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
       .group { display: flex; align-items: center; width: 240px; height: 40px; padding: 0 4px 0 8px; border: 1px solid #333; }
       .group input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0 8px; font: inherit; background: transparent; }
+      .group .swatch { flex: none; width: 24px; height: 24px; padding: 0; }
       .clip { display: flex; overflow: hidden; }
       .hidden { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); }
       .off { height: 20px; }
@@ -52,6 +53,7 @@ const FIXTURE = `<!doctype html>
     </div>
     <div class="block">
       <div data-slot="input-group" class="group touch">
+        <input type="color" class="swatch" aria-label="Color" />
         <input aria-label="Amount" />
         <button class="small">Pick</button>
       </div>
@@ -74,7 +76,8 @@ const FIXTURE = `<!doctype html>
   </body>
 </html>`;
 
-// T6-a: the five findings prove the short, covering, too-close and clipped cases, and their
+// T6-a: the findings prove the short, covering, too-close and clipped cases (a 24 px color
+// swatch in a field group is measured by its own box, not the field's), and their
 // absence proves the allowed ones (overlap in a gap, a nested field button, an inline link, a
 // hidden input, a disabled button, a field's own wrapper, a wrapping label).
 test("the touch area check finds short, covering and clipped areas and allows overlaps @no-screen", async ({
@@ -89,6 +92,7 @@ test("the touch area check finds short, covering and clipped areas and allows ov
     'button "Clipped": touch area under 44 px (top, bottom)',
     'button "Greedy": covers button "Victim"',
     'button "Italic": covers button "Bold"',
+    'input "Color": touch area under 44 px (top, bottom, left)',
   ]);
 });
 

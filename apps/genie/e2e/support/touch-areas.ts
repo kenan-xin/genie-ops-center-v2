@@ -102,9 +102,12 @@ function findTouchAreaProblems(): string[] {
   if (root !== null && !scrolled.has(root))
     scrolled.set(root, [root.scrollLeft, root.scrollTop]);
 
-  // A native field cannot draw a touch area, so the box that wraps it carries one (rule 2).
+  // A native field cannot draw a touch area, so the box that wraps it carries one (rule 2). A
+  // swatch, checkbox or slider beside the field in that box is its own control, with its own box.
   const wrapperOf = (element: Element): Element | null =>
-    element.matches("input, textarea, select")
+    element.matches(
+      "input:not([type=color], [type=checkbox], [type=radio], [type=range], [type=file]), textarea, select"
+    )
       ? element.closest("[data-slot=input-box], [data-slot=input-group]")
       : null;
 
