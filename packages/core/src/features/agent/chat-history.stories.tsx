@@ -44,6 +44,7 @@ function entry(
     updatedAt: new Date(Date.UTC(2026, 10, 5, 8, 60 - n)).toISOString(),
     run: more.run ?? null,
     unseen: more.unseen ?? false,
+    handedFromSessionId: null,
     agentName: record?.name ?? null,
     address:
       record === undefined

@@ -6,7 +6,7 @@ Anyone who presents figures from the data that modules publish.
 
 ## What it does
 
-A person creates a deck by chat, or edits it by hand. A deck is typed elements on 16:9 slides, never HTML. Edits are patch operations guarded by a content hash. A deck freezes its figures when it is made, shows that date, and changes them only on Refresh data. It uses the tenant branding, can be presented full screen, and exports to PowerPoint with native editable charts through pptxgenjs (`DEC-55`). The deck page is owner-only. An image or export link opens for any `slides:read` holder for its 5-minute life, because sharing a deck today means exporting it and sending the file (owner, 2026-11-01, Spec 7 R-52). Full requirements: `../../specs/07-invoice-and-payments.md`, R-52 to R-57.
+A person creates a deck by chat, or edits it by hand. With chat on, New deck on the Slides list opens a composer under the header that takes a description of the deck. Create deck starts the agent on a new deck and opens its page (S7-48). With chat off, or for a person who may not ask, New deck asks for a title. A deck is typed elements on 16:9 slides, never HTML. Edits are patch operations guarded by a content hash. A deck freezes its figures when it is made, shows that date, and changes them only on Refresh data. It uses the tenant branding, can be presented full screen, and exports to PowerPoint with native editable charts through pptxgenjs (`DEC-55`). The deck page is owner-only. An image or export link opens for any `slides:read` holder for its 5-minute life, because sharing a deck today means exporting it and sending the file (owner, 2026-11-01, Spec 7 R-52). Full requirements: `../../specs/07-invoice-and-payments.md`, R-52 to R-57.
 
 ## Permissions and roles
 
@@ -69,7 +69,7 @@ Export to PowerPoint needs `slides:read`: a person who can open a deck can prese
 
 ## Chat
 
-A person who may ask gets the agent panel on the Slides list and on the deck page. On the Slides list it sends the page name only, `{ page: "Slides" }`, and no record, and the panel is Ask.
+A person who may ask gets the agent panel on the Slides list and on the deck page. On the Slides list it sends the page name only, `{ page: "Slides" }`, and no record, and the panel is Ask. New deck sends its description through `agent.start` on the `slides` surface. Core makes the empty deck, its Slides chat and the run in one step, and the page opens the panel on the new deck. A refusal, such as the limit of 3 runs working at once, shows its message in the composer and keeps the text. Enter creates, and Shift and Enter start a new line. While a run builds on a deck, the deck page's hand edits wait, and the title waits for its name, unless the deck came from Ask with the brief's title. Once the run ends, the title renames in place: Enter saves and Escape cancels.
 
 Ask and every Slides chat get the read tools `slides-list-decks` and `slides-read-deck` (`slides:read`) and two read rules for a holder of `slides:read`: the tools read only the person's own decks, and a number typed into a deck is text, not a record. An answer about such a number starts with the value of a query, then names the deck's number with its deck and slide, and with the figures date when it is not the reporting date, in one sentence, and never asks which number to use (Spec 7 R-44, `czjw.166`). `slides-read-deck` answers the deck's content hash with its slides and their ids.
 

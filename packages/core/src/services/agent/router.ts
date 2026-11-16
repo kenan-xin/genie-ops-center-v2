@@ -8,6 +8,7 @@ import { listOwnFiles, ownFileLink } from "./files.ts";
 import { withRecordPaths } from "./record-paths.ts";
 import { retryRun } from "./run-job.ts";
 import { countActiveRuns, markSeen, stopRun } from "./runs.ts";
+import { startRecordRun } from "./start-record.ts";
 import {
   deleteOwnSession,
   listOwnHistory,
@@ -46,6 +47,9 @@ export function createAgentRouter() {
     ),
     activeRuns: os.activeRuns.handler(({ context }) =>
       countActiveRuns(context)
+    ),
+    start: os.start.handler(({ context, input }) =>
+      startRecordRun(context, input)
     ),
     session: os.session.handler(({ context, input }) =>
       readOwnSessionDetail(context, input.id)

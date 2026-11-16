@@ -32,7 +32,7 @@ import {
   summaryMessage,
 } from "./compaction.ts";
 import { isContinueMessage, turnEndOf } from "./continue.ts";
-import { CHAT_TITLE_LIMIT } from "./contract.ts";
+import { chatTitleFrom } from "./contract.ts";
 import { trimHistory } from "./history.ts";
 import { moduleInstructionLines } from "./instructions.ts";
 import { chatLabels } from "./labels.ts";
@@ -204,7 +204,7 @@ export async function handleAgentChat(
   if (existing === undefined) {
     await createOwnSession(ctx, {
       id: sessionId,
-      title: text.replaceAll(/\s+/g, " ").slice(0, CHAT_TITLE_LIMIT),
+      title: chatTitleFrom(text),
       modelId: sessionModel,
       surface,
       recordId,

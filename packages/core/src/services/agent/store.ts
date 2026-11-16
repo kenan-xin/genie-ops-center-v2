@@ -52,8 +52,12 @@ export type AgentSessionSummary = {
   readonly recordId: string | null;
   /** The state of the session's background run; null when none runs (R-42b). */
   readonly runState: "queued" | "running" | "stopping" | null;
+  /** What a page shows of the run, so a list read tells saved, stopped, failed and interrupted apart. */
+  readonly run: AgentRunStatus | null;
   /** ISO instant. */
   readonly updatedAt: string;
+  /** The Ask chat this session was handed over from; null when it started on its own surface. */
+  readonly handedFromSessionId: string | null;
 };
 
 export const AGENT_SESSION_LIST_LIMIT = 50;
@@ -67,7 +71,10 @@ const summaryColumns = {
   surface: agentSession.surface,
   recordId: agentSession.recordId,
   runState: agentSession.runState,
+  runError: agentSession.runError,
+  runJobId: agentSession.runJobId,
   updatedAt: agentSession.updatedAt,
+  handedFromSessionId: agentSession.handedFromSessionId,
 };
 
 function notFound(): AppError {
@@ -88,7 +95,10 @@ function summary(row: {
   readonly surface: string;
   readonly recordId: string | null;
   readonly runState: AgentSessionSummary["runState"];
+  readonly runError: "stopped" | "interrupted" | "failed" | null;
+  readonly runJobId: string | null;
   readonly updatedAt: Date;
+  readonly handedFromSessionId: string | null;
 }): AgentSessionSummary {
   return {
     id: row.id,
@@ -97,7 +107,9 @@ function summary(row: {
     surface: row.surface,
     recordId: row.recordId,
     runState: row.runState,
+    run: runStatus(row),
     updatedAt: row.updatedAt.toISOString(),
+    handedFromSessionId: row.handedFromSessionId,
   };
 }
 
@@ -231,7 +243,8 @@ export async function insertHandedSession(
     readonly id: string;
     readonly surface: string;
     readonly recordId: string;
-    readonly handedFromSessionId: string;
+    /** null when the person started the record on its page (S7-48). */
+    readonly handedFromSessionId: string | null;
     readonly title: string;
     readonly modelId: string;
     readonly parts: AgentMessage["parts"];
@@ -356,8 +369,6 @@ export async function readOwnSession(
 }
 
 export type AgentSessionDetail = AgentSessionSummary & {
-  readonly handedFromSessionId: string | null;
-  readonly run: AgentRunStatus | null;
   /** The surface's name and the record's page; null on Ask or when the surface is not listed. */
   readonly agentName: string | null;
   readonly address: string | null;
@@ -378,12 +389,7 @@ export async function readOwnSessionDetail(
   if (!uuid.safeParse(id).success) return null;
 
   const [row] = await ctx.tenant.db
-    .select({
-      ...summaryColumns,
-      handedFromSessionId: agentSession.handedFromSessionId,
-      runError: agentSession.runError,
-      runJobId: agentSession.runJobId,
-    })
+    .select(summaryColumns)
     .from(agentSession)
     .where(ownedBy(ctx, id));
 
@@ -399,8 +405,6 @@ export async function readOwnSessionDetail(
   return {
     session: {
       ...summary(row),
-      handedFromSessionId: row.handedFromSessionId,
-      run: runStatus(row),
       agentName: surface?.name ?? null,
       address:
         surface === undefined || row.recordId === null
@@ -415,7 +419,6 @@ export async function readOwnSessionDetail(
 export const AGENT_HISTORY_LIMIT = 200;
 
 export type AgentHistoryEntry = AgentSessionSummary & {
-  readonly run: AgentRunStatus | null;
   /** The run ended while the person had not opened the chat (R12). */
   readonly unseen: boolean;
   /** The surface's name; null on Ask or when the surface is not listed. */

@@ -26,6 +26,8 @@ type AgentPanelState = {
   readonly opener: HTMLElement | null;
   /** The phone bottom panel of a surface page while it shows, so the shell leaves room for it. */
   readonly bottomPanel: "open" | "collapsed" | null;
+  /** The app's router, which the panel host registers, so a page opens another page through it. */
+  readonly navigate: ((href: string) => void) | null;
 };
 
 const CLOSED: AgentPanelState = {
@@ -35,6 +37,7 @@ const CLOSED: AgentPanelState = {
   outbox: null,
   opener: null,
   bottomPanel: null,
+  navigate: null,
 };
 
 /** The one panel of the tab. */
@@ -57,6 +60,10 @@ export function setBottomPanel(
   bottomPanel: AgentPanelState["bottomPanel"]
 ): void {
   agentPanelStore.setState({ bottomPanel });
+}
+
+export function setPanelNavigate(navigate: AgentPanelState["navigate"]): void {
+  agentPanelStore.setState({ navigate });
 }
 
 /** The context that the next message sends: the page's, read when the message goes. */

@@ -4,6 +4,7 @@ import { oc } from "../../lib/rpc/index.ts";
 import type { CheckedChart } from "../charts/index.ts";
 import type { AgentArtifact } from "./artifacts.ts";
 import type { AgentFile } from "./files.ts";
+import { AGENT_LIMITS } from "./limits.ts";
 import type {
   AgentHistoryEntry,
   AgentMessage,
@@ -12,6 +13,11 @@ import type {
 } from "./store.ts";
 
 export const CHAT_TITLE_LIMIT = 80;
+
+/** A new chat's title from its first text: one line, at most 80 characters. */
+export function chatTitleFrom(text: string): string {
+  return text.replaceAll(/\s+/g, " ").trim().slice(0, CHAT_TITLE_LIMIT);
+}
 
 /** A chat's name, as the owner renames it (czjw.120 item 13). */
 export const chatTitleSchema = z
@@ -51,6 +57,27 @@ export const agentContract = {
   activeRuns: oc
     .route({ method: "GET", path: "/agent/active-runs" })
     .output(z.custom<{ readonly count: number }>()),
+  // Makes a new record of a surface, its session with the person's description as the first
+  // message, and the session's run, in one transaction, from the surface's list page (S7-48).
+  start: oc
+    .route({ method: "POST", path: "/agent/start" })
+    .input(
+      z.object({
+        surface: z.string().max(64),
+        description: z
+          .string()
+          .trim()
+          .min(1)
+          .max(AGENT_LIMITS.messageCharacters),
+      })
+    )
+    .output(
+      z.custom<{
+        readonly sessionId: string;
+        readonly recordId: string;
+        readonly address: string;
+      }>()
+    ),
   // One of the caller's sessions with its run status and messages, which a page polls while it
   // builds (P11-32); null for an id not saved yet or another person's.
   session: oc

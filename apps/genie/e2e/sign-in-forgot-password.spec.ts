@@ -21,6 +21,16 @@ const FORGOT = { name: "Forgot your password?" } as const;
 
 const sql = (query: string) => queryBrokerDatabase(INVITE_DB, query);
 
+/**
+ * The wait for the `tenant-settings` lock. The other project's holders run back to back: in gate
+ * phase16i2 `done-when.spec.ts` held it for 2.5 minutes and the settings and idle-window specs
+ * for up to 50 s each, so a 120 s test timeout ran out while the test still waited (xok3.82).
+ */
+const LOCK_WAIT_MS = 300_000;
+
+/** A test that takes the lock: the lock wait plus 60 s for its body, the 30 s reader poll included. */
+const LOCKED_TEST_MS = LOCK_WAIT_MS + 60_000;
+
 test("a local-accounts realm links its reset-password page from the sign-in page", async ({
   page,
 }) => {
@@ -45,6 +55,8 @@ test("a local-accounts realm links its reset-password page from the sign-in page
 test("the reset link stays while a local account exists after the setting is off", async ({
   page,
 }, testInfo) => {
+  test.setTimeout(LOCKED_TEST_MS);
+
   const email = `r51a-${testInfo.project.name}@example.invalid`;
 
   await withDeploymentLock(
@@ -82,19 +94,25 @@ test("the reset link stays while a local account exists after the setting is off
         );
       }
     },
-    300_000
+    LOCK_WAIT_MS
   );
 });
 
 test("a brokered realm shows the company-account action and no reset link", async ({
   page,
 }) => {
-  await withDeploymentLock("tenant-settings", async () => {
-    await page.goto("/sign-in");
+  test.setTimeout(LOCKED_TEST_MS);
 
-    await expect(
-      page.getByRole("link", { name: "Sign in with SSO" })
-    ).toBeVisible();
-    await expect(page.getByRole("link", FORGOT)).toHaveCount(0);
-  });
+  await withDeploymentLock(
+    "tenant-settings",
+    async () => {
+      await page.goto("/sign-in");
+
+      await expect(
+        page.getByRole("link", { name: "Sign in with SSO" })
+      ).toBeVisible();
+      await expect(page.getByRole("link", FORGOT)).toHaveCount(0);
+    },
+    LOCK_WAIT_MS
+  );
 });

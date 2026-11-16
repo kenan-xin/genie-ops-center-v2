@@ -1,3 +1,4 @@
+import { CORE_ERROR_MESSAGES } from "@genie/core/errors";
 import {
   AgentButton,
   AgentPanelHost,
@@ -25,6 +26,9 @@ const createDeck = fn();
 
 const deleteDeck = fn();
 
+/** `agent.start`, which makes the deck and its run when chat is on (S7-48). */
+const start = fn();
+
 /** The chat's chart gate; these stories send no message, so it never runs. */
 const chart = fn();
 
@@ -49,7 +53,7 @@ function withQuery(Story: () => ReactNode) {
       <ModuleClientProvider
         client={{
           slides: { listDecks, createDeck, deleteDeck },
-          agent: { chart, messages: async () => [] },
+          agent: { chart, start, messages: async () => [] },
         }}
       >
         <Story />
@@ -84,7 +88,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Slides list at `/m/slides/decks` (Spec 7 R-52). It shows only the signed-in person's own decks, the last changed first. New deck asks for a title; Delete asks first, because a deleted deck and its images cannot be undone. Beside the list, a person who may ask gets a chat that creates decks (R-46, D12): from 1024 px a 22rem column on the right, below that after the list. With AI off a note takes its place.",
+          "The Slides list at `/m/slides/decks` (Spec 7 R-52). It shows only the signed-in person's own decks, the last changed first. With chat on, New deck opens a composer under the header that starts the agent on a new deck from a description (S7-48); with chat off it asks for a title. Delete asks first, because a deleted deck and its images cannot be undone. Beside the list, a person who may ask gets a chat that creates decks (R-46, D12): from 1024 px a 22rem column on the right, below that after the list. With AI off a note takes its place.",
       },
     },
     a11y: { test: "error" },
@@ -102,6 +106,8 @@ function serve(view: DeckListView) {
   listDecks.mockReset().mockResolvedValue([...view.decks]);
   createDeck.mockReset();
   deleteDeck.mockReset().mockResolvedValue({ id: "deck-1" });
+  // A start that answers would leave the story for the deck page, so it never answers here.
+  start.mockReset().mockImplementation(() => new Promise(() => {}));
 }
 
 export const Default: Story = {
@@ -278,7 +284,95 @@ export const ReadOnlyOnPhone: Story = {
   },
 };
 
+const describeBox = (
+  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"]
+) => canvas.getByRole("textbox", { name: "What is the deck about?" });
+
+/** Opens the composer: it takes New deck's place and holds the focus. */
+async function openComposer(
+  canvas: Parameters<NonNullable<Story["play"]>>[0]["canvas"]
+) {
+  await userEvent.click(canvas.getByRole("button", { name: "New deck" }));
+  await expect(canvas.getByRole("region", { name: "New deck" })).toBeVisible();
+  await expect(canvas.queryByRole("button", { name: "New deck" })).toBeNull();
+  await expect(describeBox(canvas)).toHaveFocus();
+}
+
+// Bug caught: two quick Enter presses or a double click start two decks.
 const newDeckPlay: Story["play"] = async ({ canvas }) => {
+  await openComposer(canvas);
+  await userEvent.type(describeBox(canvas), "Board update");
+  await userEvent.keyboard("{Enter}{Enter}");
+  await userEvent.dblClick(canvas.getByRole("button", { name: "Create deck" }));
+
+  await expect(start).toHaveBeenCalledOnce();
+  await expect(start).toHaveBeenCalledWith({
+    surface: "slides",
+    description: "Board update",
+  });
+  await expect(createDeck).not.toHaveBeenCalled();
+};
+
+export const NewDeck: Story = {
+  name: "New deck",
+  globals: desktop,
+  beforeEach: () => serve(deckList),
+  play: newDeckPlay,
+};
+
+export const NewDeckOnPhone: Story = {
+  name: "New deck on a phone",
+  globals: phone,
+  beforeEach: () => serve(deckList),
+  play: newDeckPlay,
+};
+
+// Bug caught: Cancel leaves the focus on the page body, so a keyboard user starts over from the top.
+export const CancelRestoresNewDeck: Story = {
+  name: "Cancel restores New deck",
+  globals: desktop,
+  beforeEach: () => serve(deckList),
+  play: async ({ canvas }) => {
+    await openComposer(canvas);
+    await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
+
+    await expect(canvas.queryByRole("region", { name: "New deck" })).toBeNull();
+    await expect(
+      canvas.getByRole("button", { name: "New deck" })
+    ).toHaveFocus();
+  },
+};
+
+const REFUSAL = CORE_ERROR_MESSAGES["agent-run-limit"];
+
+// Bug caught: a refused start is silent, Enter stays dead after the same refusal, or its message stays after Cancel.
+export const NewDeckRefused: Story = {
+  name: "New deck refused",
+  globals: desktop,
+  beforeEach: () => {
+    serve(deckList);
+    start.mockRejectedValue(new Error(REFUSAL));
+  },
+  play: async ({ canvas }) => {
+    await openComposer(canvas);
+    await userEvent.type(describeBox(canvas), "Board update{Enter}");
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(REFUSAL);
+    await expect(describeBox(canvas)).toHaveValue("Board update");
+
+    // The same message again, so a reset that waits for a new message fails here.
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(start).toHaveBeenCalledTimes(2));
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(REFUSAL);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Cancel" }));
+    await openComposer(canvas);
+    await expect(canvas.queryByRole("alert")).toBeNull();
+  },
+};
+
+// Bug caught: a person without chat loses New deck. The title dialog and createDeck stay.
+const newDeckChatOffPlay: Story["play"] = async ({ canvas }) => {
   await userEvent.click(canvas.getByRole("button", { name: "New deck" }));
 
   const dialog = within(
@@ -307,20 +401,23 @@ const newDeckPlay: Story["play"] = async ({ canvas }) => {
   await waitFor(() =>
     expect(createDeck).toHaveBeenCalledWith({ title: "Quarter review" })
   );
+  await expect(start).not.toHaveBeenCalled();
 };
 
-export const NewDeck: Story = {
-  name: "New deck",
+export const NewDeckChatOff: Story = {
+  name: "New deck, chat off",
+  args: { view: chatOffDeckList },
   globals: desktop,
-  beforeEach: () => serve(deckList),
-  play: newDeckPlay,
+  beforeEach: () => serve(chatOffDeckList),
+  play: newDeckChatOffPlay,
 };
 
-export const NewDeckOnPhone: Story = {
-  name: "New deck on a phone",
+export const NewDeckChatOffOnPhone: Story = {
+  name: "New deck, chat off, on a phone",
+  args: { view: chatOffDeckList },
   globals: phone,
-  beforeEach: () => serve(deckList),
-  play: newDeckPlay,
+  beforeEach: () => serve(chatOffDeckList),
+  play: newDeckChatOffPlay,
 };
 
 // B4.6: Delete asks first and names the deck; Cancel keeps the row, Delete sends the call.

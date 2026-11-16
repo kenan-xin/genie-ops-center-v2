@@ -9,6 +9,7 @@ import {
   BreadcrumbSeparator,
   focusRing,
   iconControlSizes,
+  Skeleton,
   StickyActionBar,
   touchAreas,
 } from "@genie/ui";
@@ -32,6 +33,16 @@ export type PageBreadcrumb = {
 
 export type PageHeaderProps = {
   readonly title: string;
+  /**
+   * The page does not know its title yet, such as a record the agent still names: a skeleton shows
+   * in its place, and `title` is the heading's hidden text.
+   */
+  readonly titlePending?: boolean;
+  /**
+   * The page's own heading in place of the title line's, such as a title renamed in place. It must
+   * render the page's one `<h1>`, and it shows at every width; `title` still names the top bar.
+   */
+  readonly heading?: ReactNode;
   /** A status pill beside the title, such as "Needs your input"; it hides with the title below `lg` in a shell. */
   readonly status?: ReactNode;
   readonly description?: string;
@@ -166,12 +177,26 @@ export function PageHeader(props: PageHeaderProps) {
       <div className="flex items-center gap-2 md:hidden">{topBar}</div>
     );
 
+  const heading =
+    props.titlePending === true ? (
+      <>
+        <h1 className="sr-only">{props.title}</h1>
+        {/* The height of the `text-xl` line it stands in for. */}
+        <div aria-hidden="true" className="flex h-7 w-56 max-w-full">
+          <Skeleton className="flex-1" />
+        </div>
+      </>
+    ) : (
+      <h1 className="text-xl font-bold">{props.title}</h1>
+    );
+
   const compact = props.compactBelowLg === true;
   const hiddenIfCompact = compact ? "max-lg:hidden" : "";
 
   const showsBelowLg =
-    !compact &&
-    (props.meta !== undefined || props.secondaryActions !== undefined);
+    props.heading !== undefined ||
+    (!compact &&
+      (props.meta !== undefined || props.secondaryActions !== undefined));
 
   // Below the width where the header shows nothing, take it out of the flow so a page's gap does not
   // leave an empty band under the top bar.
@@ -208,13 +233,18 @@ export function PageHeader(props: PageHeaderProps) {
           {crumb === undefined || Anchor === undefined ? null : (
             <Trail crumb={crumb} Anchor={Anchor} inShell={inShell} />
           )}
-          {props.status === undefined ? (
+          {props.heading !== undefined ? (
+            <div className="flex items-center gap-2">
+              {props.heading}
+              {props.status}
+            </div>
+          ) : props.status === undefined && props.titlePending !== true ? (
             <h1 className={`text-xl font-bold ${hideBelowLg}`}>
               {props.title}
             </h1>
           ) : (
             <div className={`flex items-center gap-2 ${hideBelowLg}`}>
-              <h1 className="text-xl font-bold">{props.title}</h1>
+              {heading}
               {props.status}
             </div>
           )}

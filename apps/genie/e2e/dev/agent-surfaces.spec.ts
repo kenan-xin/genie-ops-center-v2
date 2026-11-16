@@ -50,7 +50,9 @@ import {
   resetChangeDeck,
 } from "./slides-support.ts";
 import {
+  activate,
   closeSurfaceDatabase,
+  countsUntil,
   handedOverFrom,
   handOverDeck,
   insertEmptyDashboard,
@@ -84,43 +86,6 @@ test.afterAll(async () => {
   await closeDashboardDatabase();
   await closeSurfaceDatabase();
 });
-
-/** A tap on the phone project, where a fixed bar may cover a control. */
-async function activate(page: Page, target: Locator): Promise<void> {
-  if (onPhone(page)) {
-    await target.tap();
-
-    return;
-  }
-
-  await target.click();
-}
-
-/**
- * Waits until `count` reaches `total` and answers each count it saw on the way, so a test can
- * tell a page that fills step by step from one that shows the record only at the end.
- */
-async function countsUntil(
-  count: () => Promise<number>,
-  total: number
-): Promise<readonly number[]> {
-  const seen: number[] = [];
-  const end = Date.now() + FIRST_PAINT.timeout;
-
-  /* eslint-disable no-await-in-loop -- the page is read again until it holds the whole record. */
-  while (Date.now() < end) {
-    const now = await count();
-
-    if (seen.at(-1) !== now) seen.push(now);
-
-    if (now >= total) return seen;
-
-    await new Promise((resolve) => setTimeout(resolve, 200));
-  }
-  /* eslint-enable no-await-in-loop */
-
-  throw new Error(`The page showed ${JSON.stringify(seen)}, never ${total}.`);
-}
 
 /** The surface panel's header chip. */
 const chip = (surface: Locator, text: "Building" | "Saved") =>

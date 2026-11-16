@@ -254,6 +254,24 @@ export const tableWithVisualSlide: ShownSlide = {
   ],
 };
 
+/** Ask on, with the label of the Slides agent's create step. */
+const chatOn: DeckListView["chat"] = {
+  kind: "on",
+  models: null,
+  labels: {
+    steps: {
+      "slides-create-deck": {
+        active: "Making a deck",
+        done: "Made a deck",
+        failed: "Could not make a deck",
+      },
+    },
+    datasets: {},
+    fields: {},
+  },
+  suggestions: [],
+};
+
 export const deckPage: DeckPageView = {
   deck: {
     id: "deck-1",
@@ -280,11 +298,49 @@ export const deckPage: DeckPageView = {
     fontFace: "Plus Jakarta Sans",
   },
   logoUrl: null,
+  chat: chatOn,
 };
 
 export const emptyDeckPage: DeckPageView = {
   ...deckPage,
   deck: { ...deckPage.deck, slides: [] },
+};
+
+/** The chat title a start gives the new deck and its chat, from the description (S7-48). */
+export const PROVISIONAL_TITLE = "A short update for the finance team on";
+
+/** A deck the agent just started: the provisional title and no slide yet. */
+export const startedDeckPage: DeckPageView = {
+  ...deckPage,
+  deck: {
+    ...deckPage.deck,
+    title: PROVISIONAL_TITLE,
+    canUndo: false,
+    slides: [],
+  },
+};
+
+/** The same deck after the agent named it and drafted two slides. */
+export const draftedDeckPage: DeckPageView = {
+  ...startedDeckPage,
+  deck: {
+    ...startedDeckPage.deck,
+    title: "October collections update",
+    canUndo: true,
+    slides: [titleOnlySlide, textWithChartSlide],
+  },
+};
+
+/** Two drafted slides and still the provisional title, as a run that failed before the rename. */
+export const unnamedDraftedDeckPage: DeckPageView = {
+  ...draftedDeckPage,
+  deck: { ...draftedDeckPage.deck, title: PROVISIONAL_TITLE },
+};
+
+/** A person who may not use Ask (no `core:ask:use`). */
+export const noChatDeckPage: DeckPageView = {
+  ...deckPage,
+  chat: { kind: "none" },
 };
 
 export const deckList: DeckListView = {
@@ -306,22 +362,7 @@ export const deckList: DeckListView = {
   ],
   canWrite: true,
   timeZone: "Asia/Singapore",
-  chat: {
-    kind: "on",
-    models: null,
-    labels: {
-      steps: {
-        "slides-create-deck": {
-          active: "Making a deck",
-          done: "Made a deck",
-          failed: "Could not make a deck",
-        },
-      },
-      datasets: {},
-      fields: {},
-    },
-    suggestions: [],
-  },
+  chat: chatOn,
 };
 
 export const emptyDeckList: DeckListView = { ...deckList, decks: [] };

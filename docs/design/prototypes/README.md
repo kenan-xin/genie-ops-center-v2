@@ -25,6 +25,8 @@ The owner approved seven prototypes during the follow-up 11 dry run (2026-11-14 
 
 Their data is fictional sample data. `fonts/` holds the font that two of them load. The [import record](../imports/2026-11-15-follow-up-13-prototypes.md) lists the commits and the picks.
 
+Open [New deck from a description](new-deck-flow.prototype.html) directly in a browser. The bar at the top switches 1 Describe, 2 Drafting and 3 Ready, and Desktop or Phone. The owner reviewed it as the direction of S7-48 and approved the ticket on 2026-11-13. Its data is fictional sample data. The [import record](../imports/2026-11-12-new-deck-flow.md) holds its source and hash.
+
 The Access prototype lives beside its spec: [Access, role-per-row model](../sections/access/access.prototype.html), switched by `?screen=grants&state=<state>`. Its [import record](../imports/2026-11-03-access-role-per-row.md) lists the states.
 
 Canonical designs:

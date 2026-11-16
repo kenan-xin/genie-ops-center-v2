@@ -1,6 +1,9 @@
 "use client";
 
-import { useAgentPage } from "@genie/core/features/agent/panel";
+import {
+  useAgentPage,
+  useStartRecordRun,
+} from "@genie/core/features/agent/panel";
 import { PageHeader, PageLink } from "@genie/core/features/shell";
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
@@ -24,10 +27,11 @@ import {
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
 import { deckTitle, type DeckSummary, slidesContract } from "../contract.ts";
+import { CHAT_SUGGESTIONS, NewDeckComposer } from "./new-deck-composer.tsx";
 import { describedBy, issueOf } from "./slide-editor.tsx";
 import { decksQueryKey } from "./use-deck.ts";
 import type { DeckListView } from "./views.ts";
@@ -120,12 +124,6 @@ const hrefOf = (id: string) => `/m/slides/decks/${id}`;
 // The title covers its row and card, so a phone tap anywhere on the card opens it (C06-4).
 const ROW_LINK = "after:absolute after:inset-0";
 
-/** Starters that name no dataset: the module does not know which ones the deployment has. */
-const CHAT_SUGGESTIONS = [
-  "Make a deck of this month's figures",
-  "Make a deck of the latest records",
-] as const;
-
 export type DeckListProps = {
   readonly view: DeckListView;
 };
@@ -148,6 +146,20 @@ export function DeckList(props: DeckListProps) {
       void queryClient.invalidateQueries({ queryKey: decksQueryKey() }),
   });
   const [creating, setCreating] = useState(false);
+
+  // With chat on, New deck opens the composer in its place and starts the agent (S7-48).
+  const describes = view.canWrite && view.chat.kind === "on";
+  const [composing, setComposing] = useState(false);
+  const start = useStartRecordRun("slides");
+  const newDeck = useRef<HTMLButtonElement>(null);
+  const returnFocus = useRef(false);
+
+  useEffect(() => {
+    if (composing || !returnFocus.current) return;
+
+    returnFocus.current = false;
+    newDeck.current?.focus();
+  }, [composing]);
 
   const [confirm, setConfirm] = useState<{ id: string; title: string } | null>(
     null
@@ -207,11 +219,17 @@ export function DeckList(props: DeckListProps) {
         title="Slides"
         description="Your own decks of slides. Only you can open them."
         actions={
-          view.canWrite ? (
+          view.canWrite && !composing ? (
             <Button
+              ref={newDeck}
               onClick={() => {
-                create.reset();
-                setCreating(true);
+                if (describes) {
+                  start.reset();
+                  setComposing(true);
+                } else {
+                  create.reset();
+                  setCreating(true);
+                }
               }}
             >
               New deck
@@ -219,6 +237,25 @@ export function DeckList(props: DeckListProps) {
           ) : undefined
         }
       />
+
+      {composing ? (
+        <NewDeckComposer
+          saving={start.isPending}
+          failure={
+            start.error === null
+              ? null
+              : start.error.message || "The deck was not started."
+          }
+          onCancel={() => {
+            start.reset();
+            returnFocus.current = true;
+            setComposing(false);
+          }}
+          onSubmit={(description) =>
+            start.mutate(description, { onSuccess: () => setComposing(false) })
+          }
+        />
+      ) : null}
 
       <div className="grid gap-4">
         <div className="min-w-0">

@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>New deck from a description</title>
+<style>
+  :root {
+    --primary: #2563eb; --primary-fg: #fff; --info-tint: #eff6ff;
+    --page: #fff; --panel: #f9fafb; --tile: #f3f4f6; --hairline: #e5e7eb;
+    --control-border: #d1d5db; --input: #6b7280; --muted: #6b7280;
+    --secondary: #4b5563; --idle: #374151; --control-fg: #1f2937; --heading: #111827;
+    --success: #047857; --success-tint: #ecfdf5;
+    --font: "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+    --ease: cubic-bezier(.16, 1, .3, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { font-family: var(--font); color: var(--heading); background: #eceef1; font-size: 14px; }
+  ::selection { background: #bfdbfe; color: var(--heading); }
+  button, textarea, input { font: inherit; color: inherit; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  svg.i { width: 16px; height: 16px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+  /* Prototype controls, outside the product frame */
+  .bar { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: #111827; color: #e5e7eb; font-size: 12px; }
+  .bar b { font-weight: 600; color: #fff; margin-right: 4px; }
+  .seg { display: inline-flex; background: #1f2937; border-radius: 8px; padding: 2px; }
+  .seg button { border: 0; background: none; color: #d1d5db; padding: 5px 10px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+  .seg button[aria-pressed="true"] { background: #fff; color: #111827; }
+  .bar .spacer { flex: 1; }
+  .stage { height: calc(100% - 44px); overflow: hidden; display: grid; place-items: start center; padding: 12px; }
+
+  /* Product frame */
+  .app { background: var(--page); border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; display: grid; grid-template-columns: 200px 1fr; height: 680px; width: 1240px; box-shadow: 0 8px 24px rgba(17,24,39,.08); }
+  .app.phone { grid-template-columns: 1fr; width: 390px; height: 760px; }
+  .side { background: var(--panel); border-right: 1px solid var(--hairline); padding: 14px 8px; display: flex; flex-direction: column; gap: 2px; }
+  .phone .side { display: none; }
+  .brand { display: flex; gap: 10px; align-items: center; padding: 0 8px 14px; }
+  .logo { width: 30px; height: 30px; border-radius: 8px; background: var(--primary); display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; }
+  .brand small { display: block; color: var(--muted); font-size: 12px; }
+  .cat { font-size: 11px; font-weight: 600; letter-spacing: .04em; color: var(--muted); padding: 10px 12px 6px; text-transform: uppercase; }
+  .nav { display: flex; align-items: center; gap: 10px; height: 36px; padding: 0 12px; border-radius: 8px; color: var(--idle); }
+  .nav.on { background: var(--page); color: var(--primary); border: 1px solid var(--hairline); font-weight: 600; }
+  .topbar { display: none; height: 52px; border-bottom: 1px solid var(--hairline); align-items: center; gap: 10px; padding: 0 12px; }
+  .phone .topbar { display: flex; }
+  .main { display: flex; min-width: 0; min-height: 0; flex-direction: column; }
+  .body { display: flex; flex: 1; min-height: 0; }
+  .content { flex: 1; min-width: 0; overflow: auto; padding: 18px 28px 28px; }
+  .phone .content { padding: 14px 16px 20px; }
+
+  .crumb { color: var(--secondary); font-size: 13px; margin-bottom: 2px; }
+  .head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .head h1 { font-size: 20px; letter-spacing: -.025em; margin: 0; line-height: 1.3; }
+  .head p { margin: 4px 0 0; color: var(--secondary); font-size: 13px; }
+  .head .grow { flex: 1; min-width: 200px; }
+  .head .actions { display: flex; gap: 8px; align-items: center; }
+  .btn { height: 40px; border-radius: 8px; padding: 0 14px; font-weight: 600; font-size: 14px; border: 1px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .btn.primary { background: var(--primary); color: var(--primary-fg); }
+  .btn.primary:hover { background: #1d4ed8; }
+  .btn.primary:disabled { background: #93c5fd; cursor: not-allowed; }
+  .btn.secondary { background: var(--page); color: var(--control-fg); border-color: var(--control-border); box-shadow: 0 1px 1px rgba(17,24,39,.05); }
+  .btn.ghost { background: none; color: var(--idle); height: 32px; padding: 0 8px; font-weight: 500; }
+  .btn.ghost:hover { background: var(--panel); }
+  .phone .btn { height: 44px; }
+
+  /* Step 1: the inline composer */
+  .composer { margin: 18px 0 16px; border: 1px solid var(--hairline); border-radius: 12px; padding: 18px 20px 16px; background: var(--page); transform-origin: top; animation: open .32s var(--ease); }
+  @keyframes open { from { opacity: 0; transform: translateY(-6px); clip-path: inset(0 0 60% 0 round 12px); } to { opacity: 1; transform: none; clip-path: inset(0 0 0 0 round 12px); } }
+  .composer label { display: block; font-weight: 600; font-size: 14px; margin-bottom: 6px; }
+  .composer textarea { width: 100%; min-height: 96px; resize: vertical; border: 1px solid var(--input); border-radius: 8px; padding: 10px 12px; font-size: 15px; line-height: 1.5; }
+  .composer textarea::placeholder { color: #6b7280; }
+  .help { color: var(--secondary); font-size: 13px; margin: 8px 0 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0 0; }
+  .chip { border: 1px solid var(--control-border); background: var(--page); border-radius: 9999px; padding: 6px 12px; font-size: 13px; color: var(--idle); cursor: pointer; }
+  .chip:hover { background: var(--panel); }
+  .phone .chip { padding: 10px 14px; }
+  .row { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+  .row .hint { color: var(--muted); font-size: 12px; margin-right: auto; }
+  .phone .row .hint { display: none; }
+  .phone .row { justify-content: stretch; }
+  .phone .row .btn { flex: 1; justify-content: center; }
+
+  table { width: 100%; border-collapse: collapse; border: 1px solid var(--hairline); border-radius: 12px; overflow: hidden; }
+  th { text-align: left; background: var(--panel); color: var(--secondary); font-size: 12px; font-weight: 600; padding: 10px 14px; border-bottom: 1px solid var(--hairline); }
+  td { padding: 12px 14px; border-bottom: 1px solid var(--hairline); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; color: var(--secondary); }
+  td a { color: var(--primary); font-weight: 600; text-decoration: none; }
+  .cards { display: none; }
+  .phone table { display: none; }
+  .phone .cards { display: grid; gap: 8px; }
+  .card { border: 1px solid var(--hairline); border-radius: 12px; padding: 14px 16px; }
+  .card a { color: var(--primary); font-weight: 600; text-decoration: none; }
+  .card span { display: block; color: var(--secondary); font-size: 13px; margin-top: 2px; }
+
+  /* Step 2 and 3: the deck page */
+  .title-line { display: flex; align-items: center; gap: 6px; min-height: 26px; }
+  .title-edit { border: 0; background: none; padding: 2px 6px; margin-left: -6px; border-radius: 6px; font-size: 20px; font-weight: 700; letter-spacing: -.025em; cursor: text; text-align: left; }
+  .title-edit:hover { background: var(--panel); }
+  .title-edit .pen { opacity: 0; color: var(--muted); margin-left: 6px; vertical-align: -2px; transition: opacity .15s; }
+  .title-edit:hover .pen, .title-edit:focus-visible .pen { opacity: 1; }
+  .phone .title-edit .pen { opacity: 1; }
+  .title-input { font-size: 20px; font-weight: 700; letter-spacing: -.025em; border: 1px solid var(--input); border-radius: 8px; padding: 2px 8px; width: min(420px, 100%); }
+  .naming { display: inline-flex; align-items: center; gap: 10px; color: var(--secondary); font-size: 20px; font-weight: 700; letter-spacing: -.025em; }
+  .shimmer { display: inline-block; height: 18px; width: 220px; border-radius: 6px; background: linear-gradient(90deg, var(--tile) 0%, #e9ebef 40%, var(--tile) 80%); background-size: 200% 100%; animation: sh 1.4s linear infinite; }
+  @keyframes sh { to { background-position: -200% 0; } }
+  .status { display: inline-flex; align-items: center; gap: 6px; border-radius: 9999px; padding: 2px 8px; font-size: 12px; font-weight: 600; background: var(--info-tint); color: #1d4ed8; }
+  .status.done { background: var(--success-tint); color: var(--success); }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .status:not(.done) .dot { animation: pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .shimmer, .status .dot, .composer, .slide-in { animation: none !important; } }
+
+  .deck { display: grid; grid-template-columns: 132px 1fr; gap: 16px; margin-top: 18px; }
+  .phone .deck { grid-template-columns: 1fr; }
+  .rail { display: flex; flex-direction: column; gap: 10px; }
+  .phone .rail { flex-direction: row; overflow-x: auto; order: 2; padding-bottom: 4px; }
+  .thumb { display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: start; color: var(--secondary); font-size: 12px; }
+  .thumb .t { aspect-ratio: 16/9; border: 1px solid var(--hairline); border-radius: 8px; padding: 6px; background: var(--page); overflow: hidden; }
+  .phone .thumb .t { width: 108px; }
+  .thumb.cur .t { border: 2px solid var(--heading); }
+  .thumb .t i { display: block; height: 4px; border-radius: 2px; background: var(--heading); width: 70%; }
+  .thumb .t u { display: block; height: 1.5px; background: var(--primary); margin: 5px 0; text-decoration: none; }
+  .thumb .t s { display: block; height: 3px; border-radius: 2px; background: #d1d5db; width: 50%; text-decoration: none; }
+  .thumb.pending .t { background: linear-gradient(90deg, var(--tile) 0%, #eceef1 40%, var(--tile) 80%); background-size: 200% 100%; animation: sh 1.4s linear infinite; border-style: dashed; }
+  .slide-in { animation: si .42s var(--ease); }
+  @keyframes si { from { opacity: 0; filter: blur(4px); transform: translateY(4px); } to { opacity: 1; filter: none; transform: none; } }
+  .canvas { aspect-ratio: 16/9; border: 1px solid var(--hairline); border-radius: 12px; padding: 7% 7% 5%; display: flex; flex-direction: column; min-width: 0; position: relative; }
+  .canvas h2 { margin: 0; font-size: clamp(18px, 2.4vw, 28px); letter-spacing: -.025em; line-height: 1.2; }
+  .canvas hr { border: 0; height: 3px; background: var(--primary); margin: 14px 0; }
+  .canvas p { margin: 0; color: var(--idle); font-size: clamp(12px, 1.3vw, 16px); line-height: 1.5; }
+  .canvas .foot { margin-top: auto; display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+  .canvas.drafting { background: var(--panel); border-style: dashed; justify-content: center; align-items: center; color: var(--secondary); gap: 8px; text-align: center; }
+
+  .agent { width: 340px; border-left: 1px solid var(--hairline); display: flex; flex-direction: column; min-height: 0; background: var(--page); }
+  .phone .agent { position: absolute; inset: auto 0 0 0; width: auto; height: 46%; border-left: 0; border-top: 1px solid var(--hairline); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 24px rgba(17,24,39,.12); }
+  .phone .main { position: relative; }
+  .phone .agent.ready { height: 26%; }
+  .phone .content { padding-bottom: calc(46% + 16px); }
+  .phone .content.ready { padding-bottom: calc(26% + 16px); }
+  .title-text { font-size: 20px; font-weight: 700; letter-spacing: -.025em; }
+  .status.stopped { background: var(--tile); color: var(--idle); }
+  .meta { display: flex; align-items: center; gap: 16px; margin-top: 16px; color: var(--secondary); font-size: 13px; }
+  .meta button { border: 0; background: none; padding: 0; font-weight: 600; color: var(--idle); cursor: pointer; }
+  .btn.icon { width: 40px; padding: 0; justify-content: center; }
+  .agent .ah .live { width: 6px; height: 6px; border-radius: 50%; background: var(--heading); }
+  .canvas.empty { background: var(--panel); justify-content: center; align-items: center; color: var(--secondary); text-align: center; }
+  .phone .composer textarea { min-height: 148px; }
+  .agent .ah { display: flex; align-items: center; gap: 8px; padding: 12px 14px; border-bottom: 1px solid var(--hairline); }
+  .agent .ah b { font-weight: 600; }
+  .agent .ah small { display: block; color: var(--muted); font-size: 12px; }
+  .agent .log { flex: 1; overflow: auto; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+  .you { align-self: flex-end; max-width: 88%; background: var(--panel); border-radius: 12px; padding: 10px 12px; line-height: 1.5; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .steps li { display: grid; grid-template-columns: 18px 1fr; gap: 8px; align-items: start; color: var(--secondary); line-height: 1.4; }
+  .steps li.done { color: var(--idle); }
+  .steps li.now { color: var(--heading); font-weight: 600; }
+  .tick { width: 16px; height: 16px; margin-top: 1px; }
+  .steps li.done .tick { color: var(--success); }
+  .steps li.now .tick { color: var(--primary); }
+  .answer { line-height: 1.55; color: var(--idle); }
+  .agent .ft { border-top: 1px solid var(--hairline); padding: 12px 14px; }
+  .agent .ft .box { border: 1px solid var(--input); border-radius: 8px; padding: 10px 12px; color: var(--muted); min-height: 44px; }
+  .phone .agent .ft { display: none; }
+</style>
+</head>
+<body>
+<div class="bar" role="toolbar" aria-label="Prototype controls">
+  <b>New deck</b>
+  <div class="seg" id="steps">
+    <button data-step="1" aria-pressed="true">1 Describe</button>
+    <button data-step="2" aria-pressed="false">2 Drafting</button>
+    <button data-step="3" aria-pressed="false">3 Ready</button>
+  </div>
+  <span class="spacer"></span>
+  <div class="seg" id="size">
+    <button data-size="desktop" aria-pressed="true">Desktop</button>
+    <button data-size="phone" aria-pressed="false">Phone</button>
+  </div>
+</div>
+<div class="stage"><div class="app" id="app"></div></div>
+
+<script>
+const ICON = {
+  slides: '<path d="M2 3h20M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3M7 21l5-5 5 5"/>',
+  ask: '<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>',
+  doc: '<path d="M22 12h-6l-2 3h-4l-2-3H2"/><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/>',
+  inv: '<rect width="16" height="20" x="4" y="2" rx="2"/><path d="M12 6v12M15 9h-4.5a1.5 1.5 0 0 0 0 3h3a1.5 1.5 0 0 1 0 3H9"/>',
+  pen: '<path d="M21.17 6.81a1 1 0 0 0-3.99-3.99L3.84 16.17a2 2 0 0 0-.5.83l-1.32 4.35a.5.5 0 0 0 .62.62l4.35-1.32a2 2 0 0 0 .83-.5z"/>',
+  check: '<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',
+  spin: '<path d="M21 12a9 9 0 1 1-6.22-8.56"/>',
+  wait: '<circle cx="12" cy="12" r="10"/>',
+  stop: '<rect x="6" y="6" width="12" height="12" rx="2"/>',
+  close: '<path d="M18 6 6 18M6 6l12 12"/>',
+  menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
+  spark: '<path d="M9.94 14.06 4 20M12 3v4M12 17v4M3 12h4M17 12h4M5.6 5.6l2.8 2.8M15.6 15.6l2.8 2.8"/>',
+};
+const ic = (n, c = '') => `<svg class="i ${c}" viewBox="0 0 24 24" aria-hidden="true">${ICON[n]}</svg>`;
+
+const DESC_DEFAULT = 'A short update for the finance team on October collections: the month total against September, the five largest payers, and the invoices that are still overdue.';
+const TITLE = 'October collections update';
+const SLIDES = [
+  ['October collections are up on September.', 'SGD 195,200 collected, 8% more than September.'],
+  ['Five payers brought in 61% of the month.', 'Northwind, Halcyon, Mercer & Co, Avalon and Brightway.'],
+  ['Twelve invoices are still overdue.', 'SGD 48,900 in total. The oldest is 74 days past due.'],
+  ['Next steps for November.', 'Chase the three largest overdue invoices first.'],
+];
+
+const state = { step: 1, size: 'desktop', desc: DESC_DEFAULT, drafted: 0, named: false, title: TITLE, editing: false, stopped: false, composer: true };
+let timers = [];
+const app = document.getElementById('app');
+
+function shell(inner, crumbless) {
+  return `
+  <nav class="side" aria-label="Workspace">
+    <div class="brand"><div class="logo">G</div><div><b>Genie</b><small>Workspace</small></div></div>
+    <div class="cat">Workspace</div>
+    <div class="nav">${ic('ask')}Ask</div>
+    <div class="nav">${ic('doc')}Documents</div>
+    <div class="nav">${ic('inv')}Invoices</div>
+    <div class="nav on" aria-current="page">${ic('slides')}Slides</div>
+  </nav>
+  <div class="main">
+    <div class="topbar">${ic('menu')}<b>Slides</b></div>
+    ${inner}
+  </div>`;
+}
+
+function listPage() {
+  const decks = [['Collections review', 2], ['Q3 board summary', 9], ['Supplier onboarding', 6]];
+  return shell(`<div class="body"><div class="content">
+    <div class="head">
+      <div class="grow"><h1>Slides</h1><p>Your own decks of slides. Only you can open them.</p></div>
+      ${state.composer ? '' : '<div class="actions"><button class="btn primary" id="new" aria-expanded="false" aria-controls="composer">New deck</button></div>'}
+    </div>
+    ${state.composer ? `<section class="composer" id="composer" aria-label="New deck">
+      <label for="desc">What is the deck about?</label>
+      <textarea id="desc" aria-describedby="desc-help" placeholder="For example: a five-slide update on this month's collections for the finance team">${state.desc}</textarea>
+      <p class="help" id="desc-help">The agent names the deck and drafts the slides from your records. You can rename it and change any slide after.</p>
+      <div class="chips" aria-label="Starters">
+        <button class="chip" data-chip>Make a deck of this month's figures</button>
+        <button class="chip" data-chip>Make a deck of the latest records</button>
+      </div>
+      <div class="row">
+        <span class="hint">Enter creates. Shift and Enter start a new line.</span>
+        <button class="btn ghost" id="cancel">Cancel</button>
+        <button class="btn primary" id="create" ${state.desc.trim() ? '' : 'disabled'}>Create deck</button>
+      </div>
+    </section>` : '<div style="height:16px"></div>'}
+    <table aria-label="Decks"><thead><tr><th>Title</th><th class="n">Slides</th></tr></thead><tbody>
+      ${decks.map(([t, n]) => `<tr><td><a href="#">${t}</a></td><td class="n">${n} slides</td></tr>`).join('')}
+    </tbody></table>
+    <div class="cards">${decks.map(([t, n]) => `<div class="card"><a href="#">${t}</a><span>${n} slides</span></div>`).join('')}</div>
+  </div></div>`);
+}
+
+function titleBlock() {
+  if (!state.named) return `<span class="naming"><span class="shimmer" aria-hidden="true"></span><span class="sr" style="position:absolute;left:-9999px">Naming the deck</span></span>`;
+  // The agent may still rename the deck while it drafts, so renaming opens only when the run ends.
+  if (state.step !== 3) return `<span class="title-text">${state.title}</span>`;
+  if (state.editing) return `<input class="title-input" id="title-input" aria-label="Deck title" maxlength="80" value="${state.title}">`;
+  return `<button class="title-edit" id="title" aria-label="Rename deck, ${state.title}">${state.title}${ic('pen', 'pen')}</button>`;
+}
+
+function deckPage() {
+  const ready = state.step === 3;
+  const stopped = ready && state.stopped;
+  const total = stopped ? state.drafted : SLIDES.length;
+  const drafted = ready ? total : state.drafted;
+  // The page does not know the planned count (owner 2026-11-13, option b): one placeholder after the drafted slides.
+  const shownCount = ready ? total : Math.min(drafted + 1, SLIDES.length);
+  const thumbs = SLIDES.slice(0, shownCount).map((s, i) => {
+    const done = i < drafted;
+    const cur = ready ? i === 0 : i === Math.max(0, drafted - 1);
+    return `<div class="thumb ${done ? (cur ? 'cur' : '') : 'pending'} ${done && !ready && i === drafted - 1 ? 'slide-in' : ''}"><span>${i + 1}</span><div class="t" aria-label="${done ? 'Slide ' + (i + 1) : 'Slide ' + (i + 1) + ', not drafted yet'}">${done ? '<i></i><u></u><s></s>' : ''}</div></div>`;
+  }).join('');
+  const shown = ready ? SLIDES[0] : SLIDES[Math.max(0, drafted - 1)];
+  const canvas = ready && drafted === 0
+    ? `<div class="canvas empty"><span>No slides yet. Ask the agent for slides, or use Add slide.</span></div>`
+    : drafted === 0
+    ? `<div class="canvas drafting" role="status">${ic('spin')}<span>Reading your records for October&hellip;</span></div>`
+    : `<div class="canvas ${ready ? '' : 'slide-in'}"><h2>${shown[0]}</h2><hr><p>${shown[1]}</p><div class="foot"><span>Figures as of 31 Oct 2026</span><span>Genie</span></div></div>`;
+  const stepsList = [
+    ['Read the payments and invoices of October', 1],
+    ['Named the deck', 2],
+    ...SLIDES.map((s, i) => [`Slide ${i + 1}: ${s[0]}`, 3 + i]),
+  ].filter(([, n]) => ready ? (!stopped || n < drafted + 3) : n <= drafted + 3);
+  const progress = ready ? 99 : (!state.named ? 1 : drafted + 3);
+  const items = stepsList.map(([t, n]) => {
+    const cls = n < progress ? 'done' : n === progress ? 'now' : '';
+    const icon = cls === 'done' ? ic('check', 'tick') : cls === 'now' ? ic('spin', 'tick') : ic('wait', 'tick');
+    return `<li class="${cls}">${icon}<span>${t}</span></li>`;
+  }).join('');
+  const slideWord = n => `${n} ${n === 1 ? 'slide' : 'slides'}`;
+  const status = stopped
+    ? `<span class="status stopped"><span class="dot"></span>Stopped, ${slideWord(drafted)} kept</span>`
+    : ready
+    ? `<span class="status done"><span class="dot"></span>${slideWord(total)} drafted</span>`
+    : `<span class="status" role="status"><span class="dot"></span>Drafting slide ${Math.min(drafted + 1, total)}</span>`;
+  return shell(`<div class="body">
+    <div class="content ${ready ? 'ready' : ''}">
+      <div class="crumb">Slides</div>
+      <div class="head">
+        <div class="grow"><div class="title-line">${titleBlock()}</div>
+          <p>${status}${ready ? ' &middot; Figures as of 31 Oct 2026' : ''}</p></div>
+        <div class="actions">${ready
+          ? `<button class="btn secondary">Export to PowerPoint</button><button class="btn secondary icon" aria-label="More actions">&hellip;</button><button class="btn primary" ${drafted ? '' : 'disabled'}>Present</button>`
+          : `<button class="btn secondary" id="stop">${ic('stop')}Stop</button>`}</div>
+      </div>
+      ${ready && drafted ? `<div class="meta"><span>Slide 1 of ${drafted}</span><button type="button">Undo</button></div>` : ''}
+      <div class="deck"><div class="rail" aria-label="Slides">${thumbs}</div>${canvas}</div>
+    </div>
+    <aside class="agent ${ready ? 'ready' : ''}" aria-label="Agent">
+      <div class="ah"><span class="live" aria-hidden="true"></span><div style="flex:1;min-width:0"><b>Agent</b><small>About: ${state.named ? state.title : 'New deck'}</small></div>${ic('close')}</div>
+      <div class="log">
+        <div class="you">${state.desc}</div>
+        <ul class="steps">${items}</ul>
+        ${stopped ? `<div class="answer">You stopped me after ${slideWord(drafted)}. I kept ${drafted === 1 ? 'it' : 'them'} in <b>${state.title}</b>. Ask me to go on, or change the deck yourself.</div>`
+          : ready ? `<div class="answer">I named the deck <b>${TITLE}</b> and drafted ${slideWord(total)} from October's payments and invoices. Rename it from the title, or ask me to change any slide.</div>` : ''}
+      </div>
+      <div class="ft"><div class="box">${ready ? 'Ask for a change' : 'You can type while the agent works'}</div></div>
+    </aside>
+  </div>`);
+}
+
+// The product frame keeps its real size and scales down to fit the panel.
+function fit() {
+  const phone = state.size === 'phone';
+  const w = phone ? 390 : 1240, h = phone ? 760 : 680;
+  const s = Math.min(1, (innerWidth - 24) / w, (innerHeight - 68) / h);
+  app.style.zoom = s;
+}
+addEventListener('resize', fit);
+
+function render() {
+  app.className = 'app' + (state.size === 'phone' ? ' phone' : '');
+  fit();
+  app.innerHTML = state.step === 1 ? listPage() : deckPage();
+  document.querySelectorAll('#steps button').forEach(b => b.setAttribute('aria-pressed', String(+b.dataset.step === state.step)));
+  document.querySelectorAll('#size button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.size === state.size)));
+  wire();
+}
+
+function clear() { timers.forEach(clearTimeout); timers = []; }
+
+function startDrafting() {
+  clear();
+  Object.assign(state, { step: 2, drafted: 0, named: false, editing: false, title: TITLE, stopped: false });
+  render();
+  timers.push(setTimeout(() => { state.named = true; render(); }, 1300));
+  SLIDES.forEach((_, i) => timers.push(setTimeout(() => { state.drafted = i + 1; render(); }, 2200 + i * 1300)));
+  timers.push(setTimeout(() => { state.step = 3; render(); }, 2200 + SLIDES.length * 1300 + 600));
+}
+
+function wire() {
+  const desc = document.getElementById('desc');
+  const create = document.getElementById('create');
+  if (desc) {
+    desc.addEventListener('input', () => { state.desc = desc.value; create.disabled = !desc.value.trim(); });
+    desc.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.shiftKey && desc.value.trim()) { e.preventDefault(); startDrafting(); } });
+  }
+  create?.addEventListener('click', startDrafting);
+  document.getElementById('cancel')?.addEventListener('click', () => { state.composer = false; render(); document.getElementById('new').focus(); });
+  document.getElementById('new')?.addEventListener('click', () => { state.composer = true; render(); document.getElementById('desc').focus(); });
+  document.querySelectorAll('[data-chip]').forEach(c => c.addEventListener('click', () => { state.desc = c.textContent; render(); document.getElementById('desc').focus(); }));
+  document.getElementById('stop')?.addEventListener('click', () => { clear(); Object.assign(state, { step: 3, named: true, stopped: true }); render(); });
+  const t = document.getElementById('title');
+  t?.addEventListener('click', () => { state.editing = true; render(); const inp = document.getElementById('title-input'); inp.focus(); inp.select(); });
+  const inp = document.getElementById('title-input');
+  if (inp) {
+    const done = save => { if (save && inp.value.trim()) state.title = inp.value.trim(); state.editing = false; render(); };
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') done(true); if (e.key === 'Escape') done(false); });
+    inp.addEventListener('blur', () => done(true));
+  }
+}
+
+document.getElementById('steps').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  const s = +b.dataset.step;
+  if (s === 2) return startDrafting();
+  clear(); Object.assign(state, { step: s, named: s === 3, drafted: s === 3 ? SLIDES.length : 0, editing: false, stopped: false, composer: true }); render();
+});
+document.getElementById('size').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return; state.size = b.dataset.size; render();
+});
+render();
+</script>
+</body>
+</html>

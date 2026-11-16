@@ -35,7 +35,7 @@ export async function loadDeckPage(
 
   const record = await readOwnDeck(ctx, id);
 
-  const [deck, canWrite, branding, logo] = await Promise.all([
+  const [deck, canWrite, branding, logo, chat] = await Promise.all([
     shownDeck(ctx, record),
     can(ctx.caller, "slides:write"),
     ctx.tenant.branding.get(),
@@ -43,6 +43,7 @@ export async function loadDeckPage(
       principal: ctx.caller,
       slot: "logoLight",
     }),
+    chatAvailability(ctx),
   ]);
 
   return {
@@ -51,5 +52,6 @@ export async function loadDeckPage(
     timeZone: branding.defaultTimeZone,
     theme: omit(deckTheme(branding), ["logoFileId"]),
     logoUrl: logo?.url ?? null,
+    chat,
   };
 }

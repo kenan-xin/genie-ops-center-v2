@@ -15,7 +15,9 @@ function chat(id: string, updatedAt: string): AgentSessionSummary {
     surface: "core:ask",
     recordId: null,
     runState: null,
+    run: null,
     updatedAt,
+    handedFromSessionId: null,
   };
 }
 

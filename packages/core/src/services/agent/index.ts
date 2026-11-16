@@ -71,8 +71,11 @@ export {
   type AgentContract,
   agentContract,
   CHAT_TITLE_LIMIT,
+  chatTitleFrom,
   chatTitleSchema,
 } from "./contract.ts";
+
+export { START_PART, startRecordRun, startText } from "./start-record.ts";
 
 export { type AgentRouter, createAgentRouter } from "./router.ts";
 

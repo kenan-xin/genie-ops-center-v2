@@ -45,6 +45,7 @@ import {
   agentPanelStore,
   sentPageContext,
   setBottomPanel,
+  setPanelNavigate,
   setPanelOpen,
   setPanelWorking,
 } from "./agent-panel-store.ts";
@@ -135,6 +136,15 @@ export function AgentPanelHost(props: {
   const outbox = useStore(agentPanelStore, (state) => state.outbox);
   const docked = useMediaQuery(DOCKED, {});
   const phone = useMediaQuery(PHONE, {});
+
+  // A page reaches the app's router through the store, as core imports no router.
+  useEffect(() => {
+    if (props.navigate === undefined) return;
+
+    setPanelNavigate(props.navigate);
+
+    return () => setPanelNavigate(null);
+  }, [props.navigate]);
 
   const target = surfaceRecordOf(
     props.surfaces ?? NO_SURFACES,
