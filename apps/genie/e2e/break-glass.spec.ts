@@ -1,3 +1,4 @@
+import { RATE_LIMIT_RULES, windowStartFor } from "@genie/core";
 import {
   insertCredentialPerson,
   markSetupDone,
@@ -31,6 +32,27 @@ const COLD_REQUEST_MS = 60_000;
 
 /** A test that starts its own image: the 60 s health wait plus the test body (bead 5ee8). */
 const STANDALONE_TEST_MS = 120_000;
+
+/**
+ * The room the eleven R-21 attempts need inside one break-glass window once the auth route is
+ * warm; locally they took 1.3 to 4.9 s. The window is aligned to the clock (`windowStartFor`), so
+ * attempts that cross its end restart the count and the eleventh is refused as a wrong password
+ * instead (local run 2026-10-26 at 01:30, bead 49ct).
+ */
+const ATTEMPTS_ROOM_MS = 60_000;
+
+/** Waits for the next break-glass window when the current one ends within the attempts' room. */
+async function waitForBreakGlassWindowRoom(page: Page): Promise<void> {
+  const { windowMs } = RATE_LIMIT_RULES.break_glass_sign_in;
+
+  const now = Date.now();
+
+  const left =
+    windowStartFor(new Date(now), windowMs).getTime() + windowMs - now;
+
+  // One more second covers a clock step between this process and the container.
+  if (left < ATTEMPTS_ROOM_MS) await page.waitForTimeout(left + 1_000);
+}
 
 /** Starts a disposable app whose realm is a closed port, and one break-glass credential account. */
 async function startStandaloneBreakGlass(port: number): Promise<{
@@ -195,13 +217,25 @@ test("a first break-glass sign-in changes the password and enrolls an authentica
 test("a rate-limited break-glass sign-in shows the neutral notice and disables its inputs (R-21)", async ({
   page,
 }, testInfo) => {
-  test.setTimeout(STANDALONE_TEST_MS);
+  // The start, the cold warm-up request, and at most one wait for the next window.
+  test.setTimeout(STANDALONE_TEST_MS + COLD_REQUEST_MS + ATTEMPTS_ROOM_MS);
 
   const port = workerImagePort(3600, testInfo.workerIndex);
   const stack = await startStandaloneBreakGlass(port);
 
   try {
     await page.goto(`${stack.url}/admin/login`);
+
+    // The image is cold: its first auth request loads the auth route, which on a two-core CI
+    // runner took past the 15 s attempt bound (see the DEC-24 test). A session read loads the same
+    // route and spends no attempt, so the attempts below all run warm inside the room.
+    const warm = await page.request.get(`${stack.url}/api/auth/get-session`, {
+      timeout: COLD_REQUEST_MS,
+    });
+
+    expect(warm.ok()).toBe(true);
+
+    await waitForBreakGlassWindowRoom(page);
 
     const form = page.getByTestId("break-glass-sign-in");
 

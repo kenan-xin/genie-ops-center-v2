@@ -705,6 +705,10 @@ describe("the rendered compose file under docker compose", () => {
     KEYCLOAK_CLIENT_SECRET: "test-client-secret",
   };
 
+  // The first `docker` process of a run starts cold: on develop CI run 39235466532 the first case
+  // took 6028 ms and the second 199 ms, past the 5 s default. Locally both take about 40 ms.
+  const DOCKER_CASE_MS = 30_000;
+
   function composeServices(profile: string): readonly string[] {
     const directory = mkdtempSync(join(tmpdir(), "genie-compose-config-"));
     const composePath = join(directory, "compose.yaml");
@@ -733,19 +737,27 @@ describe("the rendered compose file under docker compose", () => {
     }
   }
 
-  it("renders valid without the profile and omits the keycloak service", () => {
-    const services = composeServices("");
+  it(
+    "renders valid without the profile and omits the keycloak service",
+    () => {
+      const services = composeServices("");
 
-    expect(services).toContain("app");
-    expect(services).toContain("worker");
-    expect(services).not.toContain("keycloak");
-  });
+      expect(services).toContain("app");
+      expect(services).toContain("worker");
+      expect(services).not.toContain("keycloak");
+    },
+    DOCKER_CASE_MS
+  );
 
-  it("renders valid with the profile and includes the keycloak service", () => {
-    const services = composeServices("bundled-keycloak");
+  it(
+    "renders valid with the profile and includes the keycloak service",
+    () => {
+      const services = composeServices("bundled-keycloak");
 
-    expect(services).toContain("app");
-    expect(services).toContain("worker");
-    expect(services).toContain("keycloak");
-  });
+      expect(services).toContain("app");
+      expect(services).toContain("worker");
+      expect(services).toContain("keycloak");
+    },
+    DOCKER_CASE_MS
+  );
 });
