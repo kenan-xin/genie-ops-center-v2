@@ -95,6 +95,42 @@
         }
       }
     },
+    "/agent/start": {
+      "post": {
+        "operationId": "agent.start",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "surface": {
+                    "type": "string",
+                    "maxLength": 64
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 4000
+                  }
+                },
+                "required": [
+                  "surface",
+                  "description"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {}
+          }
+        }
+      }
+    },
     "/agent/sessions/{id}": {
       "get": {
         "operationId": "agent.session",
