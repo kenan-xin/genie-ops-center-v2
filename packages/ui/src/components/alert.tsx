@@ -8,8 +8,9 @@ import * as React from "react";
  */
 export const infoTint = "bg-blue-50 dark:bg-blue-950/50";
 
+// 6wz1.113: no icon offset. Chrome's text rect starts at the line top, so a 16 px icon at the top centers on the first line (P07-64).
 const alertVariants = cva(
-  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-[>svg]:grid-cols-leading-icon has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:translate-y-0.5 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
+  "group/alert relative grid w-full gap-0.5 rounded-lg border px-2.5 py-2 text-left text-sm has-data-[slot=alert-action]:relative has-data-[slot=alert-action]:pr-18 has-data-[slot=alert-action]:min-h-12 has-[>svg]:grid-cols-leading-icon has-[>svg]:gap-x-2 *:[svg]:row-span-2 *:[svg]:text-current *:[svg:not([class*='size-'])]:size-4",
   {
     variants: {
       variant: {
@@ -25,7 +26,7 @@ const alertVariants = cva(
       // tokens.md, "Warning note": `sm` under a control, `md` at the top of a card or a sheet.
       size: {
         default: "",
-        sm: "gap-1.5 px-2.5 py-1.5 text-xs has-[>svg]:gap-x-1.5 *:[svg]:translate-y-px",
+        sm: "gap-1.5 px-2.5 py-1.5 text-xs has-[>svg]:gap-x-1.5",
         md: "gap-2.5 px-3.5 py-3 text-sm has-[>svg]:gap-x-2.5",
       },
     },

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect } from "storybook/test";
+import { expect, within } from "storybook/test";
 
-import { InfoNote, WarningNote } from "../index.ts";
+import { Button, InfoNote, WarningNote } from "../index.ts";
 
 const meta = {
   title: "UI/InfoNote",
@@ -60,4 +60,63 @@ export const Medium: Story = {
 export const MediumOnDark: Story = {
   ...Medium,
   globals: { theme: "dark" },
+};
+
+const RECOLOR = "Text colors changed to stay readable.";
+
+/** T7-a: the action sits in the alert action slot, inside the note, and the text wraps before it. */
+async function actionInsideNote(canvas: ReturnType<typeof within>) {
+  const note: HTMLElement = canvas.getByRole("status");
+  const slot = note.querySelector<HTMLElement>('[data-slot="alert-action"]');
+
+  if (slot === null) throw new Error("InfoNote rendered no action slot");
+
+  await expect(
+    within(slot).getByRole("button", { name: "Undo" })
+  ).toBeVisible();
+
+  const box = note.getBoundingClientRect();
+  const action = slot.getBoundingClientRect();
+
+  await expect(action.top).toBeGreaterThanOrEqual(box.top);
+  await expect(action.bottom).toBeLessThanOrEqual(box.bottom);
+  await expect(action.right).toBeLessThanOrEqual(box.right);
+
+  const range = document.createRange();
+  range.selectNodeContents(canvas.getByText(RECOLOR));
+
+  const textRight = Math.max(
+    ...[...range.getClientRects()].map((r) => r.right)
+  );
+
+  await expect(textRight).toBeLessThanOrEqual(action.left);
+
+  return { box, action };
+}
+
+export const WithAction: Story = {
+  args: {
+    children: RECOLOR,
+    action: (
+      <Button variant="secondary" size="sm">
+        Undo
+      </Button>
+    ),
+  },
+  play: async ({ canvas }) => {
+    const { box, action } = await actionInsideNote(canvas);
+
+    // P07-67: in a one-line note the button sits as far from the bottom edge as from the top.
+    await expect(
+      Math.abs(action.top - box.top - (box.bottom - action.bottom))
+    ).toBeLessThanOrEqual(1);
+  },
+};
+
+export const WithActionOnPhone: Story = {
+  ...WithAction,
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await actionInsideNote(canvas);
+  },
 };

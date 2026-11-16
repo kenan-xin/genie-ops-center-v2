@@ -1478,6 +1478,21 @@ export const RecolorNote: Story = {
   },
 };
 
+// E5 (6wz1.113): the recolor note stays open, so the icon check measures it.
+export const RecolorNoteShown: Story = {
+  name: "The recolor note keeps its Undo inside the note",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: serveRecolor,
+  play: async ({ canvas }) => {
+    await pickBackground(canvas, "Dark blue #1E3A8A");
+
+    const note = await findRecolorNote(canvas);
+
+    await expect(note.getByRole("button", { name: "Undo" })).toBeVisible();
+  },
+};
+
 // P16e-11: a pick whose texts all stay readable sends one step and shows no note.
 export const NoRecolorNoNote: Story = {
   name: "A background pick that recolors nothing shows no note",

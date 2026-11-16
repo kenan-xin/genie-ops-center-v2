@@ -1058,9 +1058,10 @@ export function DeckView(props: DeckViewProps) {
       )}
       {recolorHash === deck.contentHash ? (
         <div className="mb-4">
-          <InfoNote size="md" role="status">
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-              Text colors changed to stay readable.
+          <InfoNote
+            size="md"
+            role="status"
+            action={
               <Button
                 variant="secondary"
                 size="sm"
@@ -1069,7 +1070,9 @@ export function DeckView(props: DeckViewProps) {
               >
                 Undo
               </Button>
-            </div>
+            }
+          >
+            Text colors changed to stay readable.
           </InfoNote>
         </div>
       ) : null}

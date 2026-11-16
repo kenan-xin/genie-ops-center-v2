@@ -1,7 +1,7 @@
 import { InfoIcon, TriangleAlertIcon } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { Alert } from "../components/alert.tsx";
+import { Alert, AlertAction } from "../components/alert.tsx";
 
 export type WarningNoteProps = {
   readonly children: ReactNode;
@@ -9,6 +9,8 @@ export type WarningNoteProps = {
   readonly size?: "sm" | "md";
   /** `status` when the note explains a state, `alert` for a refusal; none for static prose. */
   readonly role?: "status" | "alert";
+  /** One short `sm` button in an `md` note, drawn top right in the alert action slot; the text wraps before it. */
+  readonly action?: ReactNode;
 };
 
 function Note(
@@ -27,6 +29,9 @@ function Note(
     >
       {props.icon}
       <div className="min-w-0 flex-1">{props.children}</div>
+      {props.action === undefined ? null : (
+        <AlertAction>{props.action}</AlertAction>
+      )}
     </Alert>
   );
 }

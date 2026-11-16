@@ -72,6 +72,7 @@ export const KNOWN_CASE_STORIES: readonly string[] = [
   "core-agent-message-parts--stopped-answer",
   // E5: the recolor note.
   "modules-slides-deck--recolor-note",
+  "modules-slides-deck--recolor-note-shown",
   // C3: the help disclosure trigger.
   "core-break-glass-sign-in--enrollment",
   "core-break-glass-sign-in--enrollment-dark",
