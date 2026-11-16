@@ -2228,7 +2228,7 @@ export const StopFails: Story = {
 
     // Bug caught: a failed stop leaves Stop spinning and silent until a reload.
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
-      "The agent was not stopped. The connection dropped."
+      "Ask was not stopped. The connection dropped."
     );
     await waitFor(() =>
       expect(canvas.getByRole("button", { name: "Stop" })).not.toHaveAttribute(
@@ -2467,7 +2467,7 @@ function withShell(Story: () => ReactNode) {
         logoDarkUrl: null,
         markUrl: null,
       }}
-      user={{ name: "Alex Morgan", roleLabel: "Member" }}
+      user={{ name: "Alex Morgan", email: "alex.morgan@example.test" }}
       menu={{
         accountHref: "/account",
         changePasswordHref: null,

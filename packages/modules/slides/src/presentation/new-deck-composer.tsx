@@ -103,8 +103,8 @@ export function NewDeckComposer(props: {
                 }}
               />
               <FieldDescription id={helpId}>
-                The agent names the deck and drafts the slides from your
-                records. You can rename it and change any slide after.
+                Ask names the deck and drafts the slides from your records. You
+                can rename it and change any slide after.
               </FieldDescription>
               <div
                 role="group"

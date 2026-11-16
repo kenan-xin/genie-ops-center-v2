@@ -63,7 +63,7 @@ function refusalOf(failure: ChangeFailure): Refusal {
   }
 
   if (failure.kind === "stop") {
-    return { message: `The agent was not stopped. ${message}`, issues, reload };
+    return { message: `Ask was not stopped. ${message}`, issues, reload };
   }
 
   if (failure.kind === "export") {
