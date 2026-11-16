@@ -1,6 +1,6 @@
 import { PostgreSqlContainer } from "@testcontainers/postgresql";
 
-import { startWithPortBindRetry } from "./container-start.ts";
+import { removeOnStop, startWithPortBindRetry } from "./container-start.ts";
 
 /** The Postgres the image is built against (tech stack, Database row). */
 export const POSTGRES_IMAGE = "postgres:18";
@@ -36,6 +36,6 @@ export async function startDisposablePostgres(): Promise<DisposablePostgres> {
 
   return {
     url: container.getConnectionUri(),
-    stop: () => container.stop().then(() => undefined),
+    stop: removeOnStop(container),
   };
 }

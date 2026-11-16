@@ -1,6 +1,6 @@
 import { GenericContainer, Wait } from "testcontainers";
 
-import { startWithPortBindRetry } from "./container-start.ts";
+import { removeOnStop, startWithPortBindRetry } from "./container-start.ts";
 
 /**
  * One disposable Keycloak 26.7.4 container for the realm and clients step tests, started in
@@ -46,8 +46,6 @@ export async function startDisposableKeycloak(): Promise<DisposableKeycloak> {
 
   return {
     baseUrl: `http://${container.getHost()}:${container.getMappedPort(8080)}`,
-    stop: async () => {
-      await container.stop();
-    },
+    stop: removeOnStop(container),
   };
 }
