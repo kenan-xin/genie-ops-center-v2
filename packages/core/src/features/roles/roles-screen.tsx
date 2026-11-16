@@ -14,6 +14,8 @@ import {
   FieldLabel,
   FormActionBar,
   HelpDisclosure,
+  iconLead,
+  iconLeadPx,
   IconTile,
   InfoNote,
   Input,
@@ -370,7 +372,7 @@ function HolderList(props: {
             >
               <Icon
                 aria-hidden="true"
-                className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                className={`size-4 shrink-0 text-muted-foreground ${row.holder.type === "user" ? iconLeadPx[3] : iconLead}`}
               />
               <span className="flex min-w-0 flex-col gap-0.5">
                 <span className="flex flex-wrap items-center gap-2">

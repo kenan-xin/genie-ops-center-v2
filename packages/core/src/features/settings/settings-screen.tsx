@@ -6,6 +6,7 @@ import {
   ConfirmDialog,
   focusRing,
   HelpDisclosure,
+  iconLeadPx,
   rowHeight,
   StatusPill,
   WarningNote,
@@ -675,10 +676,11 @@ export function TenantSettingsScreen(props: TenantSettingsScreenProps) {
         <div className={`min-w-0 flex-1 ${detail ? "" : "hidden md:block"}`}>
           <Button
             variant="ghost"
-            className="mb-2 md:hidden"
+            size="sm"
+            className="mb-2 -ms-3.25 md:hidden"
             onClick={() => leave(() => setDetail(false))}
           >
-            <ArrowLeft aria-hidden />
+            <ArrowLeft aria-hidden className={iconLeadPx[3]} />
             All settings
           </Button>
           {content()}

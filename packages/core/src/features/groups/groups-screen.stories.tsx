@@ -24,6 +24,12 @@ const onDeleteLocalGroup = fn();
 
 const onCreateLocalGroup = fn();
 
+const middle = (element: Element) => {
+  const { top, height } = element.getBoundingClientRect();
+
+  return top + height / 2;
+};
+
 /**
  * The Groups directory (R-24 to R-25). The host owns the data and the writes, so each destructive
  * story asserts the confirm copy before the callback fires, and the callback spies prove the
@@ -913,11 +919,7 @@ export const LocalHeaderNamesTheKindOnce: Story = {
     const title = inspector.getByRole("heading", { name: "Operations" });
     const pill = inspector.getByText("Local");
 
-    await expect(
-      Math.abs(
-        title.getBoundingClientRect().top - pill.getBoundingClientRect().top
-      )
-    ).toBeLessThan(8);
+    await expect(Math.abs(middle(title) - middle(pill))).toBeLessThan(2);
 
     const card = inspector.getByText("1 role assigned via this group");
 

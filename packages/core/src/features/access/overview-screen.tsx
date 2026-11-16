@@ -7,6 +7,8 @@ import {
   type DataTableColumn,
   EmptyState,
   focusRing,
+  iconLead,
+  iconLeadPx,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -188,12 +190,14 @@ function subjectName(
 }
 
 function WhoIcon(props: { readonly row: OverviewRow }) {
-  const Icon = props.row.holder.type === "user" ? UserIcon : UsersIcon;
+  const user = props.row.holder.type === "user";
+  const Icon = user ? UserIcon : UsersIcon;
 
+  // 6wz1.113: `user` starts 2.7 px into its box, `users` 0.7 px (P07-80).
   return (
     <Icon
       aria-hidden="true"
-      className="size-4 shrink-0 text-muted-foreground"
+      className={`size-4 shrink-0 text-muted-foreground ${user ? iconLeadPx[3] : iconLead}`}
     />
   );
 }
@@ -276,9 +280,7 @@ function columnsOf(timeZone: string): readonly DataTableColumn<OverviewRow>[] {
       header: "Who",
       cell: (row) => (
         <span className="flex items-start gap-2">
-          <span className="pt-0.5">
-            <WhoIcon row={row} />
-          </span>
+          <WhoIcon row={row} />
           <span className="min-w-0">
             {row.holder.name}
             {row.notInEffect.length === 0 ? null : (
@@ -490,7 +492,10 @@ function Results(
       )}
 
       <p className="flex gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground md:px-5">
-        <HelpIcon aria-hidden="true" className="size-4 shrink-0" />
+        <HelpIcon
+          aria-hidden="true"
+          className={`size-4 shrink-0 ${iconLead}`}
+        />
         <span>
           Access adds up. Removing one assignment leaves the others, which the
           Assigned via column names. What changed and when is in the{" "}

@@ -123,7 +123,7 @@ export function WarningIcon(props: SVGProps<SVGSVGElement>) {
 export function PencilIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <Icon {...props}>
-      <path d="m4 20 4-1 11-11-3-3L5 16l-1 4Z" />
+      <path d="m4 19 4-1 11-11-3-3L5 15l-1 4Z" />
     </Icon>
   );
 }

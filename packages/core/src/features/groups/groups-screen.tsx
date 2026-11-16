@@ -221,7 +221,8 @@ export function GroupInspector(
             </IconTile>
             <div className="flex min-w-0 flex-1 flex-col gap-1">
               <div className="flex min-w-0 flex-wrap items-center gap-2">
-                <SheetTitle className="min-w-0 wrap-anywhere">
+                {/* oxlint-disable-next-line shadcn/no-restyle -- P07-51: a 40 px title line centers the 40 px kind tile (6wz1.113) */}
+                <SheetTitle className="min-w-0 wrap-anywhere leading-10">
                   {groupLabel(group)}
                 </SheetTitle>
                 {sourcePill(group)}
@@ -274,13 +275,13 @@ export function GroupInspector(
           {/* Open in Access only for a viewer with the Roles key and a group Grants lists; any other
               viewer reads the count alone (LK4, LK13). */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input p-3">
-            <div className="flex min-w-0 items-center gap-3">
+            <div className="flex min-w-0 items-start gap-3">
               <KeyIcon
                 aria-hidden="true"
                 className="size-5 shrink-0 text-muted-foreground"
               />
               <div className="min-w-0">
-                <p className="text-sm font-semibold text-foreground">
+                <p className="text-sm leading-5 font-semibold text-foreground">
                   Access is managed in one place
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -291,7 +292,12 @@ export function GroupInspector(
               </div>
             </div>
             {props.onOpenInAccess === undefined ? null : (
-              <Button variant="link" onClick={props.onOpenInAccess}>
+              <Button
+                variant="link"
+                size="sm"
+                className="-ms-3"
+                onClick={props.onOpenInAccess}
+              >
                 Open in Access
               </Button>
             )}
@@ -311,7 +317,7 @@ export function GroupInspector(
               setTab(value === "access" ? "access" : "members")
             }
           >
-            <TabsList aria-label="Group detail">
+            <TabsList aria-label="Group detail" className="-ms-2 sm:-ms-3">
               {/* The captures show each count as a gray pill beside the label. */}
               <TabsTrigger value="members">
                 Members <LabelPill>{props.members.length}</LabelPill>
@@ -810,7 +816,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
                 header: "Group",
                 // The capture's row: the kind tile, then the name over the description.
                 cell: (group) => (
-                  <span className="flex items-center gap-3">
+                  <span className="flex items-start gap-3">
                     <IconTile>
                       {group.source === "idp" ? (
                         <DirectoryIcon />
@@ -819,7 +825,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
                       )}
                     </IconTile>
                     <span className="flex min-w-0 flex-col items-start">
-                      <span>
+                      <span className="leading-10">
                         <GroupName value={groupLabel(group)} />
                       </span>
                       <span className="text-xs font-normal text-muted-foreground wrap-anywhere">

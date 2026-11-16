@@ -9,6 +9,7 @@ import {
   InputGroupButton,
   InputGroupInput,
   focusRing,
+  iconLead,
 } from "@genie/ui";
 import { useRef, useState } from "react";
 import type { JSX } from "react";
@@ -140,7 +141,13 @@ function EnrollmentCode({ seed }: { readonly seed: string }): JSX.Element {
   );
 }
 
-function Icon({ path }: { readonly path: string }): JSX.Element {
+function Icon({
+  path,
+  className = "",
+}: {
+  readonly path: string;
+  readonly className?: string;
+}): JSX.Element {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -150,7 +157,7 @@ function Icon({ path }: { readonly path: string }): JSX.Element {
       strokeWidth={1.75}
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="size-4 shrink-0"
+      className={`size-4 shrink-0 ${className}`}
     >
       <path d={path} />
     </svg>
@@ -390,7 +397,7 @@ export function BreakGlassPasswordForm(props: {
         />
         <ul className="flex flex-col gap-1 rounded-lg bg-muted px-3.5 py-3 text-sm">
           {rows.map((row) => (
-            <li key={row.key} className="flex items-center gap-2">
+            <li key={row.key} className="flex items-start gap-2">
               <span
                 aria-hidden="true"
                 className={`flex size-5 shrink-0 items-center justify-center rounded-full ${
@@ -417,8 +424,8 @@ export function BreakGlassPasswordForm(props: {
               <span
                 className={
                   row.key === "notProvisioning"
-                    ? "text-muted-foreground"
-                    : undefined
+                    ? "leading-5 text-muted-foreground"
+                    : "leading-5"
                 }
               >
                 {PASSWORD_RULE_LABELS[row.key]}
@@ -708,7 +715,7 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   <EnrollmentCode seed={props.enrollment.otpauthUri} />
                   <div className="flex w-full min-w-0 flex-col gap-2 text-sm">
                     <p className="flex items-start gap-1.5 text-muted-foreground">
-                      <Icon path={QR_PATH} />
+                      <Icon path={QR_PATH} className={iconLead} />
                       Scan with any authenticator app. Cannot scan? Enter this
                       key by hand.
                     </p>

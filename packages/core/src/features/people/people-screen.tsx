@@ -19,6 +19,7 @@ import {
   focusRing,
   FormActionBar,
   HelpDisclosure,
+  iconLead,
   InfoNote,
   Input,
   InputGroup,
@@ -729,7 +730,7 @@ function PersonGroups(props: {
                 >
                   <Icon
                     aria-hidden="true"
-                    className="size-4 shrink-0 text-muted-foreground"
+                    className={`size-4 shrink-0 text-muted-foreground ${iconLead}`}
                   />
                   <span className="min-w-0 flex-1">
                     <GroupName value={group.label} />
@@ -1574,7 +1575,7 @@ export function AddPersonDialog(props: {
                 <p className="flex gap-2 text-sm text-foreground">
                   <ShieldIcon
                     aria-hidden="true"
-                    className="mt-0.5 size-4 shrink-0 text-muted-foreground"
+                    className="size-4 shrink-0 text-muted-foreground"
                   />
                   Administration roles (Tenant administrator, Auditor) are added
                   in Access.
@@ -1640,8 +1641,11 @@ export function AddPersonDialog(props: {
             ) : (
               <>
                 The person shows as{" "}
-                <StatusPill tone="neutral">Pending</StatusPill> until their
-                first sign-in.
+                {/* The 20 px pill keeps its margin box inside the 18.75 px line, so the note's icon centers on it (P07-64). */}
+                <span className="-my-px inline-flex">
+                  <StatusPill tone="neutral">Pending</StatusPill>
+                </span>{" "}
+                until their first sign-in.
               </>
             )}
           </InfoNote>

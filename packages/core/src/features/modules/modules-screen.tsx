@@ -173,12 +173,20 @@ function WhoCanOpen(props: {
 
   const summary = (
     <span className="grid min-w-0 flex-1">
-      <span className="text-xs font-semibold text-muted-foreground">
-        {labels.whoCanOpen}
-        <span className="sr-only">
-          {" "}
-          {labels.whoCanOpenFor(module.displayName)}
+      <span className="flex items-center justify-between gap-2 text-xs font-semibold text-muted-foreground">
+        <span>
+          {labels.whoCanOpen}
+          <span className="sr-only">
+            {" "}
+            {labels.whoCanOpenFor(module.displayName)}
+          </span>
         </span>
+        {props.href === undefined ? null : (
+          <ChevronRightIcon
+            aria-hidden="true"
+            className="size-4 shrink-0 text-muted-foreground"
+          />
+        )}
       </span>
       <span
         className={`truncate ${module.enabled ? "text-foreground" : "text-muted-foreground"}`}
@@ -201,10 +209,6 @@ function WhoCanOpen(props: {
     <a href={props.href} className={`${band} ${focusRing}`}>
       {summary}
       <span className="sr-only">{labels.manage}</span>
-      <ChevronRightIcon
-        aria-hidden="true"
-        className="size-4 shrink-0 text-muted-foreground"
-      />
     </a>
   );
 }
