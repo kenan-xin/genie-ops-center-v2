@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { scenarioEmail } from "./scenarios.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
@@ -14,6 +14,7 @@ import {
 import { withDeploymentLock } from "./support/lock.ts";
 import { atLg, openNavigation } from "./support/shell.ts";
 import { signInThroughBroker } from "./support/sign-in.ts";
+import { expectTouchAreas } from "./support/touch-areas.ts";
 
 /**
  * Spec 3 S3-09: the Section 3 acceptance proofs that no page ticket owns. AC-9 and AC-17 (axe on
@@ -492,4 +493,240 @@ test("first enable: a required value refuses the switch, a settings save keeps t
     },
     LOCK_WAIT_MS
   );
+});
+
+type ControlBox = {
+  readonly name: string;
+  readonly height: number;
+  readonly top: number;
+};
+
+/** Each visible control's border box: a text field's input group, or the control's own box. */
+async function controlBoxes(controls: Locator): Promise<ControlBox[]> {
+  return controls.filter({ visible: true }).evaluateAll((elements) =>
+    elements
+      .filter((element) => {
+        // A 1 px input is a form control's hidden input, which nobody sees or types into.
+        const rect = element.getBoundingClientRect();
+
+        return rect.width > 1 && rect.height > 1;
+      })
+      .map((element) => {
+        const rect = (
+          element.closest("[data-slot=input-group]") ?? element
+        ).getBoundingClientRect();
+
+        return {
+          name:
+            element.getAttribute("aria-label") ??
+            (element.textContent?.trim() || element.id),
+          height: rect.height,
+          top: rect.top,
+        };
+      })
+  );
+}
+
+/**
+ * Every control is the md control height, 36 px from lg and 40 px under it (6wz1.114). A row also
+ * shares one top edge; a stacked form shares the height only.
+ */
+async function expectLinedUp(
+  page: Page,
+  label: string,
+  controls: Locator,
+  layout: "row" | "stack",
+  count?: number
+): Promise<void> {
+  const height = atLg(page) ? 36 : 40;
+
+  // A row whose locator lost a control would measure only one, and pass.
+  if (count !== undefined)
+    await expect(controls.filter({ visible: true }), label).toHaveCount(count);
+
+  const boxes = await controlBoxes(controls);
+  const first = boxes[0]?.top ?? 0;
+
+  expect(boxes, `${label} shows its controls`).not.toHaveLength(0);
+  expect
+    .soft(
+      boxes.map((box) => ({
+        name: box.name,
+        height: Math.round(box.height),
+        top: layout === "row" ? Math.round(box.top - first) : 0,
+      })),
+      label
+    )
+    .toEqual(boxes.map((box) => ({ name: box.name, height, top: 0 })));
+}
+
+const TEXT_FIELDS =
+  "textarea, input:not([type]), input:is([type=text], [type=email], [type=search], [type=url], [type=tel], [type=password], [type=number])";
+
+/** iOS Safari zooms into a field whose text is under 16 px when it takes focus. */
+async function expectPhoneFieldText(page: Page, label: string): Promise<void> {
+  const sizes = await page
+    .locator(TEXT_FIELDS)
+    .filter({ visible: true })
+    .evaluateAll((fields) =>
+      fields
+        .filter((element) => {
+          // A 1 px input is a form control's hidden input, which nobody sees or types into.
+          const rect = element.getBoundingClientRect();
+
+          return rect.width > 1 && rect.height > 1;
+        })
+        .map((field) => ({
+          name: field.getAttribute("aria-label") ?? field.id,
+          px: Number.parseFloat(getComputedStyle(field).fontSize),
+        }))
+    );
+
+  expect
+    .soft(
+      sizes.filter((size) => size.px < 16),
+      `${label} text fields under 16 px`
+    )
+    .toEqual([]);
+}
+
+/** On a phone: the touch area check and the field text size of the open screen. */
+async function expectPhoneTouch(page: Page, label: string): Promise<void> {
+  if (atLg(page)) return;
+
+  await expectPhoneFieldText(page, label);
+  await expectTouchAreas(page, label);
+}
+
+async function openAddPerson(page: Page): Promise<Locator> {
+  await page
+    .getByRole("button", { name: "Add person" })
+    .filter({ visible: true })
+    .click();
+
+  const dialog = page.getByRole("dialog", { name: "Add person" });
+
+  await expect(dialog).toBeVisible();
+
+  return dialog;
+}
+
+/** The search box and Add person: one row from md, where the filter bar shows. */
+async function expectPeopleToolbar(page: Page): Promise<void> {
+  await expectLinedUp(
+    page,
+    "People toolbar",
+    page
+      .getByRole("textbox", { name: "Search by name or email" })
+      .or(page.getByRole("button", { name: "Add person" })),
+    (page.viewportSize()?.width ?? 0) >= 768 ? "row" : "stack",
+    2
+  );
+}
+
+async function expectAddPersonFooter(dialog: Locator): Promise<void> {
+  await expectLinedUp(
+    dialog.page(),
+    "Add person footer",
+    dialog
+      .getByRole("button", { name: "Cancel" })
+      .or(dialog.getByRole("button", { name: "Add person", exact: true })),
+    "row",
+    2
+  );
+}
+
+test("rows of mixed controls share one height, and every control keeps a 44 px touch area on a phone (6wz1.114)", async ({
+  page,
+}, testInfo) => {
+  await signIn(page, testInfo.project.name);
+
+  await openScreen(page, SCREENS[0]);
+
+  if (!atLg(page)) {
+    // The menu button and, when the agent is on, the Ask button.
+    await expectLinedUp(
+      page,
+      "top bar",
+      page.locator("header[data-shell-top-bar] > button"),
+      "row"
+    );
+    await expectPhoneTouch(page, "shell");
+  }
+
+  await page.goto(`${BASE}/admin/people`);
+  await expect(
+    page.getByRole("heading", { level: 1, name: "People", exact: true })
+  ).toBeVisible();
+  await expect(page.getByText(/^Loading/)).toHaveCount(0);
+  await expectPeopleToolbar(page);
+  await expectPhoneTouch(page, "People");
+
+  const dialog = await openAddPerson(page);
+
+  await expectLinedUp(
+    page,
+    "Add person fields",
+    dialog.locator(TEXT_FIELDS),
+    "stack"
+  );
+  await expectAddPersonFooter(dialog);
+  await expectPhoneTouch(page, "Add person dialog");
+  await page.keyboard.press("Escape");
+
+  await openScreen(page, SCREENS[3]);
+  await page
+    .getByRole("navigation", { name: "Settings sections" })
+    .getByRole("button", { name: /^Reporting( |$)/ })
+    .click();
+  await expect(
+    page.getByRole("heading", { level: 2, name: "Reporting" })
+  ).toBeVisible();
+  await expectLinedUp(
+    page,
+    "Reporting date row",
+    page
+      .getByRole("textbox", { name: "Reporting date" })
+      .or(page.getByRole("button", { name: "Use today" })),
+    "row",
+    2
+  );
+  await expectLinedUp(
+    page,
+    "Reporting footer",
+    page
+      .getByRole("button", { name: "Discard", exact: true })
+      .or(page.getByRole("button", { name: "Save", exact: true })),
+    "row",
+    2
+  );
+  await expectPhoneTouch(page, "Tenant settings Reporting");
+
+  await openScreen(page, SCREENS[4]);
+  await page.getByRole("tab", { name: "Colors" }).click();
+  await expectLinedUp(
+    page,
+    "Primary color field",
+    // Exact: the swatch's "Pick the primary color" holds the same words.
+    page.getByRole("textbox", { name: "Primary color", exact: true }),
+    "stack",
+    1
+  );
+  await expectLinedUp(
+    page,
+    "Publish actions",
+    page.getByRole("region", { name: "Publish actions" }).getByRole("button"),
+    "row",
+    2
+  );
+  await expectPhoneTouch(page, "Branding Colors tab");
+
+  // A tablet: phone heights in the md layouts, the filter bar and the centered dialog.
+  if (atLg(page)) {
+    await page.setViewportSize({ width: 820, height: 1180 });
+    await page.goto(`${BASE}/admin/people`);
+    await expect(page.getByText(/^Loading/)).toHaveCount(0);
+    await expectPeopleToolbar(page);
+    await expectAddPersonFooter(await openAddPerson(page));
+  }
 });

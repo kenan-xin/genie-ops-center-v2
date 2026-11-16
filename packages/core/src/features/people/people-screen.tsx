@@ -331,7 +331,8 @@ export function PersonInspector(props: {
             </div>
           </div>
         </SheetHeader>
-        <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-4">
+        {/* The 2 px top padding, taken back by the margin, keeps the tabs' 44 px touch area inside the scroll clip. */}
+        <div className="flex flex-col gap-3 overflow-y-auto px-4 pb-4 max-lg:-mt-0.5 max-lg:pt-0.5">
           <Tabs
             value={tab}
             onValueChange={(value) =>

@@ -428,8 +428,9 @@ function BrandingEditor(
           }}
           className="min-w-0 lg:col-span-3"
         >
-          {/* The wrapper scrolls, not the list: the active underline sits on the list border, so a scrolling list grew a vertical scrollbar. */}
-          <div className="max-w-full overflow-x-auto">
+          {/* The wrapper scrolls, not the list: the active underline sits on the list border, so a scrolling list grew a vertical scrollbar.
+              Its 2 px padding, taken back by the margin, keeps each tab's 44 px touch area inside the clip. */}
+          <div className="max-w-full overflow-x-auto max-lg:-my-0.5 max-lg:py-0.5">
             <TabsList>
               {TABS.map((entry) => (
                 <TabsTrigger

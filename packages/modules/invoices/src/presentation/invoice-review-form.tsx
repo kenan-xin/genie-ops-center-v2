@@ -632,20 +632,22 @@ function DueControl(props: {
           )
         }
       >
-        <div className="flex items-center gap-2">
+        {/* 44 px label rows under lg, as in Add person: each radio's touch area stays in its own row. */}
+        <label className="flex min-h-11 items-center gap-2 lg:min-h-0">
           <RadioGroupItem
             id="review-due-person"
             value="person"
             aria-label="Enter a due date"
           />
           <span>Enter a due date</span>
-        </div>
+        </label>
         {due.kind === "person"
           ? dueDateInput(due.value, (value) =>
               onChange({ kind: "person", value })
             )
           : null}
-        <div className="flex items-start gap-2">
+        {/* Centered under lg: a radio at the top of a two-line row would reach the row above. */}
+        <label className="flex min-h-11 items-center gap-2 lg:min-h-0 lg:items-start">
           <RadioGroupItem value="unspecified" aria-label="No due date" />
           <span>
             No due date{" "}
@@ -653,7 +655,7 @@ function DueControl(props: {
               (counts in outstanding, never overdue)
             </span>
           </span>
-        </div>
+        </label>
       </RadioGroup>
     </div>
   );

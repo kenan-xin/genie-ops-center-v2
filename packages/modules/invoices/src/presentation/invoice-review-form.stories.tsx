@@ -742,3 +742,60 @@ export const ReadDueDateClearedOnPhone: Story = {
   name: "Due date: read date cleared on a phone",
   globals: phone,
 };
+
+/** The control that owns a tap at a point: the radio or checkbox hit, or the one its label wraps. */
+function tapOwner(x: number, y: number): Element | null {
+  const hit = document.elementFromPoint(x, y);
+  const control = '[role="radio"], [role="checkbox"]';
+
+  return (
+    hit?.closest(control) ??
+    hit?.closest("label")?.querySelector(control) ??
+    hit
+  );
+}
+
+// 6wz1.114: on a phone a radio or checkbox reaches 44 px, so its row must be 44 px too, or the
+// area takes the taps of the control beside it: the next radio, or the Customer field above.
+export const TapEdgesOnPhone: Story = {
+  name: "Tap edges on a phone",
+  args: { view: newCustomerReview },
+  globals: phone,
+  beforeEach: () => serve(newCustomerReview),
+  play: async ({ canvas }) => {
+    // The pager opens on the Customer step, which shows the confirmation checkbox.
+    const create = await canvas.findByRole("checkbox", {
+      name: "Create Meridian Labs Pte as a new customer",
+    });
+
+    const customer = canvas.getByRole("combobox", { name: "Customer" });
+    const field = customer.closest("[data-slot=input-group]") ?? customer;
+    const box = field.getBoundingClientRect();
+    const tick = create.getBoundingClientRect();
+
+    // The lowest pixel row of the Customer field, straight above the checkbox.
+    const above = tapOwner(tick.x + tick.width / 2, box.bottom - 1);
+
+    await expect(above).not.toBe(create);
+    await expect(field.contains(above)).toBe(true);
+
+    await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: /^Due date/u })
+    );
+
+    const enter = await canvas.findByRole("radio", {
+      name: "Enter a due date",
+    });
+
+    // The sheet fades out first, so the probe waits for a settled hit.
+    await waitFor(async () => {
+      const radio = enter.getBoundingClientRect();
+      const x = radio.x + radio.width / 2;
+
+      // The lowest pixel row of the first radio, and just under it.
+      await expect(tapOwner(x, radio.bottom - 1)).toBe(enter);
+      await expect(tapOwner(x, radio.bottom + 1)).toBe(enter);
+    });
+  },
+};

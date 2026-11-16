@@ -132,21 +132,24 @@ export function CustomerField(props: {
         </ComboboxContent>
       </Combobox>
       {showCreate ? (
-        <FieldLabel className="items-center">
-          <Checkbox
-            checked={value.kind === "new" && value.confirmed}
-            onCheckedChange={(checked) => {
-              if (value.kind === "new") {
-                onChange({
-                  kind: "new",
-                  name: value.name,
-                  confirmed: checked,
-                });
-              }
-            }}
-          />
-          <span className="ml-2">{`Create ${typed} as a new customer`}</span>
-        </FieldLabel>
+        // A 44 px row under lg holds the checkbox's touch area, which would reach the field above.
+        <div className="flex min-h-11 items-center lg:min-h-0">
+          <FieldLabel className="items-center">
+            <Checkbox
+              checked={value.kind === "new" && value.confirmed}
+              onCheckedChange={(checked) => {
+                if (value.kind === "new") {
+                  onChange({
+                    kind: "new",
+                    name: value.name,
+                    confirmed: checked,
+                  });
+                }
+              }}
+            />
+            <span className="ml-2">{`Create ${typed} as a new customer`}</span>
+          </FieldLabel>
+        </div>
       ) : null}
     </div>
   );
