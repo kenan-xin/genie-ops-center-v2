@@ -152,6 +152,37 @@ export const NoRecipient: Story = {
   },
 };
 
+/** C06-2: the Grant to chips take the md height of the picker and the button beside them. */
+export const GrantToRowLinesUp: Story = {
+  args: { initial: group("g-ops") },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const row = within(
+      (await canvas.findByRole("group", { name: "Grant to" })).parentElement!
+    );
+
+    const controls = [
+      ...row.getAllByRole("button"),
+      ...row.getAllByRole("combobox"),
+    ];
+
+    const top = controls[0]!.getBoundingClientRect().top;
+
+    // One string, so that a failure prints every control in full.
+    await expect(
+      controls
+        .flatMap((control) => {
+          const { height, top: at } = control.getBoundingClientRect();
+
+          return height === 36 && at === top
+            ? []
+            : [`${control.textContent}: ${height} px at ${at}`];
+        })
+        .join("; ")
+    ).toBe("");
+  },
+};
+
 export const NoRecipientPerson: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "People" }));

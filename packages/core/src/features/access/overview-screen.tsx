@@ -538,6 +538,7 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
       <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
         <ToggleGroup<Lookup>
           aria-label="Look up"
+          size="md"
           value={[lookup]}
           onValueChange={(values) => {
             // A second press on the pressed segment empties the value: keep the segment.

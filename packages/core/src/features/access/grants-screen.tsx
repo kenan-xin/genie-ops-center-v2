@@ -561,6 +561,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
         </span>
         <ToggleGroup<Kind>
           aria-labelledby="grants-grant-to"
+          size="md"
           value={[kind]}
           onValueChange={(values) => {
             // A second press on the pressed segment empties the value: keep the segment.

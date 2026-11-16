@@ -413,6 +413,69 @@ export const ByRolePhone: Story = {
   },
 };
 
+/** The Look up chips. */
+const lookUp = async (canvas: ReturnType<typeof within>) =>
+  canvas.findByRole("group", { name: "Look up" });
+
+/** The controls off the given height or off the first control's top edge, as one string. */
+function offRow(controls: readonly HTMLElement[], height: number) {
+  const top = controls[0]!.getBoundingClientRect().top;
+
+  return controls
+    .flatMap((control) => {
+      const { height: tall, top: at } = control.getBoundingClientRect();
+
+      return tall === height && at === top
+        ? []
+        : [`${control.textContent}: ${tall} px at ${at}`];
+    })
+    .join("; ");
+}
+
+/** C06-2: the Look up chips take the md height of the picker beside them. */
+export const LookUpRowLinesUp: Story = {
+  args: { initial: jamie },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const row = within((await lookUp(canvas)).parentElement!);
+
+    await expect(
+      offRow(
+        [...row.getAllByRole("button"), ...row.getAllByRole("combobox")],
+        36
+      )
+    ).toBe("");
+  },
+};
+
+/** C06-2: on a phone the chips are 40 px, and each reaches 44 px: 1.5 px above it is still it. */
+export const LookUpChipsOnPhone: Story = {
+  args: { initial: jamie },
+  globals: phone,
+  // Room above the chips, so that a point 1.5 px over their edge is on the page.
+  decorators: [
+    (Story) => (
+      <div className="pt-4">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const chips = within(await lookUp(canvas)).getAllByRole("button");
+
+    await expect(offRow(chips, 40)).toBe("");
+    await expect(
+      chips.flatMap((chip) => {
+        const { left, width, top } = chip.getBoundingClientRect();
+
+        return document.elementFromPoint(left + width / 2, top - 1.5) === chip
+          ? []
+          : [chip.textContent];
+      })
+    ).toEqual([]);
+  },
+};
+
 /** A module that nobody holds. */
 export const NobodyHolds: Story = {
   args: { initial: { type: "module", id: "placeholder" } },
