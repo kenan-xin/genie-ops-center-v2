@@ -145,3 +145,36 @@ test("the touch area check restores nested scrollers and counts a control inside
     scrollTop: 0,
   });
 });
+
+/**
+ * The shell's focusable scroll region, 120 px tall, whose bottom edge cuts a card. The card's
+ * button stretches its touch area over the card, and the button itself sits below that edge.
+ */
+const CLIPPED_CARD = `<!doctype html>
+<html>
+  <head>
+    <style>
+      body { margin: 0; font: 16px sans-serif; }
+      .scroller { height: 120px; overflow: auto; }
+      .card { position: relative; margin-top: 80px; padding: 60px 24px 24px; }
+      .card button { height: 44px; padding: 0 16px; border: 0; background: #ddd; font: inherit; }
+      .card button::after { content: ""; position: absolute; inset: 0; }
+    </style>
+  </head>
+  <body>
+    <div role="group" aria-label="Page" tabindex="0" class="scroller">
+      <div class="card"><button>Open</button></div>
+    </div>
+  </body>
+</html>`;
+
+// T6-c: a control inside the checked target is its content, even where the target's scroll box
+// clips the control's own box, so it never covers the target.
+test("the touch area check does not count a control as covering its own scroll region @no-screen", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.setContent(CLIPPED_CARD);
+
+  expect(await touchAreaFindings(page)).toEqual([]);
+});

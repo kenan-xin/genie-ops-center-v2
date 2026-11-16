@@ -477,6 +477,27 @@ export const TableRecordLinksPhone: Story = {
   },
 };
 
+// C06-5 class search: a linked card's title keeps its 44 px touch area under its line, where the
+// card's figures sit. The probe sits on the area's outermost whole pixel, as the touch check's.
+export const TableRecordLinkTouchAreaPhone: Story = {
+  name: "Table record link touch area on a phone",
+  args: linked,
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await document.fonts.ready;
+
+    const list = canvas.getByRole("list", { name: "Records" });
+    const link = within(list).getByRole("link", { name: "A" });
+    const box = link.getBoundingClientRect();
+    const x = box.left + box.width / 2;
+    const y = box.top + box.height / 2;
+
+    await expect(
+      link.contains(document.elementFromPoint(x, Math.ceil(y + 22) - 1))
+    ).toBe(true);
+  },
+};
+
 const tableViewPlay: Story["play"] = async ({ canvas }) => {
   // From the keyboard: Tab to the tabs, move to "Table" and choose it.
   await userEvent.tab();

@@ -251,7 +251,8 @@ function findTouchAreaProblems(): string[] {
         text: `${name}: touch area under 44 px (${short.join(", ")})`,
       });
 
-    // Rule 6: the center and the edge midpoints of the box, 1 px inside it.
+    // Rule 6: the center and the edge midpoints of the box, 1 px inside it. A control inside the
+    // target is its content, also where the target's scroll box clips the control's own box.
     const coverProbes: [number, number][] = [
       [centerX, centerY],
       [centerX, box.top + 1],
@@ -270,6 +271,7 @@ function findTouchAreaProblems(): string[] {
         hit === null ||
         owner === null ||
         isOwn(target, hit) ||
+        target.contains(owner) ||
         inside(boxOf(owner), box)
       )
         continue;

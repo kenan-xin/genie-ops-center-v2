@@ -190,6 +190,58 @@ export const Phone: Story = {
   },
 };
 
+/** Whether a tap at the point lands on `target` or inside it. */
+const hits = (target: Element, x: number, y: number) =>
+  target.contains(document.elementFromPoint(x, y));
+
+// C06-5: each card's actor opens the row from anywhere in its 44 px touch area. The probes sit on
+// the area's outermost whole pixel above and below, as the touch check measures it.
+export const ActorTouchAreaOnPhone: Story = {
+  name: "Actor touch area on a phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "Audit events" });
+
+    const missed = within(list)
+      .getAllByRole("listitem")
+      .flatMap((card) => {
+        const actor = within(card).getAllByRole("button")[0]!;
+
+        actor.scrollIntoView({ block: "center" });
+
+        const box = actor.getBoundingClientRect();
+        const x = box.left + box.width / 2;
+        const y = box.top + box.height / 2;
+        const name = actor.textContent ?? "";
+
+        return [
+          hits(actor, x, Math.ceil(y - 22)) ? [] : [`${name} above`],
+          hits(actor, x, Math.ceil(y + 22) - 1) ? [] : [`${name} below`],
+        ].flat();
+      });
+
+    await expect(missed).toEqual([]);
+  },
+};
+
+// C06-5 fix round 1: the card's time stays a hover target beside the stretched title.
+export const CardTimeTooltipOnPhone: Story = {
+  name: "Card time tooltip on a phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "Audit events" });
+    const card = within(list).getAllByRole("listitem")[0]!;
+
+    await userEvent.hover(card.querySelector("[data-slot=tooltip-trigger]")!);
+
+    const tip = await screen.findByText(/2026/, {
+      selector: "[data-slot=tooltip-content]",
+    });
+
+    await waitFor(() => expect(tip).toBeVisible());
+  },
+};
+
 /** The card list in the dark theme: the chip takes its dark pair (tokens.md, Category colors). */
 export const PhoneDark: Story = {
   globals: { theme: "dark", viewport: { value: "phone390", isRotated: false } },

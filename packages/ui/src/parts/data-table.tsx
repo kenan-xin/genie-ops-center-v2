@@ -41,6 +41,12 @@ import type { ListSort, ListSortKind } from "../list-header/definitions.ts";
 import { focusRing } from "../theme/tokens.ts";
 import { scrollParentOf, useRowWindow, VIRTUAL_FROM } from "./row-window.ts";
 
+// The content under a stretched title: its controls take their own taps, and a tap on its text
+// falls through to the title, so the title's touch area and the row's tap reach under it (R-23).
+// Hover-only content needs a focusable or `tooltip-trigger` element to keep its pointer.
+const ABOVE_TITLE =
+  "pointer-events-none relative z-10 [&_:is(a,button,input,select,textarea,label,summary,[tabindex],[data-slot=tooltip-trigger],[role=button],[role=link],[role=checkbox],[role=radio],[role=switch],[role=tab],[role=menuitem],[role=menuitemcheckbox],[role=menuitemradio],[role=option],[role=combobox],[role=slider])]:pointer-events-auto";
+
 export type DataTableColumn<Row> = {
   readonly id: string;
   readonly header: string;
@@ -547,6 +553,11 @@ export function DataTable<Row>({
           const trailing = card.trailing?.(row) ?? rowAction?.(row) ?? null;
           const rowMenu = menu(row);
 
+          const lift =
+            onOpenRow !== undefined || linked(row)
+              ? ABOVE_TITLE
+              : "relative z-10";
+
           return (
             <li
               key={rowKey(row)}
@@ -602,7 +613,7 @@ export function DataTable<Row>({
                   </div>
                 )}
                 {content === null ? null : (
-                  <div className="relative z-10">{content}</div>
+                  <div className={lift}>{content}</div>
                 )}
               </div>
               {linked(row) ? (

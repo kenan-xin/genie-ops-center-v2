@@ -243,6 +243,8 @@ function ChartTable(props: {
       rowKey={(row) => String(indexes.get(row) ?? "")}
       rowLabel={titleOf}
       columns={columns}
+      // The rows whose card title `linked` stretches over the card.
+      rowLinks={(row) => pathOf(row) !== null && titleOf(row) !== ""}
       card={{
         title: (row) =>
           linked(row, `${RECORD_LINK} after:absolute after:inset-0`),
