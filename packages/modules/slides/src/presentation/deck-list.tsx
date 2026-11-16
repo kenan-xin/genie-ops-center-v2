@@ -117,6 +117,9 @@ const slideText = (count: number) =>
 
 const hrefOf = (id: string) => `/m/slides/decks/${id}`;
 
+// The title covers its row and card, so a phone tap anywhere on the card opens it (C06-4).
+const ROW_LINK = "after:absolute after:inset-0";
+
 /** Starters that name no dataset: the module does not know which ones the deployment has. */
 const CHAT_SUGGESTIONS = [
   "Make a deck of this month's figures",
@@ -174,7 +177,11 @@ export function DeckList(props: DeckListProps) {
     {
       id: "title",
       header: "Title",
-      cell: (row) => <PageLink href={hrefOf(row.id)}>{row.title}</PageLink>,
+      cell: (row) => (
+        <PageLink href={hrefOf(row.id)} className={ROW_LINK}>
+          {row.title}
+        </PageLink>
+      ),
     },
     {
       id: "slides",
@@ -236,9 +243,12 @@ export function DeckList(props: DeckListProps) {
               rowKey={(row) => row.id}
               rowLabel={(row) => row.title}
               columns={columns}
+              rowLinks
               card={{
                 title: (row) => (
-                  <PageLink href={hrefOf(row.id)}>{row.title}</PageLink>
+                  <PageLink href={hrefOf(row.id)} className={ROW_LINK}>
+                    {row.title}
+                  </PageLink>
                 ),
                 facts: (row) => [slideText(row.slideCount)],
               }}

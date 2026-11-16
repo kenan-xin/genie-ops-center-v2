@@ -33,6 +33,9 @@ const panelText = (count: number) =>
 
 const hrefOf = (id: string) => `/m/analytics/dashboards/${id}`;
 
+// The name covers its row and card, so a phone tap anywhere on the card opens it (C06-4).
+const ROW_LINK = "after:absolute after:inset-0";
+
 export type DashboardListProps = {
   readonly view: DashboardListView;
   /**
@@ -98,7 +101,11 @@ export function DashboardList(props: DashboardListProps) {
     {
       id: "name",
       header: "Name",
-      cell: (row) => <PageLink href={hrefOf(row.id)}>{row.name}</PageLink>,
+      cell: (row) => (
+        <PageLink href={hrefOf(row.id)} className={ROW_LINK}>
+          {row.name}
+        </PageLink>
+      ),
     },
     {
       id: "panels",
@@ -159,9 +166,12 @@ export function DashboardList(props: DashboardListProps) {
           rowKey={(row) => row.id}
           rowLabel={(row) => row.name}
           columns={columns}
+          rowLinks
           card={{
             title: (row) => (
-              <PageLink href={hrefOf(row.id)}>{row.name}</PageLink>
+              <PageLink href={hrefOf(row.id)} className={ROW_LINK}>
+                {row.name}
+              </PageLink>
             ),
             facts: (row) => [panelText(row.panelCount)],
           }}

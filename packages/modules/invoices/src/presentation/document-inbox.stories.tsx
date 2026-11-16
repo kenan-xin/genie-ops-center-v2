@@ -996,3 +996,53 @@ export const LinksOnPhone: Story = {
   beforeEach: serveDuplicate,
   play: checkRowLinks,
 };
+
+/** Whether a tap at the point lands on `target` or inside it. */
+const hits = (target: Element, x: number, y: number) =>
+  target.contains(document.elementFromPoint(x, y));
+
+// C06-4: a card's name link has a 44 px touch area, as the invoice and payment cards do, and it
+// leaves Review its own taps. A Duplicate card opens nothing, so it shows no chevron.
+export const NameTouchAreaOnPhone: Story = {
+  name: "Name touch area on a phone",
+  globals: phone,
+  beforeEach: serveDuplicate,
+  play: async ({ canvas }) => {
+    await userEvent.upload(canvas.getByLabelText("Choose PDF files"), [
+      pdf("extra.pdf"),
+    ]);
+
+    const list = within(await canvas.findByRole("list", { name: "Documents" }));
+
+    await list.findByText("Same file as a.pdf");
+
+    const missed = defaultDocumentInbox.rows.flatMap((row) => {
+      const link = list.getByRole("link", { name: row.label });
+
+      link.scrollIntoView({ block: "center" });
+
+      const box = link.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const review = list.queryByRole("link", { name: `Review ${row.label}` });
+      const reviewBox = review?.getBoundingClientRect();
+
+      return [
+        hits(link, x, box.top - 1.5) ? [] : [`${row.label} above`],
+        hits(link, x, box.bottom + 1.5) ? [] : [`${row.label} below`],
+        review === null ||
+        reviewBox === undefined ||
+        hits(review, reviewBox.left + 1, reviewBox.top + reviewBox.height / 2)
+          ? []
+          : [`Review ${row.label}`],
+      ].flat();
+    });
+
+    await expect(missed).toEqual([]);
+
+    const duplicate = list.getByText("Same file as a.pdf").closest("li");
+
+    await expect(
+      duplicate?.querySelector("svg.lucide-chevron-right") ?? null
+    ).toBeNull();
+  },
+};

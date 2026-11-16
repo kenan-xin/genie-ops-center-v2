@@ -364,7 +364,10 @@ function HolderList(props: {
           const href = props.holderHref?.(row.holder);
 
           return (
-            <li key={row.key} className="flex items-start gap-2 py-2 text-sm">
+            <li
+              key={row.key}
+              className="relative flex items-start gap-2 py-2 text-sm"
+            >
               <Icon
                 aria-hidden="true"
                 className="mt-0.5 size-4 shrink-0 text-muted-foreground"
@@ -378,7 +381,8 @@ function HolderList(props: {
                   ) : (
                     <PageLink
                       href={href}
-                      className={`font-medium text-foreground underline wrap-anywhere ${focusRing}`}
+                      // The name covers its row, so the whole row is its touch area (C06-4).
+                      className={`font-medium text-foreground underline wrap-anywhere after:absolute after:inset-0 ${focusRing}`}
                     >
                       {row.holder.name}
                     </PageLink>

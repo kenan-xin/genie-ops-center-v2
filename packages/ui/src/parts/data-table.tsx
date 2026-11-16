@@ -102,9 +102,10 @@ export type DataTableProps<Row> = {
   /**
    * Set when the identity cell and the card title hold a link with `after:absolute after:inset-0`.
    * The link then covers its table row, and each card shows a chevron, so a row reads as a link
-   * (design review 1.5).
+   * (design review 1.5). A function names the rows that hold the link, for a list where some rows
+   * open nothing.
    */
-  readonly rowLinks?: boolean;
+  readonly rowLinks?: boolean | ((row: Row) => boolean);
   readonly actions?: (row: Row) => readonly DataTableAction[];
   /**
    * One visible action of the row, such as Review: the last column of the table, before the menu,
@@ -387,6 +388,9 @@ export function DataTable<Row>({
     );
   };
 
+  const linked = (row: Row) =>
+    rowLinks === true || (rowLinks !== false && rowLinks?.(row) === true);
+
   const identityColumn =
     columns.find((column) => column.id === identityId) ?? columns[0];
 
@@ -481,7 +485,7 @@ export function DataTable<Row>({
                   ref={virtual ? tableWindow.measure : undefined}
                   data-index={index}
                   aria-rowindex={index + 2}
-                  className={rowLinks ? "relative" : undefined}
+                  className={linked(row) ? "relative" : undefined}
                 >
                   {columns.map((column) => (
                     <TableCell
@@ -601,7 +605,7 @@ export function DataTable<Row>({
                   <div className="relative z-10">{content}</div>
                 )}
               </div>
-              {rowLinks ? (
+              {linked(row) ? (
                 <ChevronRightIcon
                   aria-hidden="true"
                   className="size-4 shrink-0 self-center text-muted-foreground"

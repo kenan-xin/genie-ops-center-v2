@@ -429,6 +429,40 @@ export const HoldersListed: Story = {
   },
 };
 
+/** C06-4: on a phone each holder's name link covers its row, so the row is a 44 px touch area. */
+export const HoldersListedOnPhone: Story = {
+  ...HoldersListed,
+  name: "Holders listed on a phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async () => {
+    const list = within(
+      await screen.findByRole("list", { name: "Assigned to" })
+    );
+
+    const missed = list.getAllByRole("listitem").flatMap((item) => {
+      const link = within(item).getByRole("link");
+
+      link.scrollIntoView({ block: "center" });
+
+      const box = link.getBoundingClientRect();
+      const x = box.left + box.width / 2;
+      const name = link.textContent;
+
+      return [
+        link.contains(document.elementFromPoint(x, box.top - 1.5))
+          ? []
+          : [`${name} above`],
+        link.contains(document.elementFromPoint(x, box.bottom + 1.5))
+          ? []
+          : [`${name} below`],
+        item.getBoundingClientRect().height >= 44 ? [] : [`${name} row`],
+      ].flat();
+    });
+
+    await expect(missed).toEqual([]);
+  },
+};
+
 /** `d8l5.47`: past ten, the first ten show, groups first, and "See all" opens Access by role. */
 export const HoldersPastTen: Story = {
   args: {

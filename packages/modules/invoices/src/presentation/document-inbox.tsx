@@ -377,11 +377,12 @@ export function DocumentInbox(props: DocumentInboxProps) {
     row.status === "duplicate" ? (
       row.label
     ) : (
-      // A long name ends with an ellipsis and keeps its full name in the title (czjw.102).
+      // A long name ends with an ellipsis and keeps its full name in the title (czjw.102). The
+      // link covers its row and card, as on the invoice and payment lists (C06-4).
       <PageLink
         href={`/m/invoices/documents/${row.id}`}
         title={row.label}
-        className="block max-w-xs truncate"
+        className="block max-w-xs truncate after:absolute after:inset-0"
       >
         {row.label}
       </PageLink>
@@ -557,6 +558,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 rowLabel: (row) => row.label,
                 columns,
                 rowAction,
+                rowLinks: (row) => row.status !== "duplicate",
                 card: {
                   title: documentLabel,
                   badge: (row) => <DocumentStatusBadge status={row.status} />,
