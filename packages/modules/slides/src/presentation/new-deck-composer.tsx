@@ -2,11 +2,13 @@
 
 import {
   Button,
+  controlHeights,
   Field,
   FieldDescription,
   FieldLabel,
   focusRing,
   Textarea,
+  touchAreas,
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { useEffect, useId, useRef, type ReactNode } from "react";
@@ -25,8 +27,9 @@ export const CHAT_SUGGESTIONS = [
   "Make a deck of the latest records",
 ] as const;
 
-// The agent panel's starter pill, without its arrow: a chip fills the box and sends nothing.
-const chipClass = `inline-flex min-h-11 items-center rounded-full border border-border bg-background px-3 text-start text-sm text-muted-foreground hover:border-input hover:bg-muted hover:text-foreground lg:min-h-8 ${focusRing}`;
+// Styled like the agent panel's starter pill, without its arrow: a chip fills the box and sends nothing.
+// One 32 px line with a 44 px touch area (6wz1.114); a label too wide for the box ends in an ellipsis.
+const chipClass = `inline-flex max-w-full items-center rounded-full border border-border bg-background px-3 text-sm whitespace-nowrap text-muted-foreground hover:border-input hover:bg-hover hover:text-foreground ${controlHeights.sm} ${touchAreas.sm} ${focusRing}`;
 
 /**
  * The inline New deck composer of the Slides list (S7-48): a description, two starters, Cancel and
@@ -121,7 +124,7 @@ export function NewDeckComposer(props: {
                       box.current?.focus();
                     }}
                   >
-                    {chip}
+                    <span className="min-w-0 truncate">{chip}</span>
                   </button>
                 ))}
               </div>
