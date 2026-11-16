@@ -260,7 +260,7 @@ Hairline-first and nearly flat. Resting surfaces are separated by borders (gray-
 
 ## Shapes
 
-Restrained rounding, on a four-step ladder: menus at 6px (`rounded-md`), controls and navigation rows at 8px (`rounded-lg`), cards, dialogs and sheets at 12px (`rounded-xl`), pills at full radius. The sidebar has square corners. The tenant letter tile is 6px small / 8px medium; avatars are circles. Sharp corners, left-edge accent rules, and near-black fills are all rejected form language. Icon-only controls are squares of their height scale (40px md, 32px sm in dense toolbars).
+Restrained rounding, on a four-step ladder: menus at 6px (`rounded-md`), controls and navigation rows at 8px (`rounded-lg`), cards, dialogs and sheets at 12px (`rounded-xl`), pills at full radius. The sidebar has square corners. The tenant letter tile is 6px small / 8px medium; avatars are circles. Sharp corners, left-edge accent rules, and near-black fills are all rejected form language. Icon-only controls are squares of their control height (`iconControlSizes`): md is 40px with a 44px touch area under 1024px and 36px from it, sm is 32px in dense toolbars.
 
 Radius refinement, 2026-09-18: reduce rounding without changing spacing, typography, control heights, hit areas, colors or behavior. The same values apply across light/dark themes and viewport sizes. Warning/info callouts use the 8px control radius. Preserve full rounding for badges, chips, switch tracks and circular avatars; these are not rectangular controls. Apply sheet radii only to exposed corners. Existing screenshots and reference components require a separate design-agent update; this document does not claim rendered verification.
 
@@ -341,7 +341,7 @@ For now the sign-in page and the emails carry text and color branding only. They
 ### Do:
 
 - **Do** apply the one shared `focusRing` constant to every interactive element, a 2px opaque `ring-ring` at 2px offset (the tenant primary in light, the fixed brand-on-dark in dark), and never write `outline: none` without it.
-- **Do** keep every interactive row and icon button at least 44px tall under 1024px (`min-h-11 lg:min-h-0`); give 32px controls invisible padding to reach 44 by 44.
+- **Do** take every control height from the tokens (`controlHeights`, `iconControlSizes`, `touchAreas`, `rowHeight`): md controls and icon buttons are 40px under 1024px with a 44px touch area and 36px from it; sm (32px) is for dense places and keeps a 44px touch area at every width; stacked rows are 44px under 1024px and 36px from it.
 - **Do** write every `transition-*` and `animate-*` utility under `motion-safe:` (or pair a `motion-reduce:` reset).
 - **Do** route every destructive path through the shared ConfirmDialog with Cancel focused by default.
 - **Do** turn every table into a card list under 768px — one card per row, actions in an overflow menu, no horizontal scrolling.
