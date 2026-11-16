@@ -54,6 +54,19 @@
   "nx": {
     "tags": [
       "ui"
-    ]
+    ],
+    "targets": {
+      "test": {
+        "inputs": [
+          "default",
+          "^production",
+          "{workspaceRoot}/packages/*/src/**/*.{ts,tsx}",
+          "{workspaceRoot}/packages/modules/*/src/**/*.{ts,tsx}",
+          "{workspaceRoot}/apps/genie/src/**/*.{ts,tsx}",
+          "{workspaceRoot}/customers/*/app/**/*.{ts,tsx}",
+          "{workspaceRoot}/DESIGN.md"
+        ]
+      }
+    }
   }
 }
