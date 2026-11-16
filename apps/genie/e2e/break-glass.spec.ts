@@ -41,14 +41,16 @@ const STANDALONE_TEST_MS = 120_000;
  */
 const ATTEMPTS_ROOM_MS = 60_000;
 
+const BREAK_GLASS_WINDOW_MS = RATE_LIMIT_RULES.break_glass_sign_in.windowMs;
+
+/** The start of the break-glass window that holds this moment, in epoch milliseconds. */
+function breakGlassWindowStart(): number {
+  return windowStartFor(new Date(), BREAK_GLASS_WINDOW_MS).getTime();
+}
+
 /** Waits for the next break-glass window when the current one ends within the attempts' room. */
 async function waitForBreakGlassWindowRoom(page: Page): Promise<void> {
-  const { windowMs } = RATE_LIMIT_RULES.break_glass_sign_in;
-
-  const now = Date.now();
-
-  const left =
-    windowStartFor(new Date(now), windowMs).getTime() + windowMs - now;
+  const left = breakGlassWindowStart() + BREAK_GLASS_WINDOW_MS - Date.now();
 
   // One more second covers a clock step between this process and the container.
   if (left < ATTEMPTS_ROOM_MS) await page.waitForTimeout(left + 1_000);
@@ -237,6 +239,7 @@ test("a rate-limited break-glass sign-in shows the neutral notice and disables i
 
     await waitForBreakGlassWindowRoom(page);
 
+    const firstWindow = breakGlassWindowStart();
     const form = page.getByTestId("break-glass-sign-in");
 
     for (let attempt = 0; attempt < 10; attempt += 1) {
@@ -259,6 +262,13 @@ test("a rate-limited break-glass sign-in shows the neutral notice and disables i
       // oxlint-disable-next-line no-await-in-loop
       await expect(form.getByRole("alert")).toBeVisible();
     }
+
+    // Attempts slower than the room restart the count in a new window; say so instead of a
+    // missing notice.
+    expect(
+      breakGlassWindowStart(),
+      "the attempts crossed a break-glass rate-limit window"
+    ).toBe(firstWindow);
 
     // The eleventh attempt is refused by the fixed window: the neutral notice, inputs disabled.
     await page.getByRole("button", { name: "Sign in" }).click();
