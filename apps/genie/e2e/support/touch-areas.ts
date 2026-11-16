@@ -251,28 +251,37 @@ function findTouchAreaProblems(): string[] {
         text: `${name}: touch area under 44 px (${short.join(", ")})`,
       });
 
-    // Rule 6: the center and the edge midpoints of the box, 1 px inside it. A control inside the
-    // target is its content, also where the target's scroll box clips the control's own box.
+    // Rule 6: the center and the edge midpoints of the control's own box, 1 px inside it. A field
+    // is probed on its own box, not its group's: a swatch or button in the group whose touch area
+    // reaches over the field takes the tap. A tap on a label reaches the label's control. A control
+    // inside the target is its content, also where the target's scroll box clips its own box.
+    const own = target.getBoundingClientRect();
+    const ownX = own.left + own.width / 2;
+    const ownY = own.top + own.height / 2;
+
     const coverProbes: [number, number][] = [
-      [centerX, centerY],
-      [centerX, box.top + 1],
-      [centerX, box.bottom - 1],
-      [box.left + 1, centerY],
-      [box.right - 1, centerY],
+      [ownX, ownY],
+      [ownX, own.top + 1],
+      [ownX, own.bottom - 1],
+      [own.left + 1, ownY],
+      [own.right - 1, ownY],
     ];
 
     for (const [x, y] of coverProbes) {
       if (!inViewport(x, y)) continue;
 
       const hit = document.elementFromPoint(x, y);
-      const owner = hit === null ? null : ownerOf(hit, target);
+
+      const owner =
+        hit === null
+          ? null
+          : (ownerOf(hit, target) ?? hit.closest("label")?.control ?? null);
 
       if (
-        hit === null ||
         owner === null ||
-        isOwn(target, hit) ||
+        owner === target ||
         target.contains(owner) ||
-        inside(boxOf(owner), box)
+        inside(boxOf(owner), own)
       )
         continue;
 

@@ -44,12 +44,15 @@ function InputGroup({
 
 const inputGroupAddonVariants = cva(
   // No vertical padding on an inline addon: the control alone sets the group's height (6wz1.94).
+  // A button keeps 6 px from the field, so its 44 px touch area around 32 px ends at the field.
   "flex h-auto cursor-text items-center justify-center gap-2 text-sm font-medium text-muted-foreground select-none [&>svg:not([class*='size-'])]:size-4",
   {
     variants: {
       align: {
-        "inline-start": "order-first pl-2 has-[>button]:-ml-0.5",
-        "inline-end": "order-last pr-2 has-[>button]:-mr-0.5",
+        "inline-start":
+          "order-first pl-2 has-[>button]:-ml-0.5 has-[>button]:pr-1.5",
+        "inline-end":
+          "order-last pr-2 has-[>button]:-mr-0.5 has-[>button]:pl-1.5",
         "block-end": "order-last w-full justify-start px-2 pt-1.5 pb-2",
       },
     },

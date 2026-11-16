@@ -28,6 +28,10 @@ const FIXTURE = `<!doctype html>
       .group { display: flex; align-items: center; width: 240px; height: 40px; padding: 0 4px 0 8px; border: 1px solid #333; }
       .group input { flex: 1; min-width: 0; height: 100%; border: 0; padding: 0 8px; font: inherit; background: transparent; }
       .group .swatch { flex: none; width: 24px; height: 24px; padding: 0; }
+      .group .small { margin-left: 6px; }
+      .picker { display: flex; }
+      .picker::after { inset: -10px; }
+      .picker input { width: 24px; height: 24px; padding: 0; border: 0; }
       .clip { display: flex; overflow: hidden; }
       .hidden { position: absolute; width: 1px; height: 1px; padding: 0; border: 0; overflow: hidden; clip: rect(0 0 0 0); }
       .off { height: 20px; }
@@ -58,6 +62,12 @@ const FIXTURE = `<!doctype html>
         <button class="small">Pick</button>
       </div>
     </div>
+    <div class="block">
+      <div data-slot="input-group" class="group touch">
+        <label class="picker touch"><input type="color" aria-label="Pick the color" /></label>
+        <input aria-label="Hex" />
+      </div>
+    </div>
     <div class="block"><div class="clip"><button class="touch">Clipped</button></div></div>
     <div class="block">
       <p>
@@ -77,9 +87,10 @@ const FIXTURE = `<!doctype html>
 </html>`;
 
 // T6-a: the findings prove the short, covering, too-close and clipped cases (a 24 px color
-// swatch in a field group is measured by its own box, not the field's), and their
-// absence proves the allowed ones (overlap in a gap, a nested field button, an inline link, a
-// hidden input, a disabled button, a field's own wrapper, a wrapping label).
+// swatch in a field group is measured by its own box, not the field's, and a swatch label's
+// area over the field's own box covers the field), and their absence proves the allowed ones
+// (overlap in a gap, a nested field button whose area ends at the field's edge, an inline link,
+// a hidden input, a disabled button, a field's own wrapper, a wrapping label).
 test("the touch area check finds short, covering and clipped areas and allows overlaps @no-screen", async ({
   page,
 }) => {
@@ -93,6 +104,7 @@ test("the touch area check finds short, covering and clipped areas and allows ov
     'button "Greedy": covers button "Victim"',
     'button "Italic": covers button "Bold"',
     'input "Color": touch area under 44 px (top, bottom, left)',
+    'input "Pick the color": covers textbox "Hex"',
   ]);
 });
 
