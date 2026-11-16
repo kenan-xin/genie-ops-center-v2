@@ -76,6 +76,38 @@ export async function startWithPortBindRetry<Started>(
   throw lastError ?? new Error("the container never started");
 }
 
+/**
+ * The stop function a started container hands its test: one forced remove, as `docker rm -f -v`.
+ *
+ * Testcontainers' own `stop()` makes two daemon calls, `docker stop` and then a `docker rm`
+ * without force. With several suites stopping containers at once, Docker Desktop answered the
+ * second call with 409 "container is running" although the first had returned
+ * (genie-ops-center-v2-xok3.87). A forced remove kills and removes in one daemon call, so no
+ * window opens between the two. Like testcontainers' `stop()`, a second call does not remove
+ * again: it returns the first call's promise.
+ */
+export function removeOnStop(container: {
+  getId(): string;
+}): () => Promise<void> {
+  let removal: Promise<void> | undefined;
+
+  return () => (removal ??= removeContainer(container.getId()));
+}
+
+async function removeContainer(id: string): Promise<void> {
+  const client = await getContainerRuntimeClient();
+
+  try {
+    await client.container.getById(id).remove({ force: true, v: true });
+  } catch (error) {
+    // SAFETY: dockerode rejects with an Error that carries the HTTP status code, the only field read.
+    const { statusCode } = error as { statusCode?: number };
+
+    // 404: the container is already gone, which is what the caller asked for.
+    if (statusCode !== 404) throw error;
+  }
+}
+
 async function removeAttemptContainer(attemptId: string): Promise<void> {
   const client = await getContainerRuntimeClient();
   const orphan = await client.container.fetchByLabel(ATTEMPT_LABEL, attemptId);
