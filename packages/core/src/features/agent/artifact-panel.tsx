@@ -115,17 +115,17 @@ export function ArtifactPanel(props: {
       aria-label="Chart or table"
       className="flex h-full min-h-0 flex-col bg-card text-card-foreground"
     >
-      <header className="flex items-start gap-2 border-b border-border p-3">
+      <header className="flex items-start gap-2 border-b border-border px-4 py-3">
         {Icon === undefined ? null : (
           <span
             aria-hidden="true"
-            className="mt-1 grid size-8 shrink-0 place-items-center rounded-md bg-muted"
+            className="grid size-8 shrink-0 place-items-center rounded-md bg-muted"
           >
             <Icon className="size-4" strokeWidth={1.75} />
           </span>
         )}
         <div className="grid min-w-0 flex-1">
-          <h2 className="truncate text-base font-semibold">
+          <h2 className="truncate text-base leading-8 font-semibold">
             {artifact?.title ?? "Chart or table"}
           </h2>
           {artifact === undefined ? null : (

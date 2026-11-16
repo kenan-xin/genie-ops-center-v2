@@ -84,7 +84,7 @@ export function ChoiceButtons(props: {
   );
 }
 
-/** The agent's mark: a 22 px blue-tint tile in the finished steps pill and the empty state. */
+/** The agent's mark: a 22 px blue-tint tile beside the empty state's heading. */
 export function AgentMark(): ReactNode {
   return (
     <span
@@ -112,9 +112,10 @@ export function QuietFold(props: {
       <summary
         className={`inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md font-medium text-muted-foreground hover:text-foreground lg:min-h-8 ${focusRing}`}
       >
+        {/* Task 8: the chevron's 5.4 px bearing, 3.4 px once turned open, see P07-50 and P07-58 */}
         <ChevronRightIcon
           aria-hidden="true"
-          className="size-4 group-open:rotate-90 motion-safe:transition-transform"
+          className="relative -start-1.5 size-4 group-open:-start-1 group-open:rotate-90 motion-safe:transition-transform"
           strokeWidth={1.75}
         />
         {props.label}

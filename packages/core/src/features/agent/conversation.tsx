@@ -338,8 +338,9 @@ export function Conversation(props: {
   const boundary = summaryBoundary(chat.messages, liveSummary);
 
   // One centered 720 px column with its gutter, so every row shares one left edge (czjw.120 item 1,
-  // czjw.109).
-  const column = "mx-auto w-full max-w-180 px-4 md:px-6";
+  // czjw.109). Inside the Ask panel the gutter stays 16 px, the panel chrome's edge (P07-56).
+  const column =
+    "mx-auto w-full max-w-180 px-4 md:not-in-data-agent-panel:px-6";
 
   return (
     <ChartCheckProvider

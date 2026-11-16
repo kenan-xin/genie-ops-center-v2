@@ -80,12 +80,14 @@ export function FileCard(props: {
       <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className="grid size-8 shrink-0 place-items-center rounded-md bg-muted"
+          className="grid size-8 shrink-0 self-start place-items-center rounded-md bg-muted"
         >
           <Icon className="size-4" strokeWidth={1.75} />
         </span>
         <span className="grid min-w-0 flex-1">
-          <span className="truncate text-sm font-medium">{props.title}</span>
+          <span className="truncate text-sm leading-8 font-medium">
+            {props.title}
+          </span>
           <span className="text-xs text-muted-foreground">{meta}</span>
         </span>
         {ready ? (

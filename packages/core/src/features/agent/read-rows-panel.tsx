@@ -104,19 +104,19 @@ export function ReadRowsPanel(props: {
       aria-label="Rows"
       className="flex h-full min-h-0 flex-col bg-card text-card-foreground"
     >
-      <header className="flex items-start gap-2 border-b border-border p-3">
+      <header className="flex items-start gap-2 border-b border-border px-4 py-3">
         {props.variant === "sheet" ? (
           close
         ) : (
           <span
             aria-hidden="true"
-            className="mt-1 grid size-8 shrink-0 place-items-center rounded-md bg-tile"
+            className="grid size-8 shrink-0 place-items-center rounded-md bg-tile"
           >
             <TableIcon className="size-4" strokeWidth={1.75} />
           </span>
         )}
         <div className="grid min-w-0 flex-1">
-          <h2 className="truncate text-base font-semibold">
+          <h2 className="truncate text-base leading-8 font-semibold">
             Rows from {title}
           </h2>
           <p className="text-xs text-muted-foreground">

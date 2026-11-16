@@ -146,8 +146,11 @@ function Frame(props: {
     >
       <div className="flex h-dvh">
         <main className="min-w-0 flex-1 p-4">
-          <h1 className="text-xl font-bold">Example page</h1>
-          <AgentButton />
+          {/* The shell's header row: the title, then the Ask button at its end (P07-59). */}
+          <div className="flex items-center justify-between gap-2">
+            <h1 className="text-xl font-bold">Example page</h1>
+            <AgentButton />
+          </div>
           {props.chat === undefined ? null : (
             <>
               <button type="button" onClick={() => setChat(undefined)}>

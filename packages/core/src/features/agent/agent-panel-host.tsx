@@ -428,6 +428,7 @@ export function AgentPanelHost(props: {
   const panel = (
     <section
       aria-label={name}
+      data-agent-panel=""
       className="flex h-full min-h-0 flex-col bg-background"
     >
       <header className="flex min-h-14 shrink-0 items-center gap-1 border-b border-border py-2 ps-4 pe-2">
@@ -510,10 +511,11 @@ export function AgentPanelHost(props: {
       </header>
       {/* The page the agent knows about, on its own row so its filter shows in full (czjw.111, czjw.165). */}
       {about === undefined || (bottom && collapsed) ? null : (
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2 text-sm text-muted-foreground">
+        <div className="flex shrink-0 items-start gap-2 border-b border-border px-4 py-2 text-sm text-muted-foreground">
+          {/* Task 8: the chip icon's 2.1 px bearing, see P07-50 */}
           <FileTextIcon
             aria-hidden="true"
-            className="size-4 shrink-0"
+            className="relative -start-0.5 size-4 shrink-0"
             strokeWidth={1.75}
           />
           <p title={about} className="line-clamp-2 min-w-0 wrap-break-word">
@@ -534,7 +536,8 @@ export function AgentPanelHost(props: {
                 value={tab}
                 onValueChange={(value) => setTab(String(value))}
               >
-                <TabsList>
+                {/* Hangs the trigger padding, so the labels start on the panel's 16 px edge (P07-57). */}
+                <TabsList className="-ms-2 sm:-ms-3">
                   <TabsTrigger value="chat">This chat</TabsTrigger>
                   <TabsTrigger value="chats">Chats</TabsTrigger>
                 </TabsList>

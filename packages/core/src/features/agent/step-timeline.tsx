@@ -6,12 +6,12 @@ import {
   ChevronRightIcon,
   CircleAlertIcon,
   RotateCwIcon,
+  SparklesIcon,
   XIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { AgentFileState, ChatLabels } from "../../services/agent/index.ts";
-import { AgentMark } from "./chat-parts.tsx";
 import {
   durationLabel,
   elapsedLabel,
@@ -109,9 +109,9 @@ function Row(props: {
     <li className="relative flex gap-3 pb-3 last:pb-0">
       <span
         aria-hidden="true"
-        className="absolute start-2 top-5 bottom-0 -ms-px w-px bg-border group-last/rows:hidden"
+        className="absolute start-2 top-4.5 bottom-0 -ms-px w-px bg-border group-last/rows:hidden"
       />
-      <span className="shrink-0 pt-0.5">
+      <span className="shrink-0">
         <Node state={row.state} />
       </span>
       <div className="grid min-w-0 flex-1 gap-1">
@@ -285,18 +285,18 @@ export function StepTimeline(props: {
         <button
           type="button"
           aria-expanded={open}
-          className={`flex h-7 items-center gap-2 justify-self-start rounded-full ps-1 pe-2.5 text-xs font-medium hover:bg-hover max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
+          className={`flex items-center gap-3 justify-self-start rounded-lg pe-2.5 text-sm font-medium hover:bg-hover lg:min-h-8 max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
           onClick={() => setOpen(!open)}
         >
-          <AgentMark />
-          {failed === null ? (
-            <CheckIcon
-              aria-hidden="true"
-              className="size-3.5 text-success"
-              strokeWidth={2.5}
-            />
-          ) : null}
-          {failed === null ? worked : `${rowText(failed)} · ${worked}`}
+          {/* Task 8: swap relative -start-px for iconLead */}
+          <SparklesIcon
+            aria-hidden="true"
+            strokeWidth={1.75}
+            className="relative -start-px size-4 shrink-0 text-primary dark:text-brand-on-dark"
+          />
+          <span>
+            {failed === null ? worked : `${rowText(failed)} · ${worked}`}
+          </span>
           <ChevronRightIcon
             aria-hidden="true"
             className={`size-4 motion-safe:transition-transform ${open ? "rotate-90" : ""}`}
@@ -330,7 +330,7 @@ export function StepTimeline(props: {
         <div className="flex gap-2 rounded-lg border border-destructive/40 bg-card p-3">
           <CircleAlertIcon
             aria-hidden="true"
-            className="mt-0.5 size-4 shrink-0 text-destructive dark:text-destructive-on-dark"
+            className="size-4 shrink-0 text-destructive dark:text-destructive-on-dark"
             strokeWidth={1.75}
           />
           <div className="grid flex-1 gap-1">

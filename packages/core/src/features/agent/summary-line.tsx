@@ -17,7 +17,7 @@ export function SummaryLine(props: {
   return (
     <div className="border-t border-border pt-1">
       <QuietFold label="Earlier messages were summarized">
-        <p className="ps-5 pb-1 text-sm whitespace-pre-wrap text-muted-foreground">
+        <p className="pb-1 text-sm whitespace-pre-wrap text-muted-foreground">
           {summaryForPerson(props.summary, props.datasetTitles)}
         </p>
       </QuietFold>

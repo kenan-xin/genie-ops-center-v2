@@ -164,7 +164,12 @@ function AgentIcon(props: {
         : MODULE_ICONS[icon];
 
   return (
-    <Icon aria-hidden="true" className="size-4 shrink-0" strokeWidth={1.75} />
+    // Task 8: swap for iconLead (P07-13)
+    <Icon
+      aria-hidden="true"
+      className="relative -start-px size-4 shrink-0"
+      strokeWidth={1.75}
+    />
   );
 }
 
@@ -274,6 +279,7 @@ export function AgentHistory(props: {
                   <h3>
                     <button
                       type="button"
+                      data-slot="agent-group-header"
                       aria-expanded={open}
                       aria-controls={open ? id : undefined}
                       className={`group flex w-full items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-hover ${rowHeight} ${focusRing}`}

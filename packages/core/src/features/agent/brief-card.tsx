@@ -40,10 +40,11 @@ export function BriefCard(props: {
   return (
     <div className="grid gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3.5 text-sm">
       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary dark:text-brand-on-dark">
+        {/* Task 8: swap relative -start-px for iconLead */}
         <ForwardIcon
           aria-hidden="true"
           strokeWidth={1.75}
-          className="size-3.5"
+          className="relative -start-px size-3.5"
         />
         From Ask
       </p>

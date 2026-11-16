@@ -510,7 +510,8 @@ export const RailEdges: Story = {
         Math.abs(search.left - row.left),
         Math.abs(search.right - row.right),
         Math.abs(hide.right - search.right),
-        Math.abs(rowText.left - heading.left)
+        // The icon box hangs 1 px, so its ink starts under the heading (iconLead, P07-13, P07-61).
+        Math.abs(rowText.left + 1 - heading.left)
       )
     ).toBeLessThan(1);
   },

@@ -128,7 +128,7 @@ function KindIcon(props: { readonly kind: CardArtifact["kind"] }): ReactNode {
   return (
     <span
       aria-hidden="true"
-      className="grid size-8 shrink-0 place-items-center rounded-md bg-muted"
+      className="grid size-8 shrink-0 self-start place-items-center rounded-md bg-muted"
     >
       <Icon className="size-4" strokeWidth={1.75} />
     </span>
@@ -147,7 +147,9 @@ function Body(props: {
     <>
       <KindIcon kind={artifact.kind} />
       <span className="grid min-w-0 flex-1">
-        <span className="truncate text-sm font-semibold">{artifact.title}</span>
+        <span className="truncate text-sm leading-8 font-semibold">
+          {artifact.title}
+        </span>
         <span className="text-xs text-muted-foreground">
           {artifact.kind === "table" ? "Table" : "Chart"}
           {/* A first version has no later one beside it, so it needs no tag. */}

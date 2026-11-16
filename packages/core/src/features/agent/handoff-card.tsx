@@ -89,14 +89,15 @@ function BriefFold(props: {
       <summary
         className={`flex ${rowHeight} cursor-pointer list-none items-center gap-1.5 px-4 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden ${focusRing}`}
       >
+        {/* Task 8: the chevron's 4.7 px bearing, see P07-50 */}
         <ChevronRightIcon
           aria-hidden="true"
           strokeWidth={1.75}
-          className="size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+          className="relative -start-1 size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
         />
         What Ask passed on
       </summary>
-      <dl className="grid gap-1.5 px-4 pb-3 ps-9 text-xs">
+      <dl className="grid gap-1.5 px-4 pb-3 text-xs">
         {rows.map(([term, values]) =>
           values.length === 0 ? null : (
             <div key={term} className="flex gap-4">
@@ -139,11 +140,15 @@ export function HandoffCard(props: {
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
       <div className="flex items-center gap-3 px-4 py-3">
-        <IconTile>
-          <ForwardIcon aria-hidden="true" strokeWidth={1.75} />
-        </IconTile>
+        <span className="flex self-start">
+          <IconTile>
+            <ForwardIcon aria-hidden="true" strokeWidth={1.75} />
+          </IconTile>
+        </span>
         <span className="grid min-w-0 flex-1">
-          <span className="truncate text-sm font-semibold">{card.title}</span>
+          <span className="truncate text-sm leading-10 font-semibold">
+            {card.title}
+          </span>
           <span aria-live="polite" className="text-xs text-muted-foreground">
             {status}
           </span>

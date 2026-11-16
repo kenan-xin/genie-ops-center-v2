@@ -276,6 +276,17 @@ export const FileStillMaking: Story = {
     await expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     await expect(within(list).getByText("Making an Excel file")).toBeVisible();
     await expect(within(list).getByText(/^Step 3/)).toBeVisible();
+
+    // T6-a (E1): the fold's words and the running row's words share one edge.
+    const foldWords = canvas.getByText("3 steps");
+    const rowWords = within(list).getByText("Making an Excel file");
+
+    await expect(
+      Math.abs(
+        foldWords.getBoundingClientRect().left -
+          rowWords.getBoundingClientRect().left
+      )
+    ).toBeLessThanOrEqual(1);
   },
 };
 
