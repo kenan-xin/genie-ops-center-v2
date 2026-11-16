@@ -645,6 +645,49 @@ export const PhoneSheet: Story = {
   },
 };
 
+/** C06-3: the header's buttons as "height px at top", so a mismatch names each one. */
+async function headerRow() {
+  const header = within(await panel());
+
+  return [
+    header.getByRole("button", { name: "New chat" }),
+    header.getByRole("link", { name: "Open in Ask" }),
+    header.getByRole("button", { name: "Close Ask" }),
+  ].map((control) => {
+    const { height, top } = control.getBoundingClientRect();
+
+    return `${Math.round(height * 10) / 10} px at ${Math.round(top * 10) / 10}`;
+  });
+}
+
+// C06-3: the panel header is not a dense place, so New chat takes the md height of its icon buttons.
+export const HeaderLinesUp: Story = {
+  name: "On a desktop the header's buttons are 36 px on one top edge",
+  render: () => <Frame page={false} />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
+
+    const [newChat, ...rest] = await headerRow();
+
+    await expect(newChat).toMatch(/^36 px/);
+    await expect(rest).toEqual([newChat, newChat]);
+  },
+};
+
+export const HeaderLinesUpOnPhone: Story = {
+  ...HeaderLinesUp,
+  name: "On a phone the header's buttons are 40 px on one top edge",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
+
+    const [newChat, ...rest] = await headerRow();
+
+    await expect(newChat).toMatch(/^40 px/);
+    await expect(rest).toEqual([newChat, newChat]);
+  },
+};
+
 const BAR = {
   type: "bar",
   title: "Quantity by record",

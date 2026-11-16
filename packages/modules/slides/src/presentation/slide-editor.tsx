@@ -330,7 +330,6 @@ export function SlideEditor(props: SlideEditorProps) {
                                 <Button
                                   type="button"
                                   variant="ghost"
-                                  size="sm"
                                   disabled={props.saving}
                                   onClick={() =>
                                     changeBullets(bodyIndex, (items) =>

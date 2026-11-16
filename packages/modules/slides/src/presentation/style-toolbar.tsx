@@ -200,6 +200,8 @@ export function ColorChoice(props: {
   readonly helper?: string | undefined;
   readonly disabled?: boolean | undefined;
   readonly icon: ReactNode;
+  /** sm in a toolbar (dense); md beside md controls outside one. */
+  readonly size?: "sm" | "md" | undefined;
   readonly onPick: (color: string | null) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -208,7 +210,7 @@ export function ColorChoice(props: {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         disabled={props.disabled}
-        render={<Button variant="ghost" size="sm" />}
+        render={<Button variant="ghost" size={props.size ?? "sm"} />}
         aria-label={
           props.value === undefined
             ? props.label
@@ -826,6 +828,7 @@ export function SlideEditorBar(props: {
       </DropdownMenu>
       <ColorChoice
         label="Background"
+        size="md"
         value={slide.background}
         clearLabel="No background"
         helper="Every text without a fill is checked against the new color."

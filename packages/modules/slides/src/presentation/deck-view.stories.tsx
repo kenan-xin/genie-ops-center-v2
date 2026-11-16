@@ -231,6 +231,44 @@ export const DeckOnPhone: Story = {
   },
 };
 
+/** C06-3: Add element and Background as "height px at top", so a mismatch names both. */
+function editorBar(canvas: ReturnType<typeof within>) {
+  return ["Add element", "Background"].map((name) => {
+    const { height, top } = canvas
+      .getByRole("button", { name })
+      .getBoundingClientRect();
+
+    return `${Math.round(height * 10) / 10} px at ${Math.round(top * 10) / 10}`;
+  });
+}
+
+// C06-3: the editor bar is not a dense place, so Background takes the md height of Add element.
+export const EditorBarLinesUp: Story = {
+  name: "On a desktop Add element and Background are 36 px on one top edge",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const [add, background] = editorBar(canvas);
+
+    await expect(add).toMatch(/^36 px/);
+    await expect(background).toBe(add);
+  },
+};
+
+export const EditorBarLinesUpOnPhone: Story = {
+  name: "On a phone Add element and Background are 40 px on one top edge",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const [add, background] = editorBar(canvas);
+
+    await expect(add).toMatch(/^40 px/);
+    await expect(background).toBe(add);
+  },
+};
+
 export const EmptyDeck: Story = {
   name: "Empty deck",
   args: { view: emptyDeckPage },

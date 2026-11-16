@@ -476,6 +476,27 @@ export const LookUpChipsOnPhone: Story = {
   },
 };
 
+/** C06-3: Change access takes the md height of the search field beside it. */
+export const ResultsHeaderLinesUp: Story = {
+  args: { initial: jamie },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const search = await canvas.findByRole("searchbox", {
+      name: "Search these results",
+    });
+
+    await expect(
+      offRow(
+        [
+          search.closest<HTMLElement>('[data-slot="input-group"]')!,
+          canvas.getByRole("link", { name: "Change access" }),
+        ],
+        36
+      )
+    ).toBe("");
+  },
+};
+
 /** A module that nobody holds. */
 export const NobodyHolds: Story = {
   args: { initial: { type: "module", id: "placeholder" } },

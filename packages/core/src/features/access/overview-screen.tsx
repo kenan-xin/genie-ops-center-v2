@@ -427,7 +427,7 @@ function Results(
         {byHolder ? null : (
           <PageLink
             href={accessHref({ recipient: props.subject.id })}
-            className={`${buttonVariants({ variant: "secondary", size: "sm" })} ${focusRing}`}
+            className={`${buttonVariants({ variant: "secondary" })} ${focusRing}`}
           >
             Change access
           </PageLink>

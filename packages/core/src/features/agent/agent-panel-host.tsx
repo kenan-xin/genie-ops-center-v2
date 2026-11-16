@@ -436,7 +436,7 @@ export function AgentPanelHost(props: {
           )}
         </div>
         {target === undefined ? (
-          <Button type="button" variant="ghost" size="sm" onClick={newChat}>
+          <Button type="button" variant="ghost" onClick={newChat}>
             <PlusIcon aria-hidden="true" strokeWidth={1.75} />
             New chat
           </Button>

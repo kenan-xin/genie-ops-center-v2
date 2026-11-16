@@ -416,6 +416,37 @@ export const BulletEditKeepsPlacement: Story = {
   },
 };
 
+// C06-3: a sheet form is not a dense place, so Remove bullet takes the md height of its field.
+export const BulletRowLinesUp: Story = {
+  name: "Each bullet field and its Remove are 36 px on one top edge",
+  args: { slide: styledBulletsSlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    const off = [1, 2]
+      .flatMap((n) => {
+        const a = sheet
+          .getByRole("textbox", { name: `Bullet ${n}` })
+          .getBoundingClientRect();
+
+        const b = sheet
+          .getByRole("button", { name: `Remove bullet ${n}` })
+          .getBoundingClientRect();
+
+        return a.height === 36 && b.height === 36 && a.top === b.top
+          ? []
+          : [
+              `Bullet ${n}: ${a.height} px at ${a.top}, Remove ${b.height} px at ${b.top}`,
+            ];
+      })
+      .join("; ");
+
+    await expect(off).toBe("");
+  },
+};
+
 // B6.7: at 390 x 844 the centre of Save slide is the button itself, not a fixed bar or bubble.
 export const SaveOnPhone: Story = {
   name: "Save slide on a phone",
