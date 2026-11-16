@@ -292,7 +292,10 @@ export const InsideASheet: Story = {
         <SheetHeader>
           <SheetTitle>Alex Morgan</SheetTitle>
         </SheetHeader>
-        <HelpDisclosure {...args} />
+        {/* The body pads its sides as every app sheet does, so the trigger hangs inside it (P07-74). */}
+        <div className="flex flex-col px-4">
+          <HelpDisclosure {...args} />
+        </div>
       </SheetContent>
     </Sheet>
   ),

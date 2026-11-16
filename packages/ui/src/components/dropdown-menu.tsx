@@ -15,6 +15,31 @@ import { rowHeight } from "../theme/tokens.ts";
 const menuRowFocus =
   "outline-none focus:bg-muted focus:text-foreground dark:focus:bg-border [&:not([data-pointer]_*)]:focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
+/**
+ * 6wz1.113 (P07-72): `iconLead` on a row's leading icon, so its ink starts on the label's text edge.
+ * An icon that names its own `iconLeadPx` offset keeps it.
+ */
+const leadingIcon =
+  "[&>svg:first-child:not([class*='start-'])]:relative [&>svg:first-child:not([class*='start-'])]:-start-px";
+
+/**
+ * The check of a checkbox or radio row (P07-54, P07-73): one line tall at the top of the row's
+ * content, so it centers on the first line when a label wraps or carries a second line.
+ */
+function ItemIndicator(props: {
+  readonly slot: string;
+  readonly children: React.ReactNode;
+}) {
+  return (
+    <span
+      className="pointer-events-none flex h-lh w-4 shrink-0 items-center justify-center"
+      data-slot={props.slot}
+    >
+      {props.children}
+    </span>
+  );
+}
+
 function DropdownMenu({ ...props }: MenuPrimitive.Root.Props) {
   return <MenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
 }
@@ -53,6 +78,9 @@ function DropdownMenuContent({
         <MenuPrimitive.Popup
           data-slot="dropdown-menu-content"
           className={cn(
+            // A popup that holds `lg` rows starts every label and row on their 12 px edge, so it has
+            // one text edge (6wz1.113, P07-73).
+            "[&:has([data-size=lg])_:is([data-slot=dropdown-menu-label],[data-slot=dropdown-menu-item],[data-slot=dropdown-menu-sub-trigger],[data-slot=dropdown-menu-checkbox-item],[data-slot=dropdown-menu-radio-item]):not([data-inset])]:ps-3",
             "z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border bg-card p-1 text-foreground shadow-md outline-none motion-safe:transition-opacity data-ending-style:opacity-0 data-starting-style:opacity-0",
             className
           )}
@@ -117,6 +145,7 @@ function DropdownMenuItem({
         "data-[size=lg]:gap-2.5 data-[size=lg]:rounded-lg data-[size=lg]:px-3 data-[size=lg]:py-2",
         "group/dropdown-menu-item relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
         size === "lg" && rowHeight,
+        leadingIcon,
         menuRowFocus,
         className
       )}
@@ -143,6 +172,7 @@ function DropdownMenuSubTrigger({
       data-inset={inset}
       className={cn(
         "flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-7 data-popup-open:bg-muted data-open:bg-muted lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        leadingIcon,
         menuRowFocus,
         className
       )}
@@ -189,22 +219,23 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         menuRowFocus,
         className
       )}
       checked={checked}
       {...props}
     >
-      <span
-        className="pointer-events-none absolute right-2 flex items-center justify-center"
-        data-slot="dropdown-menu-checkbox-item-indicator"
-      >
-        <MenuPrimitive.CheckboxItemIndicator>
-          <CheckIcon />
-        </MenuPrimitive.CheckboxItemIndicator>
+      <span className="flex min-w-0 flex-1 items-start gap-2">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+          {children}
+        </span>
+        <ItemIndicator slot="dropdown-menu-checkbox-item-indicator">
+          <MenuPrimitive.CheckboxItemIndicator>
+            <CheckIcon />
+          </MenuPrimitive.CheckboxItemIndicator>
+        </ItemIndicator>
       </span>
-      {children}
     </MenuPrimitive.CheckboxItem>
   );
 }
@@ -231,21 +262,22 @@ function DropdownMenuRadioItem({
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md py-1 pr-8 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         menuRowFocus,
         className
       )}
       {...props}
     >
-      <span
-        className="pointer-events-none absolute right-2 flex items-center justify-center"
-        data-slot="dropdown-menu-radio-item-indicator"
-      >
-        <MenuPrimitive.RadioItemIndicator>
-          <CheckIcon />
-        </MenuPrimitive.RadioItemIndicator>
+      <span className="flex min-w-0 flex-1 items-start gap-2">
+        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+          {children}
+        </span>
+        <ItemIndicator slot="dropdown-menu-radio-item-indicator">
+          <MenuPrimitive.RadioItemIndicator>
+            <CheckIcon />
+          </MenuPrimitive.RadioItemIndicator>
+        </ItemIndicator>
       </span>
-      {children}
     </MenuPrimitive.RadioItem>
   );
 }

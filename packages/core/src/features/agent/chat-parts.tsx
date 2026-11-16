@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, focusRing, infoTint } from "@genie/ui";
+import { Button, focusRing, iconLeadPx, infoTint } from "@genie/ui";
 import { ArrowRightIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
@@ -112,10 +112,10 @@ export function QuietFold(props: {
       <summary
         className={`inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md font-medium text-muted-foreground hover:text-foreground lg:min-h-8 ${focusRing}`}
       >
-        {/* Task 8: the chevron's 5.4 px bearing, 3.4 px once turned open, see P07-50 and P07-58 */}
+        {/* The chevron's 5.4 px bearing is 3.4 px once turned open: group-open takes iconLeadPx[4]'s offset (P07-58). */}
         <ChevronRightIcon
           aria-hidden="true"
-          className="relative -start-1.5 size-4 group-open:-start-1 group-open:rotate-90 motion-safe:transition-transform"
+          className={`${iconLeadPx[6]} size-4 group-open:-start-1 group-open:rotate-90 motion-safe:transition-transform`}
           strokeWidth={1.75}
         />
         {props.label}

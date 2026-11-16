@@ -134,6 +134,8 @@ const FILE_TEXT =
 
 const LOADER = '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>';
 
+const CHEVRON_DOWN = '<path d="m6 9 6 6 6-6"/>';
+
 /**
  * One block per case. Each block scrolls (`overflow: auto`), so it is a column of its own and the
  * column search never reaches the next case. Text is 14 px on 20 px lines unless a case says
@@ -153,6 +155,7 @@ const CASES = `<!doctype html>
       .case { overflow: auto; padding: 16px; }
       .lucide { width: 16px; height: 16px; flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
       .row { display: flex; align-items: center; gap: 8px; }
+      .trailing { justify-content: space-between; width: 300px; }
       .box { display: block; flex: none; box-sizing: border-box; width: 16px; height: 16px; border: 1px solid #374151; }
       .fold { display: flex; align-items: center; gap: 8px; padding-left: 4px; }
       .tile { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; background: #dbeafe; }
@@ -239,6 +242,7 @@ const CASES = `<!doctype html>
     <div class="case"><div class="described" role="menuitem">${glyph("plus", PLUS)}<div><div>Save as view</div><div>Keeps the filters</div></div></div><div class="described" role="menuitem">${glyph("x", X)}<div><div>Delete view</div><div>Undo restores it</div></div></div></div>
     <div class="case"><table><tbody><tr><td><span class="media"><span class="box"></span><span class="stack"><span>Contractors</span><span>Directory group</span></span></span></td></tr></tbody></table></div>
     <div class="case"><div class="media"><span class="stack"><span>Fixture</span><span>Records that prove the module</span></span><span class="box"></span></div></div>
+    <div class="case"><div class="row trailing"><span>Chat one</span>${glyph("loader-circle", LOADER)}</div><div class="row trailing"><span>Chat two</span>${glyph("chevron-down", CHEVRON_DOWN)}</div></div>
   </body>
 </html>`;
 
@@ -251,8 +255,9 @@ const ALLOW = [
 // that holds a visually hidden input), and the allowed layouts give none: an icon-only button, a
 // menu, a filled button, a table, an empty state, a trailing chevron, an alert, a step row with a
 // hidden count, a hidden icon, an allow entry, a rotating glyph, a checked switch, a checked
-// radio, a list whose labels carry a description under them (P07-33), and a table cell's media and a
-// trailing box beside a stack of text blocks (P07-34).
+// radio, a list whose labels carry a description under them (P07-33), a table cell's media and a
+// trailing box beside a stack of text blocks (P07-34), and two rows that end in a spinner and a
+// chevron (P07-70).
 test("the icon check finds each known case and nothing in the allowed layouts @no-screen", async ({
   page,
 }) => {
@@ -288,7 +293,7 @@ test("the icon check finds each known case and nothing in the allowed layouts @n
     still: of("Loading still"),
   }).toEqual({
     fontPinned: true,
-    units: 25,
+    units: 27,
     problems: [
       'center +10.0 px box: box 16x16 in "Two lines" against text "Two lines"',
       'center -6.0 px box: lucide-info in "Colors changed.Undo" against text "Colors changed."',

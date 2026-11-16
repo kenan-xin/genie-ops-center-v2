@@ -2,6 +2,7 @@
 
 import {
   focusRing,
+  iconLead,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -164,10 +165,9 @@ function AgentIcon(props: {
         : MODULE_ICONS[icon];
 
   return (
-    // Task 8: swap for iconLead (P07-13)
     <Icon
       aria-hidden="true"
-      className="relative -start-px size-4 shrink-0"
+      className={`${iconLead} size-4 shrink-0`}
       strokeWidth={1.75}
     />
   );

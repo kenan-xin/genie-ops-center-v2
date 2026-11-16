@@ -1,6 +1,12 @@
 "use client";
 
-import { buttonVariants, focusRing, IconTile, rowHeight } from "@genie/ui";
+import {
+  buttonVariants,
+  focusRing,
+  iconLeadPx,
+  IconTile,
+  rowHeight,
+} from "@genie/ui";
 import { formatChartValue } from "@genie/ui/chart-data";
 import { ChevronRightIcon, ForwardIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -89,11 +95,10 @@ function BriefFold(props: {
       <summary
         className={`flex ${rowHeight} cursor-pointer list-none items-center gap-1.5 px-4 text-xs font-medium text-muted-foreground hover:text-foreground [&::-webkit-details-marker]:hidden ${focusRing}`}
       >
-        {/* Task 8: the chevron's 4.7 px bearing, see P07-50 */}
         <ChevronRightIcon
           aria-hidden="true"
           strokeWidth={1.75}
-          className="relative -start-1 size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none"
+          className={`${iconLeadPx[4]} size-3.5 transition-transform group-open:rotate-90 motion-reduce:transition-none`}
         />
         What Ask passed on
       </summary>

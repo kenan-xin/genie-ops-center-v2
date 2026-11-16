@@ -36,8 +36,8 @@ declare global {
 }
 
 /**
- * Stories that ignore the allow list, so no entry can hide one of the known misalignments that
- * this phase fixes (P07-16): every story whose first red run (Task 4) showed a known case.
+ * Stories that ignore the allow list for their known-case icons (P07-71), so no entry can hide a
+ * known case (P07-16): every story whose first red run (Task 4) showed one.
  */
 export const KNOWN_CASE_STORIES: readonly string[] = [
   // D1 and E1: the step timeline fold and its icon column.
@@ -110,7 +110,18 @@ export const KNOWN_CASE_STORIES: readonly string[] = [
   "ui-helpdisclosure--in-a-grid-column",
   "ui-helpdisclosure--inside-a-sheet",
   "ui-helpdisclosure--phone",
+  // T8-a: the menu item icons.
+  "ui-dropdownmenu--open",
+  "ui-dropdownmenu--open-on-phone",
 ];
+
+/** The icons of the known cases (P07-71): a known-case story ignores the allow list for these only. */
+const KNOWN_CASE_ICON =
+  /lucide-sparkles|lucide-check\b|lucide-circle-check|lucide-circle-alert|lucide-loader-circle|box \d+x\d+|lucide-info|lucide-circle-question-mark/;
+
+/** The icon of a problem line: `<rule> <offset> px <cause>: <icon> in "<row>" ...`. */
+const iconOf = (problem: string) =>
+  /^\S+ \S+ px \S+: (.+?) in "/.exec(problem)?.[1] ?? "";
 
 const PHONE = [390, 844] as const;
 
@@ -130,18 +141,34 @@ const twoFrames = () =>
 /** Resizes the story frame, waits for React, and gives the unit count and one line per problem. */
 async function measureAt(
   [width, height]: readonly [number, number],
-  allow: typeof ICON_ALIGNMENT_ALLOW_LIST
+  known: boolean
 ): Promise<{ units: number; lines: string[] }> {
   await page.viewport(width, height);
   await twoFrames();
 
-  const { units, relations } = measureIconAlignment(allow);
+  const { units, relations } = measureIconAlignment(ICON_ALIGNMENT_ALLOW_LIST);
+  const problems = iconAlignmentProblems(relations);
+
+  if (known) {
+    // P07-71: the allow list covers the story's other icons, so a second run without it keeps
+    // only the known-case icons' lines.
+    const allowed = new Set(problems);
+
+    const knownOnly = iconAlignmentProblems(
+      measureIconAlignment([]).relations
+    ).filter(
+      (problem) =>
+        !allowed.has(problem) && KNOWN_CASE_ICON.test(iconOf(problem))
+    );
+
+    problems.push(...knownOnly);
+  }
 
   return {
     units,
-    lines: iconAlignmentProblems(relations).map(
-      (problem) => `${width}x${height} ${problem}`
-    ),
+    lines: problems
+      .toSorted()
+      .map((problem) => `${width}x${height} ${problem}`),
   };
 }
 
@@ -155,9 +182,7 @@ afterEach(async ({ task }) => {
 
   const own = [innerWidth, innerHeight] as const;
 
-  const allow = KNOWN_CASE_STORIES.includes(storyId)
-    ? []
-    : ICON_ALIGNMENT_ALLOW_LIST;
+  const known = KNOWN_CASE_STORIES.includes(storyId);
 
   let lines: string[];
 
@@ -165,8 +190,8 @@ afterEach(async ({ task }) => {
     // One width after the other, desktop first. The canary's own frame renders the other layout
     // than 1440, and 1440 the other layout than 390, so a wait skipped after either resize reads
     // the previous layout and fails the canary (P07-39).
-    const desktop = await measureAt(DESKTOP, allow);
-    const phone = await measureAt(PHONE, allow);
+    const desktop = await measureAt(DESKTOP, known);
+    const phone = await measureAt(PHONE, known);
 
     // oxlint-disable-next-line no-underscore-dangle -- see the declaration above.
     globalThis.__genieIconAlignment.measured.set(storyId, {

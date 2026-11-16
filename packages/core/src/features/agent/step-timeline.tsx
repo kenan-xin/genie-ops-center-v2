@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, focusRing } from "@genie/ui";
+import { Button, focusRing, iconLead } from "@genie/ui";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -288,11 +288,10 @@ export function StepTimeline(props: {
           className={`flex items-center gap-3 justify-self-start rounded-lg pe-2.5 text-sm font-medium hover:bg-hover lg:min-h-8 max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
           onClick={() => setOpen(!open)}
         >
-          {/* Task 8: swap relative -start-px for iconLead */}
           <SparklesIcon
             aria-hidden="true"
             strokeWidth={1.75}
-            className="relative -start-px size-4 shrink-0 text-primary dark:text-brand-on-dark"
+            className={`${iconLead} size-4 shrink-0 text-primary dark:text-brand-on-dark`}
           />
           <span>
             {failed === null ? worked : `${rowText(failed)} · ${worked}`}

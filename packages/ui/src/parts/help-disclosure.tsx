@@ -15,6 +15,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../components/tooltip.tsx";
+import { iconLead } from "../theme/tokens.ts";
 
 /**
  * Contextual help (tokens.md, "Help disclosure"): a labelled button that opens one 320 px callout
@@ -65,7 +66,8 @@ export function HelpDisclosure(props: {
           // A grid or flex-column parent would stretch the button and center its label. The negative
           // margin hangs the 16 px of start padding, so the box stops on the parent's padding edge:
           // a card's `overflow-hidden` clipped a 17 px hang and the touch area's left pixel with it
-          // (6wz1.114, C06-6). The icon hangs the border's 1 px, so it starts on the text column.
+          // (6wz1.114, C06-6). The icon's ink hangs the border's 1 px by `iconLead`, which keeps the
+          // label in place (6wz1.113, P07-13), so the ink starts on the text column.
           render={
             <Button
               variant="ghost"
@@ -73,7 +75,7 @@ export function HelpDisclosure(props: {
             />
           }
         >
-          <Icon aria-hidden="true" className="-ms-px" />
+          <Icon aria-hidden="true" className={iconLead} />
           {props.label}
         </PopoverTrigger>
       )}

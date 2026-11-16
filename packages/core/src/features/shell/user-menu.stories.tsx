@@ -227,7 +227,17 @@ const desktop = { viewport: { value: "desktop", isRotated: false } };
 
 const noFill = "rgba(0, 0, 0, 0)";
 
-/** The rows from lg: the 36 px row height (6wz1.114), icon 17px inside the popup's edge. */
+/** An icon's left edge before its `iconLead` offset: the slot the row lays it out in. */
+const slotLeft = (svg: SVGElement | null) =>
+  svg === null
+    ? 0
+    : svg.getBoundingClientRect().left -
+      (Number.parseFloat(getComputedStyle(svg).left) || 0);
+
+/**
+ * The rows from lg: the 36 px row height (6wz1.114), the icon's slot 17px inside the popup's edge.
+ * The slot is the box before its `iconLead` offset, which moves only the ink (6wz1.113, P07-72).
+ */
 export const ItemsMatchTheCapture: Story = {
   globals: desktop,
   play: async ({ canvasElement }) => {
@@ -240,9 +250,7 @@ export const ItemsMatchTheCapture: Story = {
       .getAllByRole("menuitem")
       .map((item) => [
         Math.round(item.getBoundingClientRect().height),
-        Math.round(
-          (item.querySelector("svg")?.getBoundingClientRect().left ?? 0) - edge
-        ),
+        Math.round(slotLeft(item.querySelector("svg")) - edge),
       ]);
 
     await expect(rows).toEqual(rows.map(() => [36, 17]));

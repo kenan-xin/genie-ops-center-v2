@@ -409,8 +409,14 @@ export const OwnHeadingPhone: Story = {
     title: "Tenant administrator",
     heading: (
       <h1 className="text-xl font-bold">
-        <button type="button" className="min-h-11">
-          Tenant administrator <Pencil aria-hidden className="inline size-4" />
+        {/* A flex row centers the pencil on the title's line; an inline icon sits on the baseline
+            (6wz1.113, P07-74). */}
+        <button
+          type="button"
+          className="inline-flex min-h-11 items-center gap-1.5"
+        >
+          Tenant administrator
+          <Pencil aria-hidden className="size-4" />
         </button>
       </h1>
     ),

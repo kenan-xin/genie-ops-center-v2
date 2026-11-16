@@ -3,6 +3,8 @@
 import {
   focusRing,
   iconControlSizes,
+  iconLead,
+  iconLeadPx,
   rowHeight,
   Spinner,
   Tooltip,
@@ -86,6 +88,10 @@ export const MODULE_ICONS: Readonly<Record<NavigationIcon, LucideIcon>> = {
   "presentation": Presentation,
   "receipt": Receipt,
 };
+
+// The two rail glyphs whose 20 px ink starts 2.6 px into its box; the others start 0.9 to 1.8 px in
+// (6wz1.113, P07-72).
+const WIDE_BEARING: ReadonlySet<LucideIcon> = new Set([ShieldCheck, Receipt]);
 
 // Rows are 44px under lg (touch targets), then 36px nav rows and 32px tree rows.
 const rowBase = `flex items-center gap-2.5 rounded-lg px-3 text-sm motion-safe:transition-colors ${focusRing}`;
@@ -240,11 +246,16 @@ function Row(props: {
         <GripVertical
           aria-hidden
           strokeWidth={1.75}
-          className="size-4 shrink-0 text-muted-foreground/70"
+          className={`size-4 shrink-0 text-muted-foreground/70 ${iconLeadPx[5]}`}
         />
       ) : null}
+      {/* The lead offset puts the glyph's ink on the caption's text edge (6wz1.113). */}
       {Icon === undefined ? null : (
-        <Icon aria-hidden strokeWidth={1.75} className={iconClass} />
+        <Icon
+          aria-hidden
+          strokeWidth={1.75}
+          className={`${iconClass} ${WIDE_BEARING.has(Icon) ? iconLeadPx[2] : iconLead}`}
+        />
       )}
       <Tooltip>
         <TooltipTrigger render={<span className="min-w-0 flex-1" />}>
@@ -323,11 +334,12 @@ function Category(props: {
         >
           {category.entries.length}
         </span>
-        {/* Shown on hover and focus, and always while collapsed, so a closed group says so. */}
+        {/* Shown on hover and focus, and always while collapsed, so a closed group says so. One
+            line tall, so the bottom-aligned glyph centers on the caption's line (6wz1.113). */}
         <ChevronDown
           aria-hidden
           strokeWidth={1.75}
-          className={`size-3.5 shrink-0 motion-safe:transition ${props.open ? "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" : "-rotate-90"}`}
+          className={`h-lh w-3.5 shrink-0 motion-safe:transition ${props.open ? "opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100" : "-rotate-90"}`}
         />
       </button>
       {props.open ? (

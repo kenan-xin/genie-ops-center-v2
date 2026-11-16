@@ -251,6 +251,8 @@ export {
   fieldText,
   focusRing,
   iconControlSizes,
+  iconLead,
+  iconLeadPx,
   rowHeight,
   touchAreas,
   touchAreaY,

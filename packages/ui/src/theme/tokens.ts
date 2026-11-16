@@ -197,6 +197,25 @@ export const focusRing =
   "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background";
 
 /**
+ * 6wz1.113 (P07-13): a Lucide glyph's ink starts inside its box (its side bearing). `iconLead`
+ * moves a leading icon 1 px toward the start and leaves its label in place, also in a flex row.
+ */
+export const iconLead = "relative -start-px";
+
+/**
+ * 6wz1.113 (P07-50, P07-68): the offset for a measured bearing of 2 to 6 px, keyed by whole pixels.
+ * Pick the key that brings the check's `start` line within 1 px.
+ */
+export const iconLeadPx = {
+  1: iconLead,
+  2: "relative -start-0.5",
+  3: "relative -start-0.75",
+  4: "relative -start-1",
+  5: "relative -start-1.25",
+  6: "relative -start-1.5",
+} as const;
+
+/**
  * The event categories of the State-vs-Label Rule exception in `DESIGN.md`, with the fixed
  * tones of tokens.md, "Category colors". A tone never derives from the tenant color, and each
  * one sits clear of the status colors and the default primary blue, so a category never reads

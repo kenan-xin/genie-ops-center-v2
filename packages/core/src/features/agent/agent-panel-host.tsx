@@ -3,6 +3,7 @@
 import {
   Button,
   buttonVariants,
+  iconLeadPx,
   Sheet,
   SheetContent,
   Tabs,
@@ -512,10 +513,9 @@ export function AgentPanelHost(props: {
       {/* The page the agent knows about, on its own row so its filter shows in full (czjw.111, czjw.165). */}
       {about === undefined || (bottom && collapsed) ? null : (
         <div className="flex shrink-0 items-start gap-2 border-b border-border px-4 py-2 text-sm text-muted-foreground">
-          {/* Task 8: the chip icon's 2.1 px bearing, see P07-50 */}
           <FileTextIcon
             aria-hidden="true"
-            className="relative -start-0.5 size-4 shrink-0"
+            className={`${iconLeadPx[2]} size-4 shrink-0`}
             strokeWidth={1.75}
           />
           <p title={about} className="line-clamp-2 min-w-0 wrap-break-word">

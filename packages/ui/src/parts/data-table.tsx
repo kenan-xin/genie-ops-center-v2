@@ -558,6 +558,10 @@ export function DataTable<Row>({
               ? ABOVE_TITLE
               : "relative z-10";
 
+          // The media shares a grid row with line 1, so the two center on each other whatever the
+          // media's size, and the lines under it keep the text column (6wz1.113, P07-51).
+          const under = card.media === undefined ? "" : "col-start-2";
+
           return (
             <li
               key={rowKey(row)}
@@ -567,10 +571,12 @@ export function DataTable<Row>({
               aria-posinset={index + 1}
               className="relative flex items-start gap-3 px-4 py-3 text-sm"
             >
-              {card.media === undefined ? null : (
-                <span className="pt-0.5">{card.media(row)}</span>
-              )}
-              <div className="grid min-w-0 flex-1 gap-0.5">
+              <div
+                className={`grid min-w-0 flex-1 gap-0.5 ${card.media === undefined ? "" : "grid-cols-leading-icon items-center gap-x-3"}`}
+              >
+                {card.media === undefined ? null : (
+                  <span className="flex">{card.media(row)}</span>
+                )}
                 <div className="flex min-w-0 items-center gap-1.5">
                   {onOpenRow === undefined ? (
                     <span className="min-w-0 truncate font-medium text-foreground">
@@ -596,32 +602,37 @@ export function DataTable<Row>({
                       {trailing}
                     </span>
                   )}
+                  {/* On line 1, so it centers on the title, not on the whole card. */}
+                  {linked(row) ? (
+                    <ChevronRightIcon
+                      aria-hidden="true"
+                      className={`size-4 shrink-0 text-muted-foreground ${trailing === null ? "ml-auto" : ""}`}
+                    />
+                  ) : null}
                 </div>
                 {detail === null ? null : (
-                  <div className="truncate text-xs text-muted-foreground">
+                  <div
+                    className={`truncate text-xs text-muted-foreground ${under}`}
+                  >
                     {detail}
                   </div>
                 )}
                 {facts.length === 0 ? null : (
-                  <div className="truncate text-muted-foreground">
+                  <div className={`truncate text-muted-foreground ${under}`}>
                     <Facts items={facts} />
                   </div>
                 )}
                 {note === null ? null : (
-                  <div className="truncate text-xs text-muted-foreground">
+                  <div
+                    className={`truncate text-xs text-muted-foreground ${under}`}
+                  >
                     {note}
                   </div>
                 )}
                 {content === null ? null : (
-                  <div className={lift}>{content}</div>
+                  <div className={`${lift} ${under}`}>{content}</div>
                 )}
               </div>
-              {linked(row) ? (
-                <ChevronRightIcon
-                  aria-hidden="true"
-                  className="size-4 shrink-0 self-center text-muted-foreground"
-                />
-              ) : null}
               {/* No empty cell, so a card without actions keeps no gap at its end. */}
               {rowMenu === null ? null : (
                 <span className="relative z-10">{rowMenu}</span>

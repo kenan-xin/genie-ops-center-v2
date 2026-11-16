@@ -7,6 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   focusRing,
+  iconLeadPx,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
@@ -48,6 +49,10 @@ export type UserMenuProps = {
 };
 
 const icon = "size-4 text-muted-foreground";
+
+// These glyphs' ink starts 2.1 px into the box, the others' 0.8 to 1.4 px; the menu row moves a
+// leading icon by 1 px, so these take the 2 px offset to share one ink edge (6wz1.113, P07-72).
+const wideIcon = `${icon} ${iconLeadPx[2]}`;
 
 // The footer row the menu trigger renders as; the Base UI trigger carries no style of its own.
 function FooterButton({
@@ -99,17 +104,27 @@ export function UserMenu(props: UserMenuProps) {
           ) : (
             <>
               <span className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
-                <Tooltip>
-                  {/* max-w-full: in an items-start column the trigger would size to its text. */}
-                  <TooltipTrigger
-                    render={<span className="block max-w-full min-w-0" />}
-                  >
-                    <span className="block max-w-full truncate text-sm font-semibold text-foreground">
-                      {user.name}
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>{user.name}</TooltipContent>
-                </Tooltip>
+                {/* The chevron ends the name's line, so it centers on the name, not on both lines (6wz1.113). */}
+                <span className="flex w-full min-w-0 items-center gap-3">
+                  <Tooltip>
+                    {/* max-w-full: in an items-start column the trigger would size to its text. */}
+                    <TooltipTrigger
+                      render={
+                        <span className="block max-w-full min-w-0 flex-1" />
+                      }
+                    >
+                      <span className="block max-w-full truncate text-sm font-semibold text-foreground">
+                        {user.name}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>{user.name}</TooltipContent>
+                  </Tooltip>
+                  <ChevronsUpDown
+                    aria-hidden
+                    strokeWidth={1.75}
+                    className="size-4 shrink-0 text-muted-foreground"
+                  />
+                </span>
                 {user.email === "" ? null : (
                   // title: a long email truncates, so the full text stays reachable.
                   <span
@@ -120,20 +135,16 @@ export function UserMenu(props: UserMenuProps) {
                   </span>
                 )}
               </span>
-              <ChevronsUpDown
-                aria-hidden
-                strokeWidth={1.75}
-                className="size-4 shrink-0 text-muted-foreground"
-              />
             </>
           )}
         </DropdownMenuTrigger>
-        <DropdownMenuContent side="top" align="start">
+        {/* At least 224 px, so a 60 px rail trigger does not wrap the rows (6wz1.113, P07-77). */}
+        <DropdownMenuContent side="top" align="start" className="min-w-56">
           <DropdownMenuItem
             size="lg"
             render={<AccountLink href={menu.accountHref} />}
           >
-            <UserRound aria-hidden strokeWidth={1.75} className={icon} />
+            <UserRound aria-hidden strokeWidth={1.75} className={wideIcon} />
             {strings.account}
           </DropdownMenuItem>
           {menu.changePasswordHref === null ? null : (
@@ -158,7 +169,11 @@ export function UserMenu(props: UserMenuProps) {
               size="lg"
               render={<SwitchLink href={menu.switchTarget.href} />}
             >
-              <ArrowLeftRight aria-hidden strokeWidth={1.75} className={icon} />
+              <ArrowLeftRight
+                aria-hidden
+                strokeWidth={1.75}
+                className={wideIcon}
+              />
               {menu.switchTarget.label}
             </DropdownMenuItem>
           )}

@@ -4,6 +4,8 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import type * as React from "react";
 
+import { iconLead } from "../theme/tokens.ts";
+
 // shadcn `@shadcn/marker`, base-nova.
 
 const markerVariants = cva(
@@ -42,6 +44,7 @@ function Marker({
   });
 }
 
+/** Leads with `iconLead` (6wz1.113); a glyph with a wider bearing passes its `iconLeadPx` offset. */
 function MarkerIcon({ className, ...props }: React.ComponentProps<"span">) {
   return (
     <span
@@ -49,6 +52,7 @@ function MarkerIcon({ className, ...props }: React.ComponentProps<"span">) {
       aria-hidden="true"
       className={cn(
         "size-4 shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        iconLead,
         className
       )}
       {...props}

@@ -10,6 +10,7 @@ import {
   Message,
   MessageContent,
 } from "../index.ts";
+import { iconLeadPx } from "../theme/tokens.ts";
 
 /**
  * The parts of a chat turn, from shadcn (`@shadcn/message`, `bubble`, `marker`, base-nova): a
@@ -38,7 +39,8 @@ const meta = {
       <Message>
         <MessageContent>
           <Marker>
-            <MarkerIcon>
+            {/* The check's ink starts 2.1 px into its box (6wz1.113). */}
+            <MarkerIcon className={iconLeadPx[2]}>
               <CheckIcon strokeWidth={1.75} />
             </MarkerIcon>
             <MarkerContent>

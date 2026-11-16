@@ -406,8 +406,10 @@ export function measureIconAlignment(
 
     const itemsIn = new Map<Element, Item[]>();
     const leads = new Map<Element, Map<Box, boolean>>();
+    const textNodes = new Set(lines.map((line) => line.node));
 
-    // A text line or unit with no text line and no unit left of it on its visual line, within 40 px.
+    // A text line or unit with no text line and no unit left of it on its visual line, within 40 px;
+    // a unit after text with no text after it is never a lead (P07-70).
     const isLead = (rect: Box, self: Node, scope: Element): boolean => {
       let known = leads.get(scope);
 
@@ -434,6 +436,19 @@ export function measureIconAlignment(
             other.rect.right <= rect.left + 1 &&
             rect.left - other.rect.right <= 40
         );
+
+        // P07-70: a unit after text with no text after it ends its line (a trailing spinner, dot
+        // or chevron), so it introduces no column.
+        if (lead && !textNodes.has(self)) {
+          const onLine = inScope.filter(
+            (other) => textNodes.has(other.node) && sameLine(other.rect, rect)
+          );
+
+          lead =
+            !onLine.some((other) => other.rect.right <= rect.left + 1) ||
+            onLine.some((other) => other.rect.left >= rect.right - 1);
+        }
+
         known.set(rect, lead);
       }
 
