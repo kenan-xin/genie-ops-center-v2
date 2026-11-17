@@ -12,6 +12,7 @@ import {
   ComboboxItem,
   ComboboxList,
   ConfirmDialog,
+  CountPill,
   DataTable,
   Dialog,
   DialogContent,
@@ -323,13 +324,16 @@ export function GroupInspector(
             <TabsList aria-label="Group detail" className="-mx-2 sm:-mx-3">
               {/* The captures show each count as a gray pill beside the label. */}
               <TabsTrigger value="members">
-                Members <LabelPill>{props.members.length}</LabelPill>
+                Members{" "}
+                <CountPill tone="neutral">{props.members.length}</CountPill>
               </TabsTrigger>
               {props.access === undefined ? null : (
                 <TabsTrigger value="access">
                   Roles{" "}
                   {props.access.paths === undefined ? null : (
-                    <LabelPill>{props.access.paths.length}</LabelPill>
+                    <CountPill tone="neutral">
+                      {props.access.paths.length}
+                    </CountPill>
                   )}
                 </TabsTrigger>
               )}

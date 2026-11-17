@@ -6,6 +6,7 @@ import {
   Button,
   Checkbox,
   ConfirmDialog,
+  CountPill,
   DataTable,
   Dialog,
   DialogContent,
@@ -345,18 +346,22 @@ export function PersonInspector(props: {
               <TabsTrigger value="profile">Profile</TabsTrigger>
               {/* The captures show each count as a gray pill beside the label. */}
               <TabsTrigger value="groups">
-                Groups <LabelPill>{person.groups.length}</LabelPill>
+                Groups{" "}
+                <CountPill tone="neutral">{person.groups.length}</CountPill>
               </TabsTrigger>
               {props.access === undefined ? null : (
                 <TabsTrigger value="access">
                   Roles{" "}
                   {props.access.paths === undefined ? null : (
-                    <LabelPill>{props.access.paths.length}</LabelPill>
+                    <CountPill tone="neutral">
+                      {props.access.paths.length}
+                    </CountPill>
                   )}
                 </TabsTrigger>
               )}
               <TabsTrigger value="sessions">
-                Sessions <LabelPill>{person.sessions.length}</LabelPill>
+                Sessions{" "}
+                <CountPill tone="neutral">{person.sessions.length}</CountPill>
               </TabsTrigger>
             </TabsList>
 

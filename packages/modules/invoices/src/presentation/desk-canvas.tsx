@@ -82,7 +82,9 @@ export function FieldCard(props: { readonly field: DeskField }): ReactNode {
         <span>{field.label}</span>
         {field.tag === null ? null : <OriginTag tag={field.tag} />}
       </span>
-      <span className="font-semibold break-words">{field.value}</span>
+      <span className="font-semibold break-words tabular-nums">
+        {field.value}
+      </span>
     </div>
   );
 }

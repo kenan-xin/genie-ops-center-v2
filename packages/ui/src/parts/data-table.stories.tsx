@@ -205,6 +205,31 @@ export const Desktop: Story = {
   },
 };
 
+/** The width of a cell's text on its own, without the cell's padding. */
+function textWidth(cell: HTMLElement): number {
+  const range = document.createRange();
+
+  range.selectNodeContents(cell);
+
+  return range.getBoundingClientRect().width;
+}
+
+/** An end-aligned count column sets its figures at one width, so its digits line up (6wz1.125). */
+export const EndColumnFiguresLineUp: Story = {
+  args: {
+    rows: [
+      { ...people[0]!, signIns: 111 },
+      { ...people[1]!, signIns: 888 },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const first = textWidth(canvas.getByRole("cell", { name: "111" }));
+    const second = textWidth(canvas.getByRole("cell", { name: "888" }));
+
+    await expect(Math.abs(first - second)).toBeLessThan(0.5);
+  },
+};
+
 export const Phone: Story = {
   globals: { viewport: { value: "mobile1", isRotated: false } },
   play: async ({ canvas, args }) => {

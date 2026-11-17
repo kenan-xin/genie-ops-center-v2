@@ -496,7 +496,10 @@ export function DataTable<Row>({
                     <TableCell
                       key={column.id}
                       className={
-                        column.align === "end" ? "text-right" : undefined
+                        column.align === "end"
+                          ? // oxlint-disable-next-line shadcn/no-restyle -- an end-aligned count column sets tabular figures (6wz1.125, A-7)
+                            "text-right tabular-nums"
+                          : undefined
                       }
                     >
                       {column === identityColumn

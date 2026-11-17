@@ -16,7 +16,8 @@ export function LabelPill(props: { readonly children: ReactNode }) {
 
 /**
  * A count. With a `tone`, a count of a status tab (R-37a): `neutral` grey, `danger` red (Overdue),
- * `warning` amber (No due date, Not linked).
+ * `warning` amber (No due date, Not linked). Tabular figures, so a row of counts lines up
+ * (6wz1.125).
  */
 export function CountPill(props: {
   readonly children: ReactNode;
@@ -24,6 +25,8 @@ export function CountPill(props: {
 }) {
   return (
     <Badge
+      // oxlint-disable-next-line shadcn/no-restyle -- a count sets tabular figures, so its pill keeps its width (6wz1.125, A-7)
+      className="tabular-nums"
       variant={
         props.tone === undefined
           ? "count"

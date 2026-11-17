@@ -53,6 +53,22 @@ const check: NonNullable<Story["play"]> = async ({ canvas }) => {
 
 export const AllTones: Story = { render: Pills, play: check };
 
+/** Counts set their figures at one width, so a row of counts lines up (6wz1.125). */
+export const CountsLineUp: Story = {
+  render: () => (
+    <div className="flex items-center gap-2">
+      <CountPill>11</CountPill>
+      <CountPill>88</CountPill>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const first = canvas.getByText("11").getBoundingClientRect().width;
+    const second = canvas.getByText("88").getBoundingClientRect().width;
+
+    await expect(Math.abs(first - second)).toBeLessThan(0.5);
+  },
+};
+
 export const Dark: Story = {
   render: Pills,
   globals: { theme: "dark" },

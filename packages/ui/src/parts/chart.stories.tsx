@@ -134,6 +134,13 @@ const barPlay: Story["play"] = async ({ canvas, canvasElement, globals }) => {
   await expect(february).toHaveTextContent("Invoiced€1,200.00");
   await expect(february).not.toHaveTextContent("Collected");
   await expect(canvas.getByText(CAPTION)).toBeVisible();
+
+  // Axis ticks set tabular figures, so a column of numbers lines up (6wz1.125).
+  await expect(
+    getComputedStyle(
+      canvasElement.querySelector(".recharts-cartesian-axis-tick-value")!
+    ).fontVariantNumeric
+  ).toContain("tabular-nums");
 };
 
 export const Bar: Story = {

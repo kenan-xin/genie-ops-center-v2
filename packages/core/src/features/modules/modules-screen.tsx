@@ -242,7 +242,7 @@ function Access(props: {
                 render={<Button variant="ghost" size="lg" />}
                 aria-label={labels.showAll(hidden, module.displayName)}
               >
-                {labels.more(hidden)}
+                <span className="tabular-nums">{labels.more(hidden)}</span>
               </PopoverTrigger>
               <PopoverContent align="start">
                 <PopoverTitle>{labels.title(module.displayName)}</PopoverTitle>
