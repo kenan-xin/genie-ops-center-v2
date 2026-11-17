@@ -7,6 +7,11 @@ import {
   focusRing,
   FormActionBar,
   LabelPill,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
   StatusPill,
   ToggleGroup,
   ToggleGroupItem,
@@ -156,6 +161,13 @@ type DraftItem = { -readonly [K in keyof TransferItem]: TransferItem[K] };
 const inheritedId = (entry: InheritedRowView) =>
   `inherited:${entry.path.assignmentId}:${entry.row.id}`;
 
+/** The caption a catalogue row sits under: also an option of the Show filter (P08-4). */
+const groupOf = (row: GrantRow): string =>
+  row.group === "core" ? "Core" : "Modules";
+
+/** The Show value for every caption. */
+const SHOW_ALL = "all";
+
 /**
  * One read-only Granted row for a path that is not the editable one (d8l5.42): "Assigned via <group>"
  * opens the group on Grants, "Included in <role>" opens Advanced access.
@@ -177,7 +189,7 @@ function inheritedItem(
   const item: DraftItem = {
     id: inheritedId(entry),
     label: row.name,
-    group: row.group === "core" ? "Core" : "Modules",
+    group: groupOf(row),
     countKey: row.id,
     readOnly: true,
     note: (
@@ -260,7 +272,7 @@ function itemsOf(input: {
     const item: DraftItem = {
       id: row.id,
       label: row.name,
-      group: row.group === "core" ? "Core" : "Modules",
+      group: groupOf(row),
       pills: (
         <>
           {row.enabled ? null : offPill}
@@ -342,9 +354,16 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const [advancedAdd, setAdvancedAdd] = useState<AdvancedAdd | undefined>();
 
+  const [shownGroup, setShownGroup] = useState(SHOW_ALL);
+
   const panes = useMediaQuery("(min-width: 1280px)", { noSsr: true });
 
   const catalogue = props.catalogue ?? [];
+
+  const groups = [...new Set(catalogue.map(groupOf))];
+
+  // A caption that the new recipient's catalogue lacks shows everything.
+  const shown = groups.includes(shownGroup) ? shownGroup : SHOW_ALL;
 
   const view =
     props.recipient === null || props.paths === undefined
@@ -619,6 +638,30 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                 Modules and roles
               </h2>
               <AccessHelp />
+              {groups.length > 1 ? (
+                <Select
+                  items={[
+                    { value: SHOW_ALL, label: "All items" },
+                    ...groups.map((group) => ({ value: group, label: group })),
+                  ]}
+                  value={shown}
+                  onValueChange={(value: string | null) => {
+                    if (value !== null) setShownGroup(value);
+                  }}
+                >
+                  <SelectTrigger aria-label="Show" className="w-44 md:ms-auto">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value={SHOW_ALL}>All items</SelectItem>
+                    {groups.map((group) => (
+                      <SelectItem key={group} value={group}>
+                        {group}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : null}
             </div>
             <p className="max-w-prose text-sm text-muted-foreground">
               For {name}. Move rows, pick a role on each Granted row, then save.
@@ -648,7 +691,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                     store.getState().setRole(row, roleId, saved),
                   recordLabels: props.recordLabels,
                   onOpenSource: openSource,
-                })}
+                }).filter((item) => shown === SHOW_ALL || item.group === shown)}
                 granted={granted}
                 onMove={(ids, to) => {
                   if (to === "available") {

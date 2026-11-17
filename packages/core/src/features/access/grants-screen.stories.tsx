@@ -337,6 +337,73 @@ export const CoreAsk: Story = {
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
+/** P08-4: Show narrows both panes to one caption, and a staged change it hides still counts. */
+export const ShowFilter: Story = {
+  args: { initial: group("g-ops") },
+  globals: desktop,
+  play: async ({ args, canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("combobox", { name: "Role for Invoices" })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Finance" })
+    );
+    await userEvent.click(canvas.getByRole("combobox", { name: "Show" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Core" }));
+
+    const catalog = within(canvas.getByRole("group", { name: "Catalog" }));
+
+    const granted = within(canvas.getByRole("group", { name: "Granted" }));
+
+    await expect(catalog.queryAllByText(/^Modules · /)).toHaveLength(0);
+    await expect(granted.queryAllByText(/^Modules · /)).toHaveLength(0);
+    await expect(granted.getByText(/^Core · /)).toBeVisible();
+
+    await expect(
+      canvas.queryByRole("combobox", { name: "Role for Invoices" })
+    ).toBeNull();
+    // Review Focus 2: the hidden row's staged change still counts, and Save writes it.
+    await expect(pendingBar().getByText("1 to change")).toBeVisible();
+
+    await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(args.onSave).toHaveBeenCalledWith({
+        add: [],
+        change: [
+          {
+            row: "invoices",
+            assignmentId: "a-ops-1",
+            roleId: "r-invoices-finance",
+          },
+        ],
+        remove: [],
+      })
+    );
+  },
+};
+
+/** P08-4: on a phone the Show select drops under the heading, and nothing overflows sideways. */
+export const ShowFilterPhone: Story = {
+  ...ShowFilter,
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async (context) => {
+    await ShowFilter.play?.(context);
+
+    const heading = context.canvas.getByRole("heading", {
+      name: "Modules and roles",
+    });
+
+    const show = context.canvas.getByRole("combobox", { name: "Show" });
+
+    await expect(show.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      heading.getBoundingClientRect().bottom
+    );
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth
+    );
+  },
+};
+
 /** P08-3: from 768 to 1279 px the panes stack too, Catalog above Granted, each as wide as the card. */
 export const StackedBelowXl: Story = {
   args: { initial: group("g-ops") },
@@ -420,7 +487,7 @@ export const ThroughGroupIsReadOnly: Story = {
   },
 };
 
-/** A12: the phone roster keeps the source line and its link. */
+/** A12: the stacked phone form keeps the source line and its link. */
 export const ThroughGroupIsReadOnlyPhone: Story = {
   args: { initial: person("p-riley") },
   globals: { viewport: { value: "phone390", isRotated: false } },
