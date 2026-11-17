@@ -35,6 +35,10 @@ const buttonVariants = cva(
           "border-border bg-card font-semibold text-destructive-text shadow-lift not-disabled:not-aria-disabled:hover:bg-hover",
         "ghost":
           "border-transparent text-foreground not-disabled:not-aria-disabled:hover:bg-hover",
+        // DESIGN.md "Ghost primary" (6wz1.106): the help trigger. On white surfaces only: brand text on
+        // the hover layer over gray-50 reads 4.37:1.
+        "ghost-primary":
+          "border-transparent font-semibold text-primary not-disabled:not-aria-disabled:hover:bg-hover dark:text-brand-on-dark",
         "link":
           "border-transparent text-primary underline-offset-4 not-disabled:not-aria-disabled:hover:underline dark:text-brand-on-dark",
       },

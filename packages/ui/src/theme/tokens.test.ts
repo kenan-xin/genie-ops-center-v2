@@ -343,6 +343,24 @@ describe("the hover state layer against DESIGN.md, Hover", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  it("keeps brand text at 4.5:1 on the hover layer over the surfaces a help trigger sits on", () => {
+    // DESIGN.md "Ghost primary" sits on cards and the page. Over the gray-50 panel brand text on the
+    // hover layer reads 4.37:1, so a brand-text action there keeps the underline hover of a link.
+    for (const [theme, text] of [
+      ["light", colorRoles.light.primary],
+      ["dark", colorRoles.dark["brand-on-dark"]],
+    ] as const) {
+      const roles = colorRoles[theme];
+
+      for (const surface of [roles.card, roles.background]) {
+        expect(
+          contrastRatio(text, over(roles.hover, surface)),
+          `${theme} ${text} on the hover over ${surface}`
+        ).toBeGreaterThanOrEqual(4.5);
+      }
+    }
+  });
 });
 
 describe("the event category tones against tokens.md, Category colors", () => {

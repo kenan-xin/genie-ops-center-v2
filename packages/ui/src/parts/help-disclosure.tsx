@@ -23,11 +23,12 @@ import {
 } from "../theme/tokens.ts";
 
 /**
- * Contextual help (tokens.md, "Help disclosure"): a labelled button that opens one 320 px callout
- * on a press. Escape, a click outside and Close shut it, and focus returns to the button. Under
- * 640 px the callout leaves the button and keeps 16 px from each viewport side. `iconOnly` is the
- * toolbar form: the label moves to `aria-label` and to a tooltip on hover and keyboard focus.
- * With `hint`, that tooltip shows the hint instead, so an info icon explains itself on hover.
+ * Contextual help (tokens.md, "Help disclosure"): a labelled button in the brand color that opens
+ * one 320 px callout on a press. Escape, a click outside and Close shut it, and focus returns to
+ * the button. Under 640 px the callout leaves the button and keeps 16 px from each viewport
+ * side. `iconOnly` is the toolbar form: the label moves to `aria-label` and to a tooltip on
+ * hover and keyboard focus. With `hint`, that tooltip shows the hint instead, so an info icon
+ * explains itself on hover.
  */
 export function HelpDisclosure(props: {
   readonly label: string;
@@ -55,7 +56,7 @@ export function HelpDisclosure(props: {
               <PopoverTrigger
                 render={
                   <Button
-                    variant="ghost"
+                    variant="ghost-primary"
                     size="icon"
                     aria-label={props.label}
                     className="justify-self-start"
@@ -79,7 +80,7 @@ export function HelpDisclosure(props: {
           // (sign-in-and-tenant-pages spec, lines 5 and 29).
           render={
             <Button
-              variant="ghost"
+              variant="ghost-primary"
               className={
                 props.centered ? "w-fit" : "-ms-4 w-fit justify-self-start"
               }

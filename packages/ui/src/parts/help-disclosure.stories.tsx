@@ -110,6 +110,12 @@ export const Default: Story = {
   play: async ({ canvas }) => {
     const trigger = canvas.getByRole("button", { name: "How access works" });
 
+    // T3-a: the trigger and its icon carry the brand color.
+    await expect(getComputedStyle(trigger).color).toBe("rgb(37, 99, 235)");
+    await expect(getComputedStyle(trigger.querySelector("svg")!).color).toBe(
+      "rgb(37, 99, 235)"
+    );
+
     await expect(trigger).toHaveAttribute("aria-expanded", "false");
     await expect(screen.queryByRole("group")).toBeNull();
 
@@ -147,7 +153,10 @@ export const Dark: Story = {
   globals: { theme: "dark" },
   parameters: OPEN_CALLOUT_A11Y,
   play: async () => {
-    const { panel } = await open("How access works");
+    const { trigger, panel } = await open("How access works");
+
+    // T3-c: brand-on-dark text in the dark theme.
+    await expect(getComputedStyle(trigger).color).toBe("rgb(96, 165, 250)");
 
     // The callout fades in, so wait until it paints.
     await waitFor(() => expect(panel).toBeVisible());
@@ -178,6 +187,8 @@ export const IconOnly: Story = {
     const trigger = canvas.getByRole("button", { name: "How access works" });
 
     await expect(trigger.textContent).toBe("");
+    // T3-b: the icon-only trigger carries the brand color too.
+    await expect(getComputedStyle(trigger).color).toBe("rgb(37, 99, 235)");
     // A hover or a keyboard focus shows the topic; `title` alone never shows on focus.
     await userEvent.tab();
     await expect(trigger).toHaveFocus();
