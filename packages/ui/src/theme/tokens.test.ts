@@ -179,12 +179,6 @@ const NOT_A_CONTROL: readonly (readonly [
     1,
     "the card-top list sets its triggers to controlHeights.lg through a child selector, which a token class cannot carry",
   ],
-  [
-    "packages/core/src/features/agent/conversation.tsx",
-    "h-11",
-    1,
-    "the composer's model picker is 44 px under lg and sm from lg; no SelectTrigger size holds that, and its size prop alone would make it 32 px on a phone",
-  ],
 ];
 
 // 6wz1.114, owner: 36 px from lg, 40 px visible under it with a 44 px touch area, 32 px dense.

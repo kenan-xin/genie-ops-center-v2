@@ -528,7 +528,7 @@ export function Conversation(props: {
                       aria-label="Model"
                       size="sm"
                       // oxlint-disable-next-line shadcn/no-restyle -- a compact picker inside the composer (variant B)
-                      className="w-auto max-w-56 border-0 bg-transparent max-lg:h-11"
+                      className="w-auto max-w-56 border-0 bg-transparent"
                     >
                       <SelectValue placeholder="Default model" />
                     </SelectTrigger>
