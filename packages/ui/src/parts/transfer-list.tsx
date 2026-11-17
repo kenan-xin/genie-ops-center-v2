@@ -146,7 +146,7 @@ function Rows(props: {
               <li
                 key={item.id}
                 className={cn(
-                  "flex min-h-11 flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-sm motion-safe:transition-colors",
+                  "flex min-h-11 flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 text-sm motion-safe:transition-colors",
                   on ? infoTint : !stop && "hover:bg-hover"
                 )}
               >
@@ -175,7 +175,10 @@ function Rows(props: {
                     {text}
                   </label>
                 )}
-                {item.pills}
+                {/* One line tall, so a pill or the unsaved dot centers on the name's line (6wz1.113). */}
+                <span className="flex h-lh shrink-0 items-center gap-3 empty:hidden">
+                  {item.pills}
+                </span>
                 {props.side === "granted" && item.control !== undefined ? (
                   <div
                     className={
