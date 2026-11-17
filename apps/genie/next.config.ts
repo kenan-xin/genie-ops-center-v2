@@ -70,9 +70,12 @@ if (e2eDistDir) {
   // Next 16.4 can restore its dev cache into a full-reload loop: the client entry answers its first
   // HMR subscribe with `restart` (vercel/next.js#100267, xok3.40). Turn the cache back on once a
   // release carries the fix (vercel/next.js#100291).
+  // No advisory check either: off CI, Next 16.4 shows a security insight badge that covers phone
+  // controls in the bottom-left corner, so a click retries until the test times out (xok3.98).
   nextConfig.experimental = {
     ...nextConfig.experimental,
     turbopackFileSystemCacheForDev: false,
+    agentUpgrade: false,
   };
 }
 
