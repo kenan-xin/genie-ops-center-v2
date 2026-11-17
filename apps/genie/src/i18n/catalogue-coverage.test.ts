@@ -483,7 +483,9 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
   const KNOWN_INLINE = {
     // Section 2, outside R-41's scope, but in the application the catalogue owns.
     "apps/genie/src/app/admin/audit/audit-log-route.tsx": 2,
-    "packages/core/src/features/branding/branding-screen.tsx": 15,
+    // +3 for the preview's segmented control (6wz1.118): its "Preview theme" name, and Light and
+    // Dark, which a ternary held before, where this scan does not read them.
+    "packages/core/src/features/branding/branding-screen.tsx": 18,
     // -1 here and in sign-in-tab.tsx: the swatch label moved into the `swatch` prop (6wz1.115),
     // which this scan does not read. It is still inline English.
     "packages/core/src/features/branding/colors-tab.tsx": 4,
