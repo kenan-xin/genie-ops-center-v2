@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -234,7 +234,10 @@ describe("the audit reader against a real database", () => {
     // Newest first, and the id breaks the tie downward, so the two greatest ids come first.
     expect(first.events.map((event) => event.id)).toEqual([ids[2], ids[1]]);
     expect(first.total).toBe(3);
-    expect(first.nextCursor).toEqual({ occurredAt: instant, id: ids[1] });
+    expect(first.nextCursor).toEqual({
+      occurredAt: "2026-01-02T03:04:05.000000Z",
+      id: ids[1],
+    });
 
     const second = await read({
       caller,
@@ -253,6 +256,46 @@ describe("the audit reader against a real database", () => {
     const seen = [...first.events, ...second.events].map((event) => event.id);
 
     expect(new Set(seen).size).toBe(3);
+  });
+
+  it("pages rows of one transaction at a sub-millisecond instant with no gap", async () => {
+    // One transaction's now() has microseconds; a cursor cut to milliseconds sorts before every
+    // row of that instant, so the next page would skip the rest of them.
+    const instant = "2026-01-03T03:04:05.123456Z";
+
+    const ids = [
+      "44444444-4444-4444-8444-444444444444",
+      "55555555-5555-4555-8555-555555555555",
+      "66666666-6666-4666-8666-666666666666",
+    ];
+
+    await deployment.context.db.insert(auditEvent).values(
+      ids.map((id) => ({
+        id,
+        occurredAt: sql`${instant}::timestamptz`,
+        action: "core:person_added",
+        summary: `sub-millisecond ${id}`,
+      }))
+    );
+
+    // Through the router, so the transport also accepts the six-digit cursor it hands out.
+    const router = callProcedure(createAuditRouter(modules), {
+      tenant: deployment.context,
+      caller: request(await insertAuditReader()),
+    });
+
+    const query = { query: "sub-millisecond", range: "custom" } as const;
+    const first = await router.list({ filters: query, limit: 2 });
+
+    expect(first.events.map((event) => event.id)).toEqual([ids[2], ids[1]]);
+
+    const second = await router.list({
+      filters: query,
+      cursor: first.nextCursor,
+      limit: 2,
+    });
+
+    expect(second.events.map((event) => event.id)).toEqual([ids[0]]);
   });
 
   it("filters on the action, the actor, the target type, and the date range", async () => {

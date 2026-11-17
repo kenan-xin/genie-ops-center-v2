@@ -308,6 +308,9 @@ export async function readAuditPage(input: AuditReadInput): Promise<AuditPage> {
     .select({
       id: auditEvent.id,
       occurredAt: auditEvent.occurredAt,
+      // The column holds microseconds and a JavaScript date only milliseconds, so the cursor reads
+      // the time as text; a cut cursor would skip the rest of its row's instant on the next page.
+      cursorAt: sql<string>`to_char(${auditEvent.occurredAt} at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"')`,
       actorId: auditEvent.actorUserId,
       action: auditEvent.action,
       targetType: auditEvent.targetType,
@@ -365,7 +368,7 @@ export async function readAuditPage(input: AuditReadInput): Promise<AuditPage> {
     total: facets?.total ?? null,
     nextCursor:
       hasMore && last !== undefined
-        ? { occurredAt: last.occurredAt.toISOString(), id: last.id }
+        ? { occurredAt: last.cursorAt, id: last.id }
         : null,
     filterOptions: facets?.filterOptions ?? null,
   };
