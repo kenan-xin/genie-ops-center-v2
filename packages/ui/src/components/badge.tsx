@@ -19,7 +19,6 @@ const badgeVariants = cva(
         warning:
           "bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
         label: neutral,
-        mono: `${neutral} px-1.5 py-px font-mono font-medium tracking-wide uppercase`,
         count: "bg-primary text-primary-foreground",
       },
     },

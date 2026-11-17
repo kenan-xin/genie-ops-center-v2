@@ -348,7 +348,6 @@ export {
   CategoryChip,
   CountPill,
   LabelPill,
-  MonoChip,
   StatusPill,
 } from "./parts/pills.tsx";
 

@@ -338,6 +338,73 @@ describe("the control heights against tokens.md, Control heights", () => {
   });
 });
 
+/** The mono face as a class, behind any variant (A-7, 6wz1.124). */
+const MONO_FACE = /(?<=^|[\s"'`:])font-mono(?![\w-])/gm;
+
+/**
+ * The files that keep the mono face for an id, a key or a code (P04-6), with their hit count, so a
+ * row never exempts a later label in the same file.
+ */
+const MONO_FOR_IDS: readonly (readonly [
+  path: string,
+  count: number,
+  reason: string,
+])[] = [
+  ["apps/genie/src/setup/not-set-up-page.tsx", 1, "a setup command"],
+  [
+    "packages/core/src/features/audit/audit-event-sheet.tsx",
+    4,
+    "event ids, action codes and the raw event",
+  ],
+  [
+    "packages/core/src/features/branding/colors-tab.tsx",
+    1,
+    "the hex value of the computed foreground",
+  ],
+  [
+    "packages/core/src/features/break-glass/break-glass-account.tsx",
+    3,
+    "one-time and recovery codes",
+  ],
+  [
+    "packages/core/src/features/break-glass/break-glass-sign-in.tsx",
+    2,
+    "one-time and recovery codes",
+  ],
+  [
+    "packages/core/src/features/modules/modules-screen.tsx",
+    2,
+    "the module id and an issue path (Modules spec line 25, O-2)",
+  ],
+  [
+    "packages/ui/src/parts/pills.tsx",
+    1,
+    "the audit action code chip, CategoryChip",
+  ],
+];
+
+// A-7, owner: monospace only for ids and keys; counts, pagers, money and dates use the page font.
+describe("the mono face against A-7", () => {
+  it("keeps the mono face for ids, keys and codes", () => {
+    const root = join(import.meta.dirname, "../../../..");
+
+    const hits = globSync(PRODUCT_SOURCES, { cwd: root })
+      .filter(
+        (file) => !/\.(test|stories)\.|\/testing\/|\/__fixtures__\//.test(file)
+      )
+      .flatMap((file) => {
+        const count =
+          readFileSync(join(root, file), "utf8").match(MONO_FACE)?.length ?? 0;
+
+        return count === 0 ? [] : [[file, count] as const];
+      });
+
+    expect(Object.fromEntries(hits)).toEqual(
+      Object.fromEntries(MONO_FOR_IDS.map(([path, count]) => [path, count]))
+    );
+  });
+});
+
 /** The `#rrggbb` a `rgb(r g b / alpha)` state layer shows over an opaque surface. */
 function over(layer: string, surface: string): string {
   const [r = 0, g = 0, b = 0, alpha = 1] = (layer.match(/[\d.]+/g) ?? []).map(

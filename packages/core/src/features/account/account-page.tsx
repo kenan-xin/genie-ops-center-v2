@@ -8,7 +8,7 @@ import {
   HelpDisclosure,
   iconLead,
   iconLeadPx,
-  MonoChip,
+  LabelPill,
 } from "@genie/ui";
 import {
   LaptopIcon,
@@ -207,7 +207,9 @@ function SessionsBlock(props: {
                       {session.browser}
                     </span>
                   </span>
-                  {session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null}
+                  {session.isCurrent ? (
+                    <LabelPill>THIS DEVICE</LabelPill>
+                  ) : null}
                 </span>
               ),
             },
@@ -239,7 +241,7 @@ function SessionsBlock(props: {
             media: (session) => <DeviceIcon device={session.device} />,
             title: (session) => session.device,
             badge: (session) =>
-              session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null,
+              session.isCurrent ? <LabelPill>THIS DEVICE</LabelPill> : null,
             // The mobile capture: browser and IP, then when it signed in and was last active.
             detail: (session) => `${session.browser} · ${session.ipAddress}`,
             facts: (session) => [

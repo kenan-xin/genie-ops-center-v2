@@ -90,7 +90,7 @@ function ChartTooltipContent({
             <ChartSwatch color={item.color ?? item.fill} />
             <div className="flex flex-1 items-center justify-between gap-4 leading-none">
               <span className="text-muted-foreground">{item.name}</span>
-              <span className="font-mono font-medium text-foreground tabular-nums">
+              <span className="font-medium text-foreground tabular-nums">
                 {formatValue(item)}
               </span>
             </div>

@@ -53,7 +53,7 @@ export function IdleWarningDialog(props: {
             {before}
             <span
               role="timer"
-              className="font-mono font-semibold text-foreground tabular-nums"
+              className="font-semibold text-foreground tabular-nums"
             >
               {formatCountdown(props.remainingMs)}
             </span>

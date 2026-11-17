@@ -43,7 +43,7 @@ export function ContrastPills(props: {
         >
           <span className="font-medium">{LABELS[pair.id]}</span>
           <span className="flex items-center gap-2">
-            <span className="font-mono">{ratioText(pair.ratio)}</span>
+            <span className="tabular-nums">{ratioText(pair.ratio)}</span>
             <span className="text-xs text-muted-foreground">
               target {pair.target === 3 ? "3:1" : "4.5:1"}
             </span>

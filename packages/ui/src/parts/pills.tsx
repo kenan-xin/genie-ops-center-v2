@@ -14,10 +14,6 @@ export function LabelPill(props: { readonly children: ReactNode }) {
   return <Badge variant="label">{props.children}</Badge>;
 }
 
-export function MonoChip(props: { readonly children: ReactNode }) {
-  return <Badge variant="mono">{props.children}</Badge>;
-}
-
 /**
  * A count. With a `tone`, a count of a status tab (R-37a): `neutral` grey, `danger` red (Overdue),
  * `warning` amber (No due date, Not linked).

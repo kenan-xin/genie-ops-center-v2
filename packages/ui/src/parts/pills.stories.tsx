@@ -1,13 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect } from "storybook/test";
 
-import {
-  CountPill,
-  LabelPill,
-  MonoChip,
-  StatusPill,
-  CategoryChip,
-} from "../index.ts";
+import { CountPill, LabelPill, StatusPill, CategoryChip } from "../index.ts";
 import {
   categoryColors,
   colorRoles,
@@ -22,7 +16,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The four pills of tokens.md, Pills and chips. A status pill carries a state in one of four fixed tones. A label pill is neutral and never takes a status color or the tenant color. A mono chip shows a code. A count pill is the one pill in the tenant color.",
+          "The four pills of tokens.md, Pills and chips. A status pill carries a state in one of four fixed tones. A label pill is neutral and never takes a status color or the tenant color. A count pill is the one pill in the tenant color.",
       },
     },
   },
@@ -41,7 +35,6 @@ const Pills = () => (
     <StatusPill tone="danger">Suspended</StatusPill>
     <StatusPill tone="warning">Review</StatusPill>
     <LabelPill>Finance</LabelPill>
-    <MonoChip>r-admin</MonoChip>
     <CountPill>3</CountPill>
   </div>
 );
@@ -56,9 +49,6 @@ const check: NonNullable<Story["play"]> = async ({ canvas }) => {
   await expect(getComputedStyle(canvas.getByText("3")).backgroundColor).toBe(
     "rgb(37, 99, 235)"
   );
-  await expect(
-    getComputedStyle(canvas.getByText("r-admin")).fontFamily
-  ).toContain("JetBrains Mono");
 };
 
 export const AllTones: Story = { render: Pills, play: check };
