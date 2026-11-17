@@ -72,7 +72,8 @@ export function FilterSheet(props: {
         <div className="grid gap-5 overflow-y-auto px-4 pb-2">
           {tabs === undefined ? null : (
             <div className="grid gap-1.5">
-              <span id={statusId} className="text-sm font-medium">
+              {/* A group label: 14 px semibold, as list-filters.prototype.html .fld>.lbl (6wz1.122). */}
+              <span id={statusId} className="text-sm font-semibold">
                 Status
               </span>
               <RadioGroup
@@ -115,7 +116,7 @@ export function FilterSheet(props: {
             .filter((filter) => filter.kind !== "search")
             .map((filter) => (
               <div key={filter.id} className="grid gap-1.5">
-                <span className="text-sm font-medium">{filter.label}</span>
+                <span className="text-sm font-semibold">{filter.label}</span>
                 <FilterSlot
                   filter={filter}
                   state={state}

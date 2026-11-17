@@ -275,6 +275,49 @@ export const InvoicesLikePhone: Story = {
   },
 };
 
+/** 6wz1.122 on a phone: the sheet's group labels are 14 px semibold, as the prototype's `.fld>.lbl`. */
+export const FilterSheetLabelsOnPhone: Story = {
+  args: { actions: upload },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /^Filters/ }));
+
+    const sheet = await screen.findByRole("dialog", { name: "Filters" });
+    const status = within(sheet).getByText("Status");
+
+    await expect(getComputedStyle(status).fontWeight).toBe("600");
+
+    // A status label wraps its radio and its count.
+    const all = within(sheet)
+      .getByRole("radio", { name: /^All/ })
+      .closest("label")!;
+
+    await expect(
+      parseFloat(getComputedStyle(status).fontSize)
+    ).toBeGreaterThanOrEqual(parseFloat(getComputedStyle(all).fontSize));
+  },
+};
+
+/** 6wz1.122 on a desktop: the More filters panel gives its group labels the same weight. */
+export const MoreFiltersLabels: Story = {
+  render: ({ state: _state, ...args }) => (
+    <div className="w-130">
+      <Live {...args} />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: /More filters/ })
+    );
+
+    const panel = await screen.findByLabelText("More filters");
+
+    await expect(
+      getComputedStyle(within(panel).getByText("Customer")).fontWeight
+    ).toBe("600");
+  },
+};
+
 // The visible one of the controls a phone and a desktop header both render.
 const visible = (elements: readonly HTMLElement[]) =>
   elements.find((element) => element.checkVisibility())!;

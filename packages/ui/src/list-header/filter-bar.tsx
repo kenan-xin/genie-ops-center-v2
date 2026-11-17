@@ -149,7 +149,7 @@ export function FilterBar(props: {
             <div className="grid gap-3">
               {more.map((filter) => (
                 <div key={filter.id} className="grid gap-1.5">
-                  <span className="text-sm font-medium">{filter.label}</span>
+                  <span className="text-sm font-semibold">{filter.label}</span>
                   <FilterSlot
                     filter={filter}
                     state={state}

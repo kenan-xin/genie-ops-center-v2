@@ -646,7 +646,7 @@ export function FiltersBar(props: FiltersBarProps) {
           >
             {canAdd ? (
               <div className="grid gap-1.5">
-                <span id={addId} className="text-sm font-medium">
+                <span id={addId} className="text-sm font-semibold">
                   Add filter
                 </span>
                 {full ? (
