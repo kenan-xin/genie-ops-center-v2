@@ -86,6 +86,8 @@ export const E2E_READER_SPECS = [
   "access-advanced",
   // S2-24: the links into Access. Its own user, because the other Access specs run in parallel.
   "access-links",
+  // 6wz1.129: the not-found proof signs in to see the page inside the workspace shell.
+  "not-found",
 ] as const;
 
 export type E2eReaderSpec = (typeof E2E_READER_SPECS)[number];

@@ -186,6 +186,11 @@
     "description": "Ask your administrator for access.",
     "home": "Go to home"
   },
+  "notFound": {
+    "title": "Page not found",
+    "description": "There is no page at this address.",
+    "home": "Go to home"
+  },
   "account": {
     "wholeTenant": "All records"
   },

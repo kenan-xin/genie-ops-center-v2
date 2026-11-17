@@ -10,6 +10,8 @@ export {
 
 export { NoAccessState, type NoAccessStateProps } from "./no-access-state.tsx";
 
+export { NotFoundState, type NotFoundStateProps } from "./not-found-state.tsx";
+
 export {
   PageHeader,
   type PageBreadcrumb,

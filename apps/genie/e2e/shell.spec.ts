@@ -408,9 +408,9 @@ test("each workspace entry opens its own page with one page title (6wz1.32, 6wz1
     // oxlint-disable-next-line no-await-in-loop -- see above.
     await expect(page).toHaveURL(path);
     // oxlint-disable-next-line no-await-in-loop -- see above.
-    await expect(page.getByText("This page could not be found.")).toHaveCount(
-      0
-    );
+    await expect(
+      page.getByRole("heading", { name: "Page not found" })
+    ).toHaveCount(0);
 
     // The one level-one heading is the page header's.
     const heading = page.getByRole("heading", { level: 1 });

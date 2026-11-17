@@ -1,5 +1,5 @@
 import { type PermissionKey, type RequestPrincipal, can } from "@genie/core";
-import { NoAccessState } from "@genie/core/features/shell";
+import { NoAccessState, NotFoundState } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 import type { ReactNode } from "react";
 
@@ -45,6 +45,23 @@ export async function NoAccessMain(props: {
         title={t("title")}
         description={t("description")}
         home={{ href: "/", label: t("home") }}
+      />
+    </main>
+  );
+}
+
+/** The page body of an unknown address or a missing record (6wz1.129), in the root and each area. */
+export async function NotFoundMain(props: {
+  readonly home: string;
+}): Promise<ReactNode> {
+  const tNotFound = await getTranslations("notFound");
+
+  return (
+    <main data-testid="not-found">
+      <NotFoundState
+        title={tNotFound("title")}
+        description={tNotFound("description")}
+        home={{ href: props.home, label: tNotFound("home") }}
       />
     </main>
   );

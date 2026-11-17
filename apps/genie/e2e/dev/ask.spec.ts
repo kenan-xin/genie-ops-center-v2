@@ -479,7 +479,9 @@ test("another person's session link answers the not-found page with nothing of t
   const response = await page.goto(`/ask/${sessionId}`);
 
   expect(response?.status()).toBe(404);
-  await expect(page.getByText("This page could not be found.")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Page not found" })
+  ).toBeVisible();
   await expect(page.getByText(QUESTION)).toHaveCount(0);
   await expect(answerOf(page)).toHaveCount(0);
 });
