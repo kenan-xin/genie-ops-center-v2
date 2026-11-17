@@ -96,7 +96,7 @@ const wholeNumber = z
   .transform(Number)
   .refine((value) => value >= 1, "a whole number of at least 1");
 
-/** An unset variable and a blank one are the same thing to the mail rows of the contract. */
+/** An unset variable and a blank one are the same thing to the optional rows of the contract. */
 function unsetWhenBlank(value: string | undefined): string | undefined {
   return value === undefined || value.trim() === "" ? undefined : value;
 }
@@ -146,7 +146,10 @@ const schema = z.object({
     .meta({ secret: true }),
   PUBLIC_URL: z.url({ protocol: /^https?$/ }),
   FILE_STORAGE_ADAPTER: z.enum(FILE_STORAGE_ADAPTERS).default("postgres"),
-  FILE_MAX_BYTES: wholeNumber.default(DEFAULT_FILE_MAX_BYTES),
+  FILE_MAX_BYTES: z.preprocess(
+    unsetWhenBlank,
+    wholeNumber.default(DEFAULT_FILE_MAX_BYTES)
+  ),
   GENIE_CHAT_API_ALLOWED_ORIGINS: z
     .string()
     .optional()
@@ -163,15 +166,18 @@ const schema = z.object({
       (proxies) => proxies.every(isProxyAddress),
       "each entry is one ip address or cidr range, never the whole internet"
     ),
-  LOCK_TIMEOUT_MS: wholeNumber.default(120000),
+  // A blank whole number is unset, so a compose file can pass `${LOCK_TIMEOUT_MS:-}`.
+  LOCK_TIMEOUT_MS: z.preprocess(unsetWhenBlank, wholeNumber.default(120000)),
   // DEC-58: a deployment scales by adding copies, so the pool and the run slots are per process.
-  // A blank value is unset, so a compose file can pass `${DATABASE_POOL_SIZE:-}`.
   DATABASE_POOL_SIZE: z.preprocess(unsetWhenBlank, wholeNumber.default(10)),
   AGENT_RUNS_AT_ONCE: z.preprocess(unsetWhenBlank, wholeNumber.default(4)),
   LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
-  PORT: wholeNumber
-    .refine((port) => port <= 65535, "a port below 65536")
-    .default(3000),
+  PORT: z.preprocess(
+    unsetWhenBlank,
+    wholeNumber
+      .refine((port) => port <= 65535, "a port below 65536")
+      .default(3000)
+  ),
   MAIL_PROVIDER: z.string().optional().transform(unsetWhenBlank),
   MAIL_FROM: z.string().optional().transform(unsetWhenBlank),
   // An API key and an smtps url both carry a credential, so the generated

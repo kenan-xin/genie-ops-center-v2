@@ -28,6 +28,22 @@ describe("validateEnvironment", () => {
     expect(env.runtimeMode).toBe("production");
   });
 
+  // A compose file passes an optional value as `${VAR:-}`, so an unset one arrives blank.
+  it("applies the default to a blank upload limit, lock timeout and port", () => {
+    for (const value of ["", "  "]) {
+      const env = validateEnvironment({
+        ...MINIMAL,
+        FILE_MAX_BYTES: value,
+        LOCK_TIMEOUT_MS: value,
+        PORT: value,
+      });
+
+      expect(env.fileMaxBytes).toBe(15728640);
+      expect(env.lockTimeoutMs).toBe(120000);
+      expect(env.port).toBe(3000);
+    }
+  });
+
   it("refuses a missing database url and names the variable", () => {
     expect(() =>
       validateEnvironment({ PUBLIC_URL: MINIMAL.PUBLIC_URL })
