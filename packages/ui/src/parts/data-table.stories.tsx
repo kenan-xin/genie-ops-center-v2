@@ -238,6 +238,13 @@ export const Phone: Story = {
 
     await expect(facts).toBeVisible();
 
+    // The detail line reads at the size of the facts line, not a size smaller (P08-13, 6wz1.121).
+    const detail = within(cards[0]!).getByText("Avery Stone");
+
+    await expect(getComputedStyle(detail).fontSize).toBe(
+      getComputedStyle(facts).fontSize
+    );
+
     // A neutral tile leads the card, left of the name, and lines up with it.
     const tile = cards[0]!.querySelector("[data-slot=icon-tile]");
 

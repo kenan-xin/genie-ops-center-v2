@@ -69,7 +69,7 @@ export type DataTableCard<Row> = {
   readonly title: (row: Row) => ReactNode;
   /** Pills on line 1, right of the title: a kind, a status, or both. */
   readonly badge?: (row: Row) => ReactNode;
-  /** A muted line under the title: an email, an id. */
+  /** A muted line under the title at the size of the facts line: a name, an email, an id (6wz1.121). */
   readonly detail?: (row: Row) => ReactNode;
   /** Muted segments joined with " · " on one line. A long line truncates. */
   readonly facts?: (row: Row) => readonly ReactNode[];
@@ -617,9 +617,7 @@ export function DataTable<Row>({
                   ) : null}
                 </div>
                 {detail === null ? null : (
-                  <div
-                    className={`truncate text-xs text-muted-foreground ${under}`}
-                  >
+                  <div className={`truncate text-muted-foreground ${under}`}>
                     {detail}
                   </div>
                 )}
