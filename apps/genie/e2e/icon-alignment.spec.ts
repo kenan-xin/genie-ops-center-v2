@@ -258,6 +258,7 @@ const CASES = `<!doctype html>
     <div class="case"><div class="row"><span class="box"></span>Looked up the data</div><div class="row"><span class="ring"></span>Changing the deck</div></div>
     <div class="case"><div class="note">${glyph("info", INFO)}<div class="note-row"><span>Colors changed.</span><button class="action">Undo</button></div></div></div>
     <div class="case"><div class="row"><span class="box"></span><span class="narrow">Two lines</span></div></div>
+    <div class="case"><div class="row">${glyph("info", INFO)}<span class="narrow">Paid by card today</span></div></div>
     <div class="case"><div class="row"><span class="slot"><span class="box"></span></span>Payments</div><p>All open payments.</p></div>
     <div class="case"><div class="gutter"><span class="gutter-tile">${glyph("sparkles", SPARKLES)}</span><div><p class="answer">The deck has 9 slides.</p><p class="answer">Slides 6 to 9 are new.</p><button>Copy</button></div></div></div>
     <div class="case"><div class="dialog-head"><h2>Edit invoice</h2><button class="icon-button" aria-label="Close">${glyph("x", X)}</button></div></div>
@@ -299,10 +300,11 @@ const ALLOW = [
 ];
 
 // T3-b: the problems are exactly the known cases (D1, the Lucide side bearing, E1, E5, a two-line
-// label, a centered slot, the 2026-11-07 gutter, a full-width row in a centered column, a row
-// that holds a visually hidden input, a start-aligned help trigger under a pill icon, a card led by
-// a text pill, a growing value column, a version label after a spacer that is no control, and a
-// cell spinner beside its own two-line text), and the allowed layouts give none: an icon-only button,
+// label, a four-line label far from its first line (R07-1), a centered slot, the 2026-11-07
+// gutter, a full-width row in a centered column, a row that holds a visually hidden input, a
+// start-aligned help trigger under a pill icon, a card led by a text pill, a growing value
+// column, a version label after a spacer that is no control, and a cell spinner beside its own
+// two-line text), and the allowed layouts give none: an icon-only button,
 // a menu, a filled button, a table, an empty state, a trailing chevron, an alert, a step row with a
 // hidden count, a hidden icon, an allow entry, a rotating glyph, a checked switch, a checked
 // radio, a list whose labels carry a description under them (P07-33), a table cell's media and a
@@ -345,10 +347,11 @@ test("the icon check finds each known case and nothing in the allowed layouts @n
     still: of("Loading still"),
   }).toEqual({
     fontPinned: true,
-    units: 41,
+    units: 42,
     problems: [
       'center +10.0 px box: box 16x16 in "Two lines" against text "Two lines"',
       'center +10.0 px box: lucide-loader-circle in "Saving now" against text "Saving now"',
+      'center +30.0 px box: lucide-info in "Paid by card today" against text "Paid by card today"',
       'center -6.0 px box: lucide-info in "Colors changed.Undo" against text "Colors changed."',
       'center -6.0 px box: tile(lucide-sparkles) in "The deck has 9 slides.Slides 6 to 9 are" against text "The deck has 9 slides."',
       'gutter -40.0 px box: tile(lucide-sparkles) in "The deck has 9 slides.Slides 6 to 9 are" against text "The deck has 9 slides."',

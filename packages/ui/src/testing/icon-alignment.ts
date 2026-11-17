@@ -730,9 +730,13 @@ export function measureIconAlignment(
         rowLines.filter((line) => !overlapsX(line.rect, box))
       );
 
+      // Within 24 px of the first line, or right of an icon that shares a line with that line's
+      // text block, however far down: a long text beside a centered icon (R07-1).
       const beside =
         first !== undefined &&
-        Math.abs(centerY(ink) - centerY(first.rect)) <= 24;
+        (Math.abs(centerY(ink) - centerY(first.rect)) <= 24 ||
+          (first.rect.left >= box.right - 1 &&
+            sameLine(box, blockOf(first.parent).getBoundingClientRect())));
 
       // Rule 1, center.
       if (beside)
