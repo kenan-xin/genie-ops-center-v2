@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Avatar,
+  AvatarFallback,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -91,12 +93,9 @@ export function UserMenu(props: UserMenuProps) {
           data-shell-user-menu=""
           render={<FooterButton rail={props.rail === true} />}
         >
-          <span
-            aria-hidden="true"
-            className="flex size-9 shrink-0 items-center justify-center rounded-full bg-border/60 text-xs font-bold text-foreground"
-          >
-            {initials(user.name)}
-          </span>
+          <Avatar aria-hidden="true">
+            <AvatarFallback>{initials(user.name)}</AvatarFallback>
+          </Avatar>
           {props.rail === true ? (
             <span className="sr-only">
               {user.email === "" ? user.name : `${user.name}, ${user.email}`}

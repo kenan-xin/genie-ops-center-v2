@@ -1,6 +1,8 @@
 "use client";
 
 import {
+  Avatar,
+  AvatarFallback,
   Button,
   CategoryChip,
   Checkbox,
@@ -54,17 +56,16 @@ import {
   type DateRangePreset,
 } from "./types.ts";
 
-function Avatar(props: {
+function ActorAvatar(props: {
   readonly actor: AuditActor | null;
   readonly size?: "sm" | "md";
 }): JSX.Element {
-  const size = props.size ?? "md";
-  const box = size === "sm" ? "size-8 text-xs" : "size-9 text-xs";
-
   if (props.actor === null) {
     return (
       <span
-        className={`flex shrink-0 items-center justify-center rounded-full border border-dashed border-muted-foreground text-muted-foreground border-muted-foreground ${box}`}
+        className={`flex shrink-0 items-center justify-center rounded-full border border-dashed border-muted-foreground text-muted-foreground ${
+          props.size === "sm" ? "size-8" : "size-10"
+        }`}
       >
         <SystemIcon className="size-4" />
       </span>
@@ -72,15 +73,11 @@ function Avatar(props: {
   }
 
   return (
-    <span
-      className={`flex shrink-0 items-center justify-center rounded-full font-bold ${
-        props.actor.anonymized
-          ? "bg-muted text-muted-foreground"
-          : "bg-muted text-foreground"
-      } ${box}`}
-    >
-      {props.actor.anonymized ? "?" : initials(props.actor.name)}
-    </span>
+    <Avatar size={props.size === "sm" ? "default" : "lg"} aria-hidden="true">
+      <AvatarFallback>
+        {props.actor.anonymized ? "?" : initials(props.actor.name)}
+      </AvatarFallback>
+    </Avatar>
   );
 }
 
@@ -370,7 +367,7 @@ function FilterPanel(props: {
 function actorCell(event: AuditEvent): JSX.Element {
   return (
     <span className="flex min-w-0 items-center gap-2">
-      <Avatar actor={event.actor} size="sm" />
+      <ActorAvatar actor={event.actor} size="sm" />
       <span className="truncate font-medium text-foreground">
         {event.actor?.name ?? "System"}
       </span>
@@ -514,7 +511,7 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
                 },
               ]}
               card={{
-                media: (event) => <Avatar actor={event.actor} />,
+                media: (event) => <ActorAvatar actor={event.actor} />,
                 title: (event) => event.actor?.name ?? "System",
                 trailing: (event) => relative(event),
                 content: (event) => (

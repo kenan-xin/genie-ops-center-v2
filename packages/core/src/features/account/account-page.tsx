@@ -1,4 +1,6 @@
 import {
+  Avatar,
+  AvatarFallback,
   Button,
   ConfirmDialog,
   DataTable,
@@ -64,12 +66,9 @@ function ProfileBlock(props: {
       description="Synced from your company directory at each sign-in."
     >
       <AccountCardRow className="flex-row items-center gap-4">
-        <span
-          aria-hidden="true"
-          className="flex size-12 shrink-0 items-center justify-center rounded-full bg-muted text-base font-bold text-foreground"
-        >
-          {initialsOf(props.profile.name)}
-        </span>
+        <Avatar size="xl" aria-hidden="true">
+          <AvatarFallback>{initialsOf(props.profile.name)}</AvatarFallback>
+        </Avatar>
         <div className="flex min-w-0 flex-col">
           <p className="text-base font-semibold text-foreground">
             {props.profile.name}
