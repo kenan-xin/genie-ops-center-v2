@@ -486,6 +486,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
           multiple
           className="sr-only"
           tabIndex={-1}
+          // Hidden from the accessibility tree too: the button is the one control (6wz1.127).
+          aria-hidden="true"
           aria-label="Choose PDF files"
           onChange={(event) => {
             choose(event.target.files);

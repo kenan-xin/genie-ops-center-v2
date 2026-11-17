@@ -92,8 +92,9 @@ export function ImageSlot(props: {
         type="file"
         accept={ACCEPT}
         className="sr-only"
-        // The drop zone button below is the one tab stop; it opens this input.
+        // The drop zone button below is the one control, for the keyboard and a screen reader (6wz1.127).
         tabIndex={-1}
+        aria-hidden="true"
         aria-label={`Upload a file for ${props.label}`}
         aria-invalid={error === undefined ? undefined : true}
         aria-describedby={error === undefined ? undefined : `${id}-error`}

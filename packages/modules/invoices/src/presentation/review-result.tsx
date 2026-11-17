@@ -72,6 +72,8 @@ function UploadAnother(): ReactNode {
         accept="application/pdf"
         className="sr-only"
         tabIndex={-1}
+        // Hidden from the accessibility tree too: the button is the one control (6wz1.127).
+        aria-hidden="true"
         aria-label="Choose a PDF file"
         onChange={(event) => {
           const file = event.target.files?.[0];

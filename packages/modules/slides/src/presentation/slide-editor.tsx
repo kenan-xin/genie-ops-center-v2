@@ -470,6 +470,8 @@ export function SlideEditor(props: SlideEditorProps) {
                       accept="image/png,image/jpeg"
                       className="sr-only"
                       tabIndex={-1}
+                      // Hidden from the accessibility tree too: the button is the one control (6wz1.127).
+                      aria-hidden="true"
                       aria-label="Add image"
                       aria-describedby={describedBy(
                         uploadError === null ? undefined : uploadErrorId
