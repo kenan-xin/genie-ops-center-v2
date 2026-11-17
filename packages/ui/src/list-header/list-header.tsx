@@ -124,7 +124,9 @@ export function ListHeader<Row>(props: ListHeaderProps<Row>) {
   };
 
   return (
-    <div className="grid gap-4">
+    // grid-cols-1: an `auto` track grows to the table's min-content, which pushed every part past
+    // a page that the docked agent panel narrows (6wz1.133, AG11); the table scrolls in its card.
+    <div className="grid grid-cols-1 gap-4">
       {props.figures?.map((group) => (
         <ListFigures
           key={group.label}

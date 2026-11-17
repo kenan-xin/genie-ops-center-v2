@@ -403,6 +403,80 @@ export const FreshAfterReturn: Story = {
   },
 };
 
+const rightOf = (element: Element | null) =>
+  element === null ? Infinity : element.getBoundingClientRect().right;
+
+/**
+ * T19-a (6wz1.133, AG11): the docked agent panel narrows the page while the viewport stays wide.
+ * The frame is the page's content box beside it: 1440 or 1280 px, less the 240 px menu, the 400 px
+ * panel and 32 px of padding on each side. No figure, filter or table ends past it, and the table
+ * that does not fit scrolls inside its card, with a tab stop.
+ */
+const besideTheDockedPanel = (width: number): Story => ({
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  decorators: [
+    (Story) => (
+      <div data-testid="page" style={{ width }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas, canvasElement }) => {
+    const page = rightOf(canvas.getByTestId("page"));
+
+    const figures = canvas.getByRole("region", { name: "Totals in SGD" });
+
+    const table = canvas
+      .getByRole("table")
+      .closest("[data-slot=table-container]");
+
+    const ends: [string, number, number][] = [
+      ...[...figures.querySelectorAll("dl > div")].flatMap((cell) => {
+        const label = cell.querySelector("dt")?.textContent ?? "";
+
+        return [
+          [`figure ${label}`, rightOf(cell), page],
+          [
+            `value of ${label}`,
+            rightOf(cell.querySelector("dd")),
+            rightOf(cell),
+          ],
+        ] satisfies [string, number, number][];
+      }),
+      [
+        "filter bar",
+        rightOf(canvasElement.querySelector("[data-slot=filter-bar]")),
+        page,
+      ],
+      ["table", rightOf(table), page],
+    ];
+
+    await expect(
+      ends.flatMap(([name, end, edge]) =>
+        end > edge + 0.5 ? [`${name} ends at ${end}, past ${edge}`] : []
+      )
+    ).toEqual([]);
+    // Status and Updated are reached by scrolling the table, also by keyboard.
+    await waitFor(() => expect(table).toHaveAttribute("tabindex", "0"));
+  },
+});
+
+export const BesideTheDockedPanelAt1440: Story = {
+  name: "Beside the docked panel at 1440 px",
+  ...besideTheDockedPanel(736),
+};
+
+export const BesideTheDockedPanelAt1280: Story = {
+  name: "Beside the docked panel at 1280 px",
+  ...besideTheDockedPanel(576),
+};
+
+/** The content box of a 768 px window, with no panel: the same parts, the same rule. */
+export const NarrowPage: Story = {
+  name: "In a 720 px page",
+  ...besideTheDockedPanel(720),
+};
+
 export const Empty: Story = {
   args: {
     view: {
