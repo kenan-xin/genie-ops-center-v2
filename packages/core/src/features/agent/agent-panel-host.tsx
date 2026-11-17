@@ -531,13 +531,13 @@ export function AgentPanelHost(props: {
           chat
         ) : (
           <>
-            <div className="shrink-0 border-b border-border px-4 py-2">
+            <div className="shrink-0 px-4 pt-2">
               <Tabs
                 value={tab}
                 onValueChange={(value) => setTab(String(value))}
               >
                 {/* Hangs the trigger padding, so the labels start on the panel's 16 px edge (P07-57). */}
-                <TabsList className="-ms-2 sm:-ms-3">
+                <TabsList className="-mx-2 sm:-mx-3">
                   <TabsTrigger value="chat">This chat</TabsTrigger>
                   <TabsTrigger value="chats">Chats</TabsTrigger>
                 </TabsList>

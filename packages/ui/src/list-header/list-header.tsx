@@ -147,7 +147,6 @@ export function ListHeader<Row>(props: ListHeaderProps<Row>) {
             <TabsList
               aria-label={`${definition.label} by status`}
               variant="card-top"
-              className="w-full"
             >
               {tabs.items.map((item) => {
                 const n = props.counts?.[item.value] ?? 0;

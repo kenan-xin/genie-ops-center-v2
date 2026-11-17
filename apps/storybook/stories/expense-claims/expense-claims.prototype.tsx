@@ -571,7 +571,7 @@ function EmployeeClaims({
           />
         )}
         <Tabs defaultValue="all">
-          <div className="overflow-x-auto border-b border-border">
+          <div className="overflow-x-auto">
             <TabsList>
               {groups.map((group) => (
                 <TabsTrigger key={group.id} value={group.id}>

@@ -33,9 +33,10 @@ function TabsList({
     <TabsPrimitive.List
       data-slot="tabs-list"
       className={cn(
+        // One block row with a full-width hairline (person-access.prototype.html .tabs, 6wz1.117).
         // Tighter below sm, so four tabs with counts fit a 390 px sheet. A scrolling row would clip
         // the active underline, which sits 1 px under the trigger.
-        "inline-flex w-fit items-center gap-0 border-b sm:gap-1 border-border data-[orientation=vertical]:flex-col data-[orientation=vertical]:border-b-0",
+        "flex min-w-fit items-center gap-0 border-b sm:gap-1 border-border data-[orientation=vertical]:flex-col data-[orientation=vertical]:border-b-0",
         variant === "card-top" &&
           "px-2 *:data-[slot=tabs-trigger]:h-11 *:data-[slot=tabs-trigger]:min-h-11",
         className

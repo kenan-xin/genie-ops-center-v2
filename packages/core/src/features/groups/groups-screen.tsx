@@ -317,7 +317,7 @@ export function GroupInspector(
               setTab(value === "access" ? "access" : "members")
             }
           >
-            <TabsList aria-label="Group detail" className="-ms-2 sm:-ms-3">
+            <TabsList aria-label="Group detail" className="-mx-2 sm:-mx-3">
               {/* The captures show each count as a gray pill beside the label. */}
               <TabsTrigger value="members">
                 Members <LabelPill>{props.members.length}</LabelPill>

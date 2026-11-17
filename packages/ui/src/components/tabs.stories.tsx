@@ -38,6 +38,13 @@ export const Default: Story = {
     const second = canvas.getByRole("tab", { name: "Roles (1)" });
 
     await expect(first.getBoundingClientRect().height).toBe(36);
+    // 6wz1.117 (T11-a): the hairline spans the row, not just the tabs.
+    const list = canvas.getByRole("tablist");
+    // SAFETY: the tablist always renders inside the Tabs root, a div.
+    const parent = list.parentElement as HTMLElement;
+    await expect(list.getBoundingClientRect().width).toBe(
+      parent.getBoundingClientRect().width
+    );
     await expect(
       canvas.getByRole("tabpanel").getBoundingClientRect().top
     ).toBeGreaterThanOrEqual(
