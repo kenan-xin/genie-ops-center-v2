@@ -4,8 +4,9 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
+  focusRing,
 } from "@genie/ui";
-import type { JSX, ReactNode } from "react";
+import type { JSX, ReactNode, Ref } from "react";
 
 import { PageHeader } from "../shell/page-header.tsx";
 
@@ -38,13 +39,17 @@ export function AccountCard(props: {
   readonly description: string;
   readonly action?: ReactNode;
   readonly children: ReactNode;
+  /** Makes the title a focus target, for focus that has to land somewhere after a row goes. */
+  readonly headingRef?: Ref<HTMLHeadingElement>;
 }): JSX.Element {
   return (
     <Card variant="divided">
       <CardHeader>
         <h2
           data-slot="card-title"
-          className="text-lg font-bold text-foreground"
+          ref={props.headingRef}
+          {...(props.headingRef === undefined ? {} : { tabIndex: -1 })}
+          className={`text-lg font-bold text-foreground ${focusRing}`}
         >
           {props.title}
         </h2>

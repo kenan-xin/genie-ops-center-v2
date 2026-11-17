@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
@@ -6,6 +7,7 @@ import {
   FIXTURE_NOW,
 } from "./__fixtures__/account-page.ts";
 import { AccountPage } from "./account-page.tsx";
+import type { AccountPageProps } from "./types.ts";
 
 /**
  * The Account page's three Section 2 blocks (R-18): Profile, Sessions, and the read-only Roles
@@ -411,6 +413,61 @@ export const RevokeOneSession: Story = {
         expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
       );
     });
+  },
+};
+
+/** Signs one session out as the route does: the buttons wait, then the row goes, or stays on a failure. */
+function RevokingPage(props: AccountPageProps & { readonly fails: boolean }) {
+  const [sessions, setSessions] = useState(props.sessions);
+  const [revoking, setRevoking] = useState(false);
+
+  return (
+    <AccountPage
+      {...props}
+      sessions={sessions}
+      revoking={revoking}
+      onRevokeSession={(id) => {
+        setRevoking(true);
+        setTimeout(() => {
+          if (!props.fails)
+            setSessions((current) => current.filter((s) => s.id !== id));
+          setRevoking(false);
+        }, 300);
+      }}
+    />
+  );
+}
+
+const confirmSignOut = async (canvasElement: HTMLElement) => {
+  await userEvent.click(phoneSignOut(canvasElement));
+  await userEvent.click(
+    within(await screen.findByRole("dialog")).getByRole("button", {
+      name: "Sign out",
+    })
+  );
+};
+
+/** After a sign-out the row is gone, so focus lands on the Sessions heading, not on the page body. */
+export const SignOutMovesFocusToSessions: Story = {
+  render: (args) => <RevokingPage {...args} fails={false} />,
+  play: async ({ canvasElement }) => {
+    await confirmSignOut(canvasElement);
+
+    await waitFor(() =>
+      expect(
+        within(canvasElement).getByRole("heading", { name: "Sessions" })
+      ).toHaveFocus()
+    );
+  },
+};
+
+/** A failed sign-out keeps the row, and focus returns to its Sign out once the wait ends. */
+export const FailedSignOutKeepsFocus: Story = {
+  render: (args) => <RevokingPage {...args} fails />,
+  play: async ({ canvasElement }) => {
+    await confirmSignOut(canvasElement);
+
+    await waitFor(() => expect(phoneSignOut(canvasElement)).toHaveFocus());
   },
 };
 

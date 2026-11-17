@@ -695,7 +695,9 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                     store.getState().setRole(row, roleId, saved),
                   recordLabels: props.recordLabels,
                   onOpenSource: openSource,
-                }).filter((item) => shown === SHOW_ALL || item.group === shown)}
+                })}
+                // Show hides rows inside the list, so a tick it hides still counts (as a search's does).
+                visible={(item) => shown === SHOW_ALL || item.group === shown}
                 granted={granted}
                 onMove={(ids, to) => {
                   if (to === "available") {

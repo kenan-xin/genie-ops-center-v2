@@ -37,6 +37,8 @@ export type TransferItem = {
 
 export type TransferListProps = {
   readonly items: readonly TransferItem[];
+  /** Hides the items it refuses from both buckets and their counts. A hidden tick still counts, as one a search hides does. */
+  readonly visible?: (item: TransferItem) => boolean;
   readonly granted: ReadonlySet<string>;
   readonly onMove: (
     ids: readonly string[],
@@ -231,7 +233,9 @@ export function TransferList(props: TransferListProps) {
   const termOf = (side: Side) => query[side].trim().toLowerCase();
 
   const all = (side: Side) =>
-    props.items.filter((item) => sideOf(item) === side);
+    props.items.filter(
+      (item) => sideOf(item) === side && (props.visible?.(item) ?? true)
+    );
 
   const shown = (side: Side) =>
     all(side).filter((item) => matches(item, termOf(side)));

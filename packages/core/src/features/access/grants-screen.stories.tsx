@@ -437,6 +437,22 @@ export const ShowFilter: Story = {
   },
 };
 
+/** A tick that Show hides still counts, as one a search hides does, and Add moves it. */
+export const ShowKeepsTicks: Story = {
+  args: { initial: group("g-analysts") },
+  globals: desktop,
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("checkbox", { name: "Placeholder" })
+    );
+    await userEvent.click(canvas.getByRole("combobox", { name: "Show" }));
+    await userEvent.click(await screen.findByRole("option", { name: "Core" }));
+
+    await userEvent.click(canvas.getByRole("button", { name: "Add 1" }));
+    await expect(pendingBar().getByText("1 to add")).toBeVisible();
+  },
+};
+
 /** P08-4: on a phone the Show select drops under the heading, and nothing overflows sideways. */
 export const ShowFilterPhone: Story = {
   ...ShowFilter,

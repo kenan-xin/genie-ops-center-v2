@@ -17,8 +17,8 @@ import {
   SmartphoneIcon,
   TabletIcon,
 } from "lucide-react";
-import { useState } from "react";
-import type { JSX } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { JSX, Ref } from "react";
 
 import { fmtDateTime, relativeTime } from "../audit/helpers.ts";
 import {
@@ -153,8 +153,9 @@ function SessionsBlock(props: {
   readonly timeZone: string;
   readonly nowIso: string;
   readonly revoking?: boolean | undefined;
-  readonly onAskRevoke: (session: AccountSession) => void;
-  readonly onAskRevokeOthers: () => void;
+  readonly headingRef: Ref<HTMLHeadingElement>;
+  readonly onAskRevoke: (session: AccountSession, opener: HTMLElement) => void;
+  readonly onAskRevokeOthers: (opener: HTMLElement) => void;
 }) {
   const others = props.sessions.filter((session) => !session.isCurrent);
   const instant = (value: string) => fmtDateTime(value, props.timeZone);
@@ -167,12 +168,13 @@ function SessionsBlock(props: {
     <AccountCard
       title="Sessions"
       description="Where you are signed in right now."
+      headingRef={props.headingRef}
       action={
         others.length === 0 ? undefined : (
           <Button
             variant="secondary"
             loading={props.revoking}
-            onClick={props.onAskRevokeOthers}
+            onClick={(event) => props.onAskRevokeOthers(event.currentTarget)}
           >
             <LogOutIcon aria-hidden="true" data-icon="inline-start" />
             Sign out all other sessions
@@ -253,7 +255,9 @@ function SessionsBlock(props: {
                 aria-label={`Sign out ${session.device}, ${session.browser}`}
                 // A sign-out in flight refuses a second one (DR-17).
                 disabled={props.revoking === true}
-                onClick={() => props.onAskRevoke(session)}
+                onClick={(event) =>
+                  props.onAskRevoke(session, event.currentTarget)
+                }
               >
                 Sign out
               </Button>
@@ -331,6 +335,22 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
 
   if (pending !== null && pending !== last) setLast(pending);
 
+  // The Sign out that opened the confirm, and whether its sign-out was confirmed. While it runs the
+  // button is disabled, so the dialog cannot hand focus back to it.
+  const opener = useRef<HTMLElement | null>(null);
+  const confirmed = useRef(false);
+  const sessionsHeading = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    if (!confirmed.current || props.revoking === true) return;
+
+    confirmed.current = false;
+
+    // A sign-out that worked removed its button; a failed one left it, and the toast says why.
+    if (opener.current?.isConnected === true) opener.current.focus();
+    else sessionsHeading.current?.focus();
+  }, [pending, props.sessions, props.revoking]);
+
   const title =
     last === null
       ? ""
@@ -361,14 +381,19 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
         timeZone={props.timeZone}
         nowIso={props.nowIso}
         revoking={props.revoking}
-        onAskRevoke={(session) => setPending({ kind: "one", session })}
-        onAskRevokeOthers={() =>
+        headingRef={sessionsHeading}
+        onAskRevoke={(session, button) => {
+          opener.current = button;
+          setPending({ kind: "one", session });
+        }}
+        onAskRevokeOthers={(button) => {
+          opener.current = button;
           setPending({
             kind: "others",
             count: props.sessions.filter((session) => !session.isCurrent)
               .length,
-          })
-        }
+          });
+        }}
       />
 
       <RolesBlock roleGrants={props.roleGrants} />
@@ -381,6 +406,8 @@ export function AccountPage(props: AccountPageProps): JSX.Element {
         danger
         onClose={() => setPending(null)}
         onConfirm={() => {
+          confirmed.current = true;
+
           if (pending?.kind === "one")
             props.onRevokeSession?.(pending.session.id);
           else if (pending?.kind === "others") props.onRevokeOtherSessions?.();
