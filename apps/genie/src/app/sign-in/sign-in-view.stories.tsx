@@ -176,15 +176,34 @@ export const SsoOnlyPhone: Story = {
   },
 };
 
-// DESIGN.md: 44 px touch targets under 1024 px; the 36 px md height returns on desktop (6wz1.114).
+// DESIGN.md: 44 px touch targets under 1024 px. The md button is 40 px; its touchAreas.md hit area
+// reaches 44 px, so a tap 1.5 px above or below still lands on it (6wz1.114, 6wz1.135).
 export const SsoAndLocalAccountsPhone: Story = {
   args: BESIDE_SSO_ARGS,
   globals: phone,
   play: async ({ canvas }) => {
+    const heights: number[] = [];
+    const misses: string[] = [];
+
     for (const link of canvas.getAllByRole("link")) {
-      // oxlint-disable-next-line no-await-in-loop -- two links, each read once.
-      await expect(link.offsetHeight).toBe(44);
+      // The links sit 12 px apart, so a probe 1.5 px off one cannot land on the other.
+      const { left, right, top, bottom } = link.getBoundingClientRect();
+      const x = (left + right) / 2;
+
+      heights.push(link.offsetHeight);
+
+      for (const [side, y] of [
+        ["above", top - 1.5],
+        ["below", bottom + 1.5],
+      ] as const) {
+        if (document.elementFromPoint(x, y) !== link) {
+          misses.push(`${link.textContent} ${side}`);
+        }
+      }
     }
+
+    await expect(heights).toEqual([40, 40]);
+    await expect(misses).toEqual([]);
   },
 };
 
