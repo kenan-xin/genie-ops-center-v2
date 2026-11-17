@@ -146,6 +146,8 @@ export type DataTableProps<Row> = {
 function SortButton(props: {
   readonly header: string;
   readonly direction: "asc" | "desc" | undefined;
+  /** `end`: the arrow leads, so the label ends on the column edge with its figures (6wz1.119). */
+  readonly align?: "end";
   readonly onClick: () => void;
 }) {
   const Icon =
@@ -156,9 +158,10 @@ function SortButton(props: {
         : ArrowDownIcon;
 
   return (
+    // A sorted header reads in the foreground ink with a brand arrow (list-filters.prototype.html).
     <button
       type="button"
-      className={`group/sort inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold lg:min-h-0 ${focusRing}`}
+      className={`group/sort inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold lg:min-h-0 ${props.align === "end" ? "flex-row-reverse" : ""} ${props.direction === undefined ? "" : "text-foreground"} ${focusRing}`}
       onClick={props.onClick}
     >
       {props.header}
@@ -167,7 +170,7 @@ function SortButton(props: {
         className={
           props.direction === undefined
             ? "size-3.5 opacity-0 group-hover/sort:opacity-60 group-focus-visible/sort:opacity-60"
-            : "size-3.5"
+            : "size-3.5 text-primary dark:text-brand-on-dark"
         }
       />
     </button>
@@ -455,6 +458,9 @@ export function DataTable<Row>({
                         <SortButton
                           header={column.header}
                           direction={active}
+                          {...(column.align === undefined
+                            ? {}
+                            : { align: column.align })}
                           onClick={() =>
                             sort.onChange({
                               column: column.id,

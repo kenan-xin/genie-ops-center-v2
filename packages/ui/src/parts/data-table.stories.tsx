@@ -505,6 +505,47 @@ export const Sorted: Story = {
   },
 };
 
+/**
+ * An end-aligned sortable column puts its arrow first, so the label ends on the column edge with
+ * its figures, in the foreground ink with a brand arrow (6wz1.119).
+ */
+export const SortedEndColumn: Story = {
+  args: {
+    columns: [
+      { id: "email", header: "Email", cell: (row) => row.email, sort: "text" },
+      { id: "name", header: "Name", cell: (row) => row.name },
+      {
+        id: "amount",
+        header: "Amount",
+        cell: (row) => row.signIns,
+        align: "end",
+        sort: "number",
+      },
+    ],
+    sort: { by: { column: "amount", direction: "desc" }, onChange: onSort },
+  },
+  play: async ({ canvas }) => {
+    const header = canvas.getByRole("button", { name: "Amount" });
+    const figure = canvas.getByRole("cell", { name: "12" });
+    const label = document.createRange();
+    const figures = document.createRange();
+
+    label.selectNodeContents(header.firstChild!);
+    figures.selectNodeContents(figure);
+
+    await expect(
+      Math.abs(
+        label.getBoundingClientRect().right -
+          figures.getBoundingClientRect().right
+      )
+    ).toBeLessThanOrEqual(1);
+    await expect(getComputedStyle(header).color).toBe("rgb(17, 24, 39)");
+    await expect(getComputedStyle(header.querySelector("svg")!).color).toBe(
+      "rgb(37, 99, 235)"
+    );
+  },
+};
+
 // czjw.70: a long list renders only the rows near the screen.
 const manyPeople = (count: number): readonly Person[] =>
   Array.from({ length: count }, (_, index) => ({
