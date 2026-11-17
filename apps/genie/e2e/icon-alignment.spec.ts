@@ -136,6 +136,15 @@ const LOADER = '<path d="M21 12a9 9 0 1 1-6.219-8.56"/>';
 
 const CHEVRON_DOWN = '<path d="m6 9 6 6 6-6"/>';
 
+const SHIELD =
+  '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>';
+
+const HELP =
+  '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/>';
+
+const COPY =
+  '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
+
 /**
  * One block per case. Each block scrolls (`overflow: auto`), so it is a column of its own and the
  * column search never reaches the next case. Text is 14 px on 20 px lines unless a case says
@@ -213,6 +222,26 @@ const CASES = `<!doctype html>
       .media .box { margin-top: 2px; }
       .stack { display: flex; flex-direction: column; }
       .hidden-input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; border: 0; overflow: hidden; white-space: nowrap; clip-path: inset(50%); }
+      .center-stack { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+      .start-stack { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+      .badge { display: inline-flex; box-sizing: border-box; width: 120px; white-space: nowrap; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; background: #f3f4f6; font-size: 12px; line-height: 16px; }
+      .help { display: inline-flex; width: 140px; white-space: nowrap; align-items: center; gap: 8px; }
+      .cards { border: 1px solid #e5e7eb; }
+      .card { display: flex; align-items: flex-start; gap: 12px; padding: 12px 16px; }
+      .card > div > :first-child { line-height: 36px; }
+      .avatar { display: flex; flex: none; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%; background: #f3f4f6; font-size: 12px; }
+      .tag { flex: none; box-sizing: border-box; width: 32px; padding: 2px 4px; overflow: hidden; border-radius: 999px; background: #f3f4f6; font-size: 12px; line-height: 16px; }
+      .system { display: flex; flex: none; align-items: center; justify-content: center; box-sizing: border-box; width: 36px; height: 36px; border: 1px dashed #6b7280; border-radius: 50%; }
+      .ends { display: flex; align-items: center; justify-content: space-between; width: 300px; }
+      .copy { display: inline-flex; width: 64px; white-space: nowrap; align-items: center; gap: 8px; }
+      .pair { display: flex; width: 300px; }
+      .pair > :first-child { flex: none; width: 120px; }
+      .value { display: flex; flex: 1; align-items: center; gap: 8px; padding-left: 4px; }
+      .grow { flex: 1; }
+      .open { width: 40px; }
+      .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+      .trigger { display: flex; box-sizing: border-box; width: 200px; height: 36px; align-items: center; justify-content: space-between; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
+      .unsaved { display: flex; width: 160px; align-items: center; gap: 8px; margin-left: auto; white-space: nowrap; }
     </style>
   </head>
   <body>
@@ -243,6 +272,13 @@ const CASES = `<!doctype html>
     <div class="case"><table><tbody><tr><td><span class="media"><span class="box"></span><span class="stack"><span>Contractors</span><span>Directory group</span></span></span></td></tr></tbody></table></div>
     <div class="case"><div class="media"><span class="stack"><span>Fixture</span><span>Records that prove the module</span></span><span class="box"></span></div></div>
     <div class="case"><div class="row trailing"><span>Chat one</span>${glyph("loader-circle", LOADER)}</div><div class="row trailing"><span>Chat two</span>${glyph("chevron-down", CHEVRON_DOWN)}</div></div>
+    <div class="case"><div class="center-stack"><span class="badge">${glyph("shield", SHIELD)}Administrator</span><h2>Set a new password</h2><button class="help">${glyph("circle-help", HELP)}Why am I here?</button></div></div>
+    <div class="case"><div class="start-stack"><span class="badge">${glyph("shield", SHIELD)}Administrator</span><button class="help">${glyph("circle-help", HELP)}Why am I here?</button></div></div>
+    <div class="case"><div class="cards"><div class="card"><span class="avatar">AL</span><div><div>Ada Lovelace</div><div>5 min ago</div><p>A target that no longer exists.</p></div></div><div class="card"><span class="system">${glyph("circle", CIRCLE)}</span><div><div>System</div><div>5 min ago</div><p>Ran a migration.</p></div></div></div></div>
+    <div class="case"><div class="cards"><div class="card"><span class="tag">New</span><div><div>Grace Hopper</div><div>5 min ago</div><p>A target that no longer exists.</p></div></div><div class="card"><span class="system">${glyph("circle", CIRCLE)}</span><div><div>System</div><div>5 min ago</div><p>Ran a migration.</p></div></div></div></div>
+    <div class="case"><div class="ends"><span>Target</span><a class="open" href="#target">Open</a></div><div class="ends"><span>Event id</span><button class="copy">${glyph("copy", COPY)}Copy</button></div></div>
+    <div class="case"><div class="bar"><button class="trigger"><span>Status</span>${glyph("chevron-down", CHEVRON_DOWN)}</button><button>Add filter</button><div class="unsaved"><span class="dot"></span>Not saved as default</div></div></div>
+    <div class="case"><div class="pair"><span>Status</span><span class="grow">Paid in full</span></div><div class="pair"><span>Method</span><span class="value">${glyph("check", CHECK)}Card</span></div></div>
   </body>
 </html>`;
 
@@ -251,13 +287,15 @@ const ALLOW = [
 ];
 
 // T3-b: the problems are exactly the known cases (D1, the Lucide side bearing, E1, E5, a two-line
-// label, a centered slot, the 2026-11-07 gutter, a full-width row in a centered column and a row
-// that holds a visually hidden input), and the allowed layouts give none: an icon-only button, a
-// menu, a filled button, a table, an empty state, a trailing chevron, an alert, a step row with a
+// label, a centered slot, the 2026-11-07 gutter, a full-width row in a centered column, a row
+// that holds a visually hidden input, a start-aligned help trigger under a pill icon, a card led by
+// a text pill and a growing value column), and the allowed layouts give none: an icon-only button,
+// a menu, a filled button, a table, an empty state, a trailing chevron, an alert, a step row with a
 // hidden count, a hidden icon, an allow entry, a rotating glyph, a checked switch, a checked
 // radio, a list whose labels carry a description under them (P07-33), a table cell's media and a
-// trailing box beside a stack of text blocks (P07-34), and two rows that end in a spinner and a
-// chevron (P07-70).
+// trailing box beside a stack of text blocks (P07-34), two rows that end in a spinner and a
+// chevron (P07-70), a centered stack under a pill icon, a card led by an initials avatar, and an
+// end-aligned link and a trigger's end chevron (P07-87).
 test("the icon check finds each known case and nothing in the allowed layouts @no-screen", async ({
   page,
 }) => {
@@ -293,7 +331,7 @@ test("the icon check finds each known case and nothing in the allowed layouts @n
     still: of("Loading still"),
   }).toEqual({
     fontPinned: true,
-    units: 27,
+    units: 37,
     problems: [
       'center +10.0 px box: box 16x16 in "Two lines" against text "Two lines"',
       'center -6.0 px box: lucide-info in "Colors changed.Undo" against text "Colors changed."',
@@ -305,7 +343,10 @@ test("the icon check finds each known case and nothing in the allowed layouts @n
       'start +4.0 px box: tile(lucide-sparkles) in "Worked for 38 seconds" against text "Here is the chart."',
       'start +6.0 px box: box 16x16 in "Monthly report" against text "Sent on the first day."',
       'start +6.0 px box: box 16x16 in "Read the deck" against text "Centered column answer."',
+      'start +6.0 px box: lucide-check in "Card" against text "Paid in full"',
+      'start -11.3 px box: lucide-circle-help in "Why am I here?" against icon lucide-shield',
       'start -4.0 px box: box 16x16 in "Changing the deck" against icon box 16x16',
+      'start -44.0 px box: tile(lucide-circle) in "System5 min agoRan a migration." against text "A target that no longer exists."',
     ],
     onlyWithoutAllow: [
       'start +6.0 px box: box 16x16 in "Legacy row" against text "Kept as it is."',

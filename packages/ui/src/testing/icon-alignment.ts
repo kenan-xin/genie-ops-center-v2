@@ -331,10 +331,22 @@ export function measureIconAlignment(
       }
     }
 
+    const avatars: Element[] = [];
+
     // A dot, a ring, a step node, a swatch.
     for (const element of document.body.querySelectorAll("*")) {
       if (element instanceof SVGElement || units.has(element)) continue;
       const rect = element.getBoundingClientRect();
+
+      // An initials avatar: a square visible box of at most 40 px that holds text (P07-87 b).
+      if (
+        rect.width <= 40 &&
+        Math.abs(rect.width - rect.height) <= 1 &&
+        isVisibleBox(element) &&
+        holdsText(element) &&
+        isVisible(element)
+      )
+        avatars.push(element);
 
       if (
         rect.width < 4 ||
@@ -467,16 +479,13 @@ export function measureIconAlignment(
       return block;
     };
 
-    // Centered and end-aligned text never counts: by `text-align` inside its block, or by a flex
-    // or grid parent that places a block narrower than its content box at its center or end
-    // (P07-22). A full-width block starts on the edge whatever its placement says.
-    const startsOnEdge = (line: Line): boolean => {
-      const block = blockOf(line.parent);
-
-      if (Math.abs(line.rect.left - contentLeft(block)) > 1) return false;
+    // Where a flex or grid parent places a block narrower than its content box: "start" for a
+    // full-width block or one in normal flow (P07-22), "end" for a block pushed to the end of a flex
+    // row by `justify-between` or an auto margin (P07-87 c).
+    const placeOf = (block: Element): string => {
       const parent = block.parentElement;
 
-      if (parent === null) return true;
+      if (parent === null) return "start";
       const outer = styleOf(parent);
       const own = styleOf(block);
 
@@ -487,9 +496,24 @@ export function measureIconAlignment(
         Number.parseFloat(outer.paddingLeft) -
         Number.parseFloat(outer.paddingRight);
 
-      if (block.getBoundingClientRect().width >= parentWidth - 1) return true;
+      const blockBox = block.getBoundingClientRect();
 
-      const place = /flex/.test(outer.display)
+      if (blockBox.width >= parentWidth - 1) return "start";
+
+      if (
+        /flex/.test(outer.display) &&
+        !/column/.test(outer.flexDirection) &&
+        own.flexGrow === "0" &&
+        blockBox.left > contentLeft(parent) + 1 &&
+        blockBox.right >=
+          parent.getBoundingClientRect().right -
+            Number.parseFloat(outer.borderRightWidth) -
+            Number.parseFloat(outer.paddingRight) -
+            1
+      )
+        return "end";
+
+      return /flex/.test(outer.display)
         ? /column/.test(outer.flexDirection)
           ? own.alignSelf === "auto"
             ? outer.alignItems
@@ -500,8 +524,17 @@ export function measureIconAlignment(
             ? outer.justifyItems
             : own.justifySelf
           : "start";
+    };
 
-      return !/center|end|right/.test(place);
+    // Centered and end-aligned text never counts: by `text-align` inside its block, or by where its
+    // parent places the block.
+    const startsOnEdge = (line: Line): boolean => {
+      const block = blockOf(line.parent);
+
+      return (
+        Math.abs(line.rect.left - contentLeft(block)) <= 1 &&
+        !/center|end|right/.test(placeOf(block))
+      );
     };
 
     const textOf = (line: Line): string =>
@@ -540,10 +573,33 @@ export function measureIconAlignment(
     // A line in another unit's row, right of that unit, is that row's label column: a description
     // under a menu label or a step's details. It is no column edge for the rows around it (P07-33).
     // The unit's own row never holds a candidate line, so the answer is the same for every unit.
-    const unitRows = allUnits.map((unit) => ({
-      right: unit.box.right,
-      row: rowOf(unit.element),
-    }));
+    const unitRows = [
+      ...allUnits.map((unit) => ({
+        right: unit.box.right,
+        row: rowOf(unit.element),
+      })),
+      // An avatar's row is the nearest ancestor with text outside the avatar (P07-87 b).
+      ...avatars.map((avatar) => {
+        const right = avatar.getBoundingClientRect().right;
+        let row = avatar.parentElement;
+
+        // Up to 6 levels, as rowOf; no row when none holds text.
+        for (let level = 0; row !== null && level < 6; level += 1) {
+          const candidate = row;
+
+          if (
+            lines.some(
+              (line) =>
+                candidate.contains(line.node) && !avatar.contains(line.node)
+            )
+          )
+            return { right, row };
+          row = row.parentElement;
+        }
+
+        return { right, row: null };
+      }),
+    ];
 
     const iconRowLines = new Map<Line, boolean>();
 
@@ -568,6 +624,47 @@ export function measureIconAlignment(
         child = child.parentNode;
 
       return child;
+    };
+
+    // A unit at the end of its flex row, more than 40 px after the item before it: a trigger's
+    // chevron (P07-87 c).
+    const pushedToEnd = (unit: Unit): boolean => {
+      const parent = unit.element.parentElement;
+
+      if (parent === null) return false;
+      const style = styleOf(parent);
+
+      if (!/flex/.test(style.display) || /column/.test(style.flexDirection))
+        return false;
+
+      const before = items.flatMap((item) =>
+        item.node !== unit.element &&
+        parent.contains(item.node) &&
+        sameLine(item.rect, unit.box) &&
+        item.rect.right <= unit.box.left + 1
+          ? [item.rect.right]
+          : []
+      );
+
+      return (
+        unit.box.right >=
+          parent.getBoundingClientRect().right -
+            Number.parseFloat(style.borderRightWidth) -
+            Number.parseFloat(style.paddingRight) -
+            1 && unit.box.left - Math.max(contentLeft(parent), ...before) > 40
+      );
+    };
+
+    // A unit whose row, or a block around that row below the column, is centered (P07-87 a).
+    const inCenteredStack = (element: Element, column: Element): boolean => {
+      for (
+        let block = rowOf(element);
+        block !== null && block !== column;
+        block = block.parentElement
+      )
+        if (/center/.test(placeOf(block))) return true;
+
+      return false;
     };
 
     const relations: IconRelation[] = [];
@@ -675,7 +772,11 @@ export function measureIconAlignment(
                 !row.contains(other.element) &&
                 other.ink.bottom <= ink.top + 1 &&
                 Math.abs(other.ink.left - ink.left) <= 40 &&
-                isLead(other.box, other.element, column)
+                isLead(other.box, other.element, column) &&
+                // A unit pushed to the end of its flex row starts no icon column (P07-87 c).
+                !pushedToEnd(other) &&
+                // A centered stack has no icon column (P07-87 a).
+                !inCenteredStack(other.element, column)
             )
             .toSorted(
               (a, b) =>
