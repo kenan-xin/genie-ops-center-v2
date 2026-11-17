@@ -635,47 +635,44 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
               Loading the access of {name}…
             </p>
           ) : (
-            <div className="flex flex-col gap-3 px-5 pb-5 max-xl:px-0 lg:px-6 xl:pb-6">
-              <div className="max-xl:mx-5 max-xl:overflow-clip max-xl:rounded-lg max-xl:border max-xl:border-border lg:max-xl:mx-6">
-                <TransferList
-                  key={`${props.recipient.type}:${props.recipient.id}`}
-                  layout={panes ? "panes" : "roster"}
-                  items={itemsOf({
-                    catalogue,
-                    view,
-                    draft,
-                    granted,
-                    setRole: (row, roleId, saved) =>
-                      store.getState().setRole(row, roleId, saved),
-                    recordLabels: props.recordLabels,
-                    onOpenSource: openSource,
-                  })}
-                  granted={granted}
-                  onMove={(ids, to) => {
-                    if (to === "available") {
-                      store.getState().stageRemove(ids);
+            <div className="flex flex-col gap-3 px-5 pb-5 lg:px-6 xl:pb-6">
+              <TransferList
+                key={`${props.recipient.type}:${props.recipient.id}`}
+                layout={panes ? "panes" : "stacked"}
+                items={itemsOf({
+                  catalogue,
+                  view,
+                  draft,
+                  granted,
+                  setRole: (row, roleId, saved) =>
+                    store.getState().setRole(row, roleId, saved),
+                  recordLabels: props.recordLabels,
+                  onOpenSource: openSource,
+                })}
+                granted={granted}
+                onMove={(ids, to) => {
+                  if (to === "available") {
+                    store.getState().stageRemove(ids);
 
-                      return;
-                    }
+                    return;
+                  }
 
-                    store.getState().stageAdd(
-                      ids.flatMap((id) => {
-                        const row = catalogue.find((entry) => entry.id === id);
+                  store.getState().stageAdd(
+                    ids.flatMap((id) => {
+                      const row = catalogue.find((entry) => entry.id === id);
 
-                        return row?.defaultRoleId == null
-                          ? []
-                          : [{ row: id, roleId: row.defaultRoleId }];
-                      })
-                    );
-                  }}
-                  availableLabel="Catalog"
-                  grantedLabel="Granted"
-                  emptyAvailable="Every module is in Granted."
-                  emptyGranted="Nothing in Granted yet. Add rows from Catalog."
-                  searchLabel="Search modules"
-                />
-              </div>
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground max-xl:px-5 lg:max-xl:px-6">
+                      return row?.defaultRoleId == null
+                        ? []
+                        : [{ row: id, roleId: row.defaultRoleId }];
+                    })
+                  );
+                }}
+                availableLabel="Catalog"
+                grantedLabel="Granted"
+                emptyAvailable="Every module is in Granted."
+                emptyGranted="Nothing in Granted yet. Add rows from Catalog."
+              />
+              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                 {props.recipient.type === "user" ? (
                   <p>
                     This screen writes the roles given to {name} directly. Group

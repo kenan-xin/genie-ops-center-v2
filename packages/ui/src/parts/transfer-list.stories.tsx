@@ -98,31 +98,28 @@ function Harness({ layout, onMove, initial, items: rows = items }: Args) {
   );
 
   return (
-    <div className={layout === "roster" ? "flex h-[40rem] flex-col" : ""}>
-      <TransferList
-        items={rows}
-        granted={granted}
-        layout={layout}
-        availableLabel="Catalog"
-        grantedLabel="Granted"
-        emptyAvailable="Nothing left to add."
-        emptyGranted="Nothing granted yet."
-        searchLabel="Search modules"
-        onMove={(ids, to) => {
-          onMove(ids, to);
-          setGranted((current) => {
-            const next = new Set(current);
+    <TransferList
+      items={rows}
+      granted={granted}
+      layout={layout}
+      availableLabel="Catalog"
+      grantedLabel="Granted"
+      emptyAvailable="Nothing left to add."
+      emptyGranted="Nothing granted yet."
+      onMove={(ids, to) => {
+        onMove(ids, to);
+        setGranted((current) => {
+          const next = new Set(current);
 
-            for (const id of ids) {
-              if (to === "granted") next.add(id);
-              else next.delete(id);
-            }
+          for (const id of ids) {
+            if (to === "granted") next.add(id);
+            else next.delete(id);
+          }
 
-            return next;
-          });
-        }}
-      />
-    </div>
+          return next;
+        });
+      }}
+    />
   );
 }
 
@@ -134,7 +131,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The transfer list (tokens.md, "Transfer list"): rows move between an available bucket and a granted bucket. `panes` shows the two buckets side by side, for a container of about 900 px. `roster` shows one list with one search, granted first, for a narrow container. The list owns its ticks and its search; the caller owns `granted` and applies `onMove`. A row with `blockedReason` cannot be added, but it can still be removed. `control` sits on granted rows only.',
+          'The transfer list (tokens.md, "Transfer list"): rows move between an available bucket and a granted bucket. `panes` shows the two buckets side by side, for a container of about 900 px. `stacked` shows Catalog above Granted, each with its own search and quick action, for a container under 1280 px. The list owns its ticks and its search; the caller owns `granted` and applies `onMove`. A row with `blockedReason` cannot be added, but it can still be removed. `control` sits on granted rows only.',
       },
     },
     a11y: { test: "error" },
@@ -321,32 +318,36 @@ export const PaneLook: Story = {
     await expect(window.getComputedStyle(row("Invoices")).borderTopWidth).toBe(
       "1px"
     );
-    // A row keeps 56 px even when its text is short.
+    // A row with its description keeps at least 56 px.
     await expect(
       row("Invoices").getBoundingClientRect().height
     ).toBeGreaterThanOrEqual(56);
   },
 };
 
-/** T4: the phone form is one list with one search, Granted first, and moves both ways. */
-export const Roster: Story = {
-  args: { layout: "roster" },
+/** T4: the narrow form stacks Catalog above Granted, each with its own search, and moves both ways. */
+export const Stacked: Story = {
+  args: { layout: "stacked" },
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ args, canvasElement }) => {
     const canvas = within(canvasElement);
+    const catalog = canvas.getByRole("group", { name: "Catalog" });
+    const granted = canvas.getByRole("group", { name: "Granted" });
 
-    await expect(canvas.getAllByRole("textbox")).toHaveLength(1);
-    await expect(
-      canvas.getByRole("textbox", { name: "Search modules" })
-    ).toBeVisible();
-    await expect(
-      canvas.getAllByRole("checkbox", { name: /^Select all/ })
-    ).toHaveLength(1);
     await expect(
       canvas
         .getAllByRole("group", { name: /^(Granted|Catalog)$/ })
         .map((group) => group.getAttribute("aria-label"))
-    ).toEqual(["Granted", "Catalog"]);
+    ).toEqual(["Catalog", "Granted"]);
+    await expect(catalog.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      granted.getBoundingClientRect().top
+    );
+    await expect(
+      canvas.getByRole("textbox", { name: "Search Catalog" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("textbox", { name: "Search Granted" })
+    ).toBeVisible();
 
     await userEvent.click(canvas.getByRole("checkbox", { name: "Slides" }));
     await userEvent.click(canvas.getByRole("checkbox", { name: "Invoices" }));
@@ -396,10 +397,10 @@ export const ReadOnlyRowsAndOneCountPerKey: Story = {
   },
 };
 
-/** A3: the phone roster counts and selects the same way. */
-export const ReadOnlyRowsRoster: Story = {
+/** A3: the stacked form counts and selects the same way. */
+export const ReadOnlyRowsStacked: Story = {
   args: {
-    layout: "roster",
+    layout: "stacked",
     initial: ["fixture", "fixture-finance"],
     onNote: fn(),
   },
@@ -414,11 +415,42 @@ export const ReadOnlyRowsRoster: Story = {
       canvas.getByRole("heading", { name: "Granted · 1" })
     ).toBeVisible();
     await userEvent.click(
-      canvas.getByRole("checkbox", { name: "Select all shown" })
+      within(canvas.getByRole("group", { name: "Granted" })).getByRole(
+        "checkbox",
+        { name: "Select all shown in Granted" }
+      )
     );
     await expect(
       canvas.getByRole("button", { name: "Remove 1" })
     ).toBeVisible();
+  },
+};
+
+/** T5-d: a stacked pane grows with its rows instead of scrolling inside (Review Focus 3). */
+export const StackedLongList: Story = {
+  args: {
+    layout: "stacked",
+    initial: [],
+    items: Array.from({ length: 12 }, (_, index) => ({
+      id: `m${index + 1}`,
+      label: `Module ${index + 1}`,
+      group: "Modules",
+    })),
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const catalog = canvas.getByRole("group", { name: "Catalog" });
+
+    const last = within(catalog)
+      .getByRole("checkbox", { name: "Module 12" })
+      .closest("li");
+
+    if (last === null) throw new Error("The 12th row is missing.");
+
+    await expect(last.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      catalog.getBoundingClientRect().bottom
+    );
   },
 };
 

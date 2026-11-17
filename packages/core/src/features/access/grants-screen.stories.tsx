@@ -337,6 +337,24 @@ export const CoreAsk: Story = {
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
+/** P08-3: from 768 to 1279 px the panes stack too, Catalog above Granted, each as wide as the card. */
+export const StackedBelowXl: Story = {
+  args: { initial: group("g-ops") },
+  globals: { viewport: { value: "phone844x390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const catalog = (
+      await canvas.findByRole("group", { name: "Catalog" })
+    ).getBoundingClientRect();
+
+    const granted = canvas
+      .getByRole("group", { name: "Granted" })
+      .getBoundingClientRect();
+
+    await expect(catalog.bottom).toBeLessThanOrEqual(granted.top);
+    await expect(granted.width).toBe(catalog.width);
+  },
+};
+
 const grantedPane = () =>
   within(screen.getByRole("group", { name: "Granted" }));
 

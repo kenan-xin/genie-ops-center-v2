@@ -31,7 +31,7 @@ export type TransferItem = {
   readonly blockedReason?: string;
   /** Pills at the end of the row, for example Inactive and Pending. */
   readonly pills?: ReactNode;
-  /** The granted side only: beside the pills in the panes form, on its own line in the roster. */
+  /** The granted side only: beside the pills in the panes form, on its own line when stacked. */
   readonly control?: ReactNode;
 };
 
@@ -42,13 +42,12 @@ export type TransferListProps = {
     ids: readonly string[],
     to: "granted" | "available"
   ) => void;
-  readonly layout: "panes" | "roster";
+  /** `panes` puts the buckets side by side; `stacked` puts Catalog above Granted, for a container under 1280 px. */
+  readonly layout: "panes" | "stacked";
   readonly availableLabel: string;
   readonly grantedLabel: string;
   readonly emptyAvailable: string;
   readonly emptyGranted: string;
-  /** The accessible name of the roster's one search field. */
-  readonly searchLabel: string;
 };
 
 type Side = "available" | "granted";
@@ -189,7 +188,7 @@ function Rows(props: {
                 {props.side === "granted" && item.control !== undefined ? (
                   <div
                     className={
-                      props.layout === "roster" ? "basis-full pl-7" : ""
+                      props.layout === "stacked" ? "basis-full pl-7" : ""
                     }
                   >
                     {item.control}
@@ -206,8 +205,9 @@ function Rows(props: {
 
 /**
  * The transfer list (tokens.md, "Transfer list"). One pattern in two forms: `panes` puts the
- * available bucket beside the granted one, and `roster` is one list with the granted bucket
- * first. The list owns its ticks and its search terms; the caller owns `granted`.
+ * available bucket beside the granted one, and `stacked` puts it above, each with its own search
+ * and quick action (6wz1.108). The list owns its ticks and its search terms; the caller owns
+ * `granted`.
  */
 export function TransferList(props: TransferListProps) {
   const [ticked, setTicked] = useState<ReadonlySet<string>>(new Set());
@@ -226,11 +226,7 @@ export function TransferList(props: TransferListProps) {
     granted: props.emptyGranted,
   };
 
-  // The roster has one search, kept under `available`.
-  const termOf = (side: Side) =>
-    (props.layout === "roster" ? query.available : query[side])
-      .trim()
-      .toLowerCase();
+  const termOf = (side: Side) => query[side].trim().toLowerCase();
 
   const all = (side: Side) =>
     props.items.filter((item) => sideOf(item) === side);
@@ -318,53 +314,13 @@ export function TransferList(props: TransferListProps) {
     />
   );
 
-  if (props.layout === "roster") {
-    const both = [...movable("granted"), ...movable("available")];
-
-    const add = moveButton("available", false);
-
-    const remove = moveButton("granted", false);
-
-    return (
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="px-4 pt-4 pb-1">
-          <SearchField
-            label={props.searchLabel}
-            value={query.available}
-            onChange={(value) => setQuery({ ...query, available: value })}
-          />
-          <label className="flex min-h-11 cursor-pointer items-center gap-3 px-3 text-xs font-medium">
-            <Checkbox aria-label="Select all shown" {...selectAll(both)} />
-            Select all shown
-          </label>
-        </div>
-        <div className="min-h-0 flex-1 overflow-y-auto border-t border-border">
-          {(["granted", "available"] as const).map((side) => (
-            <section key={side} role="group" aria-label={label[side]}>
-              <h3
-                className={cn(
-                  captionClass,
-                  "sticky top-0 z-10 border-b border-border bg-muted px-4 py-2"
-                )}
-              >
-                {label[side]} · {countOf(all(side))}
-              </h3>
-              {rows(side)}
-            </section>
-          ))}
-        </div>
-        {add === null && remove === null ? null : (
-          <div className="flex items-center gap-2 border-t border-border px-4 py-3">
-            {add}
-            {remove}
-          </div>
-        )}
-      </div>
-    );
-  }
-
   return (
-    <div className="grid min-h-0 grid-cols-1 gap-3 md:grid-cols-2">
+    <div
+      className={cn(
+        "grid min-h-0 grid-cols-1 gap-3",
+        props.layout === "panes" && "md:grid-cols-2"
+      )}
+    >
       {(["available", "granted"] as const).map((side) => {
         const quick = movable(side);
 
@@ -412,7 +368,14 @@ export function TransferList(props: TransferListProps) {
                 onChange={(value) => setQuery({ ...query, [side]: value })}
               />
             </div>
-            <div className="max-h-88 min-h-0 flex-1 overflow-y-auto">
+            {/* A stacked pane grows with its rows: a phone page scrolls once (Review Focus 3). */}
+            <div
+              className={
+                props.layout === "panes"
+                  ? "max-h-88 min-h-0 flex-1 overflow-y-auto"
+                  : undefined
+              }
+            >
               {rows(side)}
             </div>
             {button === null ? null : (
