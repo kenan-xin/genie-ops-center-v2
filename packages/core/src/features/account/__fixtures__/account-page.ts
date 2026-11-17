@@ -46,7 +46,7 @@ export const FIXTURE_SESSIONS: readonly AccountSession[] = [
   },
   {
     id: "s-tablet",
-    device: "iPad",
+    device: "iPad (iPad)",
     browser: "Safari",
     ipAddress: "198.51.100.7",
     signedInAt: "2026-09-26T08:12:00.000Z",

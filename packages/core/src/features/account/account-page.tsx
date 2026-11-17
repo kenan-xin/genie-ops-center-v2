@@ -4,9 +4,17 @@ import {
   DataTable,
   focusRing,
   HelpDisclosure,
+  iconLead,
+  iconLeadPx,
   MonoChip,
 } from "@genie/ui";
-import { LogOutIcon } from "lucide-react";
+import {
+  LaptopIcon,
+  LogOutIcon,
+  MonitorIcon,
+  SmartphoneIcon,
+  TabletIcon,
+} from "lucide-react";
 import { useState } from "react";
 import type { JSX } from "react";
 
@@ -26,8 +34,8 @@ import type {
  * The Account page's three Section 2 blocks (R-18): Profile, Sessions with per-session sign-out
  * and sign out everywhere, and the read-only Roles and access. One column of bordered cards with
  * a title and a one-line description each, max reading width, no tabs. Sessions is the shared
- * DataTable: a card list on a phone, a table from `md`, and the per-session sign-out in each row's
- * overflow menu (R-23).
+ * DataTable: a card list on a phone, a table from `md`, and a Sign out button on each other
+ * session's row (d8l5.64).
  *
  * Every write on this page is a sign-out, and both sign-outs open the shared confirm dialog
  * before the callback fires. The Roles and access block edits nothing: its note says who to ask.
@@ -114,6 +122,33 @@ function ProfileBlock(props: {
   );
 }
 
+/**
+ * The device's glyph, from the platform word in the parentheses of the device line, else the whole
+ * line (services/auth/user-agent.ts).
+ */
+function DeviceIcon(props: { readonly device: string }) {
+  // 6wz1.113: the phone glyph starts 2.7 px into its box, the tablet and laptop 2.1 px, the
+  // monitor 0.7 px, so each icon starts on its column's text edge.
+  const platform = props.device.match(/\(([^)]+)\)$/)?.[1] ?? props.device;
+
+  const [Icon, lead] =
+    platform === "iPhone" || platform === "Android"
+      ? [SmartphoneIcon, iconLeadPx[3]]
+      : platform === "iPad"
+        ? [TabletIcon, iconLeadPx[2]]
+        : platform === "macOS"
+          ? [LaptopIcon, iconLeadPx[2]]
+          : [MonitorIcon, iconLead];
+
+  return (
+    <Icon
+      aria-hidden="true"
+      strokeWidth={1.75}
+      className={`size-4 shrink-0 text-muted-foreground ${lead}`}
+    />
+  );
+}
+
 function SessionsBlock(props: {
   readonly sessions: readonly AccountSession[];
   readonly timeZone: string;
@@ -161,7 +196,10 @@ function SessionsBlock(props: {
               cell: (session) => (
                 // The design puts the chip beside the device, so no Status column takes width, and
                 // each fact keeps one line (fix list "Account page layout").
-                <span className="flex items-center gap-2 whitespace-nowrap">
+                <span className="flex items-start gap-2 whitespace-nowrap">
+                  <span className="flex h-lh items-center">
+                    <DeviceIcon device={session.device} />
+                  </span>
                   <span className="flex flex-col">
                     <span>{session.device}</span>
                     <span className="font-normal text-muted-foreground">
@@ -197,6 +235,7 @@ function SessionsBlock(props: {
             },
           ]}
           card={{
+            media: (session) => <DeviceIcon device={session.device} />,
             title: (session) => session.device,
             badge: (session) =>
               session.isCurrent ? <MonoChip>THIS DEVICE</MonoChip> : null,
@@ -206,20 +245,21 @@ function SessionsBlock(props: {
               `Signed in ${instant(session.signedInAt)} · active ${ago(session.lastActiveAt)}`,
             ],
           }}
-          actions={(session) => {
-            if (session.isCurrent) return [];
-
-            const signOut = {
-              label: "Sign out",
-              onSelect: () => props.onAskRevoke(session),
-              danger: true,
-            };
-
-            // DR-17: a menu item has no loading state, so it refuses a second sign-out.
-            return props.revoking === true
-              ? [{ ...signOut, refusal: "A sign-out is running." }]
-              : [signOut];
-          }}
+          // One visible Sign out per other session, in the last cell and at the end of the card's
+          // first line (account-page.png, account-page-mobile.png; the rowAction slot of czjw.102).
+          rowAction={(session) =>
+            session.isCurrent ? null : (
+              <Button
+                variant="secondary"
+                aria-label={`Sign out ${session.device}, ${session.browser}`}
+                // A sign-out in flight refuses a second one (DR-17).
+                disabled={props.revoking === true}
+                onClick={() => props.onAskRevoke(session)}
+              >
+                Sign out
+              </Button>
+            )
+          }
         />
       </div>
     </AccountCard>

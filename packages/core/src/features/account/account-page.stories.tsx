@@ -53,10 +53,10 @@ function sessionTable(canvasElement: HTMLElement) {
   return within(table);
 }
 
-/** The row's overflow menu trigger: R-23 puts the per-session sign-out in it. */
-function phoneRowActions(canvasElement: HTMLElement) {
+/** The row's Sign out button (d8l5.64), named for its device and browser. */
+function phoneSignOut(canvasElement: HTMLElement) {
   return sessionTable(canvasElement).getByRole("button", {
-    name: "Actions for Pixel 7 (Android)",
+    name: "Sign out Pixel 7 (Android), Chrome",
   });
 }
 
@@ -292,14 +292,30 @@ export const Default: Story = {
       canvas.getByRole("button", { name: "Where your profile comes from" })
     ).toBeInTheDocument();
 
-    // Sessions: the current row carries the chip and no menu; the others an actions menu. The
-    // assertions scope to the desktop table; the phone card list renders the same rows.
+    // Sessions: the current row carries the chip and no sign-out; every other row a device icon
+    // and a Sign out button. The assertions scope to the desktop table; the phone card list
+    // renders the same rows.
     const table = sessionTable(canvasElement);
 
     await expect(table.getByText("THIS DEVICE")).toBeInTheDocument();
     await expect(
-      table.getAllByRole("button", { name: /^Actions for / }).length
+      table.getAllByRole("button", { name: /^Sign out / }).length
     ).toBe(2);
+
+    // Every body row's device cell carries a device glyph.
+    await expect(
+      table
+        .getAllByRole("row")
+        .slice(1)
+        .map((row) => row.querySelector("td:first-child svg.lucide"))
+    ).not.toContain(null);
+
+    // The iPad's row draws the tablet glyph, from the platform word in parentheses.
+    await expect(
+      table
+        .getByRole("row", { name: /iPad/ })
+        .querySelector("svg.lucide-tablet")
+    ).not.toBeNull();
 
     // Roles and access: both grants with count, scope, and arrival.
     await expect(canvas.getByText("Solutions editor")).toBeInTheDocument();
@@ -322,10 +338,7 @@ export const Default: Story = {
 export const RevokeOneSession: Story = {
   play: async ({ canvasElement, step }) => {
     const signOut = async () => {
-      await userEvent.click(phoneRowActions(canvasElement));
-      await userEvent.click(
-        await screen.findByRole("menuitem", { name: "Sign out" })
-      );
+      await userEvent.click(phoneSignOut(canvasElement));
     };
 
     await step("cancel keeps the session", async () => {
@@ -367,13 +380,10 @@ export const RevokeOneSession: Story = {
 
 export const EscapeCancelsAndReturnsFocus: Story = {
   play: async ({ canvasElement }) => {
-    const opener = phoneRowActions(canvasElement);
+    const opener = phoneSignOut(canvasElement);
 
     onRevokeSession.mockClear();
     await userEvent.click(opener);
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Sign out" })
-    );
     await screen.findByRole("dialog");
 
     await userEvent.keyboard("{Escape}");
@@ -418,24 +428,14 @@ export const SignOutInFlight: Story = {
       name: "Sign out all other sessions",
     });
 
-    // DR-17: while a sign-out runs, the block button is busy and the row item is refused, so
-    // neither starts a second one.
+    // DR-17: while a sign-out runs, the block button is busy and the row buttons are disabled,
+    // so neither starts a second one.
     await expect(others).toHaveAttribute("aria-busy", "true");
 
     await userEvent.click(others);
     await expect(screen.queryByRole("dialog")).toBeNull();
 
-    await userEvent.click(phoneRowActions(canvasElement));
-
-    const item = await screen.findByRole("menuitem", { name: "Sign out" });
-
-    await expect(item).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(item);
-    await expect(screen.queryByRole("dialog")).toBeNull();
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() =>
-      expect(screen.queryByRole("menu")).not.toBeInTheDocument()
-    );
+    await expect(phoneSignOut(canvasElement)).toBeDisabled();
   },
 };
 

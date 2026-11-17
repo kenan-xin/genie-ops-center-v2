@@ -99,10 +99,9 @@ test("the account page shows sessions and roles, and both sign-outs work (R-18)"
   await expect(page.getByText("All records")).toBeVisible();
   await expect(page.getByText("Direct", { exact: true })).toBeVisible();
 
-  // Per-session sign-out, from the row's overflow menu (R-23): the dialog names the device, and
-  // the confirm deletes the row.
-  await otherCard.getByRole("button", { name: /^Actions for / }).click();
-  await page.getByRole("menuitem", { name: "Sign out" }).click();
+  // Per-session sign-out, from the row's Sign out button (d8l5.64): the dialog names the device,
+  // and the confirm deletes the row.
+  await otherCard.getByRole("button", { name: /^Sign out / }).click();
 
   const dialog = page.getByRole("dialog");
 
