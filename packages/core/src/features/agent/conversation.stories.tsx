@@ -676,12 +676,19 @@ function rectOf(element: Element | null): DOMRect {
 const drift = (pairs: readonly (readonly [number, number])[]) =>
   Math.max(...pairs.map(([edge, at]) => Math.abs(edge - at)));
 
+/** The strip's hover tile bleeds outward (6wz1.113), so its row starts where its content starts. */
+function contentEdge(element: Element) {
+  const start = Number.parseFloat(getComputedStyle(element).paddingInlineStart);
+
+  return { left: rectOf(element).left + start };
+}
+
 /** The boxes of the rows of a finished answer, its question and the composer. */
 function rowEdges(root: HTMLElement) {
   const canvas = within(root);
 
   return {
-    steps: rectOf(
+    steps: contentEdge(
       canvas.getByRole("button", { name: /^Worked for |^\d+ steps?$/ })
     ),
     prose: rectOf(canvas.getByText(PROSE)),
