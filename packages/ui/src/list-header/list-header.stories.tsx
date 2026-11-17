@@ -295,6 +295,14 @@ export const FilterSheetLabelsOnPhone: Story = {
     await expect(
       parseFloat(getComputedStyle(status).fontSize)
     ).toBeGreaterThanOrEqual(parseFloat(getComputedStyle(all).fontSize));
+
+    // 6wz1.143: the 44 px rows sit 2 px apart, as list-filters.prototype.html `.sheet-b .srad`.
+    const rows = within(sheet)
+      .getAllByRole("radio")
+      .slice(0, 2)
+      .map((radio) => radio.closest("label")!.parentElement!);
+
+    await expect(spread(rows)).toBeCloseTo(46, 0);
   },
 };
 

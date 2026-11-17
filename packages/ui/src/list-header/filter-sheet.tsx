@@ -77,7 +77,10 @@ export function FilterSheet(props: {
               <span id={statusId} className="text-sm font-semibold">
                 Status
               </span>
+              {/* 44 px rows 2 px apart, as list-filters.prototype.html .sheet-b .srad draws them (C06-8). */}
               <RadioGroup
+                // oxlint-disable-next-line shadcn/no-restyle -- 44 px rows 2 px apart (C06-8); RadioGroup's own gap-2 draws 52 px
+                className="gap-0.5"
                 value={state.tab}
                 aria-labelledby={statusId}
                 onValueChange={(value) =>
