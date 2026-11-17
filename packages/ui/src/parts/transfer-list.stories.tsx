@@ -283,6 +283,51 @@ export const SelectAllHitArea: Story = {
   },
 };
 
+/** T4-a, T4-b: the panes wear the Access design's band, link and row rules. */
+export const PaneLook: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const catalog = canvas.getByRole("group", { name: "Catalog" });
+    const band = catalog.firstElementChild;
+
+    if (band === null) throw new Error("The Catalog pane has no band.");
+
+    // The band is gray-50, so the caption and quick action sit on it.
+    await expect(window.getComputedStyle(band).backgroundColor).toBe(
+      "rgb(249, 250, 251)"
+    );
+
+    const quick = (name: string) =>
+      window.getComputedStyle(canvas.getByRole("button", { name }));
+
+    // The quick action is semibold brand text, not a bordered button.
+    await expect(quick("Add all shown").fontWeight).toBe("600");
+    await expect(quick("Add all shown").color).toBe("rgb(37, 99, 235)");
+    await expect(quick("Remove all shown").fontWeight).toBe("600");
+    await expect(quick("Remove all shown").color).toBe("rgb(37, 99, 235)");
+
+    const row = (label: string) => {
+      const li = canvas.getByRole("checkbox", { name: label }).closest("li");
+
+      if (li === null) throw new Error(`The ${label} row is missing.`);
+
+      return li;
+    };
+
+    // No hairline under a caption, one between rows.
+    await expect(window.getComputedStyle(row("Analytics")).borderTopWidth).toBe(
+      "0px"
+    );
+    await expect(window.getComputedStyle(row("Invoices")).borderTopWidth).toBe(
+      "1px"
+    );
+    // A row keeps 56 px even when its text is short.
+    await expect(
+      row("Invoices").getBoundingClientRect().height
+    ).toBeGreaterThanOrEqual(56);
+  },
+};
+
 /** T4: the phone form is one list with one search, Granted first, and moves both ways. */
 export const Roster: Story = {
   args: { layout: "roster" },

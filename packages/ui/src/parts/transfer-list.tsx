@@ -13,6 +13,7 @@ import {
   InputGroupInput,
   InputGroupText,
 } from "../components/input-group.tsx";
+import { controlHeights, focusRing, touchAreas } from "../theme/tokens.ts";
 
 export type TransferItem = {
   readonly id: string;
@@ -115,7 +116,7 @@ function Rows(props: {
       {[...captions].map(([caption, rows]) => (
         <Fragment key={caption}>
           {caption === "" ? null : (
-            <li className={cn(captionClass, "px-3 pt-3 pb-1")}>
+            <li data-caption="" className={cn(captionClass, "px-3 pt-3 pb-1")}>
               {caption} · {countOf(rows)}
             </li>
           )}
@@ -125,7 +126,12 @@ function Rows(props: {
 
             const text = (
               <span className="min-w-0 flex-1">
-                <span className="block font-medium break-words">
+                <span
+                  className={cn(
+                    "block break-words",
+                    stop ? "font-medium" : "font-semibold"
+                  )}
+                >
                   {item.label}
                 </span>
                 {item.description === undefined ? null : (
@@ -145,8 +151,9 @@ function Rows(props: {
             return (
               <li
                 key={item.id}
+                // A hairline between rows, none under a caption (access.prototype.html .row).
                 className={cn(
-                  "flex min-h-11 flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 text-sm motion-safe:transition-colors",
+                  "flex min-h-14 flex-wrap items-start gap-x-3 gap-y-1 border-t border-border px-3 py-2 text-sm motion-safe:transition-colors first:border-t-0 [[data-caption]+&]:border-t-0",
                   on ? infoTint : !stop && "hover:bg-hover"
                 )}
               >
@@ -368,16 +375,18 @@ export function TransferList(props: TransferListProps) {
             key={side}
             role="group"
             aria-label={label[side]}
-            className="flex min-h-0 min-w-0 flex-col rounded-lg border border-border"
+            className="flex min-h-0 min-w-0 flex-col overflow-clip rounded-lg border border-border"
           >
-            <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border px-3">
+            <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border bg-muted px-3 py-1.5">
               <h3 className={captionClass}>
                 {label[side]} · {countOf(all(side))}
               </h3>
               {quick.length > 0 ? (
-                <Button
-                  variant="link"
-                  size="sm"
+                // Semibold brand text flush with the band's edge (access.prototype.html .linkbtn). Its
+                // hover is the underline: brand text on the hover layer over gray-50 reads 4.37:1.
+                <button
+                  type="button"
+                  className={`${controlHeights.sm} ${touchAreas.sm} inline-flex items-center rounded-lg text-sm font-semibold text-primary underline-offset-4 hover:underline dark:text-brand-on-dark ${focusRing}`}
                   onClick={() =>
                     move(
                       quick.map((item) => item.id),
@@ -386,7 +395,7 @@ export function TransferList(props: TransferListProps) {
                   }
                 >
                   {side === "available" ? "Add all shown" : "Remove all shown"}
-                </Button>
+                </button>
               ) : null}
             </div>
             <div className="flex items-center gap-3 border-b border-border px-3 py-2">
