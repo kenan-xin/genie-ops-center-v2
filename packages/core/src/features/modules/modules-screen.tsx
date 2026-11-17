@@ -437,9 +437,11 @@ export function ModulesScreen(props: ModulesScreenProps) {
           ]}
           // The approved phone card (`modules-phone.png`): no tile, the switch on the name's line.
           card={{
+            // The type scale sits on the line, so the badge and switch center on the name's line.
+            titleClassName: "text-base",
             title: (module) => (
               <span
-                className={`text-base font-semibold ${module.enabled ? "" : "text-muted-foreground"}`}
+                className={`font-semibold ${module.enabled ? "" : "text-muted-foreground"}`}
               >
                 {module.displayName}
               </span>

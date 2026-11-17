@@ -58,7 +58,7 @@ function RenameField(props: {
 
         if (event.key === "Escape") end(null);
       }}
-      className="min-w-0 flex-1 sm:max-w-sm"
+      className="min-w-40 flex-1 sm:max-w-sm"
     />
   );
 }
@@ -201,7 +201,7 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                       className="size-4 cursor-grab text-muted-foreground"
                     />
                   </span>
-                  <span className="flex self-center">
+                  <span className="flex gap-1 self-center">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -238,7 +238,7 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                     <button
                       type="button"
                       onClick={() => setEditing(category.id)}
-                      className={`${minTouchHeight} min-w-0 flex-1 rounded-lg px-2 py-3 text-left text-sm font-semibold wrap-anywhere hover:bg-hover ${focusRing}`}
+                      className={`${minTouchHeight} min-w-40 flex-1 rounded-lg px-2 py-3 text-left text-sm font-semibold wrap-anywhere hover:bg-hover ${focusRing}`}
                     >
                       <span className="sr-only">Rename </span>
                       {category.name}

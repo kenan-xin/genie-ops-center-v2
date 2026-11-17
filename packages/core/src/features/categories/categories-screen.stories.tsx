@@ -191,7 +191,10 @@ export const Default: Story = {
 
 export const DefaultOnPhone: Story = { globals: phone, play: overviewOnPhone };
 
-/** A long category name wraps in full, and its grip stays on the first line (6wz1.112, owner C6). */
+/**
+ * Long category names keep a readable box and wrap in full, their move buttons keep their 44 px
+ * touch areas apart, and a short name stays on one line (6wz1.112, C09-4, C09-5, C09-6).
+ */
 export const LongNameOnPhone: Story = {
   globals: phone,
   args: {
@@ -200,21 +203,49 @@ export const LongNameOnPhone: Story = {
       categories: [
         {
           ...FIXTURE_LIST.categories[0]!,
-          name: "Finance and accounting operations for the northern region",
+          name: "AARDVARK_RECONCILIATION_NORTHREGION_2026",
         },
-        ...FIXTURE_LIST.categories.slice(1),
+        {
+          ...FIXTURE_LIST.categories[1]!,
+          name: "Aardvark finance operations and receivables reconciliation workspace tools",
+        },
+        {
+          ...FIXTURE_LIST.categories[2]!,
+          name: "Aardvark-Q4",
+        },
       ],
     },
   },
   play: async ({ canvas }) => {
-    const rename = canvas.getByRole("button", {
-      name: "Rename Finance and accounting operations for the northern region",
-    });
+    const renames = canvas.getAllByRole("button", { name: /^Rename / });
 
-    await expect(rename.scrollWidth).toBeLessThanOrEqual(rename.clientWidth);
-    await expect(rename.getBoundingClientRect().height).toBeGreaterThanOrEqual(
-      44
+    await expect(renames).toHaveLength(3);
+    await Promise.all(
+      renames.map(async (rename) => {
+        const box = rename.getBoundingClientRect();
+
+        await expect(box.width).toBeGreaterThanOrEqual(160);
+        await expect(rename.scrollWidth).toBeLessThanOrEqual(
+          rename.clientWidth
+        );
+        await expect(box.height).toBeGreaterThanOrEqual(44);
+      })
     );
+
+    // The two 44 px touch areas keep at least 4 px between them, so they never overlap.
+    const up = canvas.getByRole("button", { name: "Move Aardvark-Q4 up" });
+    const down = canvas.getByRole("button", { name: "Move Aardvark-Q4 down" });
+
+    await expect(
+      down.getBoundingClientRect().left - up.getBoundingClientRect().right
+    ).toBeGreaterThanOrEqual(4);
+
+    // A short name does not break at its hyphen.
+    const short = canvas.getByRole("button", { name: "Rename Aardvark-Q4" });
+    const range = document.createRange();
+
+    range.selectNode(short.lastChild!);
+    await expect(range.getClientRects().length).toBe(1);
   },
 };
 

@@ -203,6 +203,39 @@ export const DefaultOnPhone: Story = {
   },
 };
 
+/**
+ * C09-1 (6wz1.112): the invoice number wraps in the phone card and ends before its status badge,
+ * never under it, however long and unbroken the number.
+ */
+export const LongNumberOnAPhone: Story = {
+  name: "Long number on a phone",
+  globals: phone,
+  args: {
+    view: {
+      ...defaultInvoiceList,
+      rows: [
+        {
+          ...defaultInvoiceList.rows[1]!,
+          invoiceNumber: "INV-AARDVARK-RECONCILIATION-NORTHREGION-2026",
+        },
+      ],
+    },
+  },
+  play: async ({ canvas }) => {
+    const link = canvas.getByRole("link", {
+      name: "INV-AARDVARK-RECONCILIATION-NORTHREGION-2026",
+    });
+
+    const card = within(link.closest("li")!);
+    const badge = card.getByText("Open");
+
+    await expect(link.getBoundingClientRect().right).toBeLessThanOrEqual(
+      badge.getBoundingClientRect().left
+    );
+    await expect(link.getClientRects().length).toBeGreaterThan(1);
+  },
+};
+
 export const TwoCurrencies: Story = {
   name: "Two currencies",
   args: { view: twoCurrencyInvoiceList },

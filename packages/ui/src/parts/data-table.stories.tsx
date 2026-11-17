@@ -214,6 +214,13 @@ function textWidth(cell: HTMLElement): number {
   return range.getBoundingClientRect().width;
 }
 
+/** The vertical center of an element's box. */
+function middle(element: Element): number {
+  const box = element.getBoundingClientRect();
+
+  return box.top + box.height / 2;
+}
+
 /** An end-aligned count column sets its figures at one width, so its digits line up (6wz1.125). */
 export const EndColumnFiguresLineUp: Story = {
   args: {
@@ -294,15 +301,19 @@ export const Phone: Story = {
       name.getBoundingClientRect().left
     );
 
-    // The badge sits on the name's line, not on a line of its own.
+    // The badge sits on the name's first line, not on a line of its own, however far the name wraps.
     const badge = within(cards[0]!).getByText("p-1");
 
-    const nameBox = name.getBoundingClientRect();
+    const firstLine = document.createRange();
+
+    firstLine.selectNodeContents(name.firstElementChild!);
+
+    const lineBox = firstLine.getClientRects()[0]!;
     const badgeBox = badge.getBoundingClientRect();
 
     await expect(
       Math.abs(
-        nameBox.top + nameBox.height / 2 - (badgeBox.top + badgeBox.height / 2)
+        lineBox.top + lineBox.height / 2 - (badgeBox.top + badgeBox.height / 2)
       )
     ).toBeLessThan(6);
 
@@ -864,5 +875,87 @@ export const LinkedRowsPhone: Story = {
     await expect(
       cards.filter((card) => card.querySelector("svg.lucide-chevron-right"))
     ).toHaveLength(3);
+  },
+};
+
+/**
+ * C09-7 (6wz1.112): a table squeezed by its neighbours keeps the identity cell at least 128 px,
+ * so a name never shrinks to a few characters.
+ */
+export const SqueezedIdentityKeepsItsWidth: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    rowLinks: true,
+    columns: [
+      { id: "email", header: "Email", cell: linked },
+      {
+        id: "name",
+        header: "Name",
+        cell: (row) => `${row.name} and the whole review group of the region`,
+      },
+      { id: "role", header: "Role", cell: (row) => row.role },
+      { id: "lastSeen", header: "Last seen", cell: (row) => row.lastSeen },
+    ],
+    card: { title: linked, detail: (row) => row.name },
+  },
+  render: (args) => (
+    <div style={{ width: 360 }}>
+      <DataTable {...omit(args, ["onOpenRow"])} />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const link = canvas.getByRole("link", { name: "avery@example.com" });
+    const cell = link.closest("td")!;
+
+    await expect(cell.getBoundingClientRect().width).toBeGreaterThanOrEqual(
+      128
+    );
+  },
+};
+
+/**
+ * C09-9 (6wz1.112): on a phone card whose title wraps, the badge and a control at the end of line 1
+ * center on that first line, not on the whole name block.
+ */
+export const PhoneBadgeAndActionOnLineOne: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  args: {
+    rows: [
+      {
+        ...people[2]!,
+        name: "Aardvark reconciliation north region finance operations review group",
+      },
+    ],
+    card: {
+      title: (row) => row.name,
+      badge: (row) => <LabelPill>{row.id}</LabelPill>,
+      trailing: () => (
+        <Button size="icon" variant="ghost" aria-label="Review">
+          <UserIcon aria-hidden="true" />
+        </Button>
+      ),
+    },
+  },
+  play: async ({ canvas }) => {
+    const card = within(canvas.getByRole("list", { name: "People" })).getByRole(
+      "listitem"
+    );
+
+    const title = within(card).getByRole("button", {
+      name: "Aardvark reconciliation north region finance operations review group",
+    }).firstElementChild!;
+
+    const line = document.createRange();
+
+    line.selectNodeContents(title);
+
+    const first = line.getClientRects()[0]!;
+    const center = first.top + first.height / 2;
+
+    const badge = within(card).getByText("p-3");
+    const trailing = within(card).getByRole("button", { name: "Review" });
+
+    await expect(Math.abs(middle(badge) - center)).toBeLessThan(1);
+    await expect(Math.abs(middle(trailing) - center)).toBeLessThan(1);
   },
 };

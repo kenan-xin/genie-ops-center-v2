@@ -66,6 +66,12 @@ export type DataTableCard<Row> = {
   readonly media?: (row: Row) => ReactNode;
   /** Line 1, inside the button that opens the row. */
   readonly title: (row: Row) => ReactNode;
+  /**
+   * A class for the title's line, which holds the badge, the trailing control and the chevron too: a
+   * different type scale goes here, not on the title alone, so their struts share the title's
+   * baseline (C09-9).
+   */
+  readonly titleClassName?: string;
   /** Pills on line 1, right of the title: a kind, a status, or both. */
   readonly badge?: (row: Row) => ReactNode;
   /** A muted line under the title at the size of the facts line: a name, an email, an id (6wz1.121). */
@@ -352,13 +358,15 @@ export function DataTable<Row>({
     onOpenRow ? (
       <button
         type="button"
-        className={`flex ${touchRowHeight} w-full items-center rounded-lg text-left font-medium wrap-anywhere text-foreground ${focusRing}`}
+        className={`flex ${touchRowHeight} w-full min-w-32 items-center rounded-lg text-left font-medium wrap-anywhere text-foreground ${focusRing}`}
         onClick={() => onOpenRow(row)}
       >
         {content}
       </button>
     ) : (
-      <span className="block font-medium wrap-anywhere">{content}</span>
+      <span className="block min-w-32 font-medium wrap-anywhere">
+        {content}
+      </span>
     );
 
   const menu = (row: Row) => {
@@ -593,8 +601,10 @@ export function DataTable<Row>({
                     {card.media(row)}
                   </span>
                 )}
-                <div className="flex min-w-0 items-baseline gap-1.5">
-                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                <div
+                  className={`flex min-w-0 items-baseline gap-1.5 ${card.titleClassName ?? ""}`}
+                >
+                  <div className="flex min-w-0 flex-1 items-baseline gap-1.5">
                     {onOpenRow === undefined ? (
                       <span className="min-w-0 font-medium wrap-anywhere text-foreground">
                         {card.title(row)}
@@ -611,13 +621,22 @@ export function DataTable<Row>({
                         </span>
                       </button>
                     )}
+                    {/* Each strut centers its box on the title's first line, however far a name wraps (C09-9). */}
                     {badge === null ? null : (
-                      <span className="flex shrink-0 items-center gap-1.5">
-                        {badge}
+                      <span className="flex shrink-0 items-center">
+                        <span aria-hidden="true" className="w-0">
+                          {"​"}
+                        </span>
+                        <span className="flex items-center gap-1.5">
+                          {badge}
+                        </span>
                       </span>
                     )}
                     {trailing === null ? null : (
-                      <span className="relative z-10 ml-auto shrink-0">
+                      <span className="relative z-10 ml-auto flex shrink-0 items-center">
+                        <span aria-hidden="true" className="w-0">
+                          {"​"}
+                        </span>
                         {trailing}
                       </span>
                     )}

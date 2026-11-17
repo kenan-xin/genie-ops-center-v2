@@ -72,10 +72,11 @@ const dueDate = (row: InvoiceListRow) =>
 const recordHref = (row: InvoiceListRow) => `/m/invoices/invoices/${row.id}`;
 
 const recordLink = (row: InvoiceListRow) => (
-  // An invoice number never wraps; its column takes its width (czjw.102).
+  // On the table an invoice number never wraps; its column takes its width (czjw.102). On the
+  // phone card it wraps (6wz1.112).
   <PageLink
     href={recordHref(row)}
-    className="whitespace-nowrap after:absolute after:inset-0"
+    className="after:absolute after:inset-0 md:whitespace-nowrap"
   >
     {row.invoiceNumber}
   </PageLink>
