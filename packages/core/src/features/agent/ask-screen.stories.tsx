@@ -239,7 +239,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 272 px gray column with Chats, New chat and Hide chats in its top row, then Search chats, the chats grouped by agent and Recents (see Agent history); a long title ends with an ellipsis. Hide chats removes it fully, and the header then gains Show chats. One 56 px header holds the title, which ends with an ellipsis, and Chat actions: Rename and Delete for a saved chat, each behind its dialog. Below 1024 px the header also holds Show chats, which opens the history as a left sheet, and New chat, and the menu offers a new chat's model. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
+          "The Ask frame around the shared agent chat. From 1024 px the chat history is a 272 px gray column with Chats, New chat and Hide chats in its top row, then Search chats, the chats grouped by agent and Recents (see Agent history); a long title wraps in full. Hide chats removes it fully, and the header then gains Show chats. One 56 px header holds the title, which ends with an ellipsis, and Chat actions: Rename and Delete for a saved chat, each behind its dialog. Below 1024 px the header also holds Show chats, which opens the history as a left sheet, and New chat, and the menu offers a new chat's model. An artifact opens only from its card: a 480 px column from 1280 px, a sheet below. With AI off the chat is replaced by the AI-off message.",
       },
     },
     a11y: { test: "error" },
@@ -427,16 +427,15 @@ const LONG_SESSIONS: readonly AgentHistoryEntry[] = [
   ...SESSIONS,
 ];
 
-/** C1: the long title ends with an ellipsis, keeps its full text on hover, and nothing scrolls sideways. */
-async function expectEllipsis(root: HTMLElement): Promise<void> {
+/** 6wz1.112: the long title wraps in full, and nothing scrolls sideways. */
+async function expectWrappedTitle(root: HTMLElement): Promise<void> {
   const nav = within(root).getByRole("navigation", { name: "Chats" });
 
   const link = within(nav).getByRole("link", { name: LONG_TITLE });
 
   const text = link.querySelector("span") ?? link;
 
-  await expect(link).toHaveAttribute("title", LONG_TITLE);
-  await expect(text.scrollWidth).toBeGreaterThan(text.clientWidth);
+  await expect(text.scrollWidth).toBeLessThanOrEqual(text.clientWidth);
   await expect(nav.scrollWidth).toBe(nav.clientWidth);
 }
 
@@ -449,7 +448,7 @@ export const ALongChatTitle: Story = {
 
     if (column === null) throw new Error("No chat history column.");
 
-    await expectEllipsis(column);
+    await expectWrappedTitle(column);
   },
 };
 
@@ -467,7 +466,7 @@ export const ALongChatTitleOnAPhone: Story = {
         within(sheet).getByRole("link", { name: LONG_TITLE })
       ).toBeVisible()
     );
-    await expectEllipsis(sheet);
+    await expectWrappedTitle(sheet);
   },
 };
 

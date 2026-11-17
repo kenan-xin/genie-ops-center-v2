@@ -33,7 +33,7 @@ import {
 } from "./session-groups.ts";
 
 function sessionClass(current: boolean): string {
-  return `flex min-w-0 items-center gap-2 rounded-lg px-3 text-sm ${rowHeight} ${
+  return `flex min-w-0 items-start gap-2 rounded-lg px-3 py-3 text-sm lg:py-2 ${rowHeight} ${
     current
       ? "bg-background font-semibold text-foreground ring-1 ring-border ring-inset"
       : "text-muted-foreground hover:bg-hover hover:text-foreground"
@@ -96,7 +96,7 @@ function SearchedChats<T extends AgentSessionSummary>(props: {
 
 /**
  * A surface panel's chat list (R-42): a search over the listed titles and the chats in the panel's
- * groups. A long title ends with an ellipsis and keeps its full text on hover (czjw.107).
+ * groups. A long title wraps, so its full text shows on every screen (6wz1.112).
  */
 export function ChatHistory(props: {
   readonly sessions: readonly AgentSessionSummary[];
@@ -122,12 +122,13 @@ export function ChatHistory(props: {
                   <li key={session.id}>
                     <button
                       type="button"
-                      title={session.title}
                       aria-current={current ? "true" : undefined}
-                      className={`w-full ${sessionClass(current)}`}
+                      className={`w-full text-left ${sessionClass(current)}`}
                       onClick={() => props.onPick(session)}
                     >
-                      <span className="min-w-0 truncate">{session.title}</span>
+                      <span className="min-w-0 wrap-anywhere">
+                        {session.title}
+                      </span>
                     </button>
                   </li>
                 );
@@ -211,29 +212,28 @@ export function AgentHistory(props: {
             role="img"
             aria-label={labelOf(entry.surface)}
             title={labelOf(entry.surface)}
-            className="inline-flex shrink-0"
+            className="flex h-lh shrink-0 items-center"
           >
             <AgentIcon surface={entry.surface} surfaces={props.surfaces} />
           </span>
         ) : null}
         <span
-          className={`min-w-0 flex-1 truncate ${entry.unseen && !working ? "font-semibold text-foreground" : ""}`}
+          className={`min-w-0 flex-1 wrap-anywhere ${entry.unseen && !working ? "font-semibold text-foreground" : ""}`}
         >
           {entry.title}
         </span>
-        {working ? (
-          <Spinner
-            role="img"
-            aria-label="Working"
-            label="Working"
-            className="shrink-0"
-          />
-        ) : entry.unseen ? (
-          <span
-            role="img"
-            aria-label="Finished, not opened yet"
-            className="size-2 shrink-0 rounded-full bg-primary"
-          />
+        {working || entry.unseen ? (
+          <span className="flex h-lh shrink-0 items-center">
+            {working ? (
+              <Spinner role="img" aria-label="Working" label="Working" />
+            ) : (
+              <span
+                role="img"
+                aria-label="Finished, not opened yet"
+                className="size-2 rounded-full bg-primary"
+              />
+            )}
+          </span>
         ) : null}
       </>
     );
@@ -246,13 +246,10 @@ export function AgentHistory(props: {
     return (
       <li key={entry.id}>
         {href === null ? (
-          <span title={entry.title} className={sessionClass(false)}>
-            {content}
-          </span>
+          <span className={sessionClass(false)}>{content}</span>
         ) : (
           <a
             href={href}
-            title={entry.title}
             aria-current={current ? "page" : undefined}
             className={sessionClass(current)}
           >

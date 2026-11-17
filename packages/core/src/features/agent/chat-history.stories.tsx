@@ -176,6 +176,41 @@ export const GroupedByAgentOnAPhone: Story = {
   globals: phone,
 };
 
+const LONG_TITLE =
+  "Unpaid invoices by customer for the third quarter, with the overdue ones first and their contacts";
+
+/**
+ * T2-a, T2-b (6wz1.112): a long title wraps in full in the 320 px list and its row grows, and the
+ * row's icon and unseen dot stay on its first line.
+ */
+export const LongTitleOnAPhone: Story = {
+  name: "A long title on a phone",
+  globals: phone,
+  args: {
+    entries: [entry(9, LONG_TITLE, "slides", { unseen: true }), ...ENTRIES],
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const recents = canvas.getByRole("region", { name: "Recents" });
+
+    const row = within(recents).getByRole("link", {
+      name: /Unpaid invoices by customer/,
+    });
+
+    const title = within(row).getByText(LONG_TITLE);
+
+    // A title the list cut off has a scrollWidth larger than its clientWidth.
+    await expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+
+    const oneLine = within(canvasElement).getByRole("link", {
+      name: /Payments by week/,
+    });
+
+    await expect(row.getBoundingClientRect().height).toBeGreaterThan(
+      oneLine.getBoundingClientRect().height
+    );
+  },
+};
+
 export const WorkingChat: Story = {
   name: "Working chat",
   play: async ({ canvasElement }) => {
