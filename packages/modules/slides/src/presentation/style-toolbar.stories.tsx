@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, waitFor, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { SLIDE_RULE_MESSAGES } from "../contract.ts";
 import {
   bulletsWithTwoVisualsSlide,
   textWithChartSlide,
@@ -344,7 +345,7 @@ export const PhoneMoreCard: Story = {
 
     await expect(
       card.getByRole("button", { name: "Delete element" })
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(
       card.getByRole("button", { name: "Use theme style" })
     );
@@ -485,12 +486,28 @@ export const EditorBar: StoryObj<typeof SlideEditorBar> = {
     // The slide has bullets and two visuals: no second body, no third visual.
     await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
     await expect(
-      await body.findByRole("menuitem", { name: "Text" })
+      await screen.findByRole("menuitem", {
+        name: "Text",
+        description: SLIDE_RULE_MESSAGES.body,
+      })
     ).toHaveAttribute("aria-disabled", "true");
-    await expect(body.getByRole("menuitem", { name: "Image" })).toHaveAttribute(
-      "aria-disabled",
-      "true"
-    );
+    await expect(
+      screen.getAllByText(
+        "This slide is full. Remove an element or add a new slide."
+      )
+    ).toHaveLength(1);
+    await expect(
+      screen.getByRole("menuitem", {
+        name: "Bullets",
+        description: SLIDE_RULE_MESSAGES.body,
+      })
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      screen.getByRole("menuitem", {
+        name: "Image",
+        description: SLIDE_RULE_MESSAGES.visual,
+      })
+    ).toHaveAttribute("aria-disabled", "true");
     await userEvent.keyboard("{Escape}");
 
     await userEvent.click(canvas.getByRole("button", { name: "Background" }));
@@ -505,5 +522,66 @@ export const EditorBar: StoryObj<typeof SlideEditorBar> = {
         background: null,
       },
     ]);
+  },
+};
+
+// T10-b: a slide with a text and one visual still takes an image, so Image stays on and no full
+// line shows; the kinds it refuses carry the rule they break.
+export const EditorBarOnlyImage: StoryObj<typeof SlideEditorBar> = {
+  name: "Add element offers Image where only an image fits",
+  globals: desktop,
+  render: (args) => <SlideEditorBar {...args} />,
+  args: { slide: textWithChartSlide, onSteps: fn(), onAdd: fn() },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
+
+    await expect(
+      await screen.findByRole("menuitem", {
+        name: "Text",
+        description: SLIDE_RULE_MESSAGES.body,
+      })
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      screen.getByRole("menuitem", {
+        name: "Bullets",
+        description: SLIDE_RULE_MESSAGES.body,
+      })
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      screen.getByRole("menuitem", { name: "Image" })
+    ).not.toHaveAttribute("aria-disabled");
+    await expect(
+      screen.queryByText(
+        "This slide is full. Remove an element or add a new slide."
+      )
+    ).toBeNull();
+  },
+};
+
+// T10-c: a title that already takes the theme style and cannot leave the slide has both More
+// actions off, each with the rule or the state that refuses it.
+export const RefusedActionsSayWhyOnPhone: Story = {
+  name: "On a phone More says why Use theme style and Delete are off",
+  globals: phone,
+  args: {
+    element: title!,
+    deleteRefusal: SLIDE_RULE_MESSAGES.firstNotTitle,
+    onDelete: undefined,
+  },
+  play: async ({ canvasElement }) => {
+    const card = within(await openTool(canvasElement, "More"));
+
+    await expect(
+      card.getByRole("button", {
+        name: "Use theme style",
+        description: "Already uses the theme style.",
+      })
+    ).toHaveAttribute("aria-disabled", "true");
+    await expect(
+      card.getByRole("button", {
+        name: "Delete element",
+        description: SLIDE_RULE_MESSAGES.firstNotTitle,
+      })
+    ).toHaveAttribute("aria-disabled", "true");
   },
 };

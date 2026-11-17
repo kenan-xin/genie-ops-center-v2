@@ -347,6 +347,9 @@ export function PositionControl(props: {
   );
 }
 
+/** The state that refuses Use theme style: the element already takes the theme (6wz1.126). */
+const THEMED = "Already uses the theme style.";
+
 export type StyleToolbarProps = {
   readonly element: ShownElement;
   readonly slideId: string;
@@ -360,6 +363,8 @@ export type StyleToolbarProps = {
   readonly onEditText: () => void;
   /** Removes the element; undefined when the slide rules refuse the slide without it. Phone only. */
   readonly onDelete?: (() => void) | undefined;
+  /** The slide rule that refuses Delete element, shown as its reason (6wz1.126). Phone only. */
+  readonly deleteRefusal?: string | undefined;
 };
 
 /**
@@ -376,6 +381,9 @@ export function StyleToolbar(props: StyleToolbarProps) {
   const dock = useRef<HTMLDivElement>(null);
   // The open card of the dock: one at a time.
   const [tool, setTool] = useState<string | null>(null);
+  const themed = element.style === undefined;
+  const themedId = useId();
+  const deleteId = useId();
 
   const label = `${element.kind === "title" ? "Title" : element.kind[0]?.toUpperCase() + element.kind.slice(1)} style`;
 
@@ -559,19 +567,35 @@ export function StyleToolbar(props: StyleToolbarProps) {
           <Button
             variant="secondary"
             className="w-full justify-start"
-            disabled={saving || element.style === undefined}
+            disabled={saving || themed}
+            focusableWhenDisabled
+            aria-describedby={themed ? themedId : undefined}
             onClick={act(() => send(null))}
           >
             <RotateCcwIcon aria-hidden="true" /> Use theme style
           </Button>
+          {themed ? (
+            <p id={themedId} className="text-xs text-muted-foreground">
+              {THEMED}
+            </p>
+          ) : null}
           <Button
             variant="danger-outline"
             className="w-full justify-start"
             disabled={saving || props.onDelete === undefined}
+            focusableWhenDisabled
+            aria-describedby={
+              props.deleteRefusal === undefined ? undefined : deleteId
+            }
             onClick={act(() => props.onDelete?.())}
           >
             <Trash2Icon aria-hidden="true" /> Delete element
           </Button>
+          {props.deleteRefusal === undefined ? null : (
+            <p id={deleteId} className="text-xs text-muted-foreground">
+              {props.deleteRefusal}
+            </p>
+          )}
         </div>,
       ],
     ];
@@ -682,11 +706,18 @@ export function StyleToolbar(props: StyleToolbarProps) {
       <Button
         variant="ghost"
         size="sm"
-        disabled={saving || element.style === undefined}
+        disabled={saving || themed}
+        focusableWhenDisabled
+        aria-describedby={themed ? themedId : undefined}
         onClick={() => send(null)}
       >
         Use theme style
       </Button>
+      {themed ? (
+        <span id={themedId} className="text-xs text-muted-foreground">
+          {THEMED}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -786,6 +817,9 @@ export function backgroundSteps(
   ];
 }
 
+/** The owner's words for a slide that takes no new element (E5, 6wz1.126). */
+const SLIDE_FULL = "This slide is full. Remove an element or add a new slide.";
+
 /** The kinds a hand edit adds without a chart config (P13-5). */
 const ADDABLE = [
   ["text", "Text"],
@@ -804,6 +838,23 @@ export function SlideEditorBar(props: {
   const { slide } = props;
   const kinds = slide.elements.map(({ kind }) => kind);
 
+  // The rule each kind breaks here, if any: the one at the new element, else the first.
+  const offered = ADDABLE.map(([kind, label]) => {
+    const issues = slideRuleIssues([...kinds, kind]);
+
+    return {
+      kind,
+      label,
+      reason: (
+        issues.find(({ path }) => path === `elements.${kinds.length}`) ??
+        issues[0]
+      )?.message,
+    };
+  });
+
+  const full = offered.every(({ reason }) => reason !== undefined);
+  const fullId = useId();
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <DropdownMenu>
@@ -813,12 +864,23 @@ export function SlideEditorBar(props: {
         >
           <PlusIcon aria-hidden="true" /> Add element
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start">
-          {ADDABLE.map(([kind, label]) => (
+        <DropdownMenuContent
+          align="start"
+          aria-describedby={full ? fullId : undefined}
+        >
+          {full ? (
+            <p
+              id={fullId}
+              className="px-1.5 py-1 text-xs text-muted-foreground"
+            >
+              {SLIDE_FULL}
+            </p>
+          ) : null}
+          {offered.map(({ kind, label, reason }) => (
+            // A kind the slide rules refuse is offered with its rule, never refused after.
             <DropdownMenuItem
               key={kind}
-              // A kind the slide rules refuse here is offered disabled, never refused after.
-              disabled={slideRuleIssues([...kinds, kind]).length > 0}
+              reason={reason}
               onClick={() => props.onAdd(kind)}
             >
               {label}

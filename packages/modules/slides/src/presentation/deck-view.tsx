@@ -130,6 +130,11 @@ function boxOf(slide: ShownSlide, index: number) {
   return boxes.body.find((entry) => entry.index === index)?.box ?? boxes.title;
 }
 
+/** The rule that refuses deleting the element at `index`, if any (6wz1.126). */
+const deleteRefusalOf = (slide: ShownSlide, index: number) =>
+  slideRuleIssues(slide.elements.map(({ kind }) => kind).toSpliced(index, 1))[0]
+    ?.message;
+
 function titleOf(slide: ShownSlide): string {
   const title = slide.elements.find((element) => element.kind === "title");
 
@@ -1284,13 +1289,10 @@ export function DeckView(props: DeckViewProps) {
                       expectedHash: deck.contentHash,
                     })
                   }
+                  deleteRefusal={deleteRefusalOf(current, selected)}
                   onDelete={
-                    // A Delete the slide rules refuse is offered disabled, never refused after.
-                    slideRuleIssues(
-                      current.elements
-                        .map(({ kind }) => kind)
-                        .toSpliced(selected, 1)
-                    ).length > 0
+                    // A Delete the slide rules refuse is offered disabled with its rule, never refused after.
+                    deleteRefusalOf(current, selected) !== undefined
                       ? undefined
                       : () => {
                           const input = slideInputOf(withRun(current));
