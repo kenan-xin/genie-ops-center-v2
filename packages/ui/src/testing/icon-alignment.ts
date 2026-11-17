@@ -416,6 +416,14 @@ export function measureIconAlignment(
       ...allUnits.map((unit) => ({ rect: unit.box, node: unit.element })),
     ];
 
+    const iconOnly: Item[] = [
+      ...document.body.querySelectorAll(CONTROLS),
+    ].flatMap((control) =>
+      !holdsText(control) && isVisible(control)
+        ? [{ rect: control.getBoundingClientRect(), node: control }]
+        : []
+    );
+
     const itemsIn = new Map<Element, Item[]>();
     const leads = new Map<Element, Map<Box, boolean>>();
     const textNodes = new Set(lines.map((line) => line.node));
@@ -460,6 +468,16 @@ export function measureIconAlignment(
             !onLine.some((other) => other.rect.right <= rect.left + 1) ||
             onLine.some((other) => other.rect.left >= rect.right - 1);
         }
+
+        // P07-99: a text line after an icon-only control (a version step) starts no column.
+        if (lead && textNodes.has(self))
+          lead = !iconOnly.some(
+            (control) =>
+              scope.contains(control.node) &&
+              sameLine(control.rect, rect) &&
+              control.rect.right <= rect.left + 1 &&
+              rect.left - control.rect.right <= 40
+          );
 
         known.set(rect, lead);
       }
@@ -675,8 +693,10 @@ export function measureIconAlignment(
         continue;
       measured += 1;
       const row = rowOf(unit.element);
+      // P07-98: a unit in a table cell that holds no text has no row beyond its cell.
+      const cell = unit.element.closest("td, th, [role=cell], [role=gridcell]");
 
-      if (row === null) continue;
+      if (row === null || (cell !== null && !cell.contains(row))) continue;
       const column = columnOf(row);
       const { box, ink } = unit;
 

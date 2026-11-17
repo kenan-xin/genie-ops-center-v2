@@ -145,6 +145,11 @@ const HELP =
 const COPY =
   '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>';
 
+const CHEVRON_LEFT = '<path d="m15 18-6-6 6-6"/>';
+
+const CHART_COLUMN =
+  '<path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/>';
+
 /**
  * One block per case. Each block scrolls (`overflow: auto`), so it is a column of its own and the
  * column search never reaches the next case. Text is 14 px on 20 px lines unless a case says
@@ -242,6 +247,9 @@ const CASES = `<!doctype html>
       .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
       .trigger { display: flex; box-sizing: border-box; width: 200px; height: 36px; align-items: center; justify-content: space-between; padding: 0 12px; border: 1px solid #d1d5db; border-radius: 8px; background: #fff; }
       .unsaved { display: flex; width: 160px; align-items: center; gap: 8px; margin-left: auto; white-space: nowrap; }
+      .head { display: flex; align-items: center; gap: 16px; }
+      .steps { display: flex; align-items: center; gap: 4px; }
+      .spacer { flex: none; width: 32px; height: 32px; }
     </style>
   </head>
   <body>
@@ -279,6 +287,10 @@ const CASES = `<!doctype html>
     <div class="case"><div class="ends"><span>Target</span><a class="open" href="#target">Open</a></div><div class="ends"><span>Event id</span><button class="copy">${glyph("copy", COPY)}Copy</button></div></div>
     <div class="case"><div class="bar"><button class="trigger"><span>Status</span>${glyph("chevron-down", CHEVRON_DOWN)}</button><button>Add filter</button><div class="unsaved"><span class="dot"></span>Not saved as default</div></div></div>
     <div class="case"><div class="pair"><span>Status</span><span class="grow">Paid in full</span></div><div class="pair"><span>Method</span><span class="value">${glyph("check", CHECK)}Card</span></div></div>
+    <div class="case"><div class="head"><span class="tile">${glyph("chart-column", CHART_COLUMN)}</span>Quantity by day</div><div class="steps"><button class="icon-button" aria-label="Previous version">${glyph("chevron-left", CHEVRON_LEFT)}</button><span>Version 1 of 2</span><button class="icon-button" aria-label="Next version">${glyph("chevron-right", CHEVRON)}</button></div><p>Quantity by record</p></div>
+    <div class="case"><div class="head"><span class="tile">${glyph("chart-column", CHART_COLUMN)}</span>Quantity by week</div><div class="steps"><span class="spacer"></span><span>Version 1 of 2</span><button class="icon-button" aria-label="Next version">${glyph("chevron-right", CHEVRON)}</button></div><p>Quantity by record</p></div>
+    <div class="case"><table><tbody><tr><td><div>Fixture</div><div>Records that prove the module</div></td><td><span class="row">${glyph("loader-circle", LOADER)}<span class="switch" role="switch" aria-checked="true" aria-label="Fixture on"><span class="switch-thumb"></span></span></span></td></tr></tbody></table></div>
+    <div class="case"><table><tbody><tr><td><div>Fixture</div><div>Records that prove the module</div></td><td><span class="row">${glyph("loader-circle", LOADER)}<span class="narrow">Saving now</span><span class="switch" role="switch" aria-checked="true" aria-label="Fixture on"><span class="switch-thumb"></span></span></span></td></tr></tbody></table></div>
   </body>
 </html>`;
 
@@ -289,13 +301,15 @@ const ALLOW = [
 // T3-b: the problems are exactly the known cases (D1, the Lucide side bearing, E1, E5, a two-line
 // label, a centered slot, the 2026-11-07 gutter, a full-width row in a centered column, a row
 // that holds a visually hidden input, a start-aligned help trigger under a pill icon, a card led by
-// a text pill and a growing value column), and the allowed layouts give none: an icon-only button,
+// a text pill, a growing value column, a version label after a spacer that is no control, and a
+// cell spinner beside its own two-line text), and the allowed layouts give none: an icon-only button,
 // a menu, a filled button, a table, an empty state, a trailing chevron, an alert, a step row with a
 // hidden count, a hidden icon, an allow entry, a rotating glyph, a checked switch, a checked
 // radio, a list whose labels carry a description under them (P07-33), a table cell's media and a
 // trailing box beside a stack of text blocks (P07-34), two rows that end in a spinner and a
 // chevron (P07-70), a centered stack under a pill icon, a card led by an initials avatar, and an
-// end-aligned link and a trigger's end chevron (P07-87).
+// end-aligned link and a trigger's end chevron (P07-87), a version label after an icon-only button
+// (P07-99), and a spinner in a table cell that holds no text (P07-98).
 test("the icon check finds each known case and nothing in the allowed layouts @no-screen", async ({
   page,
 }) => {
@@ -331,9 +345,10 @@ test("the icon check finds each known case and nothing in the allowed layouts @n
     still: of("Loading still"),
   }).toEqual({
     fontPinned: true,
-    units: 37,
+    units: 41,
     problems: [
       'center +10.0 px box: box 16x16 in "Two lines" against text "Two lines"',
+      'center +10.0 px box: lucide-loader-circle in "Saving now" against text "Saving now"',
       'center -6.0 px box: lucide-info in "Colors changed.Undo" against text "Colors changed."',
       'center -6.0 px box: tile(lucide-sparkles) in "The deck has 9 slides.Slides 6 to 9 are" against text "The deck has 9 slides."',
       'gutter -40.0 px box: tile(lucide-sparkles) in "The deck has 9 slides.Slides 6 to 9 are" against text "The deck has 9 slides."',
@@ -345,6 +360,7 @@ test("the icon check finds each known case and nothing in the allowed layouts @n
       'start +6.0 px box: box 16x16 in "Read the deck" against text "Centered column answer."',
       'start +6.0 px box: lucide-check in "Card" against text "Paid in full"',
       'start -11.3 px box: lucide-circle-help in "Why am I here?" against icon lucide-shield',
+      'start -36.0 px box: tile(lucide-chart-column) in "Quantity by week" against text "Version 1 of 2"',
       'start -4.0 px box: box 16x16 in "Changing the deck" against icon box 16x16',
       'start -44.0 px box: tile(lucide-circle) in "System5 min agoRan a migration." against text "A target that no longer exists."',
     ],
