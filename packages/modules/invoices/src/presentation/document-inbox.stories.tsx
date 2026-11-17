@@ -200,7 +200,7 @@ async function expectStatusWords(
       const line = within(list).getByText(reason);
 
       return expect(
-        within(line.parentElement ?? line).getByText(status, {
+        within(line.closest("li, tr") ?? line).getByText(status, {
           selector: BADGE,
         })
       ).toBeVisible();

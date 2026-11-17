@@ -345,7 +345,7 @@ export function ReviewSaveBar(props: {
           id={SAVE_HELPER_ID}
           className="flex min-w-0 items-start gap-1.5 text-sm text-foreground"
         >
-          <InfoIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
+          <InfoIcon aria-hidden className="size-4 shrink-0" />
           <span>{reason}</span>
         </p>
       )}

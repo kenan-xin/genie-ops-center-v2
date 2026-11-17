@@ -20,6 +20,8 @@ import {
   Field,
   FieldError,
   FieldLabel,
+  iconLead,
+  iconLeadPx,
   Input,
   Sheet,
   SheetContent,
@@ -210,7 +212,12 @@ export function ViewMenu(props: ViewMenuProps) {
                 className="items-start"
                 onClick={action.onSelect}
               >
-                <action.icon aria-hidden="true" className="mt-0.5" />
+                <action.icon
+                  aria-hidden="true"
+                  className={
+                    action.icon === PlusIcon ? iconLeadPx[3] : undefined
+                  }
+                />
                 <Lines name={action.label} line={action.line} />
               </DropdownMenuItem>
             ))}
@@ -279,7 +286,7 @@ export function ViewMenu(props: ViewMenuProps) {
                 >
                   <action.icon
                     aria-hidden="true"
-                    className="mt-0.5 size-4 shrink-0"
+                    className={`size-4 shrink-0 ${action.icon === PlusIcon ? iconLeadPx[3] : iconLead}`}
                   />
                   <Lines name={action.label} line={action.line} />
                 </button>

@@ -1,6 +1,13 @@
 "use client";
 
-import { Button, Card, CardContent, Skeleton, useMediaQuery } from "@genie/ui";
+import {
+  Button,
+  Card,
+  CardContent,
+  iconLeadPx,
+  Skeleton,
+  useMediaQuery,
+} from "@genie/ui";
 import {
   DownloadIcon,
   FileTextIcon,
@@ -118,7 +125,10 @@ function StateCard(props: {
     <Card role={props.alert ? "alert" : undefined}>
       <CardContent>
         <div className="flex flex-col items-start gap-4">
-          <span className="text-muted-foreground [&_svg]:size-6" aria-hidden>
+          <span
+            className={`text-muted-foreground [&_svg]:size-6 ${iconLeadPx[3]}`}
+            aria-hidden
+          >
             {props.icon}
           </span>
           <div className="flex flex-col gap-1">

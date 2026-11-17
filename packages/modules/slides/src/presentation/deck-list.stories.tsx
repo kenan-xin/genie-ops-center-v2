@@ -66,7 +66,10 @@ function withQuery(Story: () => ReactNode) {
 function withAgentPanel(Story: () => ReactNode) {
   return (
     <>
-      <AgentButton />
+      {/* The shell's top bar ends with the Ask button, as the app mounts it (P07-59). */}
+      <div className="flex justify-end">
+        <AgentButton />
+      </div>
       <Story />
       <AgentPanelHost
         person="person-1"

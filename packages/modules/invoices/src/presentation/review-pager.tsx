@@ -3,6 +3,7 @@
 import { PageHeader } from "@genie/core/features/shell";
 import {
   Button,
+  iconLeadPx,
   Sheet,
   SheetContent,
   SheetHeader,
@@ -500,7 +501,10 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
         <>
           <ReviewCard item={item} size="step" />
           <p className="flex items-start gap-2 text-sm text-muted-foreground">
-            <FileTextIcon aria-hidden className="mt-0.5 size-4 shrink-0" />
+            <FileTextIcon
+              aria-hidden
+              className={`size-4 shrink-0 ${iconLeadPx[2]}`}
+            />
             <span className="min-w-0 break-words">
               {quoteLineOf(
                 item,

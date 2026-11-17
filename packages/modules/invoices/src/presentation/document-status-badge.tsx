@@ -5,6 +5,8 @@ import type { InboxStatus } from "./views.ts";
 
 export type DocumentStatusBadgeProps = {
   readonly status: InboxStatus | "duplicate";
+  /** False draws the pill alone, where the reason sits on its own line (the phone card, P07-75). */
+  readonly withReason?: boolean;
 };
 
 type Status = "Processing" | "To review" | "Processed" | "Failed";
@@ -36,6 +38,11 @@ const VARIANT = {
   "Processed": "success",
 } as const satisfies Record<Status, string>;
 
+/** The muted reason under a status pill, or null. */
+export const documentStatusReason = (
+  status: DocumentStatusBadgeProps["status"]
+): string | null => WORDS[status][1];
+
 /** One inbox status in the pill tones of `tokens.md`, with its reason as a muted line (R-37). */
 export function DocumentStatusBadge(props: DocumentStatusBadgeProps) {
   const { status } = props;
@@ -56,7 +63,7 @@ export function DocumentStatusBadge(props: DocumentStatusBadgeProps) {
     </Badge>
   );
 
-  return reason === null ? (
+  return reason === null || props.withReason === false ? (
     pill
   ) : (
     <span className="inline-flex flex-col items-start gap-0.5">

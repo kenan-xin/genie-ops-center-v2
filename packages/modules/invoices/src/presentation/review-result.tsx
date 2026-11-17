@@ -139,10 +139,10 @@ export function ReviewResult(props: {
             <IconTile>
               <Icon />
             </IconTile>
-            <div className="flex min-w-0 flex-col gap-1 pt-2">
+            <div className="flex min-w-0 flex-col gap-1">
               <p
                 role="status"
-                className="text-base font-semibold wrap-anywhere"
+                className="text-base leading-10 font-semibold wrap-anywhere"
               >
                 {props.title}
               </p>

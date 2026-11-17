@@ -32,7 +32,10 @@ import {
 } from "../contract.ts";
 import type { DocumentStatus } from "../contract.ts";
 import { kindText } from "./document-kind.ts";
-import { DocumentStatusBadge } from "./document-status-badge.tsx";
+import {
+  DocumentStatusBadge,
+  documentStatusReason,
+} from "./document-status-badge.tsx";
 import { formatInstant, formatMoney } from "./format.ts";
 import { InstantCell } from "./instant-cell.tsx";
 import { documentListDefinition } from "./list-definitions.ts";
@@ -561,9 +564,28 @@ export function DocumentInbox(props: DocumentInboxProps) {
                 rowLinks: (row) => row.status !== "duplicate",
                 card: {
                   title: documentLabel,
-                  badge: (row) => <DocumentStatusBadge status={row.status} />,
-                  // The order of variant C: extracted details, the type and upload day, then Updated.
-                  detail: foundText,
+                  // Line 1 holds the pill only (P07-75); its reason opens the line under the title.
+                  badge: (row) => (
+                    <DocumentStatusBadge
+                      status={row.status}
+                      withReason={false}
+                    />
+                  ),
+                  // The order of variant C: the reason, extracted details, the type and upload day, then Updated.
+                  detail: (row) => {
+                    const reason = documentStatusReason(row.status);
+
+                    if (reason === null) return foundText(row);
+
+                    // Failed: "The document could not be read" only repeats the reason.
+                    return row.status === "could-not-read" ? (
+                      <span>{reason}</span>
+                    ) : (
+                      <>
+                        <span>{reason}</span> · <span>{foundText(row)}</span>
+                      </>
+                    );
+                  },
                   facts: (row) => [
                     kindText(row.kind),
                     `uploaded ${uploaded(row)}`,

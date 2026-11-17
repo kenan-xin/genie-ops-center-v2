@@ -175,7 +175,7 @@ export function DeckTitle(props: DeckTitleProps): ReactNode {
         <Pencil
           aria-hidden="true"
           strokeWidth={1.75}
-          className="ml-1.5 inline size-4 align-middle text-muted-foreground group-hover:opacity-100 group-focus-visible:opacity-100 motion-safe:transition-opacity md:opacity-0"
+          className="ml-1.5 inline h-lh w-4 align-top text-muted-foreground group-hover:opacity-100 group-focus-visible:opacity-100 motion-safe:transition-opacity md:opacity-0"
         />
       </button>
     </h1>
