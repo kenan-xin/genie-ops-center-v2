@@ -339,7 +339,7 @@ export function Conversation(props: {
 
   // One centered 720 px column with its gutter, so every row shares one left edge (czjw.120 item 1,
   // czjw.109). Inside the Ask panel the gutter stays 16 px, the panel chrome's edge (P07-56).
-  const column =
+  const columnClass =
     "mx-auto w-full max-w-180 px-4 md:not-in-data-agent-panel:px-6";
 
   return (
@@ -350,7 +350,7 @@ export function Conversation(props: {
     >
       <div className="flex min-h-0 flex-1 flex-col">
         {isNew ? (
-          <div className={`py-4 md:py-5 ${column}`}>
+          <div className={`py-4 md:py-5 ${columnClass}`}>
             <ChatEmpty
               headingLevel={props.headingLevel}
               inbox={props.inbox}
@@ -371,7 +371,7 @@ export function Conversation(props: {
             {chat.messages.length === 0 ? null : (
               <div
                 ref={stick.contentRef}
-                className={`flex flex-col gap-6 pt-5 pb-2 md:pt-7 ${column}`}
+                className={`flex flex-col gap-6 pt-5 pb-2 md:pt-7 ${columnClass}`}
               >
                 {chat.messages.map((message, index) => (
                   <Fragment key={message.id}>
@@ -461,7 +461,7 @@ export function Conversation(props: {
 
         {/* The dock sits on the page white with no hairline (czjw.120 item 9). */}
         <div className="shrink-0 bg-background pt-2 pb-3 md:pb-3.5">
-          <div className={`grid gap-3 ${column}`}>
+          <div className={`grid gap-3 ${columnClass}`}>
             {refusal === null ? null : (
               <div
                 role="alert"
