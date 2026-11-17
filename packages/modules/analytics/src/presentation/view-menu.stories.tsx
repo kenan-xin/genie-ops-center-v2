@@ -168,6 +168,16 @@ export const OnPhone: Story = {
 
     const sheet = within(await screen.findByRole("dialog", { name: "Views" }));
 
+    // 6wz1.139: a view row and an action row leave 10 px between the icon and its text.
+    await expect(
+      getComputedStyle(sheet.getByRole("button", { name: /^Month end/ }))
+        .columnGap
+    ).toBe("10px");
+    await expect(
+      getComputedStyle(sheet.getByRole("button", { name: /^Delete view/ }))
+        .columnGap
+    ).toBe("10px");
+
     await userEvent.click(sheet.getByRole("button", { name: /^Delete view/ }));
 
     await expect(args.onRemove).toHaveBeenCalledTimes(1);
