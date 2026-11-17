@@ -203,6 +203,12 @@ export const WorkspaceDesktop: Story = {
     await expect(edge.height).toBe(shell.height);
     await expect(getComputedStyle(aside).borderTopLeftRadius).toBe("0px");
     await expect(getComputedStyle(aside).borderRightWidth).toBe("1px");
+
+    // The page keeps 20 px above its title (6wz1.123).
+    await expect(
+      getComputedStyle(element(canvasElement, "[data-shell-content]"))
+        .paddingTop
+    ).toBe("20px");
   },
 };
 
@@ -363,7 +369,7 @@ export const WithLinkComponent: Story = {
 export const AdminDesktop: Story = {
   globals: desktop,
   args: { chrome: "admin", currentPath: "/admin/people" },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
     await expect(canvas.getByText("Admin portal")).toBeVisible();
 
     await Promise.all(
@@ -371,6 +377,11 @@ export const AdminDesktop: Story = {
         expect(canvas.getByRole("navigation", { name })).toBeVisible()
       )
     );
+
+    await expect(
+      getComputedStyle(element(canvasElement, "[data-shell-content]"))
+        .paddingTop
+    ).toBe("20px");
   },
 };
 
