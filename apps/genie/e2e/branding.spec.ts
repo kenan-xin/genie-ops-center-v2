@@ -105,9 +105,14 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
           await page
             .getByRole("textbox", { name: "Primary color", exact: true })
             .fill(color);
-          await page
-            .getByRole("radio", { name: theme === "light" ? "Light" : "Dark" })
-            .check();
+          const themes = page.getByRole("group", { name: "Default theme" });
+
+          const pick = themes.getByRole("button", {
+            name: theme === "light" ? "Light" : "Dark",
+          });
+
+          await pick.click();
+          await expect(pick).toHaveAttribute("aria-pressed", "true");
           await expect(
             page
               .getByRole("list", { name: "Contrast checks" })
@@ -123,7 +128,10 @@ test("edits each tab, publishes once, writes one core:branding_published row, an
           if (testInfo.project.name === "phone")
             await page.getByRole("button", { name: "Show preview" }).click();
 
-          const preview = page.getByRole("group", { name: "Preview" });
+          const preview = page.getByRole("group", {
+            name: "Preview",
+            exact: true,
+          });
 
           // The preview draws the page's stack: the company name names the default mark.
           await expect(
@@ -325,11 +333,15 @@ test("png, svg, webp and ico uploads are stored with scan_status skipped, the sv
         ).toBe("f");
 
         // The preview loads the mark through its signed download link (D3-7).
-        if (!(await page.getByRole("group", { name: "Preview" }).isVisible()))
+        if (
+          !(await page
+            .getByRole("group", { name: "Preview", exact: true })
+            .isVisible())
+        )
           await page.getByRole("button", { name: "Show preview" }).click();
 
         const mark = page
-          .getByRole("group", { name: "Preview" })
+          .getByRole("group", { name: "Preview", exact: true })
           .locator("img");
 
         await expect(mark).toHaveAttribute(

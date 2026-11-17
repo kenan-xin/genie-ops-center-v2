@@ -622,7 +622,14 @@ export const PublishConfirm: Story = {
     await user.clear(name);
     await user.type(name, "Acme");
     await user.click(canvas.getByRole("tab", { name: "Colors" }));
-    await user.click(canvas.getByRole("radio", { name: "Dark" }));
+
+    const themes = within(canvas.getByRole("group", { name: "Default theme" }));
+
+    await user.click(themes.getByRole("button", { name: "Dark" }));
+    await expect(themes.getByRole("button", { name: "Dark" })).toHaveAttribute(
+      "aria-pressed",
+      "true"
+    );
     await user.click(canvas.getByRole("button", { name: "Publish" }));
 
     const dialog = within(
@@ -648,6 +655,26 @@ export const PublishConfirm: Story = {
     await waitFor(() =>
       expect(canvas.queryByText(/unpublished change/)).toBeNull()
     );
+  },
+};
+
+/** 6wz1.118: the theme segments take the keyboard: an arrow moves between them, Space picks one. */
+export const DefaultThemeByKeyboard: Story = {
+  play: async ({ canvas }) => {
+    await user.click(canvas.getByRole("tab", { name: "Colors" }));
+
+    const themes = within(canvas.getByRole("group", { name: "Default theme" }));
+    const pressed = themes.getByRole("button", { pressed: true });
+
+    pressed.focus();
+    await user.keyboard("{ArrowRight}");
+
+    // SAFETY: the arrow key moved focus inside the group, so activeElement is a segment.
+    const next = document.activeElement as HTMLElement;
+
+    await expect(next).not.toBe(pressed);
+    await user.keyboard(" ");
+    await expect(next).toHaveAttribute("aria-pressed", "true");
   },
 };
 
@@ -865,9 +892,11 @@ export const Phone: Story = {
 
 export const PreviewDark: Story = {
   play: async ({ canvas, canvasElement }) => {
-    await user.click(canvas.getByRole("button", { name: "Dark" }));
+    const themes = within(canvas.getByRole("group", { name: "Preview theme" }));
 
-    await expect(canvas.getByRole("button", { name: "Dark" })).toHaveAttribute(
+    await user.click(themes.getByRole("button", { name: "Dark" }));
+
+    await expect(themes.getByRole("button", { name: "Dark" })).toHaveAttribute(
       "aria-pressed",
       "true"
     );

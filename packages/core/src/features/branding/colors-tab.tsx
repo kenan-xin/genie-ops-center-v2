@@ -3,8 +3,8 @@
 import {
   controlHeights,
   HelpDisclosure,
-  RadioGroup,
-  RadioGroupItem,
+  ToggleGroup,
+  ToggleGroupItem,
 } from "@genie/ui";
 
 import { brandingContrastPairs } from "../../lib/branding/contrast-pairs.ts";
@@ -21,10 +21,6 @@ const THEMES = [
   { value: "dark", label: "Dark" },
   { value: "system", label: "System" },
 ] as const;
-
-function isTheme(value: unknown): value is BrandingDraft["defaultTheme"] {
-  return THEMES.some((theme) => theme.value === value);
-}
 
 /** One tenant color with its computed foreground, the four checks, and the default theme (R-46, R-47). */
 export function ColorsTab(props: {
@@ -70,27 +66,27 @@ export function ColorsTab(props: {
           color, #60a5fa. Buttons keep this color in both themes.
         </p>
       </HelpDisclosure>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col items-start gap-2">
         <span id="branding-theme-label" className="text-sm font-medium">
           Default theme
         </span>
-        <RadioGroup
-          value={props.draft.defaultTheme}
-          onValueChange={(value) => {
-            if (isTheme(value)) props.onTheme(value);
-          }}
+        <ToggleGroup<BrandingDraft["defaultTheme"]>
           aria-labelledby="branding-theme-label"
+          size="md"
+          value={[props.draft.defaultTheme]}
+          onValueChange={(values) => {
+            // A press on the pressed segment answers none; the theme stays.
+            const [next] = values;
+
+            if (next !== undefined) props.onTheme(next);
+          }}
         >
           {THEMES.map((theme) => (
-            <label
-              key={theme.value}
-              className="flex min-h-11 cursor-pointer items-center gap-2 text-sm"
-            >
-              <RadioGroupItem value={theme.value} />
+            <ToggleGroupItem key={theme.value} value={theme.value}>
               {theme.label}
-            </label>
+            </ToggleGroupItem>
           ))}
-        </RadioGroup>
+        </ToggleGroup>
       </div>
     </div>
   );

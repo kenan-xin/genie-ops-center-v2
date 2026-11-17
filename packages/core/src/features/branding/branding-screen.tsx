@@ -10,6 +10,8 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  ToggleGroup,
+  ToggleGroupItem,
 } from "@genie/ui";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
@@ -550,19 +552,20 @@ function PreviewCard(props: {
           <h2 className="text-sm font-semibold">Preview</h2>
           {props.dirty ? <StatusPill tone="neutral">Draft</StatusPill> : null}
           <span className="text-xs text-muted-foreground">{props.caption}</span>
-          <div className="ml-auto flex gap-1">
-            {(["light", "dark"] as const).map((value) => (
-              <Button
-                key={value}
-                size="sm"
-                variant={theme === value ? "secondary" : "ghost"}
-                aria-pressed={theme === value}
-                onClick={() => setTheme(value)}
-              >
-                {value === "light" ? "Light" : "Dark"}
-              </Button>
-            ))}
-          </div>
+          <ToggleGroup<"light" | "dark">
+            aria-label="Preview theme"
+            className="ml-auto"
+            value={[theme]}
+            onValueChange={(values) => {
+              // A press on the pressed segment answers none; the preview stays.
+              const [next] = values;
+
+              if (next !== undefined) setTheme(next);
+            }}
+          >
+            <ToggleGroupItem value="light">Light</ToggleGroupItem>
+            <ToggleGroupItem value="dark">Dark</ToggleGroupItem>
+          </ToggleGroup>
         </div>
         <div
           role="group"

@@ -88,7 +88,10 @@ test("an empty welcome text shows no welcome line on the sign-in page (DR-04)", 
 
         if (await toggle.isVisible()) await toggle.click();
 
-        const preview = page.getByRole("group", { name: "Preview" });
+        const preview = page.getByRole("group", {
+          name: "Preview",
+          exact: true,
+        });
 
         await expect(
           preview.getByText("Sign in to Default Ops", { exact: true })
@@ -147,9 +150,14 @@ test("a branding change reaches the sign-in page and the email, light and dark",
           await page
             .getByRole("textbox", { name: "Primary color", exact: true })
             .fill("#0f766e");
-          await page
-            .getByRole("radio", { name: theme === "light" ? "Light" : "Dark" })
-            .check();
+          const themes = page.getByRole("group", { name: "Default theme" });
+
+          const pick = themes.getByRole("button", {
+            name: theme === "light" ? "Light" : "Dark",
+          });
+
+          await pick.click();
+          await expect(pick).toHaveAttribute("aria-pressed", "true");
           await page.getByRole("tab", { name: "Sign-in" }).click();
           await page
             .getByRole("textbox", { name: "Welcome text" })
