@@ -129,7 +129,7 @@ export type WorkerOptions = {
   readonly shutdownTimeoutMs?: number;
   /**
    * Test seams for the heartbeat. `path` wins over `WORKER_HEARTBEAT_PATH`. `intervalMs` is how
-   * long a worker waits after its last heartbeat before it runs one itself. `staleAfterMs` is the
+   * long a worker waits after its last heartbeat attempt before it runs one itself. `staleAfterMs` is the
    * age the container health check refuses; the worker itself only writes the file.
    */
   readonly heartbeat?: {

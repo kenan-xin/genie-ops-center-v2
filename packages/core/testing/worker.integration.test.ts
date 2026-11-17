@@ -1133,6 +1133,12 @@ describe("the core pg-boss worker", () => {
         heartbeat: { cron: "0 0 1 1 *", path, intervalMs: 300 },
       })
     );
+
+    // A failed wait skips the abort below, so the workers stop here before the database does.
+    cleanups.push(async () => {
+      controller.abort();
+      await Promise.allSettled(workers);
+    });
     const mtime = async (path: string) =>
       stat(path).then(
         ({ mtimeMs }) => mtimeMs,
