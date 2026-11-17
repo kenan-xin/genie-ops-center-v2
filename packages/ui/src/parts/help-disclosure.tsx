@@ -33,6 +33,8 @@ export function HelpDisclosure(props: {
   /** With `iconOnly`: the sentence the tooltip shows in place of the label. */
   readonly hint?: string;
   readonly icon?: "help" | "info";
+  /** In a centered stack (the sign-in stack): the labelled button centers, with no hang. */
+  readonly centered?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const Icon = props.icon === "info" ? InfoIcon : CircleHelpIcon;
@@ -68,14 +70,21 @@ export function HelpDisclosure(props: {
           // a card's `overflow-hidden` clipped a 17 px hang and the touch area's left pixel with it
           // (6wz1.114, C06-6). The icon's ink hangs the border's 1 px by `iconLead`, which keeps the
           // label in place (6wz1.113, P07-13), so the ink starts on the text column.
+          // A centered stack has no text column, so `centered` drops the hang and the nudge
+          // (sign-in-and-tenant-pages spec, lines 5 and 29).
           render={
             <Button
               variant="ghost"
-              className="-ms-4 w-fit justify-self-start"
+              className={
+                props.centered ? "w-fit" : "-ms-4 w-fit justify-self-start"
+              }
             />
           }
         >
-          <Icon aria-hidden="true" className={iconLead} />
+          <Icon
+            aria-hidden="true"
+            className={props.centered ? undefined : iconLead}
+          />
           {props.label}
         </PopoverTrigger>
       )}

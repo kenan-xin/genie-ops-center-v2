@@ -537,7 +537,7 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
         }
         help={
           setupStep ? (
-            <HelpDisclosure label={props.setupHelpLabel} align="start">
+            <HelpDisclosure label={props.setupHelpLabel} align="start" centered>
               <p>{props.setupHelp}</p>
             </HelpDisclosure>
           ) : null

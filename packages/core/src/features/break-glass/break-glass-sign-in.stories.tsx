@@ -42,6 +42,27 @@ const hitHeightOf = (element: Element) => {
   return heightOf(element) + inset;
 };
 
+const center = (box: DOMRect) => box.left + box.width / 2;
+
+/** The help button centers in the sign-in stack (sign-in-and-tenant-pages spec, lines 5 and 29). */
+const expectHelpCentered = async (canvasElement: HTMLElement) => {
+  const stack = canvasElement.querySelector<HTMLElement>(
+    "[data-sign-in-stack]"
+  );
+  const help = within(canvasElement).getByRole("button", {
+    name: "Why am I here?",
+  });
+
+  await expect(stack).not.toBeNull();
+
+  await expect(
+    Math.abs(
+      center(help.getBoundingClientRect()) -
+        center(stack?.getBoundingClientRect() ?? new DOMRect())
+    )
+  ).toBeLessThanOrEqual(1);
+};
+
 const SETUP_HELP =
   "Until you finish setup, every other page brings you back here.";
 
@@ -273,6 +294,8 @@ export const ForcedChangeWhyAmIHere: Story = {
     const canvas = within(canvasElement);
     const help = canvas.getByRole("button", { name: "Why am I here?" });
 
+    await expectHelpCentered(canvasElement);
+
     // Under the subtitle and above the fields, not a footer line (helper-text rule, buv3.17).
     await expect(
       canvas
@@ -319,6 +342,8 @@ export const Enrollment: Story = {
     await expect(
       canvas.getByRole("button", { name: "Why am I here?" })
     ).toBeInTheDocument();
+
+    await expectHelpCentered(canvasElement);
 
     await expect(
       canvas.getByLabelText("QR code for the authenticator app")

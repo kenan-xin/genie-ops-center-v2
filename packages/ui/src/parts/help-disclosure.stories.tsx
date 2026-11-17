@@ -282,6 +282,30 @@ export const InAFlexColumn: Story = {
   play: keepsItsWidthAtTheStart,
 };
 
+/** A centered stack, such as the sign-in stack: `centered` drops the hang, so the button centers. */
+export const InACenteredStack: Story = {
+  args: { centered: true },
+  render: (args) => (
+    <div
+      data-testid="column"
+      className="flex flex-col items-center gap-4 text-center"
+    >
+      <p>Set a new password</p>
+      <HelpDisclosure {...args} />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const column = canvas.getByTestId("column").getBoundingClientRect();
+    const button = canvas.getByRole("button").getBoundingClientRect();
+
+    await expect(
+      Math.abs(
+        button.left + button.width / 2 - (column.left + column.width / 2)
+      )
+    ).toBeLessThanOrEqual(1);
+  },
+};
+
 export const InsideASheet: Story = {
   render: (args) => (
     <Sheet>
