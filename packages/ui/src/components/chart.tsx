@@ -101,7 +101,14 @@ function ChartTooltipContent({
   );
 }
 
-const ChartLegend = RechartsPrimitive.Legend;
+/**
+ * The Recharts legend in the order the chart draws its series (6wz1.120). Recharts sorts by label
+ * unless `itemSorter` is set. The chart part keys its series s0 to s7 in draw order, so `dataKey`
+ * keeps that order; `null` would leave the order to the render.
+ */
+function ChartLegend(props: ComponentProps<typeof RechartsPrimitive.Legend>) {
+  return <RechartsPrimitive.Legend itemSorter="dataKey" {...props} />;
+}
 
 function ChartLegendContent({
   className,

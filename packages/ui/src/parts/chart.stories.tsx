@@ -148,19 +148,25 @@ export const TwoSeriesLegend: Story = {
   play: async ({ canvasElement }) => {
     const [legend, plot] = await waitFor(() => {
       const found = [
-        canvasElement.querySelector(".recharts-legend-wrapper"),
+        canvasElement.querySelector<HTMLElement>(".recharts-legend-wrapper"),
         canvasElement.querySelector(".recharts-cartesian-grid"),
       ];
 
       expect(found).not.toContain(null);
 
       // SAFETY: the line above checked that both elements exist.
-      return found as [Element, Element];
+      return found as [HTMLElement, Element];
     });
 
     await expect(legend.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       plot.getBoundingClientRect().top
     );
+    // The legend lists the series in draw order, not alphabetically (6wz1.120).
+    await expect(
+      within(legend)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual(["Invoiced", "Collected (EUR)"]);
   },
 };
 
@@ -337,6 +343,36 @@ export const DonutDark: Story = {
   args: outstanding,
   globals: { viewport: { value: "desktop", isRotated: false }, theme: "dark" },
   play: donutPlay,
+};
+
+/** 6wz1.120: the legend keeps the row order, also when it is not alphabetical. */
+export const DonutLegendKeepsRowOrder: Story = {
+  args: {
+    ...outstanding,
+    rows: [
+      { x: "Globex", Outstanding: 30_000 },
+      { x: "Acme", Outstanding: 50_000 },
+      { x: null, Outstanding: 20_000 },
+    ],
+  },
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const legend = await waitFor(() => {
+      const found = canvasElement.querySelector<HTMLElement>(
+        ".recharts-legend-wrapper"
+      );
+
+      expect(found).not.toBeNull();
+
+      return found!;
+    });
+
+    await expect(
+      within(legend)
+        .getAllByRole("listitem")
+        .map((item) => item.textContent)
+    ).toEqual(["Globex", "Acme", "No value"]);
+  },
 };
 
 const { x: _x, ...noAxis } = outstanding;
