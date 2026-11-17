@@ -40,9 +40,10 @@ import {
  * nothing, because TypeScript resolves a relative path in an inherited config
  * against the directory that declared it.
  *
- * Paths handed to `lintAtIsolated` are not checked. That helper is for a path
- * the product itself owns, such as the Storybook host's `main.ts`, and such a
- * path cannot carry a fixture marker.
+ * Paths handed to `lintAtIsolated` are not checked. That helper may lint at a
+ * path the product itself owns, such as the Storybook host's `main.ts`, which
+ * carries no marker and would fail the naming case below. Like `lintAt`, it
+ * never writes into the checkout.
  */
 
 /** The projects whose typecheck runs beside the suites that write fixtures. */
