@@ -109,6 +109,35 @@ async function openMenu(canvas: ReturnType<typeof within>) {
   await expect(
     within(menu).getByRole("menuitem", { name: "Rename" })
   ).toBeVisible();
+
+  // 6wz1.136: one icon-to-label gap in every row, default and lg (the prototypes' 10 px).
+  const gaps = within(menu)
+    .getAllByRole("menuitem")
+    .flatMap((item) => {
+      // The leading icon only: a sub-menu trigger ends with a chevron.
+      const icon =
+        item.firstChild instanceof SVGElement ? item.firstChild : null;
+
+      const text = [...item.childNodes].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim()
+      );
+
+      if (icon === null || text === undefined) return [];
+
+      const range = document.createRange();
+
+      range.selectNodeContents(text);
+
+      return [
+        Math.round(
+          range.getBoundingClientRect().left -
+            icon.getBoundingClientRect().right
+        ),
+      ];
+    });
+
+  await expect(gaps).toHaveLength(6);
+  await expect(new Set(gaps).size).toBe(1);
 }
 
 export const Open: Story = {

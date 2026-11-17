@@ -115,7 +115,7 @@ function DropdownMenuLabel({
       data-slot="dropdown-menu-label"
       data-inset={inset}
       className={cn(
-        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-7",
+        "px-1.5 py-1 text-xs font-medium text-muted-foreground data-inset:pl-8",
         className
       )}
       {...props}
@@ -142,8 +142,8 @@ function DropdownMenuItem({
       data-variant={variant}
       data-size={size}
       className={cn(
-        "data-[size=lg]:gap-2.5 data-[size=lg]:rounded-lg data-[size=lg]:px-3 data-[size=lg]:py-2",
-        "group/dropdown-menu-item relative flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-7 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
+        "data-[size=lg]:rounded-lg data-[size=lg]:px-3 data-[size=lg]:py-2",
+        "group/dropdown-menu-item relative flex min-h-11 cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
         size === "lg" && rowHeight,
         leadingIcon,
         menuRowFocus,
@@ -171,7 +171,7 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex min-h-11 cursor-default items-center gap-1.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-7 data-popup-open:bg-muted data-open:bg-muted lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex min-h-11 cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-8 data-popup-open:bg-muted data-open:bg-muted lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         leadingIcon,
         menuRowFocus,
         className
@@ -219,7 +219,7 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-8 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         menuRowFocus,
         className
       )}
@@ -227,7 +227,7 @@ function DropdownMenuCheckboxItem({
       {...props}
     >
       <span className="flex min-w-0 flex-1 items-start gap-2">
-        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="flex min-w-0 flex-1 items-center gap-2.5">
           {children}
         </span>
         <ItemIndicator slot="dropdown-menu-checkbox-item-indicator">
@@ -262,14 +262,14 @@ function DropdownMenuRadioItem({
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-7 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-8 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         menuRowFocus,
         className
       )}
       {...props}
     >
       <span className="flex min-w-0 flex-1 items-start gap-2">
-        <span className="flex min-w-0 flex-1 items-center gap-1.5">
+        <span className="flex min-w-0 flex-1 items-center gap-2.5">
           {children}
         </span>
         <ItemIndicator slot="dropdown-menu-radio-item-indicator">
