@@ -5,6 +5,7 @@ import {
   readdirSync,
   rmdirSync,
   rmSync,
+  statSync,
   symlinkSync,
   writeFileSync,
 } from "node:fs";
@@ -537,6 +538,17 @@ async function runOxlintBatch(
  * batch is never mistaken for a clean lint.
  */
 async function lintBatch(jobs: readonly LintJob[]): Promise<void> {
+  try {
+    await lintBatchInFreshRoot(jobs);
+  } catch (error) {
+    // A settled job ignores this; any other would otherwise wait forever.
+    for (const job of jobs) {
+      job.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+}
+
+async function lintBatchInFreshRoot(jobs: readonly LintJob[]): Promise<void> {
   const root = mkdtempSync(join(tmpdir(), ISOLATED_ROOT_PREFIX));
 
   try {
@@ -544,16 +556,17 @@ async function lintBatch(jobs: readonly LintJob[]): Promise<void> {
       root,
       jobs.map((job) => job.plan.relativePath)
     );
-  } catch (error) {
+
+    await lintWrittenFixtures(root, jobs);
+  } finally {
     removeIsolatedRoot(root);
-
-    for (const job of jobs) {
-      job.reject(error instanceof Error ? error : new Error(String(error)));
-    }
-
-    return;
   }
+}
 
+async function lintWrittenFixtures(
+  root: string,
+  jobs: readonly LintJob[]
+): Promise<void> {
   const written: LintJob[] = [];
 
   for (const job of jobs) {
@@ -573,26 +586,22 @@ async function lintBatch(jobs: readonly LintJob[]): Promise<void> {
     }
   }
 
-  try {
-    if (written.length > 0) {
-      const report = await runOxlintBatch(
-        root,
-        written.map((job) => job.plan.relativePath)
-      );
+  if (written.length === 0) return;
 
-      const outcomes = attributeDiagnostics(report.output);
-      const broke = !report.ok && outcomes.size === 0;
+  const report = await runOxlintBatch(
+    root,
+    written.map((job) => job.plan.relativePath)
+  );
 
-      for (const job of written) {
-        const outcome = outcomes.get(job.plan.relativePath);
+  const outcomes = attributeDiagnostics(report.output);
+  const broke = !report.ok && outcomes.size === 0;
 
-        if (outcome !== undefined) job.resolve(outcome);
-        else if (broke) job.resolve({ failed: true, output: report.output });
-        else job.resolve({ failed: false, output: "" });
-      }
-    }
-  } finally {
-    removeIsolatedRoot(root);
+  for (const job of written) {
+    const outcome = outcomes.get(job.plan.relativePath);
+
+    if (outcome !== undefined) job.resolve(outcome);
+    else if (broke) job.resolve({ failed: true, output: report.output });
+    else job.resolve({ failed: false, output: "" });
   }
 }
 
@@ -661,7 +670,12 @@ function overlayLevel(
     const path = join(level, entry);
     const children = below.get(entry);
 
-    if (children === undefined) {
+    // A checkout file named as a folder stays a link, so only the job that
+    // names it fails, at its own `mkdirSync`, and nothing reaches the checkout.
+    if (
+      children === undefined ||
+      !statSync(join(WORKSPACE_ROOT, path)).isDirectory()
+    ) {
       symlinkSync(join(WORKSPACE_ROOT, path), join(root, path));
       continue;
     }
@@ -689,8 +703,8 @@ function isolatedPath(relativePath: string): string {
   // at least one element, and an empty segment is not an anchor name either way.
   const [firstSegment = ""] = safePath.split("/");
 
-  // Each anchor is a symlink into the checkout, so a fixture below one would be
-  // written into the real tree. The fixture must land in the root's own storage.
+  // A fixture never stands in for the config file or sits in the dependency
+  // tree: the run would lint with a fixture config or through installed code.
   if (
     firstSegment !== OVERLAID_ANCHOR &&
     ISOLATED_ROOT_ANCHORS.includes(firstSegment)

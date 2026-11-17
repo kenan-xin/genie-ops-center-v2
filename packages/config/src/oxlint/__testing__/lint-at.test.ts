@@ -361,6 +361,31 @@ fs.writeFileSync(process.env.REPORT, JSON.stringify({
     }
   });
 
+  it("rejects every case, rather than hanging, when the temp root cannot be made", async () => {
+    vi.stubEnv("TMPDIR", join(root, "missing"));
+
+    try {
+      await expect(
+        lintAt(`packages/config/__boundary__-${process.pid}.ts`, SOURCE)
+      ).rejects.toThrow("ENOENT");
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it("rejects only the case whose folder is a checkout file, not its batch", async () => {
+    const [bad, good] = await Promise.allSettled([
+      lintAt("packages/config/package.json/__boundary__.ts", SOURCE),
+      lintAt(`packages/config/__boundary__-${process.pid}.ts`, SOURCE),
+    ]);
+
+    expect(bad.status).toBe("rejected");
+    expect(good).toEqual({
+      status: "fulfilled",
+      value: { failed: false, output: "" },
+    });
+  });
+
   it("reads a clean batch as clean under CI=true, which turns oxlint color on", async () => {
     // oxlint colors its output whenever CI is set, ignoring FORCE_COLOR=0 and
     // NO_COLOR. Colored diagnostics match no attribution line, so without the
