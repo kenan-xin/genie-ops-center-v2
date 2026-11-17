@@ -18,16 +18,20 @@ import {
 } from "./__testing__/lint-at.ts";
 
 /**
- * A lint fixture is a real file, written into the checkout at a path chosen to
- * match one override glob, and removed again. Every project's tsconfig takes
- * `src/**`, so a fixture written under one is visible to `tsc` for as long as it
- * exists. A concurrent `nx run-many -t typecheck test` then compiles a file that
- * is already gone, which is what `genie-ops-center-v2-64a` recorded.
+ * A lint fixture is a real file at a path chosen to match one override glob.
+ * `lintAt` writes it into a throwaway root that overlays the checkout, lints it
+ * there and removes the root (genie-ops-center-v2-fa5m). Before that, it wrote
+ * the fixture into the checkout. Every project's tsconfig takes `src/**`, so a
+ * fixture written under one was visible to `tsc` for as long as it existed. A
+ * concurrent `nx run-many -t typecheck test` then compiled a file that was
+ * already gone, which is what `genie-ops-center-v2-64a` recorded.
  *
- * The fix is a name, not a location: the suites need paths inside `src/` to prove
- * the rules that key on them, so the fixtures keep their paths and every
- * exclusion surface (root tsconfig, `.eslintignore`, oxfmt's `ignorePatterns`
- * and the shared Vitest preset) drops the markers they share.
+ * The first fix was a name, not a location, and it stays in force: the fixtures
+ * keep their marked names, and every exclusion surface (root tsconfig,
+ * `.eslintignore`, oxfmt's `ignorePatterns` and the shared Vitest preset) drops
+ * the markers they share. The probes this file writes into the checkout to
+ * prove those surfaces are now the one writer the exclusions protect against,
+ * and the exclusions also cover a future suite that writes into the checkout.
  *
  * These cases assert the RESOLVED configuration, never the raw JSON text. An
  * earlier version of this file asserted the text and certified a fix that was
@@ -36,8 +40,9 @@ import {
  * nothing, because TypeScript resolves a relative path in an inherited config
  * against the directory that declared it.
  *
- * Paths handed to `lintAtIsolated` are not checked. That helper writes into a
- * throwaway root and never touches the checkout.
+ * Paths handed to `lintAtIsolated` are not checked. That helper is for a path
+ * the product itself owns, such as the Storybook host's `main.ts`, and such a
+ * path cannot carry a fixture marker.
  */
 
 /** The projects whose typecheck runs beside the suites that write fixtures. */
@@ -49,7 +54,7 @@ const TYPECHECKED = [
   "tools/generators",
 ];
 
-/** Every suite in this package that writes a fixture into the checkout. */
+/** Every suite in this package that lints a fixture through `lintAt`. */
 function fixtureSources(): readonly string[] {
   const root = join(WORKSPACE_ROOT, "packages/config/src/oxlint");
 
@@ -60,7 +65,11 @@ function fixtureSources(): readonly string[] {
     .toSorted();
 }
 
-/** Paths written into the checkout itself, read from those suites' source. */
+/**
+ * The checkout paths those suites hand to `lintAt`, read from their source.
+ * `lintAt` writes each one into a throwaway root, never into the checkout, but
+ * the path is still the place in the checkout that the fixture stands for.
+ */
 function checkoutFixturePaths(): readonly string[] {
   const found = new Set<string>();
 
@@ -269,9 +278,9 @@ function fixturesInside(project: string): readonly string[] {
 /**
  * Probe paths, one per marker a project's real fixtures use, in both basename
  * shapes. Deriving a fresh path rather than reusing a real one matters: the
- * suites that own those paths run in parallel with this one, and writing a path
- * another suite owns would collide with the very fixtures this file exists to
- * protect. The process id keeps two workers apart.
+ * suites that own those paths run in parallel with this one, and a probe at one
+ * of them would make `lintAt` refuse that fixture, because its overlay would
+ * link the probe in the fixture's place. The process id keeps two workers apart.
  */
 function probesInside(project: string): readonly string[] {
   const markers = new Set<string>();
@@ -365,7 +374,7 @@ describe("lint fixtures and the typecheck that runs beside them", () => {
 
 describe("lint fixtures and the lint that runs beside them", () => {
   // The lint counterpart of the typecheck race above. A directory scan over a
-  // project's `src` lists a fixture the suites wrote and already removed, then
+  // project's `src` lists a marked file that a writer already removed, then
   // fails to open it. The root `.eslintignore` excludes the shared markers, and
   // the harness lints an explicit fixture path with `--no-ignore`, so the rules
   // are still exercised. The probe is mid-basename, the shape a name such as
@@ -409,8 +418,8 @@ describe("lint fixtures and the lint that runs beside them", () => {
     );
 
     // A fresh, process-scoped path: the boundary suite owns
-    // `apps/genie/__boundary__.config.ts`, and reusing it here would race that
-    // suite's exclusive create under parallel collection.
+    // `apps/genie/__boundary__.config.ts`, and a probe there would make `lintAt`
+    // refuse that suite's fixture, because the overlay would link the probe.
     const probe = `apps/genie/__boundary__probe-${process.pid}.config.ts`;
 
     withProbe(probe, "export const probe = true;\n", () => {
@@ -491,10 +500,11 @@ function playwrightList(): string {
 }
 
 describe("lint fixtures and the end-to-end collection that runs beside them", () => {
-  // The Playwright face of the same race. The boundary suite writes a
-  // test-shaped fixture under `apps/genie/e2e/`, the ordinary configuration's
-  // `testDir`, so a `playwright test` run beside it would import a file the
-  // suite already deleted (genie-ops-center-v2-hlu).
+  // The Playwright face of the same race. The boundary suite lints a
+  // test-shaped fixture at a path under `apps/genie/e2e/`, the ordinary
+  // configuration's `testDir`. When that fixture was written into the checkout,
+  // a `playwright test` run beside it imported a file the suite already deleted
+  // (genie-ops-center-v2-hlu).
   // One listing covers every marker, each probe written beside the others.
   it(
     "collects no marked fixture in the ordinary configuration",
@@ -527,10 +537,10 @@ describe("lint fixtures and the end-to-end collection that runs beside them", ()
 
 describe("lint fixtures and the formatter that runs beside them", () => {
   // The formatter face of the same race. `format:check` walks the workspace and
-  // reads every file it matches, so a fixture present when it runs is formatted
-  // as if it were source. The anti-slop suite's chained-assertion body is not
-  // oxfmt-clean, so a check overlapping it fails on the fixture itself
-  // (genie-ops-center-v2-bew). The root `ignorePatterns` exclude the shared
+  // reads every file it matches, so a marked file present when it runs is
+  // formatted as if it were source. The anti-slop suite's chained-assertion body
+  // is not oxfmt-clean, so a check that overlapped it in the checkout failed on
+  // the fixture itself (genie-ops-center-v2-bew). The root `ignorePatterns` exclude the shared
   // markers, so the walk never reaches one.
   // Every marker is probed, not one representative: each is a separate entry in
   // the ignore list, and dropping any single one would let that suite's fixture
@@ -547,8 +557,9 @@ describe("lint fixtures and the formatter that runs beside them", () => {
   it("keeps every marked fixture out of the format check", () => {
     // Fresh, process-scoped paths: the boundary suite owns the fixed names
     // (`packages/core/src/__boundary__.ts`, `packages/core/vitest.__boundary__.config.ts`),
-    // and reusing one here would race that suite's exclusive create under
-    // parallel collection. Each name still carries the marker under test.
+    // and a probe at one of them would make `lintAt` refuse that suite's
+    // fixture, because the overlay would link the probe. Each name still carries
+    // the marker under test.
     const excluded = COVERED_MARKERS.flatMap((marker) => [
       // Leading-marker and mid-basename, test-shaped, inside a package `src`:
       // the shapes a suite writes there.
