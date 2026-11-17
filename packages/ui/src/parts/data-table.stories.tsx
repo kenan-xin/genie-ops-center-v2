@@ -341,6 +341,39 @@ export const PhoneRefusal: Story = {
   },
 };
 
+// The refused item's name is its label alone, and its reason is its description (6wz1.141).
+export const PhoneRefusalNamedByItsLabel: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  parameters: {
+    a11y: {
+      test: "error",
+      // Experimental in axe, so the rule is enabled for this run rather than configured.
+      options: {
+        rules: { "label-content-name-mismatch": { enabled: true } },
+      },
+    },
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Actions for averyveryveryverylongaddressforatest@example.com",
+      })
+    );
+
+    const refused = await screen.findByRole("menuitem", {
+      name: "Remove",
+      description: "The last administrator cannot be removed.",
+    });
+
+    const reason = within(refused).getByText(
+      "The last administrator cannot be removed."
+    );
+
+    // The popup fades in from opacity 0, and it stays open so the axe run sees the item.
+    await waitFor(() => expect(reason).toBeVisible());
+  },
+};
+
 // A long name beside a row action wraps, and the action stays on line 1 inside the card
 // (6wz1.112, owner C6).
 export const PhoneLongNameBesideAction: Story = {

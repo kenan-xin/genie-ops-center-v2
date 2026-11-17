@@ -12,7 +12,6 @@ import {
   Fragment,
   useEffect,
   useEffectEvent,
-  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -210,25 +209,13 @@ function Facts(props: { readonly items: readonly ReactNode[] }) {
 
 // The reason is visible text, not a title, because a touch screen has no hover (R-21, R-38).
 function ActionItem({ item }: { readonly item: DataTableAction }) {
-  const reasonId = useId();
-
   return (
     <DropdownMenuItem
       variant={item.danger ? "destructive" : "default"}
-      disabled={item.refusal !== undefined}
-      aria-label={item.label}
-      aria-describedby={item.refusal === undefined ? undefined : reasonId}
-      className={
-        item.refusal === undefined ? undefined : "flex-col items-start"
-      }
+      reason={item.refusal}
       onClick={item.onSelect}
     >
       {item.label}
-      {item.refusal === undefined ? null : (
-        <span id={reasonId} className="text-xs text-muted-foreground">
-          {item.refusal}
-        </span>
-      )}
     </DropdownMenuItem>
   );
 }

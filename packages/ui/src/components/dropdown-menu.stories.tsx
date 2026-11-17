@@ -81,6 +81,28 @@ function EveryRow() {
   );
 }
 
+/**
+ * A refused item stays, disabled, and shows its reason under its label. The reason is visible text
+ * and the item's description, not part of its name (R-21, 6wz1.141).
+ */
+function Refused() {
+  return (
+    <DropdownMenu defaultOpen>
+      <DropdownMenuTrigger render={<Button variant="secondary" />}>
+        Dashboard actions
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-64">
+        <DropdownMenuItem
+          variant="destructive"
+          reason="Only the owner can delete this dashboard."
+        >
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 const meta = {
   title: "UI/DropdownMenu",
   component: EveryRow,
@@ -89,7 +111,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "A menu of actions under a button. Group labels name the groups; an item may lead with an icon, and the `lg` size is the user menu's row.",
+          "A menu of actions under a button. Group labels name the groups; an item may lead with an icon, and the `lg` size is the user menu's row. An item refused for the viewer takes a `reason`: it stays, disabled, and shows the reason as text under its label, where it is the item's description rather than part of its name.",
       },
     },
   },
@@ -147,4 +169,13 @@ export const Open: Story = {
 export const OpenOnPhone: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvasElement }) => openMenu(within(canvasElement)),
+};
+
+/**
+ * `reason` marks an item refused: it keeps its place, disabled, with the reason under its label.
+ * The reason is the item's description, not its name, so a screen reader hears "Delete" and then
+ * the reason.
+ */
+export const RefusedItem: Story = {
+  render: () => <Refused />,
 };

@@ -128,29 +128,53 @@ function DropdownMenuItem({
   inset,
   variant = "default",
   size = "default",
+  reason,
+  disabled,
+  children,
   ...props
 }: MenuPrimitive.Item.Props & {
   inset?: boolean;
   variant?: "default" | "destructive";
   /** `lg`: the user menu's rows, 44 px under `lg` and 36 px from it (6wz1.114). */
   size?: "default" | "lg";
+  /**
+   * Set when the item is refused: it stays, disabled, and shows the reason as visible text under
+   * its label. The reason is the item's description, not part of its name (R-21, 6wz1.141).
+   */
+  reason?: string | undefined;
 }) {
+  const reasonId = React.useId();
+
   return (
     <MenuPrimitive.Item
       data-slot="dropdown-menu-item"
       data-inset={inset}
       data-variant={variant}
       data-size={size}
+      disabled={disabled === true || reason !== undefined}
+      aria-describedby={reason === undefined ? undefined : reasonId}
       className={cn(
         "data-[size=lg]:rounded-lg data-[size=lg]:px-3 data-[size=lg]:py-2",
         "group/dropdown-menu-item relative flex cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
         size === "lg" ? rowHeight : denseRowHeight,
         leadingIcon,
         menuRowFocus,
+        reason === undefined ? undefined : "flex-col items-start",
         className
       )}
       {...props}
-    />
+    >
+      {children}
+      {reason === undefined ? null : (
+        <span
+          id={reasonId}
+          aria-hidden="true"
+          className="text-xs text-muted-foreground"
+        >
+          {reason}
+        </span>
+      )}
+    </MenuPrimitive.Item>
   );
 }
 
