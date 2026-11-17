@@ -153,6 +153,16 @@ const retryView: DocumentInboxView = {
   rows: [COULD_NOT_READ],
 };
 
+const LONG_NAME = "INV-2026-000123_supplier_scan_final_version_2.pdf";
+
+const longNameView: DocumentInboxView = {
+  ...defaultDocumentInbox,
+  rows: [
+    { ...defaultDocumentInbox.rows[0]!, label: LONG_NAME },
+    ...defaultDocumentInbox.rows.slice(1),
+  ],
+};
+
 type Canvas = Parameters<NonNullable<Story["play"]>>[0]["canvas"];
 
 /** Opens the story at an address with these list parameters. */
@@ -290,10 +300,44 @@ async function detailsAreWhole(canvas: Canvas): Promise<void> {
 export const DefaultOnPhone: Story = {
   name: "Default on a phone",
   globals: phone,
-  beforeEach: () => serve(defaultDocumentInbox),
+  args: { view: longNameView },
+  beforeEach: () => serve(longNameView),
   play: async ({ canvas }) => {
     await expectStatusWords(canvas, "list");
     await detailsAreWhole(canvas);
+
+    // A file name wraps and shows in full on its card (6wz1.112, owner C6).
+    const title = canvas.getByRole("link", { name: LONG_NAME });
+
+    await expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+
+    // A one-line name centers with its status pill (P09-3): the "broken.pdf / Failed / Retry"
+    // row.
+    const failedCard = within(canvas.getByRole("list", { name: "Documents" }))
+      .getAllByRole("listitem")
+      .find(
+        (item) =>
+          within(item).queryByText("Failed", { selector: BADGE }) !== null
+      )!;
+
+    const failedName = within(failedCard).getByRole("link", {
+      name: "broken.pdf",
+    });
+
+    const failedBadge = within(failedCard).getByText("Failed", {
+      selector: BADGE,
+    });
+
+    const failedNameBox = failedName.getBoundingClientRect();
+    const failedBadgeBox = failedBadge.getBoundingClientRect();
+
+    await expect(
+      Math.abs(
+        failedNameBox.top +
+          failedNameBox.height / 2 -
+          (failedBadgeBox.top + failedBadgeBox.height / 2)
+      )
+    ).toBeLessThan(1);
   },
 };
 

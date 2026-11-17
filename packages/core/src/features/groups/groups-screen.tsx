@@ -141,7 +141,9 @@ const LAST_ADMIN_REASON = "This would leave no active tenant administrator";
 function PersonLines(props: { readonly name: string; readonly email: string }) {
   return (
     <span className="flex min-w-0 flex-1 flex-col">
-      <span className="truncate text-sm text-foreground">{props.name}</span>
+      <span className="text-sm wrap-anywhere text-foreground">
+        {props.name}
+      </span>
       <span className="truncate text-xs text-muted-foreground">
         {props.email}
       </span>

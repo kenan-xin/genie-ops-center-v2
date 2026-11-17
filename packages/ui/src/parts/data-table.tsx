@@ -575,8 +575,8 @@ export function DataTable<Row>({
               ? ABOVE_TITLE
               : "relative z-10";
 
-          // The media shares a grid row with line 1, so the two center on each other whatever the
-          // media's size, and the lines under it keep the text column (6wz1.113, P07-51).
+          // The media shares a grid row with line 1 and centers on its first line, and the lines under
+          // it keep the text column (6wz1.113, P07-51, 6wz1.112).
           const under = card.media === undefined ? "" : "col-start-2";
 
           return (
@@ -589,42 +589,60 @@ export function DataTable<Row>({
               className="relative flex items-start gap-3 px-4 py-3 text-sm"
             >
               <div
-                className={`grid min-w-0 flex-1 gap-0.5 ${card.media === undefined ? "" : "grid-cols-leading-icon items-center gap-x-3"}`}
+                className={`grid min-w-0 flex-1 gap-0.5 ${card.media === undefined ? "" : "grid-cols-leading-icon items-baseline gap-x-3"}`}
               >
                 {card.media === undefined ? null : (
-                  <span className="flex">{card.media(row)}</span>
+                  // The strut is one text line centered in the media's box. The grid lines its
+                  // baseline up with the title's first line, so the media centers on that line
+                  // however far a name wraps (6wz1.112, R07-1). At 0 px wide the icon check
+                  // reads no text line in it.
+                  <span className="flex items-center">
+                    <span aria-hidden="true" className="w-0">
+                      {"​"}
+                    </span>
+                    {card.media(row)}
+                  </span>
                 )}
-                <div className="flex min-w-0 items-center gap-1.5">
-                  {onOpenRow === undefined ? (
-                    <span className="min-w-0 truncate font-medium text-foreground">
-                      {card.title(row)}
-                    </span>
-                  ) : (
-                    // The pseudo-element covers the card, so the whole row is one tap target (R-23).
-                    <button
-                      type="button"
-                      className={`min-w-0 rounded-sm text-left font-medium text-foreground after:absolute after:inset-0 ${focusRing}`}
-                      onClick={() => onOpenRow(row)}
-                    >
-                      <span className="block truncate">{card.title(row)}</span>
-                    </button>
-                  )}
-                  {badge === null ? null : (
-                    <span className="flex shrink-0 items-center gap-1.5">
-                      {badge}
-                    </span>
-                  )}
-                  {trailing === null ? null : (
-                    <span className="relative z-10 ml-auto shrink-0">
-                      {trailing}
-                    </span>
-                  )}
-                  {/* On line 1, so it centers on the title, not on the whole card. */}
+                <div className="flex min-w-0 items-baseline gap-1.5">
+                  <div className="flex min-w-0 flex-1 items-center gap-1.5">
+                    {onOpenRow === undefined ? (
+                      <span className="min-w-0 font-medium wrap-anywhere text-foreground">
+                        {card.title(row)}
+                      </span>
+                    ) : (
+                      // The pseudo-element covers the card, so the whole row is one tap target (R-23).
+                      <button
+                        type="button"
+                        className={`min-w-0 rounded-sm text-left font-medium text-foreground after:absolute after:inset-0 ${focusRing}`}
+                        onClick={() => onOpenRow(row)}
+                      >
+                        <span className="block wrap-anywhere">
+                          {card.title(row)}
+                        </span>
+                      </button>
+                    )}
+                    {badge === null ? null : (
+                      <span className="flex shrink-0 items-center gap-1.5">
+                        {badge}
+                      </span>
+                    )}
+                    {trailing === null ? null : (
+                      <span className="relative z-10 ml-auto shrink-0">
+                        {trailing}
+                      </span>
+                    )}
+                  </div>
+                  {/* On the title's first line, so it centers on it, not on the whole card. */}
                   {linked(row) ? (
-                    <ChevronRightIcon
-                      aria-hidden="true"
-                      className={`size-4 shrink-0 text-muted-foreground ${trailing === null ? "ml-auto" : ""}`}
-                    />
+                    <span className="flex shrink-0 items-center">
+                      <span aria-hidden="true" className="w-0">
+                        {"​"}
+                      </span>
+                      <ChevronRightIcon
+                        aria-hidden="true"
+                        className="size-4 text-muted-foreground"
+                      />
+                    </span>
                   ) : null}
                 </div>
                 {detail === null ? null : (

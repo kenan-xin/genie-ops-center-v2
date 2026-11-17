@@ -191,6 +191,33 @@ export const Default: Story = {
 
 export const DefaultOnPhone: Story = { globals: phone, play: overviewOnPhone };
 
+/** A long category name wraps in full, and its grip stays on the first line (6wz1.112, owner C6). */
+export const LongNameOnPhone: Story = {
+  globals: phone,
+  args: {
+    list: {
+      ...FIXTURE_LIST,
+      categories: [
+        {
+          ...FIXTURE_LIST.categories[0]!,
+          name: "Finance and accounting operations for the northern region",
+        },
+        ...FIXTURE_LIST.categories.slice(1),
+      ],
+    },
+  },
+  play: async ({ canvas }) => {
+    const rename = canvas.getByRole("button", {
+      name: "Rename Finance and accounting operations for the northern region",
+    });
+
+    await expect(rename.scrollWidth).toBeLessThanOrEqual(rename.clientWidth);
+    await expect(rename.getBoundingClientRect().height).toBeGreaterThanOrEqual(
+      44
+    );
+  },
+};
+
 export const Dark: Story = { globals: { theme: "dark" } };
 
 /** One help holds how the page works: the order, the rename, and what the counts mean. */

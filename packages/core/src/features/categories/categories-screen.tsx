@@ -7,7 +7,7 @@ import {
   HelpDisclosure,
   Input,
   LabelPill,
-  controlHeights,
+  minTouchHeight,
 } from "@genie/ui";
 import {
   ChevronDownIcon,
@@ -172,13 +172,21 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                     setDragId(null);
                   }}
                   onDragEnd={() => setDragId(null)}
-                  className={`flex flex-wrap items-center gap-x-2 gap-y-1 px-3 py-2 sm:flex-nowrap ${dragId === category.id ? "opacity-40" : ""}`}
+                  className={`flex flex-wrap items-baseline gap-x-2 gap-y-1 px-3 py-2 sm:flex-nowrap ${dragId === category.id ? "opacity-40" : ""}`}
                 >
-                  <GripVerticalIcon
-                    aria-hidden="true"
-                    className="size-4 cursor-grab text-muted-foreground"
-                  />
-                  <span className="flex">
+                  {/* The strut lines the grip's box up with the name's first line (6wz1.112). */}
+                  <span
+                    className={`flex ${minTouchHeight} shrink-0 items-center`}
+                  >
+                    <span aria-hidden="true" className="w-0">
+                      {"​"}
+                    </span>
+                    <GripVerticalIcon
+                      aria-hidden="true"
+                      className="size-4 cursor-grab text-muted-foreground"
+                    />
+                  </span>
+                  <span className="flex self-center">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -215,13 +223,13 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
                     <button
                       type="button"
                       onClick={() => setEditing(category.id)}
-                      className={`${controlHeights.lg} min-w-0 flex-1 truncate rounded-lg px-2 text-left text-sm font-semibold hover:bg-hover ${focusRing}`}
+                      className={`${minTouchHeight} min-w-0 flex-1 rounded-lg px-2 py-3 text-left text-sm font-semibold wrap-anywhere hover:bg-hover ${focusRing}`}
                     >
                       <span className="sr-only">Rename </span>
                       {category.name}
                     </button>
                   )}
-                  <span className="ml-auto flex items-center gap-2">
+                  <span className="ml-auto flex items-center gap-2 self-center">
                     <LabelPill>{modules(category.moduleCount)}</LabelPill>
                     <Button
                       variant="ghost"

@@ -6,7 +6,7 @@ import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 // The package entry, not ./data-table.tsx, so that the stories prove what an
 // app can import.
-import { DataTable, IconTile, LabelPill } from "../index.ts";
+import { Button, DataTable, IconTile, LabelPill } from "../index.ts";
 
 type Person = {
   readonly id: string;
@@ -219,8 +219,7 @@ export const Phone: Story = {
 
     await expect(cards).toHaveLength(3);
 
-    // One card shape: a long email truncates instead of growing its card. The divider is not the
-    // card, so it comes off each box.
+    // The divider is not the card, so it comes off each box.
     const heights = cards.map((card) => {
       const style = getComputedStyle(card);
 
@@ -231,7 +230,19 @@ export const Phone: Story = {
       );
     });
 
-    await expect(new Set(heights).size).toBe(1);
+    // A name wraps and never truncates (6wz1.112, owner C6): the long address shows in full and
+    // makes its card taller.
+    await Promise.all(
+      cards.map(async (card, index) => {
+        const title = within(card).getByRole("button", {
+          name: people[index]!.email,
+        }).firstElementChild!;
+
+        await expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+      })
+    );
+
+    await expect(heights[1]).toBeGreaterThan(heights[0]!);
 
     // The facts are one line, joined with " · ".
     const facts = within(cards[0]!).getByText("Active · Administrator · Today");
@@ -261,9 +272,12 @@ export const Phone: Story = {
     // The badge sits on the name's line, not on a line of its own.
     const badge = within(cards[0]!).getByText("p-1");
 
+    const nameBox = name.getBoundingClientRect();
+    const badgeBox = badge.getBoundingClientRect();
+
     await expect(
       Math.abs(
-        name.getBoundingClientRect().top - badge.getBoundingClientRect().top
+        nameBox.top + nameBox.height / 2 - (badgeBox.top + badgeBox.height / 2)
       )
     ).toBeLessThan(6);
 
@@ -323,6 +337,46 @@ export const PhoneRefusal: Story = {
     await userEvent.keyboard("{Escape}");
     await waitFor(() =>
       expect(screen.queryByRole("menu")).not.toBeInTheDocument()
+    );
+  },
+};
+
+// A long name beside a row action wraps, and the action stays on line 1 inside the card
+// (6wz1.112, owner C6).
+export const PhoneLongNameBesideAction: Story = {
+  globals: { viewport: { value: "mobile1", isRotated: false } },
+  args: {
+    card: {
+      title: (row) => row.email,
+      detail: (row) => row.name,
+    },
+    rowAction: () => (
+      <Button size="sm" variant="secondary">
+        Review
+      </Button>
+    ),
+  },
+  render: (args) => <DataTable {...omit(args, ["actions"])} />,
+  play: async ({ canvas }) => {
+    const cards = within(
+      canvas.getByRole("list", { name: "People" })
+    ).getAllByRole("listitem");
+
+    const card = cards[1]!;
+
+    const title = within(card).getByRole("button", {
+      name: people[1]!.email,
+    }).firstElementChild!;
+
+    await expect(title.scrollWidth).toBeLessThanOrEqual(title.clientWidth);
+
+    const review = within(card).getByRole("button", { name: "Review" });
+
+    await expect(review.getBoundingClientRect().right).toBeLessThanOrEqual(
+      card.getBoundingClientRect().right
+    );
+    await expect(review.getBoundingClientRect().top).toBeLessThan(
+      title.getBoundingClientRect().bottom
     );
   },
 };
