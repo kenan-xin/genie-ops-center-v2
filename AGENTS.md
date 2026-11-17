@@ -20,6 +20,14 @@ Before a ticket breakdown goes to the owner, list every design section under `do
 
 Use native `pnpm`/Nx, Git and `bd` commands in project scripts, tests, CI and portable documentation. RTK and other personal agent tools are optional wrappers for local command execution, not repository prerequisites; never require them or personal installation paths in those project surfaces.
 
+## Testing
+
+- Four layers from Section 0: Vitest unit tests, Storybook/Vitest browser component tests, Vitest integration tests against a real Postgres through Testcontainers, and Playwright end-to-end tests against one seeded deployment.
+- Never mock the database. An integration test gets a disposable Postgres with the real migration history.
+- Every module ships unit tests, integration tests for its router and schema, factories for its tables, and at least one end-to-end test for its main path.
+- Every roadmap section's definition of done includes an end-to-end test that proves it. Every end-to-end test that renders a screen runs at a phone viewport and a desktop viewport. A test that renders no screen (headers, API refusals, redirects, plain HTTP) carries the `@no-screen` tag and runs once, at desktop. A screen that only works on desktop is a defect (`DEC-25`, amended 2026-10-22).
+- Tenant isolation has a standing integration test: two tenant contexts against two databases in one process, the placeholder module's router run through each, and any read that crosses fails the test (`DEC-34`). Each database holds its own person with `placeholder:read` through a real role assignment, and a person of one database is refused by the other. It never gets skipped.
+
 ## UI development
 
 Before creating, changing, or integrating UI, read and follow [the Storybook and UI TDD workflow](docs/architecture/ui-development.md). Develop documented stories and failing behavior tests one slice at a time, make them pass before app consumption, and retain separate integration/E2E proof. Section 0 establishes this tooling; until it exists, report the missing harness rather than claiming tests passed.
