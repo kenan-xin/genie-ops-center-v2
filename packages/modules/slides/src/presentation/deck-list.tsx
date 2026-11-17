@@ -27,6 +27,7 @@ import {
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { PresentationIcon } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
 import { z } from "zod";
 
@@ -270,6 +271,7 @@ export function DeckList(props: DeckListProps) {
           {decks.data.length === 0 ? (
             <EmptyState
               variant="framed"
+              icon={<PresentationIcon />}
               title="No decks yet"
               description="Create a deck by chat beside this list, or start one with New deck."
             />

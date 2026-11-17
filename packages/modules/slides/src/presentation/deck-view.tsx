@@ -1104,6 +1104,7 @@ export function DeckView(props: DeckViewProps) {
       {current === undefined && !drafting ? (
         <EmptyState
           variant="framed"
+          icon={<Presentation />}
           title="No slides yet"
           description="Add a slide, or create a deck by chat from the Slides list."
         />

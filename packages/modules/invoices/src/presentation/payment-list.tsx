@@ -9,6 +9,7 @@ import {
   ListHeader,
   useListState,
 } from "@genie/ui";
+import { BanknoteIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import {
@@ -183,6 +184,7 @@ export function PaymentList(props: PaymentListProps) {
       {view.rows.length === 0 ? (
         <EmptyState
           variant="framed"
+          icon={<BanknoteIcon />}
           title="No payments to show"
           description="Saved payments show here with the amount not yet allocated to an invoice."
         />

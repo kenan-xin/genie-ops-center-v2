@@ -22,7 +22,12 @@ import {
   Input,
 } from "@genie/ui";
 import { useQueryClient } from "@tanstack/react-query";
-import { EllipsisIcon, PencilIcon, Undo2Icon } from "lucide-react";
+import {
+  EllipsisIcon,
+  LayoutDashboardIcon,
+  PencilIcon,
+  Undo2Icon,
+} from "lucide-react";
 import { type ReactElement, useId, useState } from "react";
 
 import type { DashboardChange } from "../contract.ts";
@@ -306,6 +311,7 @@ export function DashboardView(props: DashboardViewProps) {
           {dashboard.panels.length === 0 ? (
             <EmptyState
               variant="framed"
+              icon={<LayoutDashboardIcon />}
               title="No panels yet"
               description={
                 starters

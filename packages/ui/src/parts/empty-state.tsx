@@ -20,14 +20,21 @@ export type EmptyStateProps = {
       /** No frame and no tile: a list that matches nothing. */
       readonly variant?: "compact";
     }
-  | {
+  | ({
       /** A dashed frame, a tile and a larger heading: a refused page or an empty home. */
       readonly variant: "framed";
-      /** Drawn in the neutral tile. */
-      readonly icon?: ReactNode;
-      /** Shown as given, without the icon tile: a logo tile or an image. */
-      readonly media?: ReactNode;
-    }
+    } & (
+      | {
+          /** Drawn in the neutral tile. A framed state always has one (czjw.195). */
+          readonly icon: ReactNode;
+          readonly media?: never;
+        }
+      | {
+          /** Shown as given, without the icon tile: a logo tile or an image. */
+          readonly media: ReactNode;
+          readonly icon?: never;
+        }
+    ))
 );
 
 /** Nothing to show (tokens.md, "Empty state"), in one of two forms. */

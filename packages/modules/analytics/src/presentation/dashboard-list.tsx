@@ -21,6 +21,7 @@ import {
   Input,
 } from "@genie/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { LayoutDashboardIcon } from "lucide-react";
 import { useId, useState } from "react";
 
 import { analyticsContract, type DashboardSummary } from "../contract.ts";
@@ -161,6 +162,7 @@ export function DashboardList(props: DashboardListProps) {
       {dashboards.data.length === 0 ? (
         <EmptyState
           variant="framed"
+          icon={<LayoutDashboardIcon />}
           title="No dashboards yet"
           description="Create a dashboard, then add panels by chat beside it."
         />

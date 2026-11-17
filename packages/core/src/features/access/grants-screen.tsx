@@ -20,7 +20,7 @@ import {
   type TransferItem,
   useMediaQuery,
 } from "@genie/ui";
-import { SlidersHorizontalIcon } from "lucide-react";
+import { SlidersHorizontalIcon, UserIcon, UsersIcon } from "lucide-react";
 import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { useStore } from "zustand";
 
@@ -645,6 +645,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
       {props.recipient === null ? (
         <EmptyState
           variant="framed"
+          icon={kind === "user" ? <UserIcon /> : <UsersIcon />}
           title={EMPTY_COPY[kind].title}
           description={EMPTY_COPY[kind].description}
         />

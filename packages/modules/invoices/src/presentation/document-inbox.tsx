@@ -16,7 +16,7 @@ import {
 } from "@genie/ui";
 import { useAsyncQueuer } from "@tanstack/react-pacer";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { UploadIcon } from "lucide-react";
+import { InboxIcon, UploadIcon } from "lucide-react";
 import {
   type DragEvent,
   useEffect,
@@ -539,6 +539,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
         ) : inboxEmpty ? (
           <EmptyState
             variant="framed"
+            icon={<InboxIcon />}
             title="No documents yet"
             description="Uploaded invoices, receipts and payments show here with their status."
           />

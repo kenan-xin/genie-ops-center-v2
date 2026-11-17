@@ -11,6 +11,7 @@ import {
   ListHeader,
   useListState,
 } from "@genie/ui";
+import { ReceiptIcon } from "lucide-react";
 import { useMemo } from "react";
 
 import {
@@ -209,6 +210,7 @@ export function InvoiceList(props: InvoiceListProps) {
       {view.rows.length === 0 ? (
         <EmptyState
           variant="framed"
+          icon={<ReceiptIcon />}
           title="No invoices to show"
           description="Saved invoices show here with their balance."
         />
