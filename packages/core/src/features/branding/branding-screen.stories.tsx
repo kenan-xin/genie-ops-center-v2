@@ -39,10 +39,6 @@ const meta = {
     branding: brandingView(),
     timeZone: "UTC",
     signInHeading: (productName) => `Sign in to ${productName}`,
-    helpLabels: {
-      darkColor: "How the color looks in dark",
-      squareMark: "What shows without a square mark",
-    },
     onPublish: fn<BrandingScreenProps["onPublish"]>(async () => {}),
     onUpload: fn(async () => MARK),
   },
@@ -112,26 +108,41 @@ export const ColorsPassing: Story = {
     await expect(pills.getByText("Focus ring")).toBeVisible();
     await expect(pills.getByText("4.94:1")).toBeVisible();
     await expect(canvas.queryByRole("button", { name: /Fix/ })).toBeNull();
-    // The dark-theme note is background, so it sits behind the tab's help (helper-text rule).
-    await expect(canvas.queryByText(/one fixed light color/)).toBeNull();
-    await user.click(
-      canvas.getByRole("button", { name: "How the color looks in dark" })
-    );
+  },
+};
 
-    const help = within(
-      await screen.findByRole("group", { name: "How the color looks in dark" })
-    );
+/**
+ * 6wz1.130 (T8-b): each tab shows its rule as plain text, and the screen keeps one help
+ * disclosure: the header's "How publishing works".
+ */
+export const TabRulesAreVisible: Story = {
+  globals: { viewport: { value: "desktop", isRotated: false } },
+  // The default draft has no square mark and no image for it, so the mark's slot shows the rule.
+  args: { branding: brandingView() },
+  play: async ({ canvas }) => {
+    await user.click(canvas.getByRole("tab", { name: "Colors" }));
 
     await expect(
-      help.getByText(/one fixed light color, #60a5fa/)
-    ).toBeInTheDocument();
-    // Closed again, so axe after the play function reads no focus guards.
-    await user.click(help.getByRole("button", { name: "Close" }));
-    await waitFor(() =>
-      expect(
-        screen.queryByRole("group", { name: "How the color looks in dark" })
-      ).toBeNull()
-    );
+      canvas.getByText(
+        "In the dark theme, brand text and the focus ring use one fixed light color, #60a5fa. Buttons keep this color in both themes."
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "How the color looks in dark" })
+    ).toBeNull();
+
+    await user.click(canvas.getByRole("tab", { name: "Identity" }));
+
+    const slot = within(canvas.getByRole("group", { name: "Square mark" }));
+
+    await expect(
+      slot.getByText(
+        /Without a square mark, the shell shows the first letter of the company name/
+      )
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "What shows without a square mark" })
+    ).toBeNull();
   },
 };
 

@@ -100,10 +100,14 @@ function ProfileBlock(props: {
       </AccountCardRow>
       {/* Background, so it sits behind help (tokens.md, "What helper text stays visible"). */}
       <AccountCardRow className="md:flex-row md:items-center md:justify-between md:gap-4">
-        <HelpDisclosure label="Where your profile comes from">
+        <HelpDisclosure label="Where your profile and roles come from">
           <p>
             Name, email, and groups come from the company directory; changes are
             made in the company directory, not in Genie Ops Center.
+          </p>
+          <p>
+            Roles are assigned by administrators; contact an administrator for
+            changes.
           </p>
         </HelpDisclosure>
         {props.accountManagementUrl === null ? null : (
@@ -314,14 +318,6 @@ function RolesBlock(props: {
           ))}
         </ul>
       )}
-      <AccountCardRow>
-        <HelpDisclosure label="How your roles change">
-          <p>
-            Roles are assigned by administrators; contact an administrator for
-            changes.
-          </p>
-        </HelpDisclosure>
-      </AccountCardRow>
     </AccountCard>
   );
 }

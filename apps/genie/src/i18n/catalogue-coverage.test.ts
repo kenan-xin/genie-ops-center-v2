@@ -490,7 +490,8 @@ describe("inline user-facing text (Spec 3 R-41, AC-19a)", () => {
     // which this scan does not read. It is still inline English.
     "packages/core/src/features/branding/colors-tab.tsx": 4,
     "packages/core/src/features/branding/contrast-pills.tsx": 2,
-    "packages/core/src/features/branding/identity-tab.tsx": 4,
+    // 2026-11-18: -1 (6wz1.130), the square-mark help is now the empty slot's recommended line.
+    "packages/core/src/features/branding/identity-tab.tsx": 3,
     "packages/core/src/features/branding/image-slot.tsx": 13,
     "packages/core/src/features/branding/previews.tsx": 6,
     "packages/core/src/features/branding/sign-in-tab.tsx": 5,

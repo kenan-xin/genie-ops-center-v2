@@ -200,10 +200,7 @@ export const HelpTouchAreaOnPhone: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    const short = [
-      "Where your profile comes from",
-      "How your roles change",
-    ].filter((name) => {
+    const short = ["Where your profile and roles come from"].filter((name) => {
       const trigger = canvas.getByRole("button", { name });
 
       trigger.scrollIntoView({ block: "center", behavior: "instant" });
@@ -327,7 +324,9 @@ export const Default: Story = {
 
     // Where changes happen sits behind help (helper-text rule).
     await expect(
-      canvas.getByRole("button", { name: "Where your profile comes from" })
+      canvas.getByRole("button", {
+        name: "Where your profile and roles come from",
+      })
     ).toBeInTheDocument();
 
     // Sessions: the current row carries the chip and no sign-out; every other row a device icon
@@ -366,10 +365,24 @@ export const Default: Story = {
       canvas.getByText("Assigned via Field engineers")
     ).toBeInTheDocument();
 
-    // Read-only: the help says who changes roles.
+    // Read-only: one help on the page says who changes roles.
     await expect(
-      canvas.getByRole("button", { name: "How your roles change" })
-    ).toBeInTheDocument();
+      canvas.queryByRole("button", { name: "How your roles change" })
+    ).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Where your profile and roles come from",
+      })
+    );
+    // The callout mounts mid-animation; wait for it to finish before reading its visibility.
+    await waitFor(() =>
+      expect(
+        screen.getByText(/Roles are assigned by administrators/)
+      ).toBeVisible()
+    );
+    // Closed again, so axe after the play function reads no focus guards.
+    await userEvent.click(screen.getByRole("button", { name: "Close" }));
   },
 };
 
@@ -564,7 +577,9 @@ export const WithoutRoles: Story = {
     const canvas = within(canvasElement);
 
     await expect(
-      canvas.getByRole("button", { name: "How your roles change" })
+      canvas.getByRole("button", {
+        name: "Where your profile and roles come from",
+      })
     ).toBeInTheDocument();
 
     // No groups reads as its own line, not as a missing block.

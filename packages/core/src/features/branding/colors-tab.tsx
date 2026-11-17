@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  controlHeights,
-  HelpDisclosure,
-  ToggleGroup,
-  ToggleGroupItem,
-} from "@genie/ui";
+import { controlHeights, ToggleGroup, ToggleGroupItem } from "@genie/ui";
 
 import { brandingContrastPairs } from "../../lib/branding/contrast-pairs.ts";
 import { foregroundFor } from "../../lib/branding/foreground.ts";
@@ -27,7 +22,6 @@ export function ColorsTab(props: {
   readonly draft: BrandingDraft;
   readonly issues: Readonly<Record<string, string>>;
   readonly scope: string;
-  readonly helpLabel: string;
   readonly onColor: (value: string) => void;
   readonly onTheme: (value: BrandingDraft["defaultTheme"]) => void;
 }) {
@@ -60,12 +54,11 @@ export function ColorsTab(props: {
         ) : null}
       </div>
       {valid ? <ContrastPills pairs={brandingContrastPairs(color)} /> : null}
-      <HelpDisclosure label={props.helpLabel}>
-        <p>
-          In the dark theme, brand text and the focus ring use one fixed light
-          color, #60a5fa. Buttons keep this color in both themes.
-        </p>
-      </HelpDisclosure>
+      {/* The color rule in plain words, as branding-colors.png explains it (6wz1.130). */}
+      <p className="text-sm text-muted-foreground">
+        In the dark theme, brand text and the focus ring use one fixed light
+        color, #60a5fa. Buttons keep this color in both themes.
+      </p>
       <div className="flex flex-col items-start gap-2">
         <span id="branding-theme-label" className="text-sm font-medium">
           Default theme

@@ -52,11 +52,6 @@ export type BrandingScreenProps = {
   readonly timeZone: string;
   /** The sign-in page's heading for a product name, from the host's catalogue (R-54). */
   readonly signInHeading: (productName: string) => string;
-  /** The tab help buttons' labels, from the host's catalogue (R-41). */
-  readonly helpLabels: {
-    readonly darkColor: string;
-    readonly squareMark: string;
-  };
   /** Receives only the changed fields. A rejection with `{ message, issues }` keeps the draft. */
   readonly onPublish: (changes: Partial<BrandingDraft>) => Promise<void>;
   readonly onUpload: (
@@ -459,7 +454,6 @@ function BrandingEditor(
                     issues={issues}
                     images={slotImages}
                     slots={slots}
-                    helpLabel={props.helpLabels.squareMark}
                     onChange={set}
                     onFile={(slot, file) => void upload(slot, file)}
                     onRemove={(slot) => {
@@ -472,7 +466,6 @@ function BrandingEditor(
                     draft={draft}
                     issues={issues}
                     scope={scope}
-                    helpLabel={props.helpLabels.darkColor}
                     onColor={(value) => set("primaryColor", value)}
                     onTheme={(value) => set("defaultTheme", value)}
                   />
