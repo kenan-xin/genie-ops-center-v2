@@ -225,6 +225,11 @@ export { FigureStrip } from "./parts/figure-strip.tsx";
 
 export type { Figure } from "./parts/figure-strip.tsx";
 
+export {
+  horizontalStrip,
+  horizontalStripWheel,
+} from "./parts/horizontal-strip.ts";
+
 export type { ConfirmDialogProps } from "./parts/confirm-dialog.tsx";
 
 export { DeploymentDiagnostics } from "./diagnostics/deployment-diagnostics.tsx";

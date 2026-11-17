@@ -554,6 +554,36 @@ async function colorFields(canvas: HTMLElement, height: 40 | 36) {
   );
 }
 
+/** X-6: in a narrow column the tab row keeps a swipe, and a vertical mouse wheel scrolls it sideways. */
+export const TabRowTakesTheWheel: Story = {
+  globals: phone,
+  decorators: [
+    (Story) => (
+      <div className="w-32">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const row = canvas.getByRole("tablist").parentElement;
+
+    if (row === null) throw new Error("The tab row has no wrapper.");
+
+    const style = getComputedStyle(row);
+
+    await expect(style.overscrollBehaviorX).toBe("contain");
+    await expect(style.touchAction).toBe("pan-x pan-y");
+    await expect(row.scrollWidth).toBeGreaterThan(row.clientWidth);
+
+    const wheel = new WheelEvent("wheel", { deltaY: 40, cancelable: true });
+
+    row.dispatchEvent(wheel);
+
+    await expect(row.scrollLeft).toBeGreaterThan(0);
+    await expect(wheel.defaultPrevented).toBe(true);
+  },
+};
+
 export const ColorFieldOnPhone: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvasElement }) => colorFields(canvasElement, 40),

@@ -25,6 +25,8 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  horizontalStrip,
+  horizontalStripWheel,
   InfoNote,
   Input,
   Sheet,
@@ -1111,9 +1113,11 @@ export function DeckView(props: DeckViewProps) {
       ) : (
         <div className="flex flex-col gap-4 md:flex-row md:items-start">
           <nav
+            ref={horizontalStripWheel}
             aria-label="Slides"
-            // 7.3: numbered previews, a column from 768 px and a strip that scrolls below it.
-            className="flex gap-3 overflow-x-auto px-1 pt-1 pb-2 md:w-40 md:shrink-0 md:flex-col md:overflow-visible md:p-0"
+            // 7.3: numbered previews, a column from 768 px and a strip that scrolls below it. The
+            // column does not scroll sideways, so it gives pinch zoom back.
+            className={`${horizontalStrip} flex gap-3 px-1 pt-1 pb-2 md:w-40 md:shrink-0 md:touch-auto md:flex-col md:overflow-visible md:p-0`}
           >
             {deck.slides.map((slide, slideIndex) => (
               <div

@@ -2,8 +2,12 @@
 
 import { cn } from "cn";
 import { XIcon } from "lucide-react";
-import { useRef } from "react";
+import { useCallback, useRef } from "react";
 
+import {
+  horizontalStrip,
+  horizontalStripWheel,
+} from "../parts/horizontal-strip.ts";
 import { controlHeights, focusRing } from "../theme/tokens.ts";
 
 export type FilterChip = {
@@ -24,6 +28,12 @@ export function FilterChips(props: {
 }) {
   const list = useRef<HTMLUListElement>(null);
 
+  const strip = useCallback((element: HTMLUListElement | null) => {
+    list.current = element;
+
+    return horizontalStripWheel(element);
+  }, []);
+
   // The removed button leaves the page, so the focus moves to the next chip's remove button,
   // else the previous one, else the row, never to the body (WCAG 2.4.3, as 6wz1.98).
   function remove(button: HTMLButtonElement, onRemove: () => void) {
@@ -38,10 +48,10 @@ export function FilterChips(props: {
     // A row that scrolls sideways also clips up and down; py-1.5 keeps the 6 px that the remove
     // target reaches above and below a 32 px chip.
     <ul
-      ref={list}
+      ref={strip}
       aria-label={props.label}
       tabIndex={-1}
-      className={cn("flex gap-2 overflow-x-auto py-1.5", focusRing)}
+      className={cn(horizontalStrip, "flex gap-2 py-1.5", focusRing)}
     >
       {props.chips.map((chip) => (
         <li key={chip.id} className="shrink-0">

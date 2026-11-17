@@ -126,5 +126,18 @@ export const ScrollsSideways: Story = {
     await expect(list.scrollWidth).toBeGreaterThan(list.clientWidth);
     const page = document.documentElement;
     await expect(page.scrollWidth).toBeLessThanOrEqual(page.clientWidth);
+
+    // X-6: the row keeps a swipe, and a vertical mouse wheel scrolls it sideways.
+    const style = getComputedStyle(list);
+
+    await expect(style.overscrollBehaviorX).toBe("contain");
+    await expect(style.touchAction).toBe("pan-x pan-y");
+
+    const wheel = new WheelEvent("wheel", { deltaY: 100, cancelable: true });
+
+    list.dispatchEvent(wheel);
+
+    await expect(list.scrollLeft).toBe(100);
+    await expect(wheel.defaultPrevented).toBe(true);
   },
 };

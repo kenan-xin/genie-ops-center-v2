@@ -408,6 +408,47 @@ export const RailOnPhone: Story = {
   play: railPlay,
 };
 
+/** A vertical mouse wheel over the rail, answered with whether the rail took it. */
+function wheelOver(rail: HTMLElement): boolean {
+  const wheel = new WheelEvent("wheel", { deltaY: 100, cancelable: true });
+
+  rail.dispatchEvent(wheel);
+
+  return wheel.defaultPrevented;
+}
+
+/** X-6: below 768 px the rail is a strip that keeps a swipe and takes a vertical wheel. */
+export const RailStripTakesTheWheel: Story = {
+  name: "Rail strip on a phone takes the swipe and the wheel",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const rail = await canvas.findByRole("navigation", { name: "Slides" });
+    const style = getComputedStyle(rail);
+
+    await expect(style.overscrollBehaviorX).toBe("contain");
+    await expect(style.touchAction).toBe("pan-x pan-y");
+    await expect(rail.scrollWidth).toBeGreaterThan(rail.clientWidth);
+    await expect(wheelOver(rail)).toBe(true);
+    await expect(rail.scrollLeft).toBe(100);
+  },
+};
+
+/** X-6: from 768 px the rail is a column; the wheel scrolls the page, and pinch zoom stays. */
+export const RailColumnLeavesTheWheel: Story = {
+  name: "Rail column on a desktop leaves the wheel to the page",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const rail = await canvas.findByRole("navigation", { name: "Slides" });
+
+    await expect(getComputedStyle(rail).touchAction).toBe("auto");
+    await expect(wheelOver(rail)).toBe(false);
+  },
+};
+
 // B5.1: Present opens at the slide the page shows, and Escape returns to it.
 export const Present: Story = {
   args: { view: deckPage },

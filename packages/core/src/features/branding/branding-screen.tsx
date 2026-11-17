@@ -5,6 +5,8 @@ import {
   ConfirmDialog,
   FormActionBar,
   HelpDisclosure,
+  horizontalStrip,
+  horizontalStripWheel,
   StatusPill,
   Tabs,
   TabsContent,
@@ -427,7 +429,10 @@ function BrandingEditor(
         >
           {/* The wrapper scrolls, not the list: the active underline sits on the list border, so a scrolling list grew a vertical scrollbar.
               Its 2 px padding, taken back by the margin, keeps each tab's 44 px touch area inside the clip. */}
-          <div className="max-w-full overflow-x-auto max-lg:-my-0.5 max-lg:py-0.5">
+          <div
+            ref={horizontalStripWheel}
+            className={`${horizontalStrip} max-w-full max-lg:-my-0.5 max-lg:py-0.5`}
+          >
             <TabsList>
               {TABS.map((entry) => (
                 <TabsTrigger
