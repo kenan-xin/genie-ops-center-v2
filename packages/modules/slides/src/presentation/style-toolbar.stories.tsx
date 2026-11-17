@@ -563,6 +563,21 @@ export const EditorBarOnlyImage: StoryObj<typeof SlideEditorBar> = {
 export const RefusedActionsSayWhyOnPhone: Story = {
   name: "On a phone More says why Use theme style and Delete are off",
   globals: phone,
+  // The story ends with the card open, so axe measures the reason lines. Base UI's focus guards
+  // are `aria-hidden` on purpose (they hand focus on), so only they skip `aria-hidden-focus`.
+  parameters: {
+    a11y: {
+      test: "error",
+      config: {
+        rules: [
+          {
+            id: "aria-hidden-focus",
+            selector: '[aria-hidden="true"]:not([data-base-ui-focus-guard])',
+          },
+        ],
+      },
+    },
+  },
   args: {
     element: title!,
     deleteRefusal: SLIDE_RULE_MESSAGES.firstNotTitle,
