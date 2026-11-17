@@ -79,6 +79,12 @@ export type DataTableCard<Row> = {
   readonly content?: (row: Row) => ReactNode;
   /** The end of line 1, above the row button: an age, or a switch, which stays clickable. */
   readonly trailing?: (row: Row) => ReactNode;
+  /**
+   * `true` puts the row action beside lines 1 and 2, top aligned, so a 40 px button does not push
+   * the detail down (account sessions, C08-3). By default it ends line 1 and the lines under it
+   * keep the full width (the documents inbox, C07-5).
+   */
+  readonly actionBeside?: boolean;
 };
 
 export type DataTableAction = {
@@ -115,7 +121,7 @@ export type DataTableProps<Row> = {
   readonly actions?: (row: Row) => readonly DataTableAction[];
   /**
    * One visible action of the row, such as Review: the last column of the table, before the menu,
-   * and beside the card's lines (czjw.102).
+   * and the end of line 1 of the card, or beside its lines with `card.actionBeside` (czjw.102).
    */
   readonly rowAction?: (row: Row) => ReactNode;
   /** `false` drops the outer border, for a table inside a card that draws its own. */
@@ -556,8 +562,12 @@ export function DataTable<Row>({
           const facts = card.facts?.(row) ?? [];
           const note = card.note?.(row) ?? null;
           const content = card.content?.(row) ?? null;
-          const trailing = card.trailing?.(row) ?? null;
           const action = rowAction?.(row) ?? null;
+          const beside = card.actionBeside === true ? action : null;
+
+          const trailing =
+            card.trailing?.(row) ?? (beside === null ? action : null);
+
           const rowMenu = menu(row);
 
           const lift =
@@ -638,9 +648,8 @@ export function DataTable<Row>({
                   <div className={`${lift} ${under}`}>{content}</div>
                 )}
               </div>
-              {/* Beside lines 1 and 2, not inside line 1, so a 40 px button does not push the detail down (C08-3). */}
-              {action === null ? null : (
-                <span className="relative z-10 shrink-0">{action}</span>
+              {beside === null ? null : (
+                <span className="relative z-10 shrink-0">{beside}</span>
               )}
               {/* No empty cell, so a card without actions keeps no gap at its end. */}
               {rowMenu === null ? null : (
