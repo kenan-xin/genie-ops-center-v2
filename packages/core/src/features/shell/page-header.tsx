@@ -109,9 +109,7 @@ function PageTopBar(props: {
           {props.actions}
         </div>
       )}
-      {props.agent ? (
-        <AgentButton compact={props.actions !== undefined} />
-      ) : null}
+      {props.agent ? <AgentButton /> : null}
     </div>
   );
 }

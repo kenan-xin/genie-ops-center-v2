@@ -1,45 +1,50 @@
 "use client";
 
 import { Button } from "@genie/ui";
+import { SparklesIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { useStore } from "zustand";
 
 import { agentPanelStore } from "./agent-panel-store.ts";
 
 /**
- * Opens and closes the agent panel (R-42, AG10). The dot is still while the agent waits, and
- * pulses while it works; with the panel closed the button also says "Working". `compact` shows
- * only the dot below `md`, for a phone top bar that also holds the page's actions.
+ * Opens and closes the agent panel (R-42, AG10). From `md` it shows a dot and "Ask": the dot is
+ * still while the agent waits and pulses while it works, and with the panel closed the button also
+ * says "Working". Under `md` every top bar shows the Sparkles icon instead, with the dot on the
+ * button's top-right corner, outside the glyph (deck-phone.prototype.html, czjw.177).
  */
-export function AgentButton(props: { readonly compact?: boolean }): ReactNode {
+export function AgentButton(): ReactNode {
   const open = useStore(agentPanelStore, (state) => state.open);
   const working = useStore(agentPanelStore, (state) => state.working);
 
   const workingOutOfSight = working && !open;
-  // The `aria-label` keeps the name while the text hides.
-  const label = props.compact === true ? "max-md:hidden" : undefined;
 
   return (
     <Button
       type="button"
       variant="ghost"
       size="filter"
-      className={props.compact === true ? "max-md:w-11" : undefined}
+      // 44 px wide under `md`; the `aria-label` keeps the name while the word hides.
+      className="max-md:w-11"
       aria-label={workingOutOfSight ? "Ask, working" : "Ask"}
       aria-expanded={open}
       onClick={(event) =>
         agentPanelStore.setState({ open: !open, opener: event.currentTarget })
       }
     >
+      {/* 17 px, so that its drawn height matches the 20 px Undo glyph beside it. */}
+      <SparklesIcon
+        aria-hidden="true"
+        strokeWidth={1.75}
+        className="size-4.25 md:hidden"
+      />
       <span
         aria-hidden="true"
-        className={`size-2 shrink-0 rounded-full ${working ? "bg-primary motion-safe:animate-pulse" : "bg-muted-foreground"}`}
+        className={`size-2 shrink-0 rounded-full max-md:absolute max-md:top-1.25 max-md:right-1 max-md:ring-2 max-md:ring-background ${working ? "bg-primary motion-safe:animate-pulse" : "bg-muted-foreground"}`}
       />
-      <span className={label}>Ask</span>
+      <span className="max-md:hidden">Ask</span>
       {workingOutOfSight ? (
-        <span className={`text-muted-foreground ${label ?? ""}`}>
-          · Working
-        </span>
+        <span className="text-muted-foreground max-md:hidden">· Working</span>
       ) : null}
     </Button>
   );
