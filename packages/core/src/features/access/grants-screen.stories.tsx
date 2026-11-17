@@ -197,6 +197,23 @@ export const GrantToRowLinesUp: Story = {
   },
 };
 
+/** C08-4: the help trigger's hover fill starts clear of the heading. */
+export const HelpClearsTheHeading: Story = {
+  args: { initial: group("g-ops") },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const heading = await canvas.findByRole("heading", {
+      name: "Modules and roles",
+    });
+
+    const help = canvas.getByRole("button", { name: "How access works" });
+
+    await expect(
+      help.getBoundingClientRect().left - heading.getBoundingClientRect().right
+    ).toBeGreaterThanOrEqual(2);
+  },
+};
+
 /** 6wz1.107: on a phone, Advanced access sits under the picker at the row's right end, with its icon. */
 export const AdvancedAccessAtTheRowEndPhone: Story = {
   args: { initial: group("g-ops") },

@@ -87,6 +87,21 @@ export const Identity: Story = {
   },
 };
 
+/** C08-4: the publish help's hover fill starts clear of the publish status. */
+export const PublishHelpClearsTheStatus: Story = {
+  play: async ({ canvas }) => {
+    const status = canvas.getByText(/^Published .* by /);
+
+    const help = canvas.getByRole("button", {
+      name: "How publishing works",
+    });
+
+    await expect(
+      help.getBoundingClientRect().left - status.getBoundingClientRect().right
+    ).toBeGreaterThanOrEqual(2);
+  },
+};
+
 export const ColorsPassing: Story = {
   play: async ({ canvas }) => {
     await user.click(canvas.getByRole("tab", { name: "Colors" }));

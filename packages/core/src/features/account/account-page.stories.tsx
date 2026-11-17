@@ -221,6 +221,42 @@ export const HelpTouchAreaOnPhone: Story = {
   },
 };
 
+/** C08-3: the row's Sign out sits beside lines 1 and 2, so the detail keeps its pitch. */
+export const SessionCardLinesOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const list = canvasElement.querySelector<HTMLElement>('ul[role="list"]');
+
+    if (list === null) throw new Error("No phone card list.");
+
+    const button = within(list).getByRole("button", {
+      name: "Sign out Pixel 7 (Android), Chrome",
+    });
+
+    const card = button.closest("li");
+
+    if (card === null) throw new Error("The Sign out has no card.");
+
+    // title = the device text in that card, detail = the "<browser> · <ip>" line of that card.
+    const title = within(card).getByText("Pixel 7 (Android)");
+    const detail = within(card).getByText("Chrome · 192.0.2.44");
+
+    // C08-3: the button's top aligns with the title line, not the middle of the card (measured 0).
+    await expect(
+      Math.abs(
+        button.getBoundingClientRect().top - title.getBoundingClientRect().top
+      )
+    ).toBeLessThanOrEqual(2);
+
+    await expect(
+      detail.getBoundingClientRect().top - title.getBoundingClientRect().top
+    ).toBeLessThanOrEqual(22); // account-page-mobile.png: 20 px; the This device row is 21 px
+    await expect(detail.getBoundingClientRect().right).toBeLessThanOrEqual(
+      button.getBoundingClientRect().left
+    );
+  },
+};
+
 /**
  * The page header sits as on every admin page: at the content's left edge, not centered, with the
  * 24 px gap above the first card, and the subtitle names what the page holds.

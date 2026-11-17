@@ -88,7 +88,15 @@ const segmented: Story["play"] = async ({ canvasElement }) => {
 
 export const Default: Story = { play: segmented };
 
-export const Dark: Story = { globals: { theme: "dark" } };
+/** T1: the track is gray-800 in the dark theme (DESIGN.md, Segmented control). */
+export const Dark: Story = {
+  globals: { theme: "dark" },
+  play: async ({ canvasElement }) => {
+    await expect(
+      getComputedStyle(segments(canvasElement).track).backgroundColor
+    ).toBe("rgb(31, 41, 55)");
+  },
+};
 
 /** md segments, for a row beside md fields and buttons. */
 export const Medium: Story = { args: { size: "md" }, play: segmented };

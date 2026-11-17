@@ -110,7 +110,7 @@ async function openMenu(canvas: ReturnType<typeof within>) {
     within(menu).getByRole("menuitem", { name: "Rename" })
   ).toBeVisible();
 
-  // 6wz1.136: one icon-to-label gap in every row, default and lg (the prototypes' 10 px).
+  // 6wz1.136: one icon-to-label gap in every row, default and lg: the prototypes' 10 px, measured 11 (rounded ink edge).
   const gaps = within(menu)
     .getAllByRole("menuitem")
     .flatMap((item) => {
@@ -137,7 +137,7 @@ async function openMenu(canvas: ReturnType<typeof within>) {
     });
 
   await expect(gaps).toHaveLength(6);
-  await expect(new Set(gaps).size).toBe(1);
+  await expect([...new Set(gaps)]).toEqual([11]);
 }
 
 export const Open: Story = {

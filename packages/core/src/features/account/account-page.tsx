@@ -244,8 +244,8 @@ function SessionsBlock(props: {
               `Signed in ${instant(session.signedInAt)} · active ${ago(session.lastActiveAt)}`,
             ],
           }}
-          // One visible Sign out per other session, in the last cell and at the end of the card's
-          // first line (account-page.png, account-page-mobile.png; the rowAction slot of czjw.102).
+          // One visible Sign out per other session, in the last cell and beside the card's first
+          // two lines (account-page.png, account-page-mobile.png; the rowAction slot of czjw.102).
           rowAction={(session) =>
             session.isCurrent ? null : (
               <Button

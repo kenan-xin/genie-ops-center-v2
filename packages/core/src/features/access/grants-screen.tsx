@@ -637,7 +637,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
           className="flex flex-col rounded-xl border border-border bg-card"
         >
           <div className="flex flex-col gap-2 p-5 lg:p-6">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
               <h2 id="grants-heading" className="text-lg font-semibold">
                 Modules and roles
               </h2>

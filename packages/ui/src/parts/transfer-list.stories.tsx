@@ -322,6 +322,24 @@ export const PaneLook: Story = {
     await expect(
       row("Invoices").getBoundingClientRect().height
     ).toBeGreaterThanOrEqual(56);
+
+    // C08-5: a blocked row keeps the medium name, and an editable row is semibold.
+    await expect(
+      getComputedStyle(within(row("Analytics")).getByText("Analytics"))
+        .fontWeight
+    ).toBe("500");
+    await expect(
+      getComputedStyle(within(row("Invoices")).getByText("Invoices")).fontWeight
+    ).toBe("600");
+
+    // C08-1: a panes-layout pane clamps its rows to the rounded border, so a row cut off at the
+    // pane's bottom edge cannot show a square hover fill past the 8 px radius.
+    for (const name of ["Catalog", "Granted"]) {
+      const flow = getComputedStyle(canvas.getByRole("group", { name }));
+
+      // oxlint-disable-next-line no-await-in-loop -- each pane is measured on its own.
+      await expect([flow.overflowX, flow.overflowY]).toEqual(["clip", "clip"]);
+    }
   },
 };
 
@@ -356,6 +374,56 @@ export const Stacked: Story = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Remove 1" }));
     await expect(args.onMove).toHaveBeenLastCalledWith(["slides"], "available");
+  },
+};
+
+/** C08-1: every box reaches its 44 px touch area on a phone, and the panes keep their round corners. */
+export const StackedTouchAreasOnPhone: Story = {
+  args: { layout: "stacked" },
+  // Every screen pads the list; with no page edge, the area's left 2 px falls off the viewport.
+  render: (args) => (
+    <div className="p-4">
+      <Harness {...args} />
+    </div>
+  ),
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The touch check's probe: the outermost whole pixel of the area's left and right edge, at the middle.
+    const short = canvas.getAllByRole("checkbox").flatMap((box) => {
+      box.scrollIntoView({ block: "center", behavior: "instant" });
+
+      const rect = box.getBoundingClientRect();
+      const middle = rect.left + rect.width / 2;
+      const y = rect.top + rect.height / 2;
+
+      return [
+        [Math.ceil(middle - 22), "left"],
+        [Math.floor(middle + 22) - 1, "right"],
+      ].flatMap(([x, side]) =>
+        box.contains(document.elementFromPoint(Number(x), y))
+          ? []
+          : [`${box.getAttribute("aria-label")} (${side})`]
+      );
+    });
+
+    await expect(short).toEqual([]);
+
+    // Without the pane's clip, the band and the last row round themselves (no square hover corner).
+    for (const name of ["Catalog", "Granted"]) {
+      const pane = canvas.getByRole("group", { name });
+      const band = pane.firstElementChild;
+      const last = pane.querySelector("ul > li:last-child");
+
+      if (band === null || last === null)
+        throw new Error(`${name} has no band or row.`);
+
+      // oxlint-disable-next-line no-await-in-loop -- each pane is measured on its own.
+      await expect(getComputedStyle(band).borderTopLeftRadius).toBe("8px");
+      // oxlint-disable-next-line no-await-in-loop -- each pane is measured on its own.
+      await expect(getComputedStyle(last).borderBottomLeftRadius).toBe("8px");
+    }
   },
 };
 
@@ -394,6 +462,19 @@ export const ReadOnlyRowsAndOneCountPerKey: Story = {
       })
     );
     await expect(args.onNote).toHaveBeenCalledOnce();
+
+    // C08-5: a read-only row keeps the semibold name; only a blocked row drops to medium.
+    const readOnlyName = granted
+      .getAllByText("Fixture", { selector: "span" })
+      .find(
+        (span) =>
+          span.closest("li")?.querySelector('[role="checkbox"]') === null
+      );
+
+    if (readOnlyName === undefined)
+      throw new Error("The read-only Fixture row is missing.");
+
+    await expect(getComputedStyle(readOnlyName).fontWeight).toBe("600");
   },
 };
 

@@ -115,7 +115,7 @@ export type DataTableProps<Row> = {
   readonly actions?: (row: Row) => readonly DataTableAction[];
   /**
    * One visible action of the row, such as Review: the last column of the table, before the menu,
-   * and the end of line 1 of the card (czjw.102).
+   * and beside the card's lines (czjw.102).
    */
   readonly rowAction?: (row: Row) => ReactNode;
   /** `false` drops the outer border, for a table inside a card that draws its own. */
@@ -556,7 +556,8 @@ export function DataTable<Row>({
           const facts = card.facts?.(row) ?? [];
           const note = card.note?.(row) ?? null;
           const content = card.content?.(row) ?? null;
-          const trailing = card.trailing?.(row) ?? rowAction?.(row) ?? null;
+          const trailing = card.trailing?.(row) ?? null;
+          const action = rowAction?.(row) ?? null;
           const rowMenu = menu(row);
 
           const lift =
@@ -637,6 +638,10 @@ export function DataTable<Row>({
                   <div className={`${lift} ${under}`}>{content}</div>
                 )}
               </div>
+              {/* Beside lines 1 and 2, not inside line 1, so a 40 px button does not push the detail down (C08-3). */}
+              {action === null ? null : (
+                <span className="relative z-10 shrink-0">{action}</span>
+              )}
               {/* No empty cell, so a card without actions keeps no gap at its end. */}
               {rowMenu === null ? null : (
                 <span className="relative z-10">{rowMenu}</span>

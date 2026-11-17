@@ -400,7 +400,7 @@ function BrandingEditor(
         primaryColor={draft.primaryColor}
         signInBackground={draft.loginBackgroundColor}
       />
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
         {count > 0 ? (
           <StatusPill tone="warning">
             {plural(count, "unpublished change", "unpublished changes")}

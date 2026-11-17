@@ -128,7 +128,9 @@ function Rows(props: {
                 <span
                   className={cn(
                     "block break-words",
-                    stop ? "font-medium" : "font-semibold"
+                    stop && item.readOnly !== true
+                      ? "font-medium"
+                      : "font-semibold"
                   )}
                 >
                   {item.label}
@@ -331,9 +333,14 @@ export function TransferList(props: TransferListProps) {
             key={side}
             role="group"
             aria-label={label[side]}
-            className="flex min-h-0 min-w-0 flex-col overflow-clip rounded-lg border border-border"
+            className={cn(
+              "flex min-h-0 min-w-0 flex-col rounded-lg border border-border",
+              // The panes form only shows at desktop widths, where the boxes' touch areas are off,
+              // so its clip costs no touch area (C08-1).
+              props.layout === "panes" && "overflow-clip"
+            )}
           >
-            <div className="flex min-h-11 items-center justify-between gap-3 border-b border-border bg-muted px-3 py-1.5">
+            <div className="flex min-h-11 items-center justify-between gap-3 rounded-t-lg border-b border-border bg-muted px-3 py-1.5">
               <h3 className={captionClass}>
                 {label[side]} · {countOf(all(side))}
               </h3>
@@ -354,7 +361,7 @@ export function TransferList(props: TransferListProps) {
                 </button>
               ) : null}
             </div>
-            <div className="flex items-center gap-3 border-b border-border px-3 py-2">
+            <div className="flex items-center gap-4 border-b border-border px-3 py-2">
               {/* The label spreads over the row's padding, so the 16 px box gets a desktop hit area without moving. */}
               <label className="-mx-3 -my-2 flex cursor-pointer items-center self-stretch px-3">
                 <Checkbox
@@ -370,11 +377,13 @@ export function TransferList(props: TransferListProps) {
             </div>
             {/* A stacked pane grows with its rows: a phone page scrolls once (Review Focus 3). */}
             <div
-              className={
-                props.layout === "panes"
-                  ? "max-h-88 min-h-0 flex-1 overflow-y-auto"
-                  : undefined
-              }
+              className={cn(
+                props.layout === "panes" &&
+                  "max-h-88 min-h-0 flex-1 overflow-y-auto",
+                // The pane no longer clips (its boxes' touch areas reach past the border, C08-1),
+                // so the bottom row rounds its own fill when no footer sits under it.
+                button === null && "[&>ul>li:last-child]:rounded-b-lg"
+              )}
             >
               {rows(side)}
             </div>
