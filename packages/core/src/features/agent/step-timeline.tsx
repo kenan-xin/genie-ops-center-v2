@@ -106,7 +106,7 @@ function Row(props: {
   const active = row.state === "active";
 
   return (
-    <li className="relative flex gap-3 pb-3 last:pb-0">
+    <li className="relative flex gap-2.5 pb-3 last:pb-0">
       <span
         aria-hidden="true"
         className="absolute start-2 top-4.5 bottom-0 -ms-px w-px bg-border group-last/rows:hidden"
@@ -242,7 +242,7 @@ export function StepTimeline(props: {
 
   if (timeline.thinking) {
     stepsView = (
-      <div className="flex items-center gap-3 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
         <Node state="active" />
         Thinking
       </div>
@@ -256,7 +256,7 @@ export function StepTimeline(props: {
         {hidden === 0 ? null : (
           <button
             type="button"
-            className={`${stepLinkClass} justify-self-start ps-7`}
+            className={`${stepLinkClass} justify-self-start ps-6.5`}
             onClick={() => setEarlier(true)}
           >
             +{hidden} earlier {hidden === 1 ? "step" : "steps"}
@@ -282,10 +282,11 @@ export function StepTimeline(props: {
 
     stepsView = (
       <div className="grid gap-2">
+        {/* The tile bleeds 10 px past the sparkle, so the ink stays on the text edge (6wz1.113, C07-1). */}
         <button
           type="button"
           aria-expanded={open}
-          className={`flex items-center gap-3 justify-self-start rounded-lg pe-2.5 text-sm font-medium hover:bg-hover lg:min-h-8 max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
+          className={`flex items-center gap-2.5 justify-self-start rounded-lg -ms-2.5 px-2.5 text-sm font-medium hover:bg-hover lg:min-h-8 max-lg:min-h-11 ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
           onClick={() => setOpen(!open)}
         >
           <SparklesIcon

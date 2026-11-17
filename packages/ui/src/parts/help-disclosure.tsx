@@ -15,7 +15,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "../components/tooltip.tsx";
-import { iconLead } from "../theme/tokens.ts";
+import {
+  controlHeights,
+  focusRing,
+  iconLead,
+  touchAreas,
+} from "../theme/tokens.ts";
 
 /**
  * Contextual help (tokens.md, "Help disclosure"): a labelled button that opens one 320 px callout
@@ -98,15 +103,15 @@ export function HelpDisclosure(props: {
         <div className="flex flex-col gap-2 leading-relaxed">
           {props.children}
         </div>
-        <Button
-          variant="link"
-          size="sm"
-          // Hangs the padding and border, so the word lines up with the text; the hit area stays 44 px.
-          className="-ms-3.25 self-start"
+        {/* No padding and no hang: the word starts on the text edge and the 4 px focus ring stays
+            inside the callout's border (C07-3); `touchAreas.sm` keeps the 44 px hit area. */}
+        <button
+          type="button"
+          className={`${controlHeights.sm} ${touchAreas.sm} self-start rounded-lg text-sm font-medium text-primary underline-offset-4 hover:underline dark:text-brand-on-dark ${focusRing}`}
           onClick={() => setOpen(false)}
         >
           Close
-        </Button>
+        </button>
       </PopoverContent>
     </Popover>
   );

@@ -257,12 +257,44 @@ export const Default: Story = {
   },
 };
 
+/** Each phone card shows its extracted details whole: the reason never shares their line and truncates them (C07-5). */
+async function detailsAreWhole(canvas: Canvas): Promise<void> {
+  const list = await canvas.findByRole("list", { name: "Documents" });
+  const walker = document.createTreeWalker(list, NodeFilter.SHOW_TEXT);
+  const clipped: string[] = [];
+  let checked = 0;
+
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    const text = node.textContent ?? "";
+    // The currency code and its amount are separated by a no-break space.
+    const match = /SGD\s[\d,.]+/.exec(text);
+
+    if (match === null) continue;
+
+    checked += 1;
+
+    // The nearest box that clips its overflow is the line the details sit in.
+    let box = node.parentElement;
+
+    while (box !== null && getComputedStyle(box).overflowX === "visible")
+      box = box.parentElement;
+
+    if (box === null || box.scrollWidth > box.clientWidth) clipped.push(text);
+  }
+
+  await expect(checked).toBeGreaterThan(0);
+  await expect(clipped).toEqual([]);
+}
+
 // B8.1: every status word as cards, at the phone width, under All.
 export const DefaultOnPhone: Story = {
   name: "Default on a phone",
   globals: phone,
   beforeEach: () => serve(defaultDocumentInbox),
-  play: ({ canvas }) => expectStatusWords(canvas, "list"),
+  play: async ({ canvas }) => {
+    await expectStatusWords(canvas, "list");
+    await detailsAreWhole(canvas);
+  },
 };
 
 /** D1: an empty To review shows no count, no 0, and says so (`czjw.68`). */

@@ -572,6 +572,7 @@ export function DocumentInbox(props: DocumentInboxProps) {
                     />
                   ),
                   // The order of variant C: the reason, extracted details, the type and upload day, then Updated.
+                  // The reason takes its own line, so it never truncates the extracted details (C07-5).
                   detail: (row) => {
                     const reason = documentStatusReason(row.status);
 
@@ -582,7 +583,8 @@ export function DocumentInbox(props: DocumentInboxProps) {
                       <span>{reason}</span>
                     ) : (
                       <>
-                        <span>{reason}</span> · <span>{foundText(row)}</span>
+                        <span className="block truncate">{reason}</span>
+                        <span className="block truncate">{foundText(row)}</span>
                       </>
                     );
                   },

@@ -99,6 +99,11 @@ async function closeIsFlushWithTheText(panel: HTMLElement): Promise<void> {
       .getBoundingClientRect().left,
     0
   );
+
+  // The focus ring (2 px ring, 2 px offset) stays inside the callout's 1 px border (C07-3).
+  await expect(close.getBoundingClientRect().left - 4).toBeGreaterThanOrEqual(
+    panel.getBoundingClientRect().left + 1
+  );
 }
 
 export const Default: Story = {
