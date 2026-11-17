@@ -10,6 +10,7 @@ import {
   InputGroupInput,
   focusRing,
   iconLead,
+  controlHeights,
 } from "@genie/ui";
 import { useRef, useState } from "react";
 import type { JSX } from "react";
@@ -333,7 +334,7 @@ function CodeInput(props: {
               props.onChange(text);
               focusAt(text.length);
             }}
-            className={`h-11 w-10 rounded-lg border bg-background text-center font-mono text-xl font-semibold text-foreground ${focusRing} ${
+            className={`${controlHeights.lg} w-10 rounded-lg border bg-background text-center font-mono text-xl font-semibold text-foreground ${focusRing} ${
               digit === "" ? "border-input" : "border-foreground/40"
             }`}
           />

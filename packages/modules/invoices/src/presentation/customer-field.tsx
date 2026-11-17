@@ -9,6 +9,7 @@ import {
   ComboboxItem,
   ComboboxList,
   FieldLabel,
+  touchRowHeight,
 } from "@genie/ui";
 import type { ReactNode } from "react";
 
@@ -133,7 +134,7 @@ export function CustomerField(props: {
       </Combobox>
       {showCreate ? (
         // A 44 px row under lg holds the checkbox's touch area, which would reach the field above.
-        <div className="flex min-h-11 items-center lg:min-h-0">
+        <div className={`flex ${touchRowHeight} items-center`}>
           <FieldLabel className="items-center">
             <Checkbox
               checked={value.kind === "new" && value.confirmed}

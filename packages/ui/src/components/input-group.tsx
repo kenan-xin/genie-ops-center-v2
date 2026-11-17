@@ -5,7 +5,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import type * as React from "react";
 
-import { fieldText, groupControlHeights, touchAreas } from "../theme/tokens.ts";
+import {
+  minTouchHeight,
+  fieldText,
+  groupControlHeights,
+  touchAreas,
+} from "../theme/tokens.ts";
 import { Button } from "./button.tsx";
 
 /*
@@ -156,7 +161,8 @@ function InputGroupTextarea({
     <textarea
       data-slot="input-group-control"
       className={cn(
-        "max-h-36 min-h-11 w-full min-w-0 flex-1 resize-none bg-transparent px-3 py-2.5 text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed",
+        "max-h-36 w-full min-w-0 flex-1 resize-none bg-transparent px-3 py-2.5 text-foreground outline-none placeholder:text-placeholder disabled:cursor-not-allowed",
+        minTouchHeight,
         fieldText,
         className
       )}

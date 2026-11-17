@@ -10,6 +10,7 @@ import {
   SheetTitle,
   SheetTrigger,
   useMediaQuery,
+  controlHeights,
 } from "@genie/ui";
 import {
   ArrowRightIcon,
@@ -251,7 +252,7 @@ function FieldRow(props: {
       <button
         type="button"
         onClick={props.onPick}
-        className="flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring"
+        className={`flex ${controlHeights.lg} w-full items-center gap-3 rounded-lg px-3 py-2 text-left outline-none hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring`}
       >
         <Icon
           aria-hidden

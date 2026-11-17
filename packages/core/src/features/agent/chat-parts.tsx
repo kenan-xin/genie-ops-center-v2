@@ -1,6 +1,12 @@
 "use client";
 
-import { Button, focusRing, iconLeadPx, infoTint } from "@genie/ui";
+import {
+  denseRowHeight,
+  Button,
+  focusRing,
+  iconLeadPx,
+  infoTint,
+} from "@genie/ui";
 import { ArrowRightIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
 import { useId, type ReactNode } from "react";
 
@@ -10,7 +16,7 @@ import type { InboxLink } from "../../services/agent/index.ts";
 
 export const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
-const pillClass = `inline-flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-background px-3 text-start text-sm text-muted-foreground hover:border-input hover:bg-hover hover:text-foreground lg:min-h-8 ${focusRing}`;
+const pillClass = `inline-flex ${denseRowHeight} items-center gap-1.5 rounded-full border border-border bg-background px-3 text-start text-sm text-muted-foreground hover:border-input hover:bg-hover hover:text-foreground ${focusRing}`;
 
 /** Questions as pill buttons with an arrow: a new chat's starters and Ask next (czjw.120 item 8). */
 export function QuestionPills(props: {
@@ -110,7 +116,7 @@ export function QuietFold(props: {
   return (
     <details className="group text-sm">
       <summary
-        className={`inline-flex min-h-11 cursor-pointer list-none items-center gap-1 rounded-md font-medium text-muted-foreground hover:text-foreground lg:min-h-8 ${focusRing}`}
+        className={`inline-flex ${denseRowHeight} cursor-pointer list-none items-center gap-1 rounded-md font-medium text-muted-foreground hover:text-foreground ${focusRing}`}
       >
         {/* The chevron's 5.4 px bearing is 3.4 px once turned open: group-open takes iconLeadPx[4]'s offset (P07-58). */}
         <ChevronRightIcon

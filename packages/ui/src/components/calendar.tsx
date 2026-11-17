@@ -11,7 +11,7 @@ import {
   type Modifiers,
 } from "react-day-picker";
 
-import { controlHeights, focusRing } from "../theme/tokens.ts";
+import { controlHeights, focusRing, rowHeight } from "../theme/tokens.ts";
 import { buttonVariants } from "./button-variants.ts";
 
 /*
@@ -115,7 +115,9 @@ function CalendarDayButton({
       data-range-middle={modifiers.range_middle === true || undefined}
       className={cn(
         focusRing,
-        "inline-flex h-11 w-10 items-center justify-center rounded-lg text-sm text-foreground select-none hover:bg-hover disabled:opacity-50 data-range-end:bg-primary data-range-end:text-primary-foreground data-range-middle:rounded-none data-range-middle:text-primary data-range-middle:hover:bg-transparent dark:data-range-middle:text-brand-on-dark data-range-start:bg-primary data-range-start:text-primary-foreground data-selected-single:bg-primary data-selected-single:text-primary-foreground data-today:font-semibold data-today:underline data-today:underline-offset-4 motion-safe:transition-colors sm:w-11 lg:size-9"
+        "inline-flex w-10 items-center justify-center rounded-lg text-sm text-foreground select-none hover:bg-hover disabled:opacity-50 data-range-end:bg-primary data-range-end:text-primary-foreground data-range-middle:rounded-none data-range-middle:text-primary data-range-middle:hover:bg-transparent dark:data-range-middle:text-brand-on-dark data-range-start:bg-primary data-range-start:text-primary-foreground data-selected-single:bg-primary data-selected-single:text-primary-foreground data-today:font-semibold data-today:underline data-today:underline-offset-4 motion-safe:transition-colors sm:w-11 lg:size-9",
+        // 44 px under lg; lg:size-9 sets 36 px from it.
+        rowHeight
       )}
     />
   );

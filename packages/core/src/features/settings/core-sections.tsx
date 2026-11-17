@@ -14,6 +14,7 @@ import {
   RadioGroup,
   RadioGroupItem,
   SwitchField,
+  minTouchHeight,
 } from "@genie/ui";
 import {
   type AnyFieldApi,
@@ -183,7 +184,7 @@ export function SignInSection(
                 {ONBOARDING_OPTIONS.map((option) => (
                   <label
                     key={option.value}
-                    className="flex min-h-11 cursor-pointer items-start gap-3 rounded-lg border border-border px-3.5 py-3 has-data-checked:border-primary"
+                    className={`flex ${minTouchHeight} cursor-pointer items-start gap-3 rounded-lg border border-border px-3.5 py-3 has-data-checked:border-primary`}
                   >
                     <RadioGroupItem value={option.value} className="mt-0.5" />
                     <span className="flex flex-col">

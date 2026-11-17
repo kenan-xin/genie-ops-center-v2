@@ -1,4 +1,11 @@
-import { Button, Field, FieldLabel, Input, focusRing } from "@genie/ui";
+import {
+  controlHeights,
+  Button,
+  Field,
+  FieldLabel,
+  Input,
+  focusRing,
+} from "@genie/ui";
 import { useState } from "react";
 import type { JSX } from "react";
 
@@ -149,7 +156,7 @@ function EnrollmentPanel(props: {
             maxLength={6}
             value={code}
             onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
-            className={`h-11 rounded-lg border border-input bg-background px-3 font-mono text-lg tracking-widest ${focusRing}`}
+            className={`${controlHeights.lg} rounded-lg border border-input bg-background px-3 font-mono text-lg tracking-widest ${focusRing}`}
           />
         </Field>
         <Button

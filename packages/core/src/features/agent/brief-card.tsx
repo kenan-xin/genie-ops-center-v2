@@ -1,6 +1,6 @@
 "use client";
 
-import { focusRing, iconLead } from "@genie/ui";
+import { denseRowHeight, focusRing, iconLead } from "@genie/ui";
 import { ForwardIcon } from "lucide-react";
 import type { ReactNode } from "react";
 import { z } from "zod";
@@ -58,7 +58,7 @@ export function BriefCard(props: {
       {props.askHref === undefined ? null : (
         <a
           href={props.askHref}
-          className={`inline-flex min-h-11 w-fit items-center rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline lg:min-h-8 dark:text-brand-on-dark ${focusRing}`}
+          className={`inline-flex ${denseRowHeight} w-fit items-center rounded-md text-sm font-semibold text-primary underline-offset-4 hover:underline dark:text-brand-on-dark ${focusRing}`}
         >
           Open the Ask chat
         </a>

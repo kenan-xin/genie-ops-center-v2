@@ -38,7 +38,7 @@ import {
   TableRow,
 } from "../components/table.tsx";
 import type { ListSort, ListSortKind } from "../list-header/definitions.ts";
-import { focusRing } from "../theme/tokens.ts";
+import { touchRowHeight, focusRing } from "../theme/tokens.ts";
 import { scrollParentOf, useRowWindow, VIRTUAL_FROM } from "./row-window.ts";
 
 // The content under a stretched title: its controls take their own taps, and a tap on its text
@@ -161,7 +161,7 @@ function SortButton(props: {
     // A sorted header reads in the foreground ink with a brand arrow (list-filters.prototype.html).
     <button
       type="button"
-      className={`group/sort inline-flex min-h-11 items-center gap-1 rounded-sm font-semibold lg:min-h-0 ${props.align === "end" ? "flex-row-reverse" : ""} ${props.direction === undefined ? "" : "text-foreground"} ${focusRing}`}
+      className={`group/sort inline-flex ${touchRowHeight} items-center gap-1 rounded-sm font-semibold ${props.align === "end" ? "flex-row-reverse" : ""} ${props.direction === undefined ? "" : "text-foreground"} ${focusRing}`}
       onClick={props.onClick}
     >
       {props.header}
@@ -359,7 +359,7 @@ export function DataTable<Row>({
     onOpenRow ? (
       <button
         type="button"
-        className={`flex min-h-11 w-full items-center rounded-lg text-left font-medium wrap-anywhere text-foreground lg:min-h-0 ${focusRing}`}
+        className={`flex ${touchRowHeight} w-full items-center rounded-lg text-left font-medium wrap-anywhere text-foreground ${focusRing}`}
         onClick={() => onOpenRow(row)}
       >
         {content}

@@ -9,6 +9,7 @@ import {
   InputGroupText,
   rowHeight,
   Spinner,
+  denseRowHeight,
 } from "@genie/ui";
 import {
   BotIcon,
@@ -324,7 +325,7 @@ export function AgentHistory(props: {
                       {!all && group.entries.length > SHOWN ? (
                         <button
                           type="button"
-                          className={`flex h-11 w-full items-center rounded-lg px-3 text-left text-sm text-muted-foreground hover:bg-hover hover:text-foreground lg:h-8 ${focusRing}`}
+                          className={`flex ${denseRowHeight} w-full items-center rounded-lg px-3 text-left text-sm text-muted-foreground hover:bg-hover hover:text-foreground ${focusRing}`}
                           onClick={() => setMore(toggle(more, group.key))}
                         >
                           Show more

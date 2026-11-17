@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "../components/sheet.tsx";
+import { minTouchHeight } from "../theme/tokens.ts";
 import type { ListDefinition } from "./definitions.ts";
 import { FilterSlot } from "./filter-bar.tsx";
 import type { ListFilterControl } from "./filter-controls.tsx";
@@ -95,7 +96,7 @@ export function FilterSheet(props: {
                   return (
                     <div
                       key={item.value}
-                      className="flex min-h-11 items-center"
+                      className={`flex ${minTouchHeight} items-center`}
                     >
                       <FieldLabel className="w-full items-center">
                         <RadioGroupItem value={item.value} />

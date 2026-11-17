@@ -27,6 +27,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  minTouchHeight,
 } from "@genie/ui";
 import { useId, useState } from "react";
 import type { JSX, ReactNode } from "react";
@@ -351,7 +352,9 @@ function FilterPanel(props: {
         />
       ) : null}
 
-      <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-medium text-foreground">
+      <label
+        className={`flex ${minTouchHeight} cursor-pointer items-center gap-2 text-sm font-medium text-foreground`}
+      >
         <Checkbox
           checked={filters.operatorOnly}
           onCheckedChange={(checked) =>

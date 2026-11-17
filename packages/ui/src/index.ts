@@ -248,14 +248,17 @@ export type { ThemeProviderProps } from "./theme/theme-provider.tsx";
 
 export {
   controlHeights,
+  denseRowHeight,
   fieldText,
   focusRing,
   iconControlSizes,
   iconLead,
   iconLeadPx,
+  minTouchHeight,
   rowHeight,
   touchAreas,
   touchAreaY,
+  touchRowHeight,
 } from "./theme/tokens.ts";
 
 export type { CategoryTone } from "./theme/tokens.ts";

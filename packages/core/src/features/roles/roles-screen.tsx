@@ -28,6 +28,7 @@ import {
   StickyActionBar,
   Textarea,
   focusRing,
+  minTouchHeight,
 } from "@genie/ui";
 import { UserIcon, UsersIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
@@ -247,7 +248,7 @@ function RoleFormBody(props: {
                 {group.keys.map((entry) => (
                   <label
                     key={entry.key}
-                    className="clear-left flex min-h-11 items-center gap-2 px-3 text-sm text-foreground"
+                    className={`clear-left flex ${minTouchHeight} items-center gap-2 px-3 text-sm text-foreground`}
                   >
                     <Checkbox
                       checked={picked.includes(entry.key)}

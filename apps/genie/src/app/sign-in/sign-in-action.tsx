@@ -19,9 +19,9 @@ export type SignInActionProps = {
 
 const SIGN_IN_ROUTE = "/api/auth/sign-in/keycloak";
 
-// The shadcn default size (40 px) at the full width of the stack, with no icon (direction D2).
-// Under 1024 px the entry keeps the 44 px touch target of DESIGN.md.
-const ENTRY_CLASS = `w-full min-h-11 lg:min-h-0 ${focusRing}`;
+// The md button at the full width of the stack, with no icon (direction D2): 40 px visible with
+// a 44 px touch area under 1024 px, 36 px from it (6wz1.135).
+const ENTRY_CLASS = `w-full ${focusRing}`;
 
 const ACTION_CLASS = `${buttonVariants({ size: "md" })} ${ENTRY_CLASS}`;
 

@@ -17,6 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
   StatusPill,
+  minTouchHeight,
 } from "@genie/ui";
 import { FolderIcon } from "lucide-react";
 import { useState } from "react";
@@ -158,7 +159,9 @@ export function AssignItems(props: AssignItemsProps) {
             </InputGroupText>
           </InputGroupAddon>
         </InputGroup>
-        <label className="flex min-h-11 cursor-pointer items-center gap-2 text-sm text-foreground">
+        <label
+          className={`flex ${minTouchHeight} cursor-pointer items-center gap-2 text-sm text-foreground`}
+        >
           <Checkbox checked={onlyLoose} onCheckedChange={setOnlyLoose} />
           {props.copy.uncategorizedOnly}
         </label>

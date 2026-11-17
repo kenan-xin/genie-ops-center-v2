@@ -1,6 +1,6 @@
 "use client";
 
-import { FieldError, focusRing, Input } from "@genie/ui";
+import { touchRowHeight, FieldError, focusRing, Input } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
 import { Pencil } from "lucide-react";
 import {
@@ -169,7 +169,7 @@ export function DeckTitle(props: DeckTitleProps): ReactNode {
         type="button"
         aria-label={`Rename deck, ${props.title}`}
         onClick={() => props.onEditingChange(true)}
-        className={`group -ml-1.5 cursor-text rounded-md px-1.5 py-0.5 text-left hover:bg-hover max-md:min-h-11 ${focusRing}`}
+        className={`group -ml-1.5 cursor-text rounded-md px-1.5 py-0.5 text-left hover:bg-hover ${touchRowHeight} ${focusRing}`}
       >
         {props.title}
         <Pencil

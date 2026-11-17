@@ -10,6 +10,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  touchRowHeight,
 } from "@genie/ui";
 import {
   Banknote,
@@ -98,13 +99,13 @@ const rowBase = `flex items-center gap-2.5 rounded-lg px-3 text-sm motion-safe:t
 
 const navRow = rowHeight;
 
-const treeRow = "min-h-11 lg:min-h-0 lg:h-8";
+const treeRow = `${touchRowHeight} lg:h-8`;
 
 const rowIdle = "font-medium text-foreground hover:bg-hover";
 
 // A category is a group caption that also collapses its group (6wz1.102): the caption's type,
 // 44 px tall under lg like every row, and its own hover tone instead of a row fill.
-const captionButton = `group flex min-h-11 w-full items-end gap-1.5 rounded-md px-3 pt-5 pb-1.5 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase motion-safe:transition-colors hover:text-foreground lg:min-h-0 ${focusRing}`;
+const captionButton = `group flex ${touchRowHeight} w-full items-end gap-1.5 rounded-md px-3 pt-5 pb-1.5 text-left text-xs font-semibold tracking-wider text-muted-foreground uppercase motion-safe:transition-colors hover:text-foreground ${focusRing}`;
 
 // A filled row, not a hairline: in dark the card is the panel's own color, so the fill steps up.
 const rowActive =

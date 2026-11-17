@@ -155,6 +155,15 @@ export const touchAreaY =
 /** 6wz1.114: a stacked list row: 44 px under `lg`, where its own box is its touch area; md from `lg`. */
 export const rowHeight = "min-h-11 lg:min-h-9";
 
+/** 6wz1.135: a dense row or inline control, such as a menu row or a chat link: 44 px under `lg`, sm from `lg`. */
+export const denseRowHeight = "min-h-11 lg:min-h-8";
+
+/** 6wz1.135: a row or inline control whose own box is its touch area under `lg`, its content's height from it. */
+export const touchRowHeight = "min-h-11 lg:min-h-0";
+
+/** 6wz1.135: a row that is at least 44 px tall at every width and grows with its text (tokens.md: "Rows are at least 44 px tall"). */
+export const minTouchHeight = "min-h-11";
+
 /** 6wz1.114: the control inside an input group: its control height less the group's two 1 px borders. */
 export const groupControlHeights = {
   sm: "h-7.5 min-h-7.5",

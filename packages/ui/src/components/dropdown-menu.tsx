@@ -5,7 +5,7 @@ import { cn } from "cn";
 import { ChevronRightIcon, CheckIcon } from "lucide-react";
 import * as React from "react";
 
-import { rowHeight } from "../theme/tokens.ts";
+import { denseRowHeight, rowHeight } from "../theme/tokens.ts";
 
 /**
  * Base UI focuses the item under the pointer, and Chrome then reports `:focus-visible`. The popup
@@ -143,8 +143,8 @@ function DropdownMenuItem({
       data-size={size}
       className={cn(
         "data-[size=lg]:rounded-lg data-[size=lg]:px-3 data-[size=lg]:py-2",
-        "group/dropdown-menu-item relative flex min-h-11 cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
-        size === "lg" && rowHeight,
+        "group/dropdown-menu-item relative flex cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-8 data-[variant=destructive]:text-destructive data-[variant=destructive]:focus:text-destructive dark:data-[variant=destructive]:text-destructive-on-dark dark:data-[variant=destructive]:focus:text-destructive-on-dark data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4 data-[variant=destructive]:*:[svg]:text-destructive dark:data-[variant=destructive]:*:[svg]:text-destructive-on-dark",
+        size === "lg" ? rowHeight : denseRowHeight,
         leadingIcon,
         menuRowFocus,
         className
@@ -171,7 +171,8 @@ function DropdownMenuSubTrigger({
       data-slot="dropdown-menu-sub-trigger"
       data-inset={inset}
       className={cn(
-        "flex min-h-11 cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-8 data-popup-open:bg-muted data-open:bg-muted lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "flex cursor-default items-center gap-2.5 rounded-md px-1.5 py-1 text-sm select-none data-inset:pl-8 data-popup-open:bg-muted data-open:bg-muted [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        denseRowHeight,
         leadingIcon,
         menuRowFocus,
         className
@@ -219,7 +220,8 @@ function DropdownMenuCheckboxItem({
       data-slot="dropdown-menu-checkbox-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-8 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-8 data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        denseRowHeight,
         menuRowFocus,
         className
       )}
@@ -262,7 +264,8 @@ function DropdownMenuRadioItem({
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
       className={cn(
-        "relative flex min-h-11 cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-8 data-disabled:cursor-not-allowed data-disabled:opacity-50 lg:min-h-8 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-8 data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        denseRowHeight,
         menuRowFocus,
         className
       )}

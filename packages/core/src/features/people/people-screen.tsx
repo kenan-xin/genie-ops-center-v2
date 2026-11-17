@@ -45,6 +45,7 @@ import {
   TabsList,
   TabsTrigger,
   type DataTableAction,
+  touchRowHeight,
 } from "@genie/ui";
 import {
   Fragment,
@@ -1245,7 +1246,7 @@ function FilterChip(props: {
       {props.label}
       <button
         type="button"
-        className={`inline-flex min-h-11 items-center rounded-full px-2 font-medium underline lg:min-h-0 ${focusRing}`}
+        className={`inline-flex ${touchRowHeight} items-center rounded-full px-2 font-medium underline ${focusRing}`}
         aria-label={`Remove filter ${props.label}`}
         onClick={props.onRemove}
       >
@@ -1580,7 +1581,9 @@ export function AddPersonDialog(props: {
                   Administration roles (Tenant administrator, Auditor) are added
                   in Access.
                 </p>
-                <label className="flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
+                <label
+                  className={`flex ${touchRowHeight} items-center gap-2 text-sm text-foreground`}
+                >
                   <Checkbox
                     checked={openInAccess}
                     onCheckedChange={setOpenInAccess}
@@ -1607,11 +1610,15 @@ export function AddPersonDialog(props: {
                     setAccountType(value);
                 }}
               >
-                <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
+                <label
+                  className={`inline-flex ${touchRowHeight} items-center gap-2 text-sm`}
+                >
                   <RadioGroupItem value="brokered" />
                   Identity provider
                 </label>
-                <label className="inline-flex min-h-11 items-center gap-2 text-sm lg:min-h-0">
+                <label
+                  className={`inline-flex ${touchRowHeight} items-center gap-2 text-sm`}
+                >
                   <RadioGroupItem value="local" />
                   Local password
                 </label>
@@ -1626,7 +1633,9 @@ export function AddPersonDialog(props: {
           ) : null}
 
           {brokered ? (
-            <label className="flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
+            <label
+              className={`flex ${touchRowHeight} items-center gap-2 text-sm text-foreground`}
+            >
               <Checkbox
                 checked={sendInvitation}
                 onCheckedChange={setSendInvitation}

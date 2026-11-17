@@ -45,6 +45,7 @@ import {
   TabsTrigger,
   Textarea,
   WarningNote,
+  touchRowHeight,
 } from "@genie/ui";
 import { EllipsisIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
@@ -728,7 +729,9 @@ export function GroupsScreen(props: GroupsScreenProps) {
           </HelpDisclosure>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">
-          <label className="inline-flex min-h-11 items-center gap-2 text-sm text-foreground lg:min-h-0">
+          <label
+            className={`inline-flex ${touchRowHeight} items-center gap-2 text-sm text-foreground`}
+          >
             <Checkbox
               checked={props.includeArchived}
               onCheckedChange={props.onChangeIncludeArchived}

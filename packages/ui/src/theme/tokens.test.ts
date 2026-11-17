@@ -10,14 +10,17 @@ import {
   colorRoles,
   controlHeights,
   controlHeightsPx,
+  denseRowHeight,
   focusRing,
   groupControlHeights,
   iconControlSizes,
+  minTouchHeight,
   rowHeight,
   spacingPx,
   touchAreaPx,
   touchAreas,
   touchAreaY,
+  touchRowHeight,
 } from "./tokens.ts";
 
 function linear(value: number): number {
@@ -103,28 +106,84 @@ const step = (px: number) => px / spacingPx;
 /** The spacing step of an input group's control: `px` less the group's two 1 px borders. */
 const inner = (px: number) => step(px - 2);
 
+/** The product source files: the scans below and the test target's Nx inputs (6wz1.135). */
+const PRODUCT_SOURCES = [
+  "packages/*/src/**/*.{ts,tsx}",
+  "packages/modules/*/src/**/*.{ts,tsx}",
+  "apps/genie/src/**/*.{ts,tsx}",
+  "customers/*/app/**/*.{ts,tsx}",
+] as const;
+
 /** A hand-set control height, behind any variant: the classes `controlHeights` owns (6wz1.114). */
-const CONTROL_HEIGHT = /(?<=^|[\s"'`:])(?:min-)?h-(?:9|10)(?![\w./-])/gm;
+const CONTROL_HEIGHT = /(?<=^|[\s"'`:])(?:min-)?h-(?:9|10|11)(?![\w./-])/gm;
 
 function found(source: string): string[] {
   return [...source.matchAll(CONTROL_HEIGHT)].map(([match]) => match);
 }
 
-/** Hits of `CONTROL_HEIGHT` that size something other than a control. */
+/**
+ * Hits of `CONTROL_HEIGHT` that size something other than a control, with the number of hits each
+ * row expects in its file, so a row never exempts a later control with the same class.
+ */
 const NOT_A_CONTROL: readonly (readonly [
   path: string,
   className: string,
+  count: number,
   reason: string,
 ])[] = [
   [
     "packages/core/src/features/shell/offline-bar.tsx",
     "min-h-10",
+    1,
     "the offline banner is a status bar, not a control",
   ],
   [
     "packages/core/src/features/roles/roles-screen.tsx",
     "min-h-9",
+    1,
     "the legend bar of a permission group is a caption, not a control",
+  ],
+  [
+    "packages/core/src/features/shell/page-skeleton.tsx",
+    "h-11",
+    1,
+    "a loading placeholder block of a list row, not a control",
+  ],
+  [
+    "packages/ui/src/parts/transfer-list.tsx",
+    "min-h-11",
+    1,
+    "the band over a side holds its caption and an sm button with its own touch area; the band takes no tap",
+  ],
+  [
+    "packages/core/src/features/groups/groups-screen.tsx",
+    "min-h-11",
+    1,
+    "the members count band holds a caption and a Button; the band takes no tap",
+  ],
+  [
+    "packages/modules/analytics/src/presentation/filters-bar.tsx",
+    "min-h-11",
+    1,
+    "the summary band under the phone filters holds text and a Button; the band takes no tap",
+  ],
+  [
+    "packages/ui/src/components/tabs.tsx",
+    "h-11",
+    1,
+    "the card-top list sets its triggers to controlHeights.lg through a child selector, which a token class cannot carry",
+  ],
+  [
+    "packages/ui/src/components/tabs.tsx",
+    "min-h-11",
+    1,
+    "the card-top list sets its triggers to controlHeights.lg through a child selector, which a token class cannot carry",
+  ],
+  [
+    "packages/core/src/features/agent/conversation.tsx",
+    "h-11",
+    1,
+    "the composer's model picker is 44 px under lg and sm from lg; no SelectTrigger size holds that, and its size prop alone would make it 32 px on a phone",
   ],
 ];
 
@@ -151,6 +210,11 @@ describe("the control heights against tokens.md, Control heights", () => {
     expect(rowHeight).toBe(
       `min-h-${step(touchAreaPx)} lg:min-h-${step(md.desktop)}`
     );
+    expect(denseRowHeight).toBe(
+      `min-h-${step(touchAreaPx)} lg:min-h-${step(sm)}`
+    );
+    expect(touchRowHeight).toBe(`min-h-${step(touchAreaPx)} lg:min-h-0`);
+    expect(minTouchHeight).toBe(`min-h-${step(touchAreaPx)}`);
   });
 
   it("reaches a 44 px touch area from each size, under the control's own content", () => {
@@ -185,19 +249,14 @@ describe("the control heights against tokens.md, Control heights", () => {
       "data-[size=lg]:lg:min-h-10",
       "h-10!",
       "`flex h-10 ${x}`",
+      "min-h-11",
+      "lg:h-11",
+      "max-lg:min-h-11",
     ]) {
       expect(found(source), source).toHaveLength(1);
     }
 
-    for (const source of [
-      "h-10.5",
-      "h-8.5",
-      "max-h-10",
-      "size-10",
-      "h-100",
-      "min-h-11",
-      "lg:h-11",
-    ]) {
+    for (const source of ["h-10.5", "h-8.5", "max-h-10", "size-10", "h-100"]) {
       expect(found(source), source).toEqual([]);
     }
   });
@@ -205,15 +264,7 @@ describe("the control heights against tokens.md, Control heights", () => {
   it("leaves no hand-set control height outside the tokens", () => {
     const root = join(import.meta.dirname, "../../../..");
 
-    const files = globSync(
-      [
-        "packages/*/src/**/*.{ts,tsx}",
-        "packages/modules/*/src/**/*.{ts,tsx}",
-        "apps/genie/src/**/*.{ts,tsx}",
-        "customers/*/app/**/*.{ts,tsx}",
-      ],
-      { cwd: root }
-    ).filter(
+    const files = globSync(PRODUCT_SOURCES, { cwd: root }).filter(
       (file) =>
         !/\.(test|stories)\.|\/testing\/|\/__fixtures__\//.test(file) &&
         // tokens.ts defines the classes.
@@ -226,16 +277,35 @@ describe("the control heights against tokens.md, Control heights", () => {
       )
     );
 
-    const allowed = NOT_A_CONTROL.map(
-      ([path, className]) => `${path} ${className}`
+    const allowed = new Set(
+      NOT_A_CONTROL.map(([path, className]) => `${path} ${className}`)
     );
 
     expect(files.length).toBeGreaterThan(100);
 
-    expect(hits.filter((hit) => !allowed.includes(hit))).toEqual([]);
+    expect(hits.filter((hit) => !allowed.has(hit))).toEqual([]);
 
-    for (const row of allowed) {
-      expect(hits, `stale row: ${row}`).toContain(row);
+    // The exact count: an extra hit in an exempt file is a new control, a missing one a stale row.
+    for (const [path, className, count] of NOT_A_CONTROL) {
+      const row = `${path} ${className}`;
+
+      expect(
+        hits.filter((hit) => hit === row),
+        `hits of row: ${row}`
+      ).toHaveLength(count);
+    }
+  });
+
+  it("lists the same sources as the Nx inputs of the test target", () => {
+    // SAFETY: packages/ui/package.json declares nx.targets.test.inputs; a missing key fails the test.
+    const manifest = JSON.parse(
+      readFileSync(join(import.meta.dirname, "../../package.json"), "utf8")
+    ) as { nx: { targets: { test: { inputs: string[] } } } };
+
+    for (const glob of PRODUCT_SOURCES) {
+      expect(manifest.nx.targets.test.inputs).toContain(
+        `{workspaceRoot}/${glob}`
+      );
     }
   });
 
@@ -323,15 +393,7 @@ describe("the hover state layer against DESIGN.md, Hover", () => {
   it("is the only hover fill: no surface color is used as one", () => {
     const root = join(import.meta.dirname, "../../../..");
 
-    const files = globSync(
-      [
-        "packages/*/src/**/*.{ts,tsx}",
-        "packages/modules/*/src/**/*.{ts,tsx}",
-        "apps/genie/src/**/*.{ts,tsx}",
-        "customers/*/app/**/*.{ts,tsx}",
-      ],
-      { cwd: root }
-    );
+    const files = globSync(PRODUCT_SOURCES, { cwd: root });
 
     const offenders = files.filter((file) =>
       /hover\]?:bg-(muted|card|tile|background|border)\b/.test(

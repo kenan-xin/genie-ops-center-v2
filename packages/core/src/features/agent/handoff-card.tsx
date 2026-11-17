@@ -6,6 +6,7 @@ import {
   iconLeadPx,
   IconTile,
   rowHeight,
+  denseRowHeight,
 } from "@genie/ui";
 import { formatChartValue } from "@genie/ui/chart-data";
 import { ChevronRightIcon, ForwardIcon } from "lucide-react";
@@ -189,7 +190,7 @@ export function HandoffChip(props: {
   return (
     <a
       href={props.card.address}
-      className={`inline-flex h-8 max-w-56 shrink-0 items-center gap-2 rounded-full border border-border px-3 text-xs font-medium hover:bg-hover max-lg:h-11 ${focusRing}`}
+      className={`inline-flex ${denseRowHeight} max-w-56 shrink-0 items-center gap-2 rounded-full border border-border px-3 text-xs font-medium hover:bg-hover ${focusRing}`}
     >
       <span
         aria-hidden="true"
