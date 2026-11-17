@@ -936,6 +936,9 @@ importers:
       '@nx/devkit':
         specifier: 23.3.0
         version: 23.3.0(nx@23.3.0(@swc/core@1.16.2(@swc/helpers@0.5.23)))
+      oxfmt:
+        specifier: 0.74.0
+        version: 0.74.0
       oxlint:
         specifier: 1.89.0
         version: 1.89.0

@@ -10,8 +10,10 @@ import {
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
+import { format } from "oxfmt";
 import { describe, expect, it } from "vitest";
 
+import oxfmtConfig from "../../../../oxfmt.config.ts";
 import { buildBrandingSeed, buildTenantYaml, renderTenant } from "./render.ts";
 import type {
   ConfigurationFile,
@@ -219,7 +221,7 @@ describe("the rendered deployment folder", () => {
     );
     const checkCommand = healthcheck
       ?.split("\n")
-      .find((line) => line.includes("test:"));
+      .find((line) => line.includes("$$WORKER_HEARTBEAT_PATH"));
     const staleAfterSeconds = Number(
       /-lt\s+(\d+)/.exec(checkCommand ?? "")?.[1]
     );
@@ -392,6 +394,31 @@ describe("the rendered deployment folder", () => {
     expect(service(compose, "worker")).not.toMatch(/keycloak/);
   });
 
+  // A generated file that the formatter reflows fails `pnpm format:check` until
+  // someone formats it by hand (genie-ops-center-v2-xok3.48).
+  it("renders every YAML and JSON file in the shape oxfmt writes", async () => {
+    const formattable = [...files].filter(([name]) =>
+      /\.(?:ya?ml|json)$/.test(name)
+    );
+
+    expect(formattable.map(([name]) => name)).toContain(
+      "customers/demo-co/deploy/compose.yaml"
+    );
+
+    const results = await Promise.all(
+      formattable.map(async ([name, content]) => {
+        const { code, errors } = await format(name, content, oxfmtConfig);
+
+        return { name, content, code, errors };
+      })
+    );
+
+    for (const { name, content, code, errors } of results) {
+      expect(errors, name).toEqual([]);
+      expect(content, name).toBe(code);
+    }
+  });
+
   it("checks Keycloak readiness on the unpublished management port", () => {
     const keycloakHealthcheck =
       /    healthcheck:\n([\s\S]*?)(?=\n    [a-z][a-z0-9_-]*:|$)/.exec(
@@ -399,7 +426,15 @@ describe("the rendered deployment folder", () => {
       )?.[1] ?? "";
 
     expect(keycloakHealthcheck).toContain(
-      String.raw`test: ["CMD", "bash", "-c", "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000"]`
+      [
+        `      test:`,
+        `        [`,
+        `          "CMD",`,
+        `          "bash",`,
+        `          "-c",`,
+        String.raw`          "{ printf 'HEAD /health/ready HTTP/1.0\\r\\n\\r\\n' >&0; grep 'HTTP/1.0 200'; } 0<>/dev/tcp/localhost/9000",`,
+        `        ]`,
+      ].join("\n")
     );
     expect(keycloakHealthcheck).toMatch(/start_period: \d+s/);
   });
