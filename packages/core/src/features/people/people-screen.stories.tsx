@@ -321,6 +321,32 @@ export const GroupsTabAddsAndRemovesLocalGroups: Story = {
   },
 };
 
+// Bug caught: Add is disabled until a group is picked, so nothing says why it does nothing.
+export const AddToGroupNeedsAChoice: Story = {
+  args: {
+    initialSelectedId: "u-viewer",
+    localGroups: [
+      { id: "g-admins", label: "Genie Administrators" },
+      { id: "g-ops", label: "Operations" },
+    ],
+    onAddToGroup: fn(),
+  },
+  play: async ({ args }) => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(sheet.getByRole("tab", { name: /Groups/ }));
+
+    const picker = sheet.getByRole("combobox", { name: "Add to group" });
+
+    await userEvent.click(sheet.getByRole("button", { name: "Add" }));
+
+    await expect(sheet.getByText("Choose a group first.")).toBeVisible();
+    await expect(picker).toHaveAttribute("aria-invalid", "true");
+    await expect(picker).toHaveAccessibleDescription("Choose a group first.");
+    await expect(args.onAddToGroup).not.toHaveBeenCalled();
+  },
+};
+
 const OBJECT_ID = "39545f73-134e-49ac-9731-0e96df8ea218";
 
 /** UI-1 People finding 2: an unlabelled group whose value is an id shows a short pill (R-24c). */

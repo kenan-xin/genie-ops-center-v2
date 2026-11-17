@@ -338,6 +338,24 @@ export const CreateRenameReorderOnPhone: Story = {
   play: createRenameReorder,
 };
 
+// Bug caught: Add is disabled with an empty name, so the form never says what is missing.
+export const EmptyNameSaysWhy: Story = {
+  play: async ({ args, canvas }) => {
+    const input = canvas.getByRole("textbox", { name: "New category name" });
+
+    await userEvent.type(input, "   {Enter}");
+
+    await expect(canvas.getByText("Enter a name.")).toBeVisible();
+    await expect(input).toHaveAttribute("aria-invalid", "true");
+    await expect(input).toHaveAccessibleDescription("Enter a name.");
+    await expect(args.onCreate).not.toHaveBeenCalled();
+
+    // The error clears once the person edits the name.
+    await userEvent.type(input, "Operations");
+    await expect(canvas.queryByText("Enter a name.")).toBeNull();
+  },
+};
+
 /** A host that applies each reorder, so the list rerenders in the new order as the page does. */
 function ReorderingHost(args: CategoriesScreenProps) {
   const [list, setList] = useState(args.list);

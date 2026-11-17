@@ -56,6 +56,8 @@ export function ChoicePicker<V>(props: {
   /** Grants shows "name · detail" in the trigger, Overview only the name. */
   readonly trigger: "name" | "name-and-detail";
   readonly onPick: (value: V) => void;
+  /** The id of a visible line that says why a pick is missing; the trigger describes it. */
+  readonly errorId?: string | undefined;
 }): ReactNode {
   const sections: readonly Section<V>[] = props.groups.map((group) => ({
     label: group.label,
@@ -83,7 +85,11 @@ export function ChoicePicker<V>(props: {
       }}
     >
       {/* A combobox takes no name from its text, so the prompt names it and the text shows the pick. */}
-      <ComboboxTrigger aria-label={props.prompt}>
+      <ComboboxTrigger
+        aria-label={props.prompt}
+        aria-invalid={props.errorId === undefined ? undefined : true}
+        aria-describedby={props.errorId}
+      >
         {picked === null
           ? props.prompt
           : props.trigger === "name"
@@ -162,6 +168,7 @@ export function RecipientPicker(props: {
   readonly recipients: GrantRecipients;
   readonly value: AccessRecipient | null;
   readonly onPick: (recipient: AccessRecipient) => void;
+  readonly errorId?: string | undefined;
 }): ReactNode {
   const copy = COPY[props.kind];
 
@@ -186,6 +193,7 @@ export function RecipientPicker(props: {
       }
       trigger="name-and-detail"
       onPick={props.onPick}
+      errorId={props.errorId}
     />
   );
 }

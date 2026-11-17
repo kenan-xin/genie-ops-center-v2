@@ -286,6 +286,22 @@ export const Copy: Story = {
   },
 };
 
+// Bug caught: the rows' buttons were bare-disabled while the gate ran, with nothing saying busy.
+export const RowsLoading: Story = {
+  name: "Rows loading",
+  beforeEach: () => {
+    check.mockImplementation(() => new Promise<never>(() => undefined));
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.getByRole("button", { name: "Copy the rows" })
+    ).toHaveAttribute("aria-busy", "true");
+    await expect(
+      canvas.getByRole("button", { name: "Download the rows" })
+    ).toHaveAttribute("aria-busy", "true");
+  },
+};
+
 export const AVersionTheGateRefuses: Story = {
   name: "A version the gate refuses",
   args: { shown: { artifactId: CHART_ID, version: 1 } },

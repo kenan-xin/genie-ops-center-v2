@@ -444,7 +444,9 @@ export function PersonInspector(props: {
             </TabsContent>
 
             <TabsContent value="groups">
+              {/* Keyed by person: the pick and its error start fresh for the next inspector. */}
               <PersonGroups
+                key={person.id}
                 groups={person.groups}
                 viewer={viewer}
                 localGroups={props.localGroups}
@@ -632,7 +634,9 @@ function PersonGroups(props: {
   readonly pending?: boolean | undefined;
 }) {
   const [choice, setChoice] = useState<string | null>(null);
+  const [choiceError, setChoiceError] = useState(false);
   const pickerId = useId();
+  const choiceErrorId = useId();
 
   const choices = (props.localGroups ?? []).filter(
     (option) => !props.groups.some((group) => group.id === option.id)
@@ -651,9 +655,16 @@ function PersonGroups(props: {
           <Select
             items={choiceItems}
             value={choice}
-            onValueChange={(value) => setChoice(value)}
+            onValueChange={(value) => {
+              setChoice(value);
+              setChoiceError(false);
+            }}
           >
-            <SelectTrigger id={pickerId}>
+            <SelectTrigger
+              id={pickerId}
+              aria-invalid={choiceError || undefined}
+              aria-describedby={choiceError ? choiceErrorId : undefined}
+            >
               <SelectValue placeholder="Choose a group" />
             </SelectTrigger>
             <SelectContent>
@@ -667,10 +678,13 @@ function PersonGroups(props: {
         </Field>
         <Button
           variant="secondary"
-          disabled={choice === null}
           loading={props.pending}
           onClick={() => {
-            if (choice === null) return;
+            if (choice === null) {
+              setChoiceError(true);
+
+              return;
+            }
 
             props.onAddToGroup?.(choice);
             setChoice(null);
@@ -678,6 +692,11 @@ function PersonGroups(props: {
         >
           <PlusIcon /> Add
         </Button>
+        {choiceError ? (
+          <FieldError id={choiceErrorId} className="basis-full">
+            Choose a group first.
+          </FieldError>
+        ) : null}
       </div>
     );
 

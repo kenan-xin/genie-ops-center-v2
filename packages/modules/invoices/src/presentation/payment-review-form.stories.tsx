@@ -522,3 +522,36 @@ export const TooManyLinksOnPhone: Story = {
   name: "Too many links on a phone",
   globals: phone,
 };
+
+// Bug caught: an unchecked row's amount box was disabled and faded, so a typed amount was lost.
+export const TypingAnAmountTicksTheRow: Story = {
+  name: "Typing an amount ticks the row",
+  args: { view: overpaymentPaymentReview },
+  globals: desktop,
+  beforeEach: () => serve(overpaymentPaymentReview),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Other open invoices of Orchid Retail",
+      })
+    );
+
+    const box = linkBox(canvas, "INV-2026-09-04");
+    const amount = amountFor(canvas, "INV-2026-09-04");
+
+    await expect(box).not.toBeChecked();
+    await expect(amount).toBeEnabled();
+
+    await userEvent.type(amount, "100.00");
+
+    await expect(box).toBeChecked();
+    await expect(amount).toHaveValue("100.00");
+
+    // The typed amount still meets the payment's own check.
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "5000.00");
+    await expect(
+      canvas.getByText("The allocations add up to more than the payment.")
+    ).toBeVisible();
+  },
+};

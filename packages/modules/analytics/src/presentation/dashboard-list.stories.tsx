@@ -261,3 +261,30 @@ export const Delete: Story = {
     await expect(deleteDashboard).toHaveBeenCalledWith({ id: "dashboard-1" });
   },
 };
+
+// Bug caught: Create is disabled with an empty name, so the dialog never says what is missing.
+export const EmptyNameSaysWhy: Story = {
+  globals: desktop,
+  beforeEach: () => serve(defaultDashboardList),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "New dashboard" })
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "New dashboard" })
+    );
+
+    const input = dialog.getByRole("textbox", { name: "Name" });
+
+    await userEvent.click(dialog.getByRole("button", { name: "Create" }));
+
+    // The dialog fades in, so its error turns visible after the transition.
+    await waitFor(() =>
+      expect(dialog.getByText("Enter a name.")).toBeVisible()
+    );
+    await expect(input).toHaveAttribute("aria-invalid", "true");
+    await expect(input).toHaveAccessibleDescription("Enter a name.");
+    await expect(createDashboard).not.toHaveBeenCalled();
+  },
+};

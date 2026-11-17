@@ -5,12 +5,13 @@ import {
   controlHeights,
   Field,
   FieldDescription,
+  FieldError,
   FieldLabel,
   focusRing,
   Textarea,
   touchAreas,
 } from "@genie/ui";
-import { useForm } from "@tanstack/react-form";
+import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { z } from "zod";
 
@@ -18,7 +19,11 @@ import { z } from "zod";
 const DESCRIPTION_LIMIT = 4000;
 
 const descriptionSchema = z.object({
-  description: z.string().trim().min(1).max(DESCRIPTION_LIMIT),
+  description: z
+    .string()
+    .trim()
+    .min(1, "Describe the deck first.")
+    .max(DESCRIPTION_LIMIT),
 });
 
 /** Starters that name no dataset: the module does not know which ones the deployment has. */
@@ -45,6 +50,7 @@ export function NewDeckComposer(props: {
   const boxId = useId();
   const helpId = useId();
   const hintId = useId();
+  const errorId = useId();
   const box = useRef<HTMLTextAreaElement>(null);
 
   // `saving` arrives a render after the press, so a second quick press would start a second deck.
@@ -60,7 +66,9 @@ export function NewDeckComposer(props: {
 
   const form = useForm({
     defaultValues: { description: "" },
-    validators: { onMount: descriptionSchema, onChange: descriptionSchema },
+    // Validates on submit, then on each change: an empty field says why only once asked.
+    validationLogic: revalidateLogic(),
+    validators: { onDynamic: descriptionSchema },
     // The validator does not hand back the trimmed value, so the description is trimmed here.
     onSubmit: ({ value }) => {
       sent.current = true;
@@ -85,51 +93,57 @@ export function NewDeckComposer(props: {
         }}
       >
         <form.Field name="description">
-          {(field) => (
-            <Field>
-              <FieldLabel htmlFor={boxId}>What is the deck about?</FieldLabel>
-              <Textarea
-                ref={box}
-                id={boxId}
-                rows={4}
-                maxLength={DESCRIPTION_LIMIT}
-                placeholder="For example: a five-slide update on this month's collections for the finance team"
-                aria-describedby={`${helpId} ${hintId}`}
-                value={field.state.value}
-                onChange={(event) => field.handleChange(event.target.value)}
-                onBlur={field.handleBlur}
-                onKeyDown={(event) => {
-                  if (event.key !== "Enter" || event.shiftKey) return;
+          {(field) => {
+            const hasError = field.state.meta.errors.length > 0;
 
-                  event.preventDefault();
-                  submit();
-                }}
-              />
-              <FieldDescription id={helpId}>
-                Ask names the deck and drafts the slides from your records. You
-                can rename it and change any slide after.
-              </FieldDescription>
-              <div
-                role="group"
-                aria-label="Starters"
-                className="flex flex-wrap gap-2"
-              >
-                {CHAT_SUGGESTIONS.map((chip) => (
-                  <button
-                    key={chip}
-                    type="button"
-                    className={chipClass}
-                    onClick={() => {
-                      field.handleChange(chip);
-                      box.current?.focus();
-                    }}
-                  >
-                    <span className="min-w-0 truncate">{chip}</span>
-                  </button>
-                ))}
-              </div>
-            </Field>
-          )}
+            return (
+              <Field>
+                <FieldLabel htmlFor={boxId}>What is the deck about?</FieldLabel>
+                <Textarea
+                  ref={box}
+                  id={boxId}
+                  rows={4}
+                  maxLength={DESCRIPTION_LIMIT}
+                  placeholder="For example: a five-slide update on this month's collections for the finance team"
+                  aria-invalid={hasError || undefined}
+                  aria-describedby={`${helpId} ${hintId}${hasError ? ` ${errorId}` : ""}`}
+                  value={field.state.value}
+                  onChange={(event) => field.handleChange(event.target.value)}
+                  onBlur={field.handleBlur}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" || event.shiftKey) return;
+
+                    event.preventDefault();
+                    submit();
+                  }}
+                />
+                <FieldError id={errorId} errors={field.state.meta.errors} />
+                <FieldDescription id={helpId}>
+                  Ask names the deck and drafts the slides from your records.
+                  You can rename it and change any slide after.
+                </FieldDescription>
+                <div
+                  role="group"
+                  aria-label="Starters"
+                  className="flex flex-wrap gap-2"
+                >
+                  {CHAT_SUGGESTIONS.map((chip) => (
+                    <button
+                      key={chip}
+                      type="button"
+                      className={chipClass}
+                      onClick={() => {
+                        field.handleChange(chip);
+                        box.current?.focus();
+                      }}
+                    >
+                      <span className="min-w-0 truncate">{chip}</span>
+                    </button>
+                  ))}
+                </div>
+              </Field>
+            );
+          }}
         </form.Field>
         {props.failure === null ? null : (
           <p role="alert" className="text-sm text-destructive">
@@ -154,18 +168,13 @@ export function NewDeckComposer(props: {
           >
             Cancel
           </Button>
-          <form.Subscribe selector={(state) => state.canSubmit}>
-            {(canSubmit) => (
-              <Button
-                type="submit"
-                loading={props.saving}
-                disabled={!canSubmit && !props.saving}
-                className="max-md:flex-1"
-              >
-                Create deck
-              </Button>
-            )}
-          </form.Subscribe>
+          <Button
+            type="submit"
+            loading={props.saving}
+            className="max-md:flex-1"
+          >
+            Create deck
+          </Button>
         </div>
       </form>
     </section>

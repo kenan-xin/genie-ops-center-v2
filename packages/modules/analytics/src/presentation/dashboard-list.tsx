@@ -56,6 +56,7 @@ export function DashboardList(props: DashboardListProps) {
   const nameErrorId = useId();
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");
+  const [nameMissing, setNameMissing] = useState(false);
 
   useAgentPage({ context: { page: "Dashboards" } });
 
@@ -76,6 +77,7 @@ export function DashboardList(props: DashboardListProps) {
     onSuccess: (created) => {
       setCreating(false);
       setName("");
+      setNameMissing(false);
       void queryClient.invalidateQueries({ queryKey: LIST_QUERY });
       open(hrefOf(created.id));
     },
@@ -96,6 +98,8 @@ export function DashboardList(props: DashboardListProps) {
 
   const formError =
     failure !== null && fieldError === null ? failure.message : null;
+
+  const shownError = fieldError ?? (nameMissing ? "Enter a name." : null);
 
   const columns: readonly DataTableColumn<DashboardSummary>[] = [
     {
@@ -136,6 +140,7 @@ export function DashboardList(props: DashboardListProps) {
               onClick={() => {
                 create.reset();
                 setName("");
+                setNameMissing(false);
                 setCreating(true);
               }}
             >
@@ -184,7 +189,10 @@ export function DashboardList(props: DashboardListProps) {
         onOpenChange={(next) => {
           setCreating(next);
 
-          if (!next) create.reset();
+          if (!next) {
+            create.reset();
+            setNameMissing(false);
+          }
         }}
       >
         <DialogContent>
@@ -198,7 +206,13 @@ export function DashboardList(props: DashboardListProps) {
 
               const trimmed = name.trim();
 
-              if (trimmed !== "") create.mutate(trimmed);
+              if (trimmed === "") {
+                setNameMissing(true);
+
+                return;
+              }
+
+              create.mutate(trimmed);
             }}
           >
             <Field>
@@ -207,12 +221,15 @@ export function DashboardList(props: DashboardListProps) {
                 id={nameId}
                 value={name}
                 maxLength={80}
-                aria-invalid={fieldError !== null}
-                aria-describedby={fieldError === null ? undefined : nameErrorId}
-                onValueChange={setName}
+                aria-invalid={shownError !== null}
+                aria-describedby={shownError === null ? undefined : nameErrorId}
+                onValueChange={(value) => {
+                  setName(value);
+                  setNameMissing(false);
+                }}
               />
-              {fieldError === null ? null : (
-                <FieldError id={nameErrorId}>{fieldError}</FieldError>
+              {shownError === null ? null : (
+                <FieldError id={nameErrorId}>{shownError}</FieldError>
               )}
             </Field>
             {formError === null ? null : (
@@ -228,11 +245,7 @@ export function DashboardList(props: DashboardListProps) {
               >
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={name.trim() === ""}
-                loading={create.isPending}
-              >
+              <Button type="submit" loading={create.isPending}>
                 Create
               </Button>
             </DialogFooter>

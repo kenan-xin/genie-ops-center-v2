@@ -213,7 +213,8 @@ export function ArtifactPanel(props: {
                 variant="ghost"
                 size="icon"
                 aria-label="Copy the rows"
-                disabled={rows === null}
+                loading={gated.query.isLoading}
+                disabled={rows === null && !gated.query.isLoading}
                 onClick={() => {
                   if (rows === null) return;
 
@@ -228,7 +229,8 @@ export function ArtifactPanel(props: {
                 variant="ghost"
                 size="icon"
                 aria-label="Download the rows"
-                disabled={rows === null}
+                loading={gated.query.isLoading}
+                disabled={rows === null && !gated.query.isLoading}
                 onClick={() => {
                   if (rows !== null) download(artifact.title, rows);
                 }}

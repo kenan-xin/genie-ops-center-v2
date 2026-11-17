@@ -4,6 +4,7 @@ import {
   Button,
   ConfirmDialog,
   EmptyState,
+  FieldError,
   focusRing,
   FormActionBar,
   LabelPill,
@@ -20,7 +21,7 @@ import {
   useMediaQuery,
 } from "@genie/ui";
 import { SlidersHorizontalIcon } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 import { useStore } from "zustand";
 
 import type {
@@ -353,6 +354,10 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
+  const [recipientError, setRecipientError] = useState(false);
+
+  const recipientErrorId = useId();
+
   const [advancedAdd, setAdvancedAdd] = useState<AdvancedAdd | undefined>();
 
   const [shownGroup, setShownGroup] = useState(SHOW_ALL);
@@ -480,6 +485,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const switchKind = (next: Kind) =>
     guardSwitch(KIND_LABEL[next], () => {
+      setRecipientError(false);
       clear();
       setKind(next);
       props.onRecipientChange(null);
@@ -487,6 +493,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const pick = (next: AccessRecipient) => {
     if (next.id === props.recipient?.id) return;
+
+    setRecipientError(false);
 
     guardSwitch(nameOf(next, props.recipients), () => {
       clear();
@@ -600,6 +608,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
               recipients={props.recipients}
               value={props.recipient}
               onPick={pick}
+              errorId={recipientError ? recipientErrorId : undefined}
             />
           </div>
         )}
@@ -607,15 +616,24 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
         <Button
           variant="ghost"
           className="ms-auto"
-          disabled={props.recipient === null}
-          {...(props.recipient === null
-            ? { title: "Choose a group or a person first" }
-            : {})}
-          onClick={() => setAdvancedOpen(true)}
+          onClick={() => {
+            if (props.recipient === null) {
+              setRecipientError(true);
+
+              return;
+            }
+
+            setAdvancedOpen(true);
+          }}
         >
           <SlidersHorizontalIcon aria-hidden="true" />
           Advanced access
         </Button>
+        {recipientError ? (
+          <FieldError id={recipientErrorId} className="basis-full">
+            {`${EMPTY_COPY[kind].title} first.`}
+          </FieldError>
+        ) : null}
       </div>
 
       {props.error === undefined ? null : (

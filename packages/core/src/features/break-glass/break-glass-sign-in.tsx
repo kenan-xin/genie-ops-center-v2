@@ -1,6 +1,7 @@
 import {
   Button,
   Field,
+  FieldError,
   FieldLabel,
   HelpDisclosure,
   Input,
@@ -12,7 +13,7 @@ import {
   iconLead,
   controlHeights,
 } from "@genie/ui";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { JSX } from "react";
 
 import {
@@ -219,6 +220,8 @@ function PasswordField(props: {
   readonly value: string;
   readonly autoComplete: string;
   readonly disabled?: boolean;
+  /** A visible line under the field that says what is missing. */
+  readonly error?: string | undefined;
   readonly onChange: (value: string) => void;
 }): JSX.Element {
   const [show, setShow] = useState(false);
@@ -233,6 +236,10 @@ function PasswordField(props: {
           autoComplete={props.autoComplete}
           value={props.value}
           disabled={props.disabled === true}
+          aria-invalid={props.error === undefined ? undefined : true}
+          aria-describedby={
+            props.error === undefined ? undefined : `${props.id}-error`
+          }
           onChange={(event) => props.onChange(event.target.value)}
         />
         <InputGroupAddon align="inline-end">
@@ -246,6 +253,9 @@ function PasswordField(props: {
           </InputGroupButton>
         </InputGroupAddon>
       </InputGroup>
+      {props.error === undefined ? null : (
+        <FieldError id={`${props.id}-error`}>{props.error}</FieldError>
+      )}
     </Field>
   );
 }
@@ -259,6 +269,8 @@ function CodeInput(props: {
   readonly value: string;
   readonly onChange: (value: string) => void;
   readonly autoFocus?: boolean;
+  /** The id of the line that states the six-digit rule. */
+  readonly hintId: string;
 }): JSX.Element {
   const refs = useRef<Array<HTMLInputElement | null>>([]);
   const digits = Array.from(
@@ -340,6 +352,12 @@ function CodeInput(props: {
           />
         ))}
       </div>
+      <p
+        id={props.hintId}
+        className="mt-1.5 text-center text-xs text-muted-foreground"
+      >
+        Enter all six digits.
+      </p>
     </fieldset>
   );
 }
@@ -359,6 +377,7 @@ export function BreakGlassPasswordForm(props: {
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [currentMissing, setCurrentMissing] = useState(false);
 
   const rows = passwordRuleRows(next, props.email);
   // The fourth rule (`met: null`) is checked on save, so it does not hold the button.
@@ -373,7 +392,12 @@ export function BreakGlassPasswordForm(props: {
       noValidate
       onSubmit={(event) => {
         event.preventDefault();
-        if (!disabled) props.onChangePassword(current, next);
+        if (disabled) return;
+        if (current === "") {
+          setCurrentMissing(true);
+          return;
+        }
+        props.onChangePassword(current, next);
       }}
     >
       {disabled ? (
@@ -385,7 +409,11 @@ export function BreakGlassPasswordForm(props: {
         value={current}
         autoComplete="current-password"
         disabled={disabled}
-        onChange={setCurrent}
+        error={currentMissing ? "Enter your current password." : undefined}
+        onChange={(value) => {
+          setCurrent(value);
+          setCurrentMissing(false);
+        }}
       />
       <div className="flex flex-col gap-2">
         <PasswordField
@@ -458,9 +486,7 @@ export function BreakGlassPasswordForm(props: {
         type="submit"
         size="lg"
         className="w-full"
-        disabled={
-          disabled || !current || !rulesMet || !confirmOk || props.pending
-        }
+        disabled={disabled || !rulesMet || !confirmOk || props.pending}
       >
         Set password and continue
       </Button>
@@ -483,6 +509,10 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
   const [enrollCode, setEnrollCode] = useState("");
   const [enrollPassword, setEnrollPassword] = useState("");
   const [copied, setCopied] = useState(false);
+  const [missing, setMissing] = useState({ email: false, password: false });
+  const [enrollPasswordMissing, setEnrollPasswordMissing] = useState(false);
+  const codeHintId = useId();
+  const enrollHintId = useId();
   // A wrong code clears every box (R-62, design): reset during render on a changed error. The
   // compared value is the normalized one, or `undefined !== null` loops forever.
   const error = props.error ?? null;
@@ -570,8 +600,12 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
             noValidate
             onSubmit={(event) => {
               event.preventDefault();
-              if (props.tooManyAttempts !== true)
-                props.onSubmitCredentials?.(email, password);
+              if (props.tooManyAttempts === true) return;
+              // Nothing typed: say what is missing and spend no rate-limited attempt.
+              const next = { email: email === "", password: password === "" };
+              setMissing(next);
+              if (next.email || next.password) return;
+              props.onSubmitCredentials?.(email, password);
             }}
           >
             {props.tooManyAttempts === true ? (
@@ -599,23 +633,35 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   type="email"
                   autoComplete="username"
                   value={email}
-                  onChange={(event) => setEmail(event.target.value)}
+                  aria-invalid={missing.email || undefined}
+                  aria-describedby={
+                    missing.email ? "bg-email-error" : undefined
+                  }
+                  onChange={(event) => {
+                    setEmail(event.target.value);
+                    setMissing((current) => ({ ...current, email: false }));
+                  }}
                 />
+                {missing.email ? (
+                  <FieldError id="bg-email-error">Enter your email.</FieldError>
+                ) : null}
               </Field>
               <PasswordField
                 id="bg-password"
                 label="Password"
                 value={password}
                 autoComplete="current-password"
-                onChange={setPassword}
+                error={missing.password ? "Enter your password." : undefined}
+                onChange={(value) => {
+                  setPassword(value);
+                  setMissing((current) => ({ ...current, password: false }));
+                }}
               />
               <Button
                 type="submit"
                 size="lg"
                 className="w-full"
-                disabled={
-                  email === "" || password === "" || props.pending === true
-                }
+                disabled={props.pending === true}
               >
                 Sign in
               </Button>
@@ -637,12 +683,15 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
               value={code}
               onChange={setCode}
               autoFocus
+              hintId={codeHintId}
             />
             <Button
               type="submit"
               size="lg"
               className="w-full"
               disabled={code.length !== 6 || props.pending === true}
+              focusableWhenDisabled
+              aria-describedby={code.length !== 6 ? codeHintId : undefined}
             >
               Verify
             </Button>
@@ -676,9 +725,15 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
             onSubmit={(event) => {
               event.preventDefault();
               if (props.tooManyAttempts === true) return;
-              if (props.enrollment === null || props.enrollment === undefined)
+              if (props.enrollment === null || props.enrollment === undefined) {
+                if (enrollPassword === "") {
+                  setEnrollPasswordMissing(true);
+                  return;
+                }
                 props.onStartEnrollment?.(enrollPassword);
-              else props.onConfirmEnrollment?.(enrollCode);
+                return;
+              }
+              props.onConfirmEnrollment?.(enrollCode);
             }}
           >
             {props.tooManyAttempts === true ? (
@@ -694,16 +749,20 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   value={enrollPassword}
                   autoComplete="current-password"
                   disabled={props.tooManyAttempts === true}
-                  onChange={setEnrollPassword}
+                  error={
+                    enrollPasswordMissing ? "Enter your password." : undefined
+                  }
+                  onChange={(value) => {
+                    setEnrollPassword(value);
+                    setEnrollPasswordMissing(false);
+                  }}
                 />
                 <Button
                   type="submit"
                   size="lg"
                   className="w-full"
                   disabled={
-                    enrollPassword === "" ||
-                    props.pending === true ||
-                    props.tooManyAttempts === true
+                    props.pending === true || props.tooManyAttempts === true
                   }
                 >
                   Start enrollment
@@ -757,12 +816,17 @@ export function BreakGlassSignIn(props: BreakGlassSignInProps): JSX.Element {
                   value={enrollCode}
                   onChange={setEnrollCode}
                   autoFocus={Boolean(props.error)}
+                  hintId={enrollHintId}
                 />
                 <Button
                   type="submit"
                   size="lg"
                   className="w-full"
                   disabled={enrollCode.length !== 6 || props.pending === true}
+                  focusableWhenDisabled
+                  aria-describedby={
+                    enrollCode.length !== 6 ? enrollHintId : undefined
+                  }
                 >
                   Confirm and open the console
                 </Button>

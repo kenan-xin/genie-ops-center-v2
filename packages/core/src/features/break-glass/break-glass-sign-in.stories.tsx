@@ -159,6 +159,33 @@ export const CredentialsDark: Story = {
   globals: { theme: "dark", viewport: { value: "desktop", isRotated: false } },
 };
 
+// Bug caught: Sign in was disabled with both fields empty, so nothing said what was missing,
+// and a press without the guard would spend a rate-limited attempt.
+export const EmptyCredentialsSayWhy: Story = {
+  args: { step: "credentials" },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const email = canvas.getByLabelText("Email");
+    const password = canvas.getByLabelText("Password");
+
+    onSubmitCredentials.mockClear();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Sign in" }));
+
+    await expect(canvas.getByText("Enter your email.")).toBeVisible();
+    await expect(canvas.getByText("Enter your password.")).toBeVisible();
+    await expect(email).toHaveAttribute("aria-invalid", "true");
+    await expect(password).toHaveAttribute("aria-invalid", "true");
+    await expect(email).toHaveAccessibleDescription("Enter your email.");
+    await expect(password).toHaveAccessibleDescription("Enter your password.");
+    await expect(onSubmitCredentials).not.toHaveBeenCalled();
+
+    // A filled field clears its line as the person edits it.
+    await userEvent.type(email, "breakglass@example.com");
+    await expect(canvas.queryByText("Enter your email.")).toBeNull();
+  },
+};
+
 export const PasswordReveal: Story = {
   args: { step: "credentials" },
   globals: { viewport: { value: "phone390", isRotated: false } },

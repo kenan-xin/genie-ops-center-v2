@@ -3,6 +3,7 @@
 import {
   Button,
   Field,
+  FieldError,
   FieldLabel,
   FormActionBar,
   LabelPill,
@@ -171,6 +172,12 @@ export function AdvancedAccessSheet(
 
   const scopeLabelId = useId();
 
+  const roleErrorId = useId();
+
+  const recordErrorId = useId();
+
+  const nothingId = useId();
+
   const [draft, setDraft] = useState(() => draftOf(props.initialAdd));
 
   const [pick, setPick] = useState<string | null>(null);
@@ -178,6 +185,8 @@ export function AdvancedAccessSheet(
   const [oneRecord, setOneRecord] = useState(false);
 
   const [record, setRecord] = useState<ScopeRecord | null>(null);
+
+  const [missing, setMissing] = useState<"role" | "record" | null>(null);
 
   const [saving, setSaving] = useState(false);
 
@@ -194,6 +203,7 @@ export function AdvancedAccessSheet(
       setPick(null);
       setRecord(null);
       setOneRecord(false);
+      setMissing(null);
       setFailure(null);
     }
   }
@@ -221,7 +231,19 @@ export function AdvancedAccessSheet(
   const total = draft.add.length + draft.remove.length;
 
   const add = () => {
-    if (picked === null || !ready) return;
+    if (picked === null) {
+      setMissing("role");
+
+      return;
+    }
+
+    if (needsRecord && record === null) {
+      setMissing("record");
+
+      return;
+    }
+
+    if (!ready) return;
 
     const scope =
       needsRecord && record !== null && picked.recordType !== null
@@ -447,9 +469,16 @@ export function AdvancedAccessSheet(
                   setPick(roleId);
                   setRecord(null);
                   setOneRecord(false);
+                  setMissing(null);
                 }}
               >
-                <SelectTrigger aria-labelledby={roleLabelId}>
+                <SelectTrigger
+                  aria-labelledby={roleLabelId}
+                  aria-invalid={missing === "role" || undefined}
+                  aria-describedby={
+                    missing === "role" ? roleErrorId : undefined
+                  }
+                >
                   <SelectValue placeholder="Choose a role" />
                 </SelectTrigger>
                 <SelectContent>
@@ -471,6 +500,9 @@ export function AdvancedAccessSheet(
                   )}
                 </SelectContent>
               </Select>
+              {missing === "role" ? (
+                <FieldError id={roleErrorId}>Choose a role first.</FieldError>
+              ) : null}
             </Field>
 
             {picked === null || picked.recordType === null ? null : (
@@ -502,8 +534,17 @@ export function AdvancedAccessSheet(
                     recordType={picked.recordType}
                     value={record}
                     onSearch={props.onSearchRecords}
-                    onPick={setRecord}
+                    onPick={(next) => {
+                      setRecord(next);
+                      setMissing(null);
+                    }}
+                    errorId={missing === "record" ? recordErrorId : undefined}
                   />
+                ) : null}
+                {missing === "record" ? (
+                  <FieldError id={recordErrorId}>
+                    Choose a record first.
+                  </FieldError>
                 ) : null}
                 {picked.kind === "system" ? (
                   <p className="text-xs text-muted-foreground">
@@ -519,19 +560,18 @@ export function AdvancedAccessSheet(
               </Field>
             )}
 
-            <Button
-              variant="secondary"
-              className="self-start"
-              disabled={!ready}
-              onClick={add}
-            >
+            <Button variant="secondary" className="self-start" onClick={add}>
               Add to the list
             </Button>
           </section>
         </div>
 
         <div className="flex flex-col gap-3 border-t border-border p-4 md:flex-row md:items-center md:justify-between">
-          <p aria-live="polite" className="shrink-0 text-muted-foreground">
+          <p
+            id={nothingId}
+            aria-live="polite"
+            className="shrink-0 text-muted-foreground"
+          >
             {total === 0
               ? "Nothing to save yet."
               : `${total} unsaved ${total === 1 ? "change" : "changes"}`}
@@ -547,6 +587,8 @@ export function AdvancedAccessSheet(
             <Button
               loading={saving}
               disabled={total === 0}
+              focusableWhenDisabled
+              aria-describedby={total === 0 ? nothingId : undefined}
               onClick={() => void save()}
             >
               {saving ? "Saving…" : "Save"}

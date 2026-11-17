@@ -138,13 +138,16 @@ export function LinksEditor(props: {
         : undefined;
 
     const setAmount = (amountText: string) =>
-      onChange(
-        drafts.map((item) =>
-          item.invoiceId === row.invoiceId
-            ? { invoiceId: row.invoiceId, amountText }
-            : item
-        )
-      );
+      draft === undefined
+        ? // Typing an amount in an unticked row starts its link, rather than losing the text.
+          onChange([...drafts, { invoiceId: row.invoiceId, amountText }])
+        : onChange(
+            drafts.map((item) =>
+              item.invoiceId === row.invoiceId
+                ? { invoiceId: row.invoiceId, amountText }
+                : item
+            )
+          );
 
     return (
       <li
@@ -183,15 +186,11 @@ export function LinksEditor(props: {
           </span>
         </div>
         <InputGroup className="w-36 shrink-0">
-          {/* An unchecked row's input is disabled and faded; its currency would fail contrast. */}
-          {draft === undefined ? null : (
-            <CurrencyAddon currency={row.currency} />
-          )}
+          <CurrencyAddon currency={row.currency} />
           <InputGroupInput
             id={id}
             aria-label={`Amount for ${row.number}`}
             inputMode="decimal"
-            disabled={draft === undefined}
             value={draft?.amountText ?? ""}
             aria-invalid={message === undefined ? undefined : true}
             aria-describedby={message === undefined ? undefined : `${id}-error`}

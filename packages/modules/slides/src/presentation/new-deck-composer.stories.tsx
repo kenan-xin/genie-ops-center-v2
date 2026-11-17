@@ -112,17 +112,23 @@ export const ShiftEnterIsANewLine: Story = {
   },
 };
 
-// Bug caught: a blank description starts a run the server refuses.
+// Bug caught: Create deck is disabled on a blank description, so nothing says what is missing.
 export const BlankDoesNothing: Story = {
   play: async ({ args, canvas }) => {
     const create = canvas.getByRole("button", { name: "Create deck" });
+    const box = textbox(canvas);
 
-    await userEvent.type(textbox(canvas), "   {Enter}");
-    await expect(create).toBeDisabled();
+    await userEvent.type(box, "   {Enter}");
 
-    // A disabled button takes no pointer, so the check is skipped to prove the handler stays silent.
-    await userEvent.click(create, { pointerEventsCheck: 0 });
+    await expect(canvas.getByText("Describe the deck first.")).toBeVisible();
+    await expect(box).toHaveAttribute("aria-invalid", "true");
+    await expect(box).toHaveAccessibleDescription(/Describe the deck first\./);
     await expect(args.onSubmit).not.toHaveBeenCalled();
+
+    // The error clears once the person describes the deck.
+    await userEvent.type(box, "Board update");
+    await expect(canvas.queryByText("Describe the deck first.")).toBeNull();
+    await expect(create).toBeEnabled();
   },
 };
 

@@ -2,13 +2,15 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { viewsDashboardPage } from "./__fixtures__/dashboards.ts";
-import { ViewMenu } from "./view-menu.tsx";
+import { ViewMenu, ViewNameDialog } from "./view-menu.tsx";
 
 const desktop = { viewport: { value: "desktop", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
 const { views } = viewsDashboardPage.dashboard;
+
+const onSaveView = fn();
 
 const meta = {
   title: "Modules/Analytics/Dashboard view menu",
@@ -119,6 +121,38 @@ export const NoView: Story = {
     await expect(
       menu.queryByRole("menuitem", { name: /^Save as default/ })
     ).toBeNull();
+  },
+};
+
+// Bug caught: Save view was disabled with an empty name, so nothing said what is missing,
+// and a press without the guard would save a blank name.
+export const SaveViewEmptySaysWhy: Story = {
+  globals: desktop,
+  render: () => (
+    <ViewNameDialog
+      title="Save as view"
+      views={views}
+      saving={false}
+      refusal={null}
+      onSave={onSaveView}
+      onClose={fn()}
+    />
+  ),
+  play: async () => {
+    onSaveView.mockClear();
+
+    const dialog = within(await screen.findByRole("dialog"));
+    const input = dialog.getByRole("textbox", { name: "Name" });
+
+    await userEvent.click(dialog.getByRole("button", { name: "Save view" }));
+
+    // The dialog fades in, so its error turns visible after the transition.
+    await waitFor(() =>
+      expect(dialog.getByText("Enter a name.")).toBeVisible()
+    );
+    await expect(input).toHaveAttribute("aria-invalid", "true");
+    await expect(input).toHaveAccessibleDescription("Enter a name.");
+    await expect(onSaveView).not.toHaveBeenCalled();
   },
 };
 

@@ -661,16 +661,26 @@ const advancedSheet = async () =>
 export const AdvancedAccessOpensFromTheToolbar: Story = {
   play: async ({ canvas }) => {
     const open = canvas.getByRole("button", { name: "Advanced access" });
+    const trigger = canvas.getByRole("combobox", { name: "Choose a group" });
 
-    await expect(open).toBeDisabled();
+    // Bug caught: the button was disabled with its reason only in a title tooltip.
+    await expect(open).toBeEnabled();
+    await expect(open).not.toHaveAttribute("title");
 
-    await userEvent.click(
-      canvas.getByRole("combobox", { name: "Choose a group" })
-    );
+    await userEvent.click(open);
+
+    await expect(canvas.getByText("Choose a group first.")).toBeVisible();
+    await expect(trigger).toHaveAttribute("aria-invalid", "true");
+    await expect(trigger).toHaveAccessibleDescription("Choose a group first.");
+    await expect(screen.queryByRole("dialog")).toBeNull();
+
+    await userEvent.click(trigger);
     await userEvent.click(
       await screen.findByRole("option", { name: "Operations · 40 members" })
     );
-    await waitFor(() => expect(open).toBeEnabled());
+    await waitFor(() =>
+      expect(canvas.queryByText("Choose a group first.")).toBeNull()
+    );
     await userEvent.click(open);
 
     const sheet = await advancedSheet();

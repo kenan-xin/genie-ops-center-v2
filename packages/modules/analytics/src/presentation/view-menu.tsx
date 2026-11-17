@@ -325,11 +325,22 @@ export function ViewNameDialog(props: {
 
   const [shown, setShown] = useState(false);
 
+  // A blank name is the form's own error; a taken one comes from the list above it.
+  const [missing, setMissing] = useState(false);
+
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setShown(true);
 
-    if (trimmed !== "" && !taken) props.onSave(trimmed);
+    if (trimmed === "") {
+      setMissing(true);
+
+      return;
+    }
+
+    setMissing(false);
+
+    if (!taken) props.onSave(trimmed);
   }
 
   return (
@@ -351,14 +362,19 @@ export function ViewNameDialog(props: {
               value={name}
               maxLength={40}
               autoComplete="off"
-              aria-invalid={shown && taken ? true : undefined}
-              aria-describedby={shown && taken ? errorId : undefined}
+              aria-invalid={shown && (taken || missing) ? true : undefined}
+              aria-describedby={
+                shown && (taken || missing) ? errorId : undefined
+              }
               onValueChange={(value) => {
                 setName(value);
                 setShown(false);
+                setMissing(false);
               }}
             />
-            {shown && taken ? (
+            {!shown ? null : missing ? (
+              <FieldError id={errorId}>Enter a name.</FieldError>
+            ) : taken ? (
               <FieldError id={errorId}>
                 A view with this name exists. Choose another name.
               </FieldError>
@@ -369,11 +385,7 @@ export function ViewNameDialog(props: {
             <Button type="button" variant="secondary" onClick={props.onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              disabled={trimmed === ""}
-              loading={props.saving}
-            >
+            <Button type="submit" loading={props.saving}>
               Save view
             </Button>
           </DialogFooter>

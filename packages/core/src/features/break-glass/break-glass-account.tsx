@@ -2,11 +2,12 @@ import {
   controlHeights,
   Button,
   Field,
+  FieldError,
   FieldLabel,
   Input,
   focusRing,
 } from "@genie/ui";
-import { useState } from "react";
+import { useId, useState } from "react";
 import type { JSX } from "react";
 
 import {
@@ -122,6 +123,7 @@ function EnrollmentPanel(props: {
   readonly onConfirm: (code: string) => void;
 }): JSX.Element {
   const [code, setCode] = useState("");
+  const hintId = useId();
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-2 rounded-lg border border-border bg-muted px-3 py-2 text-sm">
@@ -164,10 +166,15 @@ function EnrollmentPanel(props: {
           size="lg"
           onClick={() => props.onConfirm(code)}
           disabled={code.length !== 6 || props.pending}
+          focusableWhenDisabled
+          aria-describedby={code.length !== 6 ? hintId : undefined}
         >
           Confirm
         </Button>
       </div>
+      <p id={hintId} className="text-xs text-muted-foreground">
+        Enter all six digits.
+      </p>
     </div>
   );
 }
@@ -185,6 +192,7 @@ function AuthenticatorBlock(props: {
 }): JSX.Element {
   const [password, setPassword] = useState("");
   const [reenrolling, setReenrolling] = useState(false);
+  const [passwordMissing, setPasswordMissing] = useState(false);
 
   return (
     <AccountCard
@@ -204,7 +212,7 @@ function AuthenticatorBlock(props: {
             {props.rateLimited ? (
               <RateLimitNotice retryAfterMinutes={props.retryAfterMinutes} />
             ) : null}
-            <div className="flex items-end gap-2">
+            <div className="flex flex-wrap items-end gap-2">
               <Field className="w-64">
                 <FieldLabel htmlFor="reenroll-password">
                   Confirm your password
@@ -216,18 +224,36 @@ function AuthenticatorBlock(props: {
                   autoComplete="current-password"
                   value={password}
                   disabled={props.rateLimited}
-                  onChange={(event) => setPassword(event.target.value)}
+                  aria-invalid={passwordMissing || undefined}
+                  aria-describedby={
+                    passwordMissing ? "reenroll-password-error" : undefined
+                  }
+                  onChange={(event) => {
+                    setPassword(event.target.value);
+                    setPasswordMissing(false);
+                  }}
                 />
               </Field>
               <Button
                 type="button"
                 variant="secondary"
                 size="lg"
-                onClick={() => props.onStartReenroll?.(password)}
-                disabled={password === "" || props.pending || props.rateLimited}
+                onClick={() => {
+                  if (password === "") {
+                    setPasswordMissing(true);
+                    return;
+                  }
+                  props.onStartReenroll?.(password);
+                }}
+                disabled={props.pending || props.rateLimited}
               >
                 Start re-enroll
               </Button>
+              {passwordMissing ? (
+                <FieldError id="reenroll-password-error" className="basis-full">
+                  Enter your password.
+                </FieldError>
+              ) : null}
             </div>
           </div>
         ) : (

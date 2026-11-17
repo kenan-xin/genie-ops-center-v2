@@ -27,6 +27,8 @@ export function RecordPicker(props: {
     query: string
   ) => Promise<readonly ScopeRecord[]>;
   readonly onPick: (record: ScopeRecord) => void;
+  /** The id of a visible line that says why a pick is missing; the trigger describes it. */
+  readonly errorId?: string | undefined;
 }): ReactNode {
   const [records, setRecords] = useState<readonly ScopeRecord[]>([]);
 
@@ -65,7 +67,11 @@ export function RecordPicker(props: {
       }}
     >
       {/* A combobox takes no name from its text, so the prompt names it and the text shows the pick. */}
-      <ComboboxTrigger aria-label="Choose a record">
+      <ComboboxTrigger
+        aria-label="Choose a record"
+        aria-invalid={props.errorId === undefined ? undefined : true}
+        aria-describedby={props.errorId}
+      >
         {props.value?.label ?? "Choose a record"}
       </ComboboxTrigger>
       <ComboboxContent aria-label="Choose a record">

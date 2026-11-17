@@ -22,7 +22,7 @@ import {
   useForm,
   useStore,
 } from "@tanstack/react-form";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
 import {
   reportingSettingsSchema,
@@ -53,15 +53,34 @@ export function SectionFooter(props: {
   readonly failure: string | null;
 }) {
   const { state } = props;
+  const nothingId = useId();
+  // A clean section has nothing to save and nothing to discard: both buttons stay focusable.
+  const clean = !state.dirty && props.failure === null;
 
   return (
-    <FormActionBar failure={props.failure} placement="section">
-      <Button variant="secondary" disabled={!state.dirty} onClick={state.reset}>
+    <FormActionBar
+      failure={props.failure}
+      placement="section"
+      status={
+        state.dirty ? undefined : (
+          <span id={nothingId}>Nothing to save yet.</span>
+        )
+      }
+    >
+      <Button
+        variant="secondary"
+        disabled={!state.dirty}
+        focusableWhenDisabled
+        aria-describedby={clean ? nothingId : undefined}
+        onClick={state.reset}
+      >
         Discard
       </Button>
       <Button
         disabled={!state.canSubmit && !state.submitting}
         loading={state.submitting}
+        focusableWhenDisabled
+        aria-describedby={clean ? nothingId : undefined}
         onClick={state.submit}
       >
         Save
@@ -290,6 +309,12 @@ function ReportingDateField(props: {
         <Button
           variant="secondary"
           disabled={value === null}
+          focusableWhenDisabled
+          aria-describedby={
+            value === null && message === undefined
+              ? "core-reportingDate-help"
+              : undefined
+          }
           onClick={() => field.handleChange(null)}
         >
           Use today

@@ -106,7 +106,24 @@ export const Default: Story = {
     await expect(
       canvas.getByText("5 to 480 minutes. Default 15.")
     ).toBeVisible();
-    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Save" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
+  },
+};
+
+// Bug caught: a clean section's Save and Discard were disabled with no reason on screen (C06-17).
+export const CleanSectionSaysWhy: Story = {
+  play: async ({ canvas }) => {
+    const save = canvas.getByRole("button", { name: "Save" });
+    const discard = canvas.getByRole("button", { name: "Discard" });
+
+    await expect(canvas.getByText("Nothing to save yet.")).toBeVisible();
+    await expect(save).toHaveAttribute("aria-disabled", "true");
+    await expect(discard).toHaveAttribute("aria-disabled", "true");
+    await expect(save).toHaveAccessibleDescription("Nothing to save yet.");
+    await expect(discard).toHaveAccessibleDescription("Nothing to save yet.");
   },
 };
 
@@ -143,7 +160,7 @@ export const IdleOutOfRange: Story = {
       await expect(await canvas.findByRole("alert")).toHaveTextContent(
         "Enter a whole number from 5 to 480."
       );
-      await expect(save).toBeDisabled();
+      await expect(save).toHaveAttribute("aria-disabled", "true");
     };
 
     const accepted = async () => {
@@ -363,7 +380,10 @@ export const ModuleRefetchWithSavedValuesResets: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Refetch" }));
 
     await expect(pageSize).toHaveValue(50);
-    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Save" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
   },
 };
 
@@ -776,7 +796,10 @@ export const HalfTypedReportingDateBlocksSave: Story = {
 
     await userEvent.clear(date);
     await userEvent.type(date, "27 Oct 20");
-    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Save" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
     await expect(canvas.queryByText(refusal)).toBeNull();
 
     await userEvent.tab();
@@ -907,10 +930,10 @@ export const AiKeyEmptyFieldKeepsTheKey: Story = {
     const save = canvas.getByRole("button", { name: "Save" });
 
     await expect(canvas.getByText("Stored")).toBeVisible();
-    await expect(save).toBeDisabled();
+    await expect(save).toHaveAttribute("aria-disabled", "true");
 
     await userEvent.type(field, "   ");
-    await expect(save).toBeDisabled();
+    await expect(save).toHaveAttribute("aria-disabled", "true");
     expect(args.onSaveModelKey).not.toHaveBeenCalled();
   },
 };
@@ -1030,7 +1053,10 @@ export const AiModelsDefaultOutsideList: Story = {
     await expect(
       await canvas.findByText("Choose a model from the allowed models.")
     ).toBeVisible();
-    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Save" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
 
     // The removed id is gone from the picker too, not only from the list field.
     await userEvent.click(
@@ -1117,7 +1143,10 @@ export const AiRunsTimeLimitOutOfRange: Story = {
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "Enter a whole number of minutes from 10 to 1440."
     );
-    await expect(canvas.getByRole("button", { name: "Save" })).toBeDisabled();
+    await expect(canvas.getByRole("button", { name: "Save" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    );
     await expect(args.onSaveAgentRuns).not.toHaveBeenCalled();
   },
 };

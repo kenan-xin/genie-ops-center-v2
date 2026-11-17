@@ -1136,6 +1136,32 @@ const DASHBOARD_CHANGED =
 const CHART_INVALID =
   "The chart does not fit its data. Fix the marked parts and try again.";
 
+// Bug caught: Save is disabled with an empty name, so the dialog never says what is missing.
+export const RenameEmptySaysWhy: Story = {
+  globals: desktop,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas }) => {
+    await openRenameDashboard(canvas);
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Rename dashboard" })
+    );
+
+    const input = dialog.getByRole("textbox", { name: "Name" });
+
+    await userEvent.clear(input);
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
+
+    // The dialog fades in, so its error turns visible after the transition.
+    await waitFor(() =>
+      expect(dialog.getByText("Enter a name.")).toBeVisible()
+    );
+    await expect(input).toHaveAttribute("aria-invalid", "true");
+    await expect(input).toHaveAccessibleDescription("Enter a name.");
+    await expect(changeDashboard).not.toHaveBeenCalled();
+  },
+};
+
 // B5.2: each panel action sends one change, with the layout and the index it names.
 export const EditActions: Story = {
   name: "Edit actions",

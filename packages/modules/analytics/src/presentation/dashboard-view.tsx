@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   Field,
+  FieldError,
   FieldLabel,
   formatReadTime,
   InfoNote,
@@ -72,8 +73,10 @@ export function DashboardView(props: DashboardViewProps) {
   const filters = useDashboardFilters(dashboard);
   const queryClient = useQueryClient();
   const nameId = useId();
+  const renameErrorId = useId();
   const [editing, setEditing] = useState(false);
   const [renaming, setRenaming] = useState<RenameTarget | null>(null);
+  const [renameMissing, setRenameMissing] = useState(false);
   const [failure, setFailure] = useState<ChangeFailure | null>(null);
 
   // The latest read of any panel, for the one "Figures as of" line (6.1).
@@ -93,11 +96,13 @@ export function DashboardView(props: DashboardViewProps) {
 
   function openRename(target: RenameTarget) {
     setFailure(null);
+    setRenameMissing(false);
     setRenaming(target);
   }
 
   function closeRename() {
     setRenaming(null);
+    setRenameMissing(false);
     setFailure(null);
   }
 
@@ -108,7 +113,11 @@ export function DashboardView(props: DashboardViewProps) {
 
     const value = renaming.value.trim();
 
-    if (value === "") return;
+    if (value === "") {
+      setRenameMissing(true);
+
+      return;
+    }
 
     if (renaming.kind === "dashboard") {
       send([{ op: "rename", name: value }], {
@@ -382,23 +391,29 @@ export function DashboardView(props: DashboardViewProps) {
                 id={nameId}
                 value={renaming?.value ?? ""}
                 maxLength={renaming?.kind === "panel" ? undefined : 80}
-                onValueChange={(value) =>
+                aria-invalid={renameMissing || undefined}
+                aria-describedby={renameMissing ? renameErrorId : undefined}
+                onValueChange={(value) => {
                   setRenaming((current) =>
                     current === null ? null : { ...current, value }
-                  )
-                }
+                  );
+                  setRenameMissing(false);
+                }}
               />
+              {renameMissing ? (
+                <FieldError id={renameErrorId}>
+                  {renaming?.kind === "panel"
+                    ? "Enter a title."
+                    : "Enter a name."}
+                </FieldError>
+              ) : null}
             </Field>
             {renaming === null ? null : refusal}
             <DialogFooter>
               <Button type="button" variant="secondary" onClick={closeRename}>
                 Cancel
               </Button>
-              <Button
-                type="submit"
-                disabled={(renaming?.value.trim() ?? "") === ""}
-                loading={change.isPending}
-              >
+              <Button type="submit" loading={change.isPending}>
                 Save
               </Button>
             </DialogFooter>

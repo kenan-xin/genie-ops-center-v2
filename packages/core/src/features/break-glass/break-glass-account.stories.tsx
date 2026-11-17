@@ -141,6 +141,28 @@ export const Reenroll: Story = {
   },
 };
 
+// Bug caught: Start re-enroll was disabled with an empty password, so nothing said why.
+export const EmptyPasswordSaysWhy: Story = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    onStartReenroll.mockClear();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Re-enroll" }));
+
+    const password = canvas.getByLabelText("Confirm your password");
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Start re-enroll" })
+    );
+
+    await expect(canvas.getByText("Enter your password.")).toBeVisible();
+    await expect(password).toHaveAttribute("aria-invalid", "true");
+    await expect(password).toHaveAccessibleDescription("Enter your password.");
+    await expect(onStartReenroll).not.toHaveBeenCalled();
+  },
+};
+
 export const ConfirmReenroll: Story = {
   args: {
     enrollment: {

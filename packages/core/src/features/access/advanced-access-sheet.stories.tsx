@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { type ComponentProps, useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { ScopeRecord } from "../../services/roles/records.ts";
@@ -207,37 +208,104 @@ export const GuardedOwnRole: Story = {
   },
 };
 
+/** The Grants host: the sheet stays mounted, so closing and reopening runs its reset block. */
+function ReopenedSheet(props: ComponentProps<typeof AdvancedAccessSheet>) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <>
+      <button type="button" onClick={() => setOpen(true)}>
+        Open the sheet again
+      </button>
+      <AdvancedAccessSheet
+        {...props}
+        open={open}
+        onClose={() => {
+          props.onClose();
+          setOpen(false);
+        }}
+      />
+    </>
+  );
+}
+
 /** K4: a module role here needs a record, picked by search, and saves with it. */
 export const AddsOneRecord: Story = {
+  render: (args) => <ReopenedSheet {...args} />,
   play: async ({ args }) => {
     const body = await sheet();
 
-    await chooseRole("Placeholder: Placeholder user");
+    const add = body.getByRole("button", { name: "Add to the list" });
+    const save = body.getByRole("button", { name: "Save" });
+    const role = body.getByRole("combobox", { name: "Role" });
+
+    // Nothing staged: Save stays focusable and names its reason.
+    await expect(save).toHaveAttribute("aria-disabled", "true");
+    await expect(save).toHaveAccessibleDescription("Nothing to save yet.");
+
+    // Bug caught: Add was disabled with no role, so nothing said what was missing.
+    await expect(add).toBeEnabled();
+    await userEvent.click(add);
+    await expect(body.getByText("Choose a role first.")).toBeVisible();
+    await expect(role).toHaveAttribute("aria-invalid", "true");
+    await expect(role).toHaveAccessibleDescription("Choose a role first.");
+    await expect(body.queryByText("(unsaved)")).toBeNull();
+
+    // Bug caught: the error outlived the close, because the open reset skipped it.
+    await userEvent.click(
+      body.getByRole("button", { name: "Close Advanced access" })
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await userEvent.click(
+      screen.getByRole("button", { name: "Open the sheet again" })
+    );
+
+    const reopened = await sheet();
+
+    await expect(reopened.queryByText("Choose a role first.")).toBeNull();
     await expect(
-      body.getByText(
+      reopened.getByRole("combobox", { name: "Role" })
+    ).not.toHaveAttribute("aria-invalid", "true");
+
+    const reopenedAdd = reopened.getByRole("button", {
+      name: "Add to the list",
+    });
+
+    await userEvent.click(reopenedAdd);
+    // The reopened sheet fades in, so its error turns visible after the transition.
+    await waitFor(() =>
+      expect(reopened.getByText("Choose a role first.")).toBeVisible()
+    );
+
+    await chooseRole("Placeholder: Placeholder user");
+    await expect(reopened.queryByText("Choose a role first.")).toBeNull();
+    await expect(
+      reopened.getByText(
         "A module role here reaches one record. The whole module is a row on Grants."
       )
     ).toBeVisible();
-    await expect(
-      body.getByRole("button", { name: "Add to the list" })
-    ).toBeDisabled();
 
-    await userEvent.click(
-      body.getByRole("combobox", { name: "Choose a record" })
-    );
+    // A module role with no record picked says so too.
+    await userEvent.click(reopenedAdd);
+    await expect(reopened.getByText("Choose a record first.")).toBeVisible();
+
+    const record = reopened.getByRole("combobox", { name: "Choose a record" });
+
+    await expect(record).toHaveAttribute("aria-invalid", "true");
+    await expect(record).toHaveAccessibleDescription("Choose a record first.");
+
+    await userEvent.click(record);
     await userEvent.click(
       await screen.findByRole("option", { name: "North depot" })
     );
-    await userEvent.click(
-      body.getByRole("button", { name: "Add to the list" })
-    );
+    await userEvent.click(reopenedAdd);
 
-    const added = rowOf(body, "Placeholder user");
+    const added = rowOf(reopened, "Placeholder user");
 
     await expect(added.getByText("(unsaved)")).toBeInTheDocument();
     await expect(added.getByText("One record · North depot")).toBeVisible();
 
-    await userEvent.click(body.getByRole("button", { name: "Save" }));
+    await userEvent.click(reopened.getByRole("button", { name: "Save" }));
     await waitFor(() =>
       expect(args.onSave).toHaveBeenCalledWith({
         add: [

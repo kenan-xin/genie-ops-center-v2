@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
   Field,
+  FieldError,
   FieldLabel,
   FormActionBar,
   HelpDisclosure,
@@ -132,8 +133,10 @@ function RoleFormBody(props: {
 }) {
   const nameId = useId();
   const descriptionId = useId();
+  const nameErrorId = useId();
   const [name, setName] = useState(props.state.name);
   const [description, setDescription] = useState(props.state.description);
+  const [nameError, setNameError] = useState(false);
 
   const [picked, setPicked] = useState<readonly string[]>(
     props.state.permissions
@@ -167,8 +170,16 @@ function RoleFormBody(props: {
             aria-label="Role name"
             placeholder="For example, Claims supervisor"
             value={name}
-            onChange={(event) => setName(event.target.value)}
+            aria-invalid={nameError || undefined}
+            aria-describedby={nameError ? nameErrorId : undefined}
+            onChange={(event) => {
+              setName(event.target.value);
+              setNameError(false);
+            }}
           />
+          {nameError ? (
+            <FieldError id={nameErrorId}>Enter a name.</FieldError>
+          ) : null}
         </Field>
         <Field>
           <FieldLabel htmlFor={descriptionId}>Description</FieldLabel>
@@ -276,15 +287,20 @@ function RoleFormBody(props: {
           Cancel
         </Button>
         <Button
-          disabled={!canSubmit}
           loading={props.submitting}
-          onClick={() =>
+          onClick={() => {
+            if (!canSubmit) {
+              setNameError(true);
+
+              return;
+            }
+
             props.onSubmit({
               name: name.trim(),
               description: description.trim(),
               permissions: picked,
-            })
-          }
+            });
+          }}
         >
           {props.state.mode === "edit" ? "Save role" : "Create role"}
         </Button>

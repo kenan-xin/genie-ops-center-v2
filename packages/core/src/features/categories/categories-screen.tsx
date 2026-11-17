@@ -3,6 +3,7 @@
 import {
   Button,
   ConfirmDialog,
+  FieldError,
   focusRing,
   HelpDisclosure,
   Input,
@@ -16,7 +17,7 @@ import {
   PlusIcon,
   Trash2Icon,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { AssignItems } from "./assign-items.tsx";
 import type { CategoriesScreenProps, CategoryRowView } from "./types.ts";
@@ -65,6 +66,8 @@ function RenameField(props: {
 export function CategoriesScreen(props: CategoriesScreenProps) {
   const { categories } = props.list;
   const [name, setName] = useState("");
+  const [nameError, setNameError] = useState(false);
+  const nameErrorId = useId();
   const [editing, setEditing] = useState<string | null>(null);
   const [dragId, setDragId] = useState<string | null>(null);
   // The dialog keeps its category while closed, so its title does not blank during the exit.
@@ -78,7 +81,12 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
   const create = () => {
     const trimmed = name.trim();
 
-    if (trimmed === "") return;
+    if (trimmed === "") {
+      setNameError(true);
+
+      return;
+    }
+
     props.onCreate(trimmed);
     setName("");
   };
@@ -110,7 +118,7 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
       </div>
 
       <form
-        className="flex gap-2"
+        className="flex flex-wrap gap-x-2 gap-y-1"
         onSubmit={(event) => {
           event.preventDefault();
           create();
@@ -120,17 +128,24 @@ export function CategoriesScreen(props: CategoriesScreenProps) {
           aria-label="New category name"
           placeholder="New category, for example Operations"
           maxLength={80}
+          className="min-w-0 flex-1"
           value={name}
-          onValueChange={setName}
+          aria-invalid={nameError || undefined}
+          aria-describedby={nameError ? nameErrorId : undefined}
+          onValueChange={(value) => {
+            setName(value);
+            setNameError(false);
+          }}
         />
-        <Button
-          type="submit"
-          disabled={name.trim() === ""}
-          loading={props.reordering}
-        >
+        <Button type="submit" loading={props.reordering}>
           <PlusIcon aria-hidden="true" />
           Add
         </Button>
+        {nameError ? (
+          <FieldError id={nameErrorId} className="basis-full">
+            Enter a name.
+          </FieldError>
+        ) : null}
       </form>
 
       {props.error !== undefined ? (

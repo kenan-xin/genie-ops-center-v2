@@ -294,6 +294,31 @@ export const LongCatalogueFormFitsTheScreen: Story = {
   },
 };
 
+// Bug caught: Create role is disabled with no name, so the dialog never says what is missing.
+export const EmptyNameSaysWhy: Story = {
+  play: async ({ args, canvas }) => {
+    await userEvent.click(
+      canvas.getAllByRole("button", { name: "New role" })[0]!
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "New role" })
+    );
+
+    const name = dialog.getByLabelText("Role name");
+
+    await userEvent.click(dialog.getByRole("button", { name: "Create role" }));
+
+    // The dialog fades in, so its error turns visible after the transition.
+    await waitFor(() =>
+      expect(dialog.getByText("Enter a name.")).toBeVisible()
+    );
+    await expect(name).toHaveAttribute("aria-invalid", "true");
+    await expect(name).toHaveAccessibleDescription("Enter a name.");
+    await expect(args.onCreateRole).not.toHaveBeenCalled();
+  },
+};
+
 /** G42: a row's Copy offers the row's retired key for removal, so the copy can be saved (R-33b). */
 export const RowCopyOffersTheUnavailableKey: Story = {
   play: async ({ canvas }) => {
