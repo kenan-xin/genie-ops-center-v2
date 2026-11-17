@@ -6,7 +6,6 @@ import {
   Checkbox,
   DataTable,
   focusRing,
-  IconTile,
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
@@ -19,7 +18,6 @@ import {
   StatusPill,
   minTouchHeight,
 } from "@genie/ui";
-import { FolderIcon } from "lucide-react";
 import { useState } from "react";
 
 import { SearchIcon } from "../admin/icons.tsx";
@@ -196,11 +194,6 @@ export function AssignItems(props: AssignItemsProps) {
               { id: "category", header: "Category", cell: picker },
             ]}
             card={{
-              media: () => (
-                <IconTile>
-                  <FolderIcon />
-                </IconTile>
-              ),
               title: (module) => module.displayName,
               badge: (module) => offPill(module),
               content: (module) => picker(module),

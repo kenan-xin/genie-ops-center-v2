@@ -148,7 +148,7 @@ const overview: Play = async ({ canvas }) => {
   ).toBeLessThan(2);
 };
 
-/** The same page at 390 px: the card list of Assign items leads each module with a tile. */
+/** The same page at 390 px: the Assign items cards start with the name, with no tile (6wz1.132). */
 const overviewOnPhone: Play = async (context) => {
   await overview(context);
 
@@ -158,7 +158,7 @@ const overviewOnPhone: Play = async (context) => {
 
   await expect(
     files.getAllByRole("listitem")[0]!.querySelector("[data-slot=icon-tile]")
-  ).not.toBeNull();
+  ).toBeNull();
 };
 
 const middle = (element: Element) => {

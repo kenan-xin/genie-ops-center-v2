@@ -152,7 +152,7 @@ export const Phone: Story = {
       list.getByText("2 permissions · 1 assignment")
     ).toBeInTheDocument();
 
-    // The card leads with a tile, and the kind pill shares the name's line.
+    // The card starts with the name (no tile, 6wz1.132), and the kind pill shares the name's line.
     const cards = list.getAllByRole("listitem");
     const first = within(cards[0]!);
     const name = first.getByRole("button", { name: /^Tenant administrator/ });
@@ -162,9 +162,7 @@ export const Phone: Story = {
     await expect(
       new Set(cards.map((card) => card.getBoundingClientRect().height)).size
     ).toBeLessThanOrEqual(2);
-    await expect(
-      cards[0]!.querySelector("[data-slot=icon-tile]")
-    ).not.toBeNull();
+    await expect(cards[0]!.querySelector("[data-slot=icon-tile]")).toBeNull();
     await expect(
       Math.abs(
         name.getBoundingClientRect().top - kind.getBoundingClientRect().top

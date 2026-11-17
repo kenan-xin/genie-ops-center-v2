@@ -16,7 +16,6 @@ import {
   HelpDisclosure,
   iconLead,
   iconLeadPx,
-  IconTile,
   InfoNote,
   Input,
   InputGroup,
@@ -44,7 +43,6 @@ import {
   PlusIcon,
   SearchIcon,
   KeyIcon,
-  ShieldIcon,
   TrashIcon,
   WarningIcon,
 } from "../admin/icons.tsx";
@@ -852,11 +850,6 @@ export function RolesScreen(props: RolesScreenProps) {
               },
             ]}
             card={{
-              media: () => (
-                <IconTile>
-                  <ShieldIcon />
-                </IconTile>
-              ),
               title: (role) => role.name,
               badge: (role) => kindPill(role),
               detail: (role) =>
