@@ -450,7 +450,7 @@ function readStubReport(report: string): StubReport {
 
 describe("the anchor cleanup", () => {
   // A symlinked anchor the stub turns into a real directory. The helper's
-  // per-anchor removal has to recurse into it or the isolated root leaks.
+  // root removal has to recurse into it or the isolated root leaks.
   const REPLACED_ANCHOR = "node_modules";
 
   it("removes a real directory that replaced an anchor symlink and never follows the link", async () => {

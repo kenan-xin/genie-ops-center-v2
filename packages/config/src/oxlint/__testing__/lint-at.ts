@@ -52,11 +52,11 @@ export const OXLINT_BASE_ARGS: readonly string[] = [
  * of the checkout. The root links every other top-level entry too
  * (`overlayCheckout`); these are the ones `isolatedPath` guards.
  */
-const ISOLATED_ROOT_ANCHORS: readonly string[] = [
+const ISOLATED_ROOT_ANCHORS: ReadonlySet<string> = new Set([
   "oxlint.config.ts",
   "packages",
   "node_modules",
-];
+]);
 
 /**
  * The anchor a fixture may sit under. A fixture there gets its ancestors as real
@@ -707,7 +707,7 @@ function isolatedPath(relativePath: string): string {
   // tree: the run would lint with a fixture config or through installed code.
   if (
     firstSegment !== OVERLAID_ANCHOR &&
-    ISOLATED_ROOT_ANCHORS.includes(firstSegment)
+    ISOLATED_ROOT_ANCHORS.has(firstSegment)
   ) {
     throw new Error(
       `An isolated fixture path must not start with a symlinked anchor: ${relativePath}`
@@ -719,15 +719,9 @@ function isolatedPath(relativePath: string): string {
 
 /** Removes an isolated root without ever following one of its links. */
 function removeIsolatedRoot(root: string): void {
-  // Node unlinks a symlink-to-directory rather than descending into it, so the
-  // recursive removal below is already safe. Every anchor is unlinked by name
-  // first anyway: the cost is three lines, and the cost of that behaviour ever
-  // changing is the checkout. `recursive` covers the case where an anchor name
-  // is a real directory, which would otherwise throw here and hide a live error.
-  for (const anchor of ISOLATED_ROOT_ANCHORS) {
-    rmSync(join(root, anchor), { force: true, recursive: true });
-  }
-
+  // Node unlinks a symlink-to-directory rather than descending into it. Most
+  // entries of the root are such links (`overlayCheckout`), so unlinking a few
+  // anchors by name first would protect nothing the recursive removal does not.
   rmSync(root, { recursive: true, force: true });
 }
 
