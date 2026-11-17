@@ -313,6 +313,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "the core pg-boss worker skips a job of a compiled module with no tenant_module row",
       "the core pg-boss worker schedules a declared job with a cron expression distinct from its data",
       "the core pg-boss worker writes heartbeat from the scheduled core job only after migration completes, then becomes stale when aborted",
+      "the core pg-boss worker keeps the heartbeat of every worker fresh when several workers share one database",
       "the core pg-boss worker retries a failed lazy pg-boss start after the database query recovers",
       "the core pg-boss worker does not refresh the heartbeat when declaration schedule reconciliation fails",
       "the core pg-boss worker settles an abandoned handler job and ignores its late result",

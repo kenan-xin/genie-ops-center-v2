@@ -76,7 +76,7 @@ The table below defines the values; the tables above define when each is require
 | `LOG_LEVEL` | `info` | pino level. |
 | `DATABASE_POOL_SIZE` | `10` | A whole number, at least 1. The most database connections one process opens. pg-boss uses the same pool. Each app copy and worker has its own pool, so the database sees the sum of all pools (`DEC-58`). |
 | `AGENT_RUNS_AT_ONCE` | `4` | A whole number, at least 1. Worker only. The number of background agent runs one worker runs at once (`DEC-58`). |
-| `WORKER_HEARTBEAT_PATH` | `/tmp/genie-worker-heartbeat` | Worker only. The file the core heartbeat job rewrites every minute after a database round trip. The worker container health check reads its age (D-10). |
+| `WORKER_HEARTBEAT_PATH` | `/tmp/genie-worker-heartbeat` | Worker only. The file that the core heartbeat rewrites every minute after a database round trip. Each worker writes its own file, also when another worker ran the scheduled heartbeat job. The worker container health check reads its age (D-10). |
 | `PORT` | `3000` | Container listening port. |
 | `NODE_ENV` | set by the image | Not overridden in deployments. |
 

@@ -1107,6 +1107,52 @@ describe("the core pg-boss worker", () => {
       1
     );
   });
+
+  it("keeps the heartbeat of every worker fresh when several workers share one database", async () => {
+    const { stat, unlink } = await import("node:fs/promises");
+    const database = await disposablePostgres();
+    const controller = new AbortController();
+    const paths = [1, 2].map(
+      (worker) => `/tmp/genie-worker-shared-${worker}-${crypto.randomUUID()}`
+    );
+
+    cleanups.push(async () => {
+      await Promise.all(
+        paths.map(async (path) => unlink(path).catch(() => {}))
+      );
+    });
+
+    // A yearly cron sends no job during the test, so only each worker's own beat can refresh it.
+    const workers = paths.map(async (path) =>
+      runWorker({
+        source: source(database.url),
+        modules: [],
+        histories: [],
+        ...OUTPUT,
+        signal: controller.signal,
+        heartbeat: { cron: "0 0 1 1 *", path, intervalMs: 300 },
+      })
+    );
+    const mtime = async (path: string) =>
+      stat(path).then(
+        ({ mtimeMs }) => mtimeMs,
+        () => undefined
+      );
+
+    await waitUntil(async () =>
+      (await Promise.all(paths.map(mtime))).every((at) => at !== undefined)
+    );
+    const first = await Promise.all(paths.map(mtime));
+
+    await waitUntil(async () =>
+      (await Promise.all(paths.map(mtime))).every(
+        (at, index) => at !== undefined && at > (first[index] ?? Infinity)
+      )
+    );
+
+    controller.abort();
+    expect(await Promise.all(workers)).toEqual([0, 0]);
+  });
 });
 
 async function expectSkippedModuleJob(input: {

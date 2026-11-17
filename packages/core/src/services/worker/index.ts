@@ -59,6 +59,12 @@ const CORE_JOBS: readonly JobDeclaration[] = [AGENT_FILE_JOB, AGENT_RUN_JOB];
 /** Every minute, so a health check that allows three minutes tolerates two missed passes. */
 const HEARTBEAT_CRON = "* * * * *";
 
+/**
+ * The cron job runs on one worker only, so each worker also runs the heartbeat itself when it ran
+ * none for this long. Every worker's file then stays fresh with several workers.
+ */
+const HEARTBEAT_INTERVAL_MS = 60_000;
+
 /** Thrown inside a loop when its handler settles after the shutdown timeout, to end the loop. */
 const ABANDONED = new Error("abandoned at shutdown");
 
@@ -122,11 +128,13 @@ export type WorkerOptions = {
    */
   readonly shutdownTimeoutMs?: number;
   /**
-   * Test seams for the heartbeat. `path` wins over `WORKER_HEARTBEAT_PATH`. `staleAfterMs` is the
+   * Test seams for the heartbeat. `path` wins over `WORKER_HEARTBEAT_PATH`. `intervalMs` is how
+   * long a worker waits after its last heartbeat before it runs one itself. `staleAfterMs` is the
    * age the container health check refuses; the worker itself only writes the file.
    */
   readonly heartbeat?: {
     readonly cron?: string;
+    readonly intervalMs?: number;
     readonly path?: string;
     readonly staleAfterMs?: number;
   };
@@ -137,11 +145,15 @@ export type WorkerOptions = {
   readonly timing?: CronTiming;
 };
 
-/** One queue the worker drains: its name, whether it may run now, and what runs a job. */
+/**
+ * One queue the worker drains: its name, whether it may run now, what runs a job, and what runs
+ * after a fetch that found no job.
+ */
 type QueueLoop = {
   readonly name: string;
   readonly mayRun: () => Promise<boolean>;
   readonly run: (data: JobData) => Promise<void>;
+  readonly idle?: () => Promise<void>;
 };
 
 /** One durable event queue: a queue loop plus the dead-letter queue of a serialized one. */
@@ -222,6 +234,8 @@ async function drain(
         await boss.complete(loop.name, job.id);
         continue;
       }
+
+      await loop.idle?.();
     } catch (caught) {
       if (caught === ABANDONED) return;
 
@@ -429,8 +443,10 @@ async function reconcileSchedules(
  * heartbeat queue until the signal aborts. Every handler gets the one context (DEC-34).
  *
  * The heartbeat job runs every minute, plus once at start. Its handler makes a database round
- * trip, writes the heartbeat file, and reconciles module schedules, so a fresh file proves that
- * the schedule, the fetch, the handler and the database all work (D-10).
+ * trip, reconciles module schedules, and writes the heartbeat file. pg-boss gives each cron job to
+ * one worker, so each worker also runs the same handler from its heartbeat queue loop when it ran
+ * none for a minute. A fresh file proves that this worker's loop, the handler and the database
+ * work (D-10, Spec 5 R-16).
  *
  * Answers the process exit code: 0 after the signal aborts, 1 when the start fails.
  */
@@ -748,6 +764,13 @@ export function heartbeatPath(
  * runs that no live job holds (R-42b), then the file. The heartbeat runs at start and every minute,
  * so recovery does too. The file is written last, so a reconciliation that keeps failing lets the
  * health check go stale.
+ *
+ * The cron job reaches one worker only, and every worker writes the file inside its own container.
+ * So the loop also runs the heartbeat after an empty fetch once `intervalMs` passed since its last
+ * attempt, and every worker's file stays fresh. The interval counts from the attempt, not the
+ * success, so a failing reconciliation is retried and reported once per interval, not every poll.
+ * Both paths are safe on several workers at once: the schedule writes are upserts, and recovery
+ * updates a run only while it still holds its dead job.
  */
 function heartbeatLoop(
   boss: PgBoss,
@@ -756,15 +779,23 @@ function heartbeatLoop(
   options: WorkerOptions
 ): QueueLoop {
   const path = heartbeatPath(options);
+  const intervalMs = options.heartbeat?.intervalMs ?? HEARTBEAT_INTERVAL_MS;
+  let attemptedAt = 0;
+
+  const beat = async () => {
+    attemptedAt = Date.now();
+    await context.db.$client.query("select 1");
+    await reconcileSchedules(boss, context, jobs);
+    await recoverRuns(context, boss);
+    await writeFile(path, new Date().toISOString());
+  };
 
   return {
     name: HEARTBEAT_JOB,
     mayRun: async () => true,
-    run: async () => {
-      await context.db.$client.query("select 1");
-      await reconcileSchedules(boss, context, jobs);
-      await recoverRuns(context, boss);
-      await writeFile(path, new Date().toISOString());
+    run: beat,
+    idle: async () => {
+      if (Date.now() - attemptedAt >= intervalMs) await beat();
     },
   };
 }
