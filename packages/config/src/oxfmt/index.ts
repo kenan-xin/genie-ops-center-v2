@@ -30,6 +30,9 @@ export const sharedOxfmtConfig: OxfmtConfig = {
     // State owned by other tools.
     ".beads/**",
     ".claude/**",
+    // nx configure-ai-agents writes .codex/config.toml and its --check
+    // matches the exact text, so a reflow would fail that check.
+    ".codex/**",
     ".cursor/**",
     ".agents/**",
     ".opencode/**",
