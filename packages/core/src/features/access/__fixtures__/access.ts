@@ -259,6 +259,7 @@ export const ADVANCED_CATALOGUE: AdvancedCatalogue = {
       kind: "custom",
       moduleId: "invoices",
       moduleName: "Invoices",
+      recordType: "invoice",
     }),
     option({
       roleId: "r-dashboard-curator",

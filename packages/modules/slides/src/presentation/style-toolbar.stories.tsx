@@ -133,9 +133,16 @@ export const DenseRow: Story = {
   globals: desktop,
   play: async ({ canvas }) => {
     const toolbar = canvas.getByRole("toolbar", { name: "Title style" });
-    const rows = boxes([...toolbar.querySelectorAll("button")]);
 
-    await expect(rows).toHaveLength(11);
+    // The segmented tracks, not their segments, take the row's sm height (6wz1.105).
+    const rows = boxes([
+      ...toolbar.querySelectorAll('[data-slot="toggle-group"]'),
+      ...[...toolbar.querySelectorAll("button")].filter(
+        (button) => button.closest('[data-slot="toggle-group"]') === null
+      ),
+    ]);
+
+    await expect(rows).toHaveLength(9);
     await expect(rows.filter(({ height }) => height !== 32)).toEqual([]);
     await expect(new Set(rows.map(({ top }) => top)).size).toBe(1);
   },
@@ -279,9 +286,7 @@ export const PhoneTextCardRow: Story = {
     const rows = boxes([
       card.getByRole("combobox", { name: "Font size" }),
       card.getByRole("combobox", { name: "Weight" }),
-      ...within(card.getByRole("group", { name: "Alignment" })).getAllByRole(
-        "button"
-      ),
+      card.getByRole("group", { name: "Alignment" }),
     ]);
 
     await expect(rows.filter(({ height }) => height !== 32)).toEqual([]);
@@ -303,6 +308,10 @@ export const PhoneBorderCard: Story = {
       index: 0,
       style: { border: { color: "#111827", width: 2 } },
     });
+    // Review Focus 1: the border widths fit the 390 px page.
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth
+    );
   },
 };
 

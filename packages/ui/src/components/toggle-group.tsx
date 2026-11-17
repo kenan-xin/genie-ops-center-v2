@@ -1,8 +1,9 @@
 "use client";
 
-// From the shadcn base-nova `toggle-group`, trimmed to one chip style on the Base UI primitive
-// (`@base-ui/react/toggle-group`). The variant context and the joined (spacing 0) layout are left
-// out until a screen needs them.
+// From the shadcn base-nova `toggle-group`, on the Base UI primitive (`@base-ui/react/toggle-group`),
+// drawn as the one segmented control of DESIGN.md (6wz1.105): a tinted track, the selected segment
+// white with a hairline. The variant context and a spaced chip row are left out until a screen
+// needs them.
 import { Toggle as TogglePrimitive } from "@base-ui/react/toggle";
 import { ToggleGroup as ToggleGroupPrimitive } from "@base-ui/react/toggle-group";
 import { cn } from "cn";
@@ -15,8 +16,9 @@ type ToggleGroupSize = "sm" | "md";
 const ToggleGroupSizeContext = React.createContext<ToggleGroupSize>("sm");
 
 /**
- * `size` sets every chip: sm (32 px, the default) in a dense place, md (36 px from `lg`, 40 px
- * under it) in a row beside md fields and buttons, so the row keeps one height (C06-2).
+ * `size` sets the track's height: sm (32 px, the default) in a dense place, md (36 px from `lg`,
+ * 40 px under it) in a row beside md fields and buttons, so the row keeps one height (C06-2).
+ * The track is as wide as its segments (`w-fit`), also in a grid cell or a flex column.
  */
 function ToggleGroup<Value extends string>({
   className,
@@ -27,14 +29,21 @@ function ToggleGroup<Value extends string>({
     <ToggleGroupSizeContext.Provider value={size}>
       <ToggleGroupPrimitive
         data-slot="toggle-group"
-        className={cn("flex flex-wrap items-center gap-2", className)}
+        className={cn(
+          controlHeights[size],
+          "inline-flex w-fit items-center rounded-lg bg-tile p-0.75",
+          className
+        )}
         {...props}
       />
     </ToggleGroupSizeContext.Provider>
   );
 }
 
-/** One chip: a pill of the group's size with a 44 px hit area, filled while pressed (tokens.md, "Buttons"). */
+/**
+ * One segment, at least 44 px wide with a 44 px touch area. The selected one is white with a
+ * hairline and casts no shadow (DESIGN.md, the Hairline-First Rule); the others take the hover layer.
+ */
 function ToggleGroupItem({ className, ...props }: TogglePrimitive.Props) {
   const size = React.useContext(ToggleGroupSizeContext);
 
@@ -42,9 +51,8 @@ function ToggleGroupItem({ className, ...props }: TogglePrimitive.Props) {
     <TogglePrimitive
       data-slot="toggle-group-item"
       className={cn(
-        controlHeights[size],
         touchAreas[size],
-        "inline-flex shrink-0 items-center justify-center rounded-full border border-input bg-card px-3 text-sm font-medium whitespace-nowrap text-foreground select-none motion-safe:transition-colors not-data-pressed:hover:bg-hover data-pressed:border-transparent data-pressed:bg-primary data-pressed:text-primary-foreground disabled:pointer-events-none disabled:opacity-50",
+        "inline-flex h-full min-w-11 shrink-0 items-center justify-center gap-2 rounded-md px-3.5 text-sm font-medium whitespace-nowrap text-muted-foreground select-none motion-safe:transition-colors not-data-pressed:hover:bg-hover not-data-pressed:hover:text-foreground disabled:pointer-events-none disabled:opacity-50 data-pressed:bg-card data-pressed:text-foreground data-pressed:inset-ring data-pressed:inset-ring-border [&_svg]:size-4 [&_svg]:shrink-0",
         focusRing,
         className
       )}

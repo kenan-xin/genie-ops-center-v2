@@ -283,6 +283,12 @@ Thumb-first and forgiving: restrained 8px control corners, generous heights, she
 - **Mono chip:** JetBrains Mono 0.75rem medium, uppercase, wide tracking, gray-100 background, gray-700 text (dark: gray-800 / gray-300), full radius. For THIS DEVICE, WORKSPACE MEMBER, ADMINISTRATOR — never a status or blue color.
 - **Count pill:** brand fill, white text, in navigation for unread and grouped counts; caps at 99+.
 
+### Segmented control
+
+- **Style:** one tinted track (`bg-tile`, gray-100; gray-800 in dark) at the control height of its row, md or sm, with a 3px inset and the 8px control radius. The segments touch. Each one is 6px rounded and at least 44px wide, with 14px horizontal padding and medium 0.875rem muted text.
+- **States:** the selected segment is white (`bg-card`) with a hairline (`--border`) and foreground text, and it casts no shadow. Another segment takes the `bg-hover` layer on hover. Focus is the shared ring, and the touch area of a segment reaches 44px.
+- **Use:** one choice among two to five short options that applies at once, for example Groups or People, a lookup, a theme, a preview, or a pane on a phone. The component is `ToggleGroup` in `packages/ui`.
+
 ### Cards / Containers
 
 - **Corner Style:** 12px radius.

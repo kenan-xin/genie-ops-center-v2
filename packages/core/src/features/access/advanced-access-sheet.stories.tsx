@@ -257,6 +257,21 @@ export const AddsOneRecordPhone: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
 };
 
+/** 6wz1.105: the Scope track keeps its own width inside the full-width field. */
+export const ScopedCustomRole: Story = {
+  play: async () => {
+    const body = await sheet();
+
+    await chooseRole("Invoice approver (Invoices)");
+
+    const group = body.getByRole("group", { name: "Scope" });
+
+    await expect(group.getBoundingClientRect().width).toBeLessThan(
+      group.parentElement!.getBoundingClientRect().width
+    );
+  },
+};
+
 /** The searches of `LateSearchAnswer`, each waiting until the story answers it. */
 const late = new Map<string, (records: readonly ScopeRecord[]) => void>();
 

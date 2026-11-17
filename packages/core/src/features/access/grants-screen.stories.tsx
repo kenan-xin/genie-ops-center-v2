@@ -157,12 +157,15 @@ export const GrantToRowLinesUp: Story = {
   args: { initial: group("g-ops") },
   globals: { viewport: { value: "desktop1440", isRotated: false } },
   play: async ({ canvas }) => {
-    const row = within(
-      (await canvas.findByRole("group", { name: "Grant to" })).parentElement!
-    );
+    const grantTo = await canvas.findByRole("group", { name: "Grant to" });
+    const row = within(grantTo.parentElement!);
 
+    // The segmented track, not its segments, takes the row's md height (6wz1.105).
     const controls = [
-      ...row.getAllByRole("button"),
+      grantTo,
+      ...row
+        .getAllByRole("button")
+        .filter((button) => !grantTo.contains(button)),
       ...row.getAllByRole("combobox"),
     ];
 

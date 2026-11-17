@@ -477,20 +477,24 @@ export function AdvancedAccessSheet(
               <Field>
                 <FieldLabel id={scopeLabelId}>Scope</FieldLabel>
                 {picked.wholeTenant ? (
-                  <ToggleGroup<"tenant" | "record">
-                    aria-labelledby={scopeLabelId}
-                    value={[oneRecord ? "record" : "tenant"]}
-                    onValueChange={(values) => {
-                      const [next] = values;
+                  <div>
+                    <ToggleGroup<"tenant" | "record">
+                      aria-labelledby={scopeLabelId}
+                      value={[oneRecord ? "record" : "tenant"]}
+                      onValueChange={(values) => {
+                        const [next] = values;
 
-                      if (next !== undefined) setOneRecord(next === "record");
-                    }}
-                  >
-                    <ToggleGroupItem value="tenant">
-                      All records
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="record">One record</ToggleGroupItem>
-                  </ToggleGroup>
+                        if (next !== undefined) setOneRecord(next === "record");
+                      }}
+                    >
+                      <ToggleGroupItem value="tenant">
+                        All records
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="record">
+                        One record
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
                 ) : null}
                 {needsRecord && picked.recordType !== null ? (
                   <RecordPicker

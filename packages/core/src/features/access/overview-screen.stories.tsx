@@ -437,22 +437,30 @@ export const LookUpRowLinesUp: Story = {
   args: { initial: jamie },
   globals: { viewport: { value: "desktop1440", isRotated: false } },
   play: async ({ canvas }) => {
-    const row = within((await lookUp(canvas)).parentElement!);
+    const track = await lookUp(canvas);
+    const row = within(track.parentElement!);
 
+    // The segmented track, not its segments, takes the row's md height (6wz1.105).
     await expect(
       offRow(
-        [...row.getAllByRole("button"), ...row.getAllByRole("combobox")],
+        [
+          track,
+          ...row
+            .getAllByRole("button")
+            .filter((button) => !track.contains(button)),
+          ...row.getAllByRole("combobox"),
+        ],
         36
       )
     ).toBe("");
   },
 };
 
-/** C06-2: on a phone the chips are 40 px, and each reaches 44 px: 1.5 px above it is still it. */
+/** C06-2: on a phone the track is 40 px, and each segment reaches 44 px: 1.5 px above the track is still the segment. */
 export const LookUpChipsOnPhone: Story = {
   args: { initial: jamie },
   globals: phone,
-  // Room above the chips, so that a point 1.5 px over their edge is on the page.
+  // Room above the track, so that a point 1.5 px over its edge is on the page.
   decorators: [
     (Story) => (
       <div className="pt-4">
@@ -461,18 +469,25 @@ export const LookUpChipsOnPhone: Story = {
     ),
   ],
   play: async ({ canvas }) => {
-    const chips = within(await lookUp(canvas)).getAllByRole("button");
+    const track = await lookUp(canvas);
+    const segments = within(track).getAllByRole("button");
+    const top = track.getBoundingClientRect().top;
 
-    await expect(offRow(chips, 40)).toBe("");
+    await expect(offRow([track], 40)).toBe("");
     await expect(
-      chips.flatMap((chip) => {
-        const { left, width, top } = chip.getBoundingClientRect();
+      segments.flatMap((segment) => {
+        const { left, width } = segment.getBoundingClientRect();
 
-        return document.elementFromPoint(left + width / 2, top - 1.5) === chip
+        return document.elementFromPoint(left + width / 2, top - 1.5) ===
+          segment
           ? []
-          : [chip.textContent];
+          : [segment.textContent];
       })
     ).toEqual([]);
+    // Review Focus 1: the three lookups fit the 390 px page.
+    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
+      document.documentElement.clientWidth
+    );
   },
 };
 
