@@ -302,6 +302,65 @@ describe("lintAt through the hardened lifecycle", () => {
     expect(existsSync(join(WORKSPACE_ROOT, dirname(relativePath)))).toBe(false);
   });
 
+  // The app's source scans read the checkout while the config suite runs, so a
+  // fixture written there can vanish mid-scan (genie-ops-center-v2-fa5m). The
+  // stub records where oxlint ran and where each fixture was while it ran.
+  it("lints a batch in a temp root and never writes a fixture into the checkout", async () => {
+    const sandbox = mkdtempSync(join(tmpdir(), "lint-at-batch-"));
+    const report = join(sandbox, "report.json");
+    const stub = join(sandbox, "oxlint");
+    const previousPath = process.env.PATH ?? "";
+
+    // Paths under an existing source folder and under fresh folders, in one
+    // batch, so the overlay must serve several paths at once.
+    const paths = [
+      `packages/core/src/__boundary__-${process.pid}.ts`,
+      `packages/config/__boundary__-${process.pid}/__boundary__.ts`,
+      `apps/genie/src/__boundary__-${process.pid}.ts`,
+    ];
+
+    writeFileSync(
+      stub,
+      `#!${process.execPath}
+const fs = require("node:fs");
+const path = require("node:path");
+const files = process.argv.slice(2).filter((arg) => arg.includes("__boundary__"));
+fs.writeFileSync(process.env.REPORT, JSON.stringify({
+  cwd: process.cwd(),
+  inRoot: files.map((file) => fs.existsSync(path.join(process.cwd(), file))),
+  inCheckout: files.map((file) => fs.existsSync(path.join(process.env.CHECKOUT, file))),
+}));
+`
+    );
+    chmodSync(stub, 0o755);
+
+    try {
+      process.env.PATH = `${sandbox}${delimiter}${previousPath}`;
+      process.env.REPORT = report;
+      process.env.CHECKOUT = WORKSPACE_ROOT;
+
+      await Promise.all(paths.map((path) => lintAt(path, SOURCE)));
+
+      // SAFETY: the stub writes this file with JSON.stringify over this shape.
+      const seen = JSON.parse(readFileSync(report, "utf8")) as {
+        cwd: string;
+        inRoot: boolean[];
+        inCheckout: boolean[];
+      };
+
+      expect(seen.cwd).not.toBe(WORKSPACE_ROOT);
+      expect(basename(seen.cwd).startsWith(ISOLATED_ROOT_PREFIX)).toBe(true);
+      expect(seen.inRoot).toEqual([true, true, true]);
+      expect(seen.inCheckout).toEqual([false, false, false]);
+      expect(existsSync(seen.cwd)).toBe(false);
+    } finally {
+      process.env.PATH = previousPath;
+      delete process.env.REPORT;
+      delete process.env.CHECKOUT;
+      rmSync(sandbox, { recursive: true, force: true });
+    }
+  });
+
   it("reads a clean batch as clean under CI=true, which turns oxlint color on", async () => {
     // oxlint colors its output whenever CI is set, ignoring FORCE_COLOR=0 and
     // NO_COLOR. Colored diagnostics match no attribution line, so without the

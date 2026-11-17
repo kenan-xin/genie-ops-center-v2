@@ -44,11 +44,12 @@ export const OXLINT_BASE_ARGS: readonly string[] = [
 ];
 
 /**
- * The entries an isolated root needs before the repository's own
- * `oxlint.config.ts` loads inside it. Oxlint anchors an override's `files` glob
- * and the plugin specifier to the directory that holds the config file, so the
- * config is symlinked and never copied: the run reads the real file, and a
- * fixture path is matched against the isolated root instead of the checkout.
+ * The checkout entries an isolated root cannot run without. Oxlint anchors an
+ * override's `files` glob and the plugin specifier to the directory that holds
+ * the config file, so the config is symlinked and never copied: the run reads
+ * the real file, and a fixture path is matched against the isolated root instead
+ * of the checkout. The root links every other top-level entry too
+ * (`overlayCheckout`); these are the ones `isolatedPath` guards.
  */
 const ISOLATED_ROOT_ANCHORS: readonly string[] = [
   "oxlint.config.ts",
@@ -157,14 +158,10 @@ function planFixture(root: string, relativePath: string): FixturePlan {
  * exclusive `wx` create is what makes that atomic, because an `existsSync` check
  * followed by a write can still be raced into clobbering another fixture.
  *
- * Unsupported: two processes running these suites against one checkout at once.
- * The paths are fixed because each must match one exact override glob, so the
- * second process meets the first one's file and fails with `EEXIST`. One process
- * is safe: the checkout suite takes at most one job per distinct path per batch
- * (`takeUniquePathBatch`) and drains those batches in order (`drainBatches`), so
- * two calls for one path are never written at once, and Nx runs
- * `@genie/config:test` once. Run a second copy from its own worktree
- * (genie-ops-center-v2-20z).
+ * Unsupported: two processes writing one fixed path into one root at once. The
+ * second meets the first one's file and fails with `EEXIST`. Run a second copy
+ * from its own worktree (genie-ops-center-v2-20z). `lintAt` never meets this,
+ * because each of its batches owns a fresh isolated root.
  */
 export function withFixture<T>(
   root: string,
@@ -502,6 +499,7 @@ function attributeDiagnostics(output: string): Map<string, LintOutcome> {
  * broke, and not silently mark every fixture as passing.
  */
 async function runOxlintBatch(
+  root: string,
   relativePaths: readonly string[]
 ): Promise<{ readonly ok: boolean; readonly output: string }> {
   try {
@@ -509,7 +507,7 @@ async function runOxlintBatch(
       "oxlint",
       [...OXLINT_BASE_ARGS, "--no-ignore", ...relativePaths],
       {
-        cwd: WORKSPACE_ROOT,
+        cwd: root,
         encoding: "utf8",
         env: childEnv(),
         maxBuffer: 32 * 1024 * 1024,
@@ -531,19 +529,41 @@ async function runOxlintBatch(
 }
 
 /**
- * Writes every fixture in one batch, lints them in a single oxlint process, then
- * removes exactly what it created. A refused write rejects only its own job.
- * When the process produced no report at all, every fixture fails closed so a
- * broken batch is never mistaken for a clean lint.
+ * Writes every fixture of one batch into a fresh isolated root, lints them in a
+ * single oxlint process, then removes the root. The checkout is never written
+ * to, so the app's source scans never meet a fixture that vanishes mid-read
+ * (genie-ops-center-v2-fa5m). A refused write rejects only its own job. When
+ * the process produced no report at all, every fixture fails closed so a broken
+ * batch is never mistaken for a clean lint.
  */
 async function lintBatch(jobs: readonly LintJob[]): Promise<void> {
+  const root = mkdtempSync(join(tmpdir(), ISOLATED_ROOT_PREFIX));
+
+  try {
+    overlayCheckout(
+      root,
+      jobs.map((job) => job.plan.relativePath)
+    );
+  } catch (error) {
+    removeIsolatedRoot(root);
+
+    for (const job of jobs) {
+      job.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+
+    return;
+  }
+
   const written: LintJob[] = [];
 
   for (const job of jobs) {
-    try {
-      mkdirSync(dirname(job.plan.absolute), { recursive: true });
+    const absolute = join(root, job.plan.relativePath);
 
-      writeFileSync(job.plan.absolute, job.source, {
+    try {
+      mkdirSync(dirname(absolute), { recursive: true });
+
+      // `wx` refuses a path the checkout already owns: the overlay links it.
+      writeFileSync(absolute, job.source, {
         encoding: "utf8",
         flag: "wx",
       });
@@ -556,6 +576,7 @@ async function lintBatch(jobs: readonly LintJob[]): Promise<void> {
   try {
     if (written.length > 0) {
       const report = await runOxlintBatch(
+        root,
         written.map((job) => job.plan.relativePath)
       );
 
@@ -571,22 +592,16 @@ async function lintBatch(jobs: readonly LintJob[]): Promise<void> {
       }
     }
   } finally {
-    for (const job of written) {
-      rmSync(job.plan.absolute, { force: true });
-
-      // A concurrent fixture sharing the directory keeps it standing: the walk
-      // leaves a directory it does not find empty exactly where it is.
-      removeEmptyAncestors(job.plan.absolute, WORKSPACE_ROOT);
-    }
+    removeIsolatedRoot(root);
   }
 }
 
 /**
- * Lints one source string at a chosen repository-relative path, then deletes the file.
- * The path decides which layer override applies, so a caller picks the path on purpose.
- * Any directory this function created is removed as well, and only while empty, so the
- * working tree stays clean. A path that already exists is refused rather than
- * overwritten, which keeps one test from silently consuming another's fixture.
+ * Lints one source string at a chosen repository-relative path, inside an isolated
+ * root that overlays the checkout, and removes the root afterwards. The path decides
+ * which layer override applies, so a caller picks the path on purpose. A path the
+ * checkout already holds is refused rather than shadowed, which keeps a case from
+ * silently linting a product file's place.
  *
  * Every call queued in the same tick is linted together, one process per batch of
  * distinct paths, instead of one process per case. A path repeated with different
@@ -601,7 +616,7 @@ export function lintAt(
   relativePath: string,
   source: string
 ): Promise<LintOutcome> {
-  const plan = planFixture(WORKSPACE_ROOT, relativePath);
+  const plan = planFixture(WORKSPACE_ROOT, isolatedPath(relativePath));
 
   return new Promise<LintOutcome>((resolve, reject) => {
     pendingLints.push({ plan, source, resolve, reject });
@@ -611,62 +626,56 @@ export function lintAt(
 }
 
 /**
- * Links the checkout into `root` around one fixture path. At the top the entries
- * are the anchors. While the path runs through a checkout directory, that
- * directory becomes a real one in `root` holding a symlink to each of its other
- * children, so every file the lint reads is the checkout's own and the fixture
- * still lands in `root`. Below the first segment the checkout lacks, nothing is
- * linked, because the fixture's own directories are new.
+ * Links the checkout into `root` around every fixture path at once, starting from
+ * every top-level entry of the checkout. A checkout directory that some path runs through
+ * becomes a real one in `root` holding a symlink to each of its other children,
+ * so every file the lint reads is the checkout's own and each fixture still lands
+ * in `root`. Every other entry, a fixture's own name included, is a symlink.
+ * Below the first segment the checkout lacks, nothing is linked, because the
+ * fixture's own directories are new.
  */
-function overlayCheckout(root: string, safePath: string): void {
-  const segments = safePath.split(sep);
-  let level = "";
-  let entries: readonly string[] = ISOLATED_ROOT_ANCHORS;
+function overlayCheckout(root: string, safePaths: readonly string[]): void {
+  overlayLevel(
+    root,
+    "",
+    readdirSync(WORKSPACE_ROOT),
+    safePaths.map((path) => path.split(sep))
+  );
+}
 
-  for (const [index, segment] of segments.entries()) {
-    for (const entry of entries) {
-      if (entry !== segment) {
-        symlinkSync(
-          join(WORKSPACE_ROOT, level, entry),
-          join(root, level, entry)
-        );
-      }
+/** One directory of `overlayCheckout`: `paths` are the segments below `level`. */
+function overlayLevel(
+  root: string,
+  level: string,
+  entries: readonly string[],
+  paths: readonly (readonly string[])[]
+): void {
+  const below = new Map<string, (readonly string[])[]>();
+
+  for (const [segment = "", ...rest] of paths) {
+    if (rest.length > 0)
+      below.set(segment, [...(below.get(segment) ?? []), rest]);
+  }
+
+  for (const entry of entries) {
+    const path = join(level, entry);
+    const children = below.get(entry);
+
+    if (children === undefined) {
+      symlinkSync(join(WORKSPACE_ROOT, path), join(root, path));
+      continue;
     }
 
-    const isDirectory = index < segments.length - 1;
-
-    if (!isDirectory || !entries.includes(segment)) return;
-
-    level = join(level, segment);
-    mkdirSync(join(root, level));
-    entries = readdirSync(join(WORKSPACE_ROOT, level));
+    mkdirSync(join(root, path));
+    overlayLevel(root, path, readdirSync(join(WORKSPACE_ROOT, path)), children);
   }
 }
 
 /**
- * Lints one source string at a chosen path inside a throwaway root that stands in
- * for the repository. Use this, and not `lintAt`, when the path under test is one
- * the product also owns, such as the Storybook host's `main.ts`. The checkout is
- * never written to, so a real file at that path neither blocks the test nor is
- * touched by it.
- *
- * The root holds the fixture and three symlinks into the checkout. Oxlint loads
- * the repository's real `oxlint.config.ts` through one of them, so the rule values
- * under test are the production ones and cannot drift from them.
- *
- * Every call owns a fresh root, so no two isolated fixtures can collide on a
- * path; only the slot pool bounds their load. A bad path throws synchronously,
- * before anything is queued.
- *
- * A path under `packages/` is served through `overlayCheckout`: each ancestor of
- * the fixture is a real directory in the root, so the fixture never reaches the
- * checkout, where the app's source scans would read it. A path under the other
- * anchors is refused.
+ * Normalizes a fixture path and refuses one that the isolated root cannot hold
+ * in its own storage. Throws synchronously, before anything is queued.
  */
-export function lintAtIsolated(
-  relativePath: string,
-  source: string
-): Promise<LintOutcome> {
+function isolatedPath(relativePath: string): string {
   if (isAbsolute(relativePath)) {
     throw new Error(
       `An isolated fixture path must be relative: ${relativePath}`
@@ -691,24 +700,61 @@ export function lintAtIsolated(
     );
   }
 
+  return safePath;
+}
+
+/** Removes an isolated root without ever following one of its links. */
+function removeIsolatedRoot(root: string): void {
+  // Node unlinks a symlink-to-directory rather than descending into it, so the
+  // recursive removal below is already safe. Every anchor is unlinked by name
+  // first anyway: the cost is three lines, and the cost of that behaviour ever
+  // changing is the checkout. `recursive` covers the case where an anchor name
+  // is a real directory, which would otherwise throw here and hide a live error.
+  for (const anchor of ISOLATED_ROOT_ANCHORS) {
+    rmSync(join(root, anchor), { force: true, recursive: true });
+  }
+
+  rmSync(root, { recursive: true, force: true });
+}
+
+/**
+ * Lints one source string at a chosen path inside a throwaway root that stands in
+ * for the repository. Use this, and not `lintAt`, when the path under test is one
+ * the product also owns, such as the Storybook host's `main.ts`. The checkout is
+ * never written to, so a real file at that path neither blocks the test nor is
+ * touched by it.
+ *
+ * The root holds the fixture and symlinks into the checkout. Oxlint loads the
+ * repository's real `oxlint.config.ts` through one of them, so the rule values
+ * under test are the production ones and cannot drift from them.
+ *
+ * Every call owns a fresh root, so no two isolated fixtures can collide on a
+ * path; only the slot pool bounds their load. A bad path throws synchronously,
+ * before anything is queued.
+ *
+ * Each ancestor of the fixture is a real directory in the root
+ * (`overlayCheckout`), so the fixture never reaches the checkout, where the app's
+ * source scans would read it. A path under `node_modules` or the config file is
+ * refused.
+ */
+export function lintAtIsolated(
+  relativePath: string,
+  source: string
+): Promise<LintOutcome> {
+  const safePath = isolatedPath(relativePath);
   const root = mkdtempSync(join(tmpdir(), ISOLATED_ROOT_PREFIX));
 
   return withLintSlot(async () => {
     try {
-      overlayCheckout(root, safePath);
+      overlayCheckout(root, [safePath]);
+
+      // The overlay links a product file at this path; this variant lints in its
+      // place, so the link goes. `rmSync` unlinks it and never follows it.
+      rmSync(join(root, safePath), { force: true });
 
       return await lintFixtureAt(root, planFixture(root, safePath), source);
     } finally {
-      // Node unlinks a symlink-to-directory rather than descending into it, so the
-      // recursive removal below is already safe. Every anchor is unlinked by name
-      // first anyway: the cost is three lines, and the cost of that behaviour ever
-      // changing is the checkout. `recursive` covers the case where an anchor name
-      // is a real directory, which would otherwise throw here and hide a live error.
-      for (const anchor of ISOLATED_ROOT_ANCHORS) {
-        rmSync(join(root, anchor), { force: true, recursive: true });
-      }
-
-      rmSync(root, { recursive: true, force: true });
+      removeIsolatedRoot(root);
     }
   });
 }
