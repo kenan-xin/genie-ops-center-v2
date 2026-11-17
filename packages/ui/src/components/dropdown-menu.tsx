@@ -81,7 +81,8 @@ function DropdownMenuContent({
             // A popup that holds `lg` rows starts every label and row on their 12 px edge, so it has
             // one text edge (6wz1.113, P07-73).
             "[&:has([data-size=lg])_:is([data-slot=dropdown-menu-label],[data-slot=dropdown-menu-item],[data-slot=dropdown-menu-sub-trigger],[data-slot=dropdown-menu-checkbox-item],[data-slot=dropdown-menu-radio-item]):not([data-inset])]:ps-3",
-            "z-50 max-h-(--available-height) w-(--anchor-width) min-w-32 origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border bg-card p-1 text-foreground shadow-md outline-none motion-safe:transition-opacity data-ending-style:opacity-0 data-starting-style:opacity-0",
+            // The popup takes its widest row, from the trigger's width up to 320 px (6wz1.140, C08-6).
+            "z-50 max-h-(--available-height) w-max max-w-80 min-w-(--anchor-width) origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md border border-border bg-card p-1 text-foreground shadow-md outline-none motion-safe:transition-opacity data-ending-style:opacity-0 data-starting-style:opacity-0",
             className
           )}
           {...props}

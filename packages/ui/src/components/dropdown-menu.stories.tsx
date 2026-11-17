@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import {
   ArrowLeftRightIcon,
+  EllipsisIcon,
   LogOutIcon,
   PencilIcon,
   ShareIcon,
@@ -103,6 +104,31 @@ function Refused() {
   );
 }
 
+/**
+ * The popup takes its rows' width, not its trigger's: an icon button opens a menu that holds
+ * "Rename dashboard" on one line and stops at 320 px (6wz1.140, C08-6).
+ */
+function FromIcon() {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button variant="ghost" size="icon" aria-label="Dashboard actions" />
+        }
+      >
+        <EllipsisIcon aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem>Edit</DropdownMenuItem>
+        <DropdownMenuItem>Rename dashboard</DropdownMenuItem>
+        <DropdownMenuItem>
+          Move this dashboard to a category that holds the finance reports
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 const meta = {
   title: "UI/DropdownMenu",
   component: EveryRow,
@@ -178,4 +204,39 @@ export const OpenOnPhone: Story = {
  */
 export const RefusedItem: Story = {
   render: () => <Refused />,
+};
+
+/**
+ * An icon-button trigger opens a popup as wide as its widest row, not as narrow as its trigger.
+ */
+export const FromIconTrigger: Story = {
+  render: () => <FromIcon />,
+  play: async ({ canvasElement }) => {
+    await userEvent.click(
+      within(canvasElement).getByRole("button", { name: "Dashboard actions" })
+    );
+
+    const menu = await within(document.body).findByRole("menu");
+
+    await waitFor(() => expect(menu).toBeVisible());
+
+    const rowHeight = (name: string) =>
+      Math.round(
+        within(menu).getByRole("menuitem", { name }).getBoundingClientRect()
+          .height
+      );
+
+    // The icon trigger does not squeeze the rows: "Rename dashboard" holds one line.
+    await expect(rowHeight("Rename dashboard")).toBe(rowHeight("Edit"));
+
+    // Nor does a long row widen the popup past 320 px: that row wraps instead.
+    await expect(
+      Math.round(menu.getBoundingClientRect().width)
+    ).toBeLessThanOrEqual(320);
+    await expect(
+      rowHeight(
+        "Move this dashboard to a category that holds the finance reports"
+      )
+    ).toBeGreaterThan(rowHeight("Rename dashboard"));
+  },
 };
