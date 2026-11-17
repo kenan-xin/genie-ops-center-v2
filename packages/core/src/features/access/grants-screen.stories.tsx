@@ -152,7 +152,7 @@ export const NoRecipient: Story = {
   },
 };
 
-/** C06-2: the Grant to chips take the md height of the picker and the button beside them. */
+/** C06-2: the Grant to chips take the md height of the picker, and Advanced access sits at the row end. */
 export const GrantToRowLinesUp: Story = {
   args: { initial: group("g-ops") },
   globals: { viewport: { value: "desktop1440", isRotated: false } },
@@ -183,6 +183,44 @@ export const GrantToRowLinesUp: Story = {
         })
         .join("; ")
     ).toBe("");
+
+    // 6wz1.107: the action holds the row's right end, with its icon.
+    const advanced = row.getByRole("button", { name: "Advanced access" });
+
+    await expect(advanced.querySelector("svg")).not.toBeNull();
+    await expect(
+      Math.abs(
+        advanced.getBoundingClientRect().right -
+          grantTo.parentElement!.getBoundingClientRect().right
+      )
+    ).toBeLessThanOrEqual(1);
+  },
+};
+
+/** 6wz1.107: on a phone, Advanced access sits under the picker at the row's right end, with its icon. */
+export const AdvancedAccessAtTheRowEndPhone: Story = {
+  args: { initial: group("g-ops") },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    // The toolbar row: the card below also holds role selects and, after Task 6, Show.
+    const toolbar = (await canvas.findByRole("group", { name: "Grant to" }))
+      .parentElement!;
+
+    const row = toolbar.getBoundingClientRect();
+
+    const picker = within(toolbar)
+      .getByRole("combobox")
+      .getBoundingClientRect();
+
+    const advanced = within(toolbar).getByRole("button", {
+      name: "Advanced access",
+    });
+
+    const box = advanced.getBoundingClientRect();
+
+    await expect(advanced.querySelector("svg")).not.toBeNull();
+    await expect(Math.abs(box.right - row.right)).toBeLessThanOrEqual(1);
+    await expect(box.top).toBeGreaterThanOrEqual(picker.bottom);
   },
 };
 

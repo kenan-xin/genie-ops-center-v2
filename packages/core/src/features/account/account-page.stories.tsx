@@ -184,6 +184,8 @@ export const SessionsHeaderStacksOnPhone: Story = {
     await expect(action.getBoundingClientRect().top).toBeGreaterThanOrEqual(
       description.getBoundingClientRect().bottom
     );
+    // 6wz1.107: the action carries its log-out icon.
+    await expect(action.querySelector("svg")).not.toBeNull();
   },
 };
 

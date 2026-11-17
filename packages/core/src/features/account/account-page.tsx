@@ -6,6 +6,7 @@ import {
   HelpDisclosure,
   MonoChip,
 } from "@genie/ui";
+import { LogOutIcon } from "lucide-react";
 import { useState } from "react";
 import type { JSX } from "react";
 
@@ -139,6 +140,7 @@ function SessionsBlock(props: {
             loading={props.revoking}
             onClick={props.onAskRevokeOthers}
           >
+            <LogOutIcon aria-hidden="true" data-icon="inline-start" />
             Sign out all other sessions
           </Button>
         )

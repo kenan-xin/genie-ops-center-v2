@@ -19,6 +19,7 @@ import {
   type TransferItem,
   useMediaQuery,
 } from "@genie/ui";
+import { SlidersHorizontalIcon } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useStore } from "zustand";
 
@@ -602,14 +603,17 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
             />
           </div>
         )}
+        {/* At the row's end, with its icon, on a phone too (access.prototype.html .toolbar .adv). */}
         <Button
           variant="ghost"
+          className="ms-auto"
           disabled={props.recipient === null}
           {...(props.recipient === null
             ? { title: "Choose a group or a person first" }
             : {})}
           onClick={() => setAdvancedOpen(true)}
         >
+          <SlidersHorizontalIcon aria-hidden="true" />
           Advanced access
         </Button>
       </div>
