@@ -216,7 +216,7 @@ export function SlideEditor(props: SlideEditorProps) {
         void form.handleSubmit();
       }}
     >
-      <div className="grid min-h-0 flex-1 gap-4 overflow-y-auto p-4">
+      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-4">
         <form.Field name="elements[0].text">
           {(field) => {
             const issue = issueOf(field.state.meta.errors);

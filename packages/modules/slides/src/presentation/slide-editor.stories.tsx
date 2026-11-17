@@ -142,6 +142,35 @@ export const TextSlide: Story = {
   },
 };
 
+// 6wz1.128: the filling grid must not spread the fields; the Title hint and the Text label stay 16 px apart.
+export const FieldsStayTogether: Story = {
+  name: "The title and text fields stay together",
+  args: { slide: textOnlySlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    const hint = sheet.getByText(
+      "State the finding of this slide in one sentence."
+    );
+
+    const label = sheet.getByText("Text", {
+      exact: true,
+      selector: "[data-slot=field-label]",
+    });
+
+    const gap =
+      label.getBoundingClientRect().top - hint.getBoundingClientRect().bottom;
+
+    await expect(
+      Math.abs(gap - 16) <= 1
+        ? ""
+        : `title hint bottom to text label top: ${gap} px`
+    ).toBe("");
+  },
+};
+
 export const ChartSlide: Story = {
   globals: desktop,
   beforeEach: reset,
