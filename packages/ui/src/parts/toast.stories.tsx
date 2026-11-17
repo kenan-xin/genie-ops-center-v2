@@ -191,5 +191,15 @@ export const Dark: Story = {
 
       await expect(visible).toHaveLength(2);
     });
+
+    // Sonner's toaster sets a system font stack; a toast uses the app font (xok3.101).
+    const fonts = ["Person added", "Sign-out failed"].map(
+      (title) => getComputedStyle(screen.getByText(title)).fontFamily
+    );
+
+    await expect(fonts).toEqual([
+      getComputedStyle(document.body).fontFamily,
+      getComputedStyle(document.body).fontFamily,
+    ]);
   },
 };

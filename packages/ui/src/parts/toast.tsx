@@ -13,7 +13,8 @@ type ToastInput = {
   readonly description?: string;
 };
 
-// Sonner gives a toast no role, so each one renders as a status card (R-24).
+// Sonner gives a toast no role, so each one renders as a status card (R-24). Its toaster sets a
+// system font stack, so the card names the app font.
 export function toast({
   tone = "neutral",
   title,
@@ -22,20 +23,25 @@ export function toast({
   return sonner.custom((id) => (
     <div
       role="status"
-      className="flex w-89 max-w-full items-start gap-3 rounded-xl border border-border bg-card p-4 text-foreground"
+      className="flex w-89 max-w-full items-start gap-3 rounded-xl border border-border bg-card p-4 font-sans text-sm text-foreground"
     >
-      {tone === "success" ? (
-        <CircleCheckIcon
-          aria-hidden="true"
-          className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400"
-        />
-      ) : null}
-      {tone === "error" ? (
-        <CircleAlertIcon
-          aria-hidden="true"
-          className="size-5 shrink-0 text-destructive dark:text-destructive-on-dark"
-        />
-      ) : null}
+      {/* One title line tall, so the 20 px icon centers on the title at every type scale (xok3.101). */}
+      {tone === "neutral" ? null : (
+        <span className="flex h-lh shrink-0 items-center">
+          {tone === "success" ? (
+            <CircleCheckIcon
+              aria-hidden="true"
+              className="size-5 shrink-0 text-emerald-600 dark:text-emerald-400"
+            />
+          ) : null}
+          {tone === "error" ? (
+            <CircleAlertIcon
+              aria-hidden="true"
+              className="size-5 shrink-0 text-destructive dark:text-destructive-on-dark"
+            />
+          ) : null}
+        </span>
+      )}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold">{title}</p>
         {description === undefined ? null : (
