@@ -278,7 +278,7 @@ export function GroupInspector(
 
           {/* Open in Access only for a viewer with the Roles key and a group Grants lists; any other
               viewer reads the count alone (LK4, LK13). */}
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-input p-3">
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3">
             <div className="flex min-w-0 items-start gap-3">
               <KeyIcon
                 aria-hidden="true"
@@ -468,7 +468,7 @@ export function GroupInspector(
           </Tabs>
 
           {editing === "label" ? (
-            <div className="rounded-lg border border-input p-3">
+            <div className="rounded-lg border border-border p-3">
               <Field>
                 <FieldLabel htmlFor={labelId}>Name</FieldLabel>
                 <Input
@@ -497,7 +497,7 @@ export function GroupInspector(
           ) : null}
 
           {editing === "local" ? (
-            <div className="flex flex-col gap-3 rounded-lg border border-input p-3">
+            <div className="flex flex-col gap-3 rounded-lg border border-border p-3">
               <Field>
                 <FieldLabel htmlFor={nameId}>Name</FieldLabel>
                 <Input
@@ -538,7 +538,7 @@ export function GroupInspector(
         </div>
 
         {/* The action bar stays under the scrolling content, as the inspector captures pin it. */}
-        <div className="mt-auto flex flex-wrap gap-2 border-t border-input px-4 py-3">
+        <div className="mt-auto flex flex-wrap gap-2 border-t border-border px-4 py-3">
           {group.archived ? (
             props.onRestore === undefined ? null : (
               <Button

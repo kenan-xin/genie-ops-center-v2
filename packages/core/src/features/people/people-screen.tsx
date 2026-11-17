@@ -396,7 +396,7 @@ export function PersonInspector(props: {
               </dl>
 
               {pendingLocal ? (
-                <div className="mt-3 rounded-lg border border-input p-3">
+                <div className="mt-3 rounded-lg border border-border p-3">
                   <p className="text-sm text-foreground">
                     A separate email sets this person&apos;s password.
                   </p>
@@ -421,7 +421,7 @@ export function PersonInspector(props: {
               ) : null}
 
               {pendingBrokered ? (
-                <div className="mt-3 rounded-lg border border-input p-3">
+                <div className="mt-3 rounded-lg border border-border p-3">
                   <p className="text-xs text-muted-foreground">
                     Last sent{" "}
                     {fmtDateTime(

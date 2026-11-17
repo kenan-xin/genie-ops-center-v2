@@ -87,7 +87,7 @@ function ProfileBlock(props: {
             {props.groups.map((group) => (
               <li
                 key={group.id}
-                className="inline-flex items-center gap-1.5 rounded-full border border-input bg-white px-2.5 py-1 text-xs text-foreground dark:bg-card"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-white px-2.5 py-1 text-xs text-foreground dark:bg-card"
               >
                 <span className="font-medium">{group.name}</span>
                 <span className="text-muted-foreground">
