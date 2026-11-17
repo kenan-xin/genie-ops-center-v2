@@ -55,7 +55,7 @@ const TYPECHECKED = [
   "tools/generators",
 ];
 
-/** Every suite in this package that lints a fixture through `lintAt`. */
+/** Every suite in this package that lints a fixture through the harness. */
 function fixtureSources(): readonly string[] {
   const root = join(WORKSPACE_ROOT, "packages/config/src/oxlint");
 
@@ -433,10 +433,10 @@ describe("lint fixtures and the lint that runs beside them", () => {
     });
   });
 
-  // The unit collection is the vitest face of the same race: a fixture written
-  // into a package's `src` matches `src/**/*.test.ts`, so a concurrent unit run
-  // would import a file the suites already deleted. The shared preset excludes
-  // the markers every suite uses, anywhere inside a path segment
+  // The unit collection is the vitest face of the same race: a marked file
+  // written into a package's `src` matches `src/**/*.test.ts`, so a concurrent
+  // unit run would import a file the writer already deleted. The shared preset
+  // excludes the markers every suite uses, anywhere inside a path segment
   // (genie-ops-center-v2-7lj).
   //
   // The load-bearing case, read from the real binary: a mid-basename,
