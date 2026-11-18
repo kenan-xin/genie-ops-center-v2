@@ -83,7 +83,7 @@ import { SlideDock } from "./phone-dock.tsx";
 import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
 import { describedBy, issueOf, slideInputOf } from "./slide-editor.tsx";
-import { elementBoxes, figuresDate } from "./slide-layout.ts";
+import { figuresDate, placedBoxes } from "./slide-layout.ts";
 import { SlideStage, type SlideStageHandle } from "./slide-stage.tsx";
 import { SlideEditorBar, StyleToolbar } from "./style-toolbar.tsx";
 import {
@@ -129,9 +129,9 @@ type AddTarget = {
   readonly expectedHash: string;
 };
 
-/** The box one element of a slide draws at: its own, else the computed one. */
-function boxOf(slide: ShownSlide, index: number) {
-  const boxes = elementBoxes(slide.elements);
+/** The box one element of a slide draws at: its own, else its frame's. */
+function boxOf(slide: ShownSlide, index: number, first: boolean) {
+  const boxes = placedBoxes(slide.elements, first);
 
   return boxes.body.find((entry) => entry.index === index)?.box ?? boxes.title;
 }
@@ -1258,10 +1258,11 @@ export function DeckView(props: DeckViewProps) {
                 >
                   <SlideCanvas
                     slide={slide}
+                    place={{ index: slideIndex, count: deck.slides.length }}
                     figuresAsOf={deck.figuresAsOf}
                     timeZone={view.timeZone}
-                    theme={view.theme}
-                    logoUrl={view.logoUrl}
+                    theme={deck.theme}
+                    logoUrl={view.logos[deck.theme.logo]}
                     images={deck.images}
                   />
                 </div>
@@ -1356,6 +1357,8 @@ export function DeckView(props: DeckViewProps) {
               <div className="max-md:hidden">
                 <SlideEditorBar
                   slide={current}
+                  theme={deck.theme}
+                  first={index === 0}
                   saving={busy}
                   ask={view.chat.kind}
                   onAsk={(kind) => agent.send(askStarter(kind, index + 1))}
@@ -1380,9 +1383,11 @@ export function DeckView(props: DeckViewProps) {
                     nudgeRun.slideId === current.id &&
                     nudgeRun.index === selected
                       ? nudgeRun.box
-                      : boxOf(current, selected)
+                      : boxOf(current, selected, index === 0)
                   }
-                  background={current.background}
+                  slide={current}
+                  theme={deck.theme}
+                  first={index === 0}
                   saving={busy}
                   onStep={(step) =>
                     sendStep([step], {
@@ -1448,10 +1453,11 @@ export function DeckView(props: DeckViewProps) {
                 ref={stage}
                 key={current.id}
                 slide={current}
+                place={{ index, count: deck.slides.length }}
                 figuresAsOf={deck.figuresAsOf}
                 timeZone={view.timeZone}
-                theme={view.theme}
-                logoUrl={view.logoUrl}
+                theme={deck.theme}
+                logoUrl={view.logos[deck.theme.logo]}
                 images={deck.images}
                 selected={selected}
                 onSelect={(at) =>
@@ -1487,10 +1493,11 @@ export function DeckView(props: DeckViewProps) {
             >
               <SlideCanvas
                 slide={current}
+                place={{ index, count: deck.slides.length }}
                 figuresAsOf={deck.figuresAsOf}
                 timeZone={view.timeZone}
-                theme={view.theme}
-                logoUrl={view.logoUrl}
+                theme={deck.theme}
+                logoUrl={view.logos[deck.theme.logo]}
                 images={deck.images}
               />
             </div>
@@ -1503,6 +1510,8 @@ export function DeckView(props: DeckViewProps) {
         current?.elements[selected] !== undefined) ? null : (
         <SlideDock
           slide={current}
+          theme={deck.theme}
+          first={index === 0}
           canWrite={view.canWrite}
           saving={busy || !editable}
           ask={view.chat.kind}
@@ -1681,10 +1690,14 @@ export function DeckView(props: DeckViewProps) {
           )
         }
         canvas={{
+          place: {
+            index: (editing?.number ?? 1) - 1,
+            count: deck.slides.length,
+          },
           figuresAsOf: deck.figuresAsOf,
           timeZone: view.timeZone,
-          theme: view.theme,
-          logoUrl: view.logoUrl,
+          theme: deck.theme,
+          logoUrl: view.logos[deck.theme.logo],
           images: deck.images,
         }}
         saving={busy || drafting}

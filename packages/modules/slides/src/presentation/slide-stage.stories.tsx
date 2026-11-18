@@ -3,6 +3,7 @@ import { useState } from "react";
 import { expect, fireEvent, fn, userEvent, waitFor } from "storybook/test";
 
 import { deckPage, textWithChartSlide } from "./__fixtures__/decks.ts";
+import { BLUE_THEME } from "./__fixtures__/themes.ts";
 import { SlideStage } from "./slide-stage.tsx";
 
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
@@ -26,8 +27,9 @@ const meta = {
     slide: textWithChartSlide,
     figuresAsOf: deckPage.deck.figuresAsOf,
     timeZone: deckPage.timeZone,
-    theme: deckPage.theme,
-    logoUrl: deckPage.logoUrl,
+    place: { index: 1, count: 5 },
+    theme: BLUE_THEME,
+    logoUrl: null,
     images: deckPage.deck.images,
     selected: 1,
     onSelect: fn(),
@@ -98,7 +100,7 @@ function drag(
 
 const TEXT = /^Text "/;
 
-// A drag of 104 by 48 canvas units from 40, 136 ends on 144, 184 (off the half-way point of a snap): one step.
+// A drag of 104 by 48 canvas units from 43, 265 ends on 144, 312 (off the half-way point of a snap): one step.
 const dragPlay: Story["play"] = async ({ args, canvas, canvasElement }) => {
   drag(canvas.getByRole("button", { name: TEXT }), canvasElement, 104, 48);
 
@@ -107,7 +109,7 @@ const dragPlay: Story["play"] = async ({ args, canvas, canvasElement }) => {
     op: "change-element",
     slideId: textWithChartSlide.id,
     index: 1,
-    box: { x: 144, y: 184, w: 320, h: 348 },
+    box: { x: 144, y: 312, w: 298, h: 217 },
   });
 };
 
@@ -146,7 +148,7 @@ export const RefusedDragGoesBack: Story = {
   },
 };
 
-// The corner handle by -100, -200 from 320 x 348 ends on 224 x 152 after the snap: one step.
+// The corner handle by -100, -100 from 298 x 217 ends on 40, 264, 200 x 120 after the snap: one step.
 export const HandleResizes: Story = {
   name: "A corner handle resizes the element in one step",
   globals: desktop,
@@ -156,19 +158,19 @@ export const HandleResizes: Story = {
     );
 
     await expect(handle).not.toBeNull();
-    drag(handle!, canvasElement, -100, -200);
+    drag(handle!, canvasElement, -100, -100);
 
     await waitFor(() => expect(args.onStep).toHaveBeenCalledTimes(1));
     await expect(args.onStep).toHaveBeenCalledWith({
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      box: { x: 40, y: 136, w: 224, h: 152 },
+      box: { x: 40, y: 264, w: 200, h: 120 },
     });
   },
 };
 
-// Three presses within 800 ms are one save: x 40 + 3 x 8. Escape deselects.
+// Three presses within 800 ms are one save: x 43 + 3 x 8. Escape deselects.
 export const ArrowKeysNudge: Story = {
   name: "Arrow presses in a run make one step",
   globals: desktop,
@@ -186,7 +188,7 @@ export const ArrowKeysNudge: Story = {
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      box: { x: 64, y: 136, w: 320, h: 348 },
+      box: { x: 67, y: 265, w: 298, h: 217 },
     });
 
     await userEvent.keyboard("{Escape}");
@@ -212,18 +214,18 @@ export const NudgeTwoElements: Story = {
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      box: { x: 48, y: 136, w: 320, h: 348 },
+      box: { x: 51, y: 265, w: 298, h: 217 },
     });
     await expect(args.onStep).toHaveBeenNthCalledWith(2, {
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 2,
-      box: { x: 384, y: 144, w: 536, h: 348 },
+      box: { x: 432, y: 125, w: 480, h: 288 },
     });
   },
 };
 
-// The run saves when the drag starts, and the drag starts from x 48: 48 + 104, 136 + 48.
+// The run saves when the drag starts, and the drag starts from x 51: 51 + 104, 265 + 48.
 export const NudgeThenDrag: Story = {
   name: "A drag right after an arrow press keeps the drag",
   globals: desktop,
@@ -240,13 +242,13 @@ export const NudgeThenDrag: Story = {
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      box: { x: 48, y: 136, w: 320, h: 348 },
+      box: { x: 51, y: 265, w: 298, h: 217 },
     });
     await expect(args.onStep).toHaveBeenNthCalledWith(2, {
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      box: { x: 152, y: 184, w: 320, h: 348 },
+      box: { x: 152, y: 312, w: 298, h: 217 },
     });
 
     // Past the 800 ms run: no late step lands on top of the drag.
@@ -267,7 +269,7 @@ export const NudgeRunReportsItsBox: Story = {
 
     await expect(args.onRunBox).toHaveBeenLastCalledWith({
       index: 1,
-      box: { x: 56, y: 136, w: 320, h: 348 },
+      box: { x: 59, y: 265, w: 298, h: 217 },
     });
 
     await waitFor(() => expect(args.onStep).toHaveBeenCalledTimes(1), {
@@ -376,7 +378,48 @@ export const NudgeThenUnmount: Story = {
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      box: { x: 48, y: 136, w: 320, h: 348 },
+      box: { x: 51, y: 265, w: 298, h: 217 },
     });
+  },
+};
+
+// Plan Task 5 bug 4: on the title slide the stage places the title's outline on the drawn title, the
+// title frame's box at 67, 67, never on the old 40, 32 box.
+export const TitleSlideOutlineOnTheDrawnTitle: Story = {
+  name: "On the title slide the title's outline sits on the drawn title",
+  globals: desktop,
+  args: {
+    slide: {
+      id: "s1",
+      elements: [
+        { kind: "title", text: "Receivables at a glance" },
+        { kind: "text", text: "Genie Ops, October 2026" },
+      ],
+    },
+    place: { index: 0, count: 5 },
+    selected: 0,
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const scale = scaleOf(canvasElement);
+
+    const layer = canvasElement
+      .querySelector<HTMLElement>('[aria-label="Slide editing"]')!
+      .getBoundingClientRect();
+
+    const hit = canvas
+      .getByRole("button", { name: /^Title "/ })
+      .getBoundingClientRect();
+
+    const drawn = canvasElement
+      .querySelector<HTMLElement>('[data-slide-box="title"]')!
+      .getBoundingClientRect();
+
+    await expect((hit.left - layer.left) / scale).toBeCloseTo(67, 0);
+    await expect((hit.top - layer.top) / scale).toBeCloseTo(67, 0);
+    await expect(hit.width / scale).toBeCloseTo(578, 0);
+    await expect(Math.abs(hit.left - drawn.left)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(hit.top - drawn.top)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(hit.width - drawn.width)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(hit.height - drawn.height)).toBeLessThanOrEqual(1);
   },
 };

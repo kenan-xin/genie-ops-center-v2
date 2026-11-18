@@ -273,10 +273,11 @@ export function PresentMode(props: PresentModeProps) {
                 <div className="w-(--present-slide-width)" style={widthStyle}>
                   <SlideCanvas
                     slide={slide}
+                    place={{ index, count: slides.length }}
                     figuresAsOf={view.deck.figuresAsOf}
                     timeZone={view.timeZone}
-                    theme={view.theme}
-                    logoUrl={view.logoUrl}
+                    theme={view.deck.theme}
+                    logoUrl={view.logos[view.deck.theme.logo]}
                     images={view.deck.images}
                   />
                 </div>

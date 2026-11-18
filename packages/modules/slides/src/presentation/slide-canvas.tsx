@@ -4,25 +4,32 @@ import { foregroundFor } from "@genie/core/features/branding";
 import { Chart } from "@genie/ui/chart";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 
-import { type ElementBox, type ElementStyle } from "../contract.ts";
+import type { ElementStyle, SlideTheme } from "../contract.ts";
 import { type ImageLinks, keepImageLinks } from "./image-links.ts";
 import {
+  type Box,
   CANVAS,
+  defaultTextPx,
   drawnStyle,
-  elementBoxes,
   figuresDate,
-  footerColor,
-  slideLayout,
-  TYPE_PX,
-  usesLightPalette,
+  LINE_HEIGHT,
+  listItemBoxes,
+  LOOK_PX,
+  placedBoxes,
+  regionOf,
+  slideFrame,
+  textGround,
 } from "./slide-layout.ts";
-import type { DeckPageView, ShownElement, ShownSlide } from "./views.ts";
+import type { ShownElement, ShownSlide } from "./views.ts";
 
 export type SlideCanvasProps = {
   readonly slide: ShownSlide;
+  /** The slide's place: the first slide can be the title slide, and the footer shows "<n> / <count>". */
+  readonly place: { readonly index: number; readonly count: number };
   readonly figuresAsOf: string;
   readonly timeZone: string;
-  readonly theme: DeckPageView["theme"];
+  readonly theme: SlideTheme;
+  /** The logo for the theme's background: the caller passes `view.logos[deck.theme.logo]`. */
   readonly logoUrl: string | null;
   /** The deck's image links from its newest read. */
   readonly images: ImageLinks;
@@ -49,8 +56,28 @@ const ALIGN_CLASS = {
   right: "text-right",
 } as const;
 
-/** The classes and variables of one element box: its place, its frame and its text style. */
-function boxProps(box: ElementBox, style: ElementStyle | undefined) {
+/** The classes that place a box from its `--box-*` variables. */
+const PLACED = "absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w)";
+
+/** The classes and variables of a frame part at its box; spread like `boxProps`. */
+const placed = (box: Box, className: string) => ({
+  style: boxVars(box),
+  className: cn(PLACED, className),
+});
+
+const boxVars = (box: Box): CssVars => ({
+  "--box-x": `${box.x}px`,
+  "--box-y": `${box.y}px`,
+  "--box-w": `${box.w}px`,
+  "--box-h": `${box.h}px`,
+});
+
+/** The classes and variables of one element box: its place, its frame, and a text's color and size. */
+function boxProps(
+  box: Box,
+  style: ElementStyle | undefined,
+  text: { readonly color: string; readonly px: number } | undefined
+) {
   const border =
     style?.border !== undefined && style.border.width > 0
       ? style.border
@@ -59,10 +86,7 @@ function boxProps(box: ElementBox, style: ElementStyle | undefined) {
   const framed = style?.fill !== undefined || border !== undefined;
 
   const vars: CssVars = {
-    "--box-x": `${box.x}px`,
-    "--box-y": `${box.y}px`,
-    "--box-w": `${box.w}px`,
-    "--box-h": `${box.h}px`,
+    ...boxVars(box),
     ...(style?.fill === undefined ? undefined : { "--el-fill": style.fill }),
     ...(border === undefined
       ? undefined
@@ -70,34 +94,28 @@ function boxProps(box: ElementBox, style: ElementStyle | undefined) {
           "--el-border-color": border.color,
           "--el-border-width": `${border.width}px`,
         }),
-    ...(style?.color === undefined ? undefined : { "--el-color": style.color }),
-    ...(style?.fontSize === undefined
+    ...(text === undefined
       ? undefined
-      : { "--el-size": `${style.fontSize}px` }),
+      : { "--el-color": text.color, "--el-size": `${text.px}px` }),
   };
 
   return {
     style: vars,
     className: cn(
-      "absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w)",
+      PLACED,
       style?.fill !== undefined && "bg-(--el-fill)",
       border !== undefined &&
         "border-solid border-(length:--el-border-width) border-(--el-border-color)",
       // 12 px inside a frame, as the export's margin (P01-8).
       framed && "p-3",
-      style?.color !== undefined && "text-(color:--el-color)",
+      text !== undefined && "text-(color:--el-color) text-(length:--el-size)",
       style?.align !== undefined && ALIGN_CLASS[style.align]
     ),
   };
 }
 
-/** The text classes an element's style sets over its kind's default size and weight. */
-function textClass(style: ElementStyle | undefined, fallback: string): string {
-  return cn(
-    style?.fontSize === undefined ? fallback : "text-(length:--el-size)",
-    style?.weight !== undefined && WEIGHT_CLASS[style.weight]
-  );
-}
+const weightOf = (style: ElementStyle | undefined) =>
+  style?.weight === undefined ? undefined : WEIGHT_CLASS[style.weight];
 
 function titleOf(slide: ShownSlide): string {
   const title = slide.elements.find((element) => element.kind === "title");
@@ -105,12 +123,70 @@ function titleOf(slide: ShownSlide): string {
   return title !== undefined && "text" in title ? title.text : "Slide";
 }
 
+/** The Priorities list: numbered circles in the accent, each item in its `listItemBoxes` slot (P14-13, P14-31). */
+function PrioritiesList(props: {
+  readonly items: readonly string[];
+  readonly box: Box;
+  readonly solid: boolean;
+}) {
+  const { items, box, solid } = props;
+  const slots = listItemBoxes(items.length, box);
+
+  const listStyle: CssVars = {
+    "--li-circle": `${LOOK_PX.listCircle}px`,
+    "--li-number": `${LOOK_PX.listNumber}px`,
+    "--li-ring": "1.5px",
+  };
+
+  return (
+    <ol className="relative h-full" style={listStyle}>
+      {items.map((item, at) => {
+        const slot = slots[at]!;
+
+        const itemStyle: CssVars = {
+          "--li-y": `${slot.circle.y - box.y}px`,
+          "--li-text-x": `${slot.text.x - box.x}px`,
+        };
+
+        return (
+          <li
+            key={at}
+            className="absolute top-(--li-y) right-0 left-0"
+            style={itemStyle}
+          >
+            <span
+              aria-hidden="true"
+              data-list-circle=""
+              className={cn(
+                "absolute top-0 left-0 flex size-(--li-circle) items-center justify-center rounded-full text-(length:--li-number) font-bold",
+                solid
+                  ? "bg-(--slide-accent) text-(color:--slide-accent-text)"
+                  : "border-(length:--li-ring) border-solid border-(--slide-accent) text-(color:--slide-accent)"
+              )}
+            >
+              {at + 1}
+            </span>
+            <span
+              data-list-text=""
+              className="absolute top-0 right-0 left-(--li-text-x) leading-(--slide-leading-list) wrap-anywhere"
+            >
+              {item}
+            </span>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
+
 function ElementBody(props: {
   readonly element: ShownElement;
   readonly timeZone: string;
   readonly images: ImageLinks;
+  /** The Priorities list's box and look; null for every other element. */
+  readonly priorities: { readonly box: Box; readonly solid: boolean } | null;
 }) {
-  const { element, timeZone, images } = props;
+  const { element, timeZone, images, priorities } = props;
 
   switch (element.kind) {
     case "title":
@@ -119,19 +195,19 @@ function ElementBody(props: {
       return (
         <p
           className={cn(
-            textClass(element.style, "text-(length:--slide-text-size)"),
-            "leading-normal wrap-anywhere"
+            weightOf(element.style),
+            "leading-(--slide-leading-text) wrap-anywhere"
           )}
         >
           {element.text}
         </p>
       );
     case "bullets":
-      return (
+      return priorities === null ? (
         <ul
           className={cn(
-            textClass(element.style, "text-(length:--slide-bullet-size)"),
-            "flex h-full flex-col justify-center gap-0.5 leading-tight"
+            weightOf(element.style),
+            "flex flex-col gap-0.5 leading-(--slide-leading-text)"
           )}
         >
           {element.items.map((item, index) => (
@@ -141,6 +217,12 @@ function ElementBody(props: {
             </li>
           ))}
         </ul>
+      ) : (
+        <PrioritiesList
+          items={element.items}
+          box={priorities.box}
+          solid={priorities.solid}
+        />
       );
     case "image": {
       const url = images[element.fileId]?.url;
@@ -178,10 +260,12 @@ function ElementBody(props: {
 
 /**
  * One slide at 960 x 540, scaled to the width of its container so a phone and a desktop show the
- * same layout (D10). Every box is absolute, from the shared `slideLayout`.
+ * same layout (D10). Its frame and every box come from `slideFrame` and `placedBoxes`, and each text
+ * takes the color the save checks (`textGround`), so the screen and the check agree (czjw.183).
  */
 export function SlideCanvas(props: SlideCanvasProps) {
-  const { slide, figuresAsOf, timeZone, theme, logoUrl, images } = props;
+  const { slide, place, figuresAsOf, timeZone, theme, logoUrl, images } = props;
+
   const host = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [seenImages, setSeenImages] = useState(images);
@@ -215,11 +299,17 @@ export function SlideCanvas(props: SlideCanvasProps) {
     return () => observer.disconnect();
   }, []);
 
-  const layout = slideLayout(slide.elements.map(({ kind }) => kind));
-  const boxes = elementBoxes(slide.elements);
-  const light = usesLightPalette(slide);
+  const first = place.index === 0;
+
+  const frame = slideFrame(
+    slide.elements.map(({ kind }) => kind),
+    first
+  );
+
+  const boxes = placedBoxes(slide.elements, first);
+  const solid = theme.layout === "solid";
+  const full = frame.name !== "split";
   const titleStyle = slide.elements[0]?.style;
-  const title = boxProps(boxes.title, titleStyle);
 
   const hasFigures = slide.elements.some(
     (element) =>
@@ -228,38 +318,83 @@ export function SlideCanvas(props: SlideCanvasProps) {
       element.kind === "table"
   );
 
+  const hasVisual = slide.elements.some(
+    ({ kind }) => kind !== "title" && kind !== "text" && kind !== "bullets"
+  );
+
+  /** A text's color on what draws behind it, as the save checks it, and its size in its box. */
+  const textLook = (index: number, box: Box, priorities: boolean) => {
+    const element = slide.elements[index];
+
+    if (
+      element === undefined ||
+      (element.kind !== "title" &&
+        element.kind !== "text" &&
+        element.kind !== "bullets")
+    ) {
+      return undefined;
+    }
+
+    const texts = element.kind === "bullets" ? element.items : [element.text];
+
+    return {
+      color: textGround(slide, index, theme, first).color,
+      px:
+        element.style?.fontSize ??
+        (priorities
+          ? LOOK_PX.list
+          : defaultTextPx(
+              element.kind,
+              frame.name,
+              regionOf(box, frame.name),
+              texts,
+              box
+            )),
+    };
+  };
+
+  const title = boxProps(
+    boxes.title,
+    titleStyle,
+    textLook(0, boxes.title, false)
+  );
+
   const hostStyle: CssVars = {
     "--slide-height": `${CANVAS.height * scale}px`,
   };
 
+  // The slide's own tokens, so it never follows the app's dark mode (Review Focus 4).
   const canvasStyle: CssVars = {
     "--slide-scale": scale,
     "--slide-canvas-width": `${CANVAS.width}px`,
     "--slide-canvas-height": `${CANVAS.height}px`,
+    "--slide-bg": slide.background ?? theme.background,
+    "--background": theme.background,
+    "--foreground": theme.text,
+    "--muted-foreground": theme.secondaryText,
+    "--border": theme.hairline,
+    "--muted": theme.hairline,
+    "--chart-1": theme.accent,
+    "--chart-2": theme.neutral,
+    // A slide background on a title or statement slide replaces the panel fill (P14-15).
+    "--slide-panel": full ? (slide.background ?? theme.panel) : theme.panel,
+    "--slide-panel-line": theme.panel,
+    "--slide-ring": theme.ring,
+    "--slide-ring-width": solid ? "12px" : "3px",
+    "--slide-accent": theme.accent,
+    "--slide-accent-text": theme.accentText,
+    "--slide-rule": theme.rule,
     "--slide-font": theme.fontFace,
-    "--slide-title-size": `${TYPE_PX.title}px`,
-    "--slide-text-size": `${TYPE_PX.text}px`,
-    "--slide-bullet-size": `${TYPE_PX.bullet}px`,
-    "--slide-footer-size": `${TYPE_PX.footer}px`,
-    "--slide-primary": theme.primaryColor,
-    // Read only with a background (`bg-(--slide-bg)` below).
-    "--slide-bg": slide.background ?? "initial",
-    // Read only on the light palette (`text-(color:--slide-footer)` below), where it has a color.
-    "--slide-footer": footerColor(slide, foregroundFor) ?? "initial",
-  };
-
-  const ruleStyle: CssVars = {
-    "--box-x": `${layout.rule.x}px`,
-    "--box-y": `${layout.rule.y}px`,
-    "--box-w": `${layout.rule.w}px`,
-    "--box-h": `${layout.rule.h}px`,
-  };
-
-  const footerStyle: CssVars = {
-    "--box-x": `${layout.footer.x}px`,
-    "--box-y": `${layout.footer.y}px`,
-    "--box-w": `${layout.footer.w}px`,
-    "--box-h": `${layout.footer.h}px`,
+    "--slide-footer":
+      slide.background === undefined
+        ? theme.secondaryText
+        : foregroundFor(slide.background),
+    "--slide-footer-size": `${LOOK_PX.footer}px`,
+    "--slide-leading-title": LINE_HEIGHT.title,
+    "--slide-leading-text": LINE_HEIGHT.text,
+    "--slide-leading-list": LINE_HEIGHT.list,
+    // The font's glyphs reach below a 1.15 line; this keeps a bottom-set title inside its box.
+    "--slide-title-descent": "0.1em",
   };
 
   return (
@@ -273,73 +408,108 @@ export function SlideCanvas(props: SlideCanvasProps) {
         aria-roledescription="slide"
         aria-label={titleOf(slide)}
         data-slide-canvas=""
-        // The light tokens on a styled slide, so its colors meet the theme's text (P13-3).
-        data-theme={light ? "light" : undefined}
-        className={cn(
-          "absolute top-0 left-0 h-(--slide-canvas-height) w-(--slide-canvas-width) origin-top-left scale-(--slide-scale) overflow-hidden font-(family-name:--slide-font) text-foreground",
-          slide.background === undefined ? "bg-background" : "bg-(--slide-bg)"
-        )}
+        data-frame={frame.name}
+        data-theme={theme.dark ? "dark" : "light"}
+        className="absolute top-0 left-0 h-(--slide-canvas-height) w-(--slide-canvas-width) origin-top-left scale-(--slide-scale) overflow-hidden bg-(--slide-bg) font-(family-name:--slide-font) text-foreground"
         style={canvasStyle}
       >
-        <div data-slide-box="title" {...title}>
+        {/* A solid panel is a fill; a light split panel is a 1 px line; a light title or statement slide has none. */}
+        {solid || !full ? (
+          <div
+            aria-hidden="true"
+            data-slide-panel=""
+            {...placed(
+              frame.panel,
+              solid
+                ? "bg-(--slide-panel)"
+                : "border-r border-solid border-(--slide-panel-line)"
+            )}
+          />
+        ) : null}
+        {frame.ring === null ? null : (
+          <div
+            aria-hidden="true"
+            data-slide-ring=""
+            {...placed(
+              frame.ring,
+              "rounded-full border-solid border-(length:--slide-ring-width) border-(--slide-ring)"
+            )}
+          />
+        )}
+        {/* A title sits on its box's bottom edge (P14-3). */}
+        <div
+          data-slide-box="title"
+          {...title}
+          className={cn(title.className, "flex flex-col justify-end")}
+        >
           <p
             className={cn(
-              "leading-tight wrap-anywhere",
-              titleStyle?.weight === undefined && "font-bold",
-              textClass(titleStyle, "text-(length:--slide-title-size)")
+              "pb-(--slide-title-descent) leading-(--slide-leading-title) text-balance wrap-anywhere",
+              WEIGHT_CLASS[titleStyle?.weight ?? theme.weight]
             )}
           >
             {titleOf(slide)}
           </p>
         </div>
-        <div
-          className="absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w) bg-(--slide-primary)"
-          style={ruleStyle}
-        />
         {boxes.body.map(({ index, box }) => {
           const element = slide.elements[index];
 
-          return element === undefined ? null : (
+          if (element === undefined) return null;
+
+          // On a split slide with no visual, a bullet list on the content side is the Priorities list.
+          const priorities =
+            element.kind === "bullets" &&
+            frame.name === "split" &&
+            !hasVisual &&
+            regionOf(box, frame.name) === "content";
+
+          return (
             <div
               key={index}
               data-slide-box={element.kind}
               {...boxProps(
                 box,
-                drawnStyle(element.kind, element.style, slide.background)
+                drawnStyle(
+                  element.kind,
+                  element.style,
+                  slide.background,
+                  theme.background
+                ),
+                textLook(index, box, priorities)
               )}
             >
               <ElementBody
                 element={element}
                 timeZone={timeZone}
                 images={keptImages}
+                priorities={priorities ? { box, solid } : null}
               />
             </div>
           );
         })}
-        <footer
-          className={cn(
-            "absolute top-(--box-y) left-(--box-x) flex h-(--box-h) w-(--box-w) items-center justify-between gap-4",
-            light ? "text-(color:--slide-footer)" : "text-muted-foreground"
-          )}
-          style={footerStyle}
-        >
-          <span className="text-(length:--slide-footer-size)">
-            {hasFigures ? `Figures as of ${figuresDate(figuresAsOf)}` : null}
-          </span>
-          <span className="flex items-center gap-2">
-            {logoUrl === null || logoUrl === failedLogo ? null : (
-              <img
-                src={logoUrl}
-                alt=""
-                className="h-5 w-auto"
-                onError={() => setFailedLogo(logoUrl)}
-              />
+        {frame.footer === null ? null : (
+          <footer
+            {...placed(
+              frame.footer,
+              "flex items-center justify-between gap-4 text-(length:--slide-footer-size) text-(color:--slide-footer)"
             )}
-            <span className="text-(length:--slide-footer-size)">
-              {theme.companyName}
+          >
+            <span>
+              {hasFigures ? `Figures as of ${figuresDate(figuresAsOf)}` : null}
             </span>
-          </span>
-        </footer>
+            <span className="flex items-center gap-2">
+              {logoUrl === null || logoUrl === failedLogo ? null : (
+                <img
+                  src={logoUrl}
+                  alt=""
+                  className="h-5 w-auto"
+                  onError={() => setFailedLogo(logoUrl)}
+                />
+              )}
+              <span>{`${theme.companyName} · ${place.index + 1} / ${place.count}`}</span>
+            </span>
+          </footer>
+        )}
       </div>
     </div>
   );

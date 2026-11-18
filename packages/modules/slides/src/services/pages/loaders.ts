@@ -1,11 +1,9 @@
 import { can, chatAvailability, type ModuleRequestContext } from "@genie/core";
-import { omit } from "es-toolkit";
 
 import type { DeckListView, DeckPageView } from "../../presentation/views.ts";
 import { assertCanRead } from "../decks/access.ts";
 import { shownDeck } from "../decks/show.ts";
 import { listOwnDecks, readOwnDeck } from "../decks/store.ts";
-import { brandTheme } from "../decks/theme.ts";
 
 /** The Slides list: the caller's own decks, whether the caller may write, and the chat beside it. */
 export async function loadDeckList(
@@ -54,12 +52,6 @@ export async function loadDeckPage(
     deck,
     canWrite,
     timeZone: branding.defaultTimeZone,
-    theme: omit(brandTheme(branding), [
-      "primaryForeground",
-      "logoFileId",
-      "logoDarkFileId",
-    ]),
-    logoUrl: light?.url ?? null,
     logos: { light: light?.url ?? null, dark: dark?.url ?? null },
     chat,
   };

@@ -335,12 +335,6 @@ export const deckPage: DeckPageView = {
   },
   canWrite: true,
   timeZone: "Asia/Singapore",
-  theme: {
-    companyName: "Genie Ops",
-    primaryColor: "#2563EB",
-    fontFace: "Plus Jakarta Sans",
-  },
-  logoUrl: null,
   logos: { light: null, dark: null },
   chat: chatOn,
 };

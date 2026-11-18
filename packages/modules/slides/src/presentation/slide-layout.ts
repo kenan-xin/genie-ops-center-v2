@@ -7,7 +7,6 @@ import {
   type ElementStyle,
   SLIDE_CANVAS,
   type SlideTheme,
-  THEME_BACKGROUND,
   THEME_TEXT,
 } from "../contract.ts";
 
@@ -600,7 +599,8 @@ const THEMED_KINDS: ReadonlySet<ElementKind> = new Set([
 export function drawnStyle(
   kind: ElementKind,
   style: ElementStyle | undefined,
-  background: string | undefined
+  background: string | undefined,
+  themeBackground: string
 ): ElementStyle | undefined {
   if (
     background === undefined ||
@@ -610,7 +610,7 @@ export function drawnStyle(
     return style;
   }
 
-  return { ...style, fill: THEME_BACKGROUND };
+  return { ...style, fill: themeBackground };
 }
 
 type PaletteSlide = {

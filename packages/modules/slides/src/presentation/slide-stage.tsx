@@ -28,7 +28,7 @@ import {
 } from "../lib/canvas-interactions/canvas-interactions.ts";
 import { boxStep, gestureBox, movedBox } from "./canvas-adapter.ts";
 import { SlideCanvas, type SlideCanvasProps } from "./slide-canvas.tsx";
-import { elementBoxes } from "./slide-layout.ts";
+import { placedBoxes } from "./slide-layout.ts";
 import type { ShownSlide } from "./views.ts";
 
 export type SlideStageHandle = {
@@ -129,7 +129,7 @@ export function SlideStage(props: SlideStageProps) {
   const shown =
     preview === null ? slide : withBox(slide, preview.index, preview.box);
 
-  const boxes = elementBoxes(shown.elements);
+  const boxes = placedBoxes(shown.elements, props.place.index === 0);
 
   const boxOf = (index: number): ElementBox | undefined =>
     index === 0

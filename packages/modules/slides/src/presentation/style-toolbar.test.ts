@@ -9,7 +9,7 @@ import {
 import type { DeckChange } from "../contract.ts";
 import { applyChanges } from "../services/decks/changes.ts";
 import { textWithChartSlide } from "./__fixtures__/decks.ts";
-import { BLUE_THEME } from "./__fixtures__/themes.ts";
+import { BLUE_THEME, DARK_THEME } from "./__fixtures__/themes.ts";
 import { backgroundSteps, fillChange } from "./style-toolbar.tsx";
 
 // The nine swatches of the toolbar, and #EF4444 of the bead.
@@ -66,16 +66,26 @@ const whiteOnDark: StoredSlide = {
   ],
 };
 
+/** The title slide: its title and text draw on the brand panel, which a background replaces (P14-15). */
+const titleSlide: StoredSlide = {
+  id: "s1",
+  elements: [
+    { kind: "title", text: "Receivables at a glance" },
+    { kind: "text", text: "Genie Ops, October 2026" },
+  ],
+};
+
 const SLIDES = [
   ["default", plain],
   ["white", whiteOnDark],
+  ["title slide", titleSlide],
 ] as const;
 
 const CASES = COLORS.flatMap((color) =>
   SLIDES.map(([name, slide]) => [color, name, slide] as const)
 );
 
-/** The deck after the steps, through the save's own step rules and parse. */
+/** The deck after the steps, through the save's own step rules and parse. Its one slide is the first. */
 const after = (slide: StoredSlide, changes: DeckChange[]) =>
   deckContentSchema.parse({
     slides: applyChanges(
@@ -93,12 +103,23 @@ describe("backgroundSteps", () => {
     const slide: StoredSlide = {
       id: "s1",
       elements: [
-        { kind: "title", text: "Claim", style: { color: "#60A5FA" } },
-        { kind: "text", text: "Sales rose.", style: { color: "#60A5FA" } },
+        {
+          kind: "title",
+          text: "Claim",
+          box: TITLE_BOX,
+          style: { color: "#60A5FA" },
+        },
+        {
+          kind: "text",
+          text: "Sales rose.",
+          box: TEXT_BOX,
+          style: { color: "#60A5FA" },
+        },
+        IMAGE,
       ],
     };
 
-    expect(backgroundSteps(slide, "#1E3A8A")).toEqual([
+    expect(backgroundSteps(slide, "#1E3A8A", BLUE_THEME, true)).toEqual([
       { op: "change-slide-fields", slideId: "s1", background: "#1E3A8A" },
       {
         op: "change-element",
@@ -109,10 +130,44 @@ describe("backgroundSteps", () => {
     ]);
   });
 
+  it("a light background on the title slide turns its white title and text dark", () => {
+    expect(backgroundSteps(titleSlide, "#F3F4F6", BLUE_THEME, true)).toEqual([
+      { op: "change-slide-fields", slideId: "s1", background: "#F3F4F6" },
+      {
+        op: "change-element",
+        slideId: "s1",
+        index: 0,
+        style: { color: "#111827" },
+      },
+      {
+        op: "change-element",
+        slideId: "s1",
+        index: 1,
+        style: { color: "#111827" },
+      },
+    ]);
+  });
+
   it.each(CASES)(
     "background %s from %s texts leaves no text below its limit",
     (color, _name, slide) => {
-      expect(issuesOf(after(slide, backgroundSteps(slide, color)))).toEqual([]);
+      expect(
+        issuesOf(after(slide, backgroundSteps(slide, color, BLUE_THEME, true)))
+      ).toEqual([]);
+    }
+  );
+});
+
+describe("backgroundSteps on a light layout", () => {
+  // P14-33: a light title slide has no panel, so its title draws on the slide background.
+  it.each(COLORS)(
+    "background %s on the dark and minimal title slide leaves no text below its limit",
+    (color) => {
+      const steps = backgroundSteps(titleSlide, color, DARK_THEME, true);
+
+      expect(
+        textContrastIssues(after(titleSlide, steps), DARK_THEME, "all")
+      ).toEqual([]);
     }
   );
 });
@@ -126,7 +181,7 @@ describe("fillChange", () => {
           op: "change-element",
           slideId: "s1",
           index: 1,
-          style: fillChange(slide.elements[1]!, slide.background, color),
+          style: fillChange(slide, 1, BLUE_THEME, true, color),
         },
       ];
 
@@ -134,31 +189,43 @@ describe("fillChange", () => {
     }
   );
 
+  it("a dark fill on the title slide's title keeps its white panel text", () => {
+    expect(fillChange(titleSlide, 0, BLUE_THEME, true, "#1E3A8A")).toEqual({
+      fill: "#1E3A8A",
+    });
+  });
+
   it("No fill on white text on a white slide sets the theme color", () => {
-    expect(
-      fillChange(
+    const slide: StoredSlide = {
+      ...plain,
+      elements: [
+        plain.elements[0]!,
         {
           kind: "text",
           text: "Sales rose.",
+          box: TEXT_BOX,
           style: { color: "#FFFFFF", fill: "#1E3A8A" },
         },
-        undefined,
-        null
-      )
-    ).toEqual({ fill: null, color: null });
+        IMAGE,
+      ],
+    };
+
+    expect(fillChange(slide, 1, BLUE_THEME, true, null)).toEqual({
+      fill: null,
+      color: null,
+    });
   });
 
   it("a gray fill that neither ink nor white can read on takes black", () => {
-    expect(
-      fillChange({ kind: "text", text: "Sales rose." }, undefined, "#777777")
-    ).toEqual({ fill: "#777777", color: "#000000" });
+    expect(fillChange(plain, 1, BLUE_THEME, true, "#777777")).toEqual({
+      fill: "#777777",
+      color: "#000000",
+    });
   });
 
   it("a fill on a chart sends only the fill", () => {
-    const chart = textWithChartSlide.elements[2]!;
-
-    expect(fillChange(chart, undefined, "#111827")).toEqual({
-      fill: "#111827",
-    });
+    expect(
+      fillChange(textWithChartSlide, 2, BLUE_THEME, false, "#111827")
+    ).toEqual({ fill: "#111827" });
   });
 });

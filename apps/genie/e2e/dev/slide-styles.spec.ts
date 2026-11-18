@@ -51,6 +51,8 @@ test.afterAll(async () => {
 
 const DARK_BLUE = "rgb(30, 58, 138)";
 
+const LIGHT_GRAY = "rgb(243, 244, 246)";
+
 const deckCanvas = (page: Page) =>
   page.locator("main [data-shown-slide] [data-slide-canvas]");
 
@@ -574,7 +576,7 @@ test("a background pick that recolors text says so, and its Undo brings the colo
     );
     await activate(
       page,
-      page.getByRole("button", { name: "Dark blue #1E3A8A" })
+      page.getByRole("button", { name: "Light gray #F3F4F6" })
     );
 
     const note = page
@@ -582,7 +584,7 @@ test("a background pick that recolors text says so, and its Undo brings the colo
       .filter({ hasText: "Text colors changed to stay readable." });
 
     await expect(note).toBeVisible(FIRST_PAINT);
-    await expect.poll(() => backgroundOf(page)).toBe(DARK_BLUE);
+    await expect.poll(() => backgroundOf(page)).toBe(LIGHT_GRAY);
     expect(await colorOf(title)).not.toBe(before[1]);
 
     await activate(page, note.getByRole("button", { name: "Undo" }));

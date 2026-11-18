@@ -56,9 +56,8 @@ import {
   FONT_WEIGHTS,
   hexColor,
   type StyleChange,
+  type SlideTheme,
   TEXT_KINDS,
-  THEME_BACKGROUND,
-  THEME_TEXT,
 } from "../contract.ts";
 import {
   AddElementMenu,
@@ -68,7 +67,7 @@ import {
 import { boxStep, movedBox, resizedBox, SNAP } from "./canvas-adapter.ts";
 import { DockSheet, DockSheetRow } from "./dock-sheet.tsx";
 import { PhoneDock } from "./phone-dock.tsx";
-import { contrastLimit, readableOn } from "./slide-layout.ts";
+import { contrastLimit, textGround } from "./slide-layout.ts";
 import { useIsPhone } from "./use-is-phone.ts";
 import type { ShownElement, ShownSlide } from "./views.ts";
 
@@ -354,8 +353,10 @@ export type StyleToolbarProps = {
   readonly index: number;
   /** The element's box as drawn: its own, else the computed one. */
   readonly box: ElementBox;
-  /** The slide's background, which a fill pick checks the text color against. */
-  readonly background?: string | undefined;
+  /** The slide, its theme and whether it is first: a fill pick checks the text on what then draws behind it. */
+  readonly slide: ShownSlide;
+  readonly theme: SlideTheme;
+  readonly first: boolean;
   readonly saving?: boolean;
   readonly onStep: (step: DeckChange) => void;
   readonly onEditText: () => void;
@@ -492,7 +493,7 @@ export function StyleToolbar(props: StyleToolbarProps) {
   );
 
   const fillPick = (fill: string | null) =>
-    send(fillChange(element, props.background, fill));
+    send(fillChange(props.slide, index, props.theme, props.first, fill));
 
   if (phone) {
     const elementName = ELEMENT_NAMES[element.kind];
@@ -751,47 +752,57 @@ type TextKind = "title" | "text" | "bullets";
 const isText = (kind: ElementKind): kind is TextKind => TEXT_KINDS.has(kind);
 
 /**
- * The color a text needs on what draws behind it, or `undefined` when its own color reaches the
- * save's limit for its kind and size (P13-9, P16-4, czjw.161). On the theme background the theme's
- * own text color (`null`); else the theme text or white, whichever has more contrast there.
+ * The color one text needs on what draws behind it, or `undefined` when its color already reaches
+ * the save's limit (P13-9, P14-33). The first of its place's color, the theme text and white that
+ * reaches the limit, else black; its place's color clears the text's own color (`null`).
  */
 function readableColor(
-  kind: TextKind,
-  fontSize: number | undefined,
-  color: string | undefined,
-  fill: string | undefined,
-  background: string | undefined
+  slide: Parameters<typeof textGround>[0],
+  index: number,
+  theme: SlideTheme,
+  first: boolean
 ): string | null | undefined {
-  const needs = contrastLimit(kind, fontSize);
-  const behind = fill ?? background ?? THEME_BACKGROUND;
+  const element = slide.elements[index];
 
-  if (contrastRatio(color ?? THEME_TEXT, behind) >= needs) return undefined;
+  if (element === undefined || !isText(element.kind)) return undefined;
 
-  if (fill === undefined && background === undefined) return null;
+  const ground = textGround(slide, index, theme, first);
+  const needs = contrastLimit(element.kind, element.style?.fontSize);
 
-  const best = readableOn(behind);
+  if (contrastRatio(ground.color, ground.behind) >= needs) return undefined;
 
-  // Black or white always reaches 4.58:1, so black repairs what the best one cannot (czjw.138).
-  return contrastRatio(best, behind) >= needs ? best : "#000000";
+  // White or black always reaches 4.58:1, so black repairs what the others cannot (czjw.138).
+  const color =
+    [ground.defaultColor, theme.text, "#FFFFFF"].find(
+      (candidate) => contrastRatio(candidate, ground.behind) >= needs
+    ) ?? "#000000";
+
+  return color === ground.defaultColor ? null : color;
 }
 
 /**
  * A fill pick with the text color it needs: a title, text or bullet list whose color falls below
- * its limit on what then draws behind it takes a readable color in the same step (P13-9).
+ * its limit on the new fill takes a readable color in the same step (P13-9).
  */
 export function fillChange(
-  element: ShownElement,
-  background: string | undefined,
+  slide: ShownSlide,
+  index: number,
+  theme: SlideTheme,
+  first: boolean,
   fill: string | null
 ): StyleChange {
-  if (!isText(element.kind)) return { fill };
-
   const color = readableColor(
-    element.kind,
-    element.style?.fontSize,
-    element.style?.color,
-    fill ?? undefined,
-    background
+    {
+      ...slide,
+      elements: slide.elements.map((element, at) =>
+        at === index
+          ? { ...element, style: { ...element.style, fill: fill ?? undefined } }
+          : element
+      ),
+    },
+    index,
+    theme,
+    first
   );
 
   return color === undefined ? { fill } : { fill, color };
@@ -799,26 +810,22 @@ export function fillChange(
 
 /**
  * A background change with the text colors it needs: each text without a fill whose color falls
- * below its limit on the new background takes a readable color in the same change, so a hand edit reaches
- * what the save allows (P13-9). One change, one Undo entry.
+ * below its limit on what then draws behind it takes a readable color in the same change, so a hand
+ * edit reaches what the save allows (P13-9, P14-15). One change, one Undo entry.
  */
 export function backgroundSteps(
   slide: ShownSlide,
-  background: string | null
+  background: string | null,
+  theme: SlideTheme,
+  first: boolean
 ): DeckChange[] {
+  const next = { ...slide, background: background ?? undefined };
+
   const texts = slide.elements.flatMap((element, index) => {
     // A text with its own fill draws on that fill, which a background change leaves as it is.
-    if (!isText(element.kind) || element.style?.fill !== undefined) {
-      return [];
-    }
+    if (element.style?.fill !== undefined) return [];
 
-    const color = readableColor(
-      element.kind,
-      element.style?.fontSize,
-      element.style?.color,
-      undefined,
-      background ?? undefined
-    );
+    const color = readableColor(next, index, theme, first);
 
     return color === undefined
       ? []
@@ -841,6 +848,8 @@ export function backgroundSteps(
 /** Add element and Background, above the slide (variant A). */
 export function SlideEditorBar(props: {
   readonly slide: ShownSlide;
+  readonly theme: SlideTheme;
+  readonly first: boolean;
   readonly saving?: boolean;
   readonly onSteps: (steps: readonly DeckChange[]) => void;
   /** The person's Ask, which Figure, Chart and Table go through. */
@@ -876,7 +885,9 @@ export function SlideEditorBar(props: {
           </>
         }
         onPick={(background) =>
-          props.onSteps(backgroundSteps(slide, background))
+          props.onSteps(
+            backgroundSteps(slide, background, props.theme, props.first)
+          )
         }
       />
     </div>

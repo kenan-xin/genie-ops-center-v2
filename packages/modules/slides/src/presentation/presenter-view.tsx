@@ -184,13 +184,14 @@ export function PresenterView(props: PresenterViewProps) {
     }
   }
 
-  const canvas = (shownSlide: ShownSlide) => (
+  const canvas = (shownSlide: ShownSlide, at: number) => (
     <SlideCanvas
       slide={shownSlide}
+      place={{ index: at, count: slides.length }}
       figuresAsOf={deck.figuresAsOf}
       timeZone={view.timeZone}
-      theme={view.theme}
-      logoUrl={view.logoUrl}
+      theme={deck.theme}
+      logoUrl={view.logos[deck.theme.logo]}
       images={deck.images}
     />
   );
@@ -292,7 +293,7 @@ export function PresenterView(props: PresenterViewProps) {
               >
                 {slide === undefined || width === 0 ? null : (
                   <div className="w-(--present-slide-width)" style={widthStyle}>
-                    {canvas(slide)}
+                    {canvas(slide, index)}
                   </div>
                 )}
               </div>
@@ -313,7 +314,7 @@ export function PresenterView(props: PresenterViewProps) {
                     </span>
                   </p>
                 ) : (
-                  canvas(next)
+                  canvas(next, index + 1)
                 )}
               </Panel>
               <Panel

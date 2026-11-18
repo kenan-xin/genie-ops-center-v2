@@ -7,6 +7,7 @@ import {
   bulletsWithTwoVisualsSlide,
   textWithChartSlide,
 } from "./__fixtures__/decks.ts";
+import { BLUE_THEME } from "./__fixtures__/themes.ts";
 import { SlideEditorBar, StyleToolbar } from "./style-toolbar.tsx";
 
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
@@ -33,6 +34,9 @@ const meta = {
     slideId: textWithChartSlide.id,
     index: 0,
     box: { x: 40, y: 32, w: 880, h: 88 },
+    slide: textWithChartSlide,
+    theme: BLUE_THEME,
+    first: false,
     onStep: fn(),
     onEditText: fn(),
     onDone: fn(),
@@ -460,40 +464,50 @@ export const PositionPopover: Story = {
   },
 };
 
-// P13-9: a dark fill on a text with the theme color turns it white in the same step, so the hand
-// edit reaches what the save allows.
+// P13-9, P14-33: a light fill on panel text whose white was picked by hand turns it ink in the same
+// step, so the hand edit reaches what the save allows. A text in its default color needs no step:
+// it draws ink on a light fill by itself (P14-7).
+const whiteText = { ...text!, style: { color: "#FFFFFF" } };
+
 export const FillAdjustsText: Story = {
-  name: "A dark fill turns the text white in the same step",
+  name: "A light fill turns the panel text ink in the same step",
   globals: desktop,
-  args: { element: text!, index: 1, box: { x: 40, y: 136, w: 320, h: 348 } },
+  args: {
+    element: whiteText,
+    slide: { ...textWithChartSlide, elements: [title!, whiteText, chart!] },
+    index: 1,
+    box: { x: 43, y: 265, w: 298, h: 217 },
+  },
   play: async ({ args, canvas, canvasElement }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Fill" }));
 
     const body = within(canvasElement.ownerDocument.body);
 
     await userEvent.click(
-      await body.findByRole("button", { name: "Dark blue #1E3A8A" })
+      await body.findByRole("button", { name: "Light gray #F3F4F6" })
     );
     await expect(args.onStep).toHaveBeenCalledTimes(1);
     await expect(args.onStep).toHaveBeenCalledWith({
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      style: { fill: "#1E3A8A", color: "#FFFFFF" },
+      style: { fill: "#F3F4F6", color: "#111827" },
     });
     // The pick closes the popover; axe runs once its focus guards are gone, not during the exit.
     await waitFor(() => expect(body.queryByRole("dialog")).toBeNull());
   },
 };
 
-// P13-9: a dark background turns each text without a fill white in the same change, so the hand
-// edit reaches what the save allows; one change, one Undo entry.
+// P14-15, P14-33: on the title slide a background replaces the panel, so a light pick turns its
+// white title and text ink in one change; one change, one Undo entry.
 export const BackgroundAdjustsText: StoryObj<typeof SlideEditorBar> = {
-  name: "A dark background turns the texts without a fill white in one change",
+  name: "A light background on the title slide turns its texts ink in one change",
   globals: desktop,
   render: (args) => <SlideEditorBar {...args} />,
   args: {
-    slide: textWithChartSlide,
+    slide: { id: textWithChartSlide.id, elements: [title!, text!] },
+    theme: BLUE_THEME,
+    first: true,
     ask: "on",
     onSteps: fn(),
     onAdd: fn(),
@@ -504,26 +518,26 @@ export const BackgroundAdjustsText: StoryObj<typeof SlideEditorBar> = {
 
     await userEvent.click(canvas.getByRole("button", { name: "Background" }));
     await userEvent.click(
-      await body.findByRole("button", { name: "Dark blue #1E3A8A" })
+      await body.findByRole("button", { name: "Light gray #F3F4F6" })
     );
     await expect(args.onSteps).toHaveBeenCalledTimes(1);
     await expect(args.onSteps).toHaveBeenCalledWith([
       {
         op: "change-slide-fields",
         slideId: textWithChartSlide.id,
-        background: "#1E3A8A",
+        background: "#F3F4F6",
       },
       {
         op: "change-element",
         slideId: textWithChartSlide.id,
         index: 0,
-        style: { color: "#FFFFFF" },
+        style: { color: "#111827" },
       },
       {
         op: "change-element",
         slideId: textWithChartSlide.id,
         index: 1,
-        style: { color: "#FFFFFF" },
+        style: { color: "#111827" },
       },
     ]);
   },
@@ -535,6 +549,8 @@ export const EditorBar: StoryObj<typeof SlideEditorBar> = {
   render: (args) => <SlideEditorBar {...args} />,
   args: {
     slide: bulletsWithTwoVisualsSlide,
+    theme: BLUE_THEME,
+    first: false,
     ask: "on",
     onSteps: fn(),
     onAdd: fn(),
@@ -583,6 +599,8 @@ export const EditorBarOnlyImage: StoryObj<typeof SlideEditorBar> = {
   render: (args) => <SlideEditorBar {...args} />,
   args: {
     slide: textWithChartSlide,
+    theme: BLUE_THEME,
+    first: false,
     ask: "on",
     onSteps: fn(),
     onAdd: fn(),
@@ -636,6 +654,8 @@ export const AddElementAsksForCharts: StoryObj<typeof SlideEditorBar> = {
   render: (args) => <SlideEditorBar {...args} />,
   args: {
     slide: titleAndTextSlide,
+    theme: BLUE_THEME,
+    first: false,
     ask: "on",
     onSteps: fn(),
     onAdd: fn(),
@@ -666,6 +686,8 @@ export const AddElementWhenAIIsOff: StoryObj<typeof SlideEditorBar> = {
   render: (args) => <SlideEditorBar {...args} />,
   args: {
     slide: titleAndTextSlide,
+    theme: BLUE_THEME,
+    first: false,
     ask: "off",
     onSteps: fn(),
     onAdd: fn(),
@@ -691,6 +713,8 @@ export const AddElementWithoutAsk: StoryObj<typeof SlideEditorBar> = {
   render: (args) => <SlideEditorBar {...args} />,
   args: {
     slide: titleAndTextSlide,
+    theme: BLUE_THEME,
+    first: false,
     ask: "none",
     onSteps: fn(),
     onAdd: fn(),

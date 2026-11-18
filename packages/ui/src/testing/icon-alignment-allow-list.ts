@@ -32,6 +32,11 @@ export const ICON_ALIGNMENT_ALLOW_LIST: readonly IconAllowEntry[] = [
       "czjw.180: edit-slide.prototype.html centers a chart or image glyph in the 56 x 36 px thumbnail of a Charts and images row, beside the row's name and kind; the check's tile term stops at 40 px, so it reads the centered glyph as a slot.",
   },
   {
+    selector: "[data-slide-ring]",
+    reason:
+      "czjw.183 (P14-14): the ring of a title or statement slide is a 135 px slide decoration on the 960 x 540 canvas; in a scaled slide tile it draws under 24 px, so the check reads it as a box icon beside the slide's title.",
+  },
+  {
     selector: "[data-slot=agent-group-header] > svg:first-child",
     reason:
       "6wz1.113 (P07-55): agent-runs.prototype.html lines 190-191 and DEC-57: a chat history group header keeps the agent's icon in a fixed 16 px slot and indents its chats so their text starts under the name, so the icon leads the name, not the chats below it.",

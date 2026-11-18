@@ -15,6 +15,7 @@ import {
   textWithTableSlide,
   twoFiguresSlide,
 } from "./__fixtures__/decks.ts";
+import { BLUE_THEME } from "./__fixtures__/themes.ts";
 import { EditSlideSheet } from "./edit-slide-sheet.tsx";
 import { SlideEditor } from "./slide-editor.tsx";
 import { useDeckChange } from "./use-deck.ts";
@@ -65,8 +66,9 @@ function withQuery(Story: () => ReactNode) {
 const canvas = {
   figuresAsOf: deckPage.deck.figuresAsOf,
   timeZone: deckPage.timeZone,
-  theme: deckPage.theme,
-  logoUrl: deckPage.logoUrl,
+  place: { index: 1, count: 5 },
+  theme: BLUE_THEME,
+  logoUrl: null,
   images: deckPage.deck.images,
 };
 

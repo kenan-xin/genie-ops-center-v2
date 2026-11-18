@@ -9,7 +9,11 @@ import { chartColors } from "@genie/ui/tokens";
 import { imageSize } from "image-size";
 import pptxgenjs from "pptxgenjs";
 
-import { type ElementStyle, THEME_TEXT } from "../../contract.ts";
+import {
+  type ElementStyle,
+  THEME_BACKGROUND,
+  THEME_TEXT,
+} from "../../contract.ts";
 import {
   type Box,
   drawnStyle,
@@ -333,7 +337,12 @@ export async function buildDeckPptx(input: {
         slide,
         rect,
         box,
-        drawnStyle(element.kind, element.style, shown.background)
+        drawnStyle(
+          element.kind,
+          element.style,
+          shown.background,
+          THEME_BACKGROUND
+        )
       );
 
       // A frame's content sits 12 px inside it, as `p-3` on screen; text kinds take it as margin.

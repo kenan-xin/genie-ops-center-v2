@@ -440,19 +440,19 @@ export const DockOnPhone: Story = {
 
     await userEvent.click(dock.getByRole("button", { name: "Background" }));
     await userEvent.click(
-      await screen.findByRole("button", { name: "Dark blue #1E3A8A" })
+      await screen.findByRole("button", { name: "Light gray #F3F4F6" })
     );
     await waitFor(() =>
       expect(changeDeck).toHaveBeenCalledWith({
         id: "deck-1",
         expectedHash: HASH,
         changes: [
-          backgroundStep("#1E3A8A"),
+          backgroundStep("#F3F4F6"),
           {
             op: "change-element",
             slideId: "s1",
             index: 0,
-            style: { color: "#FFFFFF" },
+            style: { color: "#111827" },
           },
         ],
       })
@@ -2002,8 +2002,8 @@ export const UndoInsideNotesPause: Story = {
   },
 };
 
-/** The title of slide 1 as drawn: the computed title box, x 40, y 32. */
-const TITLE_BOX = { x: 40, y: 32, w: 880, h: 88 };
+/** The title of slide 1 as drawn: the title frame's title box, x 67, y 67. */
+const TITLE_BOX = { x: 67, y: 67, w: 578, h: 247 };
 
 /** Selects the title of the shown slide 1 on the stage, which also focuses it for the arrow keys. */
 async function selectTitle(canvas: ReturnType<typeof within>) {
@@ -2043,7 +2043,7 @@ export const UndoInsideNudgeRun: Story = {
             op: "change-element",
             slideId: "s1",
             index: 0,
-            box: { ...TITLE_BOX, x: 48 },
+            box: { ...TITLE_BOX, x: 75 },
           },
         ],
       })
@@ -2078,7 +2078,7 @@ export const PositionAfterNudgeRun: Story = {
               ...slide,
               elements: slide.elements.map((element, at) =>
                 at === 0
-                  ? { ...element, box: { ...TITLE_BOX, x: 64 } }
+                  ? { ...element, box: { ...TITLE_BOX, x: 91 } }
                   : element
               ),
             }
@@ -2113,7 +2113,7 @@ export const PositionAfterNudgeRun: Story = {
             op: "change-element",
             slideId: "s1",
             index: 0,
-            box: { ...TITLE_BOX, x: 64 },
+            box: { ...TITLE_BOX, x: 91 },
           },
         ],
       })
@@ -2126,7 +2126,7 @@ export const PositionAfterNudgeRun: Story = {
             op: "change-element",
             slideId: "s1",
             index: 0,
-            box: { ...TITLE_BOX, x: 72 },
+            box: { ...TITLE_BOX, x: 99 },
           },
         ],
       })
@@ -2159,7 +2159,7 @@ export const AddTextAfterNudgeRun: Story = {
     await expect(changes[0]?.op).toBe("change-slide");
     await expect(changes[0]?.slide.elements[0]?.box).toEqual({
       ...TITLE_BOX,
-      x: 48,
+      x: 75,
     });
   },
 };
@@ -2209,19 +2209,19 @@ export const RecolorNote: Story = {
   globals: desktop,
   beforeEach: serveRecolor,
   play: async ({ canvas }) => {
-    await pickBackground(canvas, "Dark blue #1E3A8A");
+    await pickBackground(canvas, "Light gray #F3F4F6");
 
     await waitFor(() =>
       expect(changeDeck).toHaveBeenCalledWith({
         id: "deck-1",
         expectedHash: HASH,
         changes: [
-          backgroundStep("#1E3A8A"),
+          backgroundStep("#F3F4F6"),
           {
             op: "change-element",
             slideId: "s1",
             index: 0,
-            style: { color: "#FFFFFF" },
+            style: { color: "#111827" },
           },
         ],
       })
@@ -2248,7 +2248,7 @@ export const RecolorNoteShown: Story = {
   globals: desktop,
   beforeEach: serveRecolor,
   play: async ({ canvas }) => {
-    await pickBackground(canvas, "Dark blue #1E3A8A");
+    await pickBackground(canvas, "Light gray #F3F4F6");
 
     const note = await findRecolorNote(canvas);
 
@@ -2263,13 +2263,13 @@ export const NoRecolorNoNote: Story = {
   globals: desktop,
   beforeEach: serveRecolor,
   play: async ({ canvas }) => {
-    await pickBackground(canvas, "Light gray #F3F4F6");
+    await pickBackground(canvas, "Dark blue #1E3A8A");
 
     await waitFor(() =>
       expect(changeDeck).toHaveBeenCalledWith({
         id: "deck-1",
         expectedHash: HASH,
-        changes: [backgroundStep("#F3F4F6")],
+        changes: [backgroundStep("#1E3A8A")],
       })
     );
     // The answer renders within a frame; the note would show by then.
@@ -2286,7 +2286,7 @@ export const RecolorNoteLeavesAfterTheNextSave: Story = {
   globals: desktop,
   beforeEach: serveRecolor,
   play: async ({ canvas }) => {
-    await pickBackground(canvas, "Dark blue #1E3A8A");
+    await pickBackground(canvas, "Light gray #F3F4F6");
     await findRecolorNote(canvas);
 
     changeDeck.mockResolvedValueOnce(notesDeck("s1", "Say hello.", NEWER_HASH));
@@ -2321,7 +2321,7 @@ export const RecolorUndoInsideNotesPause: Story = {
   globals: desktop,
   beforeEach: serveRecolor,
   play: async ({ canvas }) => {
-    await pickBackground(canvas, "Dark blue #1E3A8A");
+    await pickBackground(canvas, "Light gray #F3F4F6");
 
     const note = await findRecolorNote(canvas);
 

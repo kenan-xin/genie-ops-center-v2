@@ -24,7 +24,7 @@ import {
   useState,
 } from "react";
 
-import type { DeckChange } from "../contract.ts";
+import type { DeckChange, SlideTheme } from "../contract.ts";
 import {
   AddElementMenu,
   type AskKind,
@@ -61,6 +61,8 @@ export function PhoneDock(props: {
 export function SlideDock(props: {
   /** None on an empty deck: only More shows. */
   readonly slide: ShownSlide | undefined;
+  readonly theme: SlideTheme;
+  readonly first: boolean;
   readonly canWrite: boolean;
   readonly saving: boolean;
   readonly ask: "on" | "off" | "none";
@@ -119,7 +121,9 @@ export function SlideDock(props: {
                   helper="Every text without a fill is checked against the new color."
                   onPick={(color) => {
                     setBackground(false);
-                    props.onSteps(backgroundSteps(slide, color));
+                    props.onSteps(
+                      backgroundSteps(slide, color, props.theme, props.first)
+                    );
                   }}
                 />
               </div>
