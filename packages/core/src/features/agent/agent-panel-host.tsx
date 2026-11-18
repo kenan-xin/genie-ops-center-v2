@@ -278,6 +278,13 @@ export function AgentPanelHost(props: {
     retry: 1,
   });
 
+  // SHELL-5: a card says "Showing" only while its artifact can load.
+  const slotFailed =
+    openSlot !== null &&
+    openSlot.shown !== null &&
+    slotArtifacts.isError &&
+    slotArtifacts.data === undefined;
+
   const run = shownRead.data?.session.run;
 
   const chip =
@@ -377,7 +384,7 @@ export function AgentPanelHost(props: {
                 }
               : {
                   kind: "panel",
-                  shown: openSlot?.shown ?? null,
+                  shown: slotFailed ? null : (openSlot?.shown ?? null),
                   onOpen: (ref) =>
                     setSlot({
                       sessionId: shownId,
@@ -589,10 +596,7 @@ export function AgentPanelHost(props: {
           </>
         )}
       </div>
-      {openSlot !== null &&
-      openSlot.shown !== null &&
-      slotArtifacts.isError &&
-      slotArtifacts.data === undefined ? (
+      {slotFailed ? (
         <div
           role="alert"
           className="flex shrink-0 items-center gap-2 border-t border-border px-4 py-2 text-sm text-muted-foreground"

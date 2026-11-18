@@ -891,6 +891,10 @@ export const SurfaceArtifactReadFails: Story = {
     );
 
     await expect(alert).toHaveTextContent("The chart or table could not load.");
+    // SHELL-5: a card never says Showing beside a failed load.
+    await expect(
+      within(region).getByRole("button", { name: /^Quantity by record/ })
+    ).toHaveAttribute("aria-pressed", "false");
     await expect(
       screen.queryByRole("dialog", { name: "Chart or table" })
     ).toBeNull();

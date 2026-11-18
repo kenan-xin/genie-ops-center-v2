@@ -27,7 +27,7 @@ export function Composer(props: {
   readonly busy: boolean;
   /** The model picker of a new chat, inside the composer; undefined hides it. */
   readonly picker?: ReactNode;
-  /** While a background run builds: "Building" and Stop take Send's place (R-42b). */
+  /** While a background run builds: the square Stop takes Send's place (R-42b, SHELL-5). */
   readonly building?:
     | { readonly stopping: boolean; readonly onStop: () => void }
     | undefined;
@@ -66,20 +66,19 @@ export function Composer(props: {
           {props.picker}
           {props.building === undefined ? null : (
             <>
-              <span
-                role="status"
-                className="ms-auto text-xs font-medium text-muted-foreground"
-              >
+              {/* SHELL-5: one square Stop in every state; the header chip shows Building on screen. */}
+              <span role="status" className="sr-only">
                 Building
               </span>
               <InputGroupButton
-                variant="secondary"
-                size="sm"
+                variant="primary"
+                size="icon-send"
                 aria-label="Stop building"
+                className="ms-auto"
                 disabled={props.building.stopping}
                 onClick={props.building.onStop}
               >
-                Stop
+                <SquareIcon aria-hidden="true" fill="currentColor" />
               </InputGroupButton>
             </>
           )}

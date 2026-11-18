@@ -2,12 +2,12 @@
 
 import { denseRowHeight, Button, focusRing, iconLead } from "@genie/ui";
 import {
-  CheckIcon,
   ChevronRightIcon,
   CircleAlertIcon,
+  CircleCheckIcon,
+  CircleXIcon,
   RotateCwIcon,
   SparklesIcon,
-  XIcon,
 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
@@ -41,24 +41,31 @@ function steps(n: number): string {
 function Node(props: { readonly state: TimelineRow["state"] }): ReactNode {
   if (props.state === "done") {
     return (
-      <span className="grid size-4 place-items-center rounded-full border border-foreground bg-card text-foreground">
-        <CheckIcon aria-hidden="true" className="size-2.5" strokeWidth={3} />
-      </span>
+      <CircleCheckIcon
+        aria-hidden="true"
+        strokeWidth={1.75}
+        className={`${iconLead} size-4 text-muted-foreground`}
+      />
     );
   }
 
   if (props.state === "failed") {
     return (
-      <span className="grid size-4 place-items-center rounded-full border border-destructive bg-card text-destructive">
-        <XIcon aria-hidden="true" className="size-2.5" strokeWidth={3} />
-      </span>
+      <CircleXIcon
+        aria-hidden="true"
+        strokeWidth={1.75}
+        className={`${iconLead} size-4 text-destructive dark:text-destructive-on-dark`}
+      />
     );
   }
 
+  // C07-7: a ring that spins; under reduced motion a still dashed ring, and the time still ticks.
   return (
-    <span className="grid size-4 place-items-center rounded-full border border-primary bg-card">
-      <span className="size-2 rounded-full bg-primary motion-safe:animate-pulse" />
-    </span>
+    <span
+      aria-hidden="true"
+      data-slot="live-node"
+      className="block size-4 rounded-full border-2 border-primary/25 border-t-primary motion-safe:animate-spin motion-reduce:border-dashed motion-reduce:border-primary dark:border-brand-on-dark/25 dark:border-t-brand-on-dark motion-reduce:dark:border-brand-on-dark"
+    />
   );
 }
 
@@ -105,6 +112,23 @@ type LiveState = {
 
 const SLOW_LINE = "This step is taking a while. You can stop at any time.";
 
+/** The node, centered on the first text line (Phase 07 check). */
+function NodeSlot(props: { readonly state: TimelineRow["state"] }): ReactNode {
+  return (
+    <span className="flex h-lh shrink-0 items-center text-sm">
+      <Node state={props.state} />
+    </span>
+  );
+}
+
+function LiveTime(props: { readonly live: LiveState }): ReactNode {
+  return (
+    <span className="ms-auto text-xs text-muted-foreground tabular-nums">
+      {props.live.time}
+    </span>
+  );
+}
+
 function Row(props: {
   readonly row: TimelineRow;
   readonly live?: LiveState | undefined;
@@ -113,18 +137,15 @@ function Row(props: {
 
   const active = row.state === "active";
 
+  // C07-6: repeated reads say so in words.
+  const reads = row.count > 1 ? `${row.count} reads` : undefined;
+
   return (
     <li
       aria-current={live?.current === true ? "step" : undefined}
-      className="relative flex gap-2.5 pb-3 last:pb-0"
+      className="flex gap-2.5 py-1.5"
     >
-      <span
-        aria-hidden="true"
-        className="absolute start-2 top-4.5 bottom-0 -ms-px w-px bg-border group-last/rows:hidden"
-      />
-      <span className="shrink-0">
-        <Node state={row.state} />
-      </span>
+      <NodeSlot state={row.state} />
       <div className="grid min-w-0 flex-1 gap-1">
         <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span
@@ -144,19 +165,13 @@ function Row(props: {
               </>
             )}
             {row.fix}
+            {active || reads === undefined ? null : ` · ${reads}`}
           </span>
-          {row.count > 1 ? (
-            <span className="rounded-full bg-muted px-1.5 text-xs font-semibold text-muted-foreground">
-              <span aria-hidden="true">×{row.count}</span>
-              <span className="sr-only">{row.count} times</span>
-            </span>
-          ) : null}
-          {live === undefined ? null : (
-            <span className="ms-auto text-xs text-muted-foreground">
-              {live.time}
-            </span>
-          )}
+          {live === undefined ? null : <LiveTime live={live} />}
         </div>
+        {active && reads !== undefined ? (
+          <p className="text-xs text-muted-foreground">{reads}</p>
+        ) : null}
         {live?.slow === true ? (
           <p className="text-sm text-muted-foreground">{SLOW_LINE}</p>
         ) : null}
@@ -171,19 +186,26 @@ function ThinkingRow(props: { readonly live: LiveState }): ReactNode {
   return (
     <li
       aria-current={props.live.current ? "step" : undefined}
-      className="flex flex-wrap items-center gap-2.5 text-sm text-muted-foreground"
+      className="flex gap-2.5 py-1.5"
     >
-      <Node state="active" />
-      <span>Thinking</span>
-      <span className="ms-auto text-xs">{props.live.time}</span>
-      {props.live.slow ? <p className="w-full">{SLOW_LINE}</p> : null}
+      <NodeSlot state="active" />
+      <div className="grid min-w-0 flex-1 gap-1">
+        <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+          {/* No text color here: the shimmer's transparent text needs the parent's color. */}
+          <span className="text-shimmer text-sm font-semibold">Thinking</span>
+          <LiveTime live={props.live} />
+        </div>
+        {props.live.slow ? (
+          <p className="text-sm text-muted-foreground">{SLOW_LINE}</p>
+        ) : null}
+      </div>
     </li>
   );
 }
 
 function Rows(props: { readonly children: ReactNode }): ReactNode {
   return (
-    <ol aria-label="Steps" className="group/rows grid">
+    <ol aria-label="Steps" className="grid gap-0.5">
       {props.children}
     </ol>
   );
@@ -298,11 +320,11 @@ export function StepTimeline(props: {
       </div>
     );
   } else if (rows.length > 0) {
-    // An answer with no stored time keeps its step count.
+    // The fold always names its step count (P15-17).
     const worked =
       props.durationMs === undefined
         ? steps(rows.length)
-        : `Worked for ${durationLabel(props.durationMs)}`;
+        : `Worked for ${durationLabel(props.durationMs)} · ${steps(rows.length)}`;
 
     stepsView = (
       <div className="grid gap-2">
@@ -310,22 +332,29 @@ export function StepTimeline(props: {
         <button
           type="button"
           aria-expanded={open}
-          className={`flex items-center gap-2.5 justify-self-start rounded-lg -ms-2.5 px-2.5 text-sm font-medium hover:bg-hover ${denseRowHeight} ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
+          className={`flex items-center justify-self-start rounded-lg -ms-2.5 px-2.5 text-sm font-medium hover:bg-hover ${denseRowHeight} ${failed === null ? "text-muted-foreground hover:text-foreground" : "text-destructive dark:text-destructive-on-dark"} ${focusRing}`}
           onClick={() => setOpen(!open)}
         >
-          <SparklesIcon
-            aria-hidden="true"
-            strokeWidth={1.75}
-            className={`${iconLead} size-4 shrink-0 text-primary dark:text-brand-on-dark`}
-          />
-          <span>
-            {failed === null ? worked : `${rowText(failed)} · ${worked}`}
+          {/* A name that wraps keeps its icons on the first line (P15-17). */}
+          <span className="flex items-start gap-2.5 text-start">
+            <span className="flex h-lh shrink-0 items-center">
+              <SparklesIcon
+                aria-hidden="true"
+                strokeWidth={1.75}
+                className={`${iconLead} size-4 text-primary dark:text-brand-on-dark`}
+              />
+            </span>
+            <span>
+              {failed === null ? worked : `${rowText(failed)} · ${worked}`}
+            </span>
+            <span className="flex h-lh shrink-0 items-center">
+              <ChevronRightIcon
+                aria-hidden="true"
+                className={`size-4 motion-safe:transition-transform ${open ? "rotate-90" : ""}`}
+                strokeWidth={1.75}
+              />
+            </span>
           </span>
-          <ChevronRightIcon
-            aria-hidden="true"
-            className={`size-4 motion-safe:transition-transform ${open ? "rotate-90" : ""}`}
-            strokeWidth={1.75}
-          />
         </button>
         {open ? (
           <Rows>{rows.map((row) => rowOf(row))}</Rows>

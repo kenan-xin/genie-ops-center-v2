@@ -149,11 +149,28 @@ export const Working: Story = {
     await expect(running).toHaveAttribute("aria-current", "step");
     await expect(within(running).getByText(/^\d+s$/)).toBeVisible();
 
+    // C07-7: the running node is a spinning ring, a finished one a 16 px icon, never a radio dot.
+    const ring = running.querySelector("[data-slot=live-node]");
+
+    if (ring === null) throw new Error("The running row has no live node.");
+
+    await expect(getComputedStyle(ring).animationName).toBe("spin");
+
     await userEvent.click(
       canvas.getByRole("button", { name: "+2 earlier steps" })
     );
     await expect(within(list).getAllByRole("listitem")).toHaveLength(5);
-    await expect(within(list).getByText("×2")).toBeVisible();
+
+    // C07-6: two reads of one dataset say so in words, with no ×n chip.
+    const invoices = within(list).getByText("Invoices").closest("li");
+
+    if (invoices === null) throw new Error("The Invoices row is no list item.");
+
+    await expect(invoices).toHaveTextContent(/^Read Invoices · 2 reads/);
+    await expect(canvas.queryByText(/×/)).toBeNull();
+    await expect(
+      invoices.querySelector("svg")?.getBoundingClientRect().width
+    ).toBe(16);
 
     // A read keeps its query behind Details.
     const [details] = within(list).getAllByText("Details");
@@ -167,6 +184,31 @@ export const Working: Story = {
     await expect(within(opened).getByText("Query used")).not.toBeVisible();
     await userEvent.click(details);
     await expect(within(opened).getByText("Query used")).toBeVisible();
+  },
+};
+
+/** A second read of Invoices runs: the row says Reading, with the count of reads under it (C07-6). */
+export const ReadingAgain: Story = {
+  args: {
+    parts: [
+      read("r1", "ledger.invoices"),
+      {
+        type: "tool-query-dataset",
+        toolCallId: "r2",
+        state: "input-available",
+        input: { dataset: "ledger.invoices", query: { limit: 20 } },
+      },
+    ],
+    streaming: true,
+    children: undefined,
+  },
+  play: async ({ canvas }) => {
+    const row = canvas.getByText("Invoices").closest("li");
+
+    if (row === null) throw new Error("The Invoices row is no list item.");
+
+    await expect(row).toHaveTextContent(/^Reading Invoices/);
+    await expect(within(row).getByText("2 reads")).toBeVisible();
   },
 };
 
@@ -211,7 +253,7 @@ export const Done: Story = {
   args: { durationMs: 38_000 },
   play: async ({ canvas }) => {
     const strip = canvas.getByRole("button", {
-      name: "Worked for 38 seconds",
+      name: "Worked for 38 seconds · 5 steps",
     });
 
     await expect(strip).toHaveAttribute("aria-expanded", "false");
@@ -240,7 +282,7 @@ export const DoneInOneSecond: Story = {
   args: { durationMs: 1000 },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("button", { name: "Worked for 1 second" })
+      canvas.getByRole("button", { name: "Worked for 1 second · 5 steps" })
     ).toBeVisible();
   },
 };
@@ -257,7 +299,7 @@ export const Fixed: Story = {
   },
   play: async ({ canvas }) => {
     await userEvent.click(
-      canvas.getByRole("button", { name: "Worked for 12 seconds" })
+      canvas.getByRole("button", { name: "Worked for 12 seconds · 2 steps" })
     );
     await expect(
       canvas.getByText("Made a chart, fixed 1 problem")
@@ -286,7 +328,7 @@ export const Failed: Story = {
     ).toBeVisible();
     await expect(
       canvas.getByRole("button", {
-        name: "Could not make a chart · Worked for 31 seconds",
+        name: "Could not make a chart · Worked for 31 seconds · 2 steps",
       })
     ).toBeVisible();
 

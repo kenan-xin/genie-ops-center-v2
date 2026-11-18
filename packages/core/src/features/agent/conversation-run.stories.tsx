@@ -118,8 +118,15 @@ export const Building: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    await expect(await canvas.findByText("Building")).toBeVisible();
+    // SHELL-5: one square Stop; the status says Building to a screen reader only.
+    await expect(await canvas.findByText("Building")).toHaveAttribute(
+      "role",
+      "status"
+    );
     await expect(canvas.queryByRole("button", { name: "Send" })).toBeNull();
+    await expect(
+      canvas.getByRole("button", { name: "Stop building" })
+    ).toHaveTextContent(/^$/);
 
     await userEvent.type(
       canvas.getByRole("textbox", { name: "Message" }),
