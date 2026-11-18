@@ -55,6 +55,11 @@ export type PageHeaderProps = {
    * renders, else in the header. With them, the bottom bar shows only `bottomBar`.
    */
   readonly topBarActions?: ReactNode;
+  /**
+   * The page's main action below 768 px, at the right end of the top bar after the agent button
+   * (deck-phone.prototype.html: Undo, Ask, Present). It shows where `topBarActions` show.
+   */
+  readonly topBarPrimary?: ReactNode;
   /** Other actions, such as "Open the PDF"; they stay in the header at every width, unless `compactBelowLg`. */
   readonly secondaryActions?: ReactNode;
   /**
@@ -81,6 +86,7 @@ function PageTopBar(props: {
   readonly Anchor: ReturnType<typeof linkFor>;
   readonly agent: boolean;
   readonly actions: ReactNode;
+  readonly primary: ReactNode;
 }) {
   const { crumb, Anchor } = props;
 
@@ -110,6 +116,11 @@ function PageTopBar(props: {
         </div>
       )}
       {props.agent ? <AgentButton /> : null}
+      {props.primary === undefined ? null : (
+        <div className="flex shrink-0 items-center md:hidden">
+          {props.primary}
+        </div>
+      )}
     </div>
   );
 }
@@ -158,9 +169,9 @@ export function PageHeader(props: PageHeaderProps) {
   const crumb = props.breadcrumb ?? use(PageTrailContext);
   const hideBelowLg = inShell ? "max-lg:sr-only" : "";
   const topBar = props.topBarActions;
+  const phoneBar = topBar !== undefined || props.topBarPrimary !== undefined;
 
-  const bar =
-    props.bottomBar ?? (topBar === undefined ? props.actions : undefined);
+  const bar = props.bottomBar ?? (phoneBar ? undefined : props.actions);
 
   const Anchor =
     crumb === undefined
@@ -171,8 +182,11 @@ export function PageHeader(props: PageHeaderProps) {
 
   // Below `md` the top-bar actions sit in the header when no page top bar renders.
   const headerTopBar =
-    topBar === undefined || hasTopBar ? null : (
-      <div className="flex items-center gap-2 md:hidden">{topBar}</div>
+    !phoneBar || hasTopBar ? null : (
+      <div className="flex items-center gap-2 md:hidden">
+        {topBar}
+        {props.topBarPrimary}
+      </div>
     );
 
   const heading =
@@ -221,6 +235,7 @@ export function PageHeader(props: PageHeaderProps) {
           Anchor={Anchor}
           agent={shell.agentPanel}
           actions={topBar}
+          primary={props.topBarPrimary}
         />
       ) : null}
       <header
@@ -284,13 +299,13 @@ export function PageHeader(props: PageHeaderProps) {
           </div>
         ) : props.actions === undefined &&
           props.secondaryActions === undefined &&
-          topBar === undefined ? null : (
+          !phoneBar ? null : (
           <div
             className={`flex flex-wrap items-center gap-2 ${hiddenIfCompact}`}
           >
             {props.secondaryActions}
             {headerTopBar}
-            {topBar === undefined || props.actions === undefined ? (
+            {!phoneBar || props.actions === undefined ? (
               props.actions
             ) : (
               <div className="hidden items-center gap-2 md:flex">

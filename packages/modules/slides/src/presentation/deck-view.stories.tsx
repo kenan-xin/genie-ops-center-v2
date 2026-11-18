@@ -59,6 +59,14 @@ const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
 /**
+ * A phone turned sideways, 844 px wide: the header keeps Export, More and the title, which leave
+ * the 390 px page until the dock's More sheet takes them (Task 8 of phase 13).
+ */
+const phoneSideways = {
+  viewport: { value: "phone844x390", isRotated: false },
+};
+
+/**
  * A fresh query cache per story, with no retries so a refusal reports at once. The deck's first run
  * read has landed with no chat, as on a page open for a while, so a story can edit at once; the
  * page still reads `agent.sessions` again on mount. A story with `parameters.runRead: "pending"`
@@ -266,16 +274,55 @@ async function pickFromMore(
   await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
 }
 
+/** The visible buttons of one name, so a hidden desktop copy does not count. */
+function visibleButtons(canvas: ReturnType<typeof within>, name: string) {
+  return canvas
+    .queryAllByRole("button", { name })
+    .filter((button: HTMLElement) => button.checkVisibility());
+}
+
 export const DeckOnPhone: Story = {
   name: "Deck on a phone",
   args: { view: deckPage },
   globals: phone,
+  parameters: { layout: "fullscreen" },
+  decorators: [withTrail, withShell],
   beforeEach: () => serve(deckPage),
   play: async ({ canvas, canvasElement }) => {
     await expect(
       canvas.getByRole("navigation", { name: "Slides" })
     ).toBeVisible();
     await slideFits(canvasElement);
+
+    // P13-9: the top bar reads Back, the title, Undo, Ask and Present (deck-phone.prototype.html).
+    const bar = within(
+      canvasElement.querySelector<HTMLElement>("[data-page-top-bar]")!
+    );
+
+    const lefts = [
+      bar.getByRole("link", { name: "Back to Slides" }),
+      bar.getByText(deckPage.deck.title),
+      bar.getByRole("button", { name: "Undo" }),
+      bar.getByRole("button", { name: "Ask" }),
+      bar.getByRole("button", { name: "Present" }),
+    ].map((part) => part.getBoundingClientRect().left);
+
+    await expect(lefts).toEqual(lefts.toSorted((a, b) => a - b));
+    await expect(new Set(lefts).size).toBe(5);
+
+    // Present is one button below 768 px; Export and More wait for the dock (Task 8).
+    await expect(visibleButtons(canvas, "Present")).toHaveLength(1);
+
+    await expect(
+      ["More ways to present", "Export to PowerPoint", "More"].filter(
+        (name) => visibleButtons(canvas, name).length > 0
+      )
+    ).toEqual([]);
+
+    // The top bar shows the title for the eye; the page keeps its h1 for a screen reader.
+    await expect(canvas.getByRole("heading", { level: 1 })).toHaveTextContent(
+      deckPage.deck.title
+    );
 
     // Round 1: below lg the header date is sr-only, so the page shows a readable line outside
     // the canvas; the scaled slide footer alone is about 4.5 px at 390 px.
@@ -285,10 +332,29 @@ export const DeckOnPhone: Story = {
 
     await expect(date).not.toBeNull();
     await expect(date).toBeVisible();
-    await expect(date).toHaveTextContent("Figures as of 27 Oct 2026");
-    await expect(
-      Number.parseFloat(getComputedStyle(date!).fontSize)
-    ).toBeGreaterThanOrEqual(12);
+    await expect(date).toHaveTextContent(
+      "5 slides · Figures as of 27 Oct 2026"
+    );
+    await expect(getComputedStyle(date!).fontSize).toBe("12px");
+  },
+};
+
+// P13-10: from 768 px the header keeps Export, More and Present, in that order.
+export const HeaderActionsOnADesktop: Story = {
+  name: "On a desktop the header reads Export, More and Present",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const lefts = ["Export to PowerPoint", "More", "Present"].map((name) => {
+      const [button] = visibleButtons(canvas, name);
+
+      expect(button).toBeDefined();
+
+      return button!.getBoundingClientRect().left;
+    });
+
+    await expect(lefts).toEqual(lefts.toSorted((a, b) => a - b));
   },
 };
 
@@ -625,7 +691,7 @@ export const SlideActions: Story = {
 export const SlideActionsOnPhone: Story = {
   name: "Slide actions on a phone",
   args: { view: deckPage },
-  globals: phone,
+  globals: phoneSideways,
   beforeEach: () => serve(deckPage),
   play: slideActionsPlay,
 };
@@ -2151,7 +2217,7 @@ export const ExportRefused: Story = {
 export const ExportRefusedOnPhone: Story = {
   name: "Export refused on a phone",
   args: { view: deckPage },
-  globals: phone,
+  globals: phoneSideways,
   beforeEach: () => serve(deckPage),
   play: exportPlay,
 };
@@ -2705,7 +2771,7 @@ function withTrail(Story: () => ReactNode) {
 export const RenameOnPhone: Story = {
   name: "Rename on a phone",
   args: { view: deckPage },
-  globals: phone,
+  globals: phoneSideways,
   parameters: { layout: "fullscreen" },
   decorators: [withTrail, withShell],
   beforeEach: () => serve(deckPage),

@@ -505,6 +505,50 @@ export const InShellPhoneTopBarActions: Story = {
   },
 };
 
+/** P13-9: the page's main phone action sits after Ask, so the bar reads Undo, Ask, Present. */
+export const PhoneTopBarOrder: Story = {
+  decorators: inShellPadded,
+  args: {
+    title: "Roles",
+    breadcrumb: rolesTrail,
+    topBarActions: (
+      <Button variant="ghost" size="icon" aria-label="Undo">
+        <Undo2 aria-hidden />
+      </Button>
+    ),
+    topBarPrimary: <Button>Present</Button>,
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    const bar = region(canvasElement, "[data-page-top-bar]");
+
+    const lefts = ["Undo", "Ask", "Present"].map(
+      (name) => bar.getByRole("button", { name }).getBoundingClientRect().left
+    );
+
+    await expect(lefts).toEqual(lefts.toSorted((a, b) => a - b));
+    await expect(new Set(lefts).size).toBe(3);
+  },
+};
+
+/** A reader's page with no Undo: its main action in the top bar, and no bottom bar repeats it. */
+export const PrimaryAloneMakesNoBottomBar: Story = {
+  decorators: inShellPadded,
+  args: {
+    title: "Roles",
+    breadcrumb: rolesTrail,
+    actions: <Button>Present</Button>,
+    topBarPrimary: <Button>Present</Button>,
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvasElement }) => {
+    await expect(
+      canvasElement.querySelector("[data-shell-bottom-bar]")
+    ).toBeNull();
+    await expect(visibleButtons(canvasElement, "Present")).toHaveLength(1);
+  },
+};
+
 /**
  * The dashboard's case (czjw.159): three icon actions and Agent in the top bar beside a long name,
  * and the desktop buttons as `actions`, so the header keeps no empty row under the meta line.

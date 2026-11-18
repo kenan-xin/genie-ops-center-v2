@@ -936,65 +936,45 @@ export function DeckView(props: DeckViewProps) {
         titlePending={unnamed}
         heading={
           unnamed ? undefined : (
-            <DeckTitle
-              title={deck.title}
-              editable={editable}
-              editing={renaming !== null}
-              saving={renaming?.sending === true}
-              failure={
-                renaming?.refused !== true || failure === null ? null : (
-                  <ChangeRefusal failure={failure} onReload={reload} />
-                )
+            // P13-8: below 768 px the top bar shows the title; the h1 stays for a screen reader
+            // and shows while it holds focus.
+            <div
+              className={
+                renaming === null
+                  ? "max-md:sr-only max-md:focus-within:not-sr-only"
+                  : undefined
               }
-              onEditingChange={editTitle}
-              onSave={submitRename}
-            />
+            >
+              <DeckTitle
+                title={deck.title}
+                editable={editable}
+                editing={renaming !== null}
+                saving={renaming?.sending === true}
+                failure={
+                  renaming?.refused !== true || failure === null ? null : (
+                    <ChangeRefusal failure={failure} onReload={reload} />
+                  )
+                }
+                onEditingChange={editTitle}
+                onSave={submitRename}
+              />
+            </div>
           )
         }
         meta={
           <>
             {pill}
             {drafting ? null : (
-              <span data-figures-date="">
+              <span data-figures-date="" className="max-md:text-xs">
                 {pill === null ? slideCount(deck.slides.length) : null} ·
                 Figures as of {figuresDate(deck.figuresAsOf)}
               </span>
             )}
           </>
         }
-        // While the agent drafts, Stop is the page's one action, in the header at every width.
-        actions={drafting ? undefined : presentButton}
-        // Below 768 px Undo and Present sit in the top bar, so the editor dock cannot cover them (czjw.156).
-        topBarActions={
+        // P13-10: from 768 px Export, More and Present; below it they hide with `actions`.
+        actions={
           drafting ? undefined : (
-            <>
-              {editable ? (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  aria-label="Undo"
-                  disabled={!deck.canUndo || busy}
-                  loading={undo.isPending}
-                  onClick={undoLast}
-                >
-                  <Undo2 aria-hidden />
-                </Button>
-              ) : null}
-              {presentButton}
-            </>
-          )
-        }
-        secondaryActions={
-          drafting ? (
-            <Button
-              variant="secondary"
-              loading={recordRun.stopping || recordRun.run === "stopping"}
-              onClick={recordRun.stop}
-            >
-              <Square aria-hidden="true" data-icon="inline-start" />
-              Stop
-            </Button>
-          ) : (
             <>
               <Button
                 variant="secondary"
@@ -1031,8 +1011,46 @@ export function DeckView(props: DeckViewProps) {
                   </DropdownMenuContent>
                 </DropdownMenu>
               ) : null}
+              {presentButton}
             </>
           )
+        }
+        // Below 768 px Undo sits in the top bar, so the editor dock cannot cover it (czjw.156).
+        topBarActions={
+          drafting || !editable ? undefined : (
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Undo"
+              disabled={!deck.canUndo || busy}
+              loading={undo.isPending}
+              onClick={undoLast}
+            >
+              <Undo2 aria-hidden />
+            </Button>
+          )
+        }
+        // P13-9: Present is one button at the end of the phone top bar, after Ask.
+        topBarPrimary={
+          drafting ? undefined : (
+            <Button disabled={current === undefined || busy} onClick={present}>
+              <Play aria-hidden="true" data-icon="inline-start" />
+              Present
+            </Button>
+          )
+        }
+        // While the agent drafts, Stop is the page's one action, in the header at every width.
+        secondaryActions={
+          drafting ? (
+            <Button
+              variant="secondary"
+              loading={recordRun.stopping || recordRun.run === "stopping"}
+              onClick={recordRun.stop}
+            >
+              <Square aria-hidden="true" data-icon="inline-start" />
+              Stop
+            </Button>
+          ) : undefined
         }
       />
       {pageRefusal}
