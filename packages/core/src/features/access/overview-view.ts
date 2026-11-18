@@ -17,6 +17,8 @@ export type OverviewRow = {
   /** The record's label of a one-record role, else its `scope.id`; null for the whole tenant. */
   readonly record: string | null;
   readonly role: string;
+  /** The role's id, for a link to Roles. */
+  readonly roleId: string;
   readonly custom: boolean;
   readonly path: string;
   readonly alsoThrough: readonly string[];
@@ -149,6 +151,7 @@ export function overviewRows(input: {
           ? null
           : (input.recordLabels.get(scopeKey(path.scope)) ?? path.scope.id),
       role: path.role.name,
+      roleId: path.role.id,
       custom: path.role.kind === "custom",
       path: pathOf(path),
       alsoThrough:

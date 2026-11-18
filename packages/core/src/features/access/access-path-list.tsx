@@ -3,22 +3,12 @@
 import { focusRing, LabelPill, StatusPill } from "@genie/ui";
 import type { ReactNode } from "react";
 
-import type {
-  AccessPath,
-  AccessRecipient,
-} from "../../services/roles/effective-access.ts";
-import type { GrantRow } from "../../services/roles/grants.ts";
+import type { AccessRecipient } from "../../services/roles/effective-access.ts";
+import type { InspectorAccess } from "./assignments-table.tsx";
 import { overviewRows, pausedLabel } from "./overview-view.ts";
 
-/** The reads that the inspector Access tab shows, passed only to a viewer with the Roles key (LK4). */
-export type InspectorAccess = {
-  /** The recipient's paths from the S2-19 read; undefined while they load. */
-  readonly paths: readonly AccessPath[] | undefined;
-  readonly catalogue: readonly GrantRow[] | undefined;
-  /** Record labels by `scopeKey`, only for records the viewer can open (AD10). */
-  readonly recordLabels: ReadonlyMap<string, string>;
-  readonly error?: string | undefined;
-};
+// The people and group sheets still read the type from this module (Task 5 moves them).
+export type { InspectorAccess };
 
 /**
  * One recipient's access, read-only, as the inspector Access tab shows it (G20, LK3). Line 1 names

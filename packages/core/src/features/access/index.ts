@@ -8,7 +8,13 @@ export {
 
 export { linkedSubject } from "./overview-view.ts";
 
-export { AccessPathList, type InspectorAccess } from "./access-path-list.tsx";
+export { AccessPathList } from "./access-path-list.tsx";
+
+export {
+  AssignmentsTable,
+  type AssignmentsTableProps,
+  type InspectorAccess,
+} from "./assignments-table.tsx";
 
 /**
  * The browser-safe Access feature: the Grants and Overview screens and their parts. It imports no database, no
