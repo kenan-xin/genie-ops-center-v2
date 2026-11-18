@@ -166,46 +166,48 @@ export const Grouped: Story = {
   },
 };
 
+function ChipsStory() {
+  const [value, setValue] = React.useState<Person[]>([people[0]!]);
+  const anchor = React.useRef<HTMLDivElement | null>(null);
+
+  return (
+    <Combobox<Person, true>
+      multiple
+      items={people}
+      value={value}
+      onValueChange={setValue}
+    >
+      <ComboboxChips ref={anchor}>
+        {value.map((person) => (
+          <ComboboxChip
+            key={person.value}
+            removeLabel={`Remove ${person.label}`}
+          >
+            {person.label}
+          </ComboboxChip>
+        ))}
+        <ComboboxChipsInput
+          aria-label="People"
+          placeholder={value.length > 0 ? "Add more" : "Search people"}
+        />
+      </ComboboxChips>
+      <ComboboxContent anchor={anchor}>
+        <ComboboxEmpty>No one matches.</ComboboxEmpty>
+        <ComboboxList>
+          {(person: Person) => (
+            <ComboboxItem key={person.value} value={person}>
+              {person.label}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
+}
+
 /** Several picks as chips (P12-14): each chip has a remove button named after it. */
 export const Chips: Story = {
-  render: function ChipsStory() {
-    const [value, setValue] = React.useState<Person[]>([people[0]!]);
-    const anchor = React.useRef<HTMLDivElement | null>(null);
-
-    return (
-      <Combobox<Person, true>
-        multiple
-        items={people}
-        value={value}
-        onValueChange={setValue}
-      >
-        <ComboboxChips ref={anchor}>
-          {value.map((person) => (
-            <ComboboxChip
-              key={person.value}
-              removeLabel={`Remove ${person.label}`}
-            >
-              {person.label}
-            </ComboboxChip>
-          ))}
-          <ComboboxChipsInput
-            aria-label="People"
-            placeholder={value.length > 0 ? "Add more" : "Search people"}
-          />
-        </ComboboxChips>
-        <ComboboxContent anchor={anchor}>
-          <ComboboxEmpty>No one matches.</ComboboxEmpty>
-          <ComboboxList>
-            {(person: Person) => (
-              <ComboboxItem key={person.value} value={person}>
-                {person.label}
-              </ComboboxItem>
-            )}
-          </ComboboxList>
-        </ComboboxContent>
-      </Combobox>
-    );
-  },
+  render: ChipsStory,
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("combobox", { name: "People" }));
     await userEvent.click(
@@ -297,6 +299,39 @@ export const ChipsFieldTouchAreaOnPhone: Story = {
 
     await userEvent.click(box);
     await expect(input).toHaveFocus();
+  },
+};
+
+/** The box's touch area lies under its children, so a tap on a remove button reaches the button. */
+export const ChipRemoveTapOnPhone: Story = {
+  name: "Chip remove tap, phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  render: ChipsStory,
+  play: async ({ canvas }) => {
+    const remove = canvas.getByRole("button", { name: "Remove Ada Lovelace" });
+    const area = remove.getBoundingClientRect();
+
+    // The tap's target: the button itself, not the box's touch layer.
+    await expect(
+      remove.contains(
+        document.elementFromPoint(
+          area.left + area.width / 2,
+          area.top + area.height / 2
+        )
+      )
+    ).toBe(true);
+
+    await userEvent.click(remove);
+
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole("button", { name: "Remove Ada Lovelace" })
+      ).toBeNull()
+    );
+    // As in Chips: the remove button hands the focus back to the field.
+    await expect(
+      canvas.getByRole("combobox", { name: "People" })
+    ).toHaveFocus();
   },
 };
 

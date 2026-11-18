@@ -178,6 +178,9 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   await inspector.getByRole("button", { name: "Close" }).click();
 
+  // The added person is listed, and a deactivation keeps the row (R-43).
+  await expect(personRow(page, `E2E Added ${project}`)).toBeVisible();
+
   // Self-protection: the signed-in administrator's own row cannot disable itself (R-38).
   await page.getByLabel("Search by name or email").fill(adminEmail);
 
