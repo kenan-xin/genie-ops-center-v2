@@ -4,8 +4,8 @@ import {
   assignRole,
   removeAssignment,
 } from "../authorization/role-assignment.ts";
+import { addAssignments, assertAssignable } from "./add-assignments.ts";
 import {
-  assertAdvancedAdds,
   readAdministratorGuards,
   readAdvancedCatalogue,
   saveAdvanced,
@@ -18,7 +18,6 @@ import {
   readAccessBySubject,
   readAssignments,
   readRecipientAccess,
-  recipientDisabled,
 } from "./effective-access.ts";
 import {
   readGrantCatalogue,
@@ -121,20 +120,16 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
           ? { type: input.scope.scopeType, id: input.scope.scopeId }
           : null;
 
-      // Refuses an erased person, the break-glass account and an unknown id (R-39, d8l5.57).
-      await recipientDisabled(context.tenant, {
-        type: input.principalType,
-        id: input.principalId,
+      // Refuses an erased person, the break-glass account and an unknown id (R-39, d8l5.57), and a
+      // scope that Advanced access refuses, as assignMany does.
+      await assertAssignable({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        roleId: input.roleId,
+        scope,
+        recipients: [{ type: input.principalType, id: input.principalId }],
       });
-
-      if (scope !== null) {
-        await assertAdvancedAdds({
-          tenant: context.tenant,
-          caller: context.caller,
-          modules,
-          add: [{ roleId: input.roleId, scope }],
-        });
-      }
 
       return {
         id: (
@@ -159,6 +154,17 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         assignmentId: input.assignmentId,
       });
     }),
+
+    assignMany: managed.assignMany.handler(({ context, input }) =>
+      addAssignments({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        roleId: input.roleId,
+        scope: input.scope,
+        recipients: input.recipients,
+      })
+    ),
 
     recipientAccess: managed.recipientAccess.handler(({ context, input }) =>
       readRecipientAccess({

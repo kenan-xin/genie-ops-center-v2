@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { oc } from "../../lib/rpc/index.ts";
+import type { AddAssignmentsResult } from "./add-assignments.ts";
 import type { AdvancedCatalogue, RemovalGuard } from "./advanced.ts";
 import type { AccessPage, AccessPath } from "./effective-access.ts";
 import type { GrantRecipients, GrantRow } from "./grants.ts";
@@ -103,6 +104,27 @@ export const rolesContract = {
   unassign: oc
     .route({ method: "DELETE", path: "/roles/assignments/{assignmentId}" })
     .input(z.object({ assignmentId: z.uuid() })),
+
+  // d8l5.62, P12-5: Add assignment: one role, at one record or all records, to 1 to 100 people and
+  // groups in one transaction. A recipient that already holds it at that scope is skipped.
+  assignMany: oc
+    .route({ method: "POST", path: "/roles/{roleId}/assignments/batch" })
+    .input(
+      z.object({
+        roleId: z.uuid(),
+        recipients: z
+          .array(
+            z.object({
+              type: z.enum(["user", "group"]),
+              id: z.string().min(1).max(200),
+            })
+          )
+          .min(1)
+          .max(100),
+        scope: recordRef.nullable(),
+      })
+    )
+    .output(z.custom<AddAssignmentsResult>()),
 
   // A8, R-37d: every path through which one person or group holds a role, unpaged, for Grants.
   recipientAccess: oc

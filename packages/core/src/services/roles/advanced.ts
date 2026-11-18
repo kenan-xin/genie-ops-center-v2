@@ -315,8 +315,8 @@ async function assertAddable(
 /**
  * Refuses an add Advanced access does not take (AD5), for each entry in input order: an unknown
  * role id is `not-found`, and every other refusal is that of `assertAddable`. It writes nothing
- * and checks no key. Its two callers, `saveAdvanced` and the `roles.assign` handler for a scoped
- * add, check `core:roles:manage` tenant-wide first.
+ * and checks no key. Its two callers, `saveAdvanced` and `assertAssignable` for a scoped add, run
+ * after a check of `core:roles:manage` tenant-wide.
  */
 export async function assertAdvancedAdds(input: {
   readonly tenant: TenantContext;

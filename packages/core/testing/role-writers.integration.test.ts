@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -16,6 +17,7 @@ import {
   ASK_USER_ROLE,
   TENANT_ADMINISTRATOR_ROLE,
 } from "../src/lib/module-contract/system-roles.ts";
+import { notification } from "../src/schema.ts";
 import { ASK_ROW } from "../src/services/roles/grants.ts";
 import {
   assignRole,
@@ -48,7 +50,14 @@ const on: FixtureModule = {
     { key: "on:use", label: "Use" },
     { key: "on:read", label: "Read" },
   ],
-  recordTypes: [],
+  // One record, so that a role of this module can be added at it (AD5).
+  recordTypes: [
+    {
+      type: "on-record",
+      resolve: async (_ctx, id) =>
+        id === "on-1" ? { label: "On record" } : undefined,
+    },
+  ],
   defaultRoles: [
     {
       name: "On viewer",
@@ -544,5 +553,219 @@ describe("the person read of the People inspector (d8l5.54)", () => {
     await expect(
       people(userId).access({ personId: person })
     ).rejects.toMatchObject({ code: "forbidden" });
+  });
+});
+
+async function grantedCount(personId: string): Promise<number> {
+  const rows = await deployment.context.db
+    .select()
+    .from(notification)
+    .where(eq(notification.userId, personId));
+
+  return rows.filter((row) => row.kind === "role-granted").length;
+}
+
+async function holdersOf(id: string): Promise<readonly string[]> {
+  const result = await deployment.context.db.$client.query<{
+    readonly holder: string;
+  }>(
+    `select principal_type || ':' || principal_id || ':' || coalesce(scope_type || '/' || scope_id, '-') as holder
+       from role_assignment where role_id = $1 order by holder`,
+    [id]
+  );
+
+  return result.rows.map((row) => row.holder);
+}
+
+describe("roles.assignMany (d8l5.62, P12-5)", () => {
+  it("adds one role to a person and a group in one call, with one audit row each and one granted event per person reached", async () => {
+    const custom = await insertRole(deployment.context, {
+      permissions: ["core:people:manage"],
+    });
+
+    const person = await insertUser(deployment.context);
+    const first = await insertUser(deployment.context);
+    const second = await insertUser(deployment.context);
+    const group = await insertGroup(deployment.context, [first, second]);
+
+    const result = await roles().assignMany({
+      roleId: custom,
+      recipients: [
+        { type: "user", id: person },
+        { type: "group", id: group },
+      ],
+      scope: null,
+    });
+
+    expect(result.added.map((entry) => entry.recipient)).toEqual([
+      { type: "user", id: person },
+      { type: "group", id: group },
+    ]);
+    expect(result.skipped).toEqual([]);
+    expect(await holdersOf(custom)).toEqual(
+      [`group:${group}:-`, `user:${person}:-`].toSorted()
+    );
+    expect(await addedRows(person)).toBe(1);
+    expect(await addedRows(group)).toBe(1);
+    expect(await grantedCount(person)).toBe(1);
+    expect(await grantedCount(first)).toBe(1);
+    expect(await grantedCount(second)).toBe(1);
+  });
+
+  it("writes a recipient given twice once, and skips and names a recipient that already holds the role", async () => {
+    const custom = await insertRole(deployment.context, {
+      permissions: ["core:people:manage"],
+    });
+
+    const twice = await insertUser(deployment.context);
+    const holds = await insertUser(deployment.context);
+    const fresh = await insertUser(deployment.context);
+
+    await assignRole(deployment.context, {
+      roleId: custom,
+      principal: { type: "user", id: holds },
+    });
+
+    const result = await roles().assignMany({
+      roleId: custom,
+      recipients: [
+        { type: "user", id: twice },
+        { type: "user", id: holds },
+        { type: "user", id: twice },
+        { type: "user", id: fresh },
+      ],
+      scope: null,
+    });
+
+    expect(result.added.map((entry) => entry.recipient.id)).toEqual([
+      twice,
+      fresh,
+    ]);
+    expect(result.skipped).toEqual([{ type: "user", id: holds }]);
+    expect(await holdersOf(custom)).toEqual(
+      [`user:${fresh}:-`, `user:${holds}:-`, `user:${twice}:-`].toSorted()
+    );
+    expect(await addedRows(holds)).toBe(0);
+  });
+
+  it.each([
+    [
+      "the break-glass account",
+      () => insertUser(deployment.context, { isBreakGlass: true }),
+    ],
+    [
+      "an erased person",
+      () => insertUser(deployment.context, { erasedAt: new Date() }),
+    ],
+    ["an unknown id", async () => randomUUID()],
+  ])(
+    "refuses the whole batch with not-found when one recipient is %s, and writes nothing",
+    async (_name, refused) => {
+      const custom = await insertRole(deployment.context, {
+        permissions: ["core:people:manage"],
+      });
+
+      await expect(
+        roles().assignMany({
+          roleId: custom,
+          recipients: [
+            { type: "user", id: await insertUser(deployment.context) },
+            { type: "group", id: await insertGroup(deployment.context, []) },
+            { type: "user", id: await refused() },
+          ],
+          scope: null,
+        })
+      ).rejects.toMatchObject({ code: "not-found" });
+      expect(await assignmentCount(custom)).toBe(0);
+    }
+  );
+
+  it("refuses a role of a module that is off and writes nothing", async () => {
+    const before = await assignmentCount(roleId("Off user"));
+
+    await expect(
+      roles().assignMany({
+        roleId: roleId("Off user"),
+        recipients: [
+          { type: "user", id: await insertUser(deployment.context) },
+          { type: "user", id: await insertUser(deployment.context) },
+        ],
+        scope: null,
+      })
+    ).rejects.toMatchObject({ code: "module-disabled" });
+    expect(await assignmentCount(roleId("Off user"))).toBe(before);
+  });
+
+  it("refuses a core role with a scope with invalid-input, and adds a module role at one record of its module", async () => {
+    const custom = await insertRole(deployment.context, {
+      permissions: ["core:people:manage"],
+    });
+
+    await expect(
+      roles().assignMany({
+        roleId: custom,
+        recipients: [
+          { type: "user", id: await insertUser(deployment.context) },
+        ],
+        scope: { type: "on-record", id: "on-1" },
+      })
+    ).rejects.toMatchObject({ code: "invalid-input" });
+    expect(await assignmentCount(custom)).toBe(0);
+
+    const person = await insertUser(deployment.context);
+
+    await roles().assignMany({
+      roleId: roleId("On user"),
+      recipients: [{ type: "user", id: person }],
+      scope: { type: "on-record", id: "on-1" },
+    });
+
+    expect(await holdersOf(roleId("On user"))).toContain(
+      `user:${person}:on-record/on-1`
+    );
+  });
+
+  it("refuses core:roles:manage at one scope and core:people:manage alone with forbidden, and no session with unauthenticated", async () => {
+    const { userId: scoped } = await insertPersonWith(
+      deployment.context,
+      ["core:roles:manage"],
+      { type: "group", id: groupId }
+    );
+
+    const { userId: peopleManager } = await insertPersonWith(
+      deployment.context,
+      ["core:people:manage"]
+    );
+
+    const administrator = roleId(TENANT_ADMINISTRATOR_ROLE);
+    const before = await assignmentCount(administrator);
+
+    const batch = (as: string) => ({
+      roleId: administrator,
+      recipients: [{ type: "user" as const, id: as }],
+      scope: null,
+    });
+
+    await expect(roles(scoped).assignMany(batch(scoped))).rejects.toMatchObject(
+      { code: "forbidden" }
+    );
+    await expect(
+      roles(peopleManager).assignMany(batch(peopleManager))
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    const anonymous = callProcedure(createRolesRouter(modules), {
+      tenant: deployment.context,
+      caller: principalFor({
+        tenant: deployment.context,
+        modules,
+        userId: undefined,
+        authenticated: false,
+      }),
+    });
+
+    await expect(anonymous.assignMany(batch(actorId))).rejects.toMatchObject({
+      code: "unauthenticated",
+    });
+    expect(await assignmentCount(administrator)).toBe(before);
   });
 });
