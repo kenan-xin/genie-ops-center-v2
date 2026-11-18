@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type CSSProperties,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -91,6 +92,12 @@ export type ChartProps = ChartData & {
   readonly slide?: boolean;
   /** `source` drops the read time from the caption, where the page names it once (6.1). */
   readonly caption?: "full" | "source";
+  /** The top of the value axis, so two charts compare on one scale. */
+  readonly valueMax?: number | undefined;
+  /** The title stays the figure's name for a screen reader, and shows no text. */
+  readonly titleHidden?: boolean | undefined;
+  /** Slides: the title and the source line show in full, and a table takes the slide sizes. Without it a slide keeps one and two lines and compact table rows, for a small stored box (czjw.182). */
+  readonly fullText?: boolean | undefined;
 };
 
 function PlainLink(props: {
@@ -133,25 +140,48 @@ function tableColumn(column: ChartColumn): DataTableColumn<ChartRow> {
   return isNumeric(column) ? { ...base, align: "end" } : base;
 }
 
+/** The slide table sizes in canvas px, the `LOOK_PX` table values of the slide layout (P14-12). */
+const SLIDE_TABLE_VARS: CSSProperties & {
+  readonly [key: `--${string}`]: string;
+} = {
+  "--slide-table-px": "15px",
+  "--slide-table-dense-px": "13px",
+  "--slide-table-header-px": "13px",
+  "--slide-table-row-y": "7px",
+  "--slide-table-rule": "1.5px",
+};
+
 /**
  * A slide's table: always the table layout, whatever the viewport, because the canvas is scaled and
- * not reflowed (F1). It is compact enough for 12 rows on a 348 px body, and it has no actions.
+ * not reflowed (F1). It sits in the vertical middle of its box; 10 rows or more draw dense, so 12
+ * rows fit (P14-12). It has no actions.
  */
 function SlideTable(props: {
   readonly label: string;
   readonly columns: readonly ChartColumn[];
   readonly rows: readonly ChartRow[];
+  /** A frame box: the slide sizes. A stored box keeps the compact rows it was sized for (czjw.182). */
+  readonly fullText: boolean;
 }) {
+  const rows = !props.fullText
+    ? "py-0.5 text-xs"
+    : props.rows.length >= 10
+      ? "py-1 text-(length:--slide-table-dense-px)"
+      : "py-(--slide-table-row-y) text-(length:--slide-table-px)";
+
   return (
-    <div className="h-full overflow-auto">
-      <table className="w-full border-collapse text-xs">
+    <div
+      className="flex h-full flex-col overflow-auto"
+      style={SLIDE_TABLE_VARS}
+    >
+      <table className="my-auto w-full border-collapse leading-tight">
         <caption className="sr-only">{props.label}</caption>
         <thead>
           <tr>
             {props.columns.map((column) => (
               <th
                 key={column.key}
-                className="border-b border-border bg-muted px-2 py-0.5 text-left font-semibold text-muted-foreground"
+                className={`border-b-(length:--slide-table-rule) border-foreground px-2 ${props.fullText ? "py-1.5 text-(length:--slide-table-header-px)" : "py-0.5 text-xs"} font-semibold text-muted-foreground ${isNumeric(column) ? "text-right" : "text-left"}`}
               >
                 {column.label}
               </th>
@@ -160,11 +190,11 @@ function SlideTable(props: {
         </thead>
         <tbody>
           {props.rows.map((row, index) => (
-            <tr key={index} className="border-b border-border last:border-0">
+            <tr key={index}>
               {props.columns.map((column) => (
                 <td
                   key={column.key}
-                  className={`px-2 py-0.5 ${isNumeric(column) ? "text-right tabular-nums" : ""}`}
+                  className={`border-b border-border px-2 ${rows} ${isNumeric(column) ? "text-right whitespace-nowrap tabular-nums" : ""}`}
                 >
                   {formatChartValue(column, row[column.key] ?? null, { row })}
                 </td>
@@ -499,6 +529,9 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
             measure the formatted ticks unscaled if a longer label appears. */}
         <YAxis
           width={props.slide === true ? 84 : "auto"}
+          {...(props.valueMax === undefined
+            ? {}
+            : { domain: [0, props.valueMax] satisfies [number, number] })}
           tickLine={false}
           axisLine={false}
           tickFormatter={(value: number) =>
@@ -661,6 +694,7 @@ export function Chart(props: ChartProps) {
           label={props.title}
           columns={props.columns}
           rows={props.rows}
+          fullText={props.fullText === true}
         />
       ) : props.kind === "donut" ? (
         <DonutPlot {...props} x={props.x} />
@@ -693,11 +727,18 @@ export function Chart(props: ChartProps) {
         slide ? "flex h-full min-w-0 flex-col gap-1" : "grid min-w-0 gap-3"
       }
     >
-      {/* A slide box has a fixed height, so a wrapped title or source line would push the plot
-          out of it; the title keeps one line there and the source line two (czjw.182). */}
+      {/* A small stored slide box has a fixed height, so a wrapped title or source line would push
+          the plot out of it; there the title keeps one line and the source line two (czjw.182). A
+          frame box shows both in full (`fullText`). */}
       <div
         id={titleId}
-        className={slide ? "truncate font-semibold" : "font-semibold"}
+        className={
+          props.titleHidden === true
+            ? "sr-only"
+            : slide && props.fullText !== true
+              ? "truncate font-semibold"
+              : "font-semibold"
+        }
       >
         {props.title}
       </div>
@@ -709,7 +750,7 @@ export function Chart(props: ChartProps) {
       )}
       <figcaption
         className={
-          slide
+          slide && props.fullText !== true
             ? "line-clamp-2 text-xs text-muted-foreground"
             : "text-xs text-muted-foreground"
         }

@@ -1,14 +1,17 @@
+import type { ChartData } from "@genie/ui";
 import { describe, expect, it } from "vitest";
 
 import type { ElementKind } from "../contract.ts";
 import { BLUE_THEME, DARK_THEME } from "./__fixtures__/themes.ts";
 import {
   CANVAS,
+  comparisonMax,
   contrastLimit,
   elementBoxes,
   figureBoxes,
   figuresDate,
   fitFontPx,
+  isSecondVisual,
   listItemBoxes,
   placedBoxes,
   regionOf,
@@ -310,6 +313,23 @@ describe("slideFrame", () => {
         { index: 3, box: { x: 687, y: 115, w: 225, h: 292 } },
       ],
     ],
+    // P14-12 deviation: a 5-column table needs 437 px, so it takes the content side and its partner the panel body slot (T4-FIT).
+    [
+      "a figure beside a table",
+      ["title", "figure", "table"],
+      [
+        { index: 1, box: { x: 43, y: 265, w: 298, h: 217 } },
+        { index: 2, box: { x: 432, y: 58, w: 480, h: 405 } },
+      ],
+    ],
+    [
+      "a chart beside a table",
+      ["title", "chart", "table"],
+      [
+        { index: 1, box: { x: 43, y: 265, w: 298, h: 217 } },
+        { index: 2, box: { x: 432, y: 58, w: 480, h: 405 } },
+      ],
+    ],
   ] as const)("lays out the body of %s", (_, kinds, body) => {
     expect(slideFrame(kinds, false).body).toEqual(body);
   });
@@ -539,5 +559,70 @@ describe("figureBoxes", () => {
       label: { x: 432, y: 278, w: 225, h: 20 },
       caption: { x: 432, y: 302, w: 225, h: 17 },
     });
+  });
+});
+
+/** A bar chart of one value column; `top` is its largest value. */
+const barOf = (
+  column: ChartData["columns"][number],
+  top: number
+): ChartData => ({
+  kind: "bar",
+  title: column.label,
+  x: { key: "month", label: "Month", type: "date", bucket: "month" },
+  columns: [column],
+  rows: [
+    { month: "2026-09-01", [column.key]: top / 2 },
+    { month: "2026-10-01", [column.key]: top },
+  ],
+  datasets: ["placeholder.records"],
+  readAt: "2026-10-27T09:00:00.000Z",
+  truncated: false,
+});
+
+const sgd = {
+  key: "total",
+  label: "Invoiced",
+  type: "money",
+  currency: "SGD",
+} as const;
+
+describe("comparisonMax", () => {
+  // P14-45: one scale only for one measure; a sum beside a count, or two currencies, would flatten one chart.
+  it.each([
+    ["two SGD sums", sgd, 600, 600],
+    [
+      "an SGD sum and a count",
+      { key: "count", label: "Invoices issued", type: "number" } as const,
+      40,
+      undefined,
+    ],
+    ["an SGD sum and a EUR sum", { ...sgd, currency: "EUR" }, 600, undefined],
+  ] as const)("compares %s", (_, column, top, max) => {
+    expect(
+      comparisonMax([
+        { kind: "title" },
+        { kind: "chart", data: barOf(sgd, 200) },
+        { kind: "chart", data: barOf(column, top) },
+      ])
+    ).toBe(max);
+  });
+});
+
+describe("isSecondVisual", () => {
+  it("counts only the charts the person can read", () => {
+    const shown = { kind: "chart", data: barOf(sgd, 200) } as const;
+
+    const elements = [
+      { kind: "title" },
+      { kind: "chart" },
+      shown,
+      shown,
+    ] as const;
+
+    expect([2, 3].map((index) => isSecondVisual(elements, index))).toEqual([
+      false,
+      true,
+    ]);
   });
 });

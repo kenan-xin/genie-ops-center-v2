@@ -2,13 +2,23 @@
 
 import { foregroundFor } from "@genie/core/features/branding";
 import { Chart } from "@genie/ui/chart";
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { ElementStyle, SlideTheme } from "../contract.ts";
 import { type ImageLinks, keepImageLinks } from "./image-links.ts";
+import { SlideFigure } from "./slide-figure.tsx";
 import {
   type Box,
+  boxVars,
   CANVAS,
+  chartVars,
+  cn,
+  comparisonMax,
+  type CssVars,
+  FRAME_PADDING,
+  isSecondVisual,
+  PLACED,
+  placed,
   defaultTextPx,
   drawnStyle,
   figuresDate,
@@ -19,6 +29,7 @@ import {
   regionOf,
   slideFrame,
   textGround,
+  visualGround,
 } from "./slide-layout.ts";
 import type { ShownElement, ShownSlide } from "./views.ts";
 
@@ -35,15 +46,6 @@ export type SlideCanvasProps = {
   readonly images: ImageLinks;
 };
 
-/** A style object of CSS custom properties only; the classes read them. */
-type CssVars = CSSProperties & {
-  readonly [key: `--${string}`]: string | number;
-};
-
-/** Joins the classes that apply; the lists here set no two classes of one property. */
-const cn = (...classes: readonly (string | false | undefined)[]) =>
-  classes.filter(Boolean).join(" ");
-
 const WEIGHT_CLASS = {
   regular: "font-normal",
   semibold: "font-semibold",
@@ -56,27 +58,13 @@ const ALIGN_CLASS = {
   right: "text-right",
 } as const;
 
-/** The classes that place a box from its `--box-*` variables. */
-const PLACED = "absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w)";
-
-/** The classes and variables of a frame part at its box; spread like `boxProps`. */
-const placed = (box: Box, className: string) => ({
-  style: boxVars(box),
-  className: cn(PLACED, className),
-});
-
-const boxVars = (box: Box): CssVars => ({
-  "--box-x": `${box.x}px`,
-  "--box-y": `${box.y}px`,
-  "--box-w": `${box.w}px`,
-  "--box-h": `${box.h}px`,
-});
-
 /** The classes and variables of one element box: its place, its frame, and a text's color and size. */
 function boxProps(
   box: Box,
   style: ElementStyle | undefined,
-  text: { readonly color: string; readonly px: number } | undefined
+  text: { readonly color: string; readonly px: number } | undefined,
+  /** Variables for the element's content, such as a second chart's series color. */
+  extra?: CssVars
 ) {
   const border =
     style?.border !== undefined && style.border.width > 0
@@ -97,6 +85,7 @@ function boxProps(
     ...(text === undefined
       ? undefined
       : { "--el-color": text.color, "--el-size": `${text.px}px` }),
+    ...extra,
   };
 
   return {
@@ -179,14 +168,26 @@ function PrioritiesList(props: {
   );
 }
 
+/** A figure, chart or table's place among the slide's visuals. */
+type VisualPlace = {
+  /** The box inside its frame padding, at the origin. */
+  readonly inner: Box;
+  readonly paired: boolean;
+  readonly second: boolean;
+  readonly valueMax: number | undefined;
+  readonly titleHidden: boolean;
+  readonly fullText: boolean;
+};
+
 function ElementBody(props: {
   readonly element: ShownElement;
   readonly timeZone: string;
   readonly images: ImageLinks;
   /** The Priorities list's box and look; null for every other element. */
   readonly priorities: { readonly box: Box; readonly solid: boolean } | null;
+  readonly visual: VisualPlace;
 }) {
-  const { element, timeZone, images, priorities } = props;
+  const { element, timeZone, images, priorities, visual } = props;
 
   switch (element.kind) {
     case "title":
@@ -254,7 +255,28 @@ function ElementBody(props: {
         );
       }
 
-      return <Chart {...element.data} timeZone={timeZone} slide />;
+      if (element.kind === "figure") {
+        return (
+          <SlideFigure
+            data={element.data}
+            box={visual.inner}
+            paired={visual.paired}
+            second={visual.second}
+            timeZone={timeZone}
+          />
+        );
+      }
+
+      return (
+        <Chart
+          {...element.data}
+          timeZone={timeZone}
+          slide
+          valueMax={visual.valueMax}
+          titleHidden={visual.titleHidden}
+          fullText={visual.fullText}
+        />
+      );
   }
 }
 
@@ -318,9 +340,13 @@ export function SlideCanvas(props: SlideCanvasProps) {
       element.kind === "table"
   );
 
-  const hasVisual = slide.elements.some(
+  const visualCount = slide.elements.filter(
     ({ kind }) => kind !== "title" && kind !== "text" && kind !== "bullets"
-  );
+  ).length;
+
+  const hasVisual = visualCount > 0;
+
+  const valueMax = comparisonMax(slide.elements);
 
   /** A text's color on what draws behind it, as the save checks it, and its size in its box. */
   const textLook = (index: number, box: Box, priorities: boolean) => {
@@ -384,6 +410,7 @@ export function SlideCanvas(props: SlideCanvasProps) {
     "--slide-accent": theme.accent,
     "--slide-accent-text": theme.accentText,
     "--slide-rule": theme.rule,
+    "--slide-number-weight": theme.weight === "bold" ? 700 : 400,
     "--slide-font": theme.fontFace,
     "--slide-footer":
       slide.background === undefined
@@ -463,19 +490,34 @@ export function SlideCanvas(props: SlideCanvasProps) {
             !hasVisual &&
             regionOf(box, frame.name) === "content";
 
+          const drawn = drawnStyle(
+            element.kind,
+            element.style,
+            visualGround(box, frame.name, theme, slide.background),
+            theme.background
+          );
+
+          const border =
+            drawn?.border !== undefined && drawn.border.width > 0
+              ? drawn.border.width
+              : 0;
+
+          const inset =
+            drawn?.fill !== undefined || border > 0
+              ? FRAME_PADDING + border
+              : 0;
+
+          const second = isSecondVisual(slide.elements, index);
+
           return (
             <div
               key={index}
               data-slide-box={element.kind}
               {...boxProps(
                 box,
-                drawnStyle(
-                  element.kind,
-                  element.style,
-                  slide.background,
-                  theme.background
-                ),
-                textLook(index, box, priorities)
+                drawn,
+                textLook(index, box, priorities),
+                chartVars(theme, element.kind === "chart" && second)
               )}
             >
               <ElementBody
@@ -483,6 +525,20 @@ export function SlideCanvas(props: SlideCanvasProps) {
                 timeZone={timeZone}
                 images={keptImages}
                 priorities={priorities ? { box, solid } : null}
+                visual={{
+                  inner: {
+                    x: 0,
+                    y: 0,
+                    w: box.w - 2 * inset,
+                    h: box.h - 2 * inset,
+                  },
+                  paired: visualCount === 2,
+                  second: element.kind === "figure" && second,
+                  valueMax,
+                  titleHidden: visualCount === 1 && element.kind === "chart",
+                  // A frame box has room for the full title and source line; a stored box can be 160 x 96 (P14-25).
+                  fullText: element.box === undefined,
+                }}
               />
             </div>
           );

@@ -989,3 +989,75 @@ export const SlideTableOnPhone: Story = {
     await noPageScroll();
   },
 };
+
+/** The text of the highest y-axis label of one chart, or null before it draws. */
+function topTick(root: Element): string | null {
+  const ticks = [
+    ...root.querySelectorAll(
+      ".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value"
+    ),
+  ];
+
+  if (ticks.length === 0) return null;
+
+  return ticks.reduce((top, tick) =>
+    tick.getBoundingClientRect().top < top.getBoundingClientRect().top
+      ? tick
+      : top
+  ).textContent;
+}
+
+// P14-17: two comparison charts take one value maximum, so their top labels match.
+export const ValueMaxSharesTheScale: Story = {
+  name: "Value max shares the scale",
+  args: { ...sgdSlideChart, valueMax: 58_200 },
+  globals: desktop,
+  render: (args) => (
+    <div style={{ display: "flex", gap: 30, width: 480, height: 292 }}>
+      <div style={{ width: 225 }}>
+        <Chart {...args} />
+      </div>
+      <div style={{ width: 225 }}>
+        <Chart
+          {...args}
+          title="Collected by month"
+          rows={args.rows.map((row) => ({
+            ...row,
+            Invoiced: Number(row["Invoiced"]) / 4,
+          }))}
+        />
+      </div>
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const tops = await waitFor(() => {
+      const found = [...canvasElement.querySelectorAll("figure")].map(topTick);
+
+      expect(found).toHaveLength(2);
+
+      for (const top of found) expect(top).not.toBeNull();
+
+      return found;
+    });
+
+    await expect(tops[1]).toBe(tops[0]);
+  },
+};
+
+// P14-11: a hidden title shows no text and stays the figure's accessible name.
+export const HiddenTitleKeepsTheName: Story = {
+  name: "Hidden title keeps the name",
+  args: { ...slideChart, titleHidden: true },
+  globals: desktop,
+  render: slideFrame,
+  play: async ({ canvas }) => {
+    const figure = canvas.getByRole("figure", {
+      name: "Invoiced and collected",
+    });
+
+    const title = figure.querySelector<HTMLElement>(":scope > div")!;
+
+    await expect(title).toHaveTextContent("Invoiced and collected");
+    await expect(title.getBoundingClientRect().width).toBeLessThanOrEqual(1);
+  },
+};

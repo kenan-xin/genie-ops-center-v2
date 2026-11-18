@@ -1,4 +1,6 @@
 import { contrastRatio } from "@genie/core/features/branding";
+import type { ChartData } from "@genie/ui";
+import type { CSSProperties } from "react";
 
 import type { Placement } from "../content.ts";
 import {
@@ -22,6 +24,32 @@ export type Box = {
   readonly w: number;
   readonly h: number;
 };
+
+/** A style object of CSS custom properties only; the classes read them. */
+export type CssVars = CSSProperties & {
+  readonly [key: `--${string}`]: string | number;
+};
+
+/** Joins the classes that apply; the lists here set no two classes of one property. */
+export const cn = (...classes: readonly (string | false | undefined)[]) =>
+  classes.filter(Boolean).join(" ");
+
+/** The classes that place a box from its `--box-*` variables. */
+export const PLACED =
+  "absolute top-(--box-y) left-(--box-x) h-(--box-h) w-(--box-w)";
+
+export const boxVars = (box: Box): CssVars => ({
+  "--box-x": `${box.x}px`,
+  "--box-y": `${box.y}px`,
+  "--box-w": `${box.w}px`,
+  "--box-h": `${box.h}px`,
+});
+
+/** The classes and variables of a frame part at its box; spread like `boxProps`. */
+export const placed = (box: Box, className: string) => ({
+  style: boxVars(box),
+  className: cn(PLACED, className),
+});
 
 export type SlideBoxes = {
   readonly title: Box;
@@ -330,11 +358,15 @@ function splitFrame(kinds: readonly ElementKind[]): SlideFrame {
 
     if (!VISUAL_KINDS.has(kind)) continue;
 
-    if (visuals === 1) {
+    if (visuals === 1 || kind === "table") {
       body.push({
         index,
-        box: kind === "chart" ? SPLIT.chart : SPLIT.visual,
+        box: visuals === 1 && kind === "chart" ? SPLIT.chart : SPLIT.visual,
       });
+    } else if (kinds.includes("table")) {
+      // A 5-column table needs about 437 px, so it keeps the content side and its partner takes
+      // the panel body slot (T4-FIT, README Limits "a table takes the wide column"; a P14-12 deviation).
+      body.push({ index, box: SPLIT.panelBody });
     } else {
       const pair = bothCharts ? SPLIT.pairChart : SPLIT.pairVisual;
 
@@ -438,7 +470,7 @@ export function textGround(
   const box =
     element?.kind === "title"
       ? boxes.title
-      : boxes.body.find((placed) => placed.index === index)?.box;
+      : boxes.body.find((entry) => entry.index === index)?.box;
 
   const inPanel = box !== undefined && regionOf(box, boxes.name) === "panel";
 
@@ -611,6 +643,81 @@ export function drawnStyle(
   }
 
   return { ...style, fill: themeBackground };
+}
+
+/** What a figure, chart or table draws on: the panel on a solid layout's panel, so `drawnStyle` gives it a card; else the slide background (P13-6). */
+export function visualGround(
+  box: Box,
+  frame: FrameName,
+  theme: SlideTheme,
+  background: string | undefined
+): string | undefined {
+  return regionOf(box, frame) === "panel" && theme.layout === "solid"
+    ? theme.panel
+    : background;
+}
+
+/** A slide element as the visual helpers read it: a hidden data element comes without `data`. */
+type SlideVisual = {
+  readonly kind: ElementKind;
+  readonly data?: ChartData | undefined;
+};
+
+/** The second shown figure or chart of its kind takes the second color (prototype `.two`, comparison `a`). */
+export function isSecondVisual(
+  elements: readonly SlideVisual[],
+  index: number
+): boolean {
+  const element = elements[index];
+
+  return (
+    element?.data !== undefined &&
+    elements
+      .slice(0, index)
+      .filter(({ kind, data }) => kind === element.kind && data !== undefined)
+      .length === 1
+  );
+}
+
+const CARTESIAN: ReadonlySet<string> = new Set(["bar", "line", "area"]);
+
+/** The value-axis top two comparison charts of one measure share, or undefined when each keeps its own (P14-17, P14-45). */
+export function comparisonMax(
+  elements: readonly SlideVisual[]
+): number | undefined {
+  const plotted = elements.flatMap(({ kind, data }) =>
+    kind === "chart" && data !== undefined && CARTESIAN.has(data.kind)
+      ? [data]
+      : []
+  );
+
+  // One measure only: a sum beside a count, or two currencies, would flatten one chart (P14-45).
+  const measures = new Set(
+    plotted.flatMap(({ columns }) =>
+      columns.map(({ type, currency }) => `${type} ${currency ?? ""}`)
+    )
+  );
+
+  if (plotted.length !== 2 || measures.size !== 1) return undefined;
+
+  const values = plotted.flatMap(({ rows, columns }) =>
+    rows.flatMap((row) => columns.map((column) => Number(row[column.key] ?? 0)))
+  );
+
+  // A negative value needs the axis below 0, so those charts keep their own scales.
+  return Math.min(...values) >= 0 && Math.max(...values) > 0
+    ? Math.max(...values)
+    : undefined;
+}
+
+/** The series colors of a chart box: the second comparison chart swaps the accent and the neutral, so it leads with the neutral and a second series stays apart. */
+export function chartVars(
+  theme: SlideTheme,
+  second: boolean
+): CssVars | undefined {
+  return second
+    ? { "--chart-1": theme.neutral, "--chart-2": theme.accent }
+    : undefined;
 }
 
 type PaletteSlide = {

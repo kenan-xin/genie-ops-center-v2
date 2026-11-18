@@ -12,7 +12,9 @@ import {
   tableWithVisualSlide,
   textOnlySlide,
   textWithChartSlide,
+  textWithTableSlide,
   titleOnlySlide,
+  twoFiguresSlide,
 } from "./__fixtures__/decks.ts";
 import {
   BLUE_THEME,
@@ -22,7 +24,7 @@ import {
 } from "./__fixtures__/themes.ts";
 import { SlideCanvas } from "./slide-canvas.tsx";
 import type { Box } from "./slide-layout.ts";
-import type { ShownSlide } from "./views.ts";
+import type { ShownElement, ShownSlide } from "./views.ts";
 
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
@@ -110,15 +112,6 @@ async function noOverflow(canvasElement: HTMLElement) {
   }
 
   await expect(failures).toEqual([]);
-}
-
-/** The number of line boxes a text node draws; a wrapped KPI value has more than one. */
-function lineCount(element: HTMLElement): number {
-  const range = document.createRange();
-
-  range.selectNodeContents(element);
-
-  return range.getClientRects().length;
 }
 
 type Play = NonNullable<Story["play"]>;
@@ -602,33 +595,35 @@ export const TextOnlyOnPhone: Story = {
 };
 
 // I1: a six-figure KPI stays on one line in the 225 px box of two visuals (plan Task 2 split table).
-const largeKpiPlay: Story["play"] = async ({ canvas, canvasElement }) => {
+const largeKpiPlay: Story["play"] = async ({ canvasElement }) => {
   await noOverflow(canvasElement);
 
-  const box = canvasElement.querySelector<HTMLElement>(
-    '[data-slide-box="figure"]'
+  const box = part(canvasElement, '[data-slide-box="figure"]')!;
+
+  await expect(box.clientWidth).toBe(225);
+
+  const number = box.querySelector<HTMLElement>("[data-figure-number]")!;
+
+  await expect(number).toHaveTextContent("SGD 141,200.00");
+
+  // The digits' own line boxes: a wrapped value has more than one.
+  const digits = document.createRange();
+
+  digits.selectNodeContents(number.lastChild!);
+
+  await expect(digits.getClientRects().length).toBe(1);
+
+  // 7.4: the label sits right under the value (figureBoxes: a 10 px gap). Canvas px, so the
+  // check holds at the phone's scale too.
+  const label = canvasBoxOf(
+    canvasElement,
+    box.querySelector("[data-figure-label]")!
   );
 
-  await expect(box?.clientWidth).toBe(225);
+  const value = canvasBoxOf(canvasElement, number);
+  const gap = label.y - (value.y + value.h);
 
-  const value = canvas.getByText("SGD 141,200.00");
-
-  await expect(lineCount(value)).toBe(1);
-
-  // 7.4: the value sits right under its label, never centred far below it. Canvas px, so the
-  // check holds at the phone's scale too.
-  const label = box!.querySelector<HTMLElement>("figure > div")!;
-  const scale = box!.getBoundingClientRect().width / box!.clientWidth;
-
-  // The text's own line, not its element: a full-height element centres the text inside it.
-  const text = document.createRange();
-
-  text.selectNodeContents(value);
-
-  const gap =
-    (text.getBoundingClientRect().top - label.getBoundingClientRect().bottom) /
-    scale;
-
+  await expect(gap).toBeGreaterThanOrEqual(0);
   await expect(gap).toBeLessThanOrEqual(16);
 };
 
@@ -646,15 +641,21 @@ export const LargeKpiOnPhone: Story = {
   play: largeKpiPlay,
 };
 
-// P14-12: a table beside a visual takes one of two equal 225 px columns.
+// P14-12 deviation: a 5-column table needs about 437 px, so beside a visual it takes the content
+// side, and the visual takes the panel body slot on a white card (T4-FIT, README Limits).
 const tableWithVisualPlay: Story["play"] = async ({ canvasElement }) => {
   await noOverflow(canvasElement);
 
-  const box = canvasElement.querySelector<HTMLElement>(
-    '[data-slide-box="table"]'
-  );
+  const table = part(canvasElement, '[data-slide-box="table"]')!;
+  const figure = part(canvasElement, '[data-slide-box="figure"]')!;
+  const slot = canvasBoxOf(canvasElement, figure);
 
-  await expect(box?.clientWidth).toBe(225);
+  await expect(table.clientWidth).toBe(480);
+  await expect(slot.x).toBeCloseTo(43, 0);
+  await expect(slot.y).toBeCloseTo(265, 0);
+  await expect(getComputedStyle(figure).backgroundColor).toBe(
+    rgb(BLUE_THEME.background)
+  );
 };
 
 export const TableWithVisual: Story = {
@@ -944,5 +945,460 @@ export const SplitTextAndChartOnPhone: Story = {
   play: async (context) => {
     await splitPlay(BLUE_THEME)(context);
     await noPageScroll();
+  },
+};
+
+/** A fixture element with its frozen data: a figure, chart or table the person can read. */
+function dataElement(element: ShownElement | undefined) {
+  if (element === undefined || !("data" in element)) {
+    throw new Error("The fixture has no data element here.");
+  }
+
+  return element;
+}
+
+const kpi = dataElement(bulletsWithTwoVisualsSlide.elements[2]);
+
+const bar = dataElement(textWithChartSlide.elements[2]);
+
+const table = dataElement(textWithTableSlide.elements[2]);
+
+const insight = textWithChartSlide.elements[1]!;
+
+/** Big number: a text in the panel and one figure on the content side. */
+const bigNumberSlide: ShownSlide = {
+  id: "t2",
+  elements: [
+    { kind: "title", text: "Invoiced sales reached a new high this quarter" },
+    insight,
+    kpi,
+  ],
+};
+
+const twoFiguresStorySlide: ShownSlide = {
+  id: "t4",
+  elements: [
+    { kind: "title", text: "Invoiced sales and collected cash both rose" },
+    insight,
+    kpi,
+    dataElement(twoFiguresSlide.elements[2]),
+  ],
+};
+
+/** Comparison: two bar charts whose own maxima differ about threefold. */
+const comparisonSlide: ShownSlide = {
+  id: "t5",
+  elements: [
+    { kind: "title", text: "Collections trail invoiced sales every month" },
+    insight,
+    bar,
+    {
+      ...bar,
+      data: {
+        ...bar.data,
+        title: "Collected by month",
+        rows: bar.data.rows.map((row) =>
+          Object.assign({}, row, { total: Number(row["total"]) / 3 })
+        ),
+      },
+    },
+  ],
+};
+
+/** The comparison with a second series on the second chart. */
+const comparisonTwoSeriesSlide: ShownSlide = {
+  ...comparisonSlide,
+  elements: comparisonSlide.elements.map((element, at) =>
+    at === 3 && "data" in element
+      ? {
+          ...element,
+          data: {
+            ...element.data,
+            columns: [
+              ...element.data.columns,
+              {
+                key: "paid",
+                label: "Paid on time",
+                type: "money",
+                currency: "SGD",
+              },
+            ],
+            rows: element.data.rows.map((row) =>
+              Object.assign({}, row, { paid: Number(row["total"]) / 2 })
+            ),
+          },
+        }
+      : element
+  ),
+};
+
+const HARBOR = "Harbor Foods, average days from invoice to payment by month";
+
+const ABC = "ABC Trading, average days from invoice to payment by month";
+
+/** The comparison at its longest: long titles, two sources and a row cap in the 225 px pair. */
+const comparisonLongSlide: ShownSlide = {
+  ...comparisonSlide,
+  elements: comparisonSlide.elements.map((element, at) =>
+    "data" in element
+      ? {
+          ...element,
+          data: {
+            ...element.data,
+            title: at === 2 ? HARBOR : ABC,
+            sources: ["Invoices and payments", "Customer accounts"],
+            truncated: true,
+          },
+        }
+      : element
+  ),
+};
+
+const tableWithNoteSlide: ShownSlide = {
+  id: "t6",
+  elements: [
+    { kind: "title", text: "Five customers paid late this quarter" },
+    {
+      kind: "text",
+      text: "Most late payments settled within two weeks of the due date.",
+    },
+    { ...table, data: { ...table.data, rows: table.data.rows.slice(0, 5) } },
+  ],
+};
+
+const twelveRowsSlide: ShownSlide = {
+  id: "t9",
+  elements: [{ kind: "title", text: "Twelve customers paid late" }, table],
+};
+
+const noValueSlide: ShownSlide = {
+  ...bigNumberSlide,
+  elements: [
+    bigNumberSlide.elements[0]!,
+    insight,
+    { ...kpi, data: { ...kpi.data, rows: [{ total: null }] } },
+  ],
+};
+
+/** The text of the highest y-axis label of one chart, or null before it draws. */
+function topTick(root: Element): string | null {
+  const ticks = [
+    ...root.querySelectorAll(
+      ".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value"
+    ),
+  ];
+
+  if (ticks.length === 0) return null;
+
+  return ticks.reduce((top, tick) =>
+    tick.getBoundingClientRect().top < top.getBoundingClientRect().top
+      ? tick
+      : top
+  ).textContent;
+}
+
+/** P14-16: the number in the accent at the theme weight, "SGD" as a raised small run, and its source line. */
+const bigNumberPlay =
+  (theme: SlideTheme): Play =>
+  async ({ canvas, canvasElement }) => {
+    const number = part(canvasElement, "[data-figure-number]")!;
+    const code = number.querySelector("span")!;
+    const style = getComputedStyle(number);
+    const digits = document.createRange();
+
+    digits.selectNodeContents(number.lastChild!);
+
+    const drawn = digits.getBoundingClientRect();
+
+    await expect(style.color).toBe(rgb(theme.accent));
+    await expect(style.fontWeight).toBe(
+      theme.weight === "bold" ? "700" : "400"
+    );
+    await expect(style.fontVariantNumeric).toBe("proportional-nums");
+    await expect(code.textContent?.trim()).toBe("SGD");
+    await expect(
+      Number.parseFloat(getComputedStyle(code).fontSize)
+    ).toBeCloseTo(Number.parseFloat(style.fontSize) * 0.36, 0);
+    await expect(code.getBoundingClientRect().bottom).toBeLessThan(
+      drawn.bottom - 0.3 * drawn.height
+    );
+    await expect(
+      canvas.getByRole("figure", { name: "Invoiced sales" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByText(/^Source: placeholder\.records · as of/)
+    ).toBeVisible();
+    await noOverflow(canvasElement);
+  };
+
+/** P14-17: one scale (the same top label), the accent first and the neutral second, both titles shown (P14-11). */
+const comparisonPlay =
+  (theme: SlideTheme): Play =>
+  async ({ canvasElement }) => {
+    const boxes = [
+      ...canvasElement.querySelectorAll<HTMLElement>(
+        '[data-slide-box="chart"]'
+      ),
+    ];
+
+    await expect(boxes).toHaveLength(2);
+
+    const tops = await waitFor(() => {
+      const found = boxes.map(topTick);
+
+      for (const top of found) expect(top).not.toBeNull();
+
+      return found;
+    });
+
+    await expect(tops[1]).toBe(tops[0]);
+
+    await expect(
+      boxes.map(
+        (box) =>
+          box
+            .querySelector<HTMLElement>("figure > div")!
+            .getBoundingClientRect().width > 1
+      )
+    ).toEqual([true, true]);
+
+    await expect(
+      boxes.map(
+        (box) =>
+          getComputedStyle(box.querySelector(".recharts-rectangle")!).fill
+      )
+    ).toEqual([rgb(theme.accent), rgb(theme.neutral)]);
+    await noOverflow(canvasElement);
+  };
+
+export const BigNumber: Story = {
+  name: "Big number",
+  args: { ...canvasProps, slide: bigNumberSlide },
+  globals: desktop,
+  play: bigNumberPlay(BLUE_THEME),
+};
+
+export const BigNumberGreen: Story = {
+  name: "Big number in a green brand",
+  args: { ...canvasProps, theme: GREEN_THEME, slide: bigNumberSlide },
+  globals: desktop,
+  play: bigNumberPlay(GREEN_THEME),
+};
+
+export const BigNumberViolet: Story = {
+  name: "Big number in a violet brand",
+  args: { ...canvasProps, theme: VIOLET_THEME, slide: bigNumberSlide },
+  globals: desktop,
+  play: bigNumberPlay(VIOLET_THEME),
+};
+
+export const BigNumberDark: Story = {
+  name: "Big number, dark and minimal",
+  args: { ...canvasProps, theme: DARK_THEME, slide: bigNumberSlide },
+  globals: desktop,
+  play: bigNumberPlay(DARK_THEME),
+};
+
+export const BigNumberOnPhone: Story = {
+  name: "Big number on a phone",
+  args: { ...canvasProps, slide: bigNumberSlide },
+  globals: phone,
+  play: async (context) => {
+    await bigNumberPlay(BLUE_THEME)(context);
+    await noPageScroll();
+  },
+};
+
+// Two figures: each under a rule, the accent first; the second number in the text color and its
+// rule in the second rule color (prototype `.two`).
+export const TwoFigures: Story = {
+  name: "Two figures",
+  args: { ...canvasProps, slide: twoFiguresStorySlide },
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    const rules = [
+      ...canvasElement.querySelectorAll<HTMLElement>("[data-figure-rule]"),
+    ];
+
+    const numbers = [
+      ...canvasElement.querySelectorAll<HTMLElement>("[data-figure-number]"),
+    ];
+
+    await expect(
+      rules.map((rule) => getComputedStyle(rule).backgroundColor)
+    ).toEqual([rgb(BLUE_THEME.accent), rgb(BLUE_THEME.rule)]);
+    await expect(
+      numbers.map((number) => getComputedStyle(number).color)
+    ).toEqual([rgb(BLUE_THEME.accent), rgb(BLUE_THEME.text)]);
+    await noOverflow(canvasElement);
+  },
+};
+
+// P14-11: a slide with one chart hides the chart title, which stays the figure's name.
+export const ChartWithInsight: Story = {
+  name: "Chart with insight",
+  args: { ...canvasProps, slide: textWithChartSlide },
+  globals: desktop,
+  play: async ({ canvas, canvasElement }) => {
+    const figure = canvas.getByRole("figure", { name: "Invoiced by month" });
+    const title = figure.querySelector<HTMLElement>(":scope > div")!;
+
+    // Canvas px: the canvas is scaled, so a drawn 1 px box measures more on screen.
+    await expect(title.clientWidth).toBeLessThanOrEqual(1);
+    await noOverflow(canvasElement);
+  },
+};
+
+export const Comparison: Story = {
+  args: { ...canvasProps, slide: comparisonSlide },
+  globals: desktop,
+  play: comparisonPlay(BLUE_THEME),
+};
+
+export const ComparisonDark: Story = {
+  name: "Comparison, dark and minimal",
+  args: { ...canvasProps, theme: DARK_THEME, slide: comparisonSlide },
+  globals: desktop,
+  play: comparisonPlay(DARK_THEME),
+};
+
+export const ComparisonOnPhone: Story = {
+  name: "Comparison on a phone",
+  args: { ...canvasProps, slide: comparisonSlide },
+  globals: phone,
+  play: async (context) => {
+    await comparisonPlay(BLUE_THEME)(context);
+    await noPageScroll();
+  },
+};
+
+// Deferred findings of plan Task 1: in the 225 px pair, the full title and the full source line
+// show, "First 6 rows" included; the title stays the figure's name.
+export const ComparisonLongText: Story = {
+  name: "Comparison with long titles and sources",
+  args: { ...canvasProps, slide: comparisonLongSlide },
+  globals: desktop,
+  play: async ({ canvas, canvasElement }) => {
+    await noOverflow(canvasElement);
+
+    await Promise.all(
+      [HARBOR, ABC].map((name) =>
+        expect(canvas.getByRole("figure", { name })).toBeVisible()
+      )
+    );
+
+    const drawn = [
+      ...canvasElement.querySelectorAll<HTMLElement>(
+        '[data-slide-box="chart"]'
+      ),
+    ].map((box) => {
+      const title = box.querySelector<HTMLElement>("figure > div")!;
+      const caption = box.querySelector<HTMLElement>("figcaption")!;
+
+      return {
+        titleFits: title.scrollWidth <= title.clientWidth + 1,
+        caption: caption.textContent,
+        captionFits: caption.scrollHeight <= caption.clientHeight + 1,
+      };
+    });
+
+    const full = {
+      titleFits: true,
+      caption: expect.stringMatching(/ · First 6 rows$/),
+      captionFits: true,
+    };
+
+    await expect(drawn).toEqual([full, full]);
+  },
+};
+
+// The table: a header with no fill and a text-color rule under it, numbers right-aligned at 15 px,
+// the table in the vertical middle of its box (prototype `.tb`).
+export const TableWithNote: Story = {
+  name: "Table with note",
+  args: { ...canvasProps, slide: tableWithNoteSlide },
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    const drawn = part(canvasElement, '[data-slide-box="table"] table')!;
+    const header = getComputedStyle(drawn.querySelectorAll("th")[3]!);
+
+    const amount = getComputedStyle(
+      drawn.querySelector("tbody tr")!.querySelectorAll("td")[3]!
+    );
+
+    await expect(header.backgroundColor).toBe("rgba(0, 0, 0, 0)");
+    await expect(header.borderBottomColor).toBe(rgb(BLUE_THEME.text));
+    await expect(
+      Number.parseFloat(header.borderBottomWidth)
+    ).toBeGreaterThanOrEqual(1);
+    await expect(header.textAlign).toBe("right");
+    await expect(amount.textAlign).toBe("right");
+    await expect(amount.fontSize).toBe("15px");
+
+    const box = drawn.parentElement!.getBoundingClientRect();
+    const rect = drawn.getBoundingClientRect();
+
+    await expect(
+      Math.abs(rect.top - box.top - (box.bottom - rect.bottom))
+    ).toBeLessThanOrEqual(1);
+    await noOverflow(canvasElement);
+  },
+};
+
+// P14-12: 10 to 12 rows draw dense, so a 12 x 5 table fits its box.
+export const TableOfTwelveRows: Story = {
+  name: "Table of twelve rows",
+  args: { ...canvasProps, slide: twelveRowsSlide },
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    await noOverflow(canvasElement);
+    await expect(
+      canvasElement.querySelectorAll('[data-slide-box="table"] tbody tr')
+    ).toHaveLength(12);
+    await expect(
+      getComputedStyle(part(canvasElement, '[data-slide-box="table"] td')!)
+        .fontSize
+    ).toBe("13px");
+  },
+};
+
+// A figure whose sum read no records says "No data", as the chart's empty state did.
+export const FigureWithNoValue: Story = {
+  name: "Figure with no value",
+  args: { ...canvasProps, slide: noValueSlide },
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    const number = part(canvasElement, "[data-figure-number]")!;
+
+    await expect(number).toHaveTextContent("No data");
+    await expect(number.querySelector("span")).toBeNull();
+    await noOverflow(canvasElement);
+  },
+};
+
+// The second chart leads with the neutral, and its second series keeps a color of its own.
+export const ComparisonWithTwoSeries: Story = {
+  name: "Comparison whose second chart has two series",
+  args: { ...canvasProps, slide: comparisonTwoSeriesSlide },
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    const second = canvasElement.querySelectorAll<HTMLElement>(
+      '[data-slide-box="chart"]'
+    )[1]!;
+
+    const fills = await waitFor(() => {
+      const found = [...second.querySelectorAll(".recharts-rectangle")].map(
+        (rect) => getComputedStyle(rect).fill
+      );
+
+      expect(found.length).toBeGreaterThan(0);
+
+      return found;
+    });
+
+    await expect(new Set(fills)).toEqual(
+      new Set([rgb(BLUE_THEME.neutral), rgb(BLUE_THEME.accent)])
+    );
+    await noOverflow(canvasElement);
   },
 };
