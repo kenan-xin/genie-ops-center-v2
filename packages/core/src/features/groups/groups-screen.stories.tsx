@@ -43,7 +43,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Groups directory and inspector. A directory group's value and members come from the identity provider; only its name can be changed. Archiving keeps the assignments and pauses them.",
+          "The Groups directory and inspector. A directory group's name and members come from the identity provider. Only its name can be changed here. Archiving keeps the assignments and pauses them.",
       },
     },
     a11y: { test: "error" },
@@ -105,6 +105,19 @@ export const SyncColumnIsRelative: Story = {
         .getAllByRole("cell")
         .at(-1)
     ).toBeEmptyDOMElement();
+  },
+};
+
+/** C11-2, d8l5.71: a row is the name line over the description, near the design's 61 px. */
+export const RowsKeepTheDesignHeight: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const row = within(canvas.getByRole("table", { name: "Groups" })).getByRole(
+      "row",
+      { name: /Finance managers/ }
+    );
+
+    await expect(row.getBoundingClientRect().height).toBeLessThanOrEqual(68);
   },
 };
 

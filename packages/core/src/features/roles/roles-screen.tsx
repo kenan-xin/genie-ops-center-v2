@@ -33,6 +33,7 @@ import {
   Textarea,
   focusRing,
   minTouchHeight,
+  warningText,
 } from "@genie/ui";
 import { ArrowRightIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
@@ -209,7 +210,9 @@ function RoleFormBody(props: {
             </legend>
             {unavailable.map((entry) => (
               <div key={entry.key} className="flex items-start gap-2">
-                <WarningIcon className="size-4 text-destructive dark:text-destructive-on-dark" />
+                <WarningIcon
+                  className={`size-4 ${entry.reason === "module-disabled" ? warningText : "text-destructive dark:text-destructive-on-dark"}`}
+                />
                 <code className="text-xs text-foreground">{entry.key}</code>
                 <span className="text-xs text-muted-foreground">
                   {unavailableReasonLabel(entry.reason)}
@@ -661,7 +664,9 @@ function RoleDetailView(props: {
                     ) : null}
                     {entry.unavailable ? (
                       <>
-                        <span className="flex items-center gap-1.5 text-xs text-destructive dark:text-destructive-on-dark">
+                        <span
+                          className={`flex items-center gap-1.5 text-xs ${entry.unavailableReason === "module-disabled" ? warningText : "text-destructive dark:text-destructive-on-dark"}`}
+                        >
                           <WarningIcon className={`size-4 ${iconLead}`} />
                           <span>
                             Unavailable,{" "}

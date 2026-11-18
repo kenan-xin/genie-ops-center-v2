@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, userEvent, within } from "storybook/test";
+import { expect, within } from "storybook/test";
 
 import type { AccessPath } from "../../services/roles/effective-access.ts";
 import { FIXTURE_ROWS, fixturePath } from "./__fixtures__/access.ts";
@@ -76,7 +76,6 @@ const meta = {
       title: "No roles assigned",
       description: "This person can sign in but sees no modules.",
     },
-    onOpenGroup: fn(),
   } satisfies AssignmentsTableProps,
 } satisfies Meta<typeof AssignmentsTable>;
 
@@ -86,9 +85,12 @@ type Story = StoryObj<typeof meta>;
 
 /** T3-a, T3-c: a roles manager reads every fact, and the role opens Roles. */
 export const ForARolesManager: Story = {
-  args: { roleHref: (id) => `/admin/roles?selected=${id}` },
+  args: {
+    roleHref: (id) => `/admin/roles?selected=${id}`,
+    groupHref: (id) => `/admin/groups?selected=${id}`,
+  },
   globals: { viewport: { value: "desktop1440", isRotated: false } },
-  play: async ({ args, canvas }) => {
+  play: async ({ canvas }) => {
     const table = within(canvas.getByRole("table", { name: "Assigned roles" }));
 
     // The last header is the table's sr-only actions column.
@@ -128,10 +130,9 @@ export const ForARolesManager: Story = {
     });
 
     await expect(within(editor).getByText("(group)")).toBeVisible();
-    await userEvent.click(
-      within(editor).getByRole("button", { name: "Finance team" })
-    );
-    await expect(args.onOpenGroup).toHaveBeenCalledWith("g-finance");
+    await expect(
+      within(editor).getByRole("link", { name: "Finance team" })
+    ).toHaveAttribute("href", "/admin/groups?selected=g-finance");
   },
 };
 
@@ -143,6 +144,32 @@ export const ForAPeopleManager: Story = {
 
     await expect(table.queryAllByRole("link")).toHaveLength(0);
     await expect(table.getByText("Slides user")).toBeVisible();
+  },
+};
+
+/** C11-5: in the sheet's width "All records" keeps one line; Assigned via wraps instead. */
+export const ScopeStaysOnOneLine: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  decorators: [
+    (Story) => (
+      <div className="w-130">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Assigned roles" }));
+
+    // A wrapped value is two line boxes; one line each is the check.
+    const lineBoxes = table.getAllByText("All records").map((scope) => {
+      const range = document.createRange();
+
+      range.selectNodeContents(scope);
+
+      return range.getClientRects().length;
+    });
+
+    await expect(Math.max(...lineBoxes)).toBe(1);
   },
 };
 

@@ -199,7 +199,7 @@ export const AccessTabListsEveryPath: Story = {
     initialSelectedId: "u-viewer",
     access: adaAccess,
     roleHref: (roleId: string) => `/admin/roles?selected=${roleId}`,
-    onOpenGroup: fn(),
+    groupHref: (groupId: string) => `/admin/groups?selected=${groupId}`,
     onManageAccess: fn(),
   },
   play: async ({ args }) => {
@@ -223,8 +223,9 @@ export const AccessTabListsEveryPath: Story = {
       table.getAllByText("Assigned 1 Nov 2026 by Alex Morgan")
     ).toHaveLength(3);
 
-    await userEvent.click(table.getByRole("button", { name: "Finance team" }));
-    await expect(args.onOpenGroup).toHaveBeenCalledWith("g-finance");
+    await expect(
+      table.getByRole("link", { name: "Finance team" })
+    ).toHaveAttribute("href", "/admin/groups?selected=g-finance");
 
     await expect(
       sheet.getByRole("button", { name: "How access adds up" })
@@ -313,15 +314,20 @@ export const AccessTabsFitOnPhone: Story = {
   },
 };
 
-/** G21: a role held through a group links that group, and the link opens that group's id. */
+/** G21: a role held through a group links that group by its id. */
 export const ViaGroupOpensTheGroup: Story = {
-  args: { initialSelectedId: "u-viewer", access: adaAccess, onOpenGroup: fn() },
-  play: async ({ args }) => {
+  args: {
+    initialSelectedId: "u-viewer",
+    access: adaAccess,
+    groupHref: (groupId: string) => `/admin/groups?selected=${groupId}`,
+  },
+  play: async () => {
     const sheet = within(await screen.findByRole("dialog"));
 
     await userEvent.click(sheet.getByRole("tab", { name: /^Roles/ }));
-    await userEvent.click(sheet.getByRole("button", { name: "Finance team" }));
-    await expect(args.onOpenGroup).toHaveBeenCalledWith("g-finance");
+    await expect(
+      sheet.getByRole("link", { name: "Finance team" })
+    ).toHaveAttribute("href", "/admin/groups?selected=g-finance");
   },
 };
 

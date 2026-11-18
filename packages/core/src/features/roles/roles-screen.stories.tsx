@@ -1,4 +1,5 @@
 import type { ThemeName } from "@genie/ui";
+import { warningText } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -506,6 +507,15 @@ export const HoldersListed: Story = {
       within(list).getByRole("link", { name: "Ada Lovelace" })
     ).toHaveAttribute("href", "/admin/people?selected=p-ada");
     await expect(canvas.queryByRole("link", { name: /See all/ })).toBeNull();
+
+    // C11-1: the media centers on the name's line, so the detail follows the name, not the tile.
+    const adaName = within(ada ?? document.body).getByRole("link");
+    const adaDetail = within(ada ?? document.body).getByText("Person · Direct");
+
+    await expect(
+      adaDetail.getBoundingClientRect().top -
+        adaName.getBoundingClientRect().bottom
+    ).toBeLessThanOrEqual(6);
   },
 };
 
@@ -696,6 +706,11 @@ export const UnavailableKeyWarnsAndCanBeRemoved: Story = {
     await expect(
       canvas.getByText("Unavailable, this permission no longer exists")
     ).toBeInTheDocument();
+    // A permission that no longer exists stays an error.
+    await expect(
+      canvas.getByText("Unavailable, this permission no longer exists")
+        .parentElement
+    ).toHaveClass("text-destructive");
     await expect(canvas.getByText("retired:key")).toBeInTheDocument();
 
     await userEvent.click(canvas.getByRole("button", { name: "Remove" }));
@@ -910,6 +925,14 @@ export const DisabledModuleKeyShowsTheReasonAndRemoves: Story = {
     await expect(
       canvas.getByText("Unavailable, the module is off")
     ).toBeInTheDocument();
+
+    // C11-9: a module that is off is a warning, so the line is amber, not the error red.
+    const offLine = canvas.getByText(
+      "Unavailable, the module is off"
+    ).parentElement;
+
+    await expect(offLine).toHaveClass(...warningText.split(" "));
+    await expect(offLine).not.toHaveClass("text-destructive");
 
     await userEvent.click(canvas.getByRole("button", { name: "Remove" }));
 

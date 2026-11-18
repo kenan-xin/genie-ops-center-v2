@@ -590,11 +590,11 @@ export function DataTable<Row>({
                 className={`grid min-w-0 flex-1 gap-0.5 ${card.media === undefined ? "" : "grid-cols-leading-icon items-baseline gap-x-3"}`}
               >
                 {card.media === undefined ? null : (
-                  // The strut is one text line centered in the media's box. The grid lines its
-                  // baseline up with the title's first line, so the media centers on that line
-                  // however far a name wraps (6wz1.112, R07-1). At 0 px wide the icon check
-                  // reads no text line in it.
-                  <span className="flex items-center">
+                  // The strut is one text line tall (h-lh), so grid row 1 is the title's first
+                  // line, and the media centers on that line and overflows into the row padding
+                  // however far a name wraps (6wz1.112, R07-1, C11-1). At 0 px wide the icon
+                  // check reads no text line in it.
+                  <span className="flex h-lh items-center">
                     <span aria-hidden="true" className="w-0">
                       {"​"}
                     </span>

@@ -23,7 +23,7 @@ const meta = {
       story: { inline: false, iframeHeight: 640 },
       description: {
         component:
-          "Advanced access on the Grants tab (R-37c): the core roles, the Auditor role, a module role at one record, and custom roles for one recipient. Every change is staged with the unsaved mark, and one Save writes them all. Remove is disabled in place on a guarded Tenant administrator row (R-38). A refused save keeps every staged change.",
+          "Advanced access on the Grants tab (R-37c): extra access that the main list does not cover, such as admin portal rights, the Auditor role, a role on one record only and custom roles. Each change shows as not saved, and one Save keeps them all. Remove is turned off in place on a protected Tenant administrator row (R-38). A refused save keeps every change.",
       },
     },
     a11y: { test: "error" },

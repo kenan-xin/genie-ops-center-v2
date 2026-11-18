@@ -57,7 +57,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The confirmation that every Remove on the Grants tab opens before Save (R-37a). It names each direct role that goes and each path that keeps the module, so an administrator sees when a person still reaches it through a group.",
+          "The confirmation that every Remove on the Grants tab opens before Save (R-37a). It names each direct role that goes and each assignment that stays, so an administrator sees when a person keeps the module through a group.",
       },
     },
     a11y: { test: "error" },

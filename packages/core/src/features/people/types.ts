@@ -119,8 +119,8 @@ export type PeopleScreenProps = {
    * role in the sheet's assignments table is plain text.
    */
   readonly roleHref?: ((roleId: string) => string) | undefined;
-  /** Opens the group a role comes through, from the person's Access tab (mockup link). */
-  readonly onOpenGroup?: (groupId: string) => void;
+  /** The address of the group a role comes through, only for a viewer with core:groups:manage (C11-7); without it the group name is plain text. */
+  readonly groupHref?: ((groupId: string) => string) | undefined;
   /**
    * The selected person's access from the S2-19 read. The host passes it to every viewer through
    * the People read, read-only; undefined hides the Access tab (LK4, U5).

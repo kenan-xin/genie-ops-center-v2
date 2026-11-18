@@ -280,8 +280,8 @@ export function PersonInspector(props: {
   readonly onManageAccess?: (() => void) | undefined;
   /** A role's address on Roles, only for a viewer with core:roles:manage (R-37e). */
   readonly roleHref?: ((roleId: string) => string) | undefined;
-  /** Opens the group a role comes through; without it the group name is plain text. */
-  readonly onOpenGroup?: ((groupId: string) => void) | undefined;
+  /** The address of the group a role comes through, only for a viewer who manages groups; without it the group name is plain text. */
+  readonly groupHref?: ((groupId: string) => string) | undefined;
   /** The groups made here that Add to group offers; with the two callbacks only for a group manager (G16). */
   readonly localGroups?: readonly PersonGroupOption[] | undefined;
   readonly onAddToGroup?: ((groupId: string) => void) | undefined;
@@ -493,7 +493,7 @@ export function PersonInspector(props: {
                         "This person can sign in but sees no modules.",
                     }}
                     roleHref={props.roleHref}
-                    onOpenGroup={props.onOpenGroup}
+                    groupHref={props.groupHref}
                   />
                 </div>
               </TabsContent>
@@ -1248,7 +1248,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
               : () => props.onManageAccess?.(selected.id)
           }
           roleHref={props.roleHref}
-          onOpenGroup={props.onOpenGroup}
+          groupHref={props.groupHref}
           localGroups={props.localGroups}
           onAddToGroup={
             props.onAddToGroup === undefined

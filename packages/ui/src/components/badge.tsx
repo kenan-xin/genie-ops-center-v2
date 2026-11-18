@@ -7,6 +7,12 @@ import { cn } from "cn";
 // palette colors with no role, so this file is a `shadcn/no-raw-colors` exception.
 const neutral = "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300";
 
+/**
+ * tokens.md: amber is the warning status. For warning text outside a pill or a note, the pill's
+ * own text pair.
+ */
+export const warningText = "text-amber-800 dark:text-amber-300";
+
 const badgeVariants = cva(
   "inline-flex max-w-full items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold whitespace-nowrap [&>svg]:pointer-events-none [&>svg]:size-3",
   {
@@ -16,8 +22,7 @@ const badgeVariants = cva(
           "bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300",
         neutral,
         danger: "bg-red-50 text-red-700 dark:bg-red-900/40 dark:text-red-300",
-        warning:
-          "bg-amber-50 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+        warning: `bg-amber-50 dark:bg-amber-900/40 ${warningText}`,
         label: neutral,
         count: "bg-primary text-primary-foreground",
       },

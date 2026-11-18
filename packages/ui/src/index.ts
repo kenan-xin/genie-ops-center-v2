@@ -295,7 +295,7 @@ export type { SwitchFieldProps } from "./parts/switch-field.tsx";
 
 export { Avatar, AvatarFallback } from "./components/avatar.tsx";
 
-export { Badge } from "./components/badge.tsx";
+export { Badge, warningText } from "./components/badge.tsx";
 
 export { Bubble, BubbleContent } from "./components/bubble.tsx";
 

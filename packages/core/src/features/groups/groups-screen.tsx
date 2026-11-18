@@ -829,18 +829,21 @@ export function GroupsScreen(props: GroupsScreenProps) {
               {
                 id: "group",
                 header: "Group",
-                // The capture's row: the kind tile, then the name over the description.
+                // The capture's row: the kind tile centered on the name line, then the name over
+                // the description (C11-2).
                 cell: (group) => (
                   <span className="flex items-start gap-3">
-                    <IconTile>
-                      {group.source === "idp" ? (
-                        <DirectoryIcon />
-                      ) : (
-                        <LocalIcon />
-                      )}
-                    </IconTile>
+                    <span className="flex h-lh items-center">
+                      <IconTile>
+                        {group.source === "idp" ? (
+                          <DirectoryIcon />
+                        ) : (
+                          <LocalIcon />
+                        )}
+                      </IconTile>
+                    </span>
                     <span className="flex min-w-0 flex-col items-start">
-                      <span className="leading-10">
+                      <span>
                         <GroupName value={groupLabel(group)} />
                       </span>
                       <span className="text-xs font-normal text-muted-foreground wrap-anywhere">

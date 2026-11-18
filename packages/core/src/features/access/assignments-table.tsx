@@ -40,8 +40,8 @@ export type AssignmentsTableProps = InspectorAccess & {
   readonly empty: { readonly title: string; readonly description: string };
   /** A role's address, only for a viewer who may open Roles; without it the role is plain text (R-37e). */
   readonly roleHref?: ((roleId: string) => string) | undefined;
-  /** Opens the group of an Assigned via value; without it the group name is plain text. */
-  readonly onOpenGroup?: ((groupId: string) => void) | undefined;
+  /** The address of the group in an Assigned via value, only for a viewer who may open Groups; without it the group name is plain text (C11-7). */
+  readonly groupHref?: ((groupId: string) => string) | undefined;
 };
 
 const paused = (row: OverviewRow) =>
@@ -51,7 +51,8 @@ const paused = (row: OverviewRow) =>
     </StatusPill>
   ));
 
-const scope = (row: OverviewRow) => row.record ?? "All records";
+const scope = (row: OverviewRow) =>
+  row.record ?? <span className="whitespace-nowrap">All records</span>;
 
 /**
  * The standard assignments table of one person or group (person-access.prototype.html,
@@ -111,25 +112,27 @@ export function AssignmentsTable(props: AssignmentsTableProps): ReactNode {
   };
 
   // "Direct", or the group with its kind after it, as the prototype draws "Finance team (group)".
-  const via = (row: OverviewRow) =>
-    row.holder.id === props.recipient.id ? (
-      "Direct"
-    ) : (
+  const via = (row: OverviewRow) => {
+    if (row.holder.id === props.recipient.id) return "Direct";
+
+    const href = props.groupHref?.(row.holder.id);
+
+    return (
       <>
-        {props.onOpenGroup === undefined ? (
+        {href === undefined ? (
           row.holder.name
         ) : (
-          <button
-            type="button"
+          <PageLink
+            href={href}
             className={`font-medium text-foreground underline ${focusRing}`}
-            onClick={() => props.onOpenGroup?.(row.holder.id)}
           >
             {row.holder.name}
-          </button>
+          </PageLink>
         )}
         <span className="text-muted-foreground"> (group)</span>
       </>
     );
+  };
 
   const person = props.recipient.type === "user";
 

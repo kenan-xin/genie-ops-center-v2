@@ -25,7 +25,12 @@ const memberName = (project: string) => `E2E links member ${project}`;
 
 const readerName = (project: string) => `E2E links reader ${project}`;
 
-/** The roles of the reader and the member; idempotent, so every test runs it. */
+const readersGroup = (project: string) => `E2E links readers ${project}`;
+
+/**
+ * The roles of the reader and the member; idempotent, so every test runs it. The reader also holds
+ * a role through a local group, so a people manager meets an Assigned via group (C11-7).
+ */
 async function setUp(project: string): Promise<void> {
   const member = e2eAccessLinksMemberEmail(project);
   const reader = e2eReaderEmail("access-links", project);
@@ -40,6 +45,10 @@ async function setUp(project: string): Promise<void> {
       // Tests may run in parallel, so the member's one role is never removed and added again.
       `delete from role_assignment a using "user" u, role r where a.principal_type = 'user' and a.principal_id = u.id and u.email = '${member}' and r.id = a.role_id and (r.name <> 'E2E links limited' or a.scope_type is not null)`,
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'E2E links limited' and u.email = '${member}' and not exists (select 1 from role_assignment a where a.role_id = r.id and a.principal_type = 'user' and a.principal_id = u.id)`,
+      "insert into role (name, permissions, is_system) values ('E2E links via group', array['core:settings:manage'], false) on conflict (name) do nothing",
+      `insert into "group" (id, name, source) values (md5('${readersGroup(project)}')::uuid, '${readersGroup(project)}', 'local') on conflict (id) do nothing`,
+      `insert into group_member (group_id, user_id, source) select md5('${readersGroup(project)}')::uuid, u.id, 'local' from "user" u where u.email = '${reader}' on conflict do nothing`,
+      `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'group', md5('${readersGroup(project)}')::uuid::text from role r where r.name = 'E2E links via group' and not exists (select 1 from role_assignment a where a.role_id = r.id and a.principal_type = 'group' and a.principal_id = md5('${readersGroup(project)}')::uuid::text)`,
     ].join("; ")
   );
 }
@@ -375,6 +384,11 @@ test("a people manager reads a person's access read-only", async ({
   await expect(
     otherRoles.getByText("E2E links settings", { exact: true })
   ).toBeVisible();
+  // C11-7: a people manager cannot open Groups, so the group a role comes through is plain text.
+  await expect(otherRoles).toContainText(`${readersGroup(project)} (group)`);
+  await expect(
+    otherRoles.getByRole("button", { name: readersGroup(project) })
+  ).toHaveCount(0);
   await expect(otherRoles.getByRole("link")).toHaveCount(0);
   await expectNoAxeViolations(page, "Person sheet, Roles tab, view only");
 

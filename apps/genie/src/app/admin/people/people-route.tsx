@@ -198,8 +198,10 @@ export function PeopleRoute(props: {
               )
           : undefined
       }
-      onOpenGroup={(groupId) =>
-        router.push(`/admin/groups?selected=${encodeURIComponent(groupId)}`)
+      groupHref={
+        canManageGroups
+          ? (groupId) => `/admin/groups?selected=${encodeURIComponent(groupId)}`
+          : undefined
       }
       access={access}
       onManageAccess={
