@@ -48,7 +48,10 @@ export const ANALYTICS_HANDOFF_MESSAGE =
 
 export const ANALYTICS_HANDOFF_TITLE = "Receivables watch";
 
-/** The three panels that `dashboard-build-3` to `-5` add, one per call, in order. */
+/**
+ * The three panels that `dashboard-build-3` to `-5` add, one per call, in order. Those three and
+ * `dashboard-build-6` are synthetic: each change call carries `progress` 1 to 3 of 3 (P15-23).
+ */
 export const HANDOFF_PANEL_TITLES = [
   "Unallocated payments",
   "Monthly collections by currency",

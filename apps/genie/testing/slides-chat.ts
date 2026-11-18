@@ -20,7 +20,10 @@ export const SLIDES_CHAT_KEYS = [
 export const SLIDES_CHAT_MESSAGE =
   "Create five slides: monthly sales, collections, overdue customers, payment behaviour and collection priorities.";
 
-/** The deck that `slides-handoff-2.json` names and `slides-build-3` to `-7` fill. */
+/**
+ * The deck that `slides-handoff-2.json` names and `slides-build-3` to `-7` fill. Those five and
+ * `slides-build-8` are synthetic: each change call carries `progress` 1 to 5 of 5 (P15-23).
+ */
 export const MONTHLY_DECK = {
   title: "Sales and collections review",
   slideTitles: [

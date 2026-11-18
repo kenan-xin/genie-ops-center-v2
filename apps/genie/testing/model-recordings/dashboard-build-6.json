@@ -1,5 +1,5 @@
 {
-  "name": "dashboard-build-6",
+  "name": "synthetic-dashboard-build-6",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -142,7 +142,7 @@
               "type": "function",
               "function": {
                 "name": "analytics-change-dashboard",
-                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Unallocated payments\",\"query\":{\"filters\":[{\"field\":\"unallocatedCents\",\"op\":\"gt\",\"value\":0}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"desc\"}],\"select\":[\"customerName\",\"reference\",\"paymentDate\",\"currency\",\"amountCents\",\"unallocatedCents\"]}}],\"title\":\"Unallocated payments\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\"}"
+                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Unallocated payments\",\"query\":{\"filters\":[{\"field\":\"unallocatedCents\",\"op\":\"gt\",\"value\":0}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"desc\"}],\"select\":[\"customerName\",\"reference\",\"paymentDate\",\"currency\",\"amountCents\",\"unallocatedCents\"]}}],\"title\":\"Unallocated payments\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\",\"progress\":{\"m\":3,\"n\":1}}"
               }
             }
           ],
@@ -171,7 +171,7 @@
               "type": "function",
               "function": {
                 "name": "analytics-change-dashboard",
-                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"field\":\"amountCents\",\"fn\":\"sum\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"},{\"column\":\"currency\",\"direction\":\"asc\"}]}}],\"title\":\"Monthly collections by currency\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\"}"
+                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"field\":\"amountCents\",\"fn\":\"sum\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"asc\"},{\"column\":\"currency\",\"direction\":\"asc\"}]}}],\"title\":\"Monthly collections by currency\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\",\"progress\":{\"m\":3,\"n\":2}}"
               }
             }
           ]
@@ -191,7 +191,7 @@
               "type": "function",
               "function": {
                 "name": "analytics-change-dashboard",
-                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Overdue balances\",\"query\":{\"aggregates\":[{\"as\":\"overdueBalance\",\"field\":\"outstandingCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"customerId\"},{\"field\":\"customerName\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"customerName\",\"direction\":\"asc\"},{\"column\":\"currency\",\"direction\":\"asc\"}]}}],\"title\":\"Overdue balances by customer and currency\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\"}"
+                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Overdue balances\",\"query\":{\"aggregates\":[{\"as\":\"overdueBalance\",\"field\":\"outstandingCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"customerId\"},{\"field\":\"customerName\"},{\"field\":\"currency\"}],\"orderBy\":[{\"column\":\"customerName\",\"direction\":\"asc\"},{\"column\":\"currency\",\"direction\":\"asc\"}]}}],\"title\":\"Overdue balances by customer and currency\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\",\"progress\":{\"m\":3,\"n\":3}}"
               }
             }
           ]

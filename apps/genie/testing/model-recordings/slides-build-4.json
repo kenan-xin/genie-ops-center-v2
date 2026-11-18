@@ -1,5 +1,5 @@
 {
-  "name": "slides-build-4",
+  "name": "synthetic-slides-build-4",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -177,7 +177,7 @@
               "type": "function",
               "function": {
                 "name": "slides-change-deck",
-                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Invoiced sales increased each month from May to October.\"},{\"kind\":\"text\",\"text\":\"Sales are grouped by invoice date; October is partial through the reporting date.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoiced sales\",\"query\":{\"aggregates\":[{\"as\":\"sales\",\"field\":\"totalCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"}]},\"x\":\"invoiceDate\",\"y\":\"sales\"}],\"title\":\"Monthly invoiced sales (SGD)\",\"type\":\"line\"},\"kind\":\"chart\"}],\"notes\":\"Sales are invoice totals grouped by invoice date. The current month is incomplete as of the reporting date.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"ec78ff20ffca29cc4c6badc3fe30aea3e3eaaf487a4bb88e07fbe022ec4f2990\"}"
+                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Invoiced sales increased each month from May to October.\"},{\"kind\":\"text\",\"text\":\"Sales are grouped by invoice date; October is partial through the reporting date.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoiced sales\",\"query\":{\"aggregates\":[{\"as\":\"sales\",\"field\":\"totalCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"}]},\"x\":\"invoiceDate\",\"y\":\"sales\"}],\"title\":\"Monthly invoiced sales (SGD)\",\"type\":\"line\"},\"kind\":\"chart\"}],\"notes\":\"Sales are invoice totals grouped by invoice date. The current month is incomplete as of the reporting date.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"ec78ff20ffca29cc4c6badc3fe30aea3e3eaaf487a4bb88e07fbe022ec4f2990\",\"progress\":{\"m\":5,\"n\":1}}"
               }
             }
           ],
@@ -4805,7 +4805,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\""
+                    "arguments": "{\"progress\":{\"n\":2,\"m\":5},\""
                   }
                 }
               ]

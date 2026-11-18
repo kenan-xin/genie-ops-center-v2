@@ -1,5 +1,5 @@
 {
-  "name": "slides-build-7",
+  "name": "synthetic-slides-build-7",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -177,7 +177,7 @@
               "type": "function",
               "function": {
                 "name": "slides-change-deck",
-                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Invoiced sales increased each month from May to October.\"},{\"kind\":\"text\",\"text\":\"Sales are grouped by invoice date; October is partial through the reporting date.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoiced sales\",\"query\":{\"aggregates\":[{\"as\":\"sales\",\"field\":\"totalCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"}]},\"x\":\"invoiceDate\",\"y\":\"sales\"}],\"title\":\"Monthly invoiced sales (SGD)\",\"type\":\"line\"},\"kind\":\"chart\"}],\"notes\":\"Sales are invoice totals grouped by invoice date. The current month is incomplete as of the reporting date.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"ec78ff20ffca29cc4c6badc3fe30aea3e3eaaf487a4bb88e07fbe022ec4f2990\"}"
+                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Invoiced sales increased each month from May to October.\"},{\"kind\":\"text\",\"text\":\"Sales are grouped by invoice date; October is partial through the reporting date.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Invoiced sales\",\"query\":{\"aggregates\":[{\"as\":\"sales\",\"field\":\"totalCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"invoiceDate\"}]},\"x\":\"invoiceDate\",\"y\":\"sales\"}],\"title\":\"Monthly invoiced sales (SGD)\",\"type\":\"line\"},\"kind\":\"chart\"}],\"notes\":\"Sales are invoice totals grouped by invoice date. The current month is incomplete as of the reporting date.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"ec78ff20ffca29cc4c6badc3fe30aea3e3eaaf487a4bb88e07fbe022ec4f2990\",\"progress\":{\"m\":5,\"n\":1}}"
               }
             }
           ],
@@ -213,7 +213,7 @@
               "type": "function",
               "function": {
                 "name": "slides-change-deck",
-                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Collections peaked in August before falling in September and October.\"},{\"kind\":\"text\",\"text\":\"Collections are grouped by payment date; October is partial through the reporting date.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"field\":\"amountCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"}]},\"x\":\"paymentDate\",\"y\":\"collections\"}],\"title\":\"Monthly collections (SGD)\",\"type\":\"line\"},\"kind\":\"chart\"}],\"notes\":\"Collections are all saved payments by payment date, including amounts not yet allocated to an invoice. October is incomplete, so the fall is not a full-month comparison.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"4e0d581b7dcb0ade6993c39a7919c0d2ec1fef3d02020514bcf9a587859e052a\"}"
+                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Collections peaked in August before falling in September and October.\"},{\"kind\":\"text\",\"text\":\"Collections are grouped by payment date; October is partial through the reporting date.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Collections\",\"query\":{\"aggregates\":[{\"as\":\"collections\",\"field\":\"amountCents\",\"fn\":\"sum\"}],\"filters\":[{\"field\":\"currency\",\"op\":\"eq\",\"value\":\"SGD\"}],\"groupBy\":[{\"bucket\":\"month\",\"field\":\"paymentDate\"}]},\"x\":\"paymentDate\",\"y\":\"collections\"}],\"title\":\"Monthly collections (SGD)\",\"type\":\"line\"},\"kind\":\"chart\"}],\"notes\":\"Collections are all saved payments by payment date, including amounts not yet allocated to an invoice. October is incomplete, so the fall is not a full-month comparison.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"4e0d581b7dcb0ade6993c39a7919c0d2ec1fef3d02020514bcf9a587859e052a\",\"progress\":{\"m\":5,\"n\":2}}"
               }
             }
           ]
@@ -233,7 +233,7 @@
               "type": "function",
               "function": {
                 "name": "slides-change-deck",
-                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Harbor Foods has the largest overdue balance.\"},{\"kind\":\"text\",\"text\":\"Balances are grouped by customer and currency; age shows the oldest overdue invoice.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Overdue customers\",\"query\":{\"aggregates\":[{\"as\":\"overdue\",\"field\":\"outstandingCents\",\"fn\":\"sum\"},{\"as\":\"oldestDays\",\"field\":\"daysOverdue\",\"fn\":\"max\"}],\"filters\":[{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"customerName\"},{\"field\":\"currency\"}],\"limit\":12,\"orderBy\":[{\"column\":\"overdue\",\"direction\":\"desc\"}]}}],\"title\":\"Overdue balances and oldest age\",\"type\":\"table\"},\"kind\":\"table\"}],\"notes\":\"Only invoices with an outstanding balance and a known due date before the reporting date are overdue. Invoices with unknown due dates are excluded.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"9385159fc1f6b513c24a4f3a18f857e45446fbece2a22cc3844514f9e9f8b8e8\"}"
+                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Harbor Foods has the largest overdue balance.\"},{\"kind\":\"text\",\"text\":\"Balances are grouped by customer and currency; age shows the oldest overdue invoice.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.invoices\",\"name\":\"Overdue customers\",\"query\":{\"aggregates\":[{\"as\":\"overdue\",\"field\":\"outstandingCents\",\"fn\":\"sum\"},{\"as\":\"oldestDays\",\"field\":\"daysOverdue\",\"fn\":\"max\"}],\"filters\":[{\"field\":\"overdue\",\"op\":\"eq\",\"value\":true}],\"groupBy\":[{\"field\":\"customerName\"},{\"field\":\"currency\"}],\"limit\":12,\"orderBy\":[{\"column\":\"overdue\",\"direction\":\"desc\"}]}}],\"title\":\"Overdue balances and oldest age\",\"type\":\"table\"},\"kind\":\"table\"}],\"notes\":\"Only invoices with an outstanding balance and a known due date before the reporting date are overdue. Invoices with unknown due dates are excluded.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"9385159fc1f6b513c24a4f3a18f857e45446fbece2a22cc3844514f9e9f8b8e8\",\"progress\":{\"m\":5,\"n\":3}}"
               }
             }
           ]
@@ -253,7 +253,7 @@
               "type": "function",
               "function": {
                 "name": "slides-change-deck",
-                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Harbor Foods and Orchid Retail paid all eligible invoices late.\"},{\"kind\":\"text\",\"text\":\"Eligible invoices are fully settled and have a known due date; late means the final payment came after it.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.customers\",\"name\":\"Payment behaviour\",\"query\":{\"filters\":[{\"field\":\"settledWithDueDateCount\",\"op\":\"gt\",\"value\":0}],\"limit\":12,\"orderBy\":[{\"column\":\"paidLateCount\",\"direction\":\"desc\"}],\"select\":[\"name\",\"settledWithDueDateCount\",\"paidLateCount\"]}}],\"title\":\"Settled invoices and late payments by customer\",\"type\":\"table\"},\"kind\":\"table\"}],\"notes\":\"Part-paid invoices and invoices without a due date are excluded from the payment-behaviour denominator.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"1aff29db223e1782a94fbb45b0cfd55361b18ae73c2ac88f6ad7e312a9cc35ba\"}"
+                "arguments": "{\"changes\":[{\"op\":\"add-slide\",\"slide\":{\"elements\":[{\"kind\":\"title\",\"text\":\"Harbor Foods and Orchid Retail paid all eligible invoices late.\"},{\"kind\":\"text\",\"text\":\"Eligible invoices are fully settled and have a known due date; late means the final payment came after it.\"},{\"chart\":{\"series\":[{\"dataset\":\"invoices.customers\",\"name\":\"Payment behaviour\",\"query\":{\"filters\":[{\"field\":\"settledWithDueDateCount\",\"op\":\"gt\",\"value\":0}],\"limit\":12,\"orderBy\":[{\"column\":\"paidLateCount\",\"direction\":\"desc\"}],\"select\":[\"name\",\"settledWithDueDateCount\",\"paidLateCount\"]}}],\"title\":\"Settled invoices and late payments by customer\",\"type\":\"table\"},\"kind\":\"table\"}],\"notes\":\"Part-paid invoices and invoices without a due date are excluded from the payment-behaviour denominator.\"}}],\"deckId\":\"0bcbd4bf-0033-4009-9992-9cb1d7f0dbb6\",\"expectedHash\":\"1aff29db223e1782a94fbb45b0cfd55361b18ae73c2ac88f6ad7e312a9cc35ba\",\"progress\":{\"m\":5,\"n\":4}}"
               }
             }
           ]
@@ -7188,7 +7188,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\""
+                    "arguments": "{\"progress\":{\"n\":5,\"m\":5},\""
                   }
                 }
               ]

@@ -1,5 +1,5 @@
 {
-  "name": "slides-build-3",
+  "name": "synthetic-slides-build-3",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -12600,7 +12600,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\""
+                    "arguments": "{\"progress\":{\"n\":1,\"m\":5},\""
                   }
                 }
               ]

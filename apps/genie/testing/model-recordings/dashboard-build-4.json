@@ -1,5 +1,5 @@
 {
-  "name": "dashboard-build-4",
+  "name": "synthetic-dashboard-build-4",
   "request": {
     "method": "POST",
     "url": "https://openrouter.ai/api/v1/chat/completions",
@@ -142,7 +142,7 @@
               "type": "function",
               "function": {
                 "name": "analytics-change-dashboard",
-                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Unallocated payments\",\"query\":{\"filters\":[{\"field\":\"unallocatedCents\",\"op\":\"gt\",\"value\":0}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"desc\"}],\"select\":[\"customerName\",\"reference\",\"paymentDate\",\"currency\",\"amountCents\",\"unallocatedCents\"]}}],\"title\":\"Unallocated payments\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\"}"
+                "arguments": "{\"changes\":[{\"layout\":{\"columns\":4,\"rows\":1},\"op\":\"add-panel\",\"panel\":{\"series\":[{\"dataset\":\"invoices.payments\",\"name\":\"Unallocated payments\",\"query\":{\"filters\":[{\"field\":\"unallocatedCents\",\"op\":\"gt\",\"value\":0}],\"orderBy\":[{\"column\":\"paymentDate\",\"direction\":\"desc\"}],\"select\":[\"customerName\",\"reference\",\"paymentDate\",\"currency\",\"amountCents\",\"unallocatedCents\"]}}],\"title\":\"Unallocated payments\",\"type\":\"table\"}}],\"dashboardId\":\"2f70f7ae-1bb0-4c31-be0b-e7d7a6ca0b1e\",\"progress\":{\"m\":3,\"n\":1}}"
               }
             }
           ],
@@ -2831,7 +2831,7 @@
                 {
                   "index": 0,
                   "function": {
-                    "arguments": "{\""
+                    "arguments": "{\"progress\":{\"n\":2,\"m\":3},\""
                   }
                 }
               ]
