@@ -236,9 +236,11 @@ function Access(props: {
   const { module, labels } = props;
   const { principals, hidden } = namedHolders(module);
 
+  // A table column grows to its cells' unwrapped text, so without the cap the names never
+  // truncate and the table scrolls sideways at 1280 px, adding a tab stop to scroll it.
   return (
     <div
-      className={`flex min-w-0 items-center gap-1.5 text-sm ${module.enabled ? "" : "text-muted-foreground"}`}
+      className={`flex max-w-sm min-w-0 items-center gap-1.5 text-sm ${module.enabled ? "" : "text-muted-foreground"}`}
     >
       {principals.length === 0 ? (
         <span className="truncate text-muted-foreground">
