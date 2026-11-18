@@ -13,6 +13,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation.js";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
+import { useRecordLabels } from "../access/use-record-labels.ts";
 
 /**
  * The browser half of the Roles route. The server refused a caller without `core:roles:manage`
@@ -61,6 +62,8 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
       }),
     enabled: selectedRoleId !== null,
   });
+
+  const recordLabels = useRecordLabels(holders.data?.paths);
 
   // The declared permission catalogue the role form picks from (R-33).
   const catalogue = useQuery({
@@ -136,6 +139,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
                 paths: holders.data.paths,
                 total: holders.data.total ?? holders.data.paths.length,
                 memberCounts: holders.data.memberCounts,
+                recordLabels,
               }
         }
         holderHref={(holder) =>

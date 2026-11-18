@@ -3,6 +3,7 @@ import { warningText } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { scopeKey } from "../access/advanced-view.ts";
 import {
   FIXTURE_CATALOGUE,
   FIXTURE_CUSTOM_DETAIL,
@@ -516,6 +517,40 @@ export const HoldersListed: Story = {
       adaDetail.getBoundingClientRect().top -
         adaName.getBoundingClientRect().bottom
     ).toBeLessThanOrEqual(6);
+  },
+};
+
+const INVOICE_ID = "5f0c2a5e-8f3b-4c1e-9a7d-2b6e4d1c9f10";
+
+/** `d8l5.74` item 1: a one-record holder's pill reads the record's label, never its uuid. */
+export const OneRecordHolderShowsLabel: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    holders: {
+      ...HOLDERS_THREE,
+      paths: HOLDERS_THREE.paths.map((path) =>
+        path.scope === null
+          ? path
+          : { ...path, scope: { type: "invoice", id: INVOICE_ID } }
+      ),
+      recordLabels: new Map([
+        [scopeKey({ type: "invoice", id: INVOICE_ID }), "INV-1042"],
+      ]),
+    },
+    holderHref,
+  },
+  play: async ({ canvas }) => {
+    const list = await canvas.findByRole("list", { name: "Assigned to" });
+
+    // Groups first, then by name: Dry run, Ada Lovelace, Zoe Brandt.
+    const [, ada] = within(list).getAllByRole("listitem");
+
+    await expect(ada).toHaveTextContent("Ada Lovelace");
+    await expect(
+      within(ada ?? document.body).getByText("INV-1042")
+    ).toBeVisible();
+    await expect(within(list).queryByText(INVOICE_ID)).toBeNull();
   },
 };
 

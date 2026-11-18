@@ -62,6 +62,7 @@ export const FIXTURE_ROLE_GRANTS: readonly AccountRoleGrant[] = [
     permissionCount: 2,
     scopeLabel: "All records",
     via: null,
+    notInEffect: [],
   },
   {
     roleName: "Contract viewer",
@@ -69,6 +70,7 @@ export const FIXTURE_ROLE_GRANTS: readonly AccountRoleGrant[] = [
     permissionCount: 3,
     scopeLabel: "Vendor agreements",
     via: "Field engineers",
+    notInEffect: [],
   },
 ];
 

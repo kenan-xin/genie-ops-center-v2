@@ -591,6 +591,47 @@ export const WithoutRoles: Story = {
   },
 };
 
+/** C11-25: a role of a module that is off reads "Paused: Module off" beside how it arrived (G9). */
+export const AccountShowsPausedRole: Story = {
+  args: {
+    roleGrants: [
+      {
+        roleName: "Invoices viewer",
+        moduleName: "invoices",
+        permissionCount: 1,
+        scopeLabel: "All records",
+        via: null,
+        notInEffect: ["module-off"],
+      },
+      {
+        roleName: "Contract viewer",
+        moduleName: "contracts",
+        permissionCount: 3,
+        scopeLabel: "All records",
+        via: "Field engineers",
+        notInEffect: [],
+      },
+    ],
+  },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const [paused, inEffect] = canvas
+      .getAllByRole("listitem")
+      .filter((item) => / viewer/.test(item.textContent ?? ""));
+
+    await expect(paused).toHaveTextContent("Invoices viewer");
+    await expect(inEffect).toHaveTextContent("Contract viewer");
+    await expect(
+      within(paused ?? document.body).getByText("Direct")
+    ).toBeVisible();
+    await expect(
+      within(paused ?? document.body).getByText("Paused: Module off")
+    ).toBeVisible();
+    await expect(inEffect).not.toHaveTextContent(/Paused/);
+  },
+};
+
 export const LocalAccountTenant: Story = {
   args: {
     accountManagementUrl: "https://id.example.com/realms/genie/account",

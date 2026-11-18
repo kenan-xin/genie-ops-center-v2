@@ -48,7 +48,7 @@ export default async function AccountPage() {
 
   const [groups, summaries, sessions, branding] = await Promise.all([
     readOwnGroups(tenant, userId),
-    readRoleSummaries(principal),
+    readRoleSummaries(principal, tenant),
     auth.listOwnSessions({ session: signedIn }),
     tenant.branding.get(),
   ]);
@@ -68,6 +68,7 @@ export default async function AccountPage() {
               })
             )?.label ?? `${grant.scopeType}:${grant.scopeId}`),
       via: grant.via,
+      notInEffect: grant.notInEffect,
     }))
   );
 

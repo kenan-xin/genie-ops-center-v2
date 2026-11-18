@@ -1,13 +1,16 @@
 import type { TenantContext } from "../../lib/tenant-context/index.ts";
 import { groupLabelSql } from "../groups/label.ts";
+import type { NotInEffect } from "../roles/effective-access.ts";
 import type { RequestPrincipal, RoleSummary } from "./principal.ts";
 
 /**
  * One row of the account page's read-only Roles and access block (R-18): the role, its owning
- * module, how many keys it carries, the scope it was granted on, and the group it arrived
- * through - null for a direct assignment.
+ * module, how many keys it carries, the scope it was granted on, the group it arrived
+ * through - null for a direct assignment - and why it grants nothing now (G9).
  */
-export type RoleSummaryRow = RoleSummary;
+export type RoleSummaryRow = RoleSummary & {
+  readonly notInEffect: readonly NotInEffect[];
+};
 
 /**
  * The roles summary of R-18. It reads the same tables the R-27 loader reads, through the same
@@ -18,12 +21,24 @@ export type RoleSummaryRow = RoleSummary;
 /**
  * Reads the person's role summary rows. The caller resolves each scoped row's display label
  * through the request principal's record resolver (R-28), so the module that owns the record
- * type names it.
+ * type names it. The R-27 read already drops an archived group's rows and every row of a disabled
+ * person, so module off is the one reason left, read as `recipientPaths` reads it (R-32).
  */
 export async function readRoleSummaries(
-  principal: RequestPrincipal
+  principal: RequestPrincipal,
+  tenant: TenantContext
 ): Promise<readonly RoleSummaryRow[]> {
-  return (await principal.grants()).roleSummaries ?? [];
+  return Promise.all(
+    ((await principal.grants()).roleSummaries ?? []).map(async (row) =>
+      Object.assign({}, row, {
+        notInEffect:
+          row.moduleName !== null &&
+          !(await tenant.entitlements.isEnabled(row.moduleName))
+            ? (["module-off"] as const)
+            : [],
+      })
+    )
+  );
 }
 
 /**

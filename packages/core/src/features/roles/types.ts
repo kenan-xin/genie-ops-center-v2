@@ -32,6 +32,8 @@ export type RoleHolders = {
   readonly total: number;
   /** The member count of each group holder, by group id (`AccessPage.memberCounts`). */
   readonly memberCounts: Readonly<Record<string, number>>;
+  /** Record labels by `scopeKey`, only for records the viewer can open (AD10); any other shows its id. */
+  readonly recordLabels: ReadonlyMap<string, string>;
 };
 
 export type RolesViewer = {

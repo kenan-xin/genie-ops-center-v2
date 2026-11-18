@@ -266,6 +266,7 @@ const holders = (
   memberCounts: Object.fromEntries(
     HOLDER_GROUPS.map((entry) => [entry.id, entry.memberCount])
   ),
+  recordLabels: new Map<string, string>(),
 });
 
 const person = (id: string, name: string): Holder => ({

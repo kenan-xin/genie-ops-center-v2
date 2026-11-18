@@ -365,7 +365,7 @@ function HolderCard(props: {
           personPaths: undefined,
           catalogue: [],
           memberCounts: holders.memberCounts,
-          recordLabels: new Map(),
+          recordLabels: holders.recordLabels,
         })
           .toSorted(
             (a, b) =>

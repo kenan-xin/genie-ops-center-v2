@@ -1,7 +1,10 @@
 "use client";
 
 import { AccountPage } from "@genie/core/features/account";
-import type { AccountSession } from "@genie/core/features/account";
+import type {
+  AccountRoleGrant,
+  AccountSession,
+} from "@genie/core/features/account";
 import { toast } from "@genie/ui";
 import { useRouter } from "next/navigation.js";
 import { useState } from "react";
@@ -35,13 +38,7 @@ export function AccountRoute(props: {
     readonly source: "idp" | "local";
   }[];
   readonly sessions: readonly AccountSession[];
-  readonly roleGrants: readonly {
-    readonly roleName: string;
-    readonly moduleName: string | null;
-    readonly permissionCount: number;
-    readonly scopeLabel: string;
-    readonly via: string | null;
-  }[];
+  readonly roleGrants: readonly AccountRoleGrant[];
   readonly accountManagementUrl: string | null;
   readonly timeZone: string;
   readonly nowIso: string;

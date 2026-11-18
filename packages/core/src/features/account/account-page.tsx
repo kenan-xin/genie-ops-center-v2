@@ -9,6 +9,7 @@ import {
   iconLead,
   iconLeadPx,
   LabelPill,
+  StatusPill,
 } from "@genie/ui";
 import {
   LaptopIcon,
@@ -20,6 +21,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import type { JSX, Ref } from "react";
 
+import { pausedLabel, reasonLabel } from "../access/overview-view.ts";
 import { fmtDateTime, relativeTime } from "../audit/helpers.ts";
 import {
   AccountCard,
@@ -307,6 +309,15 @@ function RolesBlock(props: {
                       ? "Direct"
                       : `Assigned via ${grant.via}`}
                   </span>
+                  {grant.notInEffect.length === 0 ? null : (
+                    <span className="ml-2 flex flex-wrap gap-1.5">
+                      {grant.notInEffect.map((reason) => (
+                        <StatusPill key={reason} tone="warning">
+                          {pausedLabel(reasonLabel(reason))}
+                        </StatusPill>
+                      ))}
+                    </span>
+                  )}
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {grant.permissionCount}{" "}

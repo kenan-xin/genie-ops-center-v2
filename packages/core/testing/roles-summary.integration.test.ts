@@ -83,7 +83,8 @@ describe("readRoleSummaries", () => {
         modules: [],
         userId,
         authenticated: true,
-      })
+      }),
+      context
     );
 
     expect(rows).toEqual([
@@ -94,6 +95,7 @@ describe("readRoleSummaries", () => {
         scopeType: null,
         scopeId: null,
         via: null,
+        notInEffect: [],
       },
       {
         roleName: "Tenant administrator",
@@ -102,7 +104,55 @@ describe("readRoleSummaries", () => {
         scopeType: "solution",
         scopeId: "solution-17",
         via: "Directory admins",
+        notInEffect: [],
       },
+    ]);
+  });
+
+  it("names a role of a module that is off as paused, and a core role as in effect (C11-25)", async () => {
+    const context = deployment.context;
+
+    const userId = await insertUser(context);
+
+    const core = await insertRole(context, {
+      name: "Audit reader",
+      permissions: ["core:audit:read"],
+    });
+
+    // No `tenant_module` row and not compiled, so the module reads as off.
+    const dormant = await insertRole(context, {
+      name: "Dormant user",
+      permissions: ["dormant:use"],
+      moduleId: "dormant",
+    });
+
+    await Promise.all(
+      [core, dormant].map((roleId) =>
+        assignRole(context, {
+          roleId,
+          principal: { type: "user", id: userId },
+        })
+      )
+    );
+
+    const rows = await readRoleSummaries(
+      principalFor({
+        tenant: context,
+        modules: [],
+        userId,
+        authenticated: true,
+      }),
+      context
+    );
+
+    // The read has no order, so sort by name.
+    expect(
+      rows
+        .map((row) => [row.roleName, row.notInEffect])
+        .toSorted(([a], [b]) => String(a).localeCompare(String(b)))
+    ).toEqual([
+      ["Audit reader", []],
+      ["Dormant user", ["module-off"]],
     ]);
   });
 
@@ -116,7 +166,8 @@ describe("readRoleSummaries", () => {
           modules: [],
           userId: alone,
           authenticated: true,
-        })
+        }),
+        deployment.context
       )
     ).toEqual([]);
   });
@@ -146,7 +197,8 @@ describe("readRoleSummaries", () => {
           modules: [],
           userId,
           authenticated: true,
-        })
+        }),
+        context
       )
     ).toEqual([]);
   });

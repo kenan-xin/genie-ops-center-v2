@@ -4,6 +4,8 @@
  * and the application render it without a running deployment.
  */
 
+import type { NotInEffect } from "../../services/roles/effective-access.ts";
+
 /** One group chip in the Profile block, with the source the chip's label names. */
 export type AccountGroup = {
   readonly id: string;
@@ -25,7 +27,7 @@ export type AccountSession = {
 /**
  * One row of the read-only Roles and access block: the role, its permission count, the scope
  * label the server resolved (whole tenant, or the record's name), and the group it arrived
- * through - null for a direct assignment.
+ * through - null for a direct assignment - and why it grants nothing now, each a Paused pill (G9).
  */
 export type AccountRoleGrant = {
   readonly roleName: string;
@@ -33,6 +35,7 @@ export type AccountRoleGrant = {
   readonly permissionCount: number;
   readonly scopeLabel: string;
   readonly via: string | null;
+  readonly notInEffect: readonly NotInEffect[];
 };
 
 export type AccountPageProps = {
