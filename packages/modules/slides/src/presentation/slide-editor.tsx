@@ -330,6 +330,9 @@ export function SlideEditor(props: SlideEditorProps) {
       onChange: slideInput,
       onSubmit: slideInput,
     },
+    // An invalid form would skip the submit validation, so a field mounted after the last change,
+    // such as an uploaded image's Alt text, would show its error only on a second Save.
+    canSubmitWhenInvalid: true,
     onSubmitInvalid: () => setAttempted(true),
     onSubmit: ({ value }) => {
       const parsed = slideInput.safeParse(value);
