@@ -22,12 +22,20 @@ export { RecipientMark } from "./recipient-mark.tsx";
 export {
   AddAssignmentForm,
   type AddAssignmentFormProps,
+  type AddAssignmentHost,
   type AddAssignmentInput,
 } from "./add-assignment-form.tsx";
+
+export { AddAssignmentSheet } from "./add-assignment-sheet.tsx";
+
+export { PlusIcon } from "../admin/icons.tsx";
 
 export {
   addedMessage,
   namesOf,
+  pickedRole,
+  refusalMessage,
+  type PickedRole,
   type RoleChoice,
   type RoleChoiceGroup,
   roleChoices,

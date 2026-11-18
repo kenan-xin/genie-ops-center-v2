@@ -37,7 +37,13 @@ export type AssignmentsTableProps = InspectorAccess & {
   /** The viewer's zone, for "Assigned <date> by <name>". */
   readonly timeZone: string;
   /** No assignment: for example "No roles assigned" and "This person can sign in but sees no modules." */
-  readonly empty: { readonly title: string; readonly description: string };
+  readonly empty: {
+    readonly title: string;
+    readonly description: string;
+    readonly action?: ReactNode;
+  };
+  /** Assignment ids to tint: the rows a save just added. */
+  readonly newRows?: ReadonlySet<string> | undefined;
   /** A role's address, only for a viewer who may open Roles; without it the role is plain text (R-37e). */
   readonly roleHref?: ((roleId: string) => string) | undefined;
   /** The address of the group in an Assigned via value, only for a viewer who may open Groups; without it the group name is plain text (C11-7). */
@@ -92,6 +98,7 @@ export function AssignmentsTable(props: AssignmentsTableProps): ReactNode {
       <EmptyState
         title={props.empty.title}
         description={props.empty.description}
+        action={props.empty.action}
       />
     );
   }
@@ -148,6 +155,7 @@ export function AssignmentsTable(props: AssignmentsTableProps): ReactNode {
       rows={rows}
       rowKey={(row) => row.key}
       rowLabel={(row) => row.role}
+      newRow={(row) => props.newRows?.has(row.key) === true}
       columns={[
         {
           id: "role",

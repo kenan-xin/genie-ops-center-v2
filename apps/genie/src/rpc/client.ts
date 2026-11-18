@@ -79,6 +79,8 @@ export type FailureKind =
 export type Refusal = {
   readonly kind: FailureKind;
   readonly message: string;
+  /** The catalogue code of a refusal, such as "module-disabled". */
+  readonly code?: string;
   readonly retryAfterMinutes?: number;
   readonly issues?: readonly {
     readonly path: string;
@@ -134,6 +136,7 @@ export function refusalOf(cause: unknown): Refusal {
   let refusal: Refusal = {
     kind,
     message: GENERIC_CODES.has(appCode) ? "" : cause.message,
+    code: appCode,
   };
 
   if (retryAfterMinutes !== undefined)

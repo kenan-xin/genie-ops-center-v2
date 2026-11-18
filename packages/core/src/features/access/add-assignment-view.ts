@@ -218,3 +218,43 @@ export function namesOf(
     return row === undefined ? [] : [row.name];
   });
 }
+
+/** The refusal line under "The assignment was not added.": module-disabled names the module. */
+export function refusalMessage(
+  code: string | undefined,
+  serverMessage: string,
+  moduleName: string | null
+): string {
+  if (code === "module-disabled" && moduleName !== null)
+    return `The ${moduleName} module is off. Turn it on in Modules, or choose a role of another module.`;
+
+  return serverMessage === "" ? "Try again." : serverMessage;
+}
+
+/** The picked role's name and its module's name (null for a core role). */
+export type PickedRole = {
+  readonly name: string;
+  readonly moduleName: string | null;
+};
+
+/** The picked role's name and its module's name (null for a core role), from the form's role list. */
+export function pickedRole(
+  groups: readonly RoleChoiceGroup[],
+  roleId: string
+): PickedRole {
+  const group = groups.find((candidate) =>
+    candidate.choices.some((choice) => choice.roleId === roleId)
+  );
+
+  const choice = group?.choices.find(
+    (candidate) => candidate.roleId === roleId
+  );
+
+  if (group === undefined || choice === undefined)
+    return { name: "", moduleName: null };
+
+  return {
+    name: choice.name,
+    moduleName: group.label === "Core" ? null : group.label,
+  };
+}

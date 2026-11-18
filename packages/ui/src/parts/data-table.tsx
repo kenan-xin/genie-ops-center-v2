@@ -129,6 +129,8 @@ export type DataTableProps<Row> = {
    * and the end of line 1 of the card, or beside its lines with `card.actionBeside` (czjw.102).
    */
   readonly rowAction?: (row: Row) => ReactNode;
+  /** A row the person just added: tinted, with `data-new`, until the host stops naming it (d8l5.62). */
+  readonly newRow?: ((row: Row) => boolean) | undefined;
   /** `false` drops the outer border, for a table inside a card that draws its own. */
   readonly framed?: boolean;
   /**
@@ -239,6 +241,7 @@ export function DataTable<Row>({
   rowLinks = false,
   actions,
   rowAction,
+  newRow,
   framed = true,
   footer,
   onEndReached,
@@ -498,7 +501,14 @@ export function DataTable<Row>({
                   ref={virtual ? tableWindow.measure : undefined}
                   data-index={index}
                   aria-rowindex={index + 2}
-                  className={linked(row) ? "relative" : undefined}
+                  data-new={newRow?.(row) === true ? "" : undefined}
+                  className={
+                    linked(row)
+                      ? // oxlint-disable-next-line shadcn/no-restyle -- a row the person just added is tinted (d8l5.62, added-person capture)
+                        "relative data-new:bg-primary/5"
+                      : // oxlint-disable-next-line shadcn/no-restyle -- a row the person just added is tinted (d8l5.62, added-person capture)
+                        "data-new:bg-primary/5"
+                  }
                 >
                   {columns.map((column) => (
                     <TableCell
@@ -584,7 +594,8 @@ export function DataTable<Row>({
               data-index={index}
               aria-setsize={rows.length}
               aria-posinset={index + 1}
-              className="relative flex items-start gap-3 px-4 py-3 text-sm"
+              data-new={newRow?.(row) === true ? "" : undefined}
+              className="relative flex items-start gap-3 px-4 py-3 text-sm data-new:bg-primary/5"
             >
               <div
                 className={`grid min-w-0 flex-1 gap-0.5 ${card.media === undefined ? "" : "grid-cols-leading-icon items-baseline gap-x-3"}`}

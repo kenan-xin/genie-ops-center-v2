@@ -14,7 +14,7 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 /**
  * S2-24 through the real realm and the real database: the navigation entry, the person inspector's
  * Access tab with "Manage in Access", and the Modules link each open Access with their subject
- * chosen. A people manager without `core:roles:manage` sees no link into Access, and reads a
+ * filtered. A people manager without `core:roles:manage` sees no link into Access, and reads a
  * person's access read-only through the People read, never the roles read (`d8l5.43`).
  *
  * The phone and desktop projects share one database, so the member is scoped to the project, and
@@ -86,6 +86,24 @@ const filterShows = async (page: Page, text: RegExp): Promise<Locator> => {
   return trigger;
 };
 
+/**
+ * The Person or group filter names the chosen group: its chip on a phone, its field from 768 px.
+ * The list's cards leave the filtered holder out, so this is where the filter reads back.
+ */
+async function expectGroupFilter(page: Page, group: string): Promise<void> {
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    await expect(
+      page.getByRole("combobox", { name: "Person or group" })
+    ).toContainText(group);
+
+    return;
+  }
+
+  await expect(
+    await filterShows(page, new RegExp(`^Person or group: ${group}$`))
+  ).toBeVisible();
+}
+
 /** Opens a person's inspector from People by searching their name. */
 async function openPerson(page: Page, name: string): Promise<Locator> {
   await page.goto("/admin/people");
@@ -107,7 +125,7 @@ async function openPerson(page: Page, name: string): Promise<Locator> {
   return inspector;
 }
 
-test("the navigation entry and Manage in Access open Access with the person chosen", async ({
+test("the navigation entry and Manage in Access open Access with the person filtered", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
@@ -155,37 +173,21 @@ test("the navigation entry and Manage in Access open Access with the person chos
   await expectNoAxeViolations(page, "Person sheet, Roles tab");
   await inspector.getByRole("button", { name: "Manage in Access" }).click();
 
-  await expect(page).toHaveURL(
-    new RegExp(`/admin/access\\?recipient=${memberId}$`)
+  const address = new RegExp(
+    `/admin/access/overview\\?who=user%3A${memberId}$`
   );
-  await expectRecipientChosen(page, "People", name);
+
+  await expect(page).toHaveURL(address);
+  await expect(
+    page.getByRole("status").filter({ hasText: `${name} has` })
+  ).toBeVisible();
+  await expect(overviewList(page).first()).toContainText("E2E links limited");
   await page.reload();
-  await expect(page).toHaveURL(
-    new RegExp(`/admin/access\\?recipient=${memberId}$`)
-  );
-  await expectRecipientChosen(page, "People", name);
+  await expect(page).toHaveURL(address);
+  await expect(overviewList(page).first()).toContainText("E2E links limited");
 });
 
-/** Grants with the recipient's segment pressed and the recipient in its picker. */
-async function expectRecipientChosen(
-  page: Page,
-  segment: "People" | "Groups",
-  name: string
-): Promise<void> {
-  await expect(
-    page.getByRole("group", { name: "Granted", exact: true })
-  ).toBeVisible();
-  await expect(
-    page.getByRole("button", { name: segment, exact: true })
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.getByRole("combobox", {
-      name: segment === "People" ? "Choose a person" : "Choose a group",
-    })
-  ).toContainText(name);
-}
-
-test("the Groups link opens Grants with the group chosen", async ({
+test("the Groups link opens the Overview with the group filtered", async ({
   page,
 }, testInfo) => {
   const group = "Genie Administrators";
@@ -206,16 +208,25 @@ test("the Groups link opens Grants with the group chosen", async ({
     .click();
   await page
     .getByRole("dialog", { name: group, exact: true })
+    .getByRole("tab", { name: /^Roles/ })
+    .click();
+  await page
+    .getByRole("dialog", { name: group, exact: true })
     .getByRole("button", { name: "Manage in Access" })
     .click();
 
-  const address = new RegExp(`/admin/access\\?recipient=${groupId}$`);
+  const address = new RegExp(
+    `/admin/access/overview\\?who=group%3A${groupId}$`
+  );
 
   await expect(page).toHaveURL(address);
-  await expectRecipientChosen(page, "Groups", group);
+  // The card does not repeat the filtered group, so the filter control names it.
+  await expectGroupFilter(page, group);
+  await expect(overviewList(page).first()).toBeVisible();
   await page.reload();
   await expect(page).toHaveURL(address);
-  await expectRecipientChosen(page, "Groups", group);
+  await expectGroupFilter(page, group);
+  await expect(overviewList(page).first()).toBeVisible();
 });
 
 test("the Modules link opens the Overview with the module chosen", async ({

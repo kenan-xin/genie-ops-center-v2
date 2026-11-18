@@ -84,6 +84,8 @@ export type OverviewScreenProps = {
   readonly roleHref?: ((roleId: string) => string) | undefined;
   readonly personHref?: ((personId: string) => string) | undefined;
   readonly groupHref?: ((groupId: string) => string) | undefined;
+  /** Assignment ids to tint: the rows a save just added, until the next filter or page change. */
+  readonly newRows?: ReadonlySet<string> | undefined;
   readonly error?: string | undefined;
 };
 
@@ -375,6 +377,7 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
         rows={rows}
         rowKey={(row) => row.key}
         rowLabel={(row) => `${row.role}, ${row.holder.name}`}
+        newRow={(row) => props.newRows?.has(row.key) === true}
         columns={columns}
         framed={false}
         // One order, newest first, and no control (P12-19): the header says it, no button changes it.

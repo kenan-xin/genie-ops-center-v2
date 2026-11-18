@@ -74,6 +74,11 @@ test("the Overview starts filled, filters by person, pages by 25 and clears a se
   await page.goto("/admin/access/overview");
   await expect(resultRows(page)).toHaveCount(25);
   await expect(page.getByText(/^1–25 of [\d,]+$/)).toBeVisible();
+  // The phone's fixed action bar covers the rows it scrolls over. The shell's end spacer keeps the
+  // last row clear, so axe reads the same page without the bar's false color-contrast overlap.
+  await page
+    .locator("[data-shell-content]")
+    .evaluate((area) => area.scrollTo({ top: area.scrollHeight }));
   await expectNoAxeViolations(page, "Overview, first load");
 
   // E2: newest first, and Next reads page 2 of the search.
@@ -116,4 +121,54 @@ test("the Overview starts filled, filters by person, pages by 25 and clears a se
   await page.getByRole("button", { name: "Clear search and filters" }).click();
   await expect(page).toHaveURL(/\/admin\/access\/overview$/);
   await expect(resultRows(page)).toHaveCount(25);
+});
+
+test("Add assignment from Access adds a role to a person and tints the new row", async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+  const reader = e2eReaderEmail("access-overview", project);
+  const person = `E2E overview add ${project}`;
+  const email = `e2e.overview-add.${project}@example.com`;
+
+  await queryDatabase(
+    [
+      `insert into "user" (id, name, email, email_verified, status, is_break_glass) values (gen_random_uuid()::text, '${person}', '${email}', true, 'active', false) on conflict (email) do nothing`,
+      `delete from role_assignment a using "user" u where a.principal_type = 'user' and a.principal_id = u.id and u.email = '${email}'`,
+    ].join("; ")
+  );
+
+  await signInThroughKeycloak(page, { email: reader });
+  // The search keeps the list to this person, so rows other tests write never come first.
+  await page.goto(`/admin/access/overview?q=${encodeURIComponent(person)}`);
+  await expect(
+    page.getByRole("heading", { name: "No assignments match" })
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "Add assignment" })
+    .filter({ visible: true })
+    .click();
+
+  const sheet = page.getByRole("dialog", { name: "Add assignment" });
+
+  await expectNoAxeViolations(page, "Access, Add assignment");
+  await sheet.getByRole("combobox", { name: "Assign to" }).fill(person);
+  await page.getByRole("option", { name: new RegExp(person) }).click();
+  await page.keyboard.press("Tab");
+  await sheet.getByRole("combobox", { name: "Role" }).click();
+  await page.getByRole("option", { name: /^Placeholder user/ }).click();
+  await sheet.getByRole("button", { name: "Add assignment" }).click();
+
+  await expect(
+    page.getByText(`Assigned Placeholder user to ${person}.`)
+  ).toBeVisible();
+  await expect(sheet).toBeHidden();
+  await expect(resultRows(page).first()).toContainText(person);
+  await expect(resultRows(page).first()).toHaveAttribute("data-new", "");
+
+  const [count] = await queryDatabase(
+    `select count(*) from role_assignment a join "user" u on a.principal_type = 'user' and a.principal_id = u.id join role r on r.id = a.role_id where u.email = '${email}' and r.name = 'Placeholder user'`
+  );
+
+  expect(count).toBe("1");
 });

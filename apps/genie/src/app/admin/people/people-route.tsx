@@ -1,6 +1,6 @@
 "use client";
 
-import { accessHref } from "@genie/core/features/access";
+import { accessOverviewHref } from "@genie/core/features/access";
 import {
   PeopleScreen,
   type AddedPerson,
@@ -15,6 +15,7 @@ import { useState } from "react";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { type Refusal, rpc } from "../../../rpc/client.ts";
+import { useAddAssignment } from "../access/use-add-assignment.ts";
 import { usePersonAccess } from "../access/use-inspector-access.ts";
 
 /**
@@ -29,6 +30,8 @@ export function PeopleRoute(props: {
   readonly viewer: PeopleViewer;
   readonly settings: PeopleSettings;
   readonly canManageAccess: boolean;
+  /** Tenant-wide `core:roles:manage`, the server's own gate for adding (P12-2). */
+  readonly canAddAssignments: boolean;
 }) {
   const t = useTranslations("pages");
   const router = useRouter();
@@ -71,6 +74,15 @@ export function PeopleRoute(props: {
     personId: selectedId,
     open,
     canManageAccess: props.canManageAccess,
+  });
+
+  // The person sheet's Add assignment: only a tenant-wide roles manager gets it, and the screen
+  // drops it on your own account (P12-2, P12-3).
+  const addAssignment = useAddAssignment({
+    enabled: props.canAddAssignments,
+    recipient:
+      selectedId === null ? undefined : { type: "user", id: selectedId },
+    paths: access.paths,
   });
 
   // The local groups the person's Add to group offers, read only for a caller who manages groups.
@@ -204,9 +216,13 @@ export function PeopleRoute(props: {
           : undefined
       }
       access={access}
+      addAssignment={addAssignment}
       onManageAccess={
         props.canManageAccess
-          ? (personId) => router.push(accessHref({ recipient: personId }))
+          ? (personId) =>
+              router.push(
+                accessOverviewHref({ who: { type: "user", id: personId } })
+              )
           : undefined
       }
       roleHref={

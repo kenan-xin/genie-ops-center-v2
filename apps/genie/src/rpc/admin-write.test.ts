@@ -197,6 +197,7 @@ describe("adminWriteOptions", () => {
       refusal: {
         kind: "conflict",
         message: "The last administrator cannot be removed.",
+        code: "last-administrator",
       },
     });
     expect(invalidated).toEqual([["groups"]]);

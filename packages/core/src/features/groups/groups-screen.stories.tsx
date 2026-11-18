@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import { FIXTURE_ROWS, fixturePath } from "../access/__fixtures__/access.ts";
+import type { RoleChoiceGroup } from "../access/add-assignment-view.ts";
 import {
   FIXTURE_ARCHIVED,
   FIXTURE_DIRECTORY,
@@ -839,6 +840,25 @@ const operationsAccess = {
   recordLabels: new Map<string, string>(),
 };
 
+/** The role list the group sheet's Add assignment offers (G2 change 1). */
+const GROUP_ROLES: readonly RoleChoiceGroup[] = [
+  {
+    label: "Core",
+    moduleOff: false,
+    choices: [
+      {
+        roleId: "r-auditor",
+        name: "Auditor",
+        custom: false,
+        isDefault: false,
+        recordType: null,
+        disabled: false,
+        hint: null,
+      },
+    ],
+  },
+];
+
 /** G33, G37: the Access tab is read-only, and the card opens Access with the group chosen. */
 export const AccessCardIsNeverADeadEnd: Story = {
   globals: { viewport: { value: "desktop1440", isRotated: false } },
@@ -886,6 +906,73 @@ export const AccessCardIsNeverADeadEnd: Story = {
       inspector.getByRole("button", { name: "Manage in Access" })
     );
     await expect(args.onOpenInAccess).toHaveBeenCalledWith("g-local");
+  },
+};
+
+/** T8-e: the group form fixes the group, with the help line and no Assigned via. */
+export const GroupAddAssignment: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    groups: [FIXTURE_LOCAL],
+    access: operationsAccess,
+    addAssignment: {
+      roles: GROUP_ROLES,
+      onSearchRecords: async () => [],
+      onSubmit: fn(async () => ({
+        added: [
+          {
+            recipient: { type: "group" as const, id: "g-local" },
+            assignmentId: "a-new",
+          },
+        ],
+        skipped: [],
+      })),
+    },
+  },
+  play: async ({ canvas, args }) => {
+    await userEvent.click(canvas.getByRole("button", { name: /Operations/ }));
+
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Operations" })
+    );
+
+    await userEvent.click(inspector.getByRole("tab", { name: /^Roles/ }));
+    await expect(
+      inspector.getByText("Every member of the group has these roles.")
+    ).toBeVisible();
+    await expect(
+      inspector.queryByRole("columnheader", { name: "Assigned via" })
+    ).toBeNull();
+
+    await userEvent.click(
+      inspector.getByRole("button", { name: "Add assignment" })
+    );
+    await expect(
+      inspector.getByRole("button", { name: "Back to Operations" })
+    ).toBeVisible();
+
+    await userEvent.click(inspector.getByRole("combobox", { name: "Role" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Auditor/ })
+    );
+    await userEvent.click(
+      inspector.getByRole("button", { name: "Add assignment" })
+    );
+
+    await waitFor(() =>
+      expect(args.addAssignment?.onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          roleId: "r-auditor",
+          scope: null,
+          recipients: [
+            expect.objectContaining({ type: "group", id: "g-local" }),
+          ],
+        })
+      )
+    );
+    await expect(
+      await inspector.findByRole("tab", { name: /^Roles/ })
+    ).toHaveAttribute("aria-selected", "true");
   },
 };
 

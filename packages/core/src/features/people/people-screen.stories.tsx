@@ -1,8 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { AccessPath } from "../../services/roles/effective-access.ts";
 import { FIXTURE_ROWS, fixturePath } from "../access/__fixtures__/access.ts";
+import type { AddAssignmentHost } from "../access/add-assignment-form.tsx";
+import type { RoleChoiceGroup } from "../access/add-assignment-view.ts";
 import {
   FIXTURE_DETAILS,
   FIXTURE_JIT_SETTINGS,
@@ -190,6 +193,91 @@ const adaAccess = {
   recordLabels: new Map<string, string>(),
 };
 
+const ADA_ROLES: readonly RoleChoiceGroup[] = [
+  {
+    label: "Core",
+    moduleOff: false,
+    choices: [
+      {
+        roleId: "r-auditor",
+        name: "Auditor",
+        custom: false,
+        isDefault: false,
+        recordType: null,
+        disabled: false,
+        hint: null,
+      },
+    ],
+  },
+  {
+    label: "Slides",
+    moduleOff: false,
+    choices: [
+      {
+        roleId: "r-slides-editor",
+        name: "Slides editor",
+        custom: false,
+        isDefault: true,
+        recordType: null,
+        disabled: false,
+        hint: null,
+      },
+    ],
+  },
+];
+
+const addHost = (
+  onSubmit: AddAssignmentHost["onSubmit"]
+): AddAssignmentHost => ({
+  roles: ADA_ROLES,
+  onSearchRecords: async () => [],
+  onSubmit,
+});
+
+const NEW_PATH = fixturePath({
+  id: "a-new",
+  holder: { type: "user", id: "u-viewer", name: "Ada Admin" },
+  role: { id: "r-slides-editor", name: "Slides editor" },
+  moduleId: "slides",
+});
+
+/** Opens the person's sheet on its Roles tab, where Add assignment lives. */
+const openRoles = async () => {
+  const sheet = within(await screen.findByRole("dialog"));
+
+  await userEvent.click(sheet.getByRole("tab", { name: /^Roles/ }));
+
+  return sheet;
+};
+
+const onSubmitSpy = fn();
+
+/** Adds the new path first after a save, as the server's newest-first answer does. */
+function TintHarness(props: PeopleScreenProps) {
+  const [paths, setPaths] = useState<readonly AccessPath[]>(ADA_PATHS);
+
+  return (
+    <PeopleScreen
+      {...props}
+      access={{ ...adaAccess, paths }}
+      addAssignment={addHost(async (input) => {
+        await onSubmitSpy(input);
+        setPaths((current) => [NEW_PATH, ...current]);
+
+        return {
+          added: [
+            {
+              recipient: { type: "user", id: "u-viewer" },
+              assignmentId: "a-new",
+            },
+          ],
+          skipped: [],
+        };
+      })}
+    />
+  );
+}
+
 /** d8l5.61: the roles read as Role, Scope and Assigned via, with a role linking Roles (R-37e). */
 export const AccessTabListsEveryPath: Story = {
   globals: { viewport: { value: "desktop1440", isRotated: false } },
@@ -262,10 +350,135 @@ export const PeopleManagerSeesViewOnly: Story = {
     await expect(
       sheet.queryByRole("button", { name: "Manage in Access" })
     ).toBeNull();
+    await expect(
+      sheet.queryByRole("button", { name: "Add assignment" })
+    ).toBeNull();
 
     const table = within(sheet.getByRole("table", { name: "Assigned roles" }));
 
     await expect(table.queryAllByRole("link")).toHaveLength(0);
+  },
+};
+
+/** T8-a: Add assignment replaces the tab with the form, and Back returns with nothing saved. */
+export const AddAssignmentReplacesTheTab: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    viewer: { ...FIXTURE_VIEWER, id: "u-admin" },
+    initialSelectedId: "u-viewer",
+    access: adaAccess,
+    addAssignment: addHost(fn(async () => ({ added: [], skipped: [] }))),
+  },
+  play: async ({ args }) => {
+    const sheet = await openRoles();
+
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Add assignment" })
+    );
+    await expect(
+      sheet.getByRole("button", { name: "Back to Ada Admin" })
+    ).toBeVisible();
+    await expect(
+      sheet.queryByRole("tablist", { name: "Person detail" })
+    ).toBeNull();
+    await expect(
+      screen.getByRole("dialog", { name: "Ada Admin" })
+    ).toBeVisible();
+
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Back to Ada Admin" })
+    );
+    await expect(sheet.getByRole("tab", { name: /^Roles/ })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expect(
+      sheet.getByRole("heading", { name: "Assigned roles (3)" })
+    ).toBeVisible();
+    await expect(args.addAssignment?.onSubmit).not.toHaveBeenCalled();
+  },
+};
+
+/** T8-b: after a save the new row is first and tinted, and the count is one higher. */
+export const AddedRowIsTinted: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    viewer: { ...FIXTURE_VIEWER, id: "u-admin" },
+    initialSelectedId: "u-viewer",
+  },
+  render: (args) => <TintHarness {...args} />,
+  play: async () => {
+    const sheet = await openRoles();
+
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Add assignment" })
+    );
+    await userEvent.click(sheet.getByRole("combobox", { name: "Role" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Slides editor/ })
+    );
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Add assignment" })
+    );
+
+    await expect(
+      await sheet.findByRole("heading", { name: "Assigned roles (4)" })
+    ).toBeVisible();
+
+    const rows = within(sheet.getByRole("table", { name: "Assigned roles" }))
+      .getAllByRole("row")
+      .slice(1);
+
+    await expect(rows[0]).toHaveTextContent("Slides editor");
+    await expect(rows[0]).toHaveAttribute("data-new");
+    await expect(rows[1]).not.toHaveAttribute("data-new");
+  },
+};
+
+/** T8-c2 (P11-14, P12-3): your own account offers no Add assignment. */
+export const OwnAccountOffersNoAddAssignment: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    viewer: { ...FIXTURE_VIEWER, id: "u-viewer" },
+    initialSelectedId: "u-viewer",
+    access: adaAccess,
+    addAssignment: addHost(fn()),
+  },
+  play: async () => {
+    const sheet = await openRoles();
+
+    await expect(
+      sheet.queryByRole("button", { name: "Add assignment" })
+    ).toBeNull();
+  },
+};
+
+/** T8-d: no role: the empty state says why and offers Add assignment. */
+export const EmptyRolesOffersAddAssignment: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    viewer: { ...FIXTURE_VIEWER, id: "u-admin" },
+    initialSelectedId: "u-viewer",
+    access: { ...adaAccess, paths: [] },
+    addAssignment: addHost(fn()),
+  },
+  play: async () => {
+    const sheet = await openRoles();
+
+    await expect(sheet.getByText("No roles assigned")).toBeVisible();
+    await expect(
+      sheet.getByText("Ada Admin sees no modules until a role is assigned.")
+    ).toBeVisible();
+    await expect(
+      sheet.getAllByRole("button", { name: "Add assignment" })
+    ).toHaveLength(1);
+
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Add assignment" })
+    );
+    await expect(
+      sheet.getByRole("button", { name: "Back to Ada Admin" })
+    ).toBeVisible();
   },
 };
 

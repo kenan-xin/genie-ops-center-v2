@@ -10,7 +10,6 @@ import {
   setRealmUserGroupMemberships,
 } from "../testing/e2e-keycloak.ts";
 import { doneAdmitGroup, doneGrantGroup, scenarioEmail } from "./scenarios.ts";
-import { openAdvancedAccess, saveAdvancedAccess } from "./support/access.ts";
 import {
   BROKER_DB,
   brokeredBaseUrl,
@@ -19,7 +18,6 @@ import {
   inviteBaseUrl,
   queryBrokerDatabase,
 } from "./support/brokered.ts";
-import { chooseOption } from "./support/choose-option.ts";
 import { withDeploymentLock } from "./support/lock.ts";
 import { rpcPost } from "./support/rpc.ts";
 import { openNavigation } from "./support/shell.ts";
@@ -156,7 +154,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   await person.getByRole("button", { name: "Close" }).click();
 
   // AC-22: the administrator gives the person's other group the reader role, from the Groups
-  // screen through Manage in Access and Advanced access (R-37a). The person does nothing further.
+  // screen through the group's Add assignment (G2 change 1). The person does nothing further.
   await page.goto(`${baseUrl}/admin/groups`);
   await page
     .getByRole("button", { name: new RegExp(grantGroup) })
@@ -165,14 +163,14 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
 
   const group = page.getByRole("dialog", { name: grantGroup });
 
-  await group.getByRole("button", { name: "Manage in Access" }).click();
-  await expect(page).toHaveURL(/\/admin\/access\?recipient=/);
-
-  const sheet = await openAdvancedAccess(page);
-
-  await chooseOption(page, "Role", "S2-13 reader (Core)");
-  await sheet.getByRole("button", { name: "Add to the list" }).click();
-  await saveAdvancedAccess(page, sheet);
+  await group.getByRole("tab", { name: /^Roles/ }).click();
+  await group.getByRole("button", { name: "Add assignment" }).click();
+  await group.getByRole("combobox", { name: "Role" }).click();
+  await page.getByRole("option", { name: /^S2-13 reader/ }).click();
+  await group.getByRole("button", { name: "Add assignment" }).click();
+  await expect(
+    page.getByText(`Assigned S2-13 reader to ${grantGroup}.`)
+  ).toBeVisible();
 
   // AC-22 and AC-23: the role reaches the open session on its next request; the module appears.
   await placeholderVisible(memberPage, baseUrl);

@@ -3,18 +3,21 @@
 import {
   AccessHelp,
   AccessTabs,
+  AddAssignmentSheet,
   OverviewScreen,
   overviewDefinition,
   parseWho,
+  PlusIcon,
   readFilters,
 } from "@genie/core/features/access";
 import { PageHeader } from "@genie/core/features/shell";
-import { useListState } from "@genie/ui";
+import { Button, useListState } from "@genie/ui";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
 import { useMemo, useState } from "react";
 
 import { appCodeOf, rpc } from "../../../../rpc/client.ts";
+import { useAddAssignment } from "../use-add-assignment.ts";
 import { useRecordLabels } from "../use-record-labels.ts";
 
 type Cursor = Awaited<ReturnType<typeof rpc.roles.assignments>>["nextCursor"];
@@ -43,6 +46,10 @@ export function OverviewRoute(props: {
     readonly people: boolean;
     readonly groups: boolean;
   };
+  /** Tenant-wide `core:roles:manage`, the server's own gate for adding (P12-2). */
+  readonly canAddAssignments: boolean;
+  /** The viewer: their own row in Assign to is disabled (P12-3). */
+  readonly viewerId: string;
 }) {
   const t = useTranslations("pages");
 
@@ -156,11 +163,30 @@ export function OverviewRoute(props: {
 
   const recordLabels = useRecordLabels(page?.paths);
 
+  const addAssignment = useAddAssignment({
+    enabled: props.canAddAssignments,
+  });
+
+  const [adding, setAdding] = useState(false);
+
+  const [added, setAdded] = useState<{
+    readonly key: string;
+    readonly ids: ReadonlySet<string>;
+  } | null>(null);
+
   return (
     <>
       <PageHeader
         title={t("access.title")}
         description={t("access.overviewDescription")}
+        actions={
+          addAssignment === undefined ? undefined : (
+            <Button onClick={() => setAdding(true)}>
+              <PlusIcon aria-hidden="true" />
+              {t("access.addAssignment")}
+            </Button>
+          )
+        }
       />
       {/* The tab labels start 12 px into their column; the help shares that text edge. */}
       <div className="ps-3 md:hidden">
@@ -201,6 +227,11 @@ export function OverviewRoute(props: {
         roleHref={props.links.roles ? selected("/admin/roles") : undefined}
         personHref={props.links.people ? selected("/admin/people") : undefined}
         groupHref={props.links.groups ? selected("/admin/groups") : undefined}
+        newRows={
+          added !== null && added.key === key && index === 0
+            ? added.ids
+            : undefined
+        }
         {...(catalogue.isError ||
         roles.isError ||
         lookup.isError ||
@@ -209,6 +240,22 @@ export function OverviewRoute(props: {
           ? { error: "The access could not be read." }
           : {})}
       />
+      {addAssignment === undefined ? null : (
+        <AddAssignmentSheet
+          open={adding}
+          onClose={() => setAdding(false)}
+          host={addAssignment}
+          search={searchRecipients}
+          selfId={props.viewerId}
+          onAdded={(result) => {
+            setAt({ key, index: 0 });
+            setAdded({
+              key,
+              ids: new Set(result.added.map((row) => row.assignmentId)),
+            });
+          }}
+        />
+      )}
     </>
   );
 }

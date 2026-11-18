@@ -4,6 +4,7 @@ import type {
   GroupRow as Group,
 } from "../../services/groups/index.ts";
 import type { AssignablePerson as PersonOption } from "../../services/people/index.ts";
+import type { AddAssignmentHost } from "../access/add-assignment-form.tsx";
 import type { InspectorAccess } from "../access/assignments-table.tsx";
 import type { NoMatchCopy } from "../admin/no-match.tsx";
 
@@ -97,6 +98,8 @@ export type GroupsScreenProps = {
   readonly onRemoveAllMembers?: (groupId: string) => void;
   /** Opens the Access screen with this group chosen (the one assignment writer, DEC-39). */
   readonly onOpenInAccess?: ((groupId: string) => void) | undefined;
+  /** Only for a tenant-wide roles manager; an archived group keeps its roles paused and offers no add. */
+  readonly addAssignment?: AddAssignmentHost | undefined;
   /**
    * A role's address on Roles, only for a viewer with `core:roles:manage` (R-37e). Without it a
    * role in the sheet's assignments table is plain text.
@@ -110,6 +113,8 @@ export type GroupInspectorProps = {
   readonly members: readonly GroupMember[];
   /** The group's access from the S2-19 read; undefined hides the Access tab (LK4). */
   readonly access?: InspectorAccess | undefined;
+  /** Only for a tenant-wide roles manager; an archived group keeps its roles paused and offers no add. */
+  readonly addAssignment?: AddAssignmentHost | undefined;
   readonly viewer: GroupsViewer;
   readonly people: readonly PersonOption[];
   readonly lastAdministrator: boolean;

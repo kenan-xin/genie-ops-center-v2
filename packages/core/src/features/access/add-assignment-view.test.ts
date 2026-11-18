@@ -8,7 +8,13 @@ import type { AccessPath } from "../../services/roles/effective-access.ts";
 import type { GrantRow } from "../../services/roles/grants.ts";
 import type { RoleRow } from "../../services/roles/index.ts";
 import type { RecipientRow } from "../../services/roles/recipients.ts";
-import { addedMessage, namesOf, roleChoices } from "./add-assignment-view.ts";
+import {
+  addedMessage,
+  namesOf,
+  pickedRole,
+  refusalMessage,
+  roleChoices,
+} from "./add-assignment-view.ts";
 
 const role = (
   id: string,
@@ -261,4 +267,40 @@ it("maps the server's recipients to the picked names in the server's order", () 
 
   // A person and a group can share an id string; the type keeps them apart.
   expect(namesOf([{ type: "user", id: "g-fin" }], picked)).toEqual([]);
+});
+
+it("names the module of a module-disabled refusal and keeps any other reason (T8-g)", () => {
+  expect(
+    refusalMessage(
+      "module-disabled",
+      "That module is off for this deployment.",
+      "Slides"
+    )
+  ).toBe(
+    "The Slides module is off. Turn it on in Modules, or choose a role of another module."
+  );
+  expect(
+    refusalMessage(
+      "module-disabled",
+      "That module is off for this deployment.",
+      null
+    )
+  ).toBe("That module is off for this deployment.");
+  expect(
+    refusalMessage(
+      "not-found",
+      "That person or group no longer exists.",
+      "Slides"
+    )
+  ).toBe("That person or group no longer exists.");
+  expect(refusalMessage(undefined, "", null)).toBe("Try again.");
+  const groups = roleChoices({ roles, catalogue, advanced });
+  expect(pickedRole(groups, "r-inv-approver")).toEqual({
+    name: "Invoice approver",
+    moduleName: "Invoices and Payments",
+  });
+  expect(pickedRole(groups, "r-auditor")).toEqual({
+    name: "Auditor",
+    moduleName: null,
+  });
 });

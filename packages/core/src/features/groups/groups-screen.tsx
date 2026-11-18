@@ -48,10 +48,11 @@ import {
   WarningNote,
   touchRowHeight,
 } from "@genie/ui";
-import { EllipsisIcon } from "lucide-react";
+import { ArrowRightIcon, EllipsisIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
+import { AddAssignmentForm } from "../access/add-assignment-form.tsx";
 import { AssignmentsTable } from "../access/assignments-table.tsx";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
@@ -172,6 +173,16 @@ export function GroupInspector(
   const [nameDraft, setNameDraft] = useState(group.name);
   const [descriptionDraft, setDescriptionDraft] = useState(group.description);
   const [memberSearch, setMemberSearch] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newRows, setNewRows] = useState<ReadonlySet<string>>(new Set());
+  const host = props.addAssignment;
+
+  const paths = props.access?.paths ?? [];
+
+  const addingForm =
+    adding && host !== undefined && props.access?.paths !== undefined;
+
   const labelId = useId();
   const nameId = useId();
   const descriptionId = useId();
@@ -186,6 +197,8 @@ export function GroupInspector(
     setNameDraft(group.name);
     setDescriptionDraft(group.description);
     setMemberSearch("");
+    setAdding(false);
+    setNewRows(new Set());
   }, [open, group.id]);
 
   const blocked = props.lastAdministrator;
@@ -208,11 +221,57 @@ export function GroupInspector(
     looksLikeId(group.name) &&
     props.labelHint !== undefined;
 
+  if (addingForm && host !== undefined) {
+    return (
+      <Sheet
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && !saving) props.onClose();
+        }}
+      >
+        <SheetContent showCloseButton={false}>
+          <SheetTitle className="sr-only">{groupLabel(group)}</SheetTitle>
+          <AddAssignmentForm
+            to={{
+              fixed: {
+                type: "group",
+                id: group.id,
+                name: groupLabel(group),
+                source: group.source,
+                memberCount: group.memberCount,
+                archived: group.archived,
+                assignedRoles: group.assignmentCount,
+              },
+            }}
+            roles={host.roles}
+            backTo={groupLabel(group)}
+            onSearchRecords={host.onSearchRecords}
+            onCancel={() => setAdding(false)}
+            onSubmit={async (input) => {
+              setSaving(true);
+
+              try {
+                const result = await host.onSubmit(input);
+
+                setNewRows(
+                  new Set(result.added.map((added) => added.assignmentId))
+                );
+                setAdding(false);
+              } finally {
+                setSaving(false);
+              }
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   return (
     <Sheet
       open={open}
       onOpenChange={(next) => {
-        if (!next) props.onClose();
+        if (!next && !saving) props.onClose();
       }}
     >
       <SheetContent>
@@ -276,8 +335,7 @@ export function GroupInspector(
             </WarningNote>
           ) : null}
 
-          {/* Manage in Access only for a viewer with the Roles key and a group Grants lists; any
-              other viewer reads the count alone (LK4, LK13). */}
+          {/* A viewer without the Roles key reads only this count (LK4); Manage in Access sits under the Roles table. */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3">
             <div className="flex min-w-0 items-start gap-3">
               <KeyIcon
@@ -295,16 +353,6 @@ export function GroupInspector(
                 </p>
               </div>
             </div>
-            {props.onOpenInAccess === undefined ? null : (
-              <Button
-                variant="link"
-                size="sm"
-                className="-ms-3"
-                onClick={props.onOpenInAccess}
-              >
-                Manage in Access
-              </Button>
-            )}
           </div>
 
           <HelpDisclosure label="How group access works">
@@ -452,23 +500,53 @@ export function GroupInspector(
 
             {props.access === undefined ? null : (
               <TabsContent value="access">
-                <h3 className="mb-2 text-sm font-semibold text-foreground">
-                  Assigned roles
-                  {props.access.paths === undefined
-                    ? ""
-                    : ` (${props.access.paths.length})`}
-                </h3>
-                {/* The card above holds Manage in Access on both tabs, so the heading holds no second link. */}
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Assigned roles
+                    {props.access.paths === undefined
+                      ? ""
+                      : ` (${props.access.paths.length})`}
+                  </h3>
+                  {/* The heading holds Add assignment only when the group already has a role. */}
+                  {host !== undefined && paths.length > 0 ? (
+                    <Button variant="secondary" onClick={() => setAdding(true)}>
+                      <PlusIcon aria-hidden="true" />
+                      Add assignment
+                    </Button>
+                  ) : null}
+                </div>
+                <p className="mb-2 text-sm text-muted-foreground">
+                  Every member of the group has these roles.
+                </p>
                 <AssignmentsTable
                   {...props.access}
                   recipient={{ type: "group", id: group.id }}
                   timeZone={viewer.timeZone}
+                  newRows={newRows}
                   empty={{
                     title: "No roles assigned",
                     description: "Members of this group get no roles from it.",
+                    action:
+                      host === undefined ? undefined : (
+                        <Button onClick={() => setAdding(true)}>
+                          <PlusIcon aria-hidden="true" />
+                          Add assignment
+                        </Button>
+                      ),
                   }}
                   roleHref={props.roleHref}
                 />
+                {props.onOpenInAccess === undefined ? null : (
+                  <div className="mt-2">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={props.onOpenInAccess}
+                    >
+                      Manage in Access <ArrowRightIcon aria-hidden="true" />
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
             )}
           </Tabs>
@@ -976,6 +1054,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
           group={selected}
           members={props.details?.[selected.id]?.members ?? []}
           access={props.access}
+          addAssignment={selected.archived ? undefined : props.addAssignment}
           roleHref={props.roleHref}
           viewer={props.viewer}
           people={props.people}

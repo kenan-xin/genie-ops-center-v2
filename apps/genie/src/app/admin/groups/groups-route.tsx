@@ -1,6 +1,6 @@
 "use client";
 
-import { accessHref } from "@genie/core/features/access";
+import { accessOverviewHref } from "@genie/core/features/access";
 import { GroupsScreen, type GroupsViewer } from "@genie/core/features/groups";
 import { useQuery } from "@tanstack/react-query";
 import { useTranslations } from "next-intl";
@@ -10,6 +10,7 @@ import { useState } from "react";
 
 import { useAdminWrite } from "../../../rpc/admin-write.ts";
 import { rpc } from "../../../rpc/client.ts";
+import { useAddAssignment } from "../access/use-add-assignment.ts";
 import { useInspectorAccess } from "../access/use-inspector-access.ts";
 
 /**
@@ -22,6 +23,8 @@ import { useInspectorAccess } from "../access/use-inspector-access.ts";
 export function GroupsRoute(props: {
   readonly viewer: GroupsViewer;
   readonly canManageAccess: boolean;
+  /** Tenant-wide `core:roles:manage`, the server's own gate for adding (P12-2). */
+  readonly canAddAssignments: boolean;
 }) {
   const t = useTranslations("pages");
   const router = useRouter();
@@ -59,6 +62,15 @@ export function GroupsRoute(props: {
     canManageAccess: props.canManageAccess,
     recipient: selectedId === null ? null : { type: "group", id: selectedId },
     open,
+  });
+
+  // The group sheet's Add assignment: only a tenant-wide roles manager gets it, and an archived
+  // group keeps its roles paused (P12-2, R-25).
+  const addAssignment = useAddAssignment({
+    enabled: props.canAddAssignments,
+    recipient:
+      selectedId === null ? undefined : { type: "group", id: selectedId },
+    paths: access?.paths,
   });
 
   // One write runs any change and reloads the list and the open detail.
@@ -129,6 +141,7 @@ export function GroupsRoute(props: {
       onChangeIncludeArchived={setIncludeArchived}
       people={people.data ?? []}
       access={access}
+      addAssignment={addAssignment}
       lastAdministratorGroupIds={
         detail.data?.lastAdministrator === true ? [selected] : []
       }
@@ -181,7 +194,10 @@ export function GroupsRoute(props: {
       }
       onOpenInAccess={
         props.canManageAccess
-          ? (groupId) => router.push(accessHref({ recipient: groupId }))
+          ? (groupId) =>
+              router.push(
+                accessOverviewHref({ who: { type: "group", id: groupId } })
+              )
           : undefined
       }
       roleHref={

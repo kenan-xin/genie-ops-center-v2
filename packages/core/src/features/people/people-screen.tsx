@@ -61,6 +61,10 @@ import {
 
 import type { GrantRow } from "../../services/roles/grants.ts";
 import {
+  AddAssignmentForm,
+  type AddAssignmentHost,
+} from "../access/add-assignment-form.tsx";
+import {
   AssignmentsTable,
   type InspectorAccess,
 } from "../access/assignments-table.tsx";
@@ -257,9 +261,10 @@ function PersonConfirms(props: {
 /**
  * The person inspector: header, Profile, Groups, Access and Sessions tabs (R-37). The Access tab
  * shows only when the host passes the access read. The app passes it to every viewer of People,
- * read-only, and passes Manage in Access only with the Roles key (LK4, `d8l5.43`). Disable and
- * Remove confirm inside the sheet, so that one Escape closes only the confirm (PD-8);
- * `onDisable` and `onRemove` fire once confirmed.
+ * read-only, and passes Add assignment only with the Roles key (LK4, `d8l5.43`). Manage in Access
+ * sits under the table and opens Access with the person filtered (P12-10). Disable and Remove
+ * confirm inside the sheet, so that one Escape closes only the confirm (PD-8); `onDisable` and
+ * `onRemove` fire once confirmed.
  */
 export function PersonInspector(props: {
   readonly open?: boolean;
@@ -278,6 +283,8 @@ export function PersonInspector(props: {
   /** The person's access from the S2-19 read; undefined hides the Access tab. */
   readonly access?: InspectorAccess | undefined;
   readonly onManageAccess?: (() => void) | undefined;
+  /** Only for a tenant-wide roles manager; the person screen drops it on your own account. */
+  readonly addAssignment?: AddAssignmentHost | undefined;
   /** A role's address on Roles, only for a viewer with core:roles:manage (R-37e). */
   readonly roleHref?: ((roleId: string) => string) | undefined;
   /** The address of the group a role comes through, only for a viewer who manages groups; without it the group name is plain text. */
@@ -292,11 +299,22 @@ export function PersonInspector(props: {
   const open = props.open ?? true;
   const [tab, setTab] = useState<(typeof TABS)[number]>("profile");
   const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
+  const [adding, setAdding] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [newRows, setNewRows] = useState<ReadonlySet<string>>(new Set());
+  const host = props.addAssignment;
+
+  const paths = props.access?.paths ?? [];
+
+  const addingForm =
+    adding && host !== undefined && props.access?.paths !== undefined;
 
   // The sheet stays mounted, so each open starts on the profile with no confirm.
   useEffect(() => {
     setTab("profile");
     setConfirm(null);
+    setAdding(false);
+    setNewRows(new Set());
   }, [open, person.id]);
 
   const pendingLocal =
@@ -305,11 +323,57 @@ export function PersonInspector(props: {
   const pendingBrokered =
     person.status === "pending" && person.accountType === "brokered";
 
+  if (addingForm && host !== undefined) {
+    return (
+      <Sheet
+        open={open}
+        onOpenChange={(next) => {
+          if (!next && !saving) props.onClose();
+        }}
+      >
+        <SheetContent showCloseButton={false}>
+          <SheetTitle className="sr-only">{person.name}</SheetTitle>
+          <AddAssignmentForm
+            to={{
+              fixed: {
+                type: "user",
+                id: person.id,
+                name: person.name,
+                email: person.email,
+                assignedRoles: paths.filter(
+                  (path) => path.holder.type === "user"
+                ).length,
+              },
+            }}
+            roles={host.roles}
+            backTo={person.name}
+            onSearchRecords={host.onSearchRecords}
+            onCancel={() => setAdding(false)}
+            onSubmit={async (input) => {
+              setSaving(true);
+
+              try {
+                const result = await host.onSubmit(input);
+
+                setNewRows(
+                  new Set(result.added.map((added) => added.assignmentId))
+                );
+                setAdding(false);
+              } finally {
+                setSaving(false);
+              }
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
   return (
     <Sheet
       open={open}
       onOpenChange={(next) => {
-        if (!next) props.onClose();
+        if (!next && !saving) props.onClose();
       }}
     >
       <SheetContent>
@@ -464,17 +528,19 @@ export function PersonInspector(props: {
                       : ` (${props.access.paths.length})`}
                   </h3>
                   {/* Your own account shows neither (person-access.prototype.html, viewer=self). */}
-                  {props.self ? null : props.onManageAccess === undefined ? (
+                  {props.self ? null : host !== undefined ? (
+                    paths.length > 0 ? (
+                      <Button
+                        variant="secondary"
+                        onClick={() => setAdding(true)}
+                      >
+                        <PlusIcon aria-hidden="true" />
+                        Add assignment
+                      </Button>
+                    ) : null
+                  ) : props.onManageAccess === undefined ? (
                     <LabelPill>View only</LabelPill>
-                  ) : (
-                    <Button
-                      variant="link"
-                      size="sm"
-                      onClick={props.onManageAccess}
-                    >
-                      Manage in Access <ArrowRightIcon aria-hidden="true" />
-                    </Button>
-                  )}
+                  ) : null}
                 </div>
                 <HelpDisclosure label="How access adds up">
                   A person has the roles assigned to them directly plus the
@@ -487,15 +553,33 @@ export function PersonInspector(props: {
                     {...props.access}
                     recipient={{ type: "user", id: person.id }}
                     timeZone={viewer.timeZone}
+                    newRows={newRows}
                     empty={{
                       title: "No roles assigned",
-                      description:
-                        "This person can sign in but sees no modules.",
+                      description: `${person.name} sees no modules until a role is assigned.`,
+                      action:
+                        host === undefined ? undefined : (
+                          <Button onClick={() => setAdding(true)}>
+                            <PlusIcon aria-hidden="true" />
+                            Add assignment
+                          </Button>
+                        ),
                     }}
                     roleHref={props.roleHref}
                     groupHref={props.groupHref}
                   />
                 </div>
+                {props.self || props.onManageAccess === undefined ? null : (
+                  <div className="mt-2">
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={props.onManageAccess}
+                    >
+                      Manage in Access <ArrowRightIcon aria-hidden="true" />
+                    </Button>
+                  </div>
+                )}
               </TabsContent>
             )}
 
@@ -1242,6 +1326,9 @@ export function PeopleScreen(props: PeopleScreenProps) {
           }
           onRevokeAllSessions={() => props.onRevokeAllSessions?.(selected.id)}
           access={props.access}
+          addAssignment={
+            selected.id === props.viewer.id ? undefined : props.addAssignment
+          }
           onManageAccess={
             props.onManageAccess === undefined
               ? undefined

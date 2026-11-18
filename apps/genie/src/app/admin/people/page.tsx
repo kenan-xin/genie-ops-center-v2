@@ -1,4 +1,4 @@
-import { can, coreAdminPermission } from "@genie/core";
+import { can, coreAdminPermission, scopesFor } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
@@ -51,6 +51,10 @@ export default async function PeoplePage() {
               caller,
               coreAdminPermission("core-access")
             )}
+            canAddAssignments={
+              (await scopesFor(caller, coreAdminPermission("core-access")))
+                .kind === "all"
+            }
           />
         </main>
       );

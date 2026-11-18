@@ -6,9 +6,7 @@ import {
   e2eGroupsRolesGroup,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
-import { openAdvancedAccess, saveAdvancedAccess } from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
-import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
 import { iconCheckSize } from "./support/icon-alignment.ts";
 import { withDeploymentLock } from "./support/lock.ts";
@@ -152,17 +150,17 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await expect(inspector).toBeHidden();
   await expect(groupRow).toBeFocused();
 
-  // Map the group to a role through the screens, not SQL: Manage in Access, then Advanced access
-  // (R-24b, R-37a). Access lists the group before any sign-in has seen it.
+  // Map the group to a role through the screens, not SQL: the group's Roles tab, then Add
+  // assignment (R-24b, G2 change 1). Access lists the group before any sign-in has seen it.
   await groupRow.click();
-  await inspector.getByRole("button", { name: "Manage in Access" }).click();
-  await expect(page).toHaveURL(/\/admin\/access\?recipient=/);
-
-  const sheet = await openAdvancedAccess(page);
-
-  await chooseOption(page, "Role", "E2E reader (Core)");
-  await sheet.getByRole("button", { name: "Add to the list" }).click();
-  await saveAdvancedAccess(page, sheet);
+  await inspector.getByRole("tab", { name: /^Roles/ }).click();
+  await inspector.getByRole("button", { name: "Add assignment" }).click();
+  await inspector.getByRole("combobox", { name: "Role" }).click();
+  await page.getByRole("option", { name: /^E2E reader/ }).click();
+  await inspector.getByRole("button", { name: "Add assignment" }).click();
+  await expect(
+    page.getByText(`Assigned E2E reader to ${GROUP_LABEL}.`)
+  ).toBeVisible();
 
   const [assigned] = await queryDatabase(
     `select count(*) from role_assignment a

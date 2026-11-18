@@ -14,6 +14,7 @@ import { ChevronLeftIcon, XIcon } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
 
 import type { Scope } from "../../lib/module-contract/keys.ts";
+import type { AddAssignmentsResult } from "../../services/roles/add-assignments.ts";
 import type {
   RecipientPage,
   RecipientRow,
@@ -53,6 +54,16 @@ export type AddAssignmentFormProps = {
   readonly onCancel: () => void;
   /** Resolves when saved. Rejects with `{ message }` on a refusal; the form keeps its values. */
   readonly onSubmit: (input: AddAssignmentInput) => Promise<void>;
+};
+
+/** What a sheet or Access needs to add an assignment; given only to a tenant-wide roles manager (P12-2). */
+export type AddAssignmentHost = {
+  readonly roles: readonly RoleChoiceGroup[];
+  readonly onSearchRecords: AddAssignmentFormProps["onSearchRecords"];
+  /** Resolves with the server's answer; rejects with `{ message }`, which the form shows. */
+  readonly onSubmit: (
+    input: AddAssignmentInput
+  ) => Promise<AddAssignmentsResult>;
 };
 
 type FormErrors = {
@@ -194,6 +205,7 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
             variant="ghost"
             size="icon-sm"
             aria-label={`Back to ${props.backTo}`}
+            disabled={saving}
             onClick={props.onCancel}
           >
             <ChevronLeftIcon aria-hidden="true" />
@@ -204,6 +216,7 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
           variant="ghost"
           size="icon-sm"
           aria-label="Close"
+          disabled={saving}
           onClick={props.onCancel}
         >
           <XIcon aria-hidden="true" />
