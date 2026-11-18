@@ -488,6 +488,7 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
   // Every helper below writes through the JSON sinks.
   const run: WorkerOptions = { ...options, ...io };
 
+  const connectionsClosed = trackConnections(context.db.$client);
   const boss = createBoss(context.db.$client, logger, true, options.timing);
 
   // The worker serves the same runtime surface the application registered: the durable
@@ -528,7 +529,36 @@ export async function runWorker(options: WorkerOptions): Promise<number> {
     await stopJobQueue(context.jobQueue);
     await context.cacheListener.stop();
     await context.db.$client.end();
+    await connectionsClosed(
+      options.shutdownTimeoutMs ?? DEFAULT_SHUTDOWN_TIMEOUT_MS
+    );
   }
+}
+
+/**
+ * Answers a wait for every connection the pool opened to close, at most `limitMs`. pg-pool's `end()`
+ * resolves once it asked its idle clients to end, before their sockets close, so a database that
+ * stops right after the worker returns still finds them open (genie-ops-center-v2-xok3.95). The
+ * bound keeps a socket that never closes from holding up the exit.
+ */
+function trackConnections(
+  pool: TenantContext["db"]["$client"]
+): (limitMs: number) => Promise<void> {
+  const open = new Set<Promise<void>>();
+
+  pool.on("connect", (client) => {
+    const closed = new Promise<void>((resolve) => client.once("end", resolve));
+
+    open.add(closed);
+    void closed.then(() => open.delete(closed));
+  });
+
+  return async (limitMs) => {
+    await Promise.race([
+      Promise.all(open),
+      sleep(limitMs, undefined, { ref: false }),
+    ]);
+  };
 }
 
 /**

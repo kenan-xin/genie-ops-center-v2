@@ -289,6 +289,53 @@ describe("the core pg-boss worker", () => {
     await worker;
   });
 
+  it("holds no open connection once it returns", async () => {
+    const database = await disposablePostgres();
+    const target = new URL(database.url);
+    const proxy = createServer();
+    const open = new Set<unknown>();
+
+    // Every close reaches the worker 300 ms late, so a return that does not wait for its
+    // connections to close leaves them open. A test stops the container right after the return,
+    // and a connection still closing then logs a 57P01 idle client error.
+    proxy.on("connection", (downstream) => {
+      const upstream = connect(Number(target.port), target.hostname);
+
+      open.add(downstream);
+      downstream.once("close", () => open.delete(downstream));
+      downstream.pipe(upstream);
+      upstream.pipe(downstream, { end: false });
+      upstream.once("close", () => setTimeout(() => downstream.end(), 300));
+      upstream.once("error", () => downstream.destroy());
+    });
+    await new Promise<void>((resolve) => proxy.listen(0, "127.0.0.1", resolve));
+    cleanups.push(async () => {
+      proxy.close();
+    });
+    const proxyUrl = new URL(database.url);
+    proxyUrl.hostname = "127.0.0.1";
+    // SAFETY: listen(0, "127.0.0.1") binds TCP and returns AddressInfo before this read.
+    proxyUrl.port = String((proxy.address() as AddressInfo).port);
+    const controller = new AbortController();
+    const { promise: started, resolve } = Promise.withResolvers<void>();
+    const worker = runWorker({
+      source: source(proxyUrl.toString()),
+      modules: [],
+      histories: [],
+      output: (line) => {
+        if (line.includes("worker started")) resolve();
+      },
+      errorOutput: () => {},
+      signal: controller.signal,
+    });
+
+    await started;
+    controller.abort();
+
+    expect(await worker).toBe(0);
+    expect(open.size).toBe(0);
+  });
+
   it("starts its own migrator and pg-boss schema without an application process", async () => {
     const database = await disposablePostgres();
     const context = createTenantContext(
