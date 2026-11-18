@@ -29,6 +29,7 @@ import {
   FieldLabel,
   horizontalStrip,
   horizontalStripWheel,
+  iconLeadPx,
   InfoNote,
   Input,
   Skeleton,
@@ -37,12 +38,19 @@ import {
 import { useForm } from "@tanstack/react-form";
 import { isEqual } from "es-toolkit";
 import {
+  ArrowLeftIcon,
+  ArrowRightIcon,
   ChevronDown,
+  FileDownIcon,
   Loader2,
+  PencilIcon,
   Play,
   PlusIcon,
   Presentation,
+  PresentationIcon,
+  RefreshCwIcon,
   Square,
+  Trash2Icon,
   Undo2,
 } from "lucide-react";
 import { useEffect, useId, useRef, useState } from "react";
@@ -62,6 +70,7 @@ import { askStarter, type HandKind } from "./add-element-menu.tsx";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
 import { presenterPath } from "./deck-sync.ts";
 import { DeckTitle } from "./deck-title.tsx";
+import { DockSheet, DockSheetRow, DockSheetSection } from "./dock-sheet.tsx";
 import {
   draftStatus,
   isDrafting,
@@ -148,6 +157,11 @@ function hasFigures(deck: DeckPageView["deck"]): boolean {
     )
   );
 }
+
+const NO_FIGURES = "This deck has no figures, charts or tables.";
+
+/** P13-15: a deck-wide action with no slide to act on. */
+const NO_SLIDE = "Add a slide first.";
 
 function numberList(numbers: readonly number[]): string {
   if (numbers.length <= 1) return numbers.join("");
@@ -461,6 +475,11 @@ export function DeckView(props: DeckViewProps) {
   const notesField = useRef<NotesFieldHandle>(null);
   const stage = useRef<SlideStageHandle>(null);
   const panel = useAgentPanel();
+  // The phone dock's More sheet. Its focus return is off for an action that moves focus itself,
+  // and an action that must wait for the sheet to leave runs once it has (P13-8).
+  const [more, setMore] = useState(false);
+  const moreFocus = useRef(true);
+  const afterMore = useRef<(() => void) | null>(null);
   // The panel opens after the sheet closes, so the sheet's focus return does not fight it.
   const afterEditor = useRef<(() => void) | null>(null);
 
@@ -909,6 +928,12 @@ export function DeckView(props: DeckViewProps) {
     );
   }
 
+  function closeMore(returnFocus: boolean, after?: () => void): void {
+    moreFocus.current = returnFocus;
+    afterMore.current = after ?? null;
+    setMore(false);
+  }
+
   function openAdd(): void {
     setFailure(null);
     setAdding({
@@ -1039,7 +1064,7 @@ export function DeckView(props: DeckViewProps) {
                       Add slide
                     </DropdownMenuItem>
                     <DropdownMenuItem
-                      disabled={!hasFigures(deck)}
+                      reason={hasFigures(deck) ? undefined : NO_FIGURES}
                       onClick={refreshData}
                     >
                       Refresh data
@@ -1159,6 +1184,14 @@ export function DeckView(props: DeckViewProps) {
           icon={<Presentation />}
           title="No slides yet"
           description="Add a slide, or create a deck by chat from the Slides list."
+          // P13-16: a phone has no header More, so the empty state adds the first slide.
+          action={
+            editable ? (
+              <Button className="md:hidden" onClick={openAdd}>
+                Add slide
+              </Button>
+            ) : undefined
+          }
         />
       ) : (
         <div className="flex flex-col gap-4 md:flex-row md:items-start">
@@ -1199,8 +1232,9 @@ export function DeckView(props: DeckViewProps) {
                     images={deck.images}
                   />
                 </div>
+                {/* C09-14: below 768 px the tiles are too small for a menu; the More sheet acts. */}
                 {editable ? (
-                  <div className="absolute top-0.5 right-0.5">
+                  <div className="absolute top-0.5 right-0.5 max-md:hidden">
                     <RailMenu
                       slide={slide}
                       index={slideIndex}
@@ -1302,29 +1336,6 @@ export function DeckView(props: DeckViewProps) {
                   onAdd={(kind) => addElement(current, kind)}
                 />
               </div>
-              {selected === null || current.elements[selected] === undefined ? (
-                <SlideDock
-                  slide={current}
-                  saving={busy}
-                  ask={view.chat.kind}
-                  onAsk={(kind) => agent.send(askStarter(kind, index + 1))}
-                  onSteps={(steps) =>
-                    sendStep(steps, {
-                      expectedHash: deck.contentHash,
-                      slideNumber: index + 1,
-                      background: true,
-                    })
-                  }
-                  onAdd={(kind) => addElement(current, kind)}
-                  onEditSlide={() =>
-                    openEditor({
-                      slide: current,
-                      number: index + 1,
-                      expectedHash: deck.contentHash,
-                    })
-                  }
-                />
-              ) : null}
               {selected === null ||
               current.elements[selected] === undefined ? null : (
                 <StyleToolbar
@@ -1448,6 +1459,170 @@ export function DeckView(props: DeckViewProps) {
           )}
         </div>
       )}
+      {/* Below 768 px, with nothing selected; a selected element brings its own dock. */}
+      {drafting ||
+      (selected !== null &&
+        current?.elements[selected] !== undefined) ? null : (
+        <SlideDock
+          slide={current}
+          canWrite={view.canWrite}
+          saving={busy || !editable}
+          ask={view.chat.kind}
+          onAsk={(kind) => agent.send(askStarter(kind, index + 1))}
+          onSteps={(steps) =>
+            sendStep(steps, {
+              expectedHash: deck.contentHash,
+              slideNumber: index + 1,
+              background: true,
+            })
+          }
+          onAdd={(kind) => {
+            if (current !== undefined) addElement(current, kind);
+          }}
+          onEditSlide={() => {
+            if (current === undefined) return;
+
+            openEditor({
+              slide: current,
+              number: index + 1,
+              expectedHash: deck.contentHash,
+            });
+          }}
+          onMore={() => {
+            moreFocus.current = true;
+            setMore(true);
+          }}
+        />
+      )}
+      {/* Each icon's lead offset puts its ink on the section heading's text edge (6wz1.113). */}
+      <DockSheet
+        open={more}
+        onOpenChange={setMore}
+        title="Deck and slide actions"
+        returnFocus={() => moreFocus.current}
+        onClosed={() => {
+          afterMore.current?.();
+          afterMore.current = null;
+        }}
+      >
+        <DockSheetSection title="Present">
+          <DockSheetRow
+            icon={
+              <PresentationIcon aria-hidden="true" className={iconLeadPx[3]} />
+            }
+            label="Present with notes"
+            detail="Opens the presenter window"
+            reason={current === undefined ? NO_SLIDE : undefined}
+            busy={busy}
+            // The pop-up opens inside the tap, before the sheet closes, or the browser blocks it.
+            onClick={() => {
+              presentWithNotes();
+              closeMore(false);
+            }}
+          />
+        </DockSheetSection>
+        <DockSheetSection title="Deck">
+          <DockSheetRow
+            icon={<FileDownIcon aria-hidden="true" className={iconLeadPx[4]} />}
+            label="Export to PowerPoint"
+            reason={current === undefined ? NO_SLIDE : undefined}
+            busy={busy}
+            onClick={() => {
+              closeMore(true);
+              exportToPowerPoint();
+            }}
+          />
+          {view.canWrite ? (
+            <>
+              <DockSheetRow
+                icon={
+                  <RefreshCwIcon aria-hidden="true" className={iconLeadPx[4]} />
+                }
+                label="Refresh data"
+                detail={`Figures as of ${figuresDate(deck.figuresAsOf)}`}
+                reason={hasFigures(deck) ? undefined : NO_FIGURES}
+                busy={busy || !editable}
+                onClick={() => {
+                  closeMore(true);
+                  refreshData();
+                }}
+              />
+              <DockSheetRow
+                icon={
+                  <PencilIcon aria-hidden="true" className={iconLeadPx[3]} />
+                }
+                label="Rename deck"
+                busy={busy || !editable}
+                // The input opens once the sheet has gone, so no focus return blurs and saves it.
+                onClick={() => closeMore(false, () => editTitle(true))}
+              />
+            </>
+          ) : null}
+        </DockSheetSection>
+        {current === undefined || !view.canWrite ? null : (
+          <DockSheetSection title="This slide">
+            <DockSheetRow
+              icon={
+                <ArrowLeftIcon aria-hidden="true" className={iconLeadPx[5]} />
+              }
+              label="Move earlier"
+              reason={index === 0 ? "This is the first slide." : undefined}
+              busy={busy || !editable}
+              onClick={() => {
+                closeMore(true);
+                void sendStep(
+                  [
+                    {
+                      op: "move-slide",
+                      slideId: current.id,
+                      toIndex: index - 1,
+                    },
+                  ],
+                  { expectedHash: deck.contentHash, slideNumber: index + 1 }
+                );
+              }}
+            />
+            <DockSheetRow
+              icon={
+                <ArrowRightIcon aria-hidden="true" className={iconLeadPx[5]} />
+              }
+              label="Move later"
+              reason={
+                index === deck.slides.length - 1
+                  ? "This is the last slide."
+                  : undefined
+              }
+              busy={busy || !editable}
+              onClick={() => {
+                closeMore(true);
+                void sendStep(
+                  [
+                    {
+                      op: "move-slide",
+                      slideId: current.id,
+                      toIndex: index + 1,
+                    },
+                  ],
+                  { expectedHash: deck.contentHash, slideNumber: index + 1 }
+                );
+              }}
+            />
+            <DockSheetRow
+              icon={<Trash2Icon aria-hidden="true" className={iconLeadPx[4]} />}
+              label="Delete slide"
+              danger
+              busy={busy || !editable}
+              onClick={() => {
+                closeMore(true);
+                void sendStep([{ op: "remove-slide", slideId: current.id }], {
+                  expectedHash: deck.contentHash,
+                  slideNumber: index + 1,
+                });
+              }}
+            />
+          </DockSheetSection>
+        )}
+      </DockSheet>
       <PresentMode
         view={{ ...view, deck }}
         startAt={index}

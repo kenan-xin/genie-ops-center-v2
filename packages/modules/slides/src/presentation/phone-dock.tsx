@@ -8,7 +8,12 @@ import {
   Toolbar,
   ToolbarButton,
 } from "@genie/ui";
-import { PaintBucketIcon, PencilIcon, PlusIcon } from "lucide-react";
+import {
+  EllipsisIcon,
+  PaintBucketIcon,
+  PencilIcon,
+  PlusIcon,
+} from "lucide-react";
 import { type ReactNode, type Ref, useRef, useState } from "react";
 
 import type { DeckChange } from "../contract.ts";
@@ -47,15 +52,18 @@ export function PhoneDock(props: {
   );
 }
 
-/** The slide's tools with nothing selected; Task 8 adds More. */
+/** The dock with nothing selected: the shown slide's tools for a writer, and More for everyone. */
 export function SlideDock(props: {
-  readonly slide: ShownSlide;
+  /** None on an empty deck: only More shows. */
+  readonly slide: ShownSlide | undefined;
+  readonly canWrite: boolean;
   readonly saving: boolean;
   readonly ask: "on" | "off" | "none";
   readonly onAdd: (kind: HandKind) => void;
   readonly onAsk: (kind: AskKind) => void;
   readonly onSteps: (steps: readonly DeckChange[]) => void;
   readonly onEditSlide: () => void;
+  readonly onMore: () => void;
 }): ReactNode {
   const { slide } = props;
   const dock = useRef<HTMLDivElement>(null);
@@ -63,45 +71,53 @@ export function SlideDock(props: {
 
   return (
     <PhoneDock label="Slide tools" ref={dock}>
-      <AddElementMenu
-        slide={slide}
-        saving={props.saving}
-        ask={props.ask}
-        onAdd={props.onAdd}
-        onAsk={props.onAsk}
-        trigger={<ToolbarButton aria-label="Add element" />}
-      >
-        <PlusIcon aria-hidden="true" />
-        Add
-      </AddElementMenu>
-      <Popover open={background} onOpenChange={setBackground}>
-        <PopoverTrigger disabled={props.saving} render={<ToolbarButton />}>
-          <PaintBucketIcon aria-hidden="true" />
-          Background
-        </PopoverTrigger>
-        <PopoverContent
-          anchor={dock}
-          side="top"
-          sideOffset={8}
-          className="w-(--anchor-width)"
-        >
-          <div className="grid gap-3 p-1.5">
-            <PopoverTitle>Background</PopoverTitle>
-            <ColorPanel
-              value={slide.background}
-              clearLabel="No background"
-              helper="Every text without a fill is checked against the new color."
-              onPick={(color) => {
-                setBackground(false);
-                props.onSteps(backgroundSteps(slide, color));
-              }}
-            />
-          </div>
-        </PopoverContent>
-      </Popover>
-      <ToolbarButton disabled={props.saving} onClick={props.onEditSlide}>
-        <PencilIcon aria-hidden="true" />
-        Edit slide
+      {slide === undefined || !props.canWrite ? null : (
+        <>
+          <AddElementMenu
+            slide={slide}
+            saving={props.saving}
+            ask={props.ask}
+            onAdd={props.onAdd}
+            onAsk={props.onAsk}
+            trigger={<ToolbarButton aria-label="Add element" />}
+          >
+            <PlusIcon aria-hidden="true" />
+            Add
+          </AddElementMenu>
+          <Popover open={background} onOpenChange={setBackground}>
+            <PopoverTrigger disabled={props.saving} render={<ToolbarButton />}>
+              <PaintBucketIcon aria-hidden="true" />
+              Background
+            </PopoverTrigger>
+            <PopoverContent
+              anchor={dock}
+              side="top"
+              sideOffset={8}
+              className="w-(--anchor-width)"
+            >
+              <div className="grid gap-3 p-1.5">
+                <PopoverTitle>Background</PopoverTitle>
+                <ColorPanel
+                  value={slide.background}
+                  clearLabel="No background"
+                  helper="Every text without a fill is checked against the new color."
+                  onPick={(color) => {
+                    setBackground(false);
+                    props.onSteps(backgroundSteps(slide, color));
+                  }}
+                />
+              </div>
+            </PopoverContent>
+          </Popover>
+          <ToolbarButton disabled={props.saving} onClick={props.onEditSlide}>
+            <PencilIcon aria-hidden="true" />
+            Edit slide
+          </ToolbarButton>
+        </>
+      )}
+      <ToolbarButton onClick={props.onMore}>
+        <EllipsisIcon aria-hidden="true" />
+        More
       </ToolbarButton>
     </PhoneDock>
   );

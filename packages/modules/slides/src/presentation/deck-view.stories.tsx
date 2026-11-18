@@ -22,6 +22,7 @@ import {
   PROVISIONAL_TITLE,
   startedDeckPage,
   tableWithVisualSlide,
+  textOnlySlide,
   titleOnlySlide,
   unnamedDraftedDeckPage,
 } from "./__fixtures__/decks.ts";
@@ -57,14 +58,6 @@ const HASH = "0".repeat(64);
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
-
-/**
- * A phone turned sideways, 844 px wide: the header keeps Export, More and the title, which leave
- * the 390 px page until the dock's More sheet takes them (Task 8 of phase 13).
- */
-const phoneSideways = {
-  viewport: { value: "phone844x390", isRotated: false },
-};
 
 /**
  * A fresh query cache per story, with no retries so a refusal reports at once. The deck's first run
@@ -310,14 +303,20 @@ export const DeckOnPhone: Story = {
     await expect(lefts).toEqual(lefts.toSorted((a, b) => a - b));
     await expect(new Set(lefts).size).toBe(5);
 
-    // Present is one button below 768 px; Export and More wait for the dock (Task 8).
+    // Present is one button below 768 px; Export and the header's More move to the dock's More.
     await expect(visibleButtons(canvas, "Present")).toHaveLength(1);
 
     await expect(
-      ["More ways to present", "Export to PowerPoint", "More"].filter(
+      ["More ways to present", "Export to PowerPoint"].filter(
         (name) => visibleButtons(canvas, name).length > 0
       )
     ).toEqual([]);
+    await expect(visibleButtons(canvas, "More")).toEqual([
+      within(canvas.getByRole("toolbar", { name: "Slide tools" })).getByRole(
+        "button",
+        { name: "More" }
+      ),
+    ]);
 
     // The top bar shows the title for the eye; the page keeps its h1 for a screen reader.
     await expect(canvas.getByRole("heading", { level: 1 })).toHaveTextContent(
@@ -419,7 +418,7 @@ export const DockOnPhone: Story = {
 
     await expect(
       dock.getAllByRole("button").map((button) => button.textContent)
-    ).toEqual(["Add", "Background", "Edit slide"]);
+    ).toEqual(["Add", "Background", "Edit slide", "More"]);
     await expect(
       Math.abs(
         toolbar.parentElement!.getBoundingClientRect().bottom -
@@ -537,8 +536,14 @@ export const EmptyDeckOnPhone: Story = {
   args: { view: emptyDeckPage },
   globals: phone,
   beforeEach: () => serve(emptyDeckPage),
+  // P13-16: with no strip and no header More, the empty state is the phone's way to a first slide.
   play: async ({ canvas }) => {
     await expect(canvas.getByText("No slides yet")).toBeVisible();
+
+    await userEvent.click(canvas.getByRole("button", { name: "Add slide" }));
+    await expect(
+      await screen.findByRole("dialog", { name: "Add slide" })
+    ).toBeInTheDocument();
   },
 };
 
@@ -908,12 +913,279 @@ export const SlideActions: Story = {
   play: slideActionsPlay,
 };
 
+/** Opens the phone dock's More sheet. */
+async function openMore(canvas: ReturnType<typeof within>) {
+  await userEvent.click(
+    within(canvas.getByRole("toolbar", { name: "Slide tools" })).getByRole(
+      "button",
+      { name: "More" }
+    )
+  );
+
+  return within(
+    await screen.findByRole("dialog", { name: "Deck and slide actions" })
+  );
+}
+
+/** Picks one row of the More sheet, and waits for the sheet to leave. */
+async function pickFromMoreSheet(
+  canvas: ReturnType<typeof within>,
+  name: string
+): Promise<void> {
+  await userEvent.click((await openMore(canvas)).getByRole("button", { name }));
+  await waitFor(() =>
+    expect(
+      screen.queryByRole("dialog", { name: "Deck and slide actions" })
+    ).toBeNull()
+  );
+}
+
+// C09-14, P13-7, P13-15: below 768 px no tile has a menu; the More sheet moves and deletes the
+// shown slide, says why an end move is off, and the strip's Add tile adds a slide.
 export const SlideActionsOnPhone: Story = {
   name: "Slide actions on a phone",
   args: { view: deckPage },
-  globals: phoneSideways,
+  globals: phone,
   beforeEach: () => serve(deckPage),
-  play: slideActionsPlay,
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.queryByRole("button", { name: "Actions for slide 1" })
+    ).toBeNull();
+
+    const first = await openMore(canvas);
+    const earlier = first.getByRole("button", { name: "Move earlier" });
+
+    await expect(earlier).toHaveAttribute("aria-disabled", "true");
+    await expect(earlier).toHaveAccessibleDescription(
+      "This is the first slide."
+    );
+    await userEvent.click(earlier);
+    await expect(changeDeck).not.toHaveBeenCalled();
+    await userEvent.click(first.getByRole("button", { name: "Move later" }));
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+    await expect(changeDeck).toHaveBeenCalledWith({
+      id: "deck-1",
+      expectedHash: HASH,
+      changes: [{ op: "move-slide", slideId: "s1", toIndex: 1 }],
+    });
+    changeDeck.mockClear();
+
+    // The step names the shown slide, not the first one.
+    await userEvent.click(canvas.getByRole("button", { name: /^Slide 2: / }));
+    await pickFromMoreSheet(canvas, "Delete slide");
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+    await expect(changeDeck).toHaveBeenCalledWith({
+      id: "deck-1",
+      expectedHash: HASH,
+      changes: [{ op: "remove-slide", slideId: "s2" }],
+    });
+    changeDeck.mockClear();
+
+    await userEvent.click(canvas.getByRole("button", { name: /^Slide 5: / }));
+
+    const last = await openMore(canvas);
+
+    await expect(
+      last.getByRole("button", { name: "Move later" })
+    ).toHaveAccessibleDescription("This is the last slide.");
+    await userEvent.keyboard("{Escape}");
+
+    await userEvent.click(canvas.getByRole("button", { name: "Add slide" }));
+    await expect(
+      await screen.findByRole("dialog", { name: "Add slide" })
+    ).toBeInTheDocument();
+  },
+};
+
+const MORE_ROWS = [
+  "Present with notes",
+  "Export to PowerPoint",
+  "Refresh data",
+  "Rename deck",
+  "Move earlier",
+  "Move later",
+  "Delete slide",
+];
+
+/** The phone page in the app's shell, with Ask on (deck-phone.prototype.html?state=slide-more). */
+const inShellOnPhone = {
+  globals: phone,
+  parameters: { layout: "fullscreen" },
+  decorators: [withTrail, withShell],
+} satisfies Pick<Story, "globals" | "parameters" | "decorators">;
+
+// czjw.176: More holds what the phone header dropped, in three sections (slide-more-390.png).
+export const MoreSheetOnPhone: Story = {
+  name: "More sheet on a phone",
+  args: { view: deckPage },
+  ...inShellOnPhone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const sheet = await openMore(canvas);
+
+    await expect(
+      sheet
+        .getAllByRole("heading", { level: 3 })
+        .map((heading) => heading.textContent)
+    ).toEqual(["Present", "Deck", "This slide"]);
+    await expect(sheet.getAllByRole("button")).toEqual(
+      MORE_ROWS.map((name) => sheet.getByRole("button", { name }))
+    );
+    await expect(
+      sheet.getByRole("button", { name: "Present with notes" })
+    ).toHaveAccessibleDescription("Opens the presenter window");
+    await expect(
+      sheet.getByRole("button", { name: "Refresh data" })
+    ).toHaveAccessibleDescription("Figures as of 27 Oct 2026");
+  },
+};
+
+// Review Focus 3: the pop-up opens inside the tap, before the sheet closes; then present mode.
+export const PresentWithNotesFromMore: Story = {
+  name: "Present with notes from More",
+  args: { view: deckPage },
+  ...inShellOnPhone,
+  beforeEach: () => serve(deckPage),
+  play: ({ canvas }) =>
+    // SAFETY: the page only checks the answer for null; nothing reads the window.
+    withWindowOpen({} as Window, async (open) => {
+      let sheetOpen = false;
+
+      // Inside the tap the sheet is still open; an open after it closed is a blocked pop-up.
+      open.mockImplementation(() => {
+        sheetOpen =
+          screen
+            .queryByRole("dialog", { name: "Deck and slide actions" })
+            ?.hasAttribute("data-open") === true;
+
+        // SAFETY: the page only checks the answer for null; nothing reads the window.
+        return {} as Window;
+      });
+
+      await pickFromMoreSheet(canvas, "Present with notes");
+
+      await expect(open).toHaveBeenCalledOnce();
+      await expect(sheetOpen).toBe(true);
+      await expect(open).toHaveBeenCalledWith(
+        "/m/slides/decks/deck-1/presenter",
+        "slides-presenter-deck-1",
+        "popup"
+      );
+      await screen.findByRole("dialog", {
+        name: "Present Receivables at a glance",
+      });
+    }),
+};
+
+export const BlockedPopUpFromMore: Story = {
+  name: "Blocked pop-up from More",
+  args: { view: deckPage },
+  ...inShellOnPhone,
+  beforeEach: () => serve(deckPage),
+  play: ({ canvas }) =>
+    withWindowOpen(null, async (open) => {
+      await pickFromMoreSheet(canvas, "Present with notes");
+
+      await expect(open).toHaveBeenCalledOnce();
+      await expect(
+        await canvas.findByText(
+          "Your browser blocked the presenter window. Allow pop-ups for this site, then choose Present with notes again."
+        )
+      ).toBeVisible();
+      await pause(200);
+      await expect(
+        screen.queryByRole("dialog", {
+          name: "Present Receivables at a glance",
+        })
+      ).toBeNull();
+    }),
+};
+
+// Review Focus 1: a More action inside a notes pause saves the typed notes first, then its step.
+export const NotesSaveBeforeMoreAction: Story = {
+  name: "Notes save before a More action",
+  args: { view: deckPage },
+  ...inShellOnPhone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Speaker notes" }),
+      "Say hello."
+    );
+    await pickFromMoreSheet(canvas, "Delete slide");
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(2));
+    await expect(changeDeck.mock.calls.map(([call]) => call.changes)).toEqual([
+      [{ op: "change-slide-fields", slideId: "s1", notes: "Say hello." }],
+      [{ op: "remove-slide", slideId: "s1" }],
+    ]);
+  },
+};
+
+const NO_FIGURES = "This deck has no figures, charts or tables.";
+
+const noFiguresPage: DeckPageView = {
+  ...deckPage,
+  deck: { ...deckPage.deck, slides: [titleOnlySlide, textOnlySlide] },
+};
+
+// P13-15: Refresh data on a deck with nothing to refresh is off and says why.
+export const RefreshNoFiguresSaysWhy: Story = {
+  name: "Refresh data with no figures says why on a phone",
+  args: { view: noFiguresPage },
+  ...inShellOnPhone,
+  beforeEach: () => serve(noFiguresPage),
+  play: async ({ canvas }) => {
+    const row = (await openMore(canvas)).getByRole("button", {
+      name: "Refresh data",
+    });
+
+    await expect(row).toHaveAttribute("aria-disabled", "true");
+    await expect(row).toHaveAccessibleDescription(NO_FIGURES);
+    await userEvent.click(row);
+    await pause(100);
+    await expect(refreshDeck).not.toHaveBeenCalled();
+  },
+};
+
+export const RefreshNoFiguresSaysWhyOnADesktop: Story = {
+  name: "Refresh data with no figures says why on a desktop",
+  args: { view: noFiguresPage },
+  globals: desktop,
+  beforeEach: () => serve(noFiguresPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "More" }));
+
+    const item = await screen.findByRole("menuitem", { name: "Refresh data" });
+
+    await expect(item).toHaveAttribute("data-disabled");
+    await expect(item).toHaveAccessibleDescription(NO_FIGURES);
+    await userEvent.keyboard("{Escape}");
+  },
+};
+
+// A person without `slides:write` still presents with notes and exports from a phone.
+export const ReaderOnPhone: Story = {
+  name: "Reader on a phone",
+  args: { view: { ...deckPage, canWrite: false } },
+  ...inShellOnPhone,
+  beforeEach: () => serve({ ...deckPage, canWrite: false }),
+  play: async ({ canvas }) => {
+    await expect(
+      within(canvas.getByRole("toolbar", { name: "Slide tools" }))
+        .getAllByRole("button")
+        .map((button) => button.textContent)
+    ).toEqual(["More"]);
+
+    const sheet = await openMore(canvas);
+
+    await expect(sheet.getAllByRole("button")).toEqual([
+      sheet.getByRole("button", { name: "Present with notes" }),
+      sheet.getByRole("button", { name: "Export to PowerPoint" }),
+    ]);
+  },
 };
 
 const DECK_CHANGED =
@@ -2457,12 +2729,33 @@ export const ExportRefused: Story = {
   play: exportPlay,
 };
 
+// The phone reaches Export through the dock's More sheet: one export, a refusal as one alert line,
+// and the row usable again after it.
 export const ExportRefusedOnPhone: Story = {
   name: "Export refused on a phone",
   args: { view: deckPage },
-  globals: phoneSideways,
+  globals: phone,
   beforeEach: () => serve(deckPage),
-  play: exportPlay,
+  play: async ({ canvas }) => {
+    const pending = Promise.withResolvers<never>();
+
+    exportDeck.mockReturnValue(pending.promise);
+
+    await pickFromMoreSheet(canvas, "Export to PowerPoint");
+    await waitFor(() => expect(exportDeck).toHaveBeenCalledOnce());
+    await expect(exportDeck).toHaveBeenCalledWith({ id: "deck-1" });
+
+    pending.reject(new Error(EXPORT_FAILED));
+
+    await expect(await canvas.findByRole("alert")).toHaveTextContent(
+      `The deck was not exported. ${EXPORT_FAILED}`
+    );
+    await expect(
+      (await openMore(canvas)).getByRole("button", {
+        name: "Export to PowerPoint",
+      })
+    ).not.toHaveAttribute("aria-disabled");
+  },
 };
 
 // S7-48: the deck page while the agent drafts it. The run is read at the `agent` client, as the
@@ -3011,30 +3304,63 @@ function withTrail(Story: () => ReactNode) {
   );
 }
 
-export const RenameOnPhone: Story = {
-  name: "Rename on a phone",
+/** Rename deck from the More sheet; the title input opens once the sheet has gone, with focus. */
+async function renameFromMore(
+  canvas: ReturnType<typeof within>
+): Promise<HTMLElement> {
+  await userEvent.click(
+    (await openMore(canvas)).getByRole("button", { name: "Rename deck" })
+  );
+
+  return waitFor(() => {
+    const input = canvas.getByRole("textbox", { name: "Deck title" });
+
+    expect(input).toBeVisible();
+    expect(input).toBe(document.activeElement);
+
+    return input;
+  });
+}
+
+// P13-8, Review Focus 2: the sheet's focus return must not blur, save and close the input at once.
+export const RenameFromMoreOnPhone: Story = {
+  name: "Rename from More on a phone",
   args: { view: deckPage },
-  globals: phoneSideways,
+  globals: phone,
   parameters: { layout: "fullscreen" },
   decorators: [withTrail, withShell],
   beforeEach: () => serve(deckPage),
-  play: async ({ canvas }) => {
-    const button = canvas.getByRole("button", { name: RENAME });
+  play: async ({ canvas, canvasElement }) => {
+    const input = await renameFromMore(canvas);
 
-    // Bug caught: below 1024 px the shell hides the header title, so the rename cannot be seen or tapped.
-    await expect(button).toBeVisible();
-    await expect(isHittable(button)).toBe(true);
+    // Bug caught: the input sits under the top bar, out of sight or out of reach of a tap.
+    await expect(isHittable(input)).toBe(true);
+    await expect(input.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      canvasElement
+        .querySelector<HTMLElement>("[data-page-top-bar]")!
+        .getBoundingClientRect().bottom
+    );
+    await expect(changeDeck).not.toHaveBeenCalled();
 
-    await userEvent.click(button);
     await userEvent.keyboard("Collections review{Enter}");
 
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce());
+    await expect(changeDeck).toHaveBeenCalledWith({
+      id: "deck-1",
+      expectedHash: HASH,
+      changes: [{ op: "rename", title: "Collections review" }],
+    });
     await waitFor(() =>
-      expect(changeDeck).toHaveBeenCalledWith(
-        expect.objectContaining({
-          changes: [{ op: "rename", title: "Collections review" }],
-        })
-      )
+      expect(canvas.queryByRole("textbox", { name: "Deck title" })).toBeNull()
     );
+
+    await renameFromMore(canvas);
+    await userEvent.keyboard("Another title{Escape}");
+
+    await waitFor(() =>
+      expect(canvas.queryByRole("textbox", { name: "Deck title" })).toBeNull()
+    );
+    await expect(changeDeck).toHaveBeenCalledOnce();
   },
 };
 
