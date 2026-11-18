@@ -1,6 +1,7 @@
 import { expect, type Page } from "@playwright/test";
 
 import { E2E_USER_PASSWORD } from "../../testing/e2e-keycloak.ts";
+import { withDeploymentLock } from "./lock.ts";
 
 /** The realm's pages, the auth routes, `/auth/complete` and a refused sign-in's `/sign-in`. */
 const SIGN_IN_CHAIN = /^\/(realms|api\/auth|auth|sign-in)(\/|$)/;
@@ -39,15 +40,19 @@ export async function signInThroughKeycloak(
     readonly password?: string;
   }
 ): Promise<void> {
-  // `disableRedirect` is not set on this route, so the browser follows the app's redirect to
-  // Keycloak and then Keycloak's callback back to `/auth/complete`, which lands the person.
-  await page.goto("/api/auth/sign-in/keycloak");
+  // Keycloak's brute-force protection locks a realm user who signs in from two workers at once,
+  // which `--repeat-each` copies and specs that share a user do; one sign-in per user at a time.
+  await withDeploymentLock(`sign-in-${input.email}`, async () => {
+    // `disableRedirect` is not set on this route, so the browser follows the app's redirect to
+    // Keycloak and then Keycloak's callback back to `/auth/complete`, which lands the person.
+    await page.goto("/api/auth/sign-in/keycloak");
 
-  await page.locator("#username").fill(input.email);
-  await page.locator("#password").fill(input.password ?? E2E_USER_PASSWORD);
-  await page.locator("#kc-login").click();
+    await page.locator("#username").fill(input.email);
+    await page.locator("#password").fill(input.password ?? E2E_USER_PASSWORD);
+    await page.locator("#kc-login").click();
 
-  await expectLanded(page, input.landing, 30000);
+    await expectLanded(page, input.landing, 30000);
+  });
 }
 
 /**
