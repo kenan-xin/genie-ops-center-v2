@@ -67,7 +67,7 @@ export function ModuleSheet(props: {
     setNewRows(new Set());
   }, [props.open, module.id]);
 
-  const host = module.enabled ? props.host : undefined;
+  const host = props.host;
 
   const total =
     props.page === undefined
@@ -90,8 +90,9 @@ export function ModuleSheet(props: {
     if (!next && !saving) props.onClose();
   };
 
+  // An open form stays if the module turns off; the server refuses its save.
   const addButton = (primary: boolean) =>
-    host === undefined ? undefined : (
+    host === undefined || !module.enabled ? undefined : (
       <Button
         variant={primary ? "primary" : "secondary"}
         onClick={() => setAdding(true)}

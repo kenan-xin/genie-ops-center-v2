@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type {
@@ -240,6 +241,56 @@ export const ModuleAddAssignmentPicksTheDefaultRole: Story = {
     );
 
     await expect(list.getAllByRole("listitem")[0]).toHaveAttribute("data-new");
+  },
+};
+
+/** A host whose module turns off on the first Assign to search, as a modules refetch does mid-form. */
+function TurnsOffWhileAdding(args: Parameters<typeof ModuleSheet>[0]) {
+  const [enabled, setEnabled] = useState(true);
+
+  return (
+    <ModuleSheet
+      {...args}
+      module={{ ...args.module, enabled }}
+      search={async (query) => {
+        setEnabled(false);
+
+        return args.search(query);
+      }}
+    />
+  );
+}
+
+/** Review focus 3: the open form and its values stay when the module turns off; the server refuses the save. */
+export const ModuleTurnedOffKeepsTheOpenForm: Story = {
+  render: (args) => <TurnsOffWhileAdding {...args} />,
+  play: async ({ args }) => {
+    await userEvent.click(
+      within(
+        await screen.findByRole("dialog", { name: /Invoices and Payments/ })
+      ).getByRole("button", { name: "Add assignment" })
+    );
+
+    const sheet = within(
+      await screen.findByRole("dialog", { name: "Invoices and Payments" })
+    );
+
+    await userEvent.click(sheet.getByRole("combobox", { name: "Assign to" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Riley Chen/ })
+    );
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Add assignment" })
+    );
+
+    await waitFor(() =>
+      expect(args.host?.onSubmit).toHaveBeenCalledWith({
+        roleId: "r-inv-viewer",
+        scope: null,
+        recipients: [RILEY],
+      })
+    );
   },
 };
 
