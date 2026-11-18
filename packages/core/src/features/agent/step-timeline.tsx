@@ -322,8 +322,9 @@ export function StepTimeline(props: {
 
   const refusals = failed === null ? 0 : failed.fixes + 1;
 
+  // The answer sits one conversation gap, 16 px, below the steps (C07-11).
   return (
-    <div className="grid gap-3">
+    <div className="grid gap-4">
       {stepsView}
       {props.children}
       {failed === null ? null : (

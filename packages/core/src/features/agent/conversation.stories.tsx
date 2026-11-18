@@ -458,6 +458,29 @@ export const AskNext: Story = {
   },
 };
 
+/** The person's message and the answer read at one body size (czjw.184, H1-12). */
+export const PersonAndAnswerShareTheBodySize: Story = {
+  name: "Person and answer share the body size",
+  args: { initialMessages: ANSWERED_WITH_NEXT },
+  play: async ({ canvasElement }) => {
+    const answer = await waitFor(() => {
+      const first = canvasElement.querySelector(".typeset p");
+
+      expect(first).not.toBeNull();
+
+      return first!;
+    });
+
+    const message = canvasElement.querySelector("[data-slot=bubble-content]");
+
+    if (message === null) throw new Error("The person's message is missing.");
+
+    await expect(getComputedStyle(message).fontSize).toBe(
+      getComputedStyle(answer).fontSize
+    );
+  },
+};
+
 const CHOICE_QUESTION = "Add the chart to Collections, or just show it here?";
 
 const SHOW_HERE = "Just show it here";

@@ -594,13 +594,13 @@ const READ_STEP: AgentMessage["parts"][number] = {
   output: { datasets: [] },
 };
 
-const LEAD = "12 open items, SGD 4,200.00 in all.";
+const LEAD = "12 open items, **SGD 4,200.00** in all.";
 
 const LINE = "All of them are in SGD.";
 
 /**
- * The result first (czjw.120 items 3 and 4): the finished steps pill with the mark and the check,
- * the lead sentence in a larger weight, and one quiet supporting line. A look, so no play test.
+ * The result first in the words (czjw.120 item 3), in one body size and the foreground color,
+ * with only the key figure bold (czjw.184).
  */
 export const ResultFirst: Story = {
   name: "Result first",
@@ -621,6 +621,27 @@ export const ResultFirst: Story = {
     durationMs: 12_000,
   },
   decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvasElement }) => {
+    const [lead, line] = await waitFor(() => {
+      const paragraphs = canvasElement.querySelectorAll(".typeset p");
+
+      expect(paragraphs).toHaveLength(2);
+
+      return [paragraphs[0]!, paragraphs[1]!];
+    });
+
+    await expect(lead.querySelector("strong")?.textContent).toBe(
+      "SGD 4,200.00"
+    );
+    await expect(lead.textContent).toBe("12 open items, SGD 4,200.00 in all.");
+    await expect(getComputedStyle(lead).fontSize).toBe(
+      getComputedStyle(line).fontSize
+    );
+    await expect(getComputedStyle(lead).color).toBe(
+      getComputedStyle(line).color
+    );
+    await expect(getComputedStyle(lead).fontWeight).toBe("400");
+  },
 };
 
 /** A model wrote a note about its next step before a tool call (czjw.105, dry run H2). */

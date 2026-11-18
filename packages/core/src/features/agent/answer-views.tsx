@@ -7,6 +7,7 @@ import {
 } from "@openuidev/react-lang";
 import { Fragment } from "react";
 
+import { boldRuns } from "./bold-runs.ts";
 import type { AnswerViews } from "./catalog.ts";
 import { GatedChart } from "./gated-chart.tsx";
 import { SHORT_LIST_ROWS } from "./short-list.tsx";
@@ -25,13 +26,24 @@ function AnswerView({ props, renderNode }: ViewProps) {
   const { children } = props as { readonly children: readonly unknown[] };
 
   return (
-    // The result first: the first paragraph is the lead, later ones the quiet supporting lines
-    // (czjw.120 item 4). renderNode gives no class hook, so the child selectors style them.
-    <div className="grid gap-3 [&>p:first-child]:text-lg [&>p:first-child]:leading-snug [&>p:first-child]:font-semibold [&>p:not(:first-child)]:text-muted-foreground">
+    // One body size and the foreground color for the whole answer (czjw.184): the result-first rule
+    // lives in the words, not in the styling.
+    <div className="grid gap-3">
       {children.map((child, index) => (
         <Fragment key={index}>{renderNode(child)}</Fragment>
       ))}
     </div>
+  );
+}
+
+/** An answer text with its marked key figure or name in bold (czjw.184). */
+function Runs(props: { readonly text: string }) {
+  return boldRuns(props.text).map((run, index) =>
+    run.strong ? (
+      <strong key={index}>{run.text}</strong>
+    ) : (
+      <Fragment key={index}>{run.text}</Fragment>
+    )
   );
 }
 
@@ -51,7 +63,11 @@ function ParagraphView({ props }: ViewProps) {
   // SAFETY: defineComponent validated `text` against the catalog's Paragraph schema.
   const { text } = props as { readonly text: string };
 
-  return <p className="whitespace-pre-wrap">{text}</p>;
+  return (
+    <p className="whitespace-pre-wrap">
+      <Runs text={text} />
+    </p>
+  );
 }
 
 function ListView({ props }: ViewProps) {
@@ -66,7 +82,9 @@ function ListView({ props }: ViewProps) {
   return (
     <Tag className={ordered === true ? "list-decimal ps-5" : "list-disc ps-5"}>
       {items.map((item, index) => (
-        <li key={index}>{item}</li>
+        <li key={index}>
+          <Runs text={item} />
+        </li>
       ))}
     </Tag>
   );

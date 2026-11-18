@@ -172,6 +172,13 @@ export const Done: Story = {
 
     await expect(strip).toHaveAttribute("aria-expanded", "false");
     await expect(canvas.queryByRole("list", { name: "Steps" })).toBeNull();
+    // The answer sits one conversation gap below the steps (C07-11).
+    await expect(
+      Math.round(
+        canvas.getByText("Here is the chart.").getBoundingClientRect().top -
+          strip.getBoundingClientRect().bottom
+      )
+    ).toBe(16);
 
     await userEvent.click(strip);
     await expect(strip).toHaveAttribute("aria-expanded", "true");
