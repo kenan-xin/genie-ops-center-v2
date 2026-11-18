@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { createTenantContext, type TenantContext } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 import { assignRole, insertRole, insertUser } from "@genie/core/testing";
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
 import {
@@ -17,7 +17,7 @@ import { DEV_MODULES } from "./global-setup.ts";
 /**
  * d8l5.44 through the real dev stack, which compiles Invoices and Payments: an administrator adds a
  * person with one role per module, the selects never offer an administration role, and "Open in
- * Access after adding" lands on that person's Grants with both rows granted. The main stack
+ * Access after adding" lands on the Overview filtered to that person with both rows. The main stack
  * compiles only Placeholder, so this journey runs here (plan P06-15). Each attempt gets its own
  * addresses, because the projects and the `--repeat-each` copies share one database at once; the
  * run starts that database empty, so nothing is cleared.
@@ -68,6 +68,15 @@ test.afterAll(async () => {
   await tenant?.db.$client.end();
   tenant = undefined;
 });
+
+const LIST = "Assignments, newest first";
+
+/** The rows of whichever layout the viewport draws: a table from 768 px, else a card list. */
+function resultRows(page: Page): Locator {
+  return (page.viewportSize()?.width ?? 0) >= 768
+    ? page.getByRole("table", { name: LIST }).locator("tbody").getByRole("row")
+    : page.getByRole("list", { name: LIST }).getByRole("listitem");
+}
 
 /** Opens a role select, proves it offers no administration role, and picks `option`. */
 async function pickWithoutAdministration(
@@ -153,18 +162,17 @@ test("Add person gives one role per module and opens the person in Access", asyn
 
   const personId = rows[0]?.id ?? "";
 
-  await expect(page).toHaveURL(
-    new RegExp(`/admin/access\\?recipient=${personId}$`),
-    FIRST_PAINT
-  );
+  // d8l5.46 (P12-8): the person route lands on the Overview filtered to the person, encoded as
+  // accessOverviewHref encodes it.
+  const overview = `/admin/access/overview?${new URLSearchParams({ who: `user:${personId}` })}`;
 
-  const granted = page.getByRole("group", { name: "Granted", exact: true });
+  await expect(page).toHaveURL(overview, FIRST_PAINT);
 
+  await expect(resultRows(page)).toHaveCount(2, FIRST_PAINT);
   await expect(
-    granted.getByRole("checkbox", { name: "Invoices and Payments" })
-  ).toBeVisible(FIRST_PAINT);
-  await expect(granted.getByRole("checkbox", { name: "Ask" })).toBeVisible();
-  await expect(
-    page.getByLabel("Role for Invoices and Payments", { exact: true })
-  ).toHaveText(/Invoices and Payments viewer/);
+    resultRows(page).filter({ hasText: "Invoices and Payments viewer" })
+  ).toHaveCount(1);
+  await expect(resultRows(page).filter({ hasText: "Ask user" })).toHaveCount(1);
+  // The phone card drops Assigned to under a person filter; the address names the person.
+  await expect(resultRows(page).filter({ hasText: "Direct" })).toHaveCount(2);
 });
