@@ -18,8 +18,9 @@ import { onPhone } from "./dev-support.ts";
 import { DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
 
 /**
- * Below 768 px the selected element's tools sit in a dock, each opening its card (czjw.156):
- * taps the tool there. From 768 px the row shows every control, so it does nothing.
+ * Below 768 px the selected element's tools sit in a dock, each opening its card (czjw.156), and
+ * More opens the "<name> actions" sheet: taps the tool there. From 768 px the row shows every
+ * control, so it does nothing.
  */
 export async function openStyleTool(
   page: Page,
@@ -31,7 +32,9 @@ export async function openStyleTool(
     .getByRole("toolbar", { name: /style$/ })
     .getByRole("button", { name: tool, exact: true })
     .tap();
-  await page.getByRole("dialog", { name: tool }).waitFor();
+  await page
+    .getByRole("dialog", { name: tool === "More" ? / actions$/ : tool })
+    .waitFor();
 }
 
 /** The stored deck content, as the factory takes it. */
@@ -128,12 +131,13 @@ export function slideOverflowFailures(canvas: HTMLElement): readonly string[] {
 /**
  * Puts the fixed deck of `slides-change.ts` back for this person, whatever a killed run left, so
  * the recorded requests of the deck editor's chat match (D12). A spec with no chat may pass other
- * content, such as the deck with speaker notes. Call it under the ledger lock.
+ * content, such as the deck with speaker notes, or another title. Call it under the ledger lock.
  */
 export async function resetChangeDeck(
   email: string,
   // SAFETY: the fixture holds the stored deck shape; the store's parse refuses any other.
-  content: DeckContent = SLIDES_CHANGE_CONTENT as never
+  content: DeckContent = SLIDES_CHANGE_CONTENT as never,
+  title: string = SLIDES_CHANGE_DECK_TITLE
 ): Promise<void> {
   const tenant = context();
 
@@ -159,7 +163,7 @@ export async function resetChangeDeck(
   await insertDeck(tenant, {
     ownerUserId,
     id: SLIDES_CHANGE_DECK_ID,
-    title: SLIDES_CHANGE_DECK_TITLE,
+    title,
     content,
     frozenOn: SLIDES_CHANGE_FROZEN_ON,
   });

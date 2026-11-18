@@ -143,9 +143,11 @@ test("a described deck opens at once, fills slide by slide, gets its name, and c
       page.getByRole("heading", { level: 1, name: "Naming the deck" })
     ).toBeAttached();
     await expect(pill(page, /^Drafting slide \d+$/)).toBeVisible();
-    // While the agent drafts, Stop is the page's one action.
+    // While the agent drafts, Stop is the page's one action; a phone shows no dock.
     await expect(
-      page.getByRole("button", { name: "Export to PowerPoint" })
+      onPhone(page)
+        ? page.getByRole("toolbar", { name: "Slide tools" })
+        : page.getByRole("button", { name: "Export to PowerPoint" })
     ).toHaveCount(0);
     await expect(
       page.getByRole("button", { name: "Stop", exact: true })
@@ -165,9 +167,6 @@ test("a described deck opens at once, fills slide by slide, gets its name, and c
 
     await expect(rename).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Export to PowerPoint" })
-    ).toBeVisible();
-    await expect(
       page
         .getByRole("button", { name: "Present", exact: true })
         .filter({ visible: true })
@@ -175,7 +174,31 @@ test("a described deck opens at once, fills slide by slide, gets its name, and c
     ).toBeVisible();
     await expectNoAxeViolations(page, "deck page after the draft");
 
-    await activate(page, rename);
+    // Below 768 px Export and Rename deck are rows of the dock's More sheet (P13-7, P13-8), which
+    // hides the page behind it, so Present and axe go first.
+    const sheet = page.getByRole("dialog", { name: "Deck and slide actions" });
+
+    if (onPhone(page)) {
+      await activate(
+        page,
+        page
+          .getByRole("toolbar", { name: "Slide tools" })
+          .getByRole("button", { name: "More", exact: true })
+      );
+    }
+
+    await expect(
+      (onPhone(page) ? sheet : page).getByRole("button", {
+        name: "Export to PowerPoint",
+      })
+    ).toBeVisible();
+
+    await activate(
+      page,
+      onPhone(page)
+        ? sheet.getByRole("button", { name: "Rename deck" })
+        : rename
+    );
 
     const input = page.getByRole("textbox", { name: "Deck title" });
 

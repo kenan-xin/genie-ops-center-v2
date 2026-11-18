@@ -102,16 +102,25 @@ test("the presenter window follows the audience window and moves it back", async
   test.setTimeout(LOCK_WAIT + 120_000);
 
   await onFixedDeck(page, NOTED_DECK, async () => {
+    // Below 768 px Present with notes is a row of the dock's More sheet (P13-7).
     await activate(
       page,
-      page.getByRole("button", { name: "More ways to present" })
+      onPhone(page)
+        ? page
+            .getByRole("toolbar", { name: "Slide tools" })
+            .getByRole("button", { name: "More", exact: true })
+        : page.getByRole("button", { name: "More ways to present" })
     );
 
     const opened = context.waitForEvent("page");
 
     await activate(
       page,
-      page.getByRole("menuitem", { name: /^Present with notes/ })
+      onPhone(page)
+        ? page
+            .getByRole("dialog", { name: "Deck and slide actions" })
+            .getByRole("button", { name: "Present with notes" })
+        : page.getByRole("menuitem", { name: /^Present with notes/ })
     );
 
     const presenter = await opened;
