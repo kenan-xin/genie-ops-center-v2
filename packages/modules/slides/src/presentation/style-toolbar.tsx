@@ -769,7 +769,7 @@ function readableColor(
   const ground = textGround(slide, index, theme, first);
   const needs = contrastLimit(element.kind, element.style?.fontSize);
 
-  if (contrastRatio(ground.color, ground.behind) >= needs) return undefined;
+  if (contrastRatio(ground.chosen, ground.behind) >= needs) return undefined;
 
   // White or black always reaches 4.58:1, so black repairs what the others cannot (czjw.138).
   const color =

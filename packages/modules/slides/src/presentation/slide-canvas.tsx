@@ -286,7 +286,7 @@ function ElementBody(props: {
 /**
  * One slide at 960 x 540, scaled to the width of its container so a phone and a desktop show the
  * same layout (D10). Its frame and every box come from `slideFrame` and `placedBoxes`, and each text
- * takes the color the save checks (`textGround`), so the screen and the check agree (czjw.183).
+ * takes the color `textGround` draws, the export's color, readable where a stored color is not (R14-2).
  */
 export function SlideCanvas(props: SlideCanvasProps) {
   const { slide, place, figuresAsOf, timeZone, theme, logoUrl, images } = props;

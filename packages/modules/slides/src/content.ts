@@ -82,10 +82,10 @@ export function textContrastIssues(
         return [];
       }
 
-      const { behind, color, where } = textGround(slide, j, theme, i === 0);
+      const { behind, chosen, where } = textGround(slide, j, theme, i === 0);
 
       if (
-        contrastRatio(color, behind) >=
+        contrastRatio(chosen, behind) >=
         contrastLimit(element.kind, element.style?.fontSize)
       ) {
         return [];

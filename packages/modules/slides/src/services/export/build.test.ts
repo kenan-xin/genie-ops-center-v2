@@ -309,6 +309,26 @@ describe("buildDeckPptx", () => {
     expect(await deck.slide(2)).toContain('srgbClr val="1E293B"');
   });
 
+  // R14-2: a title color picked on white is drawn on the panel as the canvas draws it.
+  it("draws a stored title color that fails on the panel in the color the canvas draws", async () => {
+    const plain = eightLayoutSlides[2]!;
+    const title = plain.elements[0]!;
+
+    const shown: ShownSlide = {
+      ...plain,
+      elements: plain.elements.with(0, {
+        ...title,
+        style: { color: "#1E3A8A" },
+      }),
+    };
+
+    const xml = await (await exported([slide("s0"), shown])).slide(2);
+
+    expect(
+      runColorOf(xml, "text" in title ? title.text.slice(0, 12) : "")
+    ).toBe("FFFFFF");
+  });
+
   // Bug 5: a number and its code at one size (P14-16).
   it("raises a figure's currency code as a small run before its number", async () => {
     const xml = await (await exported(eightLayoutSlides)).slide(2);

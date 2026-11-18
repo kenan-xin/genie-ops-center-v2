@@ -367,6 +367,41 @@ describe("textGround", () => {
       DARK_THEME,
       { behind: "#030712", color: "#F3F4F6", where: "background" },
     ],
+    // R14-2: a color picked on white, now on the panel (about 2:1), draws the panel text; the check still sees it.
+    [
+      "draws a split title's stored color that fails on the panel in the panel text",
+      [
+        { kind: "title" as const, style: { color: "#1E3A8A" } },
+        ...split.slice(1),
+      ],
+      undefined,
+      BLUE_THEME,
+      { behind: "#2563EB", color: "#FFFFFF", chosen: "#1E3A8A" },
+    ],
+    [
+      "draws a split title's stored color that reads on the panel as stored",
+      [
+        { kind: "title" as const, style: { color: "#FDE68A" } },
+        ...split.slice(1),
+      ],
+      undefined,
+      BLUE_THEME,
+      { behind: "#2563EB", color: "#FDE68A", chosen: "#FDE68A" },
+    ],
+    [
+      "draws a failing stored color on a dark slide background in a color that reads there",
+      [
+        {
+          kind: "title" as const,
+          box: { x: 500, y: 32, w: 400, h: 88 },
+          style: { color: "#4B5563" },
+        },
+        ...split.slice(1),
+      ],
+      "#1F2937",
+      BLUE_THEME,
+      { behind: "#1F2937", color: "#FFFFFF", chosen: "#4B5563" },
+    ],
   ])("%s", (_, elements, background, theme, expected) => {
     expect(textGround({ background, elements }, 0, theme, true)).toMatchObject(
       expected

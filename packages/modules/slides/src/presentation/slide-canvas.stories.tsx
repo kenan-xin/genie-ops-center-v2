@@ -904,6 +904,26 @@ export const MovedTitleOnTheContent: Story = {
   },
 };
 
+// R14-2: a title color picked on white draws in the panel text on the panel, as in the export.
+export const StoredTitleColorOnThePanel: Story = {
+  name: "A stored title color that fails on the panel",
+  args: {
+    ...canvasProps,
+    slide: {
+      ...textWithChartSlide,
+      elements: textWithChartSlide.elements.map((element, at) =>
+        at === 0 ? { ...element, style: { color: "#1E3A8A" } } : element
+      ),
+    },
+  },
+  globals: desktop,
+  play: async ({ canvasElement }) => {
+    await expect(
+      getComputedStyle(part(canvasElement, '[data-slide-box="title"] p')!).color
+    ).toBe(rgb(BLUE_THEME.panelText));
+  },
+};
+
 // Review Focus 4: in the app's dark mode a brand slide stays white, as in its PowerPoint file.
 export const BrandLookInDarkMode: Story = {
   name: "The brand look in the app's dark mode",

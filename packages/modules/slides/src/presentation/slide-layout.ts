@@ -418,10 +418,13 @@ export function regionOf(box: Box, frame: FrameName): Region {
   return frame !== "split" || box.x + box.w / 2 < PANEL_W ? "panel" : "content";
 }
 
-/** The color behind one text and its own color, with the place word of a refusal. */
+/** The color behind one text, the color drawn and the color chosen, with the place word of a refusal. */
 export type TextGround = {
   readonly behind: string;
+  /** What the canvas and the export draw: `chosen`, else the place's color where `chosen` fails the limit (R14-2). */
   readonly color: string;
+  /** Its own color, else the place's color: what the save and the style toolbar check. */
+  readonly chosen: string;
   readonly defaultColor: string;
   readonly where: "fill" | "panel" | "background";
 };
@@ -464,19 +467,30 @@ export function textGround(
   const fill = element?.style?.fill;
   const kind = element?.kind;
 
+  const isText = kind === "title" || kind === "text" || kind === "bullets";
+  const limit = isText ? contrastLimit(kind, element?.style?.fontSize) : 0;
+
   // A fill with no color keeps the place's color only where it reads on that fill (P14-7).
   const ownColor =
-    fill === undefined ||
-    (kind !== "title" && kind !== "text" && kind !== "bullets") ||
-    contrastRatio(defaultColor, fill) >=
-      contrastLimit(kind, element?.style?.fontSize)
+    fill === undefined || contrastRatio(defaultColor, fill) >= limit
       ? defaultColor
       : readableOn(fill);
 
+  const behind =
+    fill ?? (onPanel ? theme.panel : (slide.background ?? theme.background));
+
+  const chosen = element?.style?.color ?? ownColor;
+
   return {
-    behind:
-      fill ?? (onPanel ? theme.panel : (slide.background ?? theme.background)),
-    color: element?.style?.color ?? ownColor,
+    behind,
+    // A stored color picked on another ground is drawn readable, never changed in the store (R14-2).
+    color:
+      contrastRatio(chosen, behind) >= limit
+        ? chosen
+        : contrastRatio(ownColor, behind) >= limit
+          ? ownColor
+          : readableOn(behind),
+    chosen,
     defaultColor,
     where: fill !== undefined ? "fill" : onPanel ? "panel" : "background",
   };
