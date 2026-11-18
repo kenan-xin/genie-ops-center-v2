@@ -1,4 +1,5 @@
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { once } from "node:events";
 import {
   existsSync,
   mkdirSync,
@@ -1587,12 +1588,19 @@ describe("the Spec 0 CI gates", () => {
   });
 });
 
-/** Runs the gate:merge runner in `cwd` and returns its status and stdout. */
-function runGateMerge(cwd: string, args: readonly string[] = []) {
+/**
+ * Runs the gate:merge runner in `cwd` and returns its status and stdout. Other sessions run gates
+ * on this machine, so the runner skips its check for other gate runs unless `env` turns it on.
+ */
+function runGateMerge(
+  cwd: string,
+  args: readonly string[] = [],
+  env: NodeJS.ProcessEnv = { GATE_ALLOW_CONCURRENT: "1" }
+) {
   return spawnSync(
     process.execPath,
     [join(WORKSPACE_ROOT, GATE_MERGE_SCRIPT), ...args],
-    { cwd, encoding: "utf8" }
+    { cwd, encoding: "utf8", env: { ...process.env, ...env } }
   );
 }
 
@@ -1684,6 +1692,30 @@ describe("the gate:merge runner", () => {
       expect(result.signal).toBe("SIGTERM");
       expect(result.stdout).not.toContain("after");
     } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  // Two gates at once stop each other's tasks (xok3.27), so a gate refuses to
+  // start while another gate or e2e run is active.
+  it("refuses to start while another gate runs", async () => {
+    const root = fakeWorkspace({ "ci:develop": "echo stage-ran" });
+    const driver = join(root, "scripts", "gate-merge.mjs");
+    mkdirSync(join(root, "scripts"));
+    writeFileSync(driver, "setTimeout(() => {}, 60000);\n");
+    const other = spawn("node", [driver], { stdio: "ignore", detached: true });
+
+    try {
+      // The spawn event fires after exec, so `ps` shows the driver's arguments.
+      await once(other, "spawn");
+
+      const result = runGateMerge(root, [], { GATE_ALLOW_CONCURRENT: "" });
+
+      expect(result.status).toBe(1);
+      expect(result.stdout).toContain(`pid ${other.pid}`);
+      expect(result.stdout).not.toContain("stage-ran");
+    } finally {
+      other.kill("SIGKILL");
       rmSync(root, { recursive: true, force: true });
     }
   });

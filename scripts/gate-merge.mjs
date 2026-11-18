@@ -9,8 +9,11 @@
 // gate drops --nx-bail, so that every integration project reports.
 // It also runs the integration projects 4 at a time (GATE_PARALLEL), because
 // the --parallel=1 of ci:pr is for the 4-vCPU CI runner. Two local runs at 4
-// passed in 17 and 18 minutes, against 25 serial. Set GATE_PARALLEL=1
-// when other worktrees run suites at the same time (genie-ops-center-v2-rq9).
+// passed in 17 and 18 minutes, against 25 serial.
+// It refuses to start while another gate or e2e run is active on this machine
+// (other_gate_runs in gate-preflight-lib.sh), because two gates at once stop
+// each other's tasks through shared Docker and host resources (xok3.27).
+// GATE_ALLOW_CONCURRENT=1 skips that check.
 // It gives each failed e2e test one retry (E2E_RETRIES, default 1), so that one
 // flake does not fail a 20-minute stage. Playwright reports such a test as
 // "flaky", not as passed: search the gate log for "flaky" and file a bead for
@@ -21,6 +24,7 @@
 //   node scripts/gate-merge.mjs --list   print the stages, run nothing
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const { scripts } = JSON.parse(readFileSync("package.json", "utf8"));
 
@@ -54,6 +58,28 @@ const list = stages("ci:develop");
 if (process.argv.includes("--list")) {
   console.log(list.join("\n"));
   process.exit(0);
+}
+
+if (process.env.GATE_ALLOW_CONCURRENT !== "1") {
+  const lib = join(import.meta.dirname, "gate-preflight-lib.sh");
+
+  const others = spawnSync("sh", ["-c", '. "$1"; other_gate_runs', "sh", lib], {
+    encoding: "utf8",
+  });
+
+  if (others.status !== 0) {
+    console.log(`gate-merge: other_gate_runs failed\n${others.stderr}`);
+    process.exit(1);
+  }
+
+  const pids = others.stdout.split("\n").filter(Boolean);
+
+  if (pids.length > 0) {
+    console.log(
+      `gate-merge: another gate or e2e run is active (pid ${pids.join(", ")}), wait until it ends`
+    );
+    process.exit(1);
+  }
 }
 
 const failed = [];
