@@ -55,7 +55,10 @@ const PENDING_ANSWER: AgentMessage = {
   parts: [],
 };
 
-const storedTime = z.object({ createdAt: z.iso.datetime({ offset: true }) });
+const storedTime = z.object({
+  createdAt: z.iso.datetime({ offset: true }),
+  updatedAt: z.iso.datetime({ offset: true }).optional(),
+});
 
 // `START_PART` of `start-record.ts`, which is server code.
 const startPart = z.object({ description: z.string() });
@@ -76,7 +79,10 @@ function shownUserMessage(message: AgentMessage): AgentMessage {
     : message;
 }
 
-/** A stored answer's time: its own time minus its question's (AG16). */
+/**
+ * A stored answer's time (AG16): from its question to its last save, which for a run's answer is
+ * its final save, not its first checkpoint (C15-1).
+ */
 function storedDuration(
   messages: readonly AgentMessage[],
   index: number
@@ -86,7 +92,8 @@ function storedDuration(
   const question = storedTime.safeParse(messages[index - 1]?.metadata);
 
   return answer.success && question.success
-    ? Date.parse(answer.data.createdAt) - Date.parse(question.data.createdAt)
+    ? Date.parse(answer.data.updatedAt ?? answer.data.createdAt) -
+        Date.parse(question.data.createdAt)
     : undefined;
 }
 

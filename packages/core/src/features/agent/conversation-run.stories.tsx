@@ -468,3 +468,33 @@ export const StripWhileItBuilds: StoryObj<typeof ChatWithRun> = {
     await expect(canvas.queryByText(/Worked for/)).toBeNull();
   },
 };
+
+/**
+ * A saved run whose answer row was first stored at its first checkpoint, 1 s after the brief, and
+ * last stored with the final answer, 14 s after it.
+ */
+const SAVED_WITH_TIMES: readonly AgentMessage[] = [
+  { ...BRIEF_MESSAGE, metadata: { createdAt: "2026-10-27T02:00:00.000Z" } },
+  {
+    ...STEPS_ONLY_ANSWER,
+    parts: [...STEPS_ONLY_ANSWER.parts, ...FULL_ANSWER.parts],
+    metadata: {
+      createdAt: "2026-10-27T02:00:01.000Z",
+      updatedAt: "2026-10-27T02:00:14.000Z",
+    },
+  },
+];
+
+// C15-1: the fold says how long the whole answer took, not how long until its first checkpoint.
+export const StoredRunTime: StoryObj<typeof ChatWithRun> = {
+  render: () => <ChatWithRun status="saved" messages={SAVED_WITH_TIMES} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      await canvas.findByRole("button", {
+        name: "Worked for 14 seconds · 1 step",
+      })
+    ).toBeVisible();
+  },
+};

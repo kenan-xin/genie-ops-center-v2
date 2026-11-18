@@ -119,28 +119,33 @@ const messageColumns = {
   role: agentMessage.role,
   parts: agentMessage.parts,
   createdAt: agentMessage.createdAt,
+  updatedAt: agentMessage.updatedAt,
 };
 
-// The time lets a stored answer show how long it took; the model never reads metadata.
+// The times let a stored answer show how long it took; the model never reads metadata. A run's
+// answer is saved at each checkpoint, so its last save, not its first, is when it ended (C15-1).
 function storedMessage(
   row: {
     readonly id: string;
     readonly role: AgentMessage["role"];
     readonly parts: AgentMessage["parts"];
     readonly createdAt: Date;
+    readonly updatedAt: Date | null;
   },
   summaryText: string | null
 ): AgentMessage {
   const createdAt = row.createdAt.toISOString();
 
+  const times =
+    row.updatedAt === null
+      ? { createdAt }
+      : { createdAt, updatedAt: row.updatedAt.toISOString() };
+
   return {
     id: row.id,
     role: row.role,
     parts: row.parts,
-    metadata:
-      summaryText === null
-        ? { createdAt }
-        : { createdAt, summary: summaryText },
+    metadata: summaryText === null ? times : { ...times, summary: summaryText },
   };
 }
 
@@ -743,7 +748,7 @@ export async function appendMessage(
       })
       .onConflictDoUpdate({
         target: agentMessage.id,
-        set: { parts: sql`excluded.parts` },
+        set: { parts: sql`excluded.parts`, updatedAt: sql`now()` },
         // Only an assistant message of this session; another id answers no row.
         setWhere: sql`${agentMessage.role} = 'assistant' and ${agentMessage.sessionId} = ${id}`,
       })

@@ -659,6 +659,8 @@ export const agentMessage = pgTable(
     role: text("role", { enum: ["user", "assistant"] }).notNull(),
     parts: jsonb("parts").$type<UIMessage["parts"]>().notNull(),
     createdAt: timestamp("created_at", withTimeZone).notNull().defaultNow(),
+    /** When a save by the message's id last replaced its parts; null when it was saved once. */
+    updatedAt: timestamp("updated_at", withTimeZone),
   },
   (table) => [
     index("agent_message_session_seq_idx").on(table.sessionId, table.seq),

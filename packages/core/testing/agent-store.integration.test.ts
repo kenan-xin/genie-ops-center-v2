@@ -269,6 +269,32 @@ describe("the owner-only agent store against a real database", () => {
     );
   });
 
+  it("an answer saved again by its id keeps its first time and carries its last save time", async () => {
+    // C15-1: a run saves its answer at each checkpoint, so the first save is not when it ended.
+    const s1 = await session(personA, "A run");
+    const id = randomUUID();
+
+    await appendMessage(personA, s1.id, { role: "user", parts: text("Go") });
+    await appendMessage(personA, s1.id, { id, ...answer("So far") });
+    await deployment.context.db.execute(
+      sql`update agent_message set created_at = created_at - interval '4 minutes' where id = ${id}`
+    );
+    await appendMessage(personA, s1.id, { id, ...answer("Done") });
+
+    const { messages } = await readOwnSession(personA, s1.id);
+
+    const times = z
+      .object({
+        createdAt: z.iso.datetime({ offset: true }),
+        updatedAt: z.iso.datetime({ offset: true }),
+      })
+      .parse(messages[1]?.metadata);
+
+    expect(
+      Date.parse(times.updatedAt) - Date.parse(times.createdAt)
+    ).toBeGreaterThanOrEqual(4 * 60_000);
+  });
+
   it("writes an answer's versions with the answer, and nothing when the write fails", async () => {
     const s1 = await session(personA, "Two charts");
     const first = randomUUID();
