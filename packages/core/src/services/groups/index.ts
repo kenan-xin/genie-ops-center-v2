@@ -13,6 +13,7 @@ import {
 } from "../authorization/administrators.ts";
 import { removeGroupAssignments } from "../authorization/role-assignment.ts";
 import { groupLabelSql } from "./label.ts";
+import { groupMemberCountSql } from "./member-count.ts";
 
 /** One identity-provider group or one local group, as the Groups screen reads it. */
 export type GroupRow = {
@@ -71,8 +72,7 @@ const GROUP_COLUMNS = `
   g.source,
   g.external_id as "externalId",
   g.display_label as "displayLabel",
-  (select count(*) from group_member m join "user" u on u.id = m.user_id
-     where m.group_id = g.id and u.is_break_glass = false)::int as "memberCount",
+  ${groupMemberCountSql("g")} as "memberCount",
   (select count(*) from role_assignment a
      where a.principal_type = 'group' and a.principal_id = g.id::text)::int as "assignmentCount",
   g.last_seen_at::text as "lastSeenAt",

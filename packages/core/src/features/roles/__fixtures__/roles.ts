@@ -256,6 +256,7 @@ const group = (index: number): Holder => ({
   type: "group",
   id: HOLDER_GROUPS[index]!.id,
   name: HOLDER_GROUPS[index]!.name,
+  source: "local",
 });
 
 export const HOLDERS_NONE: RoleHolders = holders([], []);

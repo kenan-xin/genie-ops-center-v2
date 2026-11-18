@@ -8,12 +8,18 @@ const jamie = { type: "user", id: "p-jamie", name: "Jamie Chen" } as const;
 
 const sam = { type: "user", id: "p-sam", name: "Sam Rivera" } as const;
 
-const operations = { type: "group", id: "g-ops", name: "Operations" } as const;
+const operations = {
+  type: "group",
+  id: "g-ops",
+  name: "Operations",
+  source: "local",
+} as const;
 
 const financeTeam = {
   type: "group",
   id: "g-finance",
   name: "Finance team",
+  source: "local",
 } as const;
 
 const viewer = { id: "r-invoices-viewer", name: "Viewer" };

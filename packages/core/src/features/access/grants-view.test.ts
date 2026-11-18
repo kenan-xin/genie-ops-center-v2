@@ -25,10 +25,25 @@ const ops: AccessRecipient = { type: "group", id: "g-ops" };
 
 const holders = {
   jamie: { type: "user", id: "p-jamie", name: "Jamie Chen" },
-  finance: { type: "group", id: "g-finance", name: "Finance team" },
-  analysts: { type: "group", id: "g-analysts", name: "Analysts" },
-  ops: { type: "group", id: "g-ops", name: "Operations" },
-  admins: { type: "group", id: "g-admins", name: "Genie Administrators" },
+  finance: {
+    type: "group",
+    id: "g-finance",
+    name: "Finance team",
+    source: "local",
+  },
+  analysts: {
+    type: "group",
+    id: "g-analysts",
+    name: "Analysts",
+    source: "local",
+  },
+  ops: { type: "group", id: "g-ops", name: "Operations", source: "local" },
+  admins: {
+    type: "group",
+    id: "g-admins",
+    name: "Genie Administrators",
+    source: "local",
+  },
 } as const;
 
 const admins: AccessRecipient = { type: "group", id: "g-admins" };

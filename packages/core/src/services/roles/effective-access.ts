@@ -6,20 +6,27 @@ import { eligibility } from "../authorization/eligibility.ts";
 import { scopesFor } from "../authorization/index.ts";
 import type { RequestPrincipal } from "../authorization/principal.ts";
 import { groupLabelSql } from "../groups/label.ts";
+import { groupMemberCountSql } from "../groups/member-count.ts";
 import { entitlementByModule, type RolesModule } from "./index.ts";
 
 /** Why a path that stays grants nothing now (R-32, D2-6). The order is the order of the list. */
 export type NotInEffect = "group-archived" | "person-disabled" | "module-off";
 
+export type AccessHolder =
+  | { readonly type: "user"; readonly id: string; readonly name: string }
+  | {
+      readonly type: "group";
+      readonly id: string;
+      readonly name: string;
+      /** `group.source`: "idp" for a directory group, "local" for one made here (G14). */
+      readonly source: "idp" | "local";
+    };
+
 /** One `role_assignment` row through which a recipient holds a role (A8, R-37d). */
 export type AccessPath = {
   readonly assignmentId: string;
   /** The recipient itself (a direct path) or, for a person, one of their groups. */
-  readonly holder: {
-    readonly type: "user" | "group";
-    readonly id: string;
-    readonly name: string;
-  };
+  readonly holder: AccessHolder;
   readonly role: {
     readonly id: string;
     readonly name: string;
@@ -59,6 +66,12 @@ export type AccessPage = {
   /** Every path of the subject that matches the query. Only the first page (cursor null) counts it. */
   readonly total: number | null;
   readonly nextCursor: AccessCursor | null;
+  /**
+   * The member count of each group that holds an assignment on this page, by group id, without the
+   * break-glass account. Only this read carries it: it sits behind core:roles:manage, and the person
+   * read of a people manager names no group size (R-37e).
+   */
+  readonly memberCounts: Readonly<Record<string, number>>;
 };
 
 /** The Overview page size when the caller asks for none. */
@@ -69,6 +82,7 @@ type RawPath = {
   readonly holderType: "user" | "group";
   readonly holderId: string;
   readonly holderName: string;
+  readonly holderSource: string | null;
   readonly roleId: string;
   readonly roleName: string;
   readonly isSystem: boolean;
@@ -96,6 +110,7 @@ const PATHS_SQL = `
   select a.id::text as "assignmentId", a.principal_type as "holderType",
          a.principal_id as "holderId",
          coalesce(hu.name, ${groupLabelSql("hg")}) as "holderName",
+         hg.source as "holderSource",
          r.id::text as "roleId", r.name as "roleName", r.is_system as "isSystem",
          r.module_id as "moduleId", r.permissions,
          a.scope_type as "scopeType", a.scope_id as "scopeId",
@@ -188,7 +203,15 @@ function toPath(
 
   return {
     assignmentId: raw.assignmentId,
-    holder: { type: raw.holderType, id: raw.holderId, name: raw.holderName },
+    holder:
+      raw.holderType === "group"
+        ? {
+            type: "group",
+            id: raw.holderId,
+            name: raw.holderName,
+            source: raw.holderSource === "idp" ? "idp" : "local",
+          }
+        : { type: "user", id: raw.holderId, name: raw.holderName },
     role: {
       id: raw.roleId,
       name: raw.roleName,
@@ -325,6 +348,28 @@ export async function readAccessBySubject(input: {
 
   const rows = result.rows.slice(0, input.limit);
 
+  const groupIds = [
+    ...new Set(
+      rows.flatMap((raw) => (raw.holderType === "group" ? [raw.holderId] : []))
+    ),
+  ];
+
+  const memberCounts: Record<string, number> =
+    groupIds.length === 0
+      ? {}
+      : Object.fromEntries(
+          (
+            await input.tenant.db.$client.query<{
+              readonly id: string;
+              readonly memberCount: number;
+            }>(
+              `select g.id::text as id, ${groupMemberCountSql("g")} as "memberCount"
+                 from "group" g where g.id::text = any($1::text[])`,
+              [groupIds]
+            )
+          ).rows.map((row) => [row.id, row.memberCount])
+        );
+
   const last = rows.at(-1);
 
   // Ask is core, so the map never holds it: only a registered module can be off.
@@ -346,5 +391,6 @@ export async function readAccessBySubject(input: {
       result.rows.length > input.limit && last !== undefined
         ? { addedAt: last.addedAt, assignmentId: last.assignmentId }
         : null,
+    memberCounts,
   };
 }

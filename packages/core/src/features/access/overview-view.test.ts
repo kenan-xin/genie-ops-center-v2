@@ -14,14 +14,21 @@ const finance = {
   type: "group",
   id: "g-finance",
   name: "Finance team",
+  source: "local",
 } as const;
 
-const ops = { type: "group", id: "g-ops", name: "Operations" } as const;
+const ops = {
+  type: "group",
+  id: "g-ops",
+  name: "Operations",
+  source: "local",
+} as const;
 
 const former = {
   type: "group",
   id: "g-former",
   name: "Former finance",
+  source: "local",
 } as const;
 
 const path = (

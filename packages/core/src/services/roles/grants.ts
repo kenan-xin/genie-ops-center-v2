@@ -16,6 +16,7 @@ import {
 } from "../authorization/role-assignment.ts";
 import { ASK_PERMISSION } from "../authorization/roles.ts";
 import { groupLabelSql } from "../groups/label.ts";
+import { groupMemberCountSql } from "../groups/member-count.ts";
 import {
   type AccessRecipient,
   assertManagesAllRoles,
@@ -375,8 +376,7 @@ export async function readGrantRecipients(input: {
   const [groups, people] = await Promise.all([
     input.tenant.db.$client.query<GrantRecipients["groups"][number]>(
       `select g.id::text as id, ${groupLabelSql("g")} as name,
-              (select count(*) from group_member m join "user" u on u.id = m.user_id
-                where m.group_id = g.id and u.is_break_glass = false)::int as "memberCount"
+              ${groupMemberCountSql("g")} as "memberCount"
          from "group" g
         where g.archived_at is null`
     ),

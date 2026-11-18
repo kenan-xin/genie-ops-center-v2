@@ -115,12 +115,22 @@ export function fixturePath(input: {
 }
 
 const holder = {
-  ops: { type: "group", id: "g-ops", name: "Operations" },
-  finance: { type: "group", id: "g-finance", name: "Finance team" },
-  sales: { type: "group", id: "g-sales", name: "Sales desk" },
+  ops: { type: "group", id: "g-ops", name: "Operations", source: "local" },
+  finance: {
+    type: "group",
+    id: "g-finance",
+    name: "Finance team",
+    source: "local",
+  },
+  sales: { type: "group", id: "g-sales", name: "Sales desk", source: "local" },
   jamie: { type: "user", id: "p-jamie", name: "Jamie Chen" },
   sam: { type: "user", id: "p-sam", name: "Sam Rivera" },
-  admins: { type: "group", id: "g-admins", name: "Genie Administrators" },
+  admins: {
+    type: "group",
+    id: "g-admins",
+    name: "Genie Administrators",
+    source: "local",
+  },
   riley: { type: "user", id: "p-riley", name: "Riley Park" },
 } as const;
 
@@ -162,6 +172,7 @@ const leadership = {
   type: "group",
   id: "g-leads",
   name: "Leadership",
+  source: "local",
 } as const;
 
 /**
@@ -339,7 +350,12 @@ const INVOICE_GROUPS = [
 ] as const;
 
 const more = {
-  former: { type: "group", id: "g-former", name: "Former finance" },
+  former: {
+    type: "group",
+    id: "g-former",
+    name: "Former finance",
+    source: "local",
+  },
   robin: { type: "user", id: "p-robin", name: "Robin Hale" },
   drew: { type: "user", id: "p-drew", name: "Drew Patel" },
   casey: { type: "user", id: "p-casey", name: "Casey Park" },
@@ -449,7 +465,7 @@ const INVOICE_PATHS: readonly AccessPath[] = [
   ...INVOICE_GROUPS.map(([id, name, , roleId], index) =>
     sample(
       `o-${id}`,
-      { type: "group", id, name },
+      { type: "group", id, name, source: "local" },
       roleId,
       addedOn(
         `09-${String(27 - index).padStart(2, "0")}`,

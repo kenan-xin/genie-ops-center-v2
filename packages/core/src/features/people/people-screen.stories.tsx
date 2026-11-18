@@ -147,6 +147,7 @@ const financeTeam = {
   type: "group",
   id: "g-finance",
   name: "Finance team",
+  source: "local",
 } as const;
 
 /**
@@ -169,7 +170,12 @@ const ADA_PATHS: readonly AccessPath[] = [
   {
     ...fixturePath({
       id: "a-ada-former",
-      holder: { type: "group", id: "g-former", name: "Former finance" },
+      holder: {
+        type: "group",
+        id: "g-former",
+        name: "Former finance",
+        source: "idp",
+      },
       role: { id: "r-slides-editor", name: "Slides editor" },
       moduleId: "slides",
     }),

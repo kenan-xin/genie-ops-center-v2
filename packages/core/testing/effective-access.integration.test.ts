@@ -60,6 +60,8 @@ const historySources: ModuleHistorySource[] = modules.map((module) => ({
   },
 }));
 
+const ISO_MICROS = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{6}Z$/;
+
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
 let adminId: string;
@@ -168,6 +170,17 @@ describe("the person read of the People inspector", () => {
     await grant(viewerRoleId, { type: "group", id: team });
 
     const access = await peopleRpc(manager).access({ personId: person });
+
+    // The sheet's "Assigned <date> by <name>" reads these; the read names no group size (R-37e).
+    expect(access.paths.map((path) => path.addedBy)).toEqual([
+      { id: adminId, name: "Ada Admin" },
+      { id: adminId, name: "Ada Admin" },
+    ]);
+    expect(access.paths.map((path) => path.addedAt)).toEqual([
+      expect.stringMatching(ISO_MICROS),
+      expect.stringMatching(ISO_MICROS),
+    ]);
+    expect(access).not.toHaveProperty("memberCounts");
 
     expect(access.paths.map((path) => path.holder.type).toSorted()).toEqual([
       "group",
@@ -367,6 +380,61 @@ describe("the effective-access read of one recipient", () => {
 });
 
 describe("the paged effective-access read by subject", () => {
+  it("names each group holder's kind and member count, an archived directory group too, never the break-glass account", async () => {
+    // A random name: the file's other tests share this database.
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["core:audit:read"],
+    });
+
+    const first = await insertUser(deployment.context, { name: "Kim First" });
+
+    const second = await insertUser(deployment.context);
+
+    const breakGlass = await insertUser(deployment.context, {
+      isBreakGlass: true,
+    });
+
+    const local = await insertGroup(deployment.context, [
+      first,
+      second,
+      breakGlass,
+    ]);
+
+    const directory = await insertGroup(deployment.context, [first], {
+      source: "idp",
+      externalId: "kind-and-count",
+      archivedAt: new Date(),
+    });
+
+    await grant(roleId, { type: "group", id: local });
+    await grant(roleId, { type: "group", id: directory });
+    await grant(roleId, { type: "user", id: first });
+
+    const page = await roles(adminId).accessBySubject({
+      subject: { type: "role", id: roleId },
+      limit: 10,
+    });
+
+    const pathOf = (id: string) =>
+      page.paths.find((path) => path.holder.id === id);
+
+    expect(pathOf(local)?.holder).toEqual(
+      expect.objectContaining({ type: "group", source: "local" })
+    );
+    expect(pathOf(directory)?.holder).toEqual(
+      expect.objectContaining({ type: "group", source: "idp" })
+    );
+    expect(pathOf(directory)?.notInEffect).toContain("group-archived");
+    expect(pathOf(first)?.holder).not.toHaveProperty("source");
+    expect(page.memberCounts).toEqual({ [local]: 2, [directory]: 1 });
+    expect(pathOf(first)).toEqual(
+      expect.objectContaining({
+        addedBy: { id: adminId, name: "Ada Admin" },
+        addedAt: expect.stringMatching(ISO_MICROS),
+      })
+    );
+  });
+
   it("lists every role that opens the module, an older custom role included, and no role that only administers it", async () => {
     const openedUser = await insertRole(deployment.context, {
       name: "Opened user",
@@ -442,7 +510,7 @@ describe("the paged effective-access read by subject", () => {
       await roles(adminId).accessBySubject({
         subject: { type: "role", id: "not-a-uuid" },
       })
-    ).toEqual({ paths: [], total: 0, nextCursor: null });
+    ).toEqual({ paths: [], total: 0, nextCursor: null, memberCounts: {} });
   });
 
   it("pages paths written in one statement without a skip or a repeat, and counts them on the first page", async () => {

@@ -812,7 +812,12 @@ const operationsAccess = {
   paths: [
     fixturePath({
       id: "a-ops-viewer",
-      holder: { type: "group", id: "g-local", name: "Operations" },
+      holder: {
+        type: "group",
+        id: "g-local",
+        name: "Operations",
+        source: "local",
+      },
       role: { id: "r-invoices-viewer", name: "Viewer" },
       moduleId: "invoices",
     }),
