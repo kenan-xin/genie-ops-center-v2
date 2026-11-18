@@ -58,7 +58,7 @@ import {
   type InheritedSource,
   linkDraft,
   linkedRecipient,
-  moduleNameOf,
+  ownsRole,
   REFUSAL,
   removalOf,
   saveInput,
@@ -138,25 +138,6 @@ function nameOf(
   return list?.find((entry) => entry.id === recipient.id)?.name ?? "";
 }
 
-/** "Tenant administrator (Core, all records)", "Finance (Invoices, one record, INV-2026-0142)" (P4, AD10). */
-function notShownLabel(
-  path: AccessPath,
-  catalogue: readonly GrantRow[],
-  recordLabels: ReadonlyMap<string, string>
-): string {
-  const label =
-    path.scope === null ? undefined : recordLabels.get(scopeKey(path.scope));
-
-  const scope =
-    path.scope === null
-      ? "all records"
-      : label === undefined
-        ? "one record"
-        : `one record, ${label}`;
-
-  return `${path.role.name} (${moduleNameOf(path, catalogue)}, ${scope})`;
-}
-
 /** A transfer row while it is built, so each optional field is added only when present. */
 type DraftItem = { -readonly [K in keyof TransferItem]: TransferItem[K] };
 
@@ -170,23 +151,64 @@ const groupOf = (row: GrantRow): string =>
 /** The Show value for every caption. */
 const SHOW_ALL = "all";
 
+/** The "One record · <label>" pill of a scoped assignment, or nothing for the whole tenant. */
+function recordPill(
+  path: AccessPath,
+  recordLabels: ReadonlyMap<string, string>
+): ReactNode {
+  if (path.scope === null) return null;
+
+  const record = recordLabels.get(scopeKey(path.scope)) ?? path.scope.id;
+
+  return (
+    <LabelPill>
+      <span className="wrap-anywhere">{`One record · ${record}`}</span>
+    </LabelPill>
+  );
+}
+
+/** Opens Advanced access, where a role that Grants cannot edit is changed. */
+function advancedButton(onOpenAdvanced: () => void): ReactNode {
+  return (
+    <button
+      type="button"
+      className={`font-medium text-foreground underline ${focusRing}`}
+      onClick={onOpenAdvanced}
+    >
+      Change in Advanced access
+    </button>
+  );
+}
+
 /**
- * One read-only Granted row for a path that is not the editable one (d8l5.42): "Assigned via <group>"
- * opens the group on Grants, "Included in <role>" opens Advanced access.
+ * One read-only Granted row for a path that is not the editable one (d8l5.42): "Assigned via
+ * <group>" opens the group on Grants, "Assigned via <role> (role)" opens Advanced access. A
+ * direct role that the row owns is no route and reads "<role> · Direct" (P11-34). The role and
+ * its route sit in one control line (d8l5.60): at the row end in panes, under the description
+ * when stacked.
  */
 function inheritedItem(
   entry: InheritedRowView,
   input: {
     readonly recordLabels: ReadonlyMap<string, string>;
     readonly onOpenSource: (source: InheritedSource) => void;
+    readonly onOpenAdvanced: () => void;
   }
 ): TransferItem {
   const { row, path, source } = entry;
 
-  const record =
-    path.scope === null
-      ? null
-      : (input.recordLabels.get(scopeKey(path.scope)) ?? path.scope.id);
+  // A direct path of a role that the row itself owns is a direct role, not a route (P11-34).
+  const directRole = source.kind === "role" && ownsRole(row, path.role.id);
+
+  const sourceButton = (
+    <button
+      type="button"
+      className={`font-medium text-foreground underline ${focusRing}`}
+      onClick={() => input.onOpenSource(source)}
+    >
+      {source.name}
+    </button>
+  );
 
   const item: DraftItem = {
     id: inheritedId(entry),
@@ -194,42 +216,59 @@ function inheritedItem(
     group: groupOf(row),
     countKey: row.id,
     readOnly: true,
-    note: (
-      <>
-        {source.kind === "group" ? "Assigned via " : "Included in "}
-        <button
-          type="button"
-          className={`font-medium text-foreground underline ${focusRing}`}
-          onClick={() => input.onOpenSource(source)}
-        >
-          {source.name}
-        </button>
-      </>
+    control: (
+      <span className="text-xs text-muted-foreground">
+        {source.kind === "group" ? (
+          <>
+            {path.role.name} · Assigned via {sourceButton}
+          </>
+        ) : directRole ? (
+          <>
+            {path.role.name} · Direct · {advancedButton(input.onOpenAdvanced)}
+          </>
+        ) : (
+          <>Assigned via {sourceButton} (role)</>
+        )}
+      </span>
     ),
     pills: (
       <>
         {row.enabled ? null : (
           <StatusPill tone="warning">Paused: Module off</StatusPill>
         )}
-        {record === null ? null : (
-          <LabelPill>
-            <span className="wrap-anywhere">{`One record · ${record}`}</span>
-          </LabelPill>
-        )}
+        {recordPill(path, input.recordLabels)}
       </>
     ),
   };
 
   if (row.description !== null) item.description = row.description;
 
-  // A group path also names its role. A role source already names it in the note.
-  if (source.kind === "group") {
-    item.control = (
-      <span className="text-sm text-muted-foreground">{path.role.name}</span>
-    );
-  }
-
   return item;
+}
+
+const rowlessId = (path: AccessPath) => `rowless:${path.assignmentId}`;
+
+/** A read-only row for a direct role that opens no module, such as Auditor (A-2). */
+function rowlessItem(
+  path: AccessPath,
+  input: {
+    readonly onOpenAdvanced: () => void;
+    readonly recordLabels: ReadonlyMap<string, string>;
+  }
+): TransferItem {
+  return {
+    id: rowlessId(path),
+    label: path.role.name,
+    group: path.role.moduleId === null ? "Core" : "Modules",
+    countKey: rowlessId(path),
+    readOnly: true,
+    control: (
+      <span className="text-xs text-muted-foreground">
+        Direct · {advancedButton(input.onOpenAdvanced)}
+      </span>
+    ),
+    pills: recordPill(path, input.recordLabels),
+  };
 }
 
 /** The transfer rows: the catalogue in order, each with its staged state (P2, P3), then its read-only paths. */
@@ -241,76 +280,83 @@ function itemsOf(input: {
   readonly setRole: (row: string, roleId: string, saved?: string) => void;
   readonly recordLabels: ReadonlyMap<string, string>;
   readonly onOpenSource: (source: InheritedSource) => void;
+  readonly onOpenAdvanced: () => void;
 }): TransferItem[] {
-  return input.catalogue.flatMap((row) => {
-    const shown = input.view.granted.find((entry) => entry.row.id === row.id);
+  return [
+    ...input.catalogue.flatMap((row) => {
+      const shown = input.view.granted.find((entry) => entry.row.id === row.id);
 
-    const also =
-      input.view.catalog.find((entry) => entry.row.id === row.id)
-        ?.alsoThrough ?? [];
+      const also =
+        input.view.catalog.find((entry) => entry.row.id === row.id)
+          ?.alsoThrough ?? [];
 
-    const staged =
-      row.id in input.draft.add ||
-      row.id in input.draft.change ||
-      input.draft.remove.includes(row.id);
+      const staged =
+        row.id in input.draft.add ||
+        row.id in input.draft.change ||
+        input.draft.remove.includes(row.id);
 
-    const value =
-      input.draft.add[row.id] ??
-      input.draft.change[row.id] ??
-      shown?.shown.role.id ??
-      row.defaultRoleId ??
-      "";
+      const value =
+        input.draft.add[row.id] ??
+        input.draft.change[row.id] ??
+        shown?.shown.role.id ??
+        row.defaultRoleId ??
+        "";
 
-    const savedRoleId =
-      row.id in input.draft.add ? undefined : shown?.shown.role.id;
+      const savedRoleId =
+        row.id in input.draft.add ? undefined : shown?.shown.role.id;
 
-    // A module that is off: "Module off" in Catalog, "Paused: Module off" on a Granted assignment (G6, G9).
-    const offPill = input.granted.has(row.id) ? (
-      <StatusPill tone="warning">Paused: Module off</StatusPill>
-    ) : (
-      <StatusPill tone="neutral">Module off</StatusPill>
-    );
+      // A module that is off: "Module off" in Catalog, "Paused: Module off" on a Granted assignment (G6, G9).
+      const offPill = input.granted.has(row.id) ? (
+        <StatusPill tone="warning">Paused: Module off</StatusPill>
+      ) : (
+        <StatusPill tone="neutral">Module off</StatusPill>
+      );
 
-    const item: DraftItem = {
-      id: row.id,
-      label: row.name,
-      group: groupOf(row),
-      pills: (
-        <>
-          {row.enabled ? null : offPill}
-          {staged ? (
-            <UnsavedMark removal={input.draft.remove.includes(row.id)} />
-          ) : null}
-        </>
-      ),
-      control: (
-        <RoleChoice
-          rowName={row.name}
-          roles={row.roles}
-          defaultRoleId={row.defaultRoleId}
-          value={value}
-          {...(savedRoleId === undefined ? {} : { savedRoleId })}
-          {...(row.enabled ? {} : { disabledReason: offReason(row) })}
-          onChange={(roleId) => input.setRole(row.id, roleId, savedRoleId)}
-        />
-      ),
-    };
+      const item: DraftItem = {
+        id: row.id,
+        label: row.name,
+        group: groupOf(row),
+        pills: (
+          <>
+            {row.enabled ? null : offPill}
+            {staged ? (
+              <UnsavedMark removal={input.draft.remove.includes(row.id)} />
+            ) : null}
+          </>
+        ),
+        control: (
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <RoleChoice
+              rowName={row.name}
+              roles={row.roles}
+              defaultRoleId={row.defaultRoleId}
+              value={value}
+              {...(savedRoleId === undefined ? {} : { savedRoleId })}
+              {...(row.enabled ? {} : { disabledReason: offReason(row) })}
+              onChange={(roleId) => input.setRole(row.id, roleId, savedRoleId)}
+            />
+            <span className="text-xs text-muted-foreground">Direct</span>
+          </span>
+        ),
+      };
 
-    if (row.description !== null) item.description = row.description;
+      if (row.description !== null) item.description = row.description;
 
-    if (!row.enabled) item.blockedReason = offReason(row);
+      if (!row.enabled) item.blockedReason = offReason(row);
 
-    if (also.length > 0 && !input.granted.has(row.id)) {
-      item.note = `Also assigned via ${also.join(", ")}`;
-    }
+      if (also.length > 0 && !input.granted.has(row.id)) {
+        item.note = `Also assigned via ${also.join(", ")}`;
+      }
 
-    return [
-      item,
-      ...input.view.inherited
-        .filter((entry) => entry.row.id === row.id)
-        .map((entry) => inheritedItem(entry, input)),
-    ];
-  });
+      return [
+        item,
+        ...input.view.inherited
+          .filter((entry) => entry.row.id === row.id)
+          .map((entry) => inheritedItem(entry, input)),
+      ];
+    }),
+    ...input.view.rowless.map((path) => rowlessItem(path, input)),
+  ];
 }
 
 /** "1 to add, 2 to remove", without the zero parts. */
@@ -572,6 +618,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     ...Object.keys(draft.add),
     // Read-only rows always sit in Granted, and nothing moves them.
     ...(view?.inherited ?? []).map(inheritedId),
+    ...(view?.rowless ?? []).map(rowlessId),
   ]);
 
   return (
@@ -714,6 +761,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                     store.getState().setRole(row, roleId, saved),
                   recordLabels: props.recordLabels,
                   onOpenSource: openSource,
+                  onOpenAdvanced: () => setAdvancedOpen(true),
                 })}
                 // Show hides rows inside the list, so a tick it hides still counts (as a search's does).
                 visible={(item) => shown === SHOW_ALL || item.group === shown}
@@ -747,26 +795,6 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                     assignments change on Groups.
                   </p>
                 ) : null}
-                {view.notShown.length === 0 ? null : (
-                  <>
-                    <p>
-                      Not shown here:{" "}
-                      {view.notShown
-                        .map((path) =>
-                          notShownLabel(path, catalogue, props.recordLabels)
-                        )
-                        .join(", ")}
-                    </p>
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="-ml-3 self-start"
-                      onClick={() => setAdvancedOpen(true)}
-                    >
-                      Open Advanced access
-                    </Button>
-                  </>
-                )}
               </div>
             </div>
           )}
@@ -785,7 +813,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
             <p className="text-xs text-muted-foreground">{countsLine(draft)}</p>
             {firstStay === undefined ? null : (
               <p className="text-xs text-muted-foreground">
-                {firstStay.role.name} through {firstStay.holder.name} stays.
+                {firstStay.role.name} stays, assigned via{" "}
+                {firstStay.holder.name}.
               </p>
             )}
           </div>

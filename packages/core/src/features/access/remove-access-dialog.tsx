@@ -16,7 +16,7 @@ export type RowRemoval = {
 type Recipient = { readonly type: "user" | "group"; readonly name: string };
 
 const goesAs = (path: AccessPath) =>
-  path.scope === null ? "Direct" : "Direct, one record";
+  path.scope === null ? "Direct" : "Direct · One record";
 
 const staysAs = (path: AccessPath) =>
   path.holder.type === "group" ? `Assigned via ${path.holder.name}` : "Direct";
@@ -41,10 +41,11 @@ function PathList(props: {
       </Heading>
       <ul aria-labelledby={id} className="flex flex-col gap-1">
         {props.paths.map((path) => (
-          <li key={path.assignmentId} className="flex flex-col">
+          <li key={path.assignmentId}>
             <span className="font-medium">{path.role.name}</span>
-            <span className="text-xs text-muted-foreground">
-              {props.detail(path)}
+            <span className="text-muted-foreground">
+              {" "}
+              · {props.detail(path)}
             </span>
           </li>
         ))}

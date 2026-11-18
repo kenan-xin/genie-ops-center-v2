@@ -142,10 +142,10 @@ test("the Overview shows a person's two group paths, who added a path, and a mod
 
   await expect(holders).toHaveCount(2);
   await expect(holders.filter({ hasText: groupA })).toContainText(
-    "Group, 1 member"
+    "Group · 1 member"
   );
   await expect(holders.filter({ hasText: groupB })).toContainText(
-    "Group, 1 member"
+    "Group · 1 member"
   );
   await expectNoAxeViolations(page, "Overview by module");
 });

@@ -298,20 +298,24 @@ function RolesBlock(props: {
               className="flex flex-col gap-1 px-4 py-3 md:px-5"
             >
               <span className="flex flex-wrap items-center justify-between gap-2">
-                <span className="text-sm font-semibold text-foreground">
-                  {grant.roleName}
+                {/* d8l5.60: the role and how it arrived read on one line. */}
+                <span className="flex flex-wrap items-center text-sm font-semibold text-foreground">
+                  <span>{grant.roleName}</span>
+                  <span>{" · "}</span>
+                  <span className="font-normal text-muted-foreground">
+                    {grant.via === null
+                      ? "Direct"
+                      : `Assigned via ${grant.via}`}
+                  </span>
                 </span>
                 <span className="text-sm text-muted-foreground">
                   {grant.permissionCount}{" "}
                   {grant.permissionCount === 1 ? "permission" : "permissions"}
                 </span>
               </span>
-              <span className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-sm">
                 <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-foreground">
                   {grant.scopeLabel}
-                </span>
-                <span className="text-muted-foreground">
-                  {grant.via === null ? "Direct" : `Assigned via ${grant.via}`}
                 </span>
               </span>
             </li>

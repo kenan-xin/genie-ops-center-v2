@@ -40,6 +40,11 @@ export type GrantsView = {
   readonly inherited: readonly InheritedRowView[];
   readonly catalog: readonly CatalogRowView[];
   readonly notShown: readonly AccessPath[];
+  /**
+   * Every direct assignment that opens no row, such as the Auditor role or a custom role of core
+   * keys only. Each gets its own read-only row, so Grants hides nothing the recipient has (A-2).
+   */
+  readonly rowless: readonly AccessPath[];
 };
 
 export type Removal = {
@@ -50,7 +55,7 @@ export type Removal = {
 const isDirect = (path: AccessPath, recipient: AccessRecipient) =>
   path.holder.type === recipient.type && path.holder.id === recipient.id;
 
-const ownsRole = (row: GrantRow, roleId: string) =>
+export const ownsRole = (row: GrantRow, roleId: string) =>
   row.roles.some((role) => role.id === roleId);
 
 /** A path that opens the row (P6): its role carries the use key and its group is not archived. */
@@ -129,11 +134,17 @@ export function grantsView(input: {
 
   const shownIds = new Set(granted.map((view) => view.shown.assignmentId));
 
+  const listed = new Set([
+    ...granted.map((entry) => entry.shown.assignmentId),
+    ...inherited.map((entry) => entry.path.assignmentId),
+  ]);
+
   return {
     granted,
     inherited,
     catalog,
     notShown: direct.filter((path) => !shownIds.has(path.assignmentId)),
+    rowless: direct.filter((path) => !listed.has(path.assignmentId)),
   };
 }
 

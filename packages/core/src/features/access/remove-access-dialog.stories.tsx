@@ -96,14 +96,16 @@ export const PathsStay: Story = {
 
     const goes = within(body.getByRole("list", { name: "Roles that go" }));
 
-    await expect(goes.getByRole("listitem")).toHaveTextContent("ViewerDirect");
+    await expect(goes.getByRole("listitem")).toHaveTextContent(
+      "Viewer · Direct"
+    );
 
     const stays = within(
       body.getByRole("list", { name: "Assignments that stay" })
     );
 
     await expect(stays.getByRole("listitem")).toHaveTextContent(
-      "FinanceAssigned via Finance team"
+      "Finance · Assigned via Finance team"
     );
     // The dialog moves its first focus a frame after it shows.
     await waitFor(() =>

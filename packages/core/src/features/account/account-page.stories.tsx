@@ -359,6 +359,10 @@ export const Default: Story = {
     await expect(canvas.getByText("2 permissions")).toBeInTheDocument();
     await expect(canvas.getByText("All records")).toBeInTheDocument();
     await expect(canvas.getByText("Direct")).toBeInTheDocument();
+    // d8l5.60: the role and how it arrived read on one line.
+    await expect(canvas.getByText("Direct").parentElement).toHaveTextContent(
+      "Solutions editor · Direct"
+    );
     await expect(canvas.getByText("Contract viewer")).toBeInTheDocument();
     await expect(canvas.getByText("Vendor agreements")).toBeInTheDocument();
     await expect(

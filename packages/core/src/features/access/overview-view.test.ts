@@ -157,9 +157,39 @@ describe("overviewRows", () => {
         row.notInEffect,
       ])
     ).toEqual([
-      ["Invoices", "Group, 12 members", [], []],
+      ["Invoices", "Group · 12 members", [], []],
       ["Invoices", "Direct", [], []],
       ["Invoices", "Group", [], ["Group archived"]],
+    ]);
+  });
+
+  it("names a directory group by its kind, and a local group with its member count (T6-e)", () => {
+    const local = path("a-local", ops, invoicesUser, "invoices");
+
+    const itGroup = {
+      type: "group",
+      id: "g-it",
+      name: "IT",
+      source: "idp",
+    } as const;
+
+    const directory = path("a-it", itGroup, invoicesUser, "invoices");
+
+    const rows = overviewRows({
+      subject: { type: "module", id: "invoices" },
+      paths: [local, directory],
+      personPaths: undefined,
+      catalogue: FIXTURE_ROWS,
+      recipients: {
+        groups: [{ id: "g-ops", name: "Operations", memberCount: 1 }],
+        people: [],
+      },
+      recordLabels: new Map(),
+    });
+
+    expect(rows.map((row) => row.path)).toEqual([
+      "Group · 1 member",
+      "Directory group",
     ]);
   });
 
@@ -195,7 +225,7 @@ describe("overviewRows", () => {
     });
 
     expect(rows.map((row) => row.path)).toEqual([
-      "Group, 12 members",
+      "Group · 12 members",
       "Direct",
     ]);
   });

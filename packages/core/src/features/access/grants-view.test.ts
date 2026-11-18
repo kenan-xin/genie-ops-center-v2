@@ -173,6 +173,32 @@ describe("grantsView", () => {
     ]);
   });
 
+  it("gives every direct assignment a visible row, a role that opens no module too (A-2)", () => {
+    const paths = [
+      path({ holder: holders.jamie, roleId: "r-ask-user" }),
+      tenantAdmin(holders.jamie),
+      path({
+        holder: holders.jamie,
+        roleId: "r-auditor",
+        moduleId: null,
+        permissions: ["core:audit:read"],
+      }),
+    ];
+
+    const result = view(paths);
+
+    const visible = new Set([
+      ...result.granted.map((entry) => entry.shown.assignmentId),
+      ...result.inherited.map((entry) => entry.path.assignmentId),
+      ...result.rowless.map((entry) => entry.assignmentId),
+    ]);
+
+    expect(paths.filter((entry) => !visible.has(entry.assignmentId))).toEqual(
+      []
+    );
+    expect(result.rowless.map((entry) => entry.role.id)).toEqual(["r-auditor"]);
+  });
+
   it("V3: names the live whole-tenant groups that also give a person a Catalog row", () => {
     const result = view([
       path({ holder: holders.finance, roleId: "r-invoices-finance" }),

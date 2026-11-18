@@ -380,7 +380,7 @@ export const ByRole: Story = {
     );
 
     await expect(table.getByText("Direct")).toBeVisible();
-    await expect(table.getByText("Group, 12 members")).toBeVisible();
+    await expect(table.getByText("Group · 12 members")).toBeVisible();
     await expect(
       canvas.queryByRole("link", { name: "Change access" })
     ).toBeNull();

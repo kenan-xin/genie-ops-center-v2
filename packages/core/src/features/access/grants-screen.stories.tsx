@@ -3,15 +3,21 @@ import * as React from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { AdvancedChanges } from "../../services/roles/advanced.ts";
-import type { AccessRecipient } from "../../services/roles/effective-access.ts";
+import type {
+  AccessPath,
+  AccessRecipient,
+} from "../../services/roles/effective-access.ts";
 import type { GrantChanges } from "../../services/roles/grants.ts";
 import {
   ADVANCED_CATALOGUE,
   ADVANCED_LABELS,
   FIXTURE_RECIPIENTS,
   FIXTURE_ROWS,
+  fixturePath,
   fixturePaths,
+  held,
   searchFixtureRecords,
+  tenantAdminOf,
 } from "./__fixtures__/access.ts";
 import { GrantsScreen } from "./grants-screen.tsx";
 
@@ -23,6 +29,8 @@ type Args = {
     readonly role?: string;
   };
   readonly refusal?: string;
+  /** Paths of the chosen recipient, when a story needs its own; fixture paths otherwise. */
+  readonly paths?: readonly AccessPath[];
   readonly onSave: (changes: GrantChanges) => Promise<void>;
   readonly onSaveAdvanced: (changes: AdvancedChanges) => Promise<void>;
   readonly onRecipientChange?: (next: AccessRecipient | null) => void;
@@ -41,7 +49,10 @@ function Harness(args: Args) {
         args.onRecipientChange?.(next);
         setRecipient(next);
       }}
-      paths={recipient === null ? undefined : fixturePaths(recipient.id)}
+      paths={
+        args.paths ??
+        (recipient === null ? undefined : fixturePaths(recipient.id))
+      }
       {...(args.link === undefined ? {} : { link: args.link })}
       onSave={async (changes) => {
         await args.onSave(changes);
@@ -303,7 +314,7 @@ export const RemoveConfirm: Story = {
     await tickAndMove("Invoices", /^Remove 1$/);
     await expect(pendingBar().getByText("1 to remove")).toBeVisible();
     await expect(
-      pendingBar().getByText("Finance through Finance team stays.")
+      pendingBar().getByText("Finance stays, assigned via Finance team.")
     ).toBeVisible();
 
     await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
@@ -382,11 +393,10 @@ export const ModuleOffInCatalog: Story = {
 export const CoreAsk: Story = {
   args: { initial: group("g-sales") },
   play: async ({ canvas }) => {
+    await expect(canvas.queryByText(/Not shown here/)).toBeNull();
     await expect(
-      await canvas.findByText(
-        "Not shown here: Tenant administrator (Core, all records)"
-      )
-    ).toBeVisible();
+      screen.getByRole("group", { name: "Granted" })
+    ).toHaveTextContent("Assigned via Tenant administrator (role)");
   },
 };
 
@@ -511,8 +521,13 @@ export const ThroughGroupIsReadOnly: Story = {
     await expect(
       grantedPane().getAllByRole("button", { name: "Finance team" })
     ).toHaveLength(2);
-    // G10: a group source reads "Assigned via <group>".
-    await expect(grantedPane().getAllByText(/^Assigned via/)).toHaveLength(2);
+    // d8l5.60: the role and its source read on one line (A-4).
+    await expect(
+      screen.getByRole("group", { name: "Granted" })
+    ).toHaveTextContent("Finance · Assigned via Finance team");
+    await expect(
+      screen.getByRole("group", { name: "Granted" })
+    ).toHaveTextContent("Analytics viewer · Assigned via Finance team");
     await expect(
       grantedPane().queryByRole("checkbox", { name: "Invoices" })
     ).toBeNull();
@@ -580,7 +595,9 @@ export const ThroughCoreRoleIsReadOnly: Story = {
     await expect(
       await canvas.findByRole("heading", { name: "Granted · 1" })
     ).toBeVisible();
-    await expect(grantedPane().getByText(/Included in/)).toBeVisible();
+    await expect(
+      screen.getByRole("group", { name: "Granted" })
+    ).toHaveTextContent("Assigned via Tenant administrator (role)");
     await expect(
       within(canvas.getByRole("group", { name: "Catalog" })).getByText(
         "Also assigned via Tenant administrator"
@@ -596,6 +613,19 @@ export const ThroughCoreRoleIsReadOnly: Story = {
     await waitFor(() =>
       expect(sheet.getAllByText("Tenant administrator")[0]).toBeVisible()
     );
+  },
+};
+
+/** P11-34: a direct role that the row owns is no route, also when it is at one record. */
+export const DirectRecordRoleIsNoRoute: Story = {
+  args: { initial: group("g-ops") },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const granted = await canvas.findByRole("group", { name: "Granted" });
+
+    await expect(granted).toHaveTextContent("Finance · Direct");
+    await expect(granted).not.toHaveTextContent("Assigned via Finance (role)");
+    await expect(granted).toHaveTextContent("One record · INV-2026-0142");
   },
 };
 
@@ -692,22 +722,100 @@ export const AdvancedAccessOpensFromTheToolbar: Story = {
   },
 };
 
-/** W2: "Not shown here" names the record by label and opens Advanced access. */
-export const NotShownHereOpensAdvancedAccess: Story = {
-  args: { initial: group("g-ops") },
+const admins = {
+  type: "group",
+  id: "g-admins",
+  name: "Genie Administrators",
+  source: "local",
+} as const;
+
+/**
+ * A-4: an inherited row names its role and how on one line, also stacked on a phone, and the role
+ * never stands alone in its own element.
+ */
+export const InheritedRouteOnOneLineOnPhone: Story = {
+  args: {
+    initial: person("p-riley"),
+    paths: [tenantAdminOf("a-riley-admin", admins)],
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas }) => {
+    const granted = await canvas.findByRole("group", { name: "Granted" });
+
+    await expect(granted).toHaveTextContent(
+      "Tenant administrator · Assigned via Genie Administrators"
+    );
     await expect(
-      await canvas.findByText(/Finance \(Invoices, one record, INV-2026-0142\)/)
+      canvas.queryByText("Tenant administrator", { exact: true })
+    ).toBeNull();
+    await expect(
+      within(granted).getByRole("button", { name: "Genie Administrators" })
     ).toBeVisible();
+  },
+};
+
+/** A-2: the group's two Ask rows say how each one arrives, so they never read alike. */
+export const GroupAskRowsSayHow: Story = {
+  args: {
+    initial: group("g-admins"),
+    paths: [
+      held("a-admins-ask", admins, "r-ask-user"),
+      tenantAdminOf("a-admins-admin", admins),
+    ],
+  },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const granted = await canvas.findByRole("group", { name: "Granted" });
+
+    await expect(
+      within(granted).getByText("Direct", { exact: true })
+    ).toBeVisible();
+    await expect(granted).toHaveTextContent(
+      "Assigned via Tenant administrator (role)"
+    );
+  },
+};
+
+/** A-2: a direct role that opens no module gets its own row, and its way into Advanced access. */
+export const RoleWithoutModuleHasItsOwnRow: Story = {
+  args: {
+    initial: person("p-jamie"),
+    paths: [
+      {
+        ...fixturePath({
+          id: "a-jamie-auditor",
+          holder: { type: "user", id: "p-jamie", name: "Jamie Chen" },
+          role: { id: "r-auditor", name: "Auditor" },
+          moduleId: "core",
+        }),
+        role: {
+          id: "r-auditor",
+          name: "Auditor",
+          kind: "system",
+          moduleId: null,
+          permissions: ["core:audit:read"],
+        },
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const granted = await canvas.findByRole("group", { name: "Granted" });
+
+    await expect(within(granted).getByText("Auditor")).toBeVisible();
+    await expect(canvas.queryByText(/Not shown here/)).toBeNull();
 
     await userEvent.click(
-      canvas.getByRole("button", { name: "Open Advanced access" })
+      within(granted).getByRole("button", {
+        name: "Change in Advanced access",
+      })
     );
-    const sheet = await advancedSheet();
 
-    await waitFor(() =>
-      expect(sheet.getByText("One record · INV-2026-0142")).toBeVisible()
-    );
+    const sheet = await screen.findByRole("dialog", {
+      name: "Advanced access",
+    });
+
+    await waitFor(() => expect(sheet).toBeVisible());
+    await expect(sheet).toHaveTextContent("Auditor");
   },
 };
 

@@ -144,7 +144,7 @@ const role = (id: string) => {
   return { role: found.role, moduleId: found.row };
 };
 
-const held = (id: string, by: AccessPath["holder"], roleId: string) =>
+export const held = (id: string, by: AccessPath["holder"], roleId: string) =>
   fixturePath({ id, holder: by, ...role(roleId) });
 
 const financeInvoices = held("a-fin-1", holder.finance, "r-invoices-finance");
@@ -152,7 +152,10 @@ const financeInvoices = held("a-fin-1", holder.finance, "r-invoices-finance");
 const financeAnalytics = held("a-fin-2", holder.finance, "r-analytics-viewer");
 
 /** Tenant administrator, which includes Ask (core:ask:use). */
-const tenantAdminOf = (id: string, by: AccessPath["holder"]): AccessPath => ({
+export const tenantAdminOf = (
+  id: string,
+  by: AccessPath["holder"]
+): AccessPath => ({
   ...fixturePath({
     id,
     holder: by,

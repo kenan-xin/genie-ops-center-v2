@@ -5,6 +5,7 @@ import type {
 import type { GrantRecipients, GrantRow } from "../../services/roles/grants.ts";
 import type { RoleRow } from "../../services/roles/index.ts";
 import { scopeKey } from "./advanced-view.ts";
+import { groupKindLabel, memberCountLabel } from "./assignment-words.ts";
 import { moduleNameOf } from "./grants-view.ts";
 
 /** One row of the Overview table (R-37d). */
@@ -128,9 +129,11 @@ export function overviewRows(input: {
         (group) => group.id === path.holder.id
       )?.memberCount;
 
-      if (members === undefined) return "Group";
+      const kind = groupKindLabel(path.holder.source);
 
-      return `Group, ${members} ${members === 1 ? "member" : "members"}`;
+      return members === undefined
+        ? kind
+        : `${kind} · ${memberCountLabel(members)}`;
     }
 
     // The Assigned via column (G10): "Direct" or the group's name.

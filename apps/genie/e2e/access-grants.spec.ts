@@ -176,7 +176,7 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
     await move(page, "Granted", "Placeholder");
     await expect(
       page.getByRole("region", { name: "Unsaved changes" })
-    ).toContainText(`Placeholder user through ${group} stays.`);
+    ).toContainText(`Placeholder user stays, assigned via ${group}.`);
     await save(page, async (dialog) => {
       const stays = dialog
         .getByRole("list", { name: "Assignments that stay" })
@@ -213,7 +213,9 @@ test("Granted shows inherited access read-only, with its source", async ({
   const granted = page.getByRole("group", { name: "Granted", exact: true });
 
   await pickRecipient(page, "group", "Genie Administrators");
-  await expect(granted.getByText(/Included in/).first()).toBeVisible();
+  await expect(
+    granted.getByText(/Assigned via Tenant administrator/).first()
+  ).toBeVisible();
   await expect(granted.getByRole("checkbox", { name: "Ask" })).toHaveCount(0);
   await expect(
     page
