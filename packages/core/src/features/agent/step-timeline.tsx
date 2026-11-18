@@ -135,6 +135,8 @@ function Row(props: {
 }): ReactNode {
   const { row, live } = props;
 
+  const { progress } = row;
+
   const active = row.state === "active";
 
   // C07-6: repeated reads say so in words.
@@ -169,6 +171,21 @@ function Row(props: {
           </span>
           {live === undefined ? null : <LiveTime live={live} />}
         </div>
+        {progress === undefined ? null : (
+          // The label already says "n of m"; the bar draws the m parts (czjw.181).
+          <span
+            aria-hidden="true"
+            data-slot="progress"
+            className="flex max-w-55 gap-0.75"
+          >
+            {Array.from({ length: progress.m }, (_, at) => (
+              <span
+                key={at}
+                className={`h-1 flex-1 rounded-full ${at < progress.n ? "bg-primary dark:bg-brand-on-dark" : "bg-border"}`}
+              />
+            ))}
+          </span>
+        )}
         {active && reads !== undefined ? (
           <p className="text-xs text-muted-foreground">{reads}</p>
         ) : null}
@@ -209,6 +226,18 @@ function Rows(props: { readonly children: ReactNode }): ReactNode {
       {props.children}
     </ol>
   );
+}
+
+/**
+ * The key a live row's time counts from: per item of a build, else per call, so each wait starts
+ * from 0 s, also when a read runs again (P15-39).
+ */
+function liveKeyOf(row: TimelineRow): string {
+  if (row.progress !== undefined) return `${row.key}#${row.progress.n}`;
+
+  const last = row.parts.at(-1);
+
+  return last !== undefined && "toolCallId" in last ? last.toolCallId : row.key;
 }
 
 /** The ms since the client first saw each key; ticks once a second while any key is live. */
@@ -266,11 +295,12 @@ export function StepTimeline(props: {
   // A finished answer whose file job still runs keeps that row in sight under the strip (R-44a).
   const stillRunning = rows.filter((row) => row.state === "active");
 
-  // Each wait between steps is its own live row, so its time starts from 0 s.
-  const thinkingKey = `thinking-${rows.length}`;
+  // Each wait between steps is its own live row, so its time starts from 0 s; a step that joins a
+  // row adds a part but no row, so the key counts parts.
+  const thinkingKey = `thinking-${rows.reduce((sum, row) => sum + row.parts.length, 0)}`;
 
   const elapsed = useElapsed([
-    ...stillRunning.map((row) => row.key),
+    ...stillRunning.map(liveKeyOf),
     ...(timeline.thinking ? [thinkingKey] : []),
   ]);
 
@@ -284,7 +314,9 @@ export function StepTimeline(props: {
     <Row
       key={row.key}
       row={row}
-      live={row.state === "active" ? liveOf(row.key, current) : undefined}
+      live={
+        row.state === "active" ? liveOf(liveKeyOf(row), current) : undefined
+      }
     />
   );
 

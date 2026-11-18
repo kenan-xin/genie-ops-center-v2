@@ -1,4 +1,5 @@
 import type { Decorator, Meta, StoryObj } from "@storybook/nextjs-vite";
+import { type ComponentProps, useState } from "react";
 import { expect, fn, userEvent, within } from "storybook/test";
 
 import type { MessagePart } from "./step-model.ts";
@@ -237,6 +238,114 @@ export const ThinkingBetweenSteps: Story = {
     await expect(
       await within(thinking).findByText(later, {}, { timeout: 2000 })
     ).toBeVisible();
+  },
+};
+
+function runningRead(id: string): MessagePart {
+  return {
+    type: "tool-query-dataset",
+    toolCallId: id,
+    state: "input-available",
+    input: { dataset: "ledger.invoices", query: { limit: 20 } },
+  };
+}
+
+/** A read runs, the run thinks, the same read runs again, and the run thinks again. */
+const READ_AGAIN_FRAMES: readonly (readonly MessagePart[])[] = [
+  [runningRead("r1")],
+  [read("r1", "ledger.invoices")],
+  [read("r1", "ledger.invoices"), runningRead("r2")],
+  [read("r1", "ledger.invoices"), read("r2", "ledger.invoices")],
+];
+
+/** Shows one frame of the run at a time; Next step moves to the next one, as a stream does. */
+function NextStepHost(props: ComponentProps<typeof StepTimeline>) {
+  const [at, setAt] = useState(0);
+
+  return (
+    <div className="grid gap-2">
+      <StepTimeline {...props} parts={READ_AGAIN_FRAMES[at] ?? []} />
+      <button type="button" onClick={() => setAt(at + 1)}>
+        Next step
+      </button>
+    </div>
+  );
+}
+
+/** Each wait starts from 0 s: a read that runs again, and the Thinking after it (P15-39). */
+export const EachWaitFromZero: Story = {
+  args: { streaming: true, children: undefined },
+  render: (args) => <NextStepHost {...args} />,
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "Steps" });
+
+    const next = canvas.getByRole("button", { name: "Next step" });
+
+    await within(list).findByText("1s", {}, { timeout: 3000 });
+    await userEvent.click(next);
+    await within(list).findByText("2s", {}, { timeout: 4000 });
+
+    // The read runs again: its time restarts, and so does the Thinking after it.
+    await userEvent.click(next);
+    await expect(within(list).getByText(/^\d+s$/)).toHaveTextContent(/^[01]s$/);
+    await userEvent.click(next);
+    await expect(within(list).getByText(/^\d+s$/)).toHaveTextContent(/^[01]s$/);
+  },
+};
+
+/** A fake module tool that adds one slide of a planned deck per call (czjw.181). */
+const DECK_LABELS = {
+  ...LABELS,
+  steps: {
+    "deck-add": {
+      active: "Changing the deck",
+      done: "Changed the deck",
+      failed: "Could not change the deck",
+      progress: {
+        active: "Writing slide {n} of {m}",
+        doneOne: "Wrote slide {n}",
+        done: "Wrote slides {first} to {last}",
+      },
+    },
+  },
+};
+
+function slide(n: number, running = false): MessagePart {
+  const input = { progress: { n, m: 5 }, title: `Slide ${n}` };
+
+  return running
+    ? {
+        type: "tool-deck-add",
+        toolCallId: `s${n}`,
+        state: "input-available",
+        input,
+      }
+    : {
+        type: "tool-deck-add",
+        toolCallId: `s${n}`,
+        state: "output-available",
+        input,
+        output: { added: true },
+      };
+}
+
+/** A deck build: one live row names the running slide, with a bar of the planned slides. */
+export const WritingSlides: Story = {
+  args: {
+    parts: [slide(1), slide(2), slide(3, true)],
+    labels: DECK_LABELS,
+    streaming: true,
+    children: undefined,
+  },
+  play: async ({ canvas }) => {
+    const row = canvas.getByText("Writing slide 3 of 5").closest("li");
+
+    if (row === null) throw new Error("The build row is no list item.");
+
+    const bar = row.querySelector('[data-slot="progress"]');
+
+    await expect(bar?.children).toHaveLength(5);
+    await expect(bar?.querySelectorAll(".bg-primary")).toHaveLength(3);
   },
 };
 

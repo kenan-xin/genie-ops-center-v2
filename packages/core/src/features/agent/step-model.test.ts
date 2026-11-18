@@ -65,6 +65,48 @@ function chart(state: "done" | "refused" | "running"): MessagePart {
 
 const answerText: MessagePart = { type: "text", text: "Done." };
 
+/** A fake module tool that adds one slide of a planned deck per call. */
+const DECK_LABELS = {
+  ...LABELS,
+  steps: {
+    "deck-add": {
+      active: "Changing the deck",
+      done: "Changed the deck",
+      failed: "Could not change the deck",
+      progress: {
+        active: "Writing slide {n} of {m}",
+        doneOne: "Wrote slide {n}",
+        done: "Wrote slides {first} to {last}",
+      },
+    },
+  },
+};
+
+function slide(
+  progress: { n?: number; m?: number } | undefined,
+  state: "done" | "running" = "done"
+): MessagePart {
+  calls += 1;
+
+  const input =
+    progress === undefined ? { title: "A" } : { progress, title: "A" };
+
+  return state === "done"
+    ? {
+        type: "tool-deck-add",
+        toolCallId: `call-${calls}`,
+        state: "output-available",
+        input,
+        output: { added: true },
+      }
+    : {
+        type: "tool-deck-add",
+        toolCallId: `call-${calls}`,
+        state: "input-available",
+        input,
+      };
+}
+
 const rows = (parts: readonly MessagePart[], streaming = false) =>
   stepTimeline(parts, LABELS, streaming).rows.map((row) => [
     rowText(row),
@@ -229,6 +271,102 @@ describe("stepTimeline", () => {
     ]);
     expect(hidden).toBe(2);
     expect(shownRows(all, true).shown).toHaveLength(5);
+  });
+
+  it("folds calls in a row that carry progress into one row, named by the running call", () => {
+    const { rows: all } = stepTimeline(
+      [
+        slide({ n: 1, m: 5 }),
+        slide({ n: 2, m: 5 }),
+        slide({ n: 3, m: 5 }, "running"),
+      ],
+      DECK_LABELS,
+      true
+    );
+
+    expect(all.map((row) => [rowText(row), row.progress])).toEqual([
+      ["Writing slide 3 of 5", { n: 3, m: 5 }],
+    ]);
+  });
+
+  it("names a finished build by its first and last item, and one call by its item", () => {
+    const build = [1, 2, 3, 4, 5].map((n) => slide({ n, m: 5 }));
+
+    for (const [parts, words] of [
+      [build, "Wrote slides 1 to 5"],
+      [[slide({ n: 4, m: 5 })], "Wrote slide 4"],
+    ] as const) {
+      expect(
+        stepTimeline(parts, DECK_LABELS, false).rows.map((row) => [
+          rowText(row),
+          row.progress,
+        ])
+      ).toEqual([[words, undefined]]);
+    }
+  });
+
+  it("keeps an unfinished build live between calls, with the next item", () => {
+    const timeline = stepTimeline(
+      [slide({ n: 1, m: 5 }), slide({ n: 2, m: 5 })],
+      DECK_LABELS,
+      true
+    );
+
+    expect(
+      timeline.rows.map((row) => [rowText(row), row.state, row.progress])
+    ).toEqual([["Writing slide 3 of 5", "active", { n: 3, m: 5 }]]);
+    expect(timeline.thinking).toBe(false);
+  });
+
+  it("keeps the build live while the next call's input still streams", () => {
+    for (const input of [{ progress: { n: 3 } }, undefined]) {
+      calls += 1;
+
+      const streamingCall: MessagePart = {
+        type: "tool-deck-add",
+        toolCallId: `call-${calls}`,
+        state: "input-streaming",
+        input,
+      };
+
+      const timeline = stepTimeline(
+        [slide({ n: 1, m: 5 }), slide({ n: 2, m: 5 }), streamingCall],
+        DECK_LABELS,
+        true
+      );
+
+      expect(
+        timeline.rows.map((row) => [rowText(row), row.state, row.progress])
+      ).toEqual([["Writing slide 3 of 5", "active", { n: 3, m: 5 }]]);
+      expect(timeline.thinking).toBe(false);
+    }
+  });
+
+  it("shows a finished plan as done, then Thinking", () => {
+    const timeline = stepTimeline(
+      [1, 2, 3, 4, 5].map((n) => slide({ n, m: 5 })),
+      DECK_LABELS,
+      true
+    );
+
+    expect(timeline.rows.map((row) => [rowText(row), row.state])).toEqual([
+      ["Wrote slides 1 to 5", "done"],
+    ]);
+    expect(timeline.thinking).toBe(true);
+  });
+
+  it("falls back to the tool's own words", () => {
+    for (const progress of [{ n: 7, m: 5 }, { n: 3 }, undefined]) {
+      const { rows: all } = stepTimeline(
+        [slide(progress, "running")],
+        DECK_LABELS,
+        true
+      );
+
+      expect(all.map((row) => [rowText(row), row.progress])).toEqual([
+        ["Changing the deck", undefined],
+      ]);
+    }
   });
 
   it("shows the time from 0 s and the slow line from 20 s", () => {

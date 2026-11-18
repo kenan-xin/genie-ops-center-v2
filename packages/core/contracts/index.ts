@@ -1,4 +1,4 @@
-import type { ZodType } from "zod";
+import { z, type ZodType } from "zod";
 
 import type { PermissionKey } from "../src/lib/module-contract/keys.ts";
 import type {
@@ -78,12 +78,44 @@ export type AgentToolResult = {
   readonly dataset?: string;
 };
 
+/**
+ * The lines of a call that adds one item of a planned set (czjw.181). `{n}` and `{m}` come from the
+ * call's `progress` input; `{first}` and `{last}` are the first and the last item of calls in a row.
+ */
+export type StepProgressWords = {
+  /** While a call runs, or the next one is due: "Writing slide {n} of {m}". */
+  readonly active: string;
+  /** After one call: "Wrote slide {n}". */
+  readonly doneOne: string;
+  /** After several calls in a row: "Wrote slides {first} to {last}". */
+  readonly done: string;
+};
+
 /** A step's three lines in the chat: while it runs, once it ran, and when it was refused. */
 export type StepWords = {
   readonly active: string;
   readonly done: string;
   readonly failed: string;
+  /** Only on a tool whose input starts with `progress: stepProgressInput(limit)`. */
+  readonly progress?: StepProgressWords;
 };
+
+/**
+ * The first key of a tool input whose step words have `progress`: the item that the call adds and
+ * the planned count, each at most `limit`. The chat reads it while the call streams; `run` ignores it.
+ */
+export function stepProgressInput(
+  limit: number
+): ZodType<{ n: number; m: number }> {
+  return z
+    .strictObject({
+      n: z.int().min(1).max(limit),
+      m: z.int().min(1).max(limit),
+    })
+    .describe(
+      "Where this call is in a build of several items: n is the number of the item that it adds, and m is how many items there are when the build is done."
+    );
+}
 
 /**
  * One tool for the boss agent (R-43). It runs only through `can()` and `scopesFor()` as
@@ -101,7 +133,8 @@ export type AgentTool<TInput> = {
   /**
    * The lines a chat shows for one call, for example "Changing the dashboard", "Changed the
    * dashboard" and "Could not change the dashboard". The chat only; the model never reads them,
-   * so a change needs no new recording.
+   * so a change needs no new recording. With `progress`, the chat folds calls in a row into one
+   * live row with a bar; the model does read the input's `progress` key (`stepProgressInput`).
    */
   readonly step?: StepWords;
   run(ctx: ModuleRequestContext, input: TInput): Promise<AgentToolResult>;

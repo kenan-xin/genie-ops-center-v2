@@ -18,6 +18,9 @@ import { toolNameOf } from "../../services/agent/tool-parts.ts";
 
 export type MessagePart = AgentMessage["parts"][number];
 
+/** Where a build of several items is: the item that runs or is due, of the planned count. */
+export type StepProgress = { readonly n: number; readonly m: number };
+
 export type TimelineRow = {
   /** The first toolCallId of the row. */
   readonly key: string;
@@ -33,6 +36,8 @@ export type TimelineRow = {
   /** Refused calls folded into the row before its last call. */
   readonly fixes: number;
   readonly parts: readonly MessagePart[];
+  /** Set only on a live row of a build, for its bar. */
+  readonly progress: StepProgress | undefined;
 };
 
 export type Timeline = {
@@ -73,6 +78,13 @@ const readInput = z.object({ dataset: z.string() });
 const artifactInput = z.object({ config: z.object({ type: z.string() }) });
 
 const fileInput = z.object({ format: z.enum(FILE_FORMATS) });
+
+// A partial input, or `n` past `m`, carries no progress (czjw.181).
+const progressInput = z.object({
+  progress: z
+    .object({ n: z.int().min(1), m: z.int().min(1) })
+    .refine(({ n, m }) => n <= m),
+});
 
 const FILE_NOUNS = {
   csv: "a CSV file",
@@ -163,6 +175,19 @@ function wordsFor(
   return CORE_WORDS.get(name) ?? labels.steps[name] ?? UNKNOWN_WORDS;
 }
 
+/** The progress of a call to a tool whose words have `progress`, else undefined. */
+function progressOf(
+  name: string,
+  part: MessagePart,
+  labels: ChatLabels
+): StepProgress | undefined {
+  if (labels.steps[name]?.progress === undefined || !("input" in part)) {
+    return undefined;
+  }
+
+  return progressInput.safeParse(part.input).data?.progress;
+}
+
 function problems(n: number): string {
   return `${n} ${n === 1 ? "problem" : "problems"}`;
 }
@@ -178,10 +203,41 @@ type Draft = {
   fixes: number;
   last: MessagePart;
   parts: MessagePart[];
+  /** A build row's first item; `progress` holds its last item and the planned count. */
+  first: number | undefined;
+  progress: StepProgress | undefined;
 };
 
+function buildWords(draft: Draft, words: StepWords): string | undefined {
+  const { progress, first } = draft;
+
+  if (
+    words.progress === undefined ||
+    progress === undefined ||
+    first === undefined ||
+    draft.state === "failed"
+  ) {
+    return undefined;
+  }
+
+  const line =
+    draft.state === "active"
+      ? words.progress.active
+      : first === progress.n
+        ? words.progress.doneOne
+        : words.progress.done;
+
+  const values = { n: progress.n, m: progress.m, first, last: progress.n };
+
+  return line.replace(/\{(n|m|first|last)\}/g, (_, key: keyof typeof values) =>
+    String(values[key])
+  );
+}
+
 function rowOf(draft: Draft, labels: ChatLabels): TimelineRow {
-  const words = wordsFor(draft.name, draft.last, labels)[draft.state];
+  const lines = wordsFor(draft.name, draft.last, labels);
+
+  const words = buildWords(draft, lines) ?? lines[draft.state];
 
   const object =
     draft.dataset === undefined
@@ -209,6 +265,10 @@ function rowOf(draft: Draft, labels: ChatLabels): TimelineRow {
     count: draft.count,
     fixes: draft.fixes,
     parts: draft.parts,
+    progress:
+      draft.state === "active" && draft.first !== undefined
+        ? draft.progress
+        : undefined,
   };
 }
 
@@ -243,7 +303,45 @@ export function stepTimeline(
 
     const dataset = name === "query-dataset" ? datasetOf(part) : undefined;
 
+    const progress = progressOf(name, part, labels);
+
     const open = drafts.at(-1);
+
+    // A call whose input still streams joins an unfinished build as its next item (P15-40).
+    if (
+      open !== undefined &&
+      open.name === name &&
+      open.state === "done" &&
+      open.progress !== undefined &&
+      open.progress.n < open.progress.m &&
+      progress === undefined &&
+      "state" in part &&
+      part.state === "input-streaming"
+    ) {
+      open.progress = { n: open.progress.n + 1, m: open.progress.m };
+      open.state = "active";
+      open.last = part;
+      open.parts.push(part);
+      continue;
+    }
+
+    // A call with progress joins the build row before it, and keeps the row's first item.
+    if (
+      open !== undefined &&
+      open.name === name &&
+      progress !== undefined &&
+      open.progress !== undefined
+    ) {
+      // A refused call and its fix still count as one fix (czjw.79).
+      if (open.refused) open.fixes += 1;
+
+      open.progress = progress;
+      open.state = state;
+      open.refused = refused;
+      open.last = part;
+      open.parts.push(part);
+      continue;
+    }
 
     // A call after a refused call of the same tool is its fix: one row (czjw.79).
     if (open !== undefined && open.name === name && open.refused) {
@@ -288,7 +386,23 @@ export function stepTimeline(
       fixes: 0,
       last: part,
       parts: [part],
+      first: progress?.n,
+      progress,
     });
+  }
+
+  const end = drafts.at(-1);
+
+  // Between two calls of a build, its row stays live with the next item, so no Thinking flickers.
+  if (
+    streaming &&
+    !answering &&
+    end?.state === "done" &&
+    end.progress !== undefined &&
+    end.progress.n < end.progress.m
+  ) {
+    end.state = "active";
+    end.progress = { n: end.progress.n + 1, m: end.progress.m };
   }
 
   const rows = drafts.map((draft) => rowOf(draft, labels));
