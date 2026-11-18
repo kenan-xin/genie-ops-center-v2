@@ -1,3 +1,4 @@
+import { controlHeightsPx, touchAreaPx } from "@genie/ui/tokens";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
@@ -209,6 +210,10 @@ export const PhoneDock: Story = {
     await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       toolbar.getBoundingClientRect().top
     );
+    // C13-2: Done's 44 px touch area stays inside its row, clear of the tools.
+    await expect(row.getBoundingClientRect().height).toBeGreaterThanOrEqual(
+      touchAreaPx
+    );
     await userEvent.click(done);
     await expect(args.onDone).toHaveBeenCalledOnce();
 
@@ -242,14 +247,22 @@ export const PhoneTextCard: Story = {
   globals: phone,
   play: async ({ args, canvas, canvasElement }) => {
     const toolbar = canvas.getByRole("toolbar", { name: "Title style" });
+    const nameRow = canvas.getByRole("button", { name: "Done" }).parentElement!;
     const dialog = await openTool(canvasElement, "Text");
     const card = within(dialog);
 
+    // C13-1: the card sits above the element's name and Done, which stay in view.
     await waitFor(() =>
       expect(dialog.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-        toolbar.getBoundingClientRect().top
+        nameRow.getBoundingClientRect().top
       )
     );
+    // C13-3: a swatch is a phone control's 40 px.
+    await expect(
+      card
+        .getByRole("button", { name: "White #FFFFFF" })
+        .getBoundingClientRect().height
+    ).toBe(controlHeightsPx.md.phone);
 
     await userEvent.click(card.getByRole("button", { name: "White #FFFFFF" }));
     await expect(args.onStep).toHaveBeenCalledTimes(1);

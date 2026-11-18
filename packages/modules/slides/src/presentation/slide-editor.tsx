@@ -715,7 +715,6 @@ export function SlideEditor(props: SlideEditorProps) {
                       <Button
                         type="button"
                         variant="secondary"
-                        size="sm"
                         disabled={props.saving || bodyRefusal !== undefined}
                         focusableWhenDisabled
                         aria-describedby={
@@ -731,7 +730,6 @@ export function SlideEditor(props: SlideEditorProps) {
                       <Button
                         type="button"
                         variant="secondary"
-                        size="sm"
                         disabled={props.saving || bodyRefusal !== undefined}
                         focusableWhenDisabled
                         aria-describedby={

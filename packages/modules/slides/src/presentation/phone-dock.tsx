@@ -38,22 +38,19 @@ export function PhoneDock(props: {
   readonly label: string;
   /** The selected element's row above the tools: its name and Done. */
   readonly context?: ReactNode;
-  /** The tools' toolbar, which the cards anchor to. */
+  /** The whole bar, name row included, which the cards anchor to, so a card never covers Done (C13-1). */
   readonly ref?: Ref<HTMLDivElement>;
   readonly children: ReactNode;
 }): ReactNode {
   return (
     // The shell keeps the page's last row clear of a bottom bar.
     <div
+      ref={props.ref}
       data-shell-bottom-bar=""
       className={`fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background px-1 pt-1 ${safeAreaBottom.sm} md:hidden`}
     >
       {props.context}
-      <Toolbar
-        ref={props.ref}
-        aria-label={props.label}
-        className="justify-around"
-      >
+      <Toolbar aria-label={props.label} className="justify-around">
         {props.children}
       </Toolbar>
     </div>
@@ -111,7 +108,8 @@ export function SlideDock(props: {
               anchor={dock}
               side="top"
               sideOffset={8}
-              className="w-(--anchor-width)"
+              // The bar is the full screen width, so the card stops at the space the popup has.
+              className="w-(--anchor-width) max-w-(--available-width)"
             >
               <div className="grid gap-3 p-1.5">
                 <PopoverTitle>Background</PopoverTitle>

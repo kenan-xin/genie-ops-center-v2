@@ -522,10 +522,18 @@ export const EmptyDeck: Story = {
         "Add a slide, or create a deck by chat from the Slides list."
       )
     ).toBeVisible();
-    // No slide to present, so Present is off.
-    await expect(
-      canvas.getByRole("button", { name: "Present" })
-    ).toBeDisabled();
+
+    // No slide to present or export, so both are off and say why (P13-15, C13-5).
+    const present = canvas.getByRole("button", { name: "Present" });
+
+    const exporting = canvas.getByRole("button", {
+      name: "Export to PowerPoint",
+    });
+
+    await expect(present).toHaveAttribute("aria-disabled", "true");
+    await expect(present).toHaveAccessibleDescription("Add a slide first.");
+    await expect(exporting).toHaveAttribute("aria-disabled", "true");
+    await expect(exporting).toHaveAccessibleDescription("Add a slide first.");
     // The last removal stays undoable (R-49), with no slide to stand beside.
     await expect(canvas.getByRole("button", { name: "Undo" })).toBeVisible();
   },
@@ -539,6 +547,10 @@ export const EmptyDeckOnPhone: Story = {
   // P13-16: with no strip and no header More, the empty state is the phone's way to a first slide.
   play: async ({ canvas }) => {
     await expect(canvas.getByText("No slides yet")).toBeVisible();
+    // C13-5: the top bar's Present says why it is off.
+    await expect(
+      canvas.getByRole("button", { name: "Present" })
+    ).toHaveAccessibleDescription("Add a slide first.");
 
     await userEvent.click(canvas.getByRole("button", { name: "Add slide" }));
     await expect(
@@ -2800,7 +2812,10 @@ const exportPlay: Story["play"] = async ({ canvas }) => {
   );
 
   await waitFor(() =>
-    expect(canvas.getByRole("button", { name: "Exporting…" })).toBeDisabled()
+    expect(canvas.getByRole("button", { name: "Exporting…" })).toHaveAttribute(
+      "aria-disabled",
+      "true"
+    )
   );
   await expect(canvas.getByRole("button", { name: "More" })).toBeDisabled();
   await expect(exportDeck).toHaveBeenCalledWith({ id: "deck-1" });
@@ -3139,7 +3154,7 @@ export const ReadyEmpty: Story = {
     await expect(canvas.getByText("No slides yet")).toBeVisible();
     await expect(
       canvas.getByRole("button", { name: "Present" })
-    ).toBeDisabled();
+    ).toHaveAttribute("aria-disabled", "true");
     // Review Focus 5: the run ended without a rename, so the title shows at last.
     await expect(
       canvas.getByRole("heading", { level: 1, name: PROVISIONAL_TITLE })

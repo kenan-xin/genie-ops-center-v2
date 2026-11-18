@@ -380,12 +380,19 @@ function RailMenu(props: {
 /** S7-45 variant A: Present, and More ways to present, as one split button; the halves join at the seam. */
 function PresentButton(props: {
   readonly disabled: boolean;
+  /** The id of the reason Present is off, if any (P13-15). */
+  readonly describedBy: string | undefined;
   readonly onPresent: () => void;
   readonly onPresentWithNotes: () => void;
 }) {
   return (
     <div className="flex *:first:rounded-r-none *:last:rounded-l-none *:last:border-l-primary-foreground/30">
-      <Button disabled={props.disabled} onClick={props.onPresent}>
+      <Button
+        disabled={props.disabled}
+        focusableWhenDisabled
+        aria-describedby={props.describedBy}
+        onClick={props.onPresent}
+      >
         Present
       </Button>
       <DropdownMenu>
@@ -445,6 +452,7 @@ export function DeckView(props: DeckViewProps) {
   const upload = useUploadDeckImage(deck);
   const exporting = useExportDeck(deck);
   const [shown, setShown] = useState(0);
+  const noSlideId = useId();
 
   // While drafting, the slide count the page last followed, so each new slide shows as it lands,
   // and the slide shown before the run, which shows again when it ends (a new deck's first).
@@ -981,9 +989,13 @@ export function DeckView(props: DeckViewProps) {
       </div>
     ) : null;
 
+  // P13-15, C13-5: with no slide, Present and Export say why they are off.
+  const noSlide = current === undefined ? noSlideId : undefined;
+
   const presentButton = (
     <PresentButton
       disabled={current === undefined || busy}
+      describedBy={noSlide}
       onPresent={present}
       onPresentWithNotes={presentWithNotes}
     />
@@ -991,6 +1003,11 @@ export function DeckView(props: DeckViewProps) {
 
   return (
     <main>
+      {noSlide === undefined ? null : (
+        <span id={noSlide} className="sr-only">
+          {NO_SLIDE}
+        </span>
+      )}
       {/* 7.2: Present is the main action, Export beside it, the rest in More. The meta line is the
           readable figures date at every width; the scaled slide footer is tiny on a phone. */}
       <PageHeader
@@ -1042,6 +1059,8 @@ export function DeckView(props: DeckViewProps) {
               <Button
                 variant="secondary"
                 disabled={current === undefined || busy}
+                focusableWhenDisabled
+                aria-describedby={noSlide}
                 onClick={exportToPowerPoint}
               >
                 {exporting.isPending ? "Exporting…" : "Export to PowerPoint"}
@@ -1096,7 +1115,12 @@ export function DeckView(props: DeckViewProps) {
         // P13-9: Present is one button at the end of the phone top bar, after Ask.
         topBarPrimary={
           drafting ? undefined : (
-            <Button disabled={current === undefined || busy} onClick={present}>
+            <Button
+              disabled={current === undefined || busy}
+              focusableWhenDisabled
+              aria-describedby={noSlide}
+              onClick={present}
+            >
               <Play aria-hidden="true" data-icon="inline-start" />
               Present
             </Button>
@@ -1196,7 +1220,8 @@ export function DeckView(props: DeckViewProps) {
           }
         />
       ) : (
-        <div className="flex flex-col gap-4 md:flex-row md:items-start">
+        // C13-6: on a phone the strip sits close under the meta line and above the slide.
+        <div className="flex flex-col gap-4 max-md:-mt-3 max-md:gap-1 md:flex-row md:items-start">
           <nav
             ref={horizontalStripWheel}
             aria-label="Slides"

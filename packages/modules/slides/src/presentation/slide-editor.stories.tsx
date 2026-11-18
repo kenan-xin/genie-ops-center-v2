@@ -1,4 +1,5 @@
 import { ModuleClientProvider } from "@genie/core/rpc/client";
+import { controlHeightsPx } from "@genie/ui/tokens";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
@@ -698,6 +699,13 @@ export const RemoveTextOffersBoth: Story = {
     await expect(
       sheet.getByRole("button", { name: "Add bullets" })
     ).toBeVisible();
+    // C13-4: both are the sheet's secondary size, as tall as Add image.
+    await expect(
+      ["Add text", "Add bullets"].map(
+        (name) =>
+          sheet.getByRole("button", { name }).getBoundingClientRect().height
+      )
+    ).toEqual([controlHeightsPx.md.desktop, controlHeightsPx.md.desktop]);
   },
 };
 

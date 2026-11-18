@@ -21,8 +21,10 @@ import {
   SelectValue,
   ToggleGroup,
   iconLeadPx,
+  minTouchHeight,
   ToggleGroupItem,
   ToolbarButton,
+  touchAreas,
 } from "@genie/ui";
 import {
   AlignCenterIcon,
@@ -118,7 +120,7 @@ export function ColorPanel(props: {
 
   return (
     <>
-      <div className="flex flex-wrap gap-1.5">
+      <div className="flex flex-wrap gap-1 lg:gap-1.5">
         {SWATCHES.map(([name, color]) => (
           <button
             key={color}
@@ -126,7 +128,8 @@ export function ColorPanel(props: {
             aria-label={`${name} ${color}`}
             aria-pressed={props.value?.toUpperCase() === color}
             disabled={props.disabled}
-            className="size-8 rounded-md border border-border bg-(--swatch) disabled:opacity-50 aria-pressed:ring-2 aria-pressed:ring-ring aria-pressed:ring-offset-1"
+            // C13-3: a phone control's 40 px and its 44 px touch area under lg; 32 px from lg.
+            className={`size-10 lg:size-8 ${touchAreas.md} rounded-md border border-border bg-(--swatch) disabled:opacity-50 aria-pressed:ring-2 aria-pressed:ring-ring aria-pressed:ring-offset-1`}
             style={
               // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
               { "--swatch": color } as React.CSSProperties
@@ -561,7 +564,10 @@ export function StyleToolbar(props: StyleToolbarProps) {
           ref={dock}
           label={label}
           context={
-            <div className="flex items-center justify-between ps-4 pe-2 text-sm text-muted-foreground">
+            // C13-2: 44 px keeps Done's touch area inside its row, clear of the tools.
+            <div
+              className={`flex ${minTouchHeight} items-center justify-between ps-4 pe-2 text-sm text-muted-foreground`}
+            >
               <span>{elementName}</span>
               <Button variant="ghost-primary" size="sm" onClick={props.onDone}>
                 Done
@@ -583,7 +589,7 @@ export function StyleToolbar(props: StyleToolbarProps) {
                 anchor={dock}
                 side="top"
                 sideOffset={8}
-                className="w-(--anchor-width)"
+                className="w-(--anchor-width) max-w-(--available-width)"
               >
                 <div className="grid gap-3 p-1.5">
                   <PopoverTitle>{name}</PopoverTitle>
