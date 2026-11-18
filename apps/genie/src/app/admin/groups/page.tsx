@@ -1,4 +1,4 @@
-import { can, coreAdminPermission, scopesFor } from "@genie/core";
+import { can, coreAdminPermission, managesAllRoles } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
@@ -43,10 +43,7 @@ export default async function GroupsPage() {
               caller,
               coreAdminPermission("core-access")
             )}
-            canAddAssignments={
-              (await scopesFor(caller, coreAdminPermission("core-access")))
-                .kind === "all"
-            }
+            canAddAssignments={await managesAllRoles(caller)}
           />
         </main>
       );

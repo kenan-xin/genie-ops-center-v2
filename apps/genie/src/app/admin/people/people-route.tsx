@@ -30,7 +30,7 @@ export function PeopleRoute(props: {
   readonly viewer: PeopleViewer;
   readonly settings: PeopleSettings;
   readonly canManageAccess: boolean;
-  /** Tenant-wide `core:roles:manage`, the server's own gate for adding (P12-2). */
+  /** Tenant-wide `core:roles:manage`, the server's own gate for adding and for every Access read (P12-2). */
   readonly canAddAssignments: boolean;
 }) {
   const t = useTranslations("pages");
@@ -218,7 +218,7 @@ export function PeopleRoute(props: {
       access={access}
       addAssignment={addAssignment}
       onManageAccess={
-        props.canManageAccess
+        props.canAddAssignments
           ? (personId) =>
               router.push(
                 accessOverviewHref({ who: { type: "user", id: personId } })

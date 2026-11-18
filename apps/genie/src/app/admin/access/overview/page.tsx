@@ -1,4 +1,4 @@
-import { can, coreAdminPermission, scopesFor } from "@genie/core";
+import { can, coreAdminPermission, managesAllRoles } from "@genie/core";
 import { getTranslations } from "next-intl/server";
 
 import { requireContext } from "../../../../context.ts";
@@ -31,10 +31,8 @@ export default async function AccessOverviewPage() {
         can(caller, coreAdminPermission("core-groups")),
       ]);
 
-      // P12-2: the tenant-wide rule of `managesAllRoles`; a scope holder is not enough.
-      const canAddAssignments =
-        (await scopesFor(caller, coreAdminPermission("core-access"))).kind ===
-        "all";
+      // P12-2: a scope holder is not enough to add.
+      const canAddAssignments = await managesAllRoles(caller);
 
       return (
         <main>

@@ -253,6 +253,8 @@ export {
   resendSetPassword,
 } from "./services/people/index.ts";
 
+export { managesAllRoles } from "./services/roles/effective-access.ts";
+
 export {
   type RolesContract,
   rolesContract,

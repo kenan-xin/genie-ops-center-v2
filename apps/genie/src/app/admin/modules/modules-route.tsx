@@ -31,6 +31,7 @@ const searchRecipients = (query: string) =>
  */
 export function ModulesRoute(props: {
   readonly canManageAccess: boolean;
+  /** Tenant-wide `core:roles:manage`, the server's own gate for adding and for every Access read (P12-2). */
   readonly canAddAssignments: boolean;
   readonly viewerId: string;
   readonly timeZone: string;
@@ -112,7 +113,7 @@ export function ModulesRoute(props: {
           placeModule.mutate({ moduleId, categoryId })
         }
         manageAccessHref={
-          props.canManageAccess
+          props.canAddAssignments
             ? (moduleId) => accessOverviewHref({ module: moduleId })
             : undefined
         }

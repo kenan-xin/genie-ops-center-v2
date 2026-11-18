@@ -23,7 +23,7 @@ import { useInspectorAccess } from "../access/use-inspector-access.ts";
 export function GroupsRoute(props: {
   readonly viewer: GroupsViewer;
   readonly canManageAccess: boolean;
-  /** Tenant-wide `core:roles:manage`, the server's own gate for adding (P12-2). */
+  /** Tenant-wide `core:roles:manage`, the server's own gate for adding and for every Access read (P12-2). */
   readonly canAddAssignments: boolean;
 }) {
   const t = useTranslations("pages");
@@ -193,7 +193,7 @@ export function GroupsRoute(props: {
         run(() => rpc.groups.removeAllMembers({ groupId }))
       }
       onOpenInAccess={
-        props.canManageAccess
+        props.canAddAssignments
           ? (groupId) =>
               router.push(
                 accessOverviewHref({ who: { type: "group", id: groupId } })
