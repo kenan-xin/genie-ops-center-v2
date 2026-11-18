@@ -8,6 +8,15 @@ export {
 
 export { linkedSubject } from "./overview-view.ts";
 
+export { recipientDetail } from "./assignment-words.ts";
+
+export {
+  RecipientField,
+  type RecipientFieldProps,
+} from "./recipient-field.tsx";
+
+export { RecipientMark } from "./recipient-mark.tsx";
+
 export {
   AssignmentsTable,
   type AssignmentsTableProps,

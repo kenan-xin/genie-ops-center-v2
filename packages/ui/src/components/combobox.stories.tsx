@@ -1,9 +1,13 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
+import * as React from "react";
 import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
 
 // The package entry, so that the stories prove what an app can import.
 import {
   Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
   ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,
@@ -159,6 +163,81 @@ export const Grouped: Story = {
     );
     await expect(screen.getByRole("group", { name: "People" })).toBeVisible();
     await expect(screen.getAllByRole("option")).toHaveLength(1);
+  },
+};
+
+/** Several picks as chips (P12-14): each chip has a remove button named after it. */
+export const Chips: Story = {
+  render: function ChipsStory() {
+    const [value, setValue] = React.useState<Person[]>([people[0]!]);
+    const anchor = React.useRef<HTMLDivElement | null>(null);
+
+    return (
+      <Combobox<Person, true>
+        multiple
+        items={people}
+        value={value}
+        onValueChange={setValue}
+      >
+        <ComboboxChips ref={anchor}>
+          {value.map((person) => (
+            <ComboboxChip
+              key={person.value}
+              removeLabel={`Remove ${person.label}`}
+            >
+              {person.label}
+            </ComboboxChip>
+          ))}
+          <ComboboxChipsInput
+            aria-label="People"
+            placeholder={value.length > 0 ? "Add more" : "Search people"}
+          />
+        </ComboboxChips>
+        <ComboboxContent anchor={anchor}>
+          <ComboboxEmpty>No one matches.</ComboboxEmpty>
+          <ComboboxList>
+            {(person: Person) => (
+              <ComboboxItem key={person.value} value={person}>
+                {person.label}
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+        </ComboboxContent>
+      </Combobox>
+    );
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("combobox", { name: "People" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Grace Hopper" })
+    );
+
+    // The list stays open in multiple mode, and while it is open Base UI hides the chips from
+    // the accessibility tree, so it is closed before the remove buttons are read.
+    await userEvent.keyboard("{Escape}");
+
+    await waitFor(() => {
+      expect(
+        canvas.getByRole("button", { name: "Remove Grace Hopper" })
+      ).toBeInTheDocument();
+      expect(
+        canvas.getByRole("button", { name: "Remove Ada Lovelace" })
+      ).toBeInTheDocument();
+    });
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Remove Ada Lovelace" })
+    );
+
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole("button", { name: "Remove Ada Lovelace" })
+      ).toBeNull()
+    );
+    // The remove button hands the focus back to the field.
+    await expect(
+      canvas.getByRole("combobox", { name: "People" })
+    ).toHaveFocus();
   },
 };
 

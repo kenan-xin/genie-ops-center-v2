@@ -1,14 +1,16 @@
 "use client";
 
-// From the shadcn base-nova `combobox`, trimmed to a search field and its list and moved onto the
-// tokens `select.tsx` uses. The chips, the clear button and the input group are left out until a
+// From the shadcn base-nova `combobox`, moved onto the tokens `select.tsx` uses. The chips came
+// with Access Add assignment (P12-14); the clear button and the input group are left out until a
 // screen needs them.
 import { Combobox as ComboboxPrimitive } from "@base-ui/react/combobox";
 import { cn } from "cn";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, XIcon } from "lucide-react";
+import type * as React from "react";
 
 import {
   controlHeights,
+  fieldText,
   focusRing,
   rowHeight,
   touchAreas,
@@ -75,15 +77,20 @@ function ComboboxContent({
   side = "bottom",
   sideOffset = 4,
   align = "start",
+  anchor,
   ...props
 }: ComboboxPrimitive.Popup.Props &
-  Pick<ComboboxPrimitive.Positioner.Props, "side" | "align" | "sideOffset">) {
+  Pick<
+    ComboboxPrimitive.Positioner.Props,
+    "side" | "align" | "sideOffset" | "anchor"
+  >) {
   return (
     <ComboboxPrimitive.Portal>
       <ComboboxPrimitive.Positioner
         side={side}
         sideOffset={sideOffset}
         align={align}
+        anchor={anchor}
         className="isolate z-50"
       >
         <ComboboxPrimitive.Popup
@@ -174,8 +181,81 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
   );
 }
 
+/** The field of a several-pick combobox: the chips, then the input. It grows a line per row of chips. */
+function ComboboxChips({
+  className,
+  ...props
+}: ComboboxPrimitive.Chips.Props & React.RefAttributes<HTMLDivElement>) {
+  return (
+    <ComboboxPrimitive.Chips
+      data-slot="combobox-chips"
+      className={cn(
+        "flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-1.5 py-1 text-foreground motion-safe:transition-colors focus-within:border-primary has-aria-invalid:border-destructive",
+        // 44 px on phones, 36 px from lg, and taller as chips wrap.
+        rowHeight,
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
+/** One pick. Backspace or Delete removes a focused chip; the remove button is named by `removeLabel`. */
+function ComboboxChip({
+  className,
+  children,
+  removeLabel,
+  ...props
+}: ComboboxPrimitive.Chip.Props & { readonly removeLabel: string }) {
+  return (
+    <ComboboxPrimitive.Chip
+      data-slot="combobox-chip"
+      className={cn(
+        // The prototype's 28 px tag (access-start .tag): a tag, not a control; its remove button carries the touch area.
+        "flex h-7 max-w-full min-w-0 items-center gap-1.5 rounded-full bg-tile ps-2 pe-0.5 text-sm font-semibold whitespace-nowrap text-foreground",
+        focusRing,
+        className
+      )}
+      {...props}
+    >
+      {children}
+      <ComboboxPrimitive.ChipRemove
+        data-slot="combobox-chip-remove"
+        aria-label={removeLabel}
+        className={cn(
+          "grid size-6 shrink-0 place-items-center rounded-full text-muted-foreground hover:bg-hover",
+          touchAreas.sm
+        )}
+      >
+        <XIcon aria-hidden="true" className="pointer-events-none size-3.5" />
+      </ComboboxPrimitive.ChipRemove>
+    </ComboboxPrimitive.Chip>
+  );
+}
+
+/** The text input after the chips. */
+function ComboboxChipsInput({
+  className,
+  ...props
+}: ComboboxPrimitive.Input.Props) {
+  return (
+    <ComboboxPrimitive.Input
+      data-slot="combobox-chips-input"
+      className={cn(
+        "min-w-30 flex-1 bg-transparent px-1 text-foreground outline-none placeholder:text-placeholder",
+        fieldText,
+        className
+      )}
+      {...props}
+    />
+  );
+}
+
 export {
   Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
   ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,

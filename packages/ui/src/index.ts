@@ -41,6 +41,9 @@ export {
 
 export {
   Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
   ComboboxCollection,
   ComboboxContent,
   ComboboxEmpty,

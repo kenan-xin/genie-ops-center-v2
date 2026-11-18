@@ -1,4 +1,5 @@
 import type { AccessHolder } from "../../services/roles/effective-access.ts";
+import type { RecipientRow } from "../../services/roles/recipients.ts";
 import { fmtDate } from "../audit/helpers.ts";
 
 /** "Group" for one made here, "Directory group" for one the identity provider sends (G14). */
@@ -8,6 +9,12 @@ export const groupKindLabel = (source: "idp" | "local") =>
 /** "1 member", "12 members". */
 export const memberCountLabel = (count: number) =>
   `${count} ${count === 1 ? "member" : "members"}`;
+
+/** "Group · 6 members", "Directory group · 17 members", or a person's email (add-access capture). */
+export const recipientDetail = (row: RecipientRow): string =>
+  row.type === "user"
+    ? row.email
+    : `${groupKindLabel(row.source)} · ${memberCountLabel(row.memberCount)}`;
 
 /**
  * "1 Jun 2026 by Priya Nair", in the viewer's zone. A row with no giver shows the date alone:
