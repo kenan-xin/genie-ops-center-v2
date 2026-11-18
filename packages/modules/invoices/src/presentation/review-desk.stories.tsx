@@ -222,7 +222,7 @@ export const Invoice: Story = {
     ).toBeVisible();
 
     // Save and Enter both go to the due choice and save nothing.
-    const save = canvas.getByRole("button", { name: "Save as unpaid" });
+    const save = canvas.getByRole("button", { name: "Save" });
 
     await userEvent.click(save);
     await expect(
@@ -302,9 +302,7 @@ export const NoQuote: Story = {
       canvas.getByText("Enter the invoice date to save.")
     ).toBeVisible();
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save as unpaid" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await expect(canvas.getByLabelText("Invoice date")).toHaveFocus();
     await expect(saveInvoice).not.toHaveBeenCalled();
   },
@@ -327,9 +325,7 @@ export const LostQuote: Story = {
     ).toBeNull();
 
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save as unpaid" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveInvoice).toHaveBeenCalledTimes(1));
     await expect(saveInvoice).toHaveBeenCalledWith(
       expect.objectContaining({ currency: "SGD" })
@@ -543,7 +539,7 @@ export const PaymentSplit: Story = {
     ).toBeVisible();
 
     // An allocation above its open amount, then one of 0.00, each named and focused by Save.
-    const save = canvas.getByRole("button", { name: "Save the payment" });
+    const save = canvas.getByRole("button", { name: "Save" });
 
     await userEvent.clear(sep);
     await userEvent.type(sep, "4,300.00");
@@ -593,9 +589,7 @@ export const PreviewFailedReview: Story = {
     await expect(canvasElement.querySelector("[data-pin-card]")).toBeNull();
 
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save as unpaid" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveInvoice).toHaveBeenCalledTimes(1));
   },
 };
@@ -722,9 +716,7 @@ export const Saved: Story = {
 
     await userEvent.type(canvas.getByLabelText("Description"), " and support");
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save as unpaid" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveInvoice).toHaveBeenCalledTimes(1));
     await userEvent.type(canvas.getByLabelText("Description"), " late");
     releaseSave?.();
@@ -770,10 +762,51 @@ export const Saved: Story = {
     await expect(
       canvasElement.querySelector("[data-shell-bottom-bar]")
     ).toBeNull();
-    await expect(
-      canvas.queryByRole("button", { name: "Save as unpaid" })
-    ).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Save" })).toBeNull();
     await expect(canvas.queryByRole("button", { name: "Delete" })).toBeNull();
+  },
+};
+
+// T4-c (czjw.193): the form ends with what Save adds, inside the Fields region above the save
+// bar; it follows the due choice and goes once saved.
+export const ConsequenceAboveSave: Story = {
+  globals: desktop1440,
+  beforeEach: () => {
+    serve(invoiceReview);
+    saveInvoice.mockImplementation(async () => {
+      getDocumentReview.mockResolvedValue(savedInvoiceReview);
+
+      return ENVELOPE;
+    });
+  },
+  play: async ({ canvas, canvasElement }) => {
+    const region = await fields(canvasElement);
+    const form = within(region);
+
+    const line = await form.findByText(
+      `Saves an unpaid invoice of ${SGD(500_000)}.`,
+      { normalizer: (text) => text.replace(/\s/gu, " ") },
+      PAGE_TIMEOUT
+    );
+
+    await expect(line).toBeVisible();
+    await expect(
+      before(line, canvas.getByRole("button", { name: "Save" }))
+    ).toBe(true);
+
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
+    await expect(line).toHaveTextContent(
+      `Saves an unpaid invoice of ${SGD(500_000)} with no due date.`,
+      { normalizeWhitespace: true }
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+    await expect(
+      await form.findByText("Saved as invoice INV-LIVE-001.", {}, PAGE_TIMEOUT)
+    ).toBeVisible();
+    await expect(
+      canvasElement.querySelector("[data-review-consequence]")
+    ).toBeNull();
   },
 };
 
@@ -875,7 +908,7 @@ export const InvoiceOnPhone: Story = {
     await expect(
       canvas.getByText("Enter a due date or choose No due date to save.")
     ).toBeVisible();
-    const save = canvas.getByRole("button", { name: "Save as unpaid" });
+    const save = canvas.getByRole("button", { name: "Save" });
 
     await expect(save).toHaveAttribute("aria-disabled", "true");
 
@@ -966,11 +999,9 @@ export const PaymentSavedOnPhone: Story = {
   },
   play: async ({ canvas, canvasElement }) => {
     await onStep(canvas, 1, 9);
-    await pickField(canvas, "Save the payment");
+    await pickField(canvas, "Save");
     await onStep(canvas, 9, 9);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save the payment" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await expect(
       await canvas.findByText(/^Payment saved: .* allocated/u, {}, PAGE_TIMEOUT)
     ).toBeVisible();
@@ -1003,11 +1034,9 @@ export const SavedOnPhone: Story = {
     await pickField(canvas, "Due date");
     await onStep(canvas, 7, 9);
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await pickField(canvas, "Save as unpaid");
+    await pickField(canvas, "Save");
     await onStep(canvas, 9, 9);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save as unpaid" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await expect(
       await canvas.findByText(

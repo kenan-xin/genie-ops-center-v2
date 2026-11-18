@@ -236,7 +236,6 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
                   : (model.blocker?.reason ?? null)
               }
               pending={model?.pending ?? false}
-              label={model?.saveLabel ?? "Save"}
               discarding={props.discarding}
               onDiscard={props.onDiscard}
             />

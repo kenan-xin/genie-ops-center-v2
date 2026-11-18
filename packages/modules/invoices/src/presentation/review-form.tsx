@@ -325,7 +325,6 @@ export function ReviewSaveBar(props: {
   /** Null shows "Ready to save". */
   readonly reason: string | null;
   readonly pending: boolean;
-  readonly label: string;
   readonly discarding: boolean;
   /** Null hides Delete, the stored document's (G24). */
   readonly onDiscard: (() => void) | null;
@@ -356,6 +355,7 @@ export function ReviewSaveBar(props: {
           <Button
             type="button"
             variant="secondary"
+            className="max-md:flex-1"
             loading={props.discarding}
             onClick={props.onDiscard}
           >
@@ -364,12 +364,12 @@ export function ReviewSaveBar(props: {
         )}
         <Button
           type="submit"
-          className="ml-auto"
+          className="ml-auto max-md:ml-0 max-md:flex-1"
           aria-disabled={reason === null ? undefined : true}
           aria-describedby={reason === null ? undefined : SAVE_HELPER_ID}
           loading={props.pending}
         >
-          {props.label}
+          Save
         </Button>
       </div>
     </div>

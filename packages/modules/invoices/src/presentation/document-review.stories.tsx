@@ -272,7 +272,7 @@ export const ChangeType: Story = {
     });
 
     await expect(
-      await canvas.findByRole("button", { name: "Save as unallocated" })
+      await canvas.findByRole("button", { name: "Save" })
     ).toBeVisible();
     await expect(drawn.isConnected).toBe(true);
     await expect(
@@ -503,9 +503,7 @@ export const CouldNotReadTyped: Story = {
   play: async ({ canvas }) => {
     await expect(canvas.getByText(COULD_NOT_READ_NOTE)).toBeVisible();
     await expect(canvas.getByText("Customer")).toBeVisible();
-    await expect(
-      canvas.getByRole("button", { name: "Save as unpaid" })
-    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeVisible();
   },
 };
 

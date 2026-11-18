@@ -358,8 +358,6 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | `packages/modules/slides/src/agent-surface.ts` | `artifact` | model-facing surface instructions, 46 recordings; the surface name is not excepted |
 | `packages/modules/invoices/src/datasets.ts` | `linked payment`, `link`, `linked` | model-facing dataset descriptions, 91 recordings; titles and labels are not excepted |
 | `packages/core/src/features/roles/roles-screen.tsx` | `save role`, `create role` | a save label that bead `czjw.193` (Phase 16) rebuilds |
-| `packages/modules/invoices/src/presentation/invoice-review-form.tsx` | `save as paid`, `save as unpaid` | a save label that bead `czjw.193` (Phase 16) rebuilds |
-| `packages/modules/invoices/src/presentation/payment-review-form.tsx` | `save as unallocated`, `/^Save the payment$/` | a save label that bead `czjw.193` (Phase 16) rebuilds |
 | `packages/modules/invoices/src/presentation/review-pager.tsx` | `looks right` | a save label that bead `czjw.193` (Phase 16) rebuilds |
 | `packages/modules/analytics/src/presentation/filters-bar.tsx` | `save as view`, `save as new view`, `save as default`, `dashboard filters` | saved-view words that bead `czjw.192` (Phase 19) rebuilds |
 | `packages/modules/analytics/src/presentation/view-menu.tsx` | `save as view`, `save as default`, `default view`, `dashboard filters` | saved-view words that bead `czjw.192` (Phase 19) rebuilds |

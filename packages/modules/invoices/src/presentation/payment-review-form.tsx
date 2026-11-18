@@ -414,7 +414,7 @@ export function usePaymentReview(input: {
           <SaveFailure message={saveError} />
         </div>
       ),
-    saveLabel: links.length > 0 ? "Save the payment" : "Save as unallocated",
+    consequence: null,
     pending,
     submit: () => {
       if (blocker === null) {

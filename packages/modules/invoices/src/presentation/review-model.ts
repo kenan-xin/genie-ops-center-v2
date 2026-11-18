@@ -41,7 +41,8 @@ export type ReviewModel = {
   readonly blocker: Blocker | null;
   /** DuplicateNotice and SaveFailure, or null. */
   readonly notices: ReactNode;
-  readonly saveLabel: string;
+  /** What Save adds, in words, at the end of the form; null for a payment, whose split line states it (czjw.193). */
+  readonly consequence: string | null;
   readonly pending: boolean;
   /** Saves, or shows the blocker (Save and Enter). */
   readonly submit: () => void;

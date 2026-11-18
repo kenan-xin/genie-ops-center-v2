@@ -138,9 +138,7 @@ export const Split: Story = {
     ).toBeVisible();
     await expect(savePayment).not.toHaveBeenCalled();
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save the payment" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await waitFor(() => expect(savePayment).toHaveBeenCalledTimes(1));
     await expect(savePayment).toHaveBeenCalledWith(
@@ -216,9 +214,7 @@ export const Suggestions: Story = {
       []
     );
 
-    await expect(
-      canvas.getByRole("button", { name: "Save as unallocated" })
-    ).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Save" })).toBeVisible();
 
     const suggested = canvas.getByText("Same amount").closest("li");
 
@@ -232,9 +228,7 @@ export const Suggestions: Story = {
     );
     await expect(amountFor(canvas, "INV-2026-10-04")).toHaveValue("4,350.00");
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save the payment" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(savePayment).toHaveBeenCalledWith(
@@ -269,9 +263,7 @@ export const Overpayment: Story = {
       canvas.getByText(`Allocated ${SGD(405000)}. Unallocated ${SGD(420000)}.`)
     ).toBeVisible();
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save the payment" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(savePayment).toHaveBeenCalledWith(
@@ -284,7 +276,7 @@ export const Overpayment: Story = {
   },
 };
 
-// B6.5: no link and Save as unallocated; a changed amount shows Undo and saves with no allocation.
+// B6.5: no link and Save leaves it unallocated; a changed amount shows Undo and saves with no allocation.
 export const NoMatch: Story = {
   name: "No match",
   args: { view: noMatchPaymentReview },
@@ -304,9 +296,7 @@ export const NoMatch: Story = {
       })
     ).toBeVisible();
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Save as unallocated" })
-    );
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(savePayment).toHaveBeenCalledWith(
@@ -347,12 +337,8 @@ export const CustomerChange: Story = {
       canvas.queryByRole("checkbox", { name: "Allocate to INV-2026-08-04" })
     ).toBeNull();
 
-    // Either label: the payload below, not the label, proves which links are sent.
-    await userEvent.click(
-      canvas.getByRole("button", {
-        name: /^Save (the payment|as unallocated)$/u,
-      })
-    );
+    // The payload below proves which links are sent.
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await waitFor(() =>
       expect(savePayment).toHaveBeenCalledWith(
@@ -396,7 +382,7 @@ export const TooManyLinks: Story = {
       await userEvent.click(box);
     }
 
-    const save = canvas.getByRole("button", { name: "Save the payment" });
+    const save = canvas.getByRole("button", { name: "Save" });
 
     await expect(
       canvas.getByText("Allocate to at most 20 invoices in one save.")
@@ -425,7 +411,7 @@ export const OpenInvoicesFailed: Story = {
     );
     await waitFor(() => expect(listOpenInvoices).toHaveBeenCalled());
 
-    const save = canvas.getByRole("button", { name: "Save as unallocated" });
+    const save = canvas.getByRole("button", { name: "Save" });
 
     await waitFor(() => expect(save).toHaveAttribute("aria-disabled", "true"));
     await expect(

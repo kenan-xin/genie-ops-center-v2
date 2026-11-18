@@ -186,6 +186,15 @@ export function ReviewFormColumn(props: {
           {model?.split == null ? null : (
             <div data-review-split="">{model.split}</div>
           )}
+          {model?.consequence == null ? null : (
+            <p
+              data-review-consequence=""
+              aria-live="polite"
+              className="text-sm"
+            >
+              {model.consequence}
+            </p>
+          )}
         </>
       )}
       {model?.notices}

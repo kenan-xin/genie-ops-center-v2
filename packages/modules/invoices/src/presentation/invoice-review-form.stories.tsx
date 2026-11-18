@@ -113,7 +113,7 @@ function fieldRow(canvasElement: HTMLElement, field: string) {
   return within(row);
 }
 
-/** The form's save button, by its invoice or receipt words. */
+/** The form's save button. */
 function saveButton(canvas: ReturnType<typeof within>, name: string) {
   return canvas.getByRole("button", { name });
 }
@@ -124,7 +124,7 @@ export const MissingDueDate: Story = {
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas }) => {
-    const save = saveButton(canvas, "Save as unpaid");
+    const save = saveButton(canvas, "Save");
 
     await expect(save).toHaveAttribute("aria-disabled", "true");
     await expect(
@@ -208,7 +208,7 @@ export const DueDateSources: Story = {
       canvas.getByRole("radio", { name: "Enter a due date" })
     );
     await userEvent.type(canvas.getByLabelText("Due date"), "25 Nov 2026");
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await waitFor(() =>
       expect(saveInvoice).toHaveBeenCalledWith(
@@ -228,7 +228,7 @@ export const DueDateSourcesUnspecified: Story = {
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await waitFor(() =>
       expect(saveInvoice).toHaveBeenCalledWith(
@@ -253,7 +253,7 @@ export const DueDateSourcesKept: Story = {
     await expect(canvas.getByLabelText("Invoice date")).toHaveValue(
       "26 Oct 2026"
     );
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await waitFor(() =>
       expect(saveInvoice).toHaveBeenCalledWith(
@@ -277,7 +277,7 @@ export const ReadDueDateCleared: Story = {
     await userEvent.clear(canvas.getByLabelText("Due date"));
 
     await expect(canvas.getByText("Enter a due date to save.")).toBeVisible();
-    await expect(saveButton(canvas, "Save as unpaid")).toHaveAttribute(
+    await expect(saveButton(canvas, "Save")).toHaveAttribute(
       "aria-disabled",
       "true"
     );
@@ -337,7 +337,7 @@ export const AmountFormatted: Story = {
     await expect(total).toHaveValue("4,200.00");
 
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await waitFor(() =>
       expect(saveInvoice).toHaveBeenCalledWith(
@@ -364,7 +364,7 @@ export const NewCustomer: Story = {
     await expect(
       canvas.getByText("Confirm the new customer to save.")
     ).toBeVisible();
-    await expect(saveButton(canvas, "Save as unpaid")).toHaveAttribute(
+    await expect(saveButton(canvas, "Save")).toHaveAttribute(
       "aria-disabled",
       "true"
     );
@@ -373,7 +373,7 @@ export const NewCustomer: Story = {
     await expect(
       canvas.queryByText("Confirm the new customer to save.")
     ).toBeNull();
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await waitFor(() =>
       expect(saveInvoice).toHaveBeenCalledWith(
@@ -390,7 +390,7 @@ export const NewCustomer: Story = {
     await userEvent.click(
       await screen.findByRole("option", { name: "ABC Trading" })
     );
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await waitFor(() =>
       expect(saveInvoice).toHaveBeenLastCalledWith(
@@ -415,7 +415,7 @@ export const PossibleDuplicate: Story = {
   },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await expect(
       await canvas.findByText(
@@ -456,7 +456,7 @@ export const SaveRefused: Story = {
 
     const reads = getDocumentReview.mock.calls.length;
 
-    await userEvent.click(saveButton(canvas, "Save as unpaid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       "01_Invoice_Missing_Due_Date.pdf was not saved. A record from that document is already saved."
@@ -468,7 +468,7 @@ export const SaveRefused: Story = {
   },
 };
 
-// B5.7: Save as paid calls savePaidReceipt with the receipt's number, date, cents, reference and method.
+// B5.7: Save on a receipt calls savePaidReceipt with the receipt's number, date, cents, reference and method.
 // D34 (czjw.72): a receipt paid in full asks no due date; a missing one saves as unspecified.
 export const PaidReceiptWithoutDueDate: Story = {
   name: "Paid receipt without a due date",
@@ -483,7 +483,7 @@ export const PaidReceiptWithoutDueDate: Story = {
       fieldRow(canvasElement, "dueDate").getByText("None, paid in full")
     ).toBeVisible();
 
-    const save = saveButton(canvas, "Save as paid");
+    const save = saveButton(canvas, "Save");
 
     await expect(save).not.toHaveAttribute("aria-disabled");
     await userEvent.click(save);
@@ -529,7 +529,7 @@ export const PaidReceiptWithDueDate: Story = {
     await expect(
       fieldRow(canvasElement, "dueDate").getByText("30 Nov 2026")
     ).toBeVisible();
-    await userEvent.click(saveButton(canvas, "Save as paid"));
+    await userEvent.click(saveButton(canvas, "Save"));
 
     await waitFor(() =>
       expect(savePaidReceipt).toHaveBeenCalledWith(
@@ -624,7 +624,7 @@ export const SavedReadOnly: Story = {
 
 /** The reason Save waits for, and Save, as the person sees them. */
 async function reasonAndSave(canvas: ReturnType<typeof within>) {
-  const save = saveButton(canvas, "Save as unpaid");
+  const save = saveButton(canvas, "Save");
   const reason = document.getElementById("review-save-helper");
 
   if (reason === null) throw new Error("The review shows no save reason.");

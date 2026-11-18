@@ -37,6 +37,7 @@ function savedModel(model: ReviewModel): ReviewModel {
     })),
     split: null,
     splitSummary: null,
+    consequence: null,
     blocker: null,
     notices: null,
     submit: () => {},

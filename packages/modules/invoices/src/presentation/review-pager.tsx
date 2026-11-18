@@ -465,7 +465,7 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
                 />
               )}
               <FieldRow
-                label={model.saveLabel}
+                label="Save"
                 detail=""
                 state="open"
                 onPick={() => pick("summary")}
@@ -598,7 +598,6 @@ export function ReviewPager(props: ReviewLayoutProps): ReactNode {
         <ReviewSaveBar
           reason={model.blocker?.reason ?? null}
           pending={model.pending}
-          label={model.saveLabel}
           discarding={props.discarding}
           onDiscard={props.onDiscard}
         />

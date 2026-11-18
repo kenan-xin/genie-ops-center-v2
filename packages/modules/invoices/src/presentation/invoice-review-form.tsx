@@ -37,6 +37,7 @@ import {
   type FieldCheck,
   firstFieldBlocker,
 } from "./review-blocker.ts";
+import { consequenceOf } from "./review-consequence.ts";
 import {
   FIELDS_OF,
   liveTagOf,
@@ -573,7 +574,15 @@ export function useInvoiceReview(input: {
           <SaveFailure message={saveError} />
         </div>
       ),
-    saveLabel: kind === "invoice" ? "Save as unpaid" : "Save as paid",
+    consequence: consequenceOf({
+      kind,
+      totalCents: centsOfText(values.amount),
+      currency: values.currency,
+      dueDay: dayFromText(
+        dueText(dueChoiceOf(kind, reading, values.due))?.trim() ?? ""
+      ),
+      noDueDate: values.due.kind === "unspecified",
+    }),
     pending,
     submit: () => {
       if (blocker === null) {
