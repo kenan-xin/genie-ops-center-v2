@@ -1215,6 +1215,45 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
 
     expect(groupless.id).toBeTruthy();
   });
+
+  it("T4-d: refuses groups from a caller who manages groups at one scope only (d8l5.51), and still adds without groups", async () => {
+    const userId = await manager();
+
+    await assignRole(deployment.context, {
+      roleId: await insertRole(deployment.context, {
+        permissions: ["core:groups:manage"],
+      }),
+      principal: { type: "user", id: userId },
+      scope: { type: "fixture_record", id: "r-1" },
+    });
+
+    const caller = callProcedure(createPeopleRouter([]), {
+      tenant: deployment.context,
+      caller: request(userId),
+    });
+
+    const groupId = await insertGroup(deployment.context, []);
+
+    const email = `groups-scoped-${randomUUID()}@example.invalid`;
+
+    await expect(
+      caller.add({ email, groupIds: [groupId], sendInvitation: false })
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    expect(
+      await deployment.context.db
+        .select({ id: user.id })
+        .from(user)
+        .where(eq(user.email, email))
+    ).toHaveLength(0);
+
+    const groupless = await caller.add({
+      email: `groups-scoped-ok-${randomUUID()}@example.invalid`,
+      sendInvitation: false,
+    });
+
+    expect(groupless.id).toBeTruthy();
+  });
 });
 
 /** Every audit row, so a refusal can prove that it wrote none. */

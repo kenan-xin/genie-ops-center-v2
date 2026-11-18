@@ -3,7 +3,7 @@ import {
   gatedArea,
   implementCoreArea,
 } from "../../lib/rpc/implement-core-area.ts";
-import { can } from "../authorization/index.ts";
+import { can, scopesFor } from "../authorization/index.ts";
 import { managesAllRoles } from "../roles/effective-access.ts";
 import type { RolesModule } from "../roles/index.ts";
 import { readPersonAccess } from "../roles/person-access.ts";
@@ -93,10 +93,11 @@ export function createPeopleRouter(modules: readonly RolesModule[]) {
         throw new AppError(CORE_ERRORS.forbidden);
       }
 
-      // Picking groups is a membership edit, behind the groups key (DEC-39).
+      // Picking groups is a membership edit, so it needs the groups key tenant-wide, as
+      // `groups.addMembers` does: a membership can hand over a group's roles (DEC-39, d8l5.51).
       if (
         input.groupIds.length > 0 &&
-        !(await can(context.caller, "core:groups:manage"))
+        (await scopesFor(context.caller, "core:groups:manage")).kind !== "all"
       ) {
         throw new AppError(CORE_ERRORS.forbidden);
       }
