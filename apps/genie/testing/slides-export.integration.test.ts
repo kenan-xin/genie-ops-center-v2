@@ -306,10 +306,22 @@ describe("the slides PowerPoint export", () => {
   });
 
   // Last: it moves the clock past the 10 s branding cache (DEC-46).
-  it("uses the tenant color, logo and company name, and writes no media part without a logo", async () => {
+  it("uses the tenant color, the logo for the theme's background and the company name, and writes no media part without that logo", async () => {
+    // A split slide has the footer; the deck's theme asks for the logo drawn for a dark background (czjw.183).
     const id = await insertDeck(deployment.context, {
       ownerUserId: owner.caller.userId,
-      content: { slides: [{ id: "s1", elements: [title("A claim")] }] },
+      content: {
+        theme: { logo: "dark" },
+        slides: [
+          {
+            id: "s1",
+            elements: [
+              title("A claim"),
+              { kind: "bullets", items: ["One point"] },
+            ],
+          },
+        ],
+      },
     });
 
     expect((await exportAs(owner, id)).pptx.mediaParts).toEqual([]);
@@ -328,7 +340,7 @@ describe("the slides PowerPoint export", () => {
 
     // A save stores the pair: core's foregroundFor('#0f766e') is white, and primaryPair needs both.
     await query(
-      "update tenant_branding set primary_color = '#0f766e', primary_foreground = '#ffffff', logo_light_file_id = $1, company_name = 'Acme Export'",
+      "update tenant_branding set primary_color = '#0f766e', primary_foreground = '#ffffff', logo_dark_file_id = $1, company_name = 'Acme Export'",
       [logo]
     );
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -340,7 +352,7 @@ describe("the slides PowerPoint export", () => {
 
     expect(slide).toMatch(/srgbClr val="0f766e"/i);
     expect(pptx.mediaParts).toHaveLength(1);
-    expect(slide).toContain("Acme Export");
+    expect(slide).toContain("Acme Export · 1 / 1");
   });
 
   it("saves a dark blue slide with white text and a moved chart, reads and exports it the same, and Undo restores the deck", async () => {

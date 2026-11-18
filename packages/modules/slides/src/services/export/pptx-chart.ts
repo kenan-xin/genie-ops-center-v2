@@ -13,6 +13,8 @@ export type PptxChart = {
     readonly values: readonly (number | null)[];
   }[];
   readonly formatCode: string;
+  /** The value axis top two comparison charts share, in the plotted unit; none for a donut or a lone chart (P14-45). */
+  readonly valueMax: number | undefined;
 };
 
 const TYPES = {
@@ -46,9 +48,10 @@ const digitsOfColumn = (column: ChartColumn) =>
  * The native chart of one bar, line, area or donut (R-55, D8). Labels are the screen's text of
  * each x value; a money value turns from minor units into its currency, so PowerPoint draws the
  * amount the screen shows. A missing value stays null, a gap and never 0 (R-7). A KPI and a table
- * have no native chart: the export writes them as text and as a table.
+ * have no native chart: the export writes them as text and as a table. A shared `valueMax`, in minor
+ * units as `comparisonMax` answers it, turns into the plotted unit too.
  */
-export function pptxChartOf(data: ChartData): PptxChart {
+export function pptxChartOf(data: ChartData, valueMax?: number): PptxChart {
   const { x } = data;
 
   if (data.kind === "kpi" || data.kind === "table" || x === undefined) {
@@ -77,5 +80,10 @@ export function pptxChartOf(data: ChartData): PptxChart {
       };
     }),
     formatCode: digits > 0 ? `#,##0.${"0".repeat(digits)}` : "#,##0",
+    // One measure only (P14-45), so one divisor.
+    valueMax:
+      valueMax === undefined || data.kind === "donut"
+        ? undefined
+        : valueMax / 10 ** digits,
   };
 }

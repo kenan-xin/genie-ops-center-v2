@@ -3,7 +3,6 @@ import { kebabCase } from "es-toolkit";
 
 import { deckViewFor } from "../decks/show.ts";
 import { readOwnDeck, saveDeckExport } from "../decks/store.ts";
-import { brandTheme } from "../decks/theme.ts";
 import { buildDeckPptx } from "./build.ts";
 
 /**
@@ -23,7 +22,11 @@ export async function exportDeck(
     ctx.tenant.branding.get(),
   ]);
 
-  const theme = brandTheme(branding);
+  // The theme every read answers, and the logo drawn for its background, as the deck page picks it.
+  const { theme } = view;
+
+  const logoFileId =
+    theme.logo === "dark" ? branding.logoDarkFileId : branding.logoLightFileId;
 
   const imageIds = new Set(
     view.slides.flatMap(({ elements }) =>
@@ -34,10 +37,10 @@ export async function exportDeck(
   );
 
   const [logo, images] = await Promise.all([
-    theme.logoFileId === null
+    logoFileId === null
       ? null
       : // A logo that cannot be served (its scan is pending) is left out, as on screen.
-        ctx.tenant.fileStorage.fetch(theme.logoFileId).catch(() => null),
+        ctx.tenant.fileStorage.fetch(logoFileId).catch(() => null),
     Promise.all(
       [...imageIds].map(
         async (fileId) =>

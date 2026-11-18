@@ -76,6 +76,12 @@ describe("pptxChartOf", () => {
     ]);
   });
 
+  // Review Focus 1: comparisonMax is in minor units; PowerPoint plots SGD.
+  it("scales a shared money maximum to the currency unit", () => {
+    expect(pptxChartOf(BAR, 3490500).valueMax).toBe(34905);
+    expect(pptxChartOf(DONUT, 7).valueMax).toBeUndefined();
+  });
+
   it("answers a doughnut with its category labels", () => {
     expect(pptxChartOf(DONUT)).toEqual({
       type: "doughnut",

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ChartData } from "@genie/ui";
-import { chartCaption, formatChartValue } from "@genie/ui/chart-data";
+import { chartCaption } from "@genie/ui/chart-data";
 import { type ReactNode, useId } from "react";
 
 import {
@@ -9,7 +9,7 @@ import {
   cn,
   type CssVars,
   figureBoxes,
-  fitFontPx,
+  figureNumber,
   LOOK_PX,
   placed,
 } from "./slide-layout.ts";
@@ -26,33 +26,7 @@ export function SlideFigure(props: {
 }): ReactNode {
   const { data, box, paired, second, timeZone } = props;
   const labelId = useId();
-  const column = data.columns[0];
-  const row = data.rows[0];
-
-  const value =
-    column === undefined || row === undefined
-      ? null
-      : (row[column.key] ?? null);
-
-  // A sum over no records has no value; the figure says so, as the chart's empty state did.
-  const number =
-    value === null || column === undefined || row === undefined
-      ? "No data"
-      : formatChartValue(column, value, { row, bare: true });
-
-  const code =
-    value === null || column?.type !== "money" ? "" : (column.currency ?? "");
-
-  const max = paired ? LOOK_PX.pairNumber : LOOK_PX.bigNumber;
-
-  const size = fitFontPx({
-    texts: [code + number],
-    width: box.w,
-    height: max,
-    maxPx: max,
-    minPx: 24,
-    lineHeight: 1,
-  });
+  const { number, code, px: size } = figureNumber(data, box, paired);
 
   const parts = figureBoxes(box, size, paired);
 

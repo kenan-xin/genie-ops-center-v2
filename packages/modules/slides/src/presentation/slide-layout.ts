@@ -1,5 +1,6 @@
 import { contrastRatio } from "@genie/core/features/branding";
 import type { ChartData } from "@genie/ui";
+import { formatChartValue } from "@genie/ui/chart-data";
 import { chartColors } from "@genie/ui/tokens";
 import type { CSSProperties } from "react";
 
@@ -52,13 +53,6 @@ export const placed = (box: Box, className: string) => ({
   className: cn(PLACED, className),
 });
 
-export type SlideBoxes = {
-  readonly title: Box;
-  readonly rule: Box;
-  readonly body: readonly { readonly index: number; readonly box: Box }[];
-  readonly footer: Box;
-};
-
 /**
  * Font sizes in canvas pixels; the export multiplies them by 0.75 for points (D10). The screen's
  * KPI uses `text-3xl` (30 px) in the Chart part, so `figure` stays equal to it; a slide chart's
@@ -98,22 +92,6 @@ export function readableOn(behind: string): string {
     : "#FFFFFF";
 }
 
-const MARGIN_X = 40;
-
-const CONTENT_W = 880;
-
-const BODY_Y = 136;
-
-const BODY_H = 348;
-
-const COLUMN_GAP = 16;
-
-const TEXT_W = 320;
-
-const VISUAL_X = 384;
-
-const VISUAL_W = 536;
-
 const BODY_KINDS: ReadonlySet<ElementKind> = new Set(["text", "bullets"]);
 
 const VISUAL_KINDS: ReadonlySet<ElementKind> = new Set([
@@ -122,111 +100,6 @@ const VISUAL_KINDS: ReadonlySet<ElementKind> = new Set([
   "table",
   "image",
 ]);
-
-/**
- * Places every element of one slide on the 960 x 540 canvas. The title is always first; a body and
- * visuals share the row, and one kind alone takes the full width. A table needs about 400 px of
- * column, so it takes the wide visual column and its one other box, a body or a visual, takes
- * the text column (round 1 I1, T4-FIT); without a table, two visuals sit side by side. Adjacent boxes touch and never
- * overlap, so the screen and the export draw the same slide.
- */
-export function slideLayout(kinds: readonly ElementKind[]): SlideBoxes {
-  const visuals = kinds.filter((kind) => VISUAL_KINDS.has(kind)).length;
-  const hasBody = kinds.some((kind) => BODY_KINDS.has(kind));
-  const hasTable = kinds.includes("table");
-  const body: { index: number; box: Box }[] = [];
-  let visualAt = 0;
-
-  for (const [index, kind] of kinds.entries()) {
-    // The title has its own box above the rule.
-    if (index === 0) continue;
-
-    if (BODY_KINDS.has(kind)) {
-      body.push({
-        index,
-        box: {
-          x: MARGIN_X,
-          y: BODY_Y,
-          w: hasBody && visuals > 0 ? TEXT_W : CONTENT_W,
-          h: BODY_H,
-        },
-      });
-
-      continue;
-    }
-
-    if (!VISUAL_KINDS.has(kind)) continue;
-
-    // The contract allows one table, beside one body or one other visual (T4-FIT).
-    if (kind === "table") {
-      const shares = hasBody || visuals > 1;
-
-      body.push({
-        index,
-        box: {
-          x: shares ? VISUAL_X : MARGIN_X,
-          y: BODY_Y,
-          w: shares ? VISUAL_W : CONTENT_W,
-          h: BODY_H,
-        },
-      });
-
-      continue;
-    }
-
-    if (hasTable) {
-      body.push({
-        index,
-        box: { x: MARGIN_X, y: BODY_Y, w: TEXT_W, h: BODY_H },
-      });
-
-      continue;
-    }
-
-    const total = hasBody ? VISUAL_W : CONTENT_W;
-    const width = (total - COLUMN_GAP * (visuals - 1)) / visuals;
-
-    body.push({
-      index,
-      box: {
-        x: (hasBody ? VISUAL_X : MARGIN_X) + visualAt * (width + COLUMN_GAP),
-        y: BODY_Y,
-        w: width,
-        h: BODY_H,
-      },
-    });
-
-    visualAt += 1;
-  }
-
-  return {
-    title: { x: MARGIN_X, y: 32, w: CONTENT_W, h: 88 },
-    rule: { x: MARGIN_X, y: 120, w: CONTENT_W, h: 4 },
-    body,
-    footer: { x: MARGIN_X, y: 500, w: CONTENT_W, h: 24 },
-  };
-}
-
-/**
- * Each element's box: its own stored box, else the computed one of `slideLayout`, so the screen
- * and the export place the same slide (R-52a). The rule and the footer stay computed.
- */
-export function elementBoxes(
-  elements: readonly {
-    readonly kind: ElementKind;
-    readonly box?: ElementBox | undefined;
-  }[]
-): Pick<SlideBoxes, "title" | "body"> {
-  const layout = slideLayout(elements.map(({ kind }) => kind));
-
-  return {
-    title: elements[0]?.box ?? layout.title,
-    body: layout.body.map(({ index, box }) => ({
-      index,
-      box: elements[index]?.box ?? box,
-    })),
-  };
-}
 
 export type FrameName = "title" | "statement" | "split";
 
@@ -286,7 +159,10 @@ const SPLIT = {
   footer: { x: 422, y: 488, w: 490, h: 24 }, // 44cqw, 3cqw from the bottom, 51cqw, 2.5cqw
 } as const;
 
-/** The title frame: the ring is 14cqw at 7cqw. */
+/**
+ * The title frame: the ring is 14cqw at 7cqw. `text` is the most room a subtitle takes; `placedBoxes`
+ * stacks the subtitle and the title from its foot (P14-53).
+ */
 const TITLE_FRAME = {
   panel: { x: 0, y: 0, w: 960, h: 540 }, // 100cqw by 56.25cqw
   ring: { x: 758, y: 67, w: 135, h: 135 }, // 7cqw from the right and top, 14cqw square
@@ -413,11 +289,62 @@ export function slideFrame(
   return splitFrame(kinds);
 }
 
+/** Where the prototype's title slide stack ends (454), and its gap between title and subtitle (23, 2.4cqw). */
+const TITLE_SLIDE_FOOT = TITLE_FRAME.text.y + TITLE_FRAME.text.h;
+
+const TITLE_SLIDE_GAP =
+  TITLE_FRAME.text.y - (TITLE_FRAME.title.y + TITLE_FRAME.title.h);
+
+type TitleSlideBoxes = { readonly title: Box; readonly text: Box };
+
+/** The title slide stacked from its foot: the subtitle as tall as its estimated lines, the title right above it (P14-53). */
+function titleSlideBoxes(
+  subtitle:
+    | {
+        readonly text?: string | undefined;
+        readonly style?: ElementStyle | undefined;
+      }
+    | undefined
+): TitleSlideBoxes {
+  const text = subtitle?.text;
+
+  if (text === undefined) {
+    return {
+      title: {
+        ...TITLE_FRAME.title,
+        h: TITLE_SLIDE_FOOT - TITLE_FRAME.title.y,
+      },
+      text: TITLE_FRAME.text,
+    };
+  }
+
+  const px =
+    subtitle?.style?.fontSize ??
+    defaultTextPx("text", "title", "panel", [text], TITLE_FRAME.text);
+
+  const h = Math.min(
+    TITLE_FRAME.text.h,
+    Math.ceil(linesOf(text, px, TITLE_FRAME.text.w) * px * LINE_HEIGHT.text)
+  );
+
+  const y = TITLE_SLIDE_FOOT - h;
+
+  return {
+    title: {
+      ...TITLE_FRAME.title,
+      h: y - TITLE_SLIDE_GAP - TITLE_FRAME.title.y,
+    },
+    text: { ...TITLE_FRAME.text, y, h },
+  };
+}
+
 /** Each element's stored box over its frame box, the title included. */
 export function placedBoxes(
   elements: readonly {
     readonly kind: ElementKind;
     readonly box?: ElementBox | undefined;
+    readonly text?: string | undefined;
+    readonly style?: ElementStyle | undefined;
   }[],
   first: boolean
 ): Pick<SlideFrame, "name" | "title" | "body"> {
@@ -426,15 +353,22 @@ export function placedBoxes(
     first
   );
 
+  const stacked =
+    frame.name === "title"
+      ? titleSlideBoxes(elements.find(({ kind }) => kind === "text"))
+      : undefined;
+
   const title =
-    elements.find(({ kind }) => kind === "title")?.box ?? frame.title;
+    elements.find(({ kind }) => kind === "title")?.box ??
+    stacked?.title ??
+    frame.title;
 
   return {
     name: frame.name,
     title,
     body: frame.body.map(({ index, box }) => ({
       index,
-      box: elements[index]?.box ?? box,
+      box: elements[index]?.box ?? stacked?.text ?? box,
     })),
   };
 }
@@ -508,6 +442,10 @@ export function textGround(
   };
 }
 
+/** The estimated lines of one text at `px` in `width`. */
+const linesOf = (text: string, px: number, width: number) =>
+  Math.ceil((text.length * px * AVERAGE_CHARACTER_EM) / width);
+
 /** The largest whole pixel size whose estimated lines fit the box, never under `minPx`. */
 export function fitFontPx(input: {
   readonly texts: readonly string[];
@@ -519,9 +457,7 @@ export function fitFontPx(input: {
 }): number {
   for (let px = input.maxPx; px >= input.minPx; px -= 1) {
     const lines = input.texts.reduce(
-      (sum, text) =>
-        sum +
-        Math.ceil((text.length * px * AVERAGE_CHARACTER_EM) / input.width),
+      (sum, text) => sum + linesOf(text, px, input.width),
       0
     );
 
@@ -619,6 +555,49 @@ export function figureBoxes(
   };
 }
 
+type FigureNumber = {
+  readonly number: string;
+  readonly code: string;
+  readonly px: number;
+};
+
+/** A figure's number, its currency code, and the largest size that fits the box (P14-16). */
+export function figureNumber(
+  data: ChartData,
+  box: Box,
+  paired: boolean
+): FigureNumber {
+  const column = data.columns[0];
+  const row = data.rows[0];
+
+  const value =
+    column === undefined || row === undefined
+      ? null
+      : (row[column.key] ?? null);
+
+  // A sum over no records has no value; the figure says so, as the chart's empty state did.
+  const number =
+    value === null || column === undefined || row === undefined
+      ? "No data"
+      : formatChartValue(column, value, { row, bare: true });
+
+  const code =
+    value === null || column?.type !== "money" ? "" : (column.currency ?? "");
+
+  const max = paired ? LOOK_PX.pairNumber : LOOK_PX.bigNumber;
+
+  const px = fitFontPx({
+    texts: [code + number],
+    width: box.w,
+    height: max,
+    maxPx: max,
+    minPx: 24,
+    lineHeight: 1,
+  });
+
+  return { number, code, px };
+}
+
 const THEMED_KINDS: ReadonlySet<ElementKind> = new Set([
   "figure",
   "chart",
@@ -711,9 +690,19 @@ export function comparisonMax(
     : undefined;
 }
 
-/** The slide's eight series colors: the accent and the neutral, then the light palette the export draws, so a chart never follows the app's dark mode. */
-export function slideChartColors(theme: SlideTheme): readonly string[] {
-  return [theme.accent, theme.neutral, ...chartColors.light.slice(2)];
+/**
+ * A chart's eight series colors: the accent and the neutral, then the light palette, so a chart
+ * never follows the app's dark mode. The second comparison chart leads with the neutral, so a
+ * second series stays apart (P14-51).
+ */
+export function slideChartColors(
+  theme: SlideTheme,
+  second: boolean
+): readonly string[] {
+  return [
+    ...(second ? [theme.neutral, theme.accent] : [theme.accent, theme.neutral]),
+    ...chartColors.light.slice(2),
+  ];
 }
 
 const TEXT_KINDS: ReadonlySet<ElementKind> = new Set([
@@ -779,9 +768,9 @@ export function textPx(
 }
 
 /**
- * The canvas footer's color: the secondary text, or the readable color on a slide background. The
- * caller passes core's `foregroundFor`, as `footerColor` does. `footerColor` is the export's older
- * rule (P13-7) until plan Task 7 moves the export to this one.
+ * The footer's color on screen and in PowerPoint: the secondary text, or the readable color on a
+ * slide background. The caller passes core's `foregroundFor`, because the server loads this file
+ * and core's branding entry also exports a client component.
  */
 export function slideFooterColor(
   theme: SlideTheme,
@@ -799,53 +788,14 @@ export const footerText = (
   place: { readonly index: number; readonly count: number }
 ) => `${theme.companyName} · ${place.index + 1} / ${place.count}`;
 
-/**
- * The eight series colors of a chart box, so a chart never follows the app's dark mode. The second
- * comparison chart swaps the accent and the neutral, so it leads with the neutral and a second
- * series stays apart.
- */
+/** The eight series colors of a chart box, as CSS variables. */
 export function chartVars(theme: SlideTheme, second: boolean): CssVars {
-  const [, , ...rest] = slideChartColors(theme);
-
-  const lead = second
-    ? [theme.neutral, theme.accent]
-    : [theme.accent, theme.neutral];
-
   return Object.fromEntries(
-    [...lead, ...rest].map((color, at) => [`--chart-${at + 1}`, color])
+    slideChartColors(theme, second).map((color, at) => [
+      `--chart-${at + 1}`,
+      color,
+    ])
   );
-}
-
-type PaletteSlide = {
-  readonly background?: string | undefined;
-  readonly elements: readonly { readonly style?: ElementStyle | undefined }[];
-};
-
-/**
- * A slide with a background or a colored element draws on the light palette under its own values,
- * so the pair on screen is the pair the save checked, in the dark theme too (P13-3).
- */
-export function usesLightPalette(slide: PaletteSlide): boolean {
-  return (
-    slide.background !== undefined ||
-    slide.elements.some(
-      ({ style }) => style?.color !== undefined || style?.fill !== undefined
-    )
-  );
-}
-
-/**
- * The footer's text color: the readable one on a background, the theme text on another light-palette
- * slide, none for the theme's muted gray (P13-7). The caller passes core's `foregroundFor`, because
- * the server loads this file and core's branding entry also exports a client component.
- */
-export function footerColor(
-  slide: PaletteSlide,
-  foregroundOf: (background: string) => string
-): string | undefined {
-  if (slide.background !== undefined) return foregroundOf(slide.background);
-
-  return usesLightPalette(slide) ? THEME_TEXT : undefined;
 }
 
 const FIGURES_DATE = new Intl.DateTimeFormat("en-GB", {

@@ -296,6 +296,86 @@ export const chartWithImageSlide: ShownSlide = {
   ],
 };
 
+/** The prototype's eight layouts in deck order: title, figure, chart, two figures, comparison, table, Priorities, statement. */
+export const eightLayoutSlides: readonly ShownSlide[] = [
+  {
+    id: "l1",
+    elements: [
+      { kind: "title", text: "Receivables at a glance" },
+      { kind: "text", text: "Genie Ops · October 2026 collections update" },
+    ],
+  },
+  {
+    id: "l2",
+    elements: [
+      { kind: "title", text: "Invoiced sales reached a new high this quarter" },
+      textWithChartSlide.elements[1]!,
+      { kind: "figure", chart: KPI, data: KPI_DATA },
+    ],
+  },
+  textWithChartSlide,
+  {
+    id: "l4",
+    elements: [
+      { kind: "title", text: "Invoiced sales and collected cash both rose" },
+      textWithChartSlide.elements[1]!,
+      { kind: "figure", chart: KPI, data: KPI_DATA },
+      twoFiguresSlide.elements[2]!,
+    ],
+  },
+  {
+    id: "l5",
+    elements: [
+      { kind: "title", text: "Collections trail invoiced sales every month" },
+      textWithChartSlide.elements[1]!,
+      { kind: "chart", chart: BAR, data: BAR_DATA },
+      {
+        kind: "chart",
+        chart: { ...BAR, title: "Collected by month" },
+        data: {
+          ...BAR_DATA,
+          title: "Collected by month",
+          rows: BAR_DATA.rows.map((row) =>
+            Object.assign({}, row, { total: Number(row["total"]) / 3 })
+          ),
+        },
+      },
+    ],
+  },
+  {
+    id: "l6",
+    elements: [
+      { kind: "title", text: "Five customers paid late this quarter" },
+      {
+        kind: "text",
+        text: "Most late payments settled within two weeks of the due date.",
+      },
+      {
+        kind: "table",
+        chart: TABLE,
+        data: { ...TABLE_DATA, rows: TABLE_DATA.rows.slice(0, 5) },
+      },
+    ],
+  },
+  {
+    id: "l7",
+    elements: [
+      { kind: "title", text: "Five steps keep collections on the plan line" },
+      {
+        kind: "bullets",
+        items: [
+          "Chase the three customers whose balances run past their agreed terms this month.",
+          "Move the two largest accounts to thirty day terms before the next billing cycle.",
+          "Send every reminder on the due date instead of a week after the invoice is late.",
+          "Report collected cash beside invoiced sales in each monthly finance team update.",
+          "Review the open balances with the sales leads every Monday before the team call.",
+        ],
+      },
+    ],
+  },
+  textOnlySlide,
+];
+
 /** Ask on, with the label of the Slides agent's create step. */
 const chatOn: DeckListView["chat"] = {
   kind: "on",
