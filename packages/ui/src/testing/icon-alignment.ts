@@ -1,6 +1,8 @@
 export type IconAllowEntry = {
   readonly selector: string;
   readonly reason: string;
+  /** The place draws no icon, only a shape the check reads as one, so it can hide no known case and a known-case story keeps it (P07-71). */
+  readonly decoration?: true;
 };
 
 export type IconRelation = {

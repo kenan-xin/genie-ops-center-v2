@@ -148,7 +148,8 @@ export const RefusedDragGoesBack: Story = {
   },
 };
 
-// The corner handle by -100, -100 from 298 x 217 ends on 40, 264, 200 x 120 after the snap: one step.
+// The corner handle by -100, -100 from 43, 265, 298 x 217 snaps only the edges it moves (P14-83):
+// right 241 to 240, bottom 382 to 384, so 43, 265, 197 x 119 in one step.
 export const HandleResizes: Story = {
   name: "A corner handle resizes the element in one step",
   globals: desktop,
@@ -165,7 +166,7 @@ export const HandleResizes: Story = {
       op: "change-element",
       slideId: textWithChartSlide.id,
       index: 1,
-      box: { x: 40, y: 264, w: 200, h: 120 },
+      box: { x: 43, y: 265, w: 197, h: 119 },
     });
   },
 };

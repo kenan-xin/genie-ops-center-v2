@@ -33,6 +33,7 @@ export const ICON_ALIGNMENT_ALLOW_LIST: readonly IconAllowEntry[] = [
   },
   {
     selector: "[data-slide-ring]",
+    decoration: true,
     reason:
       "czjw.183 (P14-14): the ring of a title or statement slide is a 135 px slide decoration on the 960 x 540 canvas; in a scaled slide tile it draws under 24 px, so the check reads it as a box icon beside the slide's title.",
   },

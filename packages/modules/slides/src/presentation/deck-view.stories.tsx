@@ -2002,8 +2002,8 @@ export const UndoInsideNotesPause: Story = {
   },
 };
 
-/** The title of slide 1 as drawn: the title frame's title box, x 67, y 67. */
-const TITLE_BOX = { x: 67, y: 67, w: 578, h: 247 };
+/** The title of slide 1 as drawn: the title-only title slide stacks its title from 67, 67 to the frame foot, y 454 (P14-54). */
+const TITLE_BOX = { x: 67, y: 67, w: 578, h: 387 };
 
 /** Selects the title of the shown slide 1 on the stage, which also focuses it for the arrow keys. */
 async function selectTitle(canvas: ReturnType<typeof within>) {

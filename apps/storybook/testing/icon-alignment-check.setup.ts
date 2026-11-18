@@ -73,11 +73,13 @@ async function measureAt(
 
   if (known) {
     // P07-71: the allow list covers the story's other icons, so a second run without it keeps
-    // only the known-case icons' lines.
+    // only the known-case icons' lines. A decoration entry hides no icon, so it stays.
     const allowed = new Set(problems);
 
     const knownOnly = iconAlignmentProblems(
-      measureIconAlignment([]).relations
+      measureIconAlignment(
+        ICON_ALIGNMENT_ALLOW_LIST.filter(({ decoration }) => decoration)
+      ).relations
     ).filter(
       (problem) =>
         !allowed.has(problem) && KNOWN_CASE_ICON.test(iconOf(problem))
