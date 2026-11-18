@@ -25,6 +25,7 @@ import {
   SLIDES_CHAT_MESSAGE,
 } from "../../testing/slides-chat.ts";
 import { expectNoAxeViolations } from "../support/axe.ts";
+import { liveRowStates, recordLiveRows } from "../support/live-rows.ts";
 import { withDeploymentLock } from "../support/lock.ts";
 import {
   askQuestion,
@@ -141,6 +142,68 @@ async function expectSurfaceChats(
   ).toBeVisible();
 }
 
+/**
+ * The steps of a handed-over build, from its first live state to its fold (czjw.181): one live row
+ * at every moment, also between two calls, a row that counts the items, and then the strip, which
+ * stays folded to the end.
+ */
+async function expectLiveRowsUntilFolded(
+  surface: Locator,
+  item: "Writing slide" | "Adding panel",
+  total: number
+): Promise<void> {
+  const states = await liveRowStates(surface);
+
+  const first = states.findIndex((state) => state.live > 0);
+
+  const folded = states.findIndex((state) => state.folded);
+
+  const shown = JSON.stringify(states);
+
+  expect(first, `no live row in ${shown}`).toBeGreaterThanOrEqual(0);
+  expect(folded, `no fold after the live rows in ${shown}`).toBeGreaterThan(
+    first
+  );
+  expect(
+    states.slice(first, folded).filter((state) => state.live !== 1),
+    `a state without exactly one live row in ${shown}`
+  ).toEqual([]);
+  expect(
+    states.some((state) =>
+      new RegExp(`^${item} [1-${total}] of ${total}`).test(state.text)
+    ),
+    `no "${item} n of ${total}" in ${shown}`
+  ).toBe(true);
+  expect(
+    states.slice(folded).filter((state) => state.live !== 0 || !state.folded),
+    `live again after the fold in ${shown}`
+  ).toEqual([]);
+  await expect(
+    surface.getByRole("button", { name: /^Worked for .+ · \d+ steps?$/ })
+  ).toBeVisible();
+}
+
+/**
+ * The computed style of a `text-shimmer` label in this page: a probe, because the Thinking row
+ * shows only for a moment between the calls of a paced build.
+ */
+const shimmerOf = (page: Page) =>
+  page.evaluate(() => {
+    const label = document.createElement("span");
+
+    label.className = "text-shimmer";
+    document.body.append(label);
+
+    const { animationName, color } = getComputedStyle(label);
+
+    label.remove();
+
+    return {
+      animation: animationName,
+      transparent: color === "rgba(0, 0, 0, 0)",
+    };
+  });
+
 const slideButtons = (page: Page) =>
   page
     .getByRole("navigation", { name: "Slides" })
@@ -161,6 +224,12 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
 
         const surface = page.getByRole("region", { name: "Ask", exact: true });
 
+        await recordLiveRows(surface);
+        // Without reduced motion the Thinking label shimmers, so the probe below proves a class.
+        expect(await shimmerOf(page)).toEqual({
+          animation: "text-shimmer",
+          transparent: true,
+        });
         await expect(chip(surface, "Building")).toBeVisible(FIRST_PAINT);
 
         const seen = await countsUntil(() => slideButtons(page).count(), 5);
@@ -174,6 +243,7 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
           `the deck showed ${JSON.stringify(seen)} slides on the way to 5`
         ).toBe(true);
         await expect(chip(surface, "Saved")).toBeVisible(FIRST_PAINT);
+        await expectLiveRowsUntilFolded(surface, "Writing slide", 5);
         await expectNoAxeViolations(page, "deck page after the handoff");
 
         const handed = await handedOverFrom(askId);
@@ -447,6 +517,8 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
       await removeDashboardsNamed(email, [ANALYTICS_HANDOFF_TITLE]);
 
       try {
+        // A person who asks for reduced motion: the ring stands still and dashed (C07-7).
+        await page.emulateMedia({ reducedMotion: "reduce" });
         await signInAs(page, email);
         await resetChatDashboard();
         await warm(
@@ -455,6 +527,11 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
           ANALYTICS_CHAT_DASHBOARD.name
         );
         await warm(page, "/m/analytics/dashboards", "Dashboards");
+        // The Thinking label's shimmer stops too, and its text keeps a color (czjw.181).
+        expect(await shimmerOf(page)).toEqual({
+          animation: "none",
+          transparent: false,
+        });
 
         const askId = await send(
           page,
@@ -468,6 +545,7 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
 
         const surface = page.getByRole("region", { name: "Ask", exact: true });
 
+        await recordLiveRows(surface);
         await expect(chip(surface, "Building")).toBeVisible(FIRST_PAINT);
 
         const panels = async () => {
@@ -494,6 +572,14 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
           `the dashboard showed ${JSON.stringify(seen)} panels on the way to 3`
         ).toBe(true);
         await expect(chip(surface, "Saved")).toBeVisible(FIRST_PAINT);
+        await expectLiveRowsUntilFolded(surface, "Adding panel", 3);
+
+        const rings = (await liveRowStates(surface)).map((state) => state.ring);
+
+        expect(
+          rings,
+          "no still dashed ring under reduced motion"
+        ).toContainEqual({ border: "dashed", animation: "none" });
         await expectNoAxeViolations(page, "dashboard page after the handoff");
 
         const handed = await handedOverFrom(askId);

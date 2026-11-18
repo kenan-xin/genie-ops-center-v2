@@ -44,8 +44,8 @@ export const ICON_ALIGNMENT_ALLOW_LIST: readonly IconAllowEntry[] = [
   },
   {
     selector:
-      '[role=log]:has([data-slot=brief-card]) ol[aria-label="Steps"] > li',
+      '[role=log]:has([data-slot=brief-card]):not(:has(.typeset-chat)) ol[aria-label="Steps"] > li',
     reason:
-      "czjw.181 (P15-35): agent-progress.prototype.html lines the steps up with the answer's text column, not with the icon inside the brief card above. While a handed-over run works there is no answer text yet, so the check's icon fallback reads the card's boxed icon. Task 9 or the owner may revisit this entry.",
+      "czjw.181 (P15-35): agent-progress.prototype.html lines the steps up with the answer's text column, not with the icon inside the brief card above. While a handed-over run works there is no answer text yet, so the check's icon fallback reads the card's boxed icon. Once the answer's text (`.typeset-chat`) shows, the steps are measured again (Task 9).",
   },
 ];

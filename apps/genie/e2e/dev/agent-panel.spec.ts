@@ -248,7 +248,7 @@ test("the timeline groups reads and folds one fixed step", async ({
   await expect(steps.getByText("Looked up the data")).toBeVisible();
   await expect(
     steps.getByRole("listitem").filter({ hasText: "Read Placeholder records" })
-  ).toContainText("×2");
+  ).toContainText("2 reads");
   await expect(steps.getByText("Made a chart, fixed 1 problem")).toBeVisible();
   await expectNoAxeViolations(page, "The open step timeline");
 
