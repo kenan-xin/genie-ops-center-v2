@@ -324,7 +324,7 @@ export const REQUIRED_TESTS: readonly RequiredCase[] = [
       "replaces the previous export, owned by the caller, with one audit row per export",
       "answers not-found for another person's deck and stores no file, and refuses a person without slides:read",
       "writes the refusal line in place of a KPI whose dataset the person can no longer read",
-      "uses the tenant color, logo and company name, and writes no media part without a logo",
+      "uses the tenant color, the logo for the theme's background and the company name, and writes no media part without that logo",
     ].map((name) => `the slides PowerPoint export ${name}`),
   },
   {
