@@ -843,6 +843,121 @@ export const TwelveMonthsOnAScaledSlide: Story = {
   play: axisRulePlay(12, 4),
 };
 
+const intersects = (a: DOMRect, b: DOMRect) =>
+  a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom;
+
+/** czjw.182 at one small size: no x label touches a y label, and the source line keeps its own row under the x labels. */
+const smallChartPlay: NonNullable<Story["play"]> = async ({
+  canvasElement,
+}) => {
+  await waitFor(() => {
+    const boxes = (selector: string) =>
+      [...canvasElement.querySelectorAll(selector)].map((node) =>
+        node.getBoundingClientRect()
+      );
+
+    const xs = boxes(
+      ".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value"
+    );
+
+    const ys = boxes(
+      ".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value"
+    );
+
+    const caption = canvasElement
+      .querySelector("figcaption")!
+      .getBoundingClientRect();
+
+    const figure = canvasElement
+      .querySelector("figure")!
+      .getBoundingClientRect();
+
+    for (const x of xs)
+      for (const y of ys) expect(intersects(x, y)).toBe(false);
+
+    for (const [index, x] of xs.entries())
+      for (const other of xs.slice(index + 1))
+        expect(intersects(x, other)).toBe(false);
+
+    if (xs.length > 0) {
+      expect(caption.top).toBeGreaterThanOrEqual(
+        Math.max(...xs.map((box) => box.bottom)) + 4
+      );
+    }
+
+    for (const box of [...xs, ...ys, caption]) {
+      expect(box.left).toBeGreaterThanOrEqual(figure.left - 0.5);
+      expect(box.right).toBeLessThanOrEqual(figure.right + 0.5);
+      expect(box.bottom).toBeLessThanOrEqual(figure.bottom + 0.5);
+    }
+  });
+};
+
+const smallLine = {
+  ...monthlySales("2026-05", 6),
+  kind: "line",
+} as const satisfies ChartProps;
+
+/** A slide box of `width` x `height` canvas px. */
+const slideBox = (width: number, height: number) => (args: ChartProps) => (
+  <div style={{ width, height }}>
+    <Chart {...args} />
+  </div>
+);
+
+/** Two visuals beside a text on a slide: the comparison box (owner capture F10). */
+export const SmallLineOnASlidePair: Story = {
+  name: "Small line on a slide pair",
+  args: { ...smallLine, slide: true },
+  globals: desktop,
+  render: slideBox(226, 292),
+  play: smallChartPlay,
+};
+
+export const SmallBarOnASlidePair: Story = {
+  name: "Small bar on a slide pair",
+  args: { ...monthlySales("2026-05", 6), slide: true },
+  globals: desktop,
+  render: slideBox(226, 292),
+  play: smallChartPlay,
+};
+
+/** The smallest box a slide stores. */
+export const SmallChartAtTheSmallestBox: Story = {
+  name: "Small chart at the smallest slide box",
+  args: { ...smallLine, slide: true },
+  globals: desktop,
+  render: slideBox(160, 96),
+  play: smallChartPlay,
+};
+
+export const LineOnAPhoneTile: Story = {
+  name: "Line on a phone dashboard tile",
+  args: smallLine,
+  globals: phone,
+  render: (args) => (
+    <div style={{ width: 326 }}>
+      <Chart {...args} />
+    </div>
+  ),
+  play: smallChartPlay,
+};
+
+export const LineInTheAskPanel: Story = {
+  name: "Line in the Ask panel",
+  args: smallLine,
+  globals: desktop,
+  render: panelFrame,
+  play: smallChartPlay,
+};
+
+export const LineInAPhoneAnswer: Story = {
+  name: "Line in a phone answer",
+  args: smallLine,
+  globals: phone,
+  play: smallChartPlay,
+};
+
 const slideTable = { ...records, slide: true } as const satisfies ChartProps;
 
 const slideTablePlay: Story["play"] = async ({ canvas }) => {

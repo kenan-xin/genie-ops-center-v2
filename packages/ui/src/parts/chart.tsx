@@ -46,8 +46,11 @@ import {
 import { focusRing } from "../theme/tokens.ts";
 import {
   AXIS_MARGIN,
+  axisEndsFit,
   axisLabelIndexes,
   axisLabelStep,
+  firstPointInset,
+  labelCenter,
   type AxisScale,
 } from "./chart-axis.ts";
 import {
@@ -322,6 +325,8 @@ function AxisTick(
   props: Partial<XAxisTickContentProps> & {
     readonly labelWidth: number | undefined;
     readonly scale: AxisScale;
+    /** The room before the first point (`firstPointInset`), which the points' span loses. */
+    readonly inset: number;
   }
 ) {
   const plot = usePlotArea();
@@ -329,7 +334,7 @@ function AxisTick(
   const { labelWidth } = props;
   const count = props.visibleTicksCount ?? 0;
   const index = props.index ?? 0;
-  const plotWidth = plot?.width ?? Number.NaN;
+  const plotWidth = (plot?.width ?? Number.NaN) - props.inset;
 
   // Until the plot and the label width are known, as on the server, only the two ends show.
   const indexes =
@@ -337,19 +342,26 @@ function AxisTick(
     !Number.isFinite(labelWidth) ||
     !Number.isFinite(plotWidth)
       ? [0, count - 1]
-      : axisLabelIndexes(
-          count,
-          axisLabelStep({ count, plotWidth, labelWidth, scale: props.scale })
-        );
+      : axisEndsFit({ count, plotWidth, labelWidth, scale: props.scale })
+        ? axisLabelIndexes(
+            count,
+            axisLabelStep({ count, plotWidth, labelWidth, scale: props.scale })
+          )
+        : [0];
 
   if (!indexes.includes(index)) return null;
 
-  // A bar chart's last label can reach a few px past the chart's right edge; the step left room
-  // for this move (`axisLabelStep`).
+  // A bar chart's last label can reach a few px past the chart's right edge, and its first one
+  // left of the y axis on a narrow chart; the step left room for this move (`axisLabelStep`).
   const x =
-    chartWidth === undefined || labelWidth === undefined
+    plot === undefined || chartWidth === undefined || labelWidth === undefined
       ? props.x
-      : Math.min(Number(props.x), chartWidth - labelWidth / 2);
+      : labelCenter({
+          x: Number(props.x),
+          labelWidth,
+          plotLeft: plot.x,
+          chartWidth,
+        });
 
   return (
     <Text
@@ -438,6 +450,9 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
     );
   });
 
+  const scale: AxisScale = props.kind === "bar" ? "band" : "point";
+  const inset = firstPointInset(labelWidth, scale);
+
   const Plot =
     props.kind === "bar"
       ? BarChart
@@ -471,11 +486,10 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
           axisLine={false}
           interval={0}
           tickFormatter={formatTick}
+          // A line's first point sits on the y axis, so its label would run under the y labels.
+          padding={{ left: inset }}
           tick={
-            <AxisTick
-              labelWidth={labelWidth}
-              scale={props.kind === "bar" ? "band" : "point"}
-            />
+            <AxisTick labelWidth={labelWidth} scale={scale} inset={inset} />
           }
         />
         {/* The 60 px default cut a slide's base-size "SGD 60k". Off a slide, auto width measures
@@ -679,7 +693,12 @@ export function Chart(props: ChartProps) {
         slide ? "flex h-full min-w-0 flex-col gap-1" : "grid min-w-0 gap-3"
       }
     >
-      <div id={titleId} className="font-semibold">
+      {/* A slide box has a fixed height, so a wrapped title or source line would push the plot
+          out of it; the title keeps one line there and the source line two (czjw.182). */}
+      <div
+        id={titleId}
+        className={slide ? "truncate font-semibold" : "font-semibold"}
+      >
         {props.title}
       </div>
       {/* A KPI value stays right under its label (7.4); a plot takes the rest of the box. */}
@@ -688,7 +707,13 @@ export function Chart(props: ChartProps) {
       ) : (
         body
       )}
-      <figcaption className="text-xs text-muted-foreground">
+      <figcaption
+        className={
+          slide
+            ? "line-clamp-2 text-xs text-muted-foreground"
+            : "text-xs text-muted-foreground"
+        }
+      >
         {chartCaption(props, props.timeZone, props.caption)}
       </figcaption>
     </figure>

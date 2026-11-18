@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { axisLabelIndexes, axisLabelStep } from "./chart-axis.ts";
+import {
+  axisLabelIndexes,
+  axisEndsFit,
+  axisLabelStep,
+  firstPointInset,
+  labelCenter,
+} from "./chart-axis.ts";
 
 describe("axisLabelIndexes", () => {
   it.each([
@@ -97,4 +103,45 @@ describe("axisLabelStep", () => {
       axisLabelStep({ count: 1, plotWidth: 250, labelWidth: 40, scale: "band" })
     ).toBe(1);
   });
+});
+
+describe("firstPointInset", () => {
+  it.each([
+    [48, "point", 24],
+    [47, "point", 24],
+    [48, "band", 0],
+    [undefined, "point", 0],
+  ] as const)(
+    "insets a %s px label on a %s scale by %i",
+    (labelWidth, scale, expected) =>
+      expect(firstPointInset(labelWidth, scale)).toBe(expected)
+  );
+});
+
+describe("labelCenter", () => {
+  it("moves a first label that reaches left of the y axis to the axis", () =>
+    expect(
+      labelCenter({ x: 70, labelWidth: 50, plotLeft: 60, chartWidth: 300 })
+    ).toBe(85));
+  it("moves a last label that reaches past the chart back inside", () =>
+    expect(
+      labelCenter({ x: 290, labelWidth: 50, plotLeft: 60, chartWidth: 300 })
+    ).toBe(275));
+  it("keeps a label that fits where it is", () =>
+    expect(
+      labelCenter({ x: 150, labelWidth: 50, plotLeft: 60, chartWidth: 300 })
+    ).toBe(150));
+});
+
+describe("axisEndsFit", () => {
+  // 6 points over 50 px are 10 px apart, so the two ends sit 50 px apart: a 45 px label and the
+  // 5 px gap fit exactly, and a 46 px label does not.
+  it.each([
+    [45, true],
+    [46, false],
+  ] as const)("fits both ends with a %i px label: %s", (labelWidth, expected) =>
+    expect(
+      axisEndsFit({ count: 6, plotWidth: 50, labelWidth, scale: "point" })
+    ).toBe(expected)
+  );
 });

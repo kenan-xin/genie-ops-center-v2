@@ -30,30 +30,64 @@ export function axisLabelIndexes(count: number, step: number): number[] {
   return [...indexes, last];
 }
 
-/** The smallest whole step whose labels fit the plot, never above the last index. */
-export function axisLabelStep({
-  count,
-  plotWidth,
-  labelWidth,
-  scale,
-}: {
+type AxisFit = {
   readonly count: number;
   readonly plotWidth: number;
   readonly labelWidth: number;
   readonly scale: AxisScale;
-}): number {
+};
+
+/** The smallest whole step whose labels fit the plot, never above the last index. */
+export function axisLabelStep(input: AxisFit): number {
+  if (input.count < 2) return 1;
+
+  return Math.min(neededStep(input), input.count - 1);
+}
+
+/**
+ * Whether the first and the last label fit side by side. When they do not, only the first shows:
+ * it is the label `axisLabelIndexes` keeps for a single point too.
+ */
+export function axisEndsFit(input: AxisFit): boolean {
+  return neededStep(input) <= input.count - 1;
+}
+
+function neededStep({ count, plotWidth, labelWidth, scale }: AxisFit): number {
   if (count < 2) return 1;
 
   const slot = plotWidth / (scale === "band" ? count : count - 1);
 
-  if (slot <= 0) return count - 1;
+  if (slot <= 0) return count;
 
   // A bar chart's last label moves left to stay inside the chart, so the step leaves room for it.
   const overhang =
     scale === "band" ? Math.max(0, labelWidth / 2 - slot / 2 - AXIS_MARGIN) : 0;
 
-  return Math.min(
-    Math.ceil((labelWidth + AXIS_LABEL_GAP + overhang) / slot),
-    count - 1
+  return Math.ceil((labelWidth + AXIS_LABEL_GAP + overhang) / slot);
+}
+
+/** The room before a line or an area chart's first point: half the widest label, so it stays clear of the y axis. A bar chart's first label sits half a band in. */
+export function firstPointInset(
+  labelWidth: number | undefined,
+  scale: AxisScale
+): number {
+  return scale === "point" && labelWidth !== undefined
+    ? Math.ceil(labelWidth / 2)
+    : 0;
+}
+
+/** A label's center, moved so the whole label stays between the y axis and the chart's right edge. */
+export function labelCenter(input: {
+  readonly x: number;
+  readonly labelWidth: number;
+  readonly plotLeft: number;
+  readonly chartWidth: number;
+}): number {
+  const { x, labelWidth, plotLeft, chartWidth } = input;
+
+  // A label wider than the room keeps its left edge on the y axis.
+  return Math.max(
+    plotLeft + labelWidth / 2,
+    Math.min(x, chartWidth - labelWidth / 2)
   );
 }
