@@ -40,6 +40,7 @@ Core owns the answer rules, in `packages/core/src/services/agent/prompt.ts` (Spe
 - The answer is short and in simple English: at most five sentences, counted over its paragraphs and headings. It starts with the result in one short sentence and says each figure once.
 - Every figure in an answer comes from a tool result. Earlier messages of the chat and its summary can name what to look up, such as a code, a customer, a record or a period, and the answer can repeat such a name. The answer never states a figure that the person typed as a fact (Spec 7 R-44, amended 2026-11-11).
 - A money answer states the total with its currency and two decimals in the first sentence, then shows the rows.
+- The first paragraph marks the key figure or name of the result with two asterisks on each side. It marks nothing else. The answer shows that text in bold. This rule is in `ANSWER_PROMPT_OPTIONS`, in `packages/core/src/features/agent/catalog.ts`.
 - At most one short sentence after the result helps to read it. How the figure was counted shows under the answer, from the queries.
 - The answer ends with two or three questions to ask next, which the chat shows under the last answer.
 - The text names no dataset and no field. It writes a date as a person reads it (27 Oct 2026), and the ISO form only inside a query.
