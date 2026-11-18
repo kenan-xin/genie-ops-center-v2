@@ -130,7 +130,7 @@ function DocumentDialog(props: {
             type="button"
             variant="secondary"
             size="sm"
-            className="absolute right-3 bottom-3"
+            className="self-end"
           />
         }
       >
@@ -212,7 +212,7 @@ export function ReviewPreview(props: {
   );
 
   return (
-    <div className="relative">
+    <div className="flex flex-col gap-2">
       <PageLens
         url={props.url}
         label={props.label}

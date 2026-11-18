@@ -2,6 +2,7 @@
 
 import { useModuleClient } from "@genie/core/rpc/client";
 import {
+  fieldText,
   touchRowHeight,
   DatePicker,
   RadioGroup,
@@ -648,8 +649,11 @@ function DueControl(props: {
           )
         }
       >
-        {/* 44 px label rows under lg, as in Add person: each radio's touch area stays in its own row. */}
-        <label className={`flex ${touchRowHeight} items-center gap-2`}>
+        {/* 44 px label rows under lg, as in Add person: each radio's touch area stays in its own row.
+            `fieldText` reads the choice at the dense field size from `lg` (C16-7). */}
+        <label
+          className={`flex ${touchRowHeight} items-center gap-2 ${fieldText}`}
+        >
           <RadioGroupItem
             id="review-due-person"
             value="person"
@@ -664,7 +668,7 @@ function DueControl(props: {
           : null}
         {/* Centered under lg: a radio at the top of a two-line row would reach the row above. */}
         <label
-          className={`flex ${touchRowHeight} items-center gap-2 lg:items-start`}
+          className={`flex ${touchRowHeight} items-center gap-2 lg:items-start ${fieldText}`}
         >
           <RadioGroupItem value="unspecified" aria-label="No due date" />
           <span>

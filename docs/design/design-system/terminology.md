@@ -165,7 +165,7 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 
 - Concept: the button that stores a change.
 - Say: every save button says "Save".
-- Never: `save changes`, `save as paid`, `save as unpaid`, `save as unallocated`, `looks right`, `save role`, `create role`, `/^Save the payment$/`.
+- Never: `save changes`, `save as paid`, `save as unpaid`, `save as unallocated`, `looks right`, `save role`, `create role`, `/^Save the payment$/`, `save the payment unallocated`.
 - Applies in: all.
 - Source: Q12, W-3, MOD-4. Bead `czjw.193` (Phase 16) builds these labels.
 - Example: the role editor button says "Save", not "Save role".
@@ -323,7 +323,7 @@ A banned phrase matches without regard to case, on whole words. A phrase between
 | `whole tenant`, `everywhere` | "All records" or the record id | all | G12 |
 | `system role`, `system roles`, `copy role`, `role from copy`, `core administration` | "Built-in role", "Custom role", "Copy as new role", "Core" | all | G13 |
 | `local group`, `local groups`, `group made here`, `group from your directory`, `display label`, `edit label`, `stale`, `never synced`, `not seen yet` | "Group", "Directory group", "Name", "Rename", "Last synced <time>", "Not synced yet", "Missing from directory" | all | G14 |
-| `save changes`, `save as paid`, `save as unpaid`, `save as unallocated`, `looks right`, `save role`, `create role`, `/^Save the payment$/` | "Save" | all | G16 |
+| `save changes`, `save as paid`, `save as unpaid`, `save as unallocated`, `looks right`, `save role`, `create role`, `/^Save the payment$/`, `save the payment unallocated` | "Save" | all | G16 |
 | `save as default`, `default view`, `save as view`, `save as new view`, `dashboard filters` | "Original", "Save view", "Reset", "Make default", "Save as original" | all | G17 |
 | `clear all` | "Clear filters" | all | G18 |
 | `link`, `links`, `linked`, `linking`, `unlink`, `unlinked` | "Allocate", "Allocated", "Part allocated", "Unallocated", "allocation", "Remove allocation" | `packages/modules/invoices/` | G19 |

@@ -1,4 +1,5 @@
 import { ModuleClientProvider } from "@genie/core/rpc/client";
+import { controlHeightsPx, touchAreaPx } from "@genie/ui/tokens";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
@@ -559,6 +560,31 @@ export const PaymentSplit: Story = {
     await userEvent.click(save);
     await expect(sep).toHaveFocus();
     await expect(savePayment).not.toHaveBeenCalled();
+
+    // C16-6: an invoice number in a row's label never breaks across two lines.
+    for (const row of splitElement.querySelectorAll("li")) {
+      const label = row.querySelector("label");
+      const number = /INV-\S+/u.exec(label?.textContent ?? "");
+
+      if (label === null || number === null) continue;
+
+      const range = textRange(label, number[0]);
+
+      if (range === null) throw new Error(`No range for ${number[0]}.`);
+
+      const tops = Array.from(range.getClientRects(), (rect) =>
+        Math.round(rect.top)
+      );
+
+      const [first] = tops;
+
+      if (first === undefined) continue;
+
+      for (const top of tops) {
+        // oxlint-disable-next-line no-await-in-loop -- one top names the one that differs.
+        await expect(Math.abs(top - first)).toBeLessThanOrEqual(1);
+      }
+    }
   },
 };
 
@@ -817,6 +843,45 @@ const lensOf = (root: HTMLElement) =>
 /** The vertical middle of a box. */
 const middleOf = (box: DOMRect) => (box.top + box.bottom) / 2;
 
+/** The range over one string inside `root`'s text, to measure where its characters sit. */
+function textRange(root: HTMLElement, needle: string): Range | null {
+  const start = (root.textContent ?? "").indexOf(needle);
+
+  if (start < 0) return null;
+
+  const end = start + needle.length;
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  let consumed = 0;
+  let from: { readonly node: Text; readonly offset: number } | null = null;
+  let to: { readonly node: Text; readonly offset: number } | null = null;
+  let node: Node | null;
+
+  while ((node = walker.nextNode()) !== null) {
+    const length = node.textContent?.length ?? 0;
+    const nodeEnd = consumed + length;
+
+    if (from === null && start < nodeEnd && node instanceof Text) {
+      from = { node, offset: start - consumed };
+    }
+
+    if (from !== null && end <= nodeEnd && node instanceof Text) {
+      to = { node, offset: end - consumed };
+      break;
+    }
+
+    consumed = nodeEnd;
+  }
+
+  if (from === null || to === null) return null;
+
+  const range = document.createRange();
+
+  range.setStart(from.node, from.offset);
+  range.setEnd(to.node, to.offset);
+
+  return range;
+}
+
 /** The save bar's box: fixed to the bottom of the screen on a phone. */
 function barOf(root: HTMLElement): DOMRect {
   const bar = root.querySelector("[data-shell-bottom-bar]");
@@ -887,21 +952,43 @@ export const InvoiceOnPhone: Story = {
     await expect(heights).toEqual([
       40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40,
     ]);
+
+    // C16-9: Open document sits below the lens, clear of the page's text.
+    const lens = await lensOf(canvasElement);
+    const openDocument = canvas.getByRole("button", { name: "Open document" });
+
+    await expect(
+      openDocument.getBoundingClientRect().top
+    ).toBeGreaterThanOrEqual(lens.getBoundingClientRect().bottom - 1);
   },
 };
 
-// T6-b (czjw.187): a locate press on a phone brings the field's line to the middle of the lens.
+// T6-b, C16-1 (czjw.187): a locate press on a phone brings the field's line to the middle of the
+// lens, and the lens itself into view, though it sat above the screen.
 export const LocateOnPhone: Story = {
   globals: phone390,
+  decorators: [
+    (Story) => (
+      <div className="pb-240">
+        <Story />
+      </div>
+    ),
+  ],
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas, canvasElement }) => {
     await marked(canvasElement, READ_KEYS);
 
     const lens = await lensOf(canvasElement);
 
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Show Total on the document" })
-    );
+    const locate = canvas.getByRole("button", {
+      name: "Show Total on the document",
+    });
+
+    // The Total field starts at the screen's top, so the lens above it leaves the screen.
+    locate.scrollIntoView({ block: "start" });
+    await expect(lens.getBoundingClientRect().bottom).toBeLessThanOrEqual(0);
+
+    await userEvent.click(locate);
 
     await waitFor(() => {
       const spot = lens.querySelector("[data-lens-spot]");
@@ -914,6 +1001,12 @@ export const LocateOnPhone: Story = {
 
       if (Math.abs(offset) > 4)
         throw new Error(`The spot is ${offset} px from the lens's middle.`);
+
+      // C16-1: the lens and its spot are on the screen, not scrolled off above it.
+      const box = spot.getBoundingClientRect();
+
+      if (box.top < 0 || box.bottom > window.innerHeight)
+        throw new Error("The spot is out of the viewport.");
     }, PAGE_TIMEOUT);
   },
 };
@@ -947,6 +1040,36 @@ export const OpenDocumentOnPhone: Story = {
       ).toBeVisible()
     );
     await drawn(dialog, "[data-document-viewer] canvas", "The page");
+
+    const toolbar = within(dialog).getByRole("toolbar", { name: "Document" });
+    const buttons = within(toolbar).getAllByRole("button");
+
+    // C16-4: every toolbar button takes the 40 px dense box on a phone.
+    for (const button of buttons) {
+      // oxlint-disable-next-line no-await-in-loop -- one button names the one that is wrong.
+      await expect(Math.round(button.getBoundingClientRect().height)).toBe(
+        controlHeightsPx.dense.phone
+      );
+    }
+
+    // C16-4: no button's 44 px touch area reaches its neighbor's box.
+    for (let index = 1; index < buttons.length; index += 1) {
+      const prev = buttons[index - 1];
+      const next = buttons[index];
+
+      if (prev === undefined || next === undefined) continue;
+
+      const gap =
+        next.getBoundingClientRect().left - prev.getBoundingClientRect().right;
+
+      const prevHeight = prev.getBoundingClientRect().height;
+      const nextHeight = next.getBoundingClientRect().height;
+
+      // oxlint-disable-next-line no-await-in-loop -- one pair names the one that overlaps.
+      await expect(gap).toBeGreaterThanOrEqual((touchAreaPx - prevHeight) / 2);
+      // oxlint-disable-next-line no-await-in-loop -- one pair names the one that overlaps.
+      await expect(gap).toBeGreaterThanOrEqual((touchAreaPx - nextHeight) / 2);
+    }
 
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Close the document" })
@@ -1261,6 +1384,19 @@ export const DenseFields: Story = {
     await expect(heights).toEqual([
       32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
     ]);
+
+    // C16-7: the due choice's label text reads at the dense field size, beside the fields.
+    const dueText = canvas
+      .getByRole("radio", { name: "Enter a due date" })
+      .closest("label")
+      ?.querySelector("span");
+
+    if (dueText === null || dueText === undefined)
+      throw new Error("The due choice has no label text.");
+
+    await expect(getComputedStyle(dueText).fontSize).toBe(
+      getComputedStyle(canvas.getByLabelText("Invoice number")).fontSize
+    );
   },
 };
 

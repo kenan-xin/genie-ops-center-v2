@@ -360,6 +360,14 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         });
 
         await expect(enterDueDate).toBeFocused();
+        // C16-8: the moved focus shows its ring after a mouse press.
+        await expect
+          .poll(() =>
+            enterDueDate.evaluate((element) =>
+              element.matches(":focus-visible")
+            )
+          )
+          .toBe(true);
         await (onPhone(page) ? enterDueDate.tap() : enterDueDate.click());
 
         const dueDate = page.getByLabel("Due date", { exact: true });

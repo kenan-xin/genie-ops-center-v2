@@ -165,18 +165,39 @@ export function ReviewDesk(
         )
         ?.scrollIntoView({ block: "nearest" });
 
-      if (blocker.focusId !== null)
-        document.getElementById(blocker.focusId)?.focus();
+      if (blocker.focusId === null) return;
+
+      const target = document.getElementById(blocker.focusId);
+
+      // A Base UI radio or checkbox puts the id on its hidden input, which hands the focus to the
+      // control before it with a plain focus(). Focus that control, so the ring shows after a mouse
+      // press too (C16-8).
+      const control =
+        target instanceof HTMLInputElement &&
+        target.getAttribute("aria-hidden") === "true"
+          ? target.previousElementSibling
+          : target;
+
+      if (control instanceof HTMLElement) control.focus({ focusVisible: true });
     };
   });
 
-  const column = (
+  // A locate press on a phone selects the field and brings the lens into view (C16-1). Centered, it clears the shell's top bar and the fixed save bar without a hand-set offset.
+  const locateColumn = (key: string) => {
+    setSelected(key);
+    body.current
+      ?.querySelector("[data-review-lens]")
+      ?.scrollIntoView({ block: "center" });
+  };
+
+  const column = (onLocate: (key: string) => void) => (
     <ReviewFormColumn
       frame={frame}
       model={model}
       reading={reading}
       selected={selected}
       onSelect={setSelected}
+      onLocate={onLocate}
       hovered={hovered}
       onHover={setHovered}
       places={places}
@@ -241,7 +262,7 @@ export function ReviewDesk(
             aria-label="Fields"
             className="flex flex-col **:data-field:scroll-mb-32 **:data-review-split:scroll-mb-32"
           >
-            {column}
+            {column(locateColumn)}
           </section>
         </div>
         {saveBar}
@@ -293,7 +314,7 @@ export function ReviewDesk(
             data-review-scroll=""
             className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-5 pb-6"
           >
-            {column}
+            {column(setSelected)}
           </div>
           {saveBar}
         </section>

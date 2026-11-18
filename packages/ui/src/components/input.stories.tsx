@@ -4,6 +4,11 @@ import { expect, type screen, userEvent } from "storybook/test";
 // The package entry, not ./input.tsx, so that the stories prove what an app
 // can import.
 import {
+  Combobox,
+  ComboboxContent,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxTrigger,
   DatePicker,
   Field,
   FieldDescription,
@@ -15,6 +20,8 @@ import {
   InputGroupInput,
   InputGroupText,
   Select,
+  SelectContent,
+  SelectItem,
   SelectTrigger,
   SelectValue,
   Textarea,
@@ -230,13 +237,66 @@ const fieldTexts = (
       value=""
       onValueChange={() => {}}
     />
+    <Select>
+      <SelectTrigger aria-label="Type">
+        <SelectValue placeholder="Choose the type" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="invoice">Invoice</SelectItem>
+      </SelectContent>
+    </Select>
+    <Combobox<string>
+      items={["Ada Lovelace"]}
+      value={null}
+      onValueChange={() => {}}
+    >
+      <ComboboxTrigger aria-label="Person">Choose a person</ComboboxTrigger>
+      <ComboboxContent>
+        <ComboboxList>
+          {(person: string) => (
+            <ComboboxItem key={person} value={person}>
+              {person}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+    <Combobox<string> items={["Open"]} value={null} onValueChange={() => {}}>
+      <ComboboxTrigger variant="filter-set" aria-label="Status">
+        Any status
+      </ComboboxTrigger>
+      <ComboboxContent>
+        <ComboboxList>
+          {(status: string) => (
+            <ComboboxItem key={status} value={status}>
+              {status}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   </div>
 );
 
-const fieldFontSizes = (canvas: { getByRole: typeof screen.getByRole }) =>
-  ["Name", "Amount", "Note", "Due date"].map(
-    (name) => getComputedStyle(canvas.getByRole("textbox", { name })).fontSize
-  );
+const fontSizeOf = (element: Element | null) => {
+  if (element === null) throw new Error("A field is missing.");
+
+  return getComputedStyle(element).fontSize;
+};
+
+const fieldFontSizes = (
+  canvas: { getByRole: typeof screen.getByRole },
+  canvasElement: HTMLElement
+) => [
+  ...["Name", "Amount", "Note", "Due date"].map((name) =>
+    fontSizeOf(canvas.getByRole("textbox", { name }))
+  ),
+  fontSizeOf(canvasElement.querySelector("[data-slot=select-trigger]")),
+  ...Array.from(
+    canvasElement.querySelectorAll("[data-slot=combobox-trigger]"),
+    (trigger) => fontSizeOf(trigger)
+  ),
+];
 
 export const PhoneFieldText: Story = {
   globals: { viewport: { value: "phone390", isRotated: false } },
@@ -249,8 +309,11 @@ export const PhoneFieldText: Story = {
     };
   },
   render: () => fieldTexts,
-  play: async ({ canvas }) => {
-    await expect(fieldFontSizes(canvas)).toEqual([
+  play: async ({ canvas, canvasElement }) => {
+    await expect(fieldFontSizes(canvas, canvasElement)).toEqual([
+      "16px",
+      "16px",
+      "16px",
       "16px",
       "16px",
       "16px",
@@ -262,8 +325,11 @@ export const PhoneFieldText: Story = {
 export const DesktopFieldText: Story = {
   globals: { viewport: { value: "desktop1440", isRotated: false } },
   render: () => fieldTexts,
-  play: async ({ canvas }) => {
-    await expect(fieldFontSizes(canvas)).toEqual([
+  play: async ({ canvas, canvasElement }) => {
+    await expect(fieldFontSizes(canvas, canvasElement)).toEqual([
+      "13.125px",
+      "13.125px",
+      "13.125px",
       "13.125px",
       "13.125px",
       "13.125px",

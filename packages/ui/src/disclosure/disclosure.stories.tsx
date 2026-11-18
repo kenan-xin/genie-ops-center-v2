@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, userEvent } from "storybook/test";
 
 import { ThemeProvider } from "../theme/theme-provider.tsx";
-import { colorRoles } from "../theme/tokens.ts";
+import { colorRoles, touchAreaPx } from "../theme/tokens.ts";
 import { Disclosure } from "./disclosure.tsx";
 
 const meta = {
@@ -121,5 +121,17 @@ export const Dark: Story = {
     await expect(surface).not.toHaveStyle({
       backgroundColor: colorRoles.light.background,
     });
+  },
+};
+
+// C16-5: the trigger reaches the 44 px touch area on a phone.
+export const TouchAreaOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const trigger = canvas.getByRole("button", { name: "Deployment notes" });
+
+    await expect(trigger.getBoundingClientRect().height).toBeGreaterThanOrEqual(
+      touchAreaPx
+    );
   },
 };

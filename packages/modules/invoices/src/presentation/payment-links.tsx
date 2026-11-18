@@ -72,13 +72,13 @@ function copyOf(
       return {
         headline: "Possible matches",
         sentence:
-          "These invoices have an open balance equal to the payment. Choose one, or save the payment unallocated.",
+          "These invoices have an open balance equal to the payment. Choose one, or leave the payment unallocated.",
       };
     case "no-match":
       return {
         headline: "No matching invoice",
         sentence:
-          "Save the payment unallocated, or allocate it to an invoice below.",
+          "Leave the payment unallocated, or allocate it to an invoice below.",
       };
   }
 }
@@ -176,7 +176,10 @@ export function LinksEditor(props: {
                 )
               }
             />
-            <span className="ml-2">{`Allocate to ${row.number}`}</span>
+            <span className="ml-2">
+              Allocate to{" "}
+              <span className="whitespace-nowrap">{row.number}</span>
+            </span>
           </FieldLabel>
           {suggested(row.invoiceId) ? (
             <Badge variant="neutral">Same amount</Badge>

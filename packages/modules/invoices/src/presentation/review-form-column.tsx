@@ -28,6 +28,8 @@ function ReviewField(props: {
   readonly selected: boolean;
   readonly hovered: string | null;
   readonly onSelect: (key: string) => void;
+  /** A locate press: selects the field; on a phone also brings the lens into view. */
+  readonly onLocate: (key: string) => void;
   readonly onHover: (key: string | null) => void;
   /** The places of the marks once the page drew; null before. */
   readonly places: readonly MarkPlace[] | null;
@@ -81,7 +83,7 @@ function ReviewField(props: {
               aria-label={`Show ${item.label} on the document`}
               title="Show on the document"
               aria-pressed={props.selected}
-              onClick={() => props.onSelect(item.key)}
+              onClick={() => props.onLocate(item.key)}
             >
               <LocateFixedIcon aria-hidden strokeWidth={1.75} />
             </Button>
@@ -131,6 +133,8 @@ export function ReviewFormColumn(props: {
   readonly reading: boolean;
   readonly selected: string | null;
   readonly onSelect: (key: string) => void;
+  /** A locate press: selects the field; on a phone also brings the lens into view. */
+  readonly onLocate: (key: string) => void;
   readonly hovered: string | null;
   readonly onHover: (key: string | null) => void;
   /** The places of the marks once the page drew; null before. */
@@ -174,6 +178,7 @@ export function ReviewFormColumn(props: {
                       selected={props.selected === item.key}
                       hovered={props.hovered}
                       onSelect={props.onSelect}
+                      onLocate={props.onLocate}
                       onHover={props.onHover}
                       places={props.places}
                       locate={props.locate}

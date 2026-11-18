@@ -527,7 +527,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
         >
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon-dense"
             aria-label="Zoom out"
             disabled={zoom <= ZOOM.min}
             onClick={() => setZoom((last) => last - ZOOM.step)}
@@ -542,7 +542,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
           </span>
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon-dense"
             aria-label="Zoom in"
             disabled={zoom >= ZOOM.max}
             onClick={() => setZoom((last) => last + ZOOM.step)}
@@ -551,7 +551,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
           </Button>
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon-dense"
             aria-label="Fit to width"
             onClick={() => setZoom(ZOOM.fit)}
           >
@@ -561,7 +561,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
           {canFullScreen ? (
             <Button
               variant="ghost"
-              size="icon-sm"
+              size="icon-dense"
               aria-label={fullScreen ? "Exit full screen" : "Full screen"}
               onClick={toggleFullScreen}
             >
@@ -570,7 +570,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
           ) : null}
           <Button
             variant="ghost"
-            size="icon-sm"
+            size="icon-dense"
             aria-label="Download the PDF"
             onClick={props.onDownload}
           >
