@@ -532,7 +532,7 @@ test("Role detail links back to Roles through the page header trail", async ({
   );
   await page.goBack();
   await expect(
-    page.getByRole("heading", { name: "Assigned to" })
+    page.getByRole("heading", { name: /^Assigned to/ })
   ).toBeVisible();
 
   // Tenant administrator: the seeded group, with its member count, and no "See all" under ten.
@@ -543,7 +543,7 @@ test("Role detail links back to Roles through the page header trail", async ({
     .click();
   await expect(
     holders.getByRole("listitem").filter({ hasText: "Genie Administrators" })
-  ).toContainText(/Group, \d+ members?/);
+  ).toContainText(/Group · \d+ members?/);
   await expect(holders.getByRole("listitem").first()).toContainText(
     "Genie Administrators"
   );
@@ -564,8 +564,9 @@ test("Role detail links back to Roles through the page header trail", async ({
 });
 
 // d8l5.48: the e2e database stored no description for Placeholder user, so the line comes from the
-// module's declaration, and the kind pill says "Built-in" (ADM-4L).
-test("a module role shows its declared line and the Built-in pill", async ({
+// module's declaration, the detail pill reads "Built-in role" (owner words of 2026-11-14 15:19,
+// role-detail.prototype.html) and the table keeps "Built-in" (ADM-4L).
+test("a module role shows its declared line and the Built-in role pill", async ({
   page,
 }, testInfo) => {
   const line = "Open the placeholder workspace only.";
@@ -590,8 +591,10 @@ test("a module role shows its declared line and the Built-in pill", async ({
     has: page.getByRole("heading", { level: 2, name: "Placeholder user" }),
   });
 
-  // The kind pill says only "Built-in" (G13, ADM-4L); exact, so a longer line with the word does not pass.
-  await expect(header.getByText("Built-in", { exact: true })).toBeVisible();
+  // The detail's kind pill says "Built-in role"; exact, so a longer line with the words does not pass.
+  await expect(
+    header.getByText("Built-in role", { exact: true })
+  ).toBeVisible();
   await expect(header.getByText(line, { exact: true })).toBeVisible();
   await expectNoAxeViolations(page, "Role detail of a module role");
 });
@@ -641,7 +644,9 @@ test("the role editor warns on an unavailable key and offers its removal", async
     .first()
     .click();
 
-  await expect(page.getByText("Unavailable, the key is retired")).toBeVisible();
+  await expect(
+    page.getByText("Unavailable, this permission no longer exists")
+  ).toBeVisible();
   await expect(page.getByText("retired:key")).toBeVisible();
 
   // A custom role may remove the unavailable key without deleting the role.

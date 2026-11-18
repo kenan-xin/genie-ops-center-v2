@@ -1,4 +1,8 @@
 import type {
+  AccessHolder,
+  AccessPath,
+} from "../../../services/roles/effective-access.ts";
+import type {
   Role,
   RoleDetail,
   RoleHolders,
@@ -214,10 +218,13 @@ export const FIXTURE_DISABLED_MODULE_DETAIL: RoleDetail = {
   ],
 };
 
-type Holder = RoleHolders["paths"][number]["holder"];
+type Holder = AccessHolder;
 
 /** One whole-tenant path of `FIXTURE_CUSTOM_DETAIL`, as the effective-access read returns it. */
-const holderPath = (holder: Holder): RoleHolders["paths"][number] => ({
+const holderPath = (
+  holder: Holder,
+  extra: Partial<Pick<AccessPath, "scope" | "addedBy" | "notInEffect">> = {}
+): AccessPath => ({
   assignmentId: `a-${holder.id}`,
   holder,
   role: {
@@ -231,19 +238,33 @@ const holderPath = (holder: Holder): RoleHolders["paths"][number] => ({
   addedBy: null,
   addedAt: "2026-11-01T09:00:00.000000Z",
   notInEffect: [],
+  ...extra,
 });
 
 const HOLDER_GROUPS = [
-  { id: "g-ops", name: "Operations", memberCount: 40 },
-  { id: "g-solo", name: "Dry run", memberCount: 1 },
-  { id: "g-finance", name: "Finance team", memberCount: 12 },
+  { id: "g-ops", name: "Operations", source: "local", memberCount: 40 },
+  { id: "g-solo", name: "Dry run", source: "local", memberCount: 1 },
+  { id: "g-finance", name: "Finance team", source: "idp", memberCount: 12 },
 ] as const;
 
-const holders = (people: readonly Holder[], groups: readonly Holder[]) => ({
+const holders = (
+  people: readonly Holder[],
+  groups: readonly Holder[],
+  extras: Readonly<
+    Record<
+      string,
+      Partial<Pick<AccessPath, "scope" | "addedBy" | "notInEffect">>
+    >
+  > = {}
+) => ({
   // Read order is newest first, so a group can come after the people.
-  paths: [...people, ...groups].map(holderPath),
+  paths: [...people, ...groups].map((holder) =>
+    holderPath(holder, extras[holder.id])
+  ),
   total: people.length + groups.length,
-  recipients: { groups: HOLDER_GROUPS, people: [] },
+  memberCounts: Object.fromEntries(
+    HOLDER_GROUPS.map((entry) => [entry.id, entry.memberCount])
+  ),
 });
 
 const person = (id: string, name: string): Holder => ({
@@ -256,7 +277,7 @@ const group = (index: number): Holder => ({
   type: "group",
   id: HOLDER_GROUPS[index]!.id,
   name: HOLDER_GROUPS[index]!.name,
-  source: "local",
+  source: HOLDER_GROUPS[index]!.source,
 });
 
 export const HOLDERS_NONE: RoleHolders = holders([], []);
@@ -264,7 +285,14 @@ export const HOLDERS_NONE: RoleHolders = holders([], []);
 /** One group and two people, the people in read order Zoe then Ada. */
 export const HOLDERS_THREE: RoleHolders = holders(
   [person("p-zoe", "Zoe Brandt"), person("p-ada", "Ada Lovelace")],
-  [group(1)]
+  [group(1)],
+  {
+    "g-solo": { notInEffect: ["module-off"] },
+    "p-ada": {
+      addedBy: { id: "p-alex", name: "Alex Morgan" },
+      scope: { type: "invoice", id: "INV-1042" },
+    },
+  }
 );
 
 /** Ten people, then two groups in read order: past ten, the groups still come first. */

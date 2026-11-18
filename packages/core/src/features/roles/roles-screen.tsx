@@ -1,23 +1,26 @@
 "use client";
 
 import {
+  Avatar,
+  AvatarFallback,
   Button,
   Checkbox,
   ConfirmDialog,
+  CountPill,
   DataTable,
   Dialog,
   DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
+  EmptyState,
   Field,
   FieldError,
   FieldLabel,
   FormActionBar,
   HelpDisclosure,
+  IconTile,
   iconLead,
-  iconLeadPx,
-  InfoNote,
   Input,
   InputGroup,
   InputGroupAddon,
@@ -26,20 +29,24 @@ import {
   LabelPill,
   StatusPill,
   StickyActionBar,
+  Switch,
   Textarea,
   focusRing,
   minTouchHeight,
 } from "@genie/ui";
-import { UserIcon, UsersIcon } from "lucide-react";
+import { ArrowRightIcon } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
 import { TENANT_ADMINISTRATOR_ROLE } from "../../lib/module-contract/system-roles.ts";
 import { accessHref } from "../access/access-link.ts";
+import { assignedLabel, holderLine } from "../access/assignment-words.ts";
 import { overviewRows, pausedLabel } from "../access/overview-view.ts";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   CopyIcon,
+  DirectoryIcon,
+  LocalIcon,
   PencilIcon,
   PlusIcon,
   SearchIcon,
@@ -48,7 +55,9 @@ import {
   WarningIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
+import { initials } from "../audit/helpers.ts";
 import { PageLink } from "../shell/page-link.tsx";
+import { permissionCountLine } from "./role-words.ts";
 import type {
   Role,
   RoleDetail,
@@ -63,7 +72,7 @@ import type {
 function unavailableReasonLabel(reason: UnavailableKey["reason"]): string {
   return reason === "module-disabled"
     ? "the module is off"
-    : "the key is retired";
+    : "this permission no longer exists";
 }
 
 type FormState = {
@@ -199,7 +208,7 @@ function RoleFormBody(props: {
               Unavailable keys
             </legend>
             {unavailable.map((entry) => (
-              <div key={entry.key} className="flex items-center gap-2">
+              <div key={entry.key} className="flex items-start gap-2">
                 <WarningIcon className="size-4 text-destructive dark:text-destructive-on-dark" />
                 <code className="text-xs text-foreground">{entry.key}</code>
                 <span className="text-xs text-muted-foreground">
@@ -328,110 +337,163 @@ function kindPill(role: Role) {
 const HOLDERS_SHOWN = 10;
 
 /**
- * Who holds the role (`d8l5.47`, which reverses LK8): the first ten paths of the effective-access
- * read by role, groups first, then by name, in the Overview's words.
+ * The Assigned to card (`d8l5.61`, role-detail.prototype.html): the first ten assignments of the
+ * effective-access read by role, groups first, then by name, each with its tile, its record,
+ * Paused with its reason, its kind and who assigned it when. The foot links the rest and Access.
  */
-function HolderList(props: {
+function HolderCard(props: {
   readonly roleId: string;
   readonly holders: RoleHolders | undefined;
   readonly holderHref?: RolesScreenProps["holderHref"];
-  readonly labelledBy: string;
+  readonly timeZone: string;
+  readonly onOpenInAccess?: (() => void) | undefined;
+  /** The card's grid placement. */
+  readonly className: string;
 }) {
-  if (props.holders === undefined) {
-    return (
-      <p role="status" className="mt-1 text-sm text-muted-foreground">
-        Loading assignments…
-      </p>
-    );
-  }
+  const headingId = useId();
+  const { holders } = props;
 
-  const rows = overviewRows({
-    subject: { type: "role", id: props.roleId },
-    paths: props.holders.paths,
-    personPaths: undefined,
-    catalogue: [],
-    recipients: props.holders.recipients,
-    recordLabels: new Map(),
-  })
-    .toSorted(
-      (a, b) =>
-        Number(a.holder.type === "user") - Number(b.holder.type === "user") ||
-        a.holder.name.localeCompare(b.holder.name, undefined, {
-          sensitivity: "base",
+  const rows =
+    holders === undefined
+      ? []
+      : overviewRows({
+          subject: { type: "role", id: props.roleId },
+          paths: holders.paths,
+          personPaths: undefined,
+          catalogue: [],
+          recipients: { groups: [], people: [] },
+          recordLabels: new Map(),
         })
-    )
-    .slice(0, HOLDERS_SHOWN);
-
-  if (rows.length === 0) {
-    return (
-      <p className="mt-1 text-sm text-foreground">
-        Not assigned to anyone yet.
-      </p>
-    );
-  }
+          .toSorted(
+            (a, b) =>
+              Number(a.holder.type === "user") -
+                Number(b.holder.type === "user") ||
+              a.holder.name.localeCompare(b.holder.name, undefined, {
+                sensitivity: "base",
+              })
+          )
+          .slice(0, HOLDERS_SHOWN);
 
   return (
-    <>
-      <ul
-        aria-labelledby={props.labelledBy}
-        className="mt-2 divide-y divide-border"
+    <section
+      aria-labelledby={headingId}
+      className={`flex flex-col rounded-xl border border-border bg-card ${props.className}`}
+    >
+      <h3
+        id={headingId}
+        className="flex items-center gap-2 px-4 pt-4 pb-3 text-base font-semibold text-foreground md:px-5"
       >
-        {rows.map((row) => {
-          const Icon = row.holder.type === "user" ? UserIcon : UsersIcon;
-          const href = props.holderHref?.(row.holder);
-
-          return (
-            <li
-              key={row.key}
-              className="relative flex items-start gap-2 py-2 text-sm"
-            >
-              <Icon
-                aria-hidden="true"
-                className={`size-4 shrink-0 text-muted-foreground ${row.holder.type === "user" ? iconLeadPx[3] : iconLead}`}
-              />
-              <span className="flex min-w-0 flex-col gap-0.5">
-                <span className="flex flex-wrap items-center gap-2">
-                  {href === undefined ? (
-                    <span className="font-medium text-foreground wrap-anywhere">
-                      {row.holder.name}
-                    </span>
-                  ) : (
-                    <PageLink
-                      href={href}
-                      // The name covers its row, so the whole row is its touch area (C06-4).
-                      className={`font-medium text-foreground underline wrap-anywhere after:absolute after:inset-0 ${focusRing}`}
-                    >
-                      {row.holder.name}
-                    </PageLink>
-                  )}
-                  {row.record === null ? null : (
-                    <LabelPill>
-                      <span className="wrap-anywhere">{`One record · ${row.record}`}</span>
-                    </LabelPill>
-                  )}
-                  {row.notInEffect.map((reason) => (
-                    <StatusPill key={reason} tone="neutral">
-                      {pausedLabel(reason)}
-                    </StatusPill>
-                  ))}
-                </span>
-                <span className="text-xs text-muted-foreground">
-                  {row.path}
-                </span>
-              </span>
-            </li>
-          );
-        })}
-      </ul>
-      {props.holders.total > HOLDERS_SHOWN ? (
-        <PageLink
-          href={accessHref({ role: props.roleId })}
-          className={`mt-2 inline-block text-sm font-medium text-foreground underline ${focusRing}`}
+        Assigned to
+        {holders === undefined ? null : (
+          <CountPill tone="neutral">{holders.total}</CountPill>
+        )}
+      </h3>
+      {holders === undefined ? (
+        <p
+          role="status"
+          className="px-4 pb-4 text-sm text-muted-foreground md:px-5"
         >
-          See all {props.holders.total} in Access
-        </PageLink>
-      ) : null}
-    </>
+          Loading assignments…
+        </p>
+      ) : rows.length === 0 ? (
+        <div className="border-t border-border px-4 py-5 md:px-5">
+          <EmptyState
+            title="Not assigned to anyone"
+            description="Assign it to a group or a person in Access."
+          />
+        </div>
+      ) : (
+        // The card row keeps px-4, so md:px-1 brings its content to the card's md:px-5 text edge.
+        <div className="border-t border-border md:px-1">
+          <DataTable
+            label="Assigned to"
+            layout="cards"
+            framed={false}
+            rows={rows}
+            rowKey={(row) => row.key}
+            rowLabel={(row) => row.holder.name}
+            columns={[
+              { id: "name", header: "Name", cell: (row) => row.holder.name },
+            ]}
+            rowLinks={props.holderHref !== undefined}
+            card={{
+              media: (row) =>
+                row.holder.type === "group" ? (
+                  <IconTile>
+                    {row.holder.source === "idp" ? (
+                      <DirectoryIcon />
+                    ) : (
+                      <LocalIcon />
+                    )}
+                  </IconTile>
+                ) : (
+                  <Avatar size="lg" aria-hidden="true">
+                    <AvatarFallback>{initials(row.holder.name)}</AvatarFallback>
+                  </Avatar>
+                ),
+              title: (row) => {
+                const href = props.holderHref?.(row.holder);
+
+                // The name covers its row, so the whole row is its touch area (C06-4).
+                return href === undefined ? (
+                  row.holder.name
+                ) : (
+                  <PageLink
+                    href={href}
+                    className={`font-medium text-foreground underline wrap-anywhere after:absolute after:inset-0 ${focusRing}`}
+                  >
+                    {row.holder.name}
+                  </PageLink>
+                );
+              },
+              badge: (row) =>
+                row.record === null && row.notInEffect.length === 0 ? null : (
+                  <>
+                    {row.record === null ? null : (
+                      <LabelPill>
+                        <span className="wrap-anywhere">{row.record}</span>
+                      </LabelPill>
+                    )}
+                    {row.notInEffect.map((reason) => (
+                      <StatusPill key={reason} tone="warning">
+                        {pausedLabel(reason)}
+                      </StatusPill>
+                    ))}
+                  </>
+                ),
+              detail: (row) => holderLine(row.holder, holders.memberCounts),
+              note: (row) => assignedLabel(row, props.timeZone),
+            }}
+          />
+        </div>
+      )}
+      {holders === undefined ? null : (
+        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 md:px-5">
+          {holders.total > HOLDERS_SHOWN ? (
+            <PageLink
+              href={accessHref({ role: props.roleId })}
+              className={`inline-flex items-center gap-1.5 text-sm font-medium text-foreground underline ${focusRing}`}
+            >
+              See all {holders.total} assignments
+              <ArrowRightIcon aria-hidden="true" className="size-4" />
+            </PageLink>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Every member of an assigned group has this role.
+            </p>
+          )}
+          {props.onOpenInAccess === undefined ? null : (
+            <Button
+              variant="secondary"
+              className="max-sm:w-full"
+              onClick={props.onOpenInAccess}
+            >
+              <KeyIcon /> Manage in Access
+            </Button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -441,6 +503,7 @@ function RoleDetailView(props: {
   readonly holders: RoleHolders | undefined;
   readonly holderHref?: RolesScreenProps["holderHref"];
   readonly catalogue: readonly RolePermissionGroup[];
+  readonly timeZone: string;
   readonly onEdit: () => void;
   readonly onCopy: () => void;
   readonly onDelete: () => void;
@@ -450,27 +513,37 @@ function RoleDetailView(props: {
 }) {
   const { detail } = props;
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const holdersHeadingId = useId();
-
-  const keyCount = detail.permissionGroups.reduce(
-    (total, group) => total + group.keys.length,
-    0
-  );
+  const [showKeys, setShowKeys] = useState(false);
+  const permissionsHeadingId = useId();
+  const keysLabelId = useId();
 
   return (
-    <div className="flex flex-col gap-4">
-      {/* The captures: a header card with the role's actions at its right. */}
-      <section className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-border bg-card p-4 md:p-5">
+    <div className="flex flex-col gap-4 lg:gap-5">
+      {/* No card around the head (role-detail.prototype.html). It stays a section, so the e2e finds it by its heading. */}
+      <section className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="text-xl font-semibold text-foreground">
               {detail.name}
             </h2>
-            {kindPill(detail)}
+            <LabelPill>
+              {detail.kind === "system" ? "Built-in role" : "Custom role"}
+            </LabelPill>
           </div>
-          {detail.description === "" ? null : (
-            <p className="mt-1 text-sm text-muted-foreground">
-              {detail.description}
+          {detail.description === "" && detail.kind === "custom" ? null : (
+            <p className="mt-1 max-w-prose text-sm text-muted-foreground">
+              {detail.description === "" ? null : (
+                <span>{detail.description}</span>
+              )}
+              {detail.description === "" || detail.kind === "custom"
+                ? null
+                : " "}
+              {detail.kind === "system" ? (
+                <span>
+                  Built-in roles cannot be edited. Copy one to make your own
+                  version.
+                </span>
+              ) : null}
             </p>
           )}
         </div>
@@ -506,62 +579,96 @@ function RoleDetailView(props: {
         </div>
       </section>
 
-      {/* grid-cols-1 is minmax(0, 1fr): an auto track grew to a long key and ran past a phone. */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2 lg:items-start">
-        <section className="rounded-xl border border-border bg-card p-4 md:p-5">
-          <h3 className="text-base font-semibold text-foreground">
-            Permissions
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {keyCount} {keyCount === 1 ? "key" : "keys"} across{" "}
-            {detail.permissionGroups.length}{" "}
-            {detail.permissionGroups.length === 1 ? "module" : "modules"}.
-          </p>
-          {detail.kind === "system" &&
-          detail.name === TENANT_ADMINISTRATOR_ROLE ? (
-            <div className="mt-2">
-              <InfoNote>
-                When a module is on, its admin permission is appended to this
-                role automatically, so administrators always reach the admin
-                screens of every module that is on. Member use of a
-                module&apos;s records still needs its own role.
-              </InfoNote>
-            </div>
-          ) : null}
+      {/* Holders first in reading order, so a phone shows them first (A-8). From lg the permissions take the wider left column. */}
+      {/* oxlint-disable-next-line shadcn/no-arbitrary-values -- role-detail.prototype.html draws the permissions 1.15 times wider */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:items-start lg:gap-5">
+        <HolderCard
+          className="lg:col-start-2 lg:row-start-1"
+          roleId={detail.id}
+          holders={props.holders}
+          holderHref={props.holderHref}
+          timeZone={props.timeZone}
+          onOpenInAccess={props.onOpenInAccess}
+        />
+        <section
+          aria-labelledby={permissionsHeadingId}
+          className="rounded-xl border border-border bg-card pb-1 lg:col-start-1 lg:row-start-1"
+        >
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 pt-4 md:px-5">
+            <h3
+              id={permissionsHeadingId}
+              className="text-base font-semibold text-foreground"
+            >
+              What this role allows
+            </h3>
+            {/* The visible words name the switch (WCAG 2.5.3), as SwitchField does. */}
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span id={keysLabelId}>Show keys</span>
+              <Switch
+                aria-labelledby={keysLabelId}
+                checked={showKeys}
+                onCheckedChange={(checked) => setShowKeys(checked)}
+              />
+            </label>
+          </div>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 pt-1 pb-2 md:px-5">
+            <p className="text-sm text-muted-foreground">
+              {permissionCountLine(detail.permissionGroups)}
+            </p>
+            {detail.kind === "system" &&
+            detail.name === TENANT_ADMINISTRATOR_ROLE ? (
+              <HelpDisclosure label="Why does it include module admin?">
+                A tenant administrator runs the whole admin portal, so this role
+                gets the admin screens of every module that is on. It does not
+                open the records inside a module, such as invoices. For that,
+                give the module&apos;s own role.
+              </HelpDisclosure>
+            ) : null}
+          </div>
           {detail.permissionGroups.map((group) => (
             <div
               key={group.moduleId}
-              className="mt-3 border-t border-border pt-3"
+              className="border-t border-border px-4 py-3 md:px-5"
             >
               <div className="flex items-center gap-2">
                 <span className="text-sm font-semibold text-foreground">
                   {group.moduleName}
                 </span>
-                <StatusPill tone={group.entitled ? "success" : "neutral"}>
-                  {group.entitled ? "Module on" : "Module off"}
-                </StatusPill>
+                {group.moduleId === "core" ? null : (
+                  <StatusPill tone={group.entitled ? "success" : "neutral"}>
+                    {group.entitled ? "Module on" : "Module off"}
+                  </StatusPill>
+                )}
               </div>
               <ul className="mt-1">
                 {group.keys.map((entry) => (
                   <li
                     key={entry.key}
-                    className="flex flex-wrap items-center gap-x-2 gap-y-0.5 py-0.5 text-sm text-foreground"
+                    className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-1 text-sm text-foreground"
                   >
-                    {/* The capture: the key's label, its mono key at the right. */}
-                    <span className="min-w-40 flex-1">{entry.label}</span>
-                    {entry.label === entry.key ? null : (
+                    <span className="min-w-40 flex-1">
+                      {entry.label}
+                      {detail.entitlementAdded.includes(entry.key) ? (
+                        <span className="block text-xs text-muted-foreground">
+                          Added automatically for administrators
+                        </span>
+                      ) : null}
+                    </span>
+                    {showKeys && entry.label !== entry.key ? (
                       <code className="text-xs text-muted-foreground wrap-anywhere">
                         {entry.key}
                       </code>
-                    )}
+                    ) : null}
                     {entry.unavailable ? (
                       <>
-                        <WarningIcon className="size-4 text-destructive dark:text-destructive-on-dark" />
-                        <span className="text-xs text-destructive dark:text-destructive-on-dark">
-                          Unavailable,{" "}
-                          {unavailableReasonLabel(
-                            entry.unavailableReason ?? "retired"
-                          )}
+                        <span className="flex items-center gap-1.5 text-xs text-destructive dark:text-destructive-on-dark">
+                          <WarningIcon className={`size-4 ${iconLead}`} />
+                          <span>
+                            Unavailable,{" "}
+                            {unavailableReasonLabel(
+                              entry.unavailableReason ?? "retired"
+                            )}
+                          </span>
                         </span>
                         {detail.kind === "custom" ? (
                           <Button
@@ -575,39 +682,11 @@ function RoleDetailView(props: {
                         ) : null}
                       </>
                     ) : null}
-                    {detail.entitlementAdded.includes(entry.key) ? (
-                      <LabelPill>Added when the module was turned on</LabelPill>
-                    ) : null}
                   </li>
                 ))}
               </ul>
             </div>
           ))}
-        </section>
-
-        <section className="rounded-xl border border-border bg-card p-4 md:p-5">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <h3
-              id={holdersHeadingId}
-              className="text-base font-semibold text-foreground"
-            >
-              Assigned to
-            </h3>
-            {props.onOpenInAccess === undefined ? null : (
-              <Button variant="secondary" onClick={props.onOpenInAccess}>
-                <KeyIcon /> Manage in Access
-              </Button>
-            )}
-          </div>
-          <p className="text-sm text-muted-foreground">
-            A role assigned via a group changes for every member of that group.
-          </p>
-          <HolderList
-            roleId={detail.id}
-            holders={props.holders}
-            holderHref={props.holderHref}
-            labelledBy={holdersHeadingId}
-          />
         </section>
       </div>
 
@@ -729,6 +808,7 @@ export function RolesScreen(props: RolesScreenProps) {
           holders={props.holders}
           holderHref={props.holderHref}
           catalogue={props.catalogue}
+          timeZone={props.viewer.timeZone}
           pending={props.pending}
           onEdit={() =>
             openForm({

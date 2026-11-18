@@ -62,12 +62,6 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
     enabled: selectedRoleId !== null,
   });
 
-  const recipients = useQuery({
-    queryKey: ["access", "recipients"],
-    queryFn: () => rpc.roles.grantRecipients(),
-    enabled: selectedRoleId !== null,
-  });
-
   // The declared permission catalogue the role form picks from (R-33).
   const catalogue = useQuery({
     queryKey: ["roles", "catalogue"],
@@ -136,12 +130,12 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
         onSelectRole={selectRole}
         detail={detail.data}
         holders={
-          holders.data === undefined || recipients.data === undefined
+          holders.data === undefined
             ? undefined
             : {
                 paths: holders.data.paths,
                 total: holders.data.total ?? holders.data.paths.length,
-                recipients: recipients.data,
+                memberCounts: holders.data.memberCounts,
               }
         }
         holderHref={(holder) =>
@@ -154,7 +148,7 @@ export function RolesRoute(props: { readonly viewer: RolesViewer }) {
             ? "The roles could not be read."
             : detail.isError
               ? "The role could not be read."
-              : holders.isError || recipients.isError
+              : holders.isError
                 ? "The assignments could not be read."
                 : undefined
         }

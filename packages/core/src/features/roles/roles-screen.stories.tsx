@@ -369,13 +369,42 @@ export const SystemRoleIsReadOnlyAndCopyable: Story = {
     await expect(
       canvas.queryByRole("button", { name: /Delete role/ })
     ).not.toBeInTheDocument();
-    // The admin key added when its module was turned on is marked, and the note says why (G46).
+    // The head says what kind of role this is, and the tenant administrator's module admin sits
+    // behind a help. The key it appends says so on its own line (A-8, d8l5.61).
     await expect(
-      canvas.getByText("Added when the module was turned on")
+      canvas.getByText("Built-in role", { exact: true })
     ).toBeInTheDocument();
     await expect(
-      canvas.getByText(/its admin permission is appended to this role/)
-    ).toBeVisible();
+      canvas.getByText(
+        "Built-in roles cannot be edited. Copy one to make your own version."
+      )
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByText("Added automatically for administrators")
+    ).toBeInTheDocument();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Why does it include module admin?" })
+    );
+
+    const help = within(
+      await screen.findByRole("group", {
+        name: "Why does it include module admin?",
+      })
+    );
+
+    await expect(
+      help.getByText(/runs the whole admin portal/)
+    ).toBeInTheDocument();
+
+    // Closed again, so axe after the play function reads no focus guards.
+    await userEvent.click(help.getByRole("button", { name: "Close" }));
+    await waitFor(() =>
+      expect(
+        screen.queryByRole("group", {
+          name: "Why does it include module admin?",
+        })
+      ).toBeNull()
+    );
   },
 };
 
@@ -411,7 +440,10 @@ export const HoldersNone: Story = {
   },
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByText("Not assigned to anyone yet.")
+      await canvas.findByText("Not assigned to anyone")
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Assign it to a group or a person in Access.")
     ).toBeVisible();
     await expect(
       canvas.getByRole("button", { name: "Manage in Access" })
@@ -437,11 +469,36 @@ export const HoldersListed: Story = {
 
     const items = within(list).getAllByRole("listitem");
 
-    await expect(items.map((item) => item.textContent)).toEqual([
-      "Dry runGroup, 1 member",
-      "Ada LovelaceDirect",
-      "Zoe BrandtDirect",
-    ]);
+    const [dryRun, ada, zoe] = items;
+
+    await expect(
+      items.map((item) => within(item).getByRole("link").textContent)
+    ).toEqual(["Dry run", "Ada Lovelace", "Zoe Brandt"]);
+    await expect(
+      within(dryRun ?? document.body).getByText("Group · 1 member")
+    ).toBeVisible();
+    await expect(
+      within(dryRun ?? document.body).getByText("Paused: Module off")
+    ).toBeVisible();
+    await expect(
+      within(ada ?? document.body).getByText("Person · Direct")
+    ).toBeVisible();
+    await expect(
+      within(ada ?? document.body).getByText("INV-1042")
+    ).toBeVisible();
+    await expect(
+      within(ada ?? document.body).getByText(
+        "Assigned 1 Nov 2026 by Alex Morgan"
+      )
+    ).toBeVisible();
+    await expect(
+      within(zoe ?? document.body).getByText("Assigned 1 Nov 2026", {
+        exact: true,
+      })
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Every member of an assigned group has this role.")
+    ).toBeVisible();
     await expect(
       within(list).getByRole("link", { name: "Dry run" })
     ).toHaveAttribute("href", "/admin/groups?selected=g-solo");
@@ -501,12 +558,90 @@ export const HoldersPastTen: Story = {
 
     const items = within(list).getAllByRole("listitem");
 
+    const [finance, operations] = items;
+
     await expect(items).toHaveLength(10);
-    await expect(items[0]).toHaveTextContent("Finance teamGroup, 12 members");
-    await expect(items[1]).toHaveTextContent("OperationsGroup, 40 members");
     await expect(
-      canvas.getByRole("link", { name: "See all 12 in Access" })
+      within(finance ?? document.body).getByRole("link", {
+        name: "Finance team",
+      })
+    ).toBeVisible();
+    await expect(
+      within(finance ?? document.body).getByText("Directory group · 12 members")
+    ).toBeVisible();
+    await expect(
+      within(operations ?? document.body).getByText("Group · 40 members")
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("link", { name: "See all 12 assignments" })
     ).toHaveAttribute("href", `/admin/access?role=${FIXTURE_CUSTOM_DETAIL.id}`);
+  },
+};
+
+/** A-8: on a phone "Assigned to" comes before "What this role allows". */
+export const HoldersFirstOnPhone: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    holders: HOLDERS_THREE,
+    holderHref,
+  },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const holders = await canvas.findByRole("region", { name: /^Assigned to/ });
+
+    const permissions = canvas.getByRole("region", {
+      name: "What this role allows",
+    });
+
+    await expect(holders.getBoundingClientRect().top).toBeLessThan(
+      permissions.getBoundingClientRect().top
+    );
+  },
+};
+
+/** A-8: from a desktop the permissions take the wider left column, beside "Assigned to". */
+export const PermissionsLeftOnDesktop: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+    holders: HOLDERS_THREE,
+    holderHref,
+  },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const holders = await canvas.findByRole("region", { name: /^Assigned to/ });
+
+    const permissions = canvas.getByRole("region", {
+      name: "What this role allows",
+    });
+
+    const holdersBox = holders.getBoundingClientRect();
+    const permissionsBox = permissions.getBoundingClientRect();
+
+    await expect(permissionsBox.left).toBeLessThan(holdersBox.left);
+    await expect(Math.abs(permissionsBox.top - holdersBox.top)).toBeLessThan(1);
+  },
+};
+
+/** The raw keys stay hidden until "Show keys" is on (A-8, d8l5.61). */
+export const ShowKeysShowsThePermissionKeys: Story = {
+  args: {
+    selectedRoleId: FIXTURE_CUSTOM_DETAIL.id,
+    detail: FIXTURE_CUSTOM_DETAIL,
+  },
+  play: async ({ canvas }) => {
+    const permissions = canvas.getByRole("region", {
+      name: "What this role allows",
+    });
+
+    await expect(within(permissions).queryByText("fixture:use")).toBeNull();
+
+    await userEvent.click(
+      within(permissions).getByRole("switch", { name: "Show keys" })
+    );
+
+    await expect(within(permissions).getByText("fixture:use")).toBeVisible();
   },
 };
 
@@ -559,7 +694,7 @@ export const UnavailableKeyWarnsAndCanBeRemoved: Story = {
     onRemoveUnavailableKey.mockClear();
 
     await expect(
-      canvas.getByText("Unavailable, the key is retired")
+      canvas.getByText("Unavailable, this permission no longer exists")
     ).toBeInTheDocument();
     await expect(canvas.getByText("retired:key")).toBeInTheDocument();
 

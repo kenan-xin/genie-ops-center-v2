@@ -1,5 +1,4 @@
 import type { AccessPath } from "../../services/roles/effective-access.ts";
-import type { GrantRecipients } from "../../services/roles/grants.ts";
 import type {
   RoleDetail,
   RolePermissionGroup,
@@ -28,12 +27,11 @@ export type RoleKind = Role["kind"];
 
 /** Who holds the selected role, from the effective-access read by role (R-37d, `d8l5.47`). */
 export type RoleHolders = {
-  /** Up to 100 paths of the role. */
   readonly paths: readonly AccessPath[];
-  /** Every path of the role: the n of "See all <n> in Access". */
+  /** Every path of the role: the n of "See all <n> assignments". */
   readonly total: number;
-  /** The member count of each group holder. */
-  readonly recipients: GrantRecipients;
+  /** The member count of each group holder, by group id (`AccessPage.memberCounts`). */
+  readonly memberCounts: Readonly<Record<string, number>>;
 };
 
 export type RolesViewer = {
