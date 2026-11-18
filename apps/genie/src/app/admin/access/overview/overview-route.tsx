@@ -188,8 +188,9 @@ export function OverviewRoute(props: {
           )
         }
       />
-      {/* The tab labels start 12 px into their column; the help shares that text edge. */}
-      <div className="ps-3 md:hidden">
+      {/* The tab labels start 12 px into their column; the help shares that text edge. The 4 px
+          below keeps the help's 44 px touch area off the tabs. */}
+      <div className="ps-3 pb-1 md:hidden">
         <AccessHelp />
       </div>
       <AccessTabs current="overview" />
