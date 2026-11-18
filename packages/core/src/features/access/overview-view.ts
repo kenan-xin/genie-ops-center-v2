@@ -1,11 +1,17 @@
+import type { ListDefinition } from "@genie/ui";
+
 import type {
+  AccessHolder,
   AccessPath,
+  AccessRecipient,
   AccessSubject,
+  AssignmentFilters,
 } from "../../services/roles/effective-access.ts";
-import type { GrantRecipients, GrantRow } from "../../services/roles/grants.ts";
+import type { GrantRow } from "../../services/roles/grants.ts";
 import type { RoleRow } from "../../services/roles/index.ts";
+import type { RecipientRow } from "../../services/roles/recipients.ts";
 import { scopeKey } from "./advanced-view.ts";
-import { groupKindLabel, memberCountLabel } from "./assignment-words.ts";
+import { holderLine } from "./assignment-words.ts";
 import { moduleNameOf } from "./grants-view.ts";
 
 /** One row of the Overview table (R-37d). */
@@ -21,17 +27,20 @@ export type OverviewRow = {
   /** The role's id, for a link to Roles. */
   readonly roleId: string;
   readonly custom: boolean;
+  /** The Assigned to line: "Person", "Group · 6 members" or "Directory group · 17 members". */
+  readonly kind: string;
   readonly path: string;
   readonly alsoThrough: readonly string[];
   /** Reason sentences, in the order of the read. */
   readonly notInEffect: readonly string[];
   readonly addedAt: string;
   readonly addedBy: string | null;
+  readonly addedAtSetup: boolean;
 };
 
 const REASON = {
   "group-archived": () => "Group archived",
-  "person-disabled": () => "Account suspended",
+  "person-disabled": () => "Person suspended",
   "module-off": () => "Module off",
 } as const;
 
@@ -74,66 +83,39 @@ function alsoThroughOf(
   return [...direct, ...new Set(groups)];
 }
 
-/**
- * The subject of a link into the Overview (`d8l5.46`): the role first, then the module, and only an
- * id that the lists hold, so an old bookmark reads nothing.
- */
-export function linkedSubject(
-  link: {
-    readonly module?: string | undefined;
-    readonly role?: string | undefined;
-  },
-  catalogue: readonly GrantRow[],
-  roles: readonly Pick<RoleRow, "id">[]
-): AccessSubject | null {
-  if (link.role !== undefined && roles.some((role) => role.id === link.role)) {
-    return { type: "role", id: link.role };
-  }
-
-  if (
-    link.module !== undefined &&
-    catalogue.some((row) => row.id === link.module)
-  ) {
-    return { type: "module", id: link.module };
-  }
-
-  return null;
-}
-
-/** The Overview rows of one page of the S2-19 read (R-37d, O4, O7, O16). */
+/** The Overview rows of one page (R-37d, O4, O7, O16, d8l5.62). */
 export function overviewRows(input: {
-  readonly subject: AccessSubject;
+  /** The Person or group filter, a module or a role; null for the unfiltered list. */
+  readonly subject: AccessSubject | null;
   /** The shown page. */
   readonly paths: readonly AccessPath[];
-  /** Every path of a person subject (O4); undefined for a group or a module. */
+  /** Every path of a person subject (O4); undefined otherwise. */
   readonly personPaths: readonly AccessPath[] | undefined;
   readonly catalogue: readonly GrantRow[];
-  readonly recipients: GrantRecipients;
+  /** `AccessPage.memberCounts`: the size of each group on the page (d8l5.74 item 3). */
+  readonly memberCounts: Readonly<Record<string, number>>;
   /** Record labels by `scopeKey`, only for records the caller can open (AD10). */
   readonly recordLabels: ReadonlyMap<string, string>;
 }): readonly OverviewRow[] {
   const { subject } = input;
 
   const subjectModule =
-    subject.type === "module"
+    subject?.type === "module"
       ? (input.catalogue.find((row) => row.id === subject.id)?.name ??
         subject.id)
       : null;
 
+  const kindOf = (holder: AccessHolder) =>
+    holder.type === "user" ? "Person" : holderLine(holder, input.memberCounts);
+
   const pathOf = (path: AccessPath) => {
-    // A module or a role is no holder: each row says how its holder holds it.
-    if (subject.type === "module" || subject.type === "role") {
-      if (path.holder.type === "user") return "Direct";
-
-      const members = input.recipients.groups.find(
-        (group) => group.id === path.holder.id
-      )?.memberCount;
-
-      const kind = groupKindLabel(path.holder.source);
-
-      return members === undefined
-        ? kind
-        : `${kind} · ${memberCountLabel(members)}`;
+    // No recipient filter: each row says how its holder holds the role.
+    if (
+      subject === null ||
+      subject.type === "module" ||
+      subject.type === "role"
+    ) {
+      return path.holder.type === "user" ? "Direct" : kindOf(path.holder);
     }
 
     // The Assigned via column (G10): "Direct" or the group's name.
@@ -142,28 +124,197 @@ export function overviewRows(input: {
       : path.holder.name;
   };
 
-  return input.paths.map((path) => {
-    const module = subjectModule ?? moduleNameOf(path, input.catalogue);
+  return input.paths.map((path) => ({
+    key: path.assignmentId,
+    holder: path.holder,
+    module: subjectModule ?? moduleNameOf(path, input.catalogue),
+    record:
+      path.scope === null
+        ? null
+        : (input.recordLabels.get(scopeKey(path.scope)) ?? path.scope.id),
+    role: path.role.name,
+    roleId: path.role.id,
+    custom: path.role.kind === "custom",
+    kind: kindOf(path.holder),
+    path: pathOf(path),
+    alsoThrough:
+      subject?.type === "user"
+        ? alsoThroughOf(path, input.personPaths ?? input.paths)
+        : [],
+    notInEffect: path.notInEffect.map((reason) => REASON[reason]()),
+    addedAt: path.addedAt,
+    addedBy: path.addedBy?.name ?? null,
+    addedAtSetup: path.addedAtSetup,
+  }));
+}
 
-    return {
-      key: path.assignmentId,
-      holder: path.holder,
-      module,
-      record:
-        path.scope === null
-          ? null
-          : (input.recordLabels.get(scopeKey(path.scope)) ?? path.scope.id),
-      role: path.role.name,
-      roleId: path.role.id,
-      custom: path.role.kind === "custom",
-      path: pathOf(path),
-      alsoThrough:
-        subject.type === "user"
-          ? alsoThroughOf(path, input.personPaths ?? input.paths)
-          : [],
-      notInEffect: path.notInEffect.map((reason) => REASON[reason]()),
-      addedAt: path.addedAt,
-      addedBy: path.addedBy?.name ?? null,
+/** `user:<id>` or `group:<id>` from the address; anything else is null (P12-8). */
+export function parseWho(value: string | undefined): AccessRecipient | null {
+  const [type, ...rest] = (value ?? "").split(":");
+  const id = rest.join(":");
+
+  return (type === "user" || type === "group") && id !== ""
+    ? { type, id }
+    : null;
+}
+
+/** The address value of a person or a group (P12-8). */
+export const whoParam = (recipient: AccessRecipient) =>
+  `${recipient.type}:${recipient.id}`;
+
+const NAMES = new Intl.ListFormat("en-GB", { type: "conjunction" });
+
+/**
+ * "Riley Chen has 6 roles: 2 direct, 4 via Finance team." from every path of the person: a role
+ * held directly and through a group counts twice, as the list shows two rows (Review Focus 4).
+ */
+export function reachLine(name: string, paths: readonly AccessPath[]): string {
+  if (paths.length === 0) return `${name} has no roles.`;
+
+  const direct = paths.filter((path) => path.holder.type === "user").length;
+  const groups = new Map<string, { readonly name: string; count: number }>();
+
+  for (const path of paths) {
+    if (path.holder.type !== "group") continue;
+
+    const group = groups.get(path.holder.id) ?? {
+      name: path.holder.name,
+      count: 0,
     };
-  });
+
+    group.count += 1;
+    groups.set(path.holder.id, group);
+  }
+
+  const via = NAMES.format(
+    [...groups.values()].map((group) => `${group.count} via ${group.name}`)
+  );
+
+  const parts = [direct === 0 ? "" : `${direct} direct`, via].filter(
+    (part) => part !== ""
+  );
+
+  return `${name} has ${paths.length} ${paths.length === 1 ? "role" : "roles"}: ${parts.join(", ")}.`;
+}
+
+/**
+ * The input of `roles.assignments` from the address (P12-8). `ready` is false while a set `who`
+ * is looked up. A `who` with no row, a `module` that the catalogue does not hold and a `role` that
+ * the roles list does not hold are left out, because `readAssignments` answers `not-found` for an
+ * unknown person (Task 1).
+ */
+export type ReadFilters = {
+  readonly ready: boolean;
+  readonly filters: AssignmentFilters;
+  readonly query: string;
+};
+
+/** The filters while `readFilters` builds them: each key is added only when a list holds it. */
+type MutableFilters = {
+  recipient?: AccessRecipient;
+  moduleId?: string;
+  roleId?: string;
+};
+
+export function readFilters(input: {
+  readonly params: Readonly<Record<string, string>>;
+  /** The `who` lookup: undefined while it loads, null when it found no row. */
+  readonly who: RecipientRow | null | undefined;
+  readonly catalogue: readonly GrantRow[];
+  readonly roles: readonly Pick<RoleRow, "id">[];
+}): ReadFilters {
+  const { params, who } = input;
+  const asked = parseWho(params["who"]);
+  const moduleId = params["module"];
+  const roleId = params["role"];
+
+  const found =
+    asked !== null &&
+    who !== undefined &&
+    who !== null &&
+    who.type === asked.type &&
+    who.id === asked.id;
+
+  const filters: MutableFilters = {};
+
+  if (found && asked !== null) filters.recipient = asked;
+
+  if (
+    moduleId !== undefined &&
+    input.catalogue.some((row) => row.id === moduleId)
+  ) {
+    filters.moduleId = moduleId;
+  }
+
+  if (roleId !== undefined && input.roles.some((role) => role.id === roleId)) {
+    filters.roleId = roleId;
+  }
+
+  return {
+    ready: asked === null || who !== undefined,
+    query: params["q"] ?? "",
+    filters,
+  };
+}
+
+/**
+ * The Overview list (P12-8, P12-12): the search, then Person or group, Module and Role, each 200 px
+ * in the bar so all four sit in the bar at 1440. Role lists Core first, then each module in
+ * catalogue order, each by name. One order, newest first, with no sort control (P12-19).
+ */
+export function overviewDefinition(
+  catalogue: readonly GrantRow[],
+  roles: readonly Pick<RoleRow, "id" | "name" | "moduleId">[]
+): ListDefinition {
+  const rank = (moduleId: string | null) => {
+    if (moduleId === null) return -1;
+
+    const at = catalogue.findIndex((row) => row.id === moduleId);
+
+    return at === -1 ? catalogue.length : at;
+  };
+
+  return {
+    label: "Assignments, newest first",
+    noun: ["assignment", "assignments"],
+    filters: [
+      {
+        id: "q",
+        kind: "search",
+        label: "Search by role or name",
+        placeholder: "Search by role or name",
+      },
+      {
+        id: "who",
+        kind: "access-recipient",
+        label: "Person or group",
+        placeholder: "Anyone",
+        barWidth: 200,
+      },
+      {
+        id: "module",
+        kind: "option",
+        label: "Module",
+        placeholder: "All modules",
+        options: catalogue.map((row) => ({ value: row.id, label: row.name })),
+        barWidth: 200,
+      },
+      {
+        id: "role",
+        kind: "option",
+        label: "Role",
+        placeholder: "All roles",
+        options: roles
+          .toSorted(
+            (a, b) =>
+              rank(a.moduleId) - rank(b.moduleId) ||
+              a.name.localeCompare(b.name)
+          )
+          .map((role) => ({ value: role.id, label: role.name })),
+        barWidth: 200,
+      },
+    ],
+    sorts: [],
+    defaultSort: { column: "added", direction: "desc" },
+  };
 }

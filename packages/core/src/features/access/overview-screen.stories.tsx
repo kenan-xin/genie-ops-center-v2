@@ -1,83 +1,162 @@
+import { useListState } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import * as React from "react";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import { expect, userEvent, waitFor, within } from "storybook/test";
 
 import type {
   AccessPath,
-  AccessSubject,
+  AssignmentFilters,
 } from "../../services/roles/effective-access.ts";
+import type { RecipientRow } from "../../services/roles/recipients.ts";
 import {
+  ALL_OVERVIEW_PATHS,
   FIXTURE_ROLES,
   FIXTURE_ROWS,
-  OVERVIEW_RECIPIENTS,
+  OVERVIEW_MEMBER_COUNTS,
   overviewPaths,
 } from "./__fixtures__/access.ts";
 import { moduleNameOf } from "./grants-view.ts";
 import { OverviewScreen } from "./overview-screen.tsx";
+import { overviewDefinition, parseWho, readFilters } from "./overview-view.ts";
 
-type Args = {
-  readonly initial: AccessSubject | null;
-  readonly onSubjectChange: (next: AccessSubject | null) => void;
-  readonly recordLabels?: ReadonlyMap<string, string>;
+const PAGE = 25;
+
+const LIST = "Assignments, newest first";
+
+const JAMIE: RecipientRow = {
+  type: "user",
+  id: "p-jamie",
+  name: "Jamie Chen",
+  email: "jamie.chen@example.com",
+  assignedRoles: 1,
 };
 
-const PAGE = 10;
+const FINANCE: RecipientRow = {
+  type: "group",
+  id: "g-finance",
+  name: "Finance team",
+  source: "local",
+  memberCount: 12,
+  archived: false,
+  assignedRoles: 4,
+};
 
-/** The server search: holder, role and module names, case-insensitive (S2-19). */
-const matches = (path: AccessPath, query: string) =>
-  [path.holder.name, path.role.name, moduleNameOf(path, FIXTURE_ROWS)].some(
-    (name) => name.toLowerCase().includes(query.trim().toLowerCase())
+const RECIPIENTS: readonly RecipientRow[] = [FINANCE, JAMIE];
+
+const DEFINITION = overviewDefinition(FIXTURE_ROWS, FIXTURE_ROLES);
+
+const rowOf = (who: { readonly type: string; readonly id: string } | null) =>
+  who === null
+    ? null
+    : (RECIPIENTS.find((row) => row.type === who.type && row.id === who.id) ??
+      null);
+
+/** The server's filters and search, in memory (d8l5.62). */
+function matching(
+  filters: AssignmentFilters,
+  query: string
+): readonly AccessPath[] {
+  const { recipient, moduleId, roleId } = filters;
+
+  const base =
+    recipient === undefined
+      ? ALL_OVERVIEW_PATHS
+      : recipient.type === "user"
+        ? overviewPaths(recipient)
+        : ALL_OVERVIEW_PATHS.filter(
+            (path) =>
+              path.holder.type === "group" && path.holder.id === recipient.id
+          );
+
+  const words = query.trim().toLowerCase();
+
+  return base.filter(
+    (path) =>
+      (moduleId === undefined ||
+        path.role.moduleId === moduleId ||
+        path.role.permissions.includes(`${moduleId}:use`)) &&
+      (roleId === undefined || path.role.id === roleId) &&
+      [path.holder.name, path.role.name, moduleNameOf(path, FIXTURE_ROWS)].some(
+        (name) => name.toLowerCase().includes(words)
+      )
   );
+}
 
-/** Holds the subject, the search and the page the way the route does, and pages by ten. */
-function Harness(args: Args) {
-  const [subject, setSubject] = React.useState(args.initial);
+/** Holds the address and the page the way the route does, and pages by 25. */
+function Harness(args: { readonly total?: number | undefined }) {
+  const state = useListState(DEFINITION);
 
-  const [query, setQuery] = React.useState("");
+  const read = readFilters({
+    params: state.params,
+    who: rowOf(parseWho(state.params["who"])),
+    catalogue: FIXTURE_ROWS,
+    roles: FIXTURE_ROLES,
+  });
 
-  const [index, setIndex] = React.useState(0);
+  const key = JSON.stringify([read.filters, read.query]);
 
-  const all = subject === null ? [] : overviewPaths(subject);
+  const [at, setAt] = React.useState({ key, index: 0 });
 
-  const found = all.filter((path) => matches(path, query));
+  const index = at.key === key ? at.index : 0;
+
+  const found = matching(read.filters, read.query);
+
+  const total = args.total ?? found.length;
 
   return (
     <OverviewScreen
+      definition={DEFINITION}
+      state={state}
       catalogue={FIXTURE_ROWS}
-      recipients={OVERVIEW_RECIPIENTS}
-      roles={FIXTURE_ROLES}
-      subject={subject}
-      onSubjectChange={(next) => {
-        args.onSubjectChange(next);
-        setSubject(next);
-        setQuery("");
-        setIndex(0);
+      filters={read.filters}
+      who={rowOf(read.filters.recipient ?? null)}
+      searchRecipients={async (query) => {
+        const rows = RECIPIENTS.filter((row) =>
+          row.name.toLowerCase().includes(query.toLowerCase())
+        );
+
+        return { rows, total: rows.length };
       }}
-      onQueryChange={(next) => {
-        setQuery(next);
-        setIndex(0);
+      page={{
+        paths: found.slice(index * PAGE, index * PAGE + PAGE),
+        memberCounts: OVERVIEW_MEMBER_COUNTS,
+        from: index * PAGE + 1,
+        total,
+        hasPrevious: index > 0,
+        hasNext: (index + 1) * PAGE < total,
       }}
-      page={
-        subject === null
-          ? undefined
-          : {
-              paths: found.slice(index * PAGE, index * PAGE + PAGE),
-              from: index * PAGE + 1,
-              total: all.length,
-              matches: found.length,
-              hasPrevious: index > 0,
-              hasNext: (index + 1) * PAGE < found.length,
-            }
-      }
-      onPage={(step) => setIndex((current) => current + step)}
+      onPage={(step) => setAt({ key, index: index + step })}
       paging={false}
-      personPaths={subject?.type === "user" ? all : undefined}
-      recordLabels={args.recordLabels ?? new Map()}
+      personPaths={
+        read.filters.recipient?.type === "user"
+          ? overviewPaths(read.filters.recipient)
+          : undefined
+      }
+      recordLabels={new Map()}
       timeZone="UTC"
-      auditLogHref="/admin/audit"
+      roleHref={(id) => `/admin/roles?selected=${id}`}
+      personHref={(id) => `/admin/people?selected=${id}`}
+      groupHref={(id) => `/admin/groups?selected=${id}`}
     />
   );
 }
+
+const NAMES = ["q", "who", "module", "role"];
+
+/** The story's address: only the given list parameters, so each story starts from its own filters. */
+const address = (params: Readonly<Record<string, string>>) => () => {
+  const url = new URL(window.location.href);
+
+  for (const name of NAMES) url.searchParams.delete(name);
+
+  for (const [name, value] of Object.entries(params))
+    url.searchParams.set(name, value);
+
+  window.history.replaceState(null, "", url);
+};
+
+const param = (name: string) =>
+  new URLSearchParams(window.location.search).get(name);
 
 const meta = {
   title: "Core/Access/OverviewScreen",
@@ -88,12 +167,14 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Overview tab of Access (R-37b, R-37d). The administrator looks up one group or person, or one module, and reads every path to a role: who holds it, the module, the role, the path (direct or through a group) and who added it. Nothing is read before the choice. The server searches and pages by ten. The tab writes nothing.",
+          "The Overview tab of Access (d8l5.62, access-start b): every assignment, newest first, 25 to a page, filtered on the server by Person or group, Module and Role, and searched by role or name. Assigned via and the line that counts a person's roles show only while the Person or group filter names a person. A phone card leaves out the column the list is filtered by (ADM-14b). The tab writes nothing.",
       },
     },
     a11y: { test: "error" },
   },
-  args: { initial: null, onSubjectChange: fn() },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {},
+  beforeEach: address({}),
   render: (args) => <Harness {...args} />,
 } satisfies Meta<typeof Harness>;
 
@@ -101,418 +182,119 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-const jamie: AccessSubject = { type: "user", id: "p-jamie" };
-
-const invoices: AccessSubject = { type: "module", id: "invoices" };
-
-const phone = { viewport: { value: "phone390", isRotated: false } };
-
-/** The header line. Case-sensitive, so the table caption ("Assigned to …") does not match. */
-const header = (canvas: ReturnType<typeof within>, words: string) =>
-  canvas.findByText(new RegExp(words));
-
-/** The table row of a cell's text. */
-function rowOf(cell: HTMLElement) {
-  const row = cell.closest("tr");
-
-  if (row === null) throw new Error("The text is not in a table row.");
-
-  return within(row);
-}
-
-/** S1: before a choice the card asks for one, and a pick reports the subject (R-37b). */
-export const NoSubject: Story = {
-  play: async ({ args, canvas }) => {
-    await expect(
-      await canvas.findByRole("heading", { name: "Choose what to look up" })
-    ).toBeVisible();
-    await expect(canvas.queryByRole("region", { name: "Results" })).toBeNull();
-
-    await userEvent.click(
-      canvas.getByRole("combobox", { name: "Choose a group or person" })
-    );
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Operations · 40 members" })
-    );
-
-    await waitFor(() =>
-      expect(args.onSubjectChange).toHaveBeenCalledWith({
-        type: "group",
-        id: "g-ops",
-      })
-    );
-  },
-};
-
-/** W3: a record the viewer can open shows its label in the pill, not its id (O15). */
-export const RecordLabel: Story = {
-  args: {
-    initial: jamie,
-    recordLabels: new Map([
-      ["invoice\u0000a0774a4a-a630-41ba-8364-bcb715ff0c6a", "INV-2026-0142"],
-    ]),
-  },
+/** T7-d (d8l5.62): the first render lists rows and the range, and asks for no choice. */
+export const StartsFilled: Story = {
+  args: { total: 1284 },
   play: async ({ canvas }) => {
-    const table = within(
-      await canvas.findByRole("table", { name: "Assignments for Jamie Chen" })
-    );
+    const table = await canvas.findByRole("table", { name: LIST });
 
+    await expect(within(table).getAllByRole("row")).toHaveLength(26);
+    await expect(canvas.getByText("1–25 of 1,284")).toBeVisible();
+    await expect(canvas.getByRole("button", { name: "Next" })).toBeEnabled();
     await expect(
-      table.getByText("INV-2026-0142").parentElement
-    ).toHaveTextContent("One record · INV-2026-0142");
-  },
-};
-
-/** S2: each part of a row lands in its column (R-37d). */
-export const ByPerson: Story = {
-  args: { initial: jamie },
-  play: async ({ canvas }) => {
-    await expect(await header(canvas, "assignments for")).toHaveTextContent(
-      "10 assignments for Jamie Chen"
-    );
-
-    const table = within(
-      canvas.getByRole("table", { name: "Assignments for Jamie Chen" })
-    );
-
-    const row = (text: string) => rowOf(table.getByText(text));
-
-    const viaFinance = table
-      .getAllByText("Finance team")
-      .map(rowOf)
-      .find((cells) => cells.queryByText("Finance") !== null);
-
+      canvas.getByRole("columnheader", { name: "Assigned" })
+    ).toHaveAttribute("aria-sort", "descending");
     await expect(
-      viaFinance?.getByText("also assigned via Direct, Operations")
-    ).toBeVisible();
-
-    await expect(
-      row("Paused: Module off").getByText("Analytics viewer")
-    ).toBeVisible();
-    await expect(row("Analytics viewer").getByText("Analytics")).toBeVisible();
-    const record = table.getByText("a0774a4a-a630-41ba-8364-bcb715ff0c6a");
-
-    await expect(record).toBeVisible();
-    await expect(record.parentElement).toHaveTextContent(
-      "One record · a0774a4a-a630-41ba-8364-bcb715ff0c6a"
-    );
-    await expect(row("Invoice auditor").getByText("Custom role")).toBeVisible();
-
-    const direct = row("Invoices and Payments user");
-
-    await expect(direct.getByText("Direct")).toBeVisible();
-    await expect(direct.getByText("1 Oct 2026")).toBeVisible();
-    await expect(direct.getByText("by Jordan Lee")).toBeVisible();
-
-    // O8: the recipient link opens Grants with Jamie Chen chosen.
-    await expect(
-      canvas.getByRole("link", { name: "Change access" })
-    ).toHaveAttribute("href", "/admin/access?recipient=p-jamie");
-  },
-};
-
-/** S3: on a phone the rows are cards, and the page does not scroll sideways (DEC-25). */
-export const ByPersonPhone: Story = {
-  args: { initial: jamie },
-  globals: phone,
-  play: async ({ canvas }) => {
-    const list = within(
-      await canvas.findByRole("list", { name: "Assignments for Jamie Chen" })
-    );
-
-    const card = within(list.getAllByRole("listitem")[0] ?? document.body);
-
-    await Promise.all(
-      ["Module", "Role", "Assigned via", "Assigned"].map((term) =>
-        expect(card.getByText(term)).toBeVisible()
-      )
-    );
-
-    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
-      document.documentElement.clientWidth
-    );
-
-    // A long record id must wrap inside its card, not run past the edge.
-    await Promise.all(
-      list
-        .getAllByRole("listitem")
-        .map((item) =>
-          expect(item.scrollWidth).toBeLessThanOrEqual(item.clientWidth)
-        )
-    );
-  },
-};
-
-/** S4: the pager walks every page of a module's holders and stops at the end. */
-export const ByModule: Story = {
-  args: { initial: invoices },
-  play: async ({ canvas }) => {
-    await expect(await header(canvas, "assigned to")).toHaveTextContent(
-      "21 assigned to Invoices"
-    );
-    // A module is no recipient, so its lookup links nowhere (O8).
-    await expect(
-      canvas.queryByRole("link", { name: "Change access" })
+      canvas.queryByRole("columnheader", { name: "Assigned via" })
     ).toBeNull();
-    await expect(canvas.getByText("1–10 of 21")).toBeVisible();
-
-    await userEvent.click(canvas.getByRole("button", { name: "Next" }));
-    await expect(await canvas.findByText("11–20 of 21")).toBeVisible();
-
-    await userEvent.click(canvas.getByRole("button", { name: "Next" }));
-    await expect(await canvas.findByText("21–21 of 21")).toBeVisible();
-    await expect(canvas.getByRole("button", { name: "Next" })).toBeDisabled();
-
-    await userEvent.click(canvas.getByRole("button", { name: "Previous" }));
-    await expect(await canvas.findByText("11–20 of 21")).toBeVisible();
+    await expect(canvas.queryByText("Choose what to look up")).toBeNull();
   },
 };
 
-/** S5: the search narrows the pager, and says when nothing matches. */
-export const Search: Story = {
-  args: { initial: invoices },
+/** T7-e (G2 pick): with a person in Person or group, Assigned via and the reach line show; cleared, neither does. */
+export const PersonFilterShowsAssignedVia: Story = {
+  beforeEach: address({ who: "user:p-jamie" }),
   play: async ({ canvas }) => {
-    const search = await canvas.findByRole("searchbox", {
-      name: "Search these results",
-    });
-
-    await userEvent.type(search, "finance");
-
-    await expect(await canvas.findByText("1–7 of 7")).toBeVisible();
-
-    await userEvent.clear(search);
-    await userEvent.type(search, "zzz");
-
     await expect(
-      await canvas.findByText("No row matches the search.")
-    ).toBeVisible();
-  },
-};
-
-/**
- * B7: under a search the header counts the matches of the total, and a screen reader hears it
- * (`d8l5.45`, dry run A4). An empty search shows the total alone again.
- */
-export const SearchNarrowsTheCount: Story = {
-  args: { initial: invoices },
-  play: async ({ canvas }) => {
-    const search = await canvas.findByRole("searchbox", {
-      name: "Search these results",
-    });
-
-    await userEvent.type(search, "finance");
-
-    await waitFor(() =>
-      expect(canvas.getByRole("status")).toHaveTextContent(
-        "7 of 21 assigned to Invoices"
+      await canvas.findByText(
+        "Jamie Chen has 10 roles: 1 direct, 4 via Finance team and 5 via Operations."
       )
-    );
-
-    await userEvent.clear(search);
-
-    await waitFor(() =>
-      expect(canvas.getByRole("status")).toHaveTextContent(
-        /^21 assigned to Invoices$/
-      )
-    );
-  },
-};
-
-/** S6: the email picks the right one of two people who share a name (Review Focus 3). */
-export const HoldsNoRole: Story = {
-  play: async ({ canvas }) => {
-    await userEvent.click(
-      canvas.getByRole("combobox", { name: "Choose a group or person" })
-    );
-    await userEvent.type(
-      await screen.findByRole("combobox", { name: "Search groups and people" }),
-      "a.morgan@example.com"
-    );
-    await userEvent.click(
-      await screen.findByRole("option", {
-        name: "Alex Morgan · a.morgan@example.com",
-      })
-    );
-
-    await expect(await header(canvas, "assignments for")).toHaveTextContent(
-      "0 assignments for Alex Morgan"
-    );
-    await expect(
-      canvas.getByText("No role is assigned to Alex Morgan.")
     ).toBeVisible();
     await expect(
-      canvas.queryByRole("searchbox", { name: "Search these results" })
-    ).toBeNull();
+      canvas.getByRole("columnheader", { name: "Assigned via" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("combobox", { name: "Person or group" })
+    ).toHaveTextContent("Jamie Chen");
+
+    // The parent decision: Assigned to names the filtered person on every row, and Assigned via
+    // names the group (filtered-1440).
+    const table = await canvas.findByRole("table", { name: LIST });
+
+    const viaGroup = within(table)
+      .getAllByRole("row")
+      .find((row) => within(row).queryByText(/\(group\)/) !== null);
+
+    if (viaGroup === undefined)
+      throw new Error("No row reached through a group.");
+
+    const toCell = within(viaGroup).getAllByRole("cell")[1];
+
+    if (toCell === undefined) throw new Error("No Assigned to cell.");
+
+    await expect(within(toCell).getByText("Jamie Chen")).toBeVisible();
+    await expect(within(toCell).queryByText("Finance team")).toBeNull();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear filters" })
+    );
+    await waitFor(() => expect(param("who")).toBeNull());
+    await waitFor(() =>
+      expect(
+        canvas.queryByRole("columnheader", { name: "Assigned via" })
+      ).toBeNull()
+    );
+    await expect(canvas.queryByText(/has 10 roles/)).toBeNull();
   },
 };
 
-/** A group: every row is its own direct path, so no row names another. */
-export const ByGroup: Story = {
-  args: { initial: { type: "group", id: "g-ops" } },
+/** T7-f (C11-18): Paused sits in the Role cell, under the role, not under the name. */
+export const PausedSitsUnderTheRole: Story = {
+  play: async ({ canvas }) => {
+    const table = await canvas.findByRole("table", { name: LIST });
+    const [pill] = within(table).getAllByText("Paused: Module off");
+    const cell = pill?.closest("td");
+
+    if (cell === null || cell === undefined)
+      throw new Error("The pill is not in a table cell.");
+
+    await expect(within(cell).getByText("Analytics viewer")).toBeVisible();
+    await expect(within(cell).queryByText("Finance team")).toBeNull();
+  },
 };
 
-export const ByModulePhone: Story = {
-  args: { initial: invoices },
-  globals: phone,
+/** T7-g (ADM-14b): at 390, with Person or group and Module set, no card names the person or the module. */
+export const PhoneCardDropsFilteredColumn: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  beforeEach: address({ who: "user:p-jamie", module: "invoices" }),
+  play: async ({ canvas }) => {
+    const list = await canvas.findByRole("list", { name: LIST });
+
+    await expect(
+      within(list).getAllByText("Assigned via").length
+    ).toBeGreaterThan(0);
+    await expect(within(list).queryAllByText("Assigned to")).toHaveLength(0);
+    await expect(
+      within(list).queryAllByText("Invoices", { exact: true })
+    ).toHaveLength(0);
+    await expect(within(list).getByText("Custom role")).toBeVisible();
+  },
 };
 
-const auditorRole: AccessSubject = { type: "role", id: "r-auditor" };
-
-/**
- * B5: a role link opens the third lookup with the role chosen. Auditor opens no module, so only
- * a role lookup shows its holders (`d8l5.46`).
- */
-export const ByRole: Story = {
-  args: { initial: auditorRole },
+/** T7-h: no match offers one button that clears the search and every filter. */
+export const NoMatchClearsFilters: Story = {
+  beforeEach: address({ q: "zzz", module: "invoices" }),
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("button", { name: "By role" })
-    ).toHaveAttribute("aria-pressed", "true");
-    await expect(await header(canvas, "assigned to")).toHaveTextContent(
-      "2 assigned to Auditor"
+      await canvas.findByRole("heading", { name: "No assignments match" })
+    ).toBeVisible();
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear search and filters" })
     );
+    await waitFor(() => expect(param("q")).toBeNull());
+    await expect(param("module")).toBeNull();
     await expect(
-      canvas.getByRole("combobox", { name: "Choose a role" })
-    ).toHaveTextContent("Auditor");
-
-    const table = within(
-      canvas.getByRole("table", { name: "Assigned to Auditor" })
-    );
-
-    await expect(table.getByText("Direct")).toBeVisible();
-    await expect(table.getByText("Group · 12 members")).toBeVisible();
-    await expect(
-      canvas.queryByRole("link", { name: "Change access" })
-    ).toBeNull();
+      await canvas.findByRole("table", { name: LIST })
+    ).toBeVisible();
   },
-};
-
-/** B6: the three lookups fit a 390 px toggle (DEC-25). */
-export const ByRolePhone: Story = {
-  args: { initial: auditorRole },
-  globals: phone,
-  play: async ({ canvas }) => {
-    const toggle = within(
-      await canvas.findByRole("group", { name: "Look up" })
-    );
-
-    // Each chip, not the group: a chip's 44 px hit area may pass the edge by design.
-    await Promise.all(
-      toggle
-        .getAllByRole("button")
-        .map((chip) =>
-          expect(chip.getBoundingClientRect().right).toBeLessThanOrEqual(
-            window.innerWidth
-          )
-        )
-    );
-    await expect(toggle.getByRole("button", { name: "By role" })).toBeVisible();
-    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
-      document.documentElement.clientWidth
-    );
-  },
-};
-
-/** The Look up chips. */
-const lookUp = async (canvas: ReturnType<typeof within>) =>
-  canvas.findByRole("group", { name: "Look up" });
-
-/** The controls off the given height or off the first control's top edge, as one string. */
-function offRow(controls: readonly HTMLElement[], height: number) {
-  const top = controls[0]!.getBoundingClientRect().top;
-
-  return controls
-    .flatMap((control) => {
-      const { height: tall, top: at } = control.getBoundingClientRect();
-
-      return tall === height && at === top
-        ? []
-        : [`${control.textContent}: ${tall} px at ${at}`];
-    })
-    .join("; ");
-}
-
-/** C06-2: the Look up chips take the md height of the picker beside them. */
-export const LookUpRowLinesUp: Story = {
-  args: { initial: jamie },
-  globals: { viewport: { value: "desktop1440", isRotated: false } },
-  play: async ({ canvas }) => {
-    const track = await lookUp(canvas);
-    const row = within(track.parentElement!);
-
-    // The segmented track, not its segments, takes the row's md height (6wz1.105).
-    await expect(
-      offRow(
-        [
-          track,
-          ...row
-            .getAllByRole("button")
-            .filter((button) => !track.contains(button)),
-          ...row.getAllByRole("combobox"),
-        ],
-        36
-      )
-    ).toBe("");
-  },
-};
-
-/** C06-2: on a phone the track is 40 px, and each segment reaches 44 px: 1.5 px above the track is still the segment. */
-export const LookUpChipsOnPhone: Story = {
-  args: { initial: jamie },
-  globals: phone,
-  // Room above the track, so that a point 1.5 px over its edge is on the page.
-  decorators: [
-    (Story) => (
-      <div className="pt-4">
-        <Story />
-      </div>
-    ),
-  ],
-  play: async ({ canvas }) => {
-    const track = await lookUp(canvas);
-    const segments = within(track).getAllByRole("button");
-    const top = track.getBoundingClientRect().top;
-
-    await expect(offRow([track], 40)).toBe("");
-    await expect(
-      segments.flatMap((segment) => {
-        const { left, width } = segment.getBoundingClientRect();
-
-        return document.elementFromPoint(left + width / 2, top - 1.5) ===
-          segment
-          ? []
-          : [segment.textContent];
-      })
-    ).toEqual([]);
-    // Review Focus 1: the three lookups fit the 390 px page.
-    await expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(
-      document.documentElement.clientWidth
-    );
-  },
-};
-
-/** C06-3: Change access takes the md height of the search field beside it. */
-export const ResultsHeaderLinesUp: Story = {
-  args: { initial: jamie },
-  globals: { viewport: { value: "desktop1440", isRotated: false } },
-  play: async ({ canvas }) => {
-    const search = await canvas.findByRole("searchbox", {
-      name: "Search these results",
-    });
-
-    await expect(
-      offRow(
-        [
-          search.closest<HTMLElement>('[data-slot="input-group"]')!,
-          canvas.getByRole("link", { name: "Change access" }),
-        ],
-        36
-      )
-    ).toBe("");
-  },
-};
-
-/** A module that nobody holds. */
-export const NobodyHolds: Story = {
-  args: { initial: { type: "module", id: "placeholder" } },
 };

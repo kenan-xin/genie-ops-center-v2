@@ -3,10 +3,12 @@ import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 
 import {
   BUILT_IN_CONTROLS,
+  Button,
   FilterBar,
   formatDayRange,
   useListState,
   type ListDefinition,
+  type ListFilterControlProps,
 } from "../index.ts";
 import {
   customers,
@@ -235,5 +237,85 @@ export const ClearFilters: Story = {
     await expect(canvas.getByLabelText("Search invoices")).toHaveValue("");
     await waitFor(() => expect(clearButton()).toBeNull());
     await expect(canvas.getByLabelText("Search invoices")).toHaveFocus();
+  },
+};
+
+/** A registered kind that draws a 200 px control, as the Overview's Person or group filter does. */
+function Probe(props: ListFilterControlProps) {
+  return (
+    <Button variant="secondary" size="filter" className="w-50 shrink-0">
+      {props.filter.label}
+    </Button>
+  );
+}
+
+const narrow: ListDefinition = {
+  ...invoicesLike,
+  filters: [
+    {
+      id: "q",
+      kind: "search",
+      label: "Search invoices",
+      placeholder: "Search",
+    },
+    {
+      id: "customer",
+      kind: "option",
+      label: "Customer",
+      placeholder: "All customers",
+      options: customers,
+      barWidth: 200,
+    },
+    {
+      id: "payer",
+      kind: "option",
+      label: "Payer",
+      placeholder: "All payers",
+      options: customers,
+      barWidth: 200,
+    },
+    {
+      id: "owner",
+      kind: "probe",
+      label: "Owner",
+      placeholder: "Anyone",
+      barWidth: 200,
+    },
+  ],
+};
+
+function NarrowBar() {
+  const state = useListState(narrow);
+
+  return (
+    // 1136 px: the list card of the Access Overview at 1440 (P12-12).
+    <div className="w-284 rounded-xl border border-border">
+      <FilterBar
+        definition={narrow}
+        state={state}
+        controls={{ ...BUILT_IN_CONTROLS, probe: Probe }}
+      />
+    </div>
+  );
+}
+
+/** T7-j (P12-12): a search and three 200 px filters fit a 1136 px bar, with no More filters. */
+export const NarrowRegisteredFilters: Story = {
+  render: () => <NarrowBar />,
+  play: async ({ canvas }) => {
+    // The bar measures itself after the first paint; give its observer time to answer.
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    await expect(
+      canvas.queryByRole("button", { name: "More filters" })
+    ).toBeNull();
+    await expect(canvas.getByRole("button", { name: "Owner" })).toBeVisible();
+
+    await Promise.all(
+      ["Customer: All customers", "Payer: All payers"].map((name) =>
+        expect(canvas.getByLabelText(name).getBoundingClientRect().width).toBe(
+          200
+        )
+      )
+    );
   },
 };

@@ -53,6 +53,39 @@ async function setUp(project: string): Promise<void> {
   );
 }
 
+/** The rows of the Overview list in either layout: a table from 768 px, else a card list (d8l5.62). */
+const overviewList = (page: Page): Locator =>
+  (page.viewportSize()?.width ?? 0) >= 768
+    ? page
+        .getByRole("table", { name: "Assignments, newest first" })
+        .locator("tbody")
+        .getByRole("row")
+    : page
+        .getByRole("list", { name: "Assignments, newest first" })
+        .getByRole("listitem");
+
+/**
+ * A set filter: the bar's trigger from 768 px (in More filters when the bar is narrow at 1280),
+ * else the phone chip.
+ */
+const filterShows = async (page: Page, text: RegExp): Promise<Locator> => {
+  const trigger = page
+    .getByLabel(text)
+    .or(page.getByText(text))
+    .filter({ visible: true })
+    .first();
+
+  const more = page.getByRole("button", { name: "More filters" });
+
+  await expect(trigger.or(more)).toBeVisible();
+
+  if (await trigger.isVisible()) return trigger;
+
+  await more.click();
+
+  return trigger;
+};
+
 /** Opens a person's inspector from People by searching their name. */
 async function openPerson(page: Page, name: string): Promise<Locator> {
   await page.goto("/admin/people");
@@ -249,30 +282,22 @@ async function expectRoleChosen(
   await expect(page).toHaveURL(
     new RegExp(`/admin/access/overview\\?role=${roleId}$`)
   );
-  await expect(page.getByRole("button", { name: "By role" })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
   await expect(
-    page.getByRole("combobox", { name: "Choose a role" })
-  ).toContainText("E2E links limited");
+    await filterShows(page, /^Role: E2E links limited/)
+  ).toBeVisible();
   await expect(
-    page
-      .getByRole("region", { name: "Results" })
-      .getByText(holder)
-      .filter({ visible: true })
-      .first()
+    overviewList(page).filter({ hasText: holder }).first()
   ).toBeVisible();
 }
 
-test("an unknown role link shows the empty Overview", async ({
+test("an unknown role link shows every assignment", async ({
   page,
 }, testInfo) => {
   const reads: string[] = [];
 
   page.on("request", (request) => {
-    if (request.url().includes("/api/rpc/roles/accessBySubject")) {
-      reads.push(request.url());
+    if (request.url().includes("/api/rpc/roles/assignments")) {
+      reads.push(request.postData() ?? "");
     }
   });
 
@@ -287,23 +312,18 @@ test("an unknown role link shows the empty Overview", async ({
 
   await page.goto("/admin/access/overview?role=not-a-role");
   await listed;
-  await expect(
-    page.getByRole("heading", { name: "Choose what to look up" })
-  ).toBeVisible();
-  expect(reads).toEqual([]);
+  await expect(overviewList(page).first()).toBeVisible();
+  expect(reads.length).toBeGreaterThan(0);
+  // The stale id reads as no filter and never reaches the server (P12-8).
+  expect(reads.some((body) => body.includes("not-a-role"))).toBe(false);
 });
 
 async function expectModuleChosen(page: Page): Promise<void> {
   await expect(page).toHaveURL(
     /\/admin\/access\/overview\?module=placeholder$/
   );
-  await expect(page.getByRole("button", { name: "By module" })).toHaveAttribute(
-    "aria-pressed",
-    "true"
-  );
-  await expect(
-    page.getByRole("status").filter({ hasText: /assigned to Placeholder/ })
-  ).toBeVisible();
+  await expect(await filterShows(page, /^Module: Placeholder$/)).toBeVisible();
+  await expect(overviewList(page).first()).toBeVisible();
 }
 
 test("a people manager reads a person's access read-only", async ({

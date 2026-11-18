@@ -573,28 +573,24 @@ export const FIXTURE_RECIPIENTS: GrantRecipients = {
   ],
 };
 
-/**
- * The Grants recipients plus the prototype's other groups and people. Former finance is archived,
- * so the recipients read leaves it out (O6). Robin Hale is disabled.
- */
-export const OVERVIEW_RECIPIENTS: GrantRecipients = {
-  groups: [
-    ...FIXTURE_RECIPIENTS.groups,
-    ...INVOICE_GROUPS.map(([id, name, memberCount]) => ({
-      id,
-      name,
-      memberCount,
-    })),
-  ],
-  people: [
-    ...FIXTURE_RECIPIENTS.people,
-    { id: "p-drew", name: "Drew Patel", email: "drew.patel@example.com" },
-    { id: "p-morgan", name: "Morgan Ellis", email: "morgan.ellis@example.com" },
-    { id: "p-robin", name: "Robin Hale", email: "robin.hale@example.com" },
-    {
-      id: "p-taylor",
-      name: "Taylor Brooks",
-      email: "taylor.brooks@example.com",
-    },
-  ],
-};
+/** Every Overview sample once, newest first, as the unfiltered read pages it (d8l5.62). */
+export const ALL_OVERVIEW_PATHS: readonly AccessPath[] = [
+  ...new Map(
+    Object.values(OVERVIEW_PATHS)
+      .flat()
+      .map((path) => [path.assignmentId, path] as const)
+  ).values(),
+].toSorted(
+  (a, b) =>
+    b.addedAt.localeCompare(a.addedAt) ||
+    b.assignmentId.localeCompare(a.assignmentId)
+);
+
+/** The size of each sample group, as `AccessPage.memberCounts` carries it. */
+export const OVERVIEW_MEMBER_COUNTS: Readonly<Record<string, number>> =
+  Object.fromEntries([
+    ...FIXTURE_RECIPIENTS.groups.map(
+      (group) => [group.id, group.memberCount] as const
+    ),
+    ...INVOICE_GROUPS.map(([id, , memberCount]) => [id, memberCount] as const),
+  ]);

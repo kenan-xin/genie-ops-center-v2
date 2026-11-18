@@ -17,21 +17,28 @@ export const recipientDetail = (row: RecipientRow): string =>
     : `${groupKindLabel(row.source)} · ${memberCountLabel(row.memberCount)}`;
 
 /**
- * "1 Jun 2026 by Priya Nair", in the viewer's zone. A row with no giver shows the date alone:
- * setup made it, or the break-glass account did, which no screen names (R-39).
+ * "1 Jun 2026 by Priya Nair", in the viewer's zone. A row that setup wrote says "1 Jun 2026 at
+ * setup" (P12-11); a row with no giver otherwise shows the date alone, because the break-glass
+ * account wrote it, which no screen names (R-39).
  */
 export function assignedOn(
-  row: { readonly addedAt: string; readonly addedBy: string | null },
+  row: {
+    readonly addedAt: string;
+    readonly addedBy: string | null;
+    readonly addedAtSetup?: boolean;
+  },
   timeZone: string
 ): string {
   const date = fmtDate(row.addedAt, timeZone);
 
-  return row.addedBy === null ? date : `${date} by ${row.addedBy}`;
+  if (row.addedBy !== null) return `${date} by ${row.addedBy}`;
+
+  return row.addedAtSetup === true ? `${date} at setup` : date;
 }
 
 /** "Assigned 1 Jun 2026 by Priya Nair" (G10). */
 export const assignedLabel = (
-  row: { readonly addedAt: string; readonly addedBy: string | null },
+  row: Parameters<typeof assignedOn>[0],
   timeZone: string
 ) => `Assigned ${assignedOn(row, timeZone)}`;
 

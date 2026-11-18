@@ -1,12 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import type { AccessPath } from "../../services/roles/effective-access.ts";
+import type { RecipientRow } from "../../services/roles/recipients.ts";
 import {
   FIXTURE_RECIPIENTS,
   FIXTURE_ROWS,
   fixturePath,
 } from "./__fixtures__/access.ts";
-import { linkedSubject, overviewRows } from "./overview-view.ts";
+import {
+  overviewRows,
+  parseWho,
+  reachLine,
+  readFilters,
+} from "./overview-view.ts";
 
 const jamie = { type: "user", id: "p-jamie", name: "Jamie Chen" } as const;
 
@@ -117,7 +123,14 @@ const all = [
   admin,
 ];
 
+const at = (id: string, holder: AccessPath["holder"]) =>
+  path(id, holder, invoicesUser, "invoices");
+
 const person = { type: "user", id: "p-jamie" } as const;
+
+const MEMBER_COUNTS = Object.fromEntries(
+  FIXTURE_RECIPIENTS.groups.map((group) => [group.id, group.memberCount])
+);
 
 const also = (shown: AccessPath) =>
   overviewRows({
@@ -125,7 +138,7 @@ const also = (shown: AccessPath) =>
     paths: [shown],
     personPaths: all,
     catalogue: FIXTURE_ROWS,
-    recipients: FIXTURE_RECIPIENTS,
+    memberCounts: MEMBER_COUNTS,
     recordLabels: new Map(),
   })[0]?.alsoThrough;
 
@@ -145,7 +158,7 @@ describe("overviewRows", () => {
       paths: [viaFinance, direct, viaFormer],
       personPaths: undefined,
       catalogue: FIXTURE_ROWS,
-      recipients: FIXTURE_RECIPIENTS,
+      memberCounts: MEMBER_COUNTS,
       recordLabels: new Map(),
     });
 
@@ -180,10 +193,7 @@ describe("overviewRows", () => {
       paths: [local, directory],
       personPaths: undefined,
       catalogue: FIXTURE_ROWS,
-      recipients: {
-        groups: [{ id: "g-ops", name: "Operations", memberCount: 1 }],
-        people: [],
-      },
+      memberCounts: { "g-ops": 1 },
       recordLabels: new Map(),
     });
 
@@ -199,7 +209,7 @@ describe("overviewRows", () => {
       paths: [direct, askDirect, admin, analyticsOff],
       personPaths: all,
       catalogue: FIXTURE_ROWS,
-      recipients: FIXTURE_RECIPIENTS,
+      memberCounts: MEMBER_COUNTS,
       recordLabels: new Map(),
     });
 
@@ -220,7 +230,7 @@ describe("overviewRows", () => {
       ],
       personPaths: undefined,
       catalogue: FIXTURE_ROWS,
-      recipients: FIXTURE_RECIPIENTS,
+      memberCounts: MEMBER_COUNTS,
       recordLabels: new Map(),
     });
 
@@ -241,7 +251,7 @@ describe("overviewRows", () => {
       paths: [scoped, unlabeled, direct],
       personPaths: undefined,
       catalogue: FIXTURE_ROWS,
-      recipients: FIXTURE_RECIPIENTS,
+      memberCounts: MEMBER_COUNTS,
       recordLabels: new Map([
         ["invoice\u0000INV-2026-0142", "Harbor invoice 142"],
       ]),
@@ -253,27 +263,137 @@ describe("overviewRows", () => {
       null,
     ]);
   });
+
+  it("names a group's kind and size from the page's counts, also an archived group, and a suspended person (T7-a)", () => {
+    const itOps = {
+      type: "group",
+      id: "g-it",
+      name: "IT Operations",
+      source: "idp",
+    } as const;
+
+    const rows = overviewRows({
+      subject: null,
+      paths: [
+        {
+          ...path("a-it", itOps, invoicesUser, "invoices"),
+          notInEffect: ["group-archived"],
+        },
+        { ...direct, notInEffect: ["person-disabled"] },
+      ],
+      personPaths: undefined,
+      catalogue: FIXTURE_ROWS,
+      memberCounts: { "g-it": 17 },
+      recordLabels: new Map(),
+    });
+
+    expect(rows.map((row) => [row.kind, row.notInEffect])).toEqual([
+      ["Directory group · 17 members", ["Group archived"]],
+      ["Person", ["Person suspended"]],
+    ]);
+  });
 });
 
-describe("linkedSubject", () => {
+describe("reachLine", () => {
+  const riley = { type: "user", id: "p-riley", name: "Riley Chen" } as const;
+
+  const sales = {
+    type: "group",
+    id: "g-sales",
+    name: "Sales",
+    source: "idp",
+  } as const;
+
+  it("counts direct and group rows of the person filter (T7-b)", () => {
+    expect(
+      reachLine("Riley Chen", [
+        at("1", riley),
+        at("2", finance),
+        at("3", riley),
+        at("4", finance),
+        at("5", finance),
+        at("6", finance),
+      ])
+    ).toBe("Riley Chen has 6 roles: 2 direct, 4 via Finance team.");
+    expect(
+      reachLine("Riley Chen", [
+        at("1", finance),
+        at("2", sales),
+        at("3", finance),
+        at("4", ops),
+      ])
+    ).toBe(
+      "Riley Chen has 4 roles: 2 via Finance team, 1 via Sales and 1 via Operations."
+    );
+    expect(reachLine("Riley Chen", [at("1", riley)])).toBe(
+      "Riley Chen has 1 role: 1 direct."
+    );
+    expect(reachLine("Riley Chen", [])).toBe("Riley Chen has no roles.");
+  });
+});
+
+describe("parseWho", () => {
+  it.each([
+    ["user:p-1", { type: "user", id: "p-1" }],
+    ["group:g-1", { type: "group", id: "g-1" }],
+    ["x", null],
+    ["user:", null],
+    ["role:1", null],
+    [undefined, null],
+  ] as const)("reads %s (T7-c)", (value, expected) => {
+    expect(parseWho(value)).toEqual(expected);
+  });
+});
+
+describe("readFilters", () => {
   const roles = [{ id: "r-auditor" }];
 
-  it.each([
-    ["a listed role", { role: "r-auditor" }, { type: "role", id: "r-auditor" }],
-    [
-      "a listed module",
-      { module: "invoices" },
-      { type: "module", id: "invoices" },
-    ],
-    [
-      "a listed role and module, role first",
-      { module: "invoices", role: "r-auditor" },
-      { type: "role", id: "r-auditor" },
-    ],
-    ["an unlisted role", { role: "r-gone" }, null],
-    ["an unlisted module", { module: "gone" }, null],
-    ["no parameter", {}, null],
-  ] as const)("answers %s", (_name, link, expected) => {
-    expect(linkedSubject(link, FIXTURE_ROWS, roles)).toEqual(expected);
+  const jamieRow: RecipientRow = {
+    type: "user",
+    id: "p-jamie",
+    name: "Jamie Chen",
+    email: "jamie.chen@example.com",
+    assignedRoles: 1,
+  };
+
+  it("waits while a set who loads, and leaves out a who, module or role that no list holds (T7-i)", () => {
+    const params = {
+      q: "north",
+      who: "user:p-jamie",
+      module: "invoices",
+      role: "r-auditor",
+    };
+
+    expect(
+      readFilters({ params, who: undefined, catalogue: FIXTURE_ROWS, roles })
+        .ready
+    ).toBe(false);
+    expect(
+      readFilters({ params, who: jamieRow, catalogue: FIXTURE_ROWS, roles })
+    ).toEqual({
+      ready: true,
+      query: "north",
+      filters: {
+        recipient: { type: "user", id: "p-jamie" },
+        moduleId: "invoices",
+        roleId: "r-auditor",
+      },
+    });
+    expect(
+      readFilters({
+        params: { who: "user:gone", module: "gone", role: "r-gone" },
+        who: null,
+        catalogue: FIXTURE_ROWS,
+        roles,
+      })
+    ).toEqual({ ready: true, query: "", filters: {} });
+    expect(
+      readFilters({
+        params: { who: "nonsense" },
+        who: undefined,
+        catalogue: FIXTURE_ROWS,
+        roles,
+      })
+    ).toEqual({ ready: true, query: "", filters: {} });
   });
 });

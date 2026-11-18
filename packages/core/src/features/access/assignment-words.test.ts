@@ -37,4 +37,18 @@ describe("assignment words", () => {
       "1 Jun 2026 by Priya Nair"
     );
   });
+
+  it("says at setup for a row that setup wrote, and the date alone for a break-glass row (T7-l)", () => {
+    const addedAt = "2026-06-01T09:00:00.000000Z";
+
+    expect(
+      assignedOn({ addedAt, addedBy: "Priya Nair", addedAtSetup: false }, "UTC")
+    ).toBe("1 Jun 2026 by Priya Nair");
+    expect(
+      assignedOn({ addedAt, addedBy: null, addedAtSetup: true }, "UTC")
+    ).toBe("1 Jun 2026 at setup");
+    expect(
+      assignedOn({ addedAt, addedBy: null, addedAtSetup: false }, "UTC")
+    ).toBe("1 Jun 2026");
+  });
 });

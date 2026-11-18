@@ -1,219 +1,136 @@
 "use client";
 
 import {
+  BUILT_IN_CONTROLS,
   Button,
-  buttonVariants,
   DataTable,
   type DataTableColumn,
   EmptyState,
+  type FilterChip,
+  FilterBar,
+  FilterChips,
+  FilterSheet,
   focusRing,
-  iconLead,
-  iconLeadPx,
-  InputGroup,
-  InputGroupAddon,
-  InputGroupInput,
-  InputGroupText,
-  LabelPill,
+  type ListDefinition,
+  type ListFilterControl,
+  type ListFilterControlProps,
+  type ListState,
   StatusPill,
-  ToggleGroup,
-  ToggleGroupItem,
 } from "@genie/ui";
-import { useDebouncedCallback } from "@tanstack/react-pacer";
-import { UserIcon, UsersIcon } from "lucide-react";
-import { type ReactNode, useState } from "react";
+import { createContext, type ReactNode, useContext, useState } from "react";
 
 import type {
+  AccessHolder,
   AccessPath,
-  AccessSubject,
+  AssignmentFilters,
 } from "../../services/roles/effective-access.ts";
-import type { GrantRecipients, GrantRow } from "../../services/roles/grants.ts";
-import type { RoleRow } from "../../services/roles/index.ts";
-import { HelpIcon, SearchIcon } from "../admin/icons.tsx";
+import type { GrantRow } from "../../services/roles/grants.ts";
+import type {
+  RecipientPage,
+  RecipientRow,
+} from "../../services/roles/recipients.ts";
 import { fmtDate } from "../audit/helpers.ts";
 import { PageLink } from "../shell/page-link.tsx";
 import { AccessHelp } from "./access-help.tsx";
-import { accessHref } from "./access-link.ts";
+import { assignedOn } from "./assignment-words.ts";
 import {
   type OverviewRow,
   overviewRows,
   pausedLabel,
+  reachLine,
+  whoParam,
 } from "./overview-view.ts";
-import {
-  ChoicePicker,
-  groupChoices,
-  personChoices,
-  type PickerGroup,
-} from "./recipient-picker.tsx";
+import { RangePager } from "./range-pager.tsx";
+import { RecipientField } from "./recipient-field.tsx";
+import { RecipientMark } from "./recipient-mark.tsx";
 
 export type OverviewPage = {
   /** The shown page, newest first. */
   readonly paths: readonly AccessPath[];
+  /** `AccessPage.memberCounts` of the shown page. */
+  readonly memberCounts: Readonly<Record<string, number>>;
   /** The number of the page's first row, from 1. */
   readonly from: number;
-  /** Every path of the subject before the search: the header count (O5). */
+  /** Every assignment that the filters and the search keep. */
   readonly total: number;
-  /** The paths that match the search: the pager total. */
-  readonly matches: number;
   readonly hasPrevious: boolean;
   readonly hasNext: boolean;
 };
 
 export type OverviewScreenProps = {
+  /** `overviewDefinition(catalogue, roles)`. */
+  readonly definition: ListDefinition;
+  /** `useListState(definition)`: q, who, module and role in the address (P12-8). */
+  readonly state: ListState;
   readonly catalogue: readonly GrantRow[] | undefined;
-  readonly recipients: GrantRecipients | undefined;
-  /** Every role, for the role lookup (`d8l5.46`). */
-  readonly roles: readonly RoleRow[] | undefined;
-  readonly subject: AccessSubject | null;
-  /** Null when the administrator switches between the lookups. */
-  readonly onSubjectChange: (next: AccessSubject | null) => void;
-  /** Called 300 ms after the last keystroke (O12). */
-  readonly onQueryChange: (query: string) => void;
-  /** Undefined while the first page of the subject loads. */
+  /** The filters in effect, from `readFilters`. */
+  readonly filters: AssignmentFilters;
+  /** The person or group of `filters.recipient`; null with no recipient filter. */
+  readonly who: RecipientRow | null | undefined;
+  /** The Person or group filter's search: `roles.recipients` with `limit: 10`. */
+  readonly searchRecipients: (query: string) => Promise<RecipientPage>;
+  /** Undefined while the first page loads. */
   readonly page: OverviewPage | undefined;
   readonly onPage: (step: -1 | 1) => void;
-  /** A page or a search loads: the pager buttons wait. */
+  /** A next page loads: the pager buttons wait. */
   readonly paging: boolean;
-  /** Every path of a person subject (O4). */
+  /** Every path of the filtered person, for the reach line and "also assigned via" (O4). */
   readonly personPaths: readonly AccessPath[] | undefined;
   /** Record labels by `scopeKey`, only for records the viewer can open (AD10). */
   readonly recordLabels: ReadonlyMap<string, string>;
-  /** The tenant's default time zone, for the Added date (O11). */
+  /** The tenant's default time zone (O11). */
   readonly timeZone: string;
-  /** Set only for a viewer who holds `core:audit:read` (O10). */
-  readonly auditLogHref?: string | undefined;
+  /** Each given only to a viewer who may open that screen (P12-20). */
+  readonly roleHref?: ((roleId: string) => string) | undefined;
+  readonly personHref?: ((personId: string) => string) | undefined;
+  readonly groupHref?: ((groupId: string) => string) | undefined;
   readonly error?: string | undefined;
 };
 
-type Lookup = "recipient" | "module" | "role";
+const COUNT = new Intl.NumberFormat("en-GB");
 
-const keyOf = (subject: AccessSubject) => `${subject.type}:${subject.id}`;
+type Who = {
+  readonly value: RecipientRow | null;
+  readonly search: (query: string) => Promise<RecipientPage>;
+  readonly pick: (row: RecipientRow) => void;
+};
 
-const lookupOf = (subject: AccessSubject): Lookup =>
-  subject.type === "module" || subject.type === "role"
-    ? subject.type
-    : "recipient";
+// A registered control is a component type, so the picker reaches the screen's state through context.
+const WhoContext = createContext<Who | null>(null);
 
-const PICKER = {
-  recipient: {
-    prompt: "Choose a group or person",
-    search: "Search groups and people",
-  },
-  module: { prompt: "Choose a module", search: "Search modules" },
-  role: { prompt: "Choose a role", search: "Search roles" },
-} as const;
+/** The Person or group filter (`access-recipient`): one pick, cleared by Clear filters or its chip. */
+function WhoFilter(props: ListFilterControlProps): ReactNode {
+  const who = useContext(WhoContext);
 
-/** One group per module in catalogue order, then Core for the roles of no module. */
-function roleGroups(
-  catalogue: readonly GrantRow[],
-  roles: readonly RoleRow[]
-): readonly PickerGroup<AccessSubject>[] {
-  const choices = (moduleId: string | null) =>
-    roles.flatMap((role) =>
-      role.moduleId === moduleId
-        ? [
-            {
-              key: `role:${role.id}`,
-              name: role.name,
-              detail:
-                role.description !== ""
-                  ? role.description
-                  : role.kind === "custom"
-                    ? "Custom role"
-                    : "Built-in role",
-              value: { type: "role", id: role.id } as const,
-            },
-          ]
-        : []
-    );
+  if (who === null) return null;
 
-  const moduleIds = [
-    ...new Set([
-      ...catalogue.map((row) => row.id),
-      ...roles.flatMap((role) =>
-        role.moduleId === null ? [] : [role.moduleId]
-      ),
-    ]),
-  ];
-
-  return [
-    ...moduleIds.map((id) => ({
-      label: catalogue.find((row) => row.id === id)?.name ?? id,
-      choices: choices(id),
-    })),
-    { label: "Core", choices: choices(null) },
-  ].filter((group) => group.choices.length > 0);
-}
-
-function moduleGroups(
-  catalogue: readonly GrantRow[]
-): readonly PickerGroup<AccessSubject>[] {
-  const choices = (group: GrantRow["group"]) =>
-    catalogue.flatMap((row) =>
-      row.group === group
-        ? [
-            {
-              key: `module:${row.id}`,
-              name: row.name,
-              detail: row.enabled
-                ? (row.description ?? row.name)
-                : "Module off",
-              value: { type: "module", id: row.id } as const,
-            },
-          ]
-        : []
-    );
-
-  return [
-    { label: "Modules", choices: choices("modules") },
-    { label: "Core", choices: choices("core") },
-  ];
-}
-
-function subjectName(
-  subject: AccessSubject,
-  catalogue: readonly GrantRow[],
-  recipients: GrantRecipients | undefined,
-  roles: readonly RoleRow[] | undefined
-): string {
-  if (subject.type === "module") {
-    return catalogue.find((row) => row.id === subject.id)?.name ?? subject.id;
-  }
-
-  if (subject.type === "role") {
-    return roles?.find((role) => role.id === subject.id)?.name ?? "";
-  }
-
-  const list =
-    subject.type === "group" ? recipients?.groups : recipients?.people;
-
-  return list?.find((entry) => entry.id === subject.id)?.name ?? "";
-}
-
-function WhoIcon(props: { readonly row: OverviewRow }) {
-  const user = props.row.holder.type === "user";
-  const Icon = user ? UserIcon : UsersIcon;
-
-  // 6wz1.113: `user` starts 2.7 px into its box, `users` 0.7 px (P07-80).
   return (
-    <Icon
-      aria-hidden="true"
-      className={`size-4 shrink-0 text-muted-foreground ${user ? iconLeadPx[3] : iconLead}`}
-    />
+    <div className={props.place === "bar" ? "w-50 shrink-0" : "w-full"}>
+      <RecipientField
+        label={props.filter.label}
+        placeholder={props.filter.placeholder}
+        multiple={false}
+        value={who.value === null ? [] : [who.value]}
+        onChange={(rows) => {
+          const [row] = rows;
+
+          if (row !== undefined) who.pick(row);
+        }}
+        search={who.search}
+        look={props.place === "bar" ? "filter" : "field"}
+      />
+    </div>
   );
 }
 
-const Muted = (props: { readonly children: ReactNode }) => (
-  <span className="block text-xs font-normal text-muted-foreground">
-    {props.children}
-  </span>
-);
+const CONTROLS = {
+  ...BUILT_IN_CONTROLS,
+  "access-recipient": WhoFilter,
+} satisfies Readonly<Record<string, ListFilterControl>>;
 
-const Pill = (props: { readonly children: ReactNode }) => (
-  <span className="mt-1 flex flex-wrap gap-1">{props.children}</span>
-);
+const SearchControl = BUILT_IN_CONTROLS.search;
 
-// One pill per reason, so several reasons wrap inside a phone card instead of one long pill.
-const NotInEffect = (props: { readonly row: OverviewRow }) =>
+const Paused = (props: { readonly row: OverviewRow }) =>
   props.row.notInEffect.length === 0 ? null : (
     <span className="flex flex-wrap gap-1">
       {props.row.notInEffect.map((reason) => (
@@ -224,388 +141,379 @@ const NotInEffect = (props: { readonly row: OverviewRow }) =>
     </span>
   );
 
-const ModuleCell = (props: { readonly row: OverviewRow }) => (
-  <>
-    {props.row.module}
-    {props.row.record === null ? null : (
-      <Pill>
-        {/* The id breaks, so a long one neither clips a phone card nor widens the column. */}
-        <LabelPill>
-          One record ·{" "}
-          <span className="min-w-0 whitespace-normal wrap-anywhere">
-            {props.row.record}
-          </span>
-        </LabelPill>
-      </Pill>
-    )}
-  </>
-);
+/** "Invoices and Payments · Custom role"; with the Module filter set, only "Custom role" or nothing (ADM-14b). */
+const moduleLine = (row: OverviewRow, moduleSet: boolean) =>
+  moduleSet
+    ? row.custom
+      ? "Custom role"
+      : null
+    : row.custom
+      ? `${row.module} · Custom role`
+      : row.module;
 
-const RoleCell = (props: { readonly row: OverviewRow }) => (
-  <>
-    {props.row.role}
-    {props.row.custom ? (
-      <Pill>
-        <LabelPill>Custom role</LabelPill>
-      </Pill>
-    ) : null}
-  </>
-);
+/** "by Priya Nair", "at setup" (P12-11), or nothing for a break-glass row (R-39). */
+const addedLine = (row: OverviewRow) =>
+  row.addedBy !== null
+    ? `by ${row.addedBy}`
+    : row.addedAtSetup
+      ? "at setup"
+      : null;
 
-const PathCell = (props: { readonly row: OverviewRow }) => (
-  <>
-    {props.row.path}
-    {props.row.alsoThrough.length === 0 ? null : (
-      <Muted>also assigned via {props.row.alsoThrough.join(", ")}</Muted>
-    )}
-  </>
-);
+const Name = (props: {
+  readonly text: string;
+  readonly href: string | undefined;
+}) =>
+  props.href === undefined ? (
+    props.text
+  ) : (
+    <PageLink
+      href={props.href}
+      className={`font-medium text-foreground underline ${focusRing}`}
+    >
+      {props.text}
+    </PageLink>
+  );
 
-const AddedCell = (props: {
-  readonly row: OverviewRow;
-  readonly timeZone: string;
-}) => (
-  <>
-    <span className="whitespace-nowrap tabular-nums">
-      {fmtDate(props.row.addedAt, props.timeZone)}
-    </span>
-    {props.row.addedBy === null ? null : <Muted>by {props.row.addedBy}</Muted>}
-  </>
-);
+/**
+ * The Overview tab of Access (d8l5.62, access-start b): every assignment, newest first, 25 to a
+ * page, filtered on the server by Person or group, Module and Role, and searched. It writes nothing.
+ */
+export function OverviewScreen(props: OverviewScreenProps): ReactNode {
+  const { state, page } = props;
 
-function columnsOf(timeZone: string): readonly DataTableColumn<OverviewRow>[] {
-  return [
+  // A pick shows its name at once, before the route's lookup of the new address answers.
+  const [picked, setPicked] = useState<RecipientRow | null>(null);
+
+  const asked = state.params["who"];
+
+  const applied =
+    props.filters.recipient === undefined ? null : (props.who ?? null);
+
+  const shownWho =
+    picked !== null && asked === whoParam(picked) ? picked : applied;
+
+  const person = applied?.type === "user" ? applied : null;
+
+  // With a person in Person or group, Assigned to names that person on every row (filtered-1440).
+  const personWho = shownWho?.type === "user" ? shownWho : null;
+
+  const moduleSet = props.filters.moduleId !== undefined;
+
+  const rows =
+    page === undefined
+      ? []
+      : overviewRows({
+          subject: applied,
+          paths: page.paths,
+          personPaths: props.personPaths,
+          catalogue: props.catalogue ?? [],
+          memberCounts: page.memberCounts,
+          recordLabels: props.recordLabels,
+        });
+
+  const holderHref = (holder: AccessHolder) =>
+    holder.type === "user"
+      ? props.personHref?.(holder.id)
+      : props.groupHref?.(holder.id);
+
+  // With the person filter every user row is that person: Direct; a group row names the group.
+  const via = (row: OverviewRow) =>
+    row.holder.type === "user" ? (
+      "Direct"
+    ) : (
+      <>
+        <Name text={row.holder.name} href={props.groupHref?.(row.holder.id)} />
+        <span className="text-muted-foreground"> (group)</span>
+      </>
+    );
+
+  const columns: readonly DataTableColumn<OverviewRow>[] = [
     {
-      id: "who",
-      header: "Who",
+      id: "role",
+      header: "Role",
       cell: (row) => (
-        <span className="flex items-start gap-2">
-          <WhoIcon row={row} />
-          <span className="min-w-0">
-            {row.holder.name}
-            {row.notInEffect.length === 0 ? null : (
-              <Pill>
-                <NotInEffect row={row} />
-              </Pill>
-            )}
+        <span className="flex flex-col gap-1">
+          <span className="flex flex-col">
+            <Name text={row.role} href={props.roleHref?.(row.roleId)} />
+            <span className="text-xs text-muted-foreground">
+              {moduleLine(row, false)}
+            </span>
           </span>
+          <Paused row={row} />
         </span>
       ),
     },
-    { id: "module", header: "Module", cell: (row) => <ModuleCell row={row} /> },
-    { id: "role", header: "Role", cell: (row) => <RoleCell row={row} /> },
     {
-      id: "path",
-      header: "Assigned via",
-      cell: (row) => <PathCell row={row} />,
+      id: "to",
+      header: "Assigned to",
+      cell: (row) => {
+        const name = personWho?.name ?? row.holder.name;
+
+        const href =
+          personWho === null
+            ? holderHref(row.holder)
+            : props.personHref?.(personWho.id);
+
+        return (
+          <span className="flex items-start gap-3">
+            <RecipientMark
+              type={personWho === null ? row.holder.type : "user"}
+              name={name}
+            />
+            {/* 8 px down, so the 32 px mark's center sits on the first line's center (6wz1.113). */}
+            <span className="flex min-w-0 flex-col pt-2">
+              <Name text={name} href={href} />
+              <span className="text-xs text-muted-foreground">
+                {personWho === null ? row.kind : "Person"}
+              </span>
+            </span>
+          </span>
+        );
+      },
     },
+    {
+      id: "scope",
+      header: "Scope",
+      cell: (row) =>
+        row.record ?? <span className="whitespace-nowrap">All records</span>,
+    },
+    ...(person === null
+      ? []
+      : [{ id: "via", header: "Assigned via", cell: via }]),
     {
       id: "added",
       header: "Assigned",
-      cell: (row) => <AddedCell row={row} timeZone={timeZone} />,
+      cell: (row) => (
+        <span className="flex flex-col">
+          <span className="whitespace-nowrap tabular-nums">
+            {fmtDate(row.addedAt, props.timeZone)}
+          </span>
+          {addedLine(row) === null ? null : (
+            <span className="text-xs text-muted-foreground">
+              {addedLine(row)}
+            </span>
+          )}
+        </span>
+      ),
     },
   ];
-}
 
-/** The four facts of a phone card, as the table columns name them. */
-function CardFacts(props: {
-  readonly row: OverviewRow;
-  readonly timeZone: string;
-}) {
-  const facts = [
-    ["Module", <ModuleCell key="m" row={props.row} />],
-    ["Role", <RoleCell key="r" row={props.row} />],
-    ["Assigned via", <PathCell key="p" row={props.row} />],
-    [
-      "Assigned",
-      <AddedCell key="a" row={props.row} timeZone={props.timeZone} />,
-    ],
-  ] as const;
+  const optionLabel = (id: string, value: string) =>
+    props.definition.filters
+      .find((filter) => filter.id === id)
+      ?.options?.find((option) => option.value === value)?.label ?? value;
 
-  return (
-    <dl className="mt-2 flex flex-col gap-1.5">
-      {facts.map(([term, value]) => (
-        <div key={term} className="flex gap-3">
-          <dt className="w-20 shrink-0 pt-0.5 text-xs text-muted-foreground">
-            {term}
-          </dt>
-          <dd className="min-w-0 wrap-anywhere">{value}</dd>
-        </div>
-      ))}
-    </dl>
-  );
-}
-
-/** One subject's results. Keyed by the subject, so its search text starts empty on each. */
-function Results(
-  props: OverviewScreenProps & { readonly subject: AccessSubject }
-) {
-  const [text, setText] = useState("");
-
-  const search = useDebouncedCallback(props.onQueryChange, { wait: 300 });
-
-  const catalogue = props.catalogue ?? [];
-
-  // A module or a role has holders. A group or a person has assignments, and a Grants link.
-  const byHolder =
-    props.subject.type === "module" || props.subject.type === "role";
-
-  const name = subjectName(
-    props.subject,
-    catalogue,
-    props.recipients,
-    props.roles
-  );
-
-  const { page } = props;
-
-  if (page === undefined) {
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading the results for {name}…
-      </p>
-    );
-  }
-
-  const rows = overviewRows({
-    subject: props.subject,
-    paths: page.paths,
-    personPaths: props.personPaths,
-    catalogue,
-    recipients: props.recipients ?? { groups: [], people: [] },
-    recordLabels: props.recordLabels,
+  const chip = (id: string, label: string, value: string): FilterChip => ({
+    id,
+    label: `${label}: ${value}`,
+    set: true,
+    remove: {
+      name: `Remove the ${label} filter`,
+      onRemove: () => state.set({ [id]: undefined }),
+    },
   });
 
-  const to = page.from + page.paths.length - 1;
+  const chips: readonly FilterChip[] = [
+    ...(shownWho === null
+      ? []
+      : [chip("who", "Person or group", shownWho.name)]),
+    ...(props.filters.moduleId === undefined
+      ? []
+      : [
+          chip(
+            "module",
+            "Module",
+            optionLabel("module", props.filters.moduleId)
+          ),
+        ]),
+    ...(props.filters.roleId === undefined
+      ? []
+      : [chip("role", "Role", optionLabel("role", props.filters.roleId))]),
+  ];
 
-  const label = byHolder ? `Assigned to ${name}` : `Assignments for ${name}`;
+  const search = props.definition.filters.find(
+    (filter) => filter.kind === "search"
+  );
 
-  const nobody =
-    props.subject.type === "role"
-      ? `${name} is not assigned to anyone yet.`
-      : props.subject.type === "module"
-        ? `No role of ${name} is assigned to anyone.`
-        : `No role is assigned to ${name}.`;
+  // Any list parameter in the address, also one that reads as no filter.
+  const filtered = Object.keys(state.params).length > 0;
 
-  return (
-    <section
-      aria-label="Results"
-      className="flex flex-col rounded-xl border border-border bg-card"
-    >
-      <div className="flex flex-wrap items-center justify-between gap-3 p-4 md:px-5">
-        {/* A search narrows the count to "3 of 5", and a screen reader hears it (`d8l5.45`). */}
-        <p role="status" className="text-sm">
-          {page.matches < page.total ? (
-            <>
-              <b className="font-semibold tabular-nums">{page.matches}</b> of{" "}
-              <span className="tabular-nums">{page.total}</span>{" "}
-            </>
-          ) : (
-            <>
-              <b className="font-semibold tabular-nums">{page.total}</b>{" "}
-            </>
-          )}
-          {byHolder
-            ? "assigned to"
-            : `assignment${page.total === 1 ? "" : "s"} for`}{" "}
-          <b className="font-semibold">{name}</b>
+  const body =
+    page === undefined ? (
+      props.error === undefined ? (
+        <p
+          role="status"
+          className="px-4 py-6 text-sm text-muted-foreground md:px-5"
+        >
+          Loading assignments
         </p>
-        {page.total === 0 ? null : (
-          <InputGroup className="w-full md:max-w-xs">
-            <InputGroupInput
-              type="search"
-              value={text}
-              aria-label="Search these results"
-              placeholder="Search these results"
-              onChange={(event) => {
-                setText(event.target.value);
-                search(event.target.value.trim());
-              }}
-            />
-            <InputGroupAddon>
-              <InputGroupText>
-                <SearchIcon aria-hidden="true" />
-              </InputGroupText>
-            </InputGroupAddon>
-          </InputGroup>
-        )}
-        {byHolder ? null : (
-          <PageLink
-            href={accessHref({ recipient: props.subject.id })}
-            className={`${buttonVariants({ variant: "secondary" })} ${focusRing}`}
-          >
-            Change access
-          </PageLink>
-        )}
-      </div>
-
-      {page.total === 0 ? (
-        <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground md:px-5">
-          {nobody}
-        </p>
-      ) : page.matches === 0 ? (
-        <p className="border-t border-border px-4 py-6 text-sm text-muted-foreground md:px-5">
-          No row matches the search.
-        </p>
-      ) : (
-        <div className="border-t border-border">
-          <DataTable<OverviewRow>
-            label={label}
-            rows={rows}
-            rowKey={(row) => row.key}
-            rowLabel={(row) => `${row.holder.name}, ${row.role}`}
-            columns={columnsOf(props.timeZone)}
-            framed={false}
-            card={{
-              media: (row) => <WhoIcon row={row} />,
-              title: (row) => row.holder.name,
-              // The detail line spans the card, so several paused pills wrap there; the badge slot does not shrink.
-              detail: (row) => <NotInEffect row={row} />,
-              content: (row) => (
-                <CardFacts row={row} timeZone={props.timeZone} />
-              ),
-            }}
-            footer={
-              <>
-                <span className="self-center tabular-nums">
-                  {page.from}–{to} of {page.matches}
-                </span>
-                <span className="flex gap-2">
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={!page.hasPrevious || props.paging}
-                    onClick={() => props.onPage(-1)}
-                  >
-                    Previous
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    disabled={!page.hasNext || props.paging}
-                    onClick={() => props.onPage(1)}
-                  >
-                    Next
-                  </Button>
-                </span>
-              </>
+      ) : null
+    ) : rows.length === 0 ? (
+      <div className="px-4 py-6 md:px-5">
+        {filtered ? (
+          <EmptyState
+            headingLevel="h2"
+            title="No assignments match"
+            description="Clear the search and the filters to see every assignment."
+            action={
+              <Button variant="secondary" onClick={state.clear}>
+                Clear search and filters
+              </Button>
             }
           />
-        </div>
-      )}
-
-      <p className="flex gap-2 border-t border-border px-4 py-3 text-xs text-muted-foreground md:px-5">
-        <HelpIcon
-          aria-hidden="true"
-          className={`size-4 shrink-0 ${iconLead}`}
-        />
-        <span>
-          Access adds up. Removing one assignment leaves the others. The{" "}
-          {props.auditLogHref === undefined ? (
-            "audit log"
-          ) : (
-            <a
-              href={props.auditLogHref}
-              className="font-medium text-foreground underline underline-offset-2"
-            >
-              audit log
-            </a>
-          )}{" "}
-          shows what changed and when.
-        </span>
-      </p>
-    </section>
-  );
-}
-
-/**
- * The Overview tab of Access (R-37b, R-37d): one subject, a group or a person, or a module, and
- * every path to a role, searchable and paged by the server. It writes nothing.
- */
-export function OverviewScreen(props: OverviewScreenProps): ReactNode {
-  const [chosen, setChosen] = useState<Lookup>("recipient");
-
-  // A subject that a link sets after mount still presses its own segment.
-  const lookup = props.subject === null ? chosen : lookupOf(props.subject);
-
-  const groups: readonly PickerGroup<AccessSubject>[] =
-    lookup === "module"
-      ? moduleGroups(props.catalogue ?? [])
-      : lookup === "role"
-        ? roleGroups(props.catalogue ?? [], props.roles ?? [])
-        : props.recipients === undefined
-          ? []
-          : [
-              { label: "Groups", choices: groupChoices(props.recipients) },
-              { label: "People", choices: personChoices(props.recipients) },
-            ];
+        ) : (
+          <EmptyState
+            headingLevel="h2"
+            title="No assignments"
+            description="No person or group has a role yet."
+          />
+        )}
+      </div>
+    ) : (
+      <DataTable<OverviewRow>
+        label={props.definition.label}
+        rows={rows}
+        rowKey={(row) => row.key}
+        rowLabel={(row) => `${row.role}, ${row.holder.name}`}
+        columns={columns}
+        framed={false}
+        // One order, newest first, and no control (P12-19): the header says it, no button changes it.
+        sort={{
+          by: { column: "added", direction: "desc" },
+          onChange: () => undefined,
+        }}
+        card={{
+          title: (row) => (
+            <Name text={row.role} href={props.roleHref?.(row.roleId)} />
+          ),
+          badge: (row) =>
+            row.notInEffect.length === 0 ? null : <Paused row={row} />,
+          detail: (row) => moduleLine(row, moduleSet),
+          content: (row) => (
+            // oxlint-disable-next-line shadcn/no-arbitrary-values -- the design capture's label column takes the label's width, not a fraction
+            <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-sm">
+              {applied === null ? (
+                <>
+                  <dt className="text-muted-foreground">Assigned to</dt>
+                  <dd className="min-w-0 wrap-anywhere">
+                    {row.holder.name}
+                    {row.holder.type === "group" ? (
+                      <span className="text-muted-foreground">
+                        {" "}
+                        · {row.kind}
+                      </span>
+                    ) : null}
+                  </dd>
+                </>
+              ) : null}
+              <dt className="text-muted-foreground">Scope</dt>
+              <dd className="min-w-0 wrap-anywhere">
+                {row.record ?? "All records"}
+              </dd>
+              {person === null ? null : (
+                <>
+                  <dt className="text-muted-foreground">Assigned via</dt>
+                  <dd className="min-w-0 wrap-anywhere">{via(row)}</dd>
+                </>
+              )}
+              <dt className="text-muted-foreground">Assigned</dt>
+              <dd className="min-w-0">{assignedOn(row, props.timeZone)}</dd>
+            </dl>
+          ),
+        }}
+        footer={
+          <RangePager
+            from={page.from}
+            to={page.from + page.paths.length - 1}
+            total={page.total}
+            hasPrevious={page.hasPrevious}
+            hasNext={page.hasNext}
+            busy={props.paging}
+            onPage={props.onPage}
+          />
+        }
+      />
+    );
 
   return (
-    <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-        <ToggleGroup<Lookup>
-          aria-label="Look up"
-          size="md"
-          value={[lookup]}
-          onValueChange={(values) => {
-            // A second press on the pressed segment empties the value: keep the segment.
-            const [next] = values;
-
-            if (next === undefined || next === lookup) return;
-
-            setChosen(next);
-            props.onSubjectChange(null);
-          }}
+    <WhoContext.Provider
+      value={{
+        value: shownWho,
+        search: props.searchRecipients,
+        pick: (row) => {
+          setPicked(row);
+          state.set({ who: whoParam(row) });
+        },
+      }}
+    >
+      <div className="grid grid-cols-1 gap-4">
+        {props.error === undefined ? null : (
+          <p role="alert" className="text-sm text-destructive">
+            {props.error}
+          </p>
+        )}
+        <section
+          aria-label="Assignments"
+          className="rounded-xl border border-border bg-card"
         >
-          <ToggleGroupItem value="recipient">
-            By group or person
-          </ToggleGroupItem>
-          <ToggleGroupItem value="module">By module</ToggleGroupItem>
-          <ToggleGroupItem value="role">By role</ToggleGroupItem>
-        </ToggleGroup>
-        <div className="w-full md:w-96">
-          <ChoicePicker<AccessSubject>
-            key={lookup}
-            prompt={PICKER[lookup].prompt}
-            searchLabel={PICKER[lookup].search}
-            empty="Nothing matches."
-            groups={groups}
-            value={props.subject === null ? null : keyOf(props.subject)}
-            trigger="name"
-            onPick={(next) => {
-              if (
-                props.subject === null ||
-                keyOf(next) !== keyOf(props.subject)
-              )
-                props.onSubjectChange(next);
-            }}
-          />
-        </div>
-        <span className="ml-auto">
-          <AccessHelp align="end" />
-        </span>
+          <div className="hidden md:block">
+            <FilterBar
+              definition={props.definition}
+              state={state}
+              controls={CONTROLS}
+              actions={<AccessHelp align="end" iconOnly />}
+            />
+          </div>
+          <div className="grid gap-3 border-b border-border px-4 pt-2.5 pb-3 md:hidden">
+            <div className="flex items-center justify-between gap-2">
+              <h2 className="text-base font-semibold">
+                Assignments
+                {page === undefined ? null : (
+                  <>
+                    {" "}
+                    <span className="font-medium text-muted-foreground tabular-nums">
+                      {COUNT.format(page.total)}
+                    </span>
+                  </>
+                )}
+              </h2>
+              <FilterSheet
+                definition={props.definition}
+                state={state}
+                controls={CONTROLS}
+                resultCount={page?.total}
+              />
+            </div>
+            {search === undefined ? null : (
+              <SearchControl
+                filter={search}
+                value={state.params[search.id]}
+                onChange={(value) => state.set({ [search.id]: value })}
+                place="sheet"
+              />
+            )}
+            {chips.length === 0 ? null : (
+              <div className="flex min-w-0 items-center gap-2">
+                <div className="min-w-0 flex-1">
+                  <FilterChips label="Filters" chips={chips} />
+                </div>
+                <Button variant="link" size="filter" onClick={state.clear}>
+                  Clear filters
+                </Button>
+              </div>
+            )}
+          </div>
+          {person === null || props.personPaths === undefined ? null : (
+            <p
+              role="status"
+              className="border-b border-border px-4 py-2.5 text-sm md:px-5"
+            >
+              {reachLine(person.name, props.personPaths)}
+            </p>
+          )}
+          {body}
+        </section>
       </div>
-
-      {props.error === undefined ? null : (
-        <p role="alert" className="text-sm text-destructive">
-          {props.error}
-        </p>
-      )}
-
-      {props.subject === null ? (
-        <EmptyState
-          variant="framed"
-          icon={<SearchIcon />}
-          title="Choose what to look up"
-          description="Pick a group or a person, a module, or a role to see who has what."
-        />
-      ) : (
-        <Results
-          key={keyOf(props.subject)}
-          {...props}
-          subject={props.subject}
-        />
-      )}
-    </div>
+    </WhoContext.Provider>
   );
 }

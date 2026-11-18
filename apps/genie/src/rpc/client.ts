@@ -143,3 +143,12 @@ export function refusalOf(cause: unknown): Refusal {
 
   return refusal;
 }
+
+/** The `appCode` of a refusal, or undefined when the error is not one (P12-8). */
+export function appCodeOf(cause: unknown): string | undefined {
+  if (!(cause instanceof ORPCError)) return undefined;
+
+  const data = appErrorData.safeParse(cause.data);
+
+  return data.success ? data.data.appCode : undefined;
+}

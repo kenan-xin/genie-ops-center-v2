@@ -364,7 +364,7 @@ function HolderCard(props: {
           paths: holders.paths,
           personPaths: undefined,
           catalogue: [],
-          recipients: { groups: [], people: [] },
+          memberCounts: holders.memberCounts,
           recordLabels: new Map(),
         })
           .toSorted(

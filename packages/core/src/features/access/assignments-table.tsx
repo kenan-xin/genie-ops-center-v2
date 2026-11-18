@@ -77,13 +77,13 @@ export function AssignmentsTable(props: AssignmentsTableProps): ReactNode {
     );
   }
 
-  // The recipients list is read only for a module lookup, so a sheet passes none.
+  // A sheet's rows say Direct or the group's name, so no group size is needed.
   const rows = overviewRows({
     subject: props.recipient,
     paths: props.paths,
     personPaths: props.recipient.type === "user" ? props.paths : undefined,
     catalogue: props.catalogue,
-    recipients: { groups: [], people: [] },
+    memberCounts: {},
     recordLabels: props.recordLabels,
   });
 

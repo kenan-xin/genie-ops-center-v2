@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type ComponentType,
+  type CSSProperties,
 } from "react";
 
 import { Button } from "../components/button.tsx";
@@ -49,7 +50,7 @@ export type ListFilterControl = ComponentType<ListFilterControlProps>;
 
 /**
  * The width of a control in the bar, in px, which `FilterBar` sums to fit the controls (LH27). A
- * registered kind takes the option width (`w-60`).
+ * registered kind takes the option width (`w-60`). A filter's own `barWidth` wins.
  */
 export const barWidthOf = (kind: string) =>
   kind === "search" ? 256 : kind === "date-range" ? 288 : 240;
@@ -122,12 +123,26 @@ function SearchControl({
   );
 }
 
-/** The bar's trigger classes: the control border while empty, and its fixed width (czjw.102). */
-const triggerOf = (place: "bar" | "sheet", set: boolean) =>
-  ({
+/** The bar's trigger: the control border while empty, and its fixed width (czjw.102, P12-12). */
+const triggerOf = (place: "bar" | "sheet", set: boolean, barWidth?: number) => {
+  const base = {
     variant: set ? "filter-set" : place === "bar" ? "filter" : "default",
-    className: place === "sheet" ? "w-full" : "w-60 shrink-0",
-  }) as const;
+    className:
+      place === "sheet"
+        ? "w-full"
+        : barWidth === undefined
+          ? "w-60 shrink-0"
+          : "w-(--bar-width) shrink-0",
+  } as const;
+
+  if (place !== "bar" || barWidth === undefined) return base;
+
+  return {
+    ...base,
+    // SAFETY: CSS custom properties are not in React's style type; this object holds only them.
+    style: { "--bar-width": `${barWidth}px` } as CSSProperties,
+  };
+};
 
 function TriggerText(props: {
   readonly filter: ListFilterDefinition;
@@ -224,7 +239,7 @@ function OptionControl({
     >
       <ComboboxTrigger
         aria-label={`${filter.label}: ${text}`}
-        {...triggerOf(place, set)}
+        {...triggerOf(place, set, filter.barWidth)}
       >
         <TriggerText filter={filter} text={text} set={set} place={place} />
       </ComboboxTrigger>
@@ -266,7 +281,7 @@ function MultiOptionControl({
     >
       <ComboboxTrigger
         aria-label={`${filter.label}: ${text}`}
-        {...triggerOf(place, selected.length > 0)}
+        {...triggerOf(place, selected.length > 0, filter.barWidth)}
       >
         <TriggerText
           filter={filter}

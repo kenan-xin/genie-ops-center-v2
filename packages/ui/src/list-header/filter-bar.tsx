@@ -34,7 +34,7 @@ export function fittingCount(
     let used = 0;
 
     return filters.findIndex((filter) => {
-      used += barWidthOf(filter.kind) + GAP;
+      used += (filter.barWidth ?? barWidthOf(filter.kind)) + GAP;
 
       return filter.kind !== "search" && used > room;
     });

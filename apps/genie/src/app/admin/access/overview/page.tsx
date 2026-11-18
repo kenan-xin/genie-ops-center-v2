@@ -14,9 +14,10 @@ export async function generateMetadata() {
 }
 
 /**
- * The Overview tab of Access, behind `core:roles:manage` like Grants (R-37e). It reads and writes
- * nothing before the administrator picks a subject. The audit link shows only to a viewer who
- * holds `core:audit:read` (O10), and dates use the tenant's default time zone (O11).
+ * The Overview tab of Access, behind `core:roles:manage` like Grants (R-37e). It opens on every
+ * assignment, newest first, filtered by the address (d8l5.62). A name links to People, Groups or
+ * Roles only for a viewer who may open that screen (P12-20), and dates use the tenant's default
+ * time zone (O11).
  */
 export default async function AccessOverviewPage() {
   return renderIfPermitted(
@@ -24,11 +25,17 @@ export default async function AccessOverviewPage() {
     async (caller) => {
       const branding = await requireContext().tenant.branding.get();
 
+      const [roles, people, groups] = await Promise.all([
+        can(caller, coreAdminPermission("core-roles")),
+        can(caller, coreAdminPermission("core-people")),
+        can(caller, coreAdminPermission("core-groups")),
+      ]);
+
       return (
         <main>
           <OverviewRoute
             timeZone={branding.defaultTimeZone}
-            auditLog={await can(caller, coreAdminPermission("core-audit"))}
+            links={{ roles, people, groups }}
           />
         </main>
       );

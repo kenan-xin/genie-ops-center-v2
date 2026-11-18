@@ -6,11 +6,14 @@ import type { ReactNode } from "react";
 /** "How access works": the rules both Access tabs rest on (R-37e). */
 export function AccessHelp(props: {
   readonly align?: "start" | "end";
+  /** The toolbar form: the label moves to the accessible name and a tooltip. */
+  readonly iconOnly?: boolean;
 }): ReactNode {
   return (
     <HelpDisclosure
       label="How access works"
       {...(props.align === undefined ? {} : { align: props.align })}
+      {...(props.iconOnly === true ? { iconOnly: true } : {})}
     >
       <p>
         Each module has its own roles. Any role of a module gives access to it.

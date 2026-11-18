@@ -1,12 +1,14 @@
 export { AccessTabs } from "./access-tabs.tsx";
 
+export { AccessHelp } from "./access-help.tsx";
+
 export {
   type AccessLink,
   accessHref,
   accessOverviewHref,
 } from "./access-link.ts";
 
-export { linkedSubject } from "./overview-view.ts";
+export { overviewDefinition, parseWho, readFilters } from "./overview-view.ts";
 
 export { recipientDetail } from "./assignment-words.ts";
 
