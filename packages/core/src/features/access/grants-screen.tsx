@@ -812,7 +812,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                   else void save();
                 }}
               >
-                {saving ? "Saving…" : "Save"}
+                Save
               </Button>
             </FormActionBar>
           </div>

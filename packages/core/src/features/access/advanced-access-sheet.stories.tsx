@@ -437,6 +437,13 @@ export const SaveInFlight: Story = {
     await userEvent.click(body.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(args.onSave).toHaveBeenCalled());
 
+    const save = body.getByRole("button", { name: "Save" });
+
+    await expect(save).toHaveAttribute("aria-busy", "true");
+    await expect(
+      screen.queryByRole("button", { name: "Saving…", hidden: true })
+    ).toBeNull();
+
     await userEvent.keyboard("{Escape}");
     await expect(args.onClose).not.toHaveBeenCalled();
     await expect(

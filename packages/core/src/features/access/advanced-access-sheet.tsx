@@ -594,7 +594,7 @@ export function AdvancedAccessSheet(
               aria-describedby={total === 0 ? nothingId : undefined}
               onClick={() => void save()}
             >
-              {saving ? "Saving…" : "Save"}
+              Save
             </Button>
           </FormActionBar>
         </div>

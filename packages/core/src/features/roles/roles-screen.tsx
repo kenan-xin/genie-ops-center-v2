@@ -314,7 +314,7 @@ function RoleFormBody(props: {
             });
           }}
         >
-          {props.state.mode === "edit" ? "Save role" : "Create role"}
+          Save
         </Button>
       </FormActionBar>
     </>

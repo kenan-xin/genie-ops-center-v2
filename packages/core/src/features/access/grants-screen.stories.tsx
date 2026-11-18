@@ -901,6 +901,13 @@ export const SaveInFlight: Story = {
         })
         .closest("[inert]")
     ).not.toBeNull();
+
+    const save = pendingBar().getByRole("button", { name: "Save" });
+
+    await expect(save).toHaveAttribute("aria-busy", "true");
+    await expect(
+      screen.queryByRole("button", { name: "Saving…", hidden: true })
+    ).toBeNull();
   },
 };
 

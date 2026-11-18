@@ -285,7 +285,7 @@ export const LongCatalogueFormFitsTheScreen: Story = {
     );
 
     const dialog = await screen.findByRole("dialog", { name: "New role" });
-    const create = within(dialog).getByRole("button", { name: "Create role" });
+    const create = within(dialog).getByRole("button", { name: "Save" });
 
     await waitFor(() =>
       expect(dialog.getBoundingClientRect().top).toBeGreaterThan(0)
@@ -296,7 +296,7 @@ export const LongCatalogueFormFitsTheScreen: Story = {
   },
 };
 
-// Bug caught: Create role is disabled with no name, so the dialog never says what is missing.
+// Bug caught: Save is disabled with no name, so the dialog never says what is missing.
 export const EmptyNameSaysWhy: Story = {
   play: async ({ args, canvas }) => {
     await userEvent.click(
@@ -309,7 +309,7 @@ export const EmptyNameSaysWhy: Story = {
 
     const name = dialog.getByLabelText("Role name");
 
-    await userEvent.click(dialog.getByRole("button", { name: "Create role" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
 
     // The dialog fades in, so its error turns visible after the transition.
     await waitFor(() =>
@@ -722,7 +722,7 @@ export const CopyPrefillsTheKeysAndCreatesACustomRole: Story = {
       dialog.getByLabelText("Role name"),
       "Administrator copy"
     );
-    await userEvent.click(dialog.getByRole("button", { name: "Create role" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
 
     expect(onCreateRole).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -846,7 +846,7 @@ export const NewRoleForm: Story = {
     await userEvent.click(
       dialog.getByRole("checkbox", { name: "Use the fixture" })
     );
-    await userEvent.click(dialog.getByRole("button", { name: "Create role" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
 
     expect(onCreateRole).toHaveBeenCalledWith({
       name: "Support agent",
@@ -871,7 +871,7 @@ export const NewRoleRefusedStaysOpen: Story = {
     );
 
     await userEvent.type(dialog.getByLabelText("Role name"), "Support agent");
-    await userEvent.click(dialog.getByRole("button", { name: "Create role" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
 
     await expect(await dialog.findByRole("alert")).toHaveTextContent(
       "The role was not saved."
@@ -942,7 +942,7 @@ export const EditRoleDispatchesUpdate: Story = {
       dialog.getByLabelText("Role name"),
       "Invoice approver v2"
     );
-    await userEvent.click(dialog.getByRole("button", { name: "Save role" }));
+    await userEvent.click(dialog.getByRole("button", { name: "Save" }));
 
     expect(onUpdateRole).toHaveBeenCalledWith(
       FIXTURE_CUSTOM_DETAIL.id,
