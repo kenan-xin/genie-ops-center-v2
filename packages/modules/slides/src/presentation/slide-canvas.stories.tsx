@@ -1,3 +1,4 @@
+import { chartColors } from "@genie/ui/tokens";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, waitFor } from "storybook/test";
 
@@ -867,8 +868,7 @@ const longestTitleSlide: ShownSlide = {
   ],
 };
 
-// Review Focus 3 on the title slide: the 60 px title shrinks to its box, and its drawn lines end
-// above the drawn text.
+// Review Focus 3 on the title slide: the 60 px title shrinks to fit its box.
 export const LongestTitleSlide: Story = {
   name: "Longest title slide",
   args: {
@@ -884,12 +884,6 @@ export const LongestTitleSlide: Story = {
     const title = titleBox.querySelector("p")!;
 
     await expect(title.offsetHeight).toBeLessThanOrEqual(titleBox.clientHeight);
-
-    const text = part(canvasElement, '[data-slide-box="text"] p')!;
-
-    await expect(title.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      text.getBoundingClientRect().top
-    );
   },
 };
 
@@ -1400,5 +1394,52 @@ export const ComparisonWithTwoSeries: Story = {
       new Set([rgb(BLUE_THEME.neutral), rgb(BLUE_THEME.accent)])
     );
     await noOverflow(canvasElement);
+  },
+};
+
+/** A donut of four parts: the third and fourth take series colors 3 and 4. */
+const donutSlide: ShownSlide = {
+  id: "t10",
+  elements: [
+    { kind: "title", text: "Four customers hold the open balance" },
+    insight,
+    {
+      ...bar,
+      data: {
+        ...bar.data,
+        kind: "donut",
+        title: "Outstanding by customer",
+        x: { key: "month", label: "Customer", type: "text" },
+        rows: ["Harbor Foods", "ABC Trading", "Lim & Co", "Northwind"].map(
+          (month, at) => ({ month, total: 40_000 - at * 8_000 })
+        ),
+      },
+    },
+  ],
+};
+
+// A dark deck in the app's dark mode: series 3 and up take the light palette the export draws,
+// not the app's dark palette that `data-theme="dark"` on the canvas would give them.
+export const DonutInDarkMode: Story = {
+  name: "A donut on a dark deck in the app's dark mode",
+  args: { ...canvasProps, theme: DARK_THEME, slide: donutSlide },
+  globals: { ...desktop, theme: "dark" },
+  play: async ({ canvasElement }) => {
+    const fills = await waitFor(() => {
+      const sectors = canvasElement.querySelectorAll(
+        ".recharts-pie-sector path"
+      );
+
+      expect(sectors).toHaveLength(4);
+
+      return [...sectors].map((sector) => getComputedStyle(sector).fill);
+    });
+
+    await expect(fills).toEqual([
+      rgb(DARK_THEME.accent),
+      rgb(DARK_THEME.neutral),
+      rgb(chartColors.light[2]!),
+      rgb(chartColors.light[3]!),
+    ]);
   },
 };

@@ -77,18 +77,18 @@ describe("the slides schema", () => {
           },
         }),
     ],
-    [
-      "a theme that is not an object",
-      async () => {
-        const id = await insertDeck(t(), { ownerUserId: anOwner() });
-
-        await t()
-          .db.update(deck)
-          .set({ content: sql`'{"slides": [], "theme": "dark"}'::jsonb` })
-          .where(eq(deck.id, id));
-      },
-    ],
   ])("refuses %s", async (_, write) => {
     await expect(write()).rejects.toThrow();
+  });
+
+  it("refuses a theme that is not an object with the theme check", async () => {
+    const id = await insertDeck(t(), { ownerUserId: anOwner() });
+
+    await expect(
+      t()
+        .db.update(deck)
+        .set({ content: sql`'{"slides": [], "theme": "dark"}'::jsonb` })
+        .where(eq(deck.id, id))
+    ).rejects.toMatchObject({ cause: { constraint: "deck_theme_check" } });
   });
 });

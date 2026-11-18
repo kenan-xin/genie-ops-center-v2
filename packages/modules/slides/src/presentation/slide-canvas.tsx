@@ -19,14 +19,17 @@ import {
   isSecondVisual,
   PLACED,
   placed,
-  defaultTextPx,
   drawnStyle,
   figuresDate,
+  footerText,
+  isPrioritiesList,
+  slideFooterColor,
+  textPx,
+  visualLook,
   LINE_HEIGHT,
   listItemBoxes,
   LOOK_PX,
   placedBoxes,
-  regionOf,
   slideFrame,
   textGround,
   visualGround,
@@ -340,12 +343,7 @@ export function SlideCanvas(props: SlideCanvasProps) {
       element.kind === "table"
   );
 
-  const visualCount = slide.elements.filter(
-    ({ kind }) => kind !== "title" && kind !== "text" && kind !== "bullets"
-  ).length;
-
-  const hasVisual = visualCount > 0;
-
+  const kinds = slide.elements.map(({ kind }) => kind);
   const valueMax = comparisonMax(slide.elements);
 
   /** A text's color on what draws behind it, as the save checks it, and its size in its box. */
@@ -361,21 +359,9 @@ export function SlideCanvas(props: SlideCanvasProps) {
       return undefined;
     }
 
-    const texts = element.kind === "bullets" ? element.items : [element.text];
-
     return {
       color: textGround(slide, index, theme, first).color,
-      px:
-        element.style?.fontSize ??
-        (priorities
-          ? LOOK_PX.list
-          : defaultTextPx(
-              element.kind,
-              frame.name,
-              regionOf(box, frame.name),
-              texts,
-              box
-            )),
+      px: textPx(element, box, frame.name, priorities),
     };
   };
 
@@ -400,8 +386,6 @@ export function SlideCanvas(props: SlideCanvasProps) {
     "--muted-foreground": theme.secondaryText,
     "--border": theme.hairline,
     "--muted": theme.hairline,
-    "--chart-1": theme.accent,
-    "--chart-2": theme.neutral,
     // A slide background on a title or statement slide replaces the panel fill (P14-15).
     "--slide-panel": full ? (slide.background ?? theme.panel) : theme.panel,
     "--slide-panel-line": theme.panel,
@@ -412,10 +396,7 @@ export function SlideCanvas(props: SlideCanvasProps) {
     "--slide-rule": theme.rule,
     "--slide-number-weight": theme.weight === "bold" ? 700 : 400,
     "--slide-font": theme.fontFace,
-    "--slide-footer":
-      slide.background === undefined
-        ? theme.secondaryText
-        : foregroundFor(slide.background),
+    "--slide-footer": slideFooterColor(theme, slide.background, foregroundFor),
     "--slide-footer-size": `${LOOK_PX.footer}px`,
     "--slide-leading-title": LINE_HEIGHT.title,
     "--slide-leading-text": LINE_HEIGHT.text,
@@ -483,12 +464,7 @@ export function SlideCanvas(props: SlideCanvasProps) {
 
           if (element === undefined) return null;
 
-          // On a split slide with no visual, a bullet list on the content side is the Priorities list.
-          const priorities =
-            element.kind === "bullets" &&
-            frame.name === "split" &&
-            !hasVisual &&
-            regionOf(box, frame.name) === "content";
+          const priorities = isPrioritiesList(kinds, index, box, frame.name);
 
           const drawn = drawnStyle(
             element.kind,
@@ -532,12 +508,9 @@ export function SlideCanvas(props: SlideCanvasProps) {
                     w: box.w - 2 * inset,
                     h: box.h - 2 * inset,
                   },
-                  paired: visualCount === 2,
+                  ...visualLook(slide.elements, index),
                   second: element.kind === "figure" && second,
                   valueMax,
-                  titleHidden: visualCount === 1 && element.kind === "chart",
-                  // A frame box has room for the full title and source line; a stored box can be 160 x 96 (P14-25).
-                  fullText: element.box === undefined,
                 }}
               />
             </div>
@@ -562,7 +535,7 @@ export function SlideCanvas(props: SlideCanvasProps) {
                   onError={() => setFailedLogo(logoUrl)}
                 />
               )}
-              <span>{`${theme.companyName} · ${place.index + 1} / ${place.count}`}</span>
+              <span>{footerText(theme, place)}</span>
             </span>
           </footer>
         )}

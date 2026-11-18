@@ -1,3 +1,4 @@
+import { foregroundFor } from "@genie/core/features/branding";
 import type { ChartData } from "@genie/ui";
 import { describe, expect, it } from "vitest";
 
@@ -11,12 +12,14 @@ import {
   figureBoxes,
   figuresDate,
   fitFontPx,
+  isPrioritiesList,
   isSecondVisual,
   listItemBoxes,
   placedBoxes,
   regionOf,
   type Box,
   type SlideFrame,
+  slideFooterColor,
   slideFrame,
   slideLayout,
   textGround,
@@ -598,6 +601,8 @@ describe("comparisonMax", () => {
       undefined,
     ],
     ["an SGD sum and a EUR sum", { ...sgd, currency: "EUR" }, 600, undefined],
+    // A bar below 0 needs the axis below 0, which a shared [0, max] cuts off.
+    ["an SGD sum and a loss", sgd, -300, undefined],
   ] as const)("compares %s", (_, column, top, max) => {
     expect(
       comparisonMax([
@@ -624,5 +629,46 @@ describe("isSecondVisual", () => {
       false,
       true,
     ]);
+  });
+});
+
+describe("slideFooterColor", () => {
+  it("takes the secondary text, or the readable color on a slide background", () => {
+    expect(
+      [undefined, "#111827"].map((background) =>
+        slideFooterColor(BLUE_THEME, background, foregroundFor)
+      )
+    ).toEqual([BLUE_THEME.secondaryText, "#ffffff"]);
+  });
+});
+
+describe("isPrioritiesList", () => {
+  const content = { x: 432, y: 58, w: 480, h: 405 };
+
+  it.each([
+    [
+      "bullets on the content side with no visual",
+      ["title", "bullets"],
+      1,
+      content,
+      true,
+    ],
+    [
+      "bullets beside a chart",
+      ["title", "bullets", "chart"],
+      1,
+      content,
+      false,
+    ],
+    [
+      "bullets in the panel",
+      ["title", "bullets"],
+      1,
+      { x: 43, y: 265, w: 298, h: 217 },
+      false,
+    ],
+    ["a text on the content side", ["title", "text"], 1, content, false],
+  ] as const)("knows %s", (_, kinds, index, box, priorities) => {
+    expect(isPrioritiesList(kinds, index, box, "split")).toBe(priorities);
   });
 });

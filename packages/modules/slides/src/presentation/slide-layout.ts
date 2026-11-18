@@ -1,8 +1,9 @@
 import { contrastRatio } from "@genie/core/features/branding";
 import type { ChartData } from "@genie/ui";
+import { chartColors } from "@genie/ui/tokens";
 import type { CSSProperties } from "react";
 
-import type { Placement } from "../content.ts";
+import type { Placement, StoredElement } from "../content.ts";
 import {
   type ElementBox,
   type ElementKind,
@@ -710,14 +711,109 @@ export function comparisonMax(
     : undefined;
 }
 
-/** The series colors of a chart box: the second comparison chart swaps the accent and the neutral, so it leads with the neutral and a second series stays apart. */
-export function chartVars(
+/** The slide's eight series colors: the accent and the neutral, then the light palette the export draws, so a chart never follows the app's dark mode. */
+export function slideChartColors(theme: SlideTheme): readonly string[] {
+  return [theme.accent, theme.neutral, ...chartColors.light.slice(2)];
+}
+
+const TEXT_KINDS: ReadonlySet<ElementKind> = new Set([
+  "title",
+  "text",
+  "bullets",
+]);
+
+/** How many figures, charts, tables and images the slide holds. */
+export const visualCount = (kinds: readonly ElementKind[]) =>
+  kinds.filter((kind) => !TEXT_KINDS.has(kind)).length;
+
+/** On a split slide with no visual, a bullet list on the content side is the Priorities list. */
+export function isPrioritiesList(
+  kinds: readonly ElementKind[],
+  index: number,
+  box: Box,
+  frame: FrameName
+): boolean {
+  return (
+    kinds[index] === "bullets" &&
+    frame === "split" &&
+    visualCount(kinds) === 0 &&
+    regionOf(box, frame) === "content"
+  );
+}
+
+/** How a figure, chart or table draws among the slide's visuals. */
+export function visualLook(
+  elements: readonly { readonly kind: ElementKind; readonly box?: unknown }[],
+  index: number
+) {
+  const count = visualCount(elements.map(({ kind }) => kind));
+  const element = elements[index];
+
+  return {
+    paired: count === 2,
+    // P14-11: one chart on a slide: the slide's title says what it shows.
+    titleHidden: count === 1 && element?.kind === "chart",
+    // A frame box has room for the full title and source line; a stored box can be 160 x 96 (P14-25).
+    fullText: element?.box === undefined,
+  };
+}
+
+/** A text element's size: its own, the Priorities list's, or the frame's default for its box. */
+export function textPx(
+  element: Extract<StoredElement, { kind: "title" | "text" | "bullets" }>,
+  box: Box,
+  frame: FrameName,
+  priorities: boolean
+): number {
+  if (element.style?.fontSize !== undefined) return element.style.fontSize;
+
+  if (priorities) return LOOK_PX.list;
+
+  return defaultTextPx(
+    element.kind,
+    frame,
+    regionOf(box, frame),
+    element.kind === "bullets" ? element.items : [element.text],
+    box
+  );
+}
+
+/**
+ * The canvas footer's color: the secondary text, or the readable color on a slide background. The
+ * caller passes core's `foregroundFor`, as `footerColor` does. `footerColor` is the export's older
+ * rule (P13-7) until plan Task 7 moves the export to this one.
+ */
+export function slideFooterColor(
   theme: SlideTheme,
-  second: boolean
-): CssVars | undefined {
-  return second
-    ? { "--chart-1": theme.neutral, "--chart-2": theme.accent }
-    : undefined;
+  background: string | undefined,
+  foregroundOf: (background: string) => string
+): string {
+  return background === undefined
+    ? theme.secondaryText
+    : foregroundOf(background);
+}
+
+/** The footer's company name and the slide's place, "<company> · <n> / <count>". */
+export const footerText = (
+  theme: SlideTheme,
+  place: { readonly index: number; readonly count: number }
+) => `${theme.companyName} · ${place.index + 1} / ${place.count}`;
+
+/**
+ * The eight series colors of a chart box, so a chart never follows the app's dark mode. The second
+ * comparison chart swaps the accent and the neutral, so it leads with the neutral and a second
+ * series stays apart.
+ */
+export function chartVars(theme: SlideTheme, second: boolean): CssVars {
+  const [, , ...rest] = slideChartColors(theme);
+
+  const lead = second
+    ? [theme.neutral, theme.accent]
+    : [theme.accent, theme.neutral];
+
+  return Object.fromEntries(
+    [...lead, ...rest].map((color, at) => [`--chart-${at + 1}`, color])
+  );
 }
 
 type PaletteSlide = {
