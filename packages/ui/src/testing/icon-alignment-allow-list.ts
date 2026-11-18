@@ -42,4 +42,10 @@ export const ICON_ALIGNMENT_ALLOW_LIST: readonly IconAllowEntry[] = [
     reason:
       "6wz1.113 (P07-55): agent-runs.prototype.html lines 190-191 and DEC-57: a chat history group header keeps the agent's icon in a fixed 16 px slot and indents its chats so their text starts under the name, so the icon leads the name, not the chats below it.",
   },
+  {
+    selector:
+      '[role=log]:has([data-slot=brief-card]) ol[aria-label="Steps"] > li',
+    reason:
+      "czjw.181 (P15-35): agent-progress.prototype.html lines the steps up with the answer's text column, not with the icon inside the brief card above. While a handed-over run works there is no answer text yet, so the check's icon fallback reads the card's boxed icon. Task 9 or the owner may revisit this entry.",
+  },
 ];

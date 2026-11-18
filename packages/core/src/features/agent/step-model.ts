@@ -12,7 +12,7 @@ import { toolNameOf } from "../../services/agent/tool-parts.ts";
 
 /**
  * An answer's tool calls as the step timeline shows them (czjw.81, AG16): reads of one dataset in
- * one row at the first read, a call that was refused and then fixed in one row, and a failure only
+ * one row at the latest read, a call that was refused and then fixed in one row, and a failure only
  * when the last row was refused and the answer ended. Words, never a tool's name (6.3).
  */
 
@@ -217,11 +217,16 @@ export function rowText(row: TimelineRow): string {
   return `${row.words}${row.object === undefined ? "" : ` ${row.object}`}${row.fix}`;
 }
 
+/**
+ * `answering`: the answer's text started, so no live row shows (czjw.181). `thinking` is true while
+ * the run streams, the answer has not started and no row runs: a Thinking row is the live last row.
+ */
 export function stepTimeline(
   parts: readonly MessagePart[],
   labels: ChatLabels,
   streaming: boolean,
-  files: Readonly<Record<string, AgentFileState>> = {}
+  files: Readonly<Record<string, AgentFileState>> = {},
+  answering = false
 ): Timeline {
   const drafts: Draft[] = [];
 
@@ -261,12 +266,15 @@ export function stepTimeline(
           )
         : undefined;
 
+    // The joined row moves to the end, so the running read is the last row (czjw.181).
     if (read !== undefined) {
       read.count += 1;
       read.parts.push(part);
 
       if (state === "active") read.state = "active";
 
+      drafts.splice(drafts.indexOf(read), 1);
+      drafts.push(read);
       continue;
     }
 
@@ -290,13 +298,10 @@ export function stepTimeline(
   // Only a refused last call fails the answer; a file job that failed says so on its own row.
   const lastRefused = drafts.at(-1)?.refused === true;
 
-  const answered = parts.some(
-    (part) => part.type === "text" && part.text.trim() !== ""
-  );
-
   return {
     rows,
-    thinking: streaming && rows.length === 0 && !answered,
+    thinking:
+      streaming && !answering && !rows.some((row) => row.state === "active"),
     failed: !streaming && lastRefused && last !== undefined ? last : null,
   };
 }
@@ -318,9 +323,9 @@ export function shownRows(rows: readonly TimelineRow[], expanded: boolean) {
   return { shown: rows.filter((row) => !folded.has(row)), hidden };
 }
 
-/** The elapsed time of the active step, shown from 3 s: "24s". */
-export function elapsedLabel(ms: number): string | null {
-  return ms < 3000 ? null : `${Math.floor(ms / 1000)}s`;
+/** The elapsed time of a live row, from 0 s: "0s", "24s". */
+export function elapsedLabel(ms: number): string {
+  return `${Math.floor(ms / 1000)}s`;
 }
 
 /** From 20 s a step is slow, and the timeline says the person can stop. */

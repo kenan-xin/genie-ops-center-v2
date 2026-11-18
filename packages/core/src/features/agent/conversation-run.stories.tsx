@@ -18,6 +18,7 @@ import {
   HANDOFF_LABELS,
   handoffDetail,
   PARTIAL_ANSWER,
+  STEPS_ONLY_ANSWER,
 } from "./__fixtures__/handoff.ts";
 import { AgentChat } from "./agent-chat.tsx";
 import { Conversation } from "./conversation.tsx";
@@ -287,18 +288,18 @@ function PolledChat() {
 
 function ChatWithRun({
   status,
+  messages = [BRIEF_MESSAGE, PARTIAL_ANSWER],
   ...client
 }: {
   readonly status: AgentRunStatus;
+  readonly messages?: readonly AgentMessage[];
   readonly stop?: () => Promise<void>;
   readonly retry?: () => Promise<void>;
 }) {
   return (
     <AgentClientStub
       {...client}
-      session={async () =>
-        handoffDetail(status, [BRIEF_MESSAGE, PARTIAL_ANSWER])
-      }
+      session={async () => handoffDetail(status, messages)}
     >
       <div style={{ height: "100dvh" }} className="flex flex-col">
         <AgentChat
@@ -389,5 +390,74 @@ export const ProgressWhileItBuilds: StoryObj<typeof PolledChat> = {
       await within(canvasElement).findByText(FULL_TEXT, {}, { timeout: 5000 })
     ).toBeVisible();
     await waitFor(() => expect(onProgress).toHaveBeenCalledTimes(2));
+  },
+};
+
+/** The live last row of a building run, found by the Steps list it closes. */
+async function liveRow(canvasElement: HTMLElement) {
+  const list = await within(canvasElement).findByRole("list", {
+    name: "Steps",
+  });
+
+  const row = within(list).getAllByRole("listitem").at(-1);
+
+  if (row === undefined) throw new Error("The Steps list has no rows.");
+
+  return { list, row };
+}
+
+// E1: a background build between steps still looks alive, never finished or stuck.
+export const StepsWhileItBuilds: StoryObj<typeof ChatWithRun> = {
+  render: () => (
+    <ChatWithRun
+      status="building"
+      messages={[BRIEF_MESSAGE, STEPS_ONLY_ANSWER]}
+    />
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    const { list, row } = await liveRow(canvasElement);
+
+    await expect(within(list).getByText("Looked up the data")).toBeVisible();
+    await expect(row).toHaveTextContent(/^Thinking/);
+    await expect(row).toHaveAttribute("aria-current", "step");
+    await expect(canvas.queryByText(/Worked for/)).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "1 step" })).toBeNull();
+  },
+};
+
+// E1: before the run's first step, the chat already shows it thinking.
+export const ThinkingBeforeTheFirstStep: StoryObj<typeof ChatWithRun> = {
+  render: () => <ChatWithRun status="building" messages={[BRIEF_MESSAGE]} />,
+  play: async ({ canvasElement }) => {
+    const { list, row } = await liveRow(canvasElement);
+
+    await expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    await expect(row).toHaveTextContent(/^Thinking/);
+    await expect(row).toHaveAttribute("aria-current", "step");
+  },
+};
+
+/** A building run whose answer text started and whose messages carry stored times 38 s apart. */
+const STARTED_WITH_TIMES: readonly AgentMessage[] = [
+  { ...BRIEF_MESSAGE, metadata: { createdAt: "2026-10-27T02:00:00.000Z" } },
+  {
+    ...STEPS_ONLY_ANSWER,
+    parts: [...STEPS_ONLY_ANSWER.parts, ...PARTIAL_ANSWER.parts],
+    metadata: { createdAt: "2026-10-27T02:00:38.000Z" },
+  },
+];
+
+// Review Focus 1: the chat never shows "Worked for" before the run ends.
+export const StripWhileItBuilds: StoryObj<typeof ChatWithRun> = {
+  render: () => <ChatWithRun status="building" messages={STARTED_WITH_TIMES} />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    await expect(
+      await canvas.findByRole("button", { name: "1 step" })
+    ).toBeVisible();
+    await expect(canvas.queryByText(/Worked for/)).toBeNull();
   },
 };

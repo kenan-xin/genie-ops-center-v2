@@ -140,7 +140,14 @@ export const Working: Story = {
     // Two finished rows and the running one show; the other two fold away.
     await expect(within(list).getAllByRole("listitem")).toHaveLength(3);
     await expect(within(list).getByText("Making a chart")).toBeVisible();
-    await expect(within(list).getByText("Step 5")).toBeVisible();
+
+    // The running row is the one current step, with its time from 0 s.
+    const running = within(list).getByText("Making a chart").closest("li");
+
+    if (running === null) throw new Error("The running row is no list item.");
+
+    await expect(running).toHaveAttribute("aria-current", "step");
+    await expect(within(running).getByText(/^\d+s$/)).toBeVisible();
 
     await userEvent.click(
       canvas.getByRole("button", { name: "+2 earlier steps" })
@@ -160,6 +167,43 @@ export const Working: Story = {
     await expect(within(opened).getByText("Query used")).not.toBeVisible();
     await userEvent.click(details);
     await expect(within(opened).getByText("Query used")).toBeVisible();
+  },
+};
+
+/** The run works between steps: the finished rows, then a live Thinking row that ticks from 0 s. */
+export const ThinkingBetweenSteps: Story = {
+  args: { parts: DONE.slice(0, -1), streaming: true, children: undefined },
+  play: async ({ canvas }) => {
+    const list = canvas.getByRole("list", { name: "Steps" });
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "+3 earlier steps" })
+    );
+    await expect(within(list).getAllByRole("listitem")).toHaveLength(6);
+
+    const thinking = within(list).getAllByRole("listitem").at(-1);
+
+    if (thinking === undefined) throw new Error("The list has no rows.");
+
+    await expect(thinking).toHaveTextContent(/^Thinking/);
+    await expect(thinking).toHaveAttribute("aria-current", "step");
+    // The time starts from 0 s; the play may begin just after the first tick.
+    const first = within(thinking).getByText(/^[01]s$/);
+
+    const later = `${Number.parseInt(first.textContent ?? "0") + 1}s`;
+
+    await expect(
+      await within(thinking).findByText(later, {}, { timeout: 2000 })
+    ).toBeVisible();
+  },
+};
+
+/** The answer's text started: the steps fold into the strip, and no row is current. */
+export const AnswerStartedFolds: Story = {
+  args: { streaming: true, answering: true },
+  play: async ({ canvas, canvasElement }) => {
+    await expect(canvas.getByRole("button", { name: "5 steps" })).toBeVisible();
+    await expect(canvasElement.querySelector("[aria-current]")).toBeNull();
   },
 };
 
@@ -268,7 +312,7 @@ const fileCall: MessagePart = {
   output: { title: "All invoices", format: "xlsx", state: "making" },
 };
 
-/** The answer ended, and its file job still runs: the strip, then the running row with its step. */
+/** The answer ended, and its file job still runs: the strip, then the running row with its time. */
 export const FileStillMaking: Story = {
   name: "File still being made",
   args: {
@@ -282,7 +326,7 @@ export const FileStillMaking: Story = {
 
     await expect(within(list).getAllByRole("listitem")).toHaveLength(1);
     await expect(within(list).getByText("Making an Excel file")).toBeVisible();
-    await expect(within(list).getByText(/^Step 3/)).toBeVisible();
+    await expect(within(list).getByText(/^\d+s$/)).toBeVisible();
 
     // T6-a (E1): the fold's words and the running row's words share one edge.
     const foldWords = canvas.getByText("3 steps");

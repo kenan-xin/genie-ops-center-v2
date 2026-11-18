@@ -70,6 +70,21 @@ export const FULL_ANSWER = answerOf(
   "The placeholder record has its first step."
 );
 
+/** A run's answer that so far holds one finished step and no text. */
+export const STEPS_ONLY_ANSWER: AgentMessage = {
+  id: "run-answer",
+  role: "assistant",
+  parts: [
+    {
+      type: "tool-list-datasets",
+      toolCallId: "list",
+      state: "output-available",
+      input: {},
+      output: { datasets: [] },
+    },
+  ],
+};
+
 const RUN_STATE = {
   building: "running",
   stopping: "stopping",

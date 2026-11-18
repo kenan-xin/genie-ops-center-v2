@@ -489,6 +489,12 @@ export function MessageParts(props: {
 
   const notes = stepNotes(props.message);
 
+  // A note in progress opens no OpenUI statement, so the live Thinking row stays (czjw.181).
+  const answering = props.message.parts.some(
+    (part, index) =>
+      part.type === "text" && !notes.has(index) && OPENUI_START.test(part.text)
+  );
+
   const answered =
     !props.streaming &&
     props.message.parts.some(
@@ -504,6 +510,7 @@ export function MessageParts(props: {
       parts={props.message.parts}
       labels={labels}
       streaming={props.streaming}
+      answering={answering}
       durationMs={props.durationMs}
       onTryAgain={props.onTryAgain}
       files={Object.fromEntries(

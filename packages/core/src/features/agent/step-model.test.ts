@@ -72,16 +72,23 @@ const rows = (parts: readonly MessagePart[], streaming = false) =>
   ]);
 
 describe("stepTimeline", () => {
-  it("groups the reads of one dataset at its first read, with a count", () => {
+  it("moves a repeated read to its latest place, with a count", () => {
+    const running: MessagePart = {
+      type: "tool-query-dataset",
+      toolCallId: "call-running-read",
+      state: "input-available",
+      input: { dataset: "ledger.invoices", query: {} },
+    };
+
     expect(
-      rows([
-        read("ledger.invoices"),
-        read("ledger.payments"),
-        read("ledger.invoices"),
-      ])
+      stepTimeline(
+        [read("ledger.invoices"), read("ledger.payments"), running],
+        LABELS,
+        true
+      ).rows.map((row) => [rowText(row), row.count, row.state])
     ).toEqual([
-      ["Read Invoices", 2],
-      ["Read Payments", 1],
+      ["Read Payments", 1, "done"],
+      ["Reading Invoices", 2, "active"],
     ]);
   });
 
@@ -158,13 +165,24 @@ describe("stepTimeline", () => {
     );
   });
 
-  it("thinks only while an answer streams with no step and no text", () => {
+  it("thinks between steps while the run works and no step runs", () => {
     expect(stepTimeline([], LABELS, true).thinking).toBe(true);
-    expect(stepTimeline([], LABELS, false).thinking).toBe(false);
     expect(stepTimeline([read("ledger.invoices")], LABELS, true).thinking).toBe(
-      false
+      true
     );
-    expect(stepTimeline([answerText], LABELS, true).thinking).toBe(false);
+    expect(
+      stepTimeline([read("ledger.invoices"), chart("running")], LABELS, true)
+        .thinking
+    ).toBe(false);
+    expect(
+      stepTimeline([read("ledger.invoices")], LABELS, false).thinking
+    ).toBe(false);
+  });
+
+  it("stops thinking once the answer starts", () => {
+    expect(
+      stepTimeline([read("ledger.invoices")], LABELS, true, {}, true).thinking
+    ).toBe(false);
   });
 
   it("adds no row for an offer of choices, which shows as buttons", () => {
@@ -180,31 +198,32 @@ describe("stepTimeline", () => {
   });
 
   it("never folds away the running step, even when it is not the last row", () => {
-    const running: MessagePart = {
-      type: "tool-query-dataset",
-      toolCallId: "call-running",
-      state: "input-available",
-      input: { dataset: "ledger.invoices", query: {} },
+    const file: MessagePart = {
+      type: "tool-make-file",
+      toolCallId: "call-file",
+      state: "output-available",
+      input: { title: "All invoices", format: "xlsx", dataset: "x", query: {} },
+      output: { title: "All invoices", format: "xlsx", state: "making" },
     };
 
-    // A later read of Invoices makes its first row, the second of five, run again.
+    // A file job still runs while the agent reads on, so its row is the second of five.
     const { rows: all } = stepTimeline(
       [
         read("ledger.customers"),
-        read("ledger.invoices"),
+        file,
         read("ledger.payments"),
         read("ledger.orders"),
         read("ledger.refunds"),
-        running,
       ],
       LABELS,
-      true
+      true,
+      { "call-file": "running" }
     );
 
     const { shown, hidden } = shownRows(all, false);
 
     expect(shown.map((row) => [rowText(row), row.state])).toEqual([
-      ["Reading Invoices", "active"],
+      ["Making an Excel file", "active"],
       ["Read ledger.orders", "done"],
       ["Read ledger.refunds", "done"],
     ]);
@@ -212,9 +231,9 @@ describe("stepTimeline", () => {
     expect(shownRows(all, true).shown).toHaveLength(5);
   });
 
-  it("shows the time from 3 s and the slow line from 20 s", () => {
-    expect(elapsedLabel(2999)).toBeNull();
-    expect(elapsedLabel(3000)).toBe("3s");
+  it("shows the time from 0 s and the slow line from 20 s", () => {
+    expect(elapsedLabel(0)).toBe("0s");
+    expect(elapsedLabel(2999)).toBe("2s");
     expect(isSlow(19_999)).toBe(false);
     expect(isSlow(20_000)).toBe(true);
   });

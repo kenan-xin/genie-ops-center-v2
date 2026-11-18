@@ -460,6 +460,23 @@ export const StreamingToolCall: Story = {
   },
 };
 
+/** A note before the first step is no answer, so the run still shows its live Thinking row. */
+export const NoteWhileStreaming: Story = {
+  name: "Note while streaming",
+  args: {
+    message: {
+      id: "streaming-note",
+      role: "assistant",
+      parts: [{ type: "text", text: "Let me read the deck first." }],
+    },
+    streaming: true,
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await expect(await canvas.findByText("Thinking")).toBeVisible();
+  },
+};
+
 const checkSourced = fn(resolveKpi);
 
 /**

@@ -38,7 +38,10 @@ export function BriefCard(props: {
   readonly askHref: string | undefined;
 }): ReactNode {
   return (
-    <div className="grid gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3.5 text-sm">
+    <div
+      data-slot="brief-card"
+      className="grid gap-2 rounded-lg border border-primary/30 bg-primary/5 p-3.5 text-sm"
+    >
       <p className="flex items-center gap-1.5 text-xs font-semibold text-primary dark:text-brand-on-dark">
         <ForwardIcon
           aria-hidden="true"

@@ -96,17 +96,28 @@ function Details(props: { readonly parts: readonly MessagePart[] }): ReactNode {
   );
 }
 
+/** A live row's ticking time, its slow line, and whether it is the one current step of the run. */
+type LiveState = {
+  readonly time: string;
+  readonly slow: boolean;
+  readonly current: boolean;
+};
+
+const SLOW_LINE = "This step is taking a while. You can stop at any time.";
+
 function Row(props: {
   readonly row: TimelineRow;
-  readonly meta?: string | undefined;
-  readonly slow?: boolean;
+  readonly live?: LiveState | undefined;
 }): ReactNode {
-  const { row } = props;
+  const { row, live } = props;
 
   const active = row.state === "active";
 
   return (
-    <li className="relative flex gap-2.5 pb-3 last:pb-0">
+    <li
+      aria-current={live?.current === true ? "step" : undefined}
+      className="relative flex gap-2.5 pb-3 last:pb-0"
+    >
       <span
         aria-hidden="true"
         className="absolute start-2 top-4.5 bottom-0 -ms-px w-px bg-border group-last/rows:hidden"
@@ -140,19 +151,32 @@ function Row(props: {
               <span className="sr-only">{row.count} times</span>
             </span>
           ) : null}
-          {props.meta === undefined ? null : (
+          {live === undefined ? null : (
             <span className="ms-auto text-xs text-muted-foreground">
-              {props.meta}
+              {live.time}
             </span>
           )}
         </div>
-        {props.slow === true ? (
-          <p className="text-sm text-muted-foreground">
-            This step is taking a while. You can stop at any time.
-          </p>
+        {live?.slow === true ? (
+          <p className="text-sm text-muted-foreground">{SLOW_LINE}</p>
         ) : null}
         <Details parts={row.parts} />
       </div>
+    </li>
+  );
+}
+
+/** The live last row while the run works between steps or before the first one (czjw.181). */
+function ThinkingRow(props: { readonly live: LiveState }): ReactNode {
+  return (
+    <li
+      aria-current={props.live.current ? "step" : undefined}
+      className="flex flex-wrap items-center gap-2.5 text-sm text-muted-foreground"
+    >
+      <Node state="active" />
+      <span>Thinking</span>
+      <span className="ms-auto text-xs">{props.live.time}</span>
+      {props.live.slow ? <p className="w-full">{SLOW_LINE}</p> : null}
     </li>
   );
 }
@@ -165,18 +189,16 @@ function Rows(props: { readonly children: ReactNode }): ReactNode {
   );
 }
 
-/** The ms since the client first saw each active row; ticks once a second while one runs. */
-function useElapsed(rows: readonly TimelineRow[]): (key: string) => number {
+/** The ms since the client first saw each key; ticks once a second while any key is live. */
+function useElapsed(keys: readonly string[]): (key: string) => number {
   const seen = useRef(new Map<string, number>());
 
   const [now, setNow] = useState(() => Date.now());
 
-  const running = rows.some((row) => row.state === "active");
+  const running = keys.length > 0;
 
-  for (const row of rows) {
-    if (row.state === "active" && !seen.current.has(row.key)) {
-      seen.current.set(row.key, now);
-    }
+  for (const key of keys) {
+    if (!seen.current.has(key)) seen.current.set(key, now);
   }
 
   useEffect(() => {
@@ -202,54 +224,59 @@ export function StepTimeline(props: {
   readonly children?: ReactNode;
   /** The state of each file job by its `make-file` call id. */
   readonly files?: Readonly<Record<string, AgentFileState>> | undefined;
+  /** The answer's text started: the steps fold and no row is live. */
+  readonly answering?: boolean | undefined;
 }): ReactNode {
   const timeline = stepTimeline(
     props.parts,
     props.labels,
     props.streaming,
-    props.files
+    props.files,
+    props.answering === true
   );
 
   const [open, setOpen] = useState(false);
 
   const [earlier, setEarlier] = useState(false);
 
-  const elapsed = useElapsed(timeline.rows);
-
   const { rows, failed } = timeline;
-
-  let stepsView: ReactNode = null;
-
-  const activeRow = (row: TimelineRow) => {
-    const ms = elapsed(row.key);
-
-    const time = elapsedLabel(ms);
-
-    const step = `Step ${rows.indexOf(row) + 1}`;
-
-    return (
-      <Row
-        key={row.key}
-        row={row}
-        meta={time === null ? step : `${step} · ${time}`}
-        slow={isSlow(ms)}
-      />
-    );
-  };
 
   // A finished answer whose file job still runs keeps that row in sight under the strip (R-44a).
   const stillRunning = rows.filter((row) => row.state === "active");
 
-  if (timeline.thinking) {
-    stepsView = (
-      <div className="flex items-center gap-2.5 text-sm text-muted-foreground">
-        <Node state="active" />
-        Thinking
-      </div>
-    );
-  } else if (props.streaming && rows.length > 0) {
+  // Each wait between steps is its own live row, so its time starts from 0 s.
+  const thinkingKey = `thinking-${rows.length}`;
+
+  const elapsed = useElapsed([
+    ...stillRunning.map((row) => row.key),
+    ...(timeline.thinking ? [thinkingKey] : []),
+  ]);
+
+  const liveOf = (key: string, current: boolean): LiveState => {
+    const ms = elapsed(key);
+
+    return { time: elapsedLabel(ms), slow: isSlow(ms), current };
+  };
+
+  const rowOf = (row: TimelineRow, current = false) => (
+    <Row
+      key={row.key}
+      row={row}
+      live={row.state === "active" ? liveOf(row.key, current) : undefined}
+    />
+  );
+
+  let stepsView: ReactNode = null;
+
+  const working = props.streaming && props.answering !== true;
+
+  if (working && (rows.length > 0 || timeline.thinking)) {
     // A running row always shows, also when a later read made an earlier row run again.
     const { shown, hidden } = shownRows(rows, earlier);
+
+    const current = timeline.thinking
+      ? undefined
+      : shown.findLast((row) => row.state === "active");
 
     stepsView = (
       <div className="grid gap-1">
@@ -263,13 +290,10 @@ export function StepTimeline(props: {
           </button>
         )}
         <Rows>
-          {shown.map((row) =>
-            row.state === "active" ? (
-              activeRow(row)
-            ) : (
-              <Row key={row.key} row={row} />
-            )
-          )}
+          {shown.map((row) => rowOf(row, row === current))}
+          {timeline.thinking ? (
+            <ThinkingRow live={liveOf(thinkingKey, true)} />
+          ) : null}
         </Rows>
       </div>
     );
@@ -304,17 +328,9 @@ export function StepTimeline(props: {
           />
         </button>
         {open ? (
-          <Rows>
-            {rows.map((row) =>
-              row.state === "active" ? (
-                activeRow(row)
-              ) : (
-                <Row key={row.key} row={row} />
-              )
-            )}
-          </Rows>
+          <Rows>{rows.map((row) => rowOf(row))}</Rows>
         ) : stillRunning.length > 0 ? (
-          <Rows>{stillRunning.map(activeRow)}</Rows>
+          <Rows>{stillRunning.map((row) => rowOf(row))}</Rows>
         ) : null}
       </div>
     );

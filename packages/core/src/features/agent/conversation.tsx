@@ -48,6 +48,13 @@ import {
 } from "./summary.ts";
 import { refusalOf } from "./transport.ts";
 
+/** The answer a live run has not written yet: its frame holds the Thinking row. */
+const PENDING_ANSWER: AgentMessage = {
+  id: "pending",
+  role: "assistant",
+  parts: [],
+};
+
 const storedTime = z.object({ createdAt: z.iso.datetime({ offset: true }) });
 
 // `START_PART` of `start-record.ts`, which is server code.
@@ -259,6 +266,9 @@ export function Conversation(props: {
 
   const building = run?.status === "building" || run?.status === "stopping";
 
+  // A background run still writes its last answer (DEC-57).
+  const live = busy || building;
+
   // Each read of the run is the chat, so one chat draws its checkpoints with the same parts.
   useEffect(() => {
     if (run === undefined || busy) return;
@@ -402,11 +412,14 @@ export function Conversation(props: {
                             message={message}
                             labels={props.labels}
                             streaming={
-                              busy && index === chat.messages.length - 1
+                              live && index === chat.messages.length - 1
                             }
                             durationMs={
-                              liveTimes[message.id] ??
-                              storedDuration(chat.messages, index)
+                              // A live answer has no time yet: its strip counts steps (Review Focus 1).
+                              live && index === chat.messages.length - 1
+                                ? undefined
+                                : (liveTimes[message.id] ??
+                                  storedDuration(chat.messages, index))
                             }
                             onAsk={
                               !busy &&
@@ -439,6 +452,17 @@ export function Conversation(props: {
                     ) : null}
                   </Fragment>
                 ))}
+                {live && chat.messages.at(-1)?.role !== "assistant" ? (
+                  <Message>
+                    <MessageContent>
+                      <MessageParts
+                        message={PENDING_ANSWER}
+                        streaming
+                        labels={props.labels}
+                      />
+                    </MessageContent>
+                  </Message>
+                ) : null}
               </div>
             )}
           </div>
