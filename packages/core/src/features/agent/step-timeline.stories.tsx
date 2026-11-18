@@ -149,6 +149,11 @@ export const Working: Story = {
 
     await expect(running).toHaveAttribute("aria-current", "step");
     await expect(within(running).getByText(/^\d+s$/)).toBeVisible();
+    // The ticking time sits in the chat's live log: hidden from screen readers, or it reads every second.
+    await expect(within(running).getByText(/^\d+s$/)).toHaveAttribute(
+      "aria-hidden",
+      "true"
+    );
 
     // C07-7: the running node is a spinning ring, a finished one a 16 px icon, never a radio dot.
     const ring = running.querySelector("[data-slot=live-node]");

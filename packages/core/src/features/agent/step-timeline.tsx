@@ -124,7 +124,11 @@ function NodeSlot(props: { readonly state: TimelineRow["state"] }): ReactNode {
 
 function LiveTime(props: { readonly live: LiveState }): ReactNode {
   return (
-    <span className="ms-auto text-xs text-muted-foreground tabular-nums">
+    // Hidden from screen readers: the chat log is live, so a ticking time would read every second.
+    <span
+      aria-hidden="true"
+      className="ms-auto text-xs text-muted-foreground tabular-nums"
+    >
       {props.live.time}
     </span>
   );
@@ -247,7 +251,8 @@ function useElapsed(keys: readonly string[]): (key: string) => number {
   const running = keys.length > 0;
 
   for (const key of keys) {
-    if (!seen.current.has(key)) seen.current.set(key, now);
+    // Not `now`: the tick stops while no row is live, so `now` can be seconds old.
+    if (!seen.current.has(key)) seen.current.set(key, Date.now());
   }
 
   useEffect(() => {
@@ -258,7 +263,8 @@ function useElapsed(keys: readonly string[]): (key: string) => number {
     return () => clearInterval(timer);
   }, [running]);
 
-  return (key) => now - (seen.current.get(key) ?? now);
+  // A key first seen after the last tick counts from 0 s until the next tick.
+  return (key) => Math.max(0, now - (seen.current.get(key) ?? now));
 }
 
 export function StepTimeline(props: {

@@ -325,12 +325,15 @@ export function stepTimeline(
       continue;
     }
 
-    // A call with progress joins the build row before it, and keeps the row's first item.
+    // A call with the next item joins the build row before it, and keeps the row's first item; a
+    // restart at another item is a new build.
     if (
       open !== undefined &&
       open.name === name &&
       progress !== undefined &&
-      open.progress !== undefined
+      open.progress !== undefined &&
+      progress.n === open.progress.n + 1 &&
+      progress.m === open.progress.m
     ) {
       // A refused call and its fix still count as one fix (czjw.79).
       if (open.refused) open.fixes += 1;

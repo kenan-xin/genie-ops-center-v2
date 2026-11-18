@@ -342,6 +342,14 @@ describe("stepTimeline", () => {
     }
   });
 
+  it("starts a new row when a second build restarts at its first item", () => {
+    const parts = [1, 2, 3, 1].map((n) => slide({ n, m: 3 }));
+
+    expect(
+      stepTimeline(parts, DECK_LABELS, false).rows.map((row) => rowText(row))
+    ).toEqual(["Wrote slides 1 to 3", "Wrote slide 1"]);
+  });
+
   it("shows a finished plan as done, then Thinking", () => {
     const timeline = stepTimeline(
       [1, 2, 3, 4, 5].map((n) => slide({ n, m: 5 })),
