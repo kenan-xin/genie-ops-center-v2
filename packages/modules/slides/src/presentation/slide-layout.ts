@@ -1,3 +1,5 @@
+import { contrastRatio } from "@genie/core/features/branding";
+
 import type { Placement } from "../content.ts";
 import {
   type ElementBox,
@@ -59,6 +61,13 @@ export function contrastLimit(
   fontSize: number | undefined
 ): 3 | 4.5 {
   return (fontSize ?? DEFAULT_TEXT_PX[kind]) >= LARGE_TEXT_PX ? 3 : 4.5;
+}
+
+/** Whichever of white and the theme text has more contrast on `behind`, as uppercase hex. */
+export function readableOn(behind: string): string {
+  return contrastRatio(THEME_TEXT, behind) >= contrastRatio("#FFFFFF", behind)
+    ? THEME_TEXT
+    : "#FFFFFF";
 }
 
 const MARGIN_X = 40;
@@ -242,7 +251,7 @@ const SPLIT = {
   title: { x: 43, y: 58, w: 298, h: 184 }, // 4.5cqw, 6cqw, 31cqw, 19.2cqw
   panelBody: { x: 43, y: 265, w: 298, h: 217 }, // 4.5cqw, 27.6cqw, 31cqw, 22.6cqw
   priorities: { x: 432, y: 58, w: 480, h: 405 }, // 45cqw, 6cqw, 50cqw, 42.2cqw
-  chart: { x: 432, y: 117, w: 480, h: 288 }, // 45cqw, 12.2cqw, 50cqw, 70% of the content height
+  chart: { x: 432, y: 117, w: 480, h: 288 }, // 45cqw, 12.2cqw, 50cqw, 30cqw
   visual: { x: 432, y: 58, w: 480, h: 405 }, // 45cqw, 6cqw, 50cqw, 42.2cqw
   pairChart: { x: 432, y: 115, w: 225, h: 292 }, // 45cqw, 12cqw, 23.4cqw, 72% of the content height
   pairVisual: { x: 432, y: 58, w: 225, h: 405 }, // 45cqw, 6cqw, 23.4cqw, 42.2cqw
@@ -447,11 +456,21 @@ export function textGround(
       : theme.panelBody;
 
   const fill = element?.style?.fill;
+  const kind = element?.kind;
+
+  // A fill with no color keeps the place's color only where it reads on that fill (P14-7).
+  const ownColor =
+    fill === undefined ||
+    (kind !== "title" && kind !== "text" && kind !== "bullets") ||
+    contrastRatio(defaultColor, fill) >=
+      contrastLimit(kind, element?.style?.fontSize)
+      ? defaultColor
+      : readableOn(fill);
 
   return {
     behind:
       fill ?? (onPanel ? theme.panel : (slide.background ?? theme.background)),
-    color: element?.style?.color ?? defaultColor,
+    color: element?.style?.color ?? ownColor,
     defaultColor,
     where: fill !== undefined ? "fill" : onPanel ? "panel" : "background",
   };

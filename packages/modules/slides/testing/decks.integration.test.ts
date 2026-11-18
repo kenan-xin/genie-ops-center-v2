@@ -437,6 +437,33 @@ describe("the slides deck procedures", () => {
     expect(saved.slides[1]?.notes).toBe("Say hello.");
   });
 
+  it("save a notes change on a slide whose stored title color already fails", async () => {
+    const owner = await editor();
+
+    // An older deck: the title color was picked on white and is below 3:1 on the panel.
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [{ ...title("Old"), style: { color: "#9CA3AF" } }],
+          },
+        ],
+      },
+    });
+
+    const saved = await callerAs(owner).changeDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+      changes: [
+        { op: "change-slide-fields", slideId: "s1", notes: "Say hello." },
+      ],
+    });
+
+    expect(saved.slides[0]?.notes).toBe("Say hello.");
+  });
+
   it("keep a stored theme through a rename and a Refresh", async () => {
     const owner = await editor();
 

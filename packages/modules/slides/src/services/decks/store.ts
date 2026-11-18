@@ -70,6 +70,13 @@ const targetOf = (id: string) => ({ type: "slides-deck", id });
 
 const IMAGE_NOT_UPLOADED = "Upload this image to the deck first.";
 
+/** A contrast issue by slide id, element position and message: a move in one change shifts the slide index. */
+function issueKey(content: DeckContent, issue: AppErrorIssue): string {
+  const [, slide, , element] = issue.path.split(".");
+
+  return `${content.slides[Number(slide)]?.id}.${element}.${issue.message}`;
+}
+
 function refuseIf(issues: readonly AppErrorIssue[]): void {
   if (issues.length > 0) {
     throw new AppError(SLIDES_ERRORS["change-invalid"], { issues });
@@ -405,9 +412,20 @@ export async function changeDeck(
     theme: row.content.theme,
   });
 
-  // Only the slides this change names: an older deck's other slides never block it (P14-7).
+  // Only a text this change makes unreadable on the slides it names: an older deck's stored
+  // colors never block it (P14-7).
+  const theme = await themeOf(ctx, content);
+
+  const stored = new Set(
+    textContrastIssues(row.content, theme, applied.touched).map((issue) =>
+      issueKey(row.content, issue)
+    )
+  );
+
   refuseIf(
-    textContrastIssues(content, await themeOf(ctx, content), applied.touched)
+    textContrastIssues(content, theme, applied.touched).filter(
+      (issue) => !stored.has(issueKey(content, issue))
+    )
   );
 
   return withTransaction(ctx.tenant, async (tx) => {

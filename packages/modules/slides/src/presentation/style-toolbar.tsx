@@ -68,7 +68,7 @@ import {
 import { boxStep, movedBox, resizedBox, SNAP } from "./canvas-adapter.ts";
 import { DockSheet, DockSheetRow } from "./dock-sheet.tsx";
 import { PhoneDock } from "./phone-dock.tsx";
-import { contrastLimit } from "./slide-layout.ts";
+import { contrastLimit, readableOn } from "./slide-layout.ts";
 import { useIsPhone } from "./use-is-phone.ts";
 import type { ShownElement, ShownSlide } from "./views.ts";
 
@@ -769,10 +769,7 @@ function readableColor(
 
   if (fill === undefined && background === undefined) return null;
 
-  const best =
-    contrastRatio(THEME_TEXT, behind) >= contrastRatio("#FFFFFF", behind)
-      ? THEME_TEXT
-      : "#FFFFFF";
+  const best = readableOn(behind);
 
   // Black or white always reaches 4.58:1, so black repairs what the best one cannot (czjw.138).
   return contrastRatio(best, behind) >= needs ? best : "#000000";

@@ -104,4 +104,10 @@ describe("resolveTheme", () => {
       panelText: "#111827",
     });
   });
+
+  it("gives a mid-tone stored panel the text color with more contrast, not white", () => {
+    expect(resolveTheme(brand("#2563EB"), { panel: "#60A5FA" })).toMatchObject({
+      panelText: "#111827",
+    });
+  });
 });

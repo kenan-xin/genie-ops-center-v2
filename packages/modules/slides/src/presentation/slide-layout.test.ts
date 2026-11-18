@@ -402,6 +402,16 @@ describe("textGround", () => {
       { behind: "#000000", color: "#FFFFFF", where: "fill" },
     ],
     [
+      "gives a split title with a light fill and no color a dark color on its fill",
+      [
+        { kind: "title" as const, style: { fill: "#EFF6FF" } },
+        ...split.slice(1),
+      ],
+      undefined,
+      BLUE_THEME,
+      { behind: "#EFF6FF", color: "#111827", where: "fill" },
+    ],
+    [
       "puts the panel text of a light theme on the background in the text color",
       split,
       undefined,

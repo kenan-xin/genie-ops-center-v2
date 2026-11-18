@@ -1,4 +1,4 @@
-import { contrastRatio, foregroundFor, primaryPair } from "@genie/core";
+import { contrastRatio, primaryPair } from "@genie/core";
 
 import {
   type SlideTheme,
@@ -6,6 +6,7 @@ import {
   THEME_BACKGROUND,
   THEME_TEXT,
 } from "../../contract.ts";
+import { readableOn } from "../../presentation/slide-layout.ts";
 
 /** The tenant branding a deck draws with, on screen and in PowerPoint (R-55, D9). */
 export type BrandTheme = {
@@ -84,7 +85,7 @@ export function resolveTheme(
       : (own.panelText ??
         (own.panel === undefined
           ? brand.primaryForeground
-          : foregroundFor(panel)));
+          : readableOn(panel)));
 
   const accent =
     own.accent ??
@@ -99,7 +100,7 @@ export function resolveTheme(
     text,
     secondaryText,
     accent,
-    accentText: foregroundFor(accent),
+    accentText: readableOn(accent),
     panel,
     panelText,
     panelBody: layout === "light" ? secondaryText : panelText,
@@ -110,6 +111,6 @@ export function resolveTheme(
     layout,
     weight: own.weight ?? "bold",
     logo: own.logo ?? "light",
-    dark: foregroundFor(background) !== "#111827",
+    dark: readableOn(background) === "#FFFFFF",
   };
 }
