@@ -20,12 +20,17 @@ import {
   DATA_LIMIT_MESSAGES,
   DECK_SLIDE_LIMIT,
   deckChanges,
+  type ElementStyle,
   deckId,
   deckTitle,
   NOTES_CHARACTERS,
   SLIDE_RULE_MESSAGES,
   slideInput,
+  type StoredTheme,
   TEXT_CHARACTERS,
+  THEME_LAYOUTS,
+  THEME_LOGOS,
+  THEME_WEIGHTS,
   TITLE_CHARACTERS,
 } from "./contract.ts";
 import { assertCanRead, assertCanWrite } from "./services/decks/access.ts";
@@ -36,6 +41,7 @@ import {
   listOwnDecks,
   readOwnDeck,
 } from "./services/decks/store.ts";
+import { brandTheme } from "./services/decks/theme.ts";
 
 /*
  * Every output holds no clock value, no data rows and no id of a deck the create tool made: a
@@ -46,21 +52,24 @@ import {
 /** One JSON object of a tool answer. */
 type ToolObject = { [key: string]: AgentToolValue };
 
-/** An element's box and style as JSON: the model reads no key without a value. */
+/** An object's keys that hold a value, as JSON: the model reads no key without a value. */
+function definedOf(value: ElementStyle | StoredTheme) {
+  const kept: ToolObject = {};
+
+  for (const [key, entry] of Object.entries(value)) {
+    if (entry !== undefined) kept[key] = entry;
+  }
+
+  return kept;
+}
+
+/** An element's box and style as JSON. */
 function placementOf({ box, style }: Placement) {
   const placement: ToolObject = {};
 
   if (box !== undefined) placement.box = box;
 
-  if (style !== undefined) {
-    const kept: ToolObject = {};
-
-    for (const [key, value] of Object.entries(style)) {
-      if (value !== undefined) kept[key] = value;
-    }
-
-    placement.style = kept;
-  }
+  if (style !== undefined) placement.style = definedOf(style);
 
   return placement;
 }
@@ -124,23 +133,32 @@ const readDeckTool = defineAgentTool({
     failed: "Could not read the deck",
   },
   description:
-    "Reads one of this person's own decks by id: its title, figures date and content hash, and its slides, with each slide's id, its background and speaker notes when it has them, and each element's kind, text and chart config, and its box and style when it has them. Give the content hash to slides-change-deck.",
+    "Reads one of this person's own decks by id: its title, the company name, its figures date and content hash, the deck's own theme when it has one, and its slides, with each slide's id, its background and speaker notes when it has them, and each element's kind, text and chart config, and its box and style when it has them. Give the content hash to slides-change-deck.",
   input: z.strictObject({ deckId }),
   permission: "slides:read",
   run: async (ctx, input) => {
     await assertCanRead(ctx.caller);
 
     const record = await readOwnDeck(ctx, input.deckId);
-    const { slides } = record.content;
+    const { slides, theme } = record.content;
+    const { companyName } = brandTheme(await ctx.tenant.branding.get());
+
+    const head = {
+      id: record.id,
+      title: record.title,
+      companyName,
+      figuresAsOf: record.frozenOn,
+      contentHash: record.contentHash,
+    };
+
+    // Only a deck with its own theme: the model reads no key without a value.
+    const output =
+      theme === undefined
+        ? { ...head, slides: slides.map(slideOutput) }
+        : { ...head, theme: definedOf(theme), slides: slides.map(slideOutput) };
 
     return {
-      output: {
-        id: record.id,
-        title: record.title,
-        figuresAsOf: record.frozenOn,
-        contentHash: record.contentHash,
-        slides: slides.map(slideOutput),
-      },
+      output,
       rowCount: slides.length,
     };
   },
@@ -158,7 +176,7 @@ const slideRules = [
 
 /** The slide shape of D5, stated in both deck tool descriptions. */
 const SLIDE_LAYOUT =
-  "Each slide starts with a title element that states its finding, then at most one text or bullet list, and at most two figures (KPI), charts (bar, line, area or donut) or tables, each with a chart config. A slide holds at most one table, beside one text or one other figure, chart or image, not both.";
+  "Each slide starts with a title element that states its finding, then at most one text or bullet list, and at most two figures (KPI), charts (bar, line, area or donut) or tables, each with a chart config. A slide holds at most one table, beside one text or one other figure, chart or image, not both. A slide's elements choose its layout: the title slide is the first slide, with a title and a text; Big number is a title, a text and a figure; Chart with insight is a title, a text and a chart; Two figures is a title, a text and two figures; Comparison is a title, a text and two charts of one measure; Table with note is a title, a text and a table; Priorities list is a title and bullets; a statement is a later slide with a title and a text.";
 
 const SLIDE_LIMITS = `A slide title holds at most ${TITLE_CHARACTERS} characters, a text at most ${TEXT_CHARACTERS} characters, and a bullet list 1 to ${BULLET_ITEMS} items of at most ${BULLET_CHARACTERS} characters each.`;
 
@@ -176,7 +194,15 @@ const STYLE_RULES = [
   `To move, resize or style one element, use a change-element step with its slideId, its index on the slide (the title is 0), and a box or a style; to set a slide's background or speaker notes, use a change-slide-fields step with a background or notes. In both, null clears a field, and a style step sets or clears only the keys it names.`,
   `A box is { x, y, w, h } in whole pixels on the ${SLIDE_CANVAS.width} by ${SLIDE_CANVAS.height} slide and must stay inside it; a title, text or bullet list needs at least ${minBox("text").w} by ${minBox("text").h}, a figure, chart, table or image at least ${minBox("chart").w} by ${minBox("chart").h}.`,
   `A title, text or bullet list takes the style keys color, fontSize (${FONT_SIZES.join(", ")}), weight (${FONT_WEIGHTS.join(", ")}), align (${TEXT_ALIGNS.join(", ")}), fill and border { color, width (${BORDER_WIDTHS.join(", ")}) }; a figure, chart, table or image takes only fill and border. Colors are hex such as #1E3A8A.`,
-  `Every text needs a contrast of 4.5:1, or 3:1 from fontSize 24, against its fill, else the slide background, else white; a text without a color is dark gray #111827. A background change re-checks every text without a fill, so set their colors in the same change.`,
+  `Every text needs a contrast of 4.5:1, or 3:1 from fontSize 24. The check reads the text's fill, else the panel for a text on the panel, else the slide background, else the theme background. A text without a color takes the theme's color for its place. A background change re-checks every text without a fill, so set their colors in the same change.`,
+].join(" ");
+
+/** The deck theme rules, so a first theme call passes (P14-18, P14-22). */
+const THEME_RULES = [
+  `To change the look of the whole deck, use one change-theme step with a theme of these keys: background, text, secondaryText, accent, panel and panelText are hex colors; weight is ${THEME_WEIGHTS.join(" or ")}; layout is ${THEME_LAYOUTS.join(" or ")}, where solid fills the side panel and light draws it as a line; logo is ${THEME_LOGOS.join(" or ")}, the logo that reads on the background.`,
+  `A key with null clears it, and theme null returns the deck to the brand look.`,
+  `The text and the secondaryText need 4.5:1 on the background and the accent 3:1; in the solid layout, the panelText needs 4.5:1 on the panel. A theme change re-checks every slide.`,
+  `A theme cannot change the face: the deck keeps the brand font.`,
 ].join(" ");
 
 /** The notes rule, in both deck tool descriptions (S7-45). */
@@ -238,7 +264,7 @@ const changeDeckTool = defineAgentTool({
     done: "Changed the deck",
     failed: "Could not change the deck",
   },
-  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element or change-slide-fields. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. An element at the same place with the same kind keeps its box and style when the step leaves them out, and null clears them. If the step removes, adds or reorders elements, send each element's box and style as read. ${DECK_RULES} ${STYLE_RULES} ${NOTES_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
+  description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element, change-slide-fields or change-theme. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. An element at the same place with the same kind keeps its box and style when the step leaves them out, and null clears them. If the step removes, adds or reorders elements, send each element's box and style as read. ${DECK_RULES} ${STYLE_RULES} ${THEME_RULES} ${NOTES_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
   input: z.strictObject({
     deckId,
     expectedHash: contentHash,

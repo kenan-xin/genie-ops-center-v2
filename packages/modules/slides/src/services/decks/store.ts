@@ -17,6 +17,7 @@ import {
   deckContentSchema,
   type FrozenChart,
   textContrastIssues,
+  themeContrastIssues,
   type UndoEntry,
 } from "../../content.ts";
 import type {
@@ -409,24 +410,30 @@ export async function changeDeck(
             };
       }),
     })),
-    theme: row.content.theme,
+    theme: applied.theme,
   });
 
   // Only a text this change makes unreadable on the slides it names: an older deck's stored
-  // colors never block it (P14-7).
+  // colors never block it (P14-7). A theme change draws every slide anew, so it checks every
+  // slide, and the stored issues are read under the theme before it (P14-38).
   const theme = await themeOf(ctx, content);
+  const before = applied.themeChanged ? await themeOf(ctx, row.content) : theme;
+  const slideIds = applied.themeChanged ? "all" : applied.touched;
 
   const stored = new Set(
-    textContrastIssues(row.content, theme, applied.touched).map((issue) =>
+    textContrastIssues(row.content, before, slideIds).map((issue) =>
       issueKey(row.content, issue)
     )
   );
 
-  refuseIf(
-    textContrastIssues(content, theme, applied.touched).filter(
+  refuseIf([
+    ...(applied.themeChanged && content.theme !== undefined
+      ? themeContrastIssues(theme, content.theme)
+      : []),
+    ...textContrastIssues(content, theme, slideIds).filter(
       (issue) => !stored.has(issueKey(content, issue))
-    )
-  );
+    ),
+  ]);
 
   return withTransaction(ctx.tenant, async (tx) => {
     const locked = await lockOwnDeck(tx, ctx, row.id, row.contentHash);

@@ -21,6 +21,7 @@ import { SLIDES_SURFACE } from "../src/agent-surface.ts";
 import { SLIDES_AGENT_TOOLS } from "../src/agent-tools.ts";
 import type { ElementInput } from "../src/contract.ts";
 import { slidesModule } from "../src/module.ts";
+import { DARK_SAMPLE } from "../src/presentation/__fixtures__/themes.ts";
 import { changeDeck } from "../src/services/decks/store.ts";
 import { frozenElement, insertDeck } from "./factories.ts";
 
@@ -249,6 +250,57 @@ describe("the slides agent tools", () => {
 
     expect(slides[0]?.notes).toBe("Say hello.");
     expect(slides[1]).not.toHaveProperty("notes");
+  });
+
+  it("slides-read-deck answers the company name, and the stored theme only for a deck that has one", async () => {
+    const owner = await personWith(EDITOR);
+
+    const [themed, plain] = await Promise.all(
+      [{ ...TWO_SLIDES, theme: DARK_SAMPLE }, TWO_SLIDES].map((content) =>
+        insertDeck(deployment.context, {
+          ownerUserId: owner.caller.userId,
+          content,
+        })
+      )
+    );
+
+    const read = async (deckId: string | undefined) =>
+      (await runTool(owner, "slides-read-deck", { deckId: deckId ?? "" }))
+        .output;
+
+    expect(await read(themed)).toMatchObject({
+      companyName: "E2E",
+      theme: DARK_SAMPLE,
+    });
+
+    const output = await read(plain);
+
+    expect(output).toMatchObject({ companyName: "E2E" });
+    expect(output).not.toHaveProperty("theme");
+  });
+
+  it("slides-change-deck saves a change-theme step and answers the new hash", async () => {
+    const owner = await personWith(EDITOR);
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner.caller.userId,
+      content: TWO_SLIDES,
+    });
+
+    const read = await runTool(owner, "slides-read-deck", { deckId: id });
+
+    const changed = await runTool(owner, "slides-change-deck", {
+      deckId: id,
+      expectedHash: hashIn(read),
+      // SAFETY: the sample's keys all hold strings, so it is a JSON object.
+      changes: [
+        { op: "change-theme", theme: DARK_SAMPLE as Record<string, string> },
+      ],
+    });
+
+    expect(hashIn(changed)).toBe(await storedHash(id));
+    expect(hashIn(changed)).not.toBe(hashIn(read));
+    expect((await deckState(id)).content.theme).toEqual(DARK_SAMPLE);
   });
 
   it("slides-create-deck stores a slide background and each element's box and style", async () => {
@@ -564,7 +616,7 @@ describe("the slides agent tools", () => {
           "slides-create-deck",
           "slides-change-deck",
         ],
-        rules: 11,
+        rules: 15,
       },
     ]);
   });

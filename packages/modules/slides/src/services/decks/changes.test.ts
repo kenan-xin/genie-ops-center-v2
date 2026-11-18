@@ -437,6 +437,58 @@ describe("the slides a change touches", () => {
   });
 });
 
+describe("the change-theme step", () => {
+  const themed = {
+    title: "Q3",
+    content: {
+      slides: [{ id: "s1", elements: [title("Claim")] }],
+      theme: { background: "#030712", text: "#F3F4F6", layout: "light" },
+    } satisfies DeckContent,
+  };
+
+  it.each<
+    readonly [
+      string,
+      Extract<DeckChange, { op: "change-theme" }>["theme"],
+      object | undefined,
+    ]
+  >([
+    [
+      "sets one key and keeps the others",
+      { accent: "#60A5FA" },
+      {
+        background: "#030712",
+        text: "#F3F4F6",
+        layout: "light",
+        accent: "#60A5FA",
+      },
+    ],
+    [
+      "clears one key with null",
+      { layout: null },
+      { background: "#030712", text: "#F3F4F6" },
+    ],
+    ["clears the whole theme with theme null", null, undefined],
+    [
+      "stores no theme when a merge leaves no key",
+      { background: null, text: null, layout: null },
+      undefined,
+    ],
+  ])("%s", (_, theme, expected) => {
+    const applied = applyChanges(themed, [{ op: "change-theme", theme }]);
+
+    expect(applied.theme).toEqual(expected);
+    expect(applied.themeChanged).toBe(true);
+  });
+
+  it("keeps the stored theme through a step that is not change-theme", () => {
+    const applied = applyChanges(themed, [{ op: "rename", title: "Q4" }]);
+
+    expect(applied.theme).toEqual(themed.content.theme);
+    expect(applied.themeChanged).toBe(false);
+  });
+});
+
 describe("applyChanges", () => {
   it("adds a slide to an empty deck as s1", () => {
     expect(ids(deckOf([]), [addSlide])).toEqual(["s1"]);

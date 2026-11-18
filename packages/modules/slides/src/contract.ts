@@ -143,6 +143,21 @@ export const storedTheme = z.strictObject({
 
 export type StoredTheme = z.infer<typeof storedTheme>;
 
+/** A theme change: a key with a value sets it, a key with null clears it, an absent key stays. */
+export const themeChange = z.strictObject({
+  background: hexColor.nullable().optional(),
+  text: hexColor.nullable().optional(),
+  secondaryText: hexColor.nullable().optional(),
+  accent: hexColor.nullable().optional(),
+  panel: hexColor.nullable().optional(),
+  panelText: hexColor.nullable().optional(),
+  weight: z.enum(THEME_WEIGHTS).nullable().optional(),
+  layout: z.enum(THEME_LAYOUTS).nullable().optional(),
+  logo: z.enum(THEME_LOGOS).nullable().optional(),
+});
+
+export type ThemeChange = z.infer<typeof themeChange>;
+
 /** The colors and choices one slide draws with: the brand look under the deck's own theme. */
 export const slideTheme = z.object({
   companyName: z.string(),
@@ -496,6 +511,11 @@ export const deckChange = z.discriminatedUnion("op", [
     slideId,
     background: hexColor.nullable().optional(),
     notes: slideNotes.nullable().optional(),
+  }),
+  /** Sets or clears keys of the deck's own theme; `theme: null` returns the brand look (P14-18). */
+  z.strictObject({
+    op: z.literal("change-theme"),
+    theme: themeChange.nullable(),
   }),
 ]);
 

@@ -6,9 +6,14 @@ import {
   deckContentSchema,
   type StoredElement,
   textContrastIssues,
+  themeContrastIssues,
 } from "./content.ts";
 import type { ElementBox, ElementKind, ElementStyle } from "./contract.ts";
-import { BLUE_THEME } from "./presentation/__fixtures__/themes.ts";
+import {
+  BLUE_THEME,
+  DARK_SAMPLE,
+  DARK_THEME,
+} from "./presentation/__fixtures__/themes.ts";
 
 const ELEMENT: Record<ElementKind, () => StoredElement> = {
   title: () => ({ kind: "title", text: "Overdue invoices doubled in October" }),
@@ -368,5 +373,46 @@ describe("textContrastIssues", () => {
     expect(
       textContrastIssues(content, BLUE_THEME, "all").map(({ path }) => path)
     ).toEqual(["slides.1.elements.0.style"]);
+  });
+});
+
+describe("themeContrastIssues", () => {
+  it("passes the dark sample", () => {
+    expect(themeContrastIssues(DARK_THEME, DARK_SAMPLE)).toEqual([]);
+  });
+
+  it("refuses a text color too close to the background at theme.text", () => {
+    expect(
+      themeContrastIssues(
+        { ...DARK_THEME, text: "#111827" },
+        { ...DARK_SAMPLE, text: "#111827" }
+      )
+    ).toEqual([
+      {
+        path: "theme.text",
+        message:
+          "The theme's text #111827 is too close to the background #030712 to read: 1.13:1, and it needs 4.5:1. Pick colors with more contrast.",
+      },
+    ]);
+  });
+
+  it("checks the accent at 3:1 and the panel text on a solid panel", () => {
+    const issues = themeContrastIssues(
+      {
+        ...BLUE_THEME,
+        accent: "#E5E7EB",
+        panel: "#F3F4F6",
+        panelText: "#FFFFFF",
+      },
+      { accent: "#E5E7EB", panel: "#F3F4F6" }
+    );
+
+    expect(issues.map(({ path }) => path)).toEqual([
+      "theme.accent",
+      "theme.panel",
+    ]);
+    expect(issues[1]?.message).toContain(
+      "too close to the panel #F3F4F6 to read"
+    );
   });
 });

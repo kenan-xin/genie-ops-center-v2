@@ -103,6 +103,44 @@ export function textContrastIssues(
   });
 }
 
+/** The theme pairs a save checks: each role on its ground, at its limit (P14-22). */
+const THEME_PAIRS = [
+  ["text", "text", "background", 4.5],
+  ["secondaryText", "secondary text", "background", 4.5],
+  ["accent", "accent", "background", 3],
+  ["panelText", "panel text", "panel", 4.5],
+] as const;
+
+/**
+ * Each theme color below its limit on its ground, at the stored key to change: the role's when the
+ * deck sets it, else the ground's. A pair of two brand colors is not the deck's to fix, so it is
+ * skipped. The panel pair counts only in a solid layout, where text sits on the panel.
+ */
+export function themeContrastIssues(
+  theme: SlideTheme,
+  stored: StoredTheme
+): { readonly path: string; readonly message: string }[] {
+  return THEME_PAIRS.flatMap(([role, words, ground, limit]) => {
+    if (ground === "panel" && theme.layout !== "solid") return [];
+
+    if (stored[role] === undefined && stored[ground] === undefined) return [];
+
+    const ratio = contrastRatio(theme[role], theme[ground]);
+
+    if (ratio >= limit) return [];
+
+    // Rounded down, so a failing ratio never reads as its limit.
+    const shown = Math.floor(ratio * 100) / 100;
+
+    return [
+      {
+        path: `theme.${stored[role] === undefined ? ground : role}`,
+        message: `The theme's ${words} ${theme[role]} is too close to the ${ground} ${theme[ground]} to read: ${shown}:1, and it needs ${limit}:1. Pick colors with more contrast.`,
+      },
+    ];
+  });
+}
+
 /** The stored content of one deck: its slides in display order and its own theme (R-52, czjw.183). */
 export type DeckContent = {
   readonly slides: readonly StoredSlide[];

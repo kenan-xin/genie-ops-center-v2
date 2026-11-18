@@ -9,7 +9,10 @@ import {
   type ElementInput,
   type ElementStyle,
   elementStyle,
+  storedTheme,
+  type StoredTheme,
   type StyleChange,
+  type ThemeChange,
   UNDO_DEPTH,
 } from "../../contract.ts";
 import { SLIDES_ERRORS } from "../../errors.ts";
@@ -44,6 +47,22 @@ function mergedStyle(
   return Object.keys(kept).length === 0 ? undefined : elementStyle.parse(kept);
 }
 
+/** A theme after a change, as `mergedStyle`: no key left stores no theme, never JSON null (P14-49). */
+function mergedTheme(
+  theme: StoredTheme | undefined,
+  change: ThemeChange | null
+): StoredTheme | undefined {
+  if (change === null) return undefined;
+
+  const kept = Object.fromEntries(
+    Object.entries({ ...theme, ...change }).filter(
+      ([, value]) => value !== null && value !== undefined
+    )
+  );
+
+  return Object.keys(kept).length === 0 ? undefined : storedTheme.parse(kept);
+}
+
 export type AppliedChanges = {
   readonly title: string;
   readonly slides: readonly DraftSlide[];
@@ -51,6 +70,10 @@ export type AppliedChanges = {
   readonly checks: ReadonlyMap<string, number>;
   /** The slides an add, change-slide, change-element or change-slide-fields step names: the ones the save re-checks (P14-7). */
   readonly touched: ReadonlySet<string>;
+  /** The deck's own theme after the steps; undefined is the brand look. */
+  readonly theme: StoredTheme | undefined;
+  /** A change-theme step ran, so the save re-checks the theme and every slide. */
+  readonly themeChanged: boolean;
 };
 
 function refuse(path: string, message: string): never {
@@ -133,6 +156,8 @@ export function applyChanges(
   changes: readonly DeckChange[]
 ): AppliedChanges {
   let { title } = current;
+  let { theme } = current.content;
+  let themeChanged = false;
   const slides: DraftSlide[] = [...current.content.slides];
   const checks = new Map<string, number>();
   const touched = new Set<string>();
@@ -164,6 +189,12 @@ export function applyChanges(
   for (const [step, change] of changes.entries()) {
     if (change.op === "rename") {
       ({ title } = change);
+      continue;
+    }
+
+    if (change.op === "change-theme") {
+      theme = mergedTheme(theme, change.theme);
+      themeChanged = true;
       continue;
     }
 
@@ -283,5 +314,5 @@ export function applyChanges(
     }
   }
 
-  return { title, slides, checks, touched };
+  return { title, slides, checks, touched, theme, themeChanged };
 }

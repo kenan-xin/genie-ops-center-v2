@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { SLIDES_SURFACE_INSTRUCTIONS } from "./agent-surface.ts";
-import { deckChange, elementStyle } from "./contract.ts";
+import { SLIDES_WRITE_TOOLS } from "./agent-tools.ts";
+import { deckChange, elementStyle, storedTheme } from "./contract.ts";
 
 /**
  * The words of the "You can change" line for each step and each style key (R-46a). A step or a
@@ -16,6 +17,7 @@ const STEP_WORDS = {
   "rename": "the deck's name",
   "change-element": "each element's position and size",
   "change-slide-fields": "the slide background",
+  "change-theme": "the deck's theme",
 };
 
 const STYLE_WORDS = {
@@ -89,5 +91,20 @@ describe("the Slides surface's Every number line", () => {
       "When the deck's figures date is not the reporting date, add no value from the records"
     );
     expect(numbers).toContain("use Refresh data first");
+  });
+});
+
+describe("the slides-change-deck description", () => {
+  // A key that the stored theme gains reaches the model only through this description.
+  it("names every key of the stored theme", () => {
+    const description =
+      SLIDES_WRITE_TOOLS.find(({ name }) => name === "slides-change-deck")
+        ?.description ?? "";
+
+    expect(
+      Object.keys(storedTheme.shape).filter(
+        (key) => !new RegExp(`\\b${key}\\b`).test(description)
+      )
+    ).toEqual([]);
   });
 });

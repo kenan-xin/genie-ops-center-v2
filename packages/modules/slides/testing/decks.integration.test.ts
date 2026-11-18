@@ -545,6 +545,60 @@ describe("the slides deck procedures", () => {
     expect(undone.theme).toEqual({ ...DARK_THEME, companyName: "E2E" });
   });
 
+  it("store no theme key for theme null, and Undo brings the theme before it back", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: { ...oneSlide, theme: DARK_SAMPLE },
+    });
+
+    const caller = callerAs(owner);
+
+    const cleared = await caller.changeDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+      changes: [{ op: "change-theme", theme: null }],
+    });
+
+    // JSON null would fail the zod schema and deck_theme_check (P14-49).
+    expect(Object.keys((await rowOf(id)).content)).toEqual(["slides"]);
+    expect(cleared.theme.background).toBe("#FFFFFF");
+
+    await caller.undoDeck({ id, expectedHash: cleared.contentHash });
+
+    expect((await rowOf(id)).content.theme).toEqual(DARK_SAMPLE);
+  });
+
+  it("refuse a theme change whose new panel hides a slide's title color", async () => {
+    const owner = await editor();
+
+    // White reads on the brand panel #2563EB, not on #F3F4F6.
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [{ ...title("A claim"), style: { color: "#FFFFFF" } }],
+          },
+        ],
+      },
+    });
+
+    await expect(
+      callerAs(owner).changeDeck({
+        id,
+        expectedHash: await hashOfRow(id),
+        changes: [{ op: "change-theme", theme: { panel: "#F3F4F6" } }],
+      })
+    ).rejects.toMatchObject({
+      code: "slides:change-invalid",
+      issues: [{ path: "slides.0.elements.0.style" }],
+    });
+    expect((await rowOf(id)).content).not.toHaveProperty("theme");
+  });
+
   it("keep a figures date that moved while a text change waited for the row lock", async () => {
     const owner = await editor();
 
