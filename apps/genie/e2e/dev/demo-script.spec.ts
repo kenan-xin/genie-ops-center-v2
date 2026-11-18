@@ -34,7 +34,6 @@ import {
   expectStatus,
   FIRST_PAINT,
   fact,
-  goToField,
   LEDGER_LOCK,
   liveUpload,
   LOCK_WAIT,
@@ -280,9 +279,6 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await expectStatus(page, invoice, "To review");
           await openReview(page, invoice, "Review the invoice");
 
-          // Below 1024 px the review shows one field at a time, so the pager goes to the due date.
-          await goToField(page, "Due date");
-
           const enterDueDate = page.getByRole("radio", {
             name: "Enter a due date",
           });
@@ -291,7 +287,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await page
             .getByLabel("Due date", { exact: true })
             .fill("25 Nov 2026");
-          await (await saveButton(page, "Save as unpaid")).click();
+          await saveButton(page).click();
           await expect(
             page.getByText(/INV-LIVE-001 saved as unpaid/)
           ).toBeVisible({ timeout: SAVE_TIMEOUT });
@@ -336,11 +332,10 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await uploadFiles(page, [split]);
           await expectStatus(page, split, "Confirm the split");
           await openReview(page, split, "Review the payment");
-          await goToField(page, "Confirm the split");
           await expect(
             page.getByRole("heading", { level: 2, name: "Confirm the split" })
           ).toBeVisible();
-          await (await saveButton(page, "Save the payment")).click();
+          await saveButton(page).click();
           await expect(page.getByText(/^Payment saved:/)).toBeVisible({
             timeout: SAVE_TIMEOUT,
           });
@@ -384,7 +379,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await uploadFiles(page, [unmatched]);
           await expectStatus(page, unmatched, "No matching invoice");
           await openReview(page, unmatched, "Review the payment");
-          await (await saveButton(page, "Save as unallocated")).click();
+          await saveButton(page).click();
           await expect(page.getByText(/^Payment saved:/)).toBeVisible({
             timeout: SAVE_TIMEOUT,
           });
@@ -396,7 +391,7 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
           await expectStatus(page, receipt, "To review");
           await openReview(page, receipt, "Review the paid receipt");
 
-          const savePaid = await saveButton(page, "Save as paid");
+          const savePaid = saveButton(page);
 
           // czjw.72: a receipt paid in full asks no due date.
           await expect(savePaid).not.toHaveAttribute("aria-disabled", "true");

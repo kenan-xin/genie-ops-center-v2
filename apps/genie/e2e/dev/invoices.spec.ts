@@ -374,20 +374,14 @@ test("INV-2026-09-03 opens from its row without a document load and shows its ba
         await expect(sheet).toContainText(sgd(5200));
         await openDetails(page);
       } else {
-        await expectPinsOnMarks(page, [
-          "customer",
-          "number",
-          "date",
-          "dueDate",
-          "description",
-          "amount",
-          "paymentTerms",
-        ]);
-
         const drawer = page.getByRole("complementary", {
           name: "Payments and history",
         });
 
+        // P16-21: the record at 1280 lists its read fields in the open drawer.
+        await expect(
+          drawer.getByRole("region", { name: "Fields", exact: true })
+        ).toBeVisible();
         await expect(drawer).toContainText("TXN-PAY-2026-026");
         await expect(
           drawer.getByRole("list", { name: "History" }).getByRole("listitem")
@@ -418,6 +412,23 @@ test("INV-2026-09-03 opens from its row without a document load and shows its ba
       await expect(history).toContainText(`for ${sgd(2000)}.`);
 
       await expectNoAxeViolations(page, "invoice record page");
+
+      if (!onPhone(page)) {
+        // Hiding the drawer makes the room for the pins, which sit beside their lines. It runs
+        // after axe, so the scan covers the open drawer with its "Fields" region.
+        await page
+          .getByRole("button", { name: "Hide payments and history" })
+          .click();
+        await expectPinsOnMarks(page, [
+          "customer",
+          "number",
+          "date",
+          "dueDate",
+          "description",
+          "amount",
+          "paymentTerms",
+        ]);
+      }
 
       // Review Focus 5: the desk picks its layout by width, so a hard load must not mismatch.
       const hydration: string[] = [];

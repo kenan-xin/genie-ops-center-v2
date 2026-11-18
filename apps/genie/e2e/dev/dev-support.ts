@@ -46,30 +46,9 @@ export const sgd = (dollars: number) => MONEY.format(dollars);
 /** Below Tailwind's `md`, `DataTable` draws its card list instead of the table. */
 export const onPhone = (page: Page) => (page.viewportSize()?.width ?? 0) < 768;
 
-/** Below 1024 px a review shows its pager, one field at a time; from 1024 px its desk (czjw.98). */
-export const onPager = (page: Page) => (page.viewportSize()?.width ?? 0) < 1024;
-
-/**
- * On the pager, opens the step of one field, or a Finish row such as the save, through All fields.
- * The row's name is its label, then its value. The desk shows every field, so it does nothing.
- */
-export async function goToField(page: Page, label: string): Promise<void> {
-  if (!onPager(page)) return;
-
-  await page.getByRole("button", { name: "All fields" }).click();
-
-  const sheet = page.getByRole("dialog");
-
-  // The labels are plain words, so they need no escape.
-  await sheet.getByRole("button", { name: new RegExp(`^${label}`) }).click();
-  await expect(sheet).toBeHidden();
-}
-
-/** The Save button of a review. The pager shows it only on its summary step, so it goes there. */
-export async function saveButton(page: Page, saveLabel: string) {
-  await goToField(page, saveLabel);
-
-  return page.getByRole("button", { name: saveLabel, exact: true });
+/** The review's Save; every save button says Save (czjw.193, G16). */
+export function saveButton(page: Page) {
+  return page.getByRole("button", { name: "Save", exact: true });
 }
 
 /** The demonstration account's session, minted directly (no realm in this run). */
@@ -156,8 +135,9 @@ export async function expectPageDrawn(page: Page): Promise<void> {
 }
 
 /**
- * The desk of payment OR-AUG-SEP-BUNDLE, saved from upload 03 (E2): the page drawn, then its two
- * invoices and its history in the drawer with each read field pinned (desktop), or in the sheet.
+ * The desk of payment OR-AUG-SEP-BUNDLE, saved from upload 03 (E2): the page drawn, its read
+ * fields with its two invoices and history in the drawer (desktop) or the sheet, then, with the
+ * drawer hidden, each read field pinned beside its line.
  */
 export async function expectBundleDesk(page: Page): Promise<void> {
   await expectPageDrawn(page);
@@ -168,9 +148,14 @@ export async function expectBundleDesk(page: Page): Promise<void> {
     ).toContainText(sgd(8250));
     await openDetails(page);
   } else {
-    await expectPinsOnMarks(page);
+    const drawer = page.getByRole("complementary", {
+      name: "Invoices and history",
+    });
+
+    await expect(drawer).toBeVisible();
+    // P16-21: the record at 1440 lists its read fields in the open drawer.
     await expect(
-      page.getByRole("complementary", { name: "Invoices and history" })
+      drawer.getByRole("region", { name: "Fields", exact: true })
     ).toBeVisible();
   }
 
@@ -186,6 +171,14 @@ export async function expectBundleDesk(page: Page): Promise<void> {
   await expect(
     page.getByRole("list", { name: "History" }).getByRole("listitem")
   ).not.toHaveCount(0);
+
+  if (!onPhone(page)) {
+    // Hiding the drawer makes the room for the pins, which sit beside their lines.
+    await page
+      .getByRole("button", { name: "Hide invoices and history" })
+      .click();
+    await expectPinsOnMarks(page);
+  }
 }
 
 /**

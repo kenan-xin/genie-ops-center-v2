@@ -20,20 +20,19 @@ import { expect, test, type Page, type TestInfo } from "@playwright/test";
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { pickDay } from "../support/date-picker.ts";
 import { withDeploymentLock } from "../support/lock.ts";
+import { expectTouchAreas } from "../support/touch-areas.ts";
+import { hideDevelopmentWidgets } from "./ask-support.ts";
 import {
   allocationsOn,
   copyOf,
   DATABASE_URL,
   expectBundleDesk,
-  expectPinsOnMarks,
   expectStatus,
   FIRST_PAINT,
   fact,
-  goToField,
   LEDGER_LOCK,
   liveUpload,
   LOCK_WAIT,
-  onPager,
   onPhone,
   openDetails,
   openInbox,
@@ -54,6 +53,9 @@ test.skip(
   !DEV_MODULES.has("invoices"),
   "This run does not compile the invoices module."
 );
+
+// The development widgets float over the review's fixed bar and its touch areas.
+test.beforeEach(({ page }) => hideDevelopmentWidgets(page));
 
 /**
  * The AC-7 review flow at the phone and the desktop viewport (Spec 7 AC-7, R-23 to R-28, R-37,
@@ -107,12 +109,27 @@ function duplicateOf(partial: Upload, project: string): Upload {
 }
 
 /**
- * czjw.98: before the save, the desk pins the card of `key` to its line on the page, and the
- * pager's first step rings its line in the lens.
+ * czjw.187: a read field sits in the "From the document" region, and its locate button shows its
+ * line: the lens spot on a phone, the selected line box on a desktop.
  */
-async function expectReadOnPage(page: Page, key: string): Promise<void> {
-  if (onPager(page)) {
-    await expect(page.getByText(/^Step 1 of \d+$/)).toBeVisible();
+async function expectLocates(
+  page: Page,
+  key: string,
+  label: string
+): Promise<void> {
+  await expect(
+    page
+      .getByRole("region", { name: "From the document", exact: true })
+      .locator(`[data-field="${key}"]`)
+  ).toBeVisible();
+
+  const locate = page.getByRole("button", {
+    name: `Show ${label} on the document`,
+  });
+
+  await (onPhone(page) ? locate.tap() : locate.click());
+
+  if (onPhone(page)) {
     await expect(page.locator("[data-lens-spot]")).toBeVisible({
       timeout: VIEWER_TIMEOUT,
     });
@@ -120,11 +137,9 @@ async function expectReadOnPage(page: Page, key: string): Promise<void> {
     return;
   }
 
-  await expect(page.locator(`[data-pin-card="${key}"]`)).toBeVisible({
-    timeout: VIEWER_TIMEOUT,
-  });
-  await expect(page.locator(`[data-pin-line="${key}"]`)).toBeAttached();
-  await expectPinsOnMarks(page, [key]);
+  await expect(
+    page.locator(`[data-line-box="${key}"][data-lit="selected"]`)
+  ).toBeVisible({ timeout: VIEWER_TIMEOUT });
 }
 
 /**
@@ -270,19 +285,43 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
 
         // B9.3: the review of 01 has no accessibility defect before its save.
         await capture(page, testInfo, "review-invoice", invoice.name);
-        await expectReadOnPage(page, "number");
+        await expectLocates(page, "number", "Invoice number");
+
+        // czjw.187: the sections come from the reading: the due date waits for the person, the
+        // payment terms are the document's optional field.
+        await expect(
+          page.getByRole("region", { name: "Needs your input", exact: true })
+        ).toContainText("Due date");
+        await expect(
+          page.getByRole("region", { name: "Optional", exact: true })
+        ).toContainText("Payment terms");
+
+        // T9-b: no control of the invoice review is under 44 px or over another control.
+        if (onPhone(page)) await expectTouchAreas(page, "The invoice review");
 
         // B9.4: the pdf.js worker loads under `next dev`, so the source text is marked. A focus
-        // on Total boxes its line on the desk; the pager rings it in the lens.
-        await goToField(page, "Total");
+        // on Total boxes its line beside the page; the phone moves the lens's spot onto it.
+        const spot = page.locator("[data-lens-spot]");
 
-        if (onPager(page)) {
-          await expect(page.locator("[data-lens-spot]")).toBeVisible();
+        // The phone's spot already rings the invoice number, so focusing Total must move it.
+        const spotBefore = onPhone(page)
+          ? await spot.getAttribute("style")
+          : null;
+
+        await page.getByLabel("Total", { exact: true }).focus();
+
+        if (onPhone(page)) {
+          if (spotBefore === null)
+            throw new Error("The phone's lens spot was not shown.");
+
+          await expect(spot).toBeVisible({ timeout: VIEWER_TIMEOUT });
+          await expect(spot).not.toHaveAttribute("style", spotBefore, {
+            timeout: VIEWER_TIMEOUT,
+          });
         } else {
-          await page.getByLabel("Total", { exact: true }).focus();
           await expect(
             page.locator('[data-line-box="amount"][data-lit="selected"]')
-          ).toBeVisible();
+          ).toBeVisible({ timeout: VIEWER_TIMEOUT });
         }
 
         await expect(
@@ -293,23 +332,19 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
             .first()
         ).toBeVisible({ timeout: VIEWER_TIMEOUT });
 
-        // czjw.98: an edit of Description is corrected by the person, and Undo restores the read.
-        await goToField(page, "Description");
-
+        // czjw.98: an edit of Description shows the value read before it, and Undo restores it.
         const description = page.getByLabel("Description", { exact: true });
         const descriptionCard = page.locator('[data-field="description"]');
 
         await description.fill(`${await description.inputValue()} and support`);
-        await expect(
-          descriptionCard.getByText("Corrected by you")
-        ).toBeVisible();
+        await expect(descriptionCard.getByText(/^Read as “/u)).toBeVisible();
         await descriptionCard
           .getByRole("button", { name: "Undo Description" })
           .click();
-        await expect(descriptionCard.getByText("Extracted")).toBeVisible();
+        await expect(descriptionCard.getByText(/^Read as “/u)).toHaveCount(0);
 
         // czjw.98: Save names what blocks it, and its press goes to the due choice.
-        const saveInvoice = await saveButton(page, "Save as unpaid");
+        const saveInvoice = saveButton(page);
 
         await expect(
           page.getByText("Enter a due date or choose No due date to save.")
@@ -335,12 +370,10 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await (onPhone(page) ? dueDate.tap() : dueDate.click());
         await expect(dueDate).toBeFocused();
 
-        if (!onPager(page)) {
-          await expect(page.locator('[data-field="dueDate"]')).toHaveAttribute(
-            "data-selected",
-            ""
-          );
-        }
+        await expect(page.locator('[data-field="dueDate"]')).toHaveAttribute(
+          "data-selected",
+          ""
+        );
 
         // Owner I8: the due date is picked in the calendar, which writes the app's one format.
         await pickDay(
@@ -350,7 +383,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         );
         await expect(dueDate).toHaveValue("25 Nov 2026");
 
-        const ready = await saveButton(page, "Save as unpaid");
+        const ready = saveButton(page);
 
         await expect(ready).not.toHaveAttribute("aria-disabled", "true");
         await ready.click();
@@ -390,10 +423,9 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
 
         // B9.3: the payment review has no accessibility defect before its save.
         await capture(page, testInfo, "review-payment", split.name);
-        await expectReadOnPage(page, "reference");
+        await expectLocates(page, "reference", "Reference");
 
         // S1: the review itself proposes the split, not only the inbox row.
-        await goToField(page, "Confirm the split");
         await expect(
           page.getByRole("heading", { level: 2, name: "Confirm the split" })
         ).toBeVisible();
@@ -427,7 +459,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
           page.getByText(`Allocated ${sgd(8250)}. Unallocated ${sgd(0)}.`)
         ).toBeVisible();
 
-        await (await saveButton(page, "Save the payment")).click();
+        await saveButton(page).click();
         // E2 (czjw.64): the saved card replaces both panes.
         await expect(
           page.getByText("Saved as payment OR-AUG-SEP-BUNDLE.", { exact: true })
@@ -462,7 +494,7 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
         await expectStatus(page, unmatched, "No matching invoice");
 
         await openReview(page, unmatched, "Review the payment");
-        await (await saveButton(page, "Save as unallocated")).click();
+        await saveButton(page).click();
         await expect(page.getByText(/^Payment saved:/)).toBeVisible({
           timeout: SAVE_TIMEOUT,
         });
@@ -479,15 +511,14 @@ test("reviews the seven live uploads to the running totals of the demo guide", a
 
         await openReview(page, receipt, "Review the paid receipt");
 
-        await expectReadOnPage(page, "number");
+        await expectLocates(page, "number", "Receipt number");
 
         // czjw.72: a receipt paid in full asks no due date, so Save is ready at once.
-        await goToField(page, "Due date");
         await expect(
           page.getByText("None, paid in full").first()
         ).toBeVisible();
 
-        const savePaid = await saveButton(page, "Save as paid");
+        const savePaid = saveButton(page);
 
         await expect(savePaid).not.toHaveAttribute("aria-disabled", "true");
         await savePaid.click();

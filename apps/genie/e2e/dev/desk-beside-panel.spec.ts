@@ -112,7 +112,7 @@ function pageProblems(page: Page): Promise<string[]> {
 
     for (const element of document.querySelectorAll(
       // Not the narrow desk's sticky sheet: it is the designed layout, and the PDF scrolls clear of it (pb-40, measured).
-      "[data-pin-card], [data-pin], [data-field], aside"
+      "[data-pin-card], [data-pin], [data-field], aside, section[aria-label='Fields']"
     )) {
       if (!element.checkVisibility() || element.contains(pdf)) continue;
 
@@ -184,9 +184,15 @@ test("the record desk keeps its PDF clear beside the docked agent panel (6wz1.96
     return;
   }
 
-  // The real shell leaves the desk above DESK_PINS_FROM at 1280 px while the panel is closed.
+  // The real shell leaves the desk above DESK_PINS_FROM at 1280 px while the panel is closed,
+  // and the open drawer lists the read fields (P16-21).
+  const drawer = page.getByRole("complementary", {
+    name: "Payments and history",
+  });
+
+  await expect(drawer).toBeVisible();
   await expect(
-    page.getByRole("complementary", { name: "Payments and history" })
+    drawer.getByRole("region", { name: "Fields", exact: true })
   ).toBeVisible();
 
   await openAgentPanel(page);
@@ -237,28 +243,27 @@ test("the review desk keeps its PDF clear beside the docked agent panel (6wz1.96
           return;
         }
 
-        const beforeYouSave = page.getByRole("complementary", {
-          name: "Before you save",
-        });
-
-        // The wide desk: its fields pinned beside their lines, none listed in the panel.
-        await expect(beforeYouSave).toBeVisible();
+        // At 1280 px with the panel closed the form sits beside the page, with no lens.
         await expect(
-          beforeYouSave.getByRole("region", {
-            name: "On the page",
-            exact: true,
-          })
-        ).toHaveCount(0);
+          page.getByRole("region", { name: "Fields", exact: true })
+        ).toBeVisible(FIRST_PAINT);
+        await expect(page.locator("[data-review-lens]")).toHaveCount(0);
 
-        // The pager beside the docked panel.
+        // The panel docks and the form stacks under the page's preview.
         await openAgentPanel(page);
         await expect(page.locator("[data-review-lens]")).toBeVisible();
         await expectPageDrawn(page);
         await expectPageClear(page);
 
-        // The middle desk: every card in the panel.
+        // At 1440 px with the panel docked the form sits beside the page again.
         await page.setViewportSize({ width: 1440, height: 900 });
-        await expect(beforeYouSave).toBeVisible(FIRST_PAINT);
+        await expect(page.locator("[data-review-lens]")).toHaveCount(
+          0,
+          FIRST_PAINT
+        );
+        await expect(
+          page.getByRole("region", { name: "Fields", exact: true })
+        ).toBeVisible(FIRST_PAINT);
         await expectPageDrawn(page);
         await expectPageClear(page);
       } finally {
