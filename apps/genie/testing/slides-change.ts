@@ -132,6 +132,51 @@ export const SLIDES_DATED_CONTENT = {
 
 export const SLIDES_DATED_FROZEN_ON = "2026-09-30";
 
+/**
+ * One slide per state of the Edit slide sheet (czjw.180): a figure, a slide full of figures,
+ * bullets, a slide with no text, and a slide that takes an image. No chat reads it.
+ */
+export const EDIT_SLIDE_CONTENT = {
+  slides: [
+    {
+      id: "s1",
+      elements: [
+        { kind: "title", text: "Collections are on track for October." },
+        SLIDES_CHANGE_FIGURE,
+      ],
+    },
+    {
+      id: "s2",
+      elements: [
+        { kind: "title", text: "Collections held in both months." },
+        SLIDES_CHANGE_FIGURE,
+        SLIDES_CHANGE_FIGURE,
+      ],
+    },
+    {
+      id: "s3",
+      elements: [
+        { kind: "title", text: "Three steps close the month." },
+        {
+          kind: "bullets",
+          items: ["Send the statements", "Call each customer", "Post the cash"],
+        },
+      ],
+    },
+    {
+      id: "s4",
+      elements: [{ kind: "title", text: "Questions" }],
+    },
+    {
+      id: "s5",
+      elements: [
+        { kind: "title", text: "The team behind the numbers." },
+        { kind: "text", text: "Finance operations, Singapore." },
+      ],
+    },
+  ],
+} as const;
+
 export const SLIDES_FIGURE_READ_MESSAGE =
   "What collections total does the title of this slide give?";
 
