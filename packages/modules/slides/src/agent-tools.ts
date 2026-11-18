@@ -198,7 +198,7 @@ const STYLE_RULES = [
 ].join(" ");
 
 /** The deck theme rules, so a first theme call passes (P14-18, P14-22). */
-const THEME_RULES = [
+export const THEME_RULES = [
   `To change the look of the whole deck, use one change-theme step with a theme of these keys: background, text, secondaryText, accent, panel and panelText are hex colors; weight is ${THEME_WEIGHTS.join(" or ")}; layout is ${THEME_LAYOUTS.join(" or ")}, where solid fills the side panel and light draws it as a line; logo is ${THEME_LOGOS.join(" or ")}, the logo that reads on the background.`,
   `A key with null clears it, and theme null returns the deck to the brand look.`,
   `The text and the secondaryText need 4.5:1 on the background and the accent 3:1; in the solid layout, the panelText needs 4.5:1 on the panel. A theme change re-checks every slide.`,

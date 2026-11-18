@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { SLIDES_SURFACE_INSTRUCTIONS } from "./agent-surface.ts";
-import { SLIDES_WRITE_TOOLS } from "./agent-tools.ts";
+import { THEME_RULES } from "./agent-tools.ts";
 import { deckChange, elementStyle, storedTheme } from "./contract.ts";
 
 /**
@@ -94,16 +94,17 @@ describe("the Slides surface's Every number line", () => {
   });
 });
 
-describe("the slides-change-deck description", () => {
-  // A key that the stored theme gains reaches the model only through this description.
-  it("names every key of the stored theme", () => {
-    const description =
-      SLIDES_WRITE_TOOLS.find(({ name }) => name === "slides-change-deck")
-        ?.description ?? "";
-
+describe("the theme rules", () => {
+  // A key that the stored theme gains reaches the model only through their key list. Other words
+  // also say background, text, panel and layout ("the side panel"), so a key counts only as an
+  // item of the list: after ":", ";", "," or "and", and before ",", "and", "is" or "are".
+  it("list every key of the stored theme", () => {
     expect(
       Object.keys(storedTheme.shape).filter(
-        (key) => !new RegExp(`\\b${key}\\b`).test(description)
+        (key) =>
+          !new RegExp(`(?:[:;,]| and) ${key}(?:,| and| is| are)`).test(
+            THEME_RULES
+          )
       )
     ).toEqual([]);
   });
