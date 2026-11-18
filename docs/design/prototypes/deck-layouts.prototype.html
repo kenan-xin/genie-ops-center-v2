@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Deck layouts beyond the picked look, bead czjw.183. The owner picked look 1, Split panel
+     (deck-looks.prototype.html, d34dfd9, ?look=split) on 2026-11-15, and asked for a deck theme that a person can request.
+     Question: which comparison and closing layouts join the six picked layouts, and what does a requested theme
+     ("dark and minimal") change while the slide rules stay?
+     Switches: ?cmp=a|b|c and ?close=a|b (?v=a|b|c sets both, and c changes only the comparison), ?theme=brand|dark,
+     ?brand=blue|green|violet, ?label=on|off, ?view=desktop|phone, ?bare=1 (hides the bar, the intro and the notes).
+     Defaults: the lines marked "default" in the script. World: DESIGN.md. Font: Plus Jakarta Sans (OFL) from fonts/.
+     Data: fictional demo ledger, figures as of 27 Oct 2026. No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: deck layouts</title>
+<style>
+@font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-weight:200 800;font-display:swap;src:url("fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2")}
+:root{--ink:#111827;--muted:#4b5563;--idle:#374151;--hair:#e5e7eb;--tile:#f3f4f6;--b:#2563eb;--bl:#60a5fa;--font:"Plus Jakarta Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);color:var(--ink);background:#e9ebef;padding:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body.bare{background:#fff}body.bare .ctl,body.bare .intro,body.bare .notes{display:none}
+button{font:inherit;color:inherit;cursor:pointer}
+::selection{background:#dbeafe;color:var(--ink)}
+*{scrollbar-width:thin;scrollbar-color:#d1d5db transparent}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px}::-webkit-scrollbar-thumb:hover{background:#6b7280}::-webkit-scrollbar-track{background:transparent}
+:focus-visible{outline:2px solid var(--b);outline-offset:2px}
+.mu{color:var(--muted)}
+/* prototype bar */
+.ctl{max-width:1240px;margin:0 auto 14px;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.ctl h1{margin:0 4px 0 0;font-size:1rem;line-height:1.3}
+.grp{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px}
+.grp>span{font-size:.75rem;font-weight:600;color:var(--muted)}
+.seg{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:#fff;border:1px solid var(--hair);border-radius:10px}
+.seg button{height:32px;padding:0 10px;border:0;border-radius:8px;background:none;font-size:.8125rem;font-weight:600;color:var(--idle)}
+.seg button:hover{background:rgb(17 24 39/.06)}
+.seg button[aria-pressed=true]{background:var(--ink);color:#fff}
+/* intro and theme card */
+.intro{max-width:1240px;margin:0 auto 16px;padding:16px 20px;display:grid;gap:10px;background:#fff;border:1px solid var(--hair);border-radius:12px;font-size:.9375rem}
+.intro h2{margin:0;font-size:1.125rem;line-height:1.35;letter-spacing:-.01em}
+.intro p{margin:0;max-width:100ch}
+.theme{display:grid;gap:8px;padding-top:12px;border-top:1px solid var(--hair)}
+.theme h3{margin:0;font-size:.9375rem;line-height:1.4}
+.roles{margin:0;padding:0;list-style:none;display:grid;gap:6px 32px}
+@media (min-width:768px){.roles{grid-template-columns:1fr 1fr}}
+.roles li{display:grid;grid-template-columns:136px minmax(0,1fr);gap:8px;align-items:baseline;font-size:.875rem}
+.rn{display:flex;align-items:center;gap:8px;font-weight:600}
+.roles code{font-family:var(--mono);font-size:.75rem;color:var(--idle)}
+.roles .mu{font-size:.8125rem}
+.sw{flex:none;width:14px;height:14px;border-radius:4px;box-shadow:inset 0 0 0 1px rgb(17 24 39/.2)}.sw.none{box-shadow:none}
+.pill{display:inline-flex;align-items:center;height:20px;padding:0 8px;border-radius:999px;font-size:.75rem;font-weight:600;line-height:1;white-space:nowrap}
+.pill.new{background:#eff6ff;color:#1d4ed8}.pill.owner{background:#fffbeb;color:#92400e}.pill.pick{background:var(--tile);color:var(--idle)}
+/* slide grid */
+.grid{max-width:1240px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:24px 18px}
+.phone .grid{max-width:390px;grid-template-columns:1fr;gap:18px}
+figure{margin:0;min-width:0}
+figcaption{margin:8px 2px 0;display:grid;gap:2px;font-size:.75rem;line-height:1.45;color:var(--muted)}
+figcaption .cl{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:.8125rem;color:var(--ink)}
+figcaption .ppt b{font-weight:600;color:var(--idle)}
+/* A slide: 16:9, sized in container units so it scales like a real slide. The --s* variables are the theme roles. */
+.deck{--sbg:#fff;--span:var(--b);--spt:#fff;--spm:#fff;--sey:#fff;--sfg:#111827;--smu:#4b5563;--sft:#6b7280;--sacc:var(--b);--sneu:#8b919a;--srule2:rgb(17 24 39/.25);--shair:#e5e7eb;--saxis:#6b7280;--sleg:#374151;--sring:rgb(255 255 255/.22);--sringw:1.2cqw;--sline:rgb(255 255 255/.35);--stw:700;--snw:700;--slbg:var(--b);--slfg:#fff;--slbd:transparent}
+.deck.dark{--sbg:#030712;--span:transparent;--spt:#f3f4f6;--spm:#9ca3af;--sey:var(--bl);--sfg:#f3f4f6;--smu:#9ca3af;--sft:#9ca3af;--sacc:var(--bl);--srule2:#4b5563;--shair:#1f2937;--saxis:#9ca3af;--sleg:#d1d5db;--sring:var(--bl);--sringw:.3cqw;--sline:#4b5563;--sneu:#6b7280;--stw:400;--snw:400;--slbg:transparent;--slfg:var(--bl);--slbd:var(--bl)}
+.nolabel .ey{display:none}
+.sl{container-type:inline-size;aspect-ratio:16/9;position:relative;overflow:hidden;background:var(--sbg);color:var(--sfg);border-radius:6px;box-shadow:0 1px 2px rgb(17 24 39/.08),0 8px 24px -12px rgb(17 24 39/.25)}
+.sl *{box-sizing:border-box}
+.h{margin:0;font-weight:var(--stw);letter-spacing:-.01em;line-height:1.15;text-wrap:balance}
+.p{margin:0;line-height:1.45}
+.ft{position:absolute;left:44%;right:5cqw;bottom:3cqw;display:flex;font-size:1.25cqw;color:var(--sft)}
+.ft span:last-child{margin-left:auto}
+.num{font-weight:var(--snw);letter-spacing:-.02em;line-height:1;color:var(--sacc);white-space:nowrap}
+.num .cur{position:relative;top:-.95em;margin-right:.3em;font-size:.36em;letter-spacing:0}
+.num .unit{margin-left:.2em;font-size:.36em;letter-spacing:0}
+.lab{font-size:1.5cqw;font-weight:600;color:var(--smu)}
+.chart{display:block;width:100%;height:100%}
+.chart text{font-family:var(--font);font-size:11px;fill:var(--saxis)}
+.chart .lg{fill:var(--sleg)}.chart .ttl{font-size:13px;font-weight:700;fill:var(--sfg)}
+.chart .gl{stroke:var(--shair)}
+.chart .ln{fill:none;stroke-width:3;stroke-linejoin:round;stroke-linecap:round}
+.chart .ln.a{stroke:var(--sacc)}.chart .ln.n{stroke:var(--sneu)}
+.chart .a:not(.ln){fill:var(--sacc)}.chart .n:not(.ln){fill:var(--sneu)}
+.tb{width:100%;border-collapse:collapse;font-size:1.55cqw;font-variant-numeric:tabular-nums;color:var(--sfg)}
+.tb th{padding:.6cqw .8cqw;border-bottom:.15cqw solid var(--sfg);text-align:left;font-size:1.3cqw;font-weight:600;color:var(--smu)}
+.tb td{padding:.75cqw .8cqw;border-bottom:.1cqw solid var(--shair)}.tb .r{text-align:right}
+.tb tr.hot td{font-weight:700}
+.bl{margin:0;padding:0;list-style:none;display:grid;gap:1.8cqw}
+.bl li{display:grid;grid-template-columns:3.2cqw 1fr;gap:1.4cqw;align-items:start;font-size:2.1cqw;line-height:1.35}
+.bl .n{width:3.2cqw;height:3.2cqw;border-radius:50%;display:grid;place-items:center;font-size:1.5cqw;font-weight:700;background:var(--slbg);color:var(--slfg);border:.15cqw solid var(--slbd)}
+/* Split panel: the claim on a panel at the left, the evidence at the right */
+.split .pan{position:absolute;inset:0 auto 0 0;width:40%;padding:6cqw 4.5cqw;display:flex;flex-direction:column;gap:2.4cqw;background:var(--span);color:var(--spt)}
+.dark .split .pan{border-right:max(1px,.14cqw) solid var(--srule2)}
+.split .pan .h{font-size:3.3cqw}
+.split .pan .p{font-size:1.75cqw;color:var(--spm)}
+.split .pan .ey{font-size:1.25cqw;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--sey)}
+.split .con{position:absolute;inset:0 0 0 40%;padding:6cqw 5cqw 8cqw;display:flex;flex-direction:column;justify-content:center;gap:2cqw}
+.split .num{font-size:9cqw}
+.split .two{display:grid;grid-template-columns:1fr 1fr;gap:3cqw}
+.split .two .num{font-size:4.4cqw}
+.split .two>div{display:grid;gap:1cqw;padding-top:2cqw;border-top:.4cqw solid var(--sacc)}
+.split .two>div+div{border-top-color:var(--srule2)}.split .two>div+div .num{color:var(--sfg)}
+.chw{height:70%}
+/* Title, and the full panel of the closing layouts */
+.split.title .pan{width:100%;justify-content:flex-end;padding:7cqw 7cqw 9cqw}
+.dark .split.title .pan{border-right:0}
+.split.title .pan .h{font-size:6.2cqw;max-width:70%}
+.split.title .pan .p{font-size:2.1cqw}
+.split.title .pan::after{content:"";position:absolute;right:7cqw;top:7cqw;width:14cqw;height:14cqw;border:var(--sringw) solid var(--sring);border-radius:50%}
+/* Comparison */
+.pair{height:72%;display:grid;grid-template-columns:1fr 1fr;gap:3cqw}
+.pair>div{min-height:0}
+.ovl .fig{display:grid;gap:.8cqw}
+.split .ovl .num{font-size:6cqw}
+.ovl .chw{height:70%}
+.cols{display:grid;grid-template-columns:1fr 1fr;gap:3cqw}
+.cols>div{display:grid;align-content:start;gap:1.4cqw;padding-top:2cqw;border-top:.4cqw solid var(--sacc)}
+.cols>div+div{border-top-color:var(--srule2)}
+.cols h4{margin:0;font-size:2.1cqw;font-weight:var(--stw);line-height:1.2}
+.cols ul{margin:0;padding-left:1.2em;display:grid;gap:1cqw;font-size:1.75cqw;line-height:1.35}
+/* Closing */
+.split.closea .pan{justify-content:flex-start}
+.split.closea .pan .h,.split.closea .pan .p{max-width:74%}
+.split.closea .pan .h{font-size:4.8cqw}
+.split.closea .pan::after{top:auto;bottom:7cqw}
+.split.closeb .pan{flex-direction:row;align-items:center;justify-content:flex-start;gap:0;padding:7cqw}
+.split.closeb .pan::after{display:none}
+/* the divider sits at the panel edge of the split slides, 40% of the slide */
+.closeb .ask{flex:0 0 33cqw;display:flex;flex-direction:column;gap:2.4cqw;padding-right:4cqw}
+.split.closeb .ask .h{font-size:3.6cqw;max-width:none}
+.closeb .vr{flex:none;align-self:stretch;width:.1cqw;background:var(--sline)}
+.closeb .recap{flex:1;margin:0;padding-left:calc(4cqw + 1.1em);display:flex;flex-direction:column;justify-content:center;gap:2cqw;font-size:2cqw;line-height:1.35;color:var(--spt)}
+/* notes */
+.notes{max-width:1240px;margin:20px auto 0;padding:16px 20px;background:#fff;border:1px solid var(--hair);border-radius:12px;font-size:.9375rem;line-height:1.55}
+.notes h2{margin:0 0 4px;font-size:1.125rem}
+.notes h3{margin:14px 0 6px;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.notes ul{margin:0;padding-left:18px}
+.notes li+li{margin-top:2px}
+.notes code{font-family:var(--mono);font-size:.8125rem}
+</style></head><body>
+<div class="ctl" id="ctl"><h1>PROTOTYPE: deck layouts</h1>
+<div class="grp" role="group" aria-label="Comparison"><span aria-hidden="true">Comparison</span><div class="seg" data-k="cmp"><button type="button" data-val="a">a · Side by side</button><button type="button" data-val="b">b · Overlay</button><button type="button" data-val="c">c · Text columns</button></div></div>
+<div class="grp" role="group" aria-label="Closing"><span aria-hidden="true">Closing</span><div class="seg" data-k="close"><button type="button" data-val="a">a · Statement</button><button type="button" data-val="b">b · Recap and ask</button></div></div>
+<div class="grp" role="group" aria-label="Theme"><span aria-hidden="true">Theme</span><div class="seg" data-k="theme"><button type="button" data-val="brand">Brand default</button><button type="button" data-val="dark">Dark and minimal</button></div></div>
+<div class="grp" role="group" aria-label="Brand"><span aria-hidden="true">Brand</span><div class="seg" data-k="brand"><button type="button" data-val="blue">blue</button><button type="button" data-val="green">green</button><button type="button" data-val="violet">violet</button></div></div>
+<div class="grp" role="group" aria-label="Slide label"><span aria-hidden="true">Slide label</span><div class="seg" data-k="label"><button type="button" data-val="on">On, as picked</button><button type="button" data-val="off">Off</button></div></div>
+<div class="grp" role="group" aria-label="View"><span aria-hidden="true">View</span><div class="seg" data-k="view"><button type="button" data-val="desktop">Desktop</button><button type="button" data-val="phone">Phone 390</button></div></div>
+</div>
+<section class="intro" id="intro" aria-labelledby="intro-h"></section>
+<div id="root"><div class="deck" id="deck"><div class="grid" id="grid"></div></div></div>
+<section class="notes" aria-labelledby="notes-h"><h2 id="notes-h">Notes</h2>
+<h3>What is new</h3><ul>
+<li>Two layouts join the six picked ones: Comparison (slide 5) and Closing (slide 8). Every variant keeps the limits of the slide rules (one title, at most one text or bullet list, at most two figures, charts, tables or images), except comparison c.</li>
+<li>Every number on a slide comes from a figure, chart or table on that slide (README, Chat). So the closings and comparison c carry no number, and the comparison titles state only what their figure or charts show.</li>
+<li>Each caption says when the agent picks the layout. Phase 14 can start the Slides agent prompt from these lines.</li>
+<li>The data is the same fictional ledger as deck-looks. Days to pay are added for the comparison.</li>
+<li>At the text limits of a slide (a title of 90 characters, a text of 280, 5 bullets of 80), both closings hold their text, and so do comparisons a and b when the label is off. Comparison c holds 3 bullets of 80 in each list.</li></ul>
+<h3>A theme on request</h3><ul>
+<li>Every deck starts in the brand default: the tenant's brand color and font, with no stored theme.</li>
+<li>When a person asks for a style ("make this deck dark and minimal"), the agent stores a theme for that deck only: background, text colors, accent, fonts and layout weight. Other decks keep the brand default.</li>
+<li>A theme changes values. It never changes the layouts, their boxes or the slide rules.</li>
+<li>Phase 14 requirement: the save checks every text pair of a theme, 4.5:1, or 3:1 from 24 px. Today the save checks the text of each element only.</li>
+<li>Fonts: a theme uses the faces that the deployment ships. Only Plus Jakarta Sans ships today, so this sample changes the weight, not the face.</li></ul>
+<h3>PowerPoint export</h3><ul>
+<li>The export draws each slide from the same boxes as the screen: 960 by 540 canvas pixels on a 10 by 5.625 inch slide.</li>
+<li>It draws the panel, the rules, the ring and the list circles as shapes on each slide, as it draws the title rule today.</li>
+<li>Charts and tables stay native and editable. Their colors come from the theme. A chart takes its own chart area and plot area fill, and each table cell takes its own border on each side, so both can follow the dark theme.</li>
+<li>pptxgenjs 4.0.1 writes the heading and body fonts of a theme into the file, but no theme colors. So each shape and text box carries its own color.</li>
+<li>PowerPoint text is bold or regular, so a theme uses only these two weights.</li>
+<li>With the light layout weight, the export draws no panel rectangle, and a 1 pt line in the second rule color (#4B5563, 2.66:1 on the background) at 384 px.</li>
+<li>The footer takes the logo for light backgrounds in the brand default, and the logo for dark backgrounds in the dark theme. With no logo, the footer shows the company name only (README, Theme).</li></ul>
+<h3>Differences from deck-looks d34dfd9</h3><ul>
+<li>Panel text: 88% white became solid white. On blue that is 5.17:1 instead of 4.36:1 (green 5.48 instead of 4.63, violet 7.10 instead of 5.82).</li>
+<li>Slide label: 75% white became solid white. On blue that is 5.17:1 instead of 3.61:1 (green 5.48 instead of 3.79).</li>
+<li>The neutral chart series: <code>#9CA3AF</code> (2.54:1 on white) became <code>#8B919A</code> (3.17:1), so the line holds 3:1 and stays apart from the accent in lightness: 1.63:1 from blue, 1.73 from green, 2.24 from violet. The two lines stay apart in grayscale and for red-green color blindness. The dark theme keeps <code>#6B7280</code> (4.16:1 on its background, 1.78 to 2.51:1 from the light accents).</li>
+<li>Figures use proportional digits. Tabular digits left a gap before the comma ("27 ,350"). Tables keep tabular digits.</li>
+<li>Figures: weight 800 became 700, because PowerPoint has bold or regular.</li>
+<li>"Figures as of" shows only on a slide with a figure, chart or table, as the export draws it today. The Priorities list no longer shows it.</li>
+<li>Titles wrap in balanced lines on screen, so a title does not end on one short word at any width. PowerPoint wraps titles in its own way.</li>
+<li>If the owner accepts these differences at G2, this file governs the six layouts too. Until then, deck-looks governs them.</li></ul>
+<h3>Needs the owner at G2</h3><ul>
+<li>Slide label: keep the small label above each title, or drop it. Keeping it needs a new slide field of at most 24 characters, outside today's slide rules. With the label, a split panel holds 262 of the 280 text characters. The design rules of the impeccable skill ban a label above a heading. Without the label, the title slide names no company, so the logo or the name moves there. Proposal: drop it.</li>
+<li>Comparison c: allow a second bullet list on a slide (each list with a heading of at most 40 characters and at most 3 bullets of 80), or leave c out.</li>
+<li>The differences above: accept them, or keep deck-looks as it is.</li></ul>
+<h3>Not decided here</h3><ul>
+<li>The exact rule by which the agent picks a layout for each slide. That is the prompt task of Phase 14.</li>
+<li>A theme with another face waits for the faces that the Branding Typography tab brings back (IBM Plex Sans, Manrope, Source Serif 4).</li>
+<li>The Table with note holds 11 rows of short values, not the 12 rows that the rules allow, and five columns of long values wrap. Phase 14 adds a dense table step or lowers the row cap.</li>
+<li>How a person returns to the brand default, and what the agent says when a requested palette fails the contrast check.</li></ul>
+</section>
+<script>
+const BR={blue:['#2563eb','#60a5fa','7.9'],green:['#047857','#34d399','10.5'],violet:['#6d28d9','#a78bfa','7.4']};
+const q=new URLSearchParams(location.search),bare=q.get('bare')==='1',vq=q.get('v'),pick=(v,ok,d)=>ok.includes(v)?v:d;
+const S={
+  cmp:pick(q.get('cmp')||vq,['a','b','c'],'a'), // default comparison variant
+  close:pick(q.get('close')||vq,['a','b'],'a'), // default closing variant
+  theme:pick(q.get('theme'),['brand','dark'],'brand'), // default theme
+  brand:pick(q.get('brand'),['blue','green','violet'],'blue'),
+  label:pick(q.get('label'),['on','off'],'off'), // default slide label: off, the G2 pick
+  view:pick(q.get('view'),['desktop','phone'],'desktop'),
+};
+if(bare)document.body.classList.add('bare');
+const M=['May','Jun','Jul','Aug','Sep','Oct'],INV=[34.9,36.7,38.5,40.3,42.1,43.9],COL=[31.3,36.55,38.35,40.15,30.7,18.15];
+const HAR=[38,41,44,48,52,53],ABC=[16,19,17,18,20,18]; // monthly average days from invoice to payment: 46 and 18
+function lineChart(series,{mx,ticks,fmt,unit,aria}){
+  const W=400,H=230,L=46,R=10,T=28,B=30,y=v=>T+(H-T-B)*(1-v/mx),x=i=>L+14+i*((W-L-R-14)/5);
+  const g=ticks.map(v=>`<line class="gl" x1="${L}" x2="${W-R}" y1="${y(v)}" y2="${y(v)}"/><text class="ax yl" x="${L-8}" y="${y(v)+4}" text-anchor="end">${fmt(v)}</text>`).join('');
+  const xl=M.map((m,i)=>`<text class="ax xl" x="${x(i)}" y="${H-8}" text-anchor="middle">${m}</text>`).join('');
+  const pl=s=>`<polyline class="ln ${s.c}" points="${s.d.map((v,i)=>x(i)+','+y(v)).join(' ')}"/>`+s.d.map((v,i)=>`<circle class="${s.c}" cx="${x(i)}" cy="${y(v)}" r="3.5"/>`).join('');
+  let lx=L;const lg=series.map(s=>{const o=`<circle class="${s.c}" cx="${lx}" cy="10" r="4"/><text class="lg" x="${lx+9}" y="14">${s.n}</text>`;lx+=9+s.n.length*6.4+20;return o;}).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${aria}">${g}${xl}${[...series].reverse().map(pl).join('')}${lg}<text class="ax" x="${W-R}" y="14" text-anchor="end">${unit}</text></svg>`;
+}
+function barChart(name,d,c,aria){
+  const W=200,H=230,L=30,R=6,T=40,B=26,mx=60,ih=H-T-B,band=(W-L-R)/d.length,bw=band*.58,y=v=>T+ih*(1-v/mx),f=v=>v.toFixed(1);
+  const g=[0,20,40,60].map(v=>`<line class="gl" x1="${L}" x2="${W-R}" y1="${f(y(v))}" y2="${f(y(v))}"/><text class="ax yl" x="${L-6}" y="${f(y(v)+4)}" text-anchor="end">${v}</text>`).join('');
+  const bars=d.map((v,i)=>`<rect class="${c}" x="${f(L+i*band+(band-bw)/2)}" y="${f(y(v))}" width="${f(bw)}" height="${f(T+ih-y(v))}"/>`).join('');
+  const xl=M.map((m,i)=>`<text class="ax xl" x="${f(L+i*band+band/2)}" y="${H-8}" text-anchor="middle">${m}</text>`).join('');
+  return `<svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${aria}"><text class="ttl" x="2" y="16">${name}</text><text class="ax" x="${W-R}" y="16" text-anchor="end">days</text>${g}${bars}${xl}</svg>`;
+}
+const money=v=>`<span class="cur">SGD</span>${v}`;
+const TBL=`<table class="tb"><thead><tr><th>Customer</th><th>Invoice</th><th class="r">SGD</th><th class="r">Days late</th></tr></thead><tbody><tr class="hot"><td>Orchid Retail</td><td>INV-2026-08-04</td><td class="r">4,050</td><td class="r">70</td></tr><tr><td>Harbor Foods</td><td>INV-2026-09-03</td><td class="r">5,200</td><td class="r">40</td></tr><tr><td>Orchid Retail</td><td>INV-2026-09-04</td><td class="r">4,200</td><td class="r">27</td></tr><tr><td>ABC Trading</td><td>INV-2026-10-01</td><td class="r">6,500</td><td class="r">12</td></tr><tr><td>Harbor Foods</td><td>INV-2026-10-03</td><td class="r">7,400</td><td class="r">10</td></tr></tbody></table>`;
+const LIST=`<ol class="bl"><li><span class="n">1</span><span>Call Orchid Retail about the August invoice, now 70 days late.</span></li><li><span class="n">2</span><span>Agree a payment plan with Harbor Foods for SGD 12,600.</span></li><li><span class="n">3</span><span>Remind ABC Trading before its invoice reaches 30 days.</span></li><li><span class="n">4</span><span>Match the October payments that are still to arrive.</span></li></ol>`;
+const WHY={title:'The agent picks it for the first slide: the deck name and its period.',big:'The agent picks it when one number carries the slide.',chart:'The agent picks it for one trend over time, with no headline number.',two:'The agent picks it for two related totals of one period, such as invoiced and collected.',table:'The agent picks it when the audience must read the rows, at most 12.',list:'The agent picks it for actions in order, inside the deck.'};
+const CMP={
+ a:{name:'Side by side',line:'Side by side: two charts on one scale, each titled with its side.',why:'The agent picks it when two sides of one measure change over time, and each side needs its own chart.'},
+ b:{name:'Overlay',line:'Overlay: one number for the side that matters, and one chart with both sides.',why:'The agent picks it when two sides of one measure change over time, and one number states the side that matters.'},
+ c:{name:'Text columns',owner:true,line:'Text columns: two headed lists side by side, as the PowerPoint Comparison layout draws them. The slide rules allow one text or bullet list, so c needs the owner. Variant c changes only slide 5.',why:'The agent would pick it when two sides compare in words, not in data.'}};
+const CLOSE={
+ a:{name:'Statement',line:'Statement: the deck ends on the brand panel that it opened with, with the goal in one sentence.',why:'The agent picks it for the last slide when the deck ends on one goal or decision. It carries no number, because no figure, chart or table sits on it.'},
+ b:{name:'Recap and ask',line:'Recap and ask: the ask beside the three findings that it rests on, on the full brand panel.',why:'The agent picks it for the last slide when the audience needs the findings again before the ask. It carries no number, because no figure, chart or table sits on it.'}};
+const PPT={
+ title:'A rectangle in the panel color covers the slide. The title and the subtitle are text boxes. The ring is an ellipse with a line and no fill. No footer.',
+ big:'A rectangle in the panel color, 384 of 960 px wide, holds the label, title and text boxes. The figure is one text box in the accent, 65 pt, with SGD as a smaller, raised run (pptxgenjs superscript). The footer holds Figures as of, the logo for light backgrounds when the tenant has one, the company name and the slide number.',
+ chart:'The panel as in slide 2. A native line chart: the first series in the accent, the second in the neutral color, the legend at the top, no chart title.',
+ two:'The panel as in slide 2. Two value and label pairs as text boxes, each under a 3 pt line: the accent first, then the second rule color.',
+ cmpa:'The panel as in slide 2. Two native column charts side by side. Each has its side as the chart title and the same value axis maximum, so the bars compare.',
+ cmpb:'The panel as in slide 2. One text box for the figure and its label, and one native line chart with both sides in the accent and the neutral color.',
+ cmpc:'The panel as in slide 2. Two text boxes, each with a heading and native bullets, under a 3 pt line each. Today a slide holds one bullet list.',
+ table:'The panel as in slide 2. A native table: the header row in the secondary text color with a 1 pt line under it, and 0.75 pt lines between the rows.',
+ list:'The panel as in slide 2. Each item is an ellipse with its number and a text box beside it, so PowerPoint shows separate shapes, not one bullet list.',
+ closea:'A rectangle in the panel color covers the slide. The statement and the line are text boxes. The ring is an ellipse with a line and no fill. No footer.',
+ closeb:'A rectangle in the panel color covers the slide. The ask is a text box, the findings are one text box with native bullets, and a 0.75 pt line stands between them. No footer.'};
+const CMPS={
+ a:{t:'Harbor Foods takes over twice as long to pay as ABC Trading',tx:'Monthly average days from invoice to payment. Harbor Foods paid later every month.',body:()=>`<div class="pair"><div>${barChart('Harbor Foods',HAR,'a','Harbor Foods, average days to pay by month, May to October 2026')}</div><div>${barChart('ABC Trading',ABC,'n','ABC Trading, average days to pay by month, May to October 2026')}</div></div>`},
+ b:{t:'Harbor Foods takes 46 days to pay, over twice as long as ABC Trading',tx:'Monthly average days from invoice to payment. Harbor Foods paid later every month.',cls:'ovl',body:()=>`<div class="fig"><div class="num">46<span class="unit">days</span></div><div class="lab">Harbor Foods · average, May to October</div></div><div class="chw">${lineChart([{n:'Harbor Foods',d:HAR,c:'a'},{n:'ABC Trading',d:ABC,c:'n'}],{mx:60,ticks:[0,20,40,60],fmt:v=>v,unit:'days',aria:'Average days to pay, Harbor Foods and ABC Trading, May to October 2026'})}</div>`},
+ c:{t:'Harbor Foods pays late, ABC Trading mostly on time',noData:true,body:()=>`<div class="cols"><div><h4>Harbor Foods</h4><ul><li>Pays well after the due date</li><li>Holds the largest overdue amount</li><li>Paid later every month since May</li></ul></div><div><h4>ABC Trading</h4><ul><li>Pays close to the due date</li><li>Rarely pays late</li><li>Paid on time most months</li></ul></div></div>`}};
+/* no figure, chart or table sits on a closing, so it states findings in words (README, Chat) */
+const RECAP=['Almost half of the overdue money sits with Harbor Foods.','Collections fell behind invoicing from September.','Harbor Foods pays far later than ABC Trading.'];
+const SL=()=>[
+ {k:'title',lay:'Title',lab:'E2E · Finance',t:'Receivables review',s:'May to October 2026 · Figures as of 27 Oct 2026'},
+ {k:'big',lay:'Big number',lab:'Overdue',t:'SGD 27,350 is overdue across three customers',tx:'Harbor Foods holds almost half: SGD 12,600 over two invoices.'},
+ {k:'chart',lay:'Chart with insight',lab:'Trend',t:'Invoiced sales rose every month, to SGD 43,900 in October',tx:'Collections fell behind from September. October is still incomplete.'},
+ {k:'two',lay:'Two figures',lab:'Coverage',t:'Collections covered 83% of invoicing since May',tx:'SGD 41,200 is still outstanding.'},
+ {k:'compare',lay:'Comparison',lab:'Payment behaviour',...CMPS[S.cmp]},
+ {k:'table',lay:'Table with note',lab:'Overdue invoices',t:'Five invoices are overdue; the oldest is 70 days late',tx:'Sorted by days late. Bold marks the oldest.'},
+ {k:'list',lay:'Priorities list',lab:'Next steps',t:'Collection priorities for November',noData:true},
+ {k:'close',lay:'Closing'}];
+const pan=s=>`<div class="pan"><span class="ey">${s.lab}</span><h3 class="h">${s.t}</h3>${s.tx?`<p class="p">${s.tx}</p>`:''}</div>`;
+const foot=(n,data)=>`<div class="ft">${data?'<span>Figures as of 27 Oct 2026</span>':''}<span>E2E · ${n} / 8</span></div>`;
+function slide(s,n){
+  if(s.k==='title')return `<div class="sl split title"><div class="pan"><span class="ey">${s.lab}</span><h3 class="h">${s.t}</h3><p class="p">${S.label==='off'?`${s.lab} · `:''}${s.s}</p></div></div>`; // G2: without the label, the company name starts the subtitle
+  if(s.k==='close'&&S.close==='a')return `<div class="sl split title closea"><div class="pan"><span class="ey">Next review</span><h3 class="h">Collect every overdue invoice before the November review</h3><p class="p">Finance team · next review on 10 Nov 2026</p></div></div>`;
+  if(s.k==='close')return `<div class="sl split title closeb"><div class="pan"><div class="ask"><span class="ey">Decision</span><h3 class="h">Approve the Harbor Foods payment plan</h3></div><span class="vr"></span><ul class="recap">${RECAP.map(r=>`<li>${r}</li>`).join('')}</ul></div></div>`;
+  let c='';
+  if(s.k==='big')c=`<div class="num">${money('27,350')}</div><div class="lab">Overdue · 5 invoices</div>`;
+  if(s.k==='chart')c=`<div class="chw">${lineChart([{n:'Invoiced sales',d:INV,c:'a'},{n:'Collections',d:COL,c:'n'}],{mx:48,ticks:[0,15,30,45],fmt:v=>v?v+'k':'0',unit:'SGD',aria:'Invoiced sales and collections, May to October 2026'})}</div>`;
+  if(s.k==='two')c=`<div class="two">${[['236,400','Invoiced'],['195,200','Collected']].map(f=>`<div><div class="num">${money(f[0])}</div><div class="lab">${f[1]}</div></div>`).join('')}</div>`;
+  if(s.k==='compare')c=s.body();
+  if(s.k==='table')c=TBL;
+  if(s.k==='list')c=LIST;
+  return `<div class="sl split">${pan(s)}<div class="con${s.cls?' '+s.cls:''}">${c}</div>${foot(n,!s.noData)}</div>`;
+}
+function cap(s,n){
+  const info=s.k==='compare'?CMP[S.cmp]:s.k==='close'?CLOSE[S.close]:null,v=s.k==='compare'?S.cmp:S.close;
+  const pills=info?`<span class="pill new">New</span>${info.owner?'<span class="pill owner">Needs the owner</span>':''}<span>${v} · ${info.name}</span>`:'<span class="pill pick">Picked</span>';
+  const ppt=s.k==='compare'?PPT['cmp'+S.cmp]:s.k==='close'?PPT['close'+S.close]:PPT[s.k];
+  return `<figcaption><span class="cl"><b>${n}. ${s.lay}</b>${pills}</span><span>${info?info.why:WHY[s.k]}</span><span class="ppt"><b>PowerPoint:</b> ${ppt}</span></figcaption>`;
+}
+function themeCard(){
+  const [b,bl,cr]=BR[S.brand],B=b.toUpperCase(),BL=bl.toUpperCase();
+  const sw=c=>c?`<span class="sw" style="background:${c}" aria-hidden="true"></span>`:'<span class="sw none" aria-hidden="true"></span>';
+  const row=([role,c,val,note])=>`<li><span class="rn">${sw(c)}${role}</span><span>${val?`<code>${val}</code> `:''}<span class="mu">${note}</span></span></li>`;
+  if(S.theme==='dark')return `<div class="theme"><h3>Theme on request: "Make this deck dark and minimal." The agent stores this theme for this deck only.</h3><ul class="roles">${[
+    ['Background','#030712','#030712','was #FFFFFF'],
+    ['Panel','','','none, a 1 pt line #4B5563 at 40%, was the brand color'],
+    ['Text','#f3f4f6','#F3F4F6','secondary #9CA3AF, was #111827 and #4B5563'],
+    ['Accent',bl,BL,`the brand hue, light: ${cr}:1 on the background, was ${B}`],
+    ['Fonts','','','Plus Jakarta Sans, titles and figures regular, was bold. Another face waits for the Branding Typography tab.'],
+    ['Layout weight','','','light: no panel fill, was solid'],
+    ['Logo','','','the logo for dark backgrounds, was the logo for light backgrounds']].map(row).join('')}</ul><p class="mu">Kept: the eight layouts and their boxes, the slide rules (one title, at most one text or bullet list, at most two figures, charts, tables or images), 16:9, the footer, native charts and tables, and the brand hue.</p></div>`;
+  return `<div class="theme"><h3>Theme: brand default. Every deck starts here, with no stored theme.</h3><ul class="roles">${[
+    ['Background','#ffffff','#FFFFFF','white'],
+    ['Panel',b,B,'the brand color, with text #FFFFFF on it'],
+    ['Text','#111827','#111827','secondary #4B5563'],
+    ['Accent',b,B,'the brand color'],
+    ['Fonts','','','Plus Jakarta Sans, the brand face, titles and figures bold'],
+    ['Layout weight','','','solid: the panel is a filled block'],
+    ['Logo','','','the logo for light backgrounds, in the footer']].map(row).join('')}</ul><p class="mu">A person can ask for another style. Switch the theme above to see the sample "Make this deck dark and minimal."</p></div>`;
+}
+function intro(){
+  const c=CMP[S.cmp],k=CLOSE[S.close];
+  return `<h2 id="intro-h">Comparison ${S.cmp} · ${c.name}${c.owner?' <span class="pill owner">Needs the owner</span>':''}, closing ${S.close} · ${k.name}</h2><p>${c.line} ${k.line}</p><p>The owner decides at G2: the comparison, the closing, the theme, the slide label, the rule change that comparison c needs, and the differences from deck-looks. The notes at the end list each one.</p>${themeCard()}`;
+}
+function render(){
+  const [b,bl]=BR[S.brand],st=document.documentElement.style;
+  st.setProperty('--b',b);st.setProperty('--bl',bl);
+  document.getElementById('deck').className=`deck${S.theme==='dark'?' dark':''}${S.label==='off'?' nolabel':''}`;
+  document.getElementById('root').className=S.view==='phone'?'phone':'';
+  document.getElementById('intro').innerHTML=intro();
+  document.getElementById('grid').innerHTML=SL().map((s,i)=>`<figure>${slide(s,i+1)}${cap(s,i+1)}</figure>`).join('');
+  document.querySelectorAll('.seg').forEach(g=>g.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(S[g.dataset.k]===x.dataset.val))));
+  try{history.replaceState(null,'',`?${new URLSearchParams(S)}${bare?'&bare=1':''}`);}catch{}
+}
+document.getElementById('ctl').addEventListener('click',e=>{const x=e.target.closest('.seg button');if(!x)return;S[x.parentElement.dataset.k]=x.dataset.val;render();});
+render();
+</script></body></html>

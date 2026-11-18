@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<!-- PROTOTYPE, throwaway. Access starts filled: bead d8l5.62, owner question 9 of the follow-up 11 dry run (2026-11-15).
+     Question: how does Access open on every assignment instead of an empty chooser, and how does a person, a group
+     or a module add a role from its own page, at 390 and 1440?
+     Switch with ?v=a|b, ?view=phone|desktop and ?state=<name>, or the bar at the top. ?bare=1 hides the bar and the
+     notes, for captures at 390 x 844 and 1440 x 900.
+     Words: the owner's access words (bead 6wz1.110, comment of 2026-11-14 15:19). World: DESIGN.md. Icons: Lucide (ISC).
+     Font: Plus Jakarta Sans (OFL) from fonts/. Data: fictional. No network. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE: Access starts filled</title>
+<style>
+@font-face{font-family:"Plus Jakarta Sans";font-style:normal;font-display:swap;font-weight:200 800;src:url("fonts/plus-jakarta-sans-latin-wght.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+:root{--fg:#111827;--ctl:#1f2937;--idle:#374151;--muted:#4b5563;--icon:#6b7280;--control:#d1d5db;--hair:#e5e7eb;--tile:#f3f4f6;--panel:#f9fafb;--primary:#2563eb;--info:#eff6ff;--ok:#047857;--okt:#ecfdf5;--warn:#92400e;--warnt:#fffbeb;--danger:#b91c1c;--dangert:#fef2f2;--hover:rgb(17 24 39/.06);--font:"Plus Jakarta Sans",ui-sans-serif,system-ui,sans-serif;--h:36px}
+*{box-sizing:border-box}html,body{margin:0}
+body{font-family:var(--font);color:var(--fg);background:#e9ebef;padding:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body.bare{padding:0;background:#fff}body.bare .ctl,body.bare .notes{display:none}
+button,input{font:inherit;color:inherit}button{cursor:pointer}a{color:inherit}
+::selection{background:#dbeafe}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px}
+*{scrollbar-width:thin;scrollbar-color:#d1d5db transparent}
+::-webkit-scrollbar{width:6px;height:6px}::-webkit-scrollbar-thumb{background:#d1d5db;border-radius:999px}::-webkit-scrollbar-thumb:hover{background:#6b7280}::-webkit-scrollbar-track{background:transparent}
+.tnum{font-variant-numeric:tabular-nums}.mu{color:var(--muted)}
+.ic{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}.i20{width:20px;height:20px}
+.sr{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+/* prototype bar and notes */
+.ctl{display:flex;gap:10px;flex-wrap:wrap;align-items:center;max-width:1440px;margin:0 auto 16px}.ctl .t{font-weight:700;margin-right:6px}
+.seg{display:inline-flex;background:#fff;border:1px solid var(--hair);border-radius:10px;padding:3px;gap:2px}
+.seg button{border:0;background:none;height:32px;padding:0 10px;border-radius:8px;font-weight:600;font-size:.8125rem;color:var(--idle)}
+.seg button[aria-pressed=true]{background:var(--fg);color:#fff}
+.ctl label{display:inline-flex;align-items:center;gap:8px;font-size:.8125rem;font-weight:600;color:var(--idle)}
+.ctl select{height:40px;border:1px solid var(--hair);border-radius:10px;background:#fff;padding:0 10px;font:inherit;font-weight:600}
+.notes{max-width:1440px;margin:16px auto 0;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:16px 20px;font-size:.9375rem;line-height:1.55}
+.notes h2{font-size:.9375rem;font-weight:600;margin:16px 0 6px}.notes h2:first-child{margin-top:0}.notes ul{margin:0;padding-left:18px}.notes p,.notes li{margin:0;max-width:72ch}
+/* frames */
+.frame{position:relative;margin:0 auto;background:#fff;overflow:hidden}
+.frame.desk{max-width:1440px;height:900px;border-radius:12px;display:grid;grid-template-columns:240px minmax(0,1fr);box-shadow:0 20px 40px -20px rgb(0 0 0/.35)}
+.frame.phone{width:390px;height:844px;border-radius:32px;display:flex;flex-direction:column;box-shadow:0 0 0 10px #1f2937,0 30px 60px -20px rgb(0 0 0/.45);--h:40px}
+body.bare .frame{width:100vw;max-width:none;height:100vh;border-radius:0;box-shadow:none}
+@media (max-width:480px){body:not(.bare){padding:0}.frame.phone{width:100%;border-radius:0;box-shadow:none}}
+/* shell */
+.side{background:var(--panel);border-right:1px solid var(--hair);padding:12px 10px;display:flex;flex-direction:column;gap:2px;font-size:.875rem;min-height:0}
+.org{display:flex;gap:10px;align-items:center;padding:6px 8px 12px}
+.org i{width:32px;height:32px;border-radius:8px;background:var(--tile);color:var(--idle);display:grid;place-items:center;font-style:normal;font-weight:700}
+.org b,.me b{display:block;font-size:.875rem;font-weight:600}.org small,.me small{display:block;font-size:.75rem;color:var(--muted)}
+.grp{font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:14px 10px 4px}
+.side a{display:flex;gap:10px;align-items:center;height:40px;padding:0 10px;border-radius:8px;text-decoration:none;color:var(--idle);font-weight:500}
+.side a .ic{color:var(--icon)}.side a:hover{background:var(--hover)}
+.side a[aria-current=page]{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 0 0 1px var(--hair)}.side a[aria-current=page] .ic{color:var(--primary)}
+.me{margin-top:auto;display:flex;gap:10px;align-items:center;padding:12px 8px 4px;border-top:1px solid var(--hair);min-width:0}.me span:last-child{min-width:0}.me small{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.main{display:flex;flex-direction:column;min-width:0;min-height:0}
+.phead{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:20px 32px 16px;flex:none}
+.phead h1{font-size:1.25rem;line-height:1.3;letter-spacing:-.025em;margin:0}
+.phead p{margin:2px 0 0;font-size:.875rem;color:var(--muted)}
+.acts{display:flex;gap:8px}
+.content{flex:1;min-height:0;display:flex;flex-direction:column;padding:16px 32px 24px}
+.appbar{height:56px;flex:none;display:flex;align-items:center;gap:2px;padding:0 6px;border-bottom:1px solid var(--hair)}
+.appbar b{flex:1;font-size:1.125rem;font-weight:700;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pbody{flex:1;min-height:0;overflow:auto;padding:12px 16px 24px;display:flex;flex-direction:column;gap:12px}
+.pdesc{margin:0;font-size:.875rem;color:var(--muted)}
+.bbar{flex:none;display:flex;gap:8px;padding:12px 16px 20px;border-top:1px solid var(--hair);background:#fff}.bbar .btn{flex:1}
+.ib{width:var(--h);height:var(--h);border:0;background:none;border-radius:8px;display:grid;place-items:center;color:var(--idle);position:relative;flex:none}
+.ib:hover{background:var(--hover)}.phone .ib{width:44px;height:44px}
+.ib.sm{width:32px;height:32px}.ib.sm::after{content:"";position:absolute;inset:-6px}
+/* buttons and pills */
+.btn{height:var(--h);border-radius:8px;border:1px solid transparent;padding:0 14px;font-weight:600;font-size:.875rem;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap;position:relative;text-decoration:none;background:none}
+.btn.pri{background:var(--primary);color:#fff}.btn.pri:hover{background:rgb(37 99 235/.94)}.btn.pri:active{background:rgb(37 99 235/.8)}
+.btn.sec,.btn.dz{background:#fff;border-color:var(--hair);color:var(--ctl);box-shadow:0 1px 2px rgb(17 24 39/.07)}.btn.dz{color:var(--danger)}
+.btn.sec:hover,.btn.dz:hover{background:linear-gradient(var(--hover),var(--hover)),#fff}
+.btn.ghost{color:var(--idle);padding:0 10px}.btn.ghost:hover{background:var(--hover)}
+.btn.link{color:var(--primary);padding:0 4px;border:0}.btn.link:hover{text-decoration:underline;text-underline-offset:3px}
+.btn.sm{height:32px;padding:0 10px}.btn.sm::after{content:"";position:absolute;inset:-7px 0}
+.phone .btn:not(.sm)::after{content:"";position:absolute;inset:-3px 0}
+.btn[aria-disabled=true]{opacity:.5;cursor:not-allowed}
+@media (prefers-reduced-motion:no-preference){.btn,.ib,.fc,.side a,.t tbody tr,.opt{transition:background-color .15s ease-out}}
+.pill{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:999px;background:var(--tile);color:var(--idle);font-size:.75rem;font-weight:600;white-space:nowrap;line-height:1}
+.pill.ok{background:var(--okt);color:var(--ok)}.pill.warn{background:var(--warnt);color:var(--warn)}
+.tabs{display:flex;gap:4px;padding:0 32px;border-bottom:1px solid var(--hair);flex:none}
+.tab{border:0;background:none;height:44px;padding:0 10px;font-weight:600;font-size:.875rem;color:var(--muted);display:inline-flex;align-items:center;gap:6px;border-bottom:2px solid transparent;margin-bottom:-1px;text-decoration:none;white-space:nowrap}
+.tab:hover{color:var(--fg)}.tab[aria-selected=true],.tab[aria-current=page]{color:var(--fg);border-color:var(--primary)}
+.tab .c{font-size:.75rem;background:var(--tile);border-radius:999px;padding:0 7px;color:var(--idle)}
+.phone .tabs{padding:0}.tabs.sh{padding:0 12px}
+/* list card */
+.card{border:1px solid var(--hair);border-radius:12px;background:#fff;min-width:0}
+.card.list{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}.card.list.fit{flex:none}
+.phone .card.list{flex:none;overflow:visible}
+.fbar{display:flex;align-items:center;gap:10px;padding:14px 20px;border-bottom:1px solid var(--hair);flex:none;flex-wrap:wrap}
+.reach{margin:0;padding:10px 20px;border-bottom:1px solid var(--hair);font-size:.875rem;color:var(--idle);flex:none}.phone .reach{padding:0;border:0}
+.search{display:flex;align-items:center;gap:8px;height:var(--h);width:256px;border:1px solid var(--icon);border-radius:8px;padding:0 10px 0 12px;background:#fff;color:var(--icon);flex:none}
+.search input{border:0;outline:0;background:none;flex:1;min-width:0;height:100%;font-size:.875rem;color:var(--fg)}
+.search input::placeholder{color:var(--icon)}
+.search:focus-within{border-color:var(--primary);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--primary)}
+.search:not(:focus-within):hover,.multi:not(.open):not(:focus-within):hover{border-color:var(--ctl)}
+.phone .search{width:100%}.phone .search input{font-size:1rem}
+/* phones: 40 px visible, 44 px touch area (6wz1.114) */
+.phone .search,.phone .select,.phone .multi{position:relative;isolation:isolate}.phone .search::after,.phone .select::after,.phone .multi::after{content:"";position:absolute;inset:-3px 0;z-index:-1}
+.fc{height:var(--h);border:1px solid var(--control);border-radius:8px;background:#fff;padding:0 10px 0 12px;display:inline-flex;align-items:center;gap:6px;font-size:.875rem;max-width:240px;min-width:0;color:var(--fg)}
+.fc .l{color:var(--muted);white-space:nowrap}.fc b{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.fc .ic{color:var(--icon)}
+.fc:hover{background:var(--hover)}
+.lbody{flex:1;min-height:0;display:flex;flex-direction:column}
+.split{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 400px}
+.tcol{flex:1;min-height:0;display:flex;flex-direction:column;min-width:0}
+.tscroll{flex:1;min-height:0;overflow:auto}
+.t{width:100%;border-collapse:separate;border-spacing:0;font-size:.875rem}
+.t th{position:sticky;top:0;z-index:1;text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel);padding:9px 12px;border-bottom:1px solid var(--hair);white-space:nowrap}
+.t th:first-child,.t td:first-child{padding-left:20px}.t th:last-child,.t td:last-child{padding-right:20px}
+.t td{padding:12px;border-bottom:1px solid var(--hair);vertical-align:top}
+.t tbody tr:hover{background:var(--hover)}
+.t tr.sel,.t tr.sel:hover,.t tr.new{background:var(--info)}
+.nm{font-weight:600;color:var(--fg);text-decoration:none}a.nm:hover{text-decoration:underline;text-underline-offset:3px}
+.phone a.nm{position:relative;display:inline-block}.phone a.nm::after{content:"";position:absolute;inset:-10px -4px}
+.sub{display:block;font-size:.75rem;color:var(--muted);margin-top:2px}
+.lk{color:var(--primary);font-weight:600;text-decoration:none}.lk:hover{text-decoration:underline;text-underline-offset:3px}
+.lk.ar{display:inline-flex;align-items:center;gap:6px;font-size:.875rem;justify-self:start;min-height:32px;position:relative}
+.nw{white-space:nowrap}
+.who{display:flex;gap:10px;align-items:flex-start;min-width:0}.who .wn{min-width:0}
+.av{width:32px;height:32px;border-radius:50%;background:var(--tile);color:var(--idle);display:grid;place-items:center;font-size:.75rem;font-weight:700;flex:none}
+.av.g{border-radius:8px}.av.l{width:44px;height:44px;font-size:.875rem}.av.l.g{border-radius:10px}.av.l .ic{width:20px;height:20px}
+.pz{display:flex;align-items:center;gap:6px;margin-top:6px}.pz .sub{margin:0}
+.sort{border:0;background:none;padding:0;font:inherit;color:inherit;display:inline-flex;gap:4px;align-items:center}.sort:hover{text-decoration:underline;text-underline-offset:3px}
+.go{width:52px}.t td.go{padding-top:12px;padding-bottom:0}
+.pager{flex:none;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 20px;border-top:1px solid var(--hair);font-size:.875rem;color:var(--muted)}
+.pg{display:flex;gap:8px}.phone .pager{padding:12px 16px}
+.bone{display:block;height:12px;border-radius:6px;background:var(--hair);margin:3px 0}.bone.s2{height:10px;margin-top:8px}.bone.ba{width:32px;height:32px;border-radius:50%;margin:0;flex:none}
+@media (prefers-reduced-motion:no-preference){.bone{background:linear-gradient(90deg,#e5e7eb 25%,#f3f4f6 50%,#e5e7eb 75%);background-size:200% 100%;animation:sh 1.6s ease-in-out infinite}@keyframes sh{from{background-position:150% 0}to{background-position:-50% 0}}}
+.emp{flex:1;display:grid;justify-items:center;align-content:center;text-align:center;gap:4px;padding:40px 24px}
+.emp h2,.emp h3{font-size:.875rem;font-weight:600;margin:10px 0 0}.emp p{margin:0 0 12px;font-size:.875rem;color:var(--muted);max-width:44ch}
+.emp.box{border:1px dashed var(--hair);border-radius:12px;padding:28px 20px;flex:none}
+.et{width:44px;height:44px;border-radius:12px;background:var(--tile);color:var(--idle);display:grid;place-items:center}
+/* phone list */
+.mbar{display:grid;gap:10px;padding:12px 16px;border-bottom:1px solid var(--hair)}
+.mbar .r1{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.mbar h2{font-size:1rem;margin:0}.mbar .cnt{font-weight:500;color:var(--muted)}
+.mbar .r3{display:flex;justify-content:space-between;align-items:center;font-size:.875rem;color:var(--muted)}
+.cp{background:var(--primary);color:#fff;border-radius:999px;padding:0 6px;font-size:.75rem;font-weight:600;line-height:18px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.chip{display:inline-flex;align-items:center;gap:4px;height:32px;padding:0 2px 0 10px;border-radius:999px;background:var(--info);border:1px solid #bfdbfe;color:#1d4ed8;font-size:.875rem;font-weight:600;max-width:100%}
+.chip .l{color:var(--muted);font-weight:500}
+.chip .x{width:28px;height:28px;border:0;background:none;border-radius:999px;display:grid;place-items:center;color:inherit;position:relative}.chip .x::after{content:"";position:absolute;inset:-8px}.chip .x:hover{background:var(--hover)}
+.stack{list-style:none;margin:0;padding:0}
+.stack li{padding:14px 16px;border-bottom:1px solid var(--hair)}.stack li:last-child{border-bottom:0}.stack li.new,.stack li.sel{background:var(--info)}
+.stack .top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px}.stack .top .rt{min-width:0;flex:1}
+.stack dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;margin:10px 0 0;font-size:.875rem}
+.stack dt{color:var(--muted)}.stack dd{margin:0;min-width:0}
+.box{border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.hl{list-style:none;margin:0;padding:0;border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.hl li{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-bottom:1px solid var(--hair)}.hl li:last-child{border-bottom:0}.hl li.new{background:var(--info)}
+.hl .hw{min-width:0;flex:1}.hl .n{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.hl .rl{font-size:.875rem;color:var(--idle);margin-top:2px}
+/* pane, sheets, forms */
+.pane{border-left:1px solid var(--hair);display:flex;flex-direction:column;min-height:0;background:#fff}
+.ph{display:flex;gap:12px;align-items:flex-start;padding:16px 12px 14px 20px;border-bottom:1px solid var(--hair);flex:none}
+.ph h2{flex:1;font-size:1.125rem;margin:4px 0 0}
+.pn{flex:1;min-width:0}.pn b{display:block;font-size:1rem;line-height:1.4}.pn .sub{font-size:.875rem;margin:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb{flex:1;min-height:0;overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:12px}
+.pf{flex:none;border-top:1px solid var(--hair);padding:12px 20px 16px;display:grid;gap:2px}
+.sech{display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:var(--h)}
+.sech h2,.sech h3{font-size:1rem;margin:0}
+.help{margin:0;font-size:.875rem;color:var(--muted)}
+.hbtn{display:inline-flex;gap:6px;align-items:center;border:0;background:none;color:var(--primary);font-weight:600;font-size:.875rem;padding:0;min-height:32px;align-self:flex-start;position:relative}
+.hbtn:hover{text-decoration:underline;text-underline-offset:3px}.fbar .hbtn{margin-left:auto;align-self:center}
+.phone .hbtn::after,.phone .lk.ar::after{content:"";position:absolute;inset:-6px 0}
+.scrim{position:absolute;inset:0;background:rgb(17 24 39/.3);z-index:10}
+.sheet{position:absolute;top:0;right:0;bottom:0;width:480px;background:#fff;z-index:11;display:flex;flex-direction:column;box-shadow:0 25px 50px -12px rgb(17 24 39/.25)}
+.phone .sheet{inset:0;width:auto;box-shadow:none}
+.shh{display:flex;gap:12px;align-items:flex-start;padding:16px 12px 12px 20px;flex:none}
+.shh .nm2{flex:1;min-width:0}.shh .nm2 b{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:1.125rem;line-height:1.35}
+.shh .em{display:block;font-size:.875rem;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.shh .em.wrap{white-space:normal}
+.shb{flex:1;min-height:0;overflow:auto;padding:16px 20px 20px;display:flex;flex-direction:column;gap:12px}
+/* a scrolling body scrolls; its lists never shrink and clip their rows */
+.shb>*,.pb>*,.fb>*{flex-shrink:0}
+.shf{flex:none;border-top:1px solid var(--hair);padding:12px 20px 20px;display:flex;gap:8px}.phone .shf .btn{flex:1}
+.fh{display:flex;align-items:center;gap:4px;padding:10px 10px 10px 20px;border-bottom:1px solid var(--hair);flex:none;min-height:60px}
+.fh.bk{padding-left:4px}.phone .fh.bk{padding-left:0}.fh h2{flex:1;font-size:1.125rem;margin:0}
+.fb{flex:1;min-height:0;overflow:auto;padding:20px;display:flex;flex-direction:column;gap:20px}
+.ff{flex:none;border-top:1px solid var(--hair);padding:12px 20px 20px;display:flex;justify-content:flex-end;gap:8px}.phone .ff .btn{flex:1}
+.ed{border:1px solid var(--hair);border-radius:12px;background:var(--panel);padding:14px;display:flex;flex-direction:column;gap:14px}
+.ed .eb{display:flex;gap:8px}.phone .ed .eb .btn{flex:1}
+.ed-t{margin:0;font-size:.875rem;font-weight:600}
+.field{display:flex;flex-direction:column;gap:6px;position:relative;border:0;margin:0;padding:0;min-width:0}
+.flabel{font-size:.875rem;font-weight:600;color:var(--ctl);padding:0}
+.select{height:var(--h);width:100%;border:1px solid var(--icon);border-radius:8px;background:#fff;padding:0 10px 0 12px;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;font-size:.875rem;color:var(--fg)}
+.select.ph{color:var(--icon)}.select .ic{color:var(--icon)}.select>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.select:hover{background:linear-gradient(var(--hover),var(--hover)),#fff}
+.select[aria-expanded=true]{border-color:var(--primary);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--primary)}
+.phone .select{font-size:1rem}
+.ro{display:flex;flex-direction:column;gap:4px;font-size:.875rem}
+.fixed{display:flex;gap:10px;align-items:center;font-size:.875rem}.fixed b{display:block}
+.multi{min-height:var(--h);width:100%;border:1px solid var(--icon);border-radius:8px;background:#fff;padding:3px 6px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.multi.open,.multi:focus-within{border-color:var(--primary);box-shadow:0 0 0 2px #fff,0 0 0 4px var(--primary)}
+.multi .mi{border:0;outline:0;flex:1;min-width:120px;height:28px;font-size:.875rem;background:none;padding:0 4px}.phone .multi .mi{font-size:1rem}
+.tag{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 2px 0 8px;border-radius:999px;background:var(--tile);font-size:.875rem;font-weight:600;color:var(--ctl)}
+.tag .ic{color:var(--icon)}.tag .x{width:24px;height:24px;border:0;background:none;border-radius:999px;display:grid;place-items:center;color:var(--muted);position:relative}.tag .x::after{content:"";position:absolute;inset:-10px -6px -10px -14px}.tag .x:hover{background:var(--hover)}
+.radio{display:flex;align-items:center;gap:10px;min-height:var(--h);font-size:.875rem;cursor:pointer;border-radius:8px;padding:0 6px;margin:0 -6px}.radio:hover{background:var(--hover)}.phone .radio{min-height:44px}
+.radio input{width:16px;height:16px;margin:0;accent-color:var(--primary)}
+.rec{display:flex;align-items:center;gap:8px;min-width:0}.rec .ic{color:var(--icon);margin-left:-2px}
+.pop{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:5;background:#fff;border:1px solid var(--hair);border-radius:6px;box-shadow:0 10px 15px -3px rgb(0 0 0/.1),0 4px 6px -4px rgb(0 0 0/.1);max-height:452px;overflow:auto;padding:4px}
+.pop .ps{padding:6px 6px 4px;position:sticky;top:-4px;z-index:1;background:#fff}.pop .search{width:100%}
+.cap{display:flex;align-items:center;gap:8px;font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 8px 4px}.cap .pill{text-transform:none;letter-spacing:normal}
+.pop.tall{max-height:none}.pb .search{width:100%}
+.opt{display:flex;align-items:center;gap:10px;min-height:36px;padding:6px 8px;border-radius:6px;font-size:.875rem}
+.opt:hover,.opt.act{background:var(--hover)}.opt[aria-selected=true]{background:var(--info)}
+.opt[aria-disabled=true]{color:var(--icon);cursor:not-allowed}.opt[aria-disabled=true]:hover{background:none}
+.opt .on{min-width:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}.opt .wn{min-width:0;flex:1}.opt .x2{margin-left:auto;font-size:.75rem;color:var(--muted);white-space:nowrap}.opt .ck{margin-left:auto;color:var(--primary)}
+.phone .opt{min-height:44px}
+.list-who{display:flex;flex-direction:column}
+.more{margin:4px 0 0;padding:8px 8px 6px;font-size:.75rem;color:var(--muted);border-top:1px solid var(--hair)}
+.alert{display:flex;gap:10px;align-items:flex-start;padding:12px;border-radius:8px;background:var(--dangert);color:var(--danger);font-size:.875rem;line-height:1.45}.alert b{display:block}.alert a{color:inherit;font-weight:600;text-underline-offset:3px}
+.sum{margin:0;font-size:.875rem;color:var(--muted)}
+.stbl{width:100%;border-collapse:separate;border-spacing:0;font-size:.875rem;border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.stbl th{text-align:left;font-size:.75rem;font-weight:600;color:var(--muted);background:var(--panel);padding:8px 12px;border-bottom:1px solid var(--hair);white-space:nowrap}
+.stbl td{padding:10px 12px;border-bottom:1px solid var(--hair);vertical-align:top}.stbl tr:last-child td{border-bottom:0}.stbl tr.new td{background:var(--info)}
+.toast{position:absolute;right:24px;bottom:24px;z-index:30;display:flex;align-items:flex-start;gap:10px;max-width:420px;background:#fff;border:1px solid var(--hair);border-radius:12px;padding:8px 6px 8px 14px;font-size:.875rem;box-shadow:0 25px 50px -12px rgb(17 24 39/.3)}
+.toast.up{bottom:96px}.toast .okc{color:var(--ok)}.toast>.ic{margin-top:6px}.toast>span{padding:5px 0 6px}
+.phone .toast{left:16px;right:16px;bottom:96px;max-width:none}
+.na{flex:1;display:grid;place-items:center;padding:32px 16px}
+.framed{border:1px dashed var(--hair);border-radius:12px;padding:40px 28px;display:grid;justify-items:center;gap:8px;text-align:center;max-width:520px;width:100%}
+.framed h1{font-size:1.25rem;font-weight:600;line-height:1.3;margin:8px 0 0;letter-spacing:-.025em}.framed .et{width:52px;height:52px}.framed p{margin:0 0 12px;color:var(--muted);font-size:.875rem}
+/* grants */
+.ghd{padding:16px 20px 0}.ghd h2{font-size:1rem;margin:0}.ghd p{margin:2px 0 0;font-size:.875rem;color:var(--muted)}
+.crumb{font-size:.875rem;color:var(--muted);display:flex;gap:6px;align-items:center;margin-bottom:4px}.crumb a{color:var(--muted);text-decoration:none}.crumb a:hover{text-decoration:underline}
+.gtb{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 20px;border-bottom:1px solid var(--hair)}
+.gtb .lab{font-size:.875rem;font-weight:600;color:var(--ctl)}
+.gtb .select{width:240px}.phone .gtb .select{width:100%}
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:16px;padding:16px 20px 20px;overflow:auto;flex:1;min-height:0;align-content:start}
+.phone .panes{grid-template-columns:1fr;padding:12px 0 0}
+.tp{border:1px solid var(--hair);border-radius:12px;overflow:hidden}
+.tp header{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--hair);background:var(--panel);font-size:.875rem;font-weight:600}
+.tp .capt{font-size:.75rem;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:10px 14px 2px}
+.trow{display:flex;align-items:flex-start;gap:12px;padding:10px 14px;border-bottom:1px solid var(--hair);min-height:52px;font-size:.875rem}
+.trow:last-child{border-bottom:0}label.trow{cursor:pointer}label.trow:hover{background:var(--hover)}.trow input{width:16px;height:16px;margin:2.5px 0 0;accent-color:var(--primary);flex:none}
+.trow .grow{flex:1;min-width:0}.trow .select{width:auto;max-width:260px}.phone .trow .select{width:100%;max-width:none}
+.trow.off .grow>span:first-child{color:var(--muted)}
+</style></head><body>
+<div class="ctl" id="ctl"></div>
+<div id="app"></div>
+<div class="notes" id="notes"></div>
+<script>
+const I={plus:'<path d="M5 12h14M12 5v14"/>',x:'<path d="M18 6 6 18M6 6l12 12"/>',search:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',searchX:'<path d="m13.5 8.5-5 5M8.5 8.5l5 5"/><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',chevD:'<path d="m6 9 6 6 6-6"/>',chevR:'<path d="m9 18 6-6-6-6"/>',back:'<path d="m15 18-6-6 6-6"/>',down:'<path d="M12 5v14M19 12l-7 7-7-7"/>',users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',user:'<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',shield:'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',key:'<path d="m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4M21 2l-9.6 9.6"/><circle cx="7.5" cy="15.5" r="5.5"/>',blocks:'<rect width="7" height="7" x="14" y="3" rx="1"/><path d="M10 21V8a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-5a1 1 0 0 0-1-1H3"/>',palette:'<circle cx="13.5" cy="6.5" r=".5"/><circle cx="17.5" cy="10.5" r=".5"/><circle cx="8.5" cy="7.5" r=".5"/><circle cx="6.5" cy="12.5" r=".5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.65-.75 1.65-1.69 0-.44-.18-.84-.44-1.13-.29-.29-.44-.65-.44-1.13a1.64 1.64 0 0 1 1.67-1.67h2c3.05 0 5.56-2.5 5.56-5.55C21.97 6.01 17.46 2 12 2z"/>',settings:'<path d="M20 7h-9M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>',scroll:'<path d="M15 12h-5M15 8h-5M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',help:'<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/>',arrow:'<path d="M5 12h14M12 5l7 7-7 7"/>',lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',sliders:'<path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/>',check:'<path d="M20 6 9 17l-5-5"/>',okc:'<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>',alert:'<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>',file:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4M10 9H8M16 13H8M16 17H8"/>'};
+const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" aria-hidden="true">${I[n]}</svg>`;
+/* the help disclosure of tokens.md: a labelled button that names the question, collapsed on load */
+const helpBtn=()=>`<button class="hbtn" aria-expanded="false">${ic('help')}How access works</button>`;
+const q=new URLSearchParams(location.search);
+const STATES=[['filled','Overview, first load'],['filtered','Overview, one person'],['add-access','Add from Access'],['add-person','Add from a person'],['added-person','Added: person'],['add-group','Add from a group'],['added-group','Added: group'],['add-module','Add from a module'],['added-module','Added: module'],['grants','Bulk work: Grants'],['empty','Empty'],['loading','Loading'],['no-match','No match'],['refused','Refused: not added'],['no-access','Refused: no access']];
+const S={v:q.get('v')==='a'?'a':'b',view:q.get('view')==='desktop'?'desktop':'phone',state:STATES.some(([k])=>k===q.get('state'))?q.get('state'):'filled'};
+if(q.get('bare')==='1')document.body.classList.add('bare');
+const phone=()=>S.view==='phone';
+
+/* sample data, fictional */
+const PE={};['Riley Chen','Priya Nair','Alex Morgan','Jamie Chen','Leila Haddad','Sam Okafor','Omar Said','Mina Park','Ravi Shah','Tess Burke','Lin Wei','Noah Cruz','Ada Quinn','Jordan Lee'].forEach(n=>{const id=n.split(' ')[0].toLowerCase();PE[id]={id,type:'person',name:n,email:n.toLowerCase().replace(' ','.')+'@example.com'}});
+const G=(id,name,kind,members)=>({id,type:'group',name,kind,members});
+const GR={admins:G('admins','Genie Administrators','Group',5),it:G('it','IT Operations','Directory group',12),fin:G('fin','Finance team','Directory group',17),sales:G('sales','Sales','Directory group',24),coll:G('coll','Collections','Group',6),contr:G('contr','Contractors','Directory group',9)};
+const MOD={core:'Core',inv:'Invoices and Payments',slides:'Slides',an:'Analytics'};
+const DEF=['Invoices and Payments viewer','Slides editor','Analytics editor'];
+let K=0;
+const A=(role,mod,to,scope,date,by,x={})=>({key:'k'+(K++),role,mod,to,scope,date,by,...x});
+const ROWS=[
+ A('Slides editor','slides',GR.sales,'All records','14 Nov 2026','Priya Nair'),
+ A('Invoices and Payments viewer','inv',PE.jamie,'INV-1042','12 Nov 2026','Alex Morgan'),
+ A('Invoice approver','inv',GR.fin,'All records','11 Nov 2026','Priya Nair',{custom:1}),
+ A('Analytics editor','an',GR.it,'All records','9 Nov 2026','Leila Haddad',{paused:'Module off'}),
+ A('Ask user','core',GR.coll,'All records','3 Nov 2026','Priya Nair'),
+ A('Invoices and Payments editor','inv',GR.coll,'All records','3 Nov 2026','Priya Nair'),
+ A('Slides viewer','slides',PE.omar,'All records','28 Oct 2026','Alex Morgan',{paused:'Person suspended'}),
+ A('Analytics viewer','an',PE.riley,'All records','2 Oct 2026','Alex Morgan',{paused:'Module off'}),
+ A('Invoices and Payments user','inv',PE.tess,'INV-0977','30 Sep 2026','Priya Nair'),
+ A('Slides user','slides',PE.riley,'All records','16 Sep 2026','Alex Morgan'),
+ A('Tenant administrator','core',PE.alex,'All records','16 Sep 2026','Priya Nair'),
+ A('Auditor','core',PE.leila,'All records','9 Sep 2026','Priya Nair'),
+ A('Tenant administrator','core',GR.it,'All records','9 Sep 2026','Leila Haddad'),
+ A('Ask user','core',GR.sales,'All records','2 Sep 2026','Alex Morgan'),
+ A('Invoices and Payments user','inv',GR.sales,'All records','2 Sep 2026','Alex Morgan'),
+ A('Slides editor','slides',PE.mina,'All records','21 Aug 2026','Alex Morgan'),
+ A('Ask user','core',GR.it,'All records','19 Aug 2026','Leila Haddad'),
+ A('Slides user','slides',PE.ravi,'All records','12 Aug 2026','Alex Morgan'),
+ A('Analytics user','an',GR.fin,'All records','5 Aug 2026','Priya Nair',{paused:'Module off'}),
+ A('Slides editor','slides',PE.lin,'All records','29 Jul 2026','Alex Morgan'),
+ A('Ask user','core',PE.ada,'All records','15 Jul 2026','Priya Nair'),
+ A('Slides viewer','slides',GR.contr,'All records','2 Jul 2026','Priya Nair',{paused:'Group archived'}),
+ A('Ask user','core',GR.fin,'All records','1 Jun 2026','Priya Nair'),
+ A('Invoices and Payments editor','inv',GR.fin,'All records','1 Jun 2026','Priya Nair'),
+ A('Tenant administrator','core',GR.admins,'All records','1 Jun 2026',null)];
+const viaFin=r=>({...r,key:r.key+'-riley',to:PE.riley,via:GR.fin.name});
+/* What reaches Riley Chen: the direct rows and the rows of Finance team. */
+const RILEY=[viaFin(ROWS[2]),ROWS[7],ROWS[9],viaFin(ROWS[18]),viaFin(ROWS[22]),viaFin(ROWS[23])];
+const NEW_RILEY=A('Slides editor','slides',PE.riley,'All records','15 Nov 2026','Priya Nair');
+const COLL=[ROWS[4],ROWS[5]];
+const NEW_COLL=A('Invoice approver','inv',GR.coll,'All records','15 Nov 2026','Priya Nair',{custom:1});
+const INV=[ROWS[2],ROWS[5],ROWS[14],ROWS[23],ROWS[1],ROWS[8]];
+const NEW_INV=A('Invoices and Payments viewer','inv',PE.mina,'INV-2210','15 Nov 2026','Priya Nair');
+
+/* small parts */
+const ini=n=>n.split(' ').map(w=>w[0]).join('').slice(0,2);
+const av=(s,c='')=>s.type==='group'?`<span class="av g ${c}" aria-hidden="true">${ic('users')}</span>`:`<span class="av ${c}" aria-hidden="true">${ini(s.name)}</span>`;
+const kind=s=>s.type==='group'?`${s.kind} · ${s.members} members`:'Person';
+const modOf=r=>MOD[r.mod]+(r.custom?' · Custom role':'');
+const viaHtml=r=>r.via?`<a class="lk" href="#">${r.via}</a> <span class="mu">(group)</span>`:'Direct';
+const by=r=>r.by?`by ${r.by}`:'at setup';
+const pz=r=>r.paused?`<span class="pz"><span class="pill warn">Paused</span><span class="sub">${r.paused}</span></span>`:'';
+const search=(ph,val='')=>`<label class="search">${ic('search')}<span class="sr">${ph}</span><input type="search" placeholder="${ph}" value="${val}"></label>`;
+const fc=(label,val,ph)=>`<button class="fc${val?' set':''}"><span class="l">${label}</span> <b>${val||ph}</b>${ic('chevD')}</button>`;
+const toast=(t,up)=>`<div class="toast${up?' up':''}" role="status">${ic('okc','i20 okc')}<span>${t}</span><button class="ib sm" aria-label="Close">${ic('x')}</button></div>`;
+const appbar=(title,o={})=>`<div class="appbar"><button class="ib" aria-label="${o.back?'Back':'Open navigation'}">${ic(o.back?'back':'menu','i20')}</button><b>${title}</b>${o.right||''}</div>`;
+
+/* shell */
+function sidebar(active,limited){
+ const L=(k,i,t)=>`<a href="#"${active===k?' aria-current="page"':''}>${ic(i,'i20')}${t}</a>`;
+ return `<nav class="side" aria-label="Admin"><div class="org"><i aria-hidden="true">H</i><span><b>Harbor Point</b><small>Admin portal</small></span></div><div class="grp">People and access</div>${L('people','user','People')}${L('groups','users','Groups')}${limited?'':L('roles','shield','Roles')+L('access','key','Access')}${limited?'':`<div class="grp">Organization</div>${L('modules','blocks','Modules')}${L('branding','palette','Branding')}${L('settings','settings','Settings')}${L('audit','scroll','Audit log')}`}<div class="me"><span class="av" aria-hidden="true">${limited?'JL':'PN'}</span><span><b>${limited?'Jordan Lee':'Priya Nair'}</b><small>${limited?'jordan.lee@example.com':'priya.nair@example.com'}</small></span></div></nav>`;
+}
+const desk=(active,main,over='',o={})=>`<div class="frame desk">${sidebar(active,o.limited)}<div class="main"${over&&o.modal!==false?' inert':''}>${main}</div>${over}</div>`;
+const ph=(bar,body,bottom='',over='')=>`<div class="frame phone">${bar}<div class="pbody"${over?' inert':''}>${body}</div>${bottom}${over}</div>`;
+const sheetWrap=(inner,label)=>phone()?`<div class="sheet" role="dialog" aria-modal="true" aria-label="${label}">${inner}</div>`:`<div class="scrim"></div><aside class="sheet" role="dialog" aria-modal="true" aria-label="${label}">${inner}</aside>`;
+
+/* Access page, the Overview list */
+/* the two tabs are pages, so they are links with aria-current */
+const tabsHtml=t=>`<nav class="tabs" aria-label="Access"><a class="tab" href="#" data-go="filled"${t!=='grants'?' aria-current="page"':''}>Overview</a><a class="tab" href="#" data-go="grants"${t==='grants'?' aria-current="page"':''}>Grants</a></nav>`;
+/* G2 pick: Assigned via shows only while the Person or group filter is set */
+const showVia=o=>!!(o&&o.filters&&o.filters.who);
+const headTh=via=>`<th scope="col">Role</th><th scope="col">Assigned to</th><th scope="col">Scope</th>${via?'<th scope="col">Assigned via</th>':''}<th scope="col" aria-sort="descending"><button class="sort">Assigned${ic('down')}</button></th>`;
+/* variant a: the name in a row opens its person or group in the pane */
+const openPane=s=>S.v==='a'?` data-go="${s.id==='riley'?'filtered':'filled'}"`:'';
+function table(rows,o){
+ const via=showVia(o);
+ return `<table class="t"><caption class="sr">Assignments, newest first</caption><thead><tr>${headTh(via)}</tr></thead><tbody>${rows.map(r=>{
+  const sel=r.key===o.selected,nw=r.key===o.newKey;
+  return `<tr${sel?' class="sel" aria-current="true"':nw?' class="new"':''}><td><a class="nm" href="#">${r.role}</a><span class="sub">${modOf(r)}</span>${pz(r)}</td><td><span class="who">${av(r.to)}<span class="wn"><a class="nm" href="#"${openPane(r.to)}>${r.to.name}</a><span class="sub">${kind(r.to)}</span></span></span></td><td class="nw">${r.scope}</td>${via?`<td>${viaHtml(r)}</td>`:''}<td class="nw tnum">${r.date}<span class="sub">${by(r)}</span></td></tr>`;}).join('')}</tbody></table>`;
+}
+const skelTable=()=>`<table class="t" aria-busy="true"><caption class="sr">Assignments</caption><thead><tr>${headTh()}</tr></thead><tbody>${Array.from({length:9},(_,i)=>`<tr><td><i class="bone" style="width:${62+i%3*11}%"></i><i class="bone s2" style="width:38%"></i></td><td><span class="who"><i class="bone ba"></i><span style="flex:1"><i class="bone" style="width:${70-i%2*14}%"></i><i class="bone s2" style="width:52%"></i></span></span></td><td><i class="bone" style="width:70%"></i></td><td><i class="bone" style="width:76%"></i><i class="bone s2" style="width:58%"></i></td></tr>`).join('')}</tbody></table>`;
+/* one page of results needs no Previous and Next */
+const pager=(range,last,single)=>`<div class="pager"><span class="tnum">${range||''}</span>${single?'':`<span class="pg"><button class="btn sec${phone()?'':' sm'}" aria-disabled="true">Previous</button><button class="btn sec${phone()?'':' sm'}"${last?' aria-disabled="true"':''}>Next</button></span>`}</div>`;
+/* the compact empty state of tokens.md: no frame and no tile */
+const noMatch=()=>`<div class="emp"><h2>No assignments match</h2><p>Clear the search and the filters to see every assignment.</p><button class="btn sec" data-go="filled">Clear search and filters</button></div>`;
+function listDesk(o){
+ const f=o.filters||{},set=!!(f.who||f.module||f.role||f.search);
+ const bar=`<div class="fbar">${search('Search by role or name',f.search)}${fc('Person or group',f.who,'Anyone')}${fc('Module',f.module,'All modules')}${fc('Role',f.role,'All roles')}${set?'<button class="btn link" data-go="filled">Clear filters</button>':''}${helpBtn()}</div>${o.reach?`<p class="reach" role="status">${o.reach}</p>`:''}`;
+ let body=o.loading?`<div class="tcol"><div class="tscroll">${skelTable()}</div><div class="pager"><span role="status">Loading assignments</span></div></div>`:o.nomatch?noMatch():`<div class="tcol"><div class="tscroll">${table(o.rows,o)}</div>${pager(o.range,o.last,o.single)}</div>`;
+ if(o.pane)body=`<div class="split">${body}${o.pane}</div>`;
+ return `<section class="card list" aria-label="Assignments">${bar}<div class="lbody">${body}</div></section>`;
+}
+function cardsHtml(rows,o){
+ const pick=S.v==='a';
+ return `<ul class="stack" aria-label="Assignments">${rows.map(r=>`<li${r.key===o.newKey?' class="new"':''}><div class="top"><span class="rt"><a class="nm" href="#">${r.role}</a><span class="sub">${modOf(r)}</span></span>${r.paused?'<span class="pill warn">Paused</span>':''}${pick?`<button class="ib sm" aria-label="Open ${r.to.name}" data-go="${r.to.id==='riley'?'filtered':'filled'}">${ic('chevR')}</button>`:''}</div><dl><dt>Assigned to</dt><dd>${r.to.name}${r.to.type==='group'?` <span class="mu">· ${r.to.kind}</span>`:''}</dd><dt>Scope</dt><dd>${r.scope}</dd>${showVia(o)?`<dt>Assigned via</dt><dd>${viaHtml(r)}</dd>`:''}<dt>Assigned</dt><dd class="tnum">${r.date} ${by(r)}</dd>${r.paused?`<dt>Paused</dt><dd>${r.paused}</dd>`:''}</dl></li>`).join('')}</ul>`;
+}
+const skelCards=()=>`<ul class="stack" aria-busy="true" aria-label="Assignments">${Array.from({length:4},(_,i)=>`<li><i class="bone" style="width:${58+i%2*16}%"></i><i class="bone s2" style="width:34%"></i>${Array.from({length:4},()=>`<i class="bone" style="width:${66-i*6}%;margin-top:10px"></i>`).join('')}</li>`).join('')}</ul>`;
+function listPhone(o){
+ const f=o.filters||{};
+ const chips=[f.who&&['Person or group',f.who],f.module&&['Module',f.module],f.role&&['Role',f.role]].filter(Boolean);
+ const head=`<div class="mbar"><div class="r1"><h2>Assignments${o.count?` <span class="cnt tnum">${o.count}</span>`:''}</h2><button class="btn sec">${ic('sliders')}Filters${chips.length?` <span class="cp tnum" aria-label="${chips.length} set">${chips.length}</span>`:''}</button></div>${search('Search by role or name',f.search)}${chips.length?`<div class="chips">${chips.map(([l,x])=>`<span class="chip"><span class="l">${l}:</span> ${x}<button class="x" aria-label="Remove the ${l} filter">${ic('x')}</button></span>`).join('')}<button class="btn link" data-go="filled">Clear filters</button></div>`:''}${o.reach?`<p class="reach" role="status">${o.reach}</p>`:''}${o.nomatch?'':`<div class="r3"><span class="tnum"${o.loading?' role="status"':''}>${o.loading?'Loading assignments':o.range}</span><button class="btn ghost sm" aria-label="Sort: Assigned, newest first">${ic('down')}Assigned, newest</button></div>`}</div>`;
+ const body=o.loading?skelCards():o.nomatch?noMatch():cardsHtml(o.rows,o)+(o.single?'':pager('',o.last));
+ return `<section class="card list" aria-label="Assignments">${head}${body}</section>`;
+}
+function accessScreen(o){
+ const b=S.v==='b',t=o.tab||'overview';
+ if(phone()){
+  const bar=appbar('Access');
+  const body=`<p class="pdesc">Who has which role, and on which records.</p>${helpBtn()}${b?tabsHtml(t):''}${t==='grants'?grantsList():listPhone(o)}`;
+  return ph(bar,body,`<div class="bbar"><button class="btn pri" data-go="add-access">${ic('plus')}Add assignment</button></div>`,o.over||'');
+ }
+ const main=`<header class="phead"><div><h1>Access</h1><p>Who has which role, and on which records.</p></div><div class="acts"><button class="btn pri" data-go="add-access">${ic('plus')}Add assignment</button></div></header>${b?tabsHtml(t):''}<div class="content">${t==='grants'?grantsList():listDesk(o)}</div>`;
+ return desk('access',main,o.over||'');
+}
+
+/* the assignments of one person or group, as the picked person-access prototype draws them */
+function rolesList(rows,o={}){
+ if(!rows.length)return '';
+ if(phone()||o.stack)return `<ul class="stack box" aria-label="Assigned roles">${rows.map(r=>`<li${r.key===o.newKey?' class="new"':''}><div class="top"><a class="nm" href="#">${r.role}</a>${r.paused?'<span class="pill warn">Paused</span>':''}</div><dl><dt>Scope</dt><dd>${r.scope}</dd>${o.noVia?'':`<dt>Assigned via</dt><dd>${viaHtml(r)}</dd>`}<dt>Assigned</dt><dd class="tnum">${r.date} ${by(r)}</dd>${r.paused?`<dt>Paused</dt><dd>${r.paused}</dd>`:''}</dl></li>`).join('')}</ul>`;
+ return `<table class="stbl"><caption class="sr">Assigned roles</caption><thead><tr><th scope="col">Role</th><th scope="col">Scope</th>${o.noVia?'':'<th scope="col">Assigned via</th>'}</tr></thead><tbody>${rows.map(r=>`<tr${r.key===o.newKey?' class="new"':''}><td><a class="nm" href="#">${r.role}</a>${pz(r)}<span class="sub tnum">Assigned ${r.date} ${by(r)}</span></td><td class="nw">${r.scope}</td>${o.noVia?'':`<td>${viaHtml(r)}</td>`}</tr>`).join('')}</tbody></table>`;
+}
+/* who the role goes to, for a module: the "Assigned to" row of role-detail.prototype.html, plus the role */
+const toList=(rows,o={})=>`<ul class="hl" aria-label="Assigned to">${rows.map(r=>`<li${r.key===o.newKey?' class="new"':''}>${av(r.to)}<div class="hw"><div class="n"><a class="nm" href="#">${r.to.name}</a>${r.scope==='All records'?'':`<span class="pill">${r.scope}</span>`}${r.paused?'<span class="pill warn">Paused</span>':''}</div><div class="rl">${r.role}${r.custom?' <span class="mu">· Custom role</span>':''}</div><span class="sub">${kind(r.to)}</span><span class="sub tnum">Assigned ${r.date} ${by(r)}</span></div></li>`).join('')}</ul>`;
+
+/* the add controls: Assign to, Role, Scope */
+const whoOpt=(s,chosen,multi)=>{const me=s.id==='priya';return `<div class="opt" role="option" aria-selected="${chosen.has(s.id)}"${me?' aria-disabled="true"':''}${!multi&&s.id==='riley'?' data-go="filtered"':''}>${av(s)}<span class="wn"><span class="on">${s.name}${me?' (you)':''}</span><span class="sub">${me?'Only another administrator can change your own access.':s.type==='group'?kind(s):s.email}</span></span>${chosen.has(s.id)?ic('check','ck'):''}</div>`};
+/* a list box holds only option groups; the caption is the visible name of its group */
+const optGroup=(t,opts,pill)=>`<div role="group" aria-label="${t}${pill?', '+pill:''}"><div class="cap" aria-hidden="true">${t}${pill?`<span class="pill">${pill}</span>`:''}</div>${opts}</div>`;
+const whoOptions=(chosen=new Set(),multi)=>`<div role="listbox" aria-label="People and groups"${multi?' aria-multiselectable="true"':''}>${optGroup('Groups',['coll','fin','admins','it','sales'].map(k=>whoOpt(GR[k],chosen,multi)).join(''))}${optGroup('People',['ada','alex','jamie','priya','riley'].map(k=>whoOpt(PE[k],chosen,multi)).join(''))}</div><p class="more tnum">Showing 10 of 317. Type to search.</p>`;
+function whoControl(w){
+ /* variant a adds for one person or group at a time */
+ if(w.single){const s=w.chosen[0];return `<button class="select" aria-haspopup="listbox" aria-expanded="false"><span class="rec">${ic(s.type==='group'?'users':'user')}<span><span class="sr">Assign to </span>${s.name}</span></span>${ic('chevD')}</button>`;}
+ const chosen=new Set(w.chosen.map(s=>s.id));
+ return `<div class="multi${w.open?' open':''}">${w.chosen.map(s=>`<span class="tag">${s.type==='group'?ic('users'):''}${s.name}<button class="x" aria-label="Remove ${s.name}">${ic('x')}</button></span>`).join('')}<input class="mi" type="text" aria-label="Assign to" placeholder="${w.chosen.length?'Add more':'Search people and groups'}"></div>${w.open?`<div class="pop tall">${whoOptions(chosen,1)}</div>`:''}`;
+}
+function rolePop(o){
+ const already=o.already||[],through=o.through||{};
+ const opt=(n,x={})=>{const dis=x.dis||already.includes(n),hint=x.dis?'':already.includes(n)?'Already assigned':through[n]?`Assigned via ${through[n]}`:'';
+  /* act marks the keyboard highlight; aria-selected marks only the chosen role */
+  return `<div class="opt${n===o.active?' act':''}" role="option" aria-selected="${n===o.role}"${dis?' aria-disabled="true"':''}><span class="wn"><span class="on">${n}${DEF.includes(n)&&!x.dis?' <span class="mu">(default)</span>':''}${x.custom?' <span class="pill">Custom role</span>':''}</span>${hint?`<span class="sub">${hint}</span>`:''}</span></div>`};
+ return `<div class="pop"><div class="ps">${search('Search roles')}</div><div role="listbox" aria-label="Roles">${optGroup('Core',['Tenant administrator','Auditor','Ask user'].map(n=>opt(n)).join(''))}${optGroup('Invoices and Payments',['Invoices and Payments viewer','Invoices and Payments editor','Invoices and Payments user'].map(n=>opt(n)).join('')+opt('Invoice approver',{custom:1}))}${optGroup('Slides',['Slides editor','Slides viewer','Slides user'].map(n=>opt(n)).join(''))}${optGroup('Analytics',['Analytics editor','Analytics viewer','Analytics user'].map(n=>opt(n,{dis:1})).join(''),'Module off')}</div></div>`;
+}
+const roleControl=o=>`<button class="select${o.role?'':' ph'}" aria-haspopup="listbox" aria-expanded="${!!o.roleOpen}"${o.error?' aria-invalid="true" aria-describedby="add-error"':''}><span>${o.role||'Choose a role'}</span>${ic('chevD')}</button>${o.roleOpen?rolePop(o):''}`;
+let RID=0;
+function scopeField(o){
+ if(o.scope!=='all'&&o.scope!=='one')return `<div class="ro"><span class="flabel">Scope</span><span>All records</span></div>`;
+ const n='scope'+(RID++);
+ return `<fieldset class="field"><legend class="flabel">Scope</legend><label class="radio"><input type="radio" name="${n}"${o.scope==='all'?' checked':''}>All records</label><label class="radio"><input type="radio" name="${n}"${o.scope==='one'?' checked':''}>One record</label>${o.scope==='one'?`<button class="select"><span class="rec">${ic('file')}<span><span class="sr">Record </span><b>${o.record}</b> · Northwind Traders</span></span>${ic('chevD')}</button>`:''}</fieldset>`;
+}
+const errorBlock=()=>`<div class="alert" role="alert" id="add-error">${ic('alert','i20')}<span><b>The assignment was not added.</b>The Slides module is off. Switch it on in <a href="#">Modules</a>, or choose a role of another module.</span></div>`;
+const fixedWho=s=>`<div class="ro"><span class="flabel">Assign to</span><span class="fixed">${av(s)}<span><b>${s.name}</b><span class="sub">${kind(s)}</span></span></span></div>`;
+const go=x=>x?` data-go="${x}"`:'';
+const field=(label,control,help)=>`<div class="field"><span class="flabel">${label}</span>${control}${help?`<p class="help">${help}</p>`:''}</div>`;
+/* variant a: the editor opens inside the list it adds to */
+function editor(o){
+ return `<div class="ed" role="group" aria-label="New assignment"><p class="ed-t">New assignment</p>${o.whoField?field('Assign to',whoControl(o.whoField)):''}${field('Role',roleControl(o))}${scopeField(o)}${o.error?errorBlock():''}${phone()?'':`<div class="eb"><button class="btn pri"${go(o.next)}>Add</button><button class="btn ghost"${go(o.cancel)}>Cancel</button></div>`}</div>`;
+}
+/* on a phone, Cancel and Add of an open editor take the sticky bottom bar (DESIGN.md) */
+const edBar=o=>`<div class="shf"><button class="btn sec"${go(o.cancel)}>Cancel</button><button class="btn pri"${go(o.next)}>Add</button></div>`;
+/* variant b: one form, in a panel or in place of the sheet content */
+function form(o){
+ const n=o.count||1;
+ return `<div class="fh${o.back?' bk':''}">${o.back?`<button class="ib" aria-label="Back to ${o.back}"${go(o.cancel)}>${ic('back','i20')}</button>`:''}<h2>Add assignment</h2><button class="ib" aria-label="Close"${go(o.cancel)}>${ic('x','i20')}</button></div><div class="fb">${o.error?errorBlock():''}${o.who?fixedWho(o.who):field('Assign to',whoControl(o.whoField),o.whoHelp||'Pick one or more people or groups.')}${field('Role',roleControl(o))}${scopeField(o)}${n>1?`<p class="sum">Adds ${n} assignments, one for each person and group.</p>`:''}</div><div class="ff"><button class="btn sec"${go(o.cancel)}>Cancel</button><button class="btn pri"${go(o.next)}>${n>1?`Add ${n} assignments`:'Add assignment'}</button></div>`;
+}
+/* variant a: the pane beside the table, a full sheet on a phone */
+function pane(o){
+ let inner;
+ if(o.choose){
+  inner=`<div class="ph"><h2>Add assignment</h2><button class="ib" aria-label="Close" data-go="filled">${ic('x','i20')}</button></div><div class="pb"><p class="help">Choose who gets the role.</p>${search('Search people and groups')}<div class="list-who">${whoOptions()}</div></div>`;
+ } else {
+  const s=o.subject,rows=o.rows;
+  inner=`<div class="ph">${av(s,'l')}<div class="pn"><b>${s.name}</b><span class="sub">${s.type==='group'?kind(s):s.email}</span></div><button class="ib" aria-label="Close" data-go="filled">${ic('x','i20')}</button></div><div class="pb"><div class="sech"><h3>Assigned roles (${rows.length})</h3>${o.editor?'':`<button class="btn sec">${ic('plus')}Add assignment</button>`}</div>${o.editor?editor(o.editor):''}${rolesList(rows,{stack:1})}</div>${phone()&&o.editor?edBar(o.editor):`<div class="pf"><p class="help">Grants changes several modules at once.</p><a class="lk ar" href="#" data-go="grants">Open in Grants ${ic('arrow')}</a></div>`}`;
+ }
+ if(phone())return `<div class="sheet" role="dialog" aria-modal="true" aria-label="${o.choose?'Add assignment':o.subject.name}">${inner}</div>`;
+ return `<aside class="pane" aria-label="${o.choose?'Add assignment':o.subject.name}">${inner}</aside>`;
+}
+
+/* object sheets: a person, a group, a module */
+function addSheet(label,o,inner){
+ if(S.v==='b'&&o.form)return sheetWrap(form(o.form),'Add assignment');
+ return sheetWrap(inner,label);
+}
+function personSheet(o){
+ const p=o.p,rows=o.rows,b=S.v==='b';
+ const add=rows.length&&!o.editor?`<button class="btn sec" data-go="add-person">${ic('plus')}Add assignment</button>`:'';
+ const empty=`<div class="emp box"><span class="et">${ic('key','i20')}</span><h3>No roles assigned</h3><p>${p.name} sees no modules until a role is assigned.</p><button class="btn pri" data-go="add-person">${ic('plus')}Add assignment</button></div>`;
+ const inner=`<div class="shh">${av(p,'l')}<div class="nm2"><b>${p.name} <span class="pill${o.pending?'':' ok'}">${o.pending?'Pending':'Active'}</span></b><span class="em">${p.email}</span></div><button class="ib" aria-label="Close">${ic('x','i20')}</button></div><div class="tabs sh" role="tablist"><button class="tab" role="tab" aria-selected="false">Profile</button><button class="tab" role="tab" aria-selected="false">Groups <span class="c">${o.pending?0:1}</span></button><button class="tab" role="tab" aria-selected="true">Roles <span class="c">${rows.length}</span></button><button class="tab" role="tab" aria-selected="false">Sessions <span class="c">${o.pending?0:1}</span></button></div><div class="shb"><div class="sech"><h2>Assigned roles (${rows.length})</h2>${add}</div><button class="hbtn" aria-expanded="false">${ic('help')}How access adds up</button>${o.editor?editor(o.editor):''}${rows.length?rolesList(rows,{newKey:o.newKey})+`<a class="lk ar" href="#" data-go="filtered">Manage in Access ${ic('arrow')}</a>`:empty}</div>${phone()&&o.editor?edBar(o.editor):'<div class="shf"><button class="btn sec">Suspend</button><button class="btn dz">Deactivate</button></div>'}`;
+ return addSheet(p.name,o,inner);
+}
+function groupSheet(o){
+ const g=o.g,rows=o.rows;
+ const inner=`<div class="shh">${av(g,'l')}<div class="nm2"><b>${g.name}</b><span class="em">${kind(g)}</span></div><button class="ib" aria-label="Close">${ic('x','i20')}</button></div><div class="tabs sh" role="tablist"><button class="tab" role="tab" aria-selected="false">Members <span class="c">${g.members}</span></button><button class="tab" role="tab" aria-selected="true">Roles <span class="c">${rows.length}</span></button></div><div class="shb"><div class="sech"><h2>Assigned roles (${rows.length})</h2>${o.editor?'':`<button class="btn sec" data-go="add-group">${ic('plus')}Add assignment</button>`}</div><p class="help">Every member of the group has these roles.</p>${o.editor?editor(o.editor):''}${rolesList(rows,{newKey:o.newKey,noVia:1})}<a class="lk ar" href="#" data-go="filled">Manage in Access ${ic('arrow')}</a></div>${phone()&&o.editor?edBar(o.editor):''}`;
+ return addSheet(g.name,o,inner);
+}
+function moduleSheet(o){
+ const rows=o.rows;
+ const inner=`<div class="shh"><span class="av l g" aria-hidden="true">${ic('blocks')}</span><div class="nm2"><b>Invoices and Payments <span class="pill ok">Module on</span></b><span class="em wrap">Invoices, payments and their documents.</span></div><button class="ib" aria-label="Close">${ic('x','i20')}</button></div><div class="shb"><div class="sech"><h2>Assigned to (${rows.length})</h2>${o.editor?'':`<button class="btn sec" data-go="add-module">${ic('plus')}Add assignment</button>`}</div>${o.editor?editor(o.editor):''}${toList(rows,{newKey:o.newKey})}<a class="lk ar" href="#" data-go="filled">Manage in Access ${ic('arrow')}</a></div>${phone()&&o.editor?edBar(o.editor):''}`;
+ return addSheet('Invoices and Payments',o,inner);
+}
+/* the pages behind a sheet on desktop */
+function bgPage(kind){
+ const T={people:['People','Everyone who can sign in to this tenant.','Add person',['Person','Status','Groups','Roles'],['riley','jamie','mina','noah','omar','priya','sam','tess'].map(k=>[`<span class="who">${av(PE[k])}<span class="wn"><b>${PE[k].name}</b><span class="sub">${PE[k].email}</span></span></span>`,k==='noah'?'<span class="pill">Pending</span>':k==='omar'?'<span class="pill warn">Suspended</span>':'<span class="pill ok">Active</span>',k==='riley'?'Finance team':'',k==='noah'?'0':'2'])],groups:['Groups','Directory groups from the identity provider, and groups made here.','Add group',['Group','Members','Roles'],['coll','contr','fin','admins','it','sales'].map(k=>[`<span class="who">${av(GR[k])}<span class="wn"><b>${GR[k].name}</b><span class="sub">${GR[k].kind}</span></span></span>`,GR[k].members,'2'])],modules:['Modules','The modules of this deployment, and who can open them.','',['Module','Status','Assigned to'],[['Analytics','<span class="pill">Module off</span>','IT Operations, Finance team, Riley Chen'],['Invoices and Payments','<span class="pill ok">Module on</span>','Finance team, Collections, Sales +3'],['Slides','<span class="pill ok">Module on</span>','Sales, Contractors, Omar Said +4']].map(r=>[`<b>${r[0]}</b>`,r[1],r[2]])]}[kind];
+ return `<header class="phead"><div><h1>${T[0]}</h1><p>${T[1]}</p></div><div class="acts">${T[2]?`<button class="btn pri">${ic('plus')}${T[2]}</button>`:''}</div></header><div class="content"><section class="card list" aria-label="${T[0]}"><div class="fbar">${search('Search')}</div><div class="tscroll"><table class="t"><thead><tr>${T[3].map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${T[4].map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody></table></div></section></div>`;
+}
+function sheetScreen(page,sheet,t){
+ const over=sheet+(t?toast(t,true):'');
+ return phone()?`<div class="frame phone">${over}</div>`:desk(page,bgPage(page),over);
+}
+
+/* Grants */
+function grantsList(){
+ const rows=[['coll','Collections',2],['contr','Contractors',1,'Archived'],['fin','Finance team',4],['admins','Genie Administrators',1],['it','IT Operations',3],['sales','Sales',3]].map(([k,n,c,x])=>({s:GR[k],c,x})).concat(['ada','alex','jamie','jordan','leila','lin'].map(k=>({s:PE[k],c:k==='jordan'?0:1})));
+ const cnt=c=>c===0?'None':String(c);
+ const intro=`<div class="ghd"><h2>Groups and people</h2><p>Open one to change several of its modules at once.</p></div>`;
+ if(phone())return `<section class="card list" aria-label="Groups and people">${intro}<div class="mbar" style="border-bottom:1px solid var(--hair)">${search('Search groups and people')}<div class="r3"><span class="tnum">1–25 of 317</span><span>Groups, then people</span></div></div><ul class="stack">${rows.map(r=>`<li><div class="top"><span class="who">${av(r.s)}<span class="wn"><a class="nm" href="#">${r.s.name}</a><span class="sub">${r.s.type==='group'?kind(r.s):r.s.email}</span></span></span>${r.x?`<span class="pill">${r.x}</span>`:''}<button class="ib sm" aria-label="Open ${r.s.name} in Grants">${ic('chevR')}</button></div><dl><dt>Assigned roles</dt><dd>${cnt(r.c)}</dd></dl></li>`).join('')}</ul>${pager('')}</section>`;
+ return `<section class="card list" aria-label="Groups and people">${intro}<div class="fbar" style="padding-top:12px">${search('Search groups and people')}${fc('Show','','Groups and people')}</div><div class="tcol"><div class="tscroll"><table class="t"><caption class="sr">Groups and people, groups first</caption><thead><tr><th scope="col">Group or person</th><th scope="col">Assigned roles</th><th scope="col"><span class="sr">Open</span></th></tr></thead><tbody>${rows.map(r=>`<tr><td><span class="who">${av(r.s)}<span class="wn"><a class="nm" href="#">${r.s.name}</a> ${r.x?`<span class="pill">${r.x}</span>`:''}<span class="sub">${r.s.type==='group'?kind(r.s):r.s.email}</span></span></span></td><td class="tnum">${cnt(r.c)}</td><td class="go"><button class="ib sm" aria-label="Open ${r.s.name} in Grants">${ic('chevR')}</button></td></tr>`).join('')}</tbody></table></div>${pager('1–25 of 317')}</div></section>`;
+}
+function grantsTransfer(){
+ const sel=v=>`<button class="select">${v}${ic('chevD')}</button>`;
+ /* a row is a label, so the whole row is the touch area of its checkbox. On a phone the role choice sits on a second line of the row, at full width (Access spec). */
+ const row=(name,detail,o={})=>`<label class="trow"><input type="checkbox" aria-label="${name}"><span class="grow"><span>${name}</span><span class="sub">${detail}</span>${o.paused?pz(o):''}${o.choice&&phone()?`<span style="display:block;margin-top:8px">${o.choice}</span>`:''}</span>${o.choice&&!phone()?o.choice:''}</label>`;
+ const catalog=`<div class="tp"><header><span>Catalog <span class="mu tnum">(1)</span></span><button class="btn link sm">Add all shown</button></header><div class="capt">Modules</div>${row('Invoices and Payments','Invoices and Payments viewer (default)')}</div>`;
+ const granted=`<div class="tp"><header><span>Granted <span class="mu tnum">(2)</span></span><button class="btn link sm">Remove all shown</button></header><div class="capt">Modules</div>${row('Slides','Direct',{choice:sel('Slides user')})}${row('Analytics','Analytics viewer',{paused:'Module off'})}</div>`;
+ /* one recipient picker, groups first and then people, so a change of recipient never clears the screen. It opens on the person or group of the pane. */
+ const tb=`<div class="gtb"><span class="lab" aria-hidden="true">Grant to</span><button class="select" aria-haspopup="listbox"><span><span class="sr">Grant to </span>Riley Chen <span class="mu">· Person</span></span>${ic('chevD')}</button></div>`;
+ const card=`<section class="card list fit" aria-label="Grants for Riley Chen">${tb}<div class="ghd" style="padding-bottom:4px"><h2>Access assignments</h2><p>Riley Chen. Granted means that a role exists, not that the module works today. Roles via Finance team change in the Grants of that group.</p></div><div class="panes">${phone()?granted+catalog:catalog+granted}</div></section>`;
+ if(phone())return ph(appbar('Grants',{back:1}),`<p class="pdesc">Change several modules for one group or person at once.</p>${card}`,`<div class="bbar"><button class="btn sec">Cancel</button><button class="btn pri">Save changes</button></div>`);
+ return desk('access',`<header class="phead"><div><div class="crumb"><a href="#" data-go="filtered">Access</a>${ic('chevR')}<span>Grants</span></div><h1>Grants</h1><p>Change several modules for one group or person at once.</p></div></header><div class="content">${card}</div>`);
+}
+function noAccess(){
+ const body=`<div class="na"><div class="framed"><span class="et">${ic('lock','i20')}</span><h1>You do not have access to this page</h1><p>Ask your administrator for access.</p><a class="btn sec" href="#">Go to home</a></div></div>`;
+ return phone()?ph(appbar('Access'),body):desk('',body,'',{limited:1});
+}
+
+/* states */
+function screen(){
+ const a=S.v==='a',st=S.state;
+ const full={rows:ROWS,range:'1–25 of 1,284',count:'1,284'};
+ const riley={rows:RILEY,filters:{who:'Riley Chen'},range:'1–6 of 6',count:'6',last:1,single:1,reach:'Riley Chen has 6 roles: 2 direct, 4 via Finance team.'};
+ switch(st){
+  case 'filled':return accessScreen(full);
+  /* a: a row opens its person in the pane. b: the Person or group filter names the person. */
+  case 'filtered':{if(!a)return accessScreen(riley);const p=pane({subject:PE.riley,rows:RILEY});return phone()?accessScreen({...full,over:p}):accessScreen({...full,selected:ROWS[9].key,pane:p});}
+  case 'add-access':return a?(phone()?accessScreen({...full,over:pane({choose:1})}):accessScreen({...full,pane:pane({choose:1})})):accessScreen({...full,over:sheetWrap(form({whoField:{chosen:[GR.fin,PE.riley],open:1},whoHelp:'Riley Chen is also in Finance team, so the role reaches Riley Chen twice.',count:2,next:'filled',cancel:'filled'}),'Add assignment')});
+  /* In a sheet, Back and Cancel return to its list, which this prototype draws only as the result states. */
+  case 'add-person':{const ed={role:'',roleOpen:1,active:'Slides editor',already:['Slides user','Analytics viewer'],through:{'Invoice approver':'Finance team','Ask user':'Finance team','Invoices and Payments editor':'Finance team','Analytics user':'Finance team'},next:'added-person'};
+   return sheetScreen('people',personSheet({p:PE.riley,rows:RILEY,editor:a?ed:null,form:a?null:{...ed,who:PE.riley,back:'Riley Chen'}}));}
+  case 'added-person':return sheetScreen('people',personSheet({p:PE.riley,rows:[NEW_RILEY,...RILEY],newKey:NEW_RILEY.key}),'Assigned Slides editor to Riley Chen.');
+  case 'add-group':{const ed={role:'Invoice approver',scope:'all',next:'added-group'};
+   return sheetScreen('groups',groupSheet({g:GR.coll,rows:COLL,editor:a?ed:null,form:a?null:{...ed,who:GR.coll,back:'Collections'}}));}
+  case 'added-group':return sheetScreen('groups',groupSheet({g:GR.coll,rows:[NEW_COLL,...COLL],newKey:NEW_COLL.key}),'Assigned Invoice approver to Collections.');
+  case 'add-module':{const ed={role:'Invoices and Payments viewer',scope:'one',record:'INV-2210',next:'added-module'};
+   return sheetScreen('modules',moduleSheet({rows:INV,editor:a?{...ed,whoField:{chosen:[PE.mina],single:1}}:null,form:a?null:{...ed,whoField:{chosen:[PE.mina]},back:'Invoices and Payments'}}));}
+  case 'added-module':{const rows=[...INV.slice(0,4),NEW_INV,...INV.slice(4)];return sheetScreen('modules',moduleSheet({rows,newKey:NEW_INV.key}),'Assigned Invoices and Payments viewer to Mina Park.');}
+  case 'grants':return a?grantsTransfer():accessScreen({tab:'grants'});
+  case 'empty':return sheetScreen('people',personSheet({p:PE.noah,rows:[],pending:1}));
+  case 'loading':return accessScreen({loading:1});
+  case 'no-match':return accessScreen({rows:[],nomatch:1,filters:{who:'Omar Said',module:'Slides',role:'Slides editor'}});
+  case 'refused':{const ed={role:'Slides editor',error:1,next:'added-person',cancel:'filled'};
+   if(a){const p=pane({subject:PE.riley,rows:RILEY,editor:ed});return phone()?accessScreen({...full,over:p}):accessScreen({...full,selected:ROWS[9].key,pane:p});}
+   return accessScreen({...full,over:sheetWrap(form({...ed,whoField:{chosen:[PE.riley]}}),'Add assignment')});}
+  case 'no-access':return noAccess();
+ }
+}
+
+/* the prototype bar and notes */
+const NOTE_A=`<h2>Variant a, side pane</h2><ul><li>One list and no tabs. The name in a row opens that person or group in a pane beside the table, so the list stays in view and keeps its columns. Opening the pane moves focus to its heading, and closing it returns focus to the row. On a phone the pane is a full sheet.</li><li>Add assignment opens inside the list that it adds to: in the pane, in the person and group sheets, and in the module sheet. Nothing opens on top of a sheet. On a phone, Cancel and Add move to the bottom bar while a role is being added.</li><li>Grants opens from the pane with that group or person filled in. It has no tab, so it never opens empty.</li><li>Better at: one place for each person or group, and the fewest steps to add one role.</li></ul>`;
+const NOTE_B=`<h2>Variant b, tabs and form</h2><ul><li>Two tabs, Overview and Grants, as today.</li><li>Add assignment opens one form: Assign to (one or more people and groups), Role and Scope. In a person, group or module sheet the form takes the place of the sheet content, and Back returns to the list.</li><li>Add with no role chosen shows the field error "Choose a role." under Role. After Add 2 assignments, the Overview shows both new rows tinted at the top, and a toast names the role and both recipients.</li><li>The Grants tab opens on every group and person, groups first. A row opens its modules.</li><li>Better at: the console pattern of Okta and Microsoft Entra, one role to many people in one step, and a Grants tab that people can find.</li></ul>`;
+function renderBar(){
+ document.getElementById('ctl').innerHTML=`<span class="t">Access starts filled (prototype)</span><span class="seg">${[['a','a · Side pane'],['b','b · Tabs and form']].map(([k,l])=>`<button data-v="${k}" aria-pressed="${S.v===k}">${l}</button>`).join('')}</span><span class="seg">${[['phone','Phone 390'],['desktop','Desktop 1440']].map(([k,l])=>`<button data-view="${k}" aria-pressed="${S.view===k}">${l}</button>`).join('')}</span><label>State <select id="st">${STATES.map(([k,l])=>`<option value="${k}"${S.state===k?' selected':''}>${l}</option>`).join('')}</select></label>`;
+ document.getElementById('notes').innerHTML=`<h2>What this answers</h2><p>Access opens on every assignment, newest first, 25 to a page, with a search and three filters: Person or group, Module and Role. Nothing opens on an empty chooser. A person, a group and a module each list their assignments and have Add assignment. Removal is not part of this prototype. It stays in Grants, with the last-administrator guard and the confirmation that names the roles that go and the paths that stay.</p>${S.v==='a'?NOTE_A+NOTE_B:NOTE_B+NOTE_A}<h2>Server paging and filtering</h2><p>The design assumes server paging and filtering, because a large tenant cannot load a client list. The server sorts and filters the assignments and returns one page of 25 rows with the total. The Person or group filter, the Assign to field and the record field search on the server while you type, and show a first page ("Showing 10 of 317").</p><h2>Words</h2><p>Assigned roles, Assigned to, Assigned via, Direct, Finance team (group), All records or the record id, Assigned &lt;date&gt; by &lt;name&gt;, Paused with its reason, Module on, Module off, Custom role, Manage in Access, How access works, Clear filters, Clear search and filters, Suspend and Deactivate (owner question 3). Tenant administrator stays.</p><h2>Rules kept</h2><ul><li>Assigned via shows only while the Person or group filter is set (G2). Without the filter each row is one assignment, so the column would read Direct on every row. With a person filter the list shows what reaches that person, also the roles of their groups, and a line above the list counts them.</li><li>A role of a module that is off cannot be added. Its roles cannot be picked, and the server refuses one too.</li><li>One record is offered only for a module that owns records, here Invoices and Payments. Every other role covers all records.</li><li>Your own account cannot be picked: only another administrator can change your own access.</li><li>A role that the person has directly cannot be added twice. A role that they have through a group can also be added directly, and the option says so.</li><li>Only a roles manager sees Add assignment. A people manager sees View only on the person sheet, as person-access.prototype.html draws it.</li><li>The new row takes the blue tint of a focused row, and a toast names the role and the person or group.</li><li>Grants never shows an empty chooser. One recipient picker, groups first and then people, replaces the Groups and People switch, so a change of recipient never clears the screen.</li><li>The role list marks the default role and custom roles. Every other role is a built-in role, which the role page names.</li></ul><h2>Open for the owner</h2><ul><li>Add assignment also adds core roles, the Auditor role, one-record roles and custom roles, which Advanced access does today. Advanced access stays in Grants.</li></ul><h2>Try</h2><p>Switch the variant, the width and the state. The buttons inside the frame move between the states.</p>`;
+}
+function render(){
+ RID=0;renderBar();
+ document.getElementById('app').innerHTML=screen();
+ /* an open list shows its active option, as a list box scrolls to it */
+ document.querySelectorAll('.pop').forEach(p=>{const o=p.querySelector('.opt.act,.opt[aria-selected=true]');if(o&&o.offsetTop+o.offsetHeight>p.clientHeight)p.scrollTop=o.offsetTop-Math.round(p.clientHeight/3)});
+ /* the row that opened the pane stays in view */
+ document.querySelectorAll('.tscroll').forEach(s=>{const r=s.querySelector('tr.sel');if(r)s.scrollTop+=r.getBoundingClientRect().top-s.getBoundingClientRect().top-120});
+ /* a new row in a sheet scrolls above the toast */
+ const tt=document.querySelector('.toast'),nw=document.querySelector('.shb .new,.pb .new');
+ if(tt&&nw){const s=nw.closest('.shb,.pb'),d=nw.getBoundingClientRect().bottom-(tt.getBoundingClientRect().top-12);if(d>0)s.scrollTop+=d}
+ const u=new URL(location);u.searchParams.set('v',S.v);u.searchParams.set('view',S.view);u.searchParams.set('state',S.state);history.replaceState(null,'',u);
+}
+document.addEventListener('click',e=>{const t=e.target.closest('[data-v],[data-view],[data-go]');if(!t)return;e.preventDefault();const d=t.dataset;if(d.v)S.v=d.v;if(d.view)S.view=d.view;if(d.go)S.state=d.go;render()});
+document.addEventListener('change',e=>{if(e.target.id==='st'){S.state=e.target.value;render()}});
+render();
+</script></body></html>

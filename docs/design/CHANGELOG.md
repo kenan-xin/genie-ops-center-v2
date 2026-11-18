@@ -2,6 +2,15 @@
 
 One entry per design change in this repository, newest first. Each entry names what changed and why. A platform decision is cited by its `DEC-` number. The root `CHANGELOG.md` belongs to Design OS, the tool that runs this repository, and is a different file.
 
+## 2026-11-18
+
+### Added, the follow-up 13 G2 picks
+
+- Access starts filled, variant b, tabs and form (`d8l5.62`). The Assigned via column shows only while the Person or group filter is set. The file now opens `b` by default.
+- Deck layouts, comparison a and closing a, theme as drawn, slide label off (`czjw.183`). Without the label, the company name starts the title slide subtitle. The file now opens the label `off` by default. It governs all eight slide layouts.
+- The coordinator picked on 2026-11-17 on the owner's instruction. The owner confirms the picks at gate G3.
+- Files: `prototypes/access-start.prototype.html`, `prototypes/deck-layouts.prototype.html`, and 32 captures `sections/access/access-start-<state>-<width>.png`. Record: `imports/2026-11-18-follow-up-13-g2-picks.md`.
+
 ## 2026-11-15
 
 ### Added, the follow-up 13 prototypes, owner picks
