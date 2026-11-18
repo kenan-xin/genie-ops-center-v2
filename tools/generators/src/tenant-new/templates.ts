@@ -349,36 +349,3 @@ export function envExample(input: TenantRenderInput): string {
     "",
   ].join("\n");
 }
-
-/**
- * Helm values, used only when this customer runs Kubernetes. The same rule as the
- * compose file: the image and the replica count are configuration, and every
- * deployment value arrives from a secret the cluster owns, named here and never
- * defined here.
- */
-export function helmValues(input: TenantRenderInput): string {
-  return `# Helm values for ${input.slug}. Used only when this customer runs
-# Kubernetes; the compose file serves every other deployment.
-nameOverride: ${JSON.stringify(input.slug)}
-replicaCount: 1
-
-image:
-  repository: ""
-  tag: ""
-  pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
-  port: 3000
-
-ingress:
-  enabled: false
-  host: ""
-
-# The name of the cluster secret holding DATABASE_URL and the other run-time
-# values. This file names it and never carries its contents.
-envFromSecretName: ""
-
-resources: {}
-`;
-}

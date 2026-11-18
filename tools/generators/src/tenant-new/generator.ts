@@ -8,7 +8,7 @@ export type TenantGeneratorSchema = Omit<TenantRenderInput, "slug"> & {
 };
 
 /**
- * Writes a customer's seven deployment files into the workspace (R-29, R-31).
+ * Writes a customer's six deployment files into the workspace (R-29, R-31).
  *
  * Rendering validates `tenant.yaml` and `branding.seed.json` against the strict
  * schemas core owns before any file is written, so a value in the wrong file, an

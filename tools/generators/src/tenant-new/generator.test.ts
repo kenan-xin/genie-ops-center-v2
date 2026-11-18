@@ -36,7 +36,7 @@ function emptyTree() {
 }
 
 describe("nx g @genie/generators:tenant-new", () => {
-  it("writes the seven files under the customer's deploy folder", async () => {
+  it("writes the six files under the customer's deploy folder", async () => {
     const { tree, added } = emptyTree();
 
     await tenantGenerator(tree, { ...OPTIONS });
@@ -48,7 +48,6 @@ describe("nx g @genie/generators:tenant-new", () => {
       "customers/demo-co/deploy/modules.txt",
       "customers/demo-co/deploy/realm.overrides.json",
       "customers/demo-co/deploy/tenant.yaml",
-      "customers/demo-co/deploy/values.yaml",
     ]);
   });
 

@@ -3,12 +3,7 @@ import {
   tenantYamlSchema,
 } from "@genie/core/tenant-config";
 
-import {
-  envExample,
-  realmOverrides,
-  stackCompose,
-  helmValues,
-} from "./templates.ts";
+import { envExample, realmOverrides, stackCompose } from "./templates.ts";
 
 /**
  * A customer's slug names its folder, so it must be safe in a path and stable in a
@@ -173,7 +168,7 @@ function json(value: BrandingSeedDocument): string {
 }
 
 /**
- * Renders a customer's seven deployment files as text, keyed by repository-relative
+ * Renders a customer's six deployment files as text, keyed by repository-relative
  * path (R-31). It writes nothing: a caller decides where the bytes go, so the same
  * function serves the generator, a test and a dry run.
  *
@@ -219,6 +214,5 @@ export function renderTenant(
     ],
     [`${root}/compose.yaml`, stackCompose(input)],
     [`${root}/.env.example`, envExample(input)],
-    [`${root}/values.yaml`, helmValues(input)],
   ]);
 }

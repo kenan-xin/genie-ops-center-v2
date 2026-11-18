@@ -169,7 +169,8 @@ function environmentNames(body: string): ReadonlySet<string> {
 }
 
 describe("the rendered deployment folder", () => {
-  it("holds the seven files and nothing else", () => {
+  // No Helm values until a customer runs Kubernetes (owner, 2026-10-19, Beads 2xfl).
+  it("holds the six files and nothing else", () => {
     expect([...files.keys()].toSorted()).toEqual([
       "customers/demo-co/deploy/.env.example",
       "customers/demo-co/deploy/branding.seed.json",
@@ -177,7 +178,6 @@ describe("the rendered deployment folder", () => {
       "customers/demo-co/deploy/modules.txt",
       "customers/demo-co/deploy/realm.overrides.json",
       "customers/demo-co/deploy/tenant.yaml",
-      "customers/demo-co/deploy/values.yaml",
     ]);
   });
 

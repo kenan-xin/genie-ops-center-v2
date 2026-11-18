@@ -11,7 +11,7 @@
     "tenant-new": {
       "factory": "./src/tenant-new/generator",
       "schema": "./src/tenant-new/schema.json",
-      "description": "Scaffold a customer's seven deployment files"
+      "description": "Scaffold a customer's six deployment files"
     }
   }
 }
