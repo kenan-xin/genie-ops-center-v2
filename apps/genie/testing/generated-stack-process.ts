@@ -178,7 +178,6 @@ const GENERATED_DEPLOY_FILES = [
   "modules.txt",
   "realm.overrides.json",
   "tenant.yaml",
-  "values.yaml",
 ] as const;
 
 /** Materializes the actual Nx tenant-generator output and removes only its unique fixture. */
