@@ -18,6 +18,22 @@ export {
 export { RecipientMark } from "./recipient-mark.tsx";
 
 export {
+  AddAssignmentForm,
+  type AddAssignmentFormProps,
+  type AddAssignmentInput,
+} from "./add-assignment-form.tsx";
+
+export {
+  addedMessage,
+  namesOf,
+  type RoleChoice,
+  type RoleChoiceGroup,
+  roleChoices,
+} from "./add-assignment-view.ts";
+
+export { RoleField } from "./role-field.tsx";
+
+export {
   AssignmentsTable,
   type AssignmentsTableProps,
   type InspectorAccess,
