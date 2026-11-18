@@ -77,6 +77,17 @@ describe("the canvas adapter", () => {
     ).toEqual({ x: 40, y: 136, w: 920, h: 64 });
   });
 
+  it("keeps the edges a corner resize leaves, also off the 8 unit grid", () => {
+    // The title slide's subtitle frame starts at x 67 (P14-3); a bottom-right resize moves only the right and bottom edges.
+    expect(
+      gestureBox(
+        resize({ x: 67, y: 337, width: 786.4, height: 96.7 }),
+        { x: 67, y: 337, w: 826, h: 117 },
+        "text"
+      )
+    ).toEqual({ x: 67, y: 337, w: 789, h: 95 });
+  });
+
   it("nudges by any step and keeps the box inside the canvas", () => {
     expect(movedBox(text, { x: -1, y: 0 }, "text")).toEqual({ ...text, x: 39 });
     expect(movedBox(text, { x: -48, y: -200 }, "text")).toEqual({

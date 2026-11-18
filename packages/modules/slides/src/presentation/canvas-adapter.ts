@@ -12,6 +12,9 @@ export const SNAP = 8;
 
 const snap = (value: number) => Math.round(value / SNAP) * SNAP;
 
+/** A resize snaps only the edges its handle moves: a frame box can start off the grid (P14-3). */
+const edge = (now: number, was: number) => (now === was ? now : snap(now));
+
 const clamp = (value: number, min: number, max: number) =>
   Math.min(Math.max(value, min), max);
 
@@ -46,16 +49,16 @@ export function gestureBox(
     );
   }
 
-  const x = snap(gesture.rect.x);
-  const y = snap(gesture.rect.y);
+  const x = edge(gesture.rect.x, start.x);
+  const y = edge(gesture.rect.y, start.y);
 
   const right = Math.min(
-    snap(gesture.rect.x + gesture.rect.width),
+    edge(gesture.rect.x + gesture.rect.width, start.x + start.w),
     SLIDE_CANVAS.width
   );
 
   const bottom = Math.min(
-    snap(gesture.rect.y + gesture.rect.height),
+    edge(gesture.rect.y + gesture.rect.height, start.y + start.h),
     SLIDE_CANVAS.height
   );
 
