@@ -1465,7 +1465,7 @@ export function AddPersonDialog(props: {
 
   const brokered = !localAvailable || accountType === "brokered";
 
-  const groupChoices = props.localGroups ?? [];
+  const offeredGroups = props.localGroups ?? [];
 
   return (
     <Dialog
@@ -1513,7 +1513,7 @@ export function AddPersonDialog(props: {
               onChange={(event) => setName(event.target.value)}
             />
           </Field>
-          {groupChoices.length === 0 ? null : (
+          {offeredGroups.length === 0 ? null : (
             <Field>
               <span className="flex items-baseline gap-1">
                 <FieldLabel htmlFor={groupsId}>Groups</FieldLabel>
@@ -1523,7 +1523,7 @@ export function AddPersonDialog(props: {
               </span>
               <Combobox<PersonGroupOption, true>
                 multiple
-                items={groupChoices}
+                items={offeredGroups}
                 itemToStringLabel={(group) => group.label}
                 isItemEqualToValue={(a, b) => a.id === b.id}
                 value={[...groups]}

@@ -117,7 +117,11 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   // A save that fully succeeded is reported by a toast (PD-13).
   // Exact, so that the partial-success notice "Person added; the email was not sent" fails it.
-  await expect(page.getByText("Person added", { exact: true })).toBeVisible();
+  await expect(
+    page
+      .getByRole("status")
+      .filter({ has: page.getByText("Person added", { exact: true }) })
+  ).toBeVisible();
 
   // The toast follows the reloads, so a read of the closed person would be sent by now (6wz1.20).
   // The new person's sheet is read: it opens on Roles (P12-18).
