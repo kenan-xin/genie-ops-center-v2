@@ -605,7 +605,8 @@ const largeKpiPlay: Story["play"] = async ({ canvasElement }) => {
 
   const number = box.querySelector<HTMLElement>("[data-figure-number]")!;
 
-  await expect(number).toHaveTextContent("SGD 141,200.00");
+  await expect(number).toHaveTextContent("SGD 141,200");
+  await expect(number).not.toHaveTextContent(".00");
 
   // The digits' own line boxes: a wrapped value has more than one.
   const digits = document.createRange();
@@ -1235,7 +1236,10 @@ export const ChartWithInsight: Story = {
   globals: desktop,
   play: async ({ canvas, canvasElement }) => {
     const figure = canvas.getByRole("figure", { name: "Invoiced by month" });
-    const title = figure.querySelector<HTMLElement>(":scope > div")!;
+
+    const title = document.getElementById(
+      figure.getAttribute("aria-labelledby")!
+    )!;
 
     // Canvas px: the canvas is scaled, so a drawn 1 px box measures more on screen.
     await expect(title.clientWidth).toBeLessThanOrEqual(1);
@@ -1286,7 +1290,12 @@ export const ComparisonLongText: Story = {
         '[data-slide-box="chart"]'
       ),
     ].map((box) => {
-      const title = box.querySelector<HTMLElement>("figure > div")!;
+      const figure = box.querySelector("figure")!;
+
+      const title = document.getElementById(
+        figure.getAttribute("aria-labelledby")!
+      )!;
+
       const caption = box.querySelector<HTMLElement>("figcaption")!;
 
       return {
@@ -1307,7 +1316,7 @@ export const ComparisonLongText: Story = {
 };
 
 // The table: a header with no fill and a text-color rule under it, numbers right-aligned at 15 px,
-// the table in the vertical middle of its box (prototype `.tb`).
+// the table right under its title, as the prototype's title row sits on the table (C14-7).
 export const TableWithNote: Story = {
   name: "Table with note",
   args: { ...canvasProps, slide: tableWithNoteSlide },
@@ -1332,9 +1341,7 @@ export const TableWithNote: Story = {
     const box = drawn.parentElement!.getBoundingClientRect();
     const rect = drawn.getBoundingClientRect();
 
-    await expect(
-      Math.abs(rect.top - box.top - (box.bottom - rect.bottom))
-    ).toBeLessThanOrEqual(1);
+    await expect(Math.abs(rect.top - box.top)).toBeLessThanOrEqual(1);
     await noOverflow(canvasElement);
   },
 };

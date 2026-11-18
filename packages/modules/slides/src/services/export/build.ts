@@ -3,6 +3,7 @@ import { foregroundFor } from "@genie/core";
 import {
   chartCaption,
   type ChartData,
+  chartUnit,
   formatChartValue,
 } from "@genie/ui/chart-data";
 import { imageSize } from "image-size";
@@ -31,7 +32,9 @@ import {
   slideFrame,
   textGround,
   textPx,
+  titleRow,
   TYPE_PX,
+  VISUAL_TITLE_LINE_PX,
   visualGround,
   visualLook,
 } from "../../presentation/slide-layout.ts";
@@ -53,10 +56,8 @@ const MASTER = "GENIE";
 
 const HIDDEN = "You can no longer read the data of this chart.";
 
-/** Canvas pixels of the source row under a chart or table, and of a table's title row (`gap-1`). */
+/** Canvas pixels of the source row under a chart or table (`gap-1`). */
 const CAPTION_PX = 20;
-
-const TABLE_TITLE_PX = 24;
 
 /** The screen's table rows: 13 px x 1.25 + 2 x 5.6, 15 x 1.25 + 2 x 7, 13 x 1.25 + 2 x 3.75, 12 x 1.25 + 2 x 1.9. */
 const TABLE_ROW_PX = { header: 28, row: 33, dense: 24, compact: 19 } as const;
@@ -159,7 +160,7 @@ const align = (column: ChartData["columns"][number]) =>
     ? ("right" as const)
     : ("left" as const);
 
-/** A table at the slide table sizes, centered in its area as the screen's `my-auto`, under its title row. */
+/** A table at the slide table sizes, right under its title row as on screen (C14-7). */
 function addTable(
   slide: Slide,
   data: ChartData,
@@ -174,12 +175,22 @@ function addTable(
 
   const dense = data.rows.length >= DENSE_ROWS;
 
-  slide.addText(data.title, {
-    ...inches({ ...inner, h: TABLE_TITLE_PX }),
+  const heading = titleRow({
+    title: data.title,
+    unit: undefined,
+    width: inner.w,
+    fullText,
+  });
+
+  slide.addText(heading.label, {
+    ...inches({ ...inner, h: heading.text }),
+    // A stored box's title is one line on screen; PowerPoint must not wrap it over the table.
+    wrap: fullText,
     fontFace,
     fontSize: points(TYPE_PX.label),
     bold: true,
     color: hex(theme.text),
+    lineSpacing: points(VISUAL_TITLE_LINE_PX),
     margin: 0,
     valign: "top",
   });
@@ -226,18 +237,8 @@ function addTable(
 
   const total = heights.reduce((sum, h) => sum + h, 0);
 
-  const area = {
-    ...inner,
-    y: inner.y + TABLE_TITLE_PX,
-    h: inner.h - TABLE_TITLE_PX - CAPTION_PX,
-  };
-
   slide.addTable([header, ...rows], {
-    ...inches({
-      ...area,
-      y: area.y + Math.max(0, (area.h - total) / 2),
-      h: total,
-    }),
+    ...inches({ ...inner, y: inner.y + heading.h, h: total }),
     fontFace,
     rowH: heights.map((h) => h / 96),
     valign: "middle",
@@ -529,13 +530,61 @@ export async function buildDeckPptx(input: {
             isSecondVisual(shown.elements, index)
           ).map(hex);
 
+          // The screen's title row: the title at the left, the one currency at the right (C14-2,
+          // C14-3). PowerPoint's axis title takes no place at the top, so the row is text boxes.
+          const unit =
+            chart.type === "doughnut" ? undefined : chartUnit(data.columns);
+
+          // The row is as tall as the screen's wrapped title, so a long title never meets the plot.
+          const row = titleRow({
+            title: look.titleHidden ? null : data.title,
+            unit,
+            width: inner.w,
+            fullText: look.fullText,
+          });
+
+          if (!look.titleHidden) {
+            slide.addText(row.label, {
+              ...inches({ ...inner, w: row.titleW, h: row.text }),
+              // A stored box's title is one line on screen; PowerPoint must not wrap it over the plot.
+              wrap: look.fullText,
+              fontFace,
+              fontSize: points(TYPE_PX.label),
+              bold: true,
+              color: hex(theme.text),
+              lineSpacing: points(VISUAL_TITLE_LINE_PX),
+              margin: 0,
+              valign: "top",
+            });
+          }
+
+          if (unit !== undefined) {
+            slide.addText(unit, {
+              ...inches({
+                x: inner.x + inner.w - row.unitW,
+                y: inner.y,
+                w: row.unitW,
+                h: row.text,
+              }),
+              fontFace,
+              fontSize: points(LOOK_PX.caption),
+              color: hex(theme.secondaryText),
+              // The title's line, so the unit sits on the title's first line as on screen.
+              lineSpacing: points(VISUAL_TITLE_LINE_PX),
+              align: "right",
+              margin: 0,
+              valign: "top",
+            });
+          }
+
           const options: ChartOptions = {
-            ...inches({ ...inner, h: inner.h - CAPTION_PX }),
-            title: data.title,
-            showTitle: !look.titleHidden,
-            titleFontFace: fontFace,
-            titleFontSize: points(TYPE_PX.text),
-            titleColor: hex(theme.text),
+            ...inches({
+              ...inner,
+              y: inner.y + row.h,
+              // A long title in a short box leaves no room; a chart part needs a height above 0.
+              h: Math.max(1, inner.h - row.h - CAPTION_PX),
+            }),
+            showTitle: false,
             // A donut names its parts only in the legend.
             showLegend: chart.series.length >= 2 || chart.type === "doughnut",
             legendPos: "t",
@@ -566,10 +615,11 @@ export async function buildDeckPptx(input: {
             displayBlanksAs: "gap",
           };
 
-          // The shared axis is the screen's [0, max]; a lone max lets a renderer step below 0.
-          if (chart.valueMax !== undefined) {
-            options.valAxisMinVal = 0;
-            options.valAxisMaxVal = chart.valueMax;
+          // The screen's axis: its foot, its rounded top and its step, so no renderer re-splits it (C14-1).
+          if (chart.axis !== undefined) {
+            options.valAxisMinVal = chart.axis.min;
+            options.valAxisMaxVal = chart.axis.max;
+            options.valAxisMajorUnit = chart.axis.step;
           }
 
           slide.addChart(

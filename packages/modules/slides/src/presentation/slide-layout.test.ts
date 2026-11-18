@@ -8,6 +8,7 @@ import {
   comparisonMax,
   contrastLimit,
   figureBoxes,
+  figureNumber,
   figuresDate,
   fitFontPx,
   isPrioritiesList,
@@ -266,6 +267,26 @@ describe("placedBoxes", () => {
       body: [{ index: 1, box: { x: 67, y: 425, w: 826, h: 29 } }],
     });
   });
+
+  // C14-6: the closing title sat on the foot of its 212 px box, mid-slide; the prototype sets it at the top.
+  it("stacks a statement slide's title from the frame's top and its line right under it", () => {
+    expect(
+      placedBoxes(
+        [
+          { kind: "title", text: "The quarter closed without an open dispute" },
+          {
+            kind: "text",
+            text: "Every disputed invoice was settled before the end of September.",
+          },
+        ],
+        false
+      )
+    ).toEqual({
+      name: "statement",
+      title: { x: 67, y: 67, w: 611, h: 106 },
+      body: [{ index: 1, box: { x: 67, y: 196, w: 611, h: 257 } }],
+    });
+  });
 });
 
 describe("regionOf", () => {
@@ -450,6 +471,44 @@ describe("listItemBoxes", () => {
   });
 });
 
+describe("figureNumber", () => {
+  // C14-4: a slide figure read "195,200.00"; the prototype shows whole units, rounded.
+  it("rounds a slide figure to whole units", () => {
+    const data: ChartData = {
+      kind: "kpi",
+      title: "Collected",
+      columns: [sgd],
+      rows: [{ total: 19_520_050 }],
+      datasets: ["placeholder.records"],
+      readAt: "2026-10-27T09:00:00.000Z",
+      truncated: false,
+    };
+
+    expect(
+      figureNumber(data, { x: 432, y: 58, w: 480, h: 405 }, false)
+    ).toMatchObject({ number: "195,201", code: "SGD" });
+  });
+
+  // C14-4 class (fix round 1): a column whose currency comes per row showed "€123,456.50".
+  it("rounds a per-row currency figure to whole units", () => {
+    const data: ChartData = {
+      kind: "kpi",
+      title: "Collected",
+      columns: [
+        { key: "total", label: "Collected", type: "money", currencyKey: "cur" },
+      ],
+      rows: [{ total: 12_345_650, cur: "EUR" }],
+      datasets: ["placeholder.records"],
+      readAt: "2026-10-27T09:00:00.000Z",
+      truncated: false,
+    };
+
+    expect(
+      figureNumber(data, { x: 432, y: 58, w: 480, h: 405 }, false)
+    ).toMatchObject({ number: "123,457", code: "EUR" });
+  });
+});
+
 describe("figureBoxes", () => {
   it("centers an unpaired figure's number, label and caption", () => {
     expect(figureBoxes({ x: 432, y: 58, w: 225, h: 405 }, 42, false)).toEqual({
@@ -498,7 +557,8 @@ const sgd = {
 describe("comparisonMax", () => {
   // P14-45: one scale only for one measure; a sum beside a count, or two currencies, would flatten one chart.
   it.each([
-    ["two SGD sums", sgd, 600, 600],
+    // C14-1: the shared top is the screen's rounded axis top, so the export's matches it.
+    ["two SGD sums", sgd, 2600, 3000],
     [
       "an SGD sum and a count",
       { key: "count", label: "Invoices issued", type: "number" } as const,

@@ -43,26 +43,39 @@ const DONUT: ChartData = {
 };
 
 describe("pptxChartOf", () => {
-  it("answers month labels and dollars for a two-series money bar", () => {
+  // C14-3: the export wrote "May 2026" and "2,500.00" where the screen writes "May 26" and "2.6k".
+  it("answers the screen's compact month labels and dollars for a two-series money bar", () => {
     expect(pptxChartOf(BAR)).toMatchObject({
       type: "bar",
-      formatCode: "#,##0.00",
+      formatCode: '[<1000]#,##0;#,##0,"k"',
       series: [
         {
           name: "Billed",
-          labels: [
-            "May 2026",
-            "Jun 2026",
-            "Jul 2026",
-            "Aug 2026",
-            "Sept 2026",
-            "Oct 2026",
-          ],
+          labels: ["May 26", "Jun 26", "Jul 26", "Aug 26", "Sept 26", "Oct 26"],
           values: [34900, 34901, 34902, 34903, 34904, 34905],
         },
         { name: "Paid" },
       ],
     });
+  });
+
+  // C14-3: a code from the currency digits, or "k" on a 250 step, would write "0k, 0k, 1k"; round 1:
+  // the tick text equals the screen's (`axisTickFormat`), "1k" and "1m" by size.
+  it.each([
+    [2600, '[<1000]#,##0;#,##0,"k"'],
+    [1000, '[<1000]#,##0;#,##0,"k"'],
+    [10000, '[<1000]#,##0;#,##0.0,"k"'],
+    [1_000_000, '[<1000]#,##0;[<1000000]#,##0,"k";#,##0,,"m"'],
+    [4_000_000, '[<1000000]#,##0;#,##0,,"m"'],
+    [0.6, "#,##0.0"],
+  ])("writes a top of %s with %s", (top, formatCode) => {
+    const counts: ChartData = {
+      ...BAR,
+      columns: [{ key: "n", label: "Count", type: "number" }],
+      rows: [{ x: "2026-05-01", n: top }],
+    };
+
+    expect(pptxChartOf(counts).formatCode).toBe(formatCode);
   });
 
   it("keeps a missing value null, never 0 (R-7)", () => {
@@ -76,10 +89,15 @@ describe("pptxChartOf", () => {
     ]);
   });
 
-  // Review Focus 1: comparisonMax is in minor units; PowerPoint plots SGD.
-  it("scales a shared money maximum to the currency unit", () => {
-    expect(pptxChartOf(BAR, 3490500).valueMax).toBe(34905);
-    expect(pptxChartOf(DONUT, 7).valueMax).toBeUndefined();
+  // Review Focus 1: comparisonMax is in minor units; PowerPoint plots SGD. C14-1: the screen's rounded axis.
+  it("scales the screen's value axis to the currency unit", () => {
+    expect(pptxChartOf(BAR).axis).toEqual({ min: 0, max: 40000, step: 10000 });
+    expect(pptxChartOf(BAR, 7_000_000).axis).toEqual({
+      min: 0,
+      max: 80000,
+      step: 20000,
+    });
+    expect(pptxChartOf(DONUT, 7).axis).toBeUndefined();
   });
 
   it("answers a doughnut with its category labels", () => {
@@ -87,6 +105,7 @@ describe("pptxChartOf", () => {
       type: "doughnut",
       formatCode: "#,##0",
       series: [{ name: "Invoices", labels: ["Paid", "Open"], values: [7, 3] }],
+      axis: undefined,
     });
   });
 

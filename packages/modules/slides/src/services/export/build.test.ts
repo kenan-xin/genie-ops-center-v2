@@ -20,6 +20,7 @@ import {
   listItemBoxes,
   placedBoxes,
   slideFrame,
+  titleRow,
   visualLook,
 } from "../../presentation/slide-layout.ts";
 import type { ShownSlide } from "../../presentation/views.ts";
@@ -86,7 +87,7 @@ const cellOf = (xml: string, text: string) =>
     "s"
   ).exec(xml)?.[0] ?? "";
 
-/** Where the screen draws one element, so where the export must: its box, a chart's plot above its 20 px source row, a table's 24 px title row, a figure's number, a Priorities list's first circle. */
+/** Where the screen draws one element, so where the export must: its box, a chart's plot between its 24 px title row and its 20 px source row, a table's 24 px title row, a figure's number, a Priorities list's first circle. */
 function drawnAt(
   shown: ShownSlide,
   first: boolean,
@@ -110,9 +111,21 @@ function drawnAt(
       .number;
   }
 
-  if (element.kind === "chart") return { ...box, h: box.h - 20 };
+  // Every fixture chart is money, so its title row shows its currency (C14-2).
+  if (element.kind === "chart" && "data" in element) {
+    const row = titleRow({
+      title: visualLook(shown.elements, index).titleHidden
+        ? null
+        : element.data.title,
+      unit: "SGD",
+      width: box.w,
+      fullText: true,
+    });
 
-  if (element.kind === "table") return { ...box, h: 24 };
+    return { ...box, y: box.y + row.h, h: box.h - row.h - 20 };
+  }
+
+  if (element.kind === "table") return { ...box, h: 23 };
 
   return box;
 }
@@ -284,15 +297,136 @@ describe("buildDeckPptx", () => {
     expect(xml).toMatch(
       /<a:rPr[^>]*baseline="30000"[^>]*>(?:(?!<\/a:r>).)*<a:t>SGD <\/a:t>/s
     );
-    expect(xml).toContain("<a:t>2,500.00</a:t>");
+    // C14-4: whole units on a slide figure.
+    expect(xml).toContain("<a:t>2,500</a:t>");
+    expect(xml).not.toContain("2,500.00");
   });
 
   // Bug 6: two scales in PowerPoint (P14-17, P14-45); 260,000 cents is SGD 2,600, the plotted unit.
-  it("gives two comparison charts of one measure one value maximum, in the plotted unit", async () => {
+  // C14-1: every chart takes the screen's axis, 2,600 rounded up to 3,000 in steps of 1,000.
+  it("gives every chart the screen's rounded value axis, in the plotted unit", async () => {
     const deck = await exported(eightLayoutSlides);
 
-    expect(await deck.chart(2)).toContain('<c:max val="2600"/>');
-    expect(await deck.chart(3)).toContain('<c:max val="2600"/>');
+    const charts = await Promise.all([1, 2, 3].map((n) => deck.chart(n)));
+
+    for (const [n, chart] of charts.entries()) {
+      expect(chart, `chart ${n + 1}`).toContain('<c:max val="3000"/>');
+      expect(chart, `chart ${n + 1}`).toContain('<c:min val="0"/>');
+      expect(chart, `chart ${n + 1}`).toContain('<c:majorUnit val="1000"/>');
+    }
+  });
+
+  // C14-2, C14-3: the unit once, at the top right of the chart box, as the screen writes it.
+  it("writes a money chart's currency once at the top right of its box, and its title in the row's left", async () => {
+    const xml = await (await exported(eightLayoutSlides)).slide(5);
+
+    // "SGD" at 12 px is 27 px wide; the title takes the rest less the 8 px gap, in one 23 px line.
+    expect(partAt(xml, { x: 630, y: 115, w: 27, h: 23 })).toMatch(
+      /algn="r".*<a:t>SGD<\/a:t>/s
+    );
+    expect(partAt(xml, { x: 432, y: 115, w: 190, h: 23 })).toContain(
+      "<a:t>Invoiced by month</a:t>"
+    );
+  });
+
+  // Fix round 1: a fixed 24 px title box let a three-line title run over the plot and the legend.
+  it("sizes a long chart title's row from its lines and puts the chart under it", async () => {
+    const harbor =
+      "Harbor Foods, average days from invoice to payment by month";
+
+    const comparison = eightLayoutSlides[4]!;
+
+    const long: ShownSlide = {
+      ...comparison,
+      elements: comparison.elements.map((element) =>
+        "data" in element
+          ? Object.assign({}, element, {
+              data: Object.assign({}, element.data, { title: harbor }),
+            })
+          : element
+      ),
+    };
+
+    const xml = await (await exported([eightLayoutSlides[0]!, long])).slide(2);
+
+    // Three lines of 15 px at 1.5 in 190 px: 68 px, then the 4 px gap; the plot keeps 292 - 72 - 20.
+    expect(partAt(xml, { x: 432, y: 115, w: 190, h: 68 })).toContain(harbor);
+    expect(xml).toMatch(
+      new RegExp(
+        `<p:graphicFrame>.*?${place({ x: 432, y: 187, w: 225, h: 200 })}`,
+        "s"
+      )
+    );
+  });
+
+  // Fix round 2: a stored box's title is one cut line on screen; PowerPoint wrapped it over the plot,
+  // and a long title in a short box left the chart no height.
+  it("keeps a stored box's chart and table titles on one line, cut as the screen cuts them", async () => {
+    const long = "Harbor Foods, average days from invoice to payment by month";
+    const chart = eightLayoutSlides[2]!.elements[2]!;
+    const table = eightLayoutSlides[5]!.elements[2]!;
+
+    const stored = (element: typeof chart, box: Box) =>
+      "data" in element
+        ? Object.assign({}, element, {
+            box,
+            data: Object.assign({}, element.data, { title: long }),
+          })
+        : element;
+
+    const shown: ShownSlide = {
+      id: "stored",
+      elements: [
+        { kind: "title", text: "Claim" },
+        stored(chart, { x: 400, y: 100, w: 240, h: 200 }),
+        stored(table, { x: 660, y: 100, w: 260, h: 300 }),
+      ],
+    };
+
+    const short: ShownSlide = {
+      ...shown,
+      elements: [
+        shown.elements[0]!,
+        stored(chart, { x: 400, y: 100, w: 240, h: 40 }),
+        stored(chart, { x: 660, y: 100, w: 240, h: 40 }),
+      ],
+    };
+
+    const deck = await exported([eightLayoutSlides[0]!, shown, short]);
+    const xml = await deck.slide(2);
+
+    // 240 - 27 ("SGD") - 8 px: 205 px for the title; the table's title takes the box's 260 px.
+    for (const box of [
+      { x: 400, y: 100, w: 205, h: 23 },
+      { x: 660, y: 100, w: 260, h: 23 },
+    ]) {
+      expect(partAt(xml, box)).toMatch(
+        /wrap="none".*<a:t>Harbor Foods[^<]*…<\/a:t>/s
+      );
+    }
+
+    // The 40 px box: a 27 px row and the 20 px source row leave the plot nothing; it keeps 1 px.
+    const frames = (await deck.slide(3)).match(
+      /<p:graphicFrame>.*?<\/p:graphicFrame>/gs
+    );
+
+    expect(frames).toHaveLength(2);
+
+    for (const frame of frames ?? []) {
+      expect(frame).toContain(`cy="${emu(1)}"`);
+    }
+  });
+
+  // C14-7: the table floated to the middle of its box, 50 px under its title.
+  it("puts a table right under its title row", async () => {
+    const xml = await (await exported(eightLayoutSlides)).slide(6);
+
+    expect(xml).toMatch(
+      new RegExp(
+        `<p:graphicFrame>.*<a:off x="${emu(432)}" y="${emu(85)}"/>`,
+        "s"
+      )
+    );
   });
 
   // Bug 10: both comparison charts in the accent (P14-51).
@@ -343,7 +477,7 @@ describe("buildDeckPptx", () => {
     expect(partAt(xml, { x: 43, y: 265, w: 298, h: 217 })).toMatch(
       /prst="rect".*srgbClr val="FFFFFF"/s
     );
-    expect(xml).toContain(place({ x: 432, y: 58, w: 480, h: 24 }));
+    expect(xml).toContain(place({ x: 432, y: 58, w: 480, h: 23 }));
   });
 
   // Bug 11 (P14-12, P14-46): 13 px bold header in the secondary text, 15 px rows; a stored box keeps 12 px.

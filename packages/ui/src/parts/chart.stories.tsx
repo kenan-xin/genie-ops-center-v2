@@ -674,6 +674,18 @@ const longTicksPlay: NonNullable<Story["play"]> = async ({ canvasElement }) => {
   await expect(Math.min(...lefts)).toBeGreaterThanOrEqual(
     plot.getBoundingClientRect().left
   );
+
+  // C14-1, C14-2: SGD 582 at the top steps 0, 200, 400, 600, bare, with "SGD" once above the plot.
+  const yTicks = [
+    ...canvasElement.querySelectorAll(
+      ".recharts-yAxis-tick-labels .recharts-cartesian-axis-tick-value"
+    ),
+  ].map((tick) => tick.textContent);
+
+  await expect(yTicks).toEqual(["0", "200", "400", "600"]);
+  await expect(
+    canvasElement.querySelector("[data-chart-unit]")
+  ).toHaveTextContent("SGD");
 };
 
 export const SlideChart: Story = {
@@ -1055,7 +1067,9 @@ export const HiddenTitleKeepsTheName: Story = {
       name: "Invoiced and collected",
     });
 
-    const title = figure.querySelector<HTMLElement>(":scope > div")!;
+    const title = document.getElementById(
+      figure.getAttribute("aria-labelledby")!
+    )!;
 
     await expect(title).toHaveTextContent("Invoiced and collected");
     await expect(title.getBoundingClientRect().width).toBeLessThanOrEqual(1);

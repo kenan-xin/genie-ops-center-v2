@@ -5,7 +5,9 @@ import {
   chartRows,
   formatChartValue,
   isChartEmpty,
+  axisTickFormat,
   kpiChange,
+  niceAxis,
   type ChartColumn,
   type ChartData,
 } from "./chart-data.ts";
@@ -25,6 +27,60 @@ const month: ChartColumn = { ...date, bucket: "month" };
 const week: ChartColumn = { ...date, bucket: "week" };
 
 const boolean: ChartColumn = { key: "paid", label: "Paid", type: "boolean" };
+
+describe("niceAxis", () => {
+  // C14-1: 2,600 split in four gave "650, 1.3k, 2k, 2.6k", where "2k" stood for 1,950.
+  it.each([
+    ["a top of 2,600", [1200, 2600], 0, 3000, [0, 1000, 2000, 3000]],
+    ["the prototype's days", [38, 53], 0, 60, [0, 20, 40, 60]],
+    ["a fraction", [0.6], 0, 0.6, [0, 0.2, 0.4, 0.6]],
+    ["a loss", [-300, 600], -500, 750, [-500, -250, 0, 250, 500, 750]],
+    ["only zeros", [0, 0], 0, 1, [0, 1]],
+  ] as const)("steps %s evenly", (_, values, min, max, ticks) => {
+    expect(niceAxis(values)).toEqual({
+      min,
+      max,
+      step: ticks[1]! - ticks[0]!,
+      ticks,
+    });
+  });
+});
+
+describe("axisTickFormat", () => {
+  // C14-3 fix round 1: one rule writes a tick on screen and in PowerPoint, "1k" and "1m" by size,
+  // and per unit the decimals its ticks need, so one axis reads alike.
+  it.each([
+    [
+      "0 to 10k by 2.5k",
+      [0, 2500, 5000, 7500, 10000],
+      ["0", "2.5k", "5.0k", "7.5k", "10.0k"],
+      '[<1000]#,##0;#,##0.0,"k"',
+    ],
+    [
+      "0 to 1k by 250",
+      [0, 250, 500, 750, 1000],
+      ["0", "250", "500", "750", "1k"],
+      '[<1000]#,##0;#,##0,"k"',
+    ],
+    [
+      "0 to 1m by 250k",
+      [0, 250_000, 500_000, 750_000, 1_000_000],
+      ["0", "250k", "500k", "750k", "1m"],
+      '[<1000]#,##0;[<1000000]#,##0,"k";#,##0,,"m"',
+    ],
+    [
+      "0 to 0.6 by 0.2",
+      [0, 0.2, 0.4, 0.6],
+      ["0.0", "0.2", "0.4", "0.6"],
+      "#,##0.0",
+    ],
+  ] as const)("writes %s", (_, ticks, texts, code) => {
+    const format = axisTickFormat(ticks);
+
+    expect(ticks.map(format.text)).toEqual(texts);
+    expect(format.code).toBe(code);
+  });
+});
 
 describe("chartRows", () => {
   it("turns a chart's data into labelled rows as the chart shows them", () => {

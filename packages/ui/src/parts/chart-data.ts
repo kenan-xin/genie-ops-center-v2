@@ -177,6 +177,136 @@ export function formatChartValue(
   }).format(Number(value));
 }
 
+/** The one currency of every value column, which a slide axis writes once (C14-2); none for counts or mixed currencies. */
+export function chartUnit(columns: readonly ChartColumn[]): string | undefined {
+  const currencies = new Set(
+    columns.map((column) =>
+      column.type === "money" ? column.currency : undefined
+    )
+  );
+
+  const [only] = currencies;
+
+  return currencies.size === 1 ? only : undefined;
+}
+
+/** The tick steps an axis takes: 1, 2, 2.5 or 5 times a power of ten. */
+const NICE_STEPS = [1, 2, 2.5, 5, 10];
+
+/** Steps of a fraction, such as 0.2, read 0.2 and not 0.20000000000000004. */
+const exact = (value: number) => Number(value.toPrecision(12));
+
+export type ValueAxis = {
+  readonly min: number;
+  readonly max: number;
+  readonly step: number;
+  readonly ticks: readonly number[];
+};
+
+/**
+ * A value axis in about four even steps of 1, 2, 2.5 or 5 times a power of ten, from 0 (or below
+ * it for a loss) to the first whole step at or above the largest value (C14-1). The screen and the
+ * export read the same axis, so their ticks agree.
+ */
+export function niceAxis(values: readonly number[]): ValueAxis {
+  const low = Math.min(0, ...values);
+  const high = Math.max(0, ...values);
+
+  // Only zeros: one step, so the axis still shows 0 on its foot.
+  if (high === low) return { min: 0, max: 1, step: 1, ticks: [0, 1] };
+
+  const raw = (high - low) / 4;
+  const power = 10 ** Math.floor(Math.log10(raw));
+
+  const step = exact(
+    (NICE_STEPS.find((nice) => nice * power >= raw) ?? 10) * power
+  );
+
+  const first = Math.floor(exact(low / step));
+  const last = Math.ceil(exact(high / step));
+
+  return {
+    min: exact(first * step),
+    max: exact(last * step),
+    step,
+    ticks: Array.from({ length: last - first + 1 }, (_, at) =>
+      exact((first + at) * step)
+    ),
+  };
+}
+
+/** The units a tick takes by its size, as `Intl` compact writes them: "250", "1k", "1m". */
+const TICK_UNITS = [
+  { at: 1, suffix: "", commas: "" },
+  { at: 1e3, suffix: "k", commas: "," },
+  { at: 1e6, suffix: "m", commas: ",," },
+] as const;
+
+const decimalsOf = (value: number) =>
+  String(exact(value)).split(".")[1]?.length ?? 0;
+
+export type AxisTickFormat = {
+  /** One tick's text on screen. */
+  readonly text: (value: number) => string;
+  /** The same text as an Excel number format, for a PowerPoint value axis. */
+  readonly code: string;
+};
+
+/**
+ * How an axis writes its ticks, on screen and in PowerPoint alike (C14-3): each tick in the unit
+ * of its size ("1k", "1m"), and per unit the decimals its ticks need, so one axis reads
+ * "2.5k, 5.0k, 7.5k". An Excel format has no decimals that come and go per value, so the screen
+ * keeps them too. `ticks` are in the plotted unit.
+ */
+export function axisTickFormat(ticks: readonly number[]): AxisTickFormat {
+  const unitOf = (value: number) =>
+    TICK_UNITS.findLast((unit) => value >= unit.at) ?? TICK_UNITS[0];
+
+  const used = TICK_UNITS.filter((unit) =>
+    ticks.some((tick) => unitOf(tick) === unit)
+  );
+
+  const decimals = new Map(
+    used.map((unit) => [
+      unit,
+      Math.max(
+        0,
+        ...ticks.flatMap((tick) =>
+          unitOf(tick) === unit ? [decimalsOf(tick / unit.at)] : []
+        )
+      ),
+    ])
+  );
+
+  const formats = new Map(
+    used.map((unit) => [
+      unit,
+      new Intl.NumberFormat(LOCALE, {
+        minimumFractionDigits: decimals.get(unit),
+        maximumFractionDigits: decimals.get(unit),
+      }),
+    ])
+  );
+
+  const sections = used.map((unit, at) => {
+    const places = decimals.get(unit) ?? 0;
+    const next = used[at + 1];
+    const digits = places > 0 ? `.${"0".repeat(places)}` : "";
+    const suffix = unit.suffix === "" ? "" : `"${unit.suffix}"`;
+
+    return `${next === undefined ? "" : `[<${next.at}]`}#,##0${digits}${unit.commas}${suffix}`;
+  });
+
+  return {
+    text: (value) => {
+      const unit = unitOf(value);
+
+      return `${formats.get(unit)?.format(value / unit.at) ?? String(value)}${unit.suffix}`;
+    },
+    code: sections.join(";"),
+  };
+}
+
 /** An instant as "27 Oct 2026, 09:06" in the tenant zone. */
 export function formatReadTime(instant: string, timeZone: string): string {
   return new Intl.DateTimeFormat(LOCALE, {

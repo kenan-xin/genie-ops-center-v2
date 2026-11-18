@@ -55,10 +55,14 @@ import {
   type AxisScale,
 } from "./chart-axis.ts";
 import {
+  axisTickFormat,
   chartCaption,
+  chartUnit,
+  currencyDigits,
   formatChartValue,
   isChartEmpty,
   kpiChange,
+  niceAxis,
   type ChartColumn,
   type ChartData,
   type ChartRow,
@@ -153,7 +157,7 @@ const SLIDE_TABLE_VARS: CSSProperties & {
 
 /**
  * A slide's table: always the table layout, whatever the viewport, because the canvas is scaled and
- * not reflowed (F1). It sits in the vertical middle of its box; 10 rows or more draw dense, so 12
+ * not reflowed (F1). It sits right under its title (C14-7); 10 rows or more draw dense, so 12
  * rows fit (P14-12). It has no actions.
  */
 function SlideTable(props: {
@@ -174,7 +178,7 @@ function SlideTable(props: {
       className="flex h-full flex-col overflow-auto"
       style={SLIDE_TABLE_VARS}
     >
-      <table className="my-auto w-full border-collapse leading-tight">
+      <table className="w-full border-collapse leading-tight">
         <caption className="sr-only">{props.label}</caption>
         <thead>
           <tr>
@@ -350,6 +354,9 @@ function useLabelWidth(
   return width;
 }
 
+/** A slide's y labels before their first measure, in canvas px: about "2.5k" at 15 px. */
+const SLIDE_Y_AXIS_GUESS = 32;
+
 /** One x-axis label, or nothing for a point the rule leaves unlabelled (czjw.144). */
 function AxisTick(
   props: Partial<XAxisTickContentProps> & {
@@ -431,6 +438,39 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
     data.map((point) => formatTick(point["x"] ?? null))
   );
 
+  // Even steps on every chart, and the shared top of two compared charts (C14-1).
+  const axis = niceAxis(
+    props.valueMax === undefined
+      ? props.rows.flatMap((row) =>
+          columns.flatMap((column) => {
+            const value = row[column.key] ?? null;
+
+            return value === null ? [] : [Number(value)];
+          })
+        )
+      : [props.valueMax]
+  );
+
+  // A slide writes its one currency once, above the plot, and bare ticks (C14-2) in the export's
+  // rule, so PowerPoint writes the same tick text (C14-3). Mixed currencies keep a code per tick.
+  const unit = chartUnit(columns);
+  const counts = columns.every((column) => column.type === "number");
+  const minor = unit === undefined ? 1 : 10 ** currencyDigits(unit);
+
+  const ticks =
+    props.slide === true && (unit !== undefined || counts)
+      ? axisTickFormat(axis.ticks.map((tick) => tick / minor))
+      : undefined;
+
+  const formatValueTick = (value: number): string =>
+    ticks !== undefined
+      ? ticks.text(value / minor)
+      : columns[0] === undefined
+        ? String(value)
+        : formatChartValue(columns[0], value, { compact: true });
+
+  const valueLabelWidth = useLabelWidth(ref, axis.ticks.map(formatValueTick));
+
   const byKey = new Map(
     columns.map((column, index) => [seriesKey(index), column])
   );
@@ -496,6 +536,8 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
         data={data}
         title={props.title}
         margin={{
+          // The top tick sits on the plot's top edge (C14-1), so half a slide label must fit above it.
+          top: 10,
           left: AXIS_MARGIN,
           // A line's last point sits on the plot's right edge, so half a label must fit beyond
           // it. A bar chart keeps its plot width, so every label that fits today still shows.
@@ -523,22 +565,21 @@ function CartesianPlot(props: ChartProps & { readonly x: ChartColumn }) {
           }
         />
         {/* The 60 px default cut a slide's base-size "SGD 60k". Off a slide, auto width measures
-            the ticks. A slide is scaled with a CSS transform, which the measure reads, so it
-            gets a fixed width in its 960 px canvas units.
-            shortcut: 84 px fits a compact label of 9 characters at 15 px, such as "SGD 1.25M";
-            measure the formatted ticks unscaled if a longer label appears. */}
+            the ticks. A slide is scaled with a CSS transform, which Recharts' measure reads, so
+            it takes the widest formatted tick measured unscaled, plus the tick's 8 px offset and
+            a little room. The explicit ticks keep Recharts from splitting the axis again. */}
         <YAxis
-          width={props.slide === true ? 84 : "auto"}
-          {...(props.valueMax === undefined
-            ? {}
-            : { domain: [0, props.valueMax] satisfies [number, number] })}
+          width={
+            props.slide === true
+              ? Math.ceil(valueLabelWidth ?? SLIDE_Y_AXIS_GUESS) + 12
+              : "auto"
+          }
+          domain={[axis.min, axis.max]}
+          ticks={[...axis.ticks]}
+          interval={0}
           tickLine={false}
           axisLine={false}
-          tickFormatter={(value: number) =>
-            columns[0] === undefined
-              ? String(value)
-              : formatChartValue(columns[0], value, { compact: true })
-          }
+          tickFormatter={formatValueTick}
         />
         <ChartTooltip
           content={({ active, payload, label }) => (
@@ -666,6 +707,14 @@ export function Chart(props: ChartProps) {
   const titleId = useId();
   const slide = props.slide === true;
 
+  // A slide's cartesian chart names its one currency once, at the top right (C14-2).
+  const unit =
+    slide &&
+    props.x !== undefined &&
+    (props.kind === "bar" || props.kind === "line" || props.kind === "area")
+      ? chartUnit(props.columns)
+      : undefined;
+
   const table = (
     <ChartTable
       label={props.title}
@@ -730,17 +779,27 @@ export function Chart(props: ChartProps) {
       {/* A small stored slide box has a fixed height, so a wrapped title or source line would push
           the plot out of it; there the title keeps one line and the source line two (czjw.182). A
           frame box shows both in full (`fullText`). */}
-      <div
-        id={titleId}
-        className={
-          props.titleHidden === true
-            ? "sr-only"
-            : slide && props.fullText !== true
-              ? "truncate font-semibold"
-              : "font-semibold"
-        }
-      >
-        {props.title}
+      <div className="flex min-w-0 items-baseline gap-2">
+        <div
+          id={titleId}
+          className={
+            props.titleHidden === true
+              ? "sr-only"
+              : slide && props.fullText !== true
+                ? "min-w-0 flex-1 truncate font-semibold"
+                : "min-w-0 flex-1 font-semibold"
+          }
+        >
+          {props.title}
+        </div>
+        {unit === undefined ? null : (
+          <span
+            data-chart-unit=""
+            className="ml-auto shrink-0 text-xs text-muted-foreground"
+          >
+            {unit}
+          </span>
+        )}
       </div>
       {/* A KPI value stays right under its label (7.4); a plot takes the rest of the box. */}
       {slide && props.kind !== "kpi" ? (

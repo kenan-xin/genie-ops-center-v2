@@ -1,7 +1,12 @@
 import { contrastRatio } from "@genie/core/features/branding";
 import type { ChartData } from "@genie/ui";
-import { formatChartValue } from "@genie/ui/chart-data";
+import {
+  currencyDigits,
+  formatChartValue,
+  niceAxis,
+} from "@genie/ui/chart-data";
 import { chartColors } from "@genie/ui/tokens";
+import { truncate } from "es-toolkit/compat";
 import type { CSSProperties } from "react";
 
 import type { Placement, StoredElement } from "../content.ts";
@@ -297,6 +302,39 @@ const TITLE_SLIDE_GAP =
 
 type TitleSlideBoxes = { readonly title: Box; readonly text: Box };
 
+/** Where the statement frame's line ends (453). */
+const STATEMENT_FOOT = STATEMENT_FRAME.text.y + STATEMENT_FRAME.text.h;
+
+/** The statement stacked from the frame's top, as the prototype's closing slide: the title as tall as its estimated lines, its line right under it (C14-6). */
+function statementBoxes(
+  title:
+    | {
+        readonly text?: string | undefined;
+        readonly style?: ElementStyle | undefined;
+      }
+    | undefined
+): TitleSlideBoxes {
+  const text = title?.text ?? "";
+
+  const px =
+    title?.style?.fontSize ??
+    defaultTextPx("title", "statement", "panel", [text], STATEMENT_FRAME.title);
+
+  const h = Math.min(
+    STATEMENT_FRAME.title.h,
+    Math.ceil(
+      linesOf(text, px, STATEMENT_FRAME.title.w) * px * LINE_HEIGHT.title
+    )
+  );
+
+  const y = STATEMENT_FRAME.title.y + h + TITLE_SLIDE_GAP;
+
+  return {
+    title: { ...STATEMENT_FRAME.title, h },
+    text: { ...STATEMENT_FRAME.text, y, h: STATEMENT_FOOT - y },
+  };
+}
+
 /** The title slide stacked from its foot: the subtitle as tall as its estimated lines, the title right above it (P14-53). */
 function titleSlideBoxes(
   subtitle:
@@ -356,7 +394,9 @@ export function placedBoxes(
   const stacked =
     frame.name === "title"
       ? titleSlideBoxes(elements.find(({ kind }) => kind === "text"))
-      : undefined;
+      : frame.name === "statement"
+        ? statementBoxes(elements.find(({ kind }) => kind === "title"))
+        : undefined;
 
   const title =
     elements.find(({ kind }) => kind === "title")?.box ??
@@ -561,6 +601,10 @@ type FigureNumber = {
   readonly px: number;
 };
 
+const WHOLE_UNITS = new Intl.NumberFormat("en-GB", {
+  maximumFractionDigits: 0,
+});
+
 /** A figure's number, its currency code, and the largest size that fits the box (P14-16). */
 export function figureNumber(
   data: ChartData,
@@ -575,14 +619,27 @@ export function figureNumber(
       ? null
       : (row[column.key] ?? null);
 
-  // A sum over no records has no value; the figure says so, as the chart's empty state did.
+  // The column's one currency, or the row's (`currencyKey`).
+  const currency =
+    column?.type !== "money"
+      ? null
+      : (column.currency ??
+        (column.currencyKey === undefined
+          ? null
+          : (row?.[column.currencyKey] ?? null)));
+
+  // A sum over no records has no value; the figure says so, as the chart's empty state did. An
+  // amount shows whole units, rounded, as the prototype's figures do (C14-4).
   const number =
     value === null || column === undefined || row === undefined
       ? "No data"
-      : formatChartValue(column, value, { row, bare: true });
+      : currency !== null
+        ? WHOLE_UNITS.format(
+            Number(value) / 10 ** currencyDigits(String(currency))
+          )
+        : formatChartValue(column, value, { row, bare: true });
 
-  const code =
-    value === null || column?.type !== "money" ? "" : (column.currency ?? "");
+  const code = value === null || currency === null ? "" : String(currency);
 
   const max = paired ? LOOK_PX.pairNumber : LOOK_PX.bigNumber;
 
@@ -596,6 +653,71 @@ export function figureNumber(
   });
 
   return { number, code, px };
+}
+
+/** A chart or table title on a slide: `font-semibold` at the 15 px base size and its 1.5 line height. */
+const VISUAL_TITLE_PX = TYPE_PX.label;
+
+/** Its line, exact in PowerPoint, whose line multiple scales the font's own line height. */
+export const VISUAL_TITLE_LINE_PX = VISUAL_TITLE_PX * 1.5;
+
+/** The unit beside it: `text-xs`, 12 px on a 16 px line. */
+const UNIT_LINE_PX = 16;
+
+/** A currency code is capitals, wider than the average letter (`AVERAGE_CHARACTER_EM`). */
+const CODE_EM = 0.75;
+
+/** The `gap-2` between the title and the unit, and the `gap-1` under the row. */
+const UNIT_GAP = 8;
+
+const ROW_GAP = 4;
+
+export type TitleRow = {
+  /** The row with its gap: how far the plot or the table moves down. */
+  readonly h: number;
+  /** The title's and the unit's text height. */
+  readonly text: number;
+  readonly titleW: number;
+  readonly unitW: number;
+  /** The title as drawn: in full, or one line cut with "…" in a stored box, as the screen's `truncate`. */
+  readonly label: string;
+};
+
+/**
+ * A chart or table's title row as the screen draws it (C14-2, C14-7): the title wrapped in full in
+ * a frame box and one line in a stored box, the unit at its right, and the gap under the row. A
+ * hidden title takes no room; with no unit either, there is no row.
+ */
+export function titleRow(input: {
+  readonly title: string | null;
+  readonly unit: string | undefined;
+  readonly width: number;
+  readonly fullText: boolean;
+}): TitleRow {
+  const { title, unit, width, fullText } = input;
+
+  const unitW =
+    unit === undefined ? 0 : Math.ceil(unit.length * LOOK_PX.caption * CODE_EM);
+
+  const titleW = unit === undefined ? width : width - unitW - UNIT_GAP;
+
+  const lines =
+    title === null ? 0 : fullText ? linesOf(title, VISUAL_TITLE_PX, titleW) : 1;
+
+  const text = Math.max(
+    Math.ceil(lines * VISUAL_TITLE_LINE_PX),
+    unit === undefined ? 0 : UNIT_LINE_PX
+  );
+
+  const label =
+    title === null || fullText
+      ? (title ?? "")
+      : truncate(title, {
+          length: Math.floor(titleW / (VISUAL_TITLE_PX * AVERAGE_CHARACTER_EM)),
+          omission: "…",
+        });
+
+  return { h: text === 0 ? 0 : text + ROW_GAP, text, titleW, unitW, label };
 }
 
 const THEMED_KINDS: ReadonlySet<ElementKind> = new Set([
@@ -685,8 +807,9 @@ export function comparisonMax(
   );
 
   // A negative value needs the axis below 0, so those charts keep their own scales.
+  // The screen's rounded axis top, so the export's axis matches it (C14-1).
   return Math.min(...values) >= 0 && Math.max(...values) > 0
-    ? Math.max(...values)
+    ? niceAxis(values).max
     : undefined;
 }
 
