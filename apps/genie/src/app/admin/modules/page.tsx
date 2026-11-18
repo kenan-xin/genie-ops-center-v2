@@ -1,7 +1,8 @@
-import { can, coreAdminPermission } from "@genie/core";
+import { can, coreAdminPermission, scopesFor } from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
+import { requireContext } from "../../../context.ts";
 import { renderIfPermitted } from "../../../page-access.tsx";
 import { ModulesRoute } from "./modules-route.tsx";
 
@@ -16,13 +17,15 @@ export async function generateMetadata() {
 /**
  * The Modules screen, behind `core:settings:manage`. The one authorization seam refuses an
  * anonymous or unpermitted request before the screen mounts, and every procedure re-checks it.
- * The holders link to Access only for a caller who holds its key (R-37e).
+ * The holders link to Access only for a caller who holds its key (R-37e). A tenant-wide roles
+ * manager opens a module's sheet from its name (P12-16).
  */
 export default async function ModulesPage() {
   return renderIfPermitted(
     coreAdminPermission("core-modules"),
     async (caller) => {
       const t = await getTranslations("pages");
+      const branding = await requireContext().tenant.branding.get();
 
       return (
         <main>
@@ -35,6 +38,12 @@ export default async function ModulesPage() {
               caller,
               coreAdminPermission("core-access")
             )}
+            canAddAssignments={
+              (await scopesFor(caller, coreAdminPermission("core-access")))
+                .kind === "all"
+            }
+            viewerId={caller.userId}
+            timeZone={branding.defaultTimeZone}
           />
         </main>
       );

@@ -106,8 +106,6 @@
       "description": "The modules this deployment carries. Who can open a module is set in Access.",
       "access": {
         "more": "+{count}",
-        "showAll": "+{count} more assigned to {module}",
-        "title": "Assigned to {module}",
         "group": "{group} (group)",
         "saving": "Saving {module}",
         "whoCanOpen": "Assigned to",

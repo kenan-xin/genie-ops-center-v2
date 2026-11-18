@@ -120,23 +120,9 @@ test("lists every compiled module and switches one off through the confirm dialo
         ).toHaveCount(compiled);
         await expect(toggle).toBeChecked();
 
-        // Access lists the holders that `can()` grants, links to Access and grants nothing here. No
-        // break-glass account (R-39), no erased or banned person, no archived group (R-32).
-        const holders = Number(
-          await sql(
-            `select count(*) from role_assignment a
-               join role r on r.id = a.role_id
-               left join "user" u on a.principal_type = 'user' and u.id = a.principal_id
-               left join "group" g on a.principal_type = 'group' and g.id::text = a.principal_id
-              where 'placeholder:use' = any(r.permissions)
-                and ((u.id is not null and u.is_break_glass = false and u.erased_at is null
-                      and not (u.banned is true and (u.ban_expires is null or u.ban_expires > now())))
-                  or (g.id is not null and g.archived_at is null))`
-          )
-        );
-
-        // A desktop cell names three holders; "+N" opens the full list, one line per role (DR-26).
-        // A phone card has one "Assigned to" row instead, the whole row a link to Access (R-85).
+        // A desktop cell names three holders on one line, then "+N" and an arrow to the Overview
+        // (6wz1.134). A phone card has one "Assigned to" row, the whole row a link to the Overview
+        // (R-85).
         const expectHolderList = async () => {
           if (project === "phone") {
             const who = page.getByRole("link", {
@@ -145,7 +131,7 @@ test("lists every compiled module and switches one off through the confirm dialo
 
             await expect(who).toHaveAttribute(
               "href",
-              "/admin/access?module=placeholder"
+              "/admin/access/overview?module=placeholder"
             );
             await expect(who).not.toContainText("No one yet");
 
@@ -154,25 +140,18 @@ test("lists every compiled module and switches one off through the confirm dialo
 
           await expect(
             page.getByRole("link", { name: "Manage in Access for Placeholder" })
-          ).toHaveAttribute("href", "/admin/access?module=placeholder");
-          await page
-            .getByRole("button", { name: /more assigned to Placeholder$/ })
-            .filter({ visible: true })
-            .click();
-
-          const holderList = page.getByRole("dialog", {
-            name: "Assigned to Placeholder",
-          });
-
-          await expect(holderList.getByRole("listitem")).toHaveCount(holders);
-          await expect(holderList).toContainText(`S2-16 Mixed ${project}`);
-          await page.keyboard.press("Escape");
-          await expect(holderList).toBeHidden();
+          ).toHaveAttribute(
+            "href",
+            "/admin/access/overview?module=placeholder"
+          );
+          await expect(
+            page.getByRole("button", { name: /more assigned to Placeholder$/ })
+          ).toHaveCount(0);
         };
 
         await expectHolderList();
         await expect(
-          // The "+n more assigned to" count opens a read-only list, no action.
+          // Nothing on Modules assigns a role; the module sheet is not open.
           page.getByRole("button", {
             name: /^(?!\+\d+ more assigned to ).*(?:assign|grant)/i,
           })

@@ -28,6 +28,8 @@ export {
 
 export { AddAssignmentSheet } from "./add-assignment-sheet.tsx";
 
+export { ModuleSheet } from "./module-sheet.tsx";
+
 export { PlusIcon } from "../admin/icons.tsx";
 
 export {

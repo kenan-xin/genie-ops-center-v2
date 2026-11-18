@@ -29,6 +29,8 @@ export function useAddAssignment(input: {
     | { readonly type: "user" | "group"; readonly id: string }
     | undefined;
   readonly paths?: InspectorAccess["paths"];
+  /** The module sheet's module: Role lists only its roles (P12-16). */
+  readonly moduleId?: string | undefined;
 }): AddAssignmentHost | undefined {
   const queryClient = useQueryClient();
 
@@ -55,6 +57,7 @@ export function useAddAssignment(input: {
       roles: roles.data ?? [],
       catalogue: catalogue.data ?? [],
       advanced: advanced.data ?? { core: [], record: [], custom: [] },
+      moduleId: input.moduleId,
     };
 
     return input.paths === undefined || input.recipient === undefined
@@ -64,7 +67,14 @@ export function useAddAssignment(input: {
           paths: input.paths,
           recipient: input.recipient,
         });
-  }, [roles.data, catalogue.data, advanced.data, input.paths, input.recipient]);
+  }, [
+    roles.data,
+    catalogue.data,
+    advanced.data,
+    input.paths,
+    input.recipient,
+    input.moduleId,
+  ]);
 
   const write = useAdminWrite({
     write: (add: AddAssignmentInput) =>
@@ -73,8 +83,8 @@ export function useAddAssignment(input: {
         scope: add.scope,
         recipients: add.recipients.map(({ type, id }) => ({ type, id })),
       }),
-    // The paths, the Overview, the group card's count and the roles' counts all change; the navigation can too.
-    invalidate: [["access"], ["groups"], ["group"], ["roles"]],
+    // The paths, the Overview, the group card's count, the roles' counts and the Modules Access cell all change; the navigation can too.
+    invalidate: [["access"], ["groups"], ["group"], ["roles"], ["modules"]],
     refresh: true,
     saved: (result, add) =>
       addedMessage(

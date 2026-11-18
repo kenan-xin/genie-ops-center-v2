@@ -30,10 +30,6 @@ export type ModuleRefusal = {
 export type AccessLabels = {
   /** The visible count of holders the cell does not name, for example "+12". */
   readonly more: (count: number) => string;
-  /** The accessible name of that count; it starts with the visible text. */
-  readonly showAll: (count: number, moduleName: string) => string;
-  /** The title of the full list, and the name of the list in the cell. */
-  readonly title: (moduleName: string) => string;
   readonly group: (groupName: string) => string;
   /** The name of the spinner beside an enable switch while its call runs. */
   readonly saving: (moduleName: string) => string;
@@ -59,10 +55,15 @@ export type ModulesScreenProps = {
   readonly onSwitch: (moduleId: string, enabled: boolean) => void;
   readonly onCategory: (moduleId: string, categoryId: string | null) => void;
   /**
-   * The link to Access on one module (R-85). The host passes it only to a viewer who holds
-   * `core:roles:manage`; without it the screen shows the holders and no link (R-37e).
+   * The link to the Overview filtered to one module (R-85, P12-10). The host passes it only to a
+   * viewer who holds `core:roles:manage`; without it the screen shows the holders and no link (R-37e).
    */
   readonly manageAccessHref?: ((moduleId: string) => string) | undefined;
+  /**
+   * Opens the module's sheet from its name (P12-16). The host passes it only to a viewer who holds
+   * `core:roles:manage` tenant-wide (P12-2); without it the name is plain text.
+   */
+  readonly onOpenModule?: ((moduleId: string) => void) | undefined;
   readonly settingsHref: string;
   readonly accessLabels: AccessLabels;
   readonly searchLabel: string;

@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  Button,
   ConfirmDialog,
   DataTable,
   focusRing,
@@ -10,10 +9,6 @@ import {
   InputGroupAddon,
   InputGroupInput,
   InputGroupText,
-  Popover,
-  PopoverContent,
-  PopoverTitle,
-  PopoverTrigger,
   Select,
   Spinner,
   SelectContent,
@@ -27,7 +22,7 @@ import {
   TooltipTrigger,
 } from "@genie/ui";
 import { uniqBy } from "es-toolkit";
-import { ChevronRightIcon } from "lucide-react";
+import { ArrowUpRightIcon, ChevronRightIcon } from "lucide-react";
 import { Fragment, useId, useState, type ReactNode } from "react";
 
 import { SearchIcon } from "../admin/icons.tsx";
@@ -76,12 +71,27 @@ function Description({ module }: { readonly module: ModuleView }) {
   );
 }
 
-function Identity({ module }: { readonly module: ModuleView }) {
+function Identity(props: {
+  readonly module: ModuleView;
+  readonly onOpen?: (() => void) | undefined;
+}) {
+  const { module } = props;
+
   return (
     <span className="grid max-w-sm min-w-0 gap-0.5">
       {/* The desktop capture sets the id in quiet mono beside the name. */}
       <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-        <span>{module.displayName}</span>
+        {props.onOpen === undefined ? (
+          <span>{module.displayName}</span>
+        ) : (
+          <button
+            type="button"
+            className={`text-start font-medium underline-offset-4 hover:underline ${focusRing}`}
+            onClick={props.onOpen}
+          >
+            {module.displayName}
+          </button>
+        )}
         <ModuleId module={module} />
         {offPill(module)}
       </span>
@@ -215,8 +225,8 @@ function WhoCanOpen(props: {
 
 /**
  * Read-only: who holds a role carrying `<id>:use`. A switched-off module keeps them, muted (R-86).
- * The cell names three, groups first, and "+N" opens the full list with each role (DR-26).
- * Every change lives in Access, which the line links to for a viewer who may open it (R-85, R-37e).
+ * One line: three names, groups first, then "+N" as text, then an arrow to the Overview filtered to
+ * the module for a viewer who may open it (6wz1.134, `modules.png`, R-85, R-37e).
  */
 function Access(props: {
   readonly module: ModuleView;
@@ -225,49 +235,32 @@ function Access(props: {
 }) {
   const { module, labels } = props;
   const { principals, hidden } = namedHolders(module);
-  const name = (holder: ModuleHolderView) => holderName(holder, labels);
 
   return (
     <div
-      className={`grid gap-1 text-sm ${module.enabled ? "" : "text-muted-foreground"}`}
+      className={`flex min-w-0 items-center gap-1.5 text-sm ${module.enabled ? "" : "text-muted-foreground"}`}
     >
-      {module.holders.length === 0 ? (
-        <p className="text-muted-foreground">Not assigned to anyone yet</p>
+      {principals.length === 0 ? (
+        <span className="truncate text-muted-foreground">
+          Not assigned to anyone yet
+        </span>
       ) : (
-        <div className="flex flex-wrap items-center gap-x-2">
-          <span>{holderList(principals, labels)}</span>
-          {hidden > 0 ? (
-            <Popover>
-              <PopoverTrigger
-                render={<Button variant="ghost" size="lg" />}
-                aria-label={labels.showAll(hidden, module.displayName)}
-              >
-                <span className="tabular-nums">{labels.more(hidden)}</span>
-              </PopoverTrigger>
-              <PopoverContent align="start">
-                <PopoverTitle>{labels.title(module.displayName)}</PopoverTitle>
-                <ul className="grid max-h-72 gap-0.5 overflow-y-auto">
-                  {module.holders.map((holder) => (
-                    // A principal holding the key through two roles appears once per role.
-                    <li
-                      key={`${holder.principalType}:${holder.principalId}:${holder.roleName}`}
-                    >
-                      {name(holder)}{" "}
-                      <span className="text-muted-foreground">
-                        · {holder.roleName}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </PopoverContent>
-            </Popover>
-          ) : null}
-        </div>
+        <span className="truncate">{holderList(principals, labels)}</span>
       )}
+      {hidden > 0 ? (
+        <span className="shrink-0 text-muted-foreground tabular-nums">
+          {labels.more(hidden)}
+        </span>
+      ) : null}
       {props.href === undefined ? null : (
-        <a href={props.href} className={linkClass}>
-          {labels.manage}
-          <span className="sr-only"> for {module.displayName}</span>
+        <a
+          href={props.href}
+          className={`inline-flex size-6 shrink-0 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground ${focusRing}`}
+        >
+          <ArrowUpRightIcon aria-hidden="true" className="size-4" />
+          <span className="sr-only">
+            {labels.manage} for {module.displayName}
+          </span>
         </a>
       )}
     </div>
@@ -289,6 +282,12 @@ export function ModulesScreen(props: ModulesScreenProps) {
 
   const closeConfirm = () =>
     setConfirm((current) => ({ ...current, open: false }));
+
+  // A roles manager opens the module's sheet from its name (P12-16).
+  const open = (module: ModuleView) =>
+    props.onOpenModule === undefined
+      ? undefined
+      : () => props.onOpenModule?.(module.id);
 
   const searchId = useId();
   const [query, setQuery] = useState("");
@@ -428,7 +427,9 @@ export function ModulesScreen(props: ModulesScreenProps) {
             {
               id: "module",
               header: "Module",
-              cell: (module) => <Identity module={module} />,
+              cell: (module) => (
+                <Identity module={module} onOpen={open(module)} />
+              ),
             },
             // The capture puts the switch right after the module, under "Status" (G6).
             { id: "enabled", header: "Status", cell: enabledControl },
@@ -439,13 +440,25 @@ export function ModulesScreen(props: ModulesScreenProps) {
           card={{
             // The type scale sits on the line, so the badge and switch center on the name's line.
             titleClassName: "text-base",
-            title: (module) => (
-              <span
-                className={`font-semibold ${module.enabled ? "" : "text-muted-foreground"}`}
-              >
-                {module.displayName}
-              </span>
-            ),
+            title: (module) => {
+              const onOpen = open(module);
+
+              return onOpen === undefined ? (
+                <span
+                  className={`font-semibold ${module.enabled ? "" : "text-muted-foreground"}`}
+                >
+                  {module.displayName}
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className={`font-semibold text-start underline-offset-4 hover:underline ${module.enabled ? "" : "text-muted-foreground"} ${focusRing}`}
+                  onClick={onOpen}
+                >
+                  {module.displayName}
+                </button>
+              );
+            },
             badge: (module) => offPill(module),
             trailing: enabledSwitch,
             detail: (module) => <ModuleId module={module} />,

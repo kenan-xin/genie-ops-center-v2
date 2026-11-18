@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
-import { accessHref } from "../access/access-link.ts";
+import { accessOverviewHref } from "../access/access-link.ts";
 import {
   FIXTURE_CATEGORIES,
   FIXTURE_CONFIG_REFUSAL,
@@ -36,7 +36,7 @@ const meta = {
     categories: FIXTURE_CATEGORIES,
     onSwitch: fn(),
     onCategory: fn(),
-    manageAccessHref: (id: string) => accessHref({ module: id }),
+    manageAccessHref: (id: string) => accessOverviewHref({ module: id }),
     settingsHref: "/admin/settings",
     searchLabel: "Search modules",
     noMatch: {
@@ -46,8 +46,6 @@ const meta = {
     },
     accessLabels: {
       more: (count) => `+${count}`,
-      showAll: (count, module) => `+${count} more assigned to ${module}`,
-      title: (module) => `Assigned to ${module}`,
       group: (group) => `${group} (group)`,
       saving: (module) => `Saving ${module}`,
       whoCanOpen: "Assigned to",
@@ -330,40 +328,51 @@ export const SwitchedOffKeepsHolders: Story = {
 };
 
 /**
- * Fifteen holders: the table cell names three, groups first, and "+12" opens the full list with
- * each holder's role (DR-26). The keyboard reaches and opens it.
+ * T9-a (6wz1.134, `modules.png`): fifteen holders make one line: three names, groups first, "+12"
+ * as text, and an arrow link to the Overview. No list opens here, and no text link.
  */
-export const ManyHolders: Story = {
+export const AccessCellIsOneLine: Story = {
   args: { modules: [FIXTURE_CROWDED] },
   play: async ({ canvas }) => {
-    const area = within(canvas.getByRole("table", { name: "Modules" }));
+    const row = within(canvas.getByRole("row", { name: /Crowded/ }));
 
-    await expect(
-      area.getByText("Night shift (group), Finance managers (group), Person 1")
-    ).toBeInTheDocument();
-
-    const more = area.getByRole("button", {
-      name: "+12 more assigned to Crowded",
-    });
-
-    await expect(more).toHaveTextContent("+12");
-
-    // The category picker comes just before the cell: one Tab reaches the trigger, Enter opens it.
-    area.getByRole("combobox", { name: "Category for Crowded" }).focus();
-    await userEvent.tab();
-    await expect(more).toHaveFocus();
-    await userEvent.keyboard("{Enter}");
-
-    const popup = within(
-      await screen.findByRole("dialog", { name: "Assigned to Crowded" })
+    const names = row.getByText(
+      "Night shift (group), Finance managers (group), Person 1"
     );
 
-    await expect(popup.getAllByRole("listitem")).toHaveLength(15);
-    await expect(popup.getByText("Person 13")).toBeInTheDocument();
+    const more = row.getByText("+12", { exact: true });
 
-    await userEvent.keyboard("{Escape}");
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    await expect(more).toHaveFocus();
+    const link = row.getByRole("link", {
+      name: "Manage in Access for Crowded",
+    });
+
+    await expect(link).toHaveAttribute(
+      "href",
+      "/admin/access/overview?module=crowded"
+    );
+    await expect(
+      row.queryByRole("button", { name: /more assigned to/ })
+    ).toBeNull();
+    await expect(
+      row.queryByText("Manage in Access", {
+        exact: true,
+        ignore: "script, style, .sr-only",
+      })
+    ).toBeNull();
+    // One line: the count and the arrow sit on the names' line.
+    const top = names.getBoundingClientRect().top;
+
+    await expect(Math.abs(more.getBoundingClientRect().top - top)).toBeLessThan(
+      8
+    );
+    await expect(names.getBoundingClientRect().height).toBeLessThan(24);
+    await expect(
+      Math.abs(
+        link.getBoundingClientRect().top +
+          link.getBoundingClientRect().height / 2 -
+          (top + names.getBoundingClientRect().height / 2)
+      )
+    ).toBeLessThan(6);
   },
 };
 
@@ -381,7 +390,10 @@ export const ManyHoldersOnPhone: Story = {
       name: /^Assigned to Crowded/,
     });
 
-    await expect(who).toHaveAttribute("href", "/admin/access?module=crowded");
+    await expect(who).toHaveAttribute(
+      "href",
+      "/admin/access/overview?module=crowded"
+    );
     await expect(who).toHaveTextContent(
       "Night shift (group), Finance managers (group), Person 1 +12"
     );
@@ -390,6 +402,27 @@ export const ManyHoldersOnPhone: Story = {
     await expect(who.getBoundingClientRect().width).toBeGreaterThanOrEqual(
       list.getByRole("listitem").getBoundingClientRect().width - 1
     );
+  },
+};
+
+/** T9-b (screen half): for a roles manager the module's name opens its sheet. */
+export const NameOpensTheModuleSheet: Story = {
+  args: { onOpenModule: fn() },
+  play: async ({ args, canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Modules" }));
+
+    await userEvent.click(table.getByRole("button", { name: "Fixture" }));
+    await expect(args.onOpenModule).toHaveBeenCalledWith("fixture");
+  },
+};
+
+/** T9-d (Review Focus 1): without `onOpenModule` the name is plain text, on desktop and phone. */
+export const NoModuleSheetWithoutRolesKey: Story = {
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Modules" }));
+
+    await expect(table.getByText("Fixture", { exact: true })).toBeVisible();
+    await expect(table.queryByRole("button", { name: "Fixture" })).toBeNull();
   },
 };
 
@@ -430,7 +463,7 @@ export const NobodyHolds: Story = {
     ).toBeInTheDocument();
     await expect(
       row.getByRole("link", { name: "Manage in Access for Reporting exports" })
-    ).toHaveAttribute("href", "/admin/access?module=exports");
+    ).toHaveAttribute("href", "/admin/access/overview?module=exports");
   },
 };
 
@@ -453,7 +486,9 @@ export const NoAssignControl: Story = {
     );
 
     await expect([...hrefs]).toEqual(
-      FIXTURE_MODULES.map((module) => `/admin/access?module=${module.id}`)
+      FIXTURE_MODULES.map(
+        (module) => `/admin/access/overview?module=${module.id}`
+      )
     );
   },
 };
