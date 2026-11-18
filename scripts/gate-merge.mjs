@@ -13,7 +13,8 @@
 // It refuses to start while another gate or e2e run is active on this machine
 // (other_gate_runs in gate-preflight-lib.sh), because two gates at once stop
 // each other's tasks through shared Docker and host resources (xok3.27).
-// GATE_ALLOW_CONCURRENT=1 skips that check.
+// GATE_ALLOW_CONCURRENT=1 skips that check; then also set GATE_PARALLEL=1
+// (genie-ops-center-v2-rq9).
 // It gives each failed e2e test one retry (E2E_RETRIES, default 1), so that one
 // flake does not fail a 20-minute stage. Playwright reports such a test as
 // "flaky", not as passed: search the gate log for "flaky" and file a bead for
