@@ -4,7 +4,7 @@ import type {
   GroupRow as Group,
 } from "../../services/groups/index.ts";
 import type { AssignablePerson as PersonOption } from "../../services/people/index.ts";
-import type { InspectorAccess } from "../access/access-path-list.tsx";
+import type { InspectorAccess } from "../access/assignments-table.tsx";
 import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**
@@ -97,6 +97,11 @@ export type GroupsScreenProps = {
   readonly onRemoveAllMembers?: (groupId: string) => void;
   /** Opens the Access screen with this group chosen (the one assignment writer, DEC-39). */
   readonly onOpenInAccess?: ((groupId: string) => void) | undefined;
+  /**
+   * A role's address on Roles, only for a viewer with `core:roles:manage` (R-37e). Without it a
+   * role in the sheet's assignments table is plain text.
+   */
+  readonly roleHref?: ((roleId: string) => string) | undefined;
 };
 
 /** One group's detail as the inspector reads it. */
@@ -118,6 +123,8 @@ export type GroupInspectorProps = {
   readonly onEditLabel: (displayLabel: string | null) => void;
   readonly onEditLocal: (name: string, description: string) => void;
   readonly onOpenInAccess?: (() => void) | undefined;
+  /** A role's address on Roles, only for a viewer with `core:roles:manage` (R-37e). */
+  readonly roleHref?: ((roleId: string) => string) | undefined;
   readonly onAddMembers: (userIds: readonly string[]) => void;
   readonly onRemoveMembers: (userIds: readonly string[]) => void;
   readonly onRemoveAllMembers: () => void;

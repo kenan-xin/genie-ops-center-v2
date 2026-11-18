@@ -52,7 +52,7 @@ import { EllipsisIcon } from "lucide-react";
 import { useEffect, useId, useMemo, useState } from "react";
 import type { ReactNode } from "react";
 
-import { AccessPathList } from "../access/access-path-list.tsx";
+import { AssignmentsTable } from "../access/assignments-table.tsx";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   ArchiveIcon,
@@ -276,8 +276,8 @@ export function GroupInspector(
             </WarningNote>
           ) : null}
 
-          {/* Open in Access only for a viewer with the Roles key and a group Grants lists; any other
-              viewer reads the count alone (LK4, LK13). */}
+          {/* Manage in Access only for a viewer with the Roles key and a group Grants lists; any
+              other viewer reads the count alone (LK4, LK13). */}
           <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border p-3">
             <div className="flex min-w-0 items-start gap-3">
               <KeyIcon
@@ -302,7 +302,7 @@ export function GroupInspector(
                 className="-ms-3"
                 onClick={props.onOpenInAccess}
               >
-                Open in Access
+                Manage in Access
               </Button>
             )}
           </div>
@@ -458,10 +458,16 @@ export function GroupInspector(
                     ? ""
                     : ` (${props.access.paths.length})`}
                 </h3>
-                <AccessPathList
+                {/* The card above holds Manage in Access on both tabs, so the heading holds no second link. */}
+                <AssignmentsTable
                   {...props.access}
                   recipient={{ type: "group", id: group.id }}
-                  empty="No roles assigned yet."
+                  timeZone={viewer.timeZone}
+                  empty={{
+                    title: "No roles assigned",
+                    description: "Members of this group get no roles from it.",
+                  }}
+                  roleHref={props.roleHref}
                 />
               </TabsContent>
             )}
@@ -967,6 +973,7 @@ export function GroupsScreen(props: GroupsScreenProps) {
           group={selected}
           members={props.details?.[selected.id]?.members ?? []}
           access={props.access}
+          roleHref={props.roleHref}
           viewer={props.viewer}
           people={props.people}
           lastAdministrator={props.lastAdministratorGroupIds.includes(

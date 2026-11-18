@@ -184,6 +184,11 @@ export function GroupsRoute(props: {
           ? (groupId) => router.push(accessHref({ recipient: groupId }))
           : undefined
       }
+      roleHref={
+        props.canManageAccess
+          ? (roleId) => `/admin/roles?selected=${encodeURIComponent(roleId)}`
+          : undefined
+      }
     />
   );
 }

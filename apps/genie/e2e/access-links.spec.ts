@@ -154,7 +154,7 @@ test("the Groups link opens Grants with the group chosen", async ({
     .click();
   await page
     .getByRole("dialog", { name: group, exact: true })
-    .getByRole("button", { name: "Open in Access" })
+    .getByRole("button", { name: "Manage in Access" })
     .click();
 
   const address = new RegExp(`/admin/access\\?recipient=${groupId}$`);

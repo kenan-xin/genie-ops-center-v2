@@ -9,7 +9,7 @@ import type {
   PersonStatus,
 } from "../../services/people/index.ts";
 import type { GrantRow } from "../../services/roles/grants.ts";
-import type { InspectorAccess } from "../access/access-path-list.tsx";
+import type { InspectorAccess } from "../access/assignments-table.tsx";
 import type { NoMatchCopy } from "../admin/no-match.tsx";
 
 /**

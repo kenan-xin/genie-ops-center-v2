@@ -8,8 +8,6 @@ export {
 
 export { linkedSubject } from "./overview-view.ts";
 
-export { AccessPathList } from "./access-path-list.tsx";
-
 export {
   AssignmentsTable,
   type AssignmentsTableProps,

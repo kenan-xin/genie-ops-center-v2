@@ -149,10 +149,10 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await expect(inspector).toBeHidden();
   await expect(groupRow).toBeFocused();
 
-  // Map the group to a role through the screens, not SQL: Open in Access, then Advanced access
+  // Map the group to a role through the screens, not SQL: Manage in Access, then Advanced access
   // (R-24b, R-37a). Access lists the group before any sign-in has seen it.
   await groupRow.click();
-  await inspector.getByRole("button", { name: "Open in Access" }).click();
+  await inspector.getByRole("button", { name: "Manage in Access" }).click();
   await expect(page).toHaveURL(/\/admin\/access\?recipient=/);
 
   const sheet = await openAdvancedAccess(page);
@@ -204,7 +204,12 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
 
   // The Access tab is read before the archive, so the archive must reload it.
   await archivedInspector.getByRole("tab", { name: /^Roles/ }).click();
-  await expect(archivedInspector.getByText("Core · E2E reader")).toBeVisible();
+  await expect(
+    archivedInspector
+      .getByText("E2E reader", { exact: true })
+      .filter({ visible: true })
+      .first()
+  ).toBeVisible();
   await expect(archivedInspector.getByText(/^Paused/)).toHaveCount(0);
   await page.getByRole("button", { name: "Archive group" }).click();
 
@@ -236,7 +241,10 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await page.getByRole("checkbox", { name: /^Show archived/ }).check();
   await archivedInspector.getByRole("tab", { name: /^Roles/ }).click();
   await expect(
-    archivedInspector.getByText("Paused: Group archived")
+    archivedInspector
+      .getByText("Paused: Group archived")
+      .filter({ visible: true })
+      .first()
   ).toBeVisible();
 
   // A second jit person with the same claim is now refused: no non-archived mapped group remains.

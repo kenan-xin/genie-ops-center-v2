@@ -156,7 +156,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
   await person.getByRole("button", { name: "Close" }).click();
 
   // AC-22: the administrator gives the person's other group the reader role, from the Groups
-  // screen through Open in Access and Advanced access (R-37a). The person does nothing further.
+  // screen through Manage in Access and Advanced access (R-37a). The person does nothing further.
   await page.goto(`${baseUrl}/admin/groups`);
   await page
     .getByRole("button", { name: new RegExp(grantGroup) })
@@ -165,7 +165,7 @@ test("jit: admitted through a mapped group, a role on another group reaches the 
 
   const group = page.getByRole("dialog", { name: grantGroup });
 
-  await group.getByRole("button", { name: "Open in Access" }).click();
+  await group.getByRole("button", { name: "Manage in Access" }).click();
   await expect(page).toHaveURL(/\/admin\/access\?recipient=/);
 
   const sheet = await openAdvancedAccess(page);

@@ -828,6 +828,7 @@ const operationsAccess = {
 
 /** G33, G37: the Access tab is read-only, and the card opens Access with the group chosen. */
 export const AccessCardIsNeverADeadEnd: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
   args: {
     groups: [FIXTURE_LOCAL],
     access: operationsAccess,
@@ -848,10 +849,19 @@ export const AccessCardIsNeverADeadEnd: Story = {
     await expect(
       inspector.getByRole("heading", { name: "Assigned roles (1)" })
     ).toBeVisible();
-    await expect(inspector.getByText("Invoices · Viewer")).toBeVisible();
+
+    const table = within(
+      inspector.getByRole("table", { name: "Assigned roles" })
+    );
+
+    await expect(table.getByText("Viewer")).toBeVisible();
     await expect(
-      inspector.getByText("Direct · added by Alex Morgan")
+      table.getByText("Assigned 1 Nov 2026 by Alex Morgan")
     ).toBeVisible();
+    // Every row of a group is Direct, so the table has no Assigned via column (d8l5.61).
+    await expect(
+      table.queryByRole("columnheader", { name: "Assigned via" })
+    ).toBeNull();
     await expect(
       inspector.queryByRole("button", { name: "Remove" })
     ).toBeNull();
@@ -860,7 +870,7 @@ export const AccessCardIsNeverADeadEnd: Story = {
     ).toBeNull();
 
     await userEvent.click(
-      inspector.getByRole("button", { name: "Open in Access" })
+      inspector.getByRole("button", { name: "Manage in Access" })
     );
     await expect(args.onOpenInAccess).toHaveBeenCalledWith("g-local");
   },
@@ -880,7 +890,7 @@ export const AccessCardWithoutTheKey: Story = {
       inspector.getByText("1 role assigned via this group")
     ).toBeInTheDocument();
     await expect(
-      inspector.queryByRole("button", { name: "Open in Access" })
+      inspector.queryByRole("button", { name: "Manage in Access" })
     ).toBeNull();
     await expect(
       inspector.queryByRole("button", { name: "See roles" })
@@ -889,7 +899,7 @@ export const AccessCardWithoutTheKey: Story = {
   },
 };
 
-/** LK13: Grants lists no archived group, so its card offers no Open in Access. */
+/** LK13: Grants lists no archived group, so its card offers no Manage in Access. */
 export const ArchivedGroupOffersNoOpenInAccess: Story = {
   args: {
     groups: [FIXTURE_ARCHIVED],
@@ -908,7 +918,7 @@ export const ArchivedGroupOffersNoOpenInAccess: Story = {
 
     await expect(inspector.getByRole("tab", { name: /^Roles/ })).toBeVisible();
     await expect(
-      inspector.queryByRole("button", { name: "Open in Access" })
+      inspector.queryByRole("button", { name: "Manage in Access" })
     ).toBeNull();
   },
 };
