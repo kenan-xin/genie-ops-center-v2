@@ -9,6 +9,7 @@ import {
   FormActionBar,
   RadioGroup,
   RadioGroupItem,
+  touchRowHeight,
 } from "@genie/ui";
 import { ChevronLeftIcon, XIcon } from "lucide-react";
 import { type ReactNode, useId, useState } from "react";
@@ -300,11 +301,16 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
                 setErrors((current) => ({ ...current, record: undefined }));
               }}
             >
-              <label className="flex items-center gap-2 text-sm">
+              {/* Under lg each row is 44 px tall, so the radios' touch areas do not meet (Add person's Account type). */}
+              <label
+                className={`flex ${touchRowHeight} items-center gap-2 text-sm`}
+              >
                 <RadioGroupItem value="all" />
                 All records
               </label>
-              <label className="flex items-center gap-2 text-sm">
+              <label
+                className={`flex ${touchRowHeight} items-center gap-2 text-sm`}
+              >
                 <RadioGroupItem value="one" />
                 One record
               </label>
