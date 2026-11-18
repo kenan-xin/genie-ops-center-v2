@@ -776,6 +776,42 @@ export const GroupAskRowsSayHow: Story = {
   },
 };
 
+/**
+ * P11-35: the group's own role is no route. Its stay line goes, and the dialog reads
+ * "Tenant administrator · Direct".
+ */
+export const GroupOwnRoleStaysIsDirect: Story = {
+  args: {
+    initial: group("g-admins"),
+    paths: [
+      held("a-admins-ask", admins, "r-ask-user"),
+      tenantAdminOf("a-admins-admin", admins),
+    ],
+  },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async () => {
+    await tickAndMove("Ask", /^Remove 1$/);
+
+    await expect(pendingBar().getByText("1 to remove")).toBeVisible();
+    await expect(pendingBar().queryByText(/stays, assigned via/)).toBeNull();
+
+    await userEvent.click(pendingBar().getByRole("button", { name: "Save" }));
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Remove Ask from Genie Administrators?",
+    });
+
+    const stays = within(dialog).getByRole("list", {
+      name: "Assignments that stay",
+    });
+
+    await expect(stays).toHaveTextContent("Tenant administrator · Direct");
+    await expect(dialog).not.toHaveTextContent(
+      "Assigned via Genie Administrators"
+    );
+  },
+};
+
 /** A-2: a direct role that opens no module gets its own row, and its way into Advanced access. */
 export const RoleWithoutModuleHasItsOwnRow: Story = {
   args: {

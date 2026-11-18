@@ -607,8 +607,12 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     }
   };
 
+  // P11-35: only a route to someone else keeps the module. The recipient's own role is no stay.
   const firstStay = removals()[0]?.pathsThatStay.find(
-    (path) => path.holder.type === "group"
+    (path) =>
+      path.holder.type === "group" &&
+      (path.holder.type !== props.recipient?.type ||
+        path.holder.id !== props.recipient?.id)
   );
 
   const granted = new Set([
@@ -840,7 +844,11 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
       {props.recipient === null ? null : (
         <RemoveAccessDialog
           open={confirmRemove}
-          recipient={{ type: props.recipient.type, name }}
+          recipient={{
+            type: props.recipient.type,
+            id: props.recipient.id,
+            name,
+          }}
           removals={confirmRemove ? removals() : []}
           onConfirm={() => void save()}
           onClose={() => setConfirmRemove(false)}

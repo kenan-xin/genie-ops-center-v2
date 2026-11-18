@@ -122,8 +122,8 @@ export type PeopleScreenProps = {
   /** Opens the group a role comes through, from the person's Access tab (mockup link). */
   readonly onOpenGroup?: (groupId: string) => void;
   /**
-   * The selected person's access from the S2-19 read. The host passes it only to a viewer with
-   * `core:roles:manage`; undefined hides the Access tab (LK4, U5).
+   * The selected person's access from the S2-19 read. The host passes it to every viewer through
+   * the People read, read-only; undefined hides the Access tab (LK4, U5).
    */
   readonly access?: InspectorAccess | undefined;
   /**

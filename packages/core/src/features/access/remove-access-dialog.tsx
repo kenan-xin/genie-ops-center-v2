@@ -13,13 +13,20 @@ export type RowRemoval = {
   readonly pathsThatStay: readonly AccessPath[];
 };
 
-type Recipient = { readonly type: "user" | "group"; readonly name: string };
+type Recipient = {
+  readonly type: "user" | "group";
+  readonly id: string;
+  readonly name: string;
+};
 
 const goesAs = (path: AccessPath) =>
   path.scope === null ? "Direct" : "Direct · One record";
 
-const staysAs = (path: AccessPath) =>
-  path.holder.type === "group" ? `Assigned via ${path.holder.name}` : "Direct";
+/** The recipient's own role is no route, so it reads as a direct one (P11-35). */
+const staysAs = (path: AccessPath, recipient: Recipient) =>
+  path.holder.type === recipient.type && path.holder.id === recipient.id
+    ? goesAs(path)
+    : `Assigned via ${path.holder.name}`;
 
 function PathList(props: {
   readonly heading: string;
@@ -120,7 +127,7 @@ export function RemoveAccessDialog(props: {
                 heading="Assignments that stay"
                 level={level}
                 paths={removal.pathsThatStay}
-                detail={staysAs}
+                detail={(path) => staysAs(path, props.recipient)}
               />
             ) : (
               <p className="text-muted-foreground">
