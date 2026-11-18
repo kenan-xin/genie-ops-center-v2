@@ -713,12 +713,8 @@ export function DeckView(props: DeckViewProps) {
     handedOver: recordRun.handedOver,
   });
 
-  // P15-47 (C15-2): while the open panel shows the run, its live row and its Stop are the build's
-  // only progress line and Stop; the page keeps its own for a closed panel.
-  const panelShowsRun = drafting && agent.open;
-
   const pill =
-    status === null || panelShowsRun ? null : (
+    status === null ? null : (
       <Badge role="status" variant={pillVariant(recordRun.run)}>
         {status}
       </Badge>
@@ -1239,7 +1235,7 @@ export function DeckView(props: DeckViewProps) {
         }
         // While the agent drafts, Stop is the page's one action, in the header at every width.
         secondaryActions={
-          drafting && !panelShowsRun ? (
+          drafting ? (
             <Button
               variant="secondary"
               loading={recordRun.stopping || recordRun.run === "stopping"}

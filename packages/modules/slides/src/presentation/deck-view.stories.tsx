@@ -3550,36 +3550,6 @@ export const DraftingOnPhone: Story = {
   },
 };
 
-// P15-47 (C15-2): one progress line and one Stop. While the panel shows the run, its live row and
-// its Stop are the only ones; with the panel closed, the page's pill and Stop are.
-export const DraftingBesideThePanel: Story = {
-  name: "Drafting beside the open panel",
-  args: { view: draftedDeckPage },
-  globals: desktop,
-  parameters: { layout: "fullscreen" },
-  decorators: [withShell],
-  beforeEach: () => serveRun(draftedDeckPage),
-  play: async ({ canvas }) => {
-    await pill(canvas, "Drafting slide 3");
-    await expect(canvas.getByRole("button", { name: "Stop" })).toBeVisible();
-
-    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
-
-    const panel = await canvas.findByRole("complementary", { name: "Ask" });
-
-    await waitFor(() =>
-      expect(canvas.queryByText("Drafting slide 3")).toBeNull()
-    );
-    await expect(canvas.queryByRole("button", { name: "Stop" })).toBeNull();
-
-    await userEvent.click(
-      within(panel).getByRole("button", { name: "Close Ask" })
-    );
-    await pill(canvas, "Drafting slide 3");
-    await expect(canvas.getByRole("button", { name: "Stop" })).toBeVisible();
-  },
-};
-
 /** The deck page's route trail, as core gives it to a module page (R-1a). */
 function withTrail(Story: () => ReactNode) {
   return (
