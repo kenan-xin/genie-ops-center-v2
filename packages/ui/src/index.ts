@@ -261,6 +261,7 @@ export {
   iconLeadPx,
   minTouchHeight,
   rowHeight,
+  safeAreaBottom,
   touchAreas,
   touchAreaY,
   touchRowHeight,

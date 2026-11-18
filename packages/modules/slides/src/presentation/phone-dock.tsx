@@ -5,6 +5,7 @@ import {
   PopoverContent,
   PopoverTitle,
   PopoverTrigger,
+  safeAreaBottom,
   Toolbar,
   ToolbarButton,
 } from "@genie/ui";
@@ -45,7 +46,7 @@ export function PhoneDock(props: {
     // The shell keeps the page's last row clear of a bottom bar.
     <div
       data-shell-bottom-bar=""
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background px-1 pt-1 pb-2 md:hidden"
+      className={`fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background px-1 pt-1 ${safeAreaBottom.sm} md:hidden`}
     >
       {props.context}
       <Toolbar

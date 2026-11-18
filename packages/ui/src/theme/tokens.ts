@@ -161,6 +161,18 @@ export const denseRowHeight = "min-h-11 lg:min-h-8";
 /** 6wz1.135: a row or inline control whose own box is its touch area under `lg`, its content's height from it. */
 export const touchRowHeight = "min-h-11 lg:min-h-0";
 
+/**
+ * P16e-47: the bottom padding of a bar at the screen's bottom edge. It keeps the bar's own padding,
+ * or the home indicator's room when that is more. The inset is 0 until the app sets
+ * `viewport-fit=cover`, so today nothing moves (P13-14).
+ */
+export const safeAreaBottom = {
+  /** The dock: 8 px. */
+  sm: "pb-[max(--spacing(2),env(safe-area-inset-bottom))]",
+  /** The sticky action bar: 12 px. */
+  md: "pb-[max(--spacing(3),env(safe-area-inset-bottom))]",
+} as const;
+
 /** 6wz1.135: a row that is at least 44 px tall at every width and grows with its text (tokens.md: "Rows are at least 44 px tall"). */
 export const minTouchHeight = "min-h-11";
 

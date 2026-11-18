@@ -191,12 +191,17 @@ function Shell(props: ShellProps) {
 
   const agentRoom: CSSProperties &
     Record<
-      "--agent-room" | "--agent-room-and-bar" | "--shell-bottom-bar-offset",
+      | "--agent-room"
+      | "--agent-room-and-bar"
+      | "--shell-bottom-bar-offset"
+      | "--shell-bottom-bar-room",
       string
     > = {
     "--agent-room": room,
-    "--agent-room-and-bar": `calc(${room} + 5rem)`,
+    "--agent-room-and-bar": `calc(${room} + 5rem + env(safe-area-inset-bottom))`,
     "--shell-bottom-bar-offset": bottomPanel === "open" ? "50vh" : "4.5rem",
+    // P16e-47: the 8rem room plus the home indicator's; the lint keeps arbitrary values out of class strings.
+    "--shell-bottom-bar-room": "calc(8rem + env(safe-area-inset-bottom))",
   };
 
   // The server render is the open menu; the device's choice applies after mount (R-31 pattern).
@@ -390,7 +395,7 @@ function Shell(props: ShellProps) {
             // instead, so its own parts scroll and its composer stays at the bottom (agent-native
             // rule 1).
             // lg:pt-5: the 20 px that the content had inside the 12 px frame bc0a4d00 removed (6wz1.123).
-            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-5 has-[[data-shell-bottom-bar]]:max-md:pb-32 data-agent-room:pb-(--agent-room) data-agent-room:has-[[data-shell-bottom-bar]]:max-md:pb-(--agent-room-and-bar) data-agent-room:**:data-shell-bottom-bar:bottom-(--shell-bottom-bar-offset) has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 has-[[data-page-flush]]:flex has-[[data-page-flush]]:flex-col has-[[data-page-flush]]:p-0 md:has-[[data-page-flush]]:p-0 lg:has-[[data-page-flush]]:p-0 ${focusRing} focus-visible:ring-inset`}
+            className={`min-h-0 flex-1 overflow-auto px-4 pt-4 pb-8 md:px-6 lg:px-8 lg:pt-5 has-[[data-shell-bottom-bar]]:max-md:pb-(--shell-bottom-bar-room) data-agent-room:pb-(--agent-room) data-agent-room:has-[[data-shell-bottom-bar]]:max-md:pb-(--agent-room-and-bar) data-agent-room:**:data-shell-bottom-bar:bottom-(--shell-bottom-bar-offset) has-[[data-page-fill]]:flex has-[[data-page-fill]]:flex-col has-[[data-page-fill]]:pb-4 has-[[data-page-flush]]:flex has-[[data-page-flush]]:flex-col has-[[data-page-flush]]:p-0 md:has-[[data-page-flush]]:p-0 lg:has-[[data-page-flush]]:p-0 ${focusRing} focus-visible:ring-inset`}
           >
             <ShellContext.Provider value={shellContext}>
               {props.children}

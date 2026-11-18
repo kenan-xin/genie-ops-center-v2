@@ -405,6 +405,40 @@ describe("the mono face against A-7", () => {
   });
 });
 
+/** Bottom bars in main-lane files that still lack the inset, routed to `genie-ops-center-v2-6wz1.145`. */
+const BOTTOM_BARS_WITHOUT_INSET = [
+  "packages/core/src/features/access/grants-screen.tsx",
+  "packages/modules/invoices/src/presentation/document-desk.tsx",
+  "packages/modules/invoices/src/presentation/review-form.tsx",
+  "packages/modules/invoices/src/presentation/review-pager.tsx",
+];
+
+// P16e-47: with `viewport-fit=cover`, the home indicator covers a bottom bar without the inset.
+describe("the safe-area inset against P16e-47", () => {
+  it("keeps the home indicator's room under every bottom bar", () => {
+    const root = join(import.meta.dirname, "../../../..");
+
+    const bare = globSync(PRODUCT_SOURCES, { cwd: root })
+      .filter(
+        (file) =>
+          file.startsWith("packages/") &&
+          file.endsWith(".tsx") &&
+          !/\.(test|stories)\.|\/testing\/|\/__fixtures__\//.test(file)
+      )
+      .filter((file) => {
+        const source = readFileSync(join(root, file), "utf8");
+
+        return (
+          source.includes('data-shell-bottom-bar=""') &&
+          !source.includes("safeAreaBottom")
+        );
+      })
+      .toSorted();
+
+    expect(bare).toEqual(BOTTOM_BARS_WITHOUT_INSET);
+  });
+});
+
 /** The `#rrggbb` a `rgb(r g b / alpha)` state layer shows over an opaque surface. */
 function over(layer: string, surface: string): string {
   const [r = 0, g = 0, b = 0, alpha = 1] = (layer.match(/[\d.]+/g) ?? []).map(
