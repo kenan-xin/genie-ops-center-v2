@@ -46,7 +46,9 @@ const THEME = {
   companyName: "Acme",
   primaryColor: "#0f766e",
   fontFace: "Arial",
+  primaryForeground: "#ffffff",
   logoFileId: null,
+  logoDarkFileId: null,
 };
 
 describe("buildDeckPptx", () => {
@@ -214,12 +216,7 @@ describe("buildDeckPptx", () => {
         slides: [slide("s1"), slide("s2"), slide("s3")],
         figuresAsOf: "2026-10-27",
         timeZone: "UTC",
-        theme: {
-          companyName: "Acme",
-          primaryColor: "#0f766e",
-          fontFace: "Arial",
-          logoFileId: null,
-        },
+        theme: THEME,
         logo: null,
         images: new Map(),
       })

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ElementKind } from "../contract.ts";
+import { BLUE_THEME, DARK_THEME } from "./__fixtures__/themes.ts";
 import {
   CANVAS,
   contrastLimit,
@@ -15,6 +16,7 @@ import {
   type SlideFrame,
   slideFrame,
   slideLayout,
+  textGround,
 } from "./slide-layout.ts";
 
 describe("elementBoxes", () => {
@@ -352,6 +354,65 @@ describe("regionOf", () => {
       expect(regionOf({ x: 800, y: 400, w: 100, h: 100 }, frame)).toBe("panel");
     }
   );
+});
+
+describe("textGround", () => {
+  const split = [
+    { kind: "title" as const },
+    { kind: "text" as const },
+    { kind: "chart" as const },
+  ];
+
+  it.each([
+    [
+      "puts a split title on the panel in the panel text",
+      split,
+      undefined,
+      BLUE_THEME,
+      { behind: "#2563EB", color: "#FFFFFF", where: "panel" },
+    ],
+    [
+      "puts a title moved to x 500 on the background in the text color",
+      [
+        { kind: "title" as const, box: { x: 500, y: 32, w: 400, h: 88 } },
+        ...split.slice(1),
+      ],
+      undefined,
+      BLUE_THEME,
+      { behind: "#FFFFFF", color: "#111827", where: "background" },
+    ],
+    [
+      "puts the title of a title slide on its slide background",
+      [{ kind: "title" as const }, { kind: "text" as const }],
+      "#FDE68A",
+      BLUE_THEME,
+      { behind: "#FDE68A", where: "background" },
+    ],
+    [
+      "puts a title with a fill on its fill, over a slide background",
+      [
+        {
+          kind: "title" as const,
+          style: { fill: "#000000", color: "#FFFFFF" },
+        },
+        { kind: "text" as const },
+      ],
+      "#FDE68A",
+      BLUE_THEME,
+      { behind: "#000000", color: "#FFFFFF", where: "fill" },
+    ],
+    [
+      "puts the panel text of a light theme on the background in the text color",
+      split,
+      undefined,
+      DARK_THEME,
+      { behind: "#030712", color: "#F3F4F6", where: "background" },
+    ],
+  ])("%s", (_, elements, background, theme, expected) => {
+    expect(textGround({ background, elements }, 0, theme, true)).toMatchObject(
+      expected
+    );
+  });
 });
 
 describe("fitFontPx", () => {

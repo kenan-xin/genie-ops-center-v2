@@ -49,6 +49,8 @@ export type AppliedChanges = {
   readonly slides: readonly DraftSlide[];
   /** Each data element to gate, as `<slideId>.<elementIndex>`, with the index of the last step that set it. */
   readonly checks: ReadonlyMap<string, number>;
+  /** The slides an add, change-slide, change-element or change-slide-fields step names: the ones the save re-checks (P14-7). */
+  readonly touched: ReadonlySet<string>;
 };
 
 function refuse(path: string, message: string): never {
@@ -133,6 +135,7 @@ export function applyChanges(
   let { title } = current;
   const slides: DraftSlide[] = [...current.content.slides];
   const checks = new Map<string, number>();
+  const touched = new Set<string>();
 
   const forget = (slideId: string) => {
     for (const key of checks.keys()) {
@@ -151,6 +154,7 @@ export function applyChanges(
     const { elements, checked } = changedElements(stored, input);
 
     forget(id);
+    touched.add(id);
 
     for (const index of checked) checks.set(`${id}.${index}`, step);
 
@@ -232,6 +236,8 @@ export function applyChanges(
         );
       }
 
+      touched.add(found.id);
+
       const changed = {
         ...element,
         box: change.box === undefined ? element.box : (change.box ?? undefined),
@@ -249,6 +255,8 @@ export function applyChanges(
       if (change.background === undefined && change.notes === undefined) {
         refuse(`changes.${step}`, NO_FIELD);
       }
+
+      touched.add(found.id);
 
       // Each field sets only when the step names it; `null` clears it.
       slides[index] = {
@@ -275,5 +283,5 @@ export function applyChanges(
     }
   }
 
-  return { title, slides, checks };
+  return { title, slides, checks, touched };
 }

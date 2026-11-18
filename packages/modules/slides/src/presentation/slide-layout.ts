@@ -1,8 +1,10 @@
+import type { Placement } from "../content.ts";
 import {
   type ElementBox,
   type ElementKind,
   type ElementStyle,
   SLIDE_CANVAS,
+  type SlideTheme,
   THEME_BACKGROUND,
   THEME_TEXT,
 } from "../contract.ts";
@@ -399,6 +401,60 @@ export function placedBoxes(
 /** A title or statement frame is all panel; a split box is panel when its center is left of the panel. */
 export function regionOf(box: Box, frame: FrameName): Region {
   return frame !== "split" || box.x + box.w / 2 < PANEL_W ? "panel" : "content";
+}
+
+/** The color behind one text and its own color, with the place word of a refusal. */
+export type TextGround = {
+  readonly behind: string;
+  readonly color: string;
+  readonly defaultColor: string;
+  readonly where: "fill" | "panel" | "background";
+};
+
+/** What one text of a slide draws on and in: its fill, else the panel or the slide background; its own color, else the theme's color for that place. */
+export function textGround(
+  slide: {
+    readonly background?: string | undefined;
+    readonly elements: readonly (Placement & { readonly kind: ElementKind })[];
+  },
+  index: number,
+  theme: Pick<
+    SlideTheme,
+    "background" | "text" | "panel" | "panelText" | "panelBody" | "layout"
+  >,
+  first: boolean
+): TextGround {
+  const element = slide.elements[index];
+  const boxes = placedBoxes(slide.elements, first);
+
+  const box =
+    element?.kind === "title"
+      ? boxes.title
+      : boxes.body.find((placed) => placed.index === index)?.box;
+
+  const inPanel = box !== undefined && regionOf(box, boxes.name) === "panel";
+
+  // A title or statement slide with its own background draws the whole slide on it (P14-15).
+  const onPanel =
+    inPanel &&
+    theme.layout === "solid" &&
+    (boxes.name === "split" || slide.background === undefined);
+
+  const defaultColor = !inPanel
+    ? theme.text
+    : element?.kind === "title"
+      ? theme.panelText
+      : theme.panelBody;
+
+  const fill = element?.style?.fill;
+
+  return {
+    behind:
+      fill ?? (onPanel ? theme.panel : (slide.background ?? theme.background)),
+    color: element?.style?.color ?? defaultColor,
+    defaultColor,
+    where: fill !== undefined ? "fill" : onPanel ? "panel" : "background",
+  };
 }
 
 /** The largest whole pixel size whose estimated lines fit the box, never under `minPx`. */

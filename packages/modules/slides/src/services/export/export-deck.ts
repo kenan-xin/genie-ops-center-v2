@@ -3,7 +3,7 @@ import { kebabCase } from "es-toolkit";
 
 import { deckViewFor } from "../decks/show.ts";
 import { readOwnDeck, saveDeckExport } from "../decks/store.ts";
-import { deckTheme } from "../decks/theme.ts";
+import { brandTheme } from "../decks/theme.ts";
 import { buildDeckPptx } from "./build.ts";
 
 /**
@@ -23,7 +23,7 @@ export async function exportDeck(
     ctx.tenant.branding.get(),
   ]);
 
-  const theme = deckTheme(branding);
+  const theme = brandTheme(branding);
 
   const imageIds = new Set(
     view.slides.flatMap(({ elements }) =>

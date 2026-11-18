@@ -21,7 +21,7 @@ import {
   TYPE_PX,
 } from "../../presentation/slide-layout.ts";
 import type { ShownElement, ShownSlide } from "../../presentation/views.ts";
-import type { DeckTheme } from "../decks/theme.ts";
+import type { BrandTheme } from "../decks/theme.ts";
 import { dropMissingOverrides } from "./content-types.ts";
 import { pptxChartOf } from "./pptx-chart.ts";
 
@@ -251,7 +251,7 @@ export async function buildDeckPptx(input: {
   readonly slides: readonly ShownSlide[];
   readonly figuresAsOf: string;
   readonly timeZone: string;
-  readonly theme: DeckTheme;
+  readonly theme: BrandTheme;
   readonly logo: FetchedFile | null;
   readonly images: ReadonlyMap<string, FetchedFile>;
 }): Promise<Buffer> {

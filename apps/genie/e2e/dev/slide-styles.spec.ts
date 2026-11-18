@@ -347,12 +347,13 @@ test("a text color below the contrast limit is refused, names the element and sa
       await activate(page, page.getByRole("button", { name: "Text color" }));
     }
 
-    await page.getByRole("textbox", { name: "Hex" }).fill("#F3F4F6");
+    // The title of slide 1 sits on the brand panel, #2563EB in the dev tenant: #1E3A8A is 2:1 there.
+    await page.getByRole("textbox", { name: "Hex" }).fill("#1E3A8A");
     await activate(page, page.getByRole("button", { name: "Apply" }));
 
     await expect(
       page.getByText(
-        'Title "Collections are on track for…": this text color is too close to the background to read. Pick a color with more contrast, or give the text a fill.',
+        'Title "Collections are on track for…": this text color is too close to the panel to read. Pick a color with more contrast, or give the text a fill.',
         { exact: false }
       )
     ).toBeVisible(FIRST_PAINT);

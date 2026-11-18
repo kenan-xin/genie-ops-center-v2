@@ -122,6 +122,51 @@ export const placed = {
   style: elementStyle.optional(),
 };
 
+export const THEME_WEIGHTS = ["bold", "regular"] as const;
+
+export const THEME_LAYOUTS = ["solid", "light"] as const;
+
+export const THEME_LOGOS = ["light", "dark"] as const;
+
+/** A deck's own theme: each key overrides the brand look (czjw.183). Absent keys keep the brand. */
+export const storedTheme = z.strictObject({
+  background: hexColor.optional(),
+  text: hexColor.optional(),
+  secondaryText: hexColor.optional(),
+  accent: hexColor.optional(),
+  panel: hexColor.optional(),
+  panelText: hexColor.optional(),
+  weight: z.enum(THEME_WEIGHTS).optional(),
+  layout: z.enum(THEME_LAYOUTS).optional(),
+  logo: z.enum(THEME_LOGOS).optional(),
+});
+
+export type StoredTheme = z.infer<typeof storedTheme>;
+
+/** The colors and choices one slide draws with: the brand look under the deck's own theme. */
+export const slideTheme = z.object({
+  companyName: z.string(),
+  fontFace: z.string(),
+  background: z.string(),
+  text: z.string(),
+  secondaryText: z.string(),
+  accent: z.string(),
+  accentText: z.string(),
+  panel: z.string(),
+  panelText: z.string(),
+  panelBody: z.string(),
+  hairline: z.string(),
+  rule: z.string(),
+  neutral: z.string(),
+  ring: z.string(),
+  layout: z.enum(THEME_LAYOUTS),
+  weight: z.enum(THEME_WEIGHTS),
+  logo: z.enum(THEME_LOGOS),
+  dark: z.boolean(),
+});
+
+export type SlideTheme = z.infer<typeof slideTheme>;
+
 export const titleElement = z.strictObject({
   kind: z.literal("title"),
   text: z.string().trim().min(1).max(TITLE_CHARACTERS),

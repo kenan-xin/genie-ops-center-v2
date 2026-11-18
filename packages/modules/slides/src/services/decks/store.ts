@@ -16,6 +16,7 @@ import {
   type DeckContent,
   deckContentSchema,
   type FrozenChart,
+  textContrastIssues,
   type UndoEntry,
 } from "../../content.ts";
 import type {
@@ -23,11 +24,13 @@ import type {
   DeckChange,
   DeckSummary,
   SlideInput,
+  SlideTheme,
 } from "../../contract.ts";
 import { SLIDES_ERRORS } from "../../errors.ts";
 import { deck } from "../../schema.ts";
 import { applyChanges, pushUndo } from "./changes.ts";
 import { deckHashSql } from "./hash.ts";
+import { brandTheme, resolveTheme } from "./theme.ts";
 
 export type DeckRecord = {
   readonly id: string;
@@ -118,6 +121,17 @@ async function gate(
       })),
     });
   }
+}
+
+/** The theme the deck's texts draw with: its own keys over the tenant's brand look. */
+async function themeOf(
+  ctx: ModuleRequestContext,
+  content: DeckContent
+): Promise<SlideTheme> {
+  return resolveTheme(
+    brandTheme(await ctx.tenant.branding.get()),
+    content.theme
+  );
 }
 
 /** The server's parse of the content about to be written; a refusal is the caller's change. */
@@ -259,6 +273,8 @@ export async function createDeck(
 
   const content = parseContent({ slides: drafts });
 
+  refuseIf(textContrastIssues(content, await themeOf(ctx, content), "all"));
+
   return withTransaction(ctx.tenant, (tx) =>
     insertOwnDeck(ctx, tx, { title: input.title, content, frozenOn })
   );
@@ -386,7 +402,13 @@ export async function changeDeck(
             };
       }),
     })),
+    theme: row.content.theme,
   });
+
+  // Only the slides this change names: an older deck's other slides never block it (P14-7).
+  refuseIf(
+    textContrastIssues(content, await themeOf(ctx, content), applied.touched)
+  );
 
   return withTransaction(ctx.tenant, async (tx) => {
     const locked = await lockOwnDeck(tx, ctx, row.id, row.contentHash);
@@ -518,7 +540,8 @@ export async function refreshDeck(
     });
   }
 
-  const content = parseContent({ slides });
+  // Refresh changes no text, so it checks none (P14-7).
+  const content = parseContent({ slides, theme: row.content.theme });
 
   return withTransaction(ctx.tenant, async (tx) => {
     const locked = await lockOwnDeck(tx, ctx, row.id, row.contentHash);

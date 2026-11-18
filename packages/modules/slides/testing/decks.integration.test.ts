@@ -18,6 +18,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import type { DeckContent } from "../src/content.ts";
 import { slidesModule } from "../src/module.ts";
+import { DARK_SAMPLE } from "../src/presentation/__fixtures__/themes.ts";
 import { slidesRouter } from "../src/router.ts";
 import { deckHashSql } from "../src/services/decks/hash.ts";
 import { createDeck } from "../src/services/decks/store.ts";
@@ -350,7 +351,8 @@ describe("the slides deck procedures", () => {
                 kind: "text",
                 text: "Sales rose.",
                 box: { x: 96, y: 192, w: 480, h: 96 },
-                style: { color: "#1E3A8A" },
+                // The fill keeps the text readable on the title slide's panel.
+                style: { color: "#1E3A8A", fill: "#FFFFFF" },
               },
             ],
           },
@@ -373,7 +375,9 @@ describe("the slides deck procedures", () => {
     );
   });
 
-  it("refuse a low-contrast text color, name the element and write nothing", async () => {
+  // The test tenant seeds no primary color, so its panel is core's default `#2563eb`. `#1E3A8A`
+  // reads on white (10:1) and not on that panel (2:1).
+  it("refuse a title color too close to the tenant's panel, name the element and write nothing", async () => {
     const owner = await editor();
     const id = await ownedDeck(owner);
     const before = await rowOf(id);
@@ -387,7 +391,7 @@ describe("the slides deck procedures", () => {
             op: "change-element",
             slideId: "s1",
             index: 0,
-            style: { color: "#F3F4F6" },
+            style: { color: "#1E3A8A" },
           },
         ],
       })
@@ -397,12 +401,63 @@ describe("the slides deck procedures", () => {
         {
           path: "slides.0.elements.0.style",
           message:
-            'Title "A claim": this text color is too close to the background to read. Pick a color with more contrast, or give the text a fill.',
+            'Title "A claim": this text color is too close to the panel to read. Pick a color with more contrast, or give the text a fill.',
         },
       ],
     });
 
     expect(await rowOf(id)).toEqual(before);
+  });
+
+  it("save a change to one slide and leave another slide's text unchecked", async () => {
+    const owner = await editor();
+
+    // `#9CA3AF` is below 3:1 on the panel and on white, so a check of s1 refuses it either way.
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: {
+        slides: [
+          {
+            id: "s1",
+            elements: [{ ...title("Old"), style: { color: "#9CA3AF" } }],
+          },
+          { id: "s2", elements: [title("Other")] },
+        ],
+      },
+    });
+
+    const saved = await callerAs(owner).changeDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+      changes: [
+        { op: "change-slide-fields", slideId: "s2", notes: "Say hello." },
+      ],
+    });
+
+    expect(saved.slides[1]?.notes).toBe("Say hello.");
+  });
+
+  it("keep a stored theme through a rename and a Refresh", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: { ...oneSlide, theme: DARK_SAMPLE },
+    });
+
+    const caller = callerAs(owner);
+
+    const renamed = await caller.changeDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+      changes: [{ op: "rename", title: "Dark" }],
+    });
+
+    expect((await rowOf(id)).content.theme).toEqual(DARK_SAMPLE);
+
+    await caller.refreshDeck({ id, expectedHash: renamed.contentHash });
+
+    expect((await rowOf(id)).content.theme).toEqual(DARK_SAMPLE);
   });
 
   it("keep a figures date that moved while a text change waited for the row lock", async () => {

@@ -1,9 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import { type StoredSlide, textContrastIssues } from "../content.ts";
+import {
+  type DeckContent,
+  deckContentSchema,
+  type StoredSlide,
+  textContrastIssues,
+} from "../content.ts";
 import type { DeckChange } from "../contract.ts";
 import { applyChanges } from "../services/decks/changes.ts";
 import { textWithChartSlide } from "./__fixtures__/decks.ts";
+import { BLUE_THEME } from "./__fixtures__/themes.ts";
 import { backgroundSteps, fillChange } from "./style-toolbar.tsx";
 
 // The nine swatches of the toolbar, and #EF4444 of the bead.
@@ -20,11 +26,23 @@ const COLORS = [
   "#EF4444",
 ];
 
+// A split slide whose title and text sit right of the panel, so both draw on the slide background.
+const TITLE_BOX = { x: 432, y: 32, w: 480, h: 88 };
+
+const TEXT_BOX = { x: 432, y: 136, w: 480, h: 96 };
+
+const IMAGE = {
+  kind: "image",
+  fileId: "0b7c9a52-3a8e-4b8e-9d0a-2f6f1c2d3e4f",
+  alt: "The office",
+} as const;
+
 const plain: StoredSlide = {
   id: "s1",
   elements: [
-    { kind: "title", text: "Claim" },
-    { kind: "text", text: "Sales rose." },
+    { kind: "title", text: "Claim", box: TITLE_BOX },
+    { kind: "text", text: "Sales rose.", box: TEXT_BOX },
+    IMAGE,
   ],
 };
 
@@ -32,8 +50,19 @@ const whiteOnDark: StoredSlide = {
   id: "s1",
   background: "#1E3A8A",
   elements: [
-    { kind: "title", text: "Claim", style: { color: "#FFFFFF" } },
-    { kind: "text", text: "Sales rose.", style: { color: "#FFFFFF" } },
+    {
+      kind: "title",
+      text: "Claim",
+      box: TITLE_BOX,
+      style: { color: "#FFFFFF" },
+    },
+    {
+      kind: "text",
+      text: "Sales rose.",
+      box: TEXT_BOX,
+      style: { color: "#FFFFFF" },
+    },
+    IMAGE,
   ],
 };
 
@@ -46,10 +75,18 @@ const CASES = COLORS.flatMap((color) =>
   SLIDES.map(([name, slide]) => [color, name, slide] as const)
 );
 
-/** The slide after the steps, through the save's own step rules. */
+/** The deck after the steps, through the save's own step rules and parse. */
 const after = (slide: StoredSlide, changes: DeckChange[]) =>
-  applyChanges({ title: "Deck", content: { slides: [slide] } }, changes)
-    .slides[0]!;
+  deckContentSchema.parse({
+    slides: applyChanges(
+      { title: "Deck", content: { slides: [slide] } },
+      changes
+    ).slides,
+  });
+
+/** The save's contrast check under the blue brand. */
+const issuesOf = (content: DeckContent) =>
+  textContrastIssues(content, BLUE_THEME, "all");
 
 describe("backgroundSteps", () => {
   it("a dark background recolors a small text and keeps a large title", () => {
@@ -75,9 +112,7 @@ describe("backgroundSteps", () => {
   it.each(CASES)(
     "background %s from %s texts leaves no text below its limit",
     (color, _name, slide) => {
-      expect(
-        textContrastIssues(after(slide, backgroundSteps(slide, color)))
-      ).toEqual([]);
+      expect(issuesOf(after(slide, backgroundSteps(slide, color)))).toEqual([]);
     }
   );
 });
@@ -95,7 +130,7 @@ describe("fillChange", () => {
         },
       ];
 
-      expect(textContrastIssues(after(slide, steps))).toEqual([]);
+      expect(issuesOf(after(slide, steps))).toEqual([]);
     }
   );
 

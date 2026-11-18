@@ -20,15 +20,16 @@ import {
   refineSlideRules,
   SLIDE_ELEMENT_LIMIT,
   slideId,
+  type SlideTheme,
   slideNotes,
+  storedTheme,
+  type StoredTheme,
   TABLE_COLUMNS,
   TABLE_ROWS,
   textElement,
-  THEME_BACKGROUND,
-  THEME_TEXT,
   titleElement,
 } from "./contract.ts";
-import { contrastLimit } from "./presentation/slide-layout.ts";
+import { contrastLimit, textGround } from "./presentation/slide-layout.ts";
 
 /** The chart config and the data the gate answered for it, frozen on the deck (D3). */
 export type FrozenChart = {
@@ -57,58 +58,56 @@ export type StoredSlide = {
   readonly notes?: string | undefined;
 };
 
-/**
- * Each text element whose color is below the contrast limit against its own fill, else the slide
- * background, else the theme background. A text without a color is checked in the theme's text
- * color, so a background change re-checks every text without a fill (tech plan, Style reach).
- */
-export function textContrastIssues(slide: {
-  readonly background?: string | undefined;
-  readonly elements: readonly (Placement & {
-    readonly kind: StoredElement["kind"];
-    readonly text?: string | undefined;
-    readonly items?: readonly string[] | undefined;
-  })[];
-}): { index: number; message: string }[] {
-  return slide.elements.flatMap((element, index) => {
-    if (
-      element.kind !== "title" &&
-      element.kind !== "text" &&
-      element.kind !== "bullets"
-    ) {
-      return [];
-    }
+const PLACE_WORDS = {
+  fill: "its fill",
+  panel: "the panel",
+  background: "the background",
+} as const;
 
-    const style = element.style ?? {};
-    const color = style.color ?? THEME_TEXT;
+/** Each text on the named slides whose color is below its limit on what draws behind it (R-52a, P14-7). */
+export function textContrastIssues(
+  content: DeckContent,
+  theme: SlideTheme,
+  slideIds: ReadonlySet<string> | "all"
+): { readonly path: string; readonly message: string }[] {
+  return content.slides.flatMap((slide, i) => {
+    if (slideIds !== "all" && !slideIds.has(slide.id)) return [];
 
-    const [where, behind, fix] =
-      style.fill !== undefined
-        ? ["its fill", style.fill, "change its fill"]
-        : [
-            "the background",
-            slide.background ?? THEME_BACKGROUND,
-            "give the text a fill",
-          ];
+    return slide.elements.flatMap((element, j) => {
+      if (
+        element.kind !== "title" &&
+        element.kind !== "text" &&
+        element.kind !== "bullets"
+      ) {
+        return [];
+      }
 
-    if (
-      contrastRatio(color, behind) >=
-      contrastLimit(element.kind, style.fontSize)
-    ) {
-      return [];
-    }
+      const { behind, color, where } = textGround(slide, j, theme, i === 0);
 
-    return [
-      {
-        index,
-        message: `${elementName(element)}: this text color is too close to ${where} to read. Pick a color with more contrast, or ${fix}.`,
-      },
-    ];
+      if (
+        contrastRatio(color, behind) >=
+        contrastLimit(element.kind, element.style?.fontSize)
+      ) {
+        return [];
+      }
+
+      const fix = where === "fill" ? "change its fill" : "give the text a fill";
+
+      return [
+        {
+          path: `slides.${i}.elements.${j}.style`,
+          message: `${elementName(element)}: this text color is too close to ${PLACE_WORDS[where]} to read. Pick a color with more contrast, or ${fix}.`,
+        },
+      ];
+    });
   });
 }
 
-/** The stored content of one deck: its slides in display order (R-52). */
-export type DeckContent = { readonly slides: readonly StoredSlide[] };
+/** The stored content of one deck: its slides in display order and its own theme (R-52, czjw.183). */
+export type DeckContent = {
+  readonly slides: readonly StoredSlide[];
+  readonly theme?: StoredTheme | undefined;
+};
 
 /** One save that Undo can restore, frozen figures included (D1). */
 export type UndoEntry = {
@@ -209,17 +208,7 @@ const storedSlide = z
     background: hexColor.optional(),
     notes: slideNotes.optional(),
   })
-  .superRefine((slide, ctx) => {
-    refineSlideRules(slide, ctx);
-
-    for (const { index, message } of textContrastIssues(slide)) {
-      ctx.addIssue({
-        code: "custom",
-        path: ["elements", index, "style"],
-        message,
-      });
-    }
-  });
+  .superRefine(refineSlideRules);
 
 /** The server's parse of a stored or changed deck content. */
 export const deckContentSchema: z.ZodType<DeckContent> = z.strictObject({
@@ -241,6 +230,7 @@ export const deckContentSchema: z.ZodType<DeckContent> = z.strictObject({
         seen.add(id);
       }
     }),
+  theme: storedTheme.optional(),
 });
 
 export const EMPTY_DECK_CONTENT: DeckContent = { slides: [] };

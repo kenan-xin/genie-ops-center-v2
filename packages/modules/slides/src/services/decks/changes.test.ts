@@ -407,6 +407,36 @@ describe("the slide notes", () => {
   });
 });
 
+describe("the slides a change touches", () => {
+  const deck = deckOf(["s1", "s2", "s3"]);
+
+  it("names the slides that the add, change and field steps name", () => {
+    const { touched } = applyChanges(deck, [
+      addSlide,
+      { op: "change-slide", slideId: "s1", slide: { elements: [title("A")] } },
+      {
+        op: "change-element",
+        slideId: "s2",
+        index: 0,
+        style: { color: "#FFFFFF" },
+      },
+      { op: "change-slide-fields", slideId: "s3", notes: "Say hello." },
+    ]);
+
+    expect(touched).toEqual(new Set(["s4", "s1", "s2", "s3"]));
+  });
+
+  it("names no slide for a rename, a move and a removal", () => {
+    const { touched } = applyChanges(deck, [
+      { op: "rename", title: "Q4" },
+      { op: "move-slide", slideId: "s1", toIndex: 2 },
+      { op: "remove-slide", slideId: "s2" },
+    ]);
+
+    expect(touched).toEqual(new Set());
+  });
+});
+
 describe("applyChanges", () => {
   it("adds a slide to an empty deck as s1", () => {
     expect(ids(deckOf([]), [addSlide])).toEqual(["s1"]);

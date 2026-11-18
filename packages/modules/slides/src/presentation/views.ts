@@ -2,7 +2,7 @@ import type { ChatAvailability, PanelConfig } from "@genie/core";
 
 import type { Placement, StoredElement } from "../content.ts";
 import type { DeckSummary } from "../contract.ts";
-import type { DeckTheme } from "../services/decks/theme.ts";
+import type { BrandTheme } from "../services/decks/theme.ts";
 import type { ImageLinks } from "./image-links.ts";
 
 /**
@@ -50,7 +50,10 @@ export type DeckPageView = {
   readonly deck: DeckView;
   readonly canWrite: boolean;
   readonly timeZone: string;
-  readonly theme: Omit<DeckTheme, "logoFileId">;
+  readonly theme: Omit<
+    BrandTheme,
+    "primaryForeground" | "logoFileId" | "logoDarkFileId"
+  >;
   readonly logoUrl: string | null;
   /** Whether the page may read the deck's agent run: none for a person without Ask. */
   readonly chat: ChatAvailability;

@@ -5,8 +5,10 @@ import {
   type DeckContent,
   deckContentSchema,
   type StoredElement,
+  textContrastIssues,
 } from "./content.ts";
 import type { ElementBox, ElementKind, ElementStyle } from "./contract.ts";
+import { BLUE_THEME } from "./presentation/__fixtures__/themes.ts";
 
 const ELEMENT: Record<ElementKind, () => StoredElement> = {
   title: () => ({ kind: "title", text: "Overdue invoices doubled in October" }),
@@ -218,47 +220,6 @@ describe("the deck content schema", () => {
       null,
     ],
     [
-      "refuses light gray text on the theme background",
-      styled({}, { style: { color: "#F3F4F6" } }),
-      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
-    ],
-    [
-      "names the fill when the text sits on its own fill",
-      styled({}, { style: { color: "#F3F4F6", fill: "#FFFFFF" } }),
-      'slides.0.elements.1.style: Text "Sales rose.": this text color is too close to its fill to read. Pick a color with more contrast, or change its fill.',
-    ],
-    [
-      "checks white text against its own fill first",
-      styled({}, { style: { color: "#FFFFFF", fill: "#1E3A8A" } }),
-      null,
-    ],
-    [
-      "refuses a dark background under default text",
-      styled({ style: { color: "#FFFFFF" } }, {}, { background: "#1E3A8A" }),
-      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
-    ],
-    [
-      "allows 3:1 for text of size 24",
-      styled({}, { style: { color: "#909090", fontSize: 24 } }),
-      null,
-    ],
-    [
-      "needs 4.5:1 for text of size 18",
-      styled({}, { style: { color: "#909090", fontSize: 18 } }),
-      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
-    ],
-    [
-      "names a long text by its first 28 characters",
-      styled(
-        {},
-        {
-          text: "Most of the rise is one customer.",
-          style: { color: "#F3F4F6" },
-        }
-      ),
-      `slides.0.elements.1.style: Text "Most of the rise is one cust…": ${TOO_CLOSE_TO_BACKGROUND}`,
-    ],
-    [
       "parses 20 slides of the largest allowed shape",
       { slides: slides(20) },
       null,
@@ -300,5 +261,112 @@ describe("the deck content schema", () => {
     );
 
     expect(deckContentSchema.parse(content)).toEqual(content);
+  });
+});
+
+/** A split slide whose text sits right of the panel, so it draws on the background. */
+const onBackground = (
+  title: Extra,
+  text: Extra,
+  slide: { readonly background?: string } = {}
+): DeckContent => ({
+  slides: [
+    {
+      id: "s1",
+      ...slide,
+      elements: [
+        { kind: "title", text: "Sales grew", ...title },
+        {
+          kind: "text",
+          text: "Sales rose.",
+          box: { x: 480, y: 136, w: 400, h: 96 },
+          ...text,
+        },
+        frozenElement("figure"),
+      ],
+    },
+  ],
+});
+
+const TOO_CLOSE_TO_PANEL =
+  "this text color is too close to the panel to read. Pick a color with more contrast, or give the text a fill.";
+
+describe("textContrastIssues", () => {
+  it.each<readonly [string, DeckContent, string | null]>([
+    [
+      "refuses light gray text on the theme background",
+      onBackground({}, { style: { color: "#F3F4F6" } }),
+      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
+    ],
+    [
+      "names the fill when the text sits on its own fill",
+      onBackground({}, { style: { color: "#F3F4F6", fill: "#FFFFFF" } }),
+      'slides.0.elements.1.style: Text "Sales rose.": this text color is too close to its fill to read. Pick a color with more contrast, or change its fill.',
+    ],
+    [
+      "checks white text against its own fill first",
+      onBackground({}, { style: { color: "#FFFFFF", fill: "#1E3A8A" } }),
+      null,
+    ],
+    [
+      "refuses a dark background under default text",
+      onBackground(
+        { style: { color: "#FFFFFF" } },
+        {},
+        { background: "#1E3A8A" }
+      ),
+      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
+    ],
+    [
+      "allows 3:1 for text of size 24",
+      onBackground({}, { style: { color: "#909090", fontSize: 24 } }),
+      null,
+    ],
+    [
+      "needs 4.5:1 for text of size 18",
+      onBackground({}, { style: { color: "#909090", fontSize: 18 } }),
+      `slides.0.elements.1.style: Text "Sales rose.": ${TOO_CLOSE_TO_BACKGROUND}`,
+    ],
+    [
+      "names a long text by its first 28 characters",
+      onBackground(
+        {},
+        {
+          text: "Most of the rise is one customer.",
+          style: { color: "#F3F4F6" },
+        }
+      ),
+      `slides.0.elements.1.style: Text "Most of the rise is one cust…": ${TOO_CLOSE_TO_BACKGROUND}`,
+    ],
+    [
+      "refuses a title color that reads on white but not on the brand panel",
+      onBackground({ style: { color: "#1E3A8A" } }, {}),
+      `slides.0.elements.0.style: Title "Sales grew": ${TOO_CLOSE_TO_PANEL}`,
+    ],
+  ])("%s", (_, content, expected) => {
+    const issues = textContrastIssues(content, BLUE_THEME, "all").map(
+      ({ path, message }) => `${path}: ${message}`
+    );
+
+    expect(issues).toEqual(expected === null ? [] : [expected]);
+  });
+
+  it("checks only the named slides", () => {
+    const content: DeckContent = {
+      slides: [
+        onBackground({}, {}).slides[0]!,
+        {
+          ...onBackground({ style: { color: "#1E3A8A" } }, {}).slides[0]!,
+          id: "s2",
+        },
+      ],
+    };
+
+    expect(textContrastIssues(content, BLUE_THEME, new Set(["s1"]))).toEqual(
+      []
+    );
+    expect(
+      textContrastIssues(content, BLUE_THEME, "all").map(({ path }) => path)
+    ).toEqual(["slides.1.elements.0.style"]);
   });
 });

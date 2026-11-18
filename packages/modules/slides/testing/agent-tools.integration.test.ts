@@ -449,7 +449,8 @@ describe("the slides agent tools", () => {
                 kind: "text",
                 text: "Sales rose.",
                 box: { x: 96, y: 192, w: 480, h: 96 },
-                style: { fill: "#EFF6FF" },
+                // A dark fill, so the default panel text reads on it.
+                style: { fill: "#1E3A8A" },
               },
             ],
           },
@@ -477,7 +478,7 @@ describe("the slides agent tools", () => {
       kind: "text",
       text: "Sales rose.",
       box: { x: 96, y: 192, w: 480, h: 96 },
-      style: { fill: "#EFF6FF" },
+      style: { fill: "#1E3A8A" },
     });
 
     await runTool(owner, "slides-change-deck", {

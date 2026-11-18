@@ -5,7 +5,7 @@ import type { DeckListView, DeckPageView } from "../../presentation/views.ts";
 import { assertCanRead } from "../decks/access.ts";
 import { shownDeck } from "../decks/show.ts";
 import { listOwnDecks, readOwnDeck } from "../decks/store.ts";
-import { deckTheme } from "../decks/theme.ts";
+import { brandTheme } from "../decks/theme.ts";
 
 /** The Slides list: the caller's own decks, whether the caller may write, and the chat beside it. */
 export async function loadDeckList(
@@ -50,7 +50,11 @@ export async function loadDeckPage(
     deck,
     canWrite,
     timeZone: branding.defaultTimeZone,
-    theme: omit(deckTheme(branding), ["logoFileId"]),
+    theme: omit(brandTheme(branding), [
+      "primaryForeground",
+      "logoFileId",
+      "logoDarkFileId",
+    ]),
     logoUrl: logo?.url ?? null,
     chat,
   };
