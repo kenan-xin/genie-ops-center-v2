@@ -51,7 +51,11 @@ test.beforeAll(() => {
 
 /** The administrator holds both keys tenant-wide, so Add person shows its role picker. */
 async function insertAdministrator(email: string): Promise<void> {
-  const id = await insertUser(database(), { email, emailVerified: true });
+  const id = await insertUser(database(), {
+    email,
+    name: "Access Administrator",
+    emailVerified: true,
+  });
 
   const roleId = await insertRole(database(), {
     permissions: ["core:people:manage", "core:roles:manage"],

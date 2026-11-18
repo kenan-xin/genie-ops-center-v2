@@ -286,7 +286,14 @@ async function seedAgent(): Promise<void> {
     if (DEV_MODULES.has("placeholder")) await insertAgentRecords(context);
     await Promise.all(
       [...PERMISSIONS_OF].map(async ([email, permissions]) => {
-        const id = await insertUser(context, { email, emailVerified: true });
+        // Named by the address's local part, as setup names a pre-added person, so a screen
+        // never shows the fixture's `Person <id>` default (C09-13).
+        const id = await insertUser(context, {
+          email,
+          name: email.slice(0, email.indexOf("@")),
+          emailVerified: true,
+        });
+
         const roleId = await insertRole(context, { permissions });
 
         await assignRole(context, { roleId, principal: { type: "user", id } });
