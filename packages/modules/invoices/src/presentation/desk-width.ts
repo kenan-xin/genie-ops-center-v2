@@ -7,14 +7,14 @@ import { useLayoutEffect, useState, type RefObject } from "react";
  * panel (400 px from 1280 px, Spec 07 R-42) narrows the page (P16g-4). The desk's own width at a
  * 1280 and a 1024 px viewport, with the 240 px menu and 32 px page padding on each side, is 976
  * and 720 px; each threshold keeps 32 px for a classic scrollbar (P16g-5). With the panel docked,
- * 1280 px gives the pager and the narrow record desk, and 1440 px gives the middle review desk and
- * the narrow record desk.
+ * 1280 px gives the review form under the page preview and the narrow record desk, and 1440 px
+ * gives the review form beside the page and the narrow record desk.
  */
 
 /** From this width of its own root, a desk pins each read field beside its line and shows its side column. */
 export const DESK_PINS_FROM = 944;
 
-/** From this width of its own root, a review is a desk; below it, the pager. */
+/** From this width of its own root, the review form sits beside the document; below it, under a preview of the page (czjw.187). */
 export const DESK_FROM = 688;
 
 /** The width of `element` in CSS pixels, before the first paint and after every resize; undefined until it mounts. */

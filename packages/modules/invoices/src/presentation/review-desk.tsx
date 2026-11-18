@@ -20,6 +20,7 @@ import type {
   ReviewLayoutProps,
   ReviewModel,
 } from "./review-model.ts";
+import { ReviewPreview } from "./review-preview.tsx";
 
 export type ReviewStatus = "reading" | "blocked" | "ready" | "saved";
 
@@ -109,14 +110,16 @@ export function usePageFile(
 }
 
 /**
- * The review as one form beside the document (R-38, czjw.187): the page with every quoted field
- * marked on it, and the Fields region with Type, the sections, the split and Save, which names
- * and focuses what blocks it. Below `DESK_FROM` the workspace shows the pager instead.
+ * The review as one form (R-38, czjw.187): the page with every quoted field marked on it, and the
+ * Fields region with Type, the sections, the split and Save, which names and focuses what blocks
+ * it. `beside` puts the form beside the page; else under a preview of the page, with no sweep.
  */
-export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
-  const { frame, model, revealRef } = props;
+export function ReviewDesk(
+  props: ReviewLayoutProps & { readonly beside: boolean }
+): ReactNode {
+  const { frame, model, revealRef, beside } = props;
   const body = useRef<HTMLDivElement>(null);
-  const fillHeight = useFillHeight(body, true);
+  const fillHeight = useFillHeight(body, beside);
   const file = usePageFile(props);
   const { failed } = file;
   const [selected, setSelected] = useState<string | null>(null);
@@ -124,15 +127,16 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
   // The places of the marks once the page drew; null before.
   const [places, setPlaces] = useState<readonly MarkPlace[] | null>(null);
 
-  // The sweep plays on the page, so a page that did not load ends it at once.
-  const sweeping = frame.sweep && !failed;
+  // The sweep plays on the page beside the form, so a page that did not load, or the stacked
+  // layout, ends it at once.
+  const sweeping = frame.sweep && !failed && beside;
 
   // While the job reads and while the sweep plays, the form waits (P09-2).
   const reading = model === null || sweeping;
 
   useEffect(() => {
-    if (frame.sweep && failed) frame.onSweepEnd();
-  }, [frame, failed]);
+    if (frame.sweep && (failed || !beside)) frame.onSweepEnd();
+  }, [frame, failed, beside]);
 
   const items = model?.items ?? [];
 
@@ -166,6 +170,85 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
     };
   });
 
+  const column = (
+    <ReviewFormColumn
+      frame={frame}
+      model={model}
+      reading={reading}
+      selected={selected}
+      onSelect={setSelected}
+      hovered={hovered}
+      onHover={setHovered}
+      places={places}
+      locate={!failed}
+    />
+  );
+
+  const saveBar =
+    frame.saved === null ? (
+      <ReviewSaveBar
+        reason={
+          reading
+            ? "Wait for the reading to finish."
+            : (model.blocker?.reason ?? null)
+        }
+        pending={model?.pending ?? false}
+        discarding={props.discarding}
+        onDiscard={props.onDiscard}
+      />
+    ) : null;
+
+  const preview = failed ? (
+    <PreviewFailed
+      wide={false}
+      onDownload={file.download}
+      onRetry={file.retry}
+    />
+  ) : null;
+
+  if (!beside) {
+    const place =
+      places?.find((candidate) => candidate.key === selected) ?? null;
+
+    const quoted =
+      items.find((item) => item.key === selected)?.sources.length ?? 0;
+
+    return (
+      <>
+        <PageHeader
+          title={frame.title}
+          status={<StatusPill status={reviewStatusOf(model, frame)} />}
+          breadcrumb={frame.breadcrumb}
+        />
+        <div ref={body} className="flex min-w-0 flex-col gap-4">
+          {preview ?? (
+            <ReviewPreview
+              key={file.attempt}
+              url={file.url}
+              label={props.label}
+              pins={pins}
+              place={place}
+              selected={selected}
+              reading={model === null}
+              lost={quoted > 0 && places !== null && place === null}
+              onPlaces={setPlaces}
+              onLoadError={file.fail}
+              onDownload={file.download}
+            />
+          )}
+          {/* The bar is fixed below md, so a revealed field keeps clear of it (T6-d). */}
+          <section
+            aria-label="Fields"
+            className="flex flex-col **:data-field:scroll-mb-32 **:data-review-split:scroll-mb-32"
+          >
+            {column}
+          </section>
+        </div>
+        {saveBar}
+      </>
+    );
+  }
+
   const deskStyle: CssVars = {
     "--desk-height": fillHeight === undefined ? "auto" : `${fillHeight}px`,
   };
@@ -183,13 +266,7 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
         className="flex h-(--desk-height) min-w-0 flex-row gap-4"
         style={deskStyle}
       >
-        {failed ? (
-          <PreviewFailed
-            wide={false}
-            onDownload={file.download}
-            onRetry={file.retry}
-          />
-        ) : (
+        {preview ?? (
           <DeskCanvas
             key={file.attempt}
             label={props.label}
@@ -216,30 +293,9 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
             data-review-scroll=""
             className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-5 pb-6"
           >
-            <ReviewFormColumn
-              frame={frame}
-              model={model}
-              reading={reading}
-              selected={selected}
-              onSelect={setSelected}
-              hovered={hovered}
-              onHover={setHovered}
-              places={places}
-              locate={!failed}
-            />
+            {column}
           </div>
-          {frame.saved === null ? (
-            <ReviewSaveBar
-              reason={
-                reading
-                  ? "Wait for the reading to finish."
-                  : (model.blocker?.reason ?? null)
-              }
-              pending={model?.pending ?? false}
-              discarding={props.discarding}
-              onDiscard={props.onDiscard}
-            />
-          ) : null}
+          {saveBar}
         </section>
       </div>
     </>

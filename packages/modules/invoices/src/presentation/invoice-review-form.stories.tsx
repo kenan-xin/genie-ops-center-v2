@@ -772,7 +772,7 @@ export const TapEdgesOnPhone: Story = {
   globals: phone,
   beforeEach: () => serve(newCustomerReview),
   play: async ({ canvas }) => {
-    // The pager opens on the Customer step, which shows the confirmation checkbox.
+    // The Customer field shows the confirmation checkbox under it.
     const create = await canvas.findByRole("checkbox", {
       name: "Create Meridian Labs Pte as a new customer",
     });
@@ -788,23 +788,15 @@ export const TapEdgesOnPhone: Story = {
     await expect(above).not.toBe(create);
     await expect(field.contains(above)).toBe(true);
 
-    await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
-    await userEvent.click(
-      await screen.findByRole("button", { name: /^Due date/u })
-    );
+    const enter = canvas.getByRole("radio", { name: "Enter a due date" });
 
-    const enter = await canvas.findByRole("radio", {
-      name: "Enter a due date",
-    });
+    enter.scrollIntoView({ block: "center" });
 
-    // The sheet fades out first, so the probe waits for a settled hit.
-    await waitFor(async () => {
-      const radio = enter.getBoundingClientRect();
-      const x = radio.x + radio.width / 2;
+    const radio = enter.getBoundingClientRect();
+    const x = radio.x + radio.width / 2;
 
-      // The lowest pixel row of the first radio, and just under it.
-      await expect(tapOwner(x, radio.bottom - 1)).toBe(enter);
-      await expect(tapOwner(x, radio.bottom + 1)).toBe(enter);
-    });
+    // The lowest pixel row of the first radio, and just under it.
+    await expect(tapOwner(x, radio.bottom - 1)).toBe(enter);
+    await expect(tapOwner(x, radio.bottom + 1)).toBe(enter);
   },
 };

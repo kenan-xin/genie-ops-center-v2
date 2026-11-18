@@ -9,7 +9,6 @@ import {
   SheetHeader,
   SheetTitle,
   SheetTrigger,
-  useMediaQuery,
   controlHeights,
 } from "@genie/ui";
 import {
@@ -23,17 +22,9 @@ import {
   ListIcon,
   Loader2Icon,
 } from "lucide-react";
-import {
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useId, useMemo, useState, type ReactNode } from "react";
 
-import { type CssVars, PreviewFailed } from "./desk-canvas.tsx";
-import { LazyDocumentViewer } from "./document-viewer-lazy.tsx";
+import { PreviewFailed } from "./desk-canvas.tsx";
 import type { MarkPlace, ViewerHighlight } from "./document-viewer.tsx";
 import { ReviewCard } from "./review-card.tsx";
 import { reviewStatusOf, StatusPill, usePageFile } from "./review-desk.tsx";
@@ -44,6 +35,7 @@ import type {
   ReviewLayoutProps,
   ReviewModel,
 } from "./review-model.ts";
+import { PageLens } from "./review-preview.tsx";
 
 /** One step of the pager: a field, or the split and the summary, which have no item. */
 type Step = { readonly key: string; readonly item: ReviewItem | null };
@@ -101,100 +93,6 @@ function quoteLineOf(
   return unread
     ? "The document was not read. Fill in this field by hand."
     : "This is not stated on the document.";
-}
-
-// The page is wider than the lens, so its text reads larger and the margins fall outside.
-const LENS_PAGE: CssVars = { "--lens-page-width": "114%" };
-
-/**
- * The page at 1.14 times the lens width, scrolled so that the current line sits in the middle,
- * with a ring around it (prototype variant C). The person never scrolls the lens.
- */
-function PageLens(props: {
-  readonly url: string;
-  readonly label: string;
-  readonly highlights: readonly ViewerHighlight[];
-  /** The line to show; null shows the top of the page. */
-  readonly place: MarkPlace | null;
-  readonly chip: ReactNode;
-  /** The chip announces a change, such as the reading that runs. */
-  readonly chipStatus?: boolean;
-  readonly onPlaces: (places: readonly MarkPlace[]) => void;
-  readonly onLoadError: () => void;
-}): ReactNode {
-  const { place } = props;
-  const scroller = useRef<HTMLDivElement>(null);
-
-  const reducedMotion = useMediaQuery("(prefers-reduced-motion: reduce)", {
-    noSsr: true,
-  });
-
-  const top = place?.top;
-  const bottom = place?.bottom;
-
-  useEffect(() => {
-    const element = scroller.current;
-
-    if (element === null) return;
-
-    const middle =
-      top === undefined || bottom === undefined
-        ? 0
-        : (top + bottom) / 2 - element.clientHeight / 2;
-
-    element.scrollTo({
-      top: Math.max(0, middle),
-      left: (element.scrollWidth - element.clientWidth) / 2,
-      behavior: reducedMotion ? "auto" : "smooth",
-    });
-  }, [top, bottom, reducedMotion]);
-
-  const spotStyle: CssVars | undefined =
-    place === null
-      ? undefined
-      : {
-          "--spot-top": `${place.top - 4}px`,
-          "--spot-left": `${place.left - 6}px`,
-          "--spot-width": `${place.right - place.left + 12}px`,
-          "--spot-height": `${place.bottom - place.top + 8}px`,
-        };
-
-  return (
-    <div className="relative overflow-hidden rounded-xl border border-border bg-muted">
-      <div
-        ref={scroller}
-        data-review-lens=""
-        className="h-68 overflow-hidden md:h-96"
-        style={LENS_PAGE}
-      >
-        <div className="relative w-(--lens-page-width)">
-          <LazyDocumentViewer
-            url={props.url}
-            label={props.label}
-            highlights={props.highlights}
-            onPlaces={props.onPlaces}
-            onLoadError={props.onLoadError}
-          />
-          {place === null ? null : (
-            <div
-              data-lens-spot=""
-              aria-hidden
-              className="pointer-events-none absolute top-(--spot-top) left-(--spot-left) h-(--spot-height) w-(--spot-width) rounded-md bg-primary/25 ring-2 ring-ring"
-              style={spotStyle}
-            />
-          )}
-        </div>
-      </div>
-      {props.chip === null ? null : (
-        <span
-          role={props.chipStatus === true ? "status" : undefined}
-          className="absolute top-3 left-1/2 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-foreground px-3 py-1 text-xs font-semibold whitespace-nowrap text-background shadow-md [&_svg]:size-3.5"
-        >
-          {props.chip}
-        </span>
-      )}
-    </div>
-  );
 }
 
 /** The fields with their values and tags, and the split of a payment, before Save. */

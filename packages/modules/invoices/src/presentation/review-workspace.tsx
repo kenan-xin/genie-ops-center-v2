@@ -16,7 +16,6 @@ import type {
   ReviewLayoutProps,
   ReviewModel,
 } from "./review-model.ts";
-import { ReviewPager } from "./review-pager.tsx";
 import type { DocumentReviewView } from "./views.ts";
 
 /**
@@ -123,10 +122,13 @@ export function ReviewWorkspace(props: {
           <PageHeader title={frame.title} breadcrumb={frame.breadcrumb} />
           <PageSkeleton label={frame.title} />
         </>
-      ) : width >= DESK_FROM ? (
-        <ReviewDesk {...layout} />
       ) : (
-        <ReviewPager {...layout} />
+        // The key mounts the layout again on a switch, so the page's places and link start fresh.
+        <ReviewDesk
+          key={width >= DESK_FROM ? "beside" : "stacked"}
+          {...layout}
+          beside={width >= DESK_FROM}
+        />
       )}
     </form>
   );

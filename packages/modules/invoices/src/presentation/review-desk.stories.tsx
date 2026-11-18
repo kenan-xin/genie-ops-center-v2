@@ -810,142 +810,203 @@ export const ConsequenceAboveSave: Story = {
   },
 };
 
-type Canvas = ReturnType<typeof within>;
+/** The lens of the phone preview, once it is drawn. */
+const lensOf = (root: HTMLElement) =>
+  drawn(root, "[data-review-lens]", "The lens");
 
-/** The pager shows this step line once its step renders. */
-const onStep = (canvas: Canvas, step: number, of: number) =>
-  waitFor(
-    () => expect(canvas.getByText(`Step ${step} of ${of}`)).toBeVisible(),
-    PAGE_TIMEOUT
-  );
+/** The vertical middle of a box. */
+const middleOf = (box: DOMRect) => (box.top + box.bottom) / 2;
 
-/** Presses the next button of the pager, under the label it carries now, the given times. */
-async function next(canvas: Canvas, label: string, times = 1) {
-  for (let pressed = 0; pressed < times; pressed += 1) {
-    // oxlint-disable-next-line no-await-in-loop -- each press waits for the step it opens.
-    await userEvent.click(canvas.getByRole("button", { name: label }));
-  }
+/** The save bar's box: fixed to the bottom of the screen on a phone. */
+function barOf(root: HTMLElement): DOMRect {
+  const bar = root.querySelector("[data-shell-bottom-bar]");
+
+  if (bar === null) throw new Error("The page has no save bar.");
+
+  return bar.getBoundingClientRect();
 }
 
-/** The All fields title, once the sheet has faded in. */
-const listTitle = (text: string) =>
-  waitFor(() => expect(screen.getByText(text)).toBeVisible());
-
-/** Opens All fields and presses the row whose name starts with `row`. */
-async function pickField(canvas: Canvas, row: string) {
-  await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
-  await userEvent.click(
-    await screen.findByRole("button", { name: new RegExp(`^${row}`, "u") })
-  );
-}
-
-// T8.1, T8.2, T8.5: one field per step in list order, the next label follows the tag, and the
-// summary lists every field with Save and its reason. T9.1, T9.2: All fields counts the steps
-// done and opens a step; a blocked Save goes to the step that blocks it.
+// T6-a (czjw.187): the phone shows the lens and Open document over the one form of T1-c, with no
+// pager; the bar states the due reason with Delete and Save as wide as each other, and each dense
+// control keeps its 40 px phone height.
 export const InvoiceOnPhone: Story = {
   globals: phone390,
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas, canvasElement }) => {
-    await onStep(canvas, 1, 9);
-    card(canvasElement, "customer");
-    await drawn(canvasElement, "[data-lens-spot]", "The lens spot");
-
-    // T9.2: the list counts nothing yet, and its Due date row opens step 7.
-    await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
-    await listTitle("All fields · 0 of 9 done");
-    await userEvent.click(screen.getByRole("button", { name: /^Due date/u }));
-    await onStep(canvas, 7, 9);
-    card(canvasElement, "dueDate");
-    await pickField(canvas, "Customer");
-    await onStep(canvas, 1, 9);
-
-    // T8.1: forward one step and back.
-    await next(canvas, "Looks right");
-    await onStep(canvas, 2, 9);
-    card(canvasElement, "number");
-
-    // T9.2: the step passed with Looks right counts as done.
-    await userEvent.click(canvas.getByRole("button", { name: "All fields" }));
-    await listTitle("All fields · 1 of 9 done");
-    await userEvent.click(
-      screen.getByRole("button", { name: /^Invoice number/u })
-    );
-    await onStep(canvas, 2, 9);
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Previous field" })
-    );
-    await onStep(canvas, 1, 9);
-    card(canvasElement, "customer");
-
-    // T8.2: the due date, which the page does not state, asks to Continue.
-    await next(canvas, "Looks right", 6);
-    await onStep(canvas, 7, 9);
+    await marked(canvasElement, READ_KEYS);
+    await expect(await lensOf(canvasElement)).toBeVisible();
     await expect(
-      within(card(canvasElement, "dueDate")).getByText("Needs your input")
+      canvas.getByRole("button", { name: "Open document" })
     ).toBeVisible();
-    await expect(canvas.getByText("Not found on the page")).toBeVisible();
+
+    const region = await fields(canvasElement);
+    const form = within(region);
+
+    await expect(form.getByRole("combobox", { name: "Type" })).toBeVisible();
+    await expect(captionsOf(region)).toEqual(SECTION_CAPTIONS);
+    await expect(keysOf(region, "Needs your input")).toEqual(["dueDate"]);
+    await expect(keysOf(region, "From the document")).toEqual(READ_KEYS);
+    await expect(keysOf(region, "Optional")).toEqual(["paymentTerms"]);
+    await expect(canvas.queryByText(/^Step \d+ of/u)).toBeNull();
     await expect(
-      canvas.queryByRole("button", { name: "Looks right" })
+      canvas.queryByRole("button", { name: "All fields" })
     ).toBeNull();
 
-    // T8.5: the summary lists the eight fields, and Save states its reason.
-    await next(canvas, "Continue");
-    await onStep(canvas, 8, 9);
-    await next(canvas, "Looks right");
-    await onStep(canvas, 9, 9);
-    await expect(
-      canvas.getByRole("heading", { name: "Check and save" })
-    ).toBeVisible();
-
-    const summary = within(
-      canvasElement.querySelector<HTMLElement>("[data-review-summary]") ??
-        canvasElement
-    );
-
-    await expect(summary.getAllByRole("term")).toHaveLength(8);
-    await expect(summary.getByText("INV-LIVE-001")).toBeVisible();
-    await expect(summary.getByText("Needs your input")).toBeVisible();
     await expect(
       canvas.getByText("Enter a due date or choose No due date to save.")
     ).toBeVisible();
-    const save = canvas.getByRole("button", { name: "Save" });
 
-    await expect(save).toHaveAttribute("aria-disabled", "true");
+    const remove = canvas
+      .getByRole("button", { name: "Delete" })
+      .getBoundingClientRect();
 
-    // T9.1: Save goes to the due date step and focuses its choice.
-    await userEvent.click(save);
-    await onStep(canvas, 7, 9);
+    const save = canvas
+      .getByRole("button", { name: "Save" })
+      .getBoundingClientRect();
+
+    await expect(Math.abs(remove.width - save.width)).toBeLessThanOrEqual(1);
+
+    const control = (selector: string) => {
+      const found = region.querySelector<HTMLElement>(selector);
+
+      if (found === null) throw new Error(`No ${selector} in the form.`);
+
+      return found;
+    };
+
+    const heights = [
+      form.getByRole("combobox", { name: "Type" }),
+      form.getByRole("combobox", { name: "Customer" }),
+      form.getByLabelText("Invoice number"),
+      control('[data-field="date"] [data-slot="input-group"]'),
+      control('[data-field="amount"] [data-slot="input-group"]'),
+      form.getByLabelText("Payment terms"),
+      ...region.querySelectorAll<HTMLElement>('button[aria-label^="Show "]'),
+    ].map((element) => Math.round(element.getBoundingClientRect().height));
+
+    await expect(heights).toEqual([
+      40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40,
+    ]);
+  },
+};
+
+// T6-b (czjw.187): a locate press on a phone brings the field's line to the middle of the lens.
+export const LocateOnPhone: Story = {
+  globals: phone390,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await marked(canvasElement, READ_KEYS);
+
+    const lens = await lensOf(canvasElement);
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Show Total on the document" })
+    );
+
+    await waitFor(() => {
+      const spot = lens.querySelector("[data-lens-spot]");
+
+      if (spot === null) throw new Error("The lens has no spot.");
+
+      const offset =
+        middleOf(spot.getBoundingClientRect()) -
+        middleOf(lens.getBoundingClientRect());
+
+      if (Math.abs(offset) > 4)
+        throw new Error(`The spot is ${offset} px from the lens's middle.`);
+    }, PAGE_TIMEOUT);
+  },
+};
+
+// T6-c (czjw.187): Open document fills the screen in a dialog, not the Fullscreen API that an
+// iPhone lacks, with the document's toolbar and page; Close returns the focus to Open document.
+export const OpenDocumentOnPhone: Story = {
+  globals: phone390,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await marked(canvasElement, READ_KEYS);
+
+    const open = canvas.getByRole("button", { name: "Open document" });
+
+    await userEvent.click(open);
+
+    const dialog = await screen.findByRole("dialog");
+
+    await waitFor(() => {
+      const box = dialog.getBoundingClientRect();
+
+      expect(Math.abs(box.left)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - window.innerWidth)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.height - window.innerHeight)).toBeLessThanOrEqual(1);
+    });
+    // The dialog fades in, so its toolbar shows once the fade ends.
     await waitFor(() =>
       expect(
-        canvas.getByRole("radio", { name: "Enter a due date" })
-      ).toHaveFocus()
+        within(dialog).getByRole("toolbar", { name: "Document" })
+      ).toBeVisible()
+    );
+    await drawn(dialog, "[data-document-viewer] canvas", "The page");
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Close the document" })
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await waitFor(() => expect(open).toHaveFocus());
+  },
+};
+
+// T6-d (czjw.187): a blocked Save reveals the due choice above the fixed bar, not under it. The
+// spacer puts the field below the screen, so the reveal scrolls it up to the bar.
+export const RevealAboveTheBarOnPhone: Story = {
+  globals: phone390,
+  decorators: [
+    (Story) => (
+      <div className="pt-240">
+        <Story />
+      </div>
+    ),
+  ],
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await fields(canvasElement);
+    window.scrollTo(0, 0);
+
+    const enter = canvas.getByRole("radio", { name: "Enter a due date" });
+
+    await expect(enter.getBoundingClientRect().top).toBeGreaterThan(
+      window.innerHeight
+    );
+
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+    await expect(enter).toHaveFocus();
+    await expect(enter.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      barOf(canvasElement).top
     );
     await expect(saveInvoice).not.toHaveBeenCalled();
   },
 };
 
-// T9.3: while the job reads, the lens shows the page with no step and no bottom bar; when the
-// reading lands, step 1 shows in the same lens.
+// While the job reads, the lens says so, the form waits with its note and has no Delete; when
+// the reading lands, the fields show under the same page, which loads once.
 export const ReadingOnPhone: Story = {
   globals: phone390,
   args: { view: readingReview },
   beforeEach: serveReadingThenRead,
   play: async ({ canvas, canvasElement }) => {
     await expect(
-      await canvas.findByRole("heading", { name: "Reading the document" })
+      await canvas.findByText("Reading the page", {}, PAGE_TIMEOUT)
     ).toBeVisible();
+
+    const form = within(await fields(canvasElement));
+
     await expect(
-      canvas.getByText(
-        "You check the fields one at a time when the reading finishes."
+      form.getByText(
+        "Reading the document. The fields show here when the reading finishes."
       )
     ).toBeVisible();
-    await expect(canvas.getByText("Reading the page")).toBeVisible();
-    await expect(
-      canvasElement.querySelector("[data-shell-bottom-bar]")
-    ).toBeNull();
-    await expect(
-      canvas.queryByRole("button", { name: "All fields" })
-    ).toBeNull();
+    await expect(canvasElement.querySelector("[data-field]")).toBeNull();
+    await expect(canvas.queryByRole("button", { name: "Delete" })).toBeNull();
 
     const viewer = await drawn(
       canvasElement,
@@ -955,11 +1016,10 @@ export const ReadingOnPhone: Story = {
 
     const page = await drawn(viewer, "canvas", "The document");
 
-    await onStep(canvas, 1, 9);
+    await marked(canvasElement, READ_KEYS);
+    await expect(card(canvasElement, "dueDate")).toBeVisible();
+    await expect(canvas.queryByText("Reading the page")).toBeNull();
     await expect(page.isConnected).toBe(true);
-    await expect(
-      canvasElement.querySelector("[data-shell-bottom-bar]")
-    ).not.toBeNull();
   },
 };
 
@@ -998,27 +1058,20 @@ export const PaymentSavedOnPhone: Story = {
     });
   },
   play: async ({ canvas, canvasElement }) => {
-    await onStep(canvas, 1, 9);
-    await pickField(canvas, "Save");
-    await onStep(canvas, 9, 9);
+    const region = await fields(canvasElement);
+
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
     await expect(
       await canvas.findByText(/^Payment saved: .* allocated/u, {}, PAGE_TIMEOUT)
     ).toBeVisible();
-
-    const summary = await drawn(
-      canvasElement,
-      "[data-review-summary]",
-      "The summary"
-    );
-
+    await expect(region.querySelector("[data-review-split]")).toBeNull();
     await waitFor(() =>
-      expect(within(summary).queryByText(/^Linked /u)).toBeNull()
+      expect(within(region).queryByText(/^Linked /u)).toBeNull()
     );
   },
 };
 
-// T9.4: a save on a phone shows the result and the summary read only, with no bottom bar.
+// A save on a phone shows the result and the fields read only, with no bottom bar.
 export const SavedOnPhone: Story = {
   globals: phone390,
   beforeEach: () => {
@@ -1030,12 +1083,8 @@ export const SavedOnPhone: Story = {
     });
   },
   play: async ({ canvas, canvasElement }) => {
-    await onStep(canvas, 1, 9);
-    await pickField(canvas, "Due date");
-    await onStep(canvas, 7, 9);
+    await fields(canvasElement);
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await pickField(canvas, "Save");
-    await onStep(canvas, 9, 9);
     await userEvent.click(canvas.getByRole("button", { name: "Save" }));
 
     await expect(
@@ -1048,18 +1097,13 @@ export const SavedOnPhone: Story = {
     await expect(
       canvas.getByRole("link", { name: "Open the invoice" })
     ).toBeVisible();
-
-    const summary = await drawn(
-      canvasElement,
-      "[data-review-summary]",
-      "The summary"
-    );
-
-    await expect(within(summary).getByText("No due date")).toBeVisible();
-    // The result card keeps Upload another, whose file input is not a field.
-    await expect(canvasElement.querySelector("[data-field]")).toBeNull();
     await expect(
-      summary.querySelectorAll("input, textarea, [role=combobox]")
+      within(card(canvasElement, "dueDate")).getByText("No due date")
+    ).toBeVisible();
+    await expect(
+      canvasElement.querySelectorAll(
+        "[data-field] input, [data-field] textarea, [data-field] [role=combobox]"
+      )
     ).toHaveLength(0);
     await expect(
       canvasElement.querySelector("[data-shell-bottom-bar]")
@@ -1067,77 +1111,12 @@ export const SavedOnPhone: Story = {
   },
 };
 
-// czjw.147: Enter (the Go key) in a step's field goes to the next step and never saves; Enter in
-// the customer picker picks the option and stays on its step.
-export const EnterOnAStepOnPhone: Story = {
-  globals: phone390,
-  beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas, canvasElement }) => {
-    await onStep(canvas, 1, 9);
-    // Clear the due date blocker, so that a submit would really save.
-    await pickField(canvas, "Due date");
-    await onStep(canvas, 7, 9);
-    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await pickField(canvas, "Invoice number");
-    await onStep(canvas, 2, 9);
-    await userEvent.type(canvas.getByLabelText("Invoice number"), "{Enter}");
-    await expect(saveInvoice).not.toHaveBeenCalled();
-    await onStep(canvas, 3, 9);
-
-    // A browser and user-event both click the form's first submit button on Enter.
-    await expect(
-      canvasElement
-        .querySelector("form")
-        ?.querySelector(
-          'button[type="submit"], button:not([type]), input[type="submit"]'
-        )
-    ).toBe(canvas.getByRole("button", { name: "Looks right" }));
-
-    await pickField(canvas, "Customer");
-    await onStep(canvas, 1, 9);
-
-    const customer = canvas.getByRole("combobox", { name: "Customer" });
-
-    await userEvent.clear(customer);
-    await userEvent.type(customer, "ABC{ArrowDown}{Enter}");
-    await expect(customer).toHaveValue("ABC Trading");
-    await expect(canvas.getByText("Step 1 of 9")).toBeVisible();
-    await expect(saveInvoice).not.toHaveBeenCalled();
-  },
-};
-
-// czjw.148: a step change puts focus on the step line, and Previous stays on step 1, where it does nothing.
-export const StepFocusOnPhone: Story = {
-  globals: phone390,
-  beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas }) => {
-    await onStep(canvas, 1, 9);
-
-    const previous = () =>
-      canvas.getByRole("button", { name: "Previous field" });
-
-    await expect(previous()).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(previous());
-    await expect(canvas.getByText("Step 1 of 9")).toBeVisible();
-    await expect(previous()).toHaveFocus();
-
-    await next(canvas, "Looks right");
-    await waitFor(() => expect(canvas.getByText("Step 2 of 9")).toHaveFocus());
-
-    await userEvent.click(previous());
-    await waitFor(() => expect(canvas.getByText("Step 1 of 9")).toHaveFocus());
-    await expect(previous()).toBeInTheDocument();
-  },
-};
-
-// T8.3: an edit shows the read value, and the next button keeps the edit.
+// An edit on a phone shows the read value with Undo.
 export const EditedOnPhone: Story = {
   globals: phone390,
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas, canvasElement }) => {
-    await onStep(canvas, 1, 9);
-    await next(canvas, "Looks right", 5);
-    await onStep(canvas, 6, 9);
+    await fields(canvasElement);
 
     const row = within(card(canvasElement, "description"));
 
@@ -1146,41 +1125,63 @@ export const EditedOnPhone: Story = {
       row.getByText("Read as “Additional consulting project - October 2026”")
     ).toBeVisible();
     await expect(
-      canvas.getByRole("button", { name: "Keep and continue" })
+      row.getByRole("button", { name: "Undo Description" })
     ).toBeVisible();
   },
 };
 
-// A field whose quote failed, at 390 for axe.
+// A field whose quote failed, at 390 for axe: it needs input, with Check this.
 export const NoQuoteOnPhone: Story = {
   globals: phone390,
   args: { view: noQuoteInvoiceReview },
   beforeEach: () => serve(noQuoteInvoiceReview),
-  play: async ({ canvas }) => onStep(canvas, 1, 9),
+  play: async ({ canvasElement }) => {
+    const region = await fields(canvasElement);
+
+    await expect(keysOf(region, "Needs your input")).toContain("date");
+    await expect(
+      within(card(canvasElement, "date")).getByText("Check this")
+    ).toBeVisible();
+  },
 };
 
-// T8.4: the split is its own step, and a refused split holds the next button on its link.
+// The split follows the fields on a phone, and a refused allocation is named and focused by Save,
+// above the fixed bar, also when it is the lowest row of the split. The padding stands in for the
+// shell's room under the page.
 export const PaymentSplitOnPhone: Story = {
   globals: phone390,
+  decorators: [
+    (Story) => (
+      <div className="pb-32">
+        <Story />
+      </div>
+    ),
+  ],
   args: { view: splitPaymentReview },
   beforeEach: () => serve(splitPaymentReview),
-  play: async ({ canvas }) => {
-    await onStep(canvas, 1, 9);
-    await next(canvas, "Looks right", 7);
-    await onStep(canvas, 8, 9);
-    await expect(canvas.getByText("Confirm the split")).toBeVisible();
+  play: async ({ canvas, canvasElement }) => {
+    const region = await fields(canvasElement);
 
-    const sep = canvas.getByLabelText("Amount for INV-2026-09-04");
+    if (region.querySelector("[data-review-split]") === null)
+      throw new Error("The form has no split.");
 
-    await userEvent.clear(sep);
-    await userEvent.type(sep, "4,300.00");
+    // The last row of Other open invoices, given 0.00, is the lowest control of the split.
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Other open invoices of Orchid Retail",
+      })
+    );
 
-    const looksRight = canvas.getByRole("button", { name: "Looks right" });
+    const oct = canvas.getByLabelText("Amount for INV-2026-10-04");
 
-    await expect(looksRight).toHaveAttribute("aria-disabled", "true");
-    await userEvent.click(looksRight);
-    await expect(sep).toHaveFocus();
-    await expect(canvas.getByText("Step 8 of 9")).toBeVisible();
+    await userEvent.type(oct, "0.00");
+    window.scrollTo(0, 0);
+    await userEvent.click(canvas.getByRole("button", { name: "Save" }));
+    await expect(oct).toHaveFocus();
+    await expect(oct.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      barOf(canvasElement).top
+    );
+    await expect(savePayment).not.toHaveBeenCalled();
   },
 };
 
@@ -1210,8 +1211,9 @@ export const BesideTheDockedPanel: Story = {
   },
 };
 
-// B2: beside the docked panel at 1280 px the page column is 576 px, so the review is the pager.
-export const PagerBesideTheDockedPanel: Story = {
+// T6-e: beside the docked panel at 1280 px the page column is 576 px, so the form stacks under the
+// lens, with no pager.
+export const StackedBesideTheDockedPanel: Story = {
   decorators: [
     (Story) => (
       <div className="w-144">
@@ -1220,13 +1222,12 @@ export const PagerBesideTheDockedPanel: Story = {
     ),
   ],
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas }) => {
-    await expect(
-      await canvas.findByText(/^Step 1 of \d+$/u, {}, PAGE_TIMEOUT)
-    ).toBeVisible();
-    await expect(
-      canvas.queryByRole("complementary", { name: "Before you save" })
-    ).toBeNull();
+  play: async ({ canvas, canvasElement }) => {
+    const lens = (await lensOf(canvasElement)).getBoundingClientRect();
+    const region = (await fields(canvasElement)).getBoundingClientRect();
+
+    await expect(lens.bottom).toBeLessThanOrEqual(region.top + 1);
+    await expect(canvas.queryByText(/^Step \d+ of/u)).toBeNull();
   },
 };
 
