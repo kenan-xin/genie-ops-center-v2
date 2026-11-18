@@ -190,6 +190,7 @@ export function LinksEditor(props: {
           <InputGroupInput
             id={id}
             aria-label={`Amount for ${row.number}`}
+            size="dense"
             inputMode="decimal"
             value={draft?.amountText ?? ""}
             aria-invalid={message === undefined ? undefined : true}
@@ -221,7 +222,7 @@ export function LinksEditor(props: {
   return (
     <section
       aria-labelledby="payment-links-headline"
-      className="flex flex-col gap-3 px-4 py-3 text-sm"
+      className="flex flex-col gap-3 text-sm"
     >
       <h2 id="payment-links-headline" className="font-semibold">
         {headline}

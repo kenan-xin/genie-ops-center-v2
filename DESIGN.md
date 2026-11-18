@@ -155,7 +155,7 @@ Authority chain: `docs/design/design-system/tokens.md` is the source of truth fo
 - One tenant accent, used sparingly: primary button, count pill, active nav row, and the light-theme focus ring. Nothing else takes it.
 - Hairline borders over shadows; only menus, overlays and the 1 px lift of an outlined button cast shadows
 - Plus Jakarta Sans everywhere; JetBrains Mono stamps identifiers (hex values, permission keys, ids, chips like THIS DEVICE). These are the only two faces that ship for now.
-- Thumb-first controls: one height scale (buttons and fields 36px from 1024px and 40px under it, 32px dense, 44px large), 44px minimum touch targets under 1024px
+- Thumb-first controls: one height scale (buttons and fields 36px from 1024px and 40px under it, 32px dense (40px under 1024px), 44px large), 44px minimum touch targets under 1024px
 - Motion is 150–220ms ease-out, no bounce, no scale, always `motion-safe:` gated
 - WCAG 2.1 AA with measured contrast pinned in the token file (default ring 5.17:1 on white, dark ring 7.92:1 on gray-950, input border 4.89:1)
 

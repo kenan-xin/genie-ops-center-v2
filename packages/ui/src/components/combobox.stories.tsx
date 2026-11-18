@@ -79,6 +79,29 @@ export const Default: Story = {
   },
 };
 
+/** czjw.186: the dense search field of a review form, 32 px from `lg` and 40 px under it. */
+export const Dense: Story = {
+  render: () => (
+    <Combobox<Person> items={people} value={null} onValueChange={fn()}>
+      <ComboboxInput
+        size="dense"
+        aria-label="Search people"
+        placeholder="Search people"
+      />
+      <ComboboxContent>
+        <ComboboxEmpty>No one matches.</ComboboxEmpty>
+        <ComboboxList>
+          {(person: Person) => (
+            <ComboboxItem key={person.value} value={person}>
+              {person.label}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  ),
+};
+
 /** The search inside the popup: a trigger shows the choice, and the field opens with the list. */
 export const WithTrigger: Story = {
   render: () => (

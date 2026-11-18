@@ -14,6 +14,7 @@ import {
   focusRing,
   groupControlHeights,
   iconControlSizes,
+  insetIconSize,
   minTouchHeight,
   rowHeight,
   spacingPx,
@@ -189,23 +190,26 @@ const NOT_A_CONTROL: readonly (readonly [
 
 // 6wz1.114, owner: 36 px from lg, 40 px visible under it with a 44 px touch area, 32 px dense.
 describe("the control heights against tokens.md, Control heights", () => {
-  const { sm, md, lg } = controlHeightsPx;
+  const { sm, md, lg, dense } = controlHeightsPx;
 
   it("gives buttons and fields one md height: 36 px from lg, 40 px under it", () => {
     expect(controlHeightsPx).toEqual({
       sm: 32,
       md: { desktop: 36, phone: 40 },
       lg: 44,
+      dense: { desktop: 32, phone: 40 },
     });
 
     expect(controlHeights).toEqual({
       sm: `h-${step(sm)} min-h-${step(sm)}`,
       md: `h-${step(md.phone)} min-h-${step(md.phone)} lg:h-${step(md.desktop)} lg:min-h-${step(md.desktop)}`,
       lg: `h-${step(lg)} min-h-${step(lg)}`,
+      dense: `h-${step(dense.phone)} min-h-${step(dense.phone)} lg:h-${step(dense.desktop)} lg:min-h-${step(dense.desktop)}`,
     });
     expect(iconControlSizes).toEqual({
       sm: `size-${step(sm)}`,
       md: `size-${step(md.phone)} lg:size-${step(md.desktop)}`,
+      dense: `size-${step(dense.phone)} lg:size-${step(dense.desktop)}`,
     });
     expect(rowHeight).toBe(
       `min-h-${step(touchAreaPx)} lg:min-h-${step(md.desktop)}`
@@ -235,7 +239,12 @@ describe("the control heights against tokens.md, Control heights", () => {
       sm: `h-${inner(sm)} min-h-${inner(sm)}`,
       md: `h-${inner(md.phone)} min-h-${inner(md.phone)} lg:h-${inner(md.desktop)} lg:min-h-${inner(md.desktop)}`,
       lg: `h-${inner(lg)} min-h-${inner(lg)}`,
+      dense: `h-${inner(dense.phone)} min-h-${inner(dense.phone)} lg:h-${inner(dense.desktop)} lg:min-h-${inner(dense.desktop)}`,
     });
+  });
+
+  it("sizes a button inside a dense field: 24 px from lg, 32 px under it (czjw.186)", () => {
+    expect(insetIconSize).toBe(`size-${step(32)} lg:size-${step(24)}`);
   });
 
   it("finds a control height behind any variant, and nothing that only looks like one", () => {

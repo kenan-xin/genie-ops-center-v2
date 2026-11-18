@@ -1200,3 +1200,88 @@ export const PagerBesideTheDockedPanel: Story = {
     ).toBeNull();
   },
 };
+
+// T3-b (czjw.186): every review field takes the dense height, 32 px from lg.
+export const DenseFields: Story = {
+  globals: desktop1440,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await marked(canvasElement, READ_KEYS);
+
+    const region = await fields(canvasElement);
+
+    const control = (selector: string) => {
+      const found = region.querySelector<HTMLElement>(selector);
+
+      if (found === null) throw new Error(`No ${selector} in the form.`);
+
+      return found;
+    };
+
+    const heights = [
+      canvas.getByRole("combobox", { name: "Type" }),
+      canvas.getByRole("combobox", { name: "Customer" }),
+      canvas.getByLabelText("Invoice number"),
+      control('[data-field="date"] [data-slot="input-group"]'),
+      control('[data-field="amount"] [data-slot="input-group"]'),
+      canvas.getByLabelText("Payment terms"),
+      ...region.querySelectorAll<HTMLElement>('button[aria-label^="Show "]'),
+    ].map((element) => Math.round(element.getBoundingClientRect().height));
+
+    await expect(heights).toEqual([
+      32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32, 32,
+    ]);
+  },
+};
+
+/** The czjw.186 spacing: the form's padding, the 16 px beside the page, one top line, the gutter. */
+async function expectPageSpacing(canvasElement: HTMLElement) {
+  const scroll = await drawn(
+    canvasElement,
+    "[data-review-scroll]",
+    "The form's scroll area"
+  );
+
+  const region = await fields(canvasElement);
+
+  const page = canvasElement
+    .querySelector("[data-desk-content]")
+    ?.parentElement?.getBoundingClientRect();
+
+  const main = canvasElement.querySelector("main")?.getBoundingClientRect();
+
+  if (page === undefined || main === undefined)
+    throw new Error("The desk has no page or main box.");
+
+  const style = getComputedStyle(scroll);
+
+  await expect(style.paddingLeft).toBe("24px");
+  await expect(style.paddingRight).toBe("24px");
+  await expect(style.paddingTop).toBe("20px");
+
+  const form = region.getBoundingClientRect();
+
+  await expect(Math.round(form.left - page.right)).toBe(16);
+  await expect(Math.abs(form.top - page.top)).toBeLessThanOrEqual(1);
+  await expect(Math.abs(form.right - main.right)).toBeLessThanOrEqual(1);
+}
+
+// T3-d (czjw.186): the form column's padding, the gap to the page, one top line and the gutter.
+export const SpacingBesideTheDocument: Story = {
+  globals: desktop1440,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvasElement }) => expectPageSpacing(canvasElement),
+};
+
+// T3-d (czjw.186): the same at 1280, where the page is 976 px beside the 240 px menu.
+export const SpacingAt1280: Story = {
+  decorators: [
+    (Story) => (
+      <div className="w-244">
+        <Story />
+      </div>
+    ),
+  ],
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvasElement }) => expectPageSpacing(canvasElement),
+};

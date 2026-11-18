@@ -88,7 +88,7 @@ function SelectTrigger({
   children,
   ...props
 }: Omit<SelectPrimitive.Trigger.Props, "ref"> & {
-  size?: "sm" | "md" | "lg";
+  size?: "sm" | "md" | "lg" | "dense";
 }) {
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const setName = React.useContext(SelectListNameContext)?.setName;
@@ -108,7 +108,7 @@ function SelectTrigger({
       className={cn(
         "flex w-full items-center justify-between gap-2 rounded-lg border border-input bg-card px-3 text-sm whitespace-nowrap text-foreground motion-safe:transition-colors select-none disabled:cursor-not-allowed disabled:opacity-50 aria-invalid:border-destructive data-placeholder:text-placeholder data-[size=lg]:text-base *:data-[slot=select-value]:line-clamp-1 *:data-[slot=select-value]:flex *:data-[slot=select-value]:items-center *:data-[slot=select-value]:gap-2 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         controlHeights[size],
-        size !== "lg" && touchAreas[size],
+        size !== "lg" && touchAreas[size === "dense" ? "md" : size],
         focusRing,
         className
       )}

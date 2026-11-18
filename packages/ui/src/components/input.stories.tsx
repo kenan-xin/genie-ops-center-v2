@@ -98,6 +98,21 @@ export const Sizes: Story = {
   },
 };
 
+/** czjw.186: the dense field, 32 px from `lg` and 40 px under it, as a review form uses it. */
+export const Dense: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: (args) => (
+    <Input {...args} size="dense" aria-label="Dense" placeholder="Search" />
+  ),
+  play: async ({ canvas }) => {
+    const height = canvas
+      .getByRole("textbox", { name: "Dense" })
+      .getBoundingClientRect().height;
+
+    await expect(Math.round(height)).toBe(32);
+  },
+};
+
 // 6wz1.94: every field kind is one box of the field height, border included, so a form row of
 // mixed fields lines up. A group must not add its border, nor an addon its padding.
 const fieldKinds = (

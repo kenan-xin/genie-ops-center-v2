@@ -12,10 +12,16 @@ const inputSizes = {
   sm: cn(controlHeights.sm, fieldText),
   md: cn(controlHeights.md, fieldText),
   lg: cn(controlHeights.lg, "field-text lg:text-base"),
+  dense: cn(controlHeights.dense, fieldText),
 } as const;
 
 // P06-4: a bare <input> cannot draw `::after`, so a box carries the 44 px touch area (6wz1.114).
-const boxTouchAreas = { sm: touchAreas.sm, md: touchAreas.md, lg: "" } as const;
+const boxTouchAreas = {
+  sm: touchAreas.sm,
+  md: touchAreas.md,
+  lg: "",
+  dense: touchAreas.md,
+} as const;
 
 /**
  * The field and its box. `className` places the box (a layout class such as `max-w-30`); every

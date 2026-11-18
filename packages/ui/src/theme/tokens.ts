@@ -116,6 +116,8 @@ export const controlHeightsPx = {
   sm: 32,
   md: { desktop: 36, phone: 40 },
   lg: 44,
+  /** czjw.186: a dense field, such as the review form's: 32 px from `lg`, 40 px under it. */
+  dense: { desktop: 32, phone: 40 },
 } as const;
 
 /** 6wz1.114: the touch area every control reaches under `lg`, its box or its `::after`. */
@@ -126,13 +128,21 @@ export const controlHeights = {
   sm: "h-8 min-h-8",
   md: "h-10 min-h-10 lg:h-9 lg:min-h-9",
   lg: "h-11 min-h-11",
+  dense: "h-10 min-h-10 lg:h-8 lg:min-h-8",
 } as const;
 
 /** 6wz1.114: an icon-only control, a square of its control height. */
 export const iconControlSizes = {
   sm: "size-8",
   md: "size-10 lg:size-9",
+  dense: "size-10 lg:size-8",
 } as const;
+
+/**
+ * czjw.186: an icon button inside a dense field (its calendar): 32 px under `lg`, 24 px from it,
+ * inside the field's 30 px.
+ */
+export const insetIconSize = "size-8 lg:size-6";
 
 /**
  * 6wz1.114: an invisible box that reaches 44 px around a smaller control, drawn under its own
@@ -181,6 +191,7 @@ export const groupControlHeights = {
   sm: "h-7.5 min-h-7.5",
   md: "h-9.5 min-h-9.5 lg:h-8.5 lg:min-h-8.5",
   lg: "h-10.5 min-h-10.5",
+  dense: "h-9.5 min-h-9.5 lg:h-7.5 lg:min-h-7.5",
 } as const;
 
 /** 6wz1.114: a field's text: 16 px under `lg` at every root preset, so iOS Safari does not zoom on focus. */

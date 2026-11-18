@@ -47,6 +47,18 @@ export const PasswordReveal: Story = {
   ),
 };
 
+/** czjw.186: the dense control of a review form, 32 px from `lg` and 40 px under it. */
+export const Dense: Story = {
+  render: () => (
+    <InputGroup>
+      <InputGroupInput size="dense" aria-label="Amount" placeholder="0.00" />
+      <InputGroupAddon align="inline-end">
+        <InputGroupText>SGD</InputGroupText>
+      </InputGroupAddon>
+    </InputGroup>
+  ),
+};
+
 export const LeadingIcon: Story = {
   render: () => (
     <InputGroup>

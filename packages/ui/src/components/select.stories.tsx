@@ -129,6 +129,29 @@ export const ShowsTheLabel: Story = {
   },
 };
 
+/** czjw.186: the dense trigger of a review form, 32 px from `lg` and 40 px under it. */
+export const Dense: Story = {
+  render: (args) => (
+    <Select {...args}>
+      <SelectTrigger size="dense" aria-label="Type">
+        <SelectValue placeholder="Choose the type" />
+      </SelectTrigger>
+      <SelectContent>
+        {items.map((item) => (
+          <SelectItem key={item.value} value={item.value}>
+            {item.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  ),
+  play: async ({ canvas }) => {
+    const trigger = canvas.getByRole("combobox", { name: "Type" });
+
+    await expect(Math.round(trigger.getBoundingClientRect().height)).toBe(32);
+  },
+};
+
 export const Multiple: Story = {
   args: { multiple: true, defaultValue: [] },
   play: async ({ args, canvas }) => {

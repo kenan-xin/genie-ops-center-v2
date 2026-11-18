@@ -4,6 +4,7 @@ import { cva } from "class-variance-authority";
 import {
   controlHeights,
   iconControlSizes,
+  insetIconSize,
   touchAreas,
 } from "../theme/tokens.ts";
 
@@ -50,6 +51,10 @@ const buttonVariants = cva(
         "filter": `${controlHeights.md} px-3 ${touchAreas.md}`,
         "icon": `${iconControlSizes.md} ${touchAreas.md}`,
         "icon-sm": `${iconControlSizes.sm} ${touchAreas.sm}`,
+        // The locate button of a dense field, the field's own height (czjw.186).
+        "icon-dense": `${iconControlSizes.dense} ${touchAreas.md}`,
+        // The button inside a dense field, as shadcn input-group's icon-xs (czjw.186).
+        "icon-xs": `${insetIconSize} ${touchAreas.md}`,
         // The 36 px Send and Stop of the agent composer (czjw.120 item 10).
         "icon-send": `size-9 ${touchAreas.sm}`,
       },

@@ -237,7 +237,7 @@ export function DocumentReview(props: {
           if (next !== null && next !== kind) changeKind.mutate(next);
         }}
       >
-        <SelectTrigger aria-labelledby="document-kind-label">
+        <SelectTrigger aria-labelledby="document-kind-label" size="dense">
           <SelectValue
             placeholder={reading ? "Not classified yet" : "Choose the type"}
           />

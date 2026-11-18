@@ -180,7 +180,7 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
       />
       <div
         ref={body}
-        className="flex h-(--desk-height) min-w-0 flex-row"
+        className="flex h-(--desk-height) min-w-0 flex-row gap-4"
         style={deskStyle}
       >
         {failed ? (
@@ -210,11 +210,11 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
         )}
         <section
           aria-label="Fields"
-          className="flex w-100 shrink-0 flex-col border-l border-border bg-card"
+          className="flex w-100 shrink-0 flex-col overflow-clip rounded-xl border border-border bg-card"
         >
           <div
             data-review-scroll=""
-            className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 py-5"
+            className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-5 pb-6"
           >
             <ReviewFormColumn
               frame={frame}

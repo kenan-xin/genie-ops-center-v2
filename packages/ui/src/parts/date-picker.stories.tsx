@@ -96,6 +96,23 @@ export const PickWritesTheDay: Story = {
   },
 };
 
+/** czjw.186: the dense date field of a review form, with its calendar-sized button. */
+export const Dense: Story = {
+  render: () => (
+    <Field>
+      <FieldLabel htmlFor="dense-due">Due date</FieldLabel>
+      <DatePicker
+        id="dense-due"
+        size="dense"
+        placeholder="25 Nov 2026"
+        pickLabel="Choose the due date"
+        value=""
+        onValueChange={fn()}
+      />
+    </Field>
+  ),
+};
+
 export const TypedDayOpensOnItsMonth: Story = {
   play: async ({ canvas }) => {
     const field = canvas.getByLabelText("Due date");

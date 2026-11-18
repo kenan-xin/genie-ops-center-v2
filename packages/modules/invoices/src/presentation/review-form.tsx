@@ -265,7 +265,7 @@ export function ReviewTextInput(props: TextInputProps): ReactNode {
       {field === "amount" ? (
         <InputGroup>
           <CurrencyAddon currency={props.currency ?? ""} />
-          <InputGroupInput {...control} />
+          <InputGroupInput {...control} size="dense" />
         </InputGroup>
       ) : field === "date" ? (
         <DatePicker
@@ -276,11 +276,12 @@ export function ReviewTextInput(props: TextInputProps): ReactNode {
           value={props.value}
           aria-invalid={control["aria-invalid"]}
           aria-describedby={control["aria-describedby"]}
+          size="dense"
           onValueChange={props.onChange}
           onBlur={props.onBlur}
         />
       ) : (
-        <Input {...control} />
+        <Input {...control} size="dense" />
       )}
       {message === undefined ? null : (
         <FieldError id={`${id}-error`}>{message}</FieldError>
@@ -334,7 +335,7 @@ export function ReviewSaveBar(props: {
   return (
     <div
       data-shell-bottom-bar=""
-      className="z-10 flex flex-col gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8"
+      className="z-10 flex flex-col gap-2 border-t border-border bg-card px-4 py-3 max-md:fixed max-md:inset-x-0 max-md:bottom-0 md:sticky md:-bottom-8 md:px-6"
     >
       {reason === null ? (
         <p className="flex items-center gap-1.5 text-sm text-success">

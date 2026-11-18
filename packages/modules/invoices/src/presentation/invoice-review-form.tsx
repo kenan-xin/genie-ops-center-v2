@@ -188,6 +188,7 @@ function dueDateInput(value: string, set: (value: string) => void): ReactNode {
       placeholder="DD Mon YYYY"
       pickLabel="Choose the due date"
       value={value}
+      size="dense"
       onValueChange={set}
     />
   );

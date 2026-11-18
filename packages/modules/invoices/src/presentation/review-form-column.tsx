@@ -77,7 +77,7 @@ function ReviewField(props: {
             <Button
               type="button"
               variant="ghost"
-              size="icon-sm"
+              size="icon-dense"
               aria-label={`Show ${item.label} on the document`}
               title="Show on the document"
               aria-pressed={props.selected}

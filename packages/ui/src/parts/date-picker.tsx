@@ -31,6 +31,8 @@ export type DatePickerProps = Omit<
   readonly onValueChange: (text: string) => void;
   /** The calendar button's name, for example "Choose the due date". */
   readonly pickLabel: string;
+  /** The field's height: the md field, or the dense one of a review form (czjw.186). */
+  readonly size?: "md" | "dense";
 };
 
 /**
@@ -48,6 +50,7 @@ export function DatePicker({
   onKeyDown,
   disabled,
   className,
+  size = "md",
   ...props
 }: DatePickerProps) {
   const [open, setOpen] = useState(false);
@@ -61,6 +64,7 @@ export function DatePicker({
       <InputGroup ref={group} className={className}>
         <InputGroupInput
           ref={field}
+          size={size}
           value={value}
           disabled={disabled}
           onChange={(event) => onValueChange(event.target.value)}
@@ -83,7 +87,12 @@ export function DatePicker({
         <InputGroupAddon align="inline-end">
           <PopoverTrigger
             disabled={disabled}
-            render={<InputGroupButton aria-label={pickLabel} />}
+            render={
+              <InputGroupButton
+                aria-label={pickLabel}
+                size={size === "dense" ? "icon-xs" : "icon-sm"}
+              />
+            }
           >
             <CalendarIcon aria-hidden="true" />
           </PopoverTrigger>

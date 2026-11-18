@@ -20,11 +20,17 @@ import { Input } from "./input.tsx";
 const Combobox = ComboboxPrimitive.Root;
 
 /** The search field: the shared Input, as the list searches beside it show it. */
-function ComboboxInput(props: ComboboxPrimitive.Input.Props) {
+function ComboboxInput({
+  size = "md",
+  ...props
+}: Omit<ComboboxPrimitive.Input.Props, "size"> & {
+  /** The field's height: the md field, or the dense one of a review form (czjw.186). */
+  readonly size?: "md" | "dense";
+}) {
   return (
     <ComboboxPrimitive.Input
       data-slot="combobox-input"
-      render={<Input />}
+      render={<Input size={size} />}
       {...props}
     />
   );

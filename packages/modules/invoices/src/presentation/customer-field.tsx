@@ -120,6 +120,7 @@ export function CustomerField(props: {
           id="review-customer"
           aria-label="Customer"
           placeholder="Search customers"
+          size="dense"
         />
         <ComboboxContent>
           <ComboboxEmpty>No customer matches.</ComboboxEmpty>
