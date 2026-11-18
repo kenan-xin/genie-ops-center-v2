@@ -1,11 +1,4 @@
 import { ModuleClientProvider } from "@genie/core/rpc/client";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-} from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
@@ -16,6 +9,7 @@ import {
   textOnlySlide,
   textWithChartSlide,
 } from "./__fixtures__/decks.ts";
+import { EditSlideSheet } from "./edit-slide-sheet.tsx";
 import { SlideEditor } from "./slide-editor.tsx";
 import { useDeckChange } from "./use-deck.ts";
 import type { ShownSlide } from "./views.ts";
@@ -59,22 +53,23 @@ function withQuery(Story: () => ReactNode) {
   );
 }
 
-/** The sheet the deck page puts the editor in. */
-function SheetFrame(props: { readonly children: ReactNode }) {
-  return (
-    <Sheet open>
-      <SheetContent side="right">
-        <SheetHeader>
-          <SheetTitle>Edit slide</SheetTitle>
-          <SheetDescription>
-            Change the words of this slide. Its stored figures stay as they are.
-          </SheetDescription>
-        </SheetHeader>
-        {props.children}
-      </SheetContent>
-    </Sheet>
-  );
-}
+/** What the deck page passes the sheet for its live preview. */
+const canvas = {
+  figuresAsOf: deckPage.deck.figuresAsOf,
+  timeZone: deckPage.timeZone,
+  theme: deckPage.theme,
+  logoUrl: deckPage.logoUrl,
+  images: deckPage.deck.images,
+};
+
+/** The sheet as the deck page opens it on slide 2 of 5. */
+const frame = {
+  target: { slide: textWithChartSlide, number: 2 },
+  count: 5,
+  deckTitle: "Receivables at a glance",
+  failure: null,
+  canvas,
+};
 
 const meta = {
   title: "Modules/Slides/Slide editor",
@@ -92,14 +87,19 @@ const meta = {
   decorators: [withQuery],
   args: {
     slide: textWithChartSlide,
+    canvas,
     onSave: save,
     onClose: close,
     onUpload: upload,
   },
-  render: (args) => (
-    <SheetFrame>
-      <SlideEditor {...args} />
-    </SheetFrame>
+  render: ({ slide, ...args }) => (
+    <EditSlideSheet
+      {...args}
+      target={{ slide, number: 2 }}
+      count={5}
+      deckTitle="Receivables at a glance"
+      failure={null}
+    />
   ),
 } satisfies Meta<typeof SlideEditor>;
 
@@ -119,7 +119,7 @@ function reset() {
 }
 
 async function editor() {
-  return within(await screen.findByRole("dialog", { name: "Edit slide" }));
+  return within(await screen.findByRole("dialog", { name: "Edit slide 2" }));
 }
 
 export const TextSlide: Story = {
@@ -133,7 +133,7 @@ export const TextSlide: Story = {
     await expect(
       sheet.getByRole("textbox", { name: "Title" })
     ).toHaveAccessibleDescription(
-      "State the finding of this slide in one sentence."
+      /^The finding of this slide, in one sentence\./
     );
     await expect(sheet.getByRole("textbox", { name: "Text" })).toBeVisible();
     await expect(
@@ -142,7 +142,7 @@ export const TextSlide: Story = {
   },
 };
 
-// 6wz1.128: the filling grid must not spread the fields; the Title hint and the Text label stay 16 px apart.
+// 6wz1.128: the filling grid must not spread the fields; the Title hint and the Text label stay 20 px apart.
 export const FieldsStayTogether: Story = {
   name: "The title and text fields stay together",
   args: { slide: textOnlySlide },
@@ -151,9 +151,7 @@ export const FieldsStayTogether: Story = {
   play: async () => {
     const sheet = await editor();
 
-    const hint = sheet.getByText(
-      "State the finding of this slide in one sentence."
-    );
+    const hint = sheet.getByText("The finding of this slide, in one sentence.");
 
     const label = sheet.getByText("Text", {
       exact: true,
@@ -164,7 +162,7 @@ export const FieldsStayTogether: Story = {
       label.getBoundingClientRect().top - hint.getBoundingClientRect().bottom;
 
     await expect(
-      Math.abs(gap - 16) <= 1
+      Math.abs(gap - 20) <= 1
         ? ""
         : `title hint bottom to text label top: ${gap} px`
     ).toBe("");
@@ -177,7 +175,10 @@ export const ChartSlide: Story = {
   play: async () => {
     const sheet = await editor();
 
-    await expect(sheet.getByText("Invoiced by month")).toBeVisible();
+    // The hidden preview draws the chart title too; the row of the form is the one a person reads.
+    await expect(
+      sheet.getByText("Invoiced by month", { ignore: "[aria-hidden=true] *" })
+    ).toBeVisible();
     await expect(sheet.getAllByRole("button", { name: "Remove" })).toHaveLength(
       1
     );
@@ -204,22 +205,20 @@ function ChangeHarness(props: {
   const change = useDeckChange(deckPage.deck);
 
   return (
-    <SheetFrame>
-      <SlideEditor
-        slide={textWithChartSlide}
-        saving={change.isPending}
-        onClose={close}
-        onUpload={props.onUpload}
-        onSave={(slide) =>
-          change.mutate({
-            expectedHash: deckPage.deck.contentHash,
-            changes: [
-              { op: "change-slide", slideId: textWithChartSlide.id, slide },
-            ],
-          })
-        }
-      />
-    </SheetFrame>
+    <EditSlideSheet
+      {...frame}
+      saving={change.isPending}
+      onClose={close}
+      onUpload={props.onUpload}
+      onSave={(slide) =>
+        change.mutate({
+          expectedHash: deckPage.deck.contentHash,
+          changes: [
+            { op: "change-slide", slideId: textWithChartSlide.id, slide },
+          ],
+        })
+      }
+    />
   );
 }
 
@@ -289,26 +288,24 @@ function UploadHarness() {
   const change = useDeckChange(deckPage.deck);
 
   return (
-    <SheetFrame>
-      <SlideEditor
-        slide={textWithChartSlide}
-        saving={change.isPending}
-        onClose={close}
-        onUpload={async (file) => {
-          const { fileId } = await uploadDeckImage({ id: "deck-1", file });
+    <EditSlideSheet
+      {...frame}
+      saving={change.isPending}
+      onClose={close}
+      onUpload={async (file) => {
+        const { fileId } = await uploadDeckImage({ id: "deck-1", file });
 
-          return fileId;
-        }}
-        onSave={(slide) =>
-          change.mutate({
-            expectedHash: deckPage.deck.contentHash,
-            changes: [
-              { op: "change-slide", slideId: textWithChartSlide.id, slide },
-            ],
-          })
-        }
-      />
-    </SheetFrame>
+        return fileId;
+      }}
+      onSave={(slide) =>
+        change.mutate({
+          expectedHash: deckPage.deck.contentHash,
+          changes: [
+            { op: "change-slide", slideId: textWithChartSlide.id, slide },
+          ],
+        })
+      }
+    />
   );
 }
 
@@ -491,5 +488,147 @@ export const SaveOnPhone: Story = {
         box.top + box.height / 2
       )
     ).toBe(button);
+  },
+};
+
+/** Each line that is off: the label with the measured value. */
+function within1(lines: readonly (readonly [string, number, number])[]) {
+  return lines
+    .flatMap(([label, got, want]) =>
+      Math.abs(got - want) > 1 ? [`${label}: ${got} px, want ${want}`] : []
+    )
+    .join("; ");
+}
+
+// czjw.180: from 768 px the sheet is the 440 px right sheet; the preview leads, the actions end the footer.
+export const EditSlideOnDesktop: Story = {
+  name: "Edit slide sheet on a desktop",
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const dialog = await screen.findByRole("dialog", { name: "Edit slide 2" });
+    const sheet = within(dialog);
+
+    await expect(dialog).toHaveAccessibleDescription(
+      "Slide 2 of 5 · Receivables at a glance"
+    );
+    await expect(dialog).toHaveAttribute("data-side", "right");
+
+    const preview = dialog
+      .querySelector("[data-slide-canvas]")!
+      .getBoundingClientRect();
+
+    const title = sheet
+      .getByRole("textbox", { name: "Title" })
+      .getBoundingClientRect();
+
+    const cancel = sheet
+      .getByRole("button", { name: "Cancel" })
+      .getBoundingClientRect();
+
+    const saveButton = sheet
+      .getByRole("button", { name: "Save slide" })
+      .getBoundingClientRect();
+
+    const footer = dialog
+      .querySelector("[data-slot=sheet-footer]")!
+      .getBoundingClientRect();
+
+    await expect(
+      within1([
+        ["sheet width", dialog.getBoundingClientRect().width, 440],
+        ["Cancel top to Save slide top", cancel.top, saveButton.top],
+      ])
+    ).toBe("");
+    await expect(preview.bottom <= title.top).toBe(true);
+    await expect(cancel.right <= saveButton.left).toBe(true);
+    await expect(cancel.left > footer.left + footer.width / 2).toBe(true);
+  },
+};
+
+// czjw.180: below 768 px the sheet rises from the bottom, 24 px under the top, with a grab handle.
+export const EditSlideOnPhone: Story = {
+  name: "Edit slide sheet on a phone",
+  globals: phone,
+  beforeEach: reset,
+  play: async () => {
+    const dialog = await screen.findByRole("dialog", { name: "Edit slide 2" });
+    const sheet = within(dialog);
+
+    await expect(dialog).toHaveAttribute("data-side", "bottom");
+    await expect(dialog.querySelector("[data-sheet-grab]")).not.toBeNull();
+
+    const cancel = sheet
+      .getByRole("button", { name: "Cancel" })
+      .getBoundingClientRect();
+
+    const saveButton = sheet
+      .getByRole("button", { name: "Save slide" })
+      .getBoundingClientRect();
+
+    await waitFor(async () =>
+      expect(
+        within1([
+          ["sheet top", dialog.getBoundingClientRect().top, 24],
+          ["Cancel width", cancel.width, saveButton.width],
+          ["Cancel top", cancel.top, saveButton.top],
+        ])
+      ).toBe("")
+    );
+  },
+};
+
+export const TitleCountsAndPreviews: Story = {
+  name: "The title counts its characters and shows in the preview",
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const dialog = await screen.findByRole("dialog", { name: "Edit slide 2" });
+    const title = within(dialog).getByRole("textbox", { name: "Title" });
+
+    await userEvent.clear(title);
+    await userEvent.type(title, "Sales rose.");
+
+    await expect(within(dialog).getByText("11 / 90")).toBeVisible();
+    await expect(
+      dialog.querySelector("[data-slide-canvas]")?.textContent
+    ).toContain("Sales rose.");
+    expect(save).not.toHaveBeenCalled();
+  },
+};
+
+export const TitleStaysOneLine: Story = {
+  name: "A line break in the title becomes a space",
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+    const title = sheet.getByRole("textbox", { name: "Title" });
+
+    await userEvent.clear(title);
+    await userEvent.type(title, "Sales{Enter}rose.");
+    await expect(title).toHaveValue("Sales rose.");
+
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    await expect(save.mock.calls[0]?.[0].elements[0].text).toBe("Sales rose.");
+  },
+};
+
+export const CancelClosesWithoutSaving: Story = {
+  name: "Cancel closes the sheet without saving",
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await userEvent.type(
+      sheet.getByRole("textbox", { name: "Title" }),
+      " today"
+    );
+    await userEvent.click(sheet.getByRole("button", { name: "Cancel" }));
+
+    await expect(close).toHaveBeenCalledTimes(1);
+    expect(save).not.toHaveBeenCalled();
   },
 };

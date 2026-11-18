@@ -43,13 +43,7 @@ import {
   Trash2Icon,
   TypeIcon,
 } from "lucide-react";
-import {
-  type ReactNode,
-  useId,
-  useRef,
-  useState,
-  useSyncExternalStore,
-} from "react";
+import { type ReactNode, useId, useRef, useState } from "react";
 
 import {
   BORDER_WIDTHS,
@@ -67,6 +61,7 @@ import {
 } from "../contract.ts";
 import { boxStep, movedBox, resizedBox, SNAP } from "./canvas-adapter.ts";
 import { contrastLimit } from "./slide-layout.ts";
+import { useIsPhone } from "./use-is-phone.ts";
 import type { ShownElement, ShownSlide } from "./views.ts";
 
 /** The swatches of the prototype; any other color goes through the hex field. */
@@ -87,23 +82,6 @@ const WEIGHT_LABEL = {
   semibold: "Semibold",
   bold: "Bold",
 } as const;
-
-const PHONE_QUERY = "(max-width: 767px)";
-
-/** True below 768 px, where the toolbar is the dock. */
-function useIsPhone(): boolean {
-  return useSyncExternalStore(
-    (notify) => {
-      const query = window.matchMedia(PHONE_QUERY);
-
-      query.addEventListener("change", notify);
-
-      return () => query.removeEventListener("change", notify);
-    },
-    () => window.matchMedia(PHONE_QUERY).matches,
-    () => false
-  );
-}
 
 /** Swatches, a hex field and a clear choice; a pick or a valid hex calls `onPick` once. */
 export function ColorPanel(props: {

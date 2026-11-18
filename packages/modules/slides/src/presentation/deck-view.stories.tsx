@@ -703,7 +703,7 @@ export const RefusedSlideChange: Story = {
     );
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     const title = sheet.getByRole("textbox", { name: "Title" });
@@ -771,7 +771,7 @@ export const RemoveStatesEveryPlacement: Story = {
     );
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     const [removeFigure] = await sheet.findAllByRole("button", {
@@ -1651,7 +1651,7 @@ export const SaveSlideAndNotesTakeTurns: Story = {
     );
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     await userEvent.type(sheet.getByRole("textbox", { name: "Title" }), "!");
@@ -1736,7 +1736,7 @@ export const NotesPaneOnPhone: Story = {
     await userEvent.click(edit);
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     await expect(sheet.getByRole("textbox", { name: "Title" })).toHaveValue(
@@ -1772,7 +1772,7 @@ export const StaleEditorKeepsSeenHash: Story = {
     );
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     const title = sheet.getByRole("textbox", { name: "Title" });
@@ -1821,7 +1821,7 @@ export const StaleEditorTargetsSlideId: Story = {
     );
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     const title = sheet.getByRole("textbox", { name: "Title" });
@@ -1897,7 +1897,7 @@ export const ReloadRenewsTheHash: Story = {
     );
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     const title = sheet.getByRole("textbox", { name: "Title" });
@@ -2086,7 +2086,7 @@ export const VanishedSlide: Story = {
     );
 
     const sheet = within(
-      await screen.findByRole("dialog", { name: "Edit slide" })
+      await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
     const title = sheet.getByRole("textbox", { name: "Title" });

@@ -29,11 +29,6 @@ import {
   horizontalStripWheel,
   InfoNote,
   Input,
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
   Skeleton,
   Textarea,
 } from "@genie/ui";
@@ -70,15 +65,11 @@ import {
   isUnnamed,
   slideCount,
 } from "./draft-status.ts";
+import { EditSlideSheet } from "./edit-slide-sheet.tsx";
 import { NotesField, type NotesFieldHandle } from "./notes-field.tsx";
 import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
-import {
-  describedBy,
-  issueOf,
-  SlideEditor,
-  slideInputOf,
-} from "./slide-editor.tsx";
+import { describedBy, issueOf, slideInputOf } from "./slide-editor.tsx";
 import { elementBoxes, figuresDate } from "./slide-layout.ts";
 import { SlideStage, type SlideStageHandle } from "./slide-stage.tsx";
 import { SlideEditorBar, StyleToolbar } from "./style-toolbar.tsx";
@@ -1412,38 +1403,27 @@ export function DeckView(props: DeckViewProps) {
         onOpenChange={setPresenting}
       />
 
-      <Sheet
-        open={editing !== null}
-        onOpenChange={(open) => {
-          if (!open) closeEditor();
+      <EditSlideSheet
+        target={editing}
+        count={deck.slides.length}
+        deckTitle={deck.title}
+        failure={
+          editorFailure === null ? null : (
+            <ChangeRefusal failure={editorFailure} onReload={reload} />
+          )
+        }
+        canvas={{
+          figuresAsOf: deck.figuresAsOf,
+          timeZone: view.timeZone,
+          theme: view.theme,
+          logoUrl: view.logoUrl,
+          images: deck.images,
         }}
-      >
-        <SheetContent side="right">
-          <SheetHeader>
-            <SheetTitle>Edit slide</SheetTitle>
-            <SheetDescription>
-              Change the words of this slide. Its stored figures stay as they
-              are.
-            </SheetDescription>
-          </SheetHeader>
-          {editorFailure === null ? null : (
-            <div className="px-4">
-              <ChangeRefusal failure={editorFailure} onReload={reload} />
-            </div>
-          )}
-          {editing === null ? null : (
-            <SlideEditor
-              key={editing.slide.id}
-              // The words stay as the sheet opened them (R-53).
-              slide={editing.slide}
-              saving={busy || drafting}
-              onClose={closeEditor}
-              onUpload={upload}
-              onSave={saveSlide}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
+        saving={busy || drafting}
+        onClose={closeEditor}
+        onUpload={upload}
+        onSave={saveSlide}
+      />
 
       <Dialog
         open={adding !== null}

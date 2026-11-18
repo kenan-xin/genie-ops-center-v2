@@ -11,9 +11,16 @@ import {
   Textarea,
 } from "@genie/ui";
 import { useForm } from "@tanstack/react-form";
+import { isEqual } from "es-toolkit";
 import { useId, useRef, useState } from "react";
 
-import { type ElementInput, slideInput, type SlideInput } from "../contract.ts";
+import {
+  type ElementInput,
+  slideInput,
+  type SlideInput,
+  TITLE_CHARACTERS,
+} from "../contract.ts";
+import { SlideCanvas, type SlideCanvasProps } from "./slide-canvas.tsx";
 import type { ShownElement, ShownSlide } from "./views.ts";
 
 /** The two images the schema lets one slide show. */
@@ -28,7 +35,11 @@ const ALT_COPY = "Add alt text for this image.";
 
 export type SlideEditorProps = {
   readonly slide: ShownSlide;
+  /** What the live preview draws with: the deck's figures date, zone, theme, logo and image links. */
+  readonly canvas: Omit<SlideCanvasProps, "slide">;
   readonly saving?: boolean;
+  /** Opens Ask; undefined for a person without Ask, so the charts note has no link (Task 2). */
+  readonly onAsk?: (() => void) | undefined;
   readonly onSave: (slide: SlideInput) => void;
   readonly onClose: () => void;
   readonly onUpload: (file: File) => Promise<string>;
@@ -104,6 +115,54 @@ export function slideInputOf(slide: ShownSlide): SlideInput {
   };
 }
 
+/** The stored element that a figure, chart, table or image of the form stands for. */
+export function storedVisual(
+  slide: ShownSlide,
+  element: ElementInput
+): ShownElement | undefined {
+  if (element.kind === "image") {
+    return slide.elements.find(
+      (stored) => stored.kind === "image" && stored.fileId === element.fileId
+    );
+  }
+
+  if (
+    element.kind !== "figure" &&
+    element.kind !== "chart" &&
+    element.kind !== "table"
+  ) {
+    return undefined;
+  }
+
+  const same = slide.elements.flatMap((stored) =>
+    stored.kind === element.kind && "chart" in stored ? [stored] : []
+  );
+
+  return (
+    same.find((stored) => stored.chart === element.chart) ??
+    same.find((stored) => isEqual(stored.chart, element.chart))
+  );
+}
+
+/** The slide as the form holds it, for the live preview; a figure, chart or table keeps its frozen data (R-54). */
+export function previewSlide(slide: ShownSlide, input: SlideInput): ShownSlide {
+  const elements = input.elements.flatMap((element): ShownElement[] => {
+    if (
+      element.kind !== "figure" &&
+      element.kind !== "chart" &&
+      element.kind !== "table"
+    ) {
+      return [element];
+    }
+
+    const stored = storedVisual(slide, element);
+
+    return stored === undefined ? [] : [stored];
+  });
+
+  return { id: slide.id, background: input.background, elements };
+}
+
 /** The ids of a control's helper and error text, so a screen reader hears both (DESIGN.md). */
 export function describedBy(
   ...ids: readonly (string | undefined)[]
@@ -124,9 +183,10 @@ export function issueOf(errors: readonly unknown[]): string | undefined {
 
 /** The hand edit of one slide: its claim, its text and its visuals (R-52, R-54). */
 export function SlideEditor(props: SlideEditorProps) {
-  const { slide, onSave, onUpload } = props;
+  const { slide, canvas, onSave, onClose, onUpload } = props;
   const titleId = useId();
   const titleHelpId = useId();
+  const titleCountId = useId();
   const titleErrorId = useId();
   const textId = useId();
   const textErrorId = useId();
@@ -216,7 +276,25 @@ export function SlideEditor(props: SlideEditorProps) {
         void form.handleSubmit();
       }}
     >
-      <div className="grid min-h-0 flex-1 content-start gap-4 overflow-y-auto p-4">
+      <div className="grid min-h-0 flex-1 content-start gap-5 overflow-y-auto px-5 pt-4 pb-6">
+        <form.Subscribe selector={(state) => state.values}>
+          {(values) => (
+            <div className="flex flex-col gap-1.5 max-md:flex-row max-md:items-end max-md:gap-3">
+              {/* The preview repeats the fields, so it stays out of the tab order and the tree. */}
+              <div
+                aria-hidden="true"
+                inert
+                className="w-full overflow-hidden rounded-lg border border-border max-md:max-w-60"
+              >
+                <SlideCanvas slide={previewSlide(slide, values)} {...canvas} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Preview. Changes show here before you save.
+              </p>
+            </div>
+          )}
+        </form.Subscribe>
+
         <form.Field name="elements[0].text">
           {(field) => {
             const issue = issueOf(field.state.meta.errors);
@@ -224,22 +302,41 @@ export function SlideEditor(props: SlideEditorProps) {
             const show =
               issue !== undefined && (attempted || field.state.meta.isTouched);
 
+            const value = field.state.value ?? "";
+
             return (
               <Field>
-                <FieldLabel htmlFor={titleId}>Title</FieldLabel>
-                <Input
+                <div className="flex items-baseline justify-between gap-3">
+                  <FieldLabel htmlFor={titleId}>Title</FieldLabel>
+                  <span
+                    id={titleCountId}
+                    className="text-xs text-muted-foreground tabular-nums"
+                  >
+                    {value.length} / {TITLE_CHARACTERS}
+                  </span>
+                </div>
+                <Textarea
                   id={titleId}
-                  value={field.state.value ?? ""}
-                  onValueChange={field.handleChange}
+                  rows={2}
+                  maxLength={TITLE_CHARACTERS}
+                  className="resize-none"
+                  value={value}
+                  onChange={(event) =>
+                    // A title is one sentence: a line break, typed or pasted, becomes a space.
+                    field.handleChange(
+                      event.target.value.replace(/\s*\n\s*/g, " ")
+                    )
+                  }
                   onBlur={field.handleBlur}
                   aria-invalid={show ? true : undefined}
                   aria-describedby={describedBy(
                     titleHelpId,
+                    titleCountId,
                     show ? titleErrorId : undefined
                   )}
                 />
                 <FieldDescription id={titleHelpId}>
-                  State the finding of this slide in one sentence.
+                  The finding of this slide, in one sentence.
                 </FieldDescription>
                 {show ? (
                   <FieldError id={titleErrorId}>{issue}</FieldError>
@@ -505,11 +602,16 @@ export function SlideEditor(props: SlideEditorProps) {
         </form.Field>
       </div>
 
-      <SheetFooter>
-        <Button type="submit" loading={props.saving} disabled={uploading}>
-          Save slide
-        </Button>
-      </SheetFooter>
+      <div className="border-t border-border">
+        <SheetFooter className="flex-row justify-end max-md:*:flex-1">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="submit" loading={props.saving} disabled={uploading}>
+            Save slide
+          </Button>
+        </SheetFooter>
+      </div>
     </form>
   );
 }
