@@ -5,7 +5,9 @@ import {
   e2eAccessLinksMemberEmail,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
+import { expectNoAxeViolations } from "./support/axe.ts";
 import { queryDatabase } from "./support/database.ts";
+import { iconCheckSize } from "./support/icon-alignment.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
 
@@ -21,6 +23,8 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
 
 const memberName = (project: string) => `E2E links member ${project}`;
 
+const readerName = (project: string) => `E2E links reader ${project}`;
+
 /** The roles of the reader and the member; idempotent, so every test runs it. */
 async function setUp(project: string): Promise<void> {
   const member = e2eAccessLinksMemberEmail(project);
@@ -32,6 +36,7 @@ async function setUp(project: string): Promise<void> {
       "insert into role (name, permissions, is_system) values ('E2E links limited', array['core:people:manage', 'core:settings:manage'], false) on conflict (name) do nothing",
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'E2E links settings' and u.email = '${reader}' on conflict do nothing`,
       `update "user" set name = '${memberName(project)}' where email = '${member}'`,
+      `update "user" set name = '${readerName(project)}' where email = '${reader}'`,
       // Tests may run in parallel, so the member's one role is never removed and added again.
       `delete from role_assignment a using "user" u, role r where a.principal_type = 'user' and a.principal_id = u.id and u.email = '${member}' and r.id = a.role_id and (r.name <> 'E2E links limited' or a.scope_type is not null)`,
       `insert into role_assignment (role_id, principal_type, principal_id) select r.id, 'user', u.id from role r, "user" u where r.name = 'E2E links limited' and u.email = '${member}' and not exists (select 1 from role_assignment a where a.role_id = r.id and a.principal_type = 'user' and a.principal_id = u.id)`,
@@ -66,10 +71,15 @@ test("the navigation entry and Manage in Access open Access with the person chos
   const project = testInfo.project.name;
   const name = memberName(project);
 
+  await page.setViewportSize(iconCheckSize(project));
   await setUp(project);
 
   const [memberId] = await queryDatabase(
     `select id from "user" where email = '${e2eAccessLinksMemberEmail(project)}'`
+  );
+
+  const [roleId] = await queryDatabase(
+    "select id from role where name = 'E2E links limited'"
   );
 
   await signInThroughKeycloak(page, {
@@ -89,18 +99,18 @@ test("the navigation entry and Manage in Access open Access with the person chos
   const inspector = await openPerson(page, name);
 
   await inspector.getByRole("tab", { name: /^Roles/ }).click();
+
+  // R-37e: a roles manager gets the role as a link to Roles, with its scope and how it arrived.
+  const roles = inspector.getByRole(project === "phone" ? "list" : "table", {
+    name: "Assigned roles",
+  });
+
   await expect(
-    inspector
-      .getByText("E2E links limited", { exact: true })
-      .filter({ visible: true })
-      .first()
-  ).toBeVisible();
-  await expect(
-    inspector
-      .getByText("Direct", { exact: true })
-      .filter({ visible: true })
-      .first()
-  ).toBeVisible();
+    roles.getByRole("link", { name: "E2E links limited" })
+  ).toHaveAttribute("href", `/admin/roles?selected=${roleId}`);
+  await expect(roles).toContainText("All records");
+  await expect(roles).toContainText("Direct");
+  await expectNoAxeViolations(page, "Person sheet, Roles tab");
   await inspector.getByRole("button", { name: "Manage in Access" }).click();
 
   await expect(page).toHaveURL(
@@ -294,6 +304,7 @@ test("a people manager reads a person's access read-only", async ({
   const rolesReads: string[] = [];
   const personReads: string[] = [];
 
+  await page.setViewportSize(iconCheckSize(project));
   await setUp(project);
 
   page.on("request", (request) => {
@@ -349,6 +360,24 @@ test("a people manager reads a person's access read-only", async ({
   await expect(
     inspector.getByRole("button", { name: "Manage in Access" })
   ).toHaveCount(0);
+
+  // P11-33: another person's record shows the read-only line and no link into Roles, so the link
+  // the Roles page refuses never renders, through the real People read (R-37e).
+  const other = await openPerson(page, readerName(project));
+
+  await other.getByRole("tab", { name: /^Roles/ }).click();
+
+  const otherRoles = other.getByRole(project === "phone" ? "list" : "table", {
+    name: "Assigned roles",
+  });
+
+  await expect(other.getByText("View only")).toBeVisible();
+  await expect(
+    otherRoles.getByText("E2E links settings", { exact: true })
+  ).toBeVisible();
+  await expect(otherRoles.getByRole("link")).toHaveCount(0);
+  await expectNoAxeViolations(page, "Person sheet, Roles tab, view only");
+
   expect(rolesReads).toEqual([]);
   expect(personReads.length).toBeGreaterThan(0);
 });

@@ -10,6 +10,7 @@ import { openAdvancedAccess, saveAdvancedAccess } from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
+import { iconCheckSize } from "./support/icon-alignment.ts";
 import { withDeploymentLock } from "./support/lock.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
@@ -56,6 +57,8 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   const GROUP_VALUE = e2eGroupsRolesGroup(project);
   // Phone and desktop run in parallel against one database, so the label is project-scoped too.
   const GROUP_LABEL = `S2-11 group ${project}`;
+
+  await page.setViewportSize(iconCheckSize(project));
 
   // The e2e database keeps rows between runs, so remove this project's group from an earlier run
   // (its grants and memberships first) before pre-adding it again.
@@ -240,12 +243,22 @@ test("pre-add a directory group, map it, admit a jit person, and archive to stop
   await expect(archivedInspector).toHaveCount(0);
   await page.getByRole("checkbox", { name: /^Show archived/ }).check();
   await archivedInspector.getByRole("tab", { name: /^Roles/ }).click();
-  await expect(
-    archivedInspector
-      .getByText("Paused: Group archived")
-      .filter({ visible: true })
-      .first()
-  ).toBeVisible();
+
+  // Every role of a group arrives direct, so a group's table has no Assigned via column (d8l5.61).
+  const roles = archivedInspector.getByRole(
+    project === "phone" ? "list" : "table",
+    { name: "Assigned roles" }
+  );
+
+  await expect(roles).toContainText("Paused: Group archived");
+
+  if (project !== "phone") {
+    await expect(
+      roles.getByRole("columnheader", { name: "Assigned via" })
+    ).toHaveCount(0);
+  }
+
+  await expectNoAxeViolations(page, "Group sheet, Roles tab");
 
   // A second jit person with the same claim is now refused: no non-archived mapped group remains.
   const refusedEmail = e2eGroupsRolesEmail("refused", project);
@@ -492,6 +505,8 @@ test("Role detail links back to Roles through the page header trail", async ({
   const holder = `E2E auditor ${project}`;
   const holderEmail = `e2e.auditor-holder.${project}@example.com`;
 
+  await page.setViewportSize(iconCheckSize(project));
+
   // d8l5.47: one person holds Auditor directly, so role detail has a line to show.
   await queryDatabase(
     [
@@ -526,7 +541,9 @@ test("Role detail links back to Roles through the page header trail", async ({
     "select id from role where name = 'Auditor'"
   );
 
-  const holders = page.getByRole("list", { name: "Assigned to" });
+  const holdersCard = page.getByRole("region", { name: /^Assigned to/ });
+  // The holders card stays a card list at every width, so its rows are listitems at 1440 too.
+  const holders = holdersCard.getByRole("list", { name: "Assigned to" });
   const line = holders.getByRole("listitem").filter({ hasText: holder });
 
   await expect(line).toContainText("Direct");
@@ -543,19 +560,42 @@ test("Role detail links back to Roles through the page header trail", async ({
     page.getByRole("heading", { name: /^Assigned to/ })
   ).toBeVisible();
 
-  // Tenant administrator: the seeded group, with its member count, and no "See all" under ten.
+  // Tenant administrator: the seeded group, with its member count and who assigned it, and no
+  // "See all" under ten.
   await page.goto("/admin/roles");
   await page
     .getByRole("button", { name: /^Tenant administrator\b/ })
     .filter({ visible: true })
     .click();
-  await expect(
-    holders.getByRole("listitem").filter({ hasText: "Genie Administrators" })
-  ).toContainText(/Group · \d+ members?/);
+
+  const permissionsCard = page.getByRole("region", {
+    name: "What this role allows",
+  });
+
+  const holdersBox = await holdersCard.boundingBox();
+  const permissionsBox = await permissionsCard.boundingBox();
+
+  expect(holdersBox).not.toBeNull();
+  expect(permissionsBox).not.toBeNull();
+
+  // A-8: the holders read first on a phone, and the permissions take the wider left column at 1440.
+  if (project === "phone") {
+    expect(holdersBox?.y ?? 0).toBeLessThan(permissionsBox?.y ?? 0);
+  } else {
+    expect(permissionsBox?.x ?? 0).toBeLessThan(holdersBox?.x ?? 0);
+  }
+
+  const admins = holders
+    .getByRole("listitem")
+    .filter({ hasText: "Genie Administrators" });
+
+  await expect(admins).toContainText(/Group · \d+ members?/);
+  await expect(admins).toContainText(/Assigned \d{1,2} [A-Z][a-z]{2,3} \d{4}/);
   await expect(holders.getByRole("listitem").first()).toContainText(
     "Genie Administrators"
   );
   await expect(page.getByRole("link", { name: /^See all/ })).toHaveCount(0);
+  await expectNoAxeViolations(page, "Role detail");
 
   const toRoles = page
     .getByRole("main")
