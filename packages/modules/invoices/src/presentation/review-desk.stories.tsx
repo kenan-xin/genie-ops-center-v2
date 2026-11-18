@@ -826,9 +826,9 @@ function barOf(root: HTMLElement): DOMRect {
   return bar.getBoundingClientRect();
 }
 
-// T6-a (czjw.187): the phone shows the lens and Open document over the one form of T1-c, with no
-// pager; the bar states the due reason with Delete and Save as wide as each other, and each dense
-// control keeps its 40 px phone height.
+// T6-a (czjw.187): the phone shows the lens and Open document over the one form of T1-c; the bar
+// states the due reason with Delete and Save as wide as each other, and each dense control keeps
+// its 40 px phone height.
 export const InvoiceOnPhone: Story = {
   globals: phone390,
   beforeEach: () => serve(invoiceReview),
@@ -1212,7 +1212,7 @@ export const BesideTheDockedPanel: Story = {
 };
 
 // T6-e: beside the docked panel at 1280 px the page column is 576 px, so the form stacks under the
-// lens, with no pager.
+// lens.
 export const StackedBesideTheDockedPanel: Story = {
   decorators: [
     (Story) => (

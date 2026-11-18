@@ -660,8 +660,8 @@ export const SaveReasonBesideSave: Story = {
 };
 
 // Every form state at the phone width too, so axe checks each at 390 x 844. A writable review
-// shows the pager there, so its copy drops the desk play (`omit`); the pager stories of
-// `review-desk.stories.tsx` test the phone, and `InvoiceOnPhone` the reason with Save.
+// stacks under a preview there, so its copy drops the play (`omit`); the phone stories of
+// `review-desk.stories.tsx` test that layout, and `InvoiceOnPhone` the reason with Save.
 export const SaveReasonBesideSaveOnPhone: Story = {
   name: "Save reason beside Save on a phone",
   globals: phone,

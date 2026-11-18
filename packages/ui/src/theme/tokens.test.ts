@@ -419,7 +419,6 @@ const BOTTOM_BARS_WITHOUT_INSET = [
   "packages/core/src/features/access/grants-screen.tsx",
   "packages/modules/invoices/src/presentation/document-desk.tsx",
   "packages/modules/invoices/src/presentation/review-form.tsx",
-  "packages/modules/invoices/src/presentation/review-pager.tsx",
 ];
 
 // P16e-47: with `viewport-fit=cover`, the home indicator covers a bottom bar without the inset.

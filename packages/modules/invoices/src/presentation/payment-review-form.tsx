@@ -136,7 +136,7 @@ function buildInput(
 }
 
 /**
- * The payment review as a model of cards, the split and Save (R-30, R-31, R-33, R-38, czjw.98).
+ * The payment review as a model of fields, the split and Save (R-30, R-31, R-33, R-38, czjw.98).
  * The form keeps values and touched state only; each render parses the values and checks the links.
  */
 export function usePaymentReview(input: {
@@ -172,7 +172,7 @@ export function usePaymentReview(input: {
 
   const live = useSelector(form.store, (state) => state.values);
 
-  // Once saved, the cards show what was sent, not a field typed while the save was pending.
+  // Once saved, the form shows what was sent, not a field typed while the save was pending.
   const [savedValues, setSavedValues] = useState<FormValues | null>(null);
 
   const values = savedValues ?? live;
@@ -395,10 +395,6 @@ export function usePaymentReview(input: {
         onChange={(next) => form.setFieldValue("links", next)}
       />
     ),
-    splitSummary: {
-      linked: formatMoney(check.allocatedCents, currency),
-      count: links.length,
-    },
     blocker,
     notices:
       duplicate === null && saveError === null ? null : (

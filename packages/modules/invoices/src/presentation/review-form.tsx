@@ -123,7 +123,7 @@ export function focusSoon(id: string): void {
   requestAnimationFrame(() => document.getElementById(id)?.focus());
 }
 
-/** One text field as a review card: its tag, its value read before an edit, Undo and its note (czjw.98). */
+/** One text field of a review: its tag, its value read before an edit, Undo and its note (czjw.98). */
 export function textItemOf(input: {
   readonly reading: StoredReading | null;
   readonly field: TextField;
@@ -166,13 +166,13 @@ export function textItemOf(input: {
   };
 }
 
-/** The customer's card, and what blocks its save. */
+/** The customer's field, and what blocks its save. */
 export type CustomerReview = {
   readonly item: ReviewItem;
   readonly check: FieldCheck;
 };
 
-/** The customer as a review card, and what blocks its save (R-33, czjw.98). */
+/** The customer as a review field, and what blocks its save (R-33, czjw.98). */
 export function customerItemOf(input: {
   readonly reading: StoredReading | null;
   readonly label: string;

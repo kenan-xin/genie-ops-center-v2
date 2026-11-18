@@ -338,7 +338,7 @@ function dueCheck(reading: StoredReading | null, due: DueChoice): FieldCheck {
 }
 
 /**
- * The invoice or paid-receipt review as a model of cards, Save and what blocks it (R-28, R-33,
+ * The invoice or paid-receipt review as a model of fields, Save and what blocks it (R-28, R-33,
  * R-38, czjw.98). The form keeps values and touched state only; each render parses the values, so
  * a reading that lands later fills the fields and no message goes stale.
  */
@@ -368,7 +368,7 @@ export function useInvoiceReview(input: {
 
   const live = useSelector(form.store, (state) => state.values);
 
-  // Once saved, the cards show what was sent, not a field typed while the save was pending.
+  // Once saved, the form shows what was sent, not a field typed while the save was pending.
   const [savedValues, setSavedValues] = useState<FormValues | null>(null);
 
   const values = savedValues ?? live;
@@ -558,7 +558,6 @@ export function useInvoiceReview(input: {
   return {
     items,
     split: null,
-    splitSummary: null,
     blocker,
     notices:
       duplicate === null && saveError === null ? null : (

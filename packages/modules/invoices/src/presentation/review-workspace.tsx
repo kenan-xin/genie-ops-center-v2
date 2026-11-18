@@ -19,9 +19,9 @@ import type {
 import type { DocumentReviewView } from "./views.ts";
 
 /**
- * The model after a save on this page (P09-9): each card shows its value as text and keeps "Read
- * as" without Undo; the result card states the split, so the split and its summary row go: the
- * refetched open invoices no longer hold the linked ones, so a row computed again reads 0.00.
+ * The model after a save on this page (P09-9): each field shows its value as text and keeps "Read
+ * as" without Undo; the result states the split, so the split goes: the refetched open invoices
+ * no longer hold the linked ones, so a row computed again reads 0.00.
  */
 function savedModel(model: ReviewModel): ReviewModel {
   return {
@@ -35,7 +35,6 @@ function savedModel(model: ReviewModel): ReviewModel {
       onUndo: null,
     })),
     split: null,
-    splitSummary: null,
     consequence: null,
     blocker: null,
     notices: null,
@@ -113,7 +112,7 @@ export function ReviewWorkspace(props: {
       onSubmit={(event) => {
         event.preventDefault();
 
-        // The panel says to wait until the sweep shows the cards; a saved review has no Save.
+        // The panel says to wait until the sweep shows the fields; a saved review has no Save.
         if (!frame.sweep && frame.saved === null) model?.submit();
       }}
     >

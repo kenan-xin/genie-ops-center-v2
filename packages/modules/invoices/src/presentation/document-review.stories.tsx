@@ -70,7 +70,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). A read invoice, paid receipt or payment opens on the review desk, and below 1024 px on the pager (`czjw.98`); the type choice, a purchase order and a reader keep the document on the left and its fields on the right. The file name shows once, shortened, in the line under the title. A person opens the review from the inbox, changes the type, deletes the stored document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
+          "One document at `/m/invoices/documents/<id>` (Spec 7 R-27, R-33, R-38, decisions 3, 4, 7 and 12). A read invoice, paid receipt or payment opens as one form beside the page, or under a preview of it when the desk is narrow (`czjw.187`); the type choice, a purchase order and a reader keep the document on the left and its fields on the right. The file name shows once, shortened, in the line under the title. A person opens the review from the inbox, changes the type, deletes the stored document after a confirmation, and selects a field to highlight its source text on the document. The viewer loads its first file link once and keeps it while the review refetches.",
       },
     },
     a11y: { test: "error" },
@@ -160,7 +160,7 @@ export const InvoiceRead: Story = {
   },
 };
 
-// At 390 for axe; the pager stories of `review-desk.stories.tsx` test the phone, so no play.
+// At 390 for axe; the phone stories of `review-desk.stories.tsx` test that layout, so no play.
 export const InvoiceReadOnPhone: Story = {
   name: "Invoice read on a phone",
   globals: phone,
@@ -540,9 +540,9 @@ export const Dark: Story = {
   beforeEach: () => serve(invoiceReview),
 };
 
-// Every review state at the phone width too, so axe checks each at 390 x 844. A writable invoice,
-// paid receipt or payment shows the pager there, so its copy drops the desk play (`omit`); the
-// pager stories of `review-desk.stories.tsx` test the phone.
+// Every review state at the phone width too, so axe checks each at 390 x 844. A writable review
+// stacks under a preview there, so its copy drops the play (`omit`); the phone stories of
+// `review-desk.stories.tsx` test that layout.
 export const TagsOnPhone: Story = {
   ...Tags,
   name: "Tags on a phone",

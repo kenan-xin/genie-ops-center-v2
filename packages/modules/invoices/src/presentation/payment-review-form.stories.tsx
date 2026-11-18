@@ -454,9 +454,9 @@ export const PossibleDuplicate: Story = {
   },
 };
 
-// Every story at the phone width too, so axe checks each at 390 x 844. A payment shows the pager
-// there, so each copy drops the desk play (`omit`); `PaymentSplitOnPhone` of
-// `review-desk.stories.tsx` tests the split step.
+// Every story at the phone width too, so axe checks each at 390 x 844. A payment stacks under a
+// preview there, so each copy drops the play (`omit`); `PaymentSplitOnPhone` of
+// `review-desk.stories.tsx` tests the split there.
 export const SplitOnPhone: Story = {
   ...omit(Split, ["play"]),
   name: "Split on a phone",

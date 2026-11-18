@@ -5,12 +5,12 @@ import type { ViewerHighlight } from "./document-viewer.tsx";
 import type { Blocker } from "./review-blocker.ts";
 import type { OriginTagKind, ReviewFieldKey } from "./review-fields.tsx";
 
-/** One field of a review as the desk card, the pager step and the summary show it (czjw.98). */
+/** One field of a review, as the form shows it (czjw.98). */
 export type ReviewItem = {
   readonly key: ReviewFieldKey;
   readonly label: string;
   readonly tag: OriginTagKind;
-  /** The quotes of the read value; none puts the card in the panel, with no pin. */
+  /** The quotes of the read value; none leaves the field in the form, with no pin. */
   readonly sources: readonly ViewerHighlight[];
   /** The input, or `display` as text once saved. */
   readonly control: ReactNode;
@@ -18,26 +18,21 @@ export type ReviewItem = {
   readonly controlId: string | null;
   /** False for a field that the save may leave blank; it shows under "Optional" when the document lacks it (czjw.187). */
   readonly required: boolean;
-  /** The value in words, for the summary, the All fields list and a saved card. */
+  /** The value in words, for a field with no control and for a saved field shown as text. */
   readonly display: string;
   /** The read value in the input's format, once the person changed it. */
   readonly readAs: string | null;
   /** Puts the read value back and focuses the control; null once saved. */
   readonly onUndo: (() => void) | null;
-  /** One card note of the product copy, or null. */
+  /** One note of the product copy under the field, or null. */
   readonly note: string | null;
 };
 
-/** What one kind of review gives its layout: the cards, the split, Save and what blocks it. */
+/** What one kind of review gives its layout: the fields, the split, Save and what blocks it. */
 export type ReviewModel = {
   readonly items: readonly ReviewItem[];
   /** The split section of a payment; null for an invoice or once saved. */
   readonly split: ReactNode | null;
-  /** The linked total and the number of links, for the pager summary; null for an invoice. */
-  readonly splitSummary: {
-    readonly linked: string;
-    readonly count: number;
-  } | null;
   readonly blocker: Blocker | null;
   /** DuplicateNotice and SaveFailure, or null. */
   readonly notices: ReactNode;
@@ -60,7 +55,7 @@ export type ReviewFrame = {
   /** The reading landed on this page and its sweep has not played yet (P09-2). */
   readonly sweep: boolean;
   readonly onSweepEnd: () => void;
-  /** The result card of a save made on this page; the cards then show their values read only. */
+  /** The result of a save made on this page; the fields then show their values read only. */
   readonly saved: ReactNode | null;
 };
 
