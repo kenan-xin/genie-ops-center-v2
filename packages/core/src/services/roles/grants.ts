@@ -15,8 +15,6 @@ import {
   removeAssignmentInTransaction,
 } from "../authorization/role-assignment.ts";
 import { ASK_PERMISSION } from "../authorization/roles.ts";
-import { groupLabelSql } from "../groups/label.ts";
-import { groupMemberCountSql } from "../groups/member-count.ts";
 import {
   type AccessRecipient,
   assertManagesAllRoles,
@@ -50,19 +48,6 @@ export type GrantRow = {
   readonly roles: readonly GrantRole[];
   /** Null only when no role row carries the default name. */
   readonly defaultRoleId: string | null;
-};
-
-export type GrantRecipients = {
-  readonly groups: readonly {
-    readonly id: string;
-    readonly name: string;
-    readonly memberCount: number;
-  }[];
-  readonly people: readonly {
-    readonly id: string;
-    readonly name: string;
-    readonly email: string;
-  }[];
 };
 
 type RawRole = {
@@ -361,33 +346,4 @@ export async function saveGrants(input: {
     // R-38: the one check, once, on the final state of the batch.
     if (deleted) await assertAdministratorRemains(tx);
   });
-}
-
-/**
- * The recipients the Grants picker offers (P12, R-39): groups that are not archived, with their
- * member count, and people who are not erased, never the break-glass account.
- */
-export async function readGrantRecipients(input: {
-  readonly tenant: TenantContext;
-  readonly caller: RequestPrincipal;
-}): Promise<GrantRecipients> {
-  await assertManagesAllRoles(input.caller);
-
-  const [groups, people] = await Promise.all([
-    input.tenant.db.$client.query<GrantRecipients["groups"][number]>(
-      `select g.id::text as id, ${groupLabelSql("g")} as name,
-              ${groupMemberCountSql("g")} as "memberCount"
-         from "group" g
-        where g.archived_at is null`
-    ),
-    input.tenant.db.$client.query<GrantRecipients["people"][number]>(
-      `select u.id, u.name, u.email from "user" u
-        where u.is_break_glass = false and u.erased_at is null`
-    ),
-  ]);
-
-  return {
-    groups: groups.rows.toSorted(byName),
-    people: people.rows.toSorted(byName),
-  };
 }

@@ -46,6 +46,8 @@ export type TransferListProps = {
   ) => void;
   /** `panes` puts the buckets side by side; `stacked` puts Catalog above Granted, for a container under 1280 px. */
   readonly layout: "panes" | "stacked";
+  /** Puts Granted above Catalog in the stacked form: the phone roster (Access spec). DOM order, so reading and tab order follow. */
+  readonly grantedFirst?: boolean;
   readonly availableLabel: string;
   readonly grantedLabel: string;
   readonly emptyAvailable: string;
@@ -320,6 +322,11 @@ export function TransferList(props: TransferListProps) {
     />
   );
 
+  const sides: readonly Side[] =
+    props.grantedFirst === true
+      ? ["granted", "available"]
+      : ["available", "granted"];
+
   return (
     <div
       className={cn(
@@ -327,7 +334,7 @@ export function TransferList(props: TransferListProps) {
         props.layout === "panes" && "md:grid-cols-2"
       )}
     >
-      {(["available", "granted"] as const).map((side) => {
+      {sides.map((side) => {
         const quick = movable(side);
 
         const button = moveButton(side, true);

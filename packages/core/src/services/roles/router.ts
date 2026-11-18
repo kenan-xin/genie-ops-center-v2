@@ -19,11 +19,7 @@ import {
   readAssignments,
   readRecipientAccess,
 } from "./effective-access.ts";
-import {
-  readGrantCatalogue,
-  readGrantRecipients,
-  saveGrants,
-} from "./grants.ts";
+import { readGrantCatalogue, saveGrants } from "./grants.ts";
 import {
   copyRole,
   createRole,
@@ -268,10 +264,6 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         modules,
         records: input.records,
       })
-    ),
-
-    grantRecipients: managed.grantRecipients.handler(({ context }) =>
-      readGrantRecipients({ tenant: context.tenant, caller: context.caller })
     ),
 
     recipients: managed.recipients.handler(({ context, input }) =>

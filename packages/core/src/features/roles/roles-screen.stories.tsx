@@ -584,7 +584,10 @@ export const HoldersPastTen: Story = {
     ).toBeVisible();
     await expect(
       canvas.getByRole("link", { name: "See all 12 assignments" })
-    ).toHaveAttribute("href", `/admin/access?role=${FIXTURE_CUSTOM_DETAIL.id}`);
+    ).toHaveAttribute(
+      "href",
+      `/admin/access/overview?role=${FIXTURE_CUSTOM_DETAIL.id}`
+    );
   },
 };
 

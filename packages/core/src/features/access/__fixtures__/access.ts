@@ -3,11 +3,12 @@ import type {
   AdvancedOption,
 } from "../../../services/roles/advanced.ts";
 import type { AccessPath } from "../../../services/roles/effective-access.ts";
-import type {
-  GrantRecipients,
-  GrantRow,
-} from "../../../services/roles/grants.ts";
+import type { GrantRow } from "../../../services/roles/grants.ts";
 import type { RoleRow } from "../../../services/roles/index.ts";
+import type {
+  RecipientPage,
+  RecipientRow,
+} from "../../../services/roles/recipients.ts";
 
 /**
  * The prototype's sample tenant, Harbor Point (`docs/design/sections/access/access.prototype.html`):
@@ -551,27 +552,161 @@ export const overviewPaths = (subject: {
     ([key]) => key === `${subject.type}:${subject.id}`
   )?.[1] ?? [];
 
-/** Two people share the name Alex Morgan, as every seeded e2e person shares one name. */
-export const FIXTURE_RECIPIENTS: GrantRecipients = {
-  groups: [
-    { id: "g-analysts", name: "Analysts", memberCount: 8 },
-    { id: "g-finance", name: "Finance team", memberCount: 12 },
-    { id: "g-admins", name: "Genie Administrators", memberCount: 2 },
-    { id: "g-leads", name: "Leadership", memberCount: 3 },
-    { id: "g-ops", name: "Operations", memberCount: 40 },
-    { id: "g-pmo", name: "Project office", memberCount: 6 },
-    { id: "g-sales", name: "Sales desk", memberCount: 15 },
-  ],
-  people: [
-    { id: "p-alex", name: "Alex Morgan", email: "alex.morgan@example.com" },
-    { id: "p-alex-2", name: "Alex Morgan", email: "a.morgan@example.com" },
-    { id: "p-casey", name: "Casey Park", email: "casey.park@example.com" },
-    { id: "p-jamie", name: "Jamie Chen", email: "jamie.chen@example.com" },
-    { id: "p-jordan", name: "Jordan Lee", email: "jordan.lee@example.com" },
-    { id: "p-riley", name: "Riley Park", email: "riley.park@example.com" },
-    { id: "p-sam", name: "Sam Rivera", email: "sam.rivera@example.com" },
-  ],
+/**
+ * Every group, then every person, each by name and then id, as `roles.recipients` orders them
+ * (d8l5.62, P12-17). Two people share the name Alex Morgan, as every seeded e2e person shares one
+ * name.
+ */
+export const FIXTURE_RECIPIENTS: readonly RecipientRow[] = [
+  {
+    type: "group",
+    id: "g-analysts",
+    name: "Analysts",
+    source: "idp",
+    memberCount: 8,
+    archived: false,
+    assignedRoles: 0,
+  },
+  {
+    type: "group",
+    id: "g-finance",
+    name: "Finance team",
+    source: "idp",
+    memberCount: 12,
+    archived: false,
+    assignedRoles: 2,
+  },
+  {
+    type: "group",
+    id: "g-admins",
+    name: "Genie Administrators",
+    source: "local",
+    memberCount: 2,
+    archived: false,
+    assignedRoles: 2,
+  },
+  {
+    type: "group",
+    id: "g-leads",
+    name: "Leadership",
+    source: "idp",
+    memberCount: 3,
+    archived: false,
+    assignedRoles: 0,
+  },
+  {
+    type: "group",
+    id: "g-ops",
+    name: "Operations",
+    source: "local",
+    memberCount: 40,
+    archived: false,
+    assignedRoles: 3,
+  },
+  {
+    type: "group",
+    id: "g-pmo",
+    name: "Project office",
+    source: "local",
+    memberCount: 6,
+    archived: true,
+    assignedRoles: 1,
+  },
+  {
+    type: "group",
+    id: "g-sales",
+    name: "Sales desk",
+    source: "idp",
+    memberCount: 15,
+    archived: false,
+    assignedRoles: 1,
+  },
+  {
+    type: "user",
+    id: "p-alex",
+    name: "Alex Morgan",
+    email: "alex.morgan@example.com",
+    assignedRoles: 0,
+  },
+  {
+    type: "user",
+    id: "p-alex-2",
+    name: "Alex Morgan",
+    email: "a.morgan@example.com",
+    assignedRoles: 0,
+  },
+  {
+    type: "user",
+    id: "p-casey",
+    name: "Casey Park",
+    email: "casey.park@example.com",
+    assignedRoles: 0,
+  },
+  {
+    type: "user",
+    id: "p-jamie",
+    name: "Jamie Chen",
+    email: "jamie.chen@example.com",
+    assignedRoles: 2,
+  },
+  {
+    type: "user",
+    id: "p-jordan",
+    name: "Jordan Lee",
+    email: "jordan.lee@example.com",
+    assignedRoles: 0,
+  },
+  {
+    type: "user",
+    id: "p-riley",
+    name: "Riley Park",
+    email: "riley.park@example.com",
+    assignedRoles: 1,
+  },
+  {
+    type: "user",
+    id: "p-sam",
+    name: "Sam Rivera",
+    email: "sam.rivera@example.com",
+    assignedRoles: 1,
+  },
+];
+
+export const fixtureRecipient = (id: string): RecipientRow => {
+  const row = FIXTURE_RECIPIENTS.find((candidate) => candidate.id === id);
+
+  if (row === undefined) throw new Error(`No fixture recipient ${id}`);
+
+  return row;
 };
+
+/** `roles.recipients` over the fixture list (P12-17), as the field and the list call it. */
+export function fixtureRecipientPage(input: {
+  readonly query?: string;
+  readonly kind?: "all" | "group" | "user";
+  readonly ids?: readonly string[];
+  readonly offset?: number;
+  readonly limit?: number;
+}): RecipientPage {
+  const term = (input.query ?? "").trim().toLowerCase();
+  const kind = input.kind ?? "all";
+
+  const found = FIXTURE_RECIPIENTS.filter(
+    (row) =>
+      (kind === "all" || row.type === kind) &&
+      (input.ids === undefined || input.ids.includes(row.id)) &&
+      (term === "" ||
+        row.name.toLowerCase().includes(term) ||
+        (row.type === "user" && row.email.toLowerCase().includes(term)))
+  );
+
+  const offset = input.offset ?? 0;
+
+  return {
+    rows: found.slice(offset, offset + (input.limit ?? 25)),
+    total: found.length,
+  };
+}
 
 /** Every Overview sample once, newest first, as the unfiltered read pages it (d8l5.62). */
 export const ALL_OVERVIEW_PATHS: readonly AccessPath[] = [
@@ -589,8 +724,8 @@ export const ALL_OVERVIEW_PATHS: readonly AccessPath[] = [
 /** The size of each sample group, as `AccessPage.memberCounts` carries it. */
 export const OVERVIEW_MEMBER_COUNTS: Readonly<Record<string, number>> =
   Object.fromEntries([
-    ...FIXTURE_RECIPIENTS.groups.map(
-      (group) => [group.id, group.memberCount] as const
+    ...FIXTURE_RECIPIENTS.flatMap((row) =>
+      row.type === "group" ? [[row.id, row.memberCount] as const] : []
     ),
     ...INVOICE_GROUPS.map(([id, , memberCount]) => [id, memberCount] as const),
   ]);

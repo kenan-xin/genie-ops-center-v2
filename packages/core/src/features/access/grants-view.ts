@@ -1,18 +1,56 @@
+import type { ListDefinition, ListParams } from "@genie/ui";
 import { z } from "zod";
 
 import type {
   AccessPath,
   AccessRecipient,
 } from "../../services/roles/effective-access.ts";
-import type {
-  GrantChanges,
-  GrantRecipients,
-  GrantRow,
-} from "../../services/roles/grants.ts";
+import type { GrantChanges, GrantRow } from "../../services/roles/grants.ts";
 import { EMPTY_DRAFT, type GrantsDraft } from "./grants-draft-store.ts";
 
 /** A refused save: the route rejects with a plain object that carries the whole message. */
 export const REFUSAL = z.object({ message: z.string().min(1) });
+
+/** The Grants list's address: the search and the Show filter (P12-17, `grants-1440`). */
+export const GRANTS_LIST: ListDefinition = {
+  label: "Groups and people, groups first",
+  noun: ["group or person", "groups and people"],
+  filters: [
+    {
+      id: "q",
+      kind: "search",
+      label: "Search groups and people",
+      placeholder: "Search groups and people",
+    },
+    {
+      id: "show",
+      kind: "option",
+      label: "Show",
+      placeholder: "Groups and people",
+      options: [
+        { value: "group", label: "Groups" },
+        { value: "user", label: "People" },
+      ],
+    },
+  ],
+  sorts: [],
+  defaultSort: { column: "name", direction: "asc" },
+};
+
+export type GrantsListInput = {
+  readonly query: string;
+  readonly kind: "all" | "group" | "user";
+};
+
+/** `q` and `show` as the read's input. A `show` the list does not offer reads as both kinds. */
+export function grantsListInput(params: ListParams): GrantsListInput {
+  const show = params["show"];
+
+  return {
+    query: params["q"] ?? "",
+    kind: show === "group" || show === "user" ? show : "all",
+  };
+}
 
 export type GrantedRowView = {
   readonly row: GrantRow;
@@ -180,25 +218,6 @@ export function saveInput(view: GrantsView, draft: GrantsDraft): GrantChanges {
     }),
     remove: draft.remove.map((row) => ({ row })),
   };
-}
-
-/**
- * The recipient that a `?recipient=` link names, only when Grants lists it: a group first, then a
- * person. An archived group, an erased person or an old bookmark answers null (LK1).
- */
-export function linkedRecipient(
-  id: string | undefined,
-  recipients: GrantRecipients
-): AccessRecipient | null {
-  if (id === undefined) return null;
-
-  if (recipients.groups.some((entry) => entry.id === id)) {
-    return { type: "group", id };
-  }
-
-  return recipients.people.some((entry) => entry.id === id)
-    ? { type: "user", id }
-    : null;
 }
 
 /**

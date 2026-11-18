@@ -1,28 +1,29 @@
+import { useListState } from "@genie/ui";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import * as React from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { AdvancedChanges } from "../../services/roles/advanced.ts";
-import type {
-  AccessPath,
-  AccessRecipient,
-} from "../../services/roles/effective-access.ts";
+import type { AccessPath } from "../../services/roles/effective-access.ts";
 import type { GrantChanges } from "../../services/roles/grants.ts";
+import type { RecipientRow } from "../../services/roles/recipients.ts";
 import {
   ADVANCED_CATALOGUE,
   ADVANCED_LABELS,
-  FIXTURE_RECIPIENTS,
   FIXTURE_ROWS,
   fixturePath,
   fixturePaths,
+  fixtureRecipient,
+  fixtureRecipientPage,
   held,
   searchFixtureRecords,
   tenantAdminOf,
 } from "./__fixtures__/access.ts";
 import { GrantsScreen } from "./grants-screen.tsx";
+import { GRANTS_LIST, grantsListInput } from "./grants-view.ts";
 
 type Args = {
-  readonly initial: AccessRecipient | null;
+  readonly initial: RecipientRow | null;
   readonly link?: {
     readonly recipient?: string;
     readonly module?: string;
@@ -31,19 +32,28 @@ type Args = {
   readonly refusal?: string;
   /** Paths of the chosen recipient, when a story needs its own; fixture paths otherwise. */
   readonly paths?: readonly AccessPath[];
+  /** Paths of this recipient never arrive, so the screen between two recipients shows. */
+  readonly loadingFor?: string;
   readonly onSave: (changes: GrantChanges) => Promise<void>;
   readonly onSaveAdvanced: (changes: AdvancedChanges) => Promise<void>;
-  readonly onRecipientChange?: (next: AccessRecipient | null) => void;
+  readonly onRecipientChange?: (next: RecipientRow | null) => void;
 };
 
 /** Holds the recipient the way the route does, and answers each recipient's paths at once. */
 function Harness(args: Args) {
-  const [recipient, setRecipient] = React.useState(args.initial);
+  const [recipient, setRecipient] = React.useState<RecipientRow | null>(
+    args.initial
+  );
+
+  const state = useListState(GRANTS_LIST);
+
+  const input = grantsListInput(state.params);
+
+  const [offset, setOffset] = React.useState(0);
 
   return (
     <GrantsScreen
       catalogue={FIXTURE_ROWS}
-      recipients={FIXTURE_RECIPIENTS}
       recipient={recipient}
       onRecipientChange={(next) => {
         args.onRecipientChange?.(next);
@@ -51,8 +61,30 @@ function Harness(args: Args) {
       }}
       paths={
         args.paths ??
-        (recipient === null ? undefined : fixturePaths(recipient.id))
+        (recipient === null || recipient.id === args.loadingFor
+          ? undefined
+          : fixturePaths(recipient.id))
       }
+      search={async (query) => fixtureRecipientPage({ query, limit: 10 })}
+      lookup={async (id) =>
+        fixtureRecipientPage({ ids: [id], limit: 1 }).rows[0] ?? null
+      }
+      list={{
+        state,
+        page: (() => {
+          const found = fixtureRecipientPage({ ...input, offset, limit: 25 });
+
+          return {
+            rows: found.rows,
+            from: offset + 1,
+            total: found.total,
+            hasPrevious: offset > 0,
+            hasNext: offset + found.rows.length < found.total,
+          };
+        })(),
+        onPage: (step) => setOffset(offset + step * 25),
+        paging: false,
+      }}
       {...(args.link === undefined ? {} : { link: args.link })}
       onSave={async (changes) => {
         await args.onSave(changes);
@@ -70,9 +102,21 @@ function Harness(args: Args) {
   );
 }
 
-const group = (id: string): AccessRecipient => ({ type: "group", id });
+const group = fixtureRecipient;
 
-const person = (id: string): AccessRecipient => ({ type: "user", id });
+const person = fixtureRecipient;
+
+/** The story's address: only the given list parameters, so each story starts from its own filters. */
+const address = (params: Readonly<Record<string, string>>) => () => {
+  const url = new URL(window.location.href);
+
+  for (const name of ["q", "show"]) url.searchParams.delete(name);
+
+  for (const [name, value] of Object.entries(params))
+    url.searchParams.set(name, value);
+
+  window.history.replaceState(null, "", url);
+};
 
 const meta = {
   title: "Core/Access/GrantsScreen",
@@ -83,12 +127,13 @@ const meta = {
     docs: {
       description: {
         component:
-          "The Grants tab of Access (R-37a). Pick a group, or a person as the exception, move module rows between Catalog and Granted, pick the role of each Granted row, and save once. Every Remove opens a confirmation that names the roles that go and the paths that stay. A refused save keeps every staged change on the screen.",
+          "The Grants tab of Access (R-37a, P12-17). It opens on every group and person; a row opens its editor. Grant to changes the recipient and All groups and people returns to the list, each behind the unsaved-changes confirm. Move module rows between Catalog and Granted, pick the role of each Granted row, and save once. Every Remove opens a confirmation that names the roles that go and the paths that stay. A refused save keeps every staged change on the screen.",
       },
     },
     a11y: { test: "error" },
   },
   args: { initial: null, onSave: fn(), onSaveAdvanced: fn() },
+  beforeEach: address({}),
   render: (args) => (
     <div className="p-4 md:p-8">
       <Harness {...args} />
@@ -108,53 +153,216 @@ const tickAndMove = async (row: string, button: RegExp) => {
   await userEvent.click(screen.getByRole("button", { name: button }));
 };
 
-/** S1: a recipient switch with unsaved work asks first, and Cancel keeps the work. */
-export const NoRecipient: Story = {
+/** T10-a (d8l5.62): Grants opens on every group, then every person, with counts and the range; no empty chooser. */
+export const OpensOnGroupsAndPeople: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("heading", { name: "Choose a group" })
+      canvas.getByRole("heading", { name: "Groups and people" })
     ).toBeVisible();
+    await expect(
+      canvas.getByText("Open one to change several of its modules at once.")
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("heading", { name: /^Choose a/ })
+    ).toBeNull();
 
-    await userEvent.click(
-      canvas.getByRole("combobox", { name: "Choose a group" })
+    const open = canvas.getAllByRole("button", {
+      name: /^Open .+ in Grants$/,
+    });
+
+    await expect(
+      open.map((button) => button.getAttribute("aria-label"))
+    ).toEqual(
+      [
+        "Analysts",
+        "Finance team",
+        "Genie Administrators",
+        "Leadership",
+        "Operations",
+        "Project office",
+        "Sales desk",
+        "Alex Morgan",
+        "Alex Morgan",
+        "Casey Park",
+        "Jamie Chen",
+        "Jordan Lee",
+        "Riley Park",
+        "Sam Rivera",
+      ].map((name) => `Open ${name} in Grants`)
     );
+
+    const table = within(
+      canvas.getByRole("table", { name: "Groups and people, groups first" })
+    );
+
+    await expect(
+      table.getByRole("row", { name: /Operations/ })
+    ).toHaveTextContent("Group · 40 members");
+    await expect(
+      table.getByRole("row", { name: /Operations/ })
+    ).toHaveTextContent("3");
+    await expect(
+      table.getByRole("row", { name: /Analysts/ })
+    ).toHaveTextContent("None");
+    await expect(
+      table.getByRole("row", { name: /Project office/ })
+    ).toHaveTextContent("Archived");
+    await expect(canvas.getByText("1–14 of 14")).toBeVisible();
+  },
+};
+
+/** T10-b (C11-24): a row opens that recipient's editor, and All groups and people returns to the list. */
+export const RowOpensTheEditor: Story = {
+  args: { onRecipientChange: fn() },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ args, canvas }) => {
     await userEvent.click(
-      await screen.findByRole("option", { name: "Operations · 40 members" })
+      canvas.getByRole("button", { name: "Open Operations in Grants" })
+    );
+
+    await expect(args.onRecipientChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ type: "group", id: "g-ops" })
     );
     await expect(
-      await canvas.findByRole("group", { name: "Granted" })
+      await canvas.findByRole("heading", { name: "Access assignments" })
     ).toBeVisible();
+    await expect(
+      canvas.getByRole("combobox", { name: "Grant to" })
+    ).toHaveTextContent("Operations");
+    await expect(canvas.getByRole("group", { name: "Granted" })).toBeVisible();
+    await expect(
+      canvas.queryByRole("heading", { name: "Groups and people" })
+    ).toBeNull();
 
+    await userEvent.click(
+      canvas.getByRole("button", { name: "All groups and people" })
+    );
+    await expect(
+      await canvas.findByRole("heading", { name: "Groups and people" })
+    ).toBeVisible();
+    await expect(args.onRecipientChange).toHaveBeenLastCalledWith(null);
+  },
+};
+
+/** T10-c (G2 change 3): a new pick in Grant to keeps the editor while the new paths load. */
+export const ChangeOfRecipientKeepsTheScreen: Story = {
+  args: { initial: group("g-ops"), loadingFor: "g-finance" },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("combobox", { name: "Grant to" })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Finance team/ })
+    );
+
+    await expect(
+      canvas.getByRole("combobox", { name: "Grant to" })
+    ).toHaveTextContent("Finance team");
+    await expect(
+      canvas.getByRole("heading", { name: "Access assignments" })
+    ).toBeVisible();
+    await expect(
+      canvas.getByText("Loading the roles of Finance team…")
+    ).toBeVisible();
+    await expect(
+      canvas.queryByRole("heading", { name: "Groups and people" })
+    ).toBeNull();
+    await expect(
+      canvas.queryByRole("heading", { name: /^Choose a/ })
+    ).toBeNull();
+  },
+};
+
+/** T10-d (C11-23, Access spec line 36): on a phone the roster lists Granted first, in reading order too. */
+export const GrantedFirstOnPhone: Story = {
+  args: { initial: group("g-ops") },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const granted = await canvas.findByRole("group", { name: "Granted" });
+
+    const catalog = canvas.getByRole("group", { name: "Catalog" });
+
+    await expect(granted.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      catalog.getBoundingClientRect().top
+    );
+    await expect(
+      granted.compareDocumentPosition(catalog) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+  },
+};
+
+/** T10-e (d8l5.74 item 2): a direct role with no Grants row shows each reason it is paused. */
+export const RowlessDirectRoleShowsPaused: Story = {
+  args: {
+    initial: person("p-jamie"),
+    // "reports" has no catalogue row, so the role is rowless; its permission opens no row.
+    paths: [
+      {
+        ...fixturePath({
+          id: "a-jamie-reports",
+          holder: { type: "user", id: "p-jamie", name: "Jamie Chen" },
+          role: { id: "r-reports-viewer", name: "Reports viewer" },
+          moduleId: "reports",
+        }),
+        notInEffect: ["module-off"],
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    const granted = within(
+      await canvas.findByRole("group", { name: "Granted" })
+    );
+
+    await expect(granted.getByText("Reports viewer")).toBeVisible();
+    await expect(granted.getByText("Paused: Module off")).toBeVisible();
+  },
+};
+
+/** T10 (S1): a draft blocks every exit: Grant to and All groups and people ask first, and Cancel keeps the work. */
+export const SwitchWithUnsavedWorkAsksFirst: Story = {
+  args: { initial: group("g-ops") },
+  play: async ({ canvas }) => {
     await tickAndMove("Slides", /^Remove 1$/);
     await expect(pendingBar().getByText("1 unsaved change")).toBeVisible();
 
-    await userEvent.click(canvas.getByRole("button", { name: "People" }));
+    await userEvent.click(canvas.getByRole("combobox", { name: "Grant to" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: /Analysts/ })
+    );
 
     const discard = await screen.findByRole("dialog", {
       name: "Discard 1 unsaved change?",
     });
 
     await waitFor(() =>
-      expect(
-        within(discard).getByText(
-          "Switching to People drops the changes for Operations."
-        )
-      ).toBeVisible()
+      expect(discard).toHaveTextContent(
+        "Switching to Analysts drops the changes for Operations."
+      )
     );
     await userEvent.click(
       within(discard).getByRole("button", { name: "Cancel" })
     );
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     await expect(pendingBar().getByText("1 unsaved change")).toBeVisible();
+    await expect(
+      canvas.getByRole("combobox", { name: "Grant to" })
+    ).toHaveTextContent("Operations");
 
-    await userEvent.click(canvas.getByRole("button", { name: "People" }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: "All groups and people" })
+    );
+    await expect(await screen.findByRole("dialog")).toHaveTextContent(
+      "Switching to All groups and people drops the changes for Operations."
+    );
     await userEvent.click(
       within(await screen.findByRole("dialog")).getByRole("button", {
         name: "Discard",
       })
     );
     await expect(
-      await canvas.findByRole("heading", { name: "Choose a person" })
+      await canvas.findByRole("heading", { name: "Groups and people" })
     ).toBeVisible();
     await expect(canvas.queryByRole("group", { name: "Granted" })).toBeNull();
     await expect(
@@ -163,28 +371,20 @@ export const NoRecipient: Story = {
   },
 };
 
-/** C06-2: the Grant to chips take the md height of the picker, and Advanced access sits at the row end. */
+/** C06-2: Grant to and Advanced access share the md height on one row, Advanced access at its end. */
 export const GrantToRowLinesUp: Story = {
   args: { initial: group("g-ops") },
   globals: { viewport: { value: "desktop1440", isRotated: false } },
   play: async ({ canvas }) => {
-    const grantTo = await canvas.findByRole("group", { name: "Grant to" });
-    const row = within(grantTo.parentElement!);
+    const field = await canvas.findByRole("combobox", { name: "Grant to" });
+    const advanced = canvas.getByRole("button", { name: "Advanced access" });
+    const row = advanced.parentElement!;
 
-    // The segmented track, not its segments, takes the row's md height (6wz1.105).
-    const controls = [
-      grantTo,
-      ...row
-        .getAllByRole("button")
-        .filter((button) => !grantTo.contains(button)),
-      ...row.getAllByRole("combobox"),
-    ];
+    const top = field.getBoundingClientRect().top;
 
-    const top = controls[0]!.getBoundingClientRect().top;
-
-    // One string, so that a failure prints every control in full.
+    // One string, so that a failure prints both controls in full.
     await expect(
-      controls
+      [field, advanced]
         .flatMap((control) => {
           const { height, top: at } = control.getBoundingClientRect();
 
@@ -195,14 +395,11 @@ export const GrantToRowLinesUp: Story = {
         .join("; ")
     ).toBe("");
 
-    // 6wz1.107: the action holds the row's right end, with its icon.
-    const advanced = row.getByRole("button", { name: "Advanced access" });
-
     await expect(advanced.querySelector("svg")).not.toBeNull();
     await expect(
       Math.abs(
         advanced.getBoundingClientRect().right -
-          grantTo.parentElement!.getBoundingClientRect().right
+          row.getBoundingClientRect().right
       )
     ).toBeLessThanOrEqual(1);
   },
@@ -214,7 +411,7 @@ export const HelpClearsTheHeading: Story = {
   globals: { viewport: { value: "desktop1440", isRotated: false } },
   play: async ({ canvas }) => {
     const heading = await canvas.findByRole("heading", {
-      name: "Modules and roles",
+      name: "Access assignments",
     });
 
     const help = canvas.getByRole("button", { name: "How access works" });
@@ -230,36 +427,23 @@ export const AdvancedAccessAtTheRowEndPhone: Story = {
   args: { initial: group("g-ops") },
   globals: { viewport: { value: "phone390", isRotated: false } },
   play: async ({ canvas }) => {
-    // The toolbar row: the card below also holds role selects and, after Task 6, Show.
-    const toolbar = (await canvas.findByRole("group", { name: "Grant to" }))
-      .parentElement!;
-
-    const row = toolbar.getBoundingClientRect();
-
-    const picker = within(toolbar)
-      .getByRole("combobox")
-      .getBoundingClientRect();
-
-    const advanced = within(toolbar).getByRole("button", {
+    const advanced = await canvas.findByRole("button", {
       name: "Advanced access",
     });
+
+    const toolbar = advanced.parentElement!;
+
+    const picker = within(toolbar)
+      .getByRole("combobox", { name: "Grant to" })
+      .getBoundingClientRect();
+
+    const row = toolbar.getBoundingClientRect();
 
     const box = advanced.getBoundingClientRect();
 
     await expect(advanced.querySelector("svg")).not.toBeNull();
     await expect(Math.abs(box.right - row.right)).toBeLessThanOrEqual(1);
     await expect(box.top).toBeGreaterThanOrEqual(picker.bottom);
-  },
-};
-
-export const NoRecipientPerson: Story = {
-  play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "People" }));
-    await expect(
-      await canvas.findByText(
-        "A person is the exception. Use it when one person needs a module that their groups do not give."
-      )
-    ).toBeVisible();
   },
 };
 
@@ -471,7 +655,7 @@ export const ShowFilterPhone: Story = {
     await ShowFilter.play?.(context);
 
     const heading = context.canvas.getByRole("heading", {
-      name: "Modules and roles",
+      name: "Access assignments",
     });
 
     const show = context.canvas.getByRole("combobox", { name: "Show" });
@@ -560,15 +744,13 @@ export const ThroughGroupIsReadOnly: Story = {
       ).getByRole("button", { name: "Discard" })
     );
 
-    await expect(args.onRecipientChange).toHaveBeenLastCalledWith({
-      type: "group",
-      id: "g-finance",
-    });
+    await waitFor(() =>
+      expect(args.onRecipientChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ type: "group", id: "g-finance" })
+      )
+    );
     await expect(
-      canvas.getByRole("button", { name: "Groups" })
-    ).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      canvas.getByRole("combobox", { name: "Choose a group" })
+      canvas.getByRole("combobox", { name: "Grant to" })
     ).toHaveTextContent("Finance team");
   },
 };
@@ -678,7 +860,15 @@ export const SaveInFlight: Story = {
     await waitFor(() => expect(choice.closest("[inert]")).not.toBeNull());
     await expect(
       canvas
-        .getByRole("button", { name: "People", hidden: true })
+        .getByRole("combobox", { name: "Grant to", hidden: true })
+        .closest("[inert]")
+    ).not.toBeNull();
+    await expect(
+      canvas
+        .getByRole("button", {
+          name: "All groups and people",
+          hidden: true,
+        })
         .closest("[inert]")
     ).not.toBeNull();
   },
@@ -686,41 +876,6 @@ export const SaveInFlight: Story = {
 
 const advancedSheet = async () =>
   within(await screen.findByRole("dialog", { name: "Advanced access" }));
-
-/** W2: Advanced access waits for a recipient, then opens on their advanced roles. */
-export const AdvancedAccessOpensFromTheToolbar: Story = {
-  play: async ({ canvas }) => {
-    const open = canvas.getByRole("button", { name: "Advanced access" });
-    const trigger = canvas.getByRole("combobox", { name: "Choose a group" });
-
-    // Bug caught: the button was disabled with its reason only in a title tooltip.
-    await expect(open).toBeEnabled();
-    await expect(open).not.toHaveAttribute("title");
-
-    await userEvent.click(open);
-
-    await expect(canvas.getByText("Choose a group first.")).toBeVisible();
-    await expect(trigger).toHaveAttribute("aria-invalid", "true");
-    await expect(trigger).toHaveAccessibleDescription("Choose a group first.");
-    await expect(screen.queryByRole("dialog")).toBeNull();
-
-    await userEvent.click(trigger);
-    await userEvent.click(
-      await screen.findByRole("option", { name: "Operations · 40 members" })
-    );
-    await waitFor(() =>
-      expect(canvas.queryByText("Choose a group first.")).toBeNull()
-    );
-    await userEvent.click(open);
-
-    const sheet = await advancedSheet();
-
-    // The sheet fades in, so its rows turn visible after the transition.
-    await waitFor(() =>
-      expect(sheet.getByText("Invoice approver")).toBeVisible()
-    );
-  },
-};
 
 const admins = {
   type: "group",
@@ -748,9 +903,13 @@ export const InheritedRouteOnOneLineOnPhone: Story = {
     await expect(
       canvas.queryByText("Tenant administrator", { exact: true })
     ).toBeNull();
-    await expect(
-      within(granted).getByRole("button", { name: "Genie Administrators" })
-    ).toBeVisible();
+
+    const source = within(granted).getByRole("button", {
+      name: "Genie Administrators",
+    });
+
+    await expect(source).toBeVisible();
+    await expect(getComputedStyle(source, "::after").minHeight).toBe("44px");
   },
 };
 
@@ -876,7 +1035,7 @@ export const CoreRoleLinkOpensAdvancedAccess: Story = {
   },
 };
 
-/** LK1: a `?recipient=` link of a person presses People and picks the person once. */
+/** LK1: a `?recipient=` link opens that person once. */
 export const PrefilledPersonLink: Story = {
   args: { link: { recipient: "p-jamie" } },
   play: async ({ canvas }) => {
@@ -884,25 +1043,20 @@ export const PrefilledPersonLink: Story = {
       await canvas.findByRole("group", { name: "Granted" })
     ).toBeVisible();
     await expect(
-      canvas.getByRole("button", { name: "People" })
-    ).toHaveAttribute("aria-pressed", "true");
-    await expect(
-      canvas.getByRole("combobox", { name: "Choose a person" })
+      canvas.getByRole("combobox", { name: "Grant to" })
     ).toHaveTextContent("Jamie Chen");
   },
 };
 
-/** LK1: a link to an id that no list holds (an archived group, an old bookmark) picks nobody. */
-export const UnlistedRecipientLinkIsIgnored: Story = {
+/** LK1, Review Focus 4: a link to an id that no read holds shows the list. */
+export const StaleRecipientLinkShowsTheList: Story = {
   args: { link: { recipient: "g-former" } },
   play: async ({ canvas }) => {
     await expect(
-      canvas.getByRole("heading", { name: "Choose a group" })
+      await canvas.findByRole("heading", { name: "Groups and people" })
     ).toBeVisible();
-    await expect(
-      canvas.getByRole("button", { name: "Groups" })
-    ).toHaveAttribute("aria-pressed", "true");
     await expect(canvas.queryByRole("group", { name: "Granted" })).toBeNull();
+    await expect(canvas.queryByRole("alert")).toBeNull();
   },
 };
 

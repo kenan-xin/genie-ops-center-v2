@@ -3,10 +3,9 @@
 import {
   Button,
   ConfirmDialog,
-  EmptyState,
-  FieldError,
   focusRing,
   FormActionBar,
+  iconLeadPx,
   LabelPill,
   Select,
   SelectContent,
@@ -14,14 +13,13 @@ import {
   SelectTrigger,
   SelectValue,
   StatusPill,
-  ToggleGroup,
-  ToggleGroupItem,
+  touchAreas,
   TransferList,
   type TransferItem,
   useMediaQuery,
 } from "@genie/ui";
-import { SlidersHorizontalIcon, UserIcon, UsersIcon } from "lucide-react";
-import { type ReactNode, useEffect, useId, useRef, useState } from "react";
+import { ArrowLeftIcon, SlidersHorizontalIcon } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useStore } from "zustand";
 
 import type {
@@ -29,15 +27,12 @@ import type {
   AdvancedChanges,
   RemovalGuard,
 } from "../../services/roles/advanced.ts";
+import type { AccessPath } from "../../services/roles/effective-access.ts";
+import type { GrantChanges, GrantRow } from "../../services/roles/grants.ts";
 import type {
-  AccessPath,
-  AccessRecipient,
-} from "../../services/roles/effective-access.ts";
-import type {
-  GrantChanges,
-  GrantRecipients,
-  GrantRow,
-} from "../../services/roles/grants.ts";
+  RecipientPage,
+  RecipientRow,
+} from "../../services/roles/recipients.ts";
 import type { ScopeRecord } from "../../services/roles/records.ts";
 import { AccessHelp } from "./access-help.tsx";
 import { AdvancedAccessSheet } from "./advanced-access-sheet.tsx";
@@ -51,19 +46,20 @@ import {
   draftCounts,
   type GrantsDraft,
 } from "./grants-draft-store.ts";
+import { GrantsList, type GrantsListProps } from "./grants-list.tsx";
 import {
   grantsView,
   type GrantsView,
   type InheritedRowView,
   type InheritedSource,
   linkDraft,
-  linkedRecipient,
   ownsRole,
   REFUSAL,
   removalOf,
   saveInput,
 } from "./grants-view.ts";
-import { RecipientPicker } from "./recipient-picker.tsx";
+import { pausedLabel, reasonLabel } from "./overview-view.ts";
+import { RecipientField } from "./recipient-field.tsx";
 import {
   RemoveAccessDialog,
   type RowRemoval,
@@ -73,14 +69,20 @@ import { UnsavedMark } from "./unsaved-mark.tsx";
 
 export type GrantsScreenProps = {
   readonly catalogue: readonly GrantRow[] | undefined;
-  readonly recipients: GrantRecipients | undefined;
-  readonly recipient: AccessRecipient | null;
-  readonly onRecipientChange: (next: AccessRecipient | null) => void;
+  readonly recipient: RecipientRow | null;
+  readonly onRecipientChange: (next: RecipientRow | null) => void;
+  /** The Grant to field's search: `roles.recipients` with `limit: 10`. */
+  readonly search: (query: string) => Promise<RecipientPage>;
+  /** One recipient by id, archived groups too, or null (`roles.recipients({ ids: [id], archived: true, limit: 1 })`). */
+  readonly lookup: (id: string) => Promise<RecipientRow | null>;
+  /** The list shown while no recipient is chosen. */
+  readonly list: Omit<GrantsListProps, "onOpen">;
   /** The chosen recipient's paths, undefined while they load. */
   readonly paths: readonly AccessPath[] | undefined;
   /**
-   * A prefilled link. `recipient` picks a listed recipient once, when the recipients arrive (LK1).
-   * `module` and `role` stage their change once, on the first recipient (P17).
+   * A prefilled link. `recipient` opens that recipient once through `lookup`; an id that no read
+   * holds shows the list (LK1). `module` and `role` stage their change once, on the first
+   * recipient (P17).
    */
   readonly link?: {
     readonly recipient?: string | undefined;
@@ -106,37 +108,10 @@ export type GrantsScreenProps = {
   readonly error?: string;
 };
 
-type Kind = AccessRecipient["type"];
-
-const EMPTY_COPY = {
-  group: {
-    title: "Choose a group",
-    description:
-      "A group is the normal way to give access. Your identity provider keeps its members current, so access follows people when they join or leave.",
-  },
-  user: {
-    title: "Choose a person",
-    description:
-      "A person is the exception. Use it when one person needs a module that their groups do not give.",
-  },
-} as const;
-
-const KIND_LABEL = { group: "Groups", user: "People" } as const;
-
 const plural = (count: number, word: string) =>
   `${count} ${word}${count === 1 ? "" : "s"}`;
 
 const offReason = (row: GrantRow) => `${row.name} is off for this deployment.`;
-
-function nameOf(
-  recipient: AccessRecipient,
-  recipients: GrantRecipients | undefined
-): string {
-  const list =
-    recipient.type === "group" ? recipients?.groups : recipients?.people;
-
-  return list?.find((entry) => entry.id === recipient.id)?.name ?? "";
-}
 
 /** A transfer row while it is built, so each optional field is added only when present. */
 type DraftItem = { -readonly [K in keyof TransferItem]: TransferItem[K] };
@@ -172,7 +147,7 @@ function advancedButton(onOpenAdvanced: () => void): ReactNode {
   return (
     <button
       type="button"
-      className={`font-medium text-foreground underline ${focusRing}`}
+      className={`font-medium text-foreground underline ${touchAreas.md} ${focusRing}`}
       onClick={onOpenAdvanced}
     >
       Change in Advanced access
@@ -203,7 +178,7 @@ function inheritedItem(
   const sourceButton = (
     <button
       type="button"
-      className={`font-medium text-foreground underline ${focusRing}`}
+      className={`font-medium text-foreground underline ${touchAreas.md} ${focusRing}`}
       onClick={() => input.onOpenSource(source)}
     >
       {source.name}
@@ -267,7 +242,16 @@ function rowlessItem(
         Direct · {advancedButton(input.onOpenAdvanced)}
       </span>
     ),
-    pills: recordPill(path, input.recordLabels),
+    pills: (
+      <>
+        {path.notInEffect.map((reason) => (
+          <StatusPill key={reason} tone="warning">
+            {pausedLabel(reasonLabel(reason))}
+          </StatusPill>
+        ))}
+        {recordPill(path, input.recordLabels)}
+      </>
+    ),
   };
 }
 
@@ -325,7 +309,7 @@ function itemsOf(input: {
           </>
         ),
         control: (
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <span className="flex flex-col items-start gap-1">
             <RoleChoice
               rowName={row.name}
               roles={row.roles}
@@ -373,15 +357,22 @@ function countsLine(draft: GrantsDraft): string {
 }
 
 /**
- * The Grants tab of Access (R-37a). An administrator picks a group, or a person as the exception,
- * moves module rows between Catalog and Granted, picks the role of each Granted row, and saves
- * once. Every Remove confirms first. A refused save keeps every staged change on the screen.
+ * The Grants tab of Access (R-37a, P12-17). With no recipient it lists every group and person; a
+ * row opens its editor. One Grant to field changes the recipient, and "All groups and people"
+ * returns to the list, each behind the unsaved-changes confirm. The editor moves module rows
+ * between Catalog and Granted, picks the role of each Granted row, and saves once. Every Remove
+ * confirms first. A refused save keeps every staged change.
  */
 export function GrantsScreen(props: GrantsScreenProps): ReactNode {
   const [store] = useState(createGrantsDraftStore);
   const draft = useStore(store, (state) => state);
 
-  const [kind, setKind] = useState<Kind>(props.recipient?.type ?? "group");
+  // An address link opens once; until its lookup answers, neither the list nor the editor shows.
+  const [opening, setOpening] = useState(
+    () => props.link?.recipient !== undefined
+  );
+
+  const [lookupFailed, setLookupFailed] = useState(false);
 
   const [confirmRemove, setConfirmRemove] = useState(false);
 
@@ -400,15 +391,13 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const [recipientError, setRecipientError] = useState(false);
-
-  const recipientErrorId = useId();
-
   const [advancedAdd, setAdvancedAdd] = useState<AdvancedAdd | undefined>();
 
   const [shownGroup, setShownGroup] = useState(SHOW_ALL);
 
   const panes = useMediaQuery("(min-width: 1280px)", { noSsr: true });
+
+  const wide = useMediaQuery("(min-width: 768px)", { noSsr: true });
 
   const catalogue = props.catalogue ?? [];
 
@@ -428,25 +417,25 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const advancedCatalogue = props.advanced.catalogue;
 
-  // A recipient link picks once, when the recipients first arrive, so a later read never takes back
-  // the administrator's own pick. It needs no paths, unlike the module and role link below.
+  // An address link opens its recipient once (LK1). An id that no read holds shows the list.
   const linkedId = props.link?.recipient;
 
-  const { recipients, recipient: chosen, onRecipientChange } = props;
+  const { lookup, onRecipientChange } = props;
 
   useEffect(() => {
-    if (recipientLinkApplied.current || recipients === undefined) return;
+    if (recipientLinkApplied.current || linkedId === undefined) return;
 
     recipientLinkApplied.current = true;
 
-    const match =
-      chosen === null ? linkedRecipient(linkedId, recipients) : null;
-
-    if (match === null) return;
-
-    setKind(match.type);
-    onRecipientChange(match);
-  }, [recipients, chosen, linkedId, onRecipientChange]);
+    void lookup(linkedId)
+      .then(
+        (row) => {
+          if (row !== null) onRecipientChange(row);
+        },
+        () => setLookupFailed(true)
+      )
+      .finally(() => setOpening(false));
+  }, [linkedId, lookup, onRecipientChange]);
 
   // A prefilled link stages its change once, on the first recipient whose paths arrive (P17). A
   // core role link that Grants cannot stage waits for the Advanced catalogue, then opens Advanced
@@ -505,8 +494,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   const total = counts.add + counts.change + counts.remove;
 
-  const name =
-    props.recipient === null ? "" : nameOf(props.recipient, props.recipients);
+  const name = props.recipient?.name ?? "";
 
   /** A switch drops the draft, so a dirty draft asks first. */
   const guardSwitch = (label: string, apply: () => void) => {
@@ -529,25 +517,24 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     setAdvancedAdd(undefined);
   };
 
-  const switchKind = (next: Kind) =>
-    guardSwitch(KIND_LABEL[next], () => {
-      setRecipientError(false);
-      clear();
-      setKind(next);
-      props.onRecipientChange(null);
-    });
+  const pick = (next: RecipientRow) => {
+    if (next.type === props.recipient?.type && next.id === props.recipient.id)
+      return;
 
-  const pick = (next: AccessRecipient) => {
-    if (next.id === props.recipient?.id) return;
-
-    setRecipientError(false);
-
-    guardSwitch(nameOf(next, props.recipients), () => {
+    guardSwitch(next.name, () => {
       clear();
       closeAdvanced();
       props.onRecipientChange(next);
     });
   };
+
+  /** Back to the list, behind the unsaved-changes confirm. */
+  const backToList = () =>
+    guardSwitch("All groups and people", () => {
+      clear();
+      closeAdvanced();
+      props.onRecipientChange(null);
+    });
 
   /** A read-only row's source: the group opens on Grants, behind the unsaved-changes confirm. */
   const openSource = (source: InheritedSource) => {
@@ -560,10 +547,17 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     guardSwitch(source.name, () => {
       clear();
       closeAdvanced();
-      setKind("group");
-      props.onRecipientChange({ type: "group", id: source.id });
+      void props.lookup(source.id).then(
+        (row) => {
+          if (row !== null) props.onRecipientChange(row);
+        },
+        () => setLookupFailed(true)
+      );
     });
   };
+
+  const error =
+    props.error ?? (lookupFailed ? "The access could not be read." : undefined);
 
   const removals = (): RowRemoval[] =>
     props.recipient === null || props.paths === undefined
@@ -594,8 +588,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
     try {
       await props.onSave(saveInput(view, sent));
       store.getState().clearSaved(sent);
-    } catch (error) {
-      const refusal = REFUSAL.safeParse(error);
+    } catch (thrown) {
+      const refusal = REFUSAL.safeParse(thrown);
 
       setFailure(
         refusal.success
@@ -627,173 +621,166 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* A save in flight freezes the recipient and the rows: an edit made now would race the write. */}
-      <div
-        inert={saving}
-        className="flex flex-wrap items-center gap-x-3 gap-y-2"
-      >
-        <span
-          id="grants-grant-to"
-          className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
-        >
-          Grant to
-        </span>
-        <ToggleGroup<Kind>
-          aria-labelledby="grants-grant-to"
-          size="md"
-          value={[kind]}
-          onValueChange={(values) => {
-            // A second press on the pressed segment empties the value: keep the segment.
-            const [next] = values;
-
-            if (next !== undefined && next !== kind) switchKind(next);
-          }}
-        >
-          <ToggleGroupItem value="group">Groups</ToggleGroupItem>
-          <ToggleGroupItem value="user">People</ToggleGroupItem>
-        </ToggleGroup>
-        {props.recipients === undefined ? null : (
-          <div className="w-full md:w-96">
-            <RecipientPicker
-              kind={kind}
-              recipients={props.recipients}
-              value={props.recipient}
-              onPick={pick}
-              errorId={recipientError ? recipientErrorId : undefined}
-            />
-          </div>
-        )}
-        {/* At the row's end, with its icon, on a phone too (access.prototype.html .toolbar .adv). */}
-        <Button
-          variant="ghost"
-          className="ms-auto"
-          onClick={() => {
-            if (props.recipient === null) {
-              setRecipientError(true);
-
-              return;
-            }
-
-            setAdvancedOpen(true);
-          }}
-        >
-          <SlidersHorizontalIcon aria-hidden="true" />
-          Advanced access
-        </Button>
-        {recipientError ? (
-          <FieldError id={recipientErrorId} className="basis-full">
-            {`${EMPTY_COPY[kind].title} first.`}
-          </FieldError>
-        ) : null}
-      </div>
-
-      {props.error === undefined ? null : (
+      {error === undefined ? null : (
         <p role="alert" className="text-sm text-destructive">
-          {props.error}
+          {error}
         </p>
       )}
 
-      {props.recipient === null ? (
-        <EmptyState
-          variant="framed"
-          icon={kind === "user" ? <UserIcon /> : <UsersIcon />}
-          title={EMPTY_COPY[kind].title}
-          description={EMPTY_COPY[kind].description}
-        />
+      {opening ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Loading
+        </p>
+      ) : props.recipient === null ? (
+        <GrantsList {...props.list} onOpen={props.onRecipientChange} />
       ) : (
-        <section
-          inert={saving}
-          aria-labelledby="grants-heading"
-          className="flex flex-col rounded-xl border border-border bg-card"
-        >
-          <div className="flex flex-col gap-2 p-5 lg:p-6">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
-              <h2 id="grants-heading" className="text-lg font-semibold">
-                Modules and roles
-              </h2>
-              <AccessHelp />
-              {groups.length > 1 ? (
-                <Select
-                  items={[
-                    { value: SHOW_ALL, label: "All items" },
-                    ...groups.map((group) => ({ value: group, label: group })),
-                  ]}
-                  value={shown}
-                  onValueChange={(value: string | null) => {
-                    if (value !== null) setShownGroup(value);
+        <>
+          {/* A save in flight freezes the recipient and the rows: an edit made now would race the write. */}
+          <div inert={saving} className="flex flex-col gap-3">
+            <div>
+              <Button
+                variant="link"
+                size="sm"
+                className="-ms-3"
+                onClick={backToList}
+              >
+                <ArrowLeftIcon aria-hidden="true" className={iconLeadPx[4]} />
+                All groups and people
+              </Button>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <span
+                aria-hidden="true"
+                className="text-xs font-semibold tracking-wide text-muted-foreground uppercase"
+              >
+                Grant to
+              </span>
+              <div className="w-full md:w-96">
+                <RecipientField
+                  label="Grant to"
+                  placeholder="Search groups and people"
+                  multiple={false}
+                  value={[props.recipient]}
+                  onChange={(rows) => {
+                    const [row] = rows;
+
+                    if (row !== undefined) pick(row);
                   }}
-                >
-                  <SelectTrigger aria-label="Show" className="w-44 md:ms-auto">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={SHOW_ALL}>All items</SelectItem>
-                    {groups.map((group) => (
-                      <SelectItem key={group} value={group}>
-                        {group}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              ) : null}
+                  search={props.search}
+                />
+              </div>
+              {/* At the row's end, with its icon, on a phone too (access.prototype.html .toolbar .adv). */}
+              <Button
+                variant="ghost"
+                className="ms-auto"
+                onClick={() => setAdvancedOpen(true)}
+              >
+                <SlidersHorizontalIcon aria-hidden="true" />
+                Advanced access
+              </Button>
             </div>
-            <p className="max-w-prose text-sm text-muted-foreground">
-              For {name}. Move modules to Granted, pick a role for each, then
-              press Save. A role works only while its module is on.
-            </p>
           </div>
-
-          {view === null ? (
-            <p
-              role="status"
-              className="px-5 pb-6 text-sm text-muted-foreground"
-            >
-              Loading the roles of {name}…
-            </p>
-          ) : (
-            <div className="flex flex-col gap-3 px-5 pb-5 lg:px-6 xl:pb-6">
-              <TransferList
-                key={`${props.recipient.type}:${props.recipient.id}`}
-                layout={panes ? "panes" : "stacked"}
-                items={itemsOf({
-                  catalogue,
-                  view,
-                  draft,
-                  granted,
-                  setRole: (row, roleId, saved) =>
-                    store.getState().setRole(row, roleId, saved),
-                  recordLabels: props.recordLabels,
-                  onOpenSource: openSource,
-                  onOpenAdvanced: () => setAdvancedOpen(true),
-                })}
-                // Show hides rows inside the list, so a tick it hides still counts (as a search's does).
-                visible={(item) => shown === SHOW_ALL || item.group === shown}
-                granted={granted}
-                onMove={(ids, to) => {
-                  if (to === "available") {
-                    store.getState().stageRemove(ids);
-
-                    return;
-                  }
-
-                  store.getState().stageAdd(
-                    ids.flatMap((id) => {
-                      const row = catalogue.find((entry) => entry.id === id);
-
-                      return row?.defaultRoleId == null
-                        ? []
-                        : [{ row: id, roleId: row.defaultRoleId }];
-                    })
-                  );
-                }}
-                availableLabel="Catalog"
-                grantedLabel="Granted"
-                emptyAvailable="Every module is in Granted."
-                emptyGranted="Nothing in Granted yet. Add modules from Catalog."
-              />
+          <section
+            inert={saving}
+            aria-labelledby="grants-heading"
+            className="flex flex-col rounded-xl border border-border bg-card"
+          >
+            <div className="flex flex-col gap-2 p-5 lg:p-6">
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
+                <h2 id="grants-heading" className="text-lg font-semibold">
+                  Access assignments
+                </h2>
+                <AccessHelp />
+                {groups.length > 1 ? (
+                  <Select
+                    items={[
+                      { value: SHOW_ALL, label: "All items" },
+                      ...groups.map((group) => ({
+                        value: group,
+                        label: group,
+                      })),
+                    ]}
+                    value={shown}
+                    onValueChange={(value: string | null) => {
+                      if (value !== null) setShownGroup(value);
+                    }}
+                  >
+                    <SelectTrigger
+                      aria-label="Show"
+                      className="w-44 md:ms-auto"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={SHOW_ALL}>All items</SelectItem>
+                      {groups.map((group) => (
+                        <SelectItem key={group} value={group}>
+                          {group}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : null}
+              </div>
+              <p className="max-w-prose text-sm text-muted-foreground">
+                For {name}. Move modules to Granted, pick a role for each, then
+                press Save. A role works only while its module is on.
+              </p>
             </div>
-          )}
-        </section>
+
+            {view === null ? (
+              <p
+                role="status"
+                className="px-5 pb-6 text-sm text-muted-foreground"
+              >
+                Loading the roles of {name}…
+              </p>
+            ) : (
+              <div className="flex flex-col gap-3 px-5 pb-5 lg:px-6 xl:pb-6">
+                <TransferList
+                  key={`${props.recipient.type}:${props.recipient.id}`}
+                  layout={panes ? "panes" : "stacked"}
+                  grantedFirst={!wide}
+                  items={itemsOf({
+                    catalogue,
+                    view,
+                    draft,
+                    granted,
+                    setRole: (row, roleId, saved) =>
+                      store.getState().setRole(row, roleId, saved),
+                    recordLabels: props.recordLabels,
+                    onOpenSource: openSource,
+                    onOpenAdvanced: () => setAdvancedOpen(true),
+                  })}
+                  // Show hides rows inside the list, so a tick it hides still counts (as a search's does).
+                  visible={(item) => shown === SHOW_ALL || item.group === shown}
+                  granted={granted}
+                  onMove={(ids, to) => {
+                    if (to === "available") {
+                      store.getState().stageRemove(ids);
+
+                      return;
+                    }
+
+                    store.getState().stageAdd(
+                      ids.flatMap((id) => {
+                        const row = catalogue.find((entry) => entry.id === id);
+
+                        return row?.defaultRoleId == null
+                          ? []
+                          : [{ row: id, roleId: row.defaultRoleId }];
+                      })
+                    );
+                  }}
+                  availableLabel="Catalog"
+                  grantedLabel="Granted"
+                  emptyAvailable="Every module is in Granted."
+                  emptyGranted="Nothing in Granted yet. Add modules from Catalog."
+                />
+              </div>
+            )}
+          </section>
+        </>
       )}
 
       {total === 0 || props.recipient === null ? null : (

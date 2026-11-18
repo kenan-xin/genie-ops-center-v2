@@ -5,16 +5,12 @@ import type {
   AccessRecipient,
   NotInEffect,
 } from "../../services/roles/effective-access.ts";
-import {
-  FIXTURE_RECIPIENTS,
-  FIXTURE_ROWS,
-  fixtureRow,
-} from "./__fixtures__/access.ts";
+import { FIXTURE_ROWS, fixtureRow } from "./__fixtures__/access.ts";
 import { EMPTY_DRAFT } from "./grants-draft-store.ts";
 import {
+  grantsListInput,
   grantsView,
   linkDraft,
-  linkedRecipient,
   removalOf,
   saveInput,
 } from "./grants-view.ts";
@@ -48,17 +44,19 @@ const holders = {
 
 const admins: AccessRecipient = { type: "group", id: "g-admins" };
 
-describe("linkedRecipient", () => {
+describe("grantsListInput", () => {
   it.each([
-    ["g-ops", { type: "group", id: "g-ops" }],
-    ["p-jamie", { type: "user", id: "p-jamie" }],
-    ["g-former", null],
-  ] as const)(
-    "linkedRecipient(%s) picks only a listed recipient",
-    (id, expected) => {
-      expect(linkedRecipient(id, FIXTURE_RECIPIENTS)).toEqual(expected);
-    }
-  );
+    [{}, { query: "", kind: "all" }],
+    [
+      { q: "fin", show: "group" },
+      { query: "fin", kind: "group" },
+    ],
+    [{ show: "user" }, { query: "", kind: "user" }],
+    // A stale or edited address reads as both kinds, never an error (Review Focus 4 of the parent).
+    [{ show: "robots" }, { query: "", kind: "all" }],
+  ] as const)("reads %j as %j", (params, expected) => {
+    expect(grantsListInput(params)).toEqual(expected);
+  });
 });
 
 let next = 0;

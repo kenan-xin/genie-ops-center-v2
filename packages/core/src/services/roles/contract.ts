@@ -4,7 +4,7 @@ import { oc } from "../../lib/rpc/index.ts";
 import type { AddAssignmentsResult } from "./add-assignments.ts";
 import type { AdvancedCatalogue, RemovalGuard } from "./advanced.ts";
 import type { AccessPage, AccessPath } from "./effective-access.ts";
-import type { GrantRecipients, GrantRow } from "./grants.ts";
+import type { GrantRow } from "./grants.ts";
 import type { RoleDetail, RolePermissionGroup, RoleRow } from "./index.ts";
 import type { RecipientPage } from "./recipients.ts";
 import type { RecordLabel, ScopeRecord } from "./records.ts";
@@ -264,11 +264,6 @@ export const rolesContract = {
     .route({ method: "POST", path: "/roles/records/labels" })
     .input(z.object({ records: z.array(recordRef).max(100) }))
     .output(z.custom<readonly RecordLabel[]>()),
-
-  // R-37e, R-39: the groups and people the Grants picker offers, without the break-glass account.
-  grantRecipients: oc
-    .route({ method: "GET", path: "/roles/grants/recipients" })
-    .output(z.custom<GrantRecipients>()),
 
   // d8l5.62, P12-6: the groups and people that Access offers, groups first, searched and paged on the server.
   recipients: oc

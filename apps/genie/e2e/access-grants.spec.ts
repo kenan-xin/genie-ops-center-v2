@@ -5,7 +5,7 @@ import {
   e2eAccessMemberEmail,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
-import { pickRecipient } from "./support/access.ts";
+import { backToList, openRecipient } from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
@@ -113,8 +113,12 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
     await signInThroughKeycloak(page, {
       email: e2eReaderEmail("access", project),
     });
-    await page.goto("/admin/access");
-    await pickRecipient(page, "group", group);
+    await page.goto("/admin/access/grants");
+    await expect(
+      page.getByRole("heading", { name: "Groups and people" })
+    ).toBeVisible();
+    await expectNoAxeViolations(page, "Grants list");
+    await openRecipient(page, group);
     await move(page, "Catalog", "Placeholder");
     await expect(
       page.getByRole("region", { name: "Unsaved changes" })
@@ -128,6 +132,8 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
       .toBeGreaterThan(0);
 
     // E5: the member holds no `core:roles:manage`.
+    await memberPage.goto("/admin/access/grants");
+    await expect(memberPage.getByTestId("permission-denied")).toBeVisible();
     await memberPage.goto("/admin/access");
     await expect(memberPage.getByTestId("permission-denied")).toBeVisible();
     await memberPage.goto("/admin/access/overview");
@@ -137,7 +143,7 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
     await chooseOption(page, "Role for Placeholder", reviewer);
     await save(page);
     await page.reload();
-    await pickRecipient(page, "group", group);
+    await openRecipient(page, group);
     await expect(
       page.getByLabel("Role for Placeholder", { exact: true })
     ).toHaveText(new RegExp(reviewer));
@@ -169,8 +175,8 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
     // E4: the group path again, then a direct grant to the member, whose Remove names the path.
     await move(page, "Catalog", "Placeholder");
     await save(page);
-    await page.getByRole("button", { name: "People", exact: true }).click();
-    await pickRecipient(page, "user", member);
+    await backToList(page);
+    await openRecipient(page, member);
     await move(page, "Catalog", "Placeholder");
     await save(page);
     await move(page, "Granted", "Placeholder");
@@ -208,11 +214,11 @@ test("Granted shows inherited access read-only, with its source", async ({
   await signInThroughKeycloak(page, {
     email: e2eReaderEmail("access", testInfo.project.name),
   });
-  await page.goto("/admin/access");
+  await page.goto("/admin/access/grants");
 
   const granted = page.getByRole("group", { name: "Granted", exact: true });
 
-  await pickRecipient(page, "group", "Genie Administrators");
+  await openRecipient(page, "Genie Administrators");
   await expect(
     granted.getByText(/Assigned via Tenant administrator/).first()
   ).toBeVisible();
@@ -233,8 +239,8 @@ test("Granted shows inherited access read-only, with its source", async ({
   await page.keyboard.press("Escape");
   await expect(sheet).toBeHidden();
 
-  await page.getByRole("button", { name: "People", exact: true }).click();
-  await pickRecipient(page, "user", "e2e.baseline-admin@example.invalid");
+  await backToList(page);
+  await openRecipient(page, "e2e.baseline-admin@example.invalid");
   await expect(granted.getByText(/Assigned via/).first()).toBeVisible();
   await expect(granted.getByRole("checkbox", { name: "Ask" })).toHaveCount(0);
   await expectNoAxeViolations(page, "Grants with inherited rows");
@@ -242,10 +248,7 @@ test("Granted shows inherited access read-only, with its source", async ({
     .getByRole("button", { name: "Genie Administrators" })
     .first()
     .click();
-  await expect(
-    page.getByRole("button", { name: "Groups", exact: true })
-  ).toHaveAttribute("aria-pressed", "true");
-  await expect(
-    page.getByRole("combobox", { name: "Choose a group" })
-  ).toContainText("Genie Administrators");
+  await expect(page.getByRole("combobox", { name: "Grant to" })).toContainText(
+    "Genie Administrators"
+  );
 });

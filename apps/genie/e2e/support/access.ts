@@ -1,24 +1,34 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
-/** Picks a recipient on the Grants tab by search, and waits for its Granted pane. */
-export async function pickRecipient(
-  page: Page,
-  kind: "group" | "user",
-  search: string
-): Promise<void> {
+/**
+ * Opens a recipient from the Grants list (P12-17): a search that leaves exactly one row, then its
+ * open button. Search by a unique name or an email; e2e people share one name.
+ */
+export async function openRecipient(page: Page, search: string): Promise<void> {
   await page
-    .getByRole("combobox", {
-      name: kind === "group" ? "Choose a group" : "Choose a person",
-    })
-    .click();
-  await page
-    .getByLabel(kind === "group" ? "Search groups" : "Search people")
+    .getByRole("searchbox", { name: "Search groups and people" })
     .fill(search);
-  await page
-    .getByRole("option", { name: new RegExp(`^${search} · |· ${search}$`) })
-    .click();
+
+  // The list keeps the last page while the new search loads, so only a row that holds the search
+  // text counts: a table row from 768 px, else a card.
+  const open = page
+    .getByRole("row")
+    .or(page.getByRole("listitem"))
+    .filter({ hasText: search })
+    .getByRole("button", { name: /^Open .+ in Grants$/ });
+
+  await expect(open).toHaveCount(1);
+  await open.click();
   await expect(
     page.getByRole("group", { name: "Granted", exact: true })
+  ).toBeVisible();
+}
+
+/** Back from the editor to the list. */
+export async function backToList(page: Page): Promise<void> {
+  await page.getByRole("button", { name: "All groups and people" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Groups and people" })
   ).toBeVisible();
 }
 

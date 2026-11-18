@@ -75,8 +75,8 @@ function toRow(raw: RawRecipient): RecipientRow {
 /**
  * The groups and people that Access offers (d8l5.62, P12-6): groups first, then people, each by
  * name and then id, searched and paged on the server. A person is never the break-glass account
- * and never erased (R-39), as `readGrantRecipients` reads them; an archived group shows only when
- * asked. The read decides nothing: `can()` and `scopesFor()` stay the only checks (DEC-39).
+ * and never erased (R-39); an archived group shows only when asked. The read decides nothing:
+ * `can()` and `scopesFor()` stay the only checks (DEC-39).
  */
 export async function readRecipients(input: {
   readonly tenant: TenantContext;

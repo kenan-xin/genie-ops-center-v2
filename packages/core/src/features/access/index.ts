@@ -5,8 +5,11 @@ export { AccessHelp } from "./access-help.tsx";
 export {
   type AccessLink,
   accessHref,
+  accessLandingHref,
   accessOverviewHref,
 } from "./access-link.ts";
+
+export { GRANTS_LIST, grantsListInput } from "./grants-view.ts";
 
 export { overviewDefinition, parseWho, readFilters } from "./overview-view.ts";
 

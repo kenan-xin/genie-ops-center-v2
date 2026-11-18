@@ -5,7 +5,11 @@ import {
   e2eAccessAdvancedMemberEmail,
   e2eReaderEmail,
 } from "../testing/e2e-keycloak.ts";
-import { openAdvancedAccess, saveAdvancedAccess } from "./support/access.ts";
+import {
+  openAdvancedAccess,
+  openRecipient,
+  saveAdvancedAccess,
+} from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
@@ -70,13 +74,8 @@ test("Advanced access gives a core role and a role at one record, and Remove tak
     await signInThroughKeycloak(page, {
       email: e2eReaderEmail("access-advanced", project),
     });
-    await page.goto("/admin/access");
-    await page.getByRole("button", { name: "People", exact: true }).click();
-    await page.getByRole("combobox", { name: "Choose a person" }).click();
-    await page.getByLabel("Search people").fill(member);
-    await page
-      .getByRole("option", { name: new RegExp(`· ${member}$`) })
-      .click();
+    await page.goto("/admin/access/grants");
+    await openRecipient(page, member);
 
     // E1, E3: Tenant administrator for all records. The staged add passes axe first.
     let sheet = await openAdvancedAccess(page);

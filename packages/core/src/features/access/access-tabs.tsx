@@ -6,8 +6,8 @@ import type { ReactNode } from "react";
 import { PageLink } from "../shell/page-link.tsx";
 
 const TABS = [
-  { id: "grants", label: "Grants", href: "/admin/access" },
   { id: "overview", label: "Overview", href: "/admin/access/overview" },
+  { id: "grants", label: "Grants", href: "/admin/access/grants" },
 ] as const;
 
 /**

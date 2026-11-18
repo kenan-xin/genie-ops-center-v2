@@ -194,41 +194,6 @@ describe("the Grants reads", () => {
     expect(rows[1]?.defaultRoleId).toBe(fixtureEditorId);
   });
 
-  it("offers groups that are not archived and people without the break-glass account", async () => {
-    const first = await insertUser(deployment.context);
-    const second = await insertUser(deployment.context);
-
-    const breakGlass = await insertUser(deployment.context, {
-      isBreakGlass: true,
-    });
-
-    const erased = await insertUser(deployment.context, {
-      erasedAt: new Date(),
-    });
-
-    const team = await insertGroup(deployment.context, [
-      first,
-      second,
-      breakGlass,
-    ]);
-
-    const archived = await insertGroup(deployment.context, [], {
-      archivedAt: new Date(),
-    });
-
-    const { groups, people } = await roles(adaId).grantRecipients();
-
-    expect(groups).toContainEqual(
-      expect.objectContaining({ id: team, memberCount: 2 })
-    );
-    expect(groups.map((group) => group.id)).not.toContain(archived);
-    expect(people.map((person) => person.id)).toEqual(
-      expect.arrayContaining([first, second, adaId, kimId])
-    );
-    expect(people.map((person) => person.id)).not.toContain(breakGlass);
-    expect(people.map((person) => person.id)).not.toContain(erased);
-  });
-
   it.each([
     ["holds the key only at a scope", true],
     ["holds only a module key", false],
@@ -247,9 +212,6 @@ describe("the Grants reads", () => {
     });
 
     await expect(roles(reader).grantCatalogue()).rejects.toMatchObject({
-      code: "forbidden",
-    });
-    await expect(roles(reader).grantRecipients()).rejects.toMatchObject({
       code: "forbidden",
     });
     await expect(

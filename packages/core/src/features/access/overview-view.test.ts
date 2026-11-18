@@ -129,7 +129,9 @@ const at = (id: string, holder: AccessPath["holder"]) =>
 const person = { type: "user", id: "p-jamie" } as const;
 
 const MEMBER_COUNTS = Object.fromEntries(
-  FIXTURE_RECIPIENTS.groups.map((group) => [group.id, group.memberCount])
+  FIXTURE_RECIPIENTS.flatMap((row) =>
+    row.type === "group" ? [[row.id, row.memberCount] as const] : []
+  )
 );
 
 const also = (shown: AccessPath) =>

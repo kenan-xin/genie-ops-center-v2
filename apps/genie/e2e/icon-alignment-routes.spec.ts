@@ -35,7 +35,7 @@ const SIGNED_IN_ROUTES = [
   "/admin/people",
   "/admin/groups",
   "/admin/roles",
-  "/admin/access",
+  "/admin/access/grants",
   "/admin/access/overview",
   "/admin/branding",
   "/admin/settings",

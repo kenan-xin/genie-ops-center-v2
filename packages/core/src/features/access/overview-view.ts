@@ -6,6 +6,7 @@ import type {
   AccessRecipient,
   AccessSubject,
   AssignmentFilters,
+  NotInEffect,
 } from "../../services/roles/effective-access.ts";
 import type { GrantRow } from "../../services/roles/grants.ts";
 import type { RoleRow } from "../../services/roles/index.ts";
@@ -43,6 +44,9 @@ const REASON = {
   "person-disabled": () => "Person suspended",
   "module-off": () => "Module off",
 } as const;
+
+/** The words of one reason an assignment grants nothing now: "Module off" (G9). */
+export const reasonLabel = (reason: NotInEffect): string => REASON[reason]();
 
 /** One pill per reason of an assignment that grants nothing now: "Paused: Module off" (G9). */
 export const pausedLabel = (reason: string) => `Paused: ${reason}`;

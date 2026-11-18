@@ -8,19 +8,33 @@ export type AccessLink = {
 };
 
 /**
- * The one place that names the query keys of a link into Access, so every screen that links there
- * agrees with what the Access route reads (LK11).
+ * Where `/admin/access` sends a request (P12-9). With `recipient`, Grants with every parameter as
+ * given, a repeated one too; without it, the Overview by module and role (`d8l5.46`).
  */
-export function accessHref(link: AccessLink): string {
+export function accessLandingHref(
+  params: Readonly<Record<string, string | readonly string[] | undefined>>
+): string {
+  const first = (name: string) => [params[name] ?? []].flat()[0];
+
+  if (first("recipient") === undefined) {
+    return accessOverviewHref({ module: first("module"), role: first("role") });
+  }
+
   const query = new URLSearchParams();
 
-  if (link.recipient !== undefined) query.set("recipient", link.recipient);
+  for (const [name, value] of Object.entries(params)) {
+    for (const each of [value ?? []].flat()) query.append(name, each);
+  }
 
-  if (link.module !== undefined) query.set("module", link.module);
+  return `/admin/access/grants?${query}`;
+}
 
-  if (link.role !== undefined) query.set("role", link.role);
-
-  return query.size === 0 ? "/admin/access" : `/admin/access?${query}`;
+/**
+ * The one place that names the query keys of a link into Access, so every screen that links there
+ * agrees with what the Access routes read (LK11).
+ */
+export function accessHref(link: AccessLink): string {
+  return accessLandingHref(link);
 }
 
 /**

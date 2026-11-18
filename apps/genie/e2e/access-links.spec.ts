@@ -187,6 +187,73 @@ test("the navigation entry and Manage in Access open Access with the person filt
   await expect(overviewList(page).first()).toContainText("E2E links limited");
 });
 
+/**
+ * P12-9: the navigation entry keeps `/admin/access` and lands on the Overview with Access current,
+ * and an old `?recipient=` link lands on that recipient's Grants with every parameter, Access current.
+ */
+test("the Access entry lands on the Overview, and a recipient link on its Grants", async ({
+  page,
+}, testInfo) => {
+  const project = testInfo.project.name;
+
+  await setUp(project);
+
+  const [groupId] = await queryDatabase(
+    `select md5('${readersGroup(project)}')::uuid::text`
+  );
+
+  await signInThroughKeycloak(page, {
+    email: e2eReaderEmail("access-links", project),
+  });
+  await page.goto("/admin/people");
+
+  const entry = (await openNavigation(page)).getByRole("link", {
+    name: "Access",
+    exact: true,
+  });
+
+  await expect(entry).toHaveAttribute("href", "/admin/access");
+  await entry.click();
+  await expect(page).toHaveURL(/\/admin\/access\/overview$/);
+
+  const tabs = page.getByRole("navigation", { name: "Access", exact: true });
+
+  await expect(tabs.getByRole("link")).toHaveText(["Overview", "Grants"]);
+  await expect(tabs.getByRole("link", { name: "Overview" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+  await expect(
+    (await openNavigation(page)).getByRole("link", {
+      name: "Access",
+      exact: true,
+    })
+  ).toHaveAttribute("aria-current", "page");
+
+  await page.goto(`/admin/access?recipient=${groupId}&module=placeholder`);
+  await expect(page).toHaveURL(
+    new RegExp(
+      `/admin/access/grants\\?recipient=${groupId}&module=placeholder$`
+    )
+  );
+  await expect(page.getByRole("combobox", { name: "Grant to" })).toContainText(
+    readersGroup(project)
+  );
+  await expect(
+    page.getByRole("group", { name: "Granted", exact: true })
+  ).toBeVisible();
+  await expect(tabs.getByRole("link", { name: "Grants" })).toHaveAttribute(
+    "aria-current",
+    "page"
+  );
+  await expect(
+    (await openNavigation(page)).getByRole("link", {
+      name: "Access",
+      exact: true,
+    })
+  ).toHaveAttribute("aria-current", "page");
+});
+
 test("the Groups link opens the Overview with the group filtered", async ({
   page,
 }, testInfo) => {

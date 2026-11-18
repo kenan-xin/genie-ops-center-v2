@@ -2832,17 +2832,6 @@
         }
       }
     },
-    "/roles/grants/recipients": {
-      "get": {
-        "operationId": "roles.grantRecipients",
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {}
-          }
-        }
-      }
-    },
     "/roles/recipients": {
       "get": {
         "operationId": "roles.recipients",
