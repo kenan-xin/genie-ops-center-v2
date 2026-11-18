@@ -292,7 +292,8 @@ describe("the core pg-boss worker", () => {
   it("holds no open connection once it returns", async () => {
     const database = await disposablePostgres();
     const target = new URL(database.url);
-    const proxy = createServer();
+    // Half-open, so a client's FIN does not close its socket before the delayed end below.
+    const proxy = createServer({ allowHalfOpen: true });
     const open = new Set<unknown>();
 
     // Every close reaches the worker 300 ms late, so a return that does not wait for its
@@ -302,10 +303,14 @@ describe("the core pg-boss worker", () => {
       const upstream = connect(Number(target.port), target.hostname);
 
       open.add(downstream);
-      downstream.once("close", () => open.delete(downstream));
       downstream.pipe(upstream);
       upstream.pipe(downstream, { end: false });
-      upstream.once("close", () => setTimeout(() => downstream.end(), 300));
+      upstream.once("close", () =>
+        setTimeout(() => {
+          open.delete(downstream);
+          downstream.end();
+        }, 300)
+      );
       upstream.once("error", () => downstream.destroy());
     });
     await new Promise<void>((resolve) => proxy.listen(0, "127.0.0.1", resolve));
