@@ -764,7 +764,9 @@ export function measureIconAlignment(
             current !== null && current !== column;
             current = current.parentElement
           )
-            if (isVisibleBox(current)) return true;
+            // A line in another scroller moves with its scroll, as a slide number in the strip
+            // above a button row does, so it marks no column edge (czjw.176).
+            if (isVisibleBox(current) || isScroller(current)) return true;
 
           return false;
         };

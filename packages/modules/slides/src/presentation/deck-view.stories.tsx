@@ -466,12 +466,114 @@ export const Rail: Story = {
   play: railPlay,
 };
 
+/** The color a CSS color variable resolves to, in the form the browser reports a computed color. */
+function resolvedColor(variable: string): string {
+  const probe = document.createElement("span");
+
+  probe.style.color = `var(${variable})`;
+  document.body.append(probe);
+
+  const color = getComputedStyle(probe).color;
+
+  probe.remove();
+
+  return color;
+}
+
 export const RailOnPhone: Story = {
   name: "Rail on a phone",
   args: { view: deckPage },
   globals: phone,
   beforeEach: () => serve(deckPage),
-  play: railPlay,
+  play: async (context) => {
+    await railPlay(context);
+
+    const { canvas } = context;
+
+    const numbers = canvas
+      .getAllByRole("button", { name: /^Slide \d+: / })
+      .map((number) => {
+        const tile = number.parentElement!;
+
+        const preview = tile.querySelector<HTMLElement>(
+          "[data-slide-preview]"
+        )!;
+
+        return { number, tile, preview };
+      });
+
+    // czjw.176: small 16:9 previews 76 px wide, each with its number under it.
+    for (const { number, tile, preview } of numbers) {
+      const box = preview.getBoundingClientRect();
+
+      expect(
+        Math.abs(tile.getBoundingClientRect().width - 76)
+      ).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width - 76)).toBeLessThanOrEqual(1);
+      expect(Math.abs(box.width * (9 / 16) - box.height)).toBeLessThanOrEqual(
+        1
+      );
+      expect(number.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+        preview.getBoundingClientRect().bottom
+      );
+    }
+
+    // E5: railPlay leaves slide 2 shown. Its number looks like the others; only its preview
+    // carries the primary ring.
+    const shown = numbers[1]!;
+    const other = getComputedStyle(numbers[0]!.number);
+
+    await expect(shown.number).toHaveAttribute("aria-current", "true");
+    await expect(getComputedStyle(shown.number).color).toBe(other.color);
+    await expect(getComputedStyle(shown.number).fontWeight).toBe(
+      other.fontWeight
+    );
+    await expect(getComputedStyle(shown.preview).boxShadow).toContain(
+      resolvedColor("--primary")
+    );
+  },
+};
+
+/** czjw.176: the strip's Add tile adds a slide after the shown one, as Add slide in More does. */
+export const StripAddTileOnPhone: Story = {
+  name: "Strip Add tile on a phone",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const strip = within(
+      await canvas.findByRole("navigation", { name: "Slides" })
+    );
+
+    await userEvent.click(strip.getByRole("button", { name: /^Slide 2: / }));
+    await userEvent.click(strip.getByRole("button", { name: "Add slide" }));
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Add slide" })
+    );
+
+    await waitFor(() =>
+      expect(dialog.getByRole("textbox", { name: "Title" })).toBeVisible()
+    );
+    await userEvent.type(
+      dialog.getByRole("textbox", { name: "Title" }),
+      "A new claim"
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Add" }));
+
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
+    await expect(changeDeck).toHaveBeenCalledWith({
+      id: "deck-1",
+      expectedHash: HASH,
+      changes: [
+        {
+          op: "add-slide",
+          slide: { elements: [{ kind: "title", text: "A new claim" }] },
+          toIndex: 2,
+        },
+      ],
+    });
+  },
 };
 
 /** A vertical mouse wheel over the rail, answered with whether the rail took it. */
@@ -512,6 +614,9 @@ export const RailColumnLeavesTheWheel: Story = {
 
     await expect(getComputedStyle(rail).touchAction).toBe("auto");
     await expect(wheelOver(rail)).toBe(false);
+    // czjw.176: the column shows every slide, so its end never fades.
+    await expect(rail).not.toHaveAttribute("data-strip-more");
+    await expect(getComputedStyle(rail).maskImage).toBe("none");
   },
 };
 

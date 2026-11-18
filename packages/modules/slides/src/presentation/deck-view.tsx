@@ -23,6 +23,7 @@ import {
   DropdownMenuTrigger,
   EmptyState,
   Field,
+  focusRing,
   FieldDescription,
   FieldError,
   FieldLabel,
@@ -40,6 +41,7 @@ import {
   Loader2,
   Pencil,
   Play,
+  PlusIcon,
   Presentation,
   Square,
   Undo2,
@@ -1131,19 +1133,19 @@ export function DeckView(props: DeckViewProps) {
             aria-label="Slides"
             // 7.3: numbered previews, a column from 768 px and a strip that scrolls below it. The
             // column does not scroll sideways, so it gives pinch zoom back.
-            className={`${horizontalStrip} flex gap-3 px-1 pt-1 pb-2 md:w-40 md:shrink-0 md:touch-auto md:flex-col md:overflow-visible md:p-0`}
+            className={`${horizontalStrip} flex gap-3 px-1 pt-1 pb-2 max-md:gap-2 md:w-40 md:shrink-0 md:touch-auto md:flex-col md:overflow-visible md:p-0`}
           >
             {deck.slides.map((slide, slideIndex) => (
               <div
                 key={slide.id}
-                className="relative flex w-32 shrink-0 items-start gap-1.5 md:w-auto"
+                className="relative flex w-19 shrink-0 flex-col-reverse items-start gap-0.75 md:w-auto md:flex-row md:items-start md:gap-1.5"
               >
                 {/* The number is the button; its overlay makes the whole preview the target. */}
                 <button
                   type="button"
                   aria-label={`Slide ${slideIndex + 1}: ${titleOf(slide)}`}
                   aria-current={slideIndex === index}
-                  className="peer w-4 shrink-0 rounded-md text-end text-xs font-semibold text-muted-foreground tabular-nums outline-none after:absolute after:-inset-1 after:rounded-lg hover:after:bg-foreground/5 focus-visible:after:ring-2 focus-visible:after:ring-ring aria-current:text-foreground"
+                  className="peer w-4 shrink-0 rounded-md text-end text-xs font-semibold text-muted-foreground tabular-nums outline-none after:absolute after:-inset-1 after:rounded-lg hover:after:bg-foreground/5 focus-visible:after:ring-2 focus-visible:after:ring-ring max-md:w-auto max-md:text-start md:aria-current:text-foreground"
                   onClick={() => setShown(slideIndex)}
                 >
                   {slideIndex + 1}
@@ -1152,7 +1154,7 @@ export function DeckView(props: DeckViewProps) {
                   data-slide-preview=""
                   inert
                   aria-hidden="true"
-                  className="pointer-events-none min-w-0 flex-1 overflow-hidden rounded-md border border-border peer-aria-current:ring-2 peer-aria-current:ring-foreground"
+                  className="pointer-events-none min-w-0 flex-1 overflow-hidden rounded-md border border-border max-md:w-full max-md:flex-none peer-aria-current:ring-2 peer-aria-current:ring-foreground max-md:peer-aria-current:ring-primary max-md:peer-aria-current:ring-offset-1"
                 >
                   <SlideCanvas
                     slide={slide}
@@ -1201,16 +1203,34 @@ export function DeckView(props: DeckViewProps) {
                 ) : null}
               </div>
             ))}
-            {/* The page does not know the planned count, so one placeholder follows the drafted slides. */}
-            {drafting ? (
-              <div className="flex w-32 shrink-0 items-start gap-1.5 md:w-auto">
+            {editable ? (
+              <button
+                type="button"
+                aria-label="Add slide"
+                disabled={busy}
+                onClick={openAdd}
+                className={`flex w-19 shrink-0 flex-col items-start gap-0.75 rounded-md text-xs font-semibold text-muted-foreground md:hidden ${focusRing}`}
+              >
                 <span
                   aria-hidden="true"
-                  className="w-4 shrink-0 text-end text-xs font-semibold text-muted-foreground tabular-nums"
+                  data-add-tile=""
+                  className="grid aspect-video w-full place-items-center rounded-md border border-dashed border-control"
+                >
+                  <PlusIcon className="size-4" />
+                </span>
+                Add
+              </button>
+            ) : null}
+            {/* The page does not know the planned count, so one placeholder follows the drafted slides. */}
+            {drafting ? (
+              <div className="flex w-19 shrink-0 flex-col-reverse items-start gap-0.75 md:w-auto md:flex-row md:gap-1.5">
+                <span
+                  aria-hidden="true"
+                  className="w-4 shrink-0 text-end text-xs font-semibold text-muted-foreground tabular-nums max-md:w-auto max-md:text-start"
                 >
                   {deck.slides.length + 1}
                 </span>
-                <div className="flex aspect-video min-w-0 flex-1">
+                <div className="flex aspect-video min-w-0 flex-1 max-md:w-full max-md:flex-none">
                   <Skeleton className="flex-1" />
                 </div>
                 <span className="sr-only">

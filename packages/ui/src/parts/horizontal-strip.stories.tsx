@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { cn } from "cn";
-import { expect } from "storybook/test";
+import { useState } from "react";
+import { expect, userEvent, waitFor } from "storybook/test";
 
 import { Button, horizontalStrip, horizontalStripWheel } from "../index.ts";
 
@@ -150,6 +151,69 @@ export const SwipeStaysInTheStrip: Story = {
 
     await expect(style.overscrollBehaviorX).toBe("contain");
     await expect(style.touchAction).toBe("pan-x pan-y");
+  },
+};
+
+/** A strip of fixed 80 px boxes in a 300 px row, so its overflow does not hang on a font. */
+function Boxes(props: { readonly label: string; readonly count: number }) {
+  return (
+    <ul
+      ref={horizontalStripWheel}
+      aria-label={props.label}
+      className={cn(horizontalStrip, "flex w-75 gap-2")}
+    >
+      {Array.from({ length: props.count }, (_, item) => (
+        <li key={item} className="w-20 shrink-0">
+          <Button variant="secondary" size="sm" className="w-full">
+            {item + 1}
+          </Button>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** A strip that the page fills later, as the slide strip while Ask drafts slides. */
+function GrowingBoxes() {
+  const [count, setCount] = useState(2);
+
+  return (
+    <div className="grid gap-2">
+      <Boxes label="Boxes" count={count} />
+      <Button size="sm" onClick={() => setCount(12)}>
+        Add ten
+      </Button>
+    </div>
+  );
+}
+
+/** czjw.176: while more of the row lies past its end, the strip is marked and fades that edge. */
+export const ShowsMoreAtTheEnd: Story = {
+  render: () => <Boxes label="Boxes" count={12} />,
+  play: async ({ canvas }) => {
+    const strip = canvas.getByRole("list", { name: "Boxes" });
+
+    await waitFor(() => expect(strip).toHaveAttribute("data-strip-more"));
+    await expect(getComputedStyle(strip).maskImage).not.toBe("none");
+
+    strip.scrollLeft = strip.scrollWidth - strip.clientWidth;
+
+    await waitFor(() => expect(strip).not.toHaveAttribute("data-strip-more"));
+    await expect(getComputedStyle(strip).maskImage).toBe("none");
+  },
+};
+
+/** czjw.176: a strip with no overflow is marked once items join it past its end. */
+export const MarksItemsAddedLater: Story = {
+  render: () => <GrowingBoxes />,
+  play: async ({ canvas }) => {
+    const strip = canvas.getByRole("list", { name: "Boxes" });
+
+    await expect(strip).not.toHaveAttribute("data-strip-more");
+
+    await userEvent.click(canvas.getByRole("button", { name: "Add ten" }));
+
+    await waitFor(() => expect(strip).toHaveAttribute("data-strip-more"));
   },
 };
 

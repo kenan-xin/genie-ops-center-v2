@@ -4,7 +4,7 @@
  * `horizontalStripWheel` as the element's ref.
  */
 export const horizontalStrip =
-  "overflow-x-auto overscroll-x-contain touch-pan-x touch-pan-y";
+  "overflow-x-auto overscroll-x-contain touch-pan-x touch-pan-y data-strip-more:[mask-image:linear-gradient(to_right,#000_calc(100%-2rem),transparent)]";
 
 /** Firefox can report a mouse wheel in lines; one line is about this many pixels. */
 const LINE_HEIGHT = 16;
@@ -34,15 +34,42 @@ function turnWheelSideways(event: WheelEvent): void {
 }
 
 /**
+ * Marks the strip while more of the row lies past its end; 1 px absorbs a fractional scroll. A box
+ * that does not scroll sideways (`md:overflow-visible`) shows all of its row, so it is never marked.
+ */
+function markMore(strip: HTMLElement): void {
+  strip.toggleAttribute(
+    "data-strip-more",
+    getComputedStyle(strip).overflowX !== "visible" &&
+      strip.scrollLeft + strip.clientWidth < strip.scrollWidth - 1
+  );
+}
+
+/**
  * The strip's ref: a vertical mouse wheel scrolls the strip sideways while it can move that way.
- * React adds wheel listeners as passive, where `preventDefault` does nothing, so this adds its own.
+ * It also marks the strip `data-strip-more` while more of the row lies past its end, so
+ * `horizontalStrip` fades that edge (czjw.176).
  */
 export function horizontalStripWheel(
   strip: HTMLElement | null
 ): (() => void) | undefined {
   if (strip === null) return undefined;
 
-  strip.addEventListener("wheel", turnWheelSideways, { passive: false });
+  const mark = () => markMore(strip);
+  // A resize covers the width and a later font; the child list covers items that join later.
+  const resized = new ResizeObserver(mark);
+  const changed = new MutationObserver(mark);
 
-  return () => strip.removeEventListener("wheel", turnWheelSideways);
+  strip.addEventListener("wheel", turnWheelSideways, { passive: false });
+  strip.addEventListener("scroll", mark, { passive: true });
+  resized.observe(strip);
+  changed.observe(strip, { childList: true });
+  mark();
+
+  return () => {
+    strip.removeEventListener("wheel", turnWheelSideways);
+    strip.removeEventListener("scroll", mark);
+    resized.disconnect();
+    changed.disconnect();
+  };
 }

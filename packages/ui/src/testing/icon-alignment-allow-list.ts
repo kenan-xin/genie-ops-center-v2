@@ -22,6 +22,11 @@ export const ICON_ALIGNMENT_ALLOW_LIST: readonly IconAllowEntry[] = [
       "6wz1.113 (Phase 11 Task 4): person-access.prototype.html, viewer=self, draws the lock as a plain leading note beside one sentence. On the Sessions tab the column's nearest edge line is the Sign out all button's indented text, so the check reads the aligned lock as off it; the lock starts on the sheet's body text edge, which the Roles tab confirms.",
   },
   {
+    selector: "[data-add-tile]",
+    reason:
+      "czjw.176: deck-phone.prototype.html (.th.add) centers the plus in the dashed 76 px preview box of the strip's Add tile, above the word Add, as a slide preview sits above its number; the check's tile term stops at 40 px, so it reads the centered glyph as a slot.",
+  },
+  {
     selector: "[data-visual-thumb]",
     reason:
       "czjw.180: edit-slide.prototype.html centers a chart or image glyph in the 56 x 36 px thumbnail of a Charts and images row, beside the row's name and kind; the check's tile term stops at 40 px, so it reads the centered glyph as a slot.",
