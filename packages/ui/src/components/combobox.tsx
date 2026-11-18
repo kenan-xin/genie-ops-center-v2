@@ -190,9 +190,12 @@ function ComboboxChips({
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       className={cn(
-        "flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-1.5 py-1 text-foreground motion-safe:transition-colors focus-within:border-primary has-aria-invalid:border-destructive",
-        // 44 px on phones, 36 px from lg, and taller as chips wrap.
-        rowHeight,
+        "flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-1.5 py-0.5 text-foreground motion-safe:transition-colors focus-within:border-primary has-aria-invalid:border-destructive",
+        // A field box (6wz1.114): the md control height as its least height, so it grows as chips
+        // wrap, and a 44 px touch area under lg. Base UI focuses the input on a press in the box.
+        controlHeights.md,
+        "h-auto lg:h-auto",
+        touchAreas.md,
         className
       )}
       {...props}

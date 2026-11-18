@@ -501,7 +501,7 @@ type ControlBox = {
   readonly top: number;
 };
 
-/** Each visible control's border box: a text field's input group, or the control's own box. */
+/** Each visible control's border box: a text field's input group or chips box, or the control's own box. */
 async function controlBoxes(controls: Locator): Promise<ControlBox[]> {
   return controls.filter({ visible: true }).evaluateAll((elements) =>
     elements
@@ -513,7 +513,9 @@ async function controlBoxes(controls: Locator): Promise<ControlBox[]> {
       })
       .map((element) => {
         const rect = (
-          element.closest("[data-slot=input-group]") ?? element
+          element.closest(
+            "[data-slot=input-group], [data-slot=combobox-chips]"
+          ) ?? element
         ).getBoundingClientRect();
 
         return {

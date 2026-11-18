@@ -241,6 +241,65 @@ export const Chips: Story = {
   },
 };
 
+// 6wz1.114: the chips field is a field box, so it lines up with the other text fields: 36 px
+// from lg, 40 px under it with a 44 px touch area, also with a chip in it.
+const chipsField = (
+  <div className="p-4">
+    <Combobox<Person, true> multiple items={people} defaultValue={[people[0]!]}>
+      <ComboboxChips>
+        <ComboboxChip removeLabel="Remove Ada Lovelace">
+          Ada Lovelace
+        </ComboboxChip>
+        <ComboboxChipsInput aria-label="People" />
+      </ComboboxChips>
+      <ComboboxContent>
+        <ComboboxList>
+          {(person: Person) => (
+            <ComboboxItem key={person.value} value={person}>
+              {person.label}
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  </div>
+);
+
+const chipsBox = (canvasElement: HTMLElement) =>
+  canvasElement.querySelector<HTMLElement>("[data-slot=combobox-chips]")!;
+
+export const ChipsFieldHeightDesktop: Story = {
+  name: "Chips field height, desktop",
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: () => chipsField,
+  play: async ({ canvasElement }) => {
+    await expect(chipsBox(canvasElement).getBoundingClientRect().height).toBe(
+      36
+    );
+  },
+};
+
+export const ChipsFieldTouchAreaOnPhone: Story = {
+  name: "Chips field height and touch area, phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  render: () => chipsField,
+  play: async ({ canvas, canvasElement }) => {
+    const box = chipsBox(canvasElement);
+    const input = canvas.getByRole("combobox", { name: "People" });
+    const area = box.getBoundingClientRect();
+    const centerX = area.left + area.width / 2;
+
+    await expect(area.height).toBe(40);
+    await expect(document.elementFromPoint(centerX, area.top - 1.5)).toBe(box);
+    await expect(document.elementFromPoint(centerX, area.bottom + 1.5)).toBe(
+      box
+    );
+
+    await userEvent.click(box);
+    await expect(input).toHaveFocus();
+  },
+};
+
 export const Dark: Story = {
   globals: { theme: "dark" },
   play: async ({ canvas }) => {
