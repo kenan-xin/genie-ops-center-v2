@@ -574,9 +574,24 @@ test("the demo account runs the ten demo-script steps on the seeded demo deploym
             timeout: FIRST_PAINT.timeout,
           });
 
+          // On a phone Export sits in the dock's More sheet (czjw.176); on a desktop in the header.
+          let exportFrom: Page | Locator = page;
+
+          if (onPhone(page)) {
+            await activate(
+              page,
+              page
+                .getByRole("toolbar", { name: "Slide tools" })
+                .getByRole("button", { name: "More", exact: true })
+            );
+            exportFrom = page.getByRole("dialog", {
+              name: "Deck and slide actions",
+            });
+          }
+
           await activate(
             page,
-            page.getByRole("button", { name: "Export to PowerPoint" })
+            exportFrom.getByRole("button", { name: "Export to PowerPoint" })
           );
 
           const download = await downloading;
