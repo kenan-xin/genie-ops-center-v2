@@ -106,6 +106,20 @@ export function download(url: string, fileName: string): void {
   anchor.remove();
 }
 
+/** The record's fields, one card each: in the sheet, and in the drawer when the pins have no room. */
+function FieldsSection(props: {
+  readonly fields: readonly DeskField[];
+}): ReactNode {
+  return (
+    <section aria-label="Fields" className="flex flex-col gap-2">
+      <h2 className="text-base font-semibold">Fields</h2>
+      {props.fields.map((field) => (
+        <FieldCard key={field.key} field={field} />
+      ))}
+    </section>
+  );
+}
+
 /**
  * The record page with its document in the page (R-38a, prototype invoice record variant C). On a
  * wide desk (its own width, so the docked agent panel narrows it, P16g-4, and a viewport of at
@@ -154,6 +168,13 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
   const canHide = url !== null && !failed;
   const drawerShown = drawerOpen || !canHide;
 
+  /** The drawer's width (`w-100`). */
+  const DRAWER_WIDTH = 400;
+
+  // czjw.196: the pins need the room beside an open drawer that a desk needs without one.
+  const pinsShown =
+    wide && (drawerShown ? width - DRAWER_WIDTH : width) >= DESK_PINS_FROM;
+
   const downloadFresh = async () => {
     const fresh = await props.refreshUrl();
 
@@ -195,7 +216,7 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
 
           return field === undefined ? null : <FieldCard field={field} />;
         }}
-        wide={wide}
+        wide={pinsShown}
         onLoadError={() => setFailed(true)}
         onDownload={() => void downloadFresh()}
         drawerButton={
@@ -248,6 +269,9 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
               ) : null}
             </div>
             <div className="flex min-h-0 flex-1 flex-col gap-7 overflow-y-auto px-5 pt-5 pb-12">
+              {url !== null && !failed && !pinsShown ? (
+                <FieldsSection fields={props.fields} />
+              ) : null}
               {side("drawer")}
             </div>
           </aside>
@@ -302,12 +326,7 @@ export function DocumentDesk(props: DocumentDeskProps): ReactNode {
               </div>
             )}
             {props.figures}
-            <section aria-label="Fields" className="flex flex-col gap-2">
-              <h2 className="text-base font-semibold">Fields</h2>
-              {props.fields.map((field) => (
-                <FieldCard key={field.key} field={field} />
-              ))}
-            </section>
+            <FieldsSection fields={props.fields} />
             {side("sheet")}
           </div>
         </section>

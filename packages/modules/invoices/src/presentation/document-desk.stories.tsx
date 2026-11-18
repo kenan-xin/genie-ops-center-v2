@@ -494,12 +494,71 @@ export const WideAtTheNarrowestDesk: Story = {
       </div>
     ),
   ],
-  play: async ({ canvas }) => {
+  play: async ({ canvas, canvasElement }) => {
+    const page = await pageDrawn(canvasElement);
+
+    // czjw.196: an open drawer leaves the page 560 px, so the fields list in the drawer and no pin
+    // is drawn beside it.
+    await expect(canvasElement.querySelector("[data-pin-dot]")).toBeNull();
+    await expect(page.getBoundingClientRect().width).toBeGreaterThanOrEqual(
+      500
+    );
+
+    const drawer = await canvas.findByRole("complementary", {
+      name: "Payments and history",
+    });
+
+    await expect(drawer).toBeVisible();
     await expect(
-      await canvas.findByRole("complementary", {
-        name: "Payments and history",
-      })
+      within(drawer).getByRole("region", { name: "Fields" })
     ).toBeVisible();
+
+    // Hiding the drawer gives the desk its 960 px back, so the pins return.
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Hide payments and history" })
+    );
+    await expect(
+      canvas.queryByRole("complementary", { name: "Payments and history" })
+    ).toBeNull();
+    await dotsOnTheirMarks(canvasElement);
+  },
+};
+
+// P16-21: at 1440 px the desk is 1136 px, and an open drawer leaves 736 px: the page keeps 712 px
+// and the fields list in the drawer.
+export const BesideTheDrawerAt1440: Story = {
+  globals: desktop,
+  decorators: [
+    (Story) => (
+      <div className="w-284">
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas, canvasElement }) => {
+    const page = await pageDrawn(canvasElement);
+
+    await expect(canvasElement.querySelector("[data-pin-dot]")).toBeNull();
+    await expect(page.getBoundingClientRect().width).toBeGreaterThanOrEqual(
+      600
+    );
+
+    const drawer = await canvas.findByRole("complementary", {
+      name: "Payments and history",
+    });
+
+    await expect(drawer).toBeVisible();
+    await expect(
+      within(drawer).getByRole("region", { name: "Fields" })
+    ).toBeVisible();
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Hide payments and history" })
+    );
+    await expect(
+      canvas.queryByRole("complementary", { name: "Payments and history" })
+    ).toBeNull();
+    await dotsOnTheirMarks(canvasElement);
   },
 };
 
