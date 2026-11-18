@@ -969,7 +969,12 @@ export function SlideEditor(props: SlideEditorProps) {
 
       <div className="border-t border-border">
         <SheetFooter className="flex-row justify-end max-md:*:flex-1">
-          <Button type="button" variant="secondary" onClick={onClose}>
+          <Button
+            type="button"
+            variant="secondary"
+            disabled={props.saving}
+            onClick={onClose}
+          >
             Cancel
           </Button>
           <Button type="submit" loading={props.saving} disabled={uploading}>

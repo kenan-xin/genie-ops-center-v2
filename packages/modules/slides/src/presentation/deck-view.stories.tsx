@@ -1136,6 +1136,64 @@ export const NotesSaveBeforeMoreAction: Story = {
   },
 };
 
+// R13-3: the exported file holds the notes typed inside the save pause.
+export const NotesSaveBeforeExport: Story = {
+  name: "Notes save before Export to PowerPoint",
+  args: { view: deckPage },
+  ...inShellOnPhone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    // Never answers, so the page never leaves for the file.
+    exportDeck.mockReturnValue(new Promise(() => undefined));
+
+    await userEvent.type(
+      canvas.getByRole("textbox", { name: "Speaker notes" }),
+      "Say hello."
+    );
+    await pickFromMoreSheet(canvas, "Export to PowerPoint");
+
+    await waitFor(() => expect(exportDeck).toHaveBeenCalledOnce());
+    await waitFor(() => expect(changeDeck).toHaveBeenCalledOnce());
+    await expect(changeDeck.mock.calls[0]?.[0].changes).toEqual([
+      { op: "change-slide-fields", slideId: "s1", notes: "Say hello." },
+    ]);
+    await expect(changeDeck.mock.invocationCallOrder[0]).toBeLessThan(
+      exportDeck.mock.invocationCallOrder[0]!
+    );
+  },
+};
+
+// R13-1: the shell focuses the h1 after a navigation, and the title closes a rename onto it. After
+// a tap that focus is not a keyboard focus, so the title row stays hidden and the strip stays. A
+// keyboard focus still shows the row (P13-8). A story's click is not a trusted tap, so Chromium
+// would still treat a plain `focus()` as keyboard focus; `focusVisible` sets the mode instead.
+export const TitleRowStaysHiddenOnScriptFocus: Story = {
+  name: "Title row stays hidden when code focuses the title on a phone",
+  args: { view: deckPage },
+  ...inShellOnPhone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const strip = canvas.getByRole("navigation", { name: "Slides" });
+    const top = strip.getBoundingClientRect().top;
+    const h1 = canvas.getByRole("heading", { level: 1 });
+
+    // As RouteFocus does it, after a tap.
+    h1.tabIndex = -1;
+    h1.focus({ focusVisible: false });
+
+    await pause(100);
+    await expect(strip.getBoundingClientRect().top).toBe(top);
+
+    within(h1)
+      .getByRole("button", { name: RENAME })
+      .focus({ focusVisible: true });
+
+    await waitFor(() =>
+      expect(strip.getBoundingClientRect().top).toBeGreaterThan(top)
+    );
+  },
+};
+
 const NO_FIGURES = "This deck has no figures, charts or tables.";
 
 const noFiguresPage: DeckPageView = {

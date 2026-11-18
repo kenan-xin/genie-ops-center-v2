@@ -881,12 +881,17 @@ export function DeckView(props: DeckViewProps) {
     }).catch((error) => setFailure({ kind: "refresh", error }));
   }
 
+  /** The file holds the notes typed inside the save pause; a failed notes save shows in the field (R13-3). */
   function exportToPowerPoint(): void {
     setFailure(null);
-    exporting.mutate(undefined, {
-      onSuccess: ({ url }) => window.location.assign(url),
-      onError: (error) => setFailure({ kind: "export", error }),
-    });
+    (notesField.current?.flush() ?? Promise.resolve())
+      .then(() =>
+        exporting.mutate(undefined, {
+          onSuccess: ({ url }) => window.location.assign(url),
+          onError: (error) => setFailure({ kind: "export", error }),
+        })
+      )
+      .catch((error) => setFailure({ kind: "export", error }));
   }
 
   function present(): void {
@@ -1017,11 +1022,12 @@ export function DeckView(props: DeckViewProps) {
         heading={
           unnamed ? undefined : (
             // P13-8: below 768 px the top bar shows the title; the h1 stays for a screen reader
-            // and shows while it holds focus.
+            // and shows while it holds keyboard focus. A focus from code (RouteFocus, a closed
+            // rename) after a tap keeps it hidden, so the strip does not jump (R13-1).
             <div
               className={
                 renaming === null
-                  ? "max-md:sr-only max-md:focus-within:not-sr-only"
+                  ? "max-md:sr-only max-md:has-[:focus-visible]:not-sr-only"
                   : undefined
               }
             >

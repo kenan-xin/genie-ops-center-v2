@@ -270,7 +270,17 @@ export const SaveKeepsChart: Story = {
 
     await userEvent.clear(title);
     await userEvent.type(title, "Collections beat the plan line");
+
+    const answer = Promise.withResolvers<typeof deckPage.deck>();
+
+    changeDeck.mockReturnValue(answer.promise);
     await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+
+    // R13-2: a Cancel during the save would close the sheet the save's refusal lands on.
+    await waitFor(() =>
+      expect(sheet.getByRole("button", { name: "Cancel" })).toBeDisabled()
+    );
+    answer.resolve(deckPage.deck);
 
     await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
     await expect(changeDeck).toHaveBeenCalledWith({
