@@ -12,7 +12,6 @@ import { withDeploymentLock } from "../support/lock.ts";
 import {
   FIRST_PAINT,
   hideDevelopmentWidgets,
-  openAgentPanel,
   signInAs,
 } from "./ask-support.ts";
 import { LEDGER_LOCK, LOCK_WAIT, onPhone } from "./dev-support.ts";
@@ -23,6 +22,7 @@ import {
   openStyleTool,
   removeOwnDecks,
   resetChangeDeck,
+  sendToSlidesAgent,
   undoLengthOf,
 } from "./slides-support.ts";
 import { closeSurfaceDatabase } from "./surface-support.ts";
@@ -101,24 +101,6 @@ async function onFixedDeck(
     },
     LOCK_WAIT
   );
-}
-
-/** Sends one message to the Slides agent and waits for its answer to end. */
-async function sendToSlidesAgent(page: Page, text: string): Promise<Locator> {
-  const chat = await openAgentPanel(page);
-
-  await chat.getByRole("textbox", { name: "Message", exact: true }).fill(text);
-
-  const answer = page.waitForResponse(
-    (response) =>
-      response.url().endsWith("/api/agent") &&
-      response.request().method() === "POST"
-  );
-
-  await activate(page, chat.getByRole("button", { name: "Send" }));
-  await (await answer).finished();
-
-  return chat;
 }
 
 const backgroundOf = (page: Page) =>

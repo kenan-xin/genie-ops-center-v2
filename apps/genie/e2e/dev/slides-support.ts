@@ -5,7 +5,7 @@ import {
 } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
 import { insertDeck } from "@genie/module-slides/testing";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 
 import { selectedModuleIds } from "../../src/modules.ts";
 import {
@@ -14,6 +14,7 @@ import {
   SLIDES_CHANGE_DECK_TITLE,
   SLIDES_CHANGE_FROZEN_ON,
 } from "../../testing/slides-change.ts";
+import { openAgentPanel } from "./ask-support.ts";
 import { onPhone } from "./dev-support.ts";
 import { DEV_DB_PORT, DEV_PORT } from "./global-setup.ts";
 
@@ -35,6 +36,30 @@ export async function openStyleTool(
   await page
     .getByRole("dialog", { name: tool === "More" ? / actions$/ : tool })
     .waitFor();
+}
+
+/** Sends one message to the Slides agent and waits for its answer to end. */
+export async function sendToSlidesAgent(
+  page: Page,
+  text: string
+): Promise<Locator> {
+  const chat = await openAgentPanel(page);
+
+  await chat.getByRole("textbox", { name: "Message", exact: true }).fill(text);
+
+  const answer = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/api/agent") &&
+      response.request().method() === "POST"
+  );
+
+  const send = chat.getByRole("button", { name: "Send" });
+
+  // A tap on the phone project, where a fixed bar may cover a control.
+  await (onPhone(page) ? send.tap() : send.click());
+  await (await answer).finished();
+
+  return chat;
 }
 
 /** The stored deck content, as the factory takes it. */
@@ -167,6 +192,19 @@ export async function resetChangeDeck(
     content,
     frozenOn: SLIDES_CHANGE_FROZEN_ON,
   });
+}
+
+/**
+ * Puts `content` back as the fixed deck under `theme`, a stored deck theme (czjw.183), through
+ * `resetChangeDeck`. Call it under the ledger lock.
+ */
+export async function resetDeckWithTheme(
+  email: string,
+  content: DeckContent,
+  theme: NonNullable<DeckContent["theme"]>,
+  title: string
+): Promise<void> {
+  await resetChangeDeck(email, { ...content, theme }, title);
 }
 
 /**
