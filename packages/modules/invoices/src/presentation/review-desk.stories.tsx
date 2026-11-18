@@ -10,6 +10,7 @@ import {
   invoiceReview,
   lostQuoteInvoiceReview,
   meridianOpenInvoices,
+  noLinesInvoiceReview,
   noQuoteInvoiceReview,
   readingReview,
   savedInvoiceReview,
@@ -333,6 +334,154 @@ export const LostQuote: Story = {
     await expect(saveInvoice).toHaveBeenCalledWith(
       expect.objectContaining({ currency: "SGD" })
     );
+  },
+};
+
+// T2-a (czjw.187, H1-30): the locate button selects the field, lights its line and brings it into
+// the page's visible box; the pointer on a field lights its line too.
+export const LocateLightsTheLine: Story = {
+  globals: desktop1440,
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await marked(canvasElement, READ_KEYS);
+
+    // The page scrolls to its end, so the customer line starts out of sight.
+    const scroller = canvasElement.querySelector<HTMLElement>(
+      "[data-desk-content]"
+    )?.parentElement;
+
+    if (scroller == null) throw new Error("The page has no scroll box.");
+
+    scroller.scrollTop = scroller.scrollHeight;
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Show Customer on the document" })
+    );
+
+    const visible = scroller.getBoundingClientRect();
+
+    await waitFor(() => {
+      const line = canvasElement.querySelector(
+        '[data-line-box="customer"][data-lit="selected"]'
+      );
+
+      if (line === null) throw new Error("The customer line is not lit.");
+
+      const box = line.getBoundingClientRect();
+
+      if (box.top < visible.top - 1 || box.bottom > visible.bottom + 1)
+        throw new Error("The customer line is out of view.");
+    });
+    await expect(card(canvasElement, "customer")).toHaveAttribute(
+      "data-selected"
+    );
+
+    await userEvent.hover(card(canvasElement, "amount"));
+    await waitFor(() =>
+      expect(
+        canvasElement.querySelector(
+          '[data-line-box="amount"][data-lit="hovered"]'
+        )
+      ).not.toBeNull()
+    );
+  },
+};
+
+/** The color `--ring` resolves to, read beside `element` in the same cascade. */
+function ringOf(element: HTMLElement): string {
+  const probe = document.createElement("span");
+
+  probe.style.color = "var(--ring)";
+  element.append(probe);
+
+  const color = getComputedStyle(probe).color;
+
+  probe.remove();
+
+  return color;
+}
+
+// T2-b (czjw.187): the pointer on a mark of the page lights its field, whose control takes the
+// ring border, so the highlight goes both ways.
+export const MarkLightsTheField: Story = {
+  beforeEach: () => serve(invoiceReview),
+  play: async ({ canvasElement }) => {
+    await marked(canvasElement, READ_KEYS);
+
+    const mark = canvasElement.querySelector<HTMLElement>(
+      'mark[data-highlight="number"]'
+    );
+
+    if (mark === null) throw new Error("The page has no mark for number.");
+
+    await userEvent.hover(mark);
+
+    const number = card(canvasElement, "number");
+
+    await waitFor(() => expect(number).toHaveAttribute("data-hovered"));
+
+    const input = number.querySelector<HTMLInputElement>("input");
+
+    if (input === null) throw new Error("The number field has no input.");
+
+    const ring = ringOf(number);
+
+    await waitFor(() =>
+      expect(getComputedStyle(input).borderTopColor).toBe(ring)
+    );
+  },
+};
+
+// T2-c (czjw.187): a quoted field whose line the page lacks says so and keeps no locate button, so
+// a press never lights nothing; a field with a line keeps its button.
+export const LostLineHasNoLocate: Story = {
+  args: { view: lostQuoteInvoiceReview },
+  beforeEach: () => serve(lostQuoteInvoiceReview),
+  play: async ({ canvasElement }) => {
+    await marked(canvasElement, ["customer", "number", "amount"]);
+
+    const currency = within(card(canvasElement, "currency"));
+
+    await waitFor(() =>
+      expect(
+        currency.getByText("No matching line was found on the page.")
+      ).toBeVisible()
+    );
+    await expect(
+      currency.queryByRole("button", { name: "Show Currency on the document" })
+    ).toBeNull();
+    await expect(
+      within(card(canvasElement, "number")).getByRole("button", {
+        name: "Show Invoice number on the document",
+      })
+    ).toBeVisible();
+    await expect(
+      canvasElement.querySelector('mark[data-highlight="currency"]')
+    ).toBeNull();
+  },
+};
+
+// The page holds none of the quotes, so it draws with no marks: every quoted field says its line
+// is missing and keeps no locate button that lights nothing.
+export const PageHoldsNoQuotes: Story = {
+  args: { view: noLinesInvoiceReview },
+  beforeEach: () => serve(noLinesInvoiceReview),
+  play: async ({ canvas, canvasElement }) => {
+    await fields(canvasElement);
+
+    await waitFor(() => {
+      for (const key of READ_KEYS) {
+        expect(
+          within(card(canvasElement, key)).getByText(
+            "No matching line was found on the page."
+          )
+        ).toBeVisible();
+      }
+    }, PAGE_TIMEOUT);
+
+    await expect(
+      canvas.queryByRole("button", { name: /^Show .* on the document$/u })
+    ).toBeNull();
   },
 };
 

@@ -199,6 +199,10 @@ export type DeskCanvasProps = {
   readonly hovered?: string | null;
   /** The pointer entered a card or a marked line (its key), or left it (null). */
   readonly onHover?: (key: string | null) => void;
+  /**
+   * The places of the marks, each time they change (czjw.187: a field whose line the page lacks).
+   */
+  readonly onPlaces?: (places: readonly MarkPlace[]) => void;
   readonly onLoadError: () => void;
   readonly onDownload: () => void;
   /** The control that opens the hidden drawer, or null while it shows. */
@@ -225,7 +229,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   const cards = useRef(new Map<string, HTMLDivElement>());
   const [canvasWidth, setCanvasWidth] = useState(0);
   const [zoom, setZoom] = useState<number>(ZOOM.fit);
-  const [places, setPlaces] = useState<readonly MarkPlace[]>([]);
+  const [places, setPlaces] = useState<readonly MarkPlace[] | null>(null);
   const [geometry, setGeometry] = useState<Geometry | null>(null);
   const [canFullScreen, setCanFullScreen] = useState(false);
   const [fullScreen, setFullScreen] = useState(false);
@@ -240,12 +244,28 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   // The keys whose line the sweep passed; a card shows once its key is here.
   const [revealed, setRevealed] = useState<ReadonlySet<string>>(new Set());
 
-  // The sweep reads the places and the end callback as they are now, not as they were at its start.
-  const latest = useRef({ places, onSweepEnd: props.onSweepEnd });
+  // The sweep and the report read the places and the callbacks as they are now, not as they were
+  // when the effect started.
+  const latest = useRef({
+    places,
+    onPlaces: props.onPlaces,
+    onSweepEnd: props.onSweepEnd,
+  });
 
   useLayoutEffect(() => {
-    latest.current = { places, onSweepEnd: props.onSweepEnd };
+    latest.current = {
+      places,
+      onPlaces: props.onPlaces,
+      onSweepEnd: props.onSweepEnd,
+    };
   });
+
+  // The review keeps its places null until the page drew, so no field is missing before then.
+  useEffect(() => {
+    if (places === null) return;
+
+    latest.current.onPlaces?.(places);
+  }, [places]);
 
   useEffect(() => {
     const root = canvas.current;
@@ -284,7 +304,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
 
       root.style.setProperty("--scan-top", `${lineY}px`);
 
-      const passed = latest.current.places.filter(
+      const passed = (latest.current.places ?? []).filter(
         (place) =>
           !shown.has(place.key) && (place.top + place.bottom) / 2 <= lineY
       );
@@ -338,6 +358,17 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
     };
   }, []);
 
+  // The selected line box scrolls into view, so a locate press never lights a line out of sight.
+  useEffect(() => {
+    if (props.selected == null) return;
+
+    canvas.current
+      ?.querySelector(
+        `[data-line-box="${CSS.escape(props.selected)}"][data-lit="selected"]`
+      )
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  }, [props.selected, places]);
+
   const pageWidth =
     canvasWidth === 0
       ? 0
@@ -364,7 +395,9 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
 
   const keepPlaces = useCallback(
     (next: readonly MarkPlace[]) =>
-      setPlaces((last) => (samePlaces(last, next) ? last : next)),
+      setPlaces((last) =>
+        last !== null && samePlaces(last, next) ? last : next
+      ),
     []
   );
 
@@ -379,7 +412,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
     }
 
     const lineOf = new Map(
-      places.map((place) => [place.key, (place.top + place.bottom) / 2])
+      (places ?? []).map((place) => [place.key, (place.top + place.bottom) / 2])
     );
 
     const tops = placePins(
@@ -430,7 +463,7 @@ export function DeskCanvas(props: DeskCanvasProps): ReactNode {
   );
 
   // The marks are untinted, so the lit line gets a box over them (4 px wider, 3 px taller each side).
-  const lineBoxes = places
+  const lineBoxes = (places ?? [])
     .filter((place) => litKeys.has(place.key))
     .map((place) => {
       const boxStyle: CssVars = {

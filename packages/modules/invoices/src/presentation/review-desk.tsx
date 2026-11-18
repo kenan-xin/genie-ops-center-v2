@@ -12,6 +12,7 @@ import {
 } from "./desk-canvas.tsx";
 import { download, useFillHeight } from "./document-desk.tsx";
 import { DocumentStatusBadge } from "./document-status-badge.tsx";
+import type { MarkPlace } from "./document-viewer.tsx";
 import { ReviewFormColumn } from "./review-form-column.tsx";
 import { ReviewSaveBar } from "./review-form.tsx";
 import type {
@@ -120,6 +121,8 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
   const { failed } = file;
   const [selected, setSelected] = useState<string | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
+  // The places of the marks once the page drew; null before.
+  const [places, setPlaces] = useState<readonly MarkPlace[] | null>(null);
 
   // The sweep plays on the page, so a page that did not load ends it at once.
   const sweeping = frame.sweep && !failed;
@@ -197,6 +200,7 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
             selected={selected}
             hovered={hovered}
             onHover={setHovered}
+            onPlaces={setPlaces}
             onLoadError={file.fail}
             onDownload={file.download}
             drawerButton={null}
@@ -218,6 +222,10 @@ export function ReviewDesk(props: ReviewLayoutProps): ReactNode {
               reading={reading}
               selected={selected}
               onSelect={setSelected}
+              hovered={hovered}
+              onHover={setHovered}
+              places={places}
+              locate={!failed}
             />
           </div>
           {frame.saved === null ? (

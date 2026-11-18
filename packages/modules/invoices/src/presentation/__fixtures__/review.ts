@@ -97,6 +97,32 @@ export const lostQuoteInvoiceReview: DocumentReviewView = {
   },
 };
 
+/** A quote that the page text does not hold. */
+const absentQuote = (value: string, field: string) => ({
+  value,
+  quote: `Not in the page text: ${field}`,
+  page: 1,
+});
+
+/** Upload 01 whose reading quotes text the page does not hold, so the page draws no marks. */
+export const noLinesInvoiceReview: DocumentReviewView = {
+  ...invoiceReview,
+  reading: {
+    ...INVOICE_READING,
+    fields: {
+      customer: absentQuote("ABC Trading", "customer"),
+      number: absentQuote("INV-LIVE-001", "number"),
+      date: absentQuote("2026-10-26", "date"),
+      currency: absentQuote("SGD", "currency"),
+      amount: absentQuote("5000.00", "amount"),
+      description: absentQuote(
+        "Additional consulting project - October 2026",
+        "description"
+      ),
+    },
+  },
+};
+
 /** Upload 01 while its reading job still runs. */
 export const readingReview: DocumentReviewView = {
   document: {
