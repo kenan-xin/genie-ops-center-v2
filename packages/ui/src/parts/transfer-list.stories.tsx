@@ -148,6 +148,48 @@ type Story = StoryObj<typeof meta>;
 const bucket = (canvas: HTMLElement, name: string) =>
   within(within(canvas).getByRole("group", { name }));
 
+/**
+ * C12-2 (C11-14): in the panes of a 1440 px screen a long control, such as an inherited route line,
+ * wraps inside half the row, so the row's name keeps one line.
+ */
+export const PanesLongControlKeepsTheName: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    initial: ["invoices"],
+    items: [
+      {
+        id: "invoices",
+        label: "Invoices and Payments",
+        description:
+          "Customers, invoices, payments and their allocations, with the datasets that answer questions about them.",
+        group: "Modules",
+        control: (
+          <span className="text-xs text-muted-foreground">
+            Invoices and Payments editor · Assigned via Capture Finance Team
+          </span>
+        ),
+      },
+    ],
+  },
+  // The card body of the Grants tab at 1440 px.
+  render: (args) => (
+    <div className="w-272">
+      <Harness {...args} />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const name = bucket(canvasElement, "Granted").getByText(
+      "Invoices and Payments"
+    );
+
+    const line = Number.parseFloat(getComputedStyle(name).lineHeight);
+
+    await expect(name.getBoundingClientRect().height).toBeLessThanOrEqual(
+      line + 1
+    );
+  },
+};
+
 /** T1: one press moves every ticked row, once, and clears the ticks. */
 export const Panes: Story = {
   play: async ({ args, canvasElement }) => {

@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, fn, screen, userEvent, waitFor } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { RecipientRow } from "../../services/roles/recipients.ts";
 import { AddAssignmentForm } from "./add-assignment-form.tsx";
@@ -223,13 +223,28 @@ export const TwoRecipientsAddTwo: Story = {
   },
 };
 
-/** T6-g (Review Focus 3): a refusal keeps the form and says why. */
+/**
+ * C12-3: a sheet's own group: its tile centers on the name's line, not on the two lines. The
+ * runner's icon check (6wz1.113) measures it after the play.
+ */
+export const FixedGroupTileOnTheNameLine: Story = {
+  args: { to: { fixed: FINANCE } },
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText("Finance team")).toBeVisible();
+    await expect(
+      canvas.getByText("Directory group · 17 members")
+    ).toBeVisible();
+  },
+};
+
+/** T6-g (Review Focus 3, C12-10): a refusal keeps the form and says why at the top of the form. */
 export const RefusedKeepsTheForm: Story = {
   args: {
     onSubmit: fn(async () => {
       throw {
         message:
           "The Slides module is off. Turn it on in Modules, or choose a role of another module.",
+        code: "module-disabled",
       };
     }),
   },
@@ -249,6 +264,16 @@ export const RefusedKeepsTheForm: Story = {
     await expect(alert).toHaveTextContent("The assignment was not added.");
     await expect(alert).toHaveTextContent("The Slides module is off.");
     await expect(alert).toHaveFocus();
+    // The prototype's refused-1440: one block above Assign to, and Modules opens the Modules page.
+    await expect(canvas.getAllByRole("alert")).toHaveLength(1);
+    await expect(
+      alert.compareDocumentPosition(
+        canvas.getByRole("combobox", { name: "Assign to" })
+      ) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    await expect(
+      within(alert).getByRole("link", { name: "Modules" })
+    ).toHaveAttribute("href", "/admin/modules");
     await expect(
       canvas.getByRole("button", { name: "Remove Riley Chen" })
     ).toBeInTheDocument();

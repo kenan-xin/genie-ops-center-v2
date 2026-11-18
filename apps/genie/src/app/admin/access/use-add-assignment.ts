@@ -127,6 +127,8 @@ export function useAddAssignment(input: {
             refusal.message,
             pickedRole(groups, add.roleId).moduleName
           ),
+          // The form links the Modules page in a module-disabled refusal (C12-10).
+          code: refusal.code,
         };
       }
     },

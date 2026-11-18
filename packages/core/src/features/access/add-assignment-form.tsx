@@ -7,12 +7,13 @@ import {
   FieldError,
   FieldTitle,
   FormActionBar,
+  focusRing,
   RadioGroup,
   RadioGroupItem,
   touchRowHeight,
 } from "@genie/ui";
-import { ChevronLeftIcon, XIcon } from "lucide-react";
-import { type ReactNode, useId, useState } from "react";
+import { ChevronLeftIcon, CircleAlertIcon, XIcon } from "lucide-react";
+import { type ReactNode, useEffect, useId, useRef, useState } from "react";
 
 import type { Scope } from "../../lib/module-contract/keys.ts";
 import type { AddAssignmentsResult } from "../../services/roles/add-assignments.ts";
@@ -21,7 +22,12 @@ import type {
   RecipientRow,
 } from "../../services/roles/recipients.ts";
 import type { ScopeRecord } from "../../services/roles/records.ts";
-import type { RoleChoice, RoleChoiceGroup } from "./add-assignment-view.ts";
+import { PageLink } from "../shell/page-link.tsx";
+import {
+  MODULES_PAGE,
+  type RoleChoice,
+  type RoleChoiceGroup,
+} from "./add-assignment-view.ts";
 import { recipientDetail } from "./assignment-words.ts";
 import { RecipientField } from "./recipient-field.tsx";
 import { RecipientMark } from "./recipient-mark.tsx";
@@ -73,15 +79,44 @@ type FormErrors = {
   readonly record?: true | undefined;
 };
 
-const refusalText = (cause: unknown) => {
-  // SAFETY: a refusal is thrown as `{ message }` by the host; any other value reads as no message.
-  const message =
-    cause instanceof Error
-      ? cause.message
-      : ((cause as { readonly message?: string } | null)?.message ??
-        "Try again.");
+type Refusal = { readonly reason: string; readonly code: string | undefined };
 
-  return `The assignment was not added. ${message}`;
+const refusalOf = (cause: unknown): Refusal => {
+  if (cause instanceof Error) return { reason: cause.message, code: undefined };
+
+  // SAFETY: a refusal is thrown as `{ message, code? }` by the host; any other value reads as no message.
+  const thrown = cause as Partial<{
+    readonly message: string;
+    readonly code: string;
+  }> | null;
+
+  return {
+    reason: thrown?.message ?? "Try again.",
+    code: thrown?.code,
+  };
+};
+
+/** The reason, with the Modules page linked in a module-disabled refusal (refused-1440). */
+const reasonOf = (refusal: Refusal): ReactNode => {
+  const at =
+    refusal.code === "module-disabled"
+      ? refusal.reason.lastIndexOf(MODULES_PAGE.label)
+      : -1;
+
+  if (at === -1) return refusal.reason;
+
+  return (
+    <>
+      {refusal.reason.slice(0, at)}
+      <PageLink
+        href={MODULES_PAGE.path}
+        className={`rounded-sm font-semibold underline ${focusRing}`}
+      >
+        {MODULES_PAGE.label}
+      </PageLink>
+      {refusal.reason.slice(at + MODULES_PAGE.label.length)}
+    </>
+  );
 };
 
 const initialChoice = (
@@ -113,9 +148,18 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
 
   const [saving, setSaving] = useState(false);
 
-  const [failure, setFailure] = useState<string | null>(null);
+  const [failure, setFailure] = useState<Refusal | null>(null);
+
+  const alert = useRef<HTMLDivElement>(null);
+
+  // Each refusal takes focus, as `FormActionBar` does; a new save clears the last one first.
+  useEffect(() => {
+    if (failure !== null) alert.current?.focus();
+  }, [failure]);
 
   const toErrorId = useId();
+
+  const toTitleId = useId();
 
   const helpId = useId();
 
@@ -192,7 +236,7 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
         recipients,
       });
     } catch (cause) {
-      setFailure(refusalText(cause));
+      setFailure(refusalOf(cause));
     } finally {
       setSaving(false);
     }
@@ -228,6 +272,22 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
         inert={saving}
         className="flex min-h-0 flex-1 flex-col gap-5 overflow-y-auto p-4"
       >
+        {/* A form-level block at the top of the form (DESIGN.md "Labels / Helper / Error", C12-10). */}
+        {failure === null ? null : (
+          <div
+            ref={alert}
+            role="alert"
+            tabIndex={-1}
+            className={`flex items-start gap-2.5 rounded-lg bg-destructive/10 px-3.5 py-3 text-sm text-destructive-text ${focusRing}`}
+          >
+            {/* No offset: Chrome's text rect starts at the line top, so a 16 px icon there centers on it (P07-64). */}
+            <CircleAlertIcon aria-hidden="true" className="size-4 shrink-0" />
+            <div className="grid gap-0.5">
+              <p className="font-semibold">The assignment was not added.</p>
+              <p>{reasonOf(failure)}</p>
+            </div>
+          </div>
+        )}
         {fixed === null ? (
           <Field>
             <FieldTitle>Assign to</FieldTitle>
@@ -256,18 +316,22 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
           </Field>
         ) : (
           <Field>
-            <FieldTitle>Assign to</FieldTitle>
-            <div className="flex items-center gap-3">
-              <RecipientMark type={fixed.type} name={fixed.name} />
-              <span className="flex min-w-0 flex-col">
-                <span className="truncate text-sm font-semibold">
-                  {fixed.name}
+            <FieldTitle id={toTitleId}>Assign to</FieldTitle>
+            {/* A list of one, as the picker's chips are a list: its row holds the mark's gutter (C12-3). */}
+            <ul aria-labelledby={toTitleId}>
+              <li className="flex items-start gap-3">
+                <RecipientMark type={fixed.type} name={fixed.name} />
+                {/* 8 px down, so the 32 px mark's center sits on the name line's center (C12-3). */}
+                <span className="flex min-w-0 flex-col pt-2">
+                  <span className="truncate text-sm font-semibold">
+                    {fixed.name}
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {fixed.type === "user" ? "Person" : recipientDetail(fixed)}
+                  </span>
                 </span>
-                <span className="text-xs text-muted-foreground">
-                  {fixed.type === "user" ? "Person" : recipientDetail(fixed)}
-                </span>
-              </span>
-            </div>
+              </li>
+            </ul>
           </Field>
         )}
 
@@ -339,7 +403,7 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
       </div>
 
       <div className="border-t border-border p-4">
-        <FormActionBar failure={failure}>
+        <FormActionBar failure={null}>
           <Button
             variant="secondary"
             disabled={saving}

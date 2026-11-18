@@ -293,7 +293,8 @@ export function overviewDefinition(
         kind: "access-recipient",
         label: "Person or group",
         placeholder: "Anyone",
-        barWidth: 200,
+        // The most that `WhoFilter` takes in the bar (`max-w-60`); it shrinks to its text.
+        barWidth: 240,
       },
       {
         id: "module",

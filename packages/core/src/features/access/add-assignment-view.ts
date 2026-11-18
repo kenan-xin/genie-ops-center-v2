@@ -1,3 +1,4 @@
+import { coreAdminPage } from "../../lib/entitlement/core-admin.ts";
 import {
   ASK_USER_ROLE,
   AUDITOR_ROLE,
@@ -219,6 +220,9 @@ export function namesOf(
   });
 }
 
+/** The Modules page, which a module-disabled refusal names and the form links (C12-10). */
+export const MODULES_PAGE = coreAdminPage("core-modules");
+
 /** The refusal line under "The assignment was not added.": module-disabled names the module. */
 export function refusalMessage(
   code: string | undefined,
@@ -226,7 +230,7 @@ export function refusalMessage(
   moduleName: string | null
 ): string {
   if (code === "module-disabled" && moduleName !== null)
-    return `The ${moduleName} module is off. Turn it on in Modules, or choose a role of another module.`;
+    return `The ${moduleName} module is off. Turn it on in ${MODULES_PAGE.label}, or choose a role of another module.`;
 
   return serverMessage === "" ? "Try again." : serverMessage;
 }

@@ -416,6 +416,42 @@ export const NameOpensTheModuleSheet: Story = {
   },
 };
 
+/** The 44 px area's edge midpoints that do not reach `control` (the touch check's probes). */
+const shortSides = (control: HTMLElement) => {
+  const box = control.getBoundingClientRect();
+  const x = box.left + box.width / 2;
+  const y = box.top + box.height / 2;
+
+  const half = {
+    x: Math.max(box.width, 44) / 2,
+    y: Math.max(box.height, 44) / 2,
+  };
+
+  return (
+    [
+      ["top", x, Math.ceil(y - half.y)],
+      ["bottom", x, Math.ceil(y + half.y) - 1],
+      ["left", Math.ceil(x - half.x), y],
+      ["right", Math.ceil(x + half.x) - 1, y],
+    ] as const
+  ).flatMap(([side, at, down]) =>
+    control.contains(document.elementFromPoint(at, down)) ? [] : [side]
+  );
+};
+
+/** C12-5: on the phone card the module's name button has a 44 px touch area. */
+export const NameButtonTouchAreaOnPhone: Story = {
+  args: { onOpenModule: fn() },
+  globals: phone,
+  play: async ({ canvas }) => {
+    const list = within(canvas.getByRole("list", { name: "Modules" }));
+    const name = list.getByRole("button", { name: "Fixture" });
+
+    name.scrollIntoView({ block: "center", behavior: "instant" });
+    await expect(shortSides(name)).toEqual([]);
+  },
+};
+
 /** T9-d (Review Focus 1): without `onOpenModule` the name is plain text, on desktop and phone. */
 export const NoModuleSheetWithoutRolesKey: Story = {
   play: async ({ canvas }) => {

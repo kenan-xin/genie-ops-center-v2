@@ -335,6 +335,62 @@ export const ChipRemoveTapOnPhone: Story = {
   },
 };
 
+// Three picks: the last chip wraps, so the input sits under a chip and beside one.
+const crowd: readonly Person[] = [
+  ...people,
+  { value: "p-3", label: "Katherine Johnson" },
+];
+
+/**
+ * C12-7: no chip's remove button reaches over the text input with its 44 px area, on the chip's
+ * line or on the line under it, so a tap at the input's edge types and never removes a chip.
+ */
+export const ChipRemoveClearsTheInput: Story = {
+  name: "Chip remove clears the input, phone",
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  render: () => (
+    <div className="w-80 p-4">
+      <Combobox<Person, true> multiple items={crowd} defaultValue={crowd}>
+        <ComboboxChips>
+          {crowd.map((person) => (
+            <ComboboxChip
+              key={person.value}
+              removeLabel={`Remove ${person.label}`}
+            >
+              {person.label}
+            </ComboboxChip>
+          ))}
+          <ComboboxChipsInput aria-label="People" />
+        </ComboboxChips>
+      </Combobox>
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const input = canvas
+      .getByRole("combobox", { name: "People" })
+      .getBoundingClientRect();
+
+    // The touch check's area: 44 px around the button's center, in whole pixels.
+    const over = canvas
+      .getAllByRole("button", { name: /^Remove / })
+      .filter((remove) => {
+        const box = remove.getBoundingClientRect();
+        const x = box.left + box.width / 2;
+        const y = box.top + box.height / 2;
+
+        return (
+          Math.ceil(x + 22) - 1 >= input.left &&
+          Math.ceil(x - 22) <= input.right &&
+          Math.ceil(y + 22) - 1 >= input.top &&
+          Math.ceil(y - 22) <= input.bottom
+        );
+      })
+      .map((remove) => remove.getAttribute("aria-label"));
+
+    await expect(over).toEqual([]);
+  },
+};
+
 export const Dark: Story = {
   globals: { theme: "dark" },
   play: async ({ canvas }) => {

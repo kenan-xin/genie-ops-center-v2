@@ -55,6 +55,30 @@ export const Default: Story = {
   },
 };
 
+/** C12-2 (C11-14): at 1440 a long role name shows whole in the select. */
+export const LongRoleShowsWhole: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    roles: [
+      ...invoices.roles,
+      {
+        ...invoices.roles[0]!,
+        id: "r-invoices-editor",
+        name: "Invoices and Payments editor",
+      },
+    ],
+    value: "r-invoices-editor",
+  },
+  play: async ({ canvasElement }) => {
+    const value = canvasElement.querySelector("[data-slot=select-value]");
+
+    if (value === null) throw new Error("No select value.");
+
+    await expect(value).toHaveTextContent("Invoices and Payments editor");
+    await expect(value.scrollWidth).toBeLessThanOrEqual(value.clientWidth);
+  },
+};
+
 /** T6: a staged swap shows the saved role struck through, read as "Was". */
 export const Changed: Story = {
   args: { value: "r-invoices-finance", savedRoleId: "r-invoices-viewer" },

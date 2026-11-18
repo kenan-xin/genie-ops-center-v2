@@ -94,7 +94,8 @@ function PageTopBar(props: {
     <div
       data-page-top-bar=""
       // `-top-4`: a sticky box stops at the scroll area's padding edge, and the content pads 16 px.
-      className="sticky -top-4 z-10 -mx-4 -mt-4 mb-4 flex h-13.5 items-center gap-1 border-b border-border bg-background px-1 md:-mx-6 lg:hidden"
+      // `z-20`: above a list row's `relative z-10` content, which scrolls under the bar (C12-1).
+      className="sticky -top-4 z-20 -mx-4 -mt-4 mb-4 flex h-13.5 items-center gap-1 border-b border-border bg-background px-1 md:-mx-6 lg:hidden"
     >
       <Anchor
         href={crumb.parent.href}

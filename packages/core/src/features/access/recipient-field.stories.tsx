@@ -192,6 +192,21 @@ export const ChipRemoveMovesFocus: Story = {
   },
 };
 
+/**
+ * C12-4: a picked row's check mark centers on the name's line, not on the row's top. The runner's
+ * icon check (6wz1.113) measures the open list after the play.
+ */
+export const PickedCheckOnTheNameLine: Story = {
+  args: { initial: [GROUPS[1]!] },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("combobox", { name: "Assign to" }));
+
+    const option = await screen.findByRole("option", { name: /Finance team/ });
+
+    await expect(option).toHaveAttribute("aria-selected", "true");
+  },
+};
+
 /** T5-d: a cut list says how many match. */
 export const ShowsFirstTenOfTotal: Story = {
   args: {

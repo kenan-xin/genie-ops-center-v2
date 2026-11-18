@@ -22,8 +22,11 @@ import {
   type AddAssignmentHost,
 } from "./add-assignment-form.tsx";
 import { assignedLabel } from "./assignment-words.ts";
-import { overviewRows, pausedLabel } from "./overview-view.ts";
+import { overviewRows, pausedLabel, reasonLabel } from "./overview-view.ts";
 import { RecipientMark } from "./recipient-mark.tsx";
+
+// The row's words for a module pause, which the sheet shows with the role (d8l5.73).
+const MODULE_OFF = reasonLabel("module-off");
 
 /**
  * A module's sheet on Modules (P12-16, d8l5.62): who it is assigned to, newest first, the newest 25
@@ -169,7 +172,8 @@ export function ModuleSheet(props: {
           </div>
         </SheetHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pb-4">
+        {/* `pt-0.5`: the 2 px that the 44 px area of Add assignment reaches above its 40 px box (C12-6). */}
+        <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-4 pt-0.5 pb-4">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
             <h3 className="text-sm font-semibold text-foreground">
               Assigned to{total === undefined ? "" : ` (${total})`}
@@ -218,19 +222,29 @@ export function ModuleSheet(props: {
                       {row.record === null ? null : (
                         <LabelPill>{`One record · ${row.record}`}</LabelPill>
                       )}
-                      {row.notInEffect.map((reason) => (
-                        <StatusPill key={reason} tone="warning">
-                          {pausedLabel(reason)}
-                        </StatusPill>
-                      ))}
+                      {row.notInEffect
+                        .filter((reason) => reason !== MODULE_OFF)
+                        .map((reason) => (
+                          <StatusPill key={reason} tone="warning">
+                            {pausedLabel(reason)}
+                          </StatusPill>
+                        ))}
                     </span>
-                    <span className="text-sm">
-                      {row.role}
-                      {row.custom ? (
-                        <span className="text-muted-foreground">
-                          {" "}
-                          · Custom role
-                        </span>
+                    {/* d8l5.73: a module pause sits with the role, not beside the person's name (C12-11). */}
+                    <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                      <span>
+                        {row.role}
+                        {row.custom ? (
+                          <span className="text-muted-foreground">
+                            {" "}
+                            · Custom role
+                          </span>
+                        ) : null}
+                      </span>
+                      {row.notInEffect.includes(MODULE_OFF) ? (
+                        <StatusPill tone="warning">
+                          {pausedLabel(MODULE_OFF)}
+                        </StatusPill>
                       ) : null}
                     </span>
                     <span className="text-xs text-muted-foreground">

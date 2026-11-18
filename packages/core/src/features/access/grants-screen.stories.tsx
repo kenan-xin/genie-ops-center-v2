@@ -461,6 +461,36 @@ export const RoleChoicePending: Story = {
   },
 };
 
+/**
+ * C12-2 review I-1: from 1280 px the panes sit side by side in a card about 920 px wide, where half a
+ * Granted row is narrower than the 256 px select. The select keeps inside its row and its pane.
+ */
+export const RoleChoiceFitsNarrowPanes: Story = {
+  args: { initial: group("g-ops") },
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  render: (args) => (
+    <div className="w-230 p-8">
+      <Harness {...args} />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const select = await canvas.findByRole("combobox", {
+      name: "Role for Invoices",
+    });
+
+    const row = select.closest("li");
+    const pane = row?.closest("ul")?.parentElement;
+
+    if (row === null || pane === null || pane === undefined)
+      throw new Error("The select is not in a pane row.");
+
+    await expect(select.getBoundingClientRect().right).toBeLessThanOrEqual(
+      row.getBoundingClientRect().right
+    );
+    await expect(pane.scrollWidth).toBeLessThanOrEqual(pane.clientWidth);
+  },
+};
+
 export const RoleChoicePendingPhone: Story = {
   ...RoleChoicePending,
   globals: { viewport: { value: "phone390", isRotated: false } },

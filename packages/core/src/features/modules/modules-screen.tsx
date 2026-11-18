@@ -20,6 +20,7 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
+  touchAreas,
 } from "@genie/ui";
 import { uniqBy } from "es-toolkit";
 import { ArrowUpRightIcon, ChevronRightIcon } from "lucide-react";
@@ -454,7 +455,7 @@ export function ModulesScreen(props: ModulesScreenProps) {
               ) : (
                 <button
                   type="button"
-                  className={`font-semibold text-start underline-offset-4 hover:underline ${module.enabled ? "" : "text-muted-foreground"} ${focusRing}`}
+                  className={`font-semibold text-start underline-offset-4 hover:underline ${module.enabled ? "" : "text-muted-foreground"} ${touchAreas.md} ${focusRing}`}
                   onClick={onOpen}
                 >
                   {module.displayName}

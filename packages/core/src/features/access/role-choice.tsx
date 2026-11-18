@@ -46,7 +46,7 @@ export function RoleChoice(props: {
       : props.roles.find((role) => role.id === props.savedRoleId);
 
   return (
-    <div className="flex w-56 max-w-full flex-col gap-1">
+    <div className="flex w-full max-w-full flex-col gap-1 md:w-64">
       <Select
         items={items}
         value={props.value}

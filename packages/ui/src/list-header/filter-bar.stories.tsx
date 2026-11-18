@@ -240,7 +240,7 @@ export const ClearFilters: Story = {
   },
 };
 
-/** A registered kind that draws a 200 px control, as the Overview's Person or group filter does. */
+/** A registered kind that draws a 200 px control, as a filter with `barWidth: 200` does. */
 function Probe(props: ListFilterControlProps) {
   return (
     <Button variant="secondary" size="filter" className="w-50 shrink-0">

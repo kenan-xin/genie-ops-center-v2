@@ -281,6 +281,70 @@ export const PhoneCardDropsFilteredColumn: Story = {
   },
 };
 
+/** Every element in `box` that clips its own text: a cut value. */
+const cutIn = (box: Element) =>
+  [box, ...box.querySelectorAll("*")].flatMap((element) =>
+    element.scrollWidth > element.clientWidth ? [element.textContent] : []
+  );
+
+/**
+ * C12-14 (d8l5.77 item 6): in the 1136 px card of a 1440 px screen, Person or group shows its value
+ * whole, a person or "Anyone", and the bar keeps the search, the three filters and Clear filters.
+ */
+export const PersonFilterValueFitsTheBar: Story = {
+  beforeEach: address({ who: "user:p-jamie" }),
+  render: (args) => (
+    <div className="w-284">
+      <Harness {...args} />
+    </div>
+  ),
+  play: async ({ canvas, canvasElement }) => {
+    const who = await canvas.findByRole("combobox", {
+      name: "Person or group",
+    });
+
+    const bar = canvasElement.querySelector("[data-slot=filter-bar]");
+
+    if (bar === null) throw new Error("No filter bar.");
+
+    await expect(who).toHaveTextContent("Jamie Chen");
+    await expect(
+      canvas.getByRole("button", { name: "Clear filters" })
+    ).toBeVisible();
+    await expect(cutIn(who)).toEqual([]);
+    await expect(bar.scrollWidth).toBeLessThanOrEqual(bar.clientWidth);
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Clear filters" })
+    );
+    await waitFor(() => expect(who).toHaveTextContent("Anyone"));
+    await expect(cutIn(who)).toEqual([]);
+  },
+};
+
+/** C12-15: at 390 the one Person or group chip shows whole beside or above Clear filters. */
+export const PhonePersonChipShowsWhole: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  beforeEach: address({ who: "user:p-jamie" }),
+  // The page's 358 px content width at 390, in the docs and in the test runner alike.
+  render: (args) => (
+    <div className="w-89.5">
+      <Harness {...args} />
+    </div>
+  ),
+  play: async ({ canvas }) => {
+    const strip = await canvas.findByRole("list", { name: "Filters" });
+
+    await expect(strip).toHaveTextContent("Person or group: Jamie Chen");
+    const chip = within(strip).getByRole("listitem");
+
+    // The chip's own box, not the strip's scroll width: the remove button's touch layer reaches past it.
+    await expect(chip.getBoundingClientRect().right).toBeLessThanOrEqual(
+      strip.getBoundingClientRect().right
+    );
+  },
+};
+
 /** T7-h: no match offers one button that clears the search and every filter. */
 export const NoMatchClearsFilters: Story = {
   beforeEach: address({ q: "zzz", module: "invoices" }),

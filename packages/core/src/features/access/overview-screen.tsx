@@ -107,7 +107,10 @@ function WhoFilter(props: ListFilterControlProps): ReactNode {
   if (who === null) return null;
 
   return (
-    <div className={props.place === "bar" ? "w-50 shrink-0" : "w-full"}>
+    // In the bar it takes its text's width up to `barWidth` (240 px), so "Anyone" shows whole (C12-14).
+    <div
+      className={props.place === "bar" ? "w-max max-w-60 shrink-0" : "w-full"}
+    >
       <RecipientField
         label={props.filter.label}
         placeholder={props.filter.placeholder}
@@ -496,8 +499,9 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
               />
             )}
             {chips.length === 0 ? null : (
-              <div className="flex min-w-0 items-center gap-2">
-                <div className="min-w-0 flex-1">
+              // Clear filters wraps under a chip row that needs the width, so a chip is never cut (C12-15).
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <div className="max-w-full min-w-0">
                   <FilterChips label="Filters" chips={chips} />
                 </div>
                 <Button variant="link" size="filter" onClick={state.clear}>

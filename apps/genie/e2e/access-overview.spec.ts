@@ -85,11 +85,6 @@ test("the Overview starts filled, filters by person, pages by 25 and clears a se
   await page.goto("/admin/access/overview");
   await expect(resultRows(page)).toHaveCount(25);
   await expect(page.getByText(/^1–25 of [\d,]+$/)).toBeVisible();
-  // The phone's fixed action bar covers the rows it scrolls over. The shell's end spacer keeps the
-  // last row clear, so axe reads the same page without the bar's false color-contrast overlap.
-  await page
-    .locator("[data-shell-content]")
-    .evaluate((area) => area.scrollTo({ top: area.scrollHeight }));
   await expectNoAxeViolations(page, "Overview, first load");
 
   if (project === "phone") await expectTouchAreas(page, "Overview, first load");

@@ -190,9 +190,11 @@ function ComboboxChips({
     <ComboboxPrimitive.Chips
       data-slot="combobox-chips"
       className={cn(
-        "flex w-full flex-wrap items-center gap-1.5 rounded-lg border border-input bg-card px-1.5 py-0.5 text-foreground motion-safe:transition-colors focus-within:border-primary has-aria-invalid:border-destructive",
+        "flex w-full flex-wrap items-center gap-2 rounded-lg border border-input bg-card px-1.5 py-0.5 text-foreground motion-safe:transition-colors focus-within:border-primary has-aria-invalid:border-destructive",
         // A field box (6wz1.114): the md control height as its least height, so it grows as chips
         // wrap, and a 44 px touch area under lg. Base UI focuses the input on a press in the box.
+        // `gap-2`: a chip's remove button reaches 10 px past its 24 px box; the 2 px chip edge and the
+        // 8 px gap keep that area off the input, beside and under the chip (C12-7).
         controlHeights.md,
         "h-auto lg:h-auto",
         touchAreas.md,

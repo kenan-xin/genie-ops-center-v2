@@ -294,15 +294,57 @@ export const ModuleTurnedOffKeepsTheOpenForm: Story = {
   },
 };
 
-/** T9-f (R-37a): a module that is off lists its assignments and offers no Add assignment. */
+/** C12-6: on a phone the scroller does not clip the 44 px area of Add assignment at its top. */
+export const AddAssignmentTouchAreaOnPhone: Story = {
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async () => {
+    const sheet = within(
+      await screen.findByRole("dialog", { name: /Invoices and Payments/ })
+    );
+
+    const add = sheet.getByRole("button", { name: "Add assignment" });
+    const box = add.getBoundingClientRect();
+
+    // The touch check's top probe: the outermost whole pixel of the 44 px area, at the middle.
+    await expect(
+      add.contains(
+        document.elementFromPoint(
+          box.left + box.width / 2,
+          Math.ceil(box.top + box.height / 2 - 22)
+        )
+      )
+    ).toBe(true);
+  },
+};
+
+/** T9-f (R-37a, C12-11): a module that is off lists its assignments and offers no Add assignment. */
 export const ModuleOffOffersNoAddAssignment: Story = {
-  args: { module: { ...MODULE, enabled: false } },
+  args: {
+    module: { ...MODULE, enabled: false },
+    page: {
+      ...PAGE,
+      paths: [
+        path(
+          "a-new",
+          MINA,
+          role("r-inv-viewer", "Invoices and Payments viewer"),
+          { notInEffect: ["module-off"] }
+        ),
+      ],
+    },
+  },
   play: async () => {
     const sheet = within(
       await screen.findByRole("dialog", { name: /Invoices and Payments/ })
     );
 
     await expect(sheet.getByText("Module off")).toBeVisible();
+    // d8l5.73: a module pause sits with the role, not beside the person's name.
+    const [pill] = sheet.getAllByText("Paused: Module off");
+    const line = pill?.parentElement;
+
+    await expect(line).toHaveTextContent("Invoices and Payments viewer");
+    await expect(line).not.toHaveTextContent("Mina Park");
     await expect(
       sheet.getByRole("heading", { name: "Assigned to (7)" })
     ).toBeVisible();

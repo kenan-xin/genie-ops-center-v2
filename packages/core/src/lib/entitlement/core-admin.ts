@@ -112,3 +112,14 @@ export function coreAdminPermission(id: CoreAdminEntryId): PermissionKey {
 
   return entry.requiredPermission;
 }
+
+/** A core admin page's name and address, read from the table above, so a link names its page. */
+export function coreAdminPage(id: CoreAdminEntryId) {
+  const entry = CORE_ADMIN_NAVIGATION.flatMap((group) => group.entries).find(
+    (candidate) => candidate.id === id
+  );
+
+  if (entry === undefined) throw new Error(`No core admin entry ${id}`);
+
+  return { label: entry.label, path: entry.path };
+}

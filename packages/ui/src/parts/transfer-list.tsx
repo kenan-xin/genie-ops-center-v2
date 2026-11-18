@@ -193,8 +193,12 @@ function Rows(props: {
                 </span>
                 {props.side === "granted" && item.control !== undefined ? (
                   <div
+                    // In panes a long control, such as a route line, wraps in half the row, so the
+                    // name keeps its line (C12-2).
                     className={
-                      props.layout === "stacked" ? "basis-full pl-7" : ""
+                      props.layout === "stacked"
+                        ? "basis-full pl-7"
+                        : "max-w-1/2 min-w-0"
                     }
                   >
                     {item.control}

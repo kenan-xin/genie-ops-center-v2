@@ -132,7 +132,8 @@ export function RecipientField(props: RecipientFieldProps): ReactNode {
         {picked.has(key) ? (
           <CheckIcon
             aria-hidden="true"
-            className="size-4 shrink-0 text-primary"
+            // The name's 8 px padding, so the check centers on the name's line (C12-4).
+            className="mt-2 size-4 shrink-0 text-primary"
           />
         ) : null}
       </ComboboxItem>
