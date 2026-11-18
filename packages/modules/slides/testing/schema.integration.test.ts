@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 
 import { startDisposableDeployment } from "@genie/core/testing";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 import { EMPTY_DECK_CONTENT } from "../src/content.ts";
@@ -76,6 +76,17 @@ describe("the slides schema", () => {
             slides: Array.from({ length: 21 }, (_, i) => titleSlide(i)),
           },
         }),
+    ],
+    [
+      "a theme that is not an object",
+      async () => {
+        const id = await insertDeck(t(), { ownerUserId: anOwner() });
+
+        await t()
+          .db.update(deck)
+          .set({ content: sql`'{"slides": [], "theme": "dark"}'::jsonb` })
+          .where(eq(deck.id, id));
+      },
     ],
   ])("refuses %s", async (_, write) => {
     await expect(write()).rejects.toThrow();

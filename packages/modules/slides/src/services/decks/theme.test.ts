@@ -20,16 +20,16 @@ const BRANDING = {
 
 describe("brandTheme", () => {
   it.each([
-    ["keeps the tenant color", {}, { primaryColor: "#0f766e" }],
+    ["keeps the tenant color, in uppercase", {}, { primaryColor: "#0F766E" }],
     [
       "gives the token default for a null color",
       { primaryColor: null },
-      { primaryColor: "#2563eb" },
+      { primaryColor: "#2563EB" },
     ],
     [
       "gives the app's default pair for a color that is not hex, as core's primaryPair does",
       { primaryColor: "red" },
-      { primaryColor: "#2563eb" },
+      { primaryColor: "#2563EB" },
     ],
     [
       "maps plus-jakarta-sans to its face",

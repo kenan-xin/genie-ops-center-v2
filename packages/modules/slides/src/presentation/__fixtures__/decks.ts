@@ -2,6 +2,7 @@ import type { PanelConfig } from "@genie/core";
 import type { ChartData } from "@genie/ui";
 
 import type { DeckListView, DeckPageView, ShownSlide } from "../views.ts";
+import { BLUE_THEME } from "./themes.ts";
 
 const KPI: PanelConfig = {
   type: "kpi",
@@ -320,6 +321,7 @@ export const deckPage: DeckPageView = {
     contentHash: "0".repeat(64),
     figuresAsOf: "2026-10-27",
     canUndo: true,
+    theme: BLUE_THEME,
     slides: [
       titleOnlySlide,
       textWithChartSlide,
@@ -335,10 +337,11 @@ export const deckPage: DeckPageView = {
   timeZone: "Asia/Singapore",
   theme: {
     companyName: "Genie Ops",
-    primaryColor: "#0f766e",
+    primaryColor: "#2563EB",
     fontFace: "Plus Jakarta Sans",
   },
   logoUrl: null,
+  logos: { light: null, dark: null },
   chat: chatOn,
 };
 

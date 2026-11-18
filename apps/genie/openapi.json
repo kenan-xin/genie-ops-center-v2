@@ -9963,6 +9963,97 @@
                     "canUndo": {
                       "type": "boolean"
                     },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "companyName": {
+                          "type": "string"
+                        },
+                        "fontFace": {
+                          "type": "string"
+                        },
+                        "background": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "secondaryText": {
+                          "type": "string"
+                        },
+                        "accent": {
+                          "type": "string"
+                        },
+                        "accentText": {
+                          "type": "string"
+                        },
+                        "panel": {
+                          "type": "string"
+                        },
+                        "panelText": {
+                          "type": "string"
+                        },
+                        "panelBody": {
+                          "type": "string"
+                        },
+                        "hairline": {
+                          "type": "string"
+                        },
+                        "rule": {
+                          "type": "string"
+                        },
+                        "neutral": {
+                          "type": "string"
+                        },
+                        "ring": {
+                          "type": "string"
+                        },
+                        "layout": {
+                          "enum": [
+                            "solid",
+                            "light"
+                          ],
+                          "type": "string"
+                        },
+                        "weight": {
+                          "enum": [
+                            "bold",
+                            "regular"
+                          ],
+                          "type": "string"
+                        },
+                        "logo": {
+                          "enum": [
+                            "light",
+                            "dark"
+                          ],
+                          "type": "string"
+                        },
+                        "dark": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "companyName",
+                        "fontFace",
+                        "background",
+                        "text",
+                        "secondaryText",
+                        "accent",
+                        "accentText",
+                        "panel",
+                        "panelText",
+                        "panelBody",
+                        "hairline",
+                        "rule",
+                        "neutral",
+                        "ring",
+                        "layout",
+                        "weight",
+                        "logo",
+                        "dark"
+                      ]
+                    },
                     "images": {
                       "type": "object",
                       "propertyNames": {
@@ -10026,6 +10117,7 @@
                     "contentHash",
                     "figuresAsOf",
                     "canUndo",
+                    "theme",
                     "images",
                     "slides"
                   ]
@@ -10074,6 +10166,97 @@
                     "canUndo": {
                       "type": "boolean"
                     },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "companyName": {
+                          "type": "string"
+                        },
+                        "fontFace": {
+                          "type": "string"
+                        },
+                        "background": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "secondaryText": {
+                          "type": "string"
+                        },
+                        "accent": {
+                          "type": "string"
+                        },
+                        "accentText": {
+                          "type": "string"
+                        },
+                        "panel": {
+                          "type": "string"
+                        },
+                        "panelText": {
+                          "type": "string"
+                        },
+                        "panelBody": {
+                          "type": "string"
+                        },
+                        "hairline": {
+                          "type": "string"
+                        },
+                        "rule": {
+                          "type": "string"
+                        },
+                        "neutral": {
+                          "type": "string"
+                        },
+                        "ring": {
+                          "type": "string"
+                        },
+                        "layout": {
+                          "enum": [
+                            "solid",
+                            "light"
+                          ],
+                          "type": "string"
+                        },
+                        "weight": {
+                          "enum": [
+                            "bold",
+                            "regular"
+                          ],
+                          "type": "string"
+                        },
+                        "logo": {
+                          "enum": [
+                            "light",
+                            "dark"
+                          ],
+                          "type": "string"
+                        },
+                        "dark": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "companyName",
+                        "fontFace",
+                        "background",
+                        "text",
+                        "secondaryText",
+                        "accent",
+                        "accentText",
+                        "panel",
+                        "panelText",
+                        "panelBody",
+                        "hairline",
+                        "rule",
+                        "neutral",
+                        "ring",
+                        "layout",
+                        "weight",
+                        "logo",
+                        "dark"
+                      ]
+                    },
                     "images": {
                       "type": "object",
                       "propertyNames": {
@@ -10137,6 +10320,7 @@
                     "contentHash",
                     "figuresAsOf",
                     "canUndo",
+                    "theme",
                     "images",
                     "slides"
                   ]
@@ -12241,6 +12425,97 @@
                     "canUndo": {
                       "type": "boolean"
                     },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "companyName": {
+                          "type": "string"
+                        },
+                        "fontFace": {
+                          "type": "string"
+                        },
+                        "background": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "secondaryText": {
+                          "type": "string"
+                        },
+                        "accent": {
+                          "type": "string"
+                        },
+                        "accentText": {
+                          "type": "string"
+                        },
+                        "panel": {
+                          "type": "string"
+                        },
+                        "panelText": {
+                          "type": "string"
+                        },
+                        "panelBody": {
+                          "type": "string"
+                        },
+                        "hairline": {
+                          "type": "string"
+                        },
+                        "rule": {
+                          "type": "string"
+                        },
+                        "neutral": {
+                          "type": "string"
+                        },
+                        "ring": {
+                          "type": "string"
+                        },
+                        "layout": {
+                          "enum": [
+                            "solid",
+                            "light"
+                          ],
+                          "type": "string"
+                        },
+                        "weight": {
+                          "enum": [
+                            "bold",
+                            "regular"
+                          ],
+                          "type": "string"
+                        },
+                        "logo": {
+                          "enum": [
+                            "light",
+                            "dark"
+                          ],
+                          "type": "string"
+                        },
+                        "dark": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "companyName",
+                        "fontFace",
+                        "background",
+                        "text",
+                        "secondaryText",
+                        "accent",
+                        "accentText",
+                        "panel",
+                        "panelText",
+                        "panelBody",
+                        "hairline",
+                        "rule",
+                        "neutral",
+                        "ring",
+                        "layout",
+                        "weight",
+                        "logo",
+                        "dark"
+                      ]
+                    },
                     "images": {
                       "type": "object",
                       "propertyNames": {
@@ -12304,6 +12579,7 @@
                     "contentHash",
                     "figuresAsOf",
                     "canUndo",
+                    "theme",
                     "images",
                     "slides"
                   ]
@@ -12405,6 +12681,97 @@
                     "canUndo": {
                       "type": "boolean"
                     },
+                    "theme": {
+                      "type": "object",
+                      "properties": {
+                        "companyName": {
+                          "type": "string"
+                        },
+                        "fontFace": {
+                          "type": "string"
+                        },
+                        "background": {
+                          "type": "string"
+                        },
+                        "text": {
+                          "type": "string"
+                        },
+                        "secondaryText": {
+                          "type": "string"
+                        },
+                        "accent": {
+                          "type": "string"
+                        },
+                        "accentText": {
+                          "type": "string"
+                        },
+                        "panel": {
+                          "type": "string"
+                        },
+                        "panelText": {
+                          "type": "string"
+                        },
+                        "panelBody": {
+                          "type": "string"
+                        },
+                        "hairline": {
+                          "type": "string"
+                        },
+                        "rule": {
+                          "type": "string"
+                        },
+                        "neutral": {
+                          "type": "string"
+                        },
+                        "ring": {
+                          "type": "string"
+                        },
+                        "layout": {
+                          "enum": [
+                            "solid",
+                            "light"
+                          ],
+                          "type": "string"
+                        },
+                        "weight": {
+                          "enum": [
+                            "bold",
+                            "regular"
+                          ],
+                          "type": "string"
+                        },
+                        "logo": {
+                          "enum": [
+                            "light",
+                            "dark"
+                          ],
+                          "type": "string"
+                        },
+                        "dark": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "companyName",
+                        "fontFace",
+                        "background",
+                        "text",
+                        "secondaryText",
+                        "accent",
+                        "accentText",
+                        "panel",
+                        "panelText",
+                        "panelBody",
+                        "hairline",
+                        "rule",
+                        "neutral",
+                        "ring",
+                        "layout",
+                        "weight",
+                        "logo",
+                        "dark"
+                      ]
+                    },
                     "images": {
                       "type": "object",
                       "propertyNames": {
@@ -12468,6 +12835,7 @@
                     "contentHash",
                     "figuresAsOf",
                     "canUndo",
+                    "theme",
                     "images",
                     "slides"
                   ]
@@ -12538,6 +12906,97 @@
                         "canUndo": {
                           "type": "boolean"
                         },
+                        "theme": {
+                          "type": "object",
+                          "properties": {
+                            "companyName": {
+                              "type": "string"
+                            },
+                            "fontFace": {
+                              "type": "string"
+                            },
+                            "background": {
+                              "type": "string"
+                            },
+                            "text": {
+                              "type": "string"
+                            },
+                            "secondaryText": {
+                              "type": "string"
+                            },
+                            "accent": {
+                              "type": "string"
+                            },
+                            "accentText": {
+                              "type": "string"
+                            },
+                            "panel": {
+                              "type": "string"
+                            },
+                            "panelText": {
+                              "type": "string"
+                            },
+                            "panelBody": {
+                              "type": "string"
+                            },
+                            "hairline": {
+                              "type": "string"
+                            },
+                            "rule": {
+                              "type": "string"
+                            },
+                            "neutral": {
+                              "type": "string"
+                            },
+                            "ring": {
+                              "type": "string"
+                            },
+                            "layout": {
+                              "enum": [
+                                "solid",
+                                "light"
+                              ],
+                              "type": "string"
+                            },
+                            "weight": {
+                              "enum": [
+                                "bold",
+                                "regular"
+                              ],
+                              "type": "string"
+                            },
+                            "logo": {
+                              "enum": [
+                                "light",
+                                "dark"
+                              ],
+                              "type": "string"
+                            },
+                            "dark": {
+                              "type": "boolean"
+                            }
+                          },
+                          "required": [
+                            "companyName",
+                            "fontFace",
+                            "background",
+                            "text",
+                            "secondaryText",
+                            "accent",
+                            "accentText",
+                            "panel",
+                            "panelText",
+                            "panelBody",
+                            "hairline",
+                            "rule",
+                            "neutral",
+                            "ring",
+                            "layout",
+                            "weight",
+                            "logo",
+                            "dark"
+                          ]
+                        },
                         "images": {
                           "type": "object",
                           "propertyNames": {
@@ -12601,6 +13060,7 @@
                         "contentHash",
                         "figuresAsOf",
                         "canUndo",
+                        "theme",
                         "images",
                         "slides"
                       ]

@@ -60,6 +60,11 @@ export const deck = pgTable(
       "deck_slides_check",
       sql`jsonb_typeof(${table.content} -> 'slides') = 'array' and jsonb_array_length(${table.content} -> 'slides') <= 20`
     ),
+    // An absent theme passes: `jsonb_typeof` of a missing key is null.
+    check(
+      "deck_theme_check",
+      sql`jsonb_typeof(${table.content} -> 'theme') = 'object'`
+    ),
     check(
       "deck_undo_check",
       sql`jsonb_typeof(${table.undo}) = 'array' and jsonb_array_length(${table.undo}) <= 10`
@@ -79,6 +84,10 @@ export const MIGRATIONS_TABLE = "__drizzle_migrations_slides";
  */
 const MIGRATION_FILES = {
   "0000_initial": new URL("../drizzle/0000_initial.sql", import.meta.url),
+  "0001_deck-theme-check": new URL(
+    "../drizzle/0001_deck-theme-check.sql",
+    import.meta.url
+  ),
 };
 
 /**

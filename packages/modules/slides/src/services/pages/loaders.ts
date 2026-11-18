@@ -35,13 +35,17 @@ export async function loadDeckPage(
 
   const record = await readOwnDeck(ctx, id);
 
-  const [deck, canWrite, branding, logo, chat] = await Promise.all([
+  const [deck, canWrite, branding, light, dark, chat] = await Promise.all([
     shownDeck(ctx, record),
     can(ctx.caller, "slides:write"),
     ctx.tenant.branding.get(),
     ctx.tenant.fileStorage.createBrandingMarkLink({
       principal: ctx.caller,
       slot: "logoLight",
+    }),
+    ctx.tenant.fileStorage.createBrandingMarkLink({
+      principal: ctx.caller,
+      slot: "logoDark",
     }),
     chatAvailability(ctx),
   ]);
@@ -55,7 +59,8 @@ export async function loadDeckPage(
       "logoFileId",
       "logoDarkFileId",
     ]),
-    logoUrl: logo?.url ?? null,
+    logoUrl: light?.url ?? null,
+    logos: { light: light?.url ?? null, dark: dark?.url ?? null },
     chat,
   };
 }

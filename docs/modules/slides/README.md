@@ -27,7 +27,7 @@ Default roles: `Slides user` (`slides:use`), `Slides viewer` (`slides:use`, `sli
 | `id` | uuid primary key. |
 | `owner_user_id` | The owner's `user.id`, by value with no foreign key (data-shape module rule 2). |
 | `title` | 1 to 80 characters after trim. |
-| `content` | The zod-checked content: the slides in display order, each an id `s<n>` (a new slide takes the highest current number plus one, so removing the last slide frees its number for the next one) and its typed elements. A figure, chart or table holds its chart config and the data frozen when it was read. |
+| `content` | The zod-checked content: the slides in display order, each an id `s<n>` (a new slide takes the highest current number plus one, so removing the last slide frees its number for the next one) and its typed elements. A figure, chart or table holds its chart config and the data frozen when it was read. `content.theme` holds the deck's own theme, absent for the brand look (see Theme). |
 | `content_hash` | The hex sha256 of `{ title, content }` as jsonb text, computed by Postgres when the row is written. An edit sends the hash it read and is refused when the stored hash differs. |
 | `frozen_on` | The reporting date when the figures were read. Only Refresh data moves it. |
 | `undo` | The last 10 saves, newest first, each `{ title, content, frozenOn }`. |
@@ -63,7 +63,15 @@ Refresh data reads every figure, chart and table of the deck again through the c
 
 ## Theme
 
-A deck draws with the tenant branding on each read, never a copy: the company name in the footer, the primary color for the title rule (through core's `primaryPair`, so the app's default when the stored color or its foreground is not a valid hex value), the font key mapped to its face name (Arial for a key outside the four the branding accepts), and the light logo. With no logo, the footer shows the company name only. Every read and write of a deck answers a short-lived link for each image it shows, under `slides:read` on the deck, so an image a save adds or Undo brings back shows at once. The page keeps a link until about a minute before it expires and then takes the newest read's link; an image whose link has not arrived shows a placeholder.
+A deck draws with the tenant branding by default: look 1, Split panel. The default theme has a white background, and text in `#111827` and `#4B5563`. The brand color is the panel and the accent, and the brand foreground sits on the panel (core's `primaryPair`). If the accent is below 3:1 on the background, the accent takes the text color. The font key maps to its face name, or to Arial for a key outside the four that the branding accepts.
+
+A deck can store its own theme in `content.theme`, for that deck only. The stored keys are a background, a text and a secondary text color, an accent, a panel and a panel text color. Three keys choose a weight (bold or regular), a layout weight (solid or light) and a logo (light or dark). Each stored key overrides the brand.
+
+The other colors mix from these: the hairline, the second rule, the neutral chart series and the ring. A theme cannot change the face yet, because only Plus Jakarta Sans ships. The content hash and Undo cover the stored theme, and `deck_theme_check` keeps it an object.
+
+Every read of a deck answers the resolved theme, and the PowerPoint export draws with the same theme. The deck page gets the light and the dark logo. With no logo for the theme's background, the footer shows the company name only.
+
+Every read and write of a deck answers a short-lived link for each image it shows, under `slides:read` on the deck, so an image a save adds or Undo brings back shows at once. The page keeps a link until about a minute before it expires and then takes the newest read's link; an image whose link has not arrived shows a placeholder.
 
 ## PowerPoint export
 

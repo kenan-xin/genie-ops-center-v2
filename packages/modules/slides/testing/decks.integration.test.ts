@@ -14,11 +14,15 @@ import {
   writeModelConnection,
 } from "@genie/core/testing";
 import { sql } from "drizzle-orm";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 
 import type { DeckContent } from "../src/content.ts";
 import { slidesModule } from "../src/module.ts";
-import { DARK_SAMPLE } from "../src/presentation/__fixtures__/themes.ts";
+import {
+  BLUE_THEME,
+  DARK_SAMPLE,
+  DARK_THEME,
+} from "../src/presentation/__fixtures__/themes.ts";
 import { slidesRouter } from "../src/router.ts";
 import { deckHashSql } from "../src/services/decks/hash.ts";
 import { createDeck } from "../src/services/decks/store.ts";
@@ -485,6 +489,60 @@ describe("the slides deck procedures", () => {
     await caller.refreshDeck({ id, expectedHash: renamed.contentHash });
 
     expect((await rowOf(id)).content.theme).toEqual(DARK_SAMPLE);
+  });
+
+  it("answer the deck's own theme over the brand on a read", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: { ...oneSlide, theme: DARK_SAMPLE },
+    });
+
+    expect((await callerAs(owner).readDeck({ id })).theme).toEqual({
+      ...DARK_THEME,
+      companyName: "E2E",
+    });
+  });
+
+  it("answer the deck's theme with a change", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: { ...oneSlide, theme: DARK_SAMPLE },
+    });
+
+    const saved = await callerAs(owner).changeDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+      changes: [{ op: "rename", title: "Dark" }],
+    });
+
+    expect(saved.theme).toEqual({ ...DARK_THEME, companyName: "E2E" });
+  });
+
+  it("answer the theme of the restored save with Undo", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: oneSlide,
+      undo: [
+        {
+          title: "Dark",
+          content: { ...oneSlide, theme: DARK_SAMPLE },
+          frozenOn: "2026-10-27",
+        },
+      ],
+    });
+
+    const undone = await callerAs(owner).undoDeck({
+      id,
+      expectedHash: await hashOfRow(id),
+    });
+
+    expect(undone.theme).toEqual({ ...DARK_THEME, companyName: "E2E" });
   });
 
   it("keep a figures date that moved while a text change waited for the row lock", async () => {
@@ -1022,5 +1080,37 @@ describe("the slides page loaders", () => {
     const page = await loadDeckPage(contextOf(owner), id);
 
     expect(Object.keys(page.deck.images)).toEqual([shown]);
+  });
+});
+
+// Last: it changes the tenant branding and moves the clock past the 10 s branding cache (DEC-46).
+describe("the slides deck theme under a stored brand", () => {
+  it("answer the brand look, in uppercase hex, for a deck with no theme", async () => {
+    const owner = await editor();
+
+    const id = await insertDeck(deployment.context, {
+      ownerUserId: owner,
+      content: oneSlide,
+    });
+
+    // Core stores the pair as the person typed it, here in lowercase.
+    await deployment.context.db.$client.query(
+      "update tenant_branding set primary_color = '#0f766e', primary_foreground = '#ffffff'"
+    );
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.now() + 10_001);
+
+    try {
+      // `ring` is 22 % of the white panel text over `#0F766E`.
+      expect((await callerAs(owner).readDeck({ id })).theme).toEqual({
+        ...BLUE_THEME,
+        companyName: "E2E",
+        accent: "#0F766E",
+        panel: "#0F766E",
+        ring: "#44948E",
+      });
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

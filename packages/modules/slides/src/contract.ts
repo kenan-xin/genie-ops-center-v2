@@ -508,6 +508,7 @@ export const deckView = z.object({
   contentHash: z.string(),
   figuresAsOf: z.iso.date(),
   canUndo: z.boolean(),
+  theme: slideTheme,
   /** A short-lived link per image the deck shows, made at each read (D6). */
   images: z.record(
     z.string(),

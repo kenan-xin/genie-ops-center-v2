@@ -40,8 +40,9 @@ export function brandTheme(branding: {
 
   return {
     companyName: branding.companyName,
-    primaryColor: pair.primary,
-    primaryForeground: pair.foreground,
+    // Uppercase, as `mixHex` answers, so every theme color compares as one string.
+    primaryColor: pair.primary.toUpperCase(),
+    primaryForeground: pair.foreground.toUpperCase(),
     // PowerPoint has Arial everywhere, so an unknown key still draws.
     fontFace: FONT_FACES.get(branding.fontFamily) ?? "Arial",
     logoFileId: branding.logoLightFileId,

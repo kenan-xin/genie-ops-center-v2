@@ -2,7 +2,7 @@ import { listDatasets, type ModuleRequestContext } from "@genie/core";
 
 import type { ImageLinks } from "../../presentation/image-links.ts";
 import type { DeckView } from "../../presentation/views.ts";
-import type { DeckRecord } from "./store.ts";
+import { type DeckRecord, themeOf } from "./store.ts";
 
 /**
  * The deck as the caller may see it. A deck shows frozen data, so the show path runs no gate: it
@@ -12,7 +12,12 @@ export async function deckViewFor(
   ctx: ModuleRequestContext,
   record: DeckRecord
 ): Promise<Omit<DeckView, "images">> {
-  const readable = new Set((await listDatasets(ctx)).map(({ name }) => name));
+  const [datasets, theme] = await Promise.all([
+    listDatasets(ctx),
+    themeOf(ctx, record.content),
+  ]);
+
+  const readable = new Set(datasets.map(({ name }) => name));
 
   return {
     id: record.id,
@@ -20,6 +25,7 @@ export async function deckViewFor(
     contentHash: record.contentHash,
     figuresAsOf: record.frozenOn,
     canUndo: record.undo.length > 0,
+    theme,
     slides: record.content.slides.map((slide) => ({
       id: slide.id,
       background: slide.background,

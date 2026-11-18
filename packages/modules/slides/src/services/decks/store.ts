@@ -130,8 +130,8 @@ async function gate(
   }
 }
 
-/** The theme the deck's texts draw with: its own keys over the tenant's brand look. */
-async function themeOf(
+/** The theme the deck draws with: its own keys over the tenant's brand look. */
+export async function themeOf(
   ctx: ModuleRequestContext,
   content: DeckContent
 ): Promise<SlideTheme> {

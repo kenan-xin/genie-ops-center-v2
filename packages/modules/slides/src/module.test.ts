@@ -40,7 +40,8 @@ describe("the slides module declaration", () => {
     // deferred read defers. Nothing reads them at import time.
     const history = slidesModule.schema.migrations();
 
-    expect(history).toHaveLength(1);
+    expect(history).toHaveLength(2);
     expect(history[0]?.sql.join("")).toContain('CREATE TABLE "deck"');
+    expect(history[1]?.sql.join("")).toContain('"deck_theme_check"');
   });
 });

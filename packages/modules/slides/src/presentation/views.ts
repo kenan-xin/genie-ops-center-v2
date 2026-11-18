@@ -1,7 +1,7 @@
 import type { ChatAvailability, PanelConfig } from "@genie/core";
 
 import type { Placement, StoredElement } from "../content.ts";
-import type { DeckSummary } from "../contract.ts";
+import type { DeckSummary, SlideTheme } from "../contract.ts";
 import type { BrandTheme } from "../services/decks/theme.ts";
 import type { ImageLinks } from "./image-links.ts";
 
@@ -32,6 +32,8 @@ export type DeckView = {
   readonly contentHash: string;
   readonly figuresAsOf: string;
   readonly canUndo: boolean;
+  /** The brand look under the deck's own theme, resolved at this read (czjw.183). */
+  readonly theme: SlideTheme;
   readonly slides: readonly ShownSlide[];
   /** A link per image the deck shows, made at this read (D6, I1). */
   readonly images: ImageLinks;
@@ -55,6 +57,11 @@ export type DeckPageView = {
     "primaryForeground" | "logoFileId" | "logoDarkFileId"
   >;
   readonly logoUrl: string | null;
+  /** A link to each brand logo; the deck theme picks one (czjw.183). */
+  readonly logos: {
+    readonly light: string | null;
+    readonly dark: string | null;
+  };
   /** Whether the page may read the deck's agent run: none for a person without Ask. */
   readonly chat: ChatAvailability;
 };

@@ -1,0 +1,1 @@
+ALTER TABLE "deck" ADD CONSTRAINT "deck_theme_check" CHECK (jsonb_typeof("deck"."content" -> 'theme') = 'object');
