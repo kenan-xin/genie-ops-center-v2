@@ -15,6 +15,7 @@ import {
 } from "./__fixtures__/people.ts";
 import {
   DISABLE_REMOVE_NOTE,
+  LAST_ADMIN_REASON,
   PeopleScreen,
   SELF_REASON,
 } from "./people-screen.tsx";
@@ -189,11 +190,16 @@ const adaAccess = {
   recordLabels: new Map<string, string>(),
 };
 
-/** G19, G20: the Access tab lists module, role and path from the one read, read-only (LK2, LK3). */
+/** d8l5.61: the roles read as Role, Scope and Assigned via, with a role linking Roles (R-37e). */
 export const AccessTabListsEveryPath: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
   args: {
+    // A roles manager who is not the person they open (viewer=roles, not viewer=self).
+    viewer: { ...FIXTURE_VIEWER, id: "u-admin" },
     initialSelectedId: "u-viewer",
     access: adaAccess,
+    roleHref: (roleId: string) => `/admin/roles?selected=${roleId}`,
+    onOpenGroup: fn(),
     onManageAccess: fn(),
   },
   play: async ({ args }) => {
@@ -204,31 +210,61 @@ export const AccessTabListsEveryPath: Story = {
     await expect(
       sheet.getByRole("heading", { name: "Assigned roles (3)" })
     ).toBeVisible();
-    await expect(sheet.getByText("Invoices · Viewer")).toBeVisible();
-    await expect(
-      sheet.getByText(
-        "Direct · also assigned via Finance team · added by Alex Morgan"
-      )
-    ).toBeVisible();
-    await expect(sheet.getByText("Invoices · Finance")).toBeVisible();
-    await expect(
-      sheet.getByText(
-        "Assigned via Finance team · also assigned via Direct · added by Alex Morgan"
-      )
-    ).toBeVisible();
 
-    // I2: a path through an archived group is never shown as live.
-    const former = sheet.getByText("Slides · Slides editor").closest("li");
+    const tableElement = sheet.getByRole("table", { name: "Assigned roles" });
+    const table = within(tableElement);
 
-    await expect(former).not.toBeNull();
+    await expect(table.getByRole("link", { name: "Viewer" })).toHaveAttribute(
+      "href",
+      "/admin/roles?selected=r-invoices-viewer"
+    );
+    await expect(table.getByText("Paused: Group archived")).toBeVisible();
     await expect(
-      within(former ?? document.body).getByText("Paused: Group archived")
+      table.getAllByText("Assigned 1 Nov 2026 by Alex Morgan")
+    ).toHaveLength(3);
+
+    await userEvent.click(table.getByRole("button", { name: "Finance team" }));
+    await expect(args.onOpenGroup).toHaveBeenCalledWith("g-finance");
+
+    await expect(
+      sheet.getByRole("button", { name: "How access adds up" })
     ).toBeVisible();
 
     await userEvent.click(
       sheet.getByRole("button", { name: "Manage in Access" })
     );
     await expect(args.onManageAccess).toHaveBeenCalledWith("u-viewer");
+
+    // A-9: the table stays inside the sheet instead of squeezing past its edge.
+    const dialog = await screen.findByRole("dialog");
+
+    await expect(
+      tableElement.getBoundingClientRect().right
+    ).toBeLessThanOrEqual(dialog.getBoundingClientRect().right);
+  },
+};
+
+/** LK4, d8l5.43: a people manager reads the roles but is offered no change. */
+export const PeopleManagerSeesViewOnly: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    viewer: { ...FIXTURE_VIEWER, id: "u-admin" },
+    initialSelectedId: "u-viewer",
+    access: adaAccess,
+  },
+  play: async () => {
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(sheet.getByRole("tab", { name: /^Roles/ }));
+
+    await expect(sheet.getByText("View only")).toBeVisible();
+    await expect(
+      sheet.queryByRole("button", { name: "Manage in Access" })
+    ).toBeNull();
+
+    const table = within(sheet.getByRole("table", { name: "Assigned roles" }));
+
+    await expect(table.queryAllByRole("link")).toHaveLength(0);
   },
 };
 
@@ -1074,13 +1110,42 @@ export const PendingBrokeredOffersResendInvitation: Story = {
   },
 };
 
-export const SelfAndLastAdministratorDisableIsBlocked: Story = {
-  args: { lastAdministratorPersonIds: [FIXTURE_SOLE_ADMIN_PERSON_ID] },
+/** d8l5.61, R-38: your own account shows the reason, and nothing to press. */
+export const OwnAccountHasNoActions: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    lastAdministratorPersonIds: [FIXTURE_SOLE_ADMIN_PERSON_ID],
+    access: adaAccess,
+  },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: /Ada Admin/ }));
 
     const inspector = within(
       await screen.findByRole("dialog", { name: "Ada Admin" })
+    );
+
+    await userEvent.click(inspector.getByRole("tab", { name: /^Roles/ }));
+
+    await expect(inspector.getByText(SELF_REASON)).toBeVisible();
+    await expect(
+      inspector.queryByRole("button", { name: "Suspend" })
+    ).toBeNull();
+    await expect(
+      inspector.queryByRole("button", { name: "Deactivate" })
+    ).toBeNull();
+    await expect(inspector.queryByText("View only")).toBeNull();
+    await expect(
+      inspector.queryByRole("button", { name: "Manage in Access" })
+    ).toBeNull();
+  },
+};
+
+/** R-38: another last active administrator keeps the refusal and its reason. */
+export const LastAdministratorKeepsTheReason: Story = {
+  args: { initialSelectedId: "u-bea", lastAdministratorPersonIds: ["u-bea"] },
+  play: async () => {
+    const inspector = within(
+      await screen.findByRole("dialog", { name: "Bea Brokered" })
     );
 
     await expect(
@@ -1089,13 +1154,7 @@ export const SelfAndLastAdministratorDisableIsBlocked: Story = {
     await expect(
       inspector.getByRole("button", { name: "Deactivate" })
     ).toBeDisabled();
-    await expect(
-      inspector.getByText(
-        "You cannot change your own access. Ask another administrator."
-      )
-    ).toBeInTheDocument();
-    // The refusal takes the place of the note, as the guard capture draws it.
-    await expect(inspector.queryByText(DISABLE_REMOVE_NOTE)).toBeNull();
+    await expect(inspector.getByText(LAST_ADMIN_REASON)).toBeVisible();
   },
 };
 

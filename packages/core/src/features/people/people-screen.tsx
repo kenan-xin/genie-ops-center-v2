@@ -48,6 +48,7 @@ import {
   type DataTableAction,
   touchRowHeight,
 } from "@genie/ui";
+import { ArrowRightIcon, LockIcon } from "lucide-react";
 import {
   Fragment,
   type ReactNode,
@@ -60,9 +61,9 @@ import {
 
 import type { GrantRow } from "../../services/roles/grants.ts";
 import {
-  AccessPathList,
+  AssignmentsTable,
   type InspectorAccess,
-} from "../access/access-path-list.tsx";
+} from "../access/assignments-table.tsx";
 import { useDialogSubmit } from "../admin/dialog-submit.ts";
 import {
   DirectoryIcon,
@@ -70,7 +71,6 @@ import {
   PlusIcon,
   SearchIcon,
   ShieldIcon,
-  KeyIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
 import {
@@ -96,7 +96,7 @@ export const LAST_ADMIN_REASON =
   "This would leave no active tenant administrator";
 
 export const SELF_REASON =
-  "You cannot change your own access. Ask another administrator.";
+  "Only another administrator can change your own account.";
 
 /** The line above Suspend and Deactivate; a refusal takes its place (design captures). */
 export const DISABLE_REMOVE_NOTE =
@@ -278,6 +278,8 @@ export function PersonInspector(props: {
   /** The person's access from the S2-19 read; undefined hides the Access tab. */
   readonly access?: InspectorAccess | undefined;
   readonly onManageAccess?: (() => void) | undefined;
+  /** A role's address on Roles, only for a viewer with core:roles:manage (R-37e). */
+  readonly roleHref?: ((roleId: string) => string) | undefined;
   /** Opens the group a role comes through; without it the group name is plain text. */
   readonly onOpenGroup?: ((groupId: string) => void) | undefined;
   /** The groups made here that Add to group offers; with the two callbacks only for a group manager (G16). */
@@ -296,10 +298,6 @@ export function PersonInspector(props: {
     setTab("profile");
     setConfirm(null);
   }, [open, person.id]);
-
-  const blocked = props.self || props.lastAdministrator;
-
-  const blockedReason = props.self ? SELF_REASON : LAST_ADMIN_REASON;
 
   const pendingLocal =
     person.status === "pending" && person.accountType === "local";
@@ -458,40 +456,46 @@ export function PersonInspector(props: {
 
             {props.access === undefined ? null : (
               <TabsContent value="access">
-                <div className="mb-2 flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-foreground">
-                      Assigned roles
-                      {props.access.paths === undefined
-                        ? ""
-                        : ` (${props.access.paths.length})`}
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      Everything this person can do, and how each role is
-                      assigned. Read-only here.
-                    </p>
-                    <HelpDisclosure label="How this adds up">
-                      A direct role belongs to this person. A role assigned via
-                      a group stays while they are a member of that group.
-                    </HelpDisclosure>
-                  </div>
-                  {props.onManageAccess === undefined ? null : (
-                    <Button variant="secondary" onClick={props.onManageAccess}>
-                      <KeyIcon /> Manage in Access
+                <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
+                  <h3 className="text-sm font-semibold text-foreground">
+                    Assigned roles
+                    {props.access.paths === undefined
+                      ? ""
+                      : ` (${props.access.paths.length})`}
+                  </h3>
+                  {/* Your own account shows neither (person-access.prototype.html, viewer=self). */}
+                  {props.self ? null : props.onManageAccess === undefined ? (
+                    <LabelPill>View only</LabelPill>
+                  ) : (
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={props.onManageAccess}
+                    >
+                      Manage in Access <ArrowRightIcon aria-hidden="true" />
                     </Button>
                   )}
                 </div>
-                <AccessPathList
-                  {...props.access}
-                  recipient={{ type: "user", id: person.id }}
-                  empty="No roles assigned yet."
-                  onOpenGroup={props.onOpenGroup}
-                />
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Roles are assigned and removed in one place, the Access
-                  screen. A role assigned via a group changes for every member
-                  of that group.
-                </p>
+                <HelpDisclosure label="How access adds up">
+                  A person has the roles assigned to them directly plus the
+                  roles of their groups. A role covers all records unless its
+                  scope names one. A paused role gives no access until its
+                  reason is fixed.
+                </HelpDisclosure>
+                <div className="mt-2">
+                  <AssignmentsTable
+                    {...props.access}
+                    recipient={{ type: "user", id: person.id }}
+                    timeZone={viewer.timeZone}
+                    empty={{
+                      title: "No roles assigned",
+                      description:
+                        "This person can sign in but sees no modules.",
+                    }}
+                    roleHref={props.roleHref}
+                    onOpenGroup={props.onOpenGroup}
+                  />
+                </div>
               </TabsContent>
             )}
 
@@ -509,43 +513,63 @@ export function PersonInspector(props: {
 
         {/* The captures pin Suspend and Deactivate under every tab, with the refusal above them. */}
         <div className="mt-auto flex flex-col gap-2 border-t border-border p-4">
-          {blocked ? (
-            <p className="text-sm text-foreground">{blockedReason}</p>
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {DISABLE_REMOVE_NOTE}
-            </p>
-          )}
-          <div className="flex flex-wrap gap-2">
-            {person.status === "disabled" ? (
-              <Button
-                variant="secondary"
-                loading={props.pending}
-                onClick={props.onEnable}
-              >
-                {person.deactivated ? "Reactivate" : "Unsuspend"}
-              </Button>
-            ) : (
-              <Button
-                variant="secondary"
-                disabled={blocked}
-                title={blocked ? blockedReason : undefined}
-                loading={props.pending}
-                onClick={() => setConfirm("disable")}
-              >
-                Suspend
-              </Button>
-            )}
-            <Button
-              variant="danger-outline"
-              disabled={blocked}
-              title={blocked ? blockedReason : undefined}
-              loading={props.pending}
-              onClick={() => setConfirm("remove")}
+          {props.self ? (
+            // No disabled buttons on your own account: the reason, and nothing to press (d8l5.61).
+            <p
+              data-slot="person-self-note"
+              className="flex items-start gap-2 text-sm text-muted-foreground"
             >
-              Deactivate
-            </Button>
-          </div>
+              <LockIcon
+                aria-hidden="true"
+                className={`size-4 shrink-0 ${iconLead}`}
+              />
+              {SELF_REASON}
+            </p>
+          ) : (
+            <>
+              {props.lastAdministrator ? (
+                <p className="text-sm text-foreground">{LAST_ADMIN_REASON}</p>
+              ) : (
+                <p className="text-xs text-muted-foreground">
+                  {DISABLE_REMOVE_NOTE}
+                </p>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {person.status === "disabled" ? (
+                  <Button
+                    variant="secondary"
+                    loading={props.pending}
+                    onClick={props.onEnable}
+                  >
+                    {person.deactivated ? "Reactivate" : "Unsuspend"}
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    disabled={props.lastAdministrator}
+                    title={
+                      props.lastAdministrator ? LAST_ADMIN_REASON : undefined
+                    }
+                    loading={props.pending}
+                    onClick={() => setConfirm("disable")}
+                  >
+                    Suspend
+                  </Button>
+                )}
+                <Button
+                  variant="danger-outline"
+                  disabled={props.lastAdministrator}
+                  title={
+                    props.lastAdministrator ? LAST_ADMIN_REASON : undefined
+                  }
+                  loading={props.pending}
+                  onClick={() => setConfirm("remove")}
+                >
+                  Deactivate
+                </Button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Inside the sheet's content, so that one Escape closes only the confirm (PD-8). */}
@@ -1223,6 +1247,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
               ? undefined
               : () => props.onManageAccess?.(selected.id)
           }
+          roleHref={props.roleHref}
           onOpenGroup={props.onOpenGroup}
           localGroups={props.localGroups}
           onAddToGroup={

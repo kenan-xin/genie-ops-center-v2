@@ -207,6 +207,11 @@ export function PeopleRoute(props: {
           ? (personId) => router.push(accessHref({ recipient: personId }))
           : undefined
       }
+      roleHref={
+        props.canManageAccess
+          ? (roleId) => `/admin/roles?selected=${encodeURIComponent(roleId)}`
+          : undefined
+      }
     />
   );
 }

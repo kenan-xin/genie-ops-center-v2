@@ -89,8 +89,18 @@ test("the navigation entry and Manage in Access open Access with the person chos
   const inspector = await openPerson(page, name);
 
   await inspector.getByRole("tab", { name: /^Roles/ }).click();
-  await expect(inspector.getByText("Core · E2E links limited")).toBeVisible();
-  await expect(inspector.getByText(/^Direct/)).toBeVisible();
+  await expect(
+    inspector
+      .getByText("E2E links limited", { exact: true })
+      .filter({ visible: true })
+      .first()
+  ).toBeVisible();
+  await expect(
+    inspector
+      .getByText("Direct", { exact: true })
+      .filter({ visible: true })
+      .first()
+  ).toBeVisible();
   await inspector.getByRole("button", { name: "Manage in Access" }).click();
 
   await expect(page).toHaveURL(
@@ -320,7 +330,22 @@ test("a people manager reads a person's access read-only", async ({
   const inspector = await openPerson(page, memberName(project));
 
   await inspector.getByRole("tab", { name: /^Roles/ }).click();
-  await expect(inspector.getByText("Core · E2E links limited")).toBeVisible();
+  await expect(
+    inspector
+      .getByText("E2E links limited", { exact: true })
+      .filter({ visible: true })
+      .first()
+  ).toBeVisible();
+  // The member manages people and opens their own record, so the sheet shows the lock line and
+  // offers no change (d8l5.61, R-38); with no Roles key the role is plain text too.
+  await expect(
+    inspector.getByText(
+      "Only another administrator can change your own account."
+    )
+  ).toBeVisible();
+  await expect(
+    inspector.getByRole("link", { name: "E2E links limited" })
+  ).toHaveCount(0);
   await expect(
     inspector.getByRole("button", { name: "Manage in Access" })
   ).toHaveCount(0);

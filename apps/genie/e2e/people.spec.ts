@@ -183,11 +183,10 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   const self = page.getByRole("dialog", { name: "E2E Person" });
 
-  await expect(self.getByRole("button", { name: "Suspend" })).toBeDisabled();
+  await expect(self.getByRole("button", { name: "Suspend" })).toHaveCount(0);
+  await expect(self.getByRole("button", { name: "Deactivate" })).toHaveCount(0);
   await expect(
-    self.getByText(
-      "You cannot change your own access. Ask another administrator."
-    )
+    self.getByText("Only another administrator can change your own account.")
   ).toBeVisible();
 
   await self.getByRole("button", { name: "Close" }).click();

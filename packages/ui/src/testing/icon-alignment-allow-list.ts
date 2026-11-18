@@ -17,6 +17,11 @@ export const ICON_ALIGNMENT_ALLOW_LIST: readonly IconAllowEntry[] = [
       'tokens.md, "Empty state": the framed form centers its glyph in a 52 px icon tile by design; the check\'s tile term stops at 40 px, so it reads the centered glyph as a slot.',
   },
   {
+    selector: "[data-slot=person-self-note] > svg",
+    reason:
+      "6wz1.113 (Phase 11 Task 4): person-access.prototype.html, viewer=self, draws the lock as a plain leading note beside one sentence. On the Sessions tab the column's nearest edge line is the Sign out all button's indented text, so the check reads the aligned lock as off it; the lock starts on the sheet's body text edge, which the Roles tab confirms.",
+  },
+  {
     selector: "[data-slot=agent-group-header] > svg:first-child",
     reason:
       "6wz1.113 (P07-55): agent-runs.prototype.html lines 190-191 and DEC-57: a chat history group header keeps the agent's icon in a fixed 16 px slot and indents its chats so their text starts under the name, so the icon leads the name, not the chats below it.",

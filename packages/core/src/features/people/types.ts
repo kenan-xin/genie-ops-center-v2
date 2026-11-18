@@ -114,6 +114,11 @@ export type PeopleScreenProps = {
   readonly onRevokeAllSessions?: (personId: string) => void;
   /** Opens the Access screen with this person chosen (the one assignment writer, DEC-39). */
   readonly onManageAccess?: ((personId: string) => void) | undefined;
+  /**
+   * A role's address on Roles, only for a viewer with `core:roles:manage` (R-37e). Without it a
+   * role in the sheet's assignments table is plain text.
+   */
+  readonly roleHref?: ((roleId: string) => string) | undefined;
   /** Opens the group a role comes through, from the person's Access tab (mockup link). */
   readonly onOpenGroup?: (groupId: string) => void;
   /**
