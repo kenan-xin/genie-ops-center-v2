@@ -145,6 +145,7 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   await expect(
     inspector.getByRole("heading", { name: "Assigned roles (0)" })
   ).toBeVisible();
+  await expectNoAxeViolations(page, "Added person, Roles tab");
   await inspector.getByRole("tab", { name: "Profile" }).click();
 
   await expect(

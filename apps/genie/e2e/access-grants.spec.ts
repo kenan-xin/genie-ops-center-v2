@@ -9,8 +9,10 @@ import { backToList, openRecipient } from "./support/access.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { chooseOption } from "./support/choose-option.ts";
 import { queryDatabase } from "./support/database.ts";
+import { iconCheckSize } from "./support/icon-alignment.ts";
 import { openNavigation } from "./support/shell.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
+import { expectTouchAreas } from "./support/touch-areas.ts";
 
 /**
  * S2-21 through the real realm and the real database: an administrator grants Placeholder to a
@@ -91,6 +93,8 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
   const group = `E2E access ${project}`;
   const reviewer = `E2E access reviewer ${project}`;
 
+  await page.setViewportSize(iconCheckSize(project));
+
   await queryDatabase(
     [
       `with old as (select id from "group" where source = 'local' and name = '${group}'),
@@ -118,6 +122,8 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
       page.getByRole("heading", { name: "Groups and people" })
     ).toBeVisible();
     await expectNoAxeViolations(page, "Grants list");
+
+    if (project === "phone") await expectTouchAreas(page, "Grants list");
     await openRecipient(page, group);
     await move(page, "Catalog", "Placeholder");
     await expect(

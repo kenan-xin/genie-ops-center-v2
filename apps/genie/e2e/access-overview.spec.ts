@@ -1,10 +1,15 @@
+import { randomUUID } from "node:crypto";
+
 import { expect, test } from "@playwright/test";
 import type { Locator, Page } from "@playwright/test";
 
 import { e2eReaderEmail } from "../testing/e2e-keycloak.ts";
 import { expectNoAxeViolations } from "./support/axe.ts";
 import { queryDatabase } from "./support/database.ts";
+import { iconCheckSize } from "./support/icon-alignment.ts";
+import { withDeploymentLock } from "./support/lock.ts";
 import { signInThroughKeycloak } from "./support/sign-in.ts";
+import { expectTouchAreas } from "./support/touch-areas.ts";
 
 /**
  * d8l5.62 through the real realm and the real database: the Overview opens on every assignment,
@@ -14,7 +19,9 @@ import { signInThroughKeycloak } from "./support/sign-in.ts";
  * an earlier run left.
  */
 
-test.describe.configure({ timeout: 120_000 });
+test.describe.configure({ timeout: 420_000 });
+
+const LOCK_WAIT_MS = 300_000;
 
 const LIST = "Assignments, newest first";
 
@@ -29,14 +36,18 @@ test("the Overview starts filled, filters by person, pages by 25 and clears a se
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
+  const tag = `${project} r${testInfo.repeatEachIndex}`;
   const reader = e2eReaderEmail("access-overview", project);
-  const person = `E2E overview person ${project}`;
-  const personEmail = `e2e.overview-person.${project}@example.com`;
-  const prefix = `E2E overview ${project}`;
+  const person = `E2E overview person ${tag}`;
+  const personEmail = `e2e.overview-person.${project}.r${testInfo.repeatEachIndex}@example.com`;
+  const prefix = `E2E overview ${tag}`;
   const groupA = `${prefix} A`;
   const groupB = `${prefix} B`;
 
-  // 26 groups with one assignment each, P01 the newest, so a search pages past 25.
+  await page.setViewportSize(iconCheckSize(project));
+
+  // 26 groups with one assignment each, P01 the newest, so a search pages past 25. The dates stay
+  // in the past, so no future row crowds another spec's newest-25 list, such as a module's sheet.
   const paged = Array.from(
     { length: 26 },
     (_, index) => `'${prefix} P${String(index + 1).padStart(2, "0")}'`
@@ -58,7 +69,7 @@ test("the Overview starts filled, filters by person, pages by 25 and clears a se
           where r.name = 'Placeholder user' and g.source = 'local' and g.name in ('${groupA}', '${groupB}')`,
       `insert into "group" (name, source) select unnest(array[${paged.join(", ")}]), 'local'`,
       `insert into role_assignment (role_id, principal_type, principal_id, created_by_user_id, created_at)
-         select r.id, 'group', g.id::text, ${adder}, now() + make_interval(mins => 30 - substring(g.name from '[0-9]+$')::int)
+         select r.id, 'group', g.id::text, ${adder}, now() - make_interval(mins => substring(g.name from '[0-9]+$')::int)
            from role r, "group" g
           where r.name = 'Placeholder user' and g.source = 'local' and g.name like '${prefix} P%'`,
     ].join("; ")
@@ -80,6 +91,8 @@ test("the Overview starts filled, filters by person, pages by 25 and clears a se
     .locator("[data-shell-content]")
     .evaluate((area) => area.scrollTo({ top: area.scrollHeight }));
   await expectNoAxeViolations(page, "Overview, first load");
+
+  if (project === "phone") await expectTouchAreas(page, "Overview, first load");
 
   // E2: newest first, and Next reads page 2 of the search.
   await page.goto(
@@ -121,54 +134,144 @@ test("the Overview starts filled, filters by person, pages by 25 and clears a se
   await page.getByRole("button", { name: "Clear search and filters" }).click();
   await expect(page).toHaveURL(/\/admin\/access\/overview$/);
   await expect(resultRows(page)).toHaveCount(25);
+
+  // E5: a stale who id reads as no filter and never reaches the server (P12-8, Review Focus 1).
+  const reads: string[] = [];
+
+  page.on("request", (request) => {
+    if (request.url().includes("/api/rpc/roles/assignments"))
+      reads.push(request.postData() ?? "");
+  });
+
+  const stale = randomUUID();
+
+  // The Overview turns `who` into a row through `roles.recipients` (P12-6); only its answer decides.
+  const looked = page.waitForResponse((answer) =>
+    answer.url().includes("/api/rpc/roles/recipients")
+  );
+
+  await page.goto(`/admin/access/overview?who=user:${stale}`);
+  await looked;
+  await expect(resultRows(page)).toHaveCount(25);
+  await expect(
+    page.getByRole("status").filter({ hasText: / has \d+ roles?/ })
+  ).toHaveCount(0);
+
+  if ((page.viewportSize()?.width ?? 0) >= 768) {
+    // The bar's set filter is a trigger whose text names the pick, so no name means "Anyone".
+    await expect(
+      page.getByRole("combobox", { name: "Person or group" })
+    ).toContainText("Anyone");
+  } else {
+    await expect(page.getByText(/^Person or group:/)).toHaveCount(0);
+  }
+
+  expect(reads.some((body) => body.includes(stale))).toBe(false);
 });
 
-test("Add assignment from Access adds a role to a person and tints the new row", async ({
+test("Add assignment from Access adds a role to two recipients and tints both rows", async ({
   page,
 }, testInfo) => {
   const project = testInfo.project.name;
+  const tag = `${project} r${testInfo.repeatEachIndex}`;
   const reader = e2eReaderEmail("access-overview", project);
-  const person = `E2E overview add ${project}`;
-  const email = `e2e.overview-add.${project}@example.com`;
+  const person = `E2E overview add ${tag} person`;
+  const email = `e2e.overview-add.${project}.r${testInfo.repeatEachIndex}@example.com`;
+  const group = `E2E overview add ${tag} group`;
 
+  await page.setViewportSize(iconCheckSize(project));
   await queryDatabase(
     [
+      `with old as (select id from "group" where source = 'local' and name = '${group}'),
+            members as (delete from group_member where group_id in (select id from old)),
+            grants as (delete from role_assignment where principal_type = 'group' and principal_id in (select id::text from old))
+       delete from "group" where id in (select id from old)`,
       `insert into "user" (id, name, email, email_verified, status, is_break_glass) values (gen_random_uuid()::text, '${person}', '${email}', true, 'active', false) on conflict (email) do nothing`,
       `delete from role_assignment a using "user" u where a.principal_type = 'user' and a.principal_id = u.id and u.email = '${email}'`,
+      `insert into "group" (name, source) values ('${group}', 'local')`,
     ].join("; ")
   );
 
   await signInThroughKeycloak(page, { email: reader });
-  // The search keeps the list to this person, so rows other tests write never come first.
-  await page.goto(`/admin/access/overview?q=${encodeURIComponent(person)}`);
+  // The search keeps the list to this test's rows, so rows other tests write never come first.
+  await page.goto(
+    `/admin/access/overview?q=${encodeURIComponent(`E2E overview add ${tag}`)}`
+  );
   await expect(
     page.getByRole("heading", { name: "No assignments match" })
   ).toBeVisible();
-  await page
-    .getByRole("button", { name: "Add assignment" })
-    .filter({ visible: true })
-    .click();
 
-  const sheet = page.getByRole("dialog", { name: "Add assignment" });
+  await withDeploymentLock(
+    "s2-16-entitlement",
+    async () => {
+      await page
+        .getByRole("button", { name: "Add assignment" })
+        .filter({ visible: true })
+        .click();
 
-  await expectNoAxeViolations(page, "Access, Add assignment");
-  await sheet.getByRole("combobox", { name: "Assign to" }).fill(person);
-  await page.getByRole("option", { name: new RegExp(person) }).click();
-  await page.keyboard.press("Tab");
-  await sheet.getByRole("combobox", { name: "Role" }).click();
-  await page.getByRole("option", { name: /^Placeholder user/ }).click();
-  await sheet.getByRole("button", { name: "Add assignment" }).click();
+      const sheet = page.getByRole("dialog", { name: "Add assignment" });
 
-  await expect(
-    page.getByText(`Assigned Placeholder user to ${person}.`)
-  ).toBeVisible();
-  await expect(sheet).toBeHidden();
-  await expect(resultRows(page).first()).toContainText(person);
-  await expect(resultRows(page).first()).toHaveAttribute("data-new", "");
+      await expectNoAxeViolations(page, "Access, Add assignment");
 
-  const [count] = await queryDatabase(
-    `select count(*) from role_assignment a join "user" u on a.principal_type = 'user' and a.principal_id = u.id join role r on r.id = a.role_id where u.email = '${email}' and r.name = 'Placeholder user'`
+      const to = sheet.getByRole("combobox", { name: "Assign to" });
+
+      await to.fill(person);
+      await page.getByRole("option", { name: new RegExp(person) }).click();
+      await to.fill(group);
+      await page.getByRole("option", { name: new RegExp(group) }).click();
+      await page.keyboard.press("Tab");
+      await expect(
+        sheet.getByRole("button", { name: `Remove ${person}` })
+      ).toBeVisible();
+      await expect(
+        sheet.getByRole("button", { name: `Remove ${group}` })
+      ).toBeVisible();
+
+      await sheet.getByRole("combobox", { name: "Role" }).click();
+      await page.getByRole("option", { name: /^Placeholder user/ }).click();
+      await expect(
+        sheet.getByRole("button", { name: "Add 2 assignments" })
+      ).toBeVisible();
+
+      await expectNoAxeViolations(
+        page,
+        "Access, Add assignment with two chips"
+      );
+
+      if (project === "phone")
+        await expectTouchAreas(page, "Access, Add assignment with two chips");
+
+      await sheet.getByRole("button", { name: "Add 2 assignments" }).click();
+      await expect(
+        page.getByText(
+          new RegExp(
+            `^Assigned Placeholder user to (${person} and ${group}|${group} and ${person})\\.$`
+          )
+        )
+      ).toBeVisible();
+      await expect(sheet).toBeHidden();
+
+      const rows = resultRows(page);
+
+      await expect(rows).toHaveCount(2);
+      await expect(rows.filter({ hasText: person })).toHaveAttribute(
+        "data-new",
+        ""
+      );
+      await expect(rows.filter({ hasText: group })).toHaveAttribute(
+        "data-new",
+        ""
+      );
+
+      const [count] = await queryDatabase(
+        `select count(*) from role_assignment a join role r on r.id = a.role_id
+          where r.name = 'Placeholder user'
+            and ((a.principal_type = 'user' and a.principal_id = (select id from "user" where email = '${email}'))
+              or (a.principal_type = 'group' and a.principal_id = (select id::text from "group" where source = 'local' and name = '${group}')))`
+      );
+
+      expect(count).toBe("2");
+    },
+    LOCK_WAIT_MS
   );
-
-  expect(count).toBe("1");
 });
