@@ -109,6 +109,7 @@ export function fixturePath(input: {
     },
     scope: input.scope ?? null,
     addedBy: { id: "p-alex", name: "Alex Morgan" },
+    addedAtSetup: false,
     addedAt: "2026-11-01T09:00:00.000000Z",
     notInEffect: [],
   };

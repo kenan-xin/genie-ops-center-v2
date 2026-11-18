@@ -634,3 +634,250 @@ describe("the paged effective-access read by subject", () => {
     ).toEqual(["module-off"]);
   });
 });
+
+type Filters = Omit<
+  Parameters<ReturnType<typeof roles>["assignments"]>[0],
+  "cursor" | "limit"
+>;
+
+type AssignmentsPage = Awaited<
+  ReturnType<ReturnType<typeof roles>["assignments"]>
+>;
+
+/** The pages after `cursor`, each uncounted, in order. Paging is sequential by nature. */
+async function pagesAfter(
+  filters: Filters,
+  limit: number,
+  cursor: AssignmentsPage["nextCursor"]
+): Promise<AssignmentsPage["paths"]> {
+  if (cursor === null) return [];
+
+  const page = await roles(adminId).assignments({ ...filters, limit, cursor });
+
+  expect(page.total).toBeNull();
+
+  return [
+    ...page.paths,
+    ...(await pagesAfter(filters, limit, page.nextCursor)),
+  ];
+}
+
+/** Every page of the read, first to last, with the total of the first page. */
+async function walk(filters: Filters, limit: number) {
+  const first = await roles(adminId).assignments({ ...filters, limit });
+
+  return {
+    total: first.total,
+    paths: [
+      ...first.paths,
+      ...(await pagesAfter(filters, limit, first.nextCursor)),
+    ],
+  };
+}
+
+async function assignmentIds(filters: Filters) {
+  return (await walk(filters, 100)).paths.map((path) => path.assignmentId);
+}
+
+describe("readAssignments", () => {
+  it("returns every assignment newest first without the break-glass account's or an erased person's rows, and counts them on the first page", async () => {
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["fixture:use"],
+    });
+
+    const person = await insertUser(deployment.context);
+
+    const breakGlass = await insertUser(deployment.context, {
+      isBreakGlass: true,
+    });
+
+    const erased = await insertUser(deployment.context, {
+      erasedAt: new Date(),
+    });
+
+    const older = await grant(roleId, { type: "user", id: person });
+    const ofBreakGlass = await grant(roleId, { type: "user", id: breakGlass });
+    const ofErased = await grant(roleId, { type: "user", id: erased });
+
+    const newest = await grant(roleId, {
+      type: "group",
+      id: await insertGroup(deployment.context, []),
+    });
+
+    const { total, paths } = await walk({}, 100);
+    const ids = paths.map((path) => path.assignmentId);
+
+    expect(total).toBe(paths.length);
+    expect(ids[0]).toBe(newest);
+    expect(ids).toContain(older);
+    expect(ids).not.toContain(ofBreakGlass);
+    expect(ids).not.toContain(ofErased);
+
+    const keys = paths.map((path) => `${path.addedAt} ${path.assignmentId}`);
+
+    expect(keys).toEqual(keys.toSorted().toReversed());
+  });
+
+  it("walks every page of two once, also rows that one statement wrote with one created_at", async () => {
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["paging:use"],
+    });
+
+    const people = [
+      await insertUser(deployment.context),
+      await insertUser(deployment.context),
+      await insertUser(deployment.context),
+    ];
+
+    const written = await deployment.context.db
+      .insert(roleAssignment)
+      .values(
+        people.map((id) => ({
+          roleId,
+          principalType: "user",
+          principalId: id,
+        }))
+      )
+      .returning({ id: roleAssignment.id });
+
+    const { total, paths } = await walk({}, 2);
+    const ids = paths.map((path) => path.assignmentId);
+
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toHaveLength(total ?? -1);
+    expect(ids).toEqual(expect.arrayContaining(written.map((row) => row.id)));
+  });
+
+  it("combines the person, module, role and search filters with AND, the person's groups included", async () => {
+    const opener = await insertRole(deployment.context, {
+      name: `Filter opener ${Date.now()}`,
+      permissions: ["fixture:use"],
+    });
+
+    const other = await insertRole(deployment.context, {
+      name: `Filter other ${Date.now()}`,
+      permissions: ["opened:use"],
+    });
+
+    const person = await insertUser(deployment.context);
+    const stranger = await insertUser(deployment.context);
+
+    const team = await insertGroup(deployment.context, [person], {
+      name: `Filter crew ${Date.now()}`,
+    });
+
+    const direct = await grant(opener, { type: "user", id: person });
+    const viaTeam = await grant(opener, { type: "group", id: team });
+    const otherViaTeam = await grant(other, { type: "group", id: team });
+
+    await grant(opener, { type: "user", id: stranger });
+
+    const recipient = { type: "user", id: person } as const;
+
+    expect((await assignmentIds({ recipient })).toSorted()).toEqual(
+      [direct, viaTeam, otherViaTeam].toSorted()
+    );
+    expect(
+      (await assignmentIds({ recipient, moduleId: "fixture" })).toSorted()
+    ).toEqual([direct, viaTeam].toSorted());
+    expect(await assignmentIds({ recipient, roleId: other })).toEqual([
+      otherViaTeam,
+    ]);
+    expect(
+      await assignmentIds({
+        recipient,
+        moduleId: "fixture",
+        roleId: opener,
+        query: "filter crew",
+      })
+    ).toEqual([viaTeam]);
+    expect(await assignmentIds({ moduleId: "opened", roleId: opener })).toEqual(
+      []
+    );
+  });
+
+  it("refuses core:roles:manage at one scope and core:people:manage alone forbidden, and no session unauthenticated", async () => {
+    const scopedRole = await insertRole(deployment.context, {
+      permissions: ["core:roles:manage"],
+    });
+
+    const peopleRole = await insertRole(deployment.context, {
+      permissions: ["core:people:manage"],
+    });
+
+    const scoped = await insertUser(deployment.context);
+    const peopleManager = await insertUser(deployment.context);
+
+    await assignRole(deployment.context, {
+      roleId: scopedRole,
+      principal: { type: "user", id: scoped },
+      scope: { type: "group", id: await insertGroup(deployment.context, []) },
+    });
+    await grant(peopleRole, { type: "user", id: peopleManager });
+
+    await expect(roles(scoped).assignments({})).rejects.toMatchObject({
+      code: "forbidden",
+    });
+    await expect(roles(peopleManager).assignments({})).rejects.toMatchObject({
+      code: "forbidden",
+    });
+
+    const anonymous = callProcedure(createRolesRouter(modules), {
+      tenant: deployment.context,
+      caller: principalFor({
+        tenant: deployment.context,
+        modules,
+        userId: undefined,
+        authenticated: false,
+      }),
+    });
+
+    await expect(anonymous.assignments({})).rejects.toMatchObject({
+      code: "unauthenticated",
+    });
+  });
+
+  it("reads a setup row as at setup and a break-glass row as not, neither naming who added it", async () => {
+    const roleId = await insertRole(deployment.context, {
+      permissions: ["fixture:use"],
+    });
+
+    const breakGlass = await insertUser(deployment.context, {
+      isBreakGlass: true,
+    });
+
+    const atSetup = await assignRole(deployment.context, {
+      roleId,
+      principal: { type: "user", id: await insertUser(deployment.context) },
+    });
+
+    const byBreakGlass = await assignRole(deployment.context, {
+      roleId,
+      principal: { type: "user", id: await insertUser(deployment.context) },
+      createdBy: breakGlass,
+    });
+
+    const byAdmin = await grant(roleId, {
+      type: "user",
+      id: await insertUser(deployment.context),
+    });
+
+    const { paths } = await walk({ roleId }, 100);
+
+    expect(
+      Object.fromEntries(
+        paths.map((path) => [
+          path.assignmentId,
+          { addedAtSetup: path.addedAtSetup, addedBy: path.addedBy },
+        ])
+      )
+    ).toEqual({
+      [atSetup]: { addedAtSetup: true, addedBy: null },
+      [byBreakGlass]: { addedAtSetup: false, addedBy: null },
+      [byAdmin]: {
+        addedAtSetup: false,
+        addedBy: { id: adminId, name: "Ada Admin" },
+      },
+    });
+  });
+});

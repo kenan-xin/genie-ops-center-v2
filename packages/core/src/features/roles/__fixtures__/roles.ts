@@ -236,6 +236,7 @@ const holderPath = (
   },
   scope: null,
   addedBy: null,
+  addedAtSetup: false,
   addedAt: "2026-11-01T09:00:00.000000Z",
   notInEffect: [],
   ...extra,

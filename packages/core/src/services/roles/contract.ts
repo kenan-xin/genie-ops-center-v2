@@ -136,6 +136,29 @@ export const rolesContract = {
     )
     .output(z.custom<AccessPage>()),
 
+  // d8l5.62: every assignment for the Overview list, filtered by recipient, module and role (AND)
+  // and searched, newest first, keyset paged as `accessBySubject`.
+  assignments: oc
+    .route({ method: "GET", path: "/roles/assignments" })
+    .input(
+      z.object({
+        recipient: z
+          .object({
+            type: z.enum(["user", "group"]),
+            id: z.string().min(1).max(200),
+          })
+          .optional(),
+        moduleId: z.string().min(1).max(200).optional(),
+        roleId: z.string().min(1).max(200).optional(),
+        query: z.string().max(200).optional(),
+        cursor: z
+          .object({ addedAt: z.iso.datetime(), assignmentId: z.uuid() })
+          .nullish(),
+        limit: z.number().int().min(1).max(100).optional(),
+      })
+    )
+    .output(z.custom<AccessPage>()),
+
   // R-37a: the Grants rows, each module with a default access role and then Ask, with each
   // row's role choice and entitlement.
   grantCatalogue: oc

@@ -39,6 +39,11 @@ export type AccessPath = {
   readonly scope: Scope | null;
   /** Null for a row that setup seeded, and for the break-glass account (R-39). */
   readonly addedBy: { readonly id: string; readonly name: string } | null;
+  /**
+   * True for a row that setup wrote (`created_by_user_id` is null): "at setup" (G2 change 4). A
+   * write by the break-glass account is false, with `addedBy` null (R-39).
+   */
+  readonly addedAtSetup: boolean;
   /** `created_at` in UTC with microseconds, for example `2026-11-03T10:00:00.123456Z`. */
   readonly addedAt: string;
   /** In the order of `NotInEffect`. Empty when the path grants now. */
@@ -56,6 +61,15 @@ export type AccessSubject =
   | { readonly type: "module"; readonly id: string }
   | { readonly type: "role"; readonly id: string };
 
+/** The filters of the Overview list (d8l5.62). Each is optional, and they combine with AND. */
+export type AssignmentFilters = {
+  /** A person: their own rows and the rows of each group they belong to. A group: its own rows. */
+  readonly recipient?: AccessRecipient | undefined;
+  /** Every role that opens the module (`<id>:use`), as D8 reads it, whatever its `module_id`. */
+  readonly moduleId?: string | undefined;
+  readonly roleId?: string | undefined;
+};
+
 export type AccessCursor = {
   readonly addedAt: string;
   readonly assignmentId: string;
@@ -63,7 +77,7 @@ export type AccessCursor = {
 
 export type AccessPage = {
   readonly paths: readonly AccessPath[];
-  /** Every path of the subject that matches the query. Only the first page (cursor null) counts it. */
+  /** Every path that the filters and the query keep. Only the first page (cursor null) counts it. */
   readonly total: number | null;
   readonly nextCursor: AccessCursor | null;
   /**
@@ -76,6 +90,9 @@ export type AccessPage = {
 
 /** The Overview page size when the caller asks for none. */
 export const ACCESS_PAGE_SIZE = 10;
+
+/** The Overview page size (access-start b: "1–25 of 1,284"). */
+export const OVERVIEW_PAGE_SIZE = 25;
 
 type RawPath = {
   readonly assignmentId: string;
@@ -92,6 +109,7 @@ type RawPath = {
   readonly scopeId: string | null;
   readonly addedById: string | null;
   readonly addedByName: string | null;
+  readonly addedAtSetup: boolean;
   readonly addedAt: string;
   readonly groupArchived: boolean;
   readonly holderDisabled: boolean;
@@ -116,6 +134,7 @@ const PATHS_SQL = `
          a.scope_type as "scopeType", a.scope_id as "scopeId",
          case when cb.is_break_glass then null else cb.id end as "addedById",
          case when cb.is_break_glass then null else cb.name end as "addedByName",
+         (a.created_by_user_id is null) as "addedAtSetup",
          to_char(a.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"') as "addedAt",
          (hg.id is not null and not ${holder.activeGroup}) as "groupArchived",
          (hu.id is not null and ${holder.inactivePerson}) as "holderDisabled"
@@ -127,16 +146,17 @@ const PATHS_SQL = `
    where (hg.id is not null
           or (hu.id is not null and hu.erased_at is null and hu.is_break_glass = false))`;
 
-/** The fixed filter of each recipient type. `$1` is the recipient id. */
-const RECIPIENT_FILTER = {
-  user: `((a.principal_type = 'user' and a.principal_id = $1)
+/** The filter of each subject type, on the placeholder `p` of its id (`$1`, `$4`, ...). */
+const SUBJECT_FILTER = {
+  user: (p: string) => `((a.principal_type = 'user' and a.principal_id = ${p})
           or (a.principal_type = 'group' and a.principal_id in (
-                select m.group_id::text from group_member m where m.user_id = $1)))`,
-  group: `(a.principal_type = 'group' and a.principal_id = $1)`,
+                select m.group_id::text from group_member m where m.user_id = ${p})))`,
+  group: (p: string) =>
+    `(a.principal_type = 'group' and a.principal_id = ${p})`,
   // D8: every role that opens the module, whatever its `module_id`, as `readHolders` reads it.
-  module: `(($1 || ':use') = any(r.permissions))`,
+  module: (p: string) => `((${p} || ':use') = any(r.permissions))`,
   // A text compare, so a malformed id from a typed link matches nothing and never casts.
-  role: `(r.id::text = $1)`,
+  role: (p: string) => `(r.id::text = ${p})`,
 } as const;
 
 const ORDER_SQL = `order by a.created_at desc, a.id desc`;
@@ -227,6 +247,7 @@ function toPath(
       raw.addedById !== null && raw.addedByName !== null
         ? { id: raw.addedById, name: raw.addedByName }
         : null,
+    addedAtSetup: raw.addedAtSetup,
     addedAt: raw.addedAt,
     notInEffect,
   };
@@ -260,7 +281,7 @@ export async function recipientPaths(
   const entitled = await entitlementByModule(tenant, modules);
 
   const result = await tenant.db.$client.query<RawPath>(
-    `${PATHS_SQL} and ${RECIPIENT_FILTER[target.type]} ${ORDER_SQL}`,
+    `${PATHS_SQL} and ${SUBJECT_FILTER[target.type]("$1")} ${ORDER_SQL}`,
     [target.id]
   );
 
@@ -273,10 +294,9 @@ export async function recipientPaths(
 }
 
 /**
- * The paths of one person, group or module for Overview (A8, R-37b), newest first and keyset paged
- * on `(created_at, id)` (D13). The cursor keeps the microseconds that SQL wrote, so rows of one
- * transaction page without a skip. The search covers the holder, the role and the module display
- * name before the page is cut, and only the first page counts the matches.
+ * The paths of one person, group, module or role for Overview (A8, R-37b): `readAssignments` with
+ * the one filter that the subject names. Role detail, the person and group reads and the module
+ * sheet call it.
  */
 export async function readAccessBySubject(input: {
   readonly tenant: TenantContext;
@@ -287,37 +307,84 @@ export async function readAccessBySubject(input: {
   readonly cursor: AccessCursor | null;
   readonly limit: number;
 }): Promise<AccessPage> {
+  const { subject, ...rest } = input;
+
+  return readAssignments({
+    ...rest,
+    filters:
+      subject.type === "module"
+        ? { moduleId: subject.id }
+        : subject.type === "role"
+          ? { roleId: subject.id }
+          : { recipient: subject },
+  });
+}
+
+/**
+ * Every assignment that the filters keep, newest first and keyset paged on `(created_at, id)` (D13,
+ * d8l5.62). The cursor keeps the microseconds that SQL wrote, so rows of one transaction page
+ * without a skip. The search covers the holder, the role and the module display name before the
+ * page is cut, and only the first page counts the matches.
+ */
+export async function readAssignments(input: {
+  readonly tenant: TenantContext;
+  readonly caller: RequestPrincipal;
+  readonly modules: readonly RolesModule[];
+  readonly filters: AssignmentFilters;
+  readonly query: string;
+  readonly cursor: AccessCursor | null;
+  readonly limit: number;
+}): Promise<AccessPage> {
   await assertManagesAllRoles(input.caller);
 
-  const { subject } = input;
+  const { recipient: target, moduleId, roleId } = input.filters;
 
-  // `recipientDisabled` answers `not-found` for a module or a role.
+  // `not-found` for an erased person, the break-glass account or no row.
   const personDisabled =
-    subject.type === "module" || subject.type === "role"
+    target === undefined
       ? false
-      : await recipientDisabled(input.tenant, subject);
+      : await recipientDisabled(input.tenant, target);
 
   const entitled = await entitlementByModule(input.tenant, input.modules);
 
-  const values: unknown[] = [subject.id];
+  const values: (string | number | readonly string[])[] = [];
 
-  let filters = ` and ${RECIPIENT_FILTER[subject.type]}`;
+  const param = (value: string | number | readonly string[]) => {
+    values.push(value);
+
+    return `$${values.length}`;
+  };
+
+  let filters = "";
+
+  if (target !== undefined) {
+    filters += ` and ${SUBJECT_FILTER[target.type](param(target.id))}`;
+  }
+
+  if (moduleId !== undefined) {
+    filters += ` and ${SUBJECT_FILTER.module(param(moduleId))}`;
+  }
+
+  if (roleId !== undefined) {
+    filters += ` and ${SUBJECT_FILTER.role(param(roleId))}`;
+  }
 
   const term = input.query.trim();
 
   if (term !== "") {
     const lower = term.toLowerCase();
+    const like = param(likePattern(term));
 
-    values.push(
-      likePattern(term),
+    const ids = param(
       input.modules
         .filter((module) =>
           module.identity.displayName.toLowerCase().includes(lower)
         )
         .map((module) => module.identity.id)
     );
-    filters += ` and (coalesce(hu.name, ${groupLabelSql("hg")}) ilike $2 escape '\\'
-                  or r.name ilike $2 escape '\\' or r.module_id = any($3::text[]))`;
+
+    filters += ` and (coalesce(hu.name, ${groupLabelSql("hg")}) ilike ${like} escape '\\'
+                  or r.name ilike ${like} escape '\\' or r.module_id = any(${ids}::text[]))`;
   }
 
   const total =
@@ -330,20 +397,14 @@ export async function readAccessBySubject(input: {
         ).rows[0]?.total ?? 0)
       : null;
 
-  const paged = [...values];
-
-  let cursorSql = "";
-
-  if (input.cursor !== null) {
-    paged.push(input.cursor.addedAt, input.cursor.assignmentId);
-    cursorSql = ` and (a.created_at, a.id) < ($${paged.length - 1}::timestamptz, $${paged.length}::uuid)`;
-  }
-
-  paged.push(input.limit + 1);
+  const cursorSql =
+    input.cursor === null
+      ? ""
+      : ` and (a.created_at, a.id) < (${param(input.cursor.addedAt)}::timestamptz, ${param(input.cursor.assignmentId)}::uuid)`;
 
   const result = await input.tenant.db.$client.query<RawPath>(
-    `${PATHS_SQL}${filters}${cursorSql} ${ORDER_SQL} limit $${paged.length}`,
-    paged
+    `${PATHS_SQL}${filters}${cursorSql} ${ORDER_SQL} limit ${param(input.limit + 1)}`,
+    values
   );
 
   const rows = result.rows.slice(0, input.limit);
@@ -373,16 +434,16 @@ export async function readAccessBySubject(input: {
   const last = rows.at(-1);
 
   // Ask is core, so the map never holds it: only a registered module can be off.
-  const subjectModuleOff =
-    subject.type === "module" && entitled.get(subject.id) === false;
+  const filteredModuleOff =
+    moduleId !== undefined && entitled.get(moduleId) === false;
 
   return {
     paths: rows.map((raw) =>
       toPath(raw, {
         personDisabled,
         moduleOff:
-          subject.type === "module"
-            ? subjectModuleOff
+          moduleId !== undefined
+            ? filteredModuleOff
             : raw.moduleId !== null && entitled.get(raw.moduleId) !== true,
       })
     ),

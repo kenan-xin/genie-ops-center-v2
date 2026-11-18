@@ -14,7 +14,9 @@ import { rolesContract } from "./contract.ts";
 import {
   ACCESS_PAGE_SIZE,
   assertManagesAllRoles,
+  OVERVIEW_PAGE_SIZE,
   readAccessBySubject,
+  readAssignments,
   readRecipientAccess,
   recipientDisabled,
 } from "./effective-access.ts";
@@ -175,6 +177,22 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
         query: input.query ?? "",
         cursor: input.cursor ?? null,
         limit: input.limit ?? ACCESS_PAGE_SIZE,
+      })
+    ),
+
+    assignments: managed.assignments.handler(({ context, input }) =>
+      readAssignments({
+        tenant: context.tenant,
+        caller: context.caller,
+        modules,
+        filters: {
+          recipient: input.recipient,
+          moduleId: input.moduleId,
+          roleId: input.roleId,
+        },
+        query: input.query ?? "",
+        cursor: input.cursor ?? null,
+        limit: input.limit ?? OVERVIEW_PAGE_SIZE,
       })
     ),
 
