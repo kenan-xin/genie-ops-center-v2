@@ -40,6 +40,7 @@ export default defineConfig({
       "testing/standin-network.test.ts",
       "testing/image-process.test.ts",
       "testing/seed-demo.test.ts",
+      "testing/env-example.test.ts",
     ],
     passWithNoTests: false,
     testTimeout: 240000,
