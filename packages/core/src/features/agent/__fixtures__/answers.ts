@@ -1,4 +1,4 @@
-import type { ChartData } from "@genie/ui/chart";
+import type { ChartData } from "@genie/ui";
 
 import type { AgentMessage } from "../../../services/agent/index.ts";
 import type { PanelConfig } from "../../../services/charts/panel-config.ts";

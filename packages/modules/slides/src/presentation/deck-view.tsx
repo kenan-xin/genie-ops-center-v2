@@ -53,7 +53,16 @@ import {
   Trash2Icon,
   Undo2,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState } from "react";
+import {
+  memo,
+  type ReactNode,
+  type RefObject,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { z } from "zod";
 
 import {
@@ -81,7 +90,7 @@ import { EditSlideSheet } from "./edit-slide-sheet.tsx";
 import { NotesField, type NotesFieldHandle } from "./notes-field.tsx";
 import { SlideDock } from "./phone-dock.tsx";
 import { PresentMode } from "./present-mode.tsx";
-import { SlideCanvas } from "./slide-canvas.tsx";
+import { SlideCanvas, type SlideCanvasProps } from "./slide-canvas.tsx";
 import { describedBy, issueOf, slideInputOf } from "./slide-editor.tsx";
 import { figuresDate, placedBoxes } from "./slide-layout.ts";
 import { SlideStage, type SlideStageHandle } from "./slide-stage.tsx";
@@ -428,6 +437,83 @@ function PresentButton(props: {
   );
 }
 
+/** The strip's menu actions, read when a menu item runs, so a select renders no other item (czjw.185). */
+type StripActions = {
+  readonly onEdit: (target: EditTarget) => void;
+  readonly onMove: (target: MenuTarget, toIndex: number) => void;
+  readonly onRemove: (target: MenuTarget) => void;
+};
+
+/** A strip preview renders again only when its slide, its place or the deck's look changes. */
+const StripPreview = memo(SlideCanvas);
+
+/** One numbered preview of the strip; a select renders only the two items whose `current` changed. */
+const StripSlide = memo(function StripSlide(
+  props: Omit<SlideCanvasProps, "place"> & {
+    readonly index: number;
+    readonly count: number;
+    readonly current: boolean;
+    readonly editable: boolean;
+    readonly busy: boolean;
+    readonly expectedHash: string;
+    readonly onShow: (index: number) => void;
+    readonly actions: RefObject<StripActions | null>;
+  }
+): ReactNode {
+  const place = useMemo(
+    () => ({ index: props.index, count: props.count }),
+    [props.index, props.count]
+  );
+
+  return (
+    <div className="relative flex w-19 shrink-0 flex-col-reverse items-start gap-0.75 md:w-auto md:flex-row md:items-start md:gap-1.5">
+      {/* The number is the button; its overlay makes the whole preview the target. */}
+      <button
+        type="button"
+        aria-label={`Slide ${props.index + 1}: ${titleOf(props.slide)}`}
+        aria-current={props.current}
+        className="peer w-4 shrink-0 rounded-md text-end text-xs font-semibold text-muted-foreground tabular-nums outline-none after:absolute after:-inset-1 after:rounded-lg hover:after:bg-foreground/5 focus-visible:after:ring-2 focus-visible:after:ring-ring max-md:w-auto max-md:text-start md:aria-current:text-foreground"
+        onClick={() => props.onShow(props.index)}
+      >
+        {props.index + 1}
+      </button>
+      <div
+        data-slide-preview=""
+        inert
+        aria-hidden="true"
+        className="pointer-events-none min-w-0 flex-1 overflow-hidden rounded-md border border-border max-md:w-full max-md:flex-none peer-aria-current:ring-2 peer-aria-current:ring-foreground max-md:peer-aria-current:ring-primary max-md:peer-aria-current:ring-offset-1"
+      >
+        <StripPreview
+          slide={props.slide}
+          place={place}
+          figuresAsOf={props.figuresAsOf}
+          timeZone={props.timeZone}
+          theme={props.theme}
+          logoUrl={props.logoUrl}
+          images={props.images}
+        />
+      </div>
+      {/* C09-14: below 768 px the tiles are too small for a menu; the More sheet acts. */}
+      {props.editable ? (
+        <div className="absolute top-0.5 right-0.5 max-md:hidden">
+          <RailMenu
+            slide={props.slide}
+            index={props.index}
+            count={props.count}
+            expectedHash={props.expectedHash}
+            busy={props.busy}
+            onEdit={(target) => props.actions.current?.onEdit(target)}
+            onMove={(target, toIndex) =>
+              props.actions.current?.onMove(target, toIndex)
+            }
+            onRemove={(target) => props.actions.current?.onRemove(target)}
+          />
+        </div>
+      ) : null}
+    </div>
+  );
+});
+
 /** One deck: its toolbar, its slide rail, the shown slide and the hand edits (R-52 to R-54). */
 export function DeckView(props: DeckViewProps) {
   const { view } = props;
@@ -482,6 +568,7 @@ export function DeckView(props: DeckViewProps) {
 
   const notesField = useRef<NotesFieldHandle>(null);
   const stage = useRef<SlideStageHandle>(null);
+  const stripActions = useRef<StripActions | null>(null);
   const panel = useAgentPanel();
   // The phone dock's More sheet. Its focus return is off for an action that moves focus itself,
   // and an action that must wait for the sheet to leave runs once it has (P13-8).
@@ -820,6 +907,20 @@ export function DeckView(props: DeckViewProps) {
       }
     );
   }
+
+  stripActions.current = {
+    onEdit: openEditor,
+    onMove: (target, toIndex) =>
+      sendStep([{ op: "move-slide", slideId: target.slide.id, toIndex }], {
+        expectedHash: target.expectedHash,
+        slideNumber: target.number,
+      }),
+    onRemove: (target) =>
+      sendStep([{ op: "remove-slide", slideId: target.slide.id }], {
+        expectedHash: target.expectedHash,
+        slideNumber: target.number,
+      }),
+  };
 
   async function saveNotes(
     slideId: string,
@@ -1236,74 +1337,23 @@ export function DeckView(props: DeckViewProps) {
             className={`${horizontalStrip} flex gap-3 px-1 pt-1 pb-2 max-md:gap-2 md:w-40 md:shrink-0 md:touch-auto md:flex-col md:overflow-visible md:p-0`}
           >
             {deck.slides.map((slide, slideIndex) => (
-              <div
+              <StripSlide
                 key={slide.id}
-                className="relative flex w-19 shrink-0 flex-col-reverse items-start gap-0.75 md:w-auto md:flex-row md:items-start md:gap-1.5"
-              >
-                {/* The number is the button; its overlay makes the whole preview the target. */}
-                <button
-                  type="button"
-                  aria-label={`Slide ${slideIndex + 1}: ${titleOf(slide)}`}
-                  aria-current={slideIndex === index}
-                  className="peer w-4 shrink-0 rounded-md text-end text-xs font-semibold text-muted-foreground tabular-nums outline-none after:absolute after:-inset-1 after:rounded-lg hover:after:bg-foreground/5 focus-visible:after:ring-2 focus-visible:after:ring-ring max-md:w-auto max-md:text-start md:aria-current:text-foreground"
-                  onClick={() => setShown(slideIndex)}
-                >
-                  {slideIndex + 1}
-                </button>
-                <div
-                  data-slide-preview=""
-                  inert
-                  aria-hidden="true"
-                  className="pointer-events-none min-w-0 flex-1 overflow-hidden rounded-md border border-border max-md:w-full max-md:flex-none peer-aria-current:ring-2 peer-aria-current:ring-foreground max-md:peer-aria-current:ring-primary max-md:peer-aria-current:ring-offset-1"
-                >
-                  <SlideCanvas
-                    slide={slide}
-                    place={{ index: slideIndex, count: deck.slides.length }}
-                    figuresAsOf={deck.figuresAsOf}
-                    timeZone={view.timeZone}
-                    theme={deck.theme}
-                    logoUrl={view.logos[deck.theme.logo]}
-                    images={deck.images}
-                  />
-                </div>
-                {/* C09-14: below 768 px the tiles are too small for a menu; the More sheet acts. */}
-                {editable ? (
-                  <div className="absolute top-0.5 right-0.5 max-md:hidden">
-                    <RailMenu
-                      slide={slide}
-                      index={slideIndex}
-                      count={deck.slides.length}
-                      expectedHash={deck.contentHash}
-                      busy={busy}
-                      onEdit={openEditor}
-                      onMove={(target, toIndex) =>
-                        sendStep(
-                          [
-                            {
-                              op: "move-slide",
-                              slideId: target.slide.id,
-                              toIndex,
-                            },
-                          ],
-                          {
-                            expectedHash: target.expectedHash,
-                            slideNumber: target.number,
-                          }
-                        )
-                      }
-                      onRemove={(target) =>
-                        sendStep(
-                          [{ op: "remove-slide", slideId: target.slide.id }],
-                          {
-                            expectedHash: target.expectedHash,
-                            slideNumber: target.number,
-                          }
-                        )
-                      }
-                    />
-                  </div>
-                ) : null}
-              </div>
+                slide={slide}
+                index={slideIndex}
+                count={deck.slides.length}
+                current={slideIndex === index}
+                figuresAsOf={deck.figuresAsOf}
+                timeZone={view.timeZone}
+                theme={deck.theme}
+                logoUrl={view.logos[deck.theme.logo]}
+                images={deck.images}
+                editable={editable}
+                busy={busy}
+                expectedHash={deck.contentHash}
+                onShow={setShown}
+                actions={stripActions}
+              />
             ))}
             {editable ? (
               <button

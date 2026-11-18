@@ -5,6 +5,7 @@ import {
 } from "@genie/core/features/agent/panel";
 import { AppShell, PageTrailProvider } from "@genie/core/features/shell";
 import { ModuleClientProvider } from "@genie/core/rpc/client";
+import { Chart } from "@genie/ui/chart";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import {
   QueryClient,
@@ -12,7 +13,15 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
-import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
+import {
+  expect,
+  fn,
+  mocked,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from "storybook/test";
 
 import {
   deckPage,
@@ -24,6 +33,7 @@ import {
   tableWithVisualSlide,
   textOnlySlide,
   titleOnlySlide,
+  twentySlideDeckPage,
   unnamedDraftedDeckPage,
 } from "./__fixtures__/decks.ts";
 import { DeckView } from "./deck-view.tsx";
@@ -598,6 +608,82 @@ export const Rail: Story = {
   play: railPlay,
 };
 
+/** Waits until no `Chart` rendered for 200 ms (the spy of `preview.tsx`). */
+async function chartsSettle(): Promise<void> {
+  let last = -1;
+
+  await waitFor(
+    () => {
+      const count = mocked(Chart).mock.calls.length;
+      const settled = count === last;
+
+      last = count;
+      expect(settled).toBe(true);
+    },
+    { interval: 200, timeout: 10_000 }
+  );
+}
+
+// czjw.185: a select draws the shown slide's charts only; the strip's previews draw nothing again.
+export const SelectRendersOnlyTheShownSlide: Story = {
+  args: { view: twentySlideDeckPage },
+  globals: desktop,
+  beforeEach: () => serve(twentySlideDeckPage),
+  play: async ({ canvas }) => {
+    await chartsSettle();
+    mocked(Chart).mockClear();
+
+    await userEvent.click(canvas.getByRole("button", { name: /^Slide 11: / }));
+    await chartsSettle();
+
+    const titles = mocked(Chart).mock.calls.map(([chart]) => chart.title);
+
+    await expect(titles.length).toBeGreaterThan(0);
+    await expect(
+      titles.filter((title) => !title.endsWith(" · slide 11"))
+    ).toEqual([]);
+  },
+};
+
+const RENAMED_SLIDE_4 = "The finance team now reviews every chart monthly";
+
+// czjw.185: a poll's changed slide reaches its strip preview; a memo never keeps the older one.
+export const StripFollowsARefetch: Story = {
+  args: { view: deckPage },
+  globals: desktop,
+  decorators: [withRefetch],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const strip = within(canvas.getByRole("navigation", { name: "Slides" }));
+
+    await expect(
+      strip.getByRole("button", { name: /^Slide 4: / })
+    ).toBeVisible();
+
+    readDeck.mockResolvedValue({
+      ...deckPage.deck,
+      slides: deckPage.deck.slides.map((slide, i) =>
+        i === 3
+          ? {
+              ...slide,
+              elements: slide.elements.map((element) =>
+                element.kind === "title"
+                  ? { kind: "title" as const, text: RENAMED_SLIDE_4 }
+                  : element
+              ),
+            }
+          : slide
+      ),
+    });
+    window.dispatchEvent(new Event("refetch-deck"));
+
+    await expect(
+      await strip.findByRole("button", { name: `Slide 4: ${RENAMED_SLIDE_4}` })
+    ).toBeVisible();
+    await expect(strip.getByText(RENAMED_SLIDE_4)).toBeInTheDocument();
+  },
+};
+
 /** The color a CSS color variable resolves to, in the form the browser reports a computed color. */
 function resolvedColor(variable: string): string {
   const probe = document.createElement("span");
@@ -879,7 +965,8 @@ const slideActionsPlay: Story["play"] = async ({ canvas }) => {
   await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
   await expect(changeDeck).toHaveBeenCalledWith({
     id: "deck-1",
-    expectedHash: HASH,
+    // czjw.185: the strip's memoized item sends the hash of the first save's answer.
+    expectedHash: NEW_HASH,
     changes: [{ op: "remove-slide", slideId: "s1" }],
   });
   changeDeck.mockClear();
@@ -921,7 +1008,13 @@ const slideActionsPlay: Story["play"] = async ({ canvas }) => {
 export const SlideActions: Story = {
   args: { view: deckPage },
   globals: desktop,
-  beforeEach: () => serve(deckPage),
+  beforeEach: () => {
+    serve(deckPage);
+    changeDeck.mockResolvedValueOnce({
+      ...deckPage.deck,
+      contentHash: NEW_HASH,
+    });
+  },
   play: slideActionsPlay,
 };
 

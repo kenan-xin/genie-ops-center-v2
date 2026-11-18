@@ -419,6 +419,32 @@ export const deckPage: DeckPageView = {
   chat: chatOn,
 };
 
+/** `deckPage` with 20 slides; each chart title names its slide, so a story tells which slide drew (czjw.185). */
+export const twentySlideDeckPage: DeckPageView = {
+  ...deckPage,
+  deck: {
+    ...deckPage.deck,
+    slides: Array.from({ length: 20 }, (_, i) => {
+      const slide = eightLayoutSlides[i % eightLayoutSlides.length]!;
+
+      return {
+        ...slide,
+        id: `p${i + 1}`,
+        elements: slide.elements.map((element) =>
+          "data" in element
+            ? Object.assign({}, element, {
+                data: {
+                  ...element.data,
+                  title: `${element.data.title} · slide ${i + 1}`,
+                },
+              })
+            : element
+        ),
+      };
+    }),
+  },
+};
+
 export const emptyDeckPage: DeckPageView = {
   ...deckPage,
   deck: { ...deckPage.deck, slides: [] },

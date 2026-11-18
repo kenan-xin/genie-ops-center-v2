@@ -1,9 +1,13 @@
 import { ThemeProvider, type ThemeName } from "@genie/ui";
 import type { Preview } from "@storybook/nextjs-vite";
+import { sb } from "storybook/test";
 
 import { waitForClosingPopups } from "./closing-popups.ts";
 
 import "./preview.css";
+
+// czjw.185: a deck story counts the charts that a select renders. A spy calls through, so every story draws as before.
+sb.mock(import("@genie/ui/chart"), { spy: true });
 
 const preview: Preview = {
   parameters: {

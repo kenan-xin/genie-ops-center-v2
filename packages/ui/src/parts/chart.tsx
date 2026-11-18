@@ -70,14 +70,6 @@ import {
 import { DataTable, type DataTableColumn } from "./data-table.tsx";
 import { EmptyState } from "./empty-state.tsx";
 
-export type {
-  ChartColumn,
-  ChartData,
-  ChartKind,
-  ChartRow,
-  ChartValue,
-} from "./chart-data.ts";
-
 /** The host's link, so a record row opens through the host's router. */
 export type ChartLinkComponent = ComponentType<{
   readonly href: string;
