@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-import { desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import {
@@ -122,6 +122,19 @@ async function manager(): Promise<string> {
   ]);
 
   return userId;
+}
+
+/** A router caller holding the people and groups keys. */
+async function groupsManager() {
+  const { userId } = await insertPersonWith(deployment.context, [
+    "core:people:manage",
+    "core:groups:manage",
+  ]);
+
+  return callProcedure(createPeopleRouter([]), {
+    tenant: deployment.context,
+    caller: request(userId),
+  });
 }
 
 /**
@@ -1087,6 +1100,120 @@ describe("Add person ordering, roles and compensation (R-40)", () => {
         .from(roleAssignment)
         .where(eq(roleAssignment.principalId, created.id))
     ).toHaveLength(1);
+  });
+
+  it("T4-a: adds the person to two local groups in the same save, one audit row per group", async () => {
+    const caller = await groupsManager();
+
+    const first = await insertGroup(deployment.context, []);
+    const second = await insertGroup(deployment.context, []);
+
+    const created = await caller.add({
+      email: `groups-${Date.now()}@example.invalid`,
+      groupIds: [first, second],
+      sendInvitation: false,
+    });
+
+    const memberships = await deployment.context.db
+      .select({ groupId: groupMember.groupId, source: groupMember.source })
+      .from(groupMember)
+      .where(eq(groupMember.userId, created.id));
+
+    expect(memberships).toEqual(
+      expect.arrayContaining([
+        { groupId: first, source: "local" },
+        { groupId: second, source: "local" },
+      ])
+    );
+
+    expect(memberships).toHaveLength(2);
+
+    const audits = await deployment.context.db
+      .select({ targetId: auditEvent.targetId, metadata: auditEvent.metadata })
+      .from(auditEvent)
+      .where(
+        and(
+          eq(auditEvent.action, "core:group_member_added"),
+          inArray(auditEvent.targetId, [first, second])
+        )
+      );
+
+    expect(audits.map((row) => row.targetId).toSorted()).toEqual(
+      [first, second].toSorted()
+    );
+
+    for (const row of audits) {
+      expect(row.metadata).toMatchObject({ userIds: [created.id] });
+    }
+  });
+
+  it.each([
+    { kind: "a directory group", code: "invalid-input", idp: true },
+    { kind: "an unknown group", code: "not-found", idp: false },
+  ])(
+    "T4-b: refuses $kind with $code and keeps no person",
+    async ({ code, idp }) => {
+      const caller = await groupsManager();
+
+      const local = await insertGroup(deployment.context, []);
+
+      const refused = idp
+        ? await insertGroup(deployment.context, [], {
+            source: "idp",
+            externalId: `ext-${randomUUID()}`,
+          })
+        : randomUUID();
+
+      const email = `groups-refused-${randomUUID()}@example.invalid`;
+
+      await expect(
+        caller.add({ email, groupIds: [local, refused], sendInvitation: false })
+      ).rejects.toMatchObject({ code });
+
+      expect(
+        await deployment.context.db
+          .select({ id: user.id })
+          .from(user)
+          .where(eq(user.email, email))
+      ).toHaveLength(0);
+      expect(
+        await deployment.context.db
+          .select({ userId: groupMember.userId })
+          .from(groupMember)
+          .where(eq(groupMember.groupId, local))
+      ).toHaveLength(0);
+    }
+  );
+
+  it("T4-c: refuses groups from a caller without core:groups:manage, and still adds without groups", async () => {
+    const caller = callProcedure(createPeopleRouter([]), {
+      tenant: deployment.context,
+      caller: request(await manager()),
+    });
+
+    const groupId = await insertGroup(deployment.context, []);
+
+    await expect(
+      caller.add({
+        email: `groups-perm-${Date.now()}@example.invalid`,
+        groupIds: [groupId],
+        sendInvitation: false,
+      })
+    ).rejects.toMatchObject({ code: "forbidden" });
+
+    expect(
+      await deployment.context.db
+        .select({ userId: groupMember.userId })
+        .from(groupMember)
+        .where(eq(groupMember.groupId, groupId))
+    ).toHaveLength(0);
+
+    const groupless = await caller.add({
+      email: `groups-perm-ok-${Date.now()}@example.invalid`,
+      sendInvitation: false,
+    });
+
+    expect(groupless.id).toBeTruthy();
   });
 });
 

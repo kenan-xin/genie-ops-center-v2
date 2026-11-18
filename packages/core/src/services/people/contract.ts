@@ -52,6 +52,7 @@ export const peopleContract = {
         email: z.email().max(320),
         name: z.string().max(200).optional(),
         roleIds: z.array(z.uuid()).default([]),
+        groupIds: z.array(z.uuid()).max(100).default([]),
         accountType: z.enum(["brokered", "local"]).optional(),
         sendInvitation: z.boolean().optional(),
       })

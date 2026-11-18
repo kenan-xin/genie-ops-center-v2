@@ -1468,6 +1468,15 @@
                     },
                     "default": []
                   },
+                  "groupIds": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "items": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "default": []
+                  },
                   "accountType": {
                     "enum": [
                       "brokered",

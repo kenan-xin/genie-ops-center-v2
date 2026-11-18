@@ -26,6 +26,10 @@ import {
   assignRoleInTransaction,
   removeUserAssignments,
 } from "../authorization/role-assignment.ts";
+import {
+  addLocalGroupMembersInTransaction,
+  assertLocalGroup,
+} from "../groups/index.ts";
 import { groupLabelSql } from "../groups/label.ts";
 import {
   createRealmUser,
@@ -603,6 +607,8 @@ export type AddPersonInput = {
   readonly email: string;
   readonly name?: string | undefined;
   readonly roleIds: readonly string[];
+  /** Groups made here; the router checks `core:groups:manage` before any is passed. */
+  readonly groupIds?: readonly string[] | undefined;
   readonly accountType?: AccountType | undefined;
   /** Brokered accounts only: send the invitation email. Defaults to true (R-40a). */
   readonly sendInvitation?: boolean | undefined;
@@ -673,6 +679,7 @@ export async function addPerson(
   }
 
   const roleIds = [...new Set(input.roleIds)];
+  const groupIds = [...new Set(input.groupIds ?? [])];
 
   // The cheap checks run before any realm call: an address already taken, and every picked role
   // must be one that Grants offers (R-40, R-37a). This is what keeps a failing transaction from leaving an orphan realm account.
@@ -689,6 +696,12 @@ export async function addPerson(
   // The router checked `core:roles:manage` tenant-wide, so the ungated Grants read serves here.
   if (roleIds.length > 0) {
     assertGrantPicks(await grantRows(tenant, modules), roleIds);
+  }
+
+  // Every picked group must be one made here, so the person is never saved without them.
+  for (const groupId of groupIds) {
+    // oxlint-disable-next-line no-await-in-loop
+    await assertLocalGroup(tenant.db, groupId);
   }
 
   const displayName = input.name?.trim() || email.split("@")[0] || email;
@@ -774,6 +787,15 @@ export async function addPerson(
           roleId,
           principal: { type: "user", id: personId },
           scope: null,
+        });
+      }
+
+      for (const groupId of groupIds) {
+        // oxlint-disable-next-line no-await-in-loop
+        await addLocalGroupMembersInTransaction(tx, {
+          actorUserId: input.actorUserId,
+          groupId,
+          userIds: [personId],
         });
       }
 

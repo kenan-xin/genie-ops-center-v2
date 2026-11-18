@@ -93,11 +93,20 @@ export function createPeopleRouter(modules: readonly RolesModule[]) {
         throw new AppError(CORE_ERRORS.forbidden);
       }
 
+      // Picking groups is a membership edit, behind the groups key (DEC-39).
+      if (
+        input.groupIds.length > 0 &&
+        !(await can(context.caller, "core:groups:manage"))
+      ) {
+        throw new AppError(CORE_ERRORS.forbidden);
+      }
+
       return addPerson(context.tenant, modules, {
         actorUserId: context.caller.userId,
         email: input.email,
         name: input.name,
         roleIds: input.roleIds,
+        groupIds: input.groupIds,
         accountType: input.accountType,
         sendInvitation: input.sendInvitation,
       });

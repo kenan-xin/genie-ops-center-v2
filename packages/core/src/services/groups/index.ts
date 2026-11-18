@@ -228,7 +228,7 @@ async function isLastAdministratorPath(
 }
 
 async function loadGroupForWrite(
-  tx: TenantTransaction,
+  tx: Pick<TenantTransaction, "select">,
   groupId: string
 ): Promise<{
   readonly id: string;
@@ -539,9 +539,25 @@ export async function deleteLocalGroup(
   });
 }
 
-/** R-24: add people to a local group. A directory group's membership is the provider's. */
-export async function addLocalGroupMembers(
-  tenant: TenantContext,
+/**
+ * The group a member write may touch: `not-found` for an unknown id, `invalid-input` for a directory
+ * group, whose membership is the provider's. Takes the plain database too, so a caller can check
+ * before it writes anything.
+ */
+export async function assertLocalGroup(
+  db: Pick<TenantTransaction, "select">,
+  groupId: string
+): Promise<void> {
+  const current = await loadGroupForWrite(db, groupId);
+
+  if (current.source !== "local") {
+    throw new AppError(CORE_ERRORS["invalid-input"]);
+  }
+}
+
+/** R-24 on the caller's transaction: adds people to a group made here, with its audit row. */
+export async function addLocalGroupMembersInTransaction(
+  tx: TenantTransaction,
   input: {
     readonly actorUserId: string;
     readonly groupId: string;
@@ -552,33 +568,43 @@ export async function addLocalGroupMembers(
 
   if (userIds.length === 0) return;
 
-  await withTransaction(tenant, async (tx) => {
-    const current = await loadGroupForWrite(tx, input.groupId);
+  await assertLocalGroup(tx, input.groupId);
 
-    if (current.source !== "local") {
-      throw new AppError(CORE_ERRORS["invalid-input"]);
-    }
+  await tx
+    .insert(groupMember)
+    .values(
+      userIds.map((userId) => ({
+        groupId: input.groupId,
+        userId,
+        source: "local",
+      }))
+    )
+    .onConflictDoNothing();
 
-    await tx
-      .insert(groupMember)
-      .values(
-        userIds.map((userId) => ({
-          groupId: input.groupId,
-          userId,
-          source: "local",
-        }))
-      )
-      .onConflictDoNothing();
-
-    await writeAdminAuditEvent(tx, {
-      action: "core:group_member_added",
-      actorUserId: input.actorUserId,
-      targetType: "group",
-      targetId: input.groupId,
-      summary: `Added ${userIds.length} member(s) to a group`,
-      metadata: { userIds },
-    });
+  await writeAdminAuditEvent(tx, {
+    action: "core:group_member_added",
+    actorUserId: input.actorUserId,
+    targetType: "group",
+    targetId: input.groupId,
+    summary: `Added ${userIds.length} member(s) to a group`,
+    metadata: { userIds },
   });
+}
+
+/** R-24: add people to a local group. A directory group's membership is the provider's. */
+export async function addLocalGroupMembers(
+  tenant: TenantContext,
+  input: {
+    readonly actorUserId: string;
+    readonly groupId: string;
+    readonly userIds: readonly string[];
+  }
+): Promise<void> {
+  if (input.userIds.length === 0) return;
+
+  await withTransaction(tenant, (tx) =>
+    addLocalGroupMembersInTransaction(tx, input)
+  );
 }
 
 /**
