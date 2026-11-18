@@ -80,7 +80,7 @@ Genie operator. Sets up a customer's deployment: builds its image, creates its d
 
 ### Deployment (operators only)
 
-- One stack per customer: application, job worker, Keycloak, and the customer's Postgres and SMTP, from a generated compose file or Helm values.
+- One stack per customer: application, job worker, Keycloak, and the customer's Postgres and SMTP, from a generated compose file. Helm values return with the first Kubernetes customer (`DEC-33`, amended 2026-11-18).
 - Module entitlements: the modules compiled into the customer's image, each switchable off in the database without a rebuild, from the Modules page in the admin portal or with `genie-ops module enable|disable` (`DEC-50`).
 - Setup: `genie-ops setup` migrates the database, creates the realm from the template with a one-run server credential (`DEC-37`), or in client-only mode skips it (ADR 0010), seeds roles and the first administrators, and creates the break-glass account. Resumable. The identity provider is added afterwards by `genie-ops idp set` (`DEC-36`).
 - Migration at container start, before serving.

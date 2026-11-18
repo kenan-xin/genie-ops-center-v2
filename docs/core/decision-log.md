@@ -288,6 +288,8 @@ Amended 2026-10-20 (owner decision, `DEC-9`): the sentence above that says a mig
 
 Amended 2026-09-23 (owner decision, Section 1 D-8): the tenant generator owns the stack template. It renders the compose file, the Helm values and `.env.example` from its own templates in `tools/generators/src/tenant-new/`, so the sentence above that names "the template in `deploy/stack/`" is superseded. `deploy/stack/` holds only the end-to-end test stacks. Reason: the generator already writes all seven customer files and is tested, and a template file it would read adds a second place to change.
 
+Amended 2026-11-18 (owner decision 2026-10-19, Beads `2xfl`, Spec 5 R-26a): the tenant generator writes the compose file only and no Helm values, so "the compose file or Helm values" above and "the Helm values" in the 2026-09-23 amendment are superseded. It writes six files into `customers/<slug>/deploy/`. Reason: no customer runs Kubernetes, and a file that no deployment reads is not configuration (`DEC-35`). The guard that keeps the Kubernetes path open is one image per customer, configuration only from the environment, and one generated compose file with no branch per hosting mode. Revisit with the first Kubernetes customer, or when the count of stacks makes the current host slow (ADR 0007, Spec 5 R-40): Helm values then return as a generator template.
+
 Where a stack runs and who operates it, chosen per customer in the contract and recorded in the customer's runbook, never in `tenant.yaml` (`DEC-35`):
 
 - Genie-hosted. The stack runs on Genie's Coolify servers. Genie operates it and holds the break-glass secret.

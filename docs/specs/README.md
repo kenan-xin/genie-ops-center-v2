@@ -129,7 +129,7 @@ Each call below follows an existing decision or convention and was made by the c
 | Account page roles summary | Section 2 item 4 builds the account page including its roles summary; Section 3 item 7 adds only language, time zone, and theme. | Roadmap Section 2 item 4 and Section 3 item 7 |
 | Permission-gated route | A screen the person may not open is hidden from navigation and its route refuses on the server; it is not unmounted. | `DEC-39`; roadmap Section 2 item 6 |
 | Realm session settings | The realm's SSO idle and maximum lifetimes are fixed template values equal to the `DEC-46` defaults (15 minutes idle, 24 hours maximum) and are independent of the tenant's idle setting, which the application enforces per request. | `DEC-46`; `../runbooks/keycloak-realm.md` |
-| Tenant generator files | The generator always writes the seven files of `../architecture/repository-layout.md`, `values.yaml` included. | `../architecture/repository-layout.md`; roadmap Section 1 item 6 |
+| Tenant generator files | The generator always writes the seven files of `../architecture/repository-layout.md`, `values.yaml` included. Amended 2026-11-18 (owner, 2026-10-19, Beads `2xfl`): six files, no `values.yaml`. | `../architecture/repository-layout.md`; roadmap Section 1 item 6 |
 
 ## Terminology
 

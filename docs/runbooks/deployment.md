@@ -35,7 +35,7 @@ Up to about twenty customers, every stack is set up and upgraded by hand with th
 
 Around a hundred customers, upgrade work by hand becomes the bottleneck. ADR 0007 records two paths, and neither is started before the count demands it:
 
-1. Keep one deployment per customer and add a rollout tool. Kubernetes with one namespace per customer applies the same image tag to every namespace in one command. The Helm values file in `customers/<slug>/deploy/` exists for this path.
+1. Keep one deployment per customer and add a rollout tool. Kubernetes with one namespace per customer applies the same image tag to every namespace in one command. The tenant generator writes no Helm values today. They return as a generator template with the first Kubernetes customer (`DEC-33`, amended 2026-11-18).
 2. Return to many customers in one process. Every read of the database, settings, branding, and files goes through the tenant context (`DEC-34`), so this path changes how the context is built and nothing else. It needs a new ADR, because it brings back the shared database server and the isolation tests it requires.
 
 ## Run several app copies and workers
@@ -111,7 +111,7 @@ Make sure that the target host has the following. The customer's platform team s
 
 ## Set up a new customer
 
-1. In the repository, run `nx g @genie/generators:tenant-new <slug>`. It creates `customers/<slug>/deploy/` with `tenant.yaml`, `modules.txt`, `realm.overrides.json`, `branding.seed.json`, `compose.yaml`, `.env.example`, and `values.yaml`.
+1. In the repository, run `nx g @genie/generators:tenant-new <slug>`. It creates `customers/<slug>/deploy/` with `tenant.yaml`, `modules.txt`, `realm.overrides.json`, `branding.seed.json`, `compose.yaml`, and `.env.example`.
 2. Fill `tenant.yaml`: the module list, the onboarding mode, `local_accounts`, the realm mode (`realm: managed` by default, `customer` for client-only mode, ADR 0010), the first administrators, and the break-glass email. Every field is read by the generator or by setup (`DEC-35`, `DEC-36`). Keep the onboarding mode at `invite` unless the customer asked for `jit`. In `jit` mode a person the provider lets sign in gets an active account only when their `groups` claim holds a group mapped to a Genie Ops Center role (`DEC-7`, `../architecture/access-model.md`, "Who may sign in the first time"). Before a customer switches to `jit`, map their groups (add them before first sign-in if needed, `DEC-52`), and make sure that the customer restricted the application assignment in their provider to the people who must have access.
 3. Run `scripts/build-customer-image.sh <slug> <version>`. It builds the image with the customer's module list and pushes `ghcr.io/<org>/genie-<slug>:<version>`. For a host without internet access, run `docker save` on the image and hand over the file.
 4. Copy `compose.yaml`, `tenant.yaml`, `branding.seed.json` and `realm.overrides.json` to the host, into one stack folder. They are committed and hold no secret and no host value. `realm.overrides.json` is the customer's realm delta; setup reads it beside `tenant.yaml` and refuses when it is missing, so it must travel with them.
