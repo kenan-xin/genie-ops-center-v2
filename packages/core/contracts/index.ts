@@ -96,7 +96,7 @@ export type StepWords = {
   readonly active: string;
   readonly done: string;
   readonly failed: string;
-  /** Only on a tool whose input starts with `progress: stepProgressInput(limit)`. */
+  /** Only on a tool whose input starts with `progress: stepProgressInput(limit).optional()`. */
   readonly progress?: StepProgressWords;
 };
 

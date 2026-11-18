@@ -49,3 +49,18 @@ describe("the slides read rules", () => {
     expect(rule).toContain("Never ask which number to use.");
   });
 });
+
+describe("the slides-change-deck input", () => {
+  // The chat reads progress while the call streams, so a later key shows it only at the end (czjw.181).
+  it("puts progress first in the change tool's schema", () => {
+    const tool = SLIDES_SURFACE.tools.find(
+      ({ name }) => name === "slides-change-deck"
+    );
+
+    const schema = z.toJSONSchema(tool?.input ?? z.never(), {
+      target: "draft-7",
+    });
+
+    expect(Object.keys(schema.properties ?? {})[0]).toBe("progress");
+  });
+});

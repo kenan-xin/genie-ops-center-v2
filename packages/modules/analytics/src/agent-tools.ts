@@ -2,11 +2,17 @@ import {
   type AgentInstructions,
   type AgentToolValue,
   defineAgentTool,
+  stepProgressInput,
 } from "@genie/core/contracts";
 import { z } from "zod";
 
 import type { StoredPanel } from "./config.ts";
-import { dashboardChanges, dashboardId, dashboardName } from "./contract.ts";
+import {
+  DASHBOARD_PANEL_LIMIT,
+  dashboardChanges,
+  dashboardId,
+  dashboardName,
+} from "./contract.ts";
 import { assertCanRead, assertCanWrite } from "./services/dashboards/access.ts";
 import {
   changeDashboard,
@@ -128,10 +134,19 @@ const changeDashboardTool = defineAgentTool({
     active: "Changing the dashboard",
     done: "Changed the dashboard",
     failed: "Could not change the dashboard",
+    progress: {
+      active: "Adding panel {n} of {m}",
+      doneOne: "Added panel {n}",
+      done: "Added panels {first} to {last}",
+    },
   },
   description:
     "Saves one change to one of this person's own dashboards: a list of steps, each add-panel, change-panel, remove-panel, move-panel, rename, set-filters, save-view, remove-view or set-default-view. Every added or changed panel passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the dashboard.",
-  input: z.strictObject({ dashboardId, changes: dashboardChanges }),
+  input: z.strictObject({
+    progress: stepProgressInput(DASHBOARD_PANEL_LIMIT).optional(),
+    dashboardId,
+    changes: dashboardChanges,
+  }),
   permission: "analytics:write",
   writes: true,
   run: async (ctx, input) => {

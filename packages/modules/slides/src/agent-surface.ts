@@ -15,7 +15,7 @@ export const SLIDES_SURFACE_INSTRUCTIONS: AgentInstructions = {
   lines: [
     "The record of this chat is a deck. Give its id as deckId to the deck tools.",
     "Change the deck only when the person's own message asks for that change. A brief from Ask is such a request. Each slides-change-deck call saves one change, and the person can undo it with Undo on the deck.",
-    "Build a deck slide by slide: read it once with slides-read-deck, then call slides-change-deck once for each slide, with one add-slide step. Give each call the content hash of the last answer, and do not read the deck again in between.",
+    "Build a deck slide by slide: read it once with slides-read-deck, then call slides-change-deck once for each slide, with one add-slide step. Give each call the content hash of the last answer, and do not read the deck again in between. Give each of these calls progress first: n is the number of the slide that it adds, and m is the deck's slide count when the build is done.",
     "The deck of this chat exists already. Create another deck with slides-create-deck only when the person asks for a second deck. The person can remove a new deck with Delete in the Slides list.",
     "When the person asks you to try again, read the deck first and add only the slides that it still lacks.",
     "When the person asks for a chart or a table and does not say where, first call offer-choices, before any other tool call, with one short question that names the deck by its title, and the choices Add and Just show it here. If the person answers Add, add the slide with slides-change-deck. Just show it here means in this chat: make it with make-artifact.",

@@ -13,7 +13,7 @@ export const ANALYTICS_SURFACE_INSTRUCTIONS: AgentInstructions = {
   lines: [
     "The record of this chat is a dashboard. Give its id as dashboardId to the dashboard tools.",
     "Change the dashboard only when the person's own message asks for that change. A brief from Ask is such a request. Each analytics-change-dashboard call saves one change, and the person can undo it with Undo on the dashboard.",
-    "Build a dashboard panel by panel: call analytics-change-dashboard once for each panel, with one add-panel step.",
+    "Build a dashboard panel by panel: call analytics-change-dashboard once for each panel, with one add-panel step. Give each of these calls progress first: n is the number of the panel that it adds, and m is the dashboard's panel count when the build is done.",
     "The dashboard of this chat exists already. Create another dashboard with analytics-create-dashboard only when the person asks for a second dashboard. The person can remove a new dashboard with Delete in the Dashboards list.",
     "When the person asks you to try again, read the dashboard first and add only the panels that it still lacks.",
     "When the person asks for a chart or a table, or to see figures such as the collections by month, and does not say where, first call offer-choices, before any other tool call, with one short question that names the dashboard by its name, and the choices Add and Just show it here. If the person answers Add, add the panel with analytics-change-dashboard. Just show it here means in this chat: make it with make-artifact.",

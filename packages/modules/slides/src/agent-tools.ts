@@ -3,6 +3,7 @@ import {
   type AgentInstructions,
   type AgentToolValue,
   defineAgentTool,
+  stepProgressInput,
 } from "@genie/core/contracts";
 import { z } from "zod";
 
@@ -263,9 +264,15 @@ const changeDeckTool = defineAgentTool({
     active: "Changing the deck",
     done: "Changed the deck",
     failed: "Could not change the deck",
+    progress: {
+      active: "Writing slide {n} of {m}",
+      doneOne: "Wrote slide {n}",
+      done: "Wrote slides {first} to {last}",
+    },
   },
   description: `Saves one change to one of this person's own decks: a list of steps in order, each add-slide, change-slide, remove-slide, move-slide, rename, change-element, change-slide-fields or change-theme. Give the content hash that slides-read-deck or the last slides-change-deck call answered. A deck that changed since then refuses the change, so read it again. A change-slide step replaces every element of the slide, so send the elements to keep too, each figure, chart or table with its chart config as read. An element at the same place with the same kind keeps its box and style when the step leaves them out, and null clears them. If the step removes, adds or reorders elements, send each element's box and style as read. ${DECK_RULES} ${STYLE_RULES} ${THEME_RULES} ${NOTES_RULES} Every added or changed figure, chart or table passes the chart check first, and a refused step saves nothing. The person can undo the change with Undo on the deck.`,
   input: z.strictObject({
+    progress: stepProgressInput(DECK_SLIDE_LIMIT).optional(),
     deckId,
     expectedHash: contentHash,
     changes: deckChanges,
