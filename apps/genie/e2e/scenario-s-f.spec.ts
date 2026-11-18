@@ -86,20 +86,14 @@ test("S-F: add a local person, set the password from the Mailpit email, sign in,
     )
     .toBe("pending:true");
 
-  // The table and the phone card list both hold the row, and only one of them shows.
-  await expect(
-    page.getByText(personName).filter({ visible: true })
-  ).toBeVisible();
-
-  // Resend set-password is rate limited to three per hour per target person (R-19, R-41). Open the
-  // person and press it three times: each is allowed and sends a fresh realm email.
-  await page
-    .getByRole("button", { name: new RegExp(personName) })
-    .first()
-    .click();
-
+  // P12-18: the added person's sheet opens on Roles; Resend sits on Profile.
   const inspector = page.getByRole("dialog", { name: personName });
 
+  await expect(inspector).toBeVisible();
+  await inspector.getByRole("tab", { name: "Profile" }).click();
+
+  // Resend set-password is rate limited to three per hour per target person (R-19, R-41). Press it
+  // three times: each is allowed and sends a fresh realm email.
   const resend = inspector.getByRole("button", {
     name: "Resend set-password email",
   });

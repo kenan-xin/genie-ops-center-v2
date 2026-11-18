@@ -2,8 +2,13 @@ import { randomUUID } from "node:crypto";
 
 import { createTenantContext, type TenantContext } from "@genie/core";
 import { silentLogger } from "@genie/core/logging";
-import { assignRole, insertRole, insertUser } from "@genie/core/testing";
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import {
+  assignRole,
+  insertGroup,
+  insertRole,
+  insertUser,
+} from "@genie/core/testing";
+import { expect, test } from "@playwright/test";
 
 import { expectNoAxeViolations } from "../support/axe.ts";
 import {
@@ -15,12 +20,12 @@ import { DATABASE_URL, FIRST_PAINT, PUBLIC_URL } from "./dev-support.ts";
 import { DEV_MODULES } from "./global-setup.ts";
 
 /**
- * d8l5.44 through the real dev stack, which compiles Invoices and Payments: an administrator adds a
- * person with one role per module, the selects never offer an administration role, and "Open in
- * Access after adding" lands on the Overview filtered to that person with both rows. The main stack
- * compiles only Placeholder, so this journey runs here (plan P06-15). Each attempt gets its own
- * addresses, because the projects and the `--repeat-each` copies share one database at once; the
- * run starts that database empty, so nothing is cleared.
+ * d8l5.63 (P12-18) through the real dev stack, which compiles Invoices and Payments: an
+ * administrator adds a person with a group made here, the person's sheet opens on Roles with no
+ * role, and Add assignment adds one. The main stack compiles only Placeholder, so this journey
+ * runs here (plan P06-15). Each attempt gets its own addresses and group, because the projects and
+ * the `--repeat-each` copies share one database at once; the run starts that database empty, so
+ * nothing is cleared.
  */
 
 test.skip(
@@ -49,7 +54,7 @@ test.beforeAll(() => {
   );
 });
 
-/** The administrator holds both keys tenant-wide, so Add person shows its role picker. */
+/** The administrator holds the People, Roles and Groups keys tenant-wide, so Add person shows Groups and the sheet offers Add assignment. */
 async function insertAdministrator(email: string): Promise<void> {
   const id = await insertUser(database(), {
     email,
@@ -58,7 +63,11 @@ async function insertAdministrator(email: string): Promise<void> {
   });
 
   const roleId = await insertRole(database(), {
-    permissions: ["core:people:manage", "core:roles:manage"],
+    permissions: [
+      "core:people:manage",
+      "core:roles:manage",
+      "core:groups:manage",
+    ],
   });
 
   await assignRole(database(), { roleId, principal: { type: "user", id } });
@@ -69,46 +78,16 @@ test.afterAll(async () => {
   tenant = undefined;
 });
 
-const LIST = "Assignments, newest first";
-
-/** The rows of whichever layout the viewport draws: a table from 768 px, else a card list. */
-function resultRows(page: Page): Locator {
-  return (page.viewportSize()?.width ?? 0) >= 768
-    ? page.getByRole("table", { name: LIST }).locator("tbody").getByRole("row")
-    : page.getByRole("list", { name: LIST }).getByRole("listitem");
-}
-
-/** Opens a role select, proves it offers no administration role, and picks `option`. */
-async function pickWithoutAdministration(
-  page: Page,
-  label: string,
-  option: string
-): Promise<void> {
-  // By role: the open list repeats the trigger's name (6wz1.97), so a label lookup matches both.
-  const trigger = page.getByRole("combobox", { name: label, exact: true });
-
-  await trigger.click();
-  await expect(trigger).toHaveAttribute("aria-controls", /.+/);
-
-  const list = page.locator(
-    `[id="${await trigger.getAttribute("aria-controls")}"]`
-  );
-
-  await expect(list).toBeVisible();
-  await expect(
-    list.getByRole("option", { name: /Tenant administrator|Auditor/ })
-  ).toHaveCount(0);
-  await list.getByRole("option", { name: option, exact: true }).click();
-}
-
-test("Add person gives one role per module and opens the person in Access", async ({
+test("Add person adds a group, then opens the Roles tab to add a role", async ({
   page,
 }) => {
   const attempt = randomUUID();
-  const adminEmail = `e2e.p06.admin.${attempt}@example.invalid`;
-  const email = `e2e.p06.added.${attempt}@example.invalid`;
+  const adminEmail = `e2e.p12.admin.${attempt}@example.invalid`;
+  const email = `e2e.p12.added.${attempt}@example.invalid`;
+  const groupName = `E2E P12 group ${attempt}`;
 
   await insertAdministrator(adminEmail);
+  const groupId = await insertGroup(database(), [], { name: groupName });
   await hideDevelopmentWidgets(page);
   await signInAs(page, adminEmail);
   await page.goto("/admin/people");
@@ -122,57 +101,80 @@ test("Add person gives one role per module and opens the person in Access", asyn
   await dialog.getByLabel("Work email", { exact: true }).fill(email);
   await dialog
     .getByLabel("Display name", { exact: true })
-    .fill("E2E P06 added");
+    .fill("E2E P12 added");
+  await dialog.getByRole("combobox", { name: "Groups" }).fill(groupName);
+  await page.getByRole("option", { name: groupName, exact: true }).click();
+  // Tab closes the list; Escape could close the dialog.
+  await page.keyboard.press("Tab");
+  await expect(
+    dialog.getByRole("button", { name: `Remove ${groupName}` })
+  ).toBeVisible();
   // The dev stack can run with no mailer, and the journey needs no email.
   await dialog
     .getByRole("checkbox", { name: "Send invitation email" })
     .uncheck();
-
-  await pickWithoutAdministration(
-    page,
-    "Role for Invoices and Payments",
-    "Invoices and Payments viewer (default)"
-  );
-  await pickWithoutAdministration(page, "Role for Ask", "Ask user (default)");
-  await expect(dialog).toContainText("Access to Invoices and Payments and Ask");
-  await dialog
-    .getByRole("checkbox", { name: "Open in Access after adding" })
-    .check();
-  await expectNoAxeViolations(page, "Add person with two picks");
+  // d8l5.63: no role is offered here.
+  await expect(
+    dialog.getByRole("combobox", { name: /^Role for / })
+  ).toHaveCount(0);
+  await expect(dialog.getByText("Open in Access after adding")).toHaveCount(0);
+  await expectNoAxeViolations(page, "Add person with a group");
   await dialog.getByRole("button", { name: "Add person" }).click();
 
-  await expect
-    .poll(
-      async () => {
-        const { rows } = await database().db.$client.query<{ id: string }>(
-          'select id from "user" where email = $1',
-          [email]
-        );
+  const personId = async () => {
+    const { rows } = await database().db.$client.query<{ id: string }>(
+      'select id from "user" where email = $1',
+      [email]
+    );
 
-        return rows[0]?.id;
-      },
-      { timeout: 30_000 }
-    )
-    .toBeDefined();
+    return rows[0]?.id;
+  };
 
-  const { rows } = await database().db.$client.query<{ id: string }>(
-    'select id from "user" where email = $1',
-    [email]
+  await expect.poll(personId, { timeout: 30_000 }).toBeDefined();
+
+  const id = (await personId()) ?? "";
+
+  const { rows: members } = await database().db.$client.query<{
+    count: string;
+  }>("select count(*) from group_member where user_id = $1 and group_id = $2", [
+    id,
+    groupId,
+  ]);
+
+  expect(members[0]?.count).toBe("1");
+
+  // P12-18: the new person's sheet opens on Roles, with no role yet.
+  const sheet = page.getByRole("dialog", { name: "E2E P12 added" });
+
+  await expect(
+    sheet.getByRole("heading", { name: "Assigned roles (0)" })
+  ).toBeVisible(FIRST_PAINT);
+  await expect(sheet.getByRole("tab", { name: /^Roles/ })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+  await sheet.getByRole("button", { name: "Add assignment" }).click();
+  await sheet.getByRole("combobox", { name: "Role" }).click();
+  await page
+    .getByRole("option", { name: /^Invoices and Payments viewer/ })
+    .click();
+  await sheet.getByRole("button", { name: "Add assignment" }).click();
+
+  await expect(
+    sheet.getByRole("heading", { name: "Assigned roles (1)" })
+  ).toBeVisible(FIRST_PAINT);
+  await expect(
+    sheet
+      .getByText("Invoices and Payments viewer", { exact: true })
+      .filter({ visible: true })
+  ).toHaveCount(1);
+
+  const { rows: assigned } = await database().db.$client.query<{
+    count: string;
+  }>(
+    "select count(*) from role_assignment where principal_type = 'user' and principal_id = $1",
+    [id]
   );
 
-  const personId = rows[0]?.id ?? "";
-
-  // d8l5.46 (P12-8): the person route lands on the Overview filtered to the person, encoded as
-  // accessOverviewHref encodes it.
-  const overview = `/admin/access/overview?${new URLSearchParams({ who: `user:${personId}` })}`;
-
-  await expect(page).toHaveURL(overview, FIRST_PAINT);
-
-  await expect(resultRows(page)).toHaveCount(2, FIRST_PAINT);
-  await expect(
-    resultRows(page).filter({ hasText: "Invoices and Payments viewer" })
-  ).toHaveCount(1);
-  await expect(resultRows(page).filter({ hasText: "Ask user" })).toHaveCount(1);
-  // The phone card drops Assigned to under a person filter; the address names the person.
-  await expect(resultRows(page).filter({ hasText: "Direct" })).toHaveCount(2);
+  expect(assigned[0]?.count).toBe("1");
 });

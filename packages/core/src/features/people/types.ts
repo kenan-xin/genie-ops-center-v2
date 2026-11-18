@@ -8,7 +8,6 @@ import type {
   PersonSessionRow as PersonSession,
   PersonStatus,
 } from "../../services/people/index.ts";
-import type { GrantRow } from "../../services/roles/grants.ts";
 import type { AddAssignmentHost } from "../access/add-assignment-form.tsx";
 import type { InspectorAccess } from "../access/assignments-table.tsx";
 import type { NoMatchCopy } from "../admin/no-match.tsx";
@@ -45,16 +44,15 @@ export type PeopleViewer = {
   readonly nowIso: string;
 };
 
-/** What Add person writes (R-40, R-40a). */
+/** What Add person writes (R-40, R-40a, d8l5.63). Roles are added after, on the Roles tab (P12-18). */
 export type NewPersonInput = {
   readonly email: string;
   readonly name?: string | undefined;
-  readonly roleIds: readonly string[];
+  /** Groups made here; only a group manager sees the field (P12-4). */
+  readonly groupIds: readonly string[];
   readonly accountType?: AccountType | undefined;
   /** Brokered accounts only; the checkbox is checked by default (R-40a). */
   readonly sendInvitation?: boolean | undefined;
-  /** Open Access for the new person after a full add, through `onManageAccess` (d8l5.44). */
-  readonly openInAccess?: boolean | undefined;
 };
 
 /** What a host's add answers: the person, and whether the expected email went out (N1). */
@@ -71,13 +69,6 @@ export type PeopleScreenProps = {
   readonly searchLabel: string;
   /** The copy when the search and filters match nobody. */
   readonly noMatch: NoMatchCopy;
-  /** The Grants rows of R-37a that Add person offers, one role choice each. */
-  readonly grantRows: readonly GrantRow[];
-  /**
-   * Whether the caller may pick roles in Add person: `core:roles:manage` tenant-wide. False hides
-   * the picker; the server refuses roles in the input (DEC-39, R-40). Defaults to true.
-   */
-  readonly canAssignRoles?: boolean | undefined;
   /** Per-person detail the host loads on selection, for the inspector. */
   readonly details?: Readonly<Record<string, PersonDetail>>;
   /** R-38: person ids where disable or remove would leave no active tenant administrator. */
@@ -129,10 +120,7 @@ export type PeopleScreenProps = {
    * the People read, read-only; undefined hides the Access tab (LK4, U5).
    */
   readonly access?: InspectorAccess | undefined;
-  /**
-   * The local groups the person's Groups tab offers in Add to group. The host passes them and the
-   * two callbacks only to a caller who manages groups (`canManageGroups`, G16).
-   */
+  /** The groups made here that Add person and the person's Add to group offer. The host passes them, with Add to group, only to a caller who holds core:groups:manage tenant-wide (P12-4, d8l5.51); Remove follows plain core:groups:manage (G16). */
   readonly localGroups?: readonly PersonGroupOption[] | undefined;
   readonly onAddToGroup?:
     | ((personId: string, groupId: string) => void)

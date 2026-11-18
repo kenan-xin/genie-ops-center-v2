@@ -1,4 +1,9 @@
-import { can, coreAdminPermission, managesAllRoles } from "@genie/core";
+import {
+  can,
+  coreAdminPermission,
+  managesAllRoles,
+  scopesFor,
+} from "@genie/core";
 import { PageHeader } from "@genie/core/features/shell";
 import { getTranslations } from "next-intl/server";
 
@@ -18,7 +23,9 @@ export async function generateMetadata() {
  * The People screen, behind `core:people:manage`. The one authorization seam refuses an anonymous
  * or unpermitted request before the screen mounts, so the route reveals nothing it would show. The
  * onboarding mode and the local-accounts setting are read once here through the tenant readers
- * (DEC-46) and handed to the Add person dialog; the server re-checks every write.
+ * (DEC-46) and handed to the Add person dialog; the server re-checks every write. Groups in Add
+ * person and Add to group show only to a caller who holds core:groups:manage tenant-wide, the
+ * server's own gate (P12-4).
  */
 export default async function PeoplePage() {
   return renderIfPermitted(
@@ -52,6 +59,10 @@ export default async function PeoplePage() {
               coreAdminPermission("core-access")
             )}
             canAddAssignments={await managesAllRoles(caller)}
+            canAddToGroups={
+              (await scopesFor(caller, coreAdminPermission("core-groups")))
+                .kind === "all"
+            }
           />
         </main>
       );

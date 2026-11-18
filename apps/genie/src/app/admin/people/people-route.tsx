@@ -32,6 +32,8 @@ export function PeopleRoute(props: {
   readonly canManageAccess: boolean;
   /** Tenant-wide `core:roles:manage`, the server's own gate for adding and for every Access read (P12-2). */
   readonly canAddAssignments: boolean;
+  /** `core:groups:manage` held tenant-wide, the server's gate for adding a member (P12-4, d8l5.51). */
+  readonly canAddToGroups: boolean;
 }) {
   const t = useTranslations("pages");
   const router = useRouter();
@@ -60,14 +62,6 @@ export function PeopleRoute(props: {
     queryFn: () => rpc.people.capabilities(),
   });
 
-  // Add person offers the Grants rows, the read of the Access routes (R-40, d8l5.44). It needs
-  // `core:roles:manage` tenant-wide, which `canAssignRoles` answers.
-  const catalogue = useQuery({
-    queryKey: ["access", "catalogue"],
-    queryFn: () => rpc.roles.grantCatalogue(),
-    enabled: capabilities.data?.canAssignRoles === true,
-  });
-
   const canManageGroups = capabilities.data?.canManageGroups === true;
 
   const access = usePersonAccess({
@@ -85,11 +79,11 @@ export function PeopleRoute(props: {
     paths: access.paths,
   });
 
-  // The local groups the person's Add to group offers, read only for a caller who manages groups.
+  // The groups made here that Add person and Add to group offer, read only for a caller who may add members (P12-4).
   const groups = useQuery({
     queryKey: ["groups", false],
     queryFn: () => rpc.groups.list({ includeArchived: false }),
-    enabled: canManageGroups,
+    enabled: props.canAddToGroups,
   });
 
   const localGroups = (groups.data ?? [])
@@ -110,7 +104,7 @@ export function PeopleRoute(props: {
 
   const add = useAdminWrite({
     write: (input: NewPersonInput) =>
-      rpc.people.add({ ...input, roleIds: [...input.roleIds] }),
+      rpc.people.add({ ...input, groupIds: [...input.groupIds] }),
     invalidate: [["people"]],
     // A committed add whose email did not go out is a partial success: a status notice points at
     // Resend instead (N1). Only a full add gets its own toast (PD-13).
@@ -131,12 +125,9 @@ export function PeopleRoute(props: {
   };
 
   // Add person resolves only on success, so the dialog stays open on a refusal and shows it. A
-  // partial success closes the dialog and shows the notice. The screen follows "Open in Access
-  // after adding" through `onManageAccess`, after a full add of the dialog still open (P06-14).
-  const addPerson = ({
-    openInAccess: _screenOnly,
-    ...input
-  }: NewPersonInput): Promise<AddedPerson> => {
+  // partial success closes the dialog and shows the notice. The screen then opens the person's
+  // Roles tab (P12-18).
+  const addPerson = (input: NewPersonInput): Promise<AddedPerson> => {
     setError(undefined);
     setNotice(undefined);
 
@@ -159,8 +150,6 @@ export function PeopleRoute(props: {
         description: t("people.noMatch.description"),
         clearLabel: tNoMatch("clear"),
       }}
-      grantRows={catalogue.data ?? []}
-      canAssignRoles={capabilities.data?.canAssignRoles ?? true}
       loading={list.isPending}
       pending={action.isPending || add.isPending}
       error={
@@ -195,9 +184,9 @@ export function PeopleRoute(props: {
       onResendInvitation={(personId) =>
         run(() => rpc.people.resendInvitation({ personId }))
       }
-      localGroups={canManageGroups ? localGroups : undefined}
+      localGroups={props.canAddToGroups ? localGroups : undefined}
       onAddToGroup={
-        canManageGroups
+        props.canAddToGroups
           ? (personId, groupId) =>
               run(() => rpc.groups.addMembers({ groupId, userIds: [personId] }))
           : undefined

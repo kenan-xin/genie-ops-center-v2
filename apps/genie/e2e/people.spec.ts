@@ -73,8 +73,12 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   page.on("request", (request) => {
     if (request.url().includes("/api/rpc/people/get"))
-      detailReads.push(request.url());
+      detailReads.push(request.postData() ?? "");
   });
+
+  const [adminId] = await queryDatabase(
+    `select id from "user" where email = '${adminEmail}'`
+  );
 
   // Add person: the invitation checkbox is checked by default (R-40a).
   await page.getByRole("button", { name: "Add person" }).click();
@@ -113,19 +117,13 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
 
   // A save that fully succeeded is reported by a toast (PD-13).
   // Exact, so that the partial-success notice "Person added; the email was not sent" fails it.
-  await expect(
-    page
-      .getByRole("status")
-      .filter({ has: page.getByText("Person added", { exact: true }) })
-  ).toBeVisible();
+  await expect(page.getByText("Person added", { exact: true })).toBeVisible();
 
   // The toast follows the reloads, so a read of the closed person would be sent by now (6wz1.20).
-  expect(detailReads).toEqual([]);
-
-  // The table and the phone card list both hold the row, and only one of them shows.
-  await expect(
-    page.getByText(`E2E Added ${project}`).filter({ visible: true })
-  ).toBeVisible();
+  // The new person's sheet is read: it opens on Roles (P12-18).
+  expect(detailReads.filter((body) => body.includes(adminId ?? "-"))).toEqual(
+    []
+  );
 
   // R-40a: one `invitation-brokered` email, with a sign-in link built from PUBLIC_URL.
   const mail = await waitForMessageTo(personEmail);
@@ -133,15 +131,17 @@ test("add a brokered person, send the invitation to Mailpit, remove them, and ho
   expect(mail.Subject).toContain("invited");
   expect(linksIn(mail)).toContain(`${publicUrl}/sign-in`);
 
-  // Open the added person and remove them. Remove confirms first, bans the row, and keeps it.
-  await page
-    .getByRole("button", { name: new RegExp(`E2E Added ${project}`) })
-    .first()
-    .click();
+  // P12-18: the added person's sheet opens on Roles; the account line sits on Profile.
+  const inspector = page.getByRole("dialog", { name: `E2E Added ${project}` });
 
-  const inspector = page.getByRole("dialog", {
-    name: `E2E Added ${project}`,
-  });
+  await expect(inspector.getByRole("tab", { name: /^Roles/ })).toHaveAttribute(
+    "aria-selected",
+    "true"
+  );
+  await expect(
+    inspector.getByRole("heading", { name: "Assigned roles (0)" })
+  ).toBeVisible();
+  await inspector.getByRole("tab", { name: "Profile" }).click();
 
   await expect(
     inspector.getByText("Brokered through the identity provider", {

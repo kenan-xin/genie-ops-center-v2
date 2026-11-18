@@ -5,6 +5,14 @@ import {
   AvatarFallback,
   Button,
   Checkbox,
+  Combobox,
+  ComboboxChip,
+  ComboboxChips,
+  ComboboxChipsInput,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
   ConfirmDialog,
   CountPill,
   DataTable,
@@ -48,18 +56,9 @@ import {
   type DataTableAction,
   touchRowHeight,
 } from "@genie/ui";
-import { ArrowRightIcon, LockIcon } from "lucide-react";
-import {
-  Fragment,
-  type ReactNode,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { ArrowRightIcon, CheckIcon, LockIcon } from "lucide-react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-import type { GrantRow } from "../../services/roles/grants.ts";
 import {
   AddAssignmentForm,
   type AddAssignmentHost,
@@ -74,7 +73,6 @@ import {
   LocalIcon,
   PlusIcon,
   SearchIcon,
-  ShieldIcon,
 } from "../admin/icons.tsx";
 import { NoMatch } from "../admin/no-match.tsx";
 import {
@@ -264,10 +262,12 @@ function PersonConfirms(props: {
  * read-only, and passes Add assignment only with the Roles key (LK4, `d8l5.43`). Manage in Access
  * sits under the table and opens Access with the person filtered (P12-10). Disable and Remove
  * confirm inside the sheet, so that one Escape closes only the confirm (PD-8); `onDisable` and
- * `onRemove` fire once confirmed.
+ * `onRemove` fire once confirmed. After Add person the screen opens it on Roles (initialTab, P12-18).
  */
 export function PersonInspector(props: {
   readonly open?: boolean;
+  /** The tab that each open starts on; "access" is the Roles tab (P12-18). */
+  readonly initialTab?: "profile" | "access" | undefined;
   readonly person: PersonDetail;
   readonly viewer: PeopleViewer;
   readonly self: boolean;
@@ -297,7 +297,8 @@ export function PersonInspector(props: {
 }) {
   const { person, viewer } = props;
   const open = props.open ?? true;
-  const [tab, setTab] = useState<(typeof TABS)[number]>("profile");
+  const initialTab = props.initialTab ?? "profile";
+  const [tab, setTab] = useState<(typeof TABS)[number]>(initialTab);
   const [confirm, setConfirm] = useState<ConfirmKind | null>(null);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -309,13 +310,13 @@ export function PersonInspector(props: {
   const addingForm =
     adding && host !== undefined && props.access?.paths !== undefined;
 
-  // The sheet stays mounted, so each open starts on the profile with no confirm.
+  // The sheet stays mounted, so each open starts on its first tab with no confirm.
   useEffect(() => {
-    setTab("profile");
+    setTab(initialTab);
     setConfirm(null);
     setAdding(false);
     setNewRows(new Set());
-  }, [open, person.id]);
+  }, [open, person.id, initialTab]);
 
   const pendingLocal =
     person.status === "pending" && person.accountType === "local";
@@ -923,6 +924,24 @@ export function PeopleScreen(props: PeopleScreenProps) {
   const [adding, setAdding] = useState(false);
   // The Add person dialog waits for the host and keeps a refusal inside it (U-1, R-38).
   const addForm = useDialogSubmit();
+  // The person an add answered with: their sheet opens on Roles once their row is in the list,
+  // which the host reloads before the add resolves (P12-18).
+  const [justAdded, setJustAdded] = useState<string | null>(null);
+  const [firstTab, setFirstTab] = useState<"profile" | "access">("profile");
+
+  useEffect(() => {
+    if (
+      justAdded === null ||
+      !props.people.some((person) => person.id === justAdded)
+    )
+      return;
+
+    setJustAdded(null);
+    setSelectedId(justAdded);
+    setFirstTab("access");
+    setInspectorOpen(true);
+    props.onSelectPerson?.(justAdded);
+  }, [justAdded, props.people, props.onSelectPerson]);
   const searchId = useId();
   const statusId = useId();
   const groupId = useId();
@@ -1193,6 +1212,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
             rowKey={(person) => person.id}
             rowLabel={(person) => person.email}
             onOpenRow={(person) => {
+              setFirstTab("profile");
               setSelectedId(person.id);
               setInspectorOpen(true);
               props.onSelectPerson?.(person.id);
@@ -1271,8 +1291,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
       <AddPersonDialog
         open={adding}
         settings={props.settings}
-        grantRows={props.grantRows}
-        canAssignRoles={props.canAssignRoles}
+        localGroups={props.localGroups}
         error={addForm.failure ?? undefined}
         emailError={
           addForm.issues.find((issue) => issue.path === "email")?.message
@@ -1285,8 +1304,8 @@ export function PeopleScreen(props: PeopleScreenProps) {
         onSubmit={(input) => {
           let added: AddedPerson | void;
 
-          // Access opens in `onSaved`, which an answer after Cancel never reaches, and only after
-          // a full add: a partial add stays here for Resend (P06-14).
+          // The sheet opens from `onSaved`, which an answer after Cancel never reaches. A partial add
+          // opens it too: the notice stays on the page and Resend sits on Profile (P12-18).
           void addForm.submit(
             async () => {
               added = await props.onAddPerson?.(input);
@@ -1294,9 +1313,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
             () => {
               setAdding(false);
 
-              if (input.openInAccess === true && added?.emailSent === true) {
-                props.onManageAccess?.(added.id);
-              }
+              if (added) setJustAdded(added.id);
             }
           );
         }}
@@ -1305,6 +1322,7 @@ export function PeopleScreen(props: PeopleScreenProps) {
       {selected === undefined ? null : (
         <PersonInspector
           open={inspectorOpen}
+          initialTab={props.access === undefined ? "profile" : firstTab}
           pending={props.pending}
           person={selected}
           viewer={props.viewer}
@@ -1392,103 +1410,12 @@ function FilterChip(props: {
   );
 }
 
-/** More switched-on modules than this get a "Find a module" field (prototype variant A). */
-const FINDER_THRESHOLD = 6;
-
-/** What the picks give, for the footer: the row names, or a count past three (variant A). */
-function accessSummary(names: readonly string[]): ReactNode {
-  if (names.length === 0) return "No access yet";
-
-  if (names.length > 3) {
-    return (
-      <>
-        Access to <strong>{names.length} modules</strong>
-      </>
-    );
-  }
-
-  const last = names.length - 1;
-
-  return (
-    <>
-      Access to{" "}
-      {names.map((name, index) => (
-        <Fragment key={name}>
-          {index === 0 ? "" : index === last ? " and " : ", "}
-          <strong className="font-semibold text-foreground">{name}</strong>
-        </Fragment>
-      ))}
-    </>
-  );
-}
-
-/** One Grants row of Access now: its name and line, and a role choice that starts at No access. */
-function AccessNowRow(props: {
-  readonly row: GrantRow;
-  readonly value: string | null;
-  readonly onChange: (roleId: string | null) => void;
-}) {
-  const triggerId = useId();
-
-  // The Grants catalogue lists the default access role first (P3), so it leads after No access.
-  const items = [
-    { value: null, label: "No access" },
-    ...props.row.roles.map((role) => ({
-      value: role.id,
-      label:
-        role.id === props.row.defaultRoleId
-          ? `${role.name} (default)`
-          : role.name,
-    })),
-  ];
-
-  return (
-    <li
-      className={`flex flex-col gap-2 border-t border-border px-3.5 py-2.5 first:rounded-t-xl first:border-t-0 last:rounded-b-xl md:flex-row md:items-center md:gap-3 ${props.value === null ? "" : "bg-muted"}`}
-    >
-      <label htmlFor={triggerId} className="flex min-w-0 flex-col md:flex-1">
-        <span className="text-sm font-semibold text-foreground">
-          {props.row.name}
-        </span>
-        {props.row.description === null ? null : (
-          <span className="text-xs text-muted-foreground">
-            {props.row.description}
-          </span>
-        )}
-      </label>
-      <div className="md:w-56 md:shrink-0">
-        <Select
-          items={items}
-          value={props.value}
-          onValueChange={(roleId: string | null) => props.onChange(roleId)}
-        >
-          <SelectTrigger
-            id={triggerId}
-            aria-label={`Role for ${props.row.name}`}
-          >
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {items.map((item) => (
-              <SelectItem key={item.value ?? "none"} value={item.value}>
-                {item.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
-    </li>
-  );
-}
-
-/** The Add person dialog (R-40, R-40a, design: `add-person.prototype.html` variant A, d8l5.44). */
+/** The Add person dialog (R-40, R-40a, d8l5.63): the profile, optional groups made here, the account type and the invitation. Roles are added after the save, on the person's Roles tab (P12-18). */
 export function AddPersonDialog(props: {
   readonly open?: boolean;
   readonly settings: PeopleScreenProps["settings"];
-  /** The Grants rows (R-37a): one role choice per switched-on module and Ask. */
-  readonly grantRows: readonly GrantRow[];
-  /** False hides the role picker for a holder of `core:people:manage` alone (DEC-39). */
-  readonly canAssignRoles?: boolean | undefined;
+  /** The groups made here; only for a caller who adds members tenant-wide (P12-4). Undefined or empty hides Groups. */
+  readonly localGroups?: readonly PersonGroupOption[] | undefined;
   /** The catalogue message of a refusal, shown in the alert; the dialog stays open. */
   readonly error?: string | undefined;
   /** A refusal's issue at the email field (R-40b), shown under it in place of the alert. */
@@ -1503,17 +1430,13 @@ export function AddPersonDialog(props: {
   const [submittedEmail, setSubmittedEmail] = useState("");
   const emailInput = useRef<HTMLInputElement>(null);
   const [name, setName] = useState("");
-  // The picked role of each Grants row, by row id. A row with no entry has No access.
-  const [picks, setPicks] = useState<Readonly<Record<string, string>>>({});
-  const [moduleQuery, setModuleQuery] = useState("");
-  const [openInAccess, setOpenInAccess] = useState(false);
+  const [groups, setGroups] = useState<readonly PersonGroupOption[]>([]);
+  const groupChips = useRef<HTMLDivElement | null>(null);
   const [accountType, setAccountType] = useState<AccountType>("brokered");
   const [sendInvitation, setSendInvitation] = useState(true);
   const emailId = useId();
   const nameId = useId();
-  const hintId = useId();
-  const modulesId = useId();
-  const coreId = useId();
+  const groupsId = useId();
   const accountTypeId = useId();
 
   // The dialog stays mounted, so each open starts from an empty form.
@@ -1522,9 +1445,7 @@ export function AddPersonDialog(props: {
 
     setEmail("");
     setName("");
-    setPicks({});
-    setModuleQuery("");
-    setOpenInAccess(false);
+    setGroups([]);
     setAccountType("brokered");
     setSendInvitation(true);
   }, [open]);
@@ -1542,53 +1463,9 @@ export function AddPersonDialog(props: {
 
   const localAvailable = props.settings.localAccountsEnabled;
 
-  const canAssignRoles = props.canAssignRoles ?? true;
-
   const brokered = !localAvailable || accountType === "brokered";
 
-  const showPicker = canAssignRoles && props.grantRows.length > 0;
-
-  const modules = props.grantRows.filter(
-    (row) => row.group === "modules" && row.enabled
-  );
-
-  const switchedOff = props.grantRows.filter(
-    (row) => row.group === "modules" && !row.enabled
-  );
-
-  const core = props.grantRows.filter((row) => row.group === "core");
-
-  const showFinder = modules.length > FINDER_THRESHOLD;
-
-  const term = showFinder ? moduleQuery.trim().toLowerCase() : "";
-
-  // The finder only hides rows; a hidden row keeps its pick.
-  const shownModules = modules.filter((row) =>
-    row.name.toLowerCase().includes(term)
-  );
-
-  const picked = [...modules, ...core].filter(
-    (row) => picks[row.id] !== undefined
-  );
-
-  const pick = (rowId: string, roleId: string | null) =>
-    setPicks((current) => {
-      const { [rowId]: _replaced, ...rest } = current;
-
-      return roleId === null ? rest : { ...rest, [rowId]: roleId };
-    });
-
-  const row = (entry: GrantRow) => (
-    <AccessNowRow
-      key={entry.id}
-      row={entry}
-      value={picks[entry.id] ?? null}
-      onChange={(roleId) => pick(entry.id, roleId)}
-    />
-  );
-
-  const groupHeading =
-    "mt-1.5 text-xs font-bold tracking-wider text-muted-foreground uppercase";
+  const groupChoices = props.localGroups ?? [];
 
   return (
     <Dialog
@@ -1604,8 +1481,7 @@ export function AddPersonDialog(props: {
           <DialogTitle>Add person</DialogTitle>
           {/* No setting names the provider yet, so the generic word stands (G13). */}
           <DialogDescription>
-            They sign in with their identity provider account. Access you choose
-            now applies at first sign-in.
+            They sign in with their identity provider account.
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-3">
@@ -1637,98 +1513,57 @@ export function AddPersonDialog(props: {
               onChange={(event) => setName(event.target.value)}
             />
           </Field>
-          {showPicker ? (
-            <fieldset
-              aria-describedby={hintId}
-              className="flex min-w-0 flex-col gap-2.5"
-            >
-              <legend className="mb-0.5 text-sm font-semibold text-foreground">
-                Access now{" "}
-                <span className="text-xs font-normal text-muted-foreground">
+          {groupChoices.length === 0 ? null : (
+            <Field>
+              <span className="flex items-baseline gap-1">
+                <FieldLabel htmlFor={groupsId}>Groups</FieldLabel>
+                <span className="text-xs text-muted-foreground">
                   (optional)
                 </span>
-              </legend>
-              <p id={hintId} className="text-sm text-muted-foreground">
-                One role per module. Each module starts at No access; the first
-                role listed is the module&apos;s default.
-              </p>
-              {showFinder ? (
-                <InputGroup>
-                  <InputGroupInput
-                    type="search"
-                    aria-label="Find a module"
-                    placeholder="Find a module"
-                    autoComplete="off"
-                    value={moduleQuery}
-                    onChange={(event) => setModuleQuery(event.target.value)}
-                  />
-                  <InputGroupAddon>
-                    <InputGroupText>
-                      <SearchIcon aria-hidden="true" />
-                    </InputGroupText>
-                  </InputGroupAddon>
-                </InputGroup>
-              ) : null}
-              {modules.length === 0 ? null : (
-                <>
-                  <p id={modulesId} className={groupHeading}>
-                    Modules · {modules.length}
-                  </p>
-                  {shownModules.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">
-                      No module matches “{moduleQuery.trim()}”.
-                    </p>
-                  ) : (
-                    <ul
-                      aria-labelledby={modulesId}
-                      className="rounded-xl border border-border"
+              </span>
+              <Combobox<PersonGroupOption, true>
+                multiple
+                items={groupChoices}
+                itemToStringLabel={(group) => group.label}
+                isItemEqualToValue={(a, b) => a.id === b.id}
+                value={[...groups]}
+                onValueChange={setGroups}
+              >
+                <ComboboxChips ref={groupChips}>
+                  {groups.map((group) => (
+                    <ComboboxChip
+                      key={group.id}
+                      removeLabel={`Remove ${group.label}`}
                     >
-                      {shownModules.map(row)}
-                    </ul>
-                  )}
-                </>
-              )}
-              {switchedOff.length === 0 ? null : (
-                <p className="text-sm text-muted-foreground">
-                  Module off:{" "}
-                  {switchedOff.map((entry) => entry.name).join(", ")}. Turn a
-                  module on in Modules before you give access to it.
-                </p>
-              )}
-              {core.length === 0 ? null : (
-                <>
-                  <p id={coreId} className={groupHeading}>
-                    Core · {core.length}
-                  </p>
-                  <ul
-                    aria-labelledby={coreId}
-                    className="rounded-xl border border-border"
-                  >
-                    {core.map(row)}
-                  </ul>
-                </>
-              )}
-              <div className="flex flex-col gap-2.5 rounded-lg border border-border bg-muted px-3.5 py-3">
-                <p className="flex gap-2 text-sm text-foreground">
-                  <ShieldIcon
-                    aria-hidden="true"
-                    className="size-4 shrink-0 text-muted-foreground"
+                      {group.label}
+                    </ComboboxChip>
+                  ))}
+                  <ComboboxChipsInput
+                    id={groupsId}
+                    placeholder="Search groups"
                   />
-                  Administration roles (Tenant administrator, Auditor) are added
-                  in Access.
-                </p>
-                <label
-                  className={`flex ${touchRowHeight} items-center gap-2 text-sm text-foreground`}
-                >
-                  <Checkbox
-                    checked={openInAccess}
-                    onCheckedChange={setOpenInAccess}
-                  />
-                  Open in Access after adding
-                </label>
-              </div>
-            </fieldset>
-          ) : null}
+                </ComboboxChips>
+                <ComboboxContent anchor={groupChips}>
+                  <ComboboxEmpty>No group matches.</ComboboxEmpty>
+                  <ComboboxList>
+                    {(group: PersonGroupOption) => (
+                      <ComboboxItem key={group.id} value={group}>
+                        <span className="min-w-0 flex-1 truncate">
+                          {group.label}
+                        </span>
+                        {groups.some((picked) => picked.id === group.id) ? (
+                          <CheckIcon
+                            aria-hidden="true"
+                            className="size-4 shrink-0 text-primary"
+                          />
+                        ) : null}
+                      </ComboboxItem>
+                    )}
+                  </ComboboxList>
+                </ComboboxContent>
+              </Combobox>
+            </Field>
+          )}
 
           {localAvailable ? (
             <div>
@@ -1802,11 +1637,6 @@ export function AddPersonDialog(props: {
             props.emailError === undefined ? (props.error ?? null) : null
           }
           placement="dialog"
-          status={
-            showPicker
-              ? accessSummary(picked.map((entry) => entry.name))
-              : undefined
-          }
         >
           <Button variant="secondary" onClick={props.onCancel}>
             Cancel
@@ -1819,11 +1649,8 @@ export function AddPersonDialog(props: {
               props.onSubmit({
                 email: email.trim(),
                 name: name.trim() === "" ? undefined : name.trim(),
-                // One role per picked row, in row order (R-40).
-                roleIds: canAssignRoles
-                  ? picked.flatMap((entry) => picks[entry.id] ?? [])
-                  : [],
-                openInAccess: canAssignRoles && openInAccess,
+                // Only a caller offered Groups can pick one; anyone else sends none (P12-4).
+                groupIds: groups.map((group) => group.id),
                 accountType: localAvailable ? accountType : undefined,
                 sendInvitation: brokered ? sendInvitation : undefined,
               });

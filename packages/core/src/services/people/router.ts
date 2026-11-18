@@ -76,8 +76,8 @@ export function createPeopleRouter(modules: readonly RolesModule[]) {
       return found;
     }),
 
-    // `canAssignRoles` hides the Add person role picker for a holder of `core:people:manage`
-    // alone, matching the server's refusal (DEC-39).
+    // `canAssignRoles` answers whether the caller holds core:roles:manage tenant-wide, the gate for
+    // `roleIds`; Add person no longer offers roles (d8l5.63), API callers may.
     // `canManageGroups` shows the person's Add to group and Remove controls only to a caller the
     // groups router lets add and remove members (G16).
     capabilities: managed.capabilities.handler(async ({ context }) => ({

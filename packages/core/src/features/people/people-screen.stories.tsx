@@ -9,10 +9,8 @@ import type { RoleChoiceGroup } from "../access/add-assignment-view.ts";
 import {
   FIXTURE_DETAILS,
   FIXTURE_JIT_SETTINGS,
-  FIXTURE_MANY_ROWS,
   FIXTURE_PEOPLE,
   FIXTURE_SETTINGS,
-  FIXTURE_SIX_ROWS,
   FIXTURE_SOLE_ADMIN_PERSON_ID,
   FIXTURE_VIEWER,
 } from "./__fixtures__/people.ts";
@@ -22,11 +20,7 @@ import {
   PeopleScreen,
   SELF_REASON,
 } from "./people-screen.tsx";
-import type {
-  AddedPerson,
-  NewPersonInput,
-  PeopleScreenProps,
-} from "./types.ts";
+import type { AddedPerson, PeopleScreenProps } from "./types.ts";
 
 const onAddPerson = fn();
 
@@ -54,7 +48,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The People directory and inspector. Add person writes the person and the picked roles together; a local account's password is set by the realm's own email. Remove revokes access and keeps the audit trail. The break-glass account never appears here.",
+          "The People directory and inspector. Add person writes the person and the picked groups together, then opens the person's Roles tab for their first role; a local account's password is set by the realm's own email. Remove revokes access and keeps the audit trail. The break-glass account never appears here.",
       },
     },
     a11y: { test: "error" },
@@ -69,8 +63,6 @@ const meta = {
     people: FIXTURE_PEOPLE,
     viewer: FIXTURE_VIEWER,
     settings: FIXTURE_SETTINGS,
-    // Harbor Point: Analytics off; Invoices, Placeholder, Slides and Ask on.
-    grantRows: FIXTURE_ROWS,
     details: FIXTURE_DETAILS,
     lastAdministratorPersonIds: [],
     onAddPerson,
@@ -998,172 +990,6 @@ const openAddPerson = async (canvas: Canvas) => {
   return within(dialog);
 };
 
-type DialogQueries = Awaited<ReturnType<typeof openAddPerson>>;
-
-/** Picks one role in a row, as the Access stories pick: the select by its label, then the option. */
-const pickRole = async (dialog: DialogQueries, row: string, role: string) => {
-  await userEvent.click(
-    dialog.getByRole("combobox", { name: `Role for ${row}` })
-  );
-  await userEvent.click(await screen.findByRole("option", { name: role }));
-  // The next pick starts with no popup open.
-  await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
-};
-
-/** The footer line, whose names sit in `<strong>`, read as one text. */
-const footerLine = (dialog: DialogQueries, text: string) =>
-  dialog.getByText(
-    (_, element) => element?.tagName === "P" && element.textContent === text
-  );
-
-/** F1: every row starts at No access, a switched-off module is only named, the default is first. */
-export const AddPersonStartsAtNoAccess: Story = {
-  play: async ({ canvas }) => {
-    const dialog = await openAddPerson(canvas);
-
-    const access = within(dialog.getByRole("group", { name: /^Access now/ }));
-
-    await expect(
-      access.getByText(
-        "One role per module. Each module starts at No access; the first role listed is the module's default."
-      )
-    ).toBeVisible();
-    await expect(access.getByText("Modules · 3")).toBeVisible();
-    await expect(access.getByText("Core · 1")).toBeVisible();
-
-    for (const row of ["Invoices", "Placeholder", "Slides", "Ask"]) {
-      // oxlint-disable-next-line no-await-in-loop
-      await expect(
-        access.getByRole("combobox", { name: `Role for ${row}` })
-      ).toHaveTextContent("No access");
-    }
-
-    await expect(
-      access.queryByRole("combobox", { name: "Role for Analytics" })
-    ).toBeNull();
-    await expect(
-      access.getByText(
-        "Module off: Analytics. Turn a module on in Modules before you give access to it."
-      )
-    ).toBeVisible();
-    await expect(
-      access.getByText(
-        "Administration roles (Tenant administrator, Auditor) are added in Access."
-      )
-    ).toBeVisible();
-    await expect(
-      access.getByRole("checkbox", { name: "Open in Access after adding" })
-    ).not.toBeChecked();
-    await expect(footerLine(dialog, "No access yet")).toBeVisible();
-
-    await userEvent.click(
-      access.getByRole("combobox", { name: "Role for Invoices" })
-    );
-
-    const options = await screen.findAllByRole("option");
-
-    await expect(options.map((option) => option.textContent)).toEqual([
-      "No access",
-      "Viewer (default)",
-      "Invoices and Payments user",
-      "Finance",
-      "Invoice auditor",
-    ]);
-
-    await userEvent.keyboard("{Escape}");
-  },
-};
-
-/** F2: one role per row, a second pick replaces the first, and the footer names what they get. */
-export const AddPersonGivesOneRolePerModule: Story = {
-  play: async ({ canvas }) => {
-    onAddPerson.mockClear();
-
-    const dialog = await openAddPerson(canvas);
-
-    await userEvent.type(
-      dialog.getByLabelText("Work email"),
-      "new@example.com"
-    );
-    await pickRole(dialog, "Invoices", "Viewer (default)");
-    await pickRole(dialog, "Invoices", "Finance");
-    await pickRole(dialog, "Slides", "Slides editor (default)");
-    await pickRole(dialog, "Ask", "Ask user (default)");
-
-    await expect(
-      dialog.getByRole("combobox", { name: "Role for Invoices" })
-    ).toHaveTextContent("Finance");
-    await expect(
-      footerLine(dialog, "Access to Invoices, Slides and Ask")
-    ).toBeVisible();
-
-    await userEvent.click(
-      dialog.getByRole("checkbox", { name: "Open in Access after adding" })
-    );
-    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
-
-    await expect(onAddPerson).toHaveBeenCalledWith(
-      expect.objectContaining({
-        email: "new@example.com",
-        roleIds: ["r-invoices-finance", "r-slides-editor", "r-ask-user"],
-        openInAccess: true,
-      })
-    );
-  },
-};
-
-/** F3: six switched-on modules are one short of the finder. */
-export const SixModulesShowNoFinder: Story = {
-  args: { grantRows: FIXTURE_SIX_ROWS },
-  play: async ({ canvas }) => {
-    const dialog = await openAddPerson(canvas);
-
-    await expect(dialog.getByText("Modules · 6")).toBeVisible();
-    await expect(
-      dialog.queryByRole("searchbox", { name: "Find a module" })
-    ).toBeNull();
-  },
-};
-
-/** F3: past six modules a finder narrows the rows, and more than three picks read as a count. */
-export const ManyModulesFindAModule: Story = {
-  args: { grantRows: FIXTURE_MANY_ROWS },
-  play: async ({ canvas }) => {
-    const dialog = await openAddPerson(canvas);
-
-    await expect(dialog.getByText("Modules · 10")).toBeVisible();
-    await expect(
-      dialog.getByText(
-        "Module off: Travel, Fleet. Turn a module on in Modules before you give access to it."
-      )
-    ).toBeVisible();
-
-    const finder = dialog.getByRole("searchbox", { name: "Find a module" });
-
-    await userEvent.type(finder, "PAY");
-    await expect(
-      dialog.getByRole("combobox", { name: "Role for Payroll" })
-    ).toBeVisible();
-    await expect(
-      dialog.queryByRole("combobox", { name: "Role for Contracts" })
-    ).toBeNull();
-
-    await userEvent.clear(finder);
-    await userEvent.type(finder, "zzz");
-    await expect(dialog.getByText("No module matches “zzz”.")).toBeVisible();
-
-    await userEvent.clear(finder);
-
-    for (const name of ["Contracts", "Approvals", "Assets"]) {
-      // oxlint-disable-next-line no-await-in-loop
-      await pickRole(dialog, name, `${name} viewer`);
-    }
-
-    await pickRole(dialog, "Ask", "Ask user (default)");
-    await expect(footerLine(dialog, "Access to 4 modules")).toBeVisible();
-  },
-};
-
 export const AddPersonSendsTheInvitationByDefault: Story = {
   play: async ({ canvas }) => {
     onAddPerson.mockClear();
@@ -1188,8 +1014,7 @@ export const AddPersonSendsTheInvitationByDefault: Story = {
     expect(onAddPerson).toHaveBeenCalledWith({
       email: "new@example.com",
       name: "New Person",
-      roleIds: [],
-      openInAccess: false,
+      groupIds: [],
       accountType: "brokered",
       sendInvitation: true,
     });
@@ -1643,60 +1468,22 @@ export const AddPersonLateRefusalAfterCancelIsDropped: Story = {
   },
 };
 
-/** F5: Access opens after a full add only; a partial add stays on People for Resend (P06-14). */
-export const AddPersonOpensAccessAfterAFullAdd: Story = {
-  args: {
-    // The first add's email fails, the second's goes out. Storybook resets mocks before a story,
-    // so the answer comes from the input, not from queued `mockResolvedValueOnce` values.
-    onAddPerson: fn(async (input: NewPersonInput): Promise<AddedPerson> =>
-      input.email === "new@example.com"
-        ? { id: "u-new", emailSent: true }
-        : { id: "u-partial", emailSent: false }
-    ),
-    onManageAccess: fn(),
-  },
-  play: async ({ args, canvas }) => {
-    for (const email of ["partial@example.com", "new@example.com"]) {
-      // oxlint-disable-next-line no-await-in-loop
-      const dialog = await openAddPerson(canvas);
-
-      // oxlint-disable-next-line no-await-in-loop
-      await userEvent.type(dialog.getByLabelText("Work email"), email);
-      // oxlint-disable-next-line no-await-in-loop
-      await userEvent.click(
-        dialog.getByRole("checkbox", { name: "Open in Access after adding" })
-      );
-      // oxlint-disable-next-line no-await-in-loop
-      await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
-      // oxlint-disable-next-line no-await-in-loop
-      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    }
-
-    await expect(args.onManageAccess).toHaveBeenCalledTimes(1);
-    await expect(args.onManageAccess).toHaveBeenCalledWith("u-new");
-  },
-};
-
-/** F5: an add that answers after Cancel opens nothing and keeps the form opened since. */
+/** F5: an add that answers after Cancel opens no sheet and keeps the form opened since (P12-18). */
 export const LateAddAfterCancelKeepsTheReopenedForm: Story = {
   args: {
     onAddPerson: fn(
       () =>
         new Promise<AddedPerson>((resolve) =>
-          setTimeout(() => resolve({ id: "u-late", emailSent: true }), 300)
+          setTimeout(() => resolve({ id: "u-leo", emailSent: true }), 300)
         )
     ),
-    onManageAccess: fn(),
   },
-  play: async ({ args, canvas }) => {
+  play: async ({ canvas }) => {
     const dialog = await openAddPerson(canvas);
 
     await userEvent.type(
       dialog.getByLabelText("Work email"),
       "late@example.com"
-    );
-    await userEvent.click(
-      dialog.getByRole("checkbox", { name: "Open in Access after adding" })
     );
     await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
     await userEvent.click(dialog.getByRole("button", { name: "Cancel" }));
@@ -1711,7 +1498,9 @@ export const LateAddAfterCancelKeepsTheReopenedForm: Story = {
     // Wait past the late answer.
     await new Promise((resolve) => setTimeout(resolve, 500));
 
-    await expect(args.onManageAccess).not.toHaveBeenCalled();
+    await expect(
+      screen.queryByRole("dialog", { name: "Leo Local" })
+    ).toBeNull();
     await expect(reopened.getByLabelText("Work email")).toHaveValue(
       "next@example.com"
     );
@@ -1726,29 +1515,183 @@ export const AddPersonPartialSuccessNotice: Story = {
   },
 };
 
-/** F4: without the tenant-wide Roles key, no access is offered and none is sent. */
-export const RolePickerHiddenWithoutTheRolesPermission: Story = {
-  args: { canAssignRoles: false },
+const LOCAL_GROUPS = [
+  { id: "g-night", label: "Night shift" },
+  { id: "g-fin-leads", label: "Finance leads" },
+  { id: "g-temps", label: "Temps" },
+] as const;
+
+/** T11-a (d8l5.63, d8l5.50): the dialog asks for the profile and groups, and offers no role. */
+export const AddPersonHasNoRolePickers: Story = {
+  args: { localGroups: LOCAL_GROUPS },
+  play: async ({ canvas }) => {
+    const dialog = await openAddPerson(canvas);
+
+    await expect(
+      dialog.getByText("They sign in with their identity provider account.", {
+        exact: true,
+      })
+    ).toBeVisible();
+    await expect(dialog.getByLabelText("Work email")).toBeVisible();
+    await expect(dialog.getByLabelText("Display name")).toBeVisible();
+    await expect(
+      dialog.getByRole("combobox", { name: "Groups" })
+    ).toBeVisible();
+    await expect(
+      dialog.getByRole("checkbox", { name: "Send invitation email" })
+    ).toBeChecked();
+    await expect(
+      dialog.queryByRole("group", { name: /^Access now/ })
+    ).toBeNull();
+    await expect(
+      dialog.queryAllByRole("combobox", { name: /^Role for / })
+    ).toHaveLength(0);
+    await expect(
+      dialog.queryByRole("checkbox", { name: "Open in Access after adding" })
+    ).toBeNull();
+    await expect(dialog.queryByText(/Administration roles/)).toBeNull();
+  },
+};
+
+/** T11-b (P12-4): without the groups the host passes, no Groups field, and the add sends none. */
+export const GroupsOnlyForGroupManager: Story = {
   play: async ({ canvas }) => {
     onAddPerson.mockClear();
 
     const dialog = await openAddPerson(canvas);
 
-    await expect(
-      dialog.queryByRole("group", { name: /^Access now/ })
-    ).toBeNull();
-    await expect(
-      dialog.queryByRole("checkbox", { name: "Open in Access after adding" })
-    ).toBeNull();
-
+    await expect(dialog.queryByRole("combobox", { name: "Groups" })).toBeNull();
     await userEvent.type(
       dialog.getByLabelText("Work email"),
       "manager@example.com"
     );
     await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
-
     await expect(onAddPerson).toHaveBeenCalledWith(
-      expect.objectContaining({ roleIds: [], openInAccess: false })
+      expect.objectContaining({ email: "manager@example.com", groupIds: [] })
     );
+  },
+};
+
+/** T11-c: two picked groups reach the host as `groupIds`, in pick order. */
+export const SubmitSendsGroups: Story = {
+  args: { localGroups: LOCAL_GROUPS },
+  play: async ({ canvas }) => {
+    onAddPerson.mockClear();
+
+    const dialog = await openAddPerson(canvas);
+
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "new@example.com"
+    );
+    await userEvent.click(dialog.getByRole("combobox", { name: "Groups" }));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Night shift" })
+    );
+    await userEvent.click(
+      await screen.findByRole("option", { name: "Finance leads" })
+    );
+    // Not Escape: inside a dialog it can close the dialog. Tab closes the list.
+    await userEvent.tab();
+    await waitFor(() => expect(screen.queryByRole("listbox")).toBeNull());
+    await expect(
+      dialog.getByRole("button", { name: "Remove Night shift" })
+    ).toBeVisible();
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+    await expect(onAddPerson).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: "new@example.com",
+        groupIds: ["g-night", "g-fin-leads"],
+      })
+    );
+  },
+};
+
+const NEW_PERSON = {
+  ...FIXTURE_PEOPLE[0]!,
+  id: "u-new",
+  name: "New Person",
+  email: "new@example.com",
+};
+
+const NEW_DETAIL = {
+  ...FIXTURE_DETAILS["u-viewer"]!,
+  id: "u-new",
+  name: "New Person",
+  email: "new@example.com",
+  groups: [],
+  sessions: [],
+};
+
+/**
+ * Adds the row 1 s after the add resolves, so the story sees the gap the screen must wait out.
+ * The add is partial (`emailSent: false`): the sheet opens for it too (P12-18).
+ */
+function AddedHarness(props: PeopleScreenProps) {
+  const [people, setPeople] = useState(props.people);
+
+  return (
+    <PeopleScreen
+      {...props}
+      people={people}
+      details={{ ...props.details, "u-new": NEW_DETAIL }}
+      onAddPerson={async (input) => {
+        await props.onAddPerson?.(input);
+        setTimeout(
+          () => setPeople((current) => [...current, NEW_PERSON]),
+          1000
+        );
+
+        return { id: "u-new", emailSent: false };
+      }}
+    />
+  );
+}
+
+/** T11-d (P12-18): a resolved add opens the new person's sheet on Roles, once the row is listed. */
+export const AfterAddOpensRoles: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  args: {
+    viewer: { ...FIXTURE_VIEWER, id: "u-admin" },
+    access: { ...adaAccess, paths: [] },
+    addAssignment: addHost(fn()),
+    onManageAccess: fn(),
+  },
+  render: (args) => <AddedHarness {...args} />,
+  play: async ({ args, canvas }) => {
+    const dialog = await openAddPerson(canvas);
+
+    await userEvent.type(
+      dialog.getByLabelText("Work email"),
+      "new@example.com"
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Add person" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Add person" })).toBeNull()
+    );
+    // The row is not listed yet, so no sheet.
+    await expect(
+      screen.queryByRole("dialog", { name: "New Person" })
+    ).toBeNull();
+
+    const sheet = within(
+      await screen.findByRole(
+        "dialog",
+        { name: "New Person" },
+        { timeout: 4000 }
+      )
+    );
+
+    await expect(sheet.getByRole("tab", { name: /^Roles/ })).toHaveAttribute(
+      "aria-selected",
+      "true"
+    );
+    await expect(
+      sheet.getByRole("heading", { name: "Assigned roles (0)" })
+    ).toBeVisible();
+    await expect(
+      sheet.getAllByRole("button", { name: "Add assignment" })
+    ).toHaveLength(1);
+    await expect(args.onManageAccess).not.toHaveBeenCalled();
   },
 };
