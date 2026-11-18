@@ -16,6 +16,8 @@ export type ReviewItem = {
   readonly control: ReactNode;
   /** The id that the label names; null for a group such as the due choice. */
   readonly controlId: string | null;
+  /** False for a field that the save may leave blank; it shows under "Optional" when the document lacks it (czjw.187). */
+  readonly required: boolean;
   /** The value in words, for the summary, the All fields list and a saved card. */
   readonly display: string;
   /** The read value in the input's format, once the person changed it. */

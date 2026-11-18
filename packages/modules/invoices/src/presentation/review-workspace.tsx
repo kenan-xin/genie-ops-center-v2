@@ -6,7 +6,7 @@ import { useHydrated } from "@genie/ui";
 import { useRef, useState, type ReactNode } from "react";
 
 import { invoicesContract } from "../contract.ts";
-import { DESK_FROM, DESK_PINS_FROM, useWidth } from "./desk-width.ts";
+import { DESK_FROM, useWidth } from "./desk-width.ts";
 import { useInvoiceReview } from "./invoice-review-form.tsx";
 import { usePaymentReview } from "./payment-review-form.tsx";
 import type { Blocker } from "./review-blocker.ts";
@@ -123,7 +123,7 @@ export function ReviewWorkspace(props: {
           <PageSkeleton label={frame.title} />
         </>
       ) : width >= DESK_FROM ? (
-        <ReviewDesk {...layout} wide={width >= DESK_PINS_FROM} />
+        <ReviewDesk {...layout} />
       ) : (
         <ReviewPager {...layout} />
       )}

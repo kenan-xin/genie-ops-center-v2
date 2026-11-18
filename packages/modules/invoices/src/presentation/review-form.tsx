@@ -108,11 +108,10 @@ export type TextField =
 export const CHECK_NOTE =
   "The quote read for this field is not in the page text, so its value was dropped. Enter it from the page.";
 
-const BLANK_NOTE = "Not on the document. It stays blank unless you add it.";
-
-const BLANK_PLACEHOLDER = "Not stated. Leave blank or add it.";
+const BLANK_PLACEHOLDER = "Not on the document";
 
 const OPTIONAL_FIELDS: ReadonlySet<TextField> = new Set([
+  "invoiceNumbers",
   "paymentTerms",
   "description",
   "reference",
@@ -153,6 +152,7 @@ export function textItemOf(input: {
     sources: sourcesOf(reading, field),
     control: input.control(blank ? BLANK_PLACEHOLDER : undefined),
     controlId: `review-${field}`,
+    required: !OPTIONAL_FIELDS.has(field),
     display: value.trim() === "" ? "None" : value,
     readAs:
       tag === "corrected" && input.readText !== undefined
@@ -162,7 +162,7 @@ export function textItemOf(input: {
       input.onUndo();
       focusSoon(`review-${field}`);
     },
-    note: tag === "check-this" ? CHECK_NOTE : blank ? BLANK_NOTE : null,
+    note: tag === "check-this" ? CHECK_NOTE : null,
   };
 }
 
@@ -196,6 +196,7 @@ export function customerItemOf(input: {
       sources: sourcesOf(reading, "customer"),
       control: input.control,
       controlId: "review-customer",
+      required: true,
       display: value.kind === "none" ? "None" : value.name,
       readAs:
         tag === "corrected" ? (reading?.fields.customer?.value ?? null) : null,

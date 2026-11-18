@@ -77,7 +77,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The review of a document as a desk (Spec 7 R-38, `czjw.98`). The desk chooses its layout from its own width, not the viewport, so the docked agent panel narrows it. From 944 px of the desk's width each field read from the page is an editable card beside its line; the Before you save panel holds the fields the page does not quote and Save, which names and focuses what blocks it.",
+          "The review of a document as one form beside the page (Spec 7 R-38, `czjw.187`). The desk chooses its layout from its own width, not the viewport, so the docked agent panel narrows it. From 688 px of the desk's width the Fields region sits beside the page: Type first, then the sections Needs your input, From the document and Optional, which come from the reading, so a field never moves while the person types; then the split of a payment and Save, which names and focuses what blocks it.",
       },
     },
     a11y: { test: "error" },
@@ -112,12 +112,12 @@ function serve(view: DocumentReviewView) {
 
 const PAGE_TIMEOUT = { timeout: 10_000 };
 
-/** The cards of the read fields once the page is drawn and each card has its leader line. */
-async function pinned(root: HTMLElement, keys: readonly string[]) {
+/** The page is drawn once each read field has its mark on it. */
+async function marked(root: HTMLElement, keys: readonly string[]) {
   await waitFor(() => {
     for (const key of keys) {
-      if (root.querySelector(`[data-pin-line="${key}"]`) === null)
-        throw new Error(`No leader line for ${key}.`);
+      if (root.querySelector(`mark[data-highlight="${key}"]`) === null)
+        throw new Error(`No mark for ${key} on the page.`);
     }
   }, PAGE_TIMEOUT);
 }
@@ -133,18 +133,36 @@ function card(root: HTMLElement, key: string): HTMLElement {
   return first;
 }
 
-function aside(root: HTMLElement): HTMLElement {
-  const found = root.querySelector<HTMLElement>(
-    'aside[aria-label="Before you save"]'
+/** The Fields region of the one form, once it is drawn. */
+const fields = (root: HTMLElement) =>
+  drawn(root, 'section[aria-label="Fields"]', "The Fields region");
+
+const SECTION_CAPTIONS = [
+  "Needs your input",
+  "From the document",
+  "Optional",
+] as const;
+
+/** The captions of the form's sections, in their order on the page; the split has its own. */
+const captionsOf = (region: HTMLElement) =>
+  Array.from(
+    region.querySelectorAll("section[aria-labelledby] > h2"),
+    (caption) => caption.textContent
+  ).filter((caption) => SECTION_CAPTIONS.some((title) => title === caption));
+
+/** The fields of one section, by its caption, in their order on the page. */
+const keysOf = (region: HTMLElement, caption: string) =>
+  Array.from(
+    within(region)
+      .getByRole("region", { name: caption })
+      .querySelectorAll<HTMLElement>("[data-field]"),
+    (field) => field.dataset.field
   );
 
-  if (found === null)
-    throw new Error("The review has no Before you save panel.");
-
-  return found;
-}
-
-const panel = (root: HTMLElement) => within(aside(root));
+/** `first` comes before `second` in the page. */
+const before = (first: Node, second: Node) =>
+  (first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING) !==
+  0;
 
 const READ_KEYS = [
   "customer",
@@ -155,44 +173,54 @@ const READ_KEYS = [
   "description",
 ] as const;
 
-// T4.1 to T4.3: each field once, read ones pinned, the rest in the panel; Save names and focuses the due date.
+// T1-c (czjw.187): one form beside the page, Type first, the three sections from the reading in
+// their order, each field once, no card or leader line; Save names and focuses the due date.
 export const Invoice: Story = {
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas, canvasElement }) => {
-    await pinned(canvasElement, READ_KEYS);
+    await marked(canvasElement, READ_KEYS);
+
+    const region = await fields(canvasElement);
+    const form = within(region);
+
+    await expect(
+      before(
+        form.getByRole("combobox", { name: "Type" }),
+        region.querySelector("[data-field]") ?? region
+      )
+    ).toBe(true);
+    await expect(captionsOf(region)).toEqual(SECTION_CAPTIONS);
+    await expect(keysOf(region, "Needs your input")).toEqual(["dueDate"]);
+    await expect(keysOf(region, "From the document")).toEqual(READ_KEYS);
+    await expect(keysOf(region, "Optional")).toEqual(["paymentTerms"]);
 
     for (const key of [...READ_KEYS, "dueDate", "paymentTerms"]) {
       card(canvasElement, key);
     }
 
+    await expect(canvasElement.querySelectorAll("[data-field]")).toHaveLength(
+      8
+    );
     await expect(
-      READ_KEYS.filter(
-        (key) =>
-          canvasElement.querySelector(`[data-pin-card="${key}"]`) === null
-      )
-    ).toEqual([]);
-
-    const side = panel(canvasElement);
-
-    await expect(
-      side.getByRole("heading", { name: "Not on the document" })
-    ).toBeVisible();
-    await expect(side.getByText("2 fields")).toBeVisible();
+      canvas.queryByRole("complementary", { name: "Before you save" })
+    ).toBeNull();
+    await expect(canvasElement.querySelector("[data-pin-card]")).toBeNull();
+    await expect(canvasElement.querySelector("[data-pin-line]")).toBeNull();
     await expect(
       within(card(canvasElement, "dueDate")).getByText("Needs your input")
     ).toBeVisible();
     await expect(
-      canvasElement.querySelector('[data-pin-card="dueDate"]')
-    ).toBeNull();
+      within(card(canvasElement, "paymentTerms")).getByText("Optional")
+    ).toBeVisible();
     // P05-24: the field chip keeps "Needs your input"; the status pill says "To review".
     await expect(
       canvas.getByText("To review", { selector: '[data-slot="badge"]' })
     ).toBeVisible();
     await expect(
-      side.getByText("Enter a due date or choose No due date to save.")
+      form.getByText("Enter a due date or choose No due date to save.")
     ).toBeVisible();
 
-    // T4.2: Save and Enter both go to the due choice and save nothing.
+    // Save and Enter both go to the due choice and save nothing.
     const save = canvas.getByRole("button", { name: "Save as unpaid" });
 
     await userEvent.click(save);
@@ -210,14 +238,10 @@ export const Invoice: Story = {
     ).toHaveFocus();
     await expect(saveInvoice).not.toHaveBeenCalled();
 
-    // T4.3: a valid choice clears the blocker and saves once.
+    // A valid choice clears the blocker and saves once; the due date keeps its section.
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
-    await expect(
-      within(card(canvasElement, "dueDate")).getByText("No due date", {
-        selector: '[data-slot="badge"]',
-      })
-    ).toBeVisible();
     await expect(canvas.getAllByText("Ready to save")).toHaveLength(2);
+    await expect(keysOf(region, "Needs your input")).toEqual(["dueDate"]);
 
     await userEvent.click(save);
     await waitFor(() => expect(saveInvoice).toHaveBeenCalledTimes(1));
@@ -227,20 +251,21 @@ export const Invoice: Story = {
   },
 };
 
-// T4.4: an edit shows the read value with Undo; Undo restores the value, the tag and the focus.
+// T1-d (H1-27): an edit shows the read value with Undo and no origin chip; Undo restores the
+// value and the focus.
 export const Edited: Story = {
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas, canvasElement }) => {
-    await pinned(canvasElement, READ_KEYS);
+    await fields(canvasElement);
 
     const description = canvas.getByLabelText("Description");
     const row = within(card(canvasElement, "description"));
 
     await userEvent.type(description, " and support");
-    await expect(row.getByText("Corrected by you")).toBeVisible();
     await expect(
       row.getByText("Read as “Additional consulting project - October 2026”")
     ).toBeVisible();
+    await expect(row.queryByText("Corrected by you")).toBeNull();
 
     await userEvent.click(
       row.getByRole("button", { name: "Undo Description" })
@@ -248,31 +273,27 @@ export const Edited: Story = {
     await expect(description).toHaveValue(
       "Additional consulting project - October 2026"
     );
-    await expect(row.getByText("Extracted")).toBeVisible();
     await expect(row.queryByText(/^Read as/u)).toBeNull();
+    await expect(row.queryByText("Extracted")).toBeNull();
     // Undo focuses on the next frame (focusSoon), which comes late under load (xok3.61).
     await waitFor(() => expect(description).toHaveFocus());
   },
 };
 
-// T4.5: a field whose quote failed sits in the panel with Check this; Save names and focuses it.
+// T1-e: a field whose quote failed needs input, with Check this; Save names and focuses it.
 export const NoQuote: Story = {
   args: { view: noQuoteInvoiceReview },
   beforeEach: () => serve(noQuoteInvoiceReview),
   play: async ({ canvas, canvasElement }) => {
-    await pinned(canvasElement, ["customer", "number", "amount"]);
+    const region = await fields(canvasElement);
 
-    const date = card(canvasElement, "date");
+    await expect(keysOf(region, "Needs your input")).toContain("date");
 
+    const date = within(card(canvasElement, "date"));
+
+    await expect(date.getByText("Check this")).toBeVisible();
     await expect(
-      canvasElement.querySelector('[data-pin-card="date"]')
-    ).toBeNull();
-    await expect(
-      panel(canvasElement).getByLabelText("Invoice date")
-    ).toBeVisible();
-    await expect(within(date).getByText("Check this")).toBeVisible();
-    await expect(
-      within(date).getByText(
+      date.getByText(
         "The quote read for this field is not in the page text, so its value was dropped. Enter it from the page."
       )
     ).toBeVisible();
@@ -288,18 +309,20 @@ export const NoQuote: Story = {
   },
 };
 
-// T4.6: a quote the text layer cannot find keeps its card, once, in the pin column, and its value saves.
+// A quote the text layer cannot find keeps its field, once, under From the document, and its
+// value saves.
 export const LostQuote: Story = {
   args: { view: lostQuoteInvoiceReview },
   beforeEach: () => serve(lostQuoteInvoiceReview),
   play: async ({ canvas, canvasElement }) => {
-    await pinned(canvasElement, ["customer", "number", "amount"]);
+    await marked(canvasElement, ["customer", "number", "amount"]);
+
+    const region = await fields(canvasElement);
+
     card(canvasElement, "currency");
+    await expect(keysOf(region, "From the document")).toContain("currency");
     await expect(
-      canvasElement.querySelector('[data-pin-card="currency"]')
-    ).not.toBeNull();
-    await expect(
-      canvasElement.querySelector('[data-pin-line="currency"]')
+      canvasElement.querySelector('mark[data-highlight="currency"]')
     ).toBeNull();
 
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
@@ -313,42 +336,41 @@ export const LostQuote: Story = {
   },
 };
 
-const middle = (box: DOMRect) => (box.top + box.bottom) / 2;
+const PAYMENT_KEYS = [
+  "customer",
+  "date",
+  "amount",
+  "currency",
+  "reference",
+  "method",
+  "invoiceNumbers",
+] as const;
 
-const marksOf = (root: HTMLElement, key: string) =>
-  Array.from(root.querySelectorAll(`mark[data-highlight="${key}"]`))
-    .map((mark) => mark.getBoundingClientRect())
-    .toSorted((a, b) => a.top - b.top);
-
-// T5.1 to T5.3: the split sits in the panel with live Linked and Unallocated; Save names and
-// focuses the link that blocks it; Invoice numbers pins between its two lines.
+// T1-f: each payment field once under From the document, the split after the sections with live
+// Allocated and Unallocated; Save names and focuses the allocation that blocks it.
 export const PaymentSplit: Story = {
   args: { view: splitPaymentReview },
   beforeEach: () => serve(splitPaymentReview),
   play: async ({ canvas, canvasElement }) => {
-    await pinned(canvasElement, [
-      "customer",
-      "date",
-      "amount",
-      "currency",
-      "reference",
-      "method",
-      "invoiceNumbers",
-    ]);
+    const region = await fields(canvasElement);
 
-    const side = panel(canvasElement);
+    await expect(captionsOf(region)).toEqual(["From the document"]);
+    await expect(keysOf(region, "From the document")).toEqual(PAYMENT_KEYS);
 
-    await expect(
-      side.getByText(
-        "Every field was found on the page. Select a card to see its line."
-      )
-    ).toBeVisible();
+    for (const key of PAYMENT_KEYS) card(canvasElement, key);
 
-    const splitElement = aside(canvasElement).querySelector<HTMLElement>(
+    const splitElement = region.querySelector<HTMLElement>(
       "[data-review-split]"
     );
 
-    if (splitElement === null) throw new Error("The panel has no split.");
+    if (splitElement === null) throw new Error("The form has no split.");
+
+    await expect(
+      before(
+        within(region).getByRole("region", { name: "From the document" }),
+        splitElement
+      )
+    ).toBe(true);
 
     const split = within(splitElement);
 
@@ -361,22 +383,23 @@ export const PaymentSplit: Story = {
       })
     ).toBeVisible();
 
-    // T5.1: an edit of one link moves Unallocated at once.
+    // An edit of one allocation moves Unallocated at once.
     const sep = canvas.getByLabelText("Amount for INV-2026-09-04");
 
+    await expect(sep.id).toMatch(/^link-/u);
     await userEvent.clear(sep);
     await userEvent.type(sep, "4,000.00");
     await expect(
       split.getByText(`Allocated ${SGD(805000)}. Unallocated ${SGD(20000)}.`)
     ).toBeVisible();
 
-    // T5.2: a link above its open amount, then a link of 0.00, each named and focused by Save.
+    // An allocation above its open amount, then one of 0.00, each named and focused by Save.
     const save = canvas.getByRole("button", { name: "Save the payment" });
 
     await userEvent.clear(sep);
     await userEvent.type(sep, "4,300.00");
     await expect(
-      side.getByText(
+      within(region).getByText(
         `The allocation to INV-2026-09-04 is more than its open ${SGD(420000)}.`
       )
     ).toBeVisible();
@@ -386,23 +409,11 @@ export const PaymentSplit: Story = {
     await userEvent.clear(sep);
     await userEvent.type(sep, "0.00");
     await expect(
-      side.getByText("Enter the amount for INV-2026-09-04.")
+      within(region).getByText("Enter the amount for INV-2026-09-04.")
     ).toBeVisible();
     await userEvent.click(save);
     await expect(sep).toHaveFocus();
     await expect(savePayment).not.toHaveBeenCalled();
-
-    // T5.3: two quotes pin to the middle of both lines, not to the first.
-    const quotes = marksOf(canvasElement, "invoiceNumbers");
-
-    const dot = middle(
-      canvasElement
-        .querySelector('[data-pin-dot="invoiceNumbers"]')
-        ?.getBoundingClientRect() ?? new DOMRect()
-    );
-
-    await expect(dot).toBeGreaterThan(middle(quotes[0] ?? new DOMRect()) + 2);
-    await expect(dot).toBeLessThan(middle(quotes.at(-1) ?? new DOMRect()) - 2);
   },
 };
 
@@ -411,7 +422,7 @@ const brokenFile: DocumentReviewView = {
   document: { ...invoiceReview.document, fileUrl: "/demo-pack/missing.pdf" },
 };
 
-// T4.7: a page that does not load puts every card in the panel, with Try again.
+// A page that does not load keeps the whole form beside it, with Try again, and Save still saves.
 export const PreviewFailedReview: Story = {
   name: "Preview failed",
   args: { view: brokenFile },
@@ -423,15 +434,20 @@ export const PreviewFailedReview: Story = {
       PAGE_TIMEOUT
     );
 
-    const side = aside(canvasElement);
+    const region = await fields(canvasElement);
 
     await expect(
       [...READ_KEYS, "dueDate", "paymentTerms"].filter(
-        (key) => !side.contains(card(canvasElement, key))
+        (key) => !region.contains(card(canvasElement, key))
       )
     ).toEqual([]);
-
     await expect(canvasElement.querySelector("[data-pin-card]")).toBeNull();
+
+    await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Save as unpaid" })
+    );
+    await waitFor(() => expect(saveInvoice).toHaveBeenCalledTimes(1));
   },
 };
 
@@ -441,7 +457,7 @@ export const ExpiredLinkLoadsAgain: Story = {
   args: { view: brokenFile },
   beforeEach: () => serve(invoiceReview),
   play: async ({ canvas, canvasElement }) => {
-    await pinned(canvasElement, READ_KEYS);
+    await marked(canvasElement, READ_KEYS);
     await expect(
       canvas.queryByRole("button", { name: "Try again" })
     ).toBeNull();
@@ -470,8 +486,8 @@ function serveReadingThenRead() {
   });
 }
 
-// T6.1, T6.2 (B4.4): the page reads under a scan with no Discard; the sweep then shows each card,
-// and the PDF loads once from its first link.
+// T6.1, T6.2 (B4.4): the page reads under a scan with no Delete and the form waits with its
+// note; the sweep then shows every field, and the PDF loads once from its first link.
 export const Reading: Story = {
   args: { view: readingReview },
   beforeEach: serveReadingThenRead,
@@ -480,23 +496,21 @@ export const Reading: Story = {
     await expect(
       canvas.getByText("Reading. Fields appear as each line is read.")
     ).toHaveAttribute("role", "status");
-    await expect(
-      canvasElement.querySelectorAll("[data-skeleton-card]")
-    ).toHaveLength(1);
 
-    const side = panel(canvasElement);
+    const form = within(await fields(canvasElement));
 
     await expect(
-      side.getByText(
-        "Reading the document. Fields that are not on the document, and the split of a payment, show here when the reading finishes."
+      form.getByText(
+        "Reading the document. The fields show here when the reading finishes."
       )
     ).toBeVisible();
+    await expect(canvasElement.querySelector("[data-field]")).toBeNull();
     await expect(
-      side.getByText("Wait for the reading to finish.")
+      form.getByText("Wait for the reading to finish.")
     ).toBeVisible();
     await expect(canvas.queryByRole("button", { name: "Delete" })).toBeNull();
 
-    const type = canvas.getByRole("combobox", { name: "Type" });
+    const type = form.getByRole("combobox", { name: "Type" });
 
     await expect(type).toBeDisabled();
     await expect(type).toHaveTextContent("Not classified yet");
@@ -513,31 +527,21 @@ export const Reading: Story = {
 
     const page = await drawn(viewer, "canvas", "The document");
 
-    // T6.2: the poll answers the read invoice; the sweep plays once and shows every card.
+    // T6.2: the poll answers the read invoice; the sweep plays once and the fields show.
     await waitFor(
       () => expect(canvasElement.querySelector("[data-scan]")).toBeNull(),
       PAGE_TIMEOUT
     );
-    await pinned(canvasElement, READ_KEYS);
+    await marked(canvasElement, READ_KEYS);
 
-    // `invisible` keeps a hidden card in the layout, so visibility is what the reveal changes.
-    await expect(
-      READ_KEYS.filter(
-        (key) =>
-          !canvasElement
-            .querySelector(`[data-pin-card="${key}"]`)
-            ?.hasAttribute("data-revealed") ||
-          getComputedStyle(card(canvasElement, key)).visibility !== "visible"
-      )
-    ).toEqual([]);
+    for (const key of [...READ_KEYS, "dueDate", "paymentTerms"]) {
+      // oxlint-disable-next-line no-await-in-loop -- one field at a time names the one missing.
+      await expect(card(canvasElement, key)).toBeVisible();
+    }
 
+    await expect(form.queryByText(/^Reading the document\./u)).toBeNull();
     await expect(
-      canvasElement.querySelector("[data-skeleton-card]")
-    ).toBeNull();
-    await expect(
-      panel(canvasElement).getByText(
-        "Enter a due date or choose No due date to save."
-      )
+      form.getByText("Enter a due date or choose No due date to save.")
     ).toBeVisible();
 
     // The refetch's ?v=2 never reaches the viewer, and its PDF stays drawn.
@@ -548,7 +552,8 @@ export const Reading: Story = {
 
 let releaseSave: (() => void) | null = null;
 
-// T7.1: a save made on this page keeps the desk, read only, with the result in the panel.
+// T7.1: a save made on this page keeps the form beside the page, read only, with the result at
+// the top of the Fields region and no save bar.
 // T7.2: a field typed while the save is pending is not shown as saved.
 export const Saved: Story = {
   beforeEach: () => {
@@ -564,7 +569,8 @@ export const Saved: Story = {
     );
   },
   play: async ({ canvas, canvasElement }) => {
-    await pinned(canvasElement, READ_KEYS);
+    const region = await fields(canvasElement);
+
     await userEvent.type(canvas.getByLabelText("Description"), " and support");
     await userEvent.click(canvas.getByRole("radio", { name: "No due date" }));
     await userEvent.click(
@@ -574,19 +580,20 @@ export const Saved: Story = {
     await userEvent.type(canvas.getByLabelText("Description"), " late");
     releaseSave?.();
 
-    const done = await drawn(
-      canvasElement,
-      'aside[aria-label="Saved"]',
-      "The saved panel"
+    const form = within(region);
+
+    const result = await form.findByText(
+      "Saved as invoice INV-LIVE-001.",
+      {},
+      PAGE_TIMEOUT
     );
 
-    const side = within(done);
-
+    await expect(result).toBeVisible();
     await expect(
-      side.getByText("Saved as invoice INV-LIVE-001.")
-    ).toBeVisible();
+      before(result, form.getByRole("combobox", { name: "Type" }))
+    ).toBe(true);
     await expect(
-      side.getByRole("link", { name: "Open the invoice" })
+      form.getByRole("link", { name: "Open the invoice" })
     ).toBeVisible();
     await expect(
       canvasElement.querySelectorAll(
@@ -596,7 +603,6 @@ export const Saved: Story = {
 
     const description = within(card(canvasElement, "description"));
 
-    await expect(description.getByText("Corrected by you")).toBeVisible();
     await expect(
       description.getByText(
         "Additional consulting project - October 2026 and support",
@@ -612,6 +618,9 @@ export const Saved: Story = {
       description.queryByRole("button", { name: "Undo Description" })
     ).toBeNull();
     await expect(canvas.getByRole("combobox", { name: "Type" })).toBeDisabled();
+    await expect(
+      canvasElement.querySelector("[data-shell-bottom-bar]")
+    ).toBeNull();
     await expect(
       canvas.queryByRole("button", { name: "Save as unpaid" })
     ).toBeNull();
@@ -997,7 +1006,8 @@ export const PaymentSplitOnPhone: Story = {
   },
 };
 
-// B1: beside the docked panel at 1440 px the page column is 736 px, so the desk lists every card.
+// B1: beside the docked panel at 1440 px the page column is 736 px; the page and the Fields
+// region sit side by side, neither covering the other.
 export const BesideTheDockedPanel: Story = {
   decorators: [
     (Story) => (
@@ -1007,20 +1017,18 @@ export const BesideTheDockedPanel: Story = {
     ),
   ],
   beforeEach: () => serve(invoiceReview),
-  play: async ({ canvas }) => {
-    const side = await canvas.findByRole(
-      "complementary",
-      { name: "Before you save" },
-      PAGE_TIMEOUT
-    );
+  play: async ({ canvasElement }) => {
+    await marked(canvasElement, READ_KEYS);
 
-    await expect(
-      await within(side).findByRole(
-        "region",
-        { name: "On the page" },
-        PAGE_TIMEOUT
-      )
-    ).toBeVisible();
+    const region = (await fields(canvasElement)).getBoundingClientRect();
+
+    const page = (
+      await drawn(canvasElement, "[data-document-viewer]", "The viewer")
+    ).getBoundingClientRect();
+
+    await expect(page.width).toBeGreaterThan(0);
+    await expect(region.width).toBeGreaterThan(0);
+    await expect(page.right).toBeLessThanOrEqual(region.left + 1);
   },
 };
 

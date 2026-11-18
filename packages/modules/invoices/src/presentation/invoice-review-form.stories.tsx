@@ -284,7 +284,8 @@ export const ReadDueDateCleared: Story = {
   },
 };
 
-// B5.3: a changed total is corrected, the read value typed back is extracted, a typed due date is entered.
+// B5.3, H1-27: a changed total shows its read value with Undo and no chip; the read value typed
+// back drops them; a typed due date drops its Needs your input chip.
 export const Tags: Story = {
   globals: desktop,
   beforeEach: () => serve(invoiceReview),
@@ -294,22 +295,30 @@ export const Tags: Story = {
     await userEvent.clear(total);
     await userEvent.type(total, "4000.00");
     await expect(
-      fieldRow(canvasElement, "amount").getByText("Corrected by you")
+      fieldRow(canvasElement, "amount").getByRole("button", {
+        name: "Undo Total",
+      })
     ).toBeVisible();
+    await expect(
+      fieldRow(canvasElement, "amount").queryByText("Corrected by you")
+    ).toBeNull();
 
     await userEvent.clear(total);
     await userEvent.type(total, "5000");
     await expect(
-      fieldRow(canvasElement, "amount").getByText("Extracted")
-    ).toBeVisible();
+      fieldRow(canvasElement, "amount").queryByText(/^Read as/u)
+    ).toBeNull();
 
     await userEvent.click(
       canvas.getByRole("radio", { name: "Enter a due date" })
     );
     await userEvent.type(canvas.getByLabelText("Due date"), "2026-11-25");
     await expect(
-      fieldRow(canvasElement, "dueDate").getByText("Entered by you")
-    ).toBeVisible();
+      fieldRow(canvasElement, "dueDate").queryByText("Needs your input")
+    ).toBeNull();
+    await expect(
+      fieldRow(canvasElement, "dueDate").queryByText("Entered by you")
+    ).toBeNull();
   },
 };
 
@@ -642,7 +651,7 @@ async function reasonAboveSave(canvas: ReturnType<typeof within>) {
   await expect(save.top - reason.bottom).toBeLessThanOrEqual(12);
 }
 
-// D32 (czjw.65, czjw.98): in the Before you save panel the reason sits right above Discard and Save.
+// D32 (czjw.65, czjw.98): under the Fields region the reason sits right above Delete and Save.
 export const SaveReasonBesideSave: Story = {
   name: "Save reason beside Save",
   globals: { viewport: { value: "desktop1440", isRotated: false } },

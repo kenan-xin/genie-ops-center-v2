@@ -14,6 +14,7 @@ const number: ReviewItem = {
   sources: [{ page: 1, quote: "INV-2026-10-01" }],
   control: <Input id="review-number" defaultValue="INV-2026-10-01" />,
   controlId: "review-number",
+  required: true,
   display: "INV-2026-10-01",
   readAs: null,
   onUndo: null,

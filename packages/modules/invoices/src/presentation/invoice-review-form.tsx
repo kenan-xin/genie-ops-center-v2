@@ -473,6 +473,7 @@ export function useInvoiceReview(input: {
       control,
       controlId:
         kind === "invoice" && readDue !== undefined ? "review-due-date" : null,
+      required: kind === "invoice",
       display: dueDisplay(kind, sent),
       readAs:
         tag === "corrected" && readDue !== undefined

@@ -284,7 +284,7 @@ export const Overpayment: Story = {
   },
 };
 
-// B6.5: no link and Save as unallocated; a changed amount is corrected and saves with no allocation.
+// B6.5: no link and Save as unallocated; a changed amount shows Undo and saves with no allocation.
 export const NoMatch: Story = {
   name: "No match",
   args: { view: noMatchPaymentReview },
@@ -299,7 +299,9 @@ export const NoMatch: Story = {
     await userEvent.clear(amount);
     await userEvent.type(amount, "2200.00");
     await expect(
-      fieldRow(canvasElement, "amount").getByText("Corrected by you")
+      fieldRow(canvasElement, "amount").getByRole("button", {
+        name: "Undo Amount",
+      })
     ).toBeVisible();
 
     await userEvent.click(

@@ -7,6 +7,7 @@ import {
   Button,
   Card,
   ConfirmDialog,
+  FieldTitle,
   InfoNote,
   Select,
   SelectContent,
@@ -226,10 +227,8 @@ export function DocumentReview(props: {
 
   // A Could not read document takes a type too, so a person enters it by hand (R-26).
   const typeSelect = data.canWrite ? (
-    <div className="flex flex-wrap items-center gap-2">
-      <span id="document-kind-label" className="text-sm text-muted-foreground">
-        Type
-      </span>
+    <div className="flex flex-col gap-1.5">
+      <FieldTitle id="document-kind-label">Type</FieldTitle>
       <Select
         items={KIND_ITEMS}
         value={kind}
@@ -252,7 +251,7 @@ export function DocumentReview(props: {
         </SelectContent>
       </Select>
       {changeKind.error === null ? null : (
-        <p role="alert" className="basis-full text-sm text-destructive">
+        <p role="alert" className="text-sm text-destructive">
           {`${label} was not changed. ${changeKind.error.message}`}
         </p>
       )}
