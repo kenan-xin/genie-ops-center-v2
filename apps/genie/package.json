@@ -148,6 +148,7 @@
         "inputs": [
           "default",
           "^production",
+          "{workspaceRoot}/deploy/schemas/environment.catalogue.json",
           {
             "runtime": "node tools/generators/src/selection/print.ts"
           }

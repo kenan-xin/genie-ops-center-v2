@@ -42,6 +42,8 @@ export default defineConfig({
       "testing/dev-worker.test.ts",
       // The Section 3 permission-import check reads source files only (AC-19a, R-95).
       "testing/section-3-imports.test.ts",
+      // The local .env.example against the environment catalogue; reads two files only.
+      "testing/env-example.test.ts",
       // The Entra secret parser is pure; it must never echo the secret it refuses.
       "e2e/entra/tenant.test.ts",
       // The deployment lock's stale-holder break runs against real folders and process ids.
