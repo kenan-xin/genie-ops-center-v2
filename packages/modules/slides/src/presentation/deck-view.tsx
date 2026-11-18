@@ -57,6 +57,7 @@ import {
   textElement,
   titleElement,
 } from "../contract.ts";
+import { askStarter } from "./add-element-menu.tsx";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
 import { presenterPath } from "./deck-sync.ts";
 import { DeckTitle } from "./deck-title.tsx";
@@ -571,7 +572,7 @@ export function DeckView(props: DeckViewProps) {
 
   if (current !== undefined) context.part = { type: "slide", id: current.id };
 
-  useAgentPage({
+  const agent = useAgentPage({
     context,
     about:
       current === undefined ? deck.title : `${deck.title}, slide ${index + 1}`,
@@ -1216,6 +1217,8 @@ export function DeckView(props: DeckViewProps) {
               <SlideEditorBar
                 slide={current}
                 saving={busy}
+                ask={view.chat.kind}
+                onAsk={(kind) => agent.send(askStarter(kind, index + 1))}
                 onSteps={(steps) =>
                   sendStep(steps, {
                     expectedHash: deck.contentHash,

@@ -444,7 +444,13 @@ export const BackgroundAdjustsText: StoryObj<typeof SlideEditorBar> = {
   name: "A dark background turns the texts without a fill white in one change",
   globals: desktop,
   render: (args) => <SlideEditorBar {...args} />,
-  args: { slide: textWithChartSlide, onSteps: fn(), onAdd: fn() },
+  args: {
+    slide: textWithChartSlide,
+    ask: "on",
+    onSteps: fn(),
+    onAdd: fn(),
+    onAsk: fn(),
+  },
   play: async ({ args, canvas, canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);
 
@@ -479,35 +485,31 @@ export const EditorBar: StoryObj<typeof SlideEditorBar> = {
   name: "Add element and Background",
   globals: desktop,
   render: (args) => <SlideEditorBar {...args} />,
-  args: { slide: bulletsWithTwoVisualsSlide, onSteps: fn(), onAdd: fn() },
+  args: {
+    slide: bulletsWithTwoVisualsSlide,
+    ask: "on",
+    onSteps: fn(),
+    onAdd: fn(),
+    onAsk: fn(),
+  },
   play: async ({ args, canvas, canvasElement }) => {
     const body = within(canvasElement.ownerDocument.body);
 
     // The slide has bullets and two visuals: no second body, no third visual.
     await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
-    await expect(
-      await screen.findByRole("menuitem", {
-        name: "Text",
-        description: SLIDE_RULE_MESSAGES.body,
-      })
-    ).toHaveAttribute("aria-disabled", "true");
+    await expect(await menuItems()).toEqual([
+      ["Text", SLIDE_RULE_MESSAGES.body],
+      ["Bullets", SLIDE_RULE_MESSAGES.body],
+      ["Figure", SLIDE_RULE_MESSAGES.visual],
+      ["Chart", SLIDE_RULE_MESSAGES.visual],
+      ["Table", SLIDE_RULE_MESSAGES.visual],
+      ["Image", SLIDE_RULE_MESSAGES.visual],
+    ]);
     await expect(
       screen.getAllByText(
         "This slide is full. Remove an element or add a new slide."
       )
     ).toHaveLength(1);
-    await expect(
-      screen.getByRole("menuitem", {
-        name: "Bullets",
-        description: SLIDE_RULE_MESSAGES.body,
-      })
-    ).toHaveAttribute("aria-disabled", "true");
-    await expect(
-      screen.getByRole("menuitem", {
-        name: "Image",
-        description: SLIDE_RULE_MESSAGES.visual,
-      })
-    ).toHaveAttribute("aria-disabled", "true");
     await userEvent.keyboard("{Escape}");
 
     await userEvent.click(canvas.getByRole("button", { name: "Background" }));
@@ -525,36 +527,134 @@ export const EditorBar: StoryObj<typeof SlideEditorBar> = {
   },
 };
 
-// T10-b: a slide with a text and one visual still takes an image, so Image stays on and no full
-// line shows; the kinds it refuses carry the rule they break.
+// T10-b: a slide with a text and one visual still takes a figure, chart or image, so those stay on
+// and no full line shows; the kinds it refuses carry the rule they break.
 export const EditorBarOnlyImage: StoryObj<typeof SlideEditorBar> = {
-  name: "Add element offers Image where only an image fits",
+  name: "Add element offers the visuals where only a visual fits",
   globals: desktop,
   render: (args) => <SlideEditorBar {...args} />,
-  args: { slide: textWithChartSlide, onSteps: fn(), onAdd: fn() },
+  args: {
+    slide: textWithChartSlide,
+    ask: "on",
+    onSteps: fn(),
+    onAdd: fn(),
+    onAsk: fn(),
+  },
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
-
-    await expect(
-      await screen.findByRole("menuitem", {
-        name: "Text",
-        description: SLIDE_RULE_MESSAGES.body,
-      })
-    ).toHaveAttribute("aria-disabled", "true");
-    await expect(
-      screen.getByRole("menuitem", {
-        name: "Bullets",
-        description: SLIDE_RULE_MESSAGES.body,
-      })
-    ).toHaveAttribute("aria-disabled", "true");
-    await expect(
-      screen.getByRole("menuitem", { name: "Image" })
-    ).not.toHaveAttribute("aria-disabled");
+    await expect(await menuItems()).toEqual([
+      ["Text", SLIDE_RULE_MESSAGES.body],
+      ["Bullets", SLIDE_RULE_MESSAGES.body],
+      ["Figure", "on"],
+      ["Chart", "on"],
+      ["Table", SLIDE_RULE_MESSAGES.table],
+      ["Image", "on"],
+    ]);
     await expect(
       screen.queryByText(
         "This slide is full. Remove an element or add a new slide."
       )
     ).toBeNull();
+  },
+};
+
+/** A slide with its title and one text: every visual kind fits. */
+const titleAndTextSlide = {
+  id: textWithChartSlide.id,
+  elements: [title!, text!],
+};
+
+/**
+ * The items of the open Add element menu, in order: each label with the reason it is off, or "on".
+ */
+async function menuItems() {
+  const menu = await screen.findByRole("menu");
+
+  return within(menu)
+    .getAllByRole("menuitem")
+    .map((item) => [
+      item.firstChild?.textContent,
+      item.getAttribute("aria-disabled") === "true"
+        ? document.getElementById(item.getAttribute("aria-describedby") ?? "")
+            ?.textContent
+        : "on",
+    ]);
+}
+
+// czjw.189: Figure, Chart and Table ask Ask for the shown slide; the bar adds none of them by hand.
+export const AddElementAsksForCharts: StoryObj<typeof SlideEditorBar> = {
+  name: "Add element sends Chart to Ask",
+  globals: desktop,
+  render: (args) => <SlideEditorBar {...args} />,
+  args: {
+    slide: titleAndTextSlide,
+    ask: "on",
+    onSteps: fn(),
+    onAdd: fn(),
+    onAsk: fn(),
+  },
+  play: async ({ args, canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
+    await expect(await menuItems()).toEqual([
+      ["Text", SLIDE_RULE_MESSAGES.body],
+      ["Bullets", SLIDE_RULE_MESSAGES.body],
+      ["Figure", "on"],
+      ["Chart", "on"],
+      ["Table", "on"],
+      ["Image", "on"],
+    ]);
+
+    await userEvent.click(screen.getByRole("menuitem", { name: "Chart" }));
+    await expect(args.onAsk).toHaveBeenCalledTimes(1);
+    await expect(args.onAsk).toHaveBeenCalledWith("chart");
+    await expect(args.onAdd).not.toHaveBeenCalled();
+  },
+};
+
+// czjw.189: with AI off no panel would send the question, so the Ask kinds say why they are off.
+export const AddElementWhenAIIsOff: StoryObj<typeof SlideEditorBar> = {
+  name: "Add element with AI off",
+  globals: desktop,
+  render: (args) => <SlideEditorBar {...args} />,
+  args: {
+    slide: titleAndTextSlide,
+    ask: "off",
+    onSteps: fn(),
+    onAdd: fn(),
+    onAsk: fn(),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
+    await expect(await menuItems()).toEqual([
+      ["Text", SLIDE_RULE_MESSAGES.body],
+      ["Bullets", SLIDE_RULE_MESSAGES.body],
+      ["Figure", "AI is off."],
+      ["Chart", "AI is off."],
+      ["Table", "AI is off."],
+      ["Image", "on"],
+    ]);
+  },
+};
+
+// czjw.189: a person without Ask is never offered a kind only Ask can add.
+export const AddElementWithoutAsk: StoryObj<typeof SlideEditorBar> = {
+  name: "Add element without Ask",
+  globals: desktop,
+  render: (args) => <SlideEditorBar {...args} />,
+  args: {
+    slide: titleAndTextSlide,
+    ask: "none",
+    onSteps: fn(),
+    onAdd: fn(),
+    onAsk: fn(),
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Add element" }));
+    await expect(await menuItems()).toEqual([
+      ["Text", SLIDE_RULE_MESSAGES.body],
+      ["Bullets", SLIDE_RULE_MESSAGES.body],
+      ["Image", "on"],
+    ]);
   },
 };
 

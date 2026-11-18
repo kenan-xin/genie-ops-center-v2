@@ -2796,3 +2796,58 @@ export const OpenAskFromTheSheet: Story = {
     );
   },
 };
+
+/** The chat's request, held open, so a story sees what the page sent without a model. */
+const agentFetch = fn(
+  (_url: RequestInfo | URL, _init?: RequestInit) =>
+    new Promise<Response>(() => {})
+);
+
+function holdAgentRequests() {
+  const original = globalThis.fetch;
+
+  agentFetch.mockClear();
+  globalThis.fetch = agentFetch;
+
+  return () => {
+    globalThis.fetch = original;
+  };
+}
+
+// czjw.189: Chart in Add element asks Ask for the shown slide, with that slide as the part.
+export const AddChartAsksAsk: Story = {
+  name: "Chart in Add element asks Ask for the shown slide",
+  args: { view: deckPage },
+  globals: desktop,
+  parameters: { layout: "fullscreen" },
+  decorators: [withShell],
+  beforeEach: () => {
+    serve(deckPage);
+
+    return holdAgentRequests();
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Add element" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Chart" })
+    );
+
+    const chat = within(await screen.findByRole("region", { name: "Ask" }));
+
+    const sent = await within(await chat.findByRole("log")).findByText(
+      "Which chart can I add to slide 1?"
+    );
+
+    await waitFor(() => expect(sent).toBeVisible());
+    await waitFor(() => expect(agentFetch).toHaveBeenCalledTimes(1));
+
+    const body = String(agentFetch.mock.calls[0]?.[1]?.body);
+
+    await expect(body).toContain("Which chart can I add to slide 1?");
+    await expect(body).toContain(
+      `{"type":"slide","id":"${deckPage.deck.slides[0]!.id}"}`
+    );
+  },
+};

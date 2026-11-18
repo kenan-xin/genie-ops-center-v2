@@ -53,12 +53,16 @@ import {
   FONT_SIZES,
   FONT_WEIGHTS,
   hexColor,
-  slideRuleIssues,
   type StyleChange,
   TEXT_KINDS,
   THEME_BACKGROUND,
   THEME_TEXT,
 } from "../contract.ts";
+import {
+  AddElementMenu,
+  type AskKind,
+  type HandKind,
+} from "./add-element-menu.tsx";
 import { boxStep, movedBox, resizedBox, SNAP } from "./canvas-adapter.ts";
 import { contrastLimit } from "./slide-layout.ts";
 import { useIsPhone } from "./use-is-phone.ts";
@@ -795,77 +799,31 @@ export function backgroundSteps(
   ];
 }
 
-/** The owner's words for a slide that takes no new element (E5, 6wz1.126). */
-const SLIDE_FULL = "This slide is full. Remove an element or add a new slide.";
-
-/** The kinds a hand edit adds without a chart config (P13-5). */
-const ADDABLE = [
-  ["text", "Text"],
-  ["bullets", "Bullets"],
-  ["image", "Image"],
-] as const;
-
 /** Add element and Background, above the slide (variant A). */
 export function SlideEditorBar(props: {
   readonly slide: ShownSlide;
   readonly saving?: boolean;
   readonly onSteps: (steps: readonly DeckChange[]) => void;
+  /** The person's Ask, which Figure, Chart and Table go through. */
+  readonly ask: "on" | "off" | "none";
   /** A text or bullet list goes in at once; an image needs its file and alt text in the editor. */
-  readonly onAdd: (kind: "text" | "bullets" | "image") => void;
+  readonly onAdd: (kind: HandKind) => void;
+  readonly onAsk: (kind: AskKind) => void;
 }) {
   const { slide } = props;
-  const kinds = slide.elements.map(({ kind }) => kind);
-
-  // The rule each kind breaks here, if any: the one at the new element, else the first.
-  const offered = ADDABLE.map(([kind, label]) => {
-    const issues = slideRuleIssues([...kinds, kind]);
-
-    return {
-      kind,
-      label,
-      reason: (
-        issues.find(({ path }) => path === `elements.${kinds.length}`) ??
-        issues[0]
-      )?.message,
-    };
-  });
-
-  const full = offered.every(({ reason }) => reason !== undefined);
-  const fullId = useId();
 
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          disabled={props.saving}
-          render={<Button variant="secondary" />}
-        >
-          <PlusIcon aria-hidden="true" /> Add element
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          aria-describedby={full ? fullId : undefined}
-        >
-          {full ? (
-            <p
-              id={fullId}
-              className="px-1.5 py-1 text-xs text-muted-foreground"
-            >
-              {SLIDE_FULL}
-            </p>
-          ) : null}
-          {offered.map(({ kind, label, reason }) => (
-            // A kind the slide rules refuse is offered with its rule, never refused after.
-            <DropdownMenuItem
-              key={kind}
-              reason={reason}
-              onClick={() => props.onAdd(kind)}
-            >
-              {label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <AddElementMenu
+        slide={slide}
+        saving={props.saving}
+        ask={props.ask}
+        onAdd={props.onAdd}
+        onAsk={props.onAsk}
+        trigger={<Button variant="secondary" />}
+      >
+        <PlusIcon aria-hidden="true" /> Add element
+      </AddElementMenu>
       <ColorChoice
         label="Background"
         size="md"
