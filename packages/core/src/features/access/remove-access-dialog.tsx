@@ -63,8 +63,8 @@ function PathList(props: {
 
 function noPathSentence(recipient: Recipient, row: string): string {
   return recipient.type === "user"
-    ? `${recipient.name} has no other role of ${row}. After you save, ${recipient.name} no longer reaches ${row}.`
-    : `${recipient.name} has no role of ${row} after you save. Members who reach ${row} directly or through another group keep that access.`;
+    ? `${recipient.name} has no other role of ${row}. After you save, ${recipient.name} loses access to ${row}.`
+    : `After you save, ${recipient.name} has no role of ${row}. Members keep ${row} if they have it directly or through another group.`;
 }
 
 /**
@@ -87,16 +87,11 @@ export function RemoveAccessDialog(props: {
       ? `Remove ${props.removals.length} modules from ${props.recipient.name}?`
       : `Remove ${first.rowName} from ${props.recipient.name}?`;
 
-  const roleCount = props.removals.reduce(
-    (sum, removal) => sum + removal.rolesThatGo.length,
-    0
-  );
-
   const description = props.removals.some(
     (removal) => removal.pathsThatStay.length > 0
   )
-    ? `The direct ${roleCount === 1 ? "role goes" : "roles go"}. Access continues through the assignments that stay.`
-    : "The roles below go when you save.";
+    ? "The roles that go are removed when you save. Access continues through the assignments that stay."
+    : "The roles below are removed when you save.";
 
   const level = several ? "h4" : "h3";
 

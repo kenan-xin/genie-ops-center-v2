@@ -13,16 +13,15 @@ export function AccessHelp(props: {
       {...(props.align === undefined ? {} : { align: props.align })}
     >
       <p>
-        Each module has its own roles. Having any role of a module gives access
-        to it. Add gives the module&apos;s default role, and the choice on each
-        Granted row changes it.
+        Each module has its own roles. Any role of a module gives access to it.
+        A module you add gets its default role, and you can pick another role on
+        its row.
       </p>
       <p>
-        Access adds up. A person reaches a module directly and through each of
-        their groups. Removing one assignment leaves the others, and no rule
-        denies access.
+        Access adds up. A person has the roles assigned to them and the roles of
+        each of their groups. Removing one role leaves the others.
       </p>
-      <p>A module that is off keeps its assignments and takes no new one.</p>
+      <p>A module that is off keeps its roles, but you cannot add new ones.</p>
     </HelpDisclosure>
   );
 }

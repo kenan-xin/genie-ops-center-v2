@@ -223,7 +223,7 @@ export const ByPersonPhone: Story = {
     const card = within(list.getAllByRole("listitem")[0] ?? document.body);
 
     await Promise.all(
-      ["Module", "Role", "Assigned via", "Added"].map((term) =>
+      ["Module", "Role", "Assigned via", "Assigned"].map((term) =>
         expect(card.getByText(term)).toBeVisible()
       )
     );

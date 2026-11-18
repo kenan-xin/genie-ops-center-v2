@@ -68,6 +68,12 @@ const chooseRole = async (label: string) => {
 /** K1: each row shows its module and its scope, and a custom role says so. */
 export const ListsAdvancedRoles: Story = {
   play: async () => {
+    await expect(
+      await screen.findByRole("dialog", { name: "Advanced access" })
+    ).toHaveAccessibleDescription(
+      "Extra access for Operations that the main list does not cover: admin portal rights, the Auditor role, a role on one record only, and custom roles. Nothing changes until you press Save."
+    );
+
     const body = await sheet();
 
     const finance = rowOf(body, "Finance");
@@ -172,7 +178,7 @@ export const GuardedLastAdministrator: Story = {
     const row = rowOf(await sheet(), "Tenant administrator");
 
     const reason =
-      "Last active Tenant administrator assignment. Give the role to somebody else first.";
+      "This is the last active Tenant administrator. Assign the role to someone else first.";
 
     const remove = row.getByRole("button", {
       name: "Remove Tenant administrator",
@@ -203,7 +209,9 @@ export const GuardedOwnRole: Story = {
       row.getByRole("button", { name: "Remove Tenant administrator" })
     ).toBeDisabled();
     await expect(
-      row.getByText("You cannot remove your own Tenant administrator role")
+      row.getByText(
+        "Only another administrator can remove your own Tenant administrator role."
+      )
     ).toBeVisible();
   },
 };
@@ -281,7 +289,7 @@ export const AddsOneRecord: Story = {
     await expect(reopened.queryByText("Choose a role first.")).toBeNull();
     await expect(
       reopened.getByText(
-        "A module role here reaches one record. The whole module is a row on Grants."
+        "Here a module role covers one record only. To give the whole module, use its row on Grants."
       )
     ).toBeVisible();
 
@@ -406,7 +414,7 @@ export const ModuleOff: Story = {
 
     await expect(
       body.getByText(
-        "Analytics is off, so its roles cannot be assigned here. Removal still works."
+        "Analytics is off. You cannot add its roles until it is on, but you can remove them."
       )
     ).toBeVisible();
 

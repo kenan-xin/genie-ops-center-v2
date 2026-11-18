@@ -121,8 +121,8 @@ function RoleFormDialog(props: {
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            A role is a named set of permission keys. Assign it to groups or
-            people afterwards.
+            A role is a named set of permissions. Assign it to groups or people
+            in Access.
           </DialogDescription>
         </DialogHeader>
         <RoleFormBody {...props} />
@@ -205,7 +205,7 @@ function RoleFormBody(props: {
         {unavailable.length > 0 ? (
           <fieldset className="rounded-lg border border-border p-3">
             <legend className="text-sm font-semibold text-foreground">
-              Unavailable keys
+              Unavailable permissions
             </legend>
             {unavailable.map((entry) => (
               <div key={entry.key} className="flex items-start gap-2">

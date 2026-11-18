@@ -738,9 +738,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
               ) : null}
             </div>
             <p className="max-w-prose text-sm text-muted-foreground">
-              For {name}. Move rows, pick a role on each Granted row, then save.
-              Granted means a role exists, not that the module works today: it
-              applies while the module is on.
+              For {name}. Move modules to Granted, pick a role for each, then
+              press Save. A role works only while its module is on.
             </p>
           </div>
 
@@ -749,7 +748,7 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
               role="status"
               className="px-5 pb-6 text-sm text-muted-foreground"
             >
-              Loading the access of {name}…
+              Loading the roles of {name}…
             </p>
           ) : (
             <div className="flex flex-col gap-3 px-5 pb-5 lg:px-6 xl:pb-6">
@@ -790,16 +789,8 @@ export function GrantsScreen(props: GrantsScreenProps): ReactNode {
                 availableLabel="Catalog"
                 grantedLabel="Granted"
                 emptyAvailable="Every module is in Granted."
-                emptyGranted="Nothing in Granted yet. Add rows from Catalog."
+                emptyGranted="Nothing in Granted yet. Add modules from Catalog."
               />
-              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
-                {props.recipient.type === "user" ? (
-                  <p>
-                    This screen writes the roles given to {name} directly. Group
-                    assignments change on Groups.
-                  </p>
-                ) : null}
-              </div>
             </div>
           )}
         </section>

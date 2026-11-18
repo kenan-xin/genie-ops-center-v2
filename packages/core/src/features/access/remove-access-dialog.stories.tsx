@@ -90,7 +90,7 @@ export const PathsStay: Story = {
 
     await expect(
       body.getByText(
-        "The direct role goes. Access continues through the assignments that stay."
+        "The roles that go are removed when you save. Access continues through the assignments that stay."
       )
     ).toBeVisible();
 
@@ -154,7 +154,7 @@ export const NoPathPerson: Story = {
 
     await expect(
       body.getByText(
-        "Sam Rivera has no other role of Slides. After you save, Sam Rivera no longer reaches Slides."
+        "Sam Rivera has no other role of Slides. After you save, Sam Rivera loses access to Slides."
       )
     ).toBeVisible();
     await expect(body.queryByText("Assignments that stay")).toBeNull();

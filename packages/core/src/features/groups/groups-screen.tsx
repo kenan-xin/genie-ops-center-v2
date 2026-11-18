@@ -308,8 +308,8 @@ export function GroupInspector(
           </div>
 
           <HelpDisclosure label="How group access works">
-            A role assigned to this group reaches every member while the group
-            is not archived. Archiving keeps the assignments and pauses them.{" "}
+            Every member gets the roles assigned to this group while it is not
+            archived. Archiving keeps the roles and pauses them.{" "}
             {group.source === "local"
               ? "You choose the members of this group here."
               : "A directory group's members come from the identity provider."}
@@ -736,8 +736,8 @@ export function GroupsScreen(props: GroupsScreenProps) {
           <HelpDisclosure label="Groups and directory groups" iconOnly>
             A directory group&apos;s value and members come from the identity
             provider; only its name can be changed here. A directory group not
-            synced yet can be deleted. Both kinds carry roles. A role assigned
-            to a group reaches every member.
+            synced yet can be deleted. Both kinds carry roles. Every member of a
+            group gets the roles assigned to it.
           </HelpDisclosure>
         </div>
         <div className="flex w-full flex-wrap items-center gap-2 md:w-auto">

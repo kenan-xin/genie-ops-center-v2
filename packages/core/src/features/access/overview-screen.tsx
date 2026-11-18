@@ -301,7 +301,7 @@ function columnsOf(timeZone: string): readonly DataTableColumn<OverviewRow>[] {
     },
     {
       id: "added",
-      header: "Added",
+      header: "Assigned",
       cell: (row) => <AddedCell row={row} timeZone={timeZone} />,
     },
   ];
@@ -316,7 +316,10 @@ function CardFacts(props: {
     ["Module", <ModuleCell key="m" row={props.row} />],
     ["Role", <RoleCell key="r" row={props.row} />],
     ["Assigned via", <PathCell key="p" row={props.row} />],
-    ["Added", <AddedCell key="a" row={props.row} timeZone={props.timeZone} />],
+    [
+      "Assigned",
+      <AddedCell key="a" row={props.row} timeZone={props.timeZone} />,
+    ],
   ] as const;
 
   return (
@@ -497,8 +500,7 @@ function Results(
           className={`size-4 shrink-0 ${iconLead}`}
         />
         <span>
-          Access adds up. Removing one assignment leaves the others, which the
-          Assigned via column names. What changed and when is in the{" "}
+          Access adds up. Removing one assignment leaves the others. The{" "}
           {props.auditLogHref === undefined ? (
             "audit log"
           ) : (
@@ -508,8 +510,8 @@ function Results(
             >
               audit log
             </a>
-          )}
-          .
+          )}{" "}
+          shows what changed and when.
         </span>
       </p>
     </section>
@@ -595,7 +597,7 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
           variant="framed"
           icon={<SearchIcon />}
           title="Choose what to look up"
-          description="Pick a group or a person, a module, or a role. Nothing is read before you choose, so there is no table of everybody against everything."
+          description="Pick a group or a person, a module, or a role to see who has what."
         />
       ) : (
         <Results

@@ -157,7 +157,7 @@ test("a grant reaches the member's navigation, and Remove takes it unless anothe
         `Remove Placeholder from ${group}?`
       );
       await expect(dialog).toContainText(
-        `${group} has no role of Placeholder after you save.`
+        `After you save, ${group} has no role of Placeholder.`
       );
       await expectNoAxeViolations(page, "Grants Remove confirmation");
     });

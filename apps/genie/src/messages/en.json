@@ -51,7 +51,7 @@
     "access": {
       "title": "Access",
       "description": "Choose a group or a person. Then give them modules and pick a role in each.",
-      "overviewDescription": "Who reaches which module, with which role, and how it is assigned.",
+      "overviewDescription": "Who has which module, with which role, and how it is assigned.",
       "notSaved": "The access changes were not saved."
     },
     "ask": {
@@ -84,7 +84,7 @@
     },
     "roles": {
       "title": "Roles",
-      "description": "Named sets of permission keys.",
+      "description": "Named sets of permissions.",
       "searchLabel": "Search roles",
       "noMatch": {
         "title": "No roles match",

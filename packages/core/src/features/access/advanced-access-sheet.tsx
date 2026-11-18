@@ -71,14 +71,15 @@ export type AdvancedAccessSheetProps = {
 };
 
 const GUARD_REASON = {
-  "self-protection": "You cannot remove your own Tenant administrator role",
+  "self-protection":
+    "Only another administrator can remove your own Tenant administrator role.",
   "last-administrator":
-    "Last active Tenant administrator assignment. Give the role to somebody else first.",
+    "This is the last active Tenant administrator. Assign the role to someone else first.",
 } as const;
 
 const GROUPS = [
   ["core", "Core"],
-  ["record", "Module role at one record"],
+  ["record", "A role on one record"],
   ["custom", "Custom roles"],
 ] as const;
 
@@ -321,12 +322,13 @@ export function AdvancedAccessSheet(
         <SheetHeader>
           <SheetTitle>Advanced access</SheetTitle>
           <SheetDescription>
-            Core roles, a module role at one record, and custom roles for{" "}
+            Extra access for{" "}
             <b className="font-semibold text-foreground">
               {props.recipientName}
-            </b>
-            . One Save writes every change through the same role-assignment
-            service.
+            </b>{" "}
+            that the main list does not cover: admin portal rights, the Auditor
+            role, a role on one record only, and custom roles. Nothing changes
+            until you press Save.
           </SheetDescription>
           <SheetClose
             render={
@@ -349,17 +351,18 @@ export function AdvancedAccessSheet(
         >
           {off.length === 0 ? null : (
             <WarningNote size="sm" role="status">
-              {listOf(off)} {off.length === 1 ? "is" : "are"} off, so{" "}
-              {off.length === 1 ? "its" : "their"} roles cannot be assigned
-              here. Removal still works.
+              {listOf(off)} {off.length === 1 ? "is" : "are"} off. You cannot
+              add {off.length === 1 ? "its" : "their"} roles until{" "}
+              {off.length === 1 ? "it is" : "they are"} on, but you can remove
+              them.
             </WarningNote>
           )}
 
           <section className="flex flex-col gap-1">
-            <h3 className={CAPTION}>Advanced roles of {props.recipientName}</h3>
+            <h3 className={CAPTION}>Extra roles of {props.recipientName}</h3>
             {props.rows.length + draft.add.length === 0 ? (
               <p className="py-2 text-muted-foreground">
-                No advanced role is assigned to {props.recipientName}.
+                No extra role is assigned to {props.recipientName}.
               </p>
             ) : (
               <ul>
@@ -548,8 +551,8 @@ export function AdvancedAccessSheet(
                 ) : null}
                 {picked.kind === "system" ? (
                   <p className="text-xs text-muted-foreground">
-                    A module role here reaches one record. The whole module is a
-                    row on Grants.
+                    Here a module role covers one record only. To give the whole
+                    module, use its row on Grants.
                   </p>
                 ) : null}
                 {needsRecord ? (
