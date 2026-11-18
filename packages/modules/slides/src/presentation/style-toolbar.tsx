@@ -20,8 +20,8 @@ import {
   SelectTrigger,
   SelectValue,
   ToggleGroup,
+  iconLeadPx,
   ToggleGroupItem,
-  Toolbar,
   ToolbarButton,
 } from "@genie/ui";
 import {
@@ -64,6 +64,8 @@ import {
   type HandKind,
 } from "./add-element-menu.tsx";
 import { boxStep, movedBox, resizedBox, SNAP } from "./canvas-adapter.ts";
+import { DockSheet, DockSheetRow } from "./dock-sheet.tsx";
+import { PhoneDock } from "./phone-dock.tsx";
 import { contrastLimit } from "./slide-layout.ts";
 import { useIsPhone } from "./use-is-phone.ts";
 import type { ShownElement, ShownSlide } from "./views.ts";
@@ -329,6 +331,17 @@ export function PositionControl(props: {
   );
 }
 
+/** The selected element's name in the phone dock and its More sheet (P13-17). */
+const ELEMENT_NAMES: Record<ElementKind, string> = {
+  title: "Title",
+  text: "Text box",
+  bullets: "Bullet list",
+  figure: "Figure",
+  chart: "Chart",
+  table: "Table",
+  image: "Image",
+};
+
 /** The state that refuses Use theme style: the element already takes the theme (6wz1.126). */
 const THEMED = "Already uses the theme style.";
 
@@ -343,6 +356,8 @@ export type StyleToolbarProps = {
   readonly saving?: boolean;
   readonly onStep: (step: DeckChange) => void;
   readonly onEditText: () => void;
+  /** Leaves the element: the phone dock's Done. */
+  readonly onDone: () => void;
   /** Removes the element; undefined when the slide rules refuse the slide without it. Phone only. */
   readonly onDelete?: (() => void) | undefined;
   /** The slide rule that refuses Delete element, shown as its reason (6wz1.126). Phone only. */
@@ -363,9 +378,13 @@ export function StyleToolbar(props: StyleToolbarProps) {
   const dock = useRef<HTMLDivElement>(null);
   // The open card of the dock: one at a time.
   const [tool, setTool] = useState<string | null>(null);
+  // The phone More sheet, as the page's (P13-18): focus return off for an action that moves focus
+  // itself, and an action that must wait for the sheet to leave runs once it has.
+  const [more, setMore] = useState(false);
+  const moreFocus = useRef(true);
+  const afterMore = useRef<(() => void) | null>(null);
   const themed = element.style === undefined;
   const themedId = useId();
-  const deleteId = useId();
 
   const label = `${element.kind === "title" ? "Title" : element.kind[0]?.toUpperCase() + element.kind.slice(1)} style`;
 
@@ -473,10 +492,12 @@ export function StyleToolbar(props: StyleToolbarProps) {
     send(fillChange(element, props.background, fill));
 
   if (phone) {
-    // An action of More closes its card first, so the sheet or the save never opens under it.
-    const act = (action: () => void) => () => {
-      setTool(null);
-      action();
+    const elementName = ELEMENT_NAMES[element.kind];
+
+    const closeMore = (returnFocus: boolean, after?: () => void) => {
+      moreFocus.current = returnFocus;
+      afterMore.current = after ?? null;
+      setMore(false);
     };
 
     const tools: (readonly [string, ReactNode, ReactNode])[] = [
@@ -532,63 +553,22 @@ export function StyleToolbar(props: StyleToolbarProps) {
         </ToggleGroup>,
       ],
       ["Position", <MoveIcon aria-hidden="true" />, position],
-      [
-        "More",
-        <EllipsisIcon aria-hidden="true" />,
-        <div className="grid gap-2">
-          {text ? (
-            <Button
-              variant="secondary"
-              className="w-full justify-start"
-              disabled={saving}
-              onClick={act(props.onEditText)}
-            >
-              <PencilIcon aria-hidden="true" /> Edit text
-            </Button>
-          ) : null}
-          <Button
-            variant="secondary"
-            className="w-full justify-start"
-            disabled={saving || themed}
-            focusableWhenDisabled
-            aria-describedby={themed ? themedId : undefined}
-            onClick={act(() => send(null))}
-          >
-            <RotateCcwIcon aria-hidden="true" /> Use theme style
-          </Button>
-          {themed ? (
-            <p id={themedId} className="text-xs text-muted-foreground">
-              {THEMED}
-            </p>
-          ) : null}
-          <Button
-            variant="danger-outline"
-            className="w-full justify-start"
-            disabled={saving || props.onDelete === undefined}
-            focusableWhenDisabled
-            aria-describedby={
-              props.deleteRefusal === undefined ? undefined : deleteId
-            }
-            onClick={act(() => props.onDelete?.())}
-          >
-            <Trash2Icon aria-hidden="true" /> Delete element
-          </Button>
-          {props.deleteRefusal === undefined ? null : (
-            <p id={deleteId} className="text-xs text-muted-foreground">
-              {props.deleteRefusal}
-            </p>
-          )}
-        </div>,
-      ],
     ];
 
     return (
-      // The shell keeps the page's last row clear of a bottom bar, and lifts it over the agent.
-      <div
-        data-shell-bottom-bar=""
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background p-2 shadow-lg"
-      >
-        <Toolbar ref={dock} aria-label={label} className="justify-around">
+      <>
+        <PhoneDock
+          ref={dock}
+          label={label}
+          context={
+            <div className="flex items-center justify-between ps-4 pe-2 text-sm text-muted-foreground">
+              <span>{elementName}</span>
+              <Button variant="ghost-primary" size="sm" onClick={props.onDone}>
+                Done
+              </Button>
+            </div>
+          }
+        >
           {tools.map(([name, icon, card]) => (
             <Popover
               key={name}
@@ -615,8 +595,64 @@ export function StyleToolbar(props: StyleToolbarProps) {
               </PopoverContent>
             </Popover>
           ))}
-        </Toolbar>
-      </div>
+          <ToolbarButton
+            onClick={() => {
+              // A re-open during the close never runs the last open's action.
+              afterMore.current = null;
+              moreFocus.current = true;
+              setMore(true);
+            }}
+          >
+            <EllipsisIcon aria-hidden="true" />
+            More
+          </ToolbarButton>
+        </PhoneDock>
+        {/* Each icon's lead offset puts its ink on the heading's text edge (6wz1.113). */}
+        <DockSheet
+          open={more}
+          onOpenChange={setMore}
+          title={`${elementName} actions`}
+          heading={elementName}
+          returnFocus={() => moreFocus.current}
+          onClosed={() => {
+            afterMore.current?.();
+            afterMore.current = null;
+          }}
+        >
+          {text ? (
+            <DockSheetRow
+              icon={<PencilIcon aria-hidden="true" className={iconLeadPx[3]} />}
+              label="Edit text"
+              busy={saving}
+              // The editor opens once the sheet has gone, so the two never stack.
+              onClick={() => closeMore(false, props.onEditText)}
+            />
+          ) : null}
+          <DockSheetRow
+            icon={
+              <RotateCcwIcon aria-hidden="true" className={iconLeadPx[3]} />
+            }
+            label="Use theme style"
+            reason={themed ? THEMED : undefined}
+            busy={saving}
+            onClick={() => {
+              closeMore(true);
+              send(null);
+            }}
+          />
+          <DockSheetRow
+            icon={<Trash2Icon aria-hidden="true" className={iconLeadPx[4]} />}
+            label="Delete element"
+            danger
+            reason={props.deleteRefusal}
+            busy={saving || props.onDelete === undefined}
+            onClick={() => {
+              closeMore(true);
+              props.onDelete?.();
+            }}
+          />
+        </DockSheet>
+      </>
     );
   }
 

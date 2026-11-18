@@ -22,7 +22,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The style controls of the selected slide element, variant A of the slide editor controls prototype (S7-43). A title, text or bullet list takes text color, font size, weight, alignment, fill, border and Position; a figure, chart, table or image takes fill, border and Position. Each control sends one `change-element` step. Position opens the nudge pad and the width and height steppers in a popover. Below 768 px the toolbar is a dock of one row of tools (Text, Fill, Border, Position, More) at the bottom of the screen, each opening a card above it.",
+          "The style controls of the selected slide element, variant A of the slide editor controls prototype (S7-43). A title, text or bullet list takes text color, font size, weight, alignment, fill, border and Position; a figure, chart, table or image takes fill, border and Position. Each control sends one `change-element` step. Position opens the nudge pad and the width and height steppers in a popover. Below 768 px the toolbar is a dock of one row of tools (Text, Fill, Border, Position, More) at the bottom of the screen, under a row with the element's name and Done. Each tool opens a card above it, and More opens a sheet of the element's actions.",
       },
     },
     a11y: { test: "error" },
@@ -34,6 +34,7 @@ const meta = {
     box: { x: 40, y: 32, w: 880, h: 88 },
     onStep: fn(),
     onEditText: fn(),
+    onDone: fn(),
   },
   decorators: [
     (Story) => (
@@ -185,11 +186,12 @@ async function openTool(canvasElement: HTMLElement, tool: string) {
   });
 }
 
-// P13-10 and czjw.156: one row of five labelled tools at the bottom, never a wrap over the page.
+// P13-10, P13-17 and czjw.156: the element's name and Done sit above one row of five labelled
+// tools at the bottom, never a wrap over the page.
 export const PhoneDock: Story = {
-  name: "On a phone the title's dock is one row of five tools",
+  name: "On a phone the title's dock names it with Done above five tools",
   globals: phone,
-  play: async ({ canvas, canvasElement }) => {
+  play: async ({ args, canvas, canvasElement }) => {
     await expect(await dockTools(canvasElement, "Title style")).toEqual([
       "Text",
       "Fill",
@@ -198,14 +200,24 @@ export const PhoneDock: Story = {
       "More",
     ]);
 
-    // One tab stop: the arrow keys move between the tools (P16e-7).
-    const toolbar = within(
-      canvas.getByRole("toolbar", { name: "Title style" })
-    );
+    const toolbar = canvas.getByRole("toolbar", { name: "Title style" });
+    const done = canvas.getByRole("button", { name: "Done" });
+    const row = done.parentElement!;
 
-    toolbar.getByRole("button", { name: "Text" }).focus();
+    // The name row sits above the tools, with the element's name beside Done.
+    await expect(row).toHaveTextContent(/^TitleDone$/);
+    await expect(row.getBoundingClientRect().bottom).toBeLessThanOrEqual(
+      toolbar.getBoundingClientRect().top
+    );
+    await userEvent.click(done);
+    await expect(args.onDone).toHaveBeenCalledOnce();
+
+    // One tab stop: the arrow keys move between the tools (P16e-7).
+    const tools = within(toolbar);
+
+    tools.getByRole("button", { name: "Text" }).focus();
     await userEvent.keyboard("{ArrowRight}");
-    await expect(toolbar.getByRole("button", { name: "Fill" })).toHaveFocus();
+    await expect(tools.getByRole("button", { name: "Fill" })).toHaveFocus();
   },
 };
 
@@ -335,19 +347,38 @@ export const PhonePositionCard: Story = {
   },
 };
 
-// More holds the row's last actions; a title cannot go, because the save refuses a slide without it.
+/** Taps the dock's More and answers its sheet, "<name> actions". */
+async function openMore(canvasElement: HTMLElement, name: string) {
+  await userEvent.click(
+    within(within(canvasElement).getByRole("toolbar")).getByRole("button", {
+      name: "More",
+    })
+  );
+
+  return within(
+    await within(canvasElement.ownerDocument.body).findByRole("dialog", {
+      name: `${name} actions`,
+    })
+  );
+}
+
+// P13-17 and P13-18: More opens the element's sheet; a title cannot go, because the save refuses
+// a slide without it.
 export const PhoneMoreCard: Story = {
-  name: "On a phone More holds Edit text, Use theme style and a disabled Delete",
+  name: "On a phone More opens the element's sheet",
   globals: phone,
   args: { element: { ...title!, style: { color: "#FFFFFF" } } },
-  play: async ({ args, canvasElement }) => {
-    let card = within(await openTool(canvasElement, "More"));
+  play: async ({ args, canvas, canvasElement }) => {
+    let sheet = await openMore(canvasElement, "Title");
 
     await expect(
-      card.getByRole("button", { name: "Delete element" })
+      sheet.getAllByRole("button").map((row) => row.textContent)
+    ).toEqual(["Edit text", "Use theme style", "Delete element"]);
+    await expect(
+      sheet.getByRole("button", { name: "Delete element" })
     ).toHaveAttribute("aria-disabled", "true");
     await userEvent.click(
-      card.getByRole("button", { name: "Use theme style" })
+      sheet.getByRole("button", { name: "Use theme style" })
     );
     await expect(args.onStep).toHaveBeenCalledTimes(1);
     await expect(args.onStep).toHaveBeenCalledWith({
@@ -360,11 +391,13 @@ export const PhoneMoreCard: Story = {
     const body = within(canvasElement.ownerDocument.body);
 
     await waitFor(() => expect(body.queryByRole("dialog")).toBeNull());
+    // Use theme style moves no focus itself, so the sheet hands it back to More.
+    await expect(canvas.getByRole("button", { name: "More" })).toHaveFocus();
 
-    card = within(await openTool(canvasElement, "More"));
-    await userEvent.click(card.getByRole("button", { name: "Edit text" }));
-    await expect(args.onEditText).toHaveBeenCalledOnce();
-    await waitFor(() => expect(body.queryByRole("dialog")).toBeNull());
+    sheet = await openMore(canvasElement, "Title");
+    await userEvent.click(sheet.getByRole("button", { name: "Edit text" }));
+    await waitFor(() => expect(args.onEditText).toHaveBeenCalledOnce());
+    await expect(body.queryByRole("dialog")).toBeNull();
   },
 };
 
@@ -379,10 +412,12 @@ export const PhoneMoreCardChart: Story = {
     onDelete: fn(),
   },
   play: async ({ args, canvasElement }) => {
-    const card = within(await openTool(canvasElement, "More"));
+    const sheet = await openMore(canvasElement, "Chart");
 
-    await expect(card.queryByRole("button", { name: "Edit text" })).toBeNull();
-    await userEvent.click(card.getByRole("button", { name: "Delete element" }));
+    await expect(sheet.queryByRole("button", { name: "Edit text" })).toBeNull();
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Delete element" })
+    );
     await expect(args.onDelete).toHaveBeenCalledOnce();
   },
 };
@@ -663,7 +698,7 @@ export const AddElementWithoutAsk: StoryObj<typeof SlideEditorBar> = {
 export const RefusedActionsSayWhyOnPhone: Story = {
   name: "On a phone More says why Use theme style and Delete are off",
   globals: phone,
-  // The story ends with the card open, so axe measures the reason lines. Base UI's focus guards
+  // The story ends with the sheet open, so axe measures the reason lines. Base UI's focus guards
   // are `aria-hidden` on purpose (they hand focus on), so only they skip `aria-hidden-focus`.
   parameters: {
     a11y: {
@@ -684,16 +719,16 @@ export const RefusedActionsSayWhyOnPhone: Story = {
     onDelete: undefined,
   },
   play: async ({ canvasElement }) => {
-    const card = within(await openTool(canvasElement, "More"));
+    const sheet = await openMore(canvasElement, "Title");
 
     await expect(
-      card.getByRole("button", {
+      sheet.getByRole("button", {
         name: "Use theme style",
         description: "Already uses the theme style.",
       })
     ).toHaveAttribute("aria-disabled", "true");
     await expect(
-      card.getByRole("button", {
+      sheet.getByRole("button", {
         name: "Delete element",
         description: SLIDE_RULE_MESSAGES.firstNotTitle,
       })

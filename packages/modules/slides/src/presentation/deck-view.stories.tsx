@@ -1381,7 +1381,21 @@ async function deleteFigureOnPhone(canvas: ReturnType<typeof within>) {
     )
   );
   await userEvent.click(
-    await screen.findByRole("button", { name: "Delete element" })
+    within(
+      await screen.findByRole("dialog", { name: "Figure actions" })
+    ).getByRole("button", { name: "Delete element" })
+  );
+}
+
+/** Waits for the slide's own dock, with focus on its first tool. */
+async function expectSlideToolsFocused(canvas: ReturnType<typeof within>) {
+  await waitFor(() =>
+    expect(
+      within(canvas.getByRole("toolbar", { name: "Slide tools" })).getByRole(
+        "button",
+        { name: "Add element" }
+      )
+    ).toBe(document.activeElement)
   );
 }
 
@@ -1417,10 +1431,13 @@ export const DeleteElementOnPhone: Story = {
     await waitFor(() =>
       expect(canvas.queryByRole("toolbar", { name: /style$/ })).toBeNull()
     );
+    // The removed element's dock took focus with it, so the slide's dock takes it back.
+    await expectSlideToolsFocused(canvas);
   },
 };
 
-// A refused Delete keeps the element selected, so the person sees the refusal beside its dock.
+// A refused Delete keeps the element selected and focus on More, so the person sees the refusal
+// beside its dock.
 export const RefusedDeleteOnPhone: Story = {
   name: "A refused Delete on a phone keeps the selection",
   args: { view: placedVisualsPage },
@@ -1439,9 +1456,12 @@ export const RefusedDeleteOnPhone: Story = {
     await expect(await canvas.findByRole("alert")).toHaveTextContent(
       `Slide 2 was not changed. ${CHANGE_INVALID}`
     );
-    await expect(
-      canvas.getByRole("toolbar", { name: "Figure style" })
-    ).toBeInTheDocument();
+    const dock = canvas.getByRole("toolbar", { name: "Figure style" });
+
+    // The sheet hands focus back to More, beside the refusal, not to the page body.
+    await waitFor(() =>
+      expect(within(dock).getByRole("button", { name: "More" })).toHaveFocus()
+    );
   },
 };
 
@@ -1491,6 +1511,80 @@ export const CardLeavesSelectionInViewOnPhone: Story = {
 
     await keepsInView("Text");
     await keepsInView("Position");
+  },
+};
+
+// P13-17: Done leaves the element and hands focus to the slide's first tool, not the page body.
+export const DoneReturnsToSlideTools: Story = {
+  name: "On a phone Done returns to the slide tools",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await selectTitle(canvas);
+    await userEvent.click(canvas.getByRole("button", { name: "Done" }));
+
+    await expect(
+      canvas.queryByRole("toolbar", { name: "Title style" })
+    ).toBeNull();
+    await expectSlideToolsFocused(canvas);
+  },
+};
+
+// P13-18: Edit text waits for the More sheet to leave, then opens the editor; the selection stays.
+export const EditTextFromElementMore: Story = {
+  name: "On a phone Edit text from More opens the editor",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", {
+        name: "Slide 2: Collections narrowed the gap to the plan line",
+      })
+    );
+    await userEvent.click(
+      within(canvas.getByRole("group", { name: "Slide editing" })).getByRole(
+        "button",
+        { name: /^Text "Cash in grew/ }
+      )
+    );
+    await userEvent.click(
+      within(canvas.getByRole("toolbar", { name: "Text style" })).getByRole(
+        "button",
+        { name: "More" }
+      )
+    );
+
+    const sheet = await screen.findByRole("dialog", {
+      name: "Text box actions",
+    });
+
+    // The editor opens only once the sheet has gone, never under it: no moment shows both.
+    let stacked = false;
+
+    const watch = new MutationObserver(() => {
+      if (document.querySelectorAll('[role="dialog"]').length > 1) {
+        stacked = true;
+      }
+    });
+
+    watch.observe(document.body, { childList: true, subtree: true });
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "Edit text" })
+    );
+
+    const editor = await screen.findByRole("dialog", { name: "Edit slide 2" });
+
+    watch.disconnect();
+    await expect(stacked).toBe(false);
+    await userEvent.click(
+      within(editor).getByRole("button", { name: "Cancel" })
+    );
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await expect(
+      canvas.getByRole("toolbar", { name: "Text style" })
+    ).toBeInTheDocument();
   },
 };
 

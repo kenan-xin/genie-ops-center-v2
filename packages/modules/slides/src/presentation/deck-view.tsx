@@ -480,6 +480,8 @@ export function DeckView(props: DeckViewProps) {
   const [more, setMore] = useState(false);
   const moreFocus = useRef(true);
   const afterMore = useRef<(() => void) | null>(null);
+  // Set when the element's dock leaves with focus in it, so the slide's dock takes focus (P13-17).
+  const focusDock = useRef(false);
   // The panel opens after the sheet closes, so the sheet's focus return does not fight it.
   const afterEditor = useRef<(() => void) | null>(null);
 
@@ -1357,6 +1359,10 @@ export function DeckView(props: DeckViewProps) {
                       slideNumber: index + 1,
                     })
                   }
+                  onDone={() => {
+                    focusDock.current = true;
+                    setSelection(null);
+                  }}
                   onEditText={() =>
                     openEditor({
                       slide: current,
@@ -1394,6 +1400,7 @@ export function DeckView(props: DeckViewProps) {
                           ).then((saved) => {
                             // Only the deleted element's selection goes; one made during the save stays.
                             if (saved) {
+                              focusDock.current = true;
                               setSelection((now) =>
                                 now?.slideId === current.id &&
                                 now.index === selected
@@ -1489,9 +1496,12 @@ export function DeckView(props: DeckViewProps) {
             });
           }}
           onMore={() => {
+            // A re-open during the close never runs the last open's action.
+            afterMore.current = null;
             moreFocus.current = true;
             setMore(true);
           }}
+          focusOnMount={focusDock}
         />
       )}
       {/* Each icon's lead offset puts its ink on the section heading's text edge (6wz1.113). */}

@@ -14,7 +14,14 @@ import {
   PencilIcon,
   PlusIcon,
 } from "lucide-react";
-import { type ReactNode, type Ref, useRef, useState } from "react";
+import {
+  type ReactNode,
+  type Ref,
+  type RefObject,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 import type { DeckChange } from "../contract.ts";
 import {
@@ -64,10 +71,20 @@ export function SlideDock(props: {
   readonly onSteps: (steps: readonly DeckChange[]) => void;
   readonly onEditSlide: () => void;
   readonly onMore: () => void;
+  /** True when the dock comes back from an element's: its first tool takes focus once. */
+  readonly focusOnMount: RefObject<boolean>;
 }): ReactNode {
-  const { slide } = props;
+  const { slide, focusOnMount } = props;
   const dock = useRef<HTMLDivElement>(null);
   const [background, setBackground] = useState(false);
+
+  // The element's dock held focus and has gone, so focus would fall to the page body.
+  useEffect(() => {
+    if (!focusOnMount.current) return;
+
+    focusOnMount.current = false;
+    dock.current?.querySelector("button")?.focus();
+  }, [focusOnMount]);
 
   return (
     <PhoneDock label="Slide tools" ref={dock}>
