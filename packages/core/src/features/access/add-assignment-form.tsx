@@ -127,7 +127,11 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
     setRole(choice);
     setScope("all");
     setRecord(null);
-    setErrors((current) => ({ ...current, role: undefined }));
+    setErrors((current) => ({
+      ...current,
+      role: undefined,
+      record: undefined,
+    }));
   };
 
   const changePicks = (next: readonly RecipientRow[]) => {
@@ -278,7 +282,10 @@ export function AddAssignmentForm(props: AddAssignmentFormProps): ReactNode {
             <RadioGroup
               aria-labelledby={scopeId}
               value={scope}
-              onValueChange={(next) => setScope(next === "one" ? "one" : "all")}
+              onValueChange={(next) => {
+                setScope(next === "one" ? "one" : "all");
+                setErrors((current) => ({ ...current, record: undefined }));
+              }}
             >
               <label className="flex items-center gap-2 text-sm">
                 <RadioGroupItem value="all" />

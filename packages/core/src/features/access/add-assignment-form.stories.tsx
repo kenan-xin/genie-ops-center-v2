@@ -165,6 +165,11 @@ export const ScopeOffersOneRecordOnlyForRecordRoles: Story = {
     );
     await expect(await canvas.findByText("Choose a record.")).toBeVisible();
     await expect(args.onSubmit).not.toHaveBeenCalled();
+    await userEvent.click(canvas.getByRole("radio", { name: "All records" }));
+    await waitFor(() =>
+      expect(canvas.queryByText("Choose a record.")).toBeNull()
+    );
+    await userEvent.click(canvas.getByRole("radio", { name: "One record" }));
 
     await userEvent.click(
       canvas.getByRole("combobox", { name: "Choose a record" })

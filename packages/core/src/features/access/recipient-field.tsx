@@ -89,7 +89,10 @@ export function RecipientField(props: RecipientFieldProps): ReactNode {
         }
       },
       () => {
-        if (call === latest.current) setFailed(true);
+        if (call === latest.current) {
+          setPage(null);
+          setFailed(true);
+        }
       }
     );
   };
