@@ -35,6 +35,7 @@ import {
   type RolesModule,
   updateRole,
 } from "./index.ts";
+import { readRecipients, RECIPIENT_PAGE_SIZE } from "./recipients.ts";
 import { readRecordLabels, searchScopeRecords } from "./records.ts";
 
 // The session check, then the permission gate, both before input is parsed: an anonymous,
@@ -265,6 +266,19 @@ export function createRolesRouter(modules: readonly RolesModule[]) {
 
     grantRecipients: managed.grantRecipients.handler(({ context }) =>
       readGrantRecipients({ tenant: context.tenant, caller: context.caller })
+    ),
+
+    recipients: managed.recipients.handler(({ context, input }) =>
+      readRecipients({
+        tenant: context.tenant,
+        caller: context.caller,
+        query: input.query ?? "",
+        kind: input.kind ?? "all",
+        ids: input.ids ?? null,
+        archived: input.archived ?? false,
+        offset: input.offset ?? 0,
+        limit: input.limit ?? RECIPIENT_PAGE_SIZE,
+      })
     ),
   });
 }

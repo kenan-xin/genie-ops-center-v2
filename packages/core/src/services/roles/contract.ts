@@ -5,6 +5,7 @@ import type { AdvancedCatalogue, RemovalGuard } from "./advanced.ts";
 import type { AccessPage, AccessPath } from "./effective-access.ts";
 import type { GrantRecipients, GrantRow } from "./grants.ts";
 import type { RoleDetail, RolePermissionGroup, RoleRow } from "./index.ts";
+import type { RecipientPage } from "./recipients.ts";
 import type { RecordLabel, ScopeRecord } from "./records.ts";
 
 const roleId = z.object({ roleId: z.uuid() });
@@ -246,6 +247,21 @@ export const rolesContract = {
   grantRecipients: oc
     .route({ method: "GET", path: "/roles/grants/recipients" })
     .output(z.custom<GrantRecipients>()),
+
+  // d8l5.62, P12-6: the groups and people that Access offers, groups first, searched and paged on the server.
+  recipients: oc
+    .route({ method: "GET", path: "/roles/recipients" })
+    .input(
+      z.object({
+        query: z.string().max(200).optional(),
+        kind: z.enum(["all", "group", "user"]).optional(),
+        ids: z.array(z.string().min(1).max(200)).max(100).optional(),
+        archived: z.boolean().optional(),
+        offset: z.number().int().min(0).max(100_000).optional(),
+        limit: z.number().int().min(1).max(100).optional(),
+      })
+    )
+    .output(z.custom<RecipientPage>()),
 };
 
 export type RolesContract = typeof rolesContract;
