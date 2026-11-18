@@ -317,6 +317,71 @@ export const FastStream: Story = {
   },
 };
 
+/** The answer of the `synthetic-step-note-2` recording. */
+const STEP_NOTE_ANSWER =
+  'root = Answer([result])\nresult = Paragraph("I can read one set of data: the placeholder records.")';
+
+/** Lands the whole answer and the end of the stream. `play` calls it, after Storybook's `act`. */
+let endStream = () => {};
+
+/**
+ * A text part that starts empty, as the AI SDK opens it, then gets the whole answer and the end
+ * of the stream in one commit, as a slow page draws a fast stream.
+ */
+function EndDriver(props: { readonly text: string }) {
+  const [ended, setEnded] = useState(false);
+
+  useEffect(() => {
+    endStream = () => setEnded(true);
+  }, []);
+
+  return (
+    <MessageParts
+      message={answer(ended ? props.text : "")}
+      streaming={!ended}
+    />
+  );
+}
+
+/**
+ * An answer that ends never shows its raw program, not even for one frame (xok3.108): the end of
+ * the stream must not read the parse report of the empty text it started with.
+ */
+export const StreamThatEnds: Story = {
+  name: "Stream that ends",
+  decorators: [withChartCheck(resolveKpi)],
+  render: () => <EndDriver text={STEP_NOTE_ANSWER} />,
+  play: async ({ canvas, canvasElement }) => {
+    const raw: string[] = [];
+
+    // Records every added node, so a paragraph that shows for one frame is still caught.
+    const observer = new MutationObserver((records) => {
+      for (const record of records) {
+        for (const node of record.addedNodes) {
+          if (node.textContent?.includes("root = Answer")) {
+            raw.push(node.textContent);
+          }
+        }
+      }
+    });
+
+    observer.observe(canvasElement, { childList: true, subtree: true });
+    endStream();
+
+    await expect(
+      await canvas.findByText(
+        "I can read one set of data: the placeholder records."
+      )
+    ).toBeVisible();
+    // The meta row shows only once the stream ended.
+    await expect(
+      await canvas.findByRole("button", { name: "Copy" })
+    ).toBeVisible();
+    observer.disconnect();
+    await expect(raw).toEqual([]);
+  },
+};
+
 export const BrokenCall: Story = {
   name: "Broken call",
   args: { message: answer(BROKEN_ANSWER) },

@@ -120,21 +120,16 @@ function AnswerText(props: {
   readonly text: string;
   readonly streaming: boolean;
 }) {
-  // `undefined` means the parser has not reported yet. `null` is a reported result with no root.
-  const reported = useRef<ParseResult | null | undefined>(undefined);
-
   // The renderer reports each text from an effect. While the answer streams, a state update for
   // each report renders with the next chunk, and over 50 in a row make React log "Maximum update
-  // depth exceeded" (xok3.69). Only a finished answer reads the result, so only its report redraws.
-  const [, setFinished] = useState<ParseResult | null>();
+  // depth exceeded" (xok3.69). Only a finished answer reads the result, so only its report is kept:
+  // a streaming report, such as the empty text's `null`, would show the raw program for one frame
+  // after the stream ends (xok3.108). `undefined` means no finished report yet.
+  const [result, setFinished] = useState<ParseResult | null>();
 
   const report = (next: ParseResult | null) => {
-    reported.current = next;
-
     if (!props.streaming) setFinished(next);
   };
-
-  const result = reported.current;
 
   const [errors, setErrors] = useState<readonly OpenUIError[]>([]);
 
