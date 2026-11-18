@@ -404,7 +404,7 @@ test("a bullet edit on a dark slide keeps the list's box and color", async ({
 
       const sheet = page.getByRole("dialog", { name: "Edit slide" });
 
-      await activate(page, sheet.getByRole("button", { name: "Add bullet" }));
+      await activate(page, sheet.getByRole("button", { name: "Add a bullet" }));
       await sheet
         .getByRole("textbox", { name: "Bullet 3" })
         .fill("Close the account");

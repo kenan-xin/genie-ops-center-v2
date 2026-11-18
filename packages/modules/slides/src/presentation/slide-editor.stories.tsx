@@ -4,10 +4,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
+import { SLIDE_RULE_MESSAGES } from "../contract.ts";
 import {
+  chartWithImageSlide,
   deckPage,
+  longestSlide,
   textOnlySlide,
   textWithChartSlide,
+  textWithTableSlide,
+  twoFiguresSlide,
 } from "./__fixtures__/decks.ts";
 import { EditSlideSheet } from "./edit-slide-sheet.tsx";
 import { SlideEditor } from "./slide-editor.tsx";
@@ -25,6 +30,8 @@ const save = fn();
 const close = fn();
 
 const upload = fn();
+
+const ask = fn();
 
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
@@ -116,6 +123,7 @@ function reset() {
   save.mockReset();
   close.mockReset();
   upload.mockReset().mockResolvedValue(FILE_ID);
+  ask.mockReset();
 }
 
 async function editor() {
@@ -179,9 +187,13 @@ export const ChartSlide: Story = {
     await expect(
       sheet.getByText("Invoiced by month", { ignore: "[aria-hidden=true] *" })
     ).toBeVisible();
-    await expect(sheet.getAllByRole("button", { name: "Remove" })).toHaveLength(
-      1
-    );
+    // Remove text and Remove of the chart's one row.
+    await expect(
+      sheet.getAllByRole("button", { name: /^Remove / })
+    ).toHaveLength(2);
+    await expect(
+      sheet.getByRole("button", { name: "Remove Invoiced by month" })
+    ).toBeVisible();
   },
 };
 
@@ -412,7 +424,7 @@ export const BulletEditKeepsPlacement: Story = {
   play: async () => {
     const sheet = await editor();
 
-    await userEvent.click(sheet.getByRole("button", { name: "Add bullet" }));
+    await userEvent.click(sheet.getByRole("button", { name: "Add a bullet" }));
     await userEvent.type(
       sheet.getByRole("textbox", { name: "Bullet 3" }),
       "Close the account"
@@ -629,6 +641,217 @@ export const CancelClosesWithoutSaving: Story = {
     await userEvent.click(sheet.getByRole("button", { name: "Cancel" }));
 
     await expect(close).toHaveBeenCalledTimes(1);
+    expect(save).not.toHaveBeenCalled();
+  },
+};
+
+const discard = { name: "Discard your changes to this slide?" };
+
+export const UseBulletsKeepsTheWords: Story = {
+  name: "Use bullets, then Use text, keeps the words",
+  args: { slide: textOnlySlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+    const [title, text] = textOnlySlide.elements;
+
+    if (title?.kind !== "title" || text?.kind !== "text") {
+      throw new Error("the text slide fixture lost its elements");
+    }
+
+    await userEvent.click(sheet.getByRole("button", { name: "Use bullets" }));
+    await expect(sheet.getByRole("textbox", { name: "Bullet 1" })).toHaveValue(
+      text.text
+    );
+
+    await userEvent.click(sheet.getByRole("button", { name: "Use text" }));
+    await expect(sheet.getByRole("textbox", { name: "Text" })).toHaveValue(
+      text.text
+    );
+
+    await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    await expect(save.mock.calls[0]?.[0].elements).toEqual([
+      { kind: "title", text: title.text },
+      { kind: "text", text: text.text },
+    ]);
+  },
+};
+
+export const RemoveTextOffersBoth: Story = {
+  name: "Remove text offers Add text and Add bullets",
+  args: { slide: textOnlySlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await userEvent.click(sheet.getByRole("button", { name: "Remove text" }));
+
+    await expect(
+      sheet.getByText(
+        "This slide has no text yet. A slide holds one text or one bullet list."
+      )
+    ).toBeVisible();
+    await expect(sheet.getByRole("button", { name: "Add text" })).toBeVisible();
+    await expect(
+      sheet.getByRole("button", { name: "Add bullets" })
+    ).toBeVisible();
+  },
+};
+
+export const FullSlideSaysWhy: Story = {
+  name: "On a full slide, Add image says why it is off",
+  args: { slide: twoFiguresSlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+    const add = sheet.getByRole("button", { name: "Add image" });
+
+    await expect(add).toHaveAttribute("aria-disabled", "true");
+    add.focus();
+    await expect(add).toHaveFocus();
+    await expect(add).toHaveAccessibleDescription(SLIDE_RULE_MESSAGES.visual);
+  },
+};
+
+export const TableRuleSaysWhy: Story = {
+  name: "Beside a text and a table, Add image gives the table rule",
+  args: { slide: textWithTableSlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+    const add = sheet.getByRole("button", { name: "Add image" });
+
+    await expect(add).toHaveAttribute("aria-disabled", "true");
+    await expect(add).toHaveAccessibleDescription(SLIDE_RULE_MESSAGES.table);
+  },
+};
+
+export const RemoveOneVisual: Story = {
+  name: "Remove takes out one chart or image",
+  args: { slide: chartWithImageSlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await expect(sheet.getByText("2 of 2")).toBeVisible();
+    await userEvent.click(
+      sheet.getByRole("button", { name: "Remove Invoiced by month" })
+    );
+
+    await expect(sheet.getByText("1 of 2")).toBeVisible();
+    await expect(
+      sheet.queryByRole("button", { name: "Remove Invoiced by month" })
+    ).toBeNull();
+    await expect(sheet.getByRole("textbox", { name: "Alt text" })).toHaveValue(
+      "A photograph of the finance team meeting at a table."
+    );
+  },
+};
+
+export const AskWithChangesAsksToDiscard: Story = {
+  name: "open Ask with a typed change asks to discard first",
+  args: { onAsk: ask },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+    const title = sheet.getByRole("textbox", { name: "Title" });
+
+    await userEvent.type(title, " today");
+    await userEvent.click(sheet.getByRole("button", { name: "open Ask" }));
+
+    const dialog = await screen.findByRole("dialog", discard);
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Cancel" })
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", discard)).toBeNull()
+    );
+    await expect(title).toHaveValue(
+      "Collections narrowed the gap to the plan line today"
+    );
+    expect(ask).not.toHaveBeenCalled();
+
+    await userEvent.click(sheet.getByRole("button", { name: "open Ask" }));
+    await userEvent.click(
+      within(await screen.findByRole("dialog", discard)).getByRole("button", {
+        name: "Discard",
+      })
+    );
+    await expect(ask).toHaveBeenCalledTimes(1);
+  },
+};
+
+export const AskWithoutChangesOpensAsk: Story = {
+  name: "open Ask with no change opens Ask at once",
+  args: { onAsk: ask },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await userEvent.click(sheet.getByRole("button", { name: "open Ask" }));
+
+    await expect(ask).toHaveBeenCalledTimes(1);
+    await expect(screen.queryByRole("dialog", discard)).toBeNull();
+  },
+};
+
+export const NoAskNoLink: Story = {
+  name: "Without Ask, the charts note has no link",
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await expect(
+      sheet.getByText("Charts and figures come from your data.")
+    ).toBeVisible();
+    await expect(sheet.queryByRole("button", { name: "open Ask" })).toBeNull();
+  },
+};
+
+// P13-23: the switch keeps every word, so a long text makes a long bullet; its limit shows at once.
+export const UseBulletsShowsTheLimit: Story = {
+  name: "Use bullets on a long text shows the bullet limit at once",
+  args: { slide: textOnlySlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await userEvent.click(sheet.getByRole("button", { name: "Use bullets" }));
+
+    const bullet = sheet.getByRole("textbox", { name: "Bullet 1" });
+
+    await expect(bullet).toHaveAttribute("aria-invalid", "true");
+    await expect(bullet).toHaveAccessibleDescription(/80/);
+    expect(save).not.toHaveBeenCalled();
+  },
+};
+
+// P13-23: five long bullets join to more than 280 characters; the text limit shows at once.
+export const UseTextShowsTheLimit: Story = {
+  name: "Use text on long bullets shows the text limit at once",
+  args: { slide: longestSlide },
+  globals: desktop,
+  beforeEach: reset,
+  play: async () => {
+    const sheet = await editor();
+
+    await userEvent.click(sheet.getByRole("button", { name: "Use text" }));
+
+    const text = sheet.getByRole("textbox", { name: "Text" });
+
+    await expect(text).toHaveAttribute("aria-invalid", "true");
+    await expect(text).toHaveAccessibleDescription(/280/);
     expect(save).not.toHaveBeenCalled();
   },
 };

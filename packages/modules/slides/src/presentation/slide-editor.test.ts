@@ -5,7 +5,12 @@ import {
   bulletsWithTwoVisualsSlide,
   textWithChartSlide,
 } from "./__fixtures__/decks.ts";
-import { previewSlide, slideInputOf } from "./slide-editor.tsx";
+import {
+  bulletsOf,
+  previewSlide,
+  slideInputOf,
+  textOf,
+} from "./slide-editor.tsx";
 import type { ShownSlide } from "./views.ts";
 
 describe("the hand edit of a styled slide", () => {
@@ -88,5 +93,22 @@ describe("the live preview of the edit sheet", () => {
       expect(charts).toHaveLength(1);
       expect(charts[0]).toHaveProperty("data", second.data);
     }
+  });
+});
+
+describe("switching a slide's text and bullets", () => {
+  it("bullets and back keeps the words of a two-line text", () => {
+    expect(textOf(bulletsOf("A\nB"))).toBe("A B");
+  });
+
+  it("a text with no line break becomes one bullet", () => {
+    expect(bulletsOf("One line.")).toEqual(["One line."]);
+  });
+
+  it("lines past the fifth join the fifth bullet", () => {
+    const items = bulletsOf("1\n2\n3\n4\n5\n6");
+
+    expect(items).toHaveLength(5);
+    expect(items[4]).toBe("5 6");
   });
 });

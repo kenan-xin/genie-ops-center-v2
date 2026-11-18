@@ -774,12 +774,12 @@ export const RemoveStatesEveryPlacement: Story = {
       await screen.findByRole("dialog", { name: /^Edit slide \d+$/ })
     );
 
-    const [removeFigure] = await sheet.findAllByRole("button", {
-      name: "Remove",
+    const removeFigure = await sheet.findByRole("button", {
+      name: "Remove Invoiced sales",
     });
 
     await waitFor(() => expect(removeFigure).toBeVisible());
-    await userEvent.click(removeFigure!);
+    await userEvent.click(removeFigure);
     await userEvent.click(sheet.getByRole("button", { name: "Save slide" }));
 
     await waitFor(() => expect(changeDeck).toHaveBeenCalledTimes(1));
@@ -2740,5 +2740,59 @@ export const ReadyOnPhone: Story = {
     await pill(canvas, "2 slides drafted", RUN_END);
     await expect(canvas.queryByRole("button", { name: "Stop" })).toBeNull();
     await pageEndAbovePanel(canvas, canvasElement);
+  },
+};
+
+/** Opens the Edit slide sheet of slide 2 from its actions menu. */
+async function openEditor(canvas: ReturnType<typeof within>) {
+  await userEvent.click(
+    canvas.getByRole("button", { name: "Actions for slide 2" })
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Edit slide" })
+  );
+
+  return screen.findByRole("dialog", { name: "Edit slide 2" });
+}
+
+// czjw.180: open Ask closes the sheet, then opens the panel; a later Cancel opens nothing.
+export const OpenAskFromTheSheet: Story = {
+  name: "open Ask in the sheet opens the Ask panel",
+  args: { view: deckPage },
+  globals: desktop,
+  parameters: { layout: "fullscreen" },
+  decorators: [withShell],
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    const sheet = await openEditor(canvas);
+
+    await userEvent.click(
+      within(sheet).getByRole("button", { name: "open Ask" })
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog", { name: "Edit slide 2" })).toBeNull()
+    );
+    const panel = await canvas.findByRole("complementary", { name: "Ask" });
+
+    await expect(panel).toBeVisible();
+    await userEvent.click(
+      within(panel).getByRole("button", { name: "Close Ask" })
+    );
+    await waitFor(() =>
+      expect(canvas.queryByRole("complementary", { name: "Ask" })).toBeNull()
+    );
+
+    await userEvent.click(
+      within(await openEditor(canvas)).getByRole("button", { name: "Cancel" })
+    );
+    // The sheet leaves the tree when its exit animation ends, the moment onClosed runs.
+    await waitFor(() =>
+      expect(document.querySelector("[data-slot=sheet-content]")).toBeNull()
+    );
+    await expect(canvas.getByRole("button", { name: "Ask" })).toHaveAttribute(
+      "aria-expanded",
+      "false"
+    );
   },
 };

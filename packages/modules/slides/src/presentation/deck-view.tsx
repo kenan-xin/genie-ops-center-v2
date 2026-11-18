@@ -4,6 +4,7 @@ import {
   type AgentPageContext,
   type AgentRunStatus,
   useAgentPage,
+  useAgentPanel,
   useRecordRun,
 } from "@genie/core/features/agent/panel";
 import { PageHeader } from "@genie/core/features/shell";
@@ -456,6 +457,9 @@ export function DeckView(props: DeckViewProps) {
 
   const notesField = useRef<NotesFieldHandle>(null);
   const stage = useRef<SlideStageHandle>(null);
+  const panel = useAgentPanel();
+  // The panel opens after the sheet closes, so the sheet's focus return does not fight it.
+  const afterEditor = useRef<(() => void) | null>(null);
 
   // The stage's waiting arrow run, so the toolbar's Position starts where the run left the element.
   const [nudgeRun, setNudgeRun] = useState<{
@@ -1423,6 +1427,18 @@ export function DeckView(props: DeckViewProps) {
         onClose={closeEditor}
         onUpload={upload}
         onSave={saveSlide}
+        onAsk={
+          view.chat.kind === "on"
+            ? () => {
+                afterEditor.current = () => panel.setOpen(true);
+                closeEditor();
+              }
+            : undefined
+        }
+        onClosed={() => {
+          afterEditor.current?.();
+          afterEditor.current = null;
+        }}
       />
 
       <Dialog

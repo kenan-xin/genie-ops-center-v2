@@ -132,6 +132,12 @@ const NOT_A_CONTROL: readonly (readonly [
   reason: string,
 ])[] = [
   [
+    "packages/modules/slides/src/presentation/slide-editor.tsx",
+    "h-9",
+    1,
+    "czjw.180, edit-slide.prototype.html: the 56 x 36 px thumbnail of a Charts and images row is a picture tile, not a control",
+  ],
+  [
     "packages/core/src/features/shell/offline-bar.tsx",
     "min-h-10",
     1,

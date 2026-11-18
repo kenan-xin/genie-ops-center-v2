@@ -254,6 +254,47 @@ export const tableWithVisualSlide: ShownSlide = {
   ],
 };
 
+/** Two figures: the two visuals the schema allows, so the slide takes no image. */
+export const twoFiguresSlide: ShownSlide = {
+  id: "s10",
+  elements: [
+    { kind: "title", text: "Invoiced sales and collected cash both rose" },
+    { kind: "figure", chart: KPI, data: KPI_DATA },
+    {
+      kind: "figure",
+      chart: { ...KPI, title: "Collected cash" },
+      data: { ...KPI_DATA, title: "Collected cash" },
+    },
+  ],
+};
+
+/** A text beside a table: the table rule refuses one more visual. */
+export const textWithTableSlide: ShownSlide = {
+  id: "s11",
+  elements: [
+    { kind: "title", text: "Twelve customers paid late this quarter" },
+    {
+      kind: "text",
+      text: "Most late payments settled within two weeks of the due date.",
+    },
+    { kind: "table", chart: TABLE, data: TABLE_DATA },
+  ],
+};
+
+/** A chart beside an image: one row of each in the Charts and images list. */
+export const chartWithImageSlide: ShownSlide = {
+  id: "s12",
+  elements: [
+    { kind: "title", text: "The team met the plan line in September" },
+    { kind: "chart", chart: BAR, data: BAR_DATA },
+    {
+      kind: "image",
+      fileId: "image-1",
+      alt: "A photograph of the finance team meeting at a table.",
+    },
+  ],
+};
+
 /** Ask on, with the label of the Slides agent's create step. */
 const chatOn: DeckListView["chat"] = {
   kind: "on",

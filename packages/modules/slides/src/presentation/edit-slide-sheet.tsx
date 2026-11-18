@@ -23,11 +23,13 @@ export type EditSlideSheetProps = Omit<SlideEditorProps, "slide"> & {
   readonly deckTitle: string;
   /** The editor's refusal, such as the deck-changed line with Reload; null shows none. */
   readonly failure: ReactNode;
+  /** Runs after the sheet has closed and returned focus, so a panel it opens keeps the focus. */
+  readonly onClosed?: (() => void) | undefined;
 };
 
 /** The Edit slide sheet: the right sheet from 768 px, a bottom sheet below it. */
 export function EditSlideSheet(props: EditSlideSheetProps): ReactNode {
-  const { target, count, deckTitle, failure, ...editor } = props;
+  const { target, count, deckTitle, failure, onClosed, ...editor } = props;
   const phone = useIsPhone();
 
   return (
@@ -35,6 +37,9 @@ export function EditSlideSheet(props: EditSlideSheetProps): ReactNode {
       open={target !== null}
       onOpenChange={(open) => {
         if (!open) props.onClose();
+      }}
+      onOpenChangeComplete={(open) => {
+        if (!open) onClosed?.();
       }}
     >
       <SheetContent
