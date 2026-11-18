@@ -383,16 +383,131 @@ export const EditorBarLinesUp: Story = {
   },
 };
 
+/** The dock's three tools with nothing selected (deck-phone.prototype.html?state=idle). */
+const DOCK_TOOLS = ["Add element", "Background", "Edit slide"];
+
+// czjw.176: below 768 px the dock's tools are one row of 52 px targets.
 export const EditorBarLinesUpOnPhone: Story = {
-  name: "On a phone Add element and Background are 40 px on one top edge",
+  name: "On a phone the dock's tools share one row",
   args: { view: deckPage },
   globals: phone,
   beforeEach: () => serve(deckPage),
   play: async ({ canvas }) => {
-    const [add, background] = editorBar(canvas);
+    const dock = within(canvas.getByRole("toolbar", { name: "Slide tools" }));
 
-    await expect(add).toMatch(/^40 px/);
-    await expect(background).toBe(add);
+    const boxes = DOCK_TOOLS.map((name) =>
+      dock.getByRole("button", { name }).getBoundingClientRect()
+    );
+
+    for (const box of boxes) {
+      expect(box.height).toBeGreaterThanOrEqual(52);
+      expect(Math.abs(box.top - boxes[0]!.top)).toBeLessThanOrEqual(1);
+    }
+  },
+};
+
+// czjw.176: with nothing selected the dock at the screen's bottom edge replaces the editor row
+// and the Edit slide button; its tools reach Add element, Background and the sheet.
+export const DockOnPhone: Story = {
+  name: "On a phone the dock holds the slide's tools",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: serveRecolor,
+  play: async ({ canvas }) => {
+    const toolbar = canvas.getByRole("toolbar", { name: "Slide tools" });
+    const dock = within(toolbar);
+
+    await expect(
+      dock.getAllByRole("button").map((button) => button.textContent)
+    ).toEqual(["Add", "Background", "Edit slide"]);
+    await expect(
+      Math.abs(
+        toolbar.parentElement!.getBoundingClientRect().bottom -
+          window.innerHeight
+      )
+    ).toBeLessThanOrEqual(1);
+
+    // The old rows are gone: each tool shows once on the page.
+    for (const name of DOCK_TOOLS) {
+      expect(visibleButtons(canvas, name)).toHaveLength(1);
+    }
+
+    await userEvent.click(dock.getByRole("button", { name: "Add element" }));
+    await expect(
+      (await screen.findAllByRole("menuitem")).map((item) => item.textContent)
+    ).toEqual(["Text", "Bullets", "Figure", "Chart", "Table", "Image"]);
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+
+    await userEvent.click(dock.getByRole("button", { name: "Background" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Dark blue #1E3A8A" })
+    );
+    await waitFor(() =>
+      expect(changeDeck).toHaveBeenCalledWith({
+        id: "deck-1",
+        expectedHash: HASH,
+        changes: [
+          backgroundStep("#1E3A8A"),
+          {
+            op: "change-element",
+            slideId: "s1",
+            index: 0,
+            style: { color: "#FFFFFF" },
+          },
+        ],
+      })
+    );
+    await findRecolorNote(canvas);
+
+    await userEvent.click(dock.getByRole("button", { name: "Edit slide" }));
+    await expect(
+      await screen.findByRole("dialog", { name: "Edit slide 1" })
+    ).toBeInTheDocument();
+  },
+};
+
+const IDLE_HINT = "Tap an element on the slide to style it.";
+
+// P13-26: with nothing selected the phone hint says what a tap does; a selection says how to move.
+export const IdleHintOnPhone: Story = {
+  name: "On a phone the hint says tap with nothing selected",
+  args: { view: deckPage },
+  globals: phone,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await expect(canvas.getByText(IDLE_HINT)).toBeVisible();
+
+    await selectTitle(canvas);
+
+    await expect(
+      canvas.getByText(
+        "Drag to move. Drag a corner to resize, or tap Position."
+      )
+    ).toBeVisible();
+    await expect(canvas.queryByText(IDLE_HINT)).toBeNull();
+  },
+};
+
+// czjw.176: from 768 px the editor bar stays above the slide, and no dock shows.
+export const NoDockOnADesktop: Story = {
+  name: "On a desktop the editor bar stays and no dock shows",
+  args: { view: deckPage },
+  globals: desktop,
+  beforeEach: () => serve(deckPage),
+  play: async ({ canvas }) => {
+    await expect(
+      canvas.queryByRole("toolbar", { name: "Slide tools" })
+    ).toBeNull();
+    await expect(
+      canvas
+        .getByRole("button", { name: "Add element" })
+        .getBoundingClientRect().bottom
+    ).toBeLessThanOrEqual(
+      canvas
+        .getByRole("group", { name: "Slide editing" })
+        .getBoundingClientRect().top
+    );
   },
 };
 
@@ -1854,7 +1969,7 @@ export const SaveSlideAndNotesTakeTurns: Story = {
   },
 };
 
-// Notes pick C (czjw.156): at 390 px the slide, Edit slide, then the notes pane; a pause saves one
+// Notes pick C (czjw.156): at 390 px the slide, then the notes pane; a pause saves one
 // notes step and says Saved, and the Edit slide sheet holds no notes field.
 export const NotesPaneOnPhone: Story = {
   name: "Notes in a pane under the slide on a phone",
@@ -1878,10 +1993,8 @@ export const NotesPaneOnPhone: Story = {
     const notes = canvas.getByRole("textbox", { name: "Speaker notes" });
 
     await expect(notes).toBeVisible();
+    // czjw.176: Edit slide moved from between the two into the dock.
     await expect(slide.getBoundingClientRect().bottom).toBeLessThanOrEqual(
-      edit.getBoundingClientRect().top
-    );
-    await expect(edit.getBoundingClientRect().bottom).toBeLessThanOrEqual(
       notes.getBoundingClientRect().top
     );
 

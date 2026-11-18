@@ -12,17 +12,14 @@ function Toolbar({
 }: ToolbarPrimitive.Root.Props): React.ReactElement {
   return (
     <ToolbarPrimitive.Root
-      className={cn(
-        "relative flex gap-2 rounded-xl border bg-card not-dark:bg-clip-padding p-1 text-foreground",
-        className
-      )}
+      className={cn("relative flex gap-1 text-foreground", className)}
       data-slot="toolbar"
       {...props}
     />
   );
 }
 
-/** One labelled tool: its icon above its name, a 52 by 60 px target (czjw.156). */
+/** One labelled tool: its icon above its name, a 52 by 60 px target; the tools share the row equally (czjw.156, czjw.176). */
 function ToolbarButton({
   className,
   ...props
@@ -30,7 +27,7 @@ function ToolbarButton({
   return (
     <ToolbarPrimitive.Button
       className={cn(
-        "flex min-h-13 min-w-15 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-semibold text-muted-foreground not-disabled:hover:bg-hover data-popup-open:bg-primary/8 data-popup-open:text-primary [&_svg]:size-5",
+        "flex min-h-13 min-w-15 flex-1 flex-col items-center justify-center gap-0.5 rounded-lg text-xs font-semibold text-muted-foreground not-disabled:hover:bg-hover data-popup-open:bg-primary/8 data-popup-open:text-primary [&_svg]:size-5",
         focusRing,
         className
       )}

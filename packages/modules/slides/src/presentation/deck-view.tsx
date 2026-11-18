@@ -39,7 +39,6 @@ import { isEqual } from "es-toolkit";
 import {
   ChevronDown,
   Loader2,
-  Pencil,
   Play,
   PlusIcon,
   Presentation,
@@ -59,7 +58,7 @@ import {
   textElement,
   titleElement,
 } from "../contract.ts";
-import { askStarter } from "./add-element-menu.tsx";
+import { askStarter, type HandKind } from "./add-element-menu.tsx";
 import { type ChangeFailure, ChangeRefusal } from "./change-refusal.tsx";
 import { presenterPath } from "./deck-sync.ts";
 import { DeckTitle } from "./deck-title.tsx";
@@ -71,6 +70,7 @@ import {
 } from "./draft-status.ts";
 import { EditSlideSheet } from "./edit-slide-sheet.tsx";
 import { NotesField, type NotesFieldHandle } from "./notes-field.tsx";
+import { SlideDock } from "./phone-dock.tsx";
 import { PresentMode } from "./present-mode.tsx";
 import { SlideCanvas } from "./slide-canvas.tsx";
 import { describedBy, issueOf, slideInputOf } from "./slide-editor.tsx";
@@ -717,6 +717,40 @@ export function DeckView(props: DeckViewProps) {
     setEditing({ ...target, slide: withRun(target.slide) });
   }
 
+  /** Add element by hand on the shown slide: a text or bullet list goes in at once; an image needs the editor. */
+  function addElement(slide: ShownSlide, kind: HandKind): void {
+    const number = index + 1;
+
+    if (kind === "image") {
+      openEditor({ slide, number, expectedHash: deck.contentHash });
+
+      return;
+    }
+
+    const input = slideInputOf(withRun(slide));
+
+    // The body goes after the title; the person writes it with Edit text.
+    void sendStep(
+      [
+        {
+          op: "change-slide",
+          slideId: slide.id,
+          slide: {
+            ...input,
+            elements: input.elements.toSpliced(
+              1,
+              0,
+              kind === "text"
+                ? { kind: "text", text: "Add your text." }
+                : { kind: "bullets", items: ["Add a point."] }
+            ),
+          },
+        },
+      ],
+      { expectedHash: deck.contentHash, slideNumber: number }
+    );
+  }
+
   function closeEditor(): void {
     setEditing(null);
     setEditorFailure(null);
@@ -1252,56 +1286,45 @@ export function DeckView(props: DeckViewProps) {
             </div>
           ) : editable ? (
             <div data-shown-slide="" className="grid min-w-0 flex-1 gap-2">
-              <SlideEditorBar
-                slide={current}
-                saving={busy}
-                ask={view.chat.kind}
-                onAsk={(kind) => agent.send(askStarter(kind, index + 1))}
-                onSteps={(steps) =>
-                  sendStep(steps, {
-                    expectedHash: deck.contentHash,
-                    slideNumber: index + 1,
-                    background: true,
-                  })
-                }
-                onAdd={(kind) => {
-                  if (kind === "image") {
+              <div className="max-md:hidden">
+                <SlideEditorBar
+                  slide={current}
+                  saving={busy}
+                  ask={view.chat.kind}
+                  onAsk={(kind) => agent.send(askStarter(kind, index + 1))}
+                  onSteps={(steps) =>
+                    sendStep(steps, {
+                      expectedHash: deck.contentHash,
+                      slideNumber: index + 1,
+                      background: true,
+                    })
+                  }
+                  onAdd={(kind) => addElement(current, kind)}
+                />
+              </div>
+              {selected === null || current.elements[selected] === undefined ? (
+                <SlideDock
+                  slide={current}
+                  saving={busy}
+                  ask={view.chat.kind}
+                  onAsk={(kind) => agent.send(askStarter(kind, index + 1))}
+                  onSteps={(steps) =>
+                    sendStep(steps, {
+                      expectedHash: deck.contentHash,
+                      slideNumber: index + 1,
+                      background: true,
+                    })
+                  }
+                  onAdd={(kind) => addElement(current, kind)}
+                  onEditSlide={() =>
                     openEditor({
                       slide: current,
                       number: index + 1,
                       expectedHash: deck.contentHash,
-                    });
-
-                    return;
+                    })
                   }
-
-                  const input = slideInputOf(withRun(current));
-
-                  // The body goes after the title; the person writes it with Edit text.
-                  sendStep(
-                    [
-                      {
-                        op: "change-slide",
-                        slideId: current.id,
-                        slide: {
-                          ...input,
-                          elements: input.elements.toSpliced(
-                            1,
-                            0,
-                            kind === "text"
-                              ? { kind: "text", text: "Add your text." }
-                              : { kind: "bullets", items: ["Add a point."] }
-                          ),
-                        },
-                      },
-                    ],
-                    {
-                      expectedHash: deck.contentHash,
-                      slideNumber: index + 1,
-                    }
-                  );
-                }}
-              />
+                />
+              ) : null}
               {selected === null ||
               current.elements[selected] === undefined ? null : (
                 <StyleToolbar
@@ -1400,22 +1423,6 @@ export function DeckView(props: DeckViewProps) {
                   )
                 }
               />
-              {/* Below 768 px Edit slide sits between the slide and its notes (notes pick C). */}
-              <Button
-                variant="secondary"
-                className="w-full md:hidden"
-                disabled={busy}
-                onClick={() =>
-                  openEditor({
-                    slide: current,
-                    number: index + 1,
-                    expectedHash: deck.contentHash,
-                  })
-                }
-              >
-                <Pencil aria-hidden="true" />
-                Edit slide
-              </Button>
               {/* The one notes field of the slide, at every width; it stays while the sheet is open. */}
               <NotesField
                 ref={notesField}

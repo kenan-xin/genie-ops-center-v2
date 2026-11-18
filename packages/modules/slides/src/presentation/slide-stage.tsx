@@ -399,9 +399,11 @@ export function SlideStage(props: SlideStageProps) {
           })}
         </div>
       </div>
-      {/* A touch screen has no arrow keys; the hint switches with the dock (P16e-16). */}
+      {/* A touch screen has no arrow keys; the hint switches with the dock (P16e-16, P13-26). */}
       <p className="text-sm text-muted-foreground md:hidden">
-        Drag to move. Drag a corner to resize, or tap Position.
+        {selected === null
+          ? "Tap an element on the slide to style it."
+          : "Drag to move. Drag a corner to resize, or tap Position."}
       </p>
       <p className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground max-md:hidden">
         Drag to move. Drag a handle to resize, or use Position. <Kbd>←</Kbd>
