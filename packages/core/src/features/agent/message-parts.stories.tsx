@@ -29,6 +29,7 @@ import {
 import {
   GROUPED_READ,
   GROUPED_SENTENCE,
+  PER_CURRENCY_READ,
   READ_LABELS,
 } from "./__fixtures__/reads.ts";
 import { ChartCheckProvider, type CheckChart } from "./chart-check.tsx";
@@ -598,6 +599,41 @@ export const EmptyAndRefusedReads: Story = {
   },
 };
 
+/**
+ * The method of two reads stays open, so the story's icon check measures the "Read Items" database
+ * icon and the "See the n rows" table icon against the text edge under them (C15-5).
+ */
+export const HowThisWasCountedTwoReads: Story = {
+  name: "How this was counted, two reads",
+  args: {
+    message: {
+      id: "two-reads",
+      role: "assistant",
+      parts: [
+        GROUPED_READ,
+        PER_CURRENCY_READ,
+        { type: "text", text: PROSE_ANSWER },
+      ],
+    },
+    labels: READ_LABELS,
+    artifacts: {
+      kind: "panel",
+      shown: null,
+      onOpen: fn(),
+      onOpenRows: fn(),
+    },
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "How this was counted" })
+    );
+    await expect(canvas.getAllByText("Read Items")).toHaveLength(2);
+    await expect(
+      canvas.getByRole("button", { name: "See the 6 rows" })
+    ).toBeVisible();
+  },
+};
+
 const STEP_NOTE = "Check the records.";
 
 const COUNT_ANSWER =
@@ -658,6 +694,10 @@ export const ResultFirst: Story = {
       getComputedStyle(line).color
     );
     await expect(getComputedStyle(lead).fontWeight).toBe("400");
+    // The prototype's `.ans b` is 700; 600 reads weakly beside 400 at 15 px (C15-7).
+    await expect(
+      getComputedStyle(lead.querySelector("strong")!).fontWeight
+    ).toBe("700");
   },
 };
 

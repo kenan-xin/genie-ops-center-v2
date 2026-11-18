@@ -105,7 +105,7 @@ const openInAsk = "Open in Ask";
  * page reaches it only through `useAgentPage`. Closed, the chat stays mounted, so an answer goes on.
  *
  * On a surface's record page it is that surface's panel (R-42, S7-41), still titled Ask with the
- * page line naming the page (P05-21): a Building or Saved chip, the tabs This chat and Chats with this record's chats first, and no Open
+ * page line naming the page (P05-21): a Working or Saved chip, the tabs This chat and Chats with this record's chats first, and no Open
  * in Ask. A new chat there is bound to the surface and the record. Below 768 px it is a bottom
  * panel with no backdrop, so the record that builds stays in view.
  */
@@ -289,7 +289,7 @@ export function AgentPanelHost(props: {
 
   const chip =
     run === "building" || run === "stopping"
-      ? "Building"
+      ? "Working"
       : run === "saved"
         ? "Saved"
         : undefined;

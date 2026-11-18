@@ -1,7 +1,7 @@
 "use client";
 
 import "./openui-devtools-off.ts";
-import { denseRowHeight, Button, focusRing } from "@genie/ui";
+import { denseRowHeight, Button, focusRing, iconLead } from "@genie/ui";
 import {
   createParser,
   Renderer,
@@ -175,7 +175,11 @@ function RowsLink(props: {
 
   const label = (
     <>
-      <TableIcon aria-hidden="true" className="size-4" strokeWidth={1.75} />
+      <TableIcon
+        aria-hidden="true"
+        className={`${iconLead} size-4`}
+        strokeWidth={1.75}
+      />
       See the {rowsText(read.rows.length, read.truncated)}
     </>
   );
@@ -227,7 +231,7 @@ function MethodPanel(props: {
               <p className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
                 <DatabaseIcon
                   aria-hidden="true"
-                  className="size-3.5"
+                  className={`${iconLead} size-3.5`}
                   strokeWidth={1.75}
                 />
                 Read {title}

@@ -32,7 +32,8 @@ import {
  * stands still and the words carry the state.
  */
 
-const stepLinkClass = `inline-flex min-h-8 items-center rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline dark:text-brand-on-dark ${focusRing}`;
+// A dense inline link: its own box is its 44 px touch area on a phone (C15-6).
+const stepLinkClass = `inline-flex ${denseRowHeight} items-center rounded-md text-sm font-medium text-primary underline-offset-4 hover:underline dark:text-brand-on-dark ${focusRing}`;
 
 function steps(n: number): string {
   return `${n} ${n === 1 ? "step" : "steps"}`;
@@ -132,6 +133,8 @@ function LiveTime(props: { readonly live: LiveState }): ReactNode {
 function Row(props: {
   readonly row: TimelineRow;
   readonly live?: LiveState | undefined;
+  /** The query behind a read shows only in the opened fold, not while the agent works (C15-6). */
+  readonly details?: boolean;
 }): ReactNode {
   const { row, live } = props;
 
@@ -160,12 +163,7 @@ function Row(props: {
             }
           >
             {row.words}
-            {row.object === undefined ? null : (
-              <>
-                {" "}
-                <b className="font-semibold">{row.object}</b>
-              </>
-            )}
+            {row.object === undefined ? null : ` ${row.object}`}
             {row.fix}
             {active || reads === undefined ? null : ` · ${reads}`}
           </span>
@@ -192,7 +190,7 @@ function Row(props: {
         {live?.slow === true ? (
           <p className="text-sm text-muted-foreground">{SLOW_LINE}</p>
         ) : null}
-        <Details parts={row.parts} />
+        {props.details === true ? <Details parts={row.parts} /> : null}
       </div>
     </li>
   );
@@ -310,10 +308,11 @@ export function StepTimeline(props: {
     return { time: elapsedLabel(ms), slow: isSlow(ms), current };
   };
 
-  const rowOf = (row: TimelineRow, current = false) => (
+  const rowOf = (row: TimelineRow, current = false, details = false) => (
     <Row
       key={row.key}
       row={row}
+      details={details}
       live={
         row.state === "active" ? liveOf(liveKeyOf(row), current) : undefined
       }
@@ -389,7 +388,7 @@ export function StepTimeline(props: {
           </span>
         </button>
         {open ? (
-          <Rows>{rows.map((row) => rowOf(row))}</Rows>
+          <Rows>{rows.map((row) => rowOf(row, false, true))}</Rows>
         ) : stillRunning.length > 0 ? (
           <Rows>{stillRunning.map((row) => rowOf(row))}</Rows>
         ) : null}

@@ -362,7 +362,7 @@ export const AfterAHandoff: Story = {
 
     const header = () => within(region.querySelector("header")!);
 
-    await expect(await header().findByText("Building")).toBeVisible();
+    await expect(await header().findByText("Working")).toBeVisible();
     // The title shows in full beside the chip, also at 390 px (Phase 11 capture).
     const name = region.querySelector("h2 .truncate")!;
     await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
@@ -542,7 +542,7 @@ export const ARunThatEndsWhileOpenMarksItSeen: Story = {
       name: "Ask",
     });
 
-    await within(region.querySelector("header")!).findByText("Building");
+    await within(region.querySelector("header")!).findByText("Working");
     // A building run has no unseen mark to clear yet.
     await expect(markSeen).not.toHaveBeenCalled();
 
@@ -576,7 +576,7 @@ export const ARunThatEndsWithThePanelClosedStaysUnseen: Story = {
       name: "Ask",
     });
 
-    await within(region.querySelector("header")!).findByText("Building");
+    await within(region.querySelector("header")!).findByText("Working");
     await userEvent.click(screen.getByRole("button", { name: "Close Ask" }));
 
     runEnded = true;

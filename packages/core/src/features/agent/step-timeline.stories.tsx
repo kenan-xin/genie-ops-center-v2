@@ -163,7 +163,9 @@ export const Working: Story = {
     await expect(within(list).getAllByRole("listitem")).toHaveLength(5);
 
     // C07-6: two reads of one dataset say so in words, with no ×n chip.
-    const invoices = within(list).getByText("Invoices").closest("li");
+    const invoices = within(list)
+      .getByText(/^Read Invoices/)
+      .closest("li");
 
     if (invoices === null) throw new Error("The Invoices row is no list item.");
 
@@ -173,18 +175,9 @@ export const Working: Story = {
       invoices.querySelector("svg")?.getBoundingClientRect().width
     ).toBe(16);
 
-    // A read keeps its query behind Details.
-    const [details] = within(list).getAllByText("Details");
-
-    if (details === undefined) throw new Error("No read row has Details.");
-
-    const opened = details.closest("details");
-
-    if (opened === null) throw new Error("Details is not a disclosure.");
-
-    await expect(within(opened).getByText("Query used")).not.toBeVisible();
-    await userEvent.click(details);
-    await expect(within(opened).getByText("Query used")).toBeVisible();
+    // C15-6: while it works, a finished row is one plain line, as the prototype draws it.
+    await expect(within(list).queryByText("Details")).toBeNull();
+    await expect(invoices.querySelector("b")).toBeNull();
   },
 };
 
@@ -204,7 +197,7 @@ export const ReadingAgain: Story = {
     children: undefined,
   },
   play: async ({ canvas }) => {
-    const row = canvas.getByText("Invoices").closest("li");
+    const row = canvas.getByText(/^Reading Invoices/).closest("li");
 
     if (row === null) throw new Error("The Invoices row is no list item.");
 
@@ -382,6 +375,34 @@ export const Done: Story = {
         "listitem"
       )
     ).toHaveLength(5);
+  },
+};
+
+/** The opened fold on a phone: a read keeps its query behind a 44 px Details row (C15-6). */
+export const DoneOnAPhone: Story = {
+  args: { durationMs: 38_000 },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Worked for 38 seconds · 5 steps" })
+    );
+
+    const list = canvas.getByRole("list", { name: "Steps" });
+
+    const [details] = within(list).getAllByText("Details");
+
+    if (details === undefined) throw new Error("No read row has Details.");
+
+    const opened = details.closest("details");
+
+    if (opened === null) throw new Error("Details is not a disclosure.");
+
+    await expect(details.getBoundingClientRect().height).toBeGreaterThanOrEqual(
+      44
+    );
+    await expect(within(opened).getByText("Query used")).not.toBeVisible();
+    await userEvent.click(details);
+    await expect(within(opened).getByText("Query used")).toBeVisible();
   },
 };
 

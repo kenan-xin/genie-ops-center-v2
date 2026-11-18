@@ -66,9 +66,9 @@ export function Composer(props: {
           {props.picker}
           {props.building === undefined ? null : (
             <>
-              {/* SHELL-5: one square Stop in every state; the header chip shows Building on screen. */}
+              {/* SHELL-5: one square Stop in every state; the header chip shows Working on screen. */}
               <span role="status" className="sr-only">
-                Building
+                Working
               </span>
               <InputGroupButton
                 variant="primary"

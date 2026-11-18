@@ -118,8 +118,8 @@ export const Building: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
-    // SHELL-5: one square Stop; the status says Building to a screen reader only.
-    await expect(await canvas.findByText("Building")).toHaveAttribute(
+    // SHELL-5: one square Stop; the status says Working to a screen reader only (C15-8).
+    await expect(await canvas.findByText("Working")).toHaveAttribute(
       "role",
       "status"
     );
@@ -222,7 +222,7 @@ export const EndsBetweenPolls: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByText(FULL_TEXT)).toBeVisible();
-    await expect(canvas.queryByText("Building")).toBeNull();
+    await expect(canvas.queryByText("Working")).toBeNull();
   },
 };
 

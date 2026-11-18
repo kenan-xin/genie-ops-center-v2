@@ -40,7 +40,10 @@ function AnswerView({ props, renderNode }: ViewProps) {
 function Runs(props: { readonly text: string }) {
   return boldRuns(props.text).map((run, index) =>
     run.strong ? (
-      <strong key={index}>{run.text}</strong>
+      // The prototype's `.ans b` is 700; 600 reads weakly beside 400 at 15 px (C15-7).
+      <strong key={index} className="font-bold">
+        {run.text}
+      </strong>
     ) : (
       <Fragment key={index}>{run.text}</Fragment>
     )

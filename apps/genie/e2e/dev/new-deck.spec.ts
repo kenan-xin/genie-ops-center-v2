@@ -142,16 +142,20 @@ test("a described deck opens at once, fills slide by slide, gets its name, and c
     await expect(
       page.getByRole("heading", { level: 1, name: "Naming the deck" })
     ).toBeAttached();
-    await expect(pill(page, /^Drafting slide \d+$/)).toBeVisible();
-    // While the agent drafts, Stop is the page's one action; a phone shows no dock.
+    // P15-47: the open panel shows the run, so its live row and its Stop are the only ones, and a
+    // phone shows no dock.
+    await expect(
+      panel.getByRole("button", { name: "Stop building" })
+    ).toBeVisible(FIRST_PAINT);
+    await expect(pill(page, /^Drafting slide \d+$/)).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Stop", exact: true })
+    ).toHaveCount(0);
     await expect(
       onPhone(page)
         ? page.getByRole("toolbar", { name: "Slide tools" })
         : page.getByRole("button", { name: "Export to PowerPoint" })
     ).toHaveCount(0);
-    await expect(
-      page.getByRole("button", { name: "Stop", exact: true })
-    ).toBeVisible();
 
     const seen = await countsUntil(() => slideButtons(page).count(), 3);
 
@@ -226,6 +230,13 @@ test("Stop while the deck drafts keeps the slides so far", async ({ page }) => {
   await withoutDecks(async () => {
     await describeDeck(page);
 
+    // With the panel closed, the page's Stop is the run's one Stop (P15-47).
+    await activate(
+      page,
+      page
+        .getByRole("region", { name: "Ask", exact: true })
+        .getByRole("button", { name: "Close Ask" })
+    );
     await expect(slideButtons(page).first()).toBeVisible(FIRST_PAINT);
     await activate(
       page,
@@ -284,7 +295,12 @@ test("the draft goes on while the person is away, and the page follows it after 
     await activate(page, row);
 
     await page.waitForURL(`**${path}?chat=${chatId}`, FIRST_PAINT);
-    await expect(pill(page, /^Drafting slide \d+$/)).toBeVisible(FIRST_PAINT);
+    // `?chat=` opens the panel on the run, so the panel, not the page, shows it (P15-47).
+    await expect(
+      page
+        .getByRole("region", { name: "Ask", exact: true })
+        .getByRole("button", { name: "Stop building" })
+    ).toBeVisible(FIRST_PAINT);
 
     // Without `?chat=`, so nothing opens the panel: the page reads the run on its own.
     await page.goto(path);

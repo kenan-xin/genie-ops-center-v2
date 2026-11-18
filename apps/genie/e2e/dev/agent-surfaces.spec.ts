@@ -89,7 +89,7 @@ test.afterAll(async () => {
 });
 
 /** The surface panel's header chip. */
-const chip = (surface: Locator, text: "Building" | "Saved") =>
+const chip = (surface: Locator, text: "Working" | "Saved") =>
   surface.locator("header").getByText(text, { exact: true });
 
 /**
@@ -230,7 +230,7 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
           animation: "text-shimmer",
           transparent: true,
         });
-        await expect(chip(surface, "Building")).toBeVisible(FIRST_PAINT);
+        await expect(chip(surface, "Working")).toBeVisible(FIRST_PAINT);
 
         const seen = await countsUntil(() => slideButtons(page).count(), 5);
 
@@ -317,7 +317,7 @@ test("Ask history groups chats by agent and opens a surface chat on its record p
         await expect(
           chip(
             page.getByRole("region", { name: "Ask", exact: true }),
-            "Building"
+            "Working"
           )
         ).toBeVisible(FIRST_PAINT);
 
@@ -494,7 +494,7 @@ test("Stop on a building deck ends the run with the stopped notice", async ({
         await expect(
           surface.getByText("You stopped this work.", { exact: true })
         ).toBeVisible(FIRST_PAINT);
-        await expect(chip(surface, "Building")).toHaveCount(0);
+        await expect(chip(surface, "Working")).toHaveCount(0);
         expect(await slideButtons(page).count()).toBeLessThan(5);
       } finally {
         await removeOwnDecks(SLIDES_PEOPLE.chat);
@@ -546,7 +546,7 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
         const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         await recordLiveRows(surface);
-        await expect(chip(surface, "Building")).toBeVisible(FIRST_PAINT);
+        await expect(chip(surface, "Working")).toBeVisible(FIRST_PAINT);
 
         const panels = async () => {
           const counts = await Promise.all(
