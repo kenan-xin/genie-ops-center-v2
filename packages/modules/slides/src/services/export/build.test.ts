@@ -278,16 +278,35 @@ describe("buildDeckPptx", () => {
     expect(runColorOf(xml, "Collections narrowed")).toBe("F3F4F6");
   });
 
-  // Bug 4: a white chart box on a dark slide.
-  it("draws a dark theme's chart series in the accent on the theme background", async () => {
-    const chart = await (
-      await exported([eightLayoutSlides[2]!], DARK_THEME)
-    ).chart(1);
+  // Bug 4: a white chart box on a dark slide; R14-1: a filled chart as a box in a box.
+  it("draws a chart's series in the accent with clear plot and chart areas, filled or not", async () => {
+    const plain = eightLayoutSlides[2]!;
+    const chart = plain.elements[2]!;
 
-    expect(chart).toContain('srgbClr val="60A5FA"');
-    expect(chart.match(/srgbClr val="030712"/g)?.length).toBeGreaterThanOrEqual(
-      2
-    );
+    const filled: ShownSlide = {
+      ...plain,
+      id: "filled",
+      elements: plain.elements.with(2, {
+        ...chart,
+        style: { fill: "#1E293B" },
+      }),
+    };
+
+    const deck = await exported([plain, filled], DARK_THEME);
+    const charts = await Promise.all([deck.chart(1), deck.chart(2)]);
+
+    // The screen chart is transparent: the slide or the element's own fill shows through.
+    for (const [at, xml] of charts.entries()) {
+      expect(xml).toContain('srgbClr val="60A5FA"');
+      expect(xml, `plot area ${at + 1}`).toMatch(
+        /<c:spPr>\s*<a:noFill\/>(?:(?!<\/c:spPr>).)*<\/c:spPr>\s*<\/c:plotArea>/s
+      );
+      expect(xml, `chart area ${at + 1}`).toMatch(
+        /<\/c:chart>\s*<c:spPr>\s*<a:noFill\/>/
+      );
+    }
+
+    expect(await deck.slide(2)).toContain('srgbClr val="1E293B"');
   });
 
   // Bug 5: a number and its code at one size (P14-16).

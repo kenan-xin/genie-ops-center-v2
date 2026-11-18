@@ -603,8 +603,7 @@ export async function buildDeckPptx(input: {
             catGridLine: { style: "none" },
             catAxisLineShow: false,
             valAxisLineShow: false,
-            plotArea: { fill: { color: hex(theme.background) } },
-            chartArea: { fill: { color: hex(theme.background) } },
+            // No plot or chart area fill: as on screen, the slide or the element's frame shows through (R14-1).
             lineSize: 2.25,
             // A donut colors each part; a bar with more colors than series would color each bar.
             chartColors:
