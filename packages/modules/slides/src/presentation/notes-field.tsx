@@ -134,48 +134,58 @@ export function NotesField(props: NotesFieldProps): ReactElement {
   const atCap = text.length >= NOTES_CHARACTERS;
 
   let status = "";
+  let statusColor = "text-muted-foreground";
 
-  if (saving) status = "Saving…";
-  else if (saved) status = "Saved";
+  if (atCap) {
+    status = NOTES_MESSAGES.cap;
+    statusColor = "text-destructive";
+  } else if (saving) status = "Saving…";
+  else if (saved) {
+    status = "Saved";
+    statusColor = "text-success";
+  }
 
   return (
-    <Field>
-      <FieldLabel htmlFor={id}>Speaker notes</FieldLabel>
-      <Textarea
-        id={id}
-        rows={5}
-        maxLength={NOTES_CHARACTERS}
-        value={text}
-        onChange={(event) => {
-          setText(event.target.value);
-          debouncer.maybeExecute(slide.id, event.target.value);
-        }}
-        aria-invalid={failure === null ? undefined : true}
-        aria-describedby={[helpId, countId, failure === null ? "" : errorId]
-          .join(" ")
-          .trim()}
-      />
-      <div className="flex justify-between gap-3 text-xs text-muted-foreground">
-        <span role="status">
-          {atCap ? (
-            <span className="font-semibold text-destructive">
-              {NOTES_MESSAGES.cap}
-            </span>
-          ) : (
-            status
-          )}
-        </span>
-        <span id={countId} className="tabular-nums">
-          {count.format(text.length)} / {count.format(NOTES_CHARACTERS)}
-        </span>
-      </div>
-      <FieldDescription id={helpId}>
-        Only you see these, in the presenter window. They go into the PowerPoint
-        export.
-      </FieldDescription>
-      {failure === null ? null : (
-        <FieldError id={errorId}>{failure}</FieldError>
-      )}
-    </Field>
+    // P13-12: one DOM at every width; the card frame and the box without a grip only below 768 px.
+    <div className="max-md:rounded-xl max-md:border max-md:border-border max-md:bg-card max-md:p-3">
+      <Field>
+        <div className="flex items-center justify-between gap-3">
+          <FieldLabel htmlFor={id}>Speaker notes</FieldLabel>
+          <span
+            role="status"
+            className={`text-xs font-semibold ${statusColor}`}
+          >
+            {status}
+          </span>
+        </div>
+        <Textarea
+          id={id}
+          rows={4}
+          placeholder="What you want to say on this slide"
+          className="max-md:resize-none"
+          maxLength={NOTES_CHARACTERS}
+          value={text}
+          onChange={(event) => {
+            setText(event.target.value);
+            debouncer.maybeExecute(slide.id, event.target.value);
+          }}
+          aria-invalid={failure === null ? undefined : true}
+          aria-describedby={[helpId, countId, failure === null ? "" : errorId]
+            .join(" ")
+            .trim()}
+        />
+        <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+          <FieldDescription id={helpId}>
+            Only you see notes. They go to PowerPoint.
+          </FieldDescription>
+          <span id={countId} className="shrink-0 tabular-nums">
+            {count.format(text.length)} / {count.format(NOTES_CHARACTERS)}
+          </span>
+        </div>
+        {failure === null ? null : (
+          <FieldError id={errorId}>{failure}</FieldError>
+        )}
+      </Field>
+    </div>
   );
 }

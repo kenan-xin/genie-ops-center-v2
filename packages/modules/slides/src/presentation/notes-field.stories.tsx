@@ -9,10 +9,23 @@ const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const WAIT = 50;
 
-const HELP =
-  "Only you see these, in the presenter window. They go into the PowerPoint export.";
+const HELP = "Only you see notes. They go to PowerPoint.";
 
 const CAP = "Notes hold at most 2,000 characters.";
+
+/** A theme color as the browser computes it, to compare with an element's computed color. */
+function resolvedColor(variable: string): string {
+  const probe = document.createElement("span");
+
+  probe.style.color = `var(${variable})`;
+  document.body.append(probe);
+
+  const color = getComputedStyle(probe).color;
+
+  probe.remove();
+
+  return color;
+}
 
 const save = fn<NotesFieldProps["onSaveNotes"]>();
 
@@ -104,6 +117,38 @@ export const SavesAfterPause: Story = {
     await expect(save).toHaveBeenCalledOnce();
     await expect(save).toHaveBeenCalledWith("s2", "Say hello.");
     await expect(canvas.getByText("10 / 2,000")).toBeVisible();
+  },
+};
+
+// czjw.176 (P13-12): the save status sits beside the label at every width; the box keeps its
+// resize grip from 768 px.
+export const StatusBesideTheLabel: Story = {
+  name: "Status beside the label",
+  play: async ({ canvas }) => {
+    const field = canvas.getByRole("textbox", { name: "Speaker notes" });
+    const label = canvas.getByText("Speaker notes");
+
+    await userEvent.type(field, "Say hello.");
+
+    const status = await canvas.findByRole("status");
+
+    await waitFor(() => expect(status).toHaveTextContent("Saved"));
+    await expect(
+      Math.abs(
+        status.getBoundingClientRect().top - label.getBoundingClientRect().top
+      )
+    ).toBeLessThanOrEqual(4);
+    await expect(getComputedStyle(status).color).toBe(
+      resolvedColor("--success")
+    );
+    await expect(getComputedStyle(field).resize).not.toBe("none");
+
+    // At the cap the same place holds the cap message, in the danger color.
+    await userEvent.paste("a".repeat(2000));
+    await expect(status).toHaveTextContent(CAP);
+    await expect(getComputedStyle(status).color).toBe(
+      resolvedColor("--destructive")
+    );
   },
 };
 

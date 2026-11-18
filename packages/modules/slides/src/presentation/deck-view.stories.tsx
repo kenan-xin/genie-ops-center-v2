@@ -1885,6 +1885,31 @@ export const NotesPaneOnPhone: Story = {
       notes.getBoundingClientRect().top
     );
 
+    // czjw.176 (P13-12): below 768 px the field sits in a card, the box has no resize grip, and
+    // the help line and the count share one row.
+    const card = getComputedStyle(
+      notes.closest<HTMLElement>('[data-slot="field"]')!.parentElement!
+    );
+
+    await expect(card.borderTopStyle).toBe("solid");
+    await expect(card.borderTopWidth).toBe("1px");
+    await expect(card.borderTopLeftRadius).toBe("12px");
+    await expect(getComputedStyle(notes).resize).toBe("none");
+
+    const [help, count] = notes
+      .getAttribute("aria-describedby")!
+      .split(" ")
+      .map((id) => document.getElementById(id)!);
+
+    await expect(help).toHaveTextContent(
+      "Only you see notes. They go to PowerPoint."
+    );
+    await expect(
+      Math.abs(
+        help!.getBoundingClientRect().top - count!.getBoundingClientRect().top
+      )
+    ).toBeLessThanOrEqual(2);
+
     await userEvent.type(notes, "Point at the September bar.");
     await waitFor(
       () =>
