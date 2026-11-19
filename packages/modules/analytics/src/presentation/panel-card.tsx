@@ -89,9 +89,11 @@ function PanelActions(props: PanelActionsProps) {
     <DropdownMenu>
       <DropdownMenuTrigger
         render={
+          // 32 px, held to the title's line, so edit mode moves nothing (czjw.206).
           <Button
             variant="ghost"
-            size="icon"
+            size="icon-sm"
+            className="-my-1.5"
             aria-label={`Actions for ${panel.config.title}`}
           />
         }
@@ -291,71 +293,76 @@ export function PanelCard(props: PanelCardProps) {
     >
       <Card>
         <CardContent>
-          {editing ? (
-            <div className="mb-2 flex justify-end">
-              <PanelActions
-                panel={panel}
-                index={index}
-                count={count}
-                onChange={(changes) => onChange(panel, changes)}
-                onRename={() => onRename(panel)}
-              />
-            </div>
-          ) : null}
-          {/* What the panel's own header adds: a range it keeps, and the filters that skip it. */}
-          {panel.ownRange === undefined && skipped.length === 0 ? null : (
-            <div className="mb-2 flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-              <div className="grid gap-0.5">
-                {skipped.map(({ field, label }) => (
-                  <p
-                    key={field}
-                    className="flex items-center gap-1.5 text-xs text-muted-foreground"
+          {/* czjw.206, prototype `.ph`: the title first, then its own range and, in edit mode, its menu. */}
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <h2 className="min-w-0 flex-1 font-semibold">
+              {panel.config.title}
+            </h2>
+            {panel.ownRange === undefined && !editing ? null : (
+              <span className="flex shrink-0 items-center gap-1.5">
+                {panel.ownRange === undefined ? null : (
+                  <span
+                    title="This panel keeps its own range"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-tile px-2 py-0.5 text-xs font-semibold text-muted-foreground"
                   >
-                    <InfoIcon
+                    <CalendarIcon
                       aria-hidden="true"
                       strokeWidth={1.75}
                       className="size-3.5 shrink-0"
                     />
-                    {`The ${label} filter does not apply to this panel.`}
-                  </p>
-                ))}
-              </div>
-              {panel.ownRange === undefined ? null : (
-                <span
-                  title="This panel keeps its own range"
-                  className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-tile px-2 py-0.5 text-xs font-semibold text-muted-foreground"
+                    {`${rangeLabel(panel.ownRange)} · own range`}
+                  </span>
+                )}
+                {editing ? (
+                  <PanelActions
+                    panel={panel}
+                    index={index}
+                    count={count}
+                    onChange={(changes) => onChange(panel, changes)}
+                    onRename={() => onRename(panel)}
+                  />
+                ) : null}
+              </span>
+            )}
+          </div>
+          {skipped.length === 0 ? null : (
+            <div className="mt-1 grid gap-0.5">
+              {skipped.map(({ field, label }) => (
+                <p
+                  key={field}
+                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
                 >
-                  <CalendarIcon
+                  <InfoIcon
                     aria-hidden="true"
                     strokeWidth={1.75}
                     className="size-3.5 shrink-0"
                   />
-                  {`${rangeLabel(panel.ownRange)} · own range`}
-                </span>
-              )}
+                  {`The ${label} filter does not apply to this panel.`}
+                </p>
+              ))}
             </div>
           )}
-          {/* Without a chart there is no figure title, so name the panel here. */}
-          {query.isError || query.data === undefined ? (
-            <p className="mb-1 text-sm font-medium">{panel.config.title}</p>
-          ) : null}
           {query.isError ? (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="mt-3 text-sm text-destructive">
               {query.error.message === ""
                 ? "This panel could not be drawn."
                 : query.error.message}
             </p>
           ) : query.data === undefined ? (
-            <p role="status" className="text-sm text-muted-foreground">
+            <p role="status" className="mt-3 text-sm text-muted-foreground">
               Loading…
             </p>
           ) : (
-            <Chart
-              {...query.data}
-              timeZone={timeZone}
-              caption="source"
-              linkComponent={PageLink}
-            />
+            <>
+              {/* The header names the panel; the figure keeps the title for a screen reader, as on a slide. */}
+              <Chart
+                {...query.data}
+                timeZone={timeZone}
+                caption="source"
+                linkComponent={PageLink}
+                titleHidden
+              />
+            </>
           )}
         </CardContent>
       </Card>

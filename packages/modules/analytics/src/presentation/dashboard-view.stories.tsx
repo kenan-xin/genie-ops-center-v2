@@ -1319,6 +1319,38 @@ export const RenameEmptySaysWhy: Story = {
   },
 };
 
+// czjw.206: the title comes first, and edit mode adds the menu to its row, so the title does not move.
+export const PanelTitleStaysInEditMode: Story = {
+  name: "The panel title keeps its place in edit mode",
+  globals: desktop,
+  beforeEach: () => serve(defaultDashboardPage),
+  play: async ({ canvas }) => {
+    const title = await canvas.findByRole("heading", {
+      level: 2,
+      name: "Invoiced sales",
+    });
+
+    const before = title.getBoundingClientRect().top;
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+
+    const actions = await canvas.findByRole("button", {
+      name: "Actions for Invoiced sales",
+    });
+
+    await expect(title.getBoundingClientRect().top).toBeCloseTo(before, 0);
+
+    const box = actions.getBoundingClientRect();
+    const line = title.getBoundingClientRect();
+
+    await expect(
+      Math.abs(box.top + box.height / 2 - (line.top + line.height / 2))
+    ).toBeLessThanOrEqual(1);
+  },
+};
+
 // B5.2: each panel action sends one change, with the layout and the index it names.
 export const EditActions: Story = {
   name: "Edit actions",
@@ -1832,9 +1864,20 @@ export const NotApplied: Story = {
   beforeEach: () => serve(notAppliedDashboardPage),
   play: async ({ canvas }) => {
     // The payments panel is the only one the invoice Region filter skips.
-    await expect(
-      await canvas.findByText("The Region filter does not apply to this panel.")
-    ).toBeVisible();
+    const note = await canvas.findByText(
+      "The Region filter does not apply to this panel."
+    );
+
+    await expect(note).toBeVisible();
+
+    const heading = canvas.getByRole("heading", {
+      level: 2,
+      name: "Collected this year",
+    });
+
+    await expect(note.getBoundingClientRect().top).toBeGreaterThanOrEqual(
+      heading.getBoundingClientRect().bottom
+    );
     await expect(
       canvas.queryByText("The Status filter does not apply to this panel.")
     ).toBeNull();
@@ -1856,9 +1899,21 @@ export const OwnRange: Story = {
   globals: desktop,
   beforeEach: () => serve(ownRangeDashboardPage),
   play: async ({ canvas }) => {
+    const chip = await canvas.findByText("This year · own range");
+
+    await expect(chip).toBeVisible();
+
+    const heading = canvas.getByRole("heading", {
+      level: 2,
+      name: "Collected this year",
+    });
+
+    const box = chip.getBoundingClientRect();
+    const line = heading.getBoundingClientRect();
+
     await expect(
-      await canvas.findByText("This year · own range")
-    ).toBeVisible();
+      Math.abs(box.top + box.height / 2 - (line.top + line.height / 2))
+    ).toBeLessThanOrEqual(1);
 
     // Changing the dashboard range leaves the panel's own range as it was.
     await userEvent.click(await canvas.findByLabelText("Date: Last 3 months"));
