@@ -20,22 +20,33 @@ const restingTab = (definition: ListDefinition) =>
 
 /**
  * The count on the Filters button (LH26): each set filter once, a range too, and one more when the
- * tab is not the resting tab. The search does not count.
+ * tab is not the resting tab. The search does not count. A tab or a range that the list does not
+ * apply does not count, so an old address reads as the default (czjw.179).
  */
 export function setFilterCount(
   definition: ListDefinition,
   params: ListParams
 ): number {
-  const filters = definition.filters.filter(
-    (filter) => filter.kind !== "search" && params[filter.id] !== undefined
-  ).length;
+  const filters = definition.filters.filter((filter) => {
+    const value = params[filter.id];
 
-  const tab = definition.tabs?.param;
-  const value = tab === undefined ? undefined : params[tab];
+    if (filter.kind === "search" || value === undefined) return false;
 
-  return (
-    filters + (value !== undefined && value !== restingTab(definition) ? 1 : 0)
-  );
+    if (filter.kind !== "date-range") return true;
+
+    // The loader reads an unreadable range as no range.
+    const { from, to } = readDayRange(value);
+
+    return from !== undefined || to !== undefined;
+  }).length;
+
+  const { tabs } = definition;
+  const value = tabs === undefined ? undefined : params[tabs.param];
+
+  // Only a tab that the list names, past the resting one, counts.
+  const tab = tabs?.items.slice(1).some((item) => item.value === value) ? 1 : 0;
+
+  return filters + tab;
 }
 
 /** Fired after a write, which `replaceState` itself does not announce. */

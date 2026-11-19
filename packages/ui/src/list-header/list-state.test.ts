@@ -109,4 +109,14 @@ describe("setFilterCount", () => {
     ).toBe(2);
     expect(setFilterCount(invoices, { status: "all" })).toBe(0);
   });
+
+  it("reads a tab that the list does not name as All", () => {
+    expect(setFilterCount(invoices, { status: "no-due-date" })).toBe(0);
+  });
+
+  it("reads a range that does not read as no filter", () => {
+    expect(setFilterCount(invoices, { date: "2026-02-30..2026-03-01" })).toBe(
+      0
+    );
+  });
 });
