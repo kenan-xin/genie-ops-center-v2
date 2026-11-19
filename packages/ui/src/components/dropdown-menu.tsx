@@ -280,6 +280,8 @@ function DropdownMenuRadioItem({
   className,
   children,
   inset,
+  // C19-1: a single choice closes the menu, as a menu item does; Base UI's default is false.
+  closeOnClick = true,
   ...props
 }: MenuPrimitive.RadioItem.Props & {
   inset?: boolean;
@@ -288,6 +290,7 @@ function DropdownMenuRadioItem({
     <MenuPrimitive.RadioItem
       data-slot="dropdown-menu-radio-item"
       data-inset={inset}
+      closeOnClick={closeOnClick}
       className={cn(
         "relative flex cursor-default items-center rounded-md py-1 pr-2 pl-1.5 text-sm select-none data-inset:pl-8 data-disabled:cursor-not-allowed data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         denseRowHeight,

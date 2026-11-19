@@ -254,17 +254,23 @@ export function ViewMenu(props: ViewMenuProps) {
                   <button
                     type="button"
                     aria-current={current ? "true" : undefined}
-                    className={`flex ${minTouchHeight} w-full items-center gap-2.5 rounded-md px-2 py-2 text-sm hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
+                    className={`flex ${minTouchHeight} w-full items-center rounded-md px-2 py-2 text-sm hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
                     onClick={inSheet(() =>
                       props.onSelect(choice.id === NONE ? null : choice.id)
                     )}
                   >
-                    <CheckIcon
-                      aria-hidden="true"
-                      className={`size-4 shrink-0 ${current ? "" : "invisible"}`}
-                    />
-                    <Lines name={choice.name} line={choice.line} />
-                    {choice.id === defaultId ? <DefaultBadge /> : null}
+                    {/* C19-2: the check at the row end on the first line, as the menu's radio item draws it (C19-4). */}
+                    <span className="flex min-w-0 flex-1 items-start gap-2">
+                      <span className="flex min-w-0 flex-1 items-center gap-2.5">
+                        <Lines name={choice.name} line={choice.line} />
+                        {choice.id === defaultId ? <DefaultBadge /> : null}
+                      </span>
+                      <span className="flex h-lh w-4 shrink-0 items-center justify-center">
+                        {current ? (
+                          <CheckIcon aria-hidden="true" className="size-4" />
+                        ) : null}
+                      </span>
+                    </span>
                   </button>
                 </li>
               );

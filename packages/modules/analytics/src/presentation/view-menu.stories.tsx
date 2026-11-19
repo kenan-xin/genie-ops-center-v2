@@ -82,6 +82,8 @@ export const DefaultView: Story = {
       menu.getByRole("menuitemradio", { name: /^Original/ })
     );
     await expect(args.onSelect).toHaveBeenCalledWith(null);
+    // C19-1: a pick closes the menu, as a menu item does.
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   },
 };
 
@@ -246,11 +248,8 @@ export const OnPhone: Story = {
 
     const sheet = within(await screen.findByRole("dialog", { name: "Views" }));
 
-    // 6wz1.139: a view row and an action row leave 10 px between the icon and its text.
-    await expect(
-      getComputedStyle(sheet.getByRole("button", { name: /^Month end/ }))
-        .columnGap
-    ).toBe("10px");
+    // 6wz1.139: an action row leaves 10 px between the icon and its text. A view row has no
+    // leading icon since C19-2; `SheetRowsLineUp` measures its check.
     await expect(
       getComputedStyle(sheet.getByRole("button", { name: /^Delete view/ }))
         .columnGap
@@ -260,5 +259,33 @@ export const OnPhone: Story = {
 
     await expect(args.onRemove).toHaveBeenCalledTimes(1);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  },
+};
+
+// C19-2: the Views sheet left open with Original current (two lines) beside three views that are
+// not; the icon check after the play measures its rows at 390 and 1440.
+export const SheetRowsLineUp: Story = {
+  name: "Views sheet rows line up",
+  globals: phone,
+  args: {
+    place: "sheet",
+    viewId: null,
+    views: [
+      ...views,
+      { id: "v3", name: "Key account", filters: views[0]!.filters },
+    ],
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "View: Original" })
+    );
+
+    const sheet = within(await screen.findByRole("dialog", { name: "Views" }));
+
+    await expect(
+      sheet.getByRole("button", { name: /^Original/ })
+    ).toHaveAttribute("aria-current", "true");
+    // The sheet slides in, so the check measures it settled.
+    await waitFor(() => expect(sheet.getByText("Default")).toBeVisible());
   },
 };

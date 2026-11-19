@@ -14,6 +14,7 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
+  iconLead,
 } from "@genie/ui";
 import { Chart } from "@genie/ui/chart";
 import { CalendarIcon, InfoIcon } from "lucide-react";
@@ -330,13 +331,16 @@ export function PanelCard(props: PanelCardProps) {
               {skipped.map(({ field, label }) => (
                 <p
                   key={field}
-                  className="flex items-center gap-1.5 text-xs text-muted-foreground"
+                  className="flex items-start gap-1.5 text-xs text-muted-foreground"
                 >
-                  <InfoIcon
-                    aria-hidden="true"
-                    strokeWidth={1.75}
-                    className="size-3.5 shrink-0"
-                  />
+                  {/* C19-5: a wrapped note keeps its icon on the first line. */}
+                  <span className="flex h-lh shrink-0 items-center">
+                    <InfoIcon
+                      aria-hidden="true"
+                      strokeWidth={1.75}
+                      className={`size-3.5 ${iconLead}`}
+                    />
+                  </span>
                   {`The ${label} filter does not apply to this panel.`}
                 </p>
               ))}

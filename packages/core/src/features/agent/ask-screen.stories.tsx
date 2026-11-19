@@ -881,6 +881,8 @@ export const ModelInTheMenuOnAPhone: Story = {
     await expect(args.models?.onChange).toHaveBeenCalledWith(
       "anthropic/claude-opus-5.5"
     );
+    // C19-1: the shared radio item closes the menu on a pick here too.
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
   },
 };
 

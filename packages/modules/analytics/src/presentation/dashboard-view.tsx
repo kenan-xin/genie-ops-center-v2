@@ -1,6 +1,6 @@
 "use client";
 
-import { useAgentPage } from "@genie/core/features/agent/panel";
+import { useAgentPage, useAgentPanel } from "@genie/core/features/agent/panel";
 import { PageHeader } from "@genie/core/features/shell";
 import {
   Button,
@@ -199,7 +199,11 @@ export function DashboardView(props: DashboardViewProps) {
   const narrow = chatOn && agent.open;
 
   // Only a person who may write gets the chat's write tools.
-  const starters = chatOn && view.canWrite;
+  const writer = chatOn && view.canWrite;
+
+  // While Ask works, a starter would send a second request (C15-10).
+  const { working } = useAgentPanel();
+  const starters = writer && !working;
 
   // A mode switch, so a pressed button, not a menu item.
   function toggleEditing() {
@@ -317,16 +321,18 @@ export function DashboardView(props: DashboardViewProps) {
               description={
                 starters
                   ? "Ask for a chart, a figure or a table. You can move them after."
-                  : "This dashboard has no panels."
+                  : writer
+                    ? "Ask is working. Panels it adds to this dashboard show here."
+                    : "This dashboard has no panels."
               }
               action={
                 starters ? (
                   <div className="flex flex-wrap justify-center gap-2">
                     {STARTERS.map((text) => (
+                      // C15-9: a starter is no dense place, so the standard control size.
                       <Button
                         key={text}
                         variant="secondary"
-                        size="sm"
                         onClick={() => agent.send(text)}
                       >
                         {text}

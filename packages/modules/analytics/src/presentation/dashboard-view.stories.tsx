@@ -21,6 +21,7 @@ import {
   FIELD_VALUES,
   FILTER_VALUES,
   filtersDashboardPage,
+  narrowNotAppliedDashboardPage,
   noChatDashboardPage,
   notAppliedDashboardPage,
   ownRangeDashboardPage,
@@ -486,6 +487,20 @@ export const SwitchView: Story = {
     await expect(
       await canvas.findByRole("button", { name: "View: North region" })
     ).toBeVisible();
+    // C19-1: the menu is gone after the pick, and the bar's next control takes a press.
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+
+    const date = canvas.getByLabelText("Date: Last 3 months");
+    const box = date.getBoundingClientRect();
+
+    await expect(
+      date.contains(
+        document.elementFromPoint(
+          box.left + box.width / 2,
+          box.top + box.height / 2
+        )
+      )
+    ).toBe(true);
     await expect(addressParam("view")).toBe("v2");
     await expect(addressParam("range")).toBe("last-3-months");
     await expect(addressParam("f.region")).toBe("North");
@@ -964,6 +979,16 @@ async function starterSends(canvas: ReturnType<typeof within>) {
   await expect(String(agentFetch.mock.calls[0]?.[1]?.body)).toContain(
     "Add a chart by month"
   );
+
+  // C15-10: while Ask works the starters leave, so nothing invites a second request.
+  await expect(
+    await canvas.findByText(
+      "Ask is working. Panels it adds to this dashboard show here."
+    )
+  ).toBeVisible();
+  await expect(
+    canvas.queryAllByText(/^Add a (figure|chart|table)/, { selector: "button" })
+  ).toHaveLength(0);
 }
 
 export const Empty: Story = {
@@ -989,7 +1014,36 @@ export const EmptyOnPhone: Story = {
 
     return holdAgentRequests();
   },
-  play: ({ canvas }) => starterSends(canvas),
+  play: async ({ canvas }) => {
+    await document.fonts.ready;
+
+    // C15-9: each starter keeps the 44 px touch area of the standard control; the probe sits on
+    // the area's outermost whole pixel, as the touch check's.
+    const probes = [
+      "Add a figure for this month",
+      "Add a chart by month",
+      "Add a table of the latest records",
+    ].map((text) => {
+      const starter = canvas.getByRole("button", { name: text });
+      const box = starter.getBoundingClientRect();
+
+      return {
+        starter,
+        probe: document.elementFromPoint(
+          box.left + box.width / 2,
+          Math.ceil(box.top + box.height / 2 + 22) - 1
+        ),
+      };
+    });
+
+    await Promise.all(
+      probes.map(({ starter, probe }) =>
+        expect(starter.contains(probe)).toBe(true)
+      )
+    );
+
+    await starterSends(canvas);
+  },
 };
 
 /** The panel opens with the dashboard's name and its own suggestions (R-49, AG9). */
@@ -1888,6 +1942,25 @@ export const NotApplied: Story = {
     await expect(
       await canvas.findByRole("figure", { name: "Invoiced sales" })
     ).toBeVisible();
+  },
+};
+
+// C19-5: a wrapped note keeps its icon on the first line; the icon check after the play measures it.
+export const NotAppliedWraps: Story = {
+  name: "Not applied, wrapped",
+  args: { view: narrowNotAppliedDashboardPage },
+  globals: desktop,
+  beforeEach: () => serve(narrowNotAppliedDashboardPage),
+  play: async ({ canvas }) => {
+    const note = await canvas.findByText(
+      "The Customer sales region filter does not apply to this panel."
+    );
+
+    await expect(note).toBeVisible();
+    // Two lines at least, or the story proves nothing.
+    await expect(note.getBoundingClientRect().height).toBeGreaterThan(
+      1.5 * Number.parseFloat(getComputedStyle(note).lineHeight)
+    );
   },
 };
 

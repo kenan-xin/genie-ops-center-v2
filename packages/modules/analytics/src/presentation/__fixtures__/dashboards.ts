@@ -310,6 +310,39 @@ export const notAppliedDashboardPage: DashboardPageView = {
   },
 };
 
+/** The skipped-filter note on a one-column panel with a long label, so it wraps (C19-5). */
+export const narrowNotAppliedDashboardPage: DashboardPageView = {
+  ...notAppliedDashboardPage,
+  dashboard: {
+    ...notAppliedDashboardPage.dashboard,
+    filters: {
+      dateRange: { preset: "last-3-months" },
+      fields: [
+        {
+          kind: "select",
+          field: "region",
+          label: "Customer sales region",
+          value: "North",
+        },
+      ],
+    },
+    filterFields: [
+      {
+        field: "region",
+        label: "Customer sales region",
+        kind: "select",
+        datasets: DATASETS,
+        offered: true,
+      },
+    ],
+    panels: [
+      KPI_PANEL,
+      { ...PAYMENTS_PANEL, layout: { columns: 1, rows: 1 } },
+      BAR_PANEL,
+    ],
+  },
+};
+
 /** A payments panel that keeps its own range, beside the invoices panels under the dashboard one. */
 export const ownRangeDashboardPage: DashboardPageView = {
   ...defaultDashboardPage,
