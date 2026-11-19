@@ -271,6 +271,8 @@ test("the Due date filter keeps only the invoices with no due date, and the figu
 
       expect(noDueDate).toContain("INV-2026-10-04");
 
+      await expect(fact(page, "Invoices")).toHaveText(/^\d+$/);
+
       const before = await ledgerFigures(page);
 
       await withFilters(page, async () => {
