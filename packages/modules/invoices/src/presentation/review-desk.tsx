@@ -190,6 +190,14 @@ export function ReviewDesk(
       ?.scrollIntoView({ block: "center" });
   };
 
+  // A locate press on a desktop scrolls the line box into view each time, also when the field was already selected (the DeskCanvas effect runs only on a change).
+  const locateDesk = (key: string) => {
+    setSelected(key);
+    body.current
+      ?.querySelector(`[data-line-box="${CSS.escape(key)}"]`)
+      ?.scrollIntoView({ block: "nearest", inline: "nearest" });
+  };
+
   const column = (onLocate: (key: string) => void) => (
     <ReviewFormColumn
       frame={frame}
@@ -314,7 +322,7 @@ export function ReviewDesk(
             data-review-scroll=""
             className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pt-5 pb-6"
           >
-            {column(setSelected)}
+            {column(locateDesk)}
           </div>
           {saveBar}
         </section>

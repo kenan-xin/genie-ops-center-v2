@@ -82,7 +82,6 @@ function ReviewField(props: {
               size="icon-dense"
               aria-label={`Show ${item.label} on the document`}
               title="Show on the document"
-              aria-pressed={props.selected}
               onClick={() => props.onLocate(item.key)}
             >
               <LocateFixedIcon aria-hidden strokeWidth={1.75} />

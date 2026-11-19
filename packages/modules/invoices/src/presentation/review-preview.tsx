@@ -126,12 +126,7 @@ function DocumentDialog(props: {
     <Dialog>
       <DialogTrigger
         render={
-          <Button
-            type="button"
-            variant="secondary"
-            size="sm"
-            className="self-end"
-          />
+          <Button type="button" variant="secondary" className="self-end" />
         }
       >
         <Maximize2Icon aria-hidden />

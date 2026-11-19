@@ -349,15 +349,8 @@ export const LocateLightsTheLine: Story = {
 
     if (scroller == null) throw new Error("The page has no scroll box.");
 
-    scroller.scrollTop = scroller.scrollHeight;
-
-    await userEvent.click(
-      canvas.getByRole("button", { name: "Show Customer on the document" })
-    );
-
-    const visible = scroller.getBoundingClientRect();
-
-    await waitFor(() => {
+    // The customer line is on screen inside the page's scroll box.
+    const customerInView = () => {
       const line = canvasElement.querySelector(
         '[data-line-box="customer"][data-lit="selected"]'
       );
@@ -365,13 +358,32 @@ export const LocateLightsTheLine: Story = {
       if (line === null) throw new Error("The customer line is not lit.");
 
       const box = line.getBoundingClientRect();
+      const visible = scroller.getBoundingClientRect();
 
-      if (box.top < visible.top - 1 || box.bottom > visible.bottom + 1)
-        throw new Error("The customer line is out of view.");
-    });
+      return box.top >= visible.top - 1 && box.bottom <= visible.bottom + 1;
+    };
+
+    scroller.scrollTop = scroller.scrollHeight;
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Show Customer on the document" })
+    );
+
+    await waitFor(() => expect(customerInView()).toBe(true));
     await expect(card(canvasElement, "customer")).toHaveAttribute(
       "data-selected"
     );
+
+    // I-1: the customer is already selected and out of sight, and a locate press scrolls it back.
+    scroller.scrollTop = scroller.scrollHeight;
+
+    await expect(customerInView()).toBe(false);
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Show Customer on the document" })
+    );
+
+    await waitFor(() => expect(customerInView()).toBe(true));
 
     await userEvent.hover(card(canvasElement, "amount"));
     await waitFor(() =>
@@ -562,11 +574,15 @@ export const PaymentSplit: Story = {
     await expect(savePayment).not.toHaveBeenCalled();
 
     // C16-6: an invoice number in a row's label never breaks across two lines.
+    let checked = 0;
+
     for (const row of splitElement.querySelectorAll("li")) {
       const label = row.querySelector("label");
       const number = /INV-\S+/u.exec(label?.textContent ?? "");
 
       if (label === null || number === null) continue;
+
+      checked += 1;
 
       const range = textRange(label, number[0]);
 
@@ -585,6 +601,8 @@ export const PaymentSplit: Story = {
         await expect(Math.abs(top - first)).toBeLessThanOrEqual(1);
       }
     }
+
+    await expect(checked).toBeGreaterThan(0);
   },
 };
 
@@ -956,6 +974,11 @@ export const InvoiceOnPhone: Story = {
     // C16-9: Open document sits below the lens, clear of the page's text.
     const lens = await lensOf(canvasElement);
     const openDocument = canvas.getByRole("button", { name: "Open document" });
+
+    // P16-72 #2: Open document takes the 40 px control height (DESIGN.md).
+    await expect(Math.round(openDocument.getBoundingClientRect().height)).toBe(
+      40
+    );
 
     await expect(
       openDocument.getBoundingClientRect().top
