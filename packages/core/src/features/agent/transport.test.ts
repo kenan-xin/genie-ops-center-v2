@@ -99,6 +99,101 @@ describe("the agent route's transport", () => {
     expect(signal?.aborted).toBe(true);
   });
 
+  // R18-1: a route that never answers (a long summary call, a hung network) kept Stop dead.
+  it("cuts a held Stop when the route does not answer within the hold", async () => {
+    vi.useFakeTimers();
+
+    const fetchMock = vi.fn<typeof fetch>(
+      async () => new Promise<Response>(() => undefined)
+    );
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const stop = new AbortController();
+
+    void agentTransport(API)
+      .sendMessages({
+        trigger: "submit-message",
+        chatId: SESSION_ID,
+        messageId: undefined,
+        messages: [MESSAGE],
+        abortSignal: stop.signal,
+      })
+      .catch(() => undefined);
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const signal = fetchMock.mock.calls[0]?.[1]?.signal;
+
+    stop.abort();
+    await vi.advanceTimersByTimeAsync(1999);
+
+    expect(signal?.aborted).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(signal?.aborted).toBe(true);
+
+    vi.useRealTimers();
+  });
+
+  // R18-2: the cut ran before the refusal was read, so its message and "Start a new chat" were lost.
+  it("keeps the refusal's message when Stop came before the refusal", async () => {
+    const answered = Promise.withResolvers<void>();
+
+    // Like a real fetch, the body errors once the request's signal is cut.
+    const fetchMock = vi.fn<typeof fetch>(async (_input, init) => {
+      await answered.promise;
+
+      const body = new ReadableStream<Uint8Array>({
+        start(controller) {
+          init?.signal?.addEventListener("abort", () =>
+            controller.error(new DOMException("Aborted", "AbortError"))
+          );
+          setTimeout(() => {
+            controller.enqueue(
+              new TextEncoder().encode(
+                JSON.stringify({
+                  code: "model-not-allowed",
+                  message: "This model is no longer allowed.",
+                  requestId: "request-1",
+                })
+              )
+            );
+            controller.close();
+          }, 0);
+        },
+      });
+
+      return new Response(body, { status: 403 });
+    });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const stop = new AbortController();
+
+    const sent = agentTransport(API).sendMessages({
+      trigger: "submit-message",
+      chatId: SESSION_ID,
+      messageId: undefined,
+      messages: [MESSAGE],
+      abortSignal: stop.signal,
+    });
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    stop.abort();
+    answered.resolve();
+
+    const refusal = await sent.catch((cause: unknown) => cause);
+
+    if (!(refusal instanceof AgentRefusal)) {
+      throw new Error(`Expected an AgentRefusal, got ${String(refusal)}`);
+    }
+
+    expect(refusal.message).toBe("This model is no longer allowed.");
+  });
+
   it("sends the session, the last message and the picked model", async () => {
     const fetchMock = fetchStub();
 

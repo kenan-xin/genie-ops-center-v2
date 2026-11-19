@@ -220,7 +220,7 @@ export async function handleAgentChat(
   );
 
   // One signal for both model calls: the turn's time limit ends the summary call too (LC5). A
-  // browser Stop reaches it only after the route answered, so not during the summary (C18-1).
+  // browser Stop reaches it after the route answered or after the transport's 2 s hold (C18-1).
   const abortSignal = AbortSignal.any([
     request.signal,
     AbortSignal.timeout(AGENT_LIMITS.turnMs),

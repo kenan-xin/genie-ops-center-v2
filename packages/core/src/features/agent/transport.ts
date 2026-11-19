@@ -71,6 +71,9 @@ export async function refusalFromResponse(
 
 const sendBody = z.object({ modelId: z.string().optional() });
 
+/** How long a Stop waits for the route to answer before it cuts the request (R18-1). */
+const STOP_HOLD_MS = 2000;
+
 /** A new chat's surface binding: the surface and the record of the page it opened on (P11-26). */
 export type SurfaceBinding = { readonly id: string; readonly recordId: string };
 
@@ -99,21 +102,36 @@ export function agentTransport(
   return new DefaultChatTransport<AgentMessage>({
     api,
     fetch: async (input, init) => {
-      // A Stop cuts the request only once the route answered: cut earlier, the route never reads
-      // the question, so it stores no chat while the address already names it (C18-1).
+      // A Stop cuts the request once the route answered: cut earlier, the route never reads the
+      // question, so it stores no chat while the address already names it (C18-1). A route that
+      // does not answer within the hold is cut anyway, so Stop never stays dead (R18-1).
       const cut = new AbortController();
+      let answered = false;
+      let held: ReturnType<typeof setTimeout> | undefined;
+
+      const onStop = () => {
+        if (answered) cut.abort();
+        else held = setTimeout(() => cut.abort(), STOP_HOLD_MS);
+      };
+
+      if (init?.signal?.aborted === true) onStop();
+      else init?.signal?.addEventListener("abort", onStop, { once: true });
 
       const response = await globalThis.fetch(input, {
         ...init,
         signal: cut.signal,
       });
 
+      clearTimeout(held);
+
+      // Read a refusal before any cut, so its message survives a Stop (R18-2).
+      if (!response.ok) throw await refusalFromResponse(response);
+
+      answered = true;
+
       if (init?.signal?.aborted === true) cut.abort();
-      else init?.signal?.addEventListener("abort", () => cut.abort());
 
-      if (response.ok) return response;
-
-      throw await refusalFromResponse(response);
+      return response;
     },
     prepareSendMessagesRequest: ({ id, messages, body }) => {
       const picked = sendBody.safeParse(body);
