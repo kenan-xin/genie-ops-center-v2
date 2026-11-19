@@ -57,6 +57,17 @@ export const invoiceListDefinition = {
       placeholder: "Any invoice date",
       field: "invoiceDate",
     },
+    {
+      id: "due",
+      kind: "option",
+      label: "Due date",
+      placeholder: "Any due date",
+      field: "hasDueDate",
+      options: [
+        { value: "yes", label: "Has a due date" },
+        { value: "no", label: "No due date" },
+      ],
+    },
   ],
   tabs: {
     param: "status",
@@ -71,12 +82,6 @@ export const invoiceListDefinition = {
         statuses: ["overdue"],
       },
       { value: "paid", label: "Paid", statuses: ["paid"] },
-      {
-        value: "no-due-date",
-        label: "No due date",
-        tone: "warning",
-        statuses: ["no-due-date"],
-      },
     ],
   },
   sorts: [

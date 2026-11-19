@@ -6,7 +6,7 @@ export type InvoiceStatusBadgeProps = {
   readonly status: InvoiceStatus;
 };
 
-/** The four invoice states of Spec 7, in the pill tones of `tokens.md` (P9). */
+/** The three invoice states of Spec 7, in the pill tones of `tokens.md` (P9). No due date is Open (czjw.191). */
 export function InvoiceStatusBadge(props: InvoiceStatusBadgeProps) {
   const { status } = props;
 
@@ -19,7 +19,5 @@ export function InvoiceStatusBadge(props: InvoiceStatusBadgeProps) {
 
   if (status.kind === "paid") return <Badge variant="success">Paid</Badge>;
 
-  if (status.kind === "open") return <Badge variant="neutral">Open</Badge>;
-
-  return <Badge variant="warning">No due date</Badge>;
+  return <Badge variant="neutral">Open</Badge>;
 }

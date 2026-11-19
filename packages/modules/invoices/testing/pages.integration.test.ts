@@ -248,7 +248,7 @@ describe("invoice pages", () => {
     ).rejects.toMatchObject({ code: "forbidden" });
   });
 
-  it("the invoice list filters by status, customer, invoice date and text on the server", async () => {
+  it("the invoice list filters by status, customer, invoice date, due date and text on the server", async () => {
     const customer = await insertCustomer(t(), { name: "Filterline Works" });
 
     const [paid, open, overdue, noDueDate, paidNoDueDate] = await Promise.all([
@@ -316,11 +316,25 @@ describe("invoice pages", () => {
       "FLT-NONE-PAID",
       "FLT-PAID",
     ]);
-    expect(await numbers({ status: "open" })).toEqual([open.number]);
-    expect(await numbers({ status: "overdue" })).toEqual([overdue.number]);
-    expect(await numbers({ status: "no-due-date" })).toEqual([
+    expect(await numbers({ status: "open" })).toEqual([
       noDueDate.number,
+      open.number,
     ]);
+    expect(await numbers({ status: "overdue" })).toEqual([overdue.number]);
+    expect(await numbers({ due: "no" })).toEqual(["FLT-NONE", "FLT-NONE-PAID"]);
+    expect(await numbers({ due: "yes" })).toEqual([
+      "FLT-LATE",
+      "FLT-OPEN",
+      "FLT-PAID",
+    ]);
+    expect(
+      (
+        await reader.listInvoices({
+          after: null,
+          params: { customer: customer.id, due: "no" },
+        })
+      ).counts
+    ).toEqual({ all: 2, open: 1, overdue: 0, paid: 1 });
     expect(await numbers({ q: "flt-none" })).toEqual([
       "FLT-NONE",
       "FLT-NONE-PAID",
@@ -359,6 +373,13 @@ describe("invoice pages", () => {
         dueDate: "2026-12-31",
         totalCents: 200_000,
       }),
+      insertInvoice(t(), {
+        customerId: mine.id,
+        number: "FIG-NONE",
+        invoiceDate: "2026-10-20",
+        dueDate: null,
+        totalCents: 400_000,
+      }),
       insertInvoice(t(), { customerId: other.id, totalCents: 900_000 }),
     ]);
 
@@ -372,12 +393,12 @@ describe("invoice pages", () => {
     const ledger = [
       {
         currency: "SGD",
-        outstandingCents: 300_000,
+        outstandingCents: 700_000,
         overdueCents: 100_000,
         overdueCount: 1,
-        invoicedCents: 300_000,
-        count: 2,
-        unpaidCount: 2,
+        invoicedCents: 700_000,
+        count: 3,
+        unpaidCount: 3,
         paidCount: 0,
       },
     ];
@@ -387,9 +408,12 @@ describe("invoice pages", () => {
         [
           {},
           { status: "overdue" },
+          { status: "open" },
           { customer: mine.id },
           { date: "2026-09-01..2026-09-30" },
           { q: "FIG-LATE" },
+          { due: "no" },
+          { due: "yes" },
         ] as const
       ).map((params) => reader.listInvoices({ after: null, params }))
     );
@@ -751,13 +775,7 @@ describe("invoice pages", () => {
       })
     );
 
-    const counts = {
-      "all": 5,
-      "open": 1,
-      "overdue": 1,
-      "paid": 2,
-      "no-due-date": 1,
-    };
+    const counts = { all: 5, open: 2, overdue: 1, paid: 2 };
 
     expect(tabs).toEqual(
       tabs.map(({ value }) => ({

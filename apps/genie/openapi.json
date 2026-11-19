@@ -7812,8 +7812,7 @@
                                     "kind": {
                                       "enum": [
                                         "paid",
-                                        "open",
-                                        "no-due-date"
+                                        "open"
                                       ],
                                       "type": "string"
                                     }
@@ -8482,8 +8481,7 @@
                     "all",
                     "open",
                     "overdue",
-                    "paid",
-                    "no-due-date"
+                    "paid"
                   ],
                   "type": "string"
                 },
@@ -8492,6 +8490,13 @@
                   "format": "uuid"
                 },
                 "date": {
+                  "type": "string"
+                },
+                "due": {
+                  "enum": [
+                    "yes",
+                    "no"
+                  ],
                   "type": "string"
                 },
                 "sort": {
@@ -8578,8 +8583,7 @@
                                   "kind": {
                                     "enum": [
                                       "paid",
-                                      "open",
-                                      "no-due-date"
+                                      "open"
                                     ],
                                     "type": "string"
                                   }

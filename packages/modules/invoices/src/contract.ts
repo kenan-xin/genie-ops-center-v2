@@ -449,7 +449,7 @@ export const documentReviewView = z.object({
 export type DocumentReviewView = z.infer<typeof documentReviewView>;
 
 export const invoiceStatus = z.union([
-  z.object({ kind: z.enum(["paid", "open", "no-due-date"]) }),
+  z.object({ kind: z.enum(["paid", "open"]) }),
   z.object({ kind: z.literal("overdue"), daysOverdue: z.number().int() }),
 ]);
 
@@ -472,12 +472,7 @@ export const invoiceListRow = z.object({
 export type InvoiceListRow = z.infer<typeof invoiceListRow>;
 
 /** The status chips of the Invoices list; no status means All. */
-export const INVOICE_LIST_STATUSES = [
-  "open",
-  "overdue",
-  "paid",
-  "no-due-date",
-] as const;
+export const INVOICE_LIST_STATUSES = ["open", "overdue", "paid"] as const;
 
 /** The search of a list address, the `q` parameter of the three lists. */
 const listSearch = z.string().trim().min(1).max(200).optional();
@@ -535,6 +530,8 @@ export const invoiceListParams = z.object({
   status: z.enum(INVOICE_LIST_TABS).optional(),
   customer: recordId.optional(),
   date: dayRange.optional(),
+  /** The Due date filter: has a due date, or none (czjw.191). */
+  due: z.enum(["yes", "no"]).optional(),
   sort: sortParam(INVOICE_LIST_SORTS).optional(),
 });
 

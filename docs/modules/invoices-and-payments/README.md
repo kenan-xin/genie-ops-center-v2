@@ -149,7 +149,7 @@ Four datasets, each under `invoices:read` and filtered by `scopesFor()`. A grant
 | `invoices.customers` | Every customer, with the first invoice date and the late-payment counts | `firstInvoiceDate` | the customer |
 | `invoices.allocations` | One row per link whose payment and invoice are both dated on or before the reporting date, under the scope of the invoice | `paymentDate` | the invoice |
 
-Overdue is a positive outstanding with a known due date strictly before the reporting date, so due on the day is not overdue and an unspecified due date never is. Paid late holds only for a fully settled invoice with a known due date, so a part-paid invoice is not in the late-payment rate.
+Overdue is a positive outstanding with a known due date strictly before the reporting date, so due on the day is not overdue and an unspecified due date never is. The status of an invoice is paid, overdue or open, so an invoice with no due date is open (owner question 7, `czjw.191`). The Due date filter of the Invoices list reads `hasDueDate` (`yes` or `no`), a field that the agent does not see, because the agent reads `dueDate`. Paid late holds only for a fully settled invoice with a known due date, so a part-paid invoice is not in the late-payment rate.
 
 The specification names three datasets. The fourth, `invoices.allocations`, is the only way the generic query shape can show each link. Several of its rows share one invoice, so it pages by its row key, the allocation id. Each row still opens its invoice (`czjw.48`). `invoices.customers` holds no money, because a customer can be invoiced in more than one currency and a figure per customer would mix them; its late-payment counts carry R-36 per customer.
 

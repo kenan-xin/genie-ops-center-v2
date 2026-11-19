@@ -14,13 +14,7 @@ import { DEMO_PDF } from "./demo-pdfs.ts";
 import { RECORD_FIELDS_0903 } from "./desk.ts";
 
 /** The tab counts of the four rows below: they never follow the tab (LH17). */
-const INVOICE_COUNTS = {
-  "all": 4,
-  "open": 1,
-  "overdue": 1,
-  "paid": 1,
-  "no-due-date": 1,
-};
+const INVOICE_COUNTS = { all: 4, open: 2, overdue: 1, paid: 1 };
 
 const PAID: InvoiceListRow = {
   id: "11111111-1111-4111-8111-111111111111",
@@ -70,7 +64,7 @@ const NO_DUE_DATE: InvoiceListRow = {
   currency: "SGD",
   totalCents: 435_000,
   outstandingCents: 435_000,
-  status: { kind: "no-due-date" },
+  status: { kind: "open" },
   updatedAt: "2026-10-27T01:06:00.000000Z",
 };
 

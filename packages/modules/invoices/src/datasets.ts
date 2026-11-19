@@ -123,6 +123,14 @@ export const invoicesDataset: DatasetDeclaration = {
       "Due date from",
       "Where the due date came from: document (read from the document), person (a person entered it by hand) or unspecified (marked as having none)."
     ),
+    // The Due date filter of the Invoices list reads it; the agent reads dueDate (P17-4).
+    hasDueDate: {
+      ...text(
+        "Has a due date",
+        "yes when the invoice has a due date, no when it has none."
+      ),
+      hiddenFromAgent: true,
+    },
     paymentTerms: text("Payment terms", "The payment terms, null when blank."),
     description: text(
       "Description",
@@ -158,7 +166,7 @@ export const invoicesDataset: DatasetDeclaration = {
       "True when a fully settled invoice with a known due date was settled after it; null when part-paid or with no due date, so such an invoice is not in a late-payment rate."
     ),
     updatedAt: UPDATED_AT,
-    status: text("Status", "paid, overdue, no-due-date or open."),
+    status: text("Status", "paid, overdue or open."),
   },
   timeField: "invoiceDate",
   recordKey: { type: RECORD_TYPES.invoice, field: "id" },
@@ -180,6 +188,10 @@ export const invoicesDataset: DatasetDeclaration = {
         invoiceDate: invoice.invoiceDate,
         dueDate: invoice.dueDate,
         dueDateSource: invoice.dueDateSource,
+        hasDueDate:
+          sql`case when ${invoice.dueDate} is null then 'no' else 'yes' end`.as(
+            "hasDueDate"
+          ),
         paymentTerms: sql`nullif(btrim(${invoice.paymentTerms}), '')`.as(
           "paymentTerms"
         ),
@@ -206,9 +218,9 @@ export const invoicesDataset: DatasetDeclaration = {
             "paidLate"
           ),
         updatedAt: invoice.updatedAt,
-        // The one rule that names a list status: the badge and the tab read it (LH16).
+        // The one rule that names a list status: the badge and the tab read it (LH16). No due date is open (czjw.191).
         status:
-          sql`case when ${outstanding} <= 0 then 'paid' when ${overdue} then 'overdue' when ${invoice.dueDate} is null then 'no-due-date' else 'open' end`.as(
+          sql`case when ${outstanding} <= 0 then 'paid' when ${overdue} then 'overdue' else 'open' end`.as(
             "status"
           ),
       })
