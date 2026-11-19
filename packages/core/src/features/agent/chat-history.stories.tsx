@@ -1,8 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
-import { expect, userEvent, within } from "storybook/test";
+import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
 
 import type { AgentHistoryEntry } from "../../services/agent/index.ts";
 import type { AgentRunStatus } from "../../services/agent/runs.ts";
+import { AgentClientStub } from "./__fixtures__/agent-client.tsx";
 import { AgentHistory } from "./chat-history.tsx";
 
 const SURFACES = [
@@ -82,6 +83,15 @@ const ENTRIES: readonly AgentHistoryEntry[] = [
   },
 ];
 
+const renameChat = fn(
+  async (input: { readonly id: string; readonly title: string }) => ({
+    ...ENTRIES.find(({ id }) => id === input.id)!,
+    title: input.title,
+  })
+);
+
+const removeChat = fn(async (_input: { readonly id: string }) => undefined);
+
 const desktop = { viewport: { value: "desktop1440", isRotated: false } };
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
@@ -99,16 +109,18 @@ const meta = {
     docs: {
       description: {
         component:
-          "Ask's chat history (DEC-57 item 11). Search chats, then one group per agent: Ask first, then each listed surface in registration order, a group with no chat left out. A group header folds its group and keeps a spinner while folded if one of its chats works. Each group shows its newest 3 chats and Show more reveals the rest. Recents at the bottom lists the newest 6 chats of every agent, each with its agent's icon. A working chat shows a spinner; a chat whose run ended while the person was away shows a dot and a bold title until it is opened. An Ask chat opens in Ask; a surface chat links to its record page on that chat (`?chat=`). The history is read-only: Rename and Delete stay in an Ask chat's header.",
+          "Ask's chat history (DEC-57 item 11). Search chats, then one group per agent: Ask first, then each listed surface in registration order, a group with no chat left out. A group header folds its group and keeps a spinner while folded if one of its chats works. Each group shows its newest 3 chats and Show more reveals the rest. Recents at the bottom lists the newest 6 chats of every agent, each with its agent's icon. A working chat shows a spinner; a chat whose run ended while the person was away shows a dot and a bold title until it is opened. An Ask chat opens in Ask; a surface chat links to its record page on that chat (`?chat=`). With `actions`, each row has a menu \"Chat actions for <title>\" with Rename and Delete; from 1024 px it shows on hover, focus and while open, and always on the open chat.",
       },
     },
     a11y: { test: "error" },
   },
   decorators: [
     (Story) => (
-      <div className="flex h-dvh w-80 flex-col bg-muted">
-        <Story />
-      </div>
+      <AgentClientStub rename={renameChat} remove={removeChat}>
+        <div className="flex h-dvh w-80 flex-col bg-muted">
+          <Story />
+        </div>
+      </AgentClientStub>
     ),
   ],
   globals: desktop,
@@ -117,6 +129,7 @@ const meta = {
     surfaces: SURFACES,
     currentId: ENTRIES[2]?.id,
     askHref: (id: string) => `/ask/${id}`,
+    actions: { onChanged: fn(), onDeleted: fn() },
   },
 } satisfies Meta<typeof AgentHistory>;
 
@@ -301,5 +314,107 @@ export const SurfaceChatLink: Story = {
     await expect(
       within(slides).queryByRole("link", { name: "A chat with no deck" })
     ).toBeNull();
+  },
+};
+
+/** A chat that is not open: its row menu acts on its own id, never the open chat's. */
+const OTHER = ENTRIES[4]!;
+
+const openRowMenu = async (canvasElement: HTMLElement) =>
+  userEvent.click(
+    within(group(canvasElement, "Ask")).getByRole("button", {
+      name: `Chat actions for ${OTHER.title}`,
+    })
+  );
+
+/** P18-19 (czjw.203): Rename from another chat's row renames that chat and reads the list again. */
+export const RowMenuRenamesItsChat: Story = {
+  name: "Row menu renames its chat",
+  play: async ({ args, canvasElement }) => {
+    renameChat.mockClear();
+
+    // P18-41: from 1024 px a one-line row's menu keeps its touch area inside the row, so the top
+    // edge of the next row (this story's chat) is that row's, not the menu's above it.
+    const above = within(group(canvasElement, "Ask")).getByRole("button", {
+      name: `Chat actions for ${ENTRIES[2]!.title}`,
+    });
+
+    const next = above.closest("li")!.nextElementSibling!;
+    const box = above.getBoundingClientRect();
+
+    // Just left of the button, inside its 44 px area but clear of the next row's own button.
+    const hit = document.elementFromPoint(
+      box.left - 2,
+      next.getBoundingClientRect().top + 1
+    );
+
+    await expect(next.contains(hit)).toBe(true);
+
+    await openRowMenu(canvasElement);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Rename" })
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Rename this chat",
+    });
+
+    const name = within(dialog).getByRole("textbox", { name: "Name" });
+
+    await expect(name).toHaveValue(OTHER.title);
+    await userEvent.clear(name);
+    await userEvent.type(name, "Renamed");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(renameChat).toHaveBeenCalledWith({
+        id: OTHER.id,
+        title: "Renamed",
+      })
+    );
+    await waitFor(() =>
+      expect(args.actions?.onChanged).toHaveBeenCalledTimes(1)
+    );
+  },
+};
+
+/** P18-19 (czjw.203): Delete from another chat's row deletes that chat and reports its id. */
+export const RowMenuDeletesItsChat: Story = {
+  name: "Row menu deletes its chat",
+  play: async ({ args, canvasElement }) => {
+    removeChat.mockClear();
+
+    await openRowMenu(canvasElement);
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" })
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Delete this chat?",
+    });
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete chat" })
+    );
+
+    await waitFor(() =>
+      expect(removeChat).toHaveBeenCalledWith({ id: OTHER.id })
+    );
+    await waitFor(() =>
+      expect(args.actions?.onDeleted).toHaveBeenCalledWith(OTHER.id)
+    );
+  },
+};
+
+/** P18-41: on a phone the row menu keeps its 44 px touch area. */
+export const RowMenuTouchAreaOnAPhone: Story = {
+  name: "Row menu touch area on a phone",
+  globals: phone,
+  play: async ({ canvasElement }) => {
+    const trigger = within(group(canvasElement, "Ask")).getByRole("button", {
+      name: `Chat actions for ${OTHER.title}`,
+    });
+
+    await expect(getComputedStyle(trigger, "::after").height).toBe("44px");
   },
 };

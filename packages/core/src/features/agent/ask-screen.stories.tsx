@@ -755,6 +755,75 @@ export const DeleteAsksFirst: Story = {
   },
 };
 
+// P18-19 (czjw.203): deleting the open chat from its own history row leaves it for a new chat;
+// it does not only read the list again.
+export const DeleteTheOpenChatFromItsRow: Story = {
+  name: "Delete the open chat from its row",
+  play: async ({ args, canvas }) => {
+    removeChat.mockClear();
+
+    const column = canvas.getByRole("complementary", { name: "Chat history" });
+
+    await userEvent.click(
+      within(column).getAllByRole("button", {
+        name: `Chat actions for ${OVERDUE}`,
+      })[0]!
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" })
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Delete this chat?",
+    });
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete chat" })
+    );
+
+    await waitFor(() =>
+      expect(removeChat).toHaveBeenCalledWith({ id: SESSIONS[0]?.id })
+    );
+    await waitFor(() => expect(args.onDeleted).toHaveBeenCalledTimes(1));
+    await expect(args.onRenamed).not.toHaveBeenCalled();
+  },
+};
+
+// P18-19 (czjw.203): deleting another chat from its row only reads the list again; the open chat
+// stays open.
+export const DeleteAnotherChatFromItsRow: Story = {
+  name: "Delete another chat from its row",
+  play: async ({ args, canvas }) => {
+    removeChat.mockClear();
+
+    const column = canvas.getByRole("complementary", { name: "Chat history" });
+    const other = SESSIONS[1]!;
+
+    await userEvent.click(
+      within(column).getAllByRole("button", {
+        name: `Chat actions for ${other.title}`,
+      })[0]!
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" })
+    );
+
+    const dialog = await screen.findByRole("dialog", {
+      name: "Delete this chat?",
+    });
+
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete chat" })
+    );
+
+    await waitFor(() =>
+      expect(removeChat).toHaveBeenCalledWith({ id: other.id })
+    );
+    await waitFor(() => expect(args.onRenamed).toHaveBeenCalledTimes(1));
+    await expect(args.onDeleted).not.toHaveBeenCalled();
+  },
+};
+
 // H4 (czjw.120 item 12): on a phone, a new chat picks its model in the header menu.
 export const ModelInTheMenuOnAPhone: Story = {
   name: "Model in the menu on a phone",

@@ -3,43 +3,26 @@
 import {
   Button,
   buttonVariants,
-  ConfirmDialog,
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
-  Field,
-  FieldError,
-  FieldLabel,
-  Input,
   Sheet,
   SheetContent,
   SheetHeader,
   SheetTitle,
   useMediaQuery,
 } from "@genie/ui";
-import { useForm } from "@tanstack/react-form";
-import { useMutation } from "@tanstack/react-query";
 import {
   EllipsisIcon,
   HistoryIcon,
   PanelLeftIcon,
   SquarePenIcon,
 } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { useModuleClient } from "../../lib/rpc/module-client.tsx";
-import {
-  agentContract,
-  chatTitleSchema,
-} from "../../services/agent/contract.ts";
 import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
   AgentArtifact,
@@ -50,105 +33,12 @@ import type { SurfaceView } from "../../services/agent/surface-address.ts";
 import type { Read } from "./answer-sources.ts";
 import type { ArtifactRef } from "./artifact-refs.ts";
 import { ArtifactSheet, ArtifactSlot } from "./artifact-slot.tsx";
+import { DeleteChat, RenameChat } from "./chat-actions.tsx";
 import { AgentHistory } from "./chat-history.tsx";
 import { HandoffChip } from "./handoff-card.tsx";
 
 /** From this width an open artifact sits in a column beside the chat (AG22). */
 const ARTIFACT_DOCKED = "(min-width: 1280px)";
-
-/** The rename dialog, mounted only while open, so each open starts from the chat's title. */
-function RenameChat(props: {
-  readonly id: string;
-  readonly title: string;
-  readonly onClose: () => void;
-  readonly onRenamed: () => void;
-}): ReactNode {
-  const agent = useModuleClient(agentContract);
-  const nameId = useId();
-
-  // The list refresh runs for every saved rename; the close is this dialog's own, so a late
-  // answer after Cancel cannot close a dialog opened again (the per-call callback skips it).
-  const rename = useMutation({
-    mutationFn: (title: string) => agent.rename({ id: props.id, title }),
-    onSuccess: props.onRenamed,
-  });
-
-  const form = useForm({
-    defaultValues: { title: props.title },
-    onSubmit: ({ value }) =>
-      rename.mutate(value.title, { onSuccess: props.onClose }),
-  });
-
-  return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) props.onClose();
-      }}
-    >
-      <DialogContent>
-        <form
-          noValidate
-          className="grid gap-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void form.handleSubmit();
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Rename this chat</DialogTitle>
-          </DialogHeader>
-          <form.Field
-            name="title"
-            validators={{
-              onChange: chatTitleSchema,
-              onSubmit: chatTitleSchema,
-            }}
-          >
-            {(field) => {
-              const issue: { message?: string } | undefined =
-                field.state.meta.errors[0];
-
-              const message = issue?.message;
-
-              return (
-                <Field>
-                  <FieldLabel htmlFor={nameId}>Name</FieldLabel>
-                  <Input
-                    id={nameId}
-                    value={field.state.value}
-                    aria-invalid={message === undefined ? undefined : true}
-                    aria-describedby={
-                      message === undefined ? undefined : `${nameId}-error`
-                    }
-                    onBlur={field.handleBlur}
-                    onChange={(event) => field.handleChange(event.target.value)}
-                  />
-                  {message === undefined ? null : (
-                    <FieldError id={`${nameId}-error`}>{message}</FieldError>
-                  )}
-                </Field>
-              );
-            }}
-          </form.Field>
-          {rename.isError ? (
-            <p role="alert" className="text-sm text-destructive">
-              The name could not be saved. Try again.
-            </p>
-          ) : null}
-          <DialogFooter>
-            <Button type="button" variant="secondary" onClick={props.onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" loading={rename.isPending}>
-              Save
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 /**
  * The Ask frame (R-42, R-42a, R-45a, AG22): the chat history as a 272 px column from 1024 px that
@@ -185,27 +75,19 @@ export function AskScreen(props: {
     readonly value: string;
     readonly onChange: (model: string) => void;
   } | null;
+  /** Reads the history again: after a rename, and after a delete of a chat that is not open. */
   readonly onRenamed: () => void;
   readonly onDeleted: () => void;
   /** The chat's last handoff; the header links to its work while it builds (R-42b). */
   readonly handoff?: HandoffCardData | undefined;
   readonly children: ReactNode;
 }): ReactNode {
-  const agent = useModuleClient(agentContract);
   const docked = useMediaQuery(ARTIFACT_DOCKED, {});
   const [historyOpen, setHistoryOpen] = useState(true);
   const [historySheet, setHistorySheet] = useState(false);
   const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
 
   const { currentId, models } = props;
-
-  const remove = useMutation({
-    mutationFn: (id: string) => agent.remove({ id }),
-    onSuccess: () => {
-      setDialog(null);
-      props.onDeleted();
-    },
-  });
 
   // The rail, its phone sheet and the phone header each start a chat with the pencil.
   const newChat = (extra = "") => (
@@ -284,6 +166,11 @@ export function AskScreen(props: {
       surfaces={props.surfaces}
       currentId={props.currentId}
       askHref={props.sessionHref}
+      actions={{
+        onChanged: props.onRenamed,
+        onDeleted: (id) =>
+          id === props.currentId ? props.onDeleted() : props.onRenamed(),
+      }}
     />
   );
 
@@ -425,26 +312,12 @@ export function AskScreen(props: {
         />
       ) : null}
 
-      <ConfirmDialog
+      <DeleteChat
+        id={currentId}
         open={dialog === "delete"}
-        title="Delete this chat?"
-        description="This deletes this chat, its tables and charts, and the files it made. You cannot undo this."
-        confirmLabel="Delete chat"
-        danger
-        onConfirm={() => {
-          if (currentId !== undefined) remove.mutate(currentId);
-        }}
-        onClose={() => {
-          setDialog(null);
-          remove.reset();
-        }}
-      >
-        {remove.isError ? (
-          <p role="alert" className="text-sm text-destructive">
-            This chat could not be deleted. Try again.
-          </p>
-        ) : null}
-      </ConfirmDialog>
+        onClose={() => setDialog(null)}
+        onDeleted={() => props.onDeleted()}
+      />
     </div>
   );
 }

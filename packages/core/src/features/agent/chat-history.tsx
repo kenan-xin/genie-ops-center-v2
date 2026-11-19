@@ -26,6 +26,7 @@ import type {
 } from "../../services/agent/index.ts";
 import type { SurfaceView } from "../../services/agent/surface-address.ts";
 import { MODULE_ICONS } from "../shell/navigation-rail.tsx";
+import { ChatRowMenu, type ChatRowActions } from "./chat-actions.tsx";
 import {
   agentHistoryGroups,
   isWorking,
@@ -105,6 +106,7 @@ export function ChatHistory(props: {
     sessions: readonly AgentSessionSummary[]
   ) => readonly SessionGroup[];
   readonly onPick: (session: AgentSessionSummary) => void;
+  readonly actions?: ChatRowActions | undefined;
 }): ReactNode {
   return (
     <SearchedChats sessions={props.sessions}>
@@ -119,17 +121,33 @@ export function ChatHistory(props: {
                 const current = session.id === props.currentId;
 
                 return (
-                  <li key={session.id}>
+                  <li
+                    key={session.id}
+                    className="group/row flex items-center gap-1.5"
+                  >
                     <button
                       type="button"
                       aria-current={current ? "true" : undefined}
-                      className={`w-full text-left ${sessionClass(current)}`}
+                      className={`min-w-0 flex-1 text-left ${sessionClass(current)}`}
                       onClick={() => props.onPick(session)}
                     >
                       <span className="min-w-0 wrap-anywhere">
                         {session.title}
                       </span>
                     </button>
+                    {/* A pointer screen shows the menu on hover, focus and while open; a touch screen has no hover (P18-20). */}
+                    {props.actions === undefined ? null : (
+                      <ChatRowMenu
+                        id={session.id}
+                        title={session.title}
+                        actions={props.actions}
+                        className={
+                          current
+                            ? undefined
+                            : "lg:opacity-0 lg:group-hover/row:opacity-100 lg:group-focus-within/row:opacity-100 lg:has-aria-expanded:opacity-100"
+                        }
+                      />
+                    )}
                   </li>
                 );
               })}
@@ -180,13 +198,15 @@ function AgentIcon(props: {
  * agent, each group folding and showing its newest 3 before Show more, and Recents at the bottom
  * with each chat's agent icon. A working chat shows a spinner, a folded group keeps one, and a chat
  * whose run ended unseen shows a dot and a bold title. An Ask chat opens in Ask; a surface chat
- * links to its record page on that chat. It is read-only: no rename or delete here.
+ * links to its record page on that chat. If `actions` is set, each row has a menu with Rename and
+ * Delete (czjw.203).
  */
 export function AgentHistory(props: {
   readonly entries: readonly AgentHistoryEntry[];
   readonly surfaces: readonly SurfaceView[];
   readonly currentId: string | undefined;
   readonly askHref: (id: string) => string;
+  readonly actions?: ChatRowActions | undefined;
 }): ReactNode {
   const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
   const [more, setMore] = useState<ReadonlySet<string>>(new Set());
@@ -244,17 +264,32 @@ export function AgentHistory(props: {
       entry.surface === ASK_SURFACE ? props.askHref(entry.id) : entry.address;
 
     return (
-      <li key={entry.id}>
+      <li key={entry.id} className="group/row flex items-center gap-1.5">
         {href === null ? (
-          <span className={sessionClass(false)}>{content}</span>
+          <span className={`min-w-0 flex-1 ${sessionClass(false)}`}>
+            {content}
+          </span>
         ) : (
           <a
             href={href}
             aria-current={current ? "page" : undefined}
-            className={sessionClass(current)}
+            className={`min-w-0 flex-1 ${sessionClass(current)}`}
           >
             {content}
           </a>
+        )}
+        {/* A pointer screen shows the menu on hover, focus and while open; a touch screen has no hover (P18-20). */}
+        {props.actions === undefined ? null : (
+          <ChatRowMenu
+            id={entry.id}
+            title={entry.title}
+            actions={props.actions}
+            className={
+              current
+                ? undefined
+                : "lg:opacity-0 lg:group-hover/row:opacity-100 lg:group-focus-within/row:opacity-100 lg:has-aria-expanded:opacity-100"
+            }
+          />
         )}
       </li>
     );
@@ -280,7 +315,7 @@ export function AgentHistory(props: {
                       data-slot="agent-group-header"
                       aria-expanded={open}
                       aria-controls={open ? id : undefined}
-                      className={`group flex w-full items-center gap-2 rounded-lg px-3 text-sm font-medium text-foreground hover:bg-hover ${rowHeight} ${focusRing}`}
+                      className={`group flex w-full items-center gap-2 rounded-lg px-3 text-sm font-semibold text-foreground hover:bg-hover ${rowHeight} ${focusRing}`}
                       onClick={() => setFolded(toggle(folded, group.key))}
                     >
                       <AgentIcon
@@ -302,7 +337,7 @@ export function AgentHistory(props: {
                       <ChevronDownIcon
                         aria-hidden="true"
                         strokeWidth={1.75}
-                        className={`size-4 shrink-0 text-muted-foreground motion-safe:transition-transform ${open ? "" : "-rotate-90"}`}
+                        className={`size-4 shrink-0 text-muted-foreground motion-safe:transition ${open ? "lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-visible:opacity-100" : "-rotate-90"}`}
                       />
                     </button>
                   </h3>
