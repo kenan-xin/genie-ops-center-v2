@@ -383,7 +383,7 @@ async function afterAHandoff(
   const header = () => within(region.querySelector("header")!);
 
   await chip(await header().findByText("Working"));
-  // The title shows in full beside the chip, also at 390 px (Phase 11 capture).
+  // The title shows in full (also at 390 px).
   const name = region.querySelector("h2 .truncate")!;
   await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
   // One row: the shell's collapsed-panel offset (P11-65) assumes a header of about 62 px.

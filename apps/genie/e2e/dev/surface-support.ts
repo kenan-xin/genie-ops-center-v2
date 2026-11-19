@@ -125,13 +125,28 @@ export async function handOverDeck(page: Page): Promise<string> {
   return askId;
 }
 
+/**
+ * The surface panel's header chip says Working or Saved. From 768 px it shows; on a phone it stays
+ * in the header but hidden, as the live row and the page show the run (C18-5).
+ */
+export async function expectChip(
+  page: Page,
+  surface: Locator,
+  text: "Working" | "Saved"
+): Promise<void> {
+  const chip = surface.locator("header").getByText(text, { exact: true });
+
+  if (!onPhone(page)) return expect(chip).toBeVisible(FIRST_PAINT);
+
+  await expect(chip).toBeAttached(FIRST_PAINT);
+  await expect(chip).toBeHidden();
+}
+
 /** Hands the chat deck over and waits until the Slides agent saved all five slides. */
 export async function handOverWholeDeck(page: Page): Promise<void> {
   await handOverDeck(page);
 
-  await expect(
-    askPanel(page).locator("header").getByText("Saved", { exact: true })
-  ).toBeVisible(FIRST_PAINT);
+  await expectChip(page, askPanel(page), "Saved");
   await expect(
     page
       .getByRole("navigation", { name: "Slides" })

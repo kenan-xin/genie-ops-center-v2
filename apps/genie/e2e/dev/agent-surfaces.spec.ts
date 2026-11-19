@@ -54,6 +54,7 @@ import {
   activate,
   closeSurfaceDatabase,
   countsUntil,
+  expectChip,
   handedOverFrom,
   handOverDeck,
   insertEmptyDashboard,
@@ -233,7 +234,7 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
           animation: "text-shimmer",
           transparent: true,
         });
-        await expect(chip(surface, "Working")).toBeVisible(FIRST_PAINT);
+        await expectChip(page, surface, "Working");
 
         const seen = await countsUntil(() => slideButtons(page).count(), 5);
 
@@ -245,7 +246,7 @@ test("Ask hands a deck over, and the deck page fills slide by slide", async ({
           seen.some((count) => count > 0 && count < 5),
           `the deck showed ${JSON.stringify(seen)} slides on the way to 5`
         ).toBe(true);
-        await expect(chip(surface, "Saved")).toBeVisible(FIRST_PAINT);
+        await expectChip(page, surface, "Saved");
         await expectLiveRowsUntilFolded(surface, "Writing slide", 5);
         await expectNoAxeViolations(page, "deck page after the handoff");
 
@@ -317,12 +318,11 @@ test("Ask history groups chats by agent and opens a surface chat on its record p
         if (handed === undefined) throw new Error("Ask handed nothing over.");
 
         // The handoff started a run, so Ask in the menu shows it on the deck page (DEC-57 item 11).
-        await expect(
-          chip(
-            page.getByRole("region", { name: "Ask", exact: true }),
-            "Working"
-          )
-        ).toBeVisible(FIRST_PAINT);
+        await expectChip(
+          page,
+          page.getByRole("region", { name: "Ask", exact: true }),
+          "Working"
+        );
 
         if (onPhone(page)) {
           // The record page's own top bar replaces the menu button on a phone (follow-up bead).
@@ -449,7 +449,7 @@ test("the Ask screen hands a deck over: the deck opens with its panel, and Ask s
           surface.getByText("From Ask", { exact: true })
         ).toBeVisible(FIRST_PAINT);
         // Wait for the end, so the next handoff of this person finds no live run.
-        await expect(chip(surface, "Saved")).toBeVisible(FIRST_PAINT);
+        await expectChip(page, surface, "Saved");
 
         // Back in the Ask chat, the card shows how the run ended (Review Focus 5).
         await page.goto(`/ask/${askId}`);
@@ -554,7 +554,7 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
         const surface = page.getByRole("region", { name: "Ask", exact: true });
 
         await recordLiveRows(surface);
-        await expect(chip(surface, "Working")).toBeVisible(FIRST_PAINT);
+        await expectChip(page, surface, "Working");
 
         const panels = async () => {
           const counts = await Promise.all(
@@ -579,7 +579,7 @@ test("Ask hands a dashboard over, and the dashboard page fills panel by panel", 
           seen.some((count) => count > 0 && count < 3),
           `the dashboard showed ${JSON.stringify(seen)} panels on the way to 3`
         ).toBe(true);
-        await expect(chip(surface, "Saved")).toBeVisible(FIRST_PAINT);
+        await expectChip(page, surface, "Saved");
         await expectLiveRowsUntilFolded(surface, "Adding panel", 3);
 
         const rings = (await liveRowStates(surface)).map((state) => state.ring);
