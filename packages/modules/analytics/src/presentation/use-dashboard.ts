@@ -50,7 +50,7 @@ export type DashboardFilterState = OpenFilters & {
   readonly selectView: (id: string | null) => void;
   /**
    * Clears the address filters, so the page reads the stored filters, or with `viewId` that
-   * view's (after Update view and Save as new view).
+   * view's (after Save view).
    */
   readonly reset: (viewId?: string) => void;
 };
@@ -112,7 +112,7 @@ export function useDashboardFilters(
     last.current = { named, under };
 
     // An unknown view (removed, undone, a stale link) leaves, so a view that reuses its id is not
-    // selected by it. As Delete view, it falls to "Dashboard filters", not to the default view.
+    // selected by it. As Delete view, it falls to Original, not to the default view.
     if (
       named !== undefined &&
       !dashboard.views.some(({ id }) => id === named)
@@ -135,7 +135,7 @@ export function useDashboardFilters(
 
     if (readFilterAddress(params, dashboard.filterFields) === null) return;
 
-    // "Dashboard filters" with a default view: dropping the filters would open the default view.
+    // Original with a default view: dropping the filters would open the default view.
     if (named === undefined && dashboard.defaultViewId !== null) {
       address.set(
         writeFilterAddress(under, fieldNamesOf(params[ADDRESS.fields]))

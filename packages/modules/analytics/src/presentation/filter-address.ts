@@ -203,8 +203,8 @@ export type OpenFilters = {
 
 /**
  * The filters the page opens with: the address filters when the address holds any dashboard
- * parameter, else the default view's, else the stored ones (S7-47). Filters without `view` are the
- * dashboard filters, so the default view does not take over (P15-22).
+ * parameter, else the default view's, else the stored ones (S7-47). Filters without `view` are
+ * Original's, so the default view does not take over (P15-22).
  */
 export function openFilters(
   params: Readonly<Record<string, string | undefined>>,
@@ -293,7 +293,7 @@ const canonical = (filter: FieldFilter): string => {
 /**
  * Whether two sets of filters are the same: the same fields in the bar, each of one kind and
  * value. A multi-select's value order, the labels and the filter order do not count; a field in
- * the bar with no value does (S7-46 ruling). "Not saved as default" waits on this.
+ * the bar with no value does (S7-46 ruling). "Unsaved changes" waits on this.
  */
 export function sameFilters(a: DashboardFilters, b: DashboardFilters): boolean {
   if (!sameRange(a.dateRange, b.dateRange)) return false;

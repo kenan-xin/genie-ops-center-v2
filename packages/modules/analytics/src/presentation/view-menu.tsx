@@ -18,6 +18,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   Field,
+  FieldDescription,
   FieldError,
   FieldLabel,
   iconLead,
@@ -35,7 +36,6 @@ import {
   ChevronDownIcon,
   type LucideIcon,
   PlusIcon,
-  SaveIcon,
   StarIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -43,17 +43,20 @@ import { type ReactNode, useId, useState } from "react";
 
 import type { SavedView } from "../contract.ts";
 
-const DASHBOARD_FILTERS = "Dashboard filters";
+const ORIGINAL = "Original";
 
-/** The menu's value for "Dashboard filters"; a view id is `v<n>`, so it cannot clash. */
+/** The menu's value for Original; a view id is `v<n>`, so it cannot clash. */
 const NONE = "";
+
+/** One name rule for views: case and outer spaces do not count (P15-17). */
+export const sameViewName = (a: string, b: string): boolean =>
+  a.trim().toLowerCase() === b.trim().toLowerCase();
 
 type Action = {
   readonly label: string;
   readonly line: string;
   readonly icon: LucideIcon;
   readonly onSelect: () => void;
-  readonly disabled?: boolean;
   readonly destructive?: boolean;
 };
 
@@ -64,10 +67,11 @@ export type ViewMenuProps = {
   readonly defaultViewId: string | null;
   readonly viewId: string | null;
   readonly onSelect: (id: string | null) => void;
+  /** Makes the selected row the default, Original included (czjw.192). */
   readonly onMakeDefault: () => void;
   readonly onRemove: () => void;
-  readonly onSaveAsView: () => void;
-  readonly onSaveAsDefault: () => void;
+  /** Opens the Name dialog of Save view. */
+  readonly onSaveView: () => void;
 };
 
 /** Two lines of a row: the name, and its explanation in muted text. */
@@ -88,34 +92,34 @@ function Lines(props: {
 const DefaultBadge = () => <Badge variant="success">Default</Badge>;
 
 /**
- * The view switcher at the start of the filter bar, variant A (R-49a, S7-47): the views, then the
- * actions on the selected one. A menu in the bar, the same content in a bottom sheet on a phone.
+ * The view switcher at the start of the filter bar, variant A (R-49a, S7-47, czjw.192): Original
+ * and the saved views, then the actions on the selected one. A menu in the bar, the same content in
+ * a bottom sheet on a phone.
  */
 export function ViewMenu(props: ViewMenuProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const selected = props.views.find((view) => view.id === props.viewId);
 
-  const isDefault =
-    selected !== undefined && selected.id === props.defaultViewId;
+  const name = selected?.name ?? ORIGINAL;
+
+  // One default per person: Original when no view is (czjw.192).
+  const defaultId = props.defaultViewId ?? NONE;
+  const isDefault = (selected?.id ?? NONE) === defaultId;
 
   const actions: readonly Action[] = [
+    ...(isDefault
+      ? []
+      : [
+          {
+            label: "Make default",
+            line: `Open the dashboard with ${name}`,
+            icon: StarIcon,
+            onSelect: props.onMakeDefault,
+          },
+        ]),
     ...(selected === undefined
       ? []
       : [
-          isDefault
-            ? {
-                label: "Default view",
-                line: `The dashboard opens with ${selected.name}`,
-                icon: StarIcon,
-                onSelect: props.onMakeDefault,
-                disabled: true,
-              }
-            : {
-                label: "Make default",
-                line: `Open the dashboard with ${selected.name}`,
-                icon: StarIcon,
-                onSelect: props.onMakeDefault,
-              },
           {
             label: "Delete view",
             line: "Undo restores it",
@@ -125,30 +129,15 @@ export function ViewMenu(props: ViewMenuProps) {
           },
         ]),
     {
-      label: "Save as view",
+      label: "Save view",
       line: "Keeps the current filters under a name",
       icon: PlusIcon,
-      onSelect: props.onSaveAsView,
+      onSelect: props.onSaveView,
     },
-    // Without a view the bar carries Save as default beside "Not saved as default".
-    ...(selected === undefined
-      ? []
-      : [
-          {
-            label: "Save as default",
-            line: "Stores these filters as the dashboard filters and clears the default view",
-            icon: SaveIcon,
-            onSelect: props.onSaveAsDefault,
-          },
-        ]),
   ];
 
   const choices = [
-    {
-      id: NONE,
-      name: DASHBOARD_FILTERS,
-      line: "The filters saved with Save as default",
-    },
+    { id: NONE, name: ORIGINAL, line: "The dashboard's own filters" },
     ...props.views.map((view) => ({
       id: view.id,
       name: view.name,
@@ -159,9 +148,7 @@ export function ViewMenu(props: ViewMenuProps) {
   const trigger = (
     <>
       <span className="text-muted-foreground">View:</span>
-      <span className="truncate font-semibold">
-        {selected?.name ?? DASHBOARD_FILTERS}
-      </span>
+      <span className="truncate font-semibold">{name}</span>
       <ChevronDownIcon aria-hidden="true" />
     </>
   );
@@ -195,9 +182,7 @@ export function ViewMenu(props: ViewMenuProps) {
                 {choices.map((choice) => (
                   <DropdownMenuRadioItem key={choice.id} value={choice.id}>
                     <Lines name={choice.name} line={choice.line} />
-                    {choice.id === props.defaultViewId ? (
-                      <DefaultBadge />
-                    ) : null}
+                    {choice.id === defaultId ? <DefaultBadge /> : null}
                   </DropdownMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
@@ -206,7 +191,6 @@ export function ViewMenu(props: ViewMenuProps) {
             {actions.map((action) => (
               <DropdownMenuItem
                 key={action.label}
-                disabled={action.disabled}
                 variant={
                   action.destructive === true ? "destructive" : "default"
                 }
@@ -267,9 +251,7 @@ export function ViewMenu(props: ViewMenuProps) {
                       className={`size-4 shrink-0 ${current ? "" : "invisible"}`}
                     />
                     <Lines name={choice.name} line={choice.line} />
-                    {choice.id === props.defaultViewId ? (
-                      <DefaultBadge />
-                    ) : null}
+                    {choice.id === defaultId ? <DefaultBadge /> : null}
                   </button>
                 </li>
               );
@@ -281,8 +263,7 @@ export function ViewMenu(props: ViewMenuProps) {
               <li key={action.label}>
                 <button
                   type="button"
-                  disabled={action.disabled}
-                  className={`flex ${minTouchHeight} w-full items-start gap-2.5 rounded-md px-2 py-2 text-sm hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none disabled:hover:bg-transparent ${action.destructive === true ? "text-destructive" : ""}`}
+                  className={`flex ${minTouchHeight} w-full items-start gap-2.5 rounded-md px-2 py-2 text-sm hover:bg-hover focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${action.destructive === true ? "text-destructive" : ""}`}
                   onClick={inSheet(action.onSelect)}
                 >
                   <action.icon
@@ -301,12 +282,13 @@ export function ViewMenu(props: ViewMenuProps) {
 }
 
 /**
- * The Name dialog of Save as view and Save as new view; the refusal shows inside it. Mounted only
- * while open, so each opening starts empty.
+ * The Name dialog of Save view; the refusal shows inside it. On a saved view the field starts with
+ * its name, and saving under that name updates the view (czjw.192). Mounted only while open.
  */
 export function ViewNameDialog(props: {
-  readonly title: string;
   readonly views: readonly SavedView[];
+  /** The selected view, whose own name is not taken. */
+  readonly current?: SavedView | undefined;
   readonly saving: boolean;
   /** A refused save, shown in the dialog. */
   readonly refusal: ReactNode;
@@ -315,13 +297,15 @@ export function ViewNameDialog(props: {
 }) {
   const nameId = useId();
   const errorId = useId();
-  const [name, setName] = useState("");
+  const hintId = useId();
+  const [name, setName] = useState(props.current?.name ?? "");
   const trimmed = name.trim();
 
   // The server refuses this too (P15-17); asking here keeps the person in the dialog with the reason.
-  const taken = props.views.some(
-    (view) => view.name.trim().toLowerCase() === trimmed.toLowerCase()
-  );
+  const taken =
+    !(
+      props.current !== undefined && sameViewName(trimmed, props.current.name)
+    ) && props.views.some((view) => sameViewName(view.name, trimmed));
 
   const [shown, setShown] = useState(false);
 
@@ -352,7 +336,7 @@ export function ViewNameDialog(props: {
     >
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>{props.title}</DialogTitle>
+          <DialogTitle>Save view</DialogTitle>
         </DialogHeader>
         <form className="grid gap-4" onSubmit={submit}>
           <Field>
@@ -364,7 +348,12 @@ export function ViewNameDialog(props: {
               autoComplete="off"
               aria-invalid={shown && (taken || missing) ? true : undefined}
               aria-describedby={
-                shown && (taken || missing) ? errorId : undefined
+                [
+                  props.current === undefined ? null : hintId,
+                  shown && (taken || missing) ? errorId : null,
+                ]
+                  .filter((id) => id !== null)
+                  .join(" ") || undefined
               }
               onValueChange={(value) => {
                 setName(value);
@@ -372,6 +361,11 @@ export function ViewNameDialog(props: {
                 setMissing(false);
               }}
             />
+            {props.current === undefined ? null : (
+              <FieldDescription id={hintId}>
+                {`Keep the name to update ${props.current.name}, or type a new name to save another view.`}
+              </FieldDescription>
+            )}
             {!shown ? null : missing ? (
               <FieldError id={errorId}>Enter a name.</FieldError>
             ) : taken ? (

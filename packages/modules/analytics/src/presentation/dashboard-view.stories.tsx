@@ -308,7 +308,7 @@ export const TwoSet: Story = {
     ).toBeVisible();
     // One customer whose name holds a comma stays one value (P15-8).
     await expect(canvas.getByLabelText("Customer: A, B Ltd")).toBeVisible();
-    await shownStatus(canvas, "Not saved as default");
+    await shownStatus(canvas, "Unsaved changes");
 
     await waitFor(() => {
       for (const panelId of ["p1", "p2", "p3"]) {
@@ -347,39 +347,6 @@ export const TwoSet: Story = {
   },
 };
 
-// Save as default stores the address filters, not the stored ones, then the page reads them.
-export const SaveAsDefault: Story = {
-  name: "Save as default",
-  args: { view: filtersDashboardPage },
-  globals: desktop,
-  beforeEach: () => {
-    serveFilters(filtersDashboardPage);
-
-    return withFilterAddress(TWO_SET);
-  },
-  play: async ({ canvas }) => {
-    await userEvent.click(
-      await canvas.findByRole("button", { name: "Save as default" })
-    );
-
-    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
-    // One change, so one Undo restores both the filters and the default view (P15-21).
-    await expect(changeDashboard).toHaveBeenCalledWith({
-      id: "dashboard-1",
-      expectedVersion: 1,
-      changes: [
-        { op: "set-filters", filters: TWO_SET },
-        { op: "set-default-view", id: null },
-      ],
-    });
-    await waitFor(() =>
-      expect(canvas.queryByText("Not saved as default")).toBeNull()
-    );
-    await expect(addressParam("range")).toBeNull();
-    await expect(canvas.getByLabelText("Region: North")).toBeVisible();
-  },
-};
-
 // Filters the agent or another tab stores replace the address ones, which would hide them (S7-46).
 export const StoredFiltersChanged: Story = {
   name: "Stored filters changed elsewhere",
@@ -408,7 +375,7 @@ export const StoredFiltersChanged: Story = {
       await canvas.findByLabelText("Region: West", {}, { timeout: 12_000 })
     ).toBeVisible();
     await expect(addressParam("f.region")).toBeNull();
-    await expect(canvas.queryByText("Not saved as default")).toBeNull();
+    await expect(canvas.queryByText("Unsaved changes")).toBeNull();
   },
 };
 
@@ -472,8 +439,7 @@ export const DefaultViewOpens: Story = {
         filters: MONTH_END,
       })
     );
-    await expect(canvas.queryByText("Not saved as default")).toBeNull();
-    await expect(canvas.queryByText("Changed")).toBeNull();
+    await expect(canvas.queryByText("Unsaved changes")).toBeNull();
   },
 };
 
@@ -510,7 +476,7 @@ export const SwitchView: Story = {
   globals: desktop,
   beforeEach: openViews(MONTH_END_ALL, "v1"),
   play: async ({ canvas }) => {
-    await shownStatus(canvas, "Changed");
+    await shownStatus(canvas, "Unsaved changes");
 
     await pickView(canvas, "Month end");
     await userEvent.click(
@@ -524,7 +490,7 @@ export const SwitchView: Story = {
     await expect(addressParam("range")).toBe("last-3-months");
     await expect(addressParam("f.region")).toBe("North");
     await expect(addressParam("f.overdue")).toBeNull();
-    await expect(canvas.queryByText("Changed")).toBeNull();
+    await expect(canvas.queryByText("Unsaved changes")).toBeNull();
     await waitFor(() =>
       expect(panelData).toHaveBeenCalledWith({
         id: "dashboard-1",
@@ -535,9 +501,9 @@ export const SwitchView: Story = {
   },
 };
 
-// A change on the default view keeps it selected and reads Changed; Update view saves that view.
+// A change on the default view keeps it selected; Save view keeps its name and updates that view.
 export const ChangedView: Story = {
-  name: "Changed view",
+  name: "Unsaved changes on a view",
   args: { view: viewsDashboardPage },
   globals: desktop,
   beforeEach: openViews(null),
@@ -546,11 +512,19 @@ export const ChangedView: Story = {
       await canvas.findByRole("switch", { name: "Overdue only" })
     );
 
-    await shownStatus(canvas, "Changed");
-    await expect(canvas.queryByText("Not saved as default")).toBeNull();
+    await shownStatus(canvas, "Unsaved changes");
     await expect(addressParam("view")).toBe("v1");
 
-    await userEvent.click(canvas.getByRole("button", { name: "Update view" }));
+    await userEvent.click(canvas.getByRole("button", { name: "Save view" }));
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Save view" })
+    );
+
+    await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue(
+      "Month end"
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Save view" }));
 
     await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
     await expect(changeDashboard).toHaveBeenCalledWith({
@@ -568,30 +542,32 @@ export const ChangedView: Story = {
     // The page reads the saved view, not the address.
     await waitFor(() => expect(addressParam("range")).toBeNull());
     await expect(addressParam("view")).toBe("v1");
-    await expect(canvas.queryByText("Changed")).toBeNull();
+    await expect(canvas.queryByText("Unsaved changes")).toBeNull();
     await expect(
       canvas.getByRole("switch", { name: "Overdue only" })
     ).not.toBeChecked();
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   },
 };
 
-// Save as new view names the changed filters; a name taken in another case is refused in place.
+// Save view under a new name adds a view; another view's name in another case is refused in place.
 export const SaveAsNewView: Story = {
-  name: "Save as new view",
+  name: "Save view under a new name",
   args: { view: viewsDashboardPage },
   globals: desktop,
   beforeEach: openViews(MONTH_END_ALL, "v1"),
   play: async ({ canvas }) => {
     await userEvent.click(
-      await canvas.findByRole("button", { name: "Save as new view" })
+      await canvas.findByRole("button", { name: "Save view" })
     );
 
     const dialog = within(
-      await screen.findByRole("dialog", { name: "Save as new view" })
+      await screen.findByRole("dialog", { name: "Save view" })
     );
 
     const name = dialog.getByLabelText("Name");
 
+    await userEvent.clear(name);
     await userEvent.type(name, " north REGION ");
     await userEvent.click(dialog.getByRole("button", { name: "Save view" }));
 
@@ -622,40 +598,7 @@ export const SaveAsNewView: Story = {
   },
 };
 
-// Review Focus 1: Save as default on a changed view stores the changed filters, not the view's.
-export const SaveAsDefaultFromView: Story = {
-  name: "Save as default from a view",
-  args: { view: viewsDashboardPage },
-  globals: desktop,
-  beforeEach: openViews(MONTH_END_ALL, "v1"),
-  play: async ({ canvas }) => {
-    await pickView(canvas, "Month end");
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: /^Save as default/ })
-    );
-
-    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
-    await expect(changeDashboard).toHaveBeenCalledWith({
-      id: "dashboard-1",
-      expectedVersion: 1,
-      changes: [
-        { op: "set-filters", filters: MONTH_END_ALL },
-        { op: "set-default-view", id: null },
-      ],
-    });
-    await expect(
-      await canvas.findByRole("button", { name: "View: Dashboard filters" })
-    ).toBeVisible();
-    await expect(addressParam("view")).toBeNull();
-    await expect(addressParam("range")).toBeNull();
-    await expect(canvas.queryByText("Not saved as default")).toBeNull();
-    await expect(
-      canvas.getByRole("switch", { name: "Overdue only" })
-    ).not.toBeChecked();
-  },
-};
-
-// Review Focus 5: a link to a view that was removed opens the dashboard filters, with no error.
+// Review Focus 5: a link to a view that was removed opens Original, with no error.
 export const RemovedViewInAddress: Story = {
   name: "Removed view in the address",
   args: { view: viewsDashboardPage },
@@ -663,7 +606,7 @@ export const RemovedViewInAddress: Story = {
   beforeEach: openViews(null, "v9"),
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByRole("button", { name: "View: Dashboard filters" })
+      await canvas.findByRole("button", { name: "View: Original" })
     ).toBeVisible();
     await expect(
       await canvas.findByRole("figure", { name: "Invoiced sales" })
@@ -674,7 +617,7 @@ export const RemovedViewInAddress: Story = {
       panelId: "p1",
     });
     await expect(canvas.queryByRole("alert")).toBeNull();
-    await expect(canvas.queryByText("Not saved as default")).toBeNull();
+    await expect(canvas.queryByText("Unsaved changes")).toBeNull();
     // Dropped, so a later view that reuses the id is not selected by the stale link.
     await waitFor(() => expect(addressParam("view")).toBeNull());
   },
@@ -692,7 +635,7 @@ export const SelectedViewChanged: Story = {
   globals: desktop,
   beforeEach: openViews(MONTH_END_ALL, "v1"),
   play: async ({ canvas }) => {
-    await shownStatus(canvas, "Changed");
+    await shownStatus(canvas, "Unsaved changes");
 
     readDashboard.mockResolvedValue({
       ...viewsDashboardPage.dashboard,
@@ -708,11 +651,11 @@ export const SelectedViewChanged: Story = {
     await expect(addressParam("view")).toBe("v1");
     await expect(addressParam("range")).toBeNull();
     await expect(addressParam("f.overdue")).toBeNull();
-    await expect(canvas.queryByText("Changed")).toBeNull();
+    await expect(canvas.queryByText("Unsaved changes")).toBeNull();
   },
 };
 
-// On Dashboard filters, dropping the address would open the default view, so it takes the stored.
+// On Original, dropping the address would open the default view, so it takes the stored.
 export const StoredChangedBesideDefaultView: Story = {
   name: "Stored filters changed beside a default view",
   args: { view: viewsDashboardPage },
@@ -720,7 +663,7 @@ export const StoredChangedBesideDefaultView: Story = {
   beforeEach: openViews(TWO_SET),
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByRole("button", { name: "View: Dashboard filters" })
+      await canvas.findByRole("button", { name: "View: Original" })
     ).toBeVisible();
 
     readDashboard.mockResolvedValue({
@@ -736,7 +679,7 @@ export const StoredChangedBesideDefaultView: Story = {
     await expect(addressParam("range")).toBe("this-month");
     await expect(addressParam("view")).toBeNull();
     await expect(
-      canvas.getByRole("button", { name: "View: Dashboard filters" })
+      canvas.getByRole("button", { name: "View: Original" })
     ).toBeVisible();
   },
 };
@@ -771,12 +714,85 @@ export const MakeDefault: Story = {
     await expect(
       canvas.getByRole("button", { name: "View: North region" })
     ).toBeVisible();
-    await shownStatus(canvas, "Changed");
+    await shownStatus(canvas, "Unsaved changes");
     await expect(addressParam("f.region")).toBe("South");
   },
 };
 
-// Delete view goes back to the dashboard filters, not to the default view.
+// Review Focus 3: Save view under the view's own name with no change saves nothing, so no Undo.
+export const SaveViewUnchanged: Story = {
+  name: "Save view with no change saves nothing",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(null),
+  play: async ({ canvas }) => {
+    await pickView(canvas, "Month end");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Save view/ })
+    );
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Save view" })
+    );
+
+    await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue(
+      "Month end"
+    );
+    await userEvent.click(dialog.getByRole("button", { name: "Save view" }));
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    await expect(changeDashboard).not.toHaveBeenCalled();
+  },
+};
+
+// P19-9: Reset writes Original's filters, because an empty address opens the default view.
+export const ResetOnOriginal: Story = {
+  name: "Reset on Original beside a default view",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(TWO_SET),
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByRole("button", { name: "View: Original" })
+    ).toBeVisible();
+    await shownStatus(canvas, "Unsaved changes");
+
+    await userEvent.click(canvas.getByRole("button", { name: "Reset" }));
+
+    await waitFor(() => expect(addressParam("f.region")).toBeNull());
+    await expect(addressParam("range")).toBe("last-3-months");
+    await expect(addressParam("view")).toBeNull();
+    await expect(
+      canvas.getByRole("button", { name: "View: Original" })
+    ).toBeVisible();
+    await expect(canvas.queryByText("Unsaved changes")).toBeNull();
+    await expect(changeDashboard).not.toHaveBeenCalled();
+  },
+};
+
+// czjw.192: Make default on Original clears the default view; the person's change stays.
+export const MakeOriginalDefault: Story = {
+  name: "Make Original the default",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(TWO_SET),
+  play: async ({ canvas }) => {
+    await pickView(canvas, "Original");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Make default/ })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "set-default-view", id: null }],
+    });
+    await expect(addressParam("f.region")).toBe("North");
+  },
+};
+
+// Delete view goes back to Original, not to the default view.
 export const RemoveView: Story = {
   name: "Delete view",
   args: { view: viewsDashboardPage },
@@ -795,7 +811,7 @@ export const RemoveView: Story = {
       changes: [{ op: "remove-view", id: "v2" }],
     });
     await expect(
-      await canvas.findByRole("button", { name: "View: Dashboard filters" })
+      await canvas.findByRole("button", { name: "View: Original" })
     ).toBeVisible();
     await expect(addressParam("view")).toBeNull();
   },
@@ -818,8 +834,8 @@ export const PhoneViewSheet: Story = {
     // The sheet slides in, so wait for it to settle.
     await waitFor(() => expect(sheet.getByText("Default")).toBeVisible());
     await expect(
-      sheet.getByRole("button", { name: /^Default view/ })
-    ).toBeDisabled();
+      sheet.queryByRole("button", { name: /^Make default/ })
+    ).toBeNull();
 
     await userEvent.click(sheet.getByRole("button", { name: "North region" }));
 

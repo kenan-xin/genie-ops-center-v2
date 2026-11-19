@@ -39,7 +39,7 @@ import {
   type DashboardFilterState,
   useDashboardChange,
 } from "./use-dashboard.ts";
-import { ViewMenu, ViewNameDialog } from "./view-menu.tsx";
+import { sameViewName, ViewMenu, ViewNameDialog } from "./view-menu.tsx";
 import type { DashboardView } from "./views.ts";
 
 const RANGE = "range";
@@ -225,19 +225,14 @@ function chipLabelOf(filter: FieldFilter): string | undefined {
   }
 }
 
-type Status = "unsaved" | "changed";
-
 /**
- * "Not saved as default" or "Changed" with its saves: at the end of the bar, or on a phone a quiet
- * row with text buttons (`czjw.159`).
+ * "Unsaved changes" with Save view and Reset: at the end of the bar, or on a phone a quiet row
+ * with text buttons (`czjw.159`, `czjw.192`).
  */
 function StatusRow(props: {
   readonly place: "bar" | "phone";
-  readonly status: Status;
-  readonly saving: boolean;
-  readonly onSaveAsDefault: () => void;
-  readonly onUpdateView: () => void;
-  readonly onSaveAsNewView: () => void;
+  readonly onSaveView: () => void;
+  readonly onReset: () => void;
 }) {
   const bar = props.place === "bar";
 
@@ -254,37 +249,25 @@ function StatusRow(props: {
       >
         {/* DESIGN.md: an unsaved change carries a small blue dot. */}
         <span aria-hidden="true" className="size-2 rounded-full bg-primary" />
-        {props.status === "changed" ? "Changed" : "Not saved as default"}
+        Unsaved changes
       </span>
-      {props.status === "changed" ? (
-        <span className={bar ? "contents" : "flex items-center gap-3"}>
-          <Button
-            variant={bar ? "primary" : "link"}
-            // C06-1: the field height of the filters (R-37a), on the bar and the phone row alike.
-            size="filter"
-            loading={props.saving}
-            onClick={props.onUpdateView}
-          >
-            Update view
-          </Button>
-          <Button
-            variant={bar ? "secondary" : "link"}
-            size="filter"
-            onClick={props.onSaveAsNewView}
-          >
-            Save as new view
-          </Button>
-        </span>
-      ) : (
+      <span className={bar ? "contents" : "flex items-center gap-3"}>
+        <Button
+          variant={bar ? "primary" : "link"}
+          // C06-1: the field height of the filters (R-37a), on the bar and the phone row alike.
+          size="filter"
+          onClick={props.onSaveView}
+        >
+          Save view
+        </Button>
         <Button
           variant={bar ? "secondary" : "link"}
           size="filter"
-          loading={props.saving}
-          onClick={props.onSaveAsDefault}
+          onClick={props.onReset}
         >
-          Save as default
+          Reset
         </Button>
-      )}
+      </span>
     </div>
   );
 }
@@ -298,9 +281,9 @@ export type FiltersBarProps = {
 };
 
 /**
- * The dashboard filter bar, variant A (R-49, S7-46, S7-47), on the list header controls, after the
- * view menu. A change writes the page address only; Save as default stores the filters and clears
- * the default view in one change, and a changed view offers Update view and Save as new view.
+ * The dashboard filter bar, variant A (R-49, S7-46, S7-47, czjw.192), on the list header controls,
+ * after the view menu. A change writes the page address only. When the filters differ from the
+ * selected row, Original or a saved view, the bar says Unsaved changes with Save view and Reset.
  */
 export function FiltersBar(props: FiltersBarProps) {
   const { dashboard, filters } = props;
@@ -310,8 +293,8 @@ export function FiltersBar(props: FiltersBarProps) {
   const addId = useId();
   const hintId = useId();
   const controls = useRef<HTMLDivElement>(null);
-  // The Name dialog's title while it is open.
-  const [naming, setNaming] = useState<string | null>(null);
+  // Whether the Name dialog of Save view is open.
+  const [naming, setNaming] = useState(false);
 
   // The bar shows every field filter the page applies, with or without a value (S7-46 ruling).
   const shown = current.fields;
@@ -373,7 +356,7 @@ export function FiltersBar(props: FiltersBarProps) {
   }));
 
   const definition: ListDefinition = {
-    label: "Dashboard filters",
+    label: "Filters",
     noun: ["result", "results"],
     filters: [
       { ...RANGE_FILTER, kind: "date" },
@@ -440,68 +423,72 @@ export function FiltersBar(props: FiltersBarProps) {
   const onRemove = (id: string) =>
     id === RANGE ? undefined : () => remove(id.slice(2));
 
-  /** One change, one Undo: these filters stored, and the default view cleared (P15-21). */
-  function saveAsDefault() {
-    change.mutate(
-      [
-        { op: "set-filters", filters: current },
-        { op: "set-default-view", id: null },
-      ],
-      // The page then reads the stored filters, which are now these.
-      { onSuccess: () => filters.reset() }
-    );
-  }
-
   const selected = dashboard.views.find((view) => view.id === filters.viewId);
 
-  function updateView() {
-    if (selected === undefined) return;
+  /**
+   * Save view (czjw.192): under the selected view's own name it updates that view, else it adds
+   * one. The same name and filters save nothing, so no Undo entry is spent.
+   */
+  function saveView(name: string) {
+    const target =
+      selected !== undefined && sameViewName(name, selected.name)
+        ? selected
+        : undefined;
+
+    if (
+      target !== undefined &&
+      target.name === name &&
+      sameFilters(current, target.filters)
+    ) {
+      setNaming(false);
+
+      return;
+    }
 
     change.mutate(
       [
         {
           op: "save-view",
-          id: selected.id,
-          name: selected.name,
+          ...(target && { id: target.id }),
+          name,
           filters: current,
         },
       ],
-      // The address keeps the view and drops the filters, so the page reads the saved view.
-      { onSuccess: () => filters.reset(selected.id) }
+      {
+        onSuccess: (saved) => {
+          setNaming(false);
+          // The address keeps the view and drops the filters, so the page reads the saved view.
+          filters.reset(
+            target?.id ??
+              saved.views.find(
+                (view) => !dashboard.views.some((old) => old.id === view.id)
+              )?.id
+          );
+        },
+      }
     );
   }
 
-  function saveAsView(name: string) {
-    change.mutate([{ op: "save-view", name, filters: current }], {
-      onSuccess: (saved) => {
-        const added = saved.views.find(
-          (view) => !dashboard.views.some((old) => old.id === view.id)
-        );
+  /** Reset: the selected row's saved filters, never an empty address, which opens the default (P19-9). */
+  const resetView = () => filters.selectView(filters.viewId);
 
-        setNaming(null);
-        filters.reset(added?.id);
-      },
-    });
-  }
-
+  /** Make default on the selected row; on Original it clears the default view (czjw.192). */
   function makeDefault() {
-    if (selected === undefined) return;
-
-    change.mutate([{ op: "set-default-view", id: selected.id }]);
+    change.mutate([{ op: "set-default-view", id: selected?.id ?? null }]);
   }
 
   function removeView() {
     if (selected === undefined) return;
 
     change.mutate([{ op: "remove-view", id: selected.id }], {
-      // As in the prototype: back to the dashboard filters, not to another default view.
+      // As in the prototype: back to Original, not to another default view.
       onSuccess: () => filters.selectView(null),
     });
   }
 
-  function openNaming(title: string) {
+  function openNaming() {
     change.reset();
-    setNaming(title);
+    setNaming(true);
   }
 
   // Add filter lists only the fields a person filters by; a stored filter on another still reads (czjw.178).
@@ -513,15 +500,8 @@ export function FiltersBar(props: FiltersBarProps) {
   const canAdd = full || available.length > 0;
   const anySet = Object.keys(params).some((id) => id !== RANGE);
 
-  // The prototype's `statusKind()`: with a view selected the bar speaks about the view only.
-  const status =
-    selected === undefined
-      ? sameFilters(current, dashboard.filters)
-        ? null
-        : "unsaved"
-      : sameFilters(current, selected.filters)
-        ? null
-        : "changed";
+  // One unsaved state for Original and a view alike (czjw.192).
+  const unsaved = !sameFilters(current, selected?.filters ?? dashboard.filters);
 
   // The date range first, with no remove: the dashboard always has one.
   const chips: readonly FilterChip[] = [
@@ -556,21 +536,13 @@ export function FiltersBar(props: FiltersBarProps) {
     onSelect: filters.selectView,
     onMakeDefault: makeDefault,
     onRemove: removeView,
-    onSaveAsView: () => openNaming("Save as view"),
-    onSaveAsDefault: saveAsDefault,
+    onSaveView: openNaming,
   };
 
   const statusRow = (place: "bar" | "phone") =>
-    status === null ? null : (
-      <StatusRow
-        place={place}
-        status={status}
-        saving={change.isPending}
-        onSaveAsDefault={saveAsDefault}
-        onUpdateView={updateView}
-        onSaveAsNewView={() => openNaming("Save as new view")}
-      />
-    );
+    unsaved ? (
+      <StatusRow place={place} onSaveView={openNaming} onReset={resetView} />
+    ) : null;
 
   return (
     <div className="grid gap-3">
@@ -688,10 +660,10 @@ export function FiltersBar(props: FiltersBarProps) {
         {statusRow("phone")}
       </div>
 
-      {naming === null ? null : (
+      {naming ? (
         <ViewNameDialog
-          title={naming}
           views={dashboard.views}
+          current={selected}
           saving={change.isPending}
           refusal={
             change.error === null ? null : (
@@ -704,12 +676,12 @@ export function FiltersBar(props: FiltersBarProps) {
               />
             )
           }
-          onSave={saveAsView}
-          onClose={() => setNaming(null)}
+          onSave={saveView}
+          onClose={() => setNaming(false)}
         />
-      )}
+      ) : null}
 
-      {change.error === null || naming !== null ? null : (
+      {change.error === null || naming ? null : (
         <ChangeRefusal
           failure={{ kind: "change", error: change.error }}
           focus

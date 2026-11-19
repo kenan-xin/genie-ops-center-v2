@@ -20,7 +20,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The view switcher at the start of the dashboard filter bar, variant A (Spec 7 R-49a, S7-47). "View: <name>" opens the views ("Dashboard filters" and each saved view, the default one with a Default badge), then the actions on the selected view: Make default (or the disabled "Default view" line), Delete view, Save as view and Save as default. Without a view only Save as view shows. A menu from 768 px; the same content in a bottom sheet on a phone. `place` picks the menu, from 768 px, or the bottom sheet, on a phone.',
+          'The view switcher at the start of the dashboard filter bar, variant A (Spec 7 R-49a, S7-47, czjw.192). "View: <name>" opens the views: Original, the dashboard\'s own filters, and each saved view. The default, Original or a view, carries a Default badge. Then the actions on the selected one: Make default when it is not the default, Delete view for a saved view, and Save view. A menu from 768 px; the same content in a bottom sheet on a phone.',
       },
     },
     // Base UI's focus guards are aria-hidden on purpose (they hand focus on), so only they skip
@@ -45,8 +45,7 @@ const meta = {
     onSelect: fn(),
     onMakeDefault: fn(),
     onRemove: fn(),
-    onSaveAsView: fn(),
-    onSaveAsDefault: fn(),
+    onSaveView: fn(),
   },
 } satisfies Meta<typeof ViewMenu>;
 
@@ -54,9 +53,9 @@ export default meta;
 
 type Story = StoryObj<typeof meta>;
 
-// Capture `default-view`: the default view is selected, so Make default reads as the disabled line.
+// Capture `default-view`: the default view is selected, so it offers no Make default (czjw.192).
 export const DefaultView: Story = {
-  name: "Default view selected",
+  name: "The default selected",
   globals: desktop,
   play: async ({ canvas, args }) => {
     await userEvent.click(
@@ -71,12 +70,16 @@ export const DefaultView: Story = {
     // The menu fades in.
     await waitFor(() => expect(menu.getByText("Default")).toBeVisible());
     await expect(
-      menu.getByRole("menuitem", { name: /^Default view/ })
-    ).toHaveAttribute("aria-disabled", "true");
+      menu.queryByRole("menuitem", { name: /^Make default/ })
+    ).toBeNull();
+    // czjw.192: no greyed "Default view" row either.
+    await expect(
+      menu.queryByRole("menuitem", { name: /^Default view/ })
+    ).toBeNull();
 
-    // "Dashboard filters" is the empty radio value; it must still reach the page as no view.
+    // "Original" is the empty radio value; it must still reach the page as no view.
     await userEvent.click(
-      menu.getByRole("menuitemradio", { name: /^Dashboard filters/ })
+      menu.getByRole("menuitemradio", { name: /^Original/ })
     );
     await expect(args.onSelect).toHaveBeenCalledWith(null);
   },
@@ -98,28 +101,54 @@ export const OtherView: Story = {
   },
 };
 
-// With no view only Save as view is offered; the bar carries Save as default.
+// Month end is the default here, so Original offers Make default; it has no Delete view.
 export const NoView: Story = {
-  name: "No view selected",
+  name: "Original selected",
   globals: desktop,
   args: { viewId: null },
-  play: async ({ canvas }) => {
+  play: async ({ canvas, args }) => {
     await userEvent.click(
-      canvas.getByRole("button", { name: "View: Dashboard filters" })
+      canvas.getByRole("button", { name: "View: Original" })
     );
 
     const menu = within(await screen.findByRole("menu"));
 
     await waitFor(() =>
-      expect(
-        menu.getByRole("menuitem", { name: /^Save as view/ })
-      ).toBeVisible()
+      expect(menu.getByRole("menuitem", { name: /^Save view/ })).toBeVisible()
     );
     await expect(
       menu.queryByRole("menuitem", { name: /^Delete view/ })
     ).toBeNull();
+    await userEvent.click(
+      menu.getByRole("menuitem", { name: /^Make default/ })
+    );
+    await expect(args.onMakeDefault).toHaveBeenCalledTimes(1);
+  },
+};
+
+// czjw.192: with no default view Original is the default, so it carries the one Default badge.
+export const OriginalIsDefault: Story = {
+  name: "Original is the default",
+  globals: desktop,
+  args: { viewId: null, defaultViewId: null },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      canvas.getByRole("button", { name: "View: Original" })
+    );
+
+    const menu = within(await screen.findByRole("menu"));
+
+    // The menu fades in.
+    await waitFor(() =>
+      expect(
+        within(
+          menu.getByRole("menuitemradio", { name: /^Original/ })
+        ).getByText("Default")
+      ).toBeVisible()
+    );
+    await expect(menu.getAllByText("Default")).toHaveLength(1);
     await expect(
-      menu.queryByRole("menuitem", { name: /^Save as default/ })
+      menu.queryByRole("menuitem", { name: /^Make default/ })
     ).toBeNull();
   },
 };
@@ -130,7 +159,6 @@ export const SaveViewEmptySaysWhy: Story = {
   globals: desktop,
   render: () => (
     <ViewNameDialog
-      title="Save as view"
       views={views}
       saving={false}
       refusal={null}
@@ -153,6 +181,56 @@ export const SaveViewEmptySaysWhy: Story = {
     await expect(input).toHaveAttribute("aria-invalid", "true");
     await expect(input).toHaveAccessibleDescription("Enter a name.");
     await expect(onSaveView).not.toHaveBeenCalled();
+  },
+};
+
+// czjw.192: on a view the name starts as its own, which updates it; another view's name is refused.
+export const SaveViewOnAView: Story = {
+  name: "Save view starts with the view's name",
+  globals: desktop,
+  render: () => (
+    <ViewNameDialog
+      views={views}
+      current={views[0]}
+      saving={false}
+      refusal={null}
+      onSave={onSaveView}
+      onClose={fn()}
+    />
+  ),
+  play: async () => {
+    onSaveView.mockClear();
+
+    const dialog = within(
+      await screen.findByRole("dialog", { name: "Save view" })
+    );
+
+    const input = dialog.getByRole("textbox", { name: "Name" });
+
+    await expect(input).toHaveValue("Month end");
+    // The dialog fades in.
+    await waitFor(() =>
+      expect(
+        dialog.getByText(
+          "Keep the name to update Month end, or type a new name to save another view."
+        )
+      ).toBeVisible()
+    );
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "north REGION");
+    await userEvent.click(dialog.getByRole("button", { name: "Save view" }));
+
+    await expect(
+      dialog.getByText("A view with this name exists. Choose another name.")
+    ).toBeVisible();
+    await expect(onSaveView).not.toHaveBeenCalled();
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "month END");
+    await userEvent.click(dialog.getByRole("button", { name: "Save view" }));
+
+    await expect(onSaveView).toHaveBeenCalledWith("month END");
   },
 };
 

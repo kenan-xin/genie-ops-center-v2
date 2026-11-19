@@ -10,6 +10,7 @@ import {
   FIELD_VALUES,
   filtersDashboardPage,
   TWO_SET,
+  viewsDashboardPage,
 } from "./__fixtures__/dashboards.ts";
 import { FiltersBar, type FiltersBarProps } from "./filters-bar.tsx";
 import { useDashboardFilters } from "./use-dashboard.ts";
@@ -73,7 +74,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The dashboard filter bar, variant A (Spec 7 R-49, S7-46, S7-47), built on the list header controls. The view menu first (see Dashboard view menu), then the date range, then one trigger per field filter (a select, a multi-select or a toggle), each with Remove filter; Add filter offers the other fields, up to four. A change writes the page address only, so a reload or a shared link keeps it, and saves nothing. With no view selected and filters that differ from the stored ones, the bar ends in "Not saved as default" and Save as default, which stores them and clears the default view in one change. With a view selected and changed filters, it ends in "Changed", Update view and Save as new view. On a phone, View and Filters join in one control, and the applied filters show as chips that scroll sideways.',
+          'The dashboard filter bar, variant A (Spec 7 R-49, S7-46, S7-47), built on the list header controls. The view menu first (see Dashboard view menu), then the date range, then one trigger per field filter (a select, a multi-select or a toggle), each with Remove filter; Add filter offers the other fields, up to four. A change writes the page address only, so a reload or a shared link keeps it, and saves nothing. When the filters differ from the selected row, Original or a saved view, the bar ends in "Unsaved changes" with Save view, which names the filters (a view\'s own name updates it), and Reset, which goes back to the saved filters of that row. On a phone, View and Filters join in one control, and the applied filters show as chips that scroll sideways.',
       },
     },
     a11y: { test: "error" },
@@ -209,7 +210,7 @@ export const Phone: Story = {
 
     // A wrapper between a trigger and the group breaks the joined corners.
     await expect(
-      ["View: Dashboard filters", "Filters 3 set"].map(
+      ["View: Original", "Filters 3 set"].map(
         (name) => canvas.getByRole("button", { name }).parentElement
       )
     ).toEqual([group, group]);
@@ -220,7 +221,7 @@ export const Phone: Story = {
         .map((chip) => chip.textContent)
     ).toEqual(["Last 3 months", "North", "A, B Ltd"]);
     await expect(
-      canvas.getByRole("button", { name: "Save as default" })
+      canvas.getByRole("button", { name: "Save view" })
     ).toBeVisible();
 
     // The date range counts too, as in every list header (LH26).
@@ -240,7 +241,7 @@ export const Phone: Story = {
     await expect(addressParam("fields")).toBe(
       "region:select,label:multi-select,status:select"
     );
-    await shownStatus(canvas, "Not saved as default");
+    await shownStatus(canvas, "Unsaved changes");
     await expect(changeDashboard).not.toHaveBeenCalled();
   },
 };
@@ -307,7 +308,7 @@ export const RemoveChipOnPhone: Story = {
     await expect(
       canvas.getByRole("button", { name: "Remove Customer filter" })
     ).toHaveFocus();
-    await shownStatus(canvas, "Not saved as default");
+    await shownStatus(canvas, "Unsaved changes");
     await expect(changeDashboard).not.toHaveBeenCalled();
   },
 };
@@ -319,7 +320,7 @@ export const StatusInBarLinesUp: Story = {
   globals: { viewport: { value: "desktop1920", isRotated: false } },
   beforeEach: opened(TWO_SET),
   play: async ({ canvas }) => {
-    const save = await canvas.findByRole("button", { name: "Save as default" });
+    const save = await canvas.findByRole("button", { name: "Save view" });
     const bar = save.closest(".border-b")!;
 
     const rows = [...bar.querySelectorAll("button")].map((button) => {
@@ -418,24 +419,27 @@ export const CustomRange: Story = {
 const DASHBOARD_CHANGED =
   "This dashboard changed since you opened it. Reload it to see the latest version.";
 
-// A Save as default that meets a newer version offers the same Reload as the view's refusal line.
+// Make default that meets a newer version offers the same Reload as the view's refusal line.
 export const VersionConflict: Story = {
   name: "Version conflict",
   globals: desktop,
+  args: { dashboard: viewsDashboardPage.dashboard },
   beforeEach: () => {
-    const done = opened(TWO_SET)();
-
+    serve(viewsDashboardPage.dashboard);
     changeDashboard.mockRejectedValue(
       Object.assign(new Error(DASHBOARD_CHANGED), {
         data: { appCode: "analytics:dashboard-changed", requestId: "req-1" },
       })
     );
 
-    return done;
+    return withFilterAddress(null, "v2");
   },
   play: async ({ args, canvas }) => {
     await userEvent.click(
-      await canvas.findByRole("button", { name: "Save as default" })
+      await canvas.findByRole("button", { name: "View: North region" })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Make default/ })
     );
 
     const alert = await canvas.findByRole("alert");
@@ -443,8 +447,8 @@ export const VersionConflict: Story = {
     await expect(alert).toHaveTextContent(DASHBOARD_CHANGED);
     // DESIGN.md "Save failures": the failure takes focus, so the person hears it.
     await waitFor(() => expect(alert).toHaveFocus());
-    // The address keeps the filters the save did not store.
-    await expect(addressParam("f.region")).toBe("North");
+    // The address keeps the view the save did not make default.
+    await expect(addressParam("view")).toBe("v2");
     await userEvent.click(
       within(alert).getByRole("button", { name: "Reload" })
     );
