@@ -10,6 +10,7 @@ import {
   colorRoles,
   controlHeights,
   controlHeightsPx,
+  denseMinHeight,
   denseRowHeight,
   focusRing,
   groupControlHeights,
@@ -217,6 +218,7 @@ describe("the control heights against tokens.md, Control heights", () => {
     expect(denseRowHeight).toBe(
       `min-h-${step(touchAreaPx)} lg:min-h-${step(sm)}`
     );
+    expect(denseMinHeight).toBe(`min-h-${step(sm)}`);
     expect(touchRowHeight).toBe(`min-h-${step(touchAreaPx)} lg:min-h-0`);
     expect(minTouchHeight).toBe(`min-h-${step(touchAreaPx)}`);
   });

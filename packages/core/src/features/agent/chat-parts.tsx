@@ -1,11 +1,13 @@
 "use client";
 
 import {
+  denseMinHeight,
   denseRowHeight,
   Button,
   focusRing,
   iconLeadPx,
   infoTint,
+  touchAreas,
 } from "@genie/ui";
 import { ArrowRightIcon, ChevronRightIcon, SparklesIcon } from "lucide-react";
 import { useId, type ReactNode } from "react";
@@ -16,7 +18,9 @@ import type { InboxLink } from "../../services/agent/index.ts";
 
 export const linkClass = `text-sm font-medium text-foreground underline-offset-4 hover:underline ${focusRing}`;
 
-const pillClass = `inline-flex ${denseRowHeight} items-center gap-1.5 rounded-full border border-border bg-background px-3 text-start text-sm text-muted-foreground hover:border-input hover:bg-hover hover:text-foreground ${focusRing}`;
+// czjw.190: 32 px at every width with a 44 px touch area; a long question wraps (P18-9), and
+// the inner row keeps the arrow on its first line.
+const pillClass = `inline-flex ${denseMinHeight} items-center rounded-full border border-border bg-background px-3 py-1 text-start text-sm text-muted-foreground hover:border-input hover:bg-hover hover:text-foreground ${touchAreas.sm} ${focusRing}`;
 
 /** Questions as pill buttons with an arrow: a new chat's starters and Ask next (czjw.120 item 8). */
 export function QuestionPills(props: {
@@ -33,12 +37,14 @@ export function QuestionPills(props: {
           className={pillClass}
           onClick={() => props.onPick(question)}
         >
-          {question}
-          <ArrowRightIcon
-            aria-hidden="true"
-            className="size-3.5 shrink-0"
-            strokeWidth={1.75}
-          />
+          <span className="flex items-start gap-1.5">
+            {question}
+            <ArrowRightIcon
+              aria-hidden="true"
+              className="h-lh w-3.5 shrink-0"
+              strokeWidth={1.75}
+            />
+          </span>
         </button>
       ))}
     </div>

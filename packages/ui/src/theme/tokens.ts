@@ -168,6 +168,9 @@ export const rowHeight = "min-h-11 lg:min-h-9";
 /** 6wz1.135: a dense row or inline control, such as a menu row or a chat link: 44 px under `lg`, sm from `lg`. */
 export const denseRowHeight = "min-h-11 lg:min-h-8";
 
+/** czjw.190: a dense control whose label may wrap, such as a suggestion pill: 32 px at one line. Pair it with `touchAreas.sm`. */
+export const denseMinHeight = "min-h-8";
+
 /** 6wz1.135: a row or inline control whose own box is its touch area under `lg`, its content's height from it. */
 export const touchRowHeight = "min-h-11 lg:min-h-0";
 

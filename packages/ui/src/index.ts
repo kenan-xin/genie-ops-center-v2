@@ -256,6 +256,7 @@ export type { ThemeProviderProps } from "./theme/theme-provider.tsx";
 
 export {
   controlHeights,
+  denseMinHeight,
   denseRowHeight,
   fieldText,
   focusRing,

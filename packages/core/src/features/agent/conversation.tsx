@@ -488,15 +488,17 @@ export function Conversation(props: {
             <Button
               type="button"
               variant="secondary"
-              size="sm"
-              // oxlint-disable-next-line shadcn/no-restyle -- floats over the log's bottom edge (czjw.119 item 3)
+              size="icon"
+              aria-label={
+                busy || missed ? "Jump to the new answer" : "Jump to latest"
+              }
+              // oxlint-disable-next-line shadcn/no-restyle -- floats over the log's bottom edge as a round arrow (czjw.119 item 3, czjw.200)
               className="absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full shadow-md"
               onClick={() =>
                 void stick.scrollToBottom(reduced ? "instant" : "smooth")
               }
             >
               <ArrowDownIcon aria-hidden="true" strokeWidth={1.75} />
-              {busy || missed ? "Jump to the new answer" : "Jump to latest"}
             </Button>
           )}
         </div>

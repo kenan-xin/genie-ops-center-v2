@@ -833,6 +833,39 @@ export const OneEdgeOnAPhone: Story = {
   },
 };
 
+const LONG_QUESTION =
+  "Which customers paid late in the last 90 days, and how much did each of them pay?";
+
+export const SuggestionPillsOnAPhone: Story = {
+  name: "Suggestion pills on a phone",
+  args: { suggestions: [FIRST_QUESTION, LONG_QUESTION] },
+  parameters: { layout: "fullscreen" },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  play: async ({ canvas }) => {
+    const pill = canvas.getByRole("button", { name: FIRST_QUESTION });
+    const long = canvas.getByRole("button", { name: LONG_QUESTION });
+
+    const root = parseFloat(
+      getComputedStyle(document.documentElement).fontSize
+    );
+
+    // czjw.190: 32 px to the eye, 44 px to the thumb, label at the text-sm step.
+    await expect(
+      Math.abs(pill.getBoundingClientRect().height - 32)
+    ).toBeLessThanOrEqual(0.5);
+    await expect(
+      parseFloat(getComputedStyle(pill, "::after").height)
+    ).toBeGreaterThanOrEqual(44);
+    await expect(parseFloat(getComputedStyle(pill).fontSize)).toBe(
+      0.875 * root
+    );
+
+    // A long question wraps: the pill grows and clips nothing.
+    await expect(long.getBoundingClientRect().height).toBeGreaterThan(32);
+    await expect(long.scrollHeight).toBeLessThanOrEqual(long.clientHeight);
+  },
+};
+
 export const ArtifactCardsInThePanel: Story = {
   name: "Artifact cards in the panel",
   args: {
