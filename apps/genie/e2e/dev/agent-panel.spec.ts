@@ -182,7 +182,7 @@ test("an answer streams word by word, and Stop keeps the words so far", async ({
   await stop.click();
   await expect(panel.getByRole("button", { name: "Send" })).toBeVisible();
   await expect(log.getByText(FIRST_WORDS)).toBeVisible();
-  await expect(log.getByText(STOPPED_LINE)).toBeVisible();
+  await expect(log.getByText(STOPPED_LINE, { exact: true })).toBeVisible();
 
   // The server stores what streamed up to Stop; a reload reads it back. It can hold a word or two
   // more than the screen showed, so the test checks the words seen and the missing end only.
@@ -197,9 +197,11 @@ test("an answer streams word by word, and Stop keeps the words so far", async ({
     await expect(reopened.getByText(FIRST_WORDS)).toBeVisible({
       timeout: 5000,
     });
-    await expect(reopened.getByText(STOPPED_LINE)).toBeVisible({
-      timeout: 5000,
-    });
+    await expect(reopened.getByText(STOPPED_LINE, { exact: true })).toBeVisible(
+      {
+        timeout: 5000,
+      }
+    );
   }).toPass(FIRST_PAINT);
 
   await expect(page.getByText(THIRD_PARAGRAPH)).toHaveCount(0);

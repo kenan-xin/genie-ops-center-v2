@@ -12,6 +12,7 @@ import { expect, fn, spyOn, userEvent, waitFor, within } from "storybook/test";
 
 import { AppError, CORE_ERRORS } from "../../lib/errors/index.ts";
 import type { AgentFile, AgentMessage } from "../../services/agent/index.ts";
+import { STOPPED_PART } from "../../services/agent/stopped-turn.ts";
 import { checkPanelConfig } from "../../services/charts/panel-config.ts";
 import {
   BROKEN_ANSWER,
@@ -768,7 +769,7 @@ export const StoppedAfterAStepNote: Story = {
   decorators: [withChartCheck(resolveKpi)],
   play: async ({ canvas }) => {
     await expect(
-      await canvas.findByText("Stopped. Ask again when you are ready.")
+      await canvas.findByText("Stopped.", { exact: true })
     ).toBeVisible();
     await expect(canvas.queryByText(STEP_NOTE)).toBeNull();
   },
@@ -803,6 +804,7 @@ export const StoppedAnswer: Story = {
       ],
     },
     labels: { steps: {}, datasets: TITLES, fields: {} },
+    onTryAgain: fn(),
   },
   decorators: [withChartCheck(resolveKpi)],
   play: async ({ canvas }) => {
@@ -810,10 +812,93 @@ export const StoppedAnswer: Story = {
     await expect(
       await canvas.findByText("Example records are fictional")
     ).toBeVisible();
-    await expect(
-      canvas.getByText("Stopped. Ask again when you are ready.")
-    ).toBeVisible();
+    await expect(canvas.getByText("Stopped.", { exact: true })).toBeVisible();
     await expect(canvas.getByRole("button", { name: "1 step" })).toBeVisible();
+
+    // Try again follows Copy in the row under the kept words (SHELL-10).
+    const names = canvas.getAllByRole("button").map(rowName);
+
+    await expect(names.indexOf("Try again")).toBe(names.indexOf("Copy") + 1);
+  },
+};
+
+/** A button's accessible name, from its label or its words. */
+const rowName = (button: HTMLElement): string =>
+  button.getAttribute("aria-label") ?? button.textContent?.trim() ?? "";
+
+/** A finished answer offers Copy, then Try again, on its text edge (czjw.188, SHELL-10). */
+export const TryAgainUnderAnAnswer: Story = {
+  name: "Try again under an answer",
+  args: { message: answer(PROSE_ANSWER), onTryAgain: fn() },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ args, canvas }) => {
+    await canvas.findByText(PROSE_ANSWER);
+
+    const names = canvas.getAllByRole("button").map(rowName);
+
+    await expect(names.slice(0, 2)).toEqual(["Copy", "Try again"]);
+
+    await userEvent.click(canvas.getByRole("button", { name: "Try again" }));
+    await expect(args.onTryAgain).toHaveBeenCalledTimes(1);
+  },
+};
+
+/** Stop came before the first word: the stopped line and Try again, with nothing to copy. */
+export const StoppedBeforeAnyWords: Story = {
+  name: "Stopped before any words",
+  args: {
+    message: { id: "stopped-empty", role: "assistant", parts: [STOPPED_PART] },
+    onTryAgain: fn(),
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByText("Stopped.", { exact: true })
+    ).toBeVisible();
+    await expect(
+      canvas.getByRole("button", { name: "Try again" })
+    ).toBeVisible();
+    await expect(canvas.queryByRole("button", { name: "Copy" })).toBeNull();
+  },
+};
+
+/** A final refusal offers Try again in its own box, so the row under its words does not repeat it. */
+export const RefusedAnswerOffersOneTryAgain: Story = {
+  name: "Refused answer offers one Try again",
+  args: {
+    message: {
+      id: "refused-answer",
+      role: "assistant",
+      parts: [
+        {
+          type: "tool-query-dataset",
+          toolCallId: "r1",
+          state: "output-available",
+          input: { dataset: "example.items", query: { limit: 20 } },
+          output: { rows: [] },
+        },
+        ...["c1", "c2", "c3"].map((toolCallId) => ({
+          type: "tool-make-artifact" as const,
+          toolCallId,
+          state: "output-error" as const,
+          input: { config: { type: "bar", title: "Quantity by record" } },
+          errorText: 'Field "qty" is not in the dataset.',
+        })),
+        {
+          type: "text",
+          text: 'root = Answer([p])\np = Paragraph("It was refused.")',
+        },
+      ],
+    },
+    labels: { steps: {}, datasets: TITLES, fields: {} },
+    onTryAgain: fn(),
+  },
+  decorators: [withChartCheck(resolveKpi)],
+  play: async ({ canvas }) => {
+    await canvas.findByText("It was refused.");
+    await expect(
+      canvas.getAllByRole("button", { name: "Try again" })
+    ).toHaveLength(1);
   },
 };
 

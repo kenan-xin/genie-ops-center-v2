@@ -94,6 +94,7 @@ const sendPartial = fn(
     abortSignal,
   }: {
     readonly abortSignal: AbortSignal | undefined;
+    readonly messages: readonly AgentMessage[];
   }) => {
     heldSignal = abortSignal;
 
@@ -611,7 +612,7 @@ export const StopKeepsTheAnswer: Story = {
     await expect(heldSignal?.aborted).toBe(true);
     await expect(canvas.getByText(PARTIAL)).toBeVisible();
     await expect(
-      await canvas.findByText("Stopped. Ask again when you are ready.")
+      await canvas.findByText("Stopped.", { exact: true })
     ).toBeVisible();
   },
 };
@@ -644,8 +645,71 @@ export const ServerEndsTheAnswer: Story = {
     // The words stay with the Stopped line, without a reload (czjw.110).
     await expect(await canvas.findByText(PARTIAL)).toBeVisible();
     await expect(
-      await canvas.findByText("Stopped. Ask again when you are ready.")
+      await canvas.findByText("Stopped.", { exact: true })
     ).toBeVisible();
+  },
+};
+
+/** Try again after Stop sends the question once, and hides while the resend streams (czjw.188). */
+export const TryAgainAfterStop: Story = {
+  name: "Try again after Stop",
+  args: { transport: transportOf(sendPartial) },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: FIRST_QUESTION }));
+    await canvas.findByText(PARTIAL);
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Stop the answer" })
+    );
+    await canvas.findByText("Stopped.", { exact: true });
+
+    const sent = sendPartial.mock.calls.length;
+
+    await userEvent.dblClick(canvas.getByRole("button", { name: "Try again" }));
+
+    await waitFor(() => expect(sendPartial.mock.calls.length).toBe(sent + 1));
+    await expect(
+      sendPartial.mock.calls.at(-1)?.[0].messages.at(-1)?.parts
+    ).toEqual([{ type: "text", text: FIRST_QUESTION }]);
+
+    // While the resend streams, no answer offers Try again.
+    await waitFor(() =>
+      expect(canvas.queryAllByRole("button", { name: "Try again" })).toEqual([])
+    );
+    await expect(canvas.getAllByText(FIRST_QUESTION)).toHaveLength(2);
+
+    releaseHeld();
+  },
+};
+
+/** A record's start message holds instructions only the model reads, so its answer offers no Try again. */
+export const NoTryAgainOnAStartMessage: Story = {
+  name: "No Try again on a start message",
+  args: {
+    initialMessages: [
+      {
+        id: "start",
+        role: "user",
+        parts: [
+          {
+            type: "data-start",
+            data: { description: "Make a deck about Q3." },
+          },
+          { type: "text", text: "Instructions only the model reads." },
+        ],
+      },
+      {
+        id: "started",
+        role: "assistant",
+        parts: paragraph("Started the deck."),
+      },
+    ],
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByText("Started the deck.");
+    await expect(canvas.getByRole("button", { name: "Copy" })).toBeVisible();
+    await expect(
+      canvas.queryByRole("button", { name: "Try again" })
+    ).toBeNull();
   },
 };
 

@@ -18,8 +18,8 @@ export const FIRST_WORDS = "Placeholder records are fictional";
 
 export const THIRD_PARAGRAPH = "You can ask me to count the records";
 
-/** The line under an answer that Stop ended (czjw.110). */
-export const STOPPED_LINE = "Stopped. Ask again when you are ready.";
+/** The line under an answer that Stop ended (czjw.110, czjw.188). */
+export const STOPPED_LINE = "Stopped.";
 
 export function devSession(email: string) {
   return mintDevSession({

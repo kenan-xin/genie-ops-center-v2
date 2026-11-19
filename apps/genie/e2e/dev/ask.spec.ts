@@ -128,14 +128,16 @@ test("Stop on Ask's first answer keeps the words so far with a Stopped line, als
 
   await expect(page).toHaveURL(CHAT_ADDRESS, FIRST_PAINT);
   await expect(log.getByText(FIRST_WORDS)).toBeVisible();
-  await expect(log.getByText(STOPPED_LINE)).toBeVisible();
+  await expect(log.getByText(STOPPED_LINE, { exact: true })).toBeVisible();
 
   // The server stores the stopped turn after the abort, so a reload can come first; read again.
   await expect(async () => {
     await page.reload();
     await expect(log.getByText(SLOW_QUESTION)).toBeVisible({ timeout: 5000 });
     await expect(log.getByText(FIRST_WORDS)).toBeVisible({ timeout: 5000 });
-    await expect(log.getByText(STOPPED_LINE)).toBeVisible({ timeout: 5000 });
+    await expect(log.getByText(STOPPED_LINE, { exact: true })).toBeVisible({
+      timeout: 5000,
+    });
   }).toPass(FIRST_PAINT);
 
   await expect(log.getByText(THIRD_PARAGRAPH)).toHaveCount(0);

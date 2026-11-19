@@ -98,8 +98,9 @@ function storedDuration(
 }
 
 /**
- * The text of the question before an answer, which Try again sends again (AG17). A run's hidden
- * continue message is no question.
+ * The typed question before an answer, which Try again sends again (AG17, czjw.188). A run's
+ * hidden continue message is skipped. A handoff brief or a record's start message is no typed
+ * question, so it answers undefined, as an empty text does (P18-3).
  */
 function questionBefore(
   messages: readonly AgentMessage[],
@@ -109,11 +110,19 @@ function questionBefore(
     .slice(0, index)
     .findLast((message) => !isContinueMessage(message));
 
-  if (question?.role !== "user") return undefined;
+  if (
+    question?.role !== "user" ||
+    briefPartOf(question) !== undefined ||
+    question.parts.some(({ type }) => type === "data-start")
+  ) {
+    return undefined;
+  }
 
-  return question.parts
+  const text = question.parts
     .map((part) => (part.type === "text" ? part.text : ""))
     .join("");
+
+  return text.trim() === "" ? undefined : text;
 }
 
 /** A background run of this chat (R-42b): its status, its latest read, Stop and Try again. */
@@ -359,6 +368,15 @@ export function Conversation(props: {
   const columnClass =
     "mx-auto w-full max-w-180 px-4 md:not-in-data-agent-panel:px-6";
 
+  // A send waits while an answer streams or a run builds (agent.md l.70), so Try again hides then.
+  const tryAgain = (index: number) => {
+    const question = questionBefore(chat.messages, index);
+
+    return busy || building || question === undefined
+      ? undefined
+      : () => send(question);
+  };
+
   return (
     <ChartCheckProvider
       check={props.checkChart}
@@ -436,14 +454,7 @@ export function Conversation(props: {
                                 ? send
                                 : undefined
                             }
-                            onTryAgain={() => {
-                              const question = questionBefore(
-                                chat.messages,
-                                index
-                              );
-
-                              if (question !== undefined) send(question);
-                            }}
+                            onTryAgain={tryAgain(index)}
                             artifacts={props.artifacts}
                             files={props.files}
                             onDownload={props.onDownload}

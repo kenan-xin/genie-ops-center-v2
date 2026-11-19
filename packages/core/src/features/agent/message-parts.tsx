@@ -1,14 +1,29 @@
 "use client";
 
 import "./openui-devtools-off.ts";
-import { denseRowHeight, Button, focusRing, iconLead } from "@genie/ui";
+import {
+  denseRowHeight,
+  Button,
+  focusRing,
+  iconLead,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@genie/ui";
 import {
   createParser,
   Renderer,
   type OpenUIError,
   type ParseResult,
 } from "@openuidev/react-lang";
-import { CopyIcon, DatabaseIcon, InfoIcon, TableIcon } from "lucide-react";
+import {
+  CheckIcon,
+  CopyIcon,
+  DatabaseIcon,
+  InfoIcon,
+  RotateCwIcon,
+  TableIcon,
+} from "lucide-react";
 import { useId, useMemo, useRef, useState, type ReactNode } from "react";
 import { z } from "zod";
 
@@ -37,6 +52,7 @@ import { FileCard } from "./file-card.tsx";
 import { fileCallsOf } from "./file-refs.ts";
 import { HandoffCard } from "./handoff-card.tsx";
 import { handoffCardsOf } from "./handoff-parts.ts";
+import { stepTimeline } from "./step-model.ts";
 import { StepTimeline } from "./step-timeline.tsx";
 
 /**
@@ -271,15 +287,16 @@ function MethodPanel(props: {
 }
 
 /**
- * One row under a finished answer (czjw.120 item 6): the datasets it read by title, the reporting
- * date, "How this was counted" and Copy. The method opens in a quiet panel under the row, so the
- * result reads first.
+ * The row under an ended answer (czjw.120 item 6, czjw.188, SHELL-10). Copy and Try again are icons
+ * on the answer's text edge. How this was counted, the sources and the date follow them. A turn
+ * stopped before its first word shows Try again alone.
  */
 function AnswerMeta(props: {
   readonly parts: AgentMessage["parts"];
   readonly labels: ChatLabels;
   readonly action: ArtifactCardAction | undefined;
-  readonly answer: () => string;
+  readonly answer: (() => string) | undefined;
+  readonly onTryAgain: (() => void) | undefined;
 }): ReactNode {
   const [copied, setCopied] = useState(false);
   const [open, setOpen] = useState(false);
@@ -295,31 +312,62 @@ function AnswerMeta(props: {
     .toSorted()
     .at(-1);
 
-  const counted = reads.length > 0 || refused.length > 0;
+  // Words only: a turn stopped before its first word has nothing to copy or explain.
+  const counted =
+    props.answer !== undefined && (reads.length > 0 || refused.length > 0);
+
+  const { answer, onTryAgain } = props;
 
   return (
     <div className="grid">
       <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
-        {sources.length === 0 ? null : (
-          <ul aria-label="Sources" className="flex flex-wrap gap-1.5">
-            {sources.map((title) => (
-              <li
-                key={title}
-                className="inline-flex h-7 items-center gap-1.5 rounded-full bg-tile px-2.5 font-semibold"
+        {/* The first icon's 8 px inset bleeds out, so its ink starts on the answer's text edge (UI rule 5). */}
+        <span className="-ms-2 flex items-center gap-1.5">
+          {answer === undefined ? null : (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={copied ? "Copied" : "Copy"}
+                    onClick={() => {
+                      void navigator.clipboard.writeText(answer()).then(() => {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 1500);
+                      });
+                    }}
+                  />
+                }
               >
-                <DatabaseIcon
-                  aria-hidden="true"
-                  className="size-3.5"
-                  strokeWidth={1.75}
-                />
-                <span className="sr-only">Source: </span>
-                {title}
-              </li>
-            ))}
-          </ul>
-        )}
-        {asOf === undefined ? null : <span>as of {fmtDate(asOf, "UTC")}</span>}
-        <span className="ms-auto flex items-center gap-1">
+                {copied ? (
+                  <CheckIcon aria-hidden="true" strokeWidth={1.75} />
+                ) : (
+                  <CopyIcon aria-hidden="true" strokeWidth={1.75} />
+                )}
+              </TooltipTrigger>
+              <TooltipContent>{copied ? "Copied" : "Copy"}</TooltipContent>
+            </Tooltip>
+          )}
+          {onTryAgain === undefined ? null : (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Try again"
+                    onClick={onTryAgain}
+                  />
+                }
+              >
+                <RotateCwIcon aria-hidden="true" strokeWidth={1.75} />
+              </TooltipTrigger>
+              <TooltipContent>Try again</TooltipContent>
+            </Tooltip>
+          )}
           {counted ? (
             <Button
               type="button"
@@ -333,22 +381,36 @@ function AnswerMeta(props: {
               How this was counted
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              void navigator.clipboard.writeText(props.answer()).then(() => {
-                setCopied(true);
-                setTimeout(() => setCopied(false), 1500);
-              });
-            }}
-          >
-            <CopyIcon aria-hidden="true" strokeWidth={1.75} />
-            {copied ? "Copied" : "Copy"}
-          </Button>
         </span>
+        {answer === undefined ? null : (
+          <>
+            {sources.length === 0 ? null : (
+              <ul aria-label="Sources" className="flex flex-wrap gap-1.5">
+                {sources.map((title) => (
+                  <li
+                    key={title}
+                    className="inline-flex h-7 items-center gap-1.5 rounded-full bg-tile px-2.5 font-semibold"
+                  >
+                    <DatabaseIcon
+                      aria-hidden="true"
+                      className="size-3.5"
+                      strokeWidth={1.75}
+                    />
+                    <span className="sr-only">Source: </span>
+                    {title}
+                  </li>
+                ))}
+              </ul>
+            )}
+            {asOf === undefined ? null : (
+              <span>as of {fmtDate(asOf, "UTC")}</span>
+            )}
+          </>
+        )}
       </div>
+      <span role="status" className="sr-only">
+        {copied ? "Copied" : ""}
+      </span>
       {open ? (
         <MethodPanel
           id={panelId}
@@ -443,7 +505,10 @@ export function MessageParts(props: {
   readonly labels?: ChatLabels;
   /** A finished answer's time for the steps strip. */
   readonly durationMs?: number | undefined;
-  /** Sends the question again after a final refusal. */
+  /**
+   * Sends the typed question before this answer again (AG17, czjw.188). Undefined shows no Try
+   * again. Conversation sets it only while nothing streams and no run builds.
+   */
   readonly onTryAgain?: (() => void) | undefined;
   /**
    * Sends a question of Ask next or an offered choice. Conversation sets it only on the last
@@ -505,6 +570,12 @@ export function MessageParts(props: {
       (part, index) => part.type === "text" && !notes.has(index)
     );
 
+  const stopped = isStopped(props.message);
+
+  // A final refusal offers Try again in its own box (R-42a), so the row does not repeat it.
+  const refused =
+    stepTimeline(props.message.parts, labels, props.streaming).failed !== null;
+
   const files = props.files ?? NO_FILES;
 
   const offer = choicesOf(props.message);
@@ -554,17 +625,16 @@ export function MessageParts(props: {
           onDownload={props.onDownload}
         />
       )}
-      {isStopped(props.message) ? (
-        <p className="text-sm text-muted-foreground">
-          Stopped. Ask again when you are ready.
-        </p>
+      {stopped ? (
+        <p className="text-sm text-muted-foreground">Stopped.</p>
       ) : null}
-      {answered ? (
+      {answered || (stopped && !props.streaming) ? (
         <AnswerMeta
           parts={props.message.parts}
           labels={labels}
           action={props.artifacts}
-          answer={() => body.current?.innerText ?? ""}
+          answer={answered ? () => body.current?.innerText ?? "" : undefined}
+          onTryAgain={refused ? undefined : props.onTryAgain}
         />
       ) : null}
       {answered && props.onAsk !== undefined && next.length > 0 ? (
