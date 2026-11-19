@@ -1,4 +1,5 @@
 import type { ThemeName } from "@genie/ui";
+import { firstTextTop } from "@genie/ui/testing/first-line";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { useState } from "react";
 import { expect, fn, screen, userEvent, waitFor, within } from "storybook/test";
@@ -141,6 +142,23 @@ export const Default: Story = {
     await expect(
       canvas.queryByRole("button", { name: /delete/i })
     ).not.toBeInTheDocument();
+
+    // czjw.217 (C17-6): every row's When and Summary start on the same first line.
+    for (const row of canvas
+      .getByRole("table", { name: "Audit events" })
+      .querySelectorAll("tbody tr")) {
+      const cells = row.querySelectorAll("td, th");
+      const [when] = cells;
+      const summary = cells[4];
+
+      if (when === undefined || summary === undefined) {
+        throw new Error("An audit row has fewer than five cells");
+      }
+
+      expect(
+        Math.abs(firstTextTop(when) - firstTextTop(summary))
+      ).toBeLessThanOrEqual(1);
+    }
   },
 };
 

@@ -1,3 +1,4 @@
+import { firstTextTop } from "@genie/ui/testing/first-line";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, within } from "storybook/test";
 
@@ -211,28 +212,6 @@ export const OnAPhone: Story = {
     await expect(card.getByText("Direct")).toBeVisible();
     await expect(card.getByText("1 Nov 2026 by Alex Morgan")).toBeVisible();
   },
-};
-
-/**
- * The top of a cell's first text: the first text node that is not blank, measured as its first
- * line box, so a cell's padding does not count.
- */
-const firstTextTop = (cell: HTMLElement): number => {
-  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
-
-  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
-    if (node.textContent?.trim() === "") continue;
-
-    const range = document.createRange();
-
-    range.selectNodeContents(node);
-
-    const top = range.getClientRects()[0]?.top;
-
-    if (top !== undefined) return top;
-  }
-
-  throw new Error(`No text in the cell "${cell.textContent}"`);
 };
 
 /**

@@ -486,6 +486,7 @@ export function AuditLog(props: AuditLogProps): JSX.Element {
               rowKey={(event) => event.id}
               rowLabel={(event) => event.summary}
               identityColumn="summary"
+              verticalAlign="top"
               onOpenRow={(event) => setOpenId(event.id)}
               columns={[
                 { id: "when", header: "When", cell: when },

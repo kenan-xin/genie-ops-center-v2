@@ -33,8 +33,9 @@ const DUE_DATE_SOURCE: Record<
 };
 
 function dueDate(invoice: InvoiceDetail): Figure {
+  // R-29: an unspecified due date is never overdue. The sub-line keeps the strip's caption line (C17-2).
   return invoice.dueDate === null || invoice.dueDateSource === "unspecified"
-    ? { label: "Due date", value: "No due date" }
+    ? { label: "Due date", value: "No due date", note: "Never overdue" }
     : {
         label: "Due date",
         value: formatDay(invoice.dueDate),

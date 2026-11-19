@@ -44,7 +44,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The filter bar of a list card (Spec 7 R-37a, variant A of czjw.102). Each control has a fixed width and the field height. A trigger shows its label muted and its value semibold, and a set value tints it. Clear filters shows only while a filter is set. The controls that do not fit move into More filters, in definition order. Every change writes the page address at once.",
+          "The filter bar of a list card (Spec 7 R-37a, variant A of czjw.102). Each control has a fixed width and the field height. A trigger shows its label muted and its value semibold, and a set value tints it. Clear filters shows only while a filter is set. The controls that do not fit move into More filters, in definition order. More filters counts the set filters inside it. Every change writes the page address at once.",
       },
     },
   },
@@ -154,6 +154,33 @@ export const MoreFiltersWhenNarrow: Story = {
     );
     await waitFor(() => expect(param("date")).toBe("2026-11-01..2026-11-30"));
     await userEvent.keyboard("{Escape}");
+  },
+};
+
+/**
+ * C17-1: a set filter inside More filters shows on its trigger, as the phone Filters button counts
+ * (LH26). A tab and the search do not count there.
+ */
+export const MoreFiltersCountsItsSetFilters: Story = {
+  render: (args) => {
+    window.history.replaceState(
+      null,
+      "",
+      `${window.location.pathname}${window.location.search}&status=overdue&date=2026-11-01..2026-11-30&q=harbor`
+    );
+
+    return (
+      <div className="w-130">
+        <Bar definition={args.definition} anchorDay="2026-11-03" />
+      </div>
+    );
+  },
+  play: async ({ canvas }) => {
+    const more = await canvas.findByRole("button", {
+      name: "More filters 1 set",
+    });
+
+    await expect(within(more).getByText("1")).toBeVisible();
   },
 };
 

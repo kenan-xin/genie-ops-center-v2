@@ -68,9 +68,12 @@ export function GrantsList(props: GrantsListProps): ReactNode {
       header: "Group or person",
       cell: (row) => (
         <span className="flex items-start gap-3">
-          <RecipientMark type={row.type} name={row.name} />
-          {/* 6 px down, so the 32 px mark's center sits on the 20 px first line's center (6wz1.113). */}
-          <span className="flex min-w-0 flex-col pt-1.5">
+          {/* 6 px up, so the 32 px mark's center sits on the 20 px first line's center (6wz1.113)
+              while the name starts on the row's first line (czjw.217). */}
+          <span className="-mt-1.5 flex shrink-0">
+            <RecipientMark type={row.type} name={row.name} />
+          </span>
+          <span className="flex min-w-0 flex-col">
             <span className="flex flex-wrap items-center gap-x-2 gap-y-1 leading-5">
               <span className="font-medium">{row.name}</span>
               {archivedPill(row)}

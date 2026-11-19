@@ -275,6 +275,16 @@ export const NoDueDate: Story = {
 
     await expect(factOf(figures, "Due date")).toBe("No due date");
 
+    // C17-2: the figure keeps the strip's shared caption line (R-37a), as Paid with its sub-line.
+    const captionTop = (label: string) =>
+      within(figures)
+        .getByText(label, { selector: "dt" })
+        .getBoundingClientRect().top;
+
+    await expect(
+      Math.abs(captionTop("Due date") - captionTop("Paid"))
+    ).toBeLessThanOrEqual(1);
+
     // The desk's field, in the page or in the Fields card, says the same words.
     const field = canvasElement.querySelector('[data-pin="dueDate"]');
 

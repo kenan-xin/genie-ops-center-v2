@@ -1,4 +1,5 @@
 import { useListState } from "@genie/ui";
+import { firstTextTop } from "@genie/ui/testing/first-line";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import { expect, fn, userEvent } from "storybook/test";
 
@@ -82,6 +83,18 @@ export const Default: Story = {
       canvas.getByRole("button", { name: "Open Jamie Chen in Grants" })
     );
     await expect(args.onOpen).toHaveBeenCalledWith(fixtureRecipient("p-jamie"));
+
+    // czjw.217 (C17-4): the name starts on the row's first line, beside Assigned roles.
+    const row = canvas.getByRole("row", { name: /Jamie Chen/ });
+    const [who, roles] = row.querySelectorAll("td, th");
+
+    if (who === undefined || roles === undefined) {
+      throw new Error("The Jamie Chen row has fewer than two cells");
+    }
+
+    await expect(
+      Math.abs(firstTextTop(who) - firstTextTop(roles))
+    ).toBeLessThanOrEqual(1);
   },
 };
 

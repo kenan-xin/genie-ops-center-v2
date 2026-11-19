@@ -261,12 +261,15 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
 
         return (
           <span className="flex items-start gap-3">
-            <RecipientMark
-              type={personWho === null ? row.holder.type : "user"}
-              name={name}
-            />
-            {/* 8 px down, so the 32 px mark's center sits on the first line's center (6wz1.113). */}
-            <span className="flex min-w-0 flex-col pt-2">
+            {/* 8 px up, so the 32 px mark's center sits on the first line's center (6wz1.113)
+                while the name starts on the row's first line (czjw.217). */}
+            <span className="-mt-2 flex shrink-0">
+              <RecipientMark
+                type={personWho === null ? row.holder.type : "user"}
+                name={name}
+              />
+            </span>
+            <span className="flex min-w-0 flex-col">
               <Name text={name} href={href} />
               <span className="text-xs text-muted-foreground">
                 {personWho === null ? row.kind : "Person"}

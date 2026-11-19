@@ -19,12 +19,12 @@ const restingTab = (definition: ListDefinition) =>
   definition.tabs?.items[0]?.value;
 
 /**
- * The count on the Filters button (LH26): each set filter once, a range too, and one more when the
- * tab is not the resting tab. The search does not count. A tab or a range that the list does not
+ * The count on the Filters button and on More filters (LH26, C17-1): each set filter once, a range
+ * too, and one more when the tab is not the resting tab. The search does not count. A tab or a range that the list does not
  * apply does not count, so an old address reads as the default (czjw.179).
  */
 export function setFilterCount(
-  definition: ListDefinition,
+  definition: Pick<ListDefinition, "filters" | "tabs">,
   params: ListParams
 ): number {
   const filters = definition.filters.filter((filter) => {

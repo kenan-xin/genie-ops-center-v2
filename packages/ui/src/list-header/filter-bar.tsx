@@ -13,14 +13,15 @@ import type { ListDefinition, ListFilterDefinition } from "./definitions.ts";
 import { barWidthOf, type ListFilterControl } from "./filter-controls.tsx";
 import { setFilterCount, type ListState } from "./list-state.ts";
 
-// The bar's padding, its gap, Clear filters and More filters, in px (LH27, variant A of czjw.102).
+// The bar's padding, its gap, Clear filters, and More filters with its count, in px (LH27, C17-1,
+// variant A of czjw.102). MORE holds the button at rest and with its one-digit count.
 const PADDING = 40;
 
 const GAP = 10;
 
 const CLEAR = 120;
 
-const MORE = 140;
+const MORE = 150;
 
 /**
  * How many filters fit in a bar `width` px wide, in definition order. A search stays in the bar,
@@ -77,8 +78,9 @@ export function FilterSlot(props: {
 
 /**
  * The filter bar of the list card (variant A of `czjw.102`): the controls in definition order, each
- * of a fixed width, the ones that do not fit in More filters, Clear filters right after them while
- * a filter is set, and the actions at the end. Its 20 px edge lines up with the tabs and the table.
+ * of a fixed width, the ones that do not fit in More filters, which counts the set ones as the
+ * phone Filters button does (C17-1), Clear filters right after them while a filter is set, and the
+ * actions at the end. Its 20 px edge lines up with the tabs and the table.
  */
 export function FilterBar(props: {
   readonly definition: ListDefinition;
@@ -113,6 +115,9 @@ export function FilterBar(props: {
 
   const more = filters.slice(fit);
 
+  // The set filters that More filters hides; no tabs, so the count is the hidden filters only (C17-1).
+  const moreSet = setFilterCount({ filters: more }, state.params);
+
   const search = filters.find((filter) => filter.kind === "search");
 
   const anySet =
@@ -140,6 +145,14 @@ export function FilterBar(props: {
           <PopoverTrigger render={<Button variant="secondary" size="filter" />}>
             <ListFilterIcon aria-hidden="true" />
             More filters
+            {moreSet === 0 ? null : (
+              <span
+                aria-label={`${moreSet} set`}
+                className="rounded-full bg-primary px-1.5 text-xs font-semibold text-primary-foreground tabular-nums"
+              >
+                {moreSet}
+              </span>
+            )}
           </PopoverTrigger>
           <PopoverContent
             align="start"

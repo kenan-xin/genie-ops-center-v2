@@ -1,4 +1,5 @@
 import { useListState } from "@genie/ui";
+import { firstTextTop } from "@genie/ui/testing/first-line";
 import type { Meta, StoryObj } from "@storybook/nextjs-vite";
 import * as React from "react";
 import { expect, userEvent, waitFor, within } from "storybook/test";
@@ -198,6 +199,21 @@ export const StartsFilled: Story = {
       canvas.queryByRole("columnheader", { name: "Assigned via" })
     ).toBeNull();
     await expect(canvas.queryByText("Choose what to look up")).toBeNull();
+
+    // czjw.217 (C17-4): the Assigned to name starts on the row's first line.
+    for (const row of table.querySelectorAll("tbody tr")) {
+      const cells = row.querySelectorAll("td, th");
+      const [role, to, scope] = cells;
+
+      if (role === undefined || to === undefined || scope === undefined) {
+        throw new Error("An overview row has fewer than three cells");
+      }
+
+      const top = firstTextTop(role);
+
+      expect(Math.abs(firstTextTop(to) - top)).toBeLessThanOrEqual(1);
+      expect(Math.abs(firstTextTop(scope) - top)).toBeLessThanOrEqual(1);
+    }
   },
 };
 
