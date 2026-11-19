@@ -116,6 +116,7 @@ export function GrantsList(props: GrantsListProps): ReactNode {
       </div>
     ) : (
       <DataTable<RecipientRow>
+        verticalAlign="top"
         label={GRANTS_LIST.label}
         rows={page.rows}
         rowKey={(row) => `${row.type}:${row.id}`}

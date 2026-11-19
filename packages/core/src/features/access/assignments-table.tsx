@@ -151,6 +151,7 @@ export function AssignmentsTable(props: AssignmentsTableProps): ReactNode {
 
   return (
     <DataTable
+      verticalAlign="top"
       label="Assigned roles"
       rows={rows}
       rowKey={(row) => row.key}

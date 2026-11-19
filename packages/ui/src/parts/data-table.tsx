@@ -134,6 +134,12 @@ export type DataTableProps<Row> = {
   /** `false` drops the outer border, for a table inside a card that draws its own. */
   readonly framed?: boolean;
   /**
+   * `top` starts every body cell on the first line of its row, for rows that hold more than one
+   * line, as the Access prototypes align them. Unset centers the cells, as the list prototypes do
+   * (czjw.217).
+   */
+  readonly verticalAlign?: "top";
+  /**
    * A band under the rows, inside the frame, at both widths: a count or a note about the list.
    * Its children sit at the two ends of the band.
    */
@@ -243,11 +249,15 @@ export function DataTable<Row>({
   rowAction,
   newRow,
   framed = true,
+  verticalAlign,
   footer,
   onEndReached,
   sort,
   layout = "auto",
 }: DataTableProps<Row>) {
+  // TableCell merges this with `cn` in the vertical-align group, so `align-top` replaces its
+  // `align-middle`; the header cells keep their center.
+  const top = verticalAlign === "top";
   // A long list renders only the rows near the screen (czjw.70). Before hydration both layouts
   // render the first window, so the server and the client agree; after it only the shown one.
   const virtual = rows.length > VIRTUAL_FROM;
@@ -515,9 +525,14 @@ export function DataTable<Row>({
                       key={column.id}
                       className={
                         column.align === "end"
-                          ? // oxlint-disable-next-line shadcn/no-restyle -- an end-aligned count column sets tabular figures (6wz1.125, A-7)
-                            "text-right tabular-nums"
-                          : undefined
+                          ? top
+                            ? // oxlint-disable-next-line shadcn/no-restyle -- an end-aligned count column sets tabular figures (6wz1.125, A-7)
+                              "text-right tabular-nums align-top"
+                            : // oxlint-disable-next-line shadcn/no-restyle -- an end-aligned count column sets tabular figures (6wz1.125, A-7)
+                              "text-right tabular-nums"
+                          : top
+                            ? "align-top"
+                            : undefined
                       }
                     >
                       {column === identityColumn
@@ -525,8 +540,18 @@ export function DataTable<Row>({
                         : column.cell(row)}
                     </TableCell>
                   ))}
-                  {status ? <TableCell>{status(row)}</TableCell> : null}
-                  <TableCell className="relative z-10 w-px text-right whitespace-nowrap">
+                  {status ? (
+                    <TableCell className={top ? "align-top" : undefined}>
+                      {status(row)}
+                    </TableCell>
+                  ) : null}
+                  <TableCell
+                    className={
+                      top
+                        ? "relative z-10 w-px text-right whitespace-nowrap align-top"
+                        : "relative z-10 w-px text-right whitespace-nowrap"
+                    }
+                  >
                     {rowAction?.(row)}
                     {menu(row)}
                   </TableCell>

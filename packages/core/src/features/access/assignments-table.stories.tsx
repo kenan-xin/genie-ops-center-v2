@@ -213,6 +213,53 @@ export const OnAPhone: Story = {
   },
 };
 
+/**
+ * The top of a cell's first text: the first text node that is not blank, measured as its first
+ * line box, so a cell's padding does not count.
+ */
+const firstTextTop = (cell: HTMLElement): number => {
+  const walker = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+
+  for (let node = walker.nextNode(); node !== null; node = walker.nextNode()) {
+    if (node.textContent?.trim() === "") continue;
+
+    const range = document.createRange();
+
+    range.selectNodeContents(node);
+
+    const top = range.getClientRects()[0]?.top;
+
+    if (top !== undefined) return top;
+  }
+
+  throw new Error(`No text in the cell "${cell.textContent}"`);
+};
+
+/**
+ * czjw.217 (C11-6): each cell starts on the first line of its row, as person-access.prototype.html
+ * aligns them.
+ */
+export const CellsStartOnTheFirstLine: Story = {
+  globals: { viewport: { value: "desktop1440", isRotated: false } },
+  play: async ({ canvas }) => {
+    const table = within(canvas.getByRole("table", { name: "Assigned roles" }));
+
+    // A row with the Paused badge centers its role text on the badge, so this row has none.
+    const row = table.getByRole("row", { name: /Slides user/ });
+
+    const [role, scope, via] = within(row).getAllByRole("cell");
+
+    if (role === undefined || scope === undefined || via === undefined) {
+      throw new Error("The Slides user row has fewer than three cells");
+    }
+
+    const top = firstTextTop(role);
+
+    await expect(Math.abs(firstTextTop(scope) - top)).toBeLessThanOrEqual(1);
+    await expect(Math.abs(firstTextTop(via) - top)).toBeLessThanOrEqual(1);
+  },
+};
+
 /** T3-f: no assignment says so, with the sheet's sentence. */
 export const NoRoles: Story = {
   args: { paths: [] },

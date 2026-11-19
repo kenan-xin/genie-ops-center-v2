@@ -376,6 +376,7 @@ export function OverviewScreen(props: OverviewScreenProps): ReactNode {
       </div>
     ) : (
       <DataTable<OverviewRow>
+        verticalAlign="top"
         label={props.definition.label}
         rows={rows}
         rowKey={(row) => row.key}

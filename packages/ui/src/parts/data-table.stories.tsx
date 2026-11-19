@@ -959,3 +959,33 @@ export const PhoneBadgeAndActionOnLineOne: Story = {
     await expect(Math.abs(middle(trailing) - center)).toBeLessThan(1);
   },
 };
+
+/**
+ * `verticalAlign: "top"` starts every cell on the first line, for a row whose first cell holds two
+ * lines, as the Access tables draw a role with the date under it (czjw.217).
+ */
+export const TopAlignedRows: Story = {
+  args: {
+    verticalAlign: "top",
+    columns: [
+      {
+        id: "email",
+        header: "Email",
+        cell: (row) => (
+          <span className="flex flex-col gap-1">
+            <span>{row.email}</span>
+            <span className="text-xs text-muted-foreground">{row.name}</span>
+          </span>
+        ),
+      },
+      { id: "name", header: "Name", cell: (row) => row.name },
+      { id: "role", header: "Role", cell: (row) => row.role },
+      {
+        id: "signIns",
+        header: "Sign-ins",
+        cell: (row) => row.signIns,
+        align: "end",
+      },
+    ],
+  },
+};
