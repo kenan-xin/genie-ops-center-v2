@@ -164,6 +164,52 @@ export const AddFilterOffers: Story = {
   },
 };
 
+/** The filters dashboard with an unoffered `name` field that shares the Customer label. */
+const customerByName: DashboardView = {
+  ...filtersDashboardPage.dashboard,
+  filterFields: [
+    ...filtersDashboardPage.dashboard.filterFields,
+    {
+      field: "name",
+      label: " customer",
+      kind: "multi-select",
+      datasets: ["invoices.customers"],
+      offered: false,
+    },
+  ],
+};
+
+// czjw.178: a stored filter on `name` already filters by Customer, so Add filter leaves Customer out.
+export const StoredFilterHidesSameLabel: Story = {
+  name: "Add filter leaves out a label that a stored filter holds",
+  globals: desktop,
+  args: { dashboard: customerByName },
+  beforeEach: () => {
+    serve(customerByName);
+
+    return withFilterAddress({
+      dateRange: { preset: "last-3-months" },
+      fields: [
+        {
+          kind: "multi-select",
+          field: "name",
+          label: " customer",
+          values: ["Bravo"],
+        },
+      ],
+    });
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Add filter" })
+    );
+
+    await expect(
+      (await screen.findAllByRole("menuitem")).map((item) => item.textContent)
+    ).toEqual(["Currency", "Overdue only", "Region", "Status"]);
+  },
+};
+
 const FOUR: DashboardFilters = {
   dateRange: { preset: "last-3-months" },
   fields: [

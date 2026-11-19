@@ -16,6 +16,7 @@ import {
   dateBounds,
   effectivePanel,
   priorBounds,
+  resolveField,
 } from "./filters.ts";
 import { readOwnDashboard } from "./store.ts";
 
@@ -103,9 +104,9 @@ export function priorKpiValue(
 }
 
 /**
- * The values a filter on `field` offers: the distinct non-null values of the field in each panel
- * dataset that declares it as text, under the date range and every other field filter (P15-6),
- * sorted, at most 1,000 (D3). A boolean field offers none.
+ * The values a filter on `field` offers: the distinct non-null values, in each panel dataset, of
+ * the text field it resolves to there (`resolveField`, czjw.178), under the date range and every
+ * other field filter (P15-6), sorted, at most 1,000 (D3). A boolean field offers none.
  */
 export async function filterValues(
   ctx: ModuleRequestContext,
@@ -129,30 +130,39 @@ export async function filterValues(
   const bounds = dateBounds(filters.dateRange, date);
   const others = filters.fields.filter((filter) => filter.field !== field);
 
-  const datasets = new Set(
-    record.config.panels
-      .flatMap(({ config }) => config.series.map((series) => series.dataset))
-      .filter((name) => facts.get(name)?.fields.get(field)?.type === "text")
+  const names = new Set(
+    record.config.panels.flatMap(({ config }) =>
+      config.series.map((series) => series.dataset)
+    )
   );
 
+  // Each panel dataset with the text field the filter resolves to there; only text takes select.
+  const reads = [...names].flatMap((dataset) => {
+    const resolved = resolveField(facts.get(dataset), field, "select", facts);
+
+    return resolved === undefined ? [] : [{ dataset, resolved }];
+  });
+
   const results = await Promise.all(
-    [...datasets].map((dataset) =>
-      queryDataset(ctx, {
+    reads.map(async ({ dataset, resolved }) => {
+      const { rows } = await queryDataset(ctx, {
         dataset,
         query: {
-          filters: datasetFilters(facts.get(dataset), others, bounds),
-          groupBy: [{ field }],
+          filters: datasetFilters(facts.get(dataset), others, bounds, facts),
+          groupBy: [{ field: resolved }],
           aggregates: [{ fn: "count", as: "rows" }],
           limit: FILTER_VALUE_LIMIT,
         },
-      })
-    )
+      });
+
+      return rows.map((row) => row[resolved] ?? null);
+    })
   );
 
   const values = new Set(
     results
       // A text field answers a string or null.
-      .flatMap(({ rows }) => rows.map((row) => row[field] ?? null))
+      .flat()
       .filter((value) => value !== null)
       .map(String)
   );

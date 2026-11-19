@@ -17,6 +17,7 @@ import { analyticsModule, analyticsRouter } from "@genie/module-analytics";
 import type { DashboardFilters } from "@genie/module-analytics/contract";
 import { insertDashboard } from "@genie/module-analytics/testing";
 import { invoicesModule } from "@genie/module-invoices";
+import { insertCustomer, insertInvoice } from "@genie/module-invoices/testing";
 import { placeholderModule } from "@genie/module-placeholder";
 import {
   AGENT_RECORDS,
@@ -30,7 +31,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
  * query through core's chart gate, a change runs the gate, and the field filter offers the values
  * of the panel datasets. The analytics module imports no other module, so these cases live in the
  * app, on the placeholder's three agent records (120000, 80000 and 50000 cents) and the invoices
- * datasets with no rows (a second dataset, and one with a boolean field).
+ * datasets (a second dataset, and one with a boolean field), which hold no rows until the last
+ * case adds three customers and two invoices.
  */
 let deployment: Awaited<ReturnType<typeof startDisposableDeployment>>;
 
@@ -488,5 +490,73 @@ describe("the analytics panels on real data", () => {
         },
       })
     ).toEqual(["Charlie"]);
+  });
+
+  // czjw.178: `customerName` (invoices) and `name` (customers) share the label Customer.
+  describe("a Customer filter over an Invoices and a Customers panel", () => {
+    beforeAll(async () => {
+      const acme = await insertCustomer(deployment.context, {
+        name: "Merge Acme",
+      });
+
+      const bolt = await insertCustomer(deployment.context, {
+        name: "Merge Bolt",
+      });
+
+      // Merge Corva has no invoice, so only the Customers panel holds it.
+      await insertCustomer(deployment.context, { name: "Merge Corva" });
+      await insertInvoice(deployment.context, { customerId: acme.id });
+      await insertInvoice(deployment.context, { customerId: bolt.id });
+    });
+
+    it.each(["customerName", "name"])(
+      "narrows both panels and offers the customers of both from a stored filter on %s",
+      async (field) => {
+        const id = await insertDashboard(deployment.context, {
+          ownerUserId: owner.caller.userId,
+          config: {
+            filters: {
+              dateRange: { preset: "all" },
+              fields: [
+                {
+                  kind: "multi-select",
+                  field,
+                  label: "Customer",
+                  values: ["Merge Acme", "Merge Corva"],
+                },
+              ],
+            },
+            panels: [
+              {
+                id: "p1",
+                layout: LAYOUT,
+                config: countOf("invoices.invoices"),
+              },
+              {
+                id: "p2",
+                layout: LAYOUT,
+                config: countOf("invoices.customers"),
+              },
+            ],
+            views: [],
+            defaultViewId: null,
+          },
+        });
+
+        const [invoices, customers] = await Promise.all(
+          ["p1", "p2"].map(async (panelId) =>
+            chartOf(await caller().panelData({ id, panelId }))
+          )
+        );
+
+        expect(invoices?.rows[0]?.Rows).toBe(1);
+        expect(customers?.rows[0]?.Rows).toBe(2);
+        expect(await caller().filterValues({ id, field })).toEqual([
+          "Merge Acme",
+          "Merge Bolt",
+          "Merge Corva",
+        ]);
+      }
+    );
   });
 });

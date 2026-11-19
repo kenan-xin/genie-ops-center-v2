@@ -109,6 +109,7 @@ const facts = (
   fields: Readonly<Record<string, "text" | "boolean" | "money">>
 ): DatasetFacts => ({
   timeField,
+  keys: new Set(),
   fields: new Map(
     Object.entries(fields).map(([name, type]) => [name, { type, label: name }])
   ),
@@ -290,6 +291,102 @@ describe("effectivePanel", () => {
   });
 });
 
+/** Text fields by name with their labels; `keys` are the record key and the row key. */
+const labelled = (
+  fields: Readonly<Record<string, string>>,
+  keys: readonly string[] = []
+): DatasetFacts => ({
+  timeField: "date",
+  keys: new Set(keys),
+  fields: new Map(
+    Object.entries(fields).map(([name, label]) => [
+      name,
+      { type: "text", label },
+    ])
+  ),
+});
+
+const MERGED: ReadonlyMap<string, DatasetFacts> = new Map([
+  [
+    "invoices.invoices",
+    labelled(
+      { id: "Invoice id", customerId: "Customer id", customerName: "Customer" },
+      ["id"]
+    ),
+  ],
+  // The label differs in case and spaces only.
+  [
+    "invoices.customers",
+    labelled({ id: "Customer id", name: " customer " }, ["id"]),
+  ],
+  ["other.both", labelled({ customerName: "Customer", name: "Customer" })],
+  ["other.keyed", labelled({ customer: "Customer" }, ["customer"])],
+  ["other.ids", labelled({ customerId: "Customer" })],
+  ["other.pair", labelled({ buyer: "Customer", seller: "Customer" })],
+]);
+
+const countsOver = (datasets: readonly string[]): PanelConfig => ({
+  type: "bar",
+  title: "Counts",
+  series: datasets.map((dataset) => ({
+    name: dataset,
+    dataset,
+    x: "x",
+    y: "n",
+    query: {
+      groupBy: [{ field: "x" }],
+      aggregates: [{ fn: "count", as: "n" }],
+    },
+  })),
+});
+
+const customerIs = (field: string): DashboardFilters => ({
+  dateRange: { preset: "all" },
+  fields: [{ kind: "select", field, label: "Customer", value: "Acme" }],
+});
+
+describe("a dashboard filter merged by label (czjw.178)", () => {
+  it.each(["customerName", "name"])(
+    "narrows the invoices by customerName and the customers by name from a filter on %s",
+    (field) => {
+      const effective = effectivePanel(
+        countsOver(["invoices.invoices", "invoices.customers"]),
+        customerIs(field),
+        MERGED,
+        "2026-10-27"
+      );
+
+      expect(filtersOf(effective)).toEqual([
+        [{ field: "customerName", op: "eq", value: "Acme" }],
+        [{ field: "name", op: "eq", value: "Acme" }],
+      ]);
+    }
+  );
+
+  it("keeps the exact field first and never reaches a key, an id or one of two fields with the label", () => {
+    const effective = effectivePanel(
+      countsOver([
+        "other.both",
+        "other.keyed",
+        "other.ids",
+        "other.pair",
+        "invoices.customers",
+      ]),
+      customerIs("customerName"),
+      MERGED,
+      "2026-10-27"
+    );
+
+    expect(filtersOf(effective)).toEqual([
+      [{ field: "customerName", op: "eq", value: "Acme" }],
+      undefined,
+      undefined,
+      undefined,
+      [{ field: "name", op: "eq", value: "Acme" }],
+    ]);
+  });
+});
+
 const text = (label: string): DatasetField => ({
   kind: "dimension",
   type: "text",
@@ -384,7 +481,7 @@ describe("filterFieldsFrom", () => {
     ]);
   });
 
-  it("offers one field per label, the first that the panels name, and merges a field that two datasets share", () => {
+  it("offers one field per label, the first that the panels name, and lists every panel dataset the field reaches by its label", () => {
     const fields = filterFieldsFrom(
       [CUSTOMERS, PAYMENTS, INVOICES],
       ["invoices.invoices", "invoices.payments", "invoices.customers"]
@@ -397,14 +494,23 @@ describe("filterFieldsFrom", () => {
       field: "customerName",
       label: "Customer",
       kind: "multi-select",
-      datasets: ["invoices.invoices", "invoices.payments"],
+      datasets: [
+        "invoices.invoices",
+        "invoices.payments",
+        "invoices.customers",
+      ],
       offered: true,
     });
+    // A stored filter on the unoffered field reaches the same panels.
     expect(byField("name")).toEqual({
       field: "name",
       label: "Customer",
       kind: "multi-select",
-      datasets: ["invoices.customers"],
+      datasets: [
+        "invoices.invoices",
+        "invoices.payments",
+        "invoices.customers",
+      ],
       offered: false,
     });
     expect(byField("status")?.datasets).toEqual([
@@ -420,6 +526,21 @@ describe("filterFieldsFrom", () => {
         .filter(({ label, offered }) => offered && label === "Customer")
         .map(({ field }) => field)
     ).toEqual(["name"]);
+
+    const spaced = dataset(
+      "invoices.customers",
+      { id: text("Customer id"), name: text(" customer") },
+      "id"
+    );
+
+    expect(
+      filterFieldsFrom(
+        [spaced, INVOICES],
+        ["invoices.invoices", "invoices.customers"]
+      )
+        .filter(({ offered }) => offered)
+        .map(({ field }) => field)
+    ).not.toContain("name");
   });
 
   it("leaves out a record key and a row key that are not named as ids", () => {

@@ -18,9 +18,13 @@ import type {
 } from "../../contract.ts";
 import { ANALYTICS_ERRORS } from "../../errors.ts";
 
-/** What a dashboard filter needs to know of one dataset: where its dates are, and its fields. */
+/**
+ * What a dashboard filter needs to know of one dataset: where its dates are, its record key and
+ * row key, and its fields.
+ */
 export type DatasetFacts = {
   readonly timeField: string;
+  readonly keys: ReadonlySet<string>;
   readonly fields: ReadonlyMap<
     string,
     { readonly type: DatasetFieldType; readonly label: string }
@@ -43,17 +47,57 @@ export function filterKindsOf(
   }
 }
 
-/** Whether the dataset declares the filter's field with a type that takes its kind. */
-function fits(facts: DatasetFacts | undefined, filter: FieldFilter): boolean {
-  const type = facts?.fields.get(filter.field)?.type;
+/** A field named as an id: `id`, or a name that ends in `Id` (czjw.178). */
+const namedAsId = (field: string) => field === "id" || field.endsWith("Id");
 
-  return type !== undefined && filterKindsOf(type).includes(filter.kind);
+/** A label as filters compare it: trimmed and case-folded (czjw.178). */
+const labelKey = (label: string) => label.trim().toLowerCase();
+
+/**
+ * The field of `facts` that a filter of `kind` on `field` reads, merged by label (czjw.178): the
+ * field itself when the dataset declares it with a type that takes the kind, else the one field
+ * with the same label (from the first dataset of `all` that declares `field`) and such a type,
+ * never a record key, a row key or a field named as an id. Two such fields resolve to none.
+ */
+export function resolveField(
+  facts: DatasetFacts | undefined,
+  field: string,
+  kind: FieldFilterKind,
+  all: ReadonlyMap<string, DatasetFacts>
+): string | undefined {
+  if (facts === undefined) return undefined;
+
+  const takes = (name: string) => {
+    const type = facts.fields.get(name)?.type;
+
+    return type !== undefined && filterKindsOf(type).includes(kind);
+  };
+
+  if (takes(field)) return field;
+
+  const label = [...all.values()]
+    .map((dataset) => dataset.fields.get(field)?.label)
+    .find((found) => found !== undefined);
+
+  if (label === undefined) return undefined;
+
+  const matches = [...facts.fields].flatMap(([name, own]) =>
+    labelKey(own.label) === labelKey(label) &&
+    !facts.keys.has(name) &&
+    !namedAsId(name) &&
+    takes(name)
+      ? [name]
+      : []
+  );
+
+  return matches.length === 1 ? matches[0] : undefined;
 }
 
-/** The query filter of one field filter; one with no value, or a toggle off, filters nothing (P15-4). */
-function clauseOf(filter: FieldFilter): DatasetFilter | undefined {
-  const { field } = filter;
-
+/** The query filter of one field filter on `field`; one with no value, or a toggle off, filters nothing (P15-4). */
+function clauseOf(
+  filter: FieldFilter,
+  field: string
+): DatasetFilter | undefined {
   switch (filter.kind) {
     case "select":
       return filter.value === null
@@ -70,13 +114,14 @@ function clauseOf(filter: FieldFilter): DatasetFilter | undefined {
 
 /**
  * The filters a dashboard adds to a read of one dataset: the date bounds on its time field, and
- * each field filter whose field the dataset declares with a fitting type, so a dataset that lacks
- * the field stays unfiltered (Review Focus 5).
+ * each field filter on the field `resolveField` finds in the dataset: the filter's own field, or
+ * the one field with its label. A dataset with neither stays unfiltered (Review Focus 5, czjw.178).
  */
 export function datasetFilters(
   facts: DatasetFacts | undefined,
   fields: readonly FieldFilter[],
-  bounds: { readonly from: string; readonly to: string } | null
+  bounds: { readonly from: string; readonly to: string } | null,
+  all: ReadonlyMap<string, DatasetFacts>
 ): DatasetFilter[] {
   if (facts === undefined) return [];
 
@@ -86,7 +131,8 @@ export function datasetFilters(
       : [{ field: facts.timeField, op: "between", ...bounds }];
 
   for (const filter of fields) {
-    const clause = fits(facts, filter) ? clauseOf(filter) : undefined;
+    const field = resolveField(facts, filter.field, filter.kind, all);
+    const clause = field === undefined ? undefined : clauseOf(filter, field);
 
     if (clause !== undefined) added.push(clause);
   }
@@ -95,15 +141,18 @@ export function datasetFilters(
 }
 
 /**
- * Refuses filters from the browser whose field no dataset the caller reads declares with a type
- * that takes the filter's kind (P15-5). Runs before any read of those filters.
+ * Refuses filters from the browser that resolve in no dataset the caller reads (P15-5,
+ * `resolveField`). Runs before any read of those filters.
  */
 export function assertFiltersFit(
   filters: DashboardFilters,
   datasets: ReadonlyMap<string, DatasetFacts>
 ): void {
   const issues = filters.fields.flatMap((filter, index) =>
-    [...datasets.values()].some((facts) => fits(facts, filter))
+    [...datasets.values()].some(
+      (facts) =>
+        resolveField(facts, filter.field, filter.kind, datasets) !== undefined
+    )
       ? []
       : [
           {
@@ -254,7 +303,8 @@ export function effectivePanel(
     const added = datasetFilters(
       datasets.get(entry.dataset),
       filters.fields,
-      bounds
+      bounds,
+      datasets
     );
 
     if (added.length === 0) return entry;
@@ -280,15 +330,20 @@ export function effectivePanel(
   }
 }
 
-/** The time field and the fields of each dataset the caller can read (DEC-54). */
-export async function datasetFacts(
-  ctx: ModuleRequestContext
-): Promise<ReadonlyMap<string, DatasetFacts>> {
+/** The facts of each dataset by name. */
+function factsOf(
+  datasets: readonly DatasetSummary[]
+): ReadonlyMap<string, DatasetFacts> {
   return new Map(
-    (await listDatasets(ctx)).map(({ name, timeField, fields }) => [
+    datasets.map(({ name, timeField, recordKey, rowKeyField, fields }) => [
       name,
       {
         timeField,
+        keys: new Set(
+          rowKeyField === undefined
+            ? [recordKey.field]
+            : [recordKey.field, rowKeyField]
+        ),
         fields: new Map(
           Object.entries(fields).map(([field, { type, label }]) => [
             field,
@@ -298,6 +353,13 @@ export async function datasetFacts(
       },
     ])
   );
+}
+
+/** The time field, the keys and the fields of each dataset the caller can read (DEC-54). */
+export async function datasetFacts(
+  ctx: ModuleRequestContext
+): Promise<ReadonlyMap<string, DatasetFacts>> {
+  return factsOf(await listDatasets(ctx));
 }
 
 /** Every text and boolean field of the panel datasets the caller can read (R-49). */
@@ -312,14 +374,12 @@ export async function filterFieldsOf(
   return filterFieldsFrom(await listDatasets(ctx), [...names]);
 }
 
-/** A field named as an id: `id`, or a name that ends in `Id` (czjw.178). */
-const namedAsId = (field: string) => field === "id" || field.endsWith("Id");
-
 /**
- * Every text and boolean field of the panel datasets, sorted by label, with the datasets that
- * declare it (R-49). Add filter offers only a field a person filters by (czjw.178): no record key
- * or row key of a panel dataset, no field named as an id, and one field per label, the first that
- * the panels name. A field that is not offered stays here, so a stored filter on it still reads.
+ * Every text and boolean field of the panel datasets, sorted by label, with every panel dataset
+ * the field resolves in (R-49, `resolveField`). Add filter offers only a field a person filters by
+ * (czjw.178): no record key or row key of a panel dataset, no field named as an id, and one field
+ * per label (trimmed, case-folded), the first that the panels name. A field that is not offered
+ * stays here, so a stored filter on it still reads.
  */
 export function filterFieldsFrom(
   datasets: readonly DatasetSummary[],
@@ -337,32 +397,32 @@ export function filterFieldsFrom(
     )
   );
 
+  const facts = factsOf(datasets);
   const found = new Map<string, FilterField>();
   // The labels that an offered field holds, so each shows once in Add filter.
   const labels = new Set<string>();
 
-  for (const { name, fields } of panelDatasets) {
+  for (const { fields } of panelDatasets) {
     for (const [field, { type, label: declared }] of Object.entries(fields)) {
+      // A field one dataset declares as text and another as boolean keeps its first kind.
       const [kind] = filterKindsOf(type);
-      const entry = found.get(field);
 
-      if (kind === undefined) continue;
-
-      if (entry !== undefined) {
-        // A field one dataset declares as text and another as boolean keeps its first kind.
-        if (entry.kind === kind) entry.datasets.push(name);
-
-        continue;
-      }
+      if (kind === undefined || found.has(field)) continue;
 
       const label = declared ?? field;
 
       const offered =
-        !keys.has(field) && !namedAsId(field) && !labels.has(label);
+        !keys.has(field) && !namedAsId(field) && !labels.has(labelKey(label));
 
-      if (offered) labels.add(label);
+      if (offered) labels.add(labelKey(label));
 
-      found.set(field, { field, label, kind, datasets: [name], offered });
+      const reached = panelDatasets.flatMap(({ name }) =>
+        resolveField(facts.get(name), field, kind, facts) === undefined
+          ? []
+          : [name]
+      );
+
+      found.set(field, { field, label, kind, datasets: reached, offered });
     }
   }
 
