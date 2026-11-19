@@ -129,6 +129,23 @@ const sendPartial = fn(
   }
 );
 
+/** An answer that sends nothing before Stop aborts it: Stop came before the first word (C18-1). */
+const sendNothing = fn(
+  async ({
+    abortSignal,
+  }: {
+    readonly abortSignal: AbortSignal | undefined;
+    readonly messages: readonly AgentMessage[];
+  }) =>
+    new ReadableStream<UIMessageChunk>({
+      start(controller) {
+        abortSignal?.addEventListener("abort", () =>
+          controller.error(abortSignal.reason)
+        );
+      },
+    })
+);
+
 const sendPicked = fn(async () =>
   chunks(
     { type: "start" },
@@ -678,6 +695,40 @@ export const TryAgainAfterStop: Story = {
     await expect(canvas.getAllByText(FIRST_QUESTION)).toHaveLength(2);
 
     releaseHeld();
+  },
+};
+
+/** A Stop before the first word still shows the Stopped line and one Try again (C18-1). */
+export const TryAgainAfterStopBeforeAnyWords: Story = {
+  name: "Try again after Stop before any words",
+  args: { transport: transportOf(sendNothing) },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: FIRST_QUESTION }));
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Stop the answer" })
+    );
+
+    const log = within(canvas.getByRole("log", { name: "Conversation" }));
+
+    await expect(
+      await log.findByText("Stopped.", { exact: true })
+    ).toBeVisible();
+    await expect(
+      log.getAllByRole("button", { name: "Try again" })
+    ).toHaveLength(1);
+
+    const sent = sendNothing.mock.calls.length;
+
+    await userEvent.dblClick(log.getByRole("button", { name: "Try again" }));
+
+    await waitFor(() => expect(sendNothing.mock.calls.length).toBe(sent + 1));
+    await expect(
+      sendNothing.mock.calls.at(-1)?.[0].messages.at(-1)?.parts
+    ).toEqual([{ type: "text", text: FIRST_QUESTION }]);
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Stop the answer" })
+    );
   },
 };
 

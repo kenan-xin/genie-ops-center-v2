@@ -253,18 +253,17 @@ export function Conversation(props: {
       }));
 
       // Stop, or the server's turn limit, keeps what the server stores: the finished steps and
-      // words, and the Stopped line (P03-2).
-      if (
-        (isAbort || isStopped(message)) &&
-        message.role === "assistant" &&
-        message.parts.length > 0
-      ) {
+      // words, and the Stopped line (P03-2). A Stop before the first word left no answer in the
+      // list, so its Stopped line is added (C18-1).
+      if ((isAbort || isStopped(message)) && message.role === "assistant") {
         chat.setMessages((messages) =>
-          messages.map((each) =>
-            each.id === message.id
-              ? { ...each, parts: keptOnStop(each.parts, []).parts }
-              : each
-          )
+          messages.some((each) => each.id === message.id)
+            ? messages.map((each) =>
+                each.id === message.id
+                  ? { ...each, parts: keptOnStop(each.parts, []).parts }
+                  : each
+              )
+            : [...messages, { ...message, parts: keptOnStop([], []).parts }]
         );
       }
 

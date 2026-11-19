@@ -99,7 +99,17 @@ export function agentTransport(
   return new DefaultChatTransport<AgentMessage>({
     api,
     fetch: async (input, init) => {
-      const response = await globalThis.fetch(input, init);
+      // A Stop cuts the request only once the route answered: cut earlier, the route never reads
+      // the question, so it stores no chat while the address already names it (C18-1).
+      const cut = new AbortController();
+
+      const response = await globalThis.fetch(input, {
+        ...init,
+        signal: cut.signal,
+      });
+
+      if (init?.signal?.aborted === true) cut.abort();
+      else init?.signal?.addEventListener("abort", () => cut.abort());
 
       if (response.ok) return response;
 

@@ -862,6 +862,23 @@ export const StoppedBeforeAnyWords: Story = {
   },
 };
 
+/** While the question is sent again, a turn stopped before its first word shows only its line (C18-1). */
+export const StoppedBeforeAnyWordsWhileResent: Story = {
+  name: "Stopped before any words while resent",
+  args: {
+    message: { id: "stopped-empty", role: "assistant", parts: [STOPPED_PART] },
+  },
+  play: async ({ canvas }) => {
+    await canvas.findByText("Stopped.", { exact: true });
+
+    // No actions row: no Try again and no row's Copied status.
+    await expect(
+      canvas.queryByRole("button", { name: "Try again" })
+    ).toBeNull();
+    await expect(canvas.queryByRole("status")).toBeNull();
+  },
+};
+
 /** A final refusal offers Try again in its own box, so the row under its words does not repeat it. */
 export const RefusedAnswerOffersOneTryAgain: Story = {
   name: "Refused answer offers one Try again",

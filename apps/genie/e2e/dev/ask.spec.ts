@@ -214,6 +214,60 @@ test("Try again under a stopped answer sends the question once", async ({
   await expect.poll(() => posts).toEqual([SLOW_QUESTION]);
 });
 
+// czjw.188, C18-1: the route answers only after Stop, as a slow route or network would. No
+// recording answers the resend, as in the test above: it proves the one send.
+test("Stop before the first word offers Try again, also after a reload", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/ask");
+
+  const log = page.getByRole("log", { name: "Conversation" });
+
+  const stopped = Promise.withResolvers<void>();
+
+  await page.route(
+    "**/api/agent",
+    async (route) => {
+      await stopped.promise;
+      await route.continue();
+    },
+    { times: 1 }
+  );
+
+  await askQuestion(page, SLOW_QUESTION);
+  await page.getByRole("button", { name: "Stop the answer" }).click();
+  stopped.resolve();
+
+  await expect(log.getByText(STOPPED_LINE, { exact: true })).toBeVisible(
+    FIRST_PAINT
+  );
+  await expect(log.getByText(FIRST_WORDS)).toHaveCount(0);
+
+  const posts = agentPosts(page);
+
+  await log.getByRole("button", { name: "Try again" }).click();
+
+  await expect(log.getByText(SLOW_QUESTION, { exact: true })).toHaveCount(2);
+  await expect(page.getByRole("button", { name: "Send" })).toBeVisible(
+    FIRST_PAINT
+  );
+  expect(posts).toEqual([SLOW_QUESTION]);
+
+  await expect(page).toHaveURL(CHAT_ADDRESS);
+  await page.reload();
+
+  await expect(log.getByText(STOPPED_LINE, { exact: true })).toBeVisible(
+    FIRST_PAINT
+  );
+  await expect(log.getByText(SLOW_QUESTION, { exact: true })).toHaveCount(2);
+  await expect(
+    page.getByRole("textbox", { name: "Message", exact: true })
+  ).toBeVisible();
+});
+
 // czjw.190: 32 px at every width, with the 44 px touch area of the Phase 06 check.
 test("the Ask suggestion pills are 32 px with a 44 px touch area", async ({
   page,

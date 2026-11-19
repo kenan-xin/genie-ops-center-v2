@@ -67,6 +67,38 @@ afterEach(() => {
 });
 
 describe("the agent route's transport", () => {
+  // C18-1: an aborted upload left no chat, so the address named a chat a reload could not find.
+  it("holds a Stop until the route answers, then stops the answer", async () => {
+    const answered = Promise.withResolvers<Response>();
+
+    const fetchMock = vi.fn<typeof fetch>(async () => answered.promise);
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const stop = new AbortController();
+
+    const sent = agentTransport(API).sendMessages({
+      trigger: "submit-message",
+      chatId: SESSION_ID,
+      messageId: undefined,
+      messages: [MESSAGE],
+      abortSignal: stop.signal,
+    });
+
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+
+    const signal = fetchMock.mock.calls[0]?.[1]?.signal;
+
+    stop.abort();
+
+    expect(signal?.aborted).toBe(false);
+
+    answered.resolve(new Response("", { status: 200 }));
+    await sent.catch(() => undefined);
+
+    expect(signal?.aborted).toBe(true);
+  });
+
   it("sends the session, the last message and the picked model", async () => {
     const fetchMock = fetchStub();
 

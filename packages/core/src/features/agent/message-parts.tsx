@@ -628,7 +628,8 @@ export function MessageParts(props: {
       {stopped ? (
         <p className="text-sm text-muted-foreground">Stopped.</p>
       ) : null}
-      {answered || (stopped && !props.streaming) ? (
+      {/* While the question is sent again, a stopped turn with no words has no row (C18-1). */}
+      {answered || (stopped && props.onTryAgain !== undefined) ? (
         <AnswerMeta
           parts={props.message.parts}
           labels={labels}

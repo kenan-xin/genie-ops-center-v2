@@ -219,7 +219,8 @@ export async function handleAgentChat(
     { run: "none" }
   );
 
-  // One signal for both model calls: Stop and the turn limit end the summary call too (LC5).
+  // One signal for both model calls: the turn's time limit ends the summary call too (LC5). A
+  // browser Stop reaches it only after the route answered, so not during the summary (C18-1).
   const abortSignal = AbortSignal.any([
     request.signal,
     AbortSignal.timeout(AGENT_LIMITS.turnMs),
@@ -461,16 +462,14 @@ export async function turnStream(
         })
       );
 
-      if (responseMessage.parts.length === 0) return;
+      const marked = input.turnLimit?.aborted !== true;
 
-      const { parts, versions } =
-        isAborted || isCancelled === true
-          ? keptOnStop(
-              responseMessage.parts,
-              turn.pending,
-              input.turnLimit?.aborted !== true
-            )
-          : { parts: responseMessage.parts, versions: turn.pending };
+      // A Stop before the first word still stores its stopped mark, so the chat keeps the turn (C18-1).
+      if (responseMessage.parts.length === 0 && !(cut && marked)) return;
+
+      const { parts, versions } = cut
+        ? keptOnStop(responseMessage.parts, turn.pending, marked)
+        : { parts: responseMessage.parts, versions: turn.pending };
 
       // A failed store errors the stream; log it, because no onError sees a flush failure.
       await appendMessage(

@@ -567,6 +567,52 @@ describe("the agent route", () => {
     }
   });
 
+  // C18-1: the browser holds a Stop until the route answers, then stops reading (transport.ts).
+  it("Stop before the first word stores a stopped answer that a reread returns", async () => {
+    // A model that sends nothing until the call is aborted.
+    useModelTransport(deployment.context, {
+      transport: async (_input, init) =>
+        new Response(
+          new ReadableStream<string>({
+            start(controller) {
+              init?.signal?.addEventListener("abort", () =>
+                controller.error(init.signal?.reason)
+              );
+            },
+          }).pipeThrough(new TextEncoderStream()),
+          { status: 200, headers: { "content-type": "text/event-stream" } }
+        ),
+    });
+
+    const ctx = await asker();
+
+    const sessionId = randomUUID();
+
+    const stop = new AbortController();
+
+    try {
+      const response = await handleAgentChat(
+        ctx,
+        new Request(
+          agentRequest(
+            body({ sessionId }, [{ type: "text", text: "Say hello." }])
+          ),
+          { signal: stop.signal }
+        ),
+        { logError: () => {} }
+      );
+
+      stop.abort();
+      await response.body?.cancel();
+
+      await expect
+        .poll(() => storedAnswer(ctx, sessionId), { timeout: 5000 })
+        .toEqual([STOPPED_PART]);
+    } finally {
+      recorded = useRecordedModel(deployment.context, CORE_MODEL_RECORDINGS);
+    }
+  });
+
   it("Stop during a later step aborts that step's model call and starts no other", async () => {
     const model = heldModel({ firstStep: recordedEvents("live-0d26acf0879b") });
 
