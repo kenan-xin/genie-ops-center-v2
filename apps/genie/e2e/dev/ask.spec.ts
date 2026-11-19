@@ -10,6 +10,7 @@ import {
 
 import { expectNoAxeViolations } from "../support/axe.ts";
 import { atLg, openNavigation } from "../support/shell.ts";
+import { expectTouchAreas } from "../support/touch-areas.ts";
 import {
   askQuestion,
   devSession,
@@ -25,7 +26,7 @@ import {
   THIRD_PARAGRAPH,
 } from "./ask-support.ts";
 import { seedChat } from "./chat-seed.ts";
-import { ASK_PEOPLE, DEV_MODULES } from "./global-setup.ts";
+import { ASK_PEOPLE, DEV_MODULES, INVOICE_ASK_PEOPLE } from "./global-setup.ts";
 
 test.skip(
   !DEV_MODULES.has("placeholder"),
@@ -141,6 +142,116 @@ test("Stop on Ask's first answer keeps the words so far with a Stopped line, als
   }).toPass(FIRST_PAINT);
 
   await expect(log.getByText(THIRD_PARAGRAPH)).toHaveCount(0);
+});
+
+/** The last message text of every agent route POST from now on (the body of `transport.ts`). */
+function agentPosts(page: Page): string[] {
+  const texts: string[] = [];
+
+  page.on("request", (request) => {
+    if (!request.url().endsWith("/api/agent") || request.method() !== "POST")
+      return;
+
+    // SAFETY: the transport sends `{ sessionId, message }`, the message's parts first a text (P3).
+    const { message } = request.postDataJSON() as {
+      message: { parts: { text?: string }[] };
+    };
+
+    texts.push(message.parts.map((part) => part.text ?? "").join(""));
+  });
+
+  return texts;
+}
+
+// czjw.188, P18-30: the resend's answer comes from `synthetic-stream-slow-try-again`.
+test("Try again under a finished answer asks the question once more", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/ask");
+
+  const log = page.getByRole("log", { name: "Conversation" });
+
+  await askQuestion(page, SLOW_QUESTION);
+  await expect(log.getByText(THIRD_PARAGRAPH)).toBeVisible(FIRST_PAINT);
+
+  const posts = agentPosts(page);
+  const tryAgain = log.getByRole("button", { name: "Try again" });
+
+  await expect(tryAgain).toHaveCount(1, FIRST_PAINT);
+  await tryAgain.click();
+
+  await expect(log.getByText(SLOW_QUESTION, { exact: true })).toHaveCount(2);
+  await expect(log.getByText(THIRD_PARAGRAPH)).toHaveCount(2, FIRST_PAINT);
+  expect(posts).toEqual([SLOW_QUESTION]);
+});
+
+// czjw.188, P18-29: proves the one send only; no recording answers the resend after a Stop.
+test("Try again under a stopped answer sends the question once", async ({
+  page,
+}, testInfo) => {
+  test.setTimeout(180_000);
+
+  await signIn(page, asker(testInfo));
+  await page.goto("/ask");
+
+  const log = page.getByRole("log", { name: "Conversation" });
+
+  await askQuestion(page, SLOW_QUESTION);
+  await expect(log.getByText(FIRST_WORDS)).toBeVisible(FIRST_PAINT);
+  await page.getByRole("button", { name: "Stop the answer" }).click();
+  await expect(log.getByText(STOPPED_LINE, { exact: true })).toBeVisible(
+    FIRST_PAINT
+  );
+
+  const posts = agentPosts(page);
+
+  await log.getByRole("button", { name: "Try again" }).click();
+
+  await expect(log.getByText(SLOW_QUESTION, { exact: true })).toHaveCount(2);
+  await expect.poll(() => posts).toEqual([SLOW_QUESTION]);
+});
+
+// czjw.190: 32 px at every width, with the 44 px touch area of the Phase 06 check.
+test("the Ask suggestion pills are 32 px with a 44 px touch area", async ({
+  page,
+}, testInfo) => {
+  test.skip(
+    !DEV_MODULES.has("invoices"),
+    "Ask's suggestions are dataset questions, which only the invoices module has."
+  );
+  test.setTimeout(180_000);
+
+  await signIn(
+    page,
+    testInfo.project.name === "phone"
+      ? INVOICE_ASK_PEOPLE.phone
+      : INVOICE_ASK_PEOPLE.desktop
+  );
+  await page.goto("/ask");
+
+  const pill = page
+    .getByRole("group", { name: "Suggestions" })
+    .getByRole("button")
+    .first();
+
+  await expect(pill).toBeVisible(FIRST_PAINT);
+
+  const height = (await pill.boundingBox())?.height ?? 0;
+
+  expect(Math.abs(height - 32)).toBeLessThanOrEqual(0.5);
+
+  const [label, root] = await pill.evaluate((element) => [
+    Number.parseFloat(getComputedStyle(element).fontSize),
+    Number.parseFloat(getComputedStyle(document.documentElement).fontSize),
+  ]);
+
+  expect(label).toBe(0.875 * root);
+
+  // The desktop shell is dense on purpose (`denseRowHeight`), so the 44 px rule is the phone's.
+  if (!atLg(page)) await expectTouchAreas(page, "Ask suggestions");
 });
 
 test("the agent panel and Ask share a chat, and only New chat starts another", async ({
