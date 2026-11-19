@@ -26,7 +26,7 @@ const meta = {
     docs: {
       description: {
         component:
-          "The card under Ask's answer after a handoff: a tile, the record's title, one status line (working, stopping, done, stopped, interrupted, could not finish, or its chat was deleted), and Open, which is the primary button once the work is done. The fold lists what Ask passed: the goal, the facts, the data with its date, and what it did not pass.",
+          "The card under Ask's answer after a handoff: a tile, the record's title, one status line (working, stopping, done, stopped, interrupted, could not finish, or its chat was deleted), and a quiet Open, and the whole row is the link. The fold lists what Ask passed: the goal, the facts, the data with its date, and what it did not pass.",
       },
     },
     a11y: { test: "error" },
@@ -83,7 +83,11 @@ export const Saved: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByText("Done")).toBeVisible();
-    await expect(await opensTheRecord(canvas)).toHaveClass("bg-primary");
+    // czjw.202: the whole header row is the link, not a small button.
+    const open = await opensTheRecord(canvas);
+
+    await expect(open).toHaveTextContent("October placeholder review");
+    await expect(open).toHaveTextContent("Done");
   },
 };
 
@@ -95,7 +99,7 @@ export const Stopped: Story = {
     const canvas = within(canvasElement);
 
     await expect(await canvas.findByText("Stopped")).toBeVisible();
-    await expect(await opensTheRecord(canvas)).not.toHaveClass("bg-primary");
+    await opensTheRecord(canvas);
   },
 };
 

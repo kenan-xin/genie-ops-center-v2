@@ -330,7 +330,15 @@ export const AsASheet: Story = {
   name: "As a sheet",
   args: { variant: "sheet" },
   play: async ({ args, canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Back to chat" }));
+    const back = canvas.getByRole("button", { name: "Back to chat" });
+
+    // czjw.201: back leads the sheet's header, before the title.
+    expect(
+      back.compareDocumentPosition(canvas.getByRole("heading", { level: 2 })) &
+        Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
+    await userEvent.click(back);
 
     await expect(args.onClose).toHaveBeenCalled();
   },
@@ -367,5 +375,8 @@ export const AKindWithNoView: Story = {
     ).toBeDisabled();
     // One version: no version steps and no version footer.
     await expect(canvas.queryByText(/^Version/)).toBeNull();
+    await expect(
+      canvas.queryByRole("button", { name: "Previous version" })
+    ).toBeNull();
   },
 };

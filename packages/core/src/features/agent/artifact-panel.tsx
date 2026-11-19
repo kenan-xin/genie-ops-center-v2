@@ -87,12 +87,9 @@ export function ArtifactPanel(props: {
 
   const kind = view?.label ?? "Chart or table";
 
-  const closeLabel =
-    props.variant === "column"
-      ? `Close the ${kind.toLowerCase()}`
-      : "Back to chat";
+  const column = props.variant === "column";
 
-  const CloseIcon = props.variant === "column" ? XIcon : ArrowLeftIcon;
+  const closeLabel = `Close the ${kind.toLowerCase()}`;
 
   const Icon = view?.icon;
 
@@ -115,8 +112,22 @@ export function ArtifactPanel(props: {
       aria-label="Chart or table"
       className="flex h-full min-h-0 flex-col bg-card text-card-foreground"
     >
-      <header className="flex items-start gap-2 border-b border-border px-4 py-3">
-        {Icon === undefined ? null : (
+      {/* On a phone sheet, back leads the header (M3, HIG; czjw.201); the column closes at its end. */}
+      <header
+        className={`flex items-start gap-2 border-b border-border py-3 ${column ? "px-4" : "px-2"}`}
+      >
+        {column ? null : (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Back to chat"
+            onClick={props.onClose}
+          >
+            <ArrowLeftIcon aria-hidden="true" />
+          </Button>
+        )}
+        {/* The sheet leads with back alone: a tile behind it sits off the body's text edge. */}
+        {Icon === undefined || !column ? null : (
           <span
             aria-hidden="true"
             className="grid size-8 shrink-0 place-items-center rounded-md bg-muted"
@@ -162,14 +173,16 @@ export function ArtifactPanel(props: {
             ))}
           </DropdownMenuContent>
         </DropdownMenu>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={closeLabel}
-          onClick={props.onClose}
-        >
-          <CloseIcon aria-hidden="true" />
-        </Button>
+        {column ? (
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label={closeLabel}
+            onClick={props.onClose}
+          >
+            <XIcon aria-hidden="true" />
+          </Button>
+        ) : null}
       </header>
 
       {artifact === undefined || version === undefined ? (

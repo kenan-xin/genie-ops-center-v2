@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  buttonVariants,
   focusRing,
   iconLeadPx,
   IconTile,
@@ -145,7 +144,12 @@ export function HandoffCard(props: {
 
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-card">
-      <div className="flex items-center gap-3 px-4 py-3">
+      {/* The whole row opens the work, with the artifact card's quiet Open (czjw.202). */}
+      <a
+        href={card.address}
+        aria-label={`Open ${card.title}`}
+        className={`flex items-center gap-3 px-4 py-3 hover:bg-hover ${focusRing} focus-visible:ring-inset`}
+      >
         <span className="flex self-start">
           <IconTile>
             <ForwardIcon aria-hidden="true" strokeWidth={1.75} />
@@ -159,17 +163,10 @@ export function HandoffCard(props: {
             {status}
           </span>
         </span>
-        <a
-          href={card.address}
-          aria-label={`Open ${card.title}`}
-          className={buttonVariants({
-            variant: run === "saved" ? "primary" : "secondary",
-            size: "sm",
-          })}
-        >
+        <span className="shrink-0 text-xs font-medium text-muted-foreground">
           Open
-        </a>
-      </div>
+        </span>
+      </a>
       {brief === undefined ? null : (
         <BriefFold brief={brief} labels={props.labels} />
       )}
