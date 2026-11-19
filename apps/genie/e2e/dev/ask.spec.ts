@@ -289,8 +289,10 @@ test("the agent panel and Ask share a chat, and only New chat starts another", a
   expect(secondId).not.toBe(sessionId);
   await expect(answerOf(reopened)).toBeVisible(FIRST_PAINT);
 
-  // I1: Open in Ask continues the panel's new chat in Ask.
-  const openInAsk = reopened.getByRole("link", {
+  // I1: Open in Ask, in the Chat actions menu, continues the panel's new chat in Ask.
+  await reopened.getByRole("button", { name: "Chat actions" }).click();
+
+  const openInAsk = page.getByRole("menuitem", {
     name: "Open in Ask",
     exact: true,
   });
@@ -374,7 +376,10 @@ test("Ask shows the version that the panel made after an earlier visit", async (
   await expect(
     panel.getByRole("link", { name: "Quantity by record" })
   ).toBeVisible(FIRST_PAINT);
-  await panel.getByRole("link", { name: "Open in Ask", exact: true }).click();
+  await panel.getByRole("button", { name: "Chat actions" }).click();
+  await page
+    .getByRole("menuitem", { name: "Open in Ask", exact: true })
+    .click();
 
   const artifact = page.getByRole("region", {
     name: "Chart or table",
@@ -400,7 +405,10 @@ test("Ask shows the version that the panel made after an earlier visit", async (
   await expect(
     again.getByRole("link", { name: "Quantity by day" })
   ).toBeVisible(FIRST_PAINT);
-  await again.getByRole("link", { name: "Open in Ask", exact: true }).click();
+  await again.getByRole("button", { name: "Chat actions" }).click();
+  await page
+    .getByRole("menuitem", { name: "Open in Ask", exact: true })
+    .click();
   await conversation
     .getByRole("button", { name: "Quantity by day" })
     .click(FIRST_PAINT);

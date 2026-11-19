@@ -280,7 +280,14 @@ export const WorksWithThePanelClosed: Story = {
   },
 };
 
-const openInAsk = () => screen.getByRole("link", { name: "Open in Ask" });
+/** Opens the panel's Chat actions menu and gives its Open in Ask item (czjw.198). */
+async function openInAsk(): Promise<HTMLElement> {
+  await userEvent.click(screen.getByRole("button", { name: "Chat actions" }));
+
+  return screen.findByRole("menuitem", { name: /^Open in Ask/ });
+}
+
+const closeMenu = () => userEvent.keyboard("{Escape}");
 
 const phone = { viewport: { value: "phone390", isRotated: false } };
 
@@ -299,13 +306,11 @@ export const SurfacePage: Story = {
       within(region).getByRole("heading", { level: 2 })
     ).toHaveTextContent(/^Ask$/);
     await expect(
-      within(region).getByRole("tab", { name: "This chat" })
-    ).toBeVisible();
+      within(region).getByRole("button", { name: "Chats" })
+    ).toHaveAttribute("aria-pressed", "false");
+    // czjw.198: a surface chat has no link to Ask, so no Chat actions menu.
     await expect(
-      within(region).getByRole("tab", { name: "Chats" })
-    ).toBeVisible();
-    await expect(
-      screen.queryByRole("link", { name: "Open in Ask" })
+      screen.queryByRole("button", { name: "Chat actions" })
     ).toBeNull();
 
     await userEvent.type(
@@ -329,7 +334,10 @@ export const OtherPage: Story = {
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await screen.findByRole("region", { name: "Ask" });
-    await expect(openInAsk()).toBeVisible();
+    const item = await openInAsk();
+
+    // The menu fades in.
+    await waitFor(() => expect(item).toBeVisible());
   },
 };
 
@@ -425,7 +433,7 @@ export const PickAnotherRecordsChat: Story = {
   ),
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
-    await userEvent.click(await screen.findByRole("tab", { name: "Chats" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Chats" }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Older chat" })
     );
@@ -433,6 +441,109 @@ export const PickAnotherRecordsChat: Story = {
       `/placeholder/r2?chat=${OLDER_R2}`
     );
     await expect(await screen.findByText("The older chat")).toBeVisible();
+  },
+};
+
+// czjw.203: with the tabs gone, the Chats button shows the list, and a second press the chat.
+export const ChatsButtonOpensTheList: Story = {
+  render: () => <Frame page={false} path="/placeholder/r1" />,
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
+
+    const chats = await within(await panel()).findByRole("button", {
+      name: "Chats",
+    });
+
+    await expect(chats).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      await screen.findByRole("log", { name: "Conversation" })
+    ).toBeVisible();
+
+    await userEvent.click(chats);
+    await expect(chats).toHaveAttribute("aria-pressed", "true");
+    await expect(
+      screen.getByRole("navigation", { name: "Chats" })
+    ).toBeVisible();
+    await expect(
+      screen.queryByRole("log", { name: "Conversation" })
+    ).toBeNull();
+
+    await userEvent.click(chats);
+    await expect(chats).toHaveAttribute("aria-pressed", "false");
+    await expect(
+      screen.getByRole("log", { name: "Conversation" })
+    ).toBeVisible();
+  },
+};
+
+const SHOWN_R1 = "00000000-0000-4000-8000-0000000000c1";
+
+const removed = fn(async (_input: { readonly id: string }) => undefined);
+
+// A delete of the shown chat from its row leaves the panel on an empty new chat, not the deleted one.
+export const PanelRowMenuDeletesTheShownChat: Story = {
+  render: () => (
+    <AgentClientStub
+      sessions={async () => [
+        {
+          ...r2Chat(SHOWN_R1, "Shown chat", "2026-10-27T03:00:00.000Z"),
+          recordId: "r1",
+        },
+      ]}
+      session={async ({ id }) =>
+        id === SHOWN_R1
+          ? {
+              session: {
+                ...r2Chat(id, "Shown chat", "2026-10-27T03:00:00.000Z"),
+                recordId: "r1",
+              },
+              messages: [
+                {
+                  id: "answer-shown",
+                  role: "assistant",
+                  parts: [
+                    {
+                      type: "text",
+                      text: 'root = Answer([p])\np = Paragraph("The shown chat")',
+                    },
+                  ],
+                },
+              ],
+            }
+          : null
+      }
+      remove={removed}
+    >
+      <Frame page={false} path="/placeholder/r1" />
+    </AgentClientStub>
+  ),
+  beforeEach: () => {
+    removed.mockClear();
+  },
+  play: async ({ canvas }) => {
+    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
+    await screen.findByText("The shown chat");
+
+    await userEvent.click(screen.getByRole("button", { name: "Chats" }));
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Chat actions for Shown chat",
+      })
+    );
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: "Delete" })
+    );
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Delete chat" })
+    );
+
+    await waitFor(() => expect(removed).toHaveBeenCalledWith({ id: SHOWN_R1 }));
+    await expect(
+      await screen.findByRole("heading", {
+        name: "What would you like to know?",
+      })
+    ).toBeVisible();
+    await expect(screen.queryByText("The shown chat")).toBeNull();
   },
 };
 
@@ -482,7 +593,7 @@ export const TheSameChatParameterAgainBeatsAPick: Story = {
   render: () => <GivenChatFrame />,
   play: async ({ canvas }) => {
     await screen.findByText("The older chat");
-    await userEvent.click(screen.getByRole("tab", { name: "Chats" }));
+    await userEvent.click(screen.getByRole("button", { name: "Chats" }));
     await userEvent.click(
       await screen.findByRole("button", { name: "Newer chat" })
     );
@@ -654,7 +765,7 @@ async function headerRow() {
 
   return [
     header.getByRole("button", { name: "New chat" }),
-    header.getByRole("link", { name: "Open in Ask" }),
+    header.getByRole("button", { name: "Chat actions" }),
     header.getByRole("button", { name: "Close Ask" }),
   ].map((control) => {
     const { height, top } = control.getBoundingClientRect();
@@ -952,29 +1063,34 @@ export const OpenInAsk: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await panel();
 
-    await expect(openInAsk()).toHaveAttribute("href", "/ask");
+    await expect(await openInAsk()).toHaveAttribute("href", "/ask");
+    await closeMenu();
 
     await userEvent.type(
       await screen.findByRole("textbox", { name: "Message" }),
       "How many records are there?{Enter}"
     );
     await screen.findByText("Half an");
-    await expect(
-      screen.getByRole("button", { name: "Open in Ask" })
-    ).toBeDisabled();
+
+    // A dead item says why it waits.
+    const waiting = await openInAsk();
+
+    await expect(waiting).toHaveAttribute("aria-disabled", "true");
+    await expect(waiting).toHaveTextContent("Ready when the answer ends");
+    await closeMenu();
 
     release();
     await screen.findByText("Half an answer.");
 
     const id = sessionStorage.getItem(SESSION_KEY);
 
-    await waitFor(() =>
-      expect(openInAsk()).toHaveAttribute("href", `/ask/${id}`)
-    );
+    await waitFor(() => expect(sessionStorage.getItem(STORED_KEY)).toBe(id));
+    await expect(await openInAsk()).toHaveAttribute("href", `/ask/${id}`);
+    await closeMenu();
 
     // New chat has no stored answer yet.
     await userEvent.click(screen.getByRole("button", { name: "New chat" }));
-    await expect(openInAsk()).toHaveAttribute("href", "/ask");
+    await expect(await openInAsk()).toHaveAttribute("href", "/ask");
   },
 };
 
@@ -992,7 +1108,7 @@ export const OpenInAskAfterAPageLoad: Story = {
     await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
     await panel();
 
-    await expect(openInAsk()).toHaveAttribute("href", `/ask/${SAVED_ID}`);
+    await expect(await openInAsk()).toHaveAttribute("href", `/ask/${SAVED_ID}`);
   },
 };
 
@@ -1123,9 +1239,18 @@ export const ALongPageLineOnAPhone: Story = {
   name: "A long page line on a phone",
   render: () => <Frame page about={LONG_ABOUT} />,
   globals: { viewport: { value: "phone390", isRotated: false } },
+  // czjw.200: on a phone the page line sits in the header, so the chrome is one row.
   play: async ({ canvas }) => {
     await userEvent.click(canvas.getByRole("button", { name: "Add a chart" }));
-    await expectWholePageLine();
+
+    const region = await panel();
+
+    const line = await within(region.querySelector("header")!).findByText(
+      `This page: ${LONG_ABOUT}`
+    );
+
+    await expect(line).toHaveAttribute("title", LONG_ABOUT);
+    await expect(within(region).getAllByText(/^This page:/)).toHaveLength(1);
   },
 };
 

@@ -127,13 +127,16 @@ async function expectAskHistory(
   ).toHaveCount(1);
 }
 
-/** The record page's Chats tab lists the handed-over chat under On this page (R-42). */
+/** The record page's Chats button lists the handed-over chat under On this page (R-42). */
 async function expectSurfaceChats(
   page: Page,
   surface: Locator,
   title: string
 ): Promise<void> {
-  await activate(page, surface.getByRole("tab", { name: "Chats" }));
+  await activate(
+    page,
+    surface.getByRole("button", { name: "Chats", exact: true })
+  );
 
   await expect(
     surface

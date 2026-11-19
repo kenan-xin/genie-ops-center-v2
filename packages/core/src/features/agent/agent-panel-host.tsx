@@ -2,22 +2,23 @@
 
 import {
   Button,
-  buttonVariants,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   iconLeadPx,
   Sheet,
   SheetContent,
-  Tabs,
-  TabsList,
-  TabsTrigger,
   useMediaQuery,
 } from "@genie/ui";
 import { useQuery } from "@tanstack/react-query";
 import {
   ChevronDownIcon,
   ChevronUpIcon,
+  EllipsisIcon,
   FileTextIcon,
-  Maximize2Icon,
-  PlusIcon,
+  HistoryIcon,
+  SquarePenIcon,
   XIcon,
 } from "lucide-react";
 import {
@@ -105,8 +106,8 @@ const openInAsk = "Open in Ask";
  * page reaches it only through `useAgentPage`. Closed, the chat stays mounted, so an answer goes on.
  *
  * On a surface's record page it is that surface's panel (R-42, S7-41), still titled Ask with the
- * page line naming the page (P05-21): a Working or Saved chip, the tabs This chat and Chats with this record's chats first, and no Open
- * in Ask. A new chat there is bound to the surface and the record. Below 768 px it is a bottom
+ * page line naming the page (P05-21): a Working or Saved chip, a Chats button that shows the
+ * surface's chats with this record's chats first, and no Open in Ask in its Chat actions menu. A new chat there is bound to the surface and the record. Below 768 px it is a bottom
  * panel with no backdrop, so the record that builds stays in view.
  */
 export function AgentPanelHost(props: {
@@ -441,55 +442,79 @@ export function AgentPanelHost(props: {
     >
       <header className="flex min-h-14 shrink-0 items-center gap-1 border-b border-border py-2 ps-4 pe-2">
         <div className="flex min-w-0 flex-1 items-center gap-2">
-          <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
-            <span
-              aria-hidden="true"
-              className={`size-2 shrink-0 rounded-full ${working ? "bg-primary motion-safe:animate-pulse" : "bg-muted-foreground"}`}
-            />
-            <span className="truncate">{name}</span>
-          </h2>
+          <div className="grid min-w-0">
+            <h2 className="flex min-w-0 items-center gap-2 text-base font-semibold">
+              <span
+                aria-hidden="true"
+                className={`size-2 shrink-0 rounded-full ${working ? "bg-primary motion-safe:animate-pulse" : "bg-muted-foreground"}`}
+              />
+              <span className="truncate">{name}</span>
+            </h2>
+            {/* On a phone the page line sits in the header, so the chrome is one row (czjw.200). */}
+            {phone && about !== undefined && !(bottom && collapsed) ? (
+              <p
+                title={about}
+                className="truncate text-xs text-muted-foreground"
+              >
+                This page: {about}
+              </p>
+            ) : null}
+          </div>
           {target === undefined || chip === undefined ? null : (
             <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
               {chip}
             </span>
           )}
         </div>
-        {target === undefined ? (
-          <Button type="button" variant="ghost" onClick={newChat}>
-            <PlusIcon aria-hidden="true" strokeWidth={1.75} />
-            New chat
-          </Button>
-        ) : (
-          // An icon beside the chip, so the title and the chip fit one row at 390 px.
+        {target === undefined ? null : (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            aria-label="New chat"
-            onClick={newChat}
+            aria-label="Chats"
+            aria-pressed={tab === "chats"}
+            onClick={() => setTab(tab === "chats" ? "chat" : "chats")}
           >
-            <PlusIcon aria-hidden="true" strokeWidth={1.75} />
+            <HistoryIcon aria-hidden="true" strokeWidth={1.75} />
           </Button>
         )}
-        {target !== undefined ? null : working ? (
-          // The answer is stored only when it ends, so Ask would show the question alone.
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            disabled
-            aria-label={openInAsk}
-          >
-            <Maximize2Icon aria-hidden="true" strokeWidth={1.75} />
-          </Button>
-        ) : (
-          <Anchor
-            href={askHref}
-            aria-label={openInAsk}
-            className={buttonVariants({ variant: "ghost", size: "icon" })}
-          >
-            <Maximize2Icon aria-hidden="true" strokeWidth={1.75} />
-          </Anchor>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label="New chat"
+          onClick={newChat}
+        >
+          <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
+        </Button>
+        {/* An Ask chat in the panel keeps its link to Ask; a surface panel has none (agent.md l.76, czjw.198). */}
+        {target !== undefined ? null : (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button variant="ghost" size="icon" aria-label="Chat actions" />
+              }
+            >
+              <EllipsisIcon aria-hidden="true" strokeWidth={1.75} />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {working ? (
+                // Ask shows only a stored answer, and an answer is stored at its end.
+                <DropdownMenuItem disabled>
+                  <span className="grid">
+                    {openInAsk}
+                    <span className="text-xs text-muted-foreground">
+                      Ready when the answer ends
+                    </span>
+                  </span>
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem render={<Anchor href={askHref} />}>
+                  {openInAsk}
+                </DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
         {bottom ? (
           <Button
@@ -518,7 +543,7 @@ export function AgentPanelHost(props: {
         </Button>
       </header>
       {/* The page the agent knows about, on its own row so its filter shows in full (czjw.111, czjw.165). */}
-      {about === undefined || (bottom && collapsed) ? null : (
+      {about === undefined || phone || (bottom && collapsed) ? null : (
         <div className="flex shrink-0 items-start gap-2 border-b border-border px-4 py-2 text-sm text-muted-foreground">
           <FileTextIcon
             aria-hidden="true"
@@ -538,30 +563,14 @@ export function AgentPanelHost(props: {
           chat
         ) : (
           <>
-            <div className="shrink-0 px-4 pt-2">
-              <Tabs
-                value={tab}
-                onValueChange={(value) => setTab(String(value))}
-              >
-                {/* Hangs the trigger padding, so the labels start on the panel's 16 px edge (P07-57). */}
-                <TabsList className="-mx-2 sm:-mx-3">
-                  <TabsTrigger value="chat">This chat</TabsTrigger>
-                  <TabsTrigger value="chats">Chats</TabsTrigger>
-                </TabsList>
-              </Tabs>
-            </div>
-            {/* Both panels stay mounted, so a chat keeps its streamed answer on the Chats tab. */}
+            {/* Both panels stay mounted, so a chat keeps its streamed answer on the chats list. */}
             <div
-              role="tabpanel"
-              aria-label="This chat"
               hidden={tab !== "chat"}
               className={`min-h-0 flex-1 flex-col ${tab === "chat" ? "flex" : "hidden"}`}
             >
               {chat}
             </div>
             <div
-              role="tabpanel"
-              aria-label="Chats"
               hidden={tab !== "chats"}
               className={`min-h-0 flex-1 flex-col ${tab === "chats" ? "flex" : "hidden"}`}
             >
@@ -571,6 +580,14 @@ export function AgentPanelHost(props: {
               <ChatHistory
                 sessions={surfaceSessions.data ?? []}
                 currentId={shownId}
+                actions={{
+                  onChanged: () => void surfaceSessions.refetch(),
+                  onDeleted: (id) => {
+                    void surfaceSessions.refetch();
+
+                    if (id === shownId) newChat();
+                  },
+                }}
                 groups={(sessions) =>
                   surfaceSessionGroups(sessions, target.recordId)
                 }

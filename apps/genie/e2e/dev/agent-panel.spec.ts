@@ -415,8 +415,10 @@ test("Open in Ask continues the panel's chat, with its artifact", async ({
     FIRST_PAINT
   );
 
-  // I1: once the answer is stored, Open in Ask names this chat.
-  const openInAsk = panel.getByRole("link", {
+  // I1: once the answer is stored, Open in Ask in the Chat actions menu names this chat.
+  await panel.getByRole("button", { name: "Chat actions" }).click();
+
+  const openInAsk = page.getByRole("menuitem", {
     name: "Open in Ask",
     exact: true,
   });
