@@ -3464,13 +3464,17 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "offered": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
                           "field",
                           "label",
                           "kind",
-                          "datasets"
+                          "datasets",
+                          "offered"
                         ]
                       },
                       "readOnly": true
@@ -3977,13 +3981,17 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "offered": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
                           "field",
                           "label",
                           "kind",
-                          "datasets"
+                          "datasets",
+                          "offered"
                         ]
                       },
                       "readOnly": true
@@ -5082,13 +5090,17 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "offered": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
                           "field",
                           "label",
                           "kind",
-                          "datasets"
+                          "datasets",
+                          "offered"
                         ]
                       },
                       "readOnly": true
@@ -5649,13 +5661,17 @@
                             "items": {
                               "type": "string"
                             }
+                          },
+                          "offered": {
+                            "type": "boolean"
                           }
                         },
                         "required": [
                           "field",
                           "label",
                           "kind",
-                          "datasets"
+                          "datasets",
+                          "offered"
                         ]
                       },
                       "readOnly": true

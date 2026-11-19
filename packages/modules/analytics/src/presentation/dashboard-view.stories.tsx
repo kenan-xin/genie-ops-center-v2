@@ -420,6 +420,25 @@ const MONTH_END_ALL: DashboardFilters = {
   ),
 };
 
+/** A view whose filter names an id field that Add filter does not offer (czjw.178). */
+const KEY_ACCOUNT: DashboardFilters = {
+  dateRange: { preset: "last-3-months" },
+  fields: [
+    { kind: "select", field: "customerId", label: "Customer id", value: "c-1" },
+  ],
+};
+
+const keyAccountPage: DashboardPageView = {
+  ...viewsDashboardPage,
+  dashboard: {
+    ...viewsDashboardPage.dashboard,
+    views: [
+      ...viewsDashboardPage.dashboard.views,
+      { id: "v3", name: "Key account", filters: KEY_ACCOUNT },
+    ],
+  },
+};
+
 /** The view page, opened with `filters` and `view` in the address. */
 const openViews = (filters: DashboardFilters | null, view?: string) => () => {
   serveFilters(viewsDashboardPage);
@@ -455,6 +474,32 @@ export const DefaultViewOpens: Story = {
     );
     await expect(canvas.queryByText("Not saved as default")).toBeNull();
     await expect(canvas.queryByText("Changed")).toBeNull();
+  },
+};
+
+// czjw.178: a stored filter on a field Add filter does not offer still reads, and stays in the address.
+export const KeepsFilterNotOffered: Story = {
+  name: "A view keeps a filter that Add filter does not offer",
+  args: { view: keyAccountPage },
+  globals: desktop,
+  beforeEach: () => {
+    serveFilters(keyAccountPage);
+
+    return withFilterAddress(null, "v3");
+  },
+  play: async ({ canvas }) => {
+    await expect(
+      await canvas.findByLabelText("Customer id: c-1")
+    ).toBeVisible();
+
+    await userEvent.click(await canvas.findByLabelText("Date: Last 3 months"));
+    await userEvent.click(
+      await screen.findByRole("option", { name: "This month" })
+    );
+
+    await waitFor(() => expect(addressParam("range")).toBe("this-month"));
+    await expect(addressParam("f.customerId")).toBe("c-1");
+    await expect(canvas.getByLabelText("Customer id: c-1")).toBeVisible();
   },
 };
 

@@ -29,18 +29,21 @@ const FIELDS: readonly FilterField[] = [
     label: "Region",
     kind: "select",
     datasets: ["invoices.invoices"],
+    offered: true,
   },
   {
     field: "status",
     label: "Status",
     kind: "multi-select",
     datasets: ["invoices.invoices"],
+    offered: true,
   },
   {
     field: "overdue",
     label: "Overdue",
     kind: "toggle",
     datasets: ["payments.payments"],
+    offered: true,
   },
 ];
 
@@ -156,6 +159,7 @@ describe("notApplied", () => {
             label: "Status",
             kind: "multi-select",
             datasets: ["payments.payments"],
+            offered: true,
           },
         ]
       ).map(({ field }) => field)

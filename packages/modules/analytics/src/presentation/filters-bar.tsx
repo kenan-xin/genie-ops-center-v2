@@ -495,8 +495,9 @@ export function FiltersBar(props: FiltersBarProps) {
     setNaming(title);
   }
 
+  // Add filter lists only the fields a person filters by; a stored filter on another still reads (czjw.178).
   const available = dashboard.filterFields.filter(
-    (field) => !applied.has(field.field)
+    (field) => field.offered && !applied.has(field.field)
   );
 
   const full = shown.length >= FIELD_FILTER_LIMIT;

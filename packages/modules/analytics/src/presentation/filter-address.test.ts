@@ -10,29 +10,44 @@ import {
   writeFilterAddress,
 } from "./filter-address.ts";
 
-/** The fields Add filter offers, as the server names them (Task 2 `filterFields`). */
+/** Every field a filter may name, as the server names them (Task 2 `filterFields`). */
 const fields: readonly FilterField[] = [
   {
     field: "label",
     label: "Customer",
     kind: "multi-select",
     datasets: ["invoices.invoices"],
+    offered: true,
   },
   {
     field: "status",
     label: "Status",
     kind: "select",
     datasets: ["invoices.invoices"],
+    offered: true,
   },
   {
     field: "flag",
     label: "Flagged",
     kind: "toggle",
     datasets: ["invoices.invoices"],
+    offered: true,
   },
-  { field: "note", label: "Note", kind: "select", datasets: [] },
-  { field: "ref", label: "Reference", kind: "select", datasets: [] },
-  { field: "extra", label: "Extra", kind: "select", datasets: [] },
+  { field: "note", label: "Note", kind: "select", datasets: [], offered: true },
+  {
+    field: "ref",
+    label: "Reference",
+    kind: "select",
+    datasets: [],
+    offered: true,
+  },
+  {
+    field: "extra",
+    label: "Extra",
+    kind: "select",
+    datasets: [],
+    offered: true,
+  },
 ];
 
 // S7-47 open order: the address when it holds any dashboard parameter, else the default view,

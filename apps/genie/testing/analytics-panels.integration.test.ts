@@ -445,12 +445,22 @@ describe("the analytics panels on real data", () => {
           label: "label",
           kind: "multi-select",
           datasets: ["placeholder.records"],
+          offered: true,
         },
         {
           field: "automatic",
           label: "Allocated automatically",
           kind: "toggle",
           datasets: ["invoices.allocations"],
+          offered: true,
+        },
+        // czjw.178: a key or id field stays known, so a stored filter on it reads, but Add filter does not offer it.
+        {
+          field: "invoiceId",
+          label: "Invoice id",
+          kind: "multi-select",
+          datasets: ["invoices.allocations"],
+          offered: false,
         },
       ])
     );

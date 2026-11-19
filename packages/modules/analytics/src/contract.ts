@@ -159,13 +159,15 @@ export const dashboardChanges = z
   .min(1)
   .max(DASHBOARD_CHANGE_LIMIT);
 
-/** A field the page can filter by: a text or boolean field of a panel dataset the caller reads. */
+/** A field a filter may name: a text or boolean field of a panel dataset the caller reads. */
 export const filterField = z.object({
   field: z.string(),
   label: z.string(),
   kind: z.enum(["multi-select", "select", "toggle"]),
   /** The panel datasets that declare the field. */
   datasets: z.array(z.string()),
+  /** Add filter lists it: not a key or id field, and the first field of its label (czjw.178). */
+  offered: z.boolean(),
 });
 
 /** One dashboard as its owner reads it. The browser narrows each panel `config` (Global Constraints). */

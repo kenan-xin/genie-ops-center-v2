@@ -145,6 +145,22 @@ export const DefaultOnPhone: Story = {
   beforeEach: opened(null),
 };
 
+// czjw.178: Add filter lists only the fields a person filters by, not an id field.
+export const AddFilterOffers: Story = {
+  name: "Add filter lists only the fields a person filters by",
+  globals: desktop,
+  beforeEach: opened(null),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Add filter" })
+    );
+
+    await expect(
+      (await screen.findAllByRole("menuitem")).map((item) => item.textContent)
+    ).toEqual(["Currency", "Customer", "Overdue only", "Region", "Status"]);
+  },
+};
+
 const FOUR: DashboardFilters = {
   dateRange: { preset: "last-3-months" },
   fields: [

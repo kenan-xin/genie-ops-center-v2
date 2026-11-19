@@ -2,6 +2,7 @@ import {
   AppError,
   type DatasetFieldType,
   type DatasetFilter,
+  type DatasetSummary,
   listDatasets,
   type ModuleRequestContext,
   type PanelConfig,
@@ -299,34 +300,69 @@ export async function datasetFacts(
   );
 }
 
-/**
- * Every text and boolean field of the panel datasets the caller can read, sorted by label, with
- * the datasets that declare it. A field one dataset declares as text and another as boolean keeps
- * the kind of the first panel that names it.
- */
+/** Every text and boolean field of the panel datasets the caller can read (R-49). */
 export async function filterFieldsOf(
   ctx: ModuleRequestContext,
   panels: readonly StoredPanel[]
 ): Promise<FilterField[]> {
-  const facts = await datasetFacts(ctx);
-  const found = new Map<string, FilterField>();
-
   const names = new Set(
     panels.flatMap(({ config }) => config.series.map(({ dataset }) => dataset))
   );
 
-  for (const dataset of names) {
-    for (const [field, { type, label }] of facts.get(dataset)?.fields ?? []) {
+  return filterFieldsFrom(await listDatasets(ctx), [...names]);
+}
+
+/** A field named as an id: `id`, or a name that ends in `Id` (czjw.178). */
+const namedAsId = (field: string) => field === "id" || field.endsWith("Id");
+
+/**
+ * Every text and boolean field of the panel datasets, sorted by label, with the datasets that
+ * declare it (R-49). Add filter offers only a field a person filters by (czjw.178): no record key
+ * or row key of a panel dataset, no field named as an id, and one field per label, the first that
+ * the panels name. A field that is not offered stays here, so a stored filter on it still reads.
+ */
+export function filterFieldsFrom(
+  datasets: readonly DatasetSummary[],
+  names: readonly string[]
+): FilterField[] {
+  const panelDatasets = names.flatMap((name) =>
+    datasets.filter((dataset) => dataset.name === name)
+  );
+
+  const keys = new Set(
+    panelDatasets.flatMap(({ recordKey, rowKeyField }) =>
+      rowKeyField === undefined
+        ? [recordKey.field]
+        : [recordKey.field, rowKeyField]
+    )
+  );
+
+  const found = new Map<string, FilterField>();
+  // The labels that an offered field holds, so each shows once in Add filter.
+  const labels = new Set<string>();
+
+  for (const { name, fields } of panelDatasets) {
+    for (const [field, { type, label: declared }] of Object.entries(fields)) {
       const [kind] = filterKindsOf(type);
       const entry = found.get(field);
 
       if (kind === undefined) continue;
 
-      if (entry === undefined) {
-        found.set(field, { field, label, kind, datasets: [dataset] });
-      } else if (entry.kind === kind) {
-        entry.datasets.push(dataset);
+      if (entry !== undefined) {
+        // A field one dataset declares as text and another as boolean keeps its first kind.
+        if (entry.kind === kind) entry.datasets.push(name);
+
+        continue;
       }
+
+      const label = declared ?? field;
+
+      const offered =
+        !keys.has(field) && !namedAsId(field) && !labels.has(label);
+
+      if (offered) labels.add(label);
+
+      found.set(field, { field, label, kind, datasets: [name], offered });
     }
   }
 

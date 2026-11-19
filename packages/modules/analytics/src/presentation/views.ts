@@ -25,7 +25,7 @@ export type DashboardView = {
   version: number;
   canUndo: boolean;
   filters: DashboardFilters;
-  /** The fields Add filter offers, sorted by label. */
+  /** Every field a filter may name, sorted by label; Add filter lists only the offered ones (czjw.178). */
   filterFields: readonly FilterField[];
   panels: readonly PanelView[];
   views: readonly SavedView[];

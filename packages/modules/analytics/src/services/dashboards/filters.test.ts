@@ -1,4 +1,4 @@
-import type { PanelConfig } from "@genie/core";
+import type { DatasetField, DatasetSummary, PanelConfig } from "@genie/core";
 import { describe, expect, it } from "vitest";
 
 import type { DashboardFilters, DateRangeFilter } from "../../contract.ts";
@@ -6,6 +6,7 @@ import {
   type DatasetFacts,
   dateBounds,
   effectivePanel,
+  filterFieldsFrom,
   filterKindsOf,
   priorBounds,
 } from "./filters.ts";
@@ -285,6 +286,152 @@ describe("effectivePanel", () => {
         from: "2026-01-01",
         to: "2026-01-31",
       },
+    ]);
+  });
+});
+
+const text = (label: string): DatasetField => ({
+  kind: "dimension",
+  type: "text",
+  label,
+  description: "d",
+});
+
+const flag = (label: string): DatasetField => ({
+  kind: "dimension",
+  type: "boolean",
+  label,
+  description: "d",
+});
+
+const money = (label: string): DatasetField => ({
+  kind: "measure",
+  type: "money",
+  label,
+  description: "d",
+});
+
+const dataset = (
+  name: string,
+  fields: Record<string, DatasetField>,
+  recordKey: string,
+  rowKey: Pick<DatasetSummary, "rowKeyField"> = {}
+): DatasetSummary => ({
+  name,
+  description: "d",
+  permission: "invoices:read",
+  fields,
+  timeField: "date",
+  recordKey: { type: "record", field: recordKey },
+  ...rowKey,
+});
+
+const INVOICES = dataset(
+  "invoices.invoices",
+  {
+    id: text("Invoice id"),
+    invoiceNumber: text("Invoice"),
+    customerId: text("Customer id"),
+    customerName: text("Customer"),
+    dueDateSource: text("Due date from"),
+    hasDueDate: { ...flag("Has a due date"), hiddenFromAgent: true },
+    totalCents: money("Total"),
+    overdue: flag("Overdue"),
+    status: text("Status"),
+  },
+  "id"
+);
+
+const PAYMENTS = dataset(
+  "invoices.payments",
+  {
+    id: text("Payment id"),
+    customerId: text("Customer id"),
+    customerName: text("Customer"),
+    status: text("Status"),
+  },
+  "id"
+);
+
+const CUSTOMERS = dataset(
+  "invoices.customers",
+  { id: text("Customer id"), name: text("Customer"), email: text("Email") },
+  "id"
+);
+
+const ORDERS = dataset(
+  "other.orders",
+  { number: text("Number"), line: text("Line"), region: text("Region") },
+  "number",
+  { rowKeyField: "line" }
+);
+
+describe("filterFieldsFrom", () => {
+  it("offers the fields a person filters by and keeps the id fields a filter may name", () => {
+    expect(
+      filterFieldsFrom([INVOICES], ["invoices.invoices"]).map(
+        ({ field, offered }) => [field, offered]
+      )
+    ).toEqual([
+      ["customerName", true],
+      ["customerId", false],
+      ["dueDateSource", true],
+      ["hasDueDate", true],
+      ["invoiceNumber", true],
+      ["id", false],
+      ["overdue", true],
+      ["status", true],
+    ]);
+  });
+
+  it("offers one field per label, the first that the panels name, and merges a field that two datasets share", () => {
+    const fields = filterFieldsFrom(
+      [CUSTOMERS, PAYMENTS, INVOICES],
+      ["invoices.invoices", "invoices.payments", "invoices.customers"]
+    );
+
+    const byField = (name: string) =>
+      fields.find(({ field }) => field === name);
+
+    expect(byField("customerName")).toEqual({
+      field: "customerName",
+      label: "Customer",
+      kind: "multi-select",
+      datasets: ["invoices.invoices", "invoices.payments"],
+      offered: true,
+    });
+    expect(byField("name")).toEqual({
+      field: "name",
+      label: "Customer",
+      kind: "multi-select",
+      datasets: ["invoices.customers"],
+      offered: false,
+    });
+    expect(byField("status")?.datasets).toEqual([
+      "invoices.invoices",
+      "invoices.payments",
+    ]);
+
+    expect(
+      filterFieldsFrom(
+        [CUSTOMERS, PAYMENTS, INVOICES],
+        ["invoices.customers", "invoices.invoices"]
+      )
+        .filter(({ label, offered }) => offered && label === "Customer")
+        .map(({ field }) => field)
+    ).toEqual(["name"]);
+  });
+
+  it("leaves out a record key and a row key that are not named as ids", () => {
+    expect(
+      filterFieldsFrom([ORDERS], ["other.orders"]).map(({ field, offered }) => [
+        field,
+        offered,
+      ])
+    ).toEqual([
+      ["line", false],
+      ["number", false],
+      ["region", true],
     ]);
   });
 });
