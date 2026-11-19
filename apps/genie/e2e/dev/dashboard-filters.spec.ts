@@ -21,8 +21,9 @@ test.skip(
 
 /**
  * Dashboard filters in the page address and saved views on the running app (Spec 7 AC-15,
- * S7-46, S7-47): what a real reload, a fresh page and the server's open order show. The demo
- * ledger gives Harbor Foods $41,400 of the $236,400 invoiced, and $14,600 of it overdue.
+ * S7-46, S7-47, czjw.192, czjw.178): what a real reload, a fresh page and the server's open
+ * order show. The demo ledger gives Harbor Foods $41,400 of the $236,400 invoiced, and $14,600
+ * of it overdue.
  */
 
 const ALL = sgd(236_400);
@@ -86,12 +87,29 @@ const pickHarbor = (page: Page) =>
     await page.getByRole("option", { name: "Harbor Foods" }).click();
   });
 
-const addOverdue = (page: Page) =>
+/** czjw.178: Add filter offers no id field of the real datasets. */
+async function expectNoIdFields(page: Page, role: "button" | "menuitem") {
+  await expect(
+    page.getByRole(role, { name: "Overdue", exact: true })
+  ).toBeVisible();
+
+  for (const name of ["Invoice id", "Customer id", "Payment id"]) {
+    // One at a time, so a failure names the field.
+    // oxlint-disable-next-line no-await-in-loop
+    await expect(page.getByRole(role, { name, exact: true })).toHaveCount(0);
+  }
+}
+
+const addOverdue = (page: Page, checkIdFields = false) =>
   inFilters(page, async () => {
     if (onPhone(page)) {
+      if (checkIdFields) await expectNoIdFields(page, "button");
       await page.getByRole("button", { name: "Overdue", exact: true }).click();
     } else {
       await page.getByRole("button", { name: "Add filter" }).click();
+
+      if (checkIdFields) await expectNoIdFields(page, "menuitem");
+
       await page.getByRole("menuitem", { name: "Overdue" }).click();
     }
 
@@ -163,7 +181,7 @@ test("two filters survive a reload and open the same view from the copied link",
     if (onPhone(page)) {
       // The View half of the segmented control opens the Views sheet.
       await viewAndFilters(page)
-        .getByRole("button", { name: "View: Dashboard filters" })
+        .getByRole("button", { name: "View: Original" })
         .click();
       await expect(page.getByRole("dialog", { name: "Views" })).toBeVisible();
       await page.keyboard.press("Escape");
@@ -172,7 +190,7 @@ test("two filters survive a reload and open the same view from the copied link",
 
     await pickHarbor(page);
     await expectInvoiced(page, HARBOR);
-    await addOverdue(page);
+    await addOverdue(page, true);
     await expectInvoiced(page, HARBOR_OVERDUE);
     await expectBar(page, true);
 
@@ -182,7 +200,7 @@ test("two filters survive a reload and open the same view from the copied link",
     );
     await expect(page).toHaveURL(/[?&]f\.overdue=1(&|$)/);
     await expect(
-      page.getByText("Not saved as default").filter({ visible: true })
+      page.getByText("Unsaved changes").filter({ visible: true })
     ).toBeVisible();
 
     await page.reload();
@@ -199,7 +217,7 @@ test("two filters survive a reload and open the same view from the copied link",
   });
 });
 
-test("Save as default opens the saved filters from the plain path", async ({
+test("Save as original in edit mode opens the saved filters from the plain path", async ({
   page,
 }) => {
   test.setTimeout(LOCK_WAIT + 180_000);
@@ -208,22 +226,33 @@ test("Save as default opens the saved filters from the plain path", async ({
     await pickHarbor(page);
     await expectInvoiced(page, HARBOR);
 
-    const unsaved = page.getByText("Not saved as default");
+    const unsaved = page.getByText("Unsaved changes");
 
     await expect(unsaved.filter({ visible: true })).toBeVisible();
-    await page.getByRole("button", { name: "Save as default" }).click();
+    await page
+      .getByRole("button", { name: "Edit dashboard" })
+      .filter({ visible: true })
+      .click();
+
+    const saved = changeSaved(page);
+
+    await viewAction(page, "Original", /^Save as original/);
+    await saved;
     await expect(unsaved).toHaveCount(0);
-    // The filters now live in the stored dashboard, so the address holds none.
+    // The filters now live in the stored Original, so the address holds none.
     await expect(page).not.toHaveURL(/[?&]f\./);
 
     await page.goto(path);
     await expectInvoiced(page, HARBOR);
     await expectBar(page, false);
+    await expect(
+      page.getByRole("button", { name: "View: Original" })
+    ).toBeVisible();
     await expect(unsaved).toHaveCount(0);
   });
 });
 
-test("an updated view made the default opens from the plain path", async ({
+test("a view saved, updated under its name and made the default opens from the plain path", async ({
   page,
 }, testInfo) => {
   test.setTimeout(LOCK_WAIT + 180_000);
@@ -231,13 +260,14 @@ test("an updated view made the default opens from the plain path", async ({
   const name = "Harbor watch";
 
   await onDashboard(page, async (path) => {
+    const saveView = page.getByRole("button", { name: "Save view" });
+    const dialog = page.getByRole("dialog", { name: "Save view" });
+    const unsaved = page.getByText("Unsaved changes");
+
     await pickHarbor(page);
     await expectInvoiced(page, HARBOR);
 
-    await viewAction(page, "Dashboard filters", /^Save as view/);
-
-    const dialog = page.getByRole("dialog", { name: "Save as view" });
-
+    await saveView.click();
     await dialog.getByRole("textbox", { name: "Name" }).fill(name);
     await dialog.getByRole("button", { name: "Save view" }).click();
     await expect(
@@ -245,16 +275,20 @@ test("an updated view made the default opens from the plain path", async ({
     ).toBeVisible();
     await expect(page).toHaveURL(/[?&]view=v\d+(&|$)/);
 
+    const viewId = new URL(page.url()).searchParams.get("view");
+
     await addOverdue(page);
     await expectInvoiced(page, HARBOR_OVERDUE);
-
-    const changed = page.getByText("Changed", { exact: true });
-
-    await expect(changed.filter({ visible: true })).toBeVisible();
+    await expect(unsaved.filter({ visible: true })).toBeVisible();
     // The pointer still rests on the set Overdue switch: its hover keeps 4.5:1 (czjw.136).
-    await expectNoAxeViolations(page, "a changed view");
-    await page.getByRole("button", { name: "Update view" }).click();
-    await expect(changed).toHaveCount(0);
+    await expectNoAxeViolations(page, "a view with unsaved changes");
+    await saveView.click();
+    await expect(dialog.getByRole("textbox", { name: "Name" })).toHaveValue(
+      name
+    );
+    await dialog.getByRole("button", { name: "Save view" }).click();
+    await expect(unsaved).toHaveCount(0);
+    await expect(page).toHaveURL(new RegExp(`[?&]view=${viewId}(&|$)`));
 
     const saved = changeSaved(page);
 
@@ -267,7 +301,7 @@ test("an updated view made the default opens from the plain path", async ({
     ).toBeVisible(FIRST_PAINT);
     await expectInvoiced(page, HARBOR_OVERDUE);
     await expectBar(page, true);
-    await expect(changed).toHaveCount(0);
+    await expect(unsaved).toHaveCount(0);
     await screenshot(page, testInfo, `default-view-${testInfo.project.name}`);
   });
 });
