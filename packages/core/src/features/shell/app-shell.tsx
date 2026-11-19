@@ -14,7 +14,7 @@ import {
   touchAreas,
   useMediaQuery,
 } from "@genie/ui";
-import { ChevronsLeft, ChevronsRight, Menu, X } from "lucide-react";
+import { Menu, PanelLeftClose, PanelLeftOpen, X } from "lucide-react";
 import {
   useEffect,
   useEffectEvent,
@@ -267,9 +267,9 @@ function Shell(props: ShellProps) {
         }
       >
         {rail ? (
-          <ChevronsRight aria-hidden strokeWidth={1.75} className="size-5" />
+          <PanelLeftOpen aria-hidden strokeWidth={1.75} className="size-5" />
         ) : (
-          <ChevronsLeft aria-hidden strokeWidth={1.75} className="size-5" />
+          <PanelLeftClose aria-hidden strokeWidth={1.75} className="size-5" />
         )}
       </TooltipTrigger>
       <TooltipContent side="right">
@@ -300,11 +300,38 @@ function Shell(props: ShellProps) {
   // Ask is the agent's own page, so it gets no panel and no Agent button (FR7).
   const agentOn = props.agentPanel !== undefined && !onAsk;
 
+  const menuButton = (
+    <button
+      type="button"
+      aria-label={
+        working === 0
+          ? strings.openNavigation
+          : working === 1
+            ? strings.openNavigationOneWorking
+            : strings.openNavigationWorking.replace("{count}", String(working))
+      }
+      aria-expanded={drawerOpen}
+      onClick={() => setDrawerOpen(true)}
+      className={iconButton}
+    >
+      <Menu aria-hidden strokeWidth={1.75} className="size-5" />
+      {/* The menu is in the drawer here, so its button carries Ask's spinner as a dot. */}
+      {working === 0 ? null : (
+        <span
+          data-shell-working-dot=""
+          aria-hidden="true"
+          className="absolute top-2.5 right-2.5 size-2 rounded-full bg-primary ring-2 ring-background motion-safe:animate-pulse"
+        />
+      )}
+    </button>
+  );
+
   const shellContext = {
     chrome: props.chrome,
     backTo: strings.backTo,
     linkComponent: props.linkComponent,
     agentPanel: agentOn,
+    menuButton,
   };
 
   const title =
@@ -339,32 +366,7 @@ function Shell(props: ShellProps) {
             data-shell-top-bar=""
             className="flex h-13.5 shrink-0 items-center gap-3 border-b border-border px-2 lg:hidden"
           >
-            <button
-              type="button"
-              aria-label={
-                working === 0
-                  ? strings.openNavigation
-                  : working === 1
-                    ? strings.openNavigationOneWorking
-                    : strings.openNavigationWorking.replace(
-                        "{count}",
-                        String(working)
-                      )
-              }
-              aria-expanded={drawerOpen}
-              onClick={() => setDrawerOpen(true)}
-              className={iconButton}
-            >
-              <Menu aria-hidden strokeWidth={1.75} className="size-5" />
-              {/* The menu is in the drawer here, so its button carries Ask's spinner as a dot. */}
-              {working === 0 ? null : (
-                <span
-                  data-shell-working-dot=""
-                  aria-hidden="true"
-                  className="absolute top-2.5 right-2.5 size-2 rounded-full bg-primary ring-2 ring-background motion-safe:animate-pulse"
-                />
-              )}
-            </button>
+            {menuButton}
             <TenantMark identity={props.identity} size="sm" />
             <p
               aria-hidden="true"

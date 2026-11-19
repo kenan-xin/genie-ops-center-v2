@@ -10,6 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
   Sheet,
+  SheetClose,
   SheetContent,
   SheetHeader,
   SheetTitle,
@@ -18,10 +19,12 @@ import {
 import {
   EllipsisIcon,
   HistoryIcon,
-  PanelLeftIcon,
+  PanelLeftCloseIcon,
+  PanelLeftOpenIcon,
   SquarePenIcon,
+  XIcon,
 } from "lucide-react";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { use, useEffect, useRef, useState, type ReactNode } from "react";
 
 import type { HandoffCardData } from "../../services/agent/hand-over.ts";
 import type {
@@ -30,6 +33,7 @@ import type {
   ChatLabels,
 } from "../../services/agent/index.ts";
 import type { SurfaceView } from "../../services/agent/surface-address.ts";
+import { ShellContext } from "../shell/shell-context.ts";
 import type { Read } from "./answer-sources.ts";
 import type { ArtifactRef } from "./artifact-refs.ts";
 import { ArtifactSheet, ArtifactSlot } from "./artifact-slot.tsx";
@@ -85,11 +89,12 @@ export function AskScreen(props: {
   const docked = useMediaQuery(ARTIFACT_DOCKED, {});
   const [historyOpen, setHistoryOpen] = useState(true);
   const [historySheet, setHistorySheet] = useState(false);
+  const shell = use(ShellContext);
   const [dialog, setDialog] = useState<"rename" | "delete" | null>(null);
 
   const { currentId, models } = props;
 
-  // The rail, its phone sheet and the phone header each start a chat with the pencil.
+  // The phone header starts a chat with the pencil alone.
   const newChat = (extra = "") => (
     <a
       href={props.newChatHref}
@@ -97,6 +102,17 @@ export function AskScreen(props: {
       className={`${buttonVariants({ variant: "ghost", size: "icon" })} ${extra}`}
     >
       <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
+    </a>
+  );
+
+  // New chat: one pencil in every form; text where the history header has room (variant E, czjw.202).
+  const newChatButton = (
+    <a
+      href={props.newChatHref}
+      className={buttonVariants({ variant: "secondary", size: "sm" })}
+    >
+      <SquarePenIcon aria-hidden="true" strokeWidth={1.75} />
+      New chat
     </a>
   );
 
@@ -200,7 +216,7 @@ export function AskScreen(props: {
         >
           <div className="flex h-14 shrink-0 items-center gap-1 ps-6 pe-3">
             <h2 className="flex-1 text-sm font-bold">Chats</h2>
-            {newChat()}
+            {newChatButton}
             <Button
               ref={hideButton}
               type="button"
@@ -209,7 +225,7 @@ export function AskScreen(props: {
               aria-label="Hide chats"
               onClick={() => toggleHistory(false)}
             >
-              <PanelLeftIcon aria-hidden="true" strokeWidth={1.75} />
+              <PanelLeftCloseIcon aria-hidden="true" strokeWidth={1.75} />
             </Button>
           </div>
           {history}
@@ -217,8 +233,14 @@ export function AskScreen(props: {
       ) : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {/* One header at every width; below 1024 px it sits under the shell's top bar. */}
-        <div className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2 lg:ps-6 lg:pe-3">
+        {/* One bar below 1024 px: the shell's menu button joins Ask's bar, and the shell's bar steps aside (czjw.200). */}
+        <div
+          data-page-top-bar=""
+          className="flex h-14 shrink-0 items-center gap-2 border-b border-border px-2 lg:ps-6 lg:pe-3"
+        >
+          {shell?.menuButton === undefined ? null : (
+            <div className="flex lg:hidden">{shell.menuButton}</div>
+          )}
           <Button
             type="button"
             variant="ghost"
@@ -239,7 +261,7 @@ export function AskScreen(props: {
               className="max-lg:hidden"
               onClick={() => toggleHistory(true)}
             >
-              <PanelLeftIcon aria-hidden="true" strokeWidth={1.75} />
+              <PanelLeftOpenIcon aria-hidden="true" strokeWidth={1.75} />
             </Button>
           )}
           <p
@@ -290,13 +312,24 @@ export function AskScreen(props: {
       )}
 
       <Sheet open={historySheet} onOpenChange={setHistorySheet}>
-        <SheetContent side="left">
-          <SheetHeader>
-            <div className="flex items-center gap-1">
+        <SheetContent side="left" showCloseButton={false}>
+          {/* The close button sits on the title row, as in the agent panel header (czjw.205). */}
+          <SheetHeader
+            // oxlint-disable-next-line shadcn/no-restyle -- no corner close button here, so the row takes its room
+            className="pr-2"
+          >
+            <div className="flex items-center gap-2">
               <div className="flex-1">
                 <SheetTitle>Chats</SheetTitle>
               </div>
-              {newChat()}
+              {newChatButton}
+              <SheetClose
+                render={
+                  <Button variant="ghost" size="icon" aria-label="Close" />
+                }
+              >
+                <XIcon aria-hidden="true" strokeWidth={1.75} />
+              </SheetClose>
             </div>
           </SheetHeader>
           {history}

@@ -581,6 +581,12 @@ export const RowsOpenBesideTheChat: Story = {
   },
 };
 
+const middle = (element: HTMLElement) => {
+  const box = element.getBoundingClientRect();
+
+  return box.top + box.height / 2;
+};
+
 export const ChatHistoryOnAPhone: Story = {
   name: "Chat history on a phone",
   globals: phone,
@@ -599,6 +605,14 @@ export const ChatHistoryOnAPhone: Story = {
     await expect(
       within(sheet).getByRole("searchbox", { name: "Search chats" })
     ).toBeVisible();
+
+    // czjw.205: Close sits on the title row, not above it.
+    const close = within(sheet).getByRole("button", { name: "Close" });
+    const title = within(sheet).getByText("Chats");
+
+    await expect(Math.abs(middle(close) - middle(title))).toBeLessThanOrEqual(
+      2
+    );
   },
 };
 

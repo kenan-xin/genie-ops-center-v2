@@ -289,7 +289,13 @@ test("Ask opens as the rail, a collapse survives a reload, and a phone keeps the
     ).toHaveCount(0);
     await page.keyboard.press("Escape");
     await page.goto("/ask");
-    await expect(page.locator("[data-shell-top-bar]")).toContainText("Ask");
+    // One top bar on Ask: the shell's menu button sits in Ask's bar (czjw.200).
+    await expect(page.locator("[data-shell-top-bar]")).toBeHidden();
+    await expect(
+      page
+        .locator("[data-page-top-bar]")
+        .getByRole("button", { name: "Open navigation" })
+    ).toBeVisible();
     await expect(page.locator("aside")).toBeHidden();
     expect(errors).toEqual([]);
 
