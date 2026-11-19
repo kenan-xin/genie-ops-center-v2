@@ -224,6 +224,32 @@ export const LongTitleOnAPhone: Story = {
   },
 };
 
+/**
+ * C18-2 (czjw.203, czjw.204): from 1024 px a long title stays on one line with an ellipsis, in the
+ * group row and in Recents, and its `title` holds the full text.
+ */
+export const LongTitleOnADesktop: Story = {
+  name: "A long title on a desktop",
+  args: { entries: [entry(0, LONG_TITLE, "core:ask"), ...ENTRIES] },
+  play: async ({ canvas }) => {
+    const titles = canvas.getAllByText(LONG_TITLE);
+
+    await expect(titles).toHaveLength(2);
+
+    await expect(
+      titles.map((title) => title.getBoundingClientRect().height)
+    ).toEqual(
+      titles.map((title) =>
+        Number.parseFloat(getComputedStyle(title).lineHeight)
+      )
+    );
+    await expect(titles.map((title) => title.title)).toEqual([
+      LONG_TITLE,
+      LONG_TITLE,
+    ]);
+  },
+};
+
 export const WorkingChat: Story = {
   name: "Working chat",
   play: async ({ canvasElement }) => {

@@ -361,33 +361,43 @@ export const AfterAHandoff: Story = {
       </AgentClientStub>
     );
   },
-  play: async ({ canvas }) => {
-    await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
-
-    const region = await screen.findByRole("region", {
-      name: "Ask",
-    });
-
-    const header = () => within(region.querySelector("header")!);
-
-    await expect(await header().findByText("Working")).toBeVisible();
-    // The title shows in full beside the chip, also at 390 px (Phase 11 capture).
-    const name = region.querySelector("h2 .truncate")!;
-    await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
-    // One row: the shell's collapsed-panel offset (P11-65) assumes a header of about 62 px.
-    await expect(
-      region.querySelector("header")!.offsetHeight
-    ).toBeLessThanOrEqual(64);
-    await expect(await within(region).findByText("From Ask")).toBeVisible();
-    await expect(
-      await header().findByText("Saved", {}, { timeout: 4000 })
-    ).toBeVisible();
-  },
+  play: async ({ canvas }) => afterAHandoff(canvas, true),
 };
+
+/** The run's chip shows from 768 px; below, the live row and the page show the run (C18-5). */
+async function afterAHandoff(
+  canvas: ReturnType<typeof within>,
+  chipShown: boolean
+) {
+  const chip = (element: HTMLElement) =>
+    chipShown
+      ? expect(element).toBeVisible()
+      : expect(element).not.toBeVisible();
+
+  await userEvent.click(canvas.getByRole("button", { name: "Ask" }));
+
+  const region = await screen.findByRole("region", {
+    name: "Ask",
+  });
+
+  const header = () => within(region.querySelector("header")!);
+
+  await chip(await header().findByText("Working"));
+  // The title shows in full beside the chip, also at 390 px (Phase 11 capture).
+  const name = region.querySelector("h2 .truncate")!;
+  await expect(name.scrollWidth).toBeLessThanOrEqual(name.clientWidth);
+  // One row: the shell's collapsed-panel offset (P11-65) assumes a header of about 62 px.
+  await expect(
+    region.querySelector("header")!.offsetHeight
+  ).toBeLessThanOrEqual(64);
+  await expect(await within(region).findByText("From Ask")).toBeVisible();
+  await chip(await header().findByText("Saved", {}, { timeout: 4000 }));
+}
 
 export const AfterAHandoffOnAPhone: Story = {
   ...AfterAHandoff,
   globals: phone,
+  play: async ({ canvas }) => afterAHandoff(canvas, false),
 };
 
 const OLDER_R2 = "00000000-0000-4000-8000-0000000000b2";

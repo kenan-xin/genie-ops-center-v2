@@ -378,5 +378,12 @@ export const AKindWithNoView: Story = {
     await expect(
       canvas.queryByRole("button", { name: "Previous version" })
     ).toBeNull();
+    // One artifact: no switcher and no "1 of 1" position (C18-4).
+    await expect(
+      canvas.queryByRole("button", {
+        name: "All charts and tables in this chat",
+      })
+    ).toBeNull();
+    await expect(canvas.queryByText(/in this chat/)).toBeNull();
   },
 };

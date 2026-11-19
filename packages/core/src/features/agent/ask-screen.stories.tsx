@@ -427,7 +427,7 @@ const LONG_SESSIONS: readonly AgentHistoryEntry[] = [
   ...SESSIONS,
 ];
 
-/** 6wz1.112: the long title wraps in full, and nothing scrolls sideways. */
+/** 6wz1.112: on a phone the long title wraps in full, and nothing scrolls sideways. */
 async function expectWrappedTitle(root: HTMLElement): Promise<void> {
   const nav = within(root).getByRole("navigation", { name: "Chats" });
 
@@ -448,7 +448,18 @@ export const ALongChatTitle: Story = {
 
     if (column === null) throw new Error("No chat history column.");
 
-    await expectWrappedTitle(column);
+    // C18-2: from 1024 px the title is one line with an ellipsis, and its tooltip holds it in full.
+    const nav = within(column).getByRole("navigation", { name: "Chats" });
+
+    const texts = within(nav).getAllByText(LONG_TITLE);
+
+    await expect(
+      texts.every((text) => text.scrollWidth > text.clientWidth)
+    ).toBe(true);
+    await expect(texts.map((text) => text.title)).toEqual(
+      texts.map(() => LONG_TITLE)
+    );
+    await expect(nav.scrollWidth).toBe(nav.clientWidth);
   },
 };
 

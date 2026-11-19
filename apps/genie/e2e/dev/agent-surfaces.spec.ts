@@ -457,7 +457,9 @@ test("the Ask screen hands a deck over: the deck opens with its panel, and Ask s
         const card = page
           .locator("div")
           .filter({
-            has: page.getByRole("link", { name: `Open ${MONTHLY_DECK.title}` }),
+            has: page.getByRole("link", {
+              name: new RegExp(`^${MONTHLY_DECK.title}`),
+            }),
           })
           .filter({ has: page.locator("details") })
           .last();

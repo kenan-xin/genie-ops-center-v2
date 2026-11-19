@@ -462,7 +462,7 @@ export function AgentPanelHost(props: {
             ) : null}
           </div>
           {target === undefined || chip === undefined ? null : (
-            <span className="shrink-0 rounded-full border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
+            <span className="hidden shrink-0 rounded-full border border-border px-1.5 py-0.5 text-xs font-medium text-muted-foreground md:inline">
               {chip}
             </span>
           )}

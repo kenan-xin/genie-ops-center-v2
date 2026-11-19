@@ -147,7 +147,6 @@ export function HandoffCard(props: {
       {/* The whole row opens the work, with the artifact card's quiet Open (czjw.202). */}
       <a
         href={card.address}
-        aria-label={`Open ${card.title}`}
         className={`flex items-center gap-3 px-4 py-3 hover:bg-hover ${focusRing} focus-visible:ring-inset`}
       >
         <span className="flex self-start">

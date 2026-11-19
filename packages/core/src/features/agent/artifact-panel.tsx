@@ -141,38 +141,44 @@ export function ArtifactPanel(props: {
           </h2>
           {artifact === undefined ? null : (
             <p className="text-xs text-muted-foreground">
-              {kind} · {index + 1} of {props.artifacts.length} in this chat
+              {kind}
+              {props.artifacts.length < 2
+                ? ""
+                : ` · ${index + 1} of ${props.artifacts.length} in this chat`}
             </p>
           )}
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            render={
-              <Button
-                variant="ghost"
-                size="icon"
-                aria-label="All charts and tables in this chat"
-              />
-            }
-          >
-            <ChevronDownIcon aria-hidden="true" />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {props.artifacts.map((item) => (
-              <DropdownMenuItem
-                key={item.id}
-                onClick={() =>
-                  props.onShow({
-                    artifactId: item.id,
-                    version: item.latestVersion,
-                  })
-                }
-              >
-                {item.title}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* One artifact has nothing to switch to (C18-4). */}
+        {props.artifacts.length < 2 ? null : (
+          <DropdownMenu>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="All charts and tables in this chat"
+                />
+              }
+            >
+              <ChevronDownIcon aria-hidden="true" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {props.artifacts.map((item) => (
+                <DropdownMenuItem
+                  key={item.id}
+                  onClick={() =>
+                    props.onShow({
+                      artifactId: item.id,
+                      version: item.latestVersion,
+                    })
+                  }
+                >
+                  {item.title}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
         {column ? (
           <Button
             variant="ghost"

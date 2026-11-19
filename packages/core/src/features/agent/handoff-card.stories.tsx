@@ -55,8 +55,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 async function opensTheRecord(canvas: ReturnType<typeof within>) {
+  // czjw.202 (C18-3): the link's name is its visible text, so it starts with the title.
   const open = await canvas.findByRole("link", {
-    name: "Open October placeholder review",
+    name: /^October placeholder review/,
   });
 
   await expect(open).toHaveAttribute("href", "/placeholder/r1");
@@ -88,6 +89,10 @@ export const Saved: Story = {
 
     await expect(open).toHaveTextContent("October placeholder review");
     await expect(open).toHaveTextContent("Done");
+    // WCAG 2.5.3: the live status the person reads is in the link's name too.
+    await expect(open).toHaveAccessibleName(
+      /^October placeholder review.*Done/
+    );
   },
 };
 

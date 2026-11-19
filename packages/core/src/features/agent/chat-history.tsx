@@ -131,7 +131,10 @@ export function ChatHistory(props: {
                       className={`min-w-0 flex-1 text-left ${sessionClass(current)}`}
                       onClick={() => props.onPick(session)}
                     >
-                      <span className="min-w-0 wrap-anywhere">
+                      <span
+                        title={session.title}
+                        className="min-w-0 wrap-anywhere lg:truncate"
+                      >
                         {session.title}
                       </span>
                     </button>
@@ -238,7 +241,8 @@ export function AgentHistory(props: {
           </span>
         ) : null}
         <span
-          className={`min-w-0 flex-1 wrap-anywhere ${entry.unseen && !working ? "font-semibold text-foreground" : ""}`}
+          title={entry.title}
+          className={`min-w-0 flex-1 wrap-anywhere lg:truncate ${entry.unseen && !working ? "font-semibold text-foreground" : ""}`}
         >
           {entry.title}
         </span>
