@@ -290,7 +290,9 @@ test("the agent panel and Ask share a chat, and only New chat starts another", a
   await expect(answerOf(reopened)).toBeVisible(FIRST_PAINT);
 
   // I1: Open in Ask, in the Chat actions menu, continues the panel's new chat in Ask.
-  await reopened.getByRole("button", { name: "Chat actions" }).click();
+  await reopened
+    .getByRole("button", { name: "Chat actions", exact: true })
+    .click();
 
   const openInAsk = page.getByRole("menuitem", {
     name: "Open in Ask",
@@ -376,7 +378,9 @@ test("Ask shows the version that the panel made after an earlier visit", async (
   await expect(
     panel.getByRole("link", { name: "Quantity by record" })
   ).toBeVisible(FIRST_PAINT);
-  await panel.getByRole("button", { name: "Chat actions" }).click();
+  await panel
+    .getByRole("button", { name: "Chat actions", exact: true })
+    .click();
   await page
     .getByRole("menuitem", { name: "Open in Ask", exact: true })
     .click();
@@ -405,7 +409,9 @@ test("Ask shows the version that the panel made after an earlier visit", async (
   await expect(
     again.getByRole("link", { name: "Quantity by day" })
   ).toBeVisible(FIRST_PAINT);
-  await again.getByRole("button", { name: "Chat actions" }).click();
+  await again
+    .getByRole("button", { name: "Chat actions", exact: true })
+    .click();
   await page
     .getByRole("menuitem", { name: "Open in Ask", exact: true })
     .click();
@@ -429,6 +435,18 @@ test("Ask is in the main menu for a holder of Ask, and not for anyone else", asy
   await expect(
     navigation.getByRole("link", { name: "Ask", exact: true })
   ).toHaveAttribute("href", "/ask", FIRST_PAINT);
+
+  // czjw.200: below 1024 px Ask has one top bar, and the menu button sits in it.
+  if (!atLg(page)) {
+    await page.keyboard.press("Escape");
+    await page.goto("/ask");
+    await expect(
+      page
+        .locator("[data-page-top-bar]")
+        .getByRole("button", { name: "Open navigation" })
+    ).toBeVisible(FIRST_PAINT);
+    await expect(page.locator("[data-shell-top-bar]")).toBeHidden();
+  }
 
   await page.context().clearCookies();
   await signIn(page, ASK_PEOPLE.noAsk);
@@ -514,7 +532,10 @@ test("the chat header menu renames a chat and deletes it", async ({
   await signIn(page, asker(testInfo));
   await page.goto(`/ask/${sessionId}`);
 
-  const actions = page.getByRole("button", { name: "Chat actions" });
+  const actions = page.getByRole("button", {
+    name: "Chat actions",
+    exact: true,
+  });
 
   await openUntilVisible(actions, page.getByRole("menu"));
   await page.getByRole("menuitem", { name: "Rename" }).click();
@@ -552,6 +573,109 @@ test("the chat header menu renames a chat and deletes it", async ({
   const response = await page.goto(`/ask/${sessionId}`);
 
   expect(response?.status()).toBe(404);
+});
+
+/**
+ * Ask's history with every Ask chat shown: a group shows its newest 3 before Show more, and the
+ * other tests of this person add chats meanwhile.
+ */
+async function allAskChats(page: Page): Promise<Locator> {
+  const history = await historyOf(page);
+
+  const more = history
+    .getByRole("group", { name: "Ask chats" })
+    .getByRole("button", { name: "Show more" });
+
+  if (await more.isVisible()) await more.click();
+
+  return history;
+}
+
+/** A history row's own menu, whatever the row's title. */
+const menuOf = (row: Locator) =>
+  row.getByRole("button", { name: /^Chat actions for / });
+
+// czjw.203: a history row's menu renames and deletes its own chat, not the open one.
+test("a chat's row menu renames and deletes it", async ({ page }, testInfo) => {
+  test.setTimeout(180_000);
+
+  const third = randomUUID();
+
+  await seedChat({
+    email: asker(testInfo),
+    sessionId: third,
+    turns: [{ question: "A chat to delete from its row", answer: "Done." }],
+  });
+  await signIn(page, asker(testInfo));
+  await page.goto("/ask");
+
+  const first = await ask(page);
+
+  await expectAnswer(page);
+  await page.goto("/ask");
+
+  const second = await askQuestion(page, CHART_QUESTION);
+
+  await expect(page).toHaveURL(`/ask/${second}`, FIRST_PAINT);
+
+  // A chat is listed in Ask's group and in Recents; the first row is enough.
+  const rowOf = (history: Locator, id: string) =>
+    history
+      .getByRole("listitem")
+      .filter({ has: page.locator(`a[href="/ask/${id}"]`) })
+      .first();
+
+  const history = await allAskChats(page);
+
+  await menuOf(rowOf(history, first)).click();
+  await page.getByRole("menuitem", { name: "Rename" }).click();
+
+  const rename = page.getByRole("dialog", { name: "Rename this chat" });
+
+  await rename
+    .getByRole("textbox", { name: "Name" })
+    .fill("Renamed in its row");
+  await rename.getByRole("button", { name: "Save" }).click();
+  await expect(rename).toBeHidden();
+  await expect(rowOf(history, first)).toContainText("Renamed in its row");
+  await expect(page).toHaveURL(`/ask/${second}`);
+
+  const deleteFromRow = async (id: string) => {
+    await menuOf(rowOf(history, id)).click();
+    await page.getByRole("menuitem", { name: "Delete" }).click();
+
+    const confirm = page.getByRole("dialog", { name: "Delete this chat?" });
+
+    await confirm.getByRole("button", { name: "Delete chat" }).click();
+    // It closes once the delete succeeds; while open it hides the history from role queries.
+    await expect(confirm).toBeHidden();
+  };
+
+  // Deleting a chat that is not open leaves the open chat in place (P18-49). The open chat's id
+  // comes from the page, so leaving it needs a server read of /ask (an `_rsc` request), which the
+  // route would send before the history read that follows the delete. The row is not removed
+  // optimistically, so its absence after the dialog closes implies that history read.
+  const navigations: string[] = [];
+
+  page.on("request", (request) => {
+    if (request.url().includes("/ask?_rsc=")) navigations.push(request.url());
+  });
+
+  await deleteFromRow(third);
+  await expect(history.locator(`a[href="/ask/${third}"]`)).toHaveCount(0);
+  expect(navigations).toEqual([]);
+  await expect(page).toHaveURL(`/ask/${second}`);
+  await expect(page.getByRole("log", { name: "Conversation" })).not.toBeEmpty();
+
+  await deleteFromRow(second);
+
+  await expect(page).toHaveURL(/\/ask$/, FIRST_PAINT);
+  await expect(page.getByRole("log", { name: "Conversation" })).toBeEmpty();
+
+  const after = await allAskChats(page);
+
+  await expect(after.locator(`a[href="/ask/${second}"]`)).toHaveCount(0);
+  await expect(rowOf(after, first)).toContainText("Renamed in its row");
 });
 
 test("a person without Ask gets no Ask button and the denied page on Ask", async ({

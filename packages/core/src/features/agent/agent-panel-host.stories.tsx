@@ -478,15 +478,35 @@ export const ChatsButtonOpensTheList: Story = {
 
 const SHOWN_R1 = "00000000-0000-4000-8000-0000000000c1";
 
+const OTHER_R1 = "00000000-0000-4000-8000-0000000000c2";
+
 const removed = fn(async (_input: { readonly id: string }) => undefined);
 
-// A delete of the shown chat from its row leaves the panel on an empty new chat, not the deleted one.
+/** Deletes a chat from its row menu in the Chats list. */
+async function deleteFromRow(title: string) {
+  await userEvent.click(
+    await screen.findByRole("button", { name: `Chat actions for ${title}` })
+  );
+  await userEvent.click(
+    await screen.findByRole("menuitem", { name: "Delete" })
+  );
+  await userEvent.click(
+    await screen.findByRole("button", { name: "Delete chat" })
+  );
+}
+
+// A delete of another chat from its row keeps the shown chat; a delete of the shown chat leaves
+// the panel on an empty new chat, not the deleted one.
 export const PanelRowMenuDeletesTheShownChat: Story = {
   render: () => (
     <AgentClientStub
       sessions={async () => [
         {
           ...r2Chat(SHOWN_R1, "Shown chat", "2026-10-27T03:00:00.000Z"),
+          recordId: "r1",
+        },
+        {
+          ...r2Chat(OTHER_R1, "Other chat", "2026-10-27T02:00:00.000Z"),
           recordId: "r1",
         },
       ]}
@@ -525,17 +545,16 @@ export const PanelRowMenuDeletesTheShownChat: Story = {
     await screen.findByText("The shown chat");
 
     await userEvent.click(screen.getByRole("button", { name: "Chats" }));
-    await userEvent.click(
-      await screen.findByRole("button", {
-        name: "Chat actions for Shown chat",
-      })
-    );
-    await userEvent.click(
-      await screen.findByRole("menuitem", { name: "Delete" })
-    );
-    await userEvent.click(
-      await screen.findByRole("button", { name: "Delete chat" })
-    );
+    await deleteFromRow("Other chat");
+    await waitFor(() => expect(removed).toHaveBeenCalledWith({ id: OTHER_R1 }));
+    await userEvent.click(screen.getByRole("button", { name: "Chats" }));
+    await expect(await screen.findByText("The shown chat")).toBeVisible();
+    await expect(
+      screen.queryByRole("heading", { name: "What would you like to know?" })
+    ).toBeNull();
+
+    await userEvent.click(screen.getByRole("button", { name: "Chats" }));
+    await deleteFromRow("Shown chat");
 
     await waitFor(() => expect(removed).toHaveBeenCalledWith({ id: SHOWN_R1 }));
     await expect(

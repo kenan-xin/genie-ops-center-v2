@@ -343,7 +343,10 @@ test("Ask history groups chats by agent and opens a surface chat on its record p
         await expect(menuRuns(page, 1)).toBeVisible(FIRST_PAINT);
 
         if (onPhone(page)) {
-          await expect(page.locator("[data-shell-working-dot]")).toBeVisible();
+          // Ask's own bar carries the menu button below 1024 px (czjw.200).
+          await expect(
+            page.locator("[data-page-top-bar] [data-shell-working-dot]")
+          ).toBeVisible();
           // Outside the repository, so `next dev` does not reload on the write.
           await page.screenshot({
             path: test.info().outputPath("phone-menu-dot.png"),

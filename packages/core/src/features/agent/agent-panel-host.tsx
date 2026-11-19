@@ -107,8 +107,9 @@ const openInAsk = "Open in Ask";
  *
  * On a surface's record page it is that surface's panel (R-42, S7-41), still titled Ask with the
  * page line naming the page (P05-21): a Working or Saved chip, a Chats button that shows the
- * surface's chats with this record's chats first, and no Open in Ask in its Chat actions menu. A new chat there is bound to the surface and the record. Below 768 px it is a bottom
- * panel with no backdrop, so the record that builds stays in view.
+ * surface's chats with this record's chats first, and no Chat actions menu, so no Open in Ask. A
+ * new chat there is bound to the surface and the record. Below 768 px it is a bottom panel with no
+ * backdrop, so the record that builds stays in view.
  */
 export function AgentPanelHost(props: {
   /** The signed-in person's id: the tab keeps one chat per person, so another sign-in starts afresh. */
@@ -492,7 +493,12 @@ export function AgentPanelHost(props: {
           <DropdownMenu>
             <DropdownMenuTrigger
               render={
-                <Button variant="ghost" size="icon" aria-label="Chat actions" />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Chat actions"
+                />
               }
             >
               <EllipsisIcon aria-hidden="true" strokeWidth={1.75} />
