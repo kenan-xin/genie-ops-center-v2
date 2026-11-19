@@ -65,9 +65,11 @@ const invoiceDate = (row: InvoiceListRow) =>
   formatChartValue(INVOICE_DATE, row.invoiceDate);
 
 const dueDate = (row: InvoiceListRow) =>
-  row.dueDate === null
-    ? "No due date"
-    : formatChartValue(DUE_DATE, row.dueDate);
+  row.dueDate === null ? (
+    <span className="text-muted-foreground">No due date</span>
+  ) : (
+    formatChartValue(DUE_DATE, row.dueDate)
+  );
 
 const recordHref = (row: InvoiceListRow) => `/m/invoices/invoices/${row.id}`;
 

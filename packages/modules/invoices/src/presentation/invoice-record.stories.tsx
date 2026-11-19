@@ -55,6 +55,16 @@ async function pageDrawn(root: HTMLElement) {
   );
 }
 
+/** The value a reader of `dt` then the first `dd` gets, as the dev e2e helper `fact()` reads it. */
+function factOf(root: HTMLElement, label: string): string | null {
+  const term = within(root).getByText(label, { selector: "dt" });
+  let next = term.nextElementSibling;
+
+  while (next !== null && next.tagName !== "DD") next = next.nextElementSibling;
+
+  return next?.textContent ?? null;
+}
+
 function serve(view: InvoiceRecordView) {
   releaseUnlink = null;
   getInvoiceRecord.mockReset().mockResolvedValue(view);
@@ -257,8 +267,20 @@ export const PageFirstOnPhone: Story = {
 
 export const NoDueDate: Story = {
   name: "No due date",
+  globals: desktop,
   args: { view: noDueDateInvoiceRecord },
   beforeEach: () => serve(noDueDateInvoiceRecord),
+  play: async ({ canvas, canvasElement }) => {
+    const figures = canvas.getByRole("region", { name: "Figures" });
+
+    await expect(factOf(figures, "Due date")).toBe("No due date");
+
+    // The desk's field, in the page or in the Fields card, says the same words.
+    const field = canvasElement.querySelector('[data-pin="dueDate"]');
+
+    expect(field?.textContent).toContain("No due date");
+    expect(field?.textContent).not.toContain("None");
+  },
 };
 
 export const AfterReportingDate: Story = {

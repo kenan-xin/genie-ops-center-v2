@@ -34,7 +34,7 @@ const DUE_DATE_SOURCE: Record<
 
 function dueDate(invoice: InvoiceDetail): Figure {
   return invoice.dueDate === null || invoice.dueDateSource === "unspecified"
-    ? { label: "Due date", value: "None" }
+    ? { label: "Due date", value: "No due date" }
     : {
         label: "Due date",
         value: formatDay(invoice.dueDate),

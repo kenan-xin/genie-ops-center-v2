@@ -11,10 +11,12 @@ import {
   LOCK_WAIT,
   onPhone,
   openDetails,
+  openInbox,
   expectPageDrawn,
   expectPinsOnMarks,
   sgd,
   signIn,
+  withFilters,
 } from "./dev-support.ts";
 import { DEV_MODULES } from "./global-setup.ts";
 
@@ -103,7 +105,8 @@ function statusText(invoice: Readonly<Record<string, string>>): string {
     case "open":
       return "Open";
     case "due_date_unspecified":
-      return "No due date";
+      // No due date is Open; the Due date column says so (czjw.191).
+      return "Open";
     default:
       throw new Error(
         `The demo pack names an unknown status ${invoice.status}.`
@@ -163,6 +166,12 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
           );
         }
 
+        if (invoice.due_date === "" && !row.text.includes("No due date")) {
+          found.push(
+            `${invoice.invoice_id}: no "No due date" in ${JSON.stringify(row.text)}`
+          );
+        }
+
         return found;
       });
 
@@ -173,6 +182,14 @@ test("the Invoices list shows every seeded invoice with its outstanding amount a
     LOCK_WAIT
   );
 });
+
+/** The four figures of the ledger strip, as the whole ledger reads them (czjw.112). */
+const ledgerFigures = (page: Page) =>
+  Promise.all(
+    ["Invoiced", "Outstanding", "Overdue", "Invoices"].map((label) =>
+      fact(page, label).textContent()
+    )
+  );
 
 test("the Overdue tab keeps only the overdue invoices, and the figure strip keeps the ledger", async ({
   page,
@@ -197,16 +214,9 @@ test("the Overdue tab keeps only the overdue invoices, and the figure strip keep
       expect(overdue.length).toBeGreaterThan(1);
 
       // The strip reads the whole ledger, so the tab must leave it as it is (R-37a, czjw.112).
-      const ledger = () =>
-        Promise.all(
-          ["Invoiced", "Outstanding", "Overdue", "Invoices"].map((label) =>
-            fact(page, label).textContent()
-          )
-        );
-
       await expect(fact(page, "Invoices")).toHaveText(/^\d+$/);
 
-      const before = await ledger();
+      const before = await ledgerFigures(page);
 
       const tab = `Overdue ${overdue.length}`;
 
@@ -232,13 +242,107 @@ test("the Overdue tab keeps only the overdue invoices, and the figure strip keep
 
       // The rows and the strip come in one answer, and the old page shows until it lands, so the
       // strip is read only after the rows: it still holds every overdue invoice and the whole ledger.
-      expect(await ledger()).toEqual(before);
+      expect(await ledgerFigures(page)).toEqual(before);
       await expect(fact(page, "Overdue")).toHaveText(sgd(overdueAmount));
       await expect(fact(page, "Outstanding")).not.toHaveText(
         sgd(overdueAmount)
       );
 
       await expectNoAxeViolations(page, "invoices list filtered");
+    },
+    LOCK_WAIT
+  );
+});
+
+test("the Due date filter keeps only the invoices with no due date, and the figure strip keeps the ledger", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signIn(page);
+      await openList(page, "/m/invoices/invoices", "Invoices");
+
+      const noDueDate = readDemoCsv("04_Demo_Guide/expected_invoice_status.csv")
+        .filter((invoice) => invoice.due_date === "")
+        .map((invoice) => invoice.invoice_id);
+
+      expect(noDueDate).toContain("INV-2026-10-04");
+
+      const before = await ledgerFigures(page);
+
+      await withFilters(page, async () => {
+        await page
+          .getByLabel("Due date: Any due date")
+          .filter({ visible: true })
+          .click();
+        await page.getByRole("option", { name: "No due date" }).click();
+      });
+
+      await expect(page).toHaveURL(/[?&]due=no(&|$)/);
+
+      // The server answers the filter.
+      await expect
+        .poll(async () =>
+          (await shownRows(page, "Invoices")).map((row) => row.label).toSorted()
+        )
+        .toEqual(noDueDate.toSorted());
+
+      expect(await ledgerFigures(page)).toEqual(before);
+      await expectNoAxeViolations(page, "invoices list by due date");
+    },
+    LOCK_WAIT
+  );
+});
+
+test("no list shows Clear filters with nothing set, also on a link to a tab that is gone", async ({
+  page,
+}) => {
+  test.setTimeout(LOCK_WAIT + FIRST_PAINT.timeout + 60_000);
+
+  await withDeploymentLock(
+    LEDGER_LOCK,
+    async () => {
+      await signIn(page);
+
+      const lists = [
+        [
+          "Invoices",
+          () =>
+            openList(
+              page,
+              "/m/invoices/invoices?status=no-due-date",
+              "Invoices"
+            ),
+        ],
+        ["Payments", () => openList(page, "/m/invoices/payments", "Payments")],
+        ["Documents", () => openInbox(page)],
+      ] as const;
+
+      for (const [label, open] of lists) {
+        // oxlint-disable-next-line no-await-in-loop -- one page opens the lists in turn.
+        await open();
+
+        if (onPhone(page)) {
+          // oxlint-disable-next-line no-await-in-loop -- see above.
+          await expect(
+            page.getByRole("button", { name: "Filters", exact: true })
+          ).toBeVisible();
+        } else {
+          // oxlint-disable-next-line no-await-in-loop -- see above.
+          await expect(
+            page.getByRole("button", { name: "Clear filters" })
+          ).toHaveCount(0);
+        }
+
+        if (label === "Invoices") {
+          // The old tab is not applied, so the address lists the whole ledger.
+          // oxlint-disable-next-line no-await-in-loop -- see above.
+          expect(await shownRows(page, "Invoices")).toHaveLength(36);
+        }
+      }
     },
     LOCK_WAIT
   );

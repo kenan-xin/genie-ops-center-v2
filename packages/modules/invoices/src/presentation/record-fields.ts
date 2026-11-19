@@ -47,7 +47,7 @@ export function invoiceDeskFields(
 ): readonly DeskField[] {
   const due =
     invoice.dueDate === null || invoice.dueDateSource === "unspecified"
-      ? null
+      ? "No due date"
       : formatDay(invoice.dueDate);
 
   return deskFields(

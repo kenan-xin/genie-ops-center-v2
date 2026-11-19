@@ -86,6 +86,27 @@ export async function openInbox(page: Page, status = "all"): Promise<void> {
   await mounted;
 }
 
+/** On a phone the filters but the search sit in the Filters sheet; on a desktop in the bar. */
+export async function withFilters(
+  page: Page,
+  pick: () => Promise<void>
+): Promise<void> {
+  if (onPhone(page)) {
+    await page.getByRole("button", { name: /^Filters/ }).click();
+    await pick();
+    await page.getByRole("button", { name: /^Show / }).click();
+
+    return;
+  }
+
+  // A narrow bar keeps the controls that do not fit in More filters (LH27).
+  const more = page.getByRole("button", { name: "More filters" });
+
+  if (await more.isVisible()) await more.click();
+
+  await pick();
+}
+
 /**
  * One fact of a record page, read through the term that labels it. Visible only: a hard load can
  * leave React's late streamed segment as a hidden `div#S:0` copy of the page in the body.

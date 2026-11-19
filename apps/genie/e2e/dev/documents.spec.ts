@@ -15,6 +15,7 @@ import {
   signIn,
   UPLOAD_TIMEOUT,
   uploadFiles,
+  withFilters,
 } from "./dev-support.ts";
 import { DEV_MODULES } from "./global-setup.ts";
 
@@ -231,27 +232,6 @@ test("Processed reads its first page, and a scroll to the end reads the rest", a
     LOCK_WAIT
   );
 });
-
-/** On a phone the filters but the search sit in the Filters sheet; on a desktop in the bar. */
-async function withFilters(
-  page: Page,
-  pick: () => Promise<void>
-): Promise<void> {
-  if (onPhone(page)) {
-    await page.getByRole("button", { name: /^Filters/ }).click();
-    await pick();
-    await page.getByRole("button", { name: /^Show / }).click();
-
-    return;
-  }
-
-  // A narrow bar keeps the controls that do not fit in More filters (LH27).
-  const more = page.getByRole("button", { name: "More filters" });
-
-  if (await more.isVisible()) await more.click();
-
-  await pick();
-}
 
 test("the inbox search, type and upload date narrow the rows on the server", async ({
   page,
