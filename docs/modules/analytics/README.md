@@ -6,7 +6,7 @@ Anyone who wants live charts over the data that modules publish.
 
 ## What it does
 
-A person builds dashboards of panels by chat beside the dashboard, or by hand. A panel reads only published datasets through core (`DEC-54`), passes the core chart gate before it is saved, shows its dataset and read time, and refreshes every 10 seconds. Dashboards are owner-only. The module knows no other module: the demo seed writes the Receivables overview starter dashboard. Full requirements: `../../specs/07-invoice-and-payments.md`, R-48 to R-51.
+A person builds dashboards of panels by chat beside the dashboard, or by hand. A panel reads only published datasets through core (`DEC-54`), passes the core chart gate before it is saved, shows its dataset and read time, and refreshes every 10 seconds. Dashboards are owner-only. The view menu lists Original and the saved views, and Make default picks the one that the dashboard opens with: one default per person, and a dashboard has one person (R-48). When the filters change, the bar says Unsaved changes with Save view and Reset. In edit mode, Save as original stores the current filters as Original (`czjw.192`). The module knows no other module: the demo seed writes the Receivables overview starter dashboard. Full requirements: `../../specs/07-invoice-and-payments.md`, R-48 to R-51.
 
 ## Permissions and roles
 
@@ -27,7 +27,7 @@ Default roles: `Analytics user` (`analytics:use`), `Analytics viewer` (`analytic
 | `id` | uuid primary key. |
 | `owner_user_id` | The owner's `user.id`, by value with no foreign key (data-shape module rule 2). |
 | `name` | 1 to 80 characters after trim, unique per owner whatever its case and outer spaces; another owner may use the same name. |
-| `config` | The zod-checked config: dashboard filters (a date range preset or a custom range, and one field filter) and the panels in display order. |
+| `config` | The zod-checked config: Original, the owner's own filters (a date range and up to four field filters), the panels in display order, the saved views (at most 20, filter values only), and `defaultViewId`, the view that the dashboard opens with, `null` for Original (R-48, R-49a). |
 | `undo` | The last 20 saves, newest first, each `{ name, config }`. |
 | `version` | Starts at 1 and moves up at each save. |
 | `created_at`, `updated_at` | With time zone. |

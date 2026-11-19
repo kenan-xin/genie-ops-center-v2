@@ -792,6 +792,102 @@ export const MakeOriginalDefault: Story = {
   },
 };
 
+// czjw.192: Save as original is the owner's, in edit mode only, and keeps the person's default.
+export const SaveAsOriginal: Story = {
+  name: "Save as original in edit mode",
+  args: { view: filtersDashboardPage },
+  globals: desktop,
+  beforeEach: () => {
+    serveFilters(filtersDashboardPage);
+
+    return withFilterAddress(TWO_SET);
+  },
+  play: async ({ canvas }) => {
+    await pickView(canvas, "Original");
+    // The menu slides in, so wait for it to settle.
+    await waitFor(() =>
+      expect(screen.getByRole("menuitem", { name: /^Save view/ })).toBeVisible()
+    );
+    // Outside edit mode the menu offers no Save as original.
+    await expect(
+      screen.queryByRole("menuitem", { name: /^Save as original/ })
+    ).toBeNull();
+
+    await userEvent.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+
+    await userEvent.click(
+      canvas.getByRole("button", { name: "Edit dashboard" })
+    );
+
+    await pickView(canvas, "Original");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Save as original/ })
+    );
+
+    // One set-filters step only, so nothing clears the person's default.
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "set-filters", filters: TWO_SET }],
+    });
+    await waitFor(() =>
+      expect(canvas.queryByText("Unsaved changes")).toBeNull()
+    );
+    await expect(canvas.getByLabelText("Region: North")).toBeVisible();
+
+    // Nothing differs now, so the item is gone.
+    await pickView(canvas, "Original");
+    await waitFor(() =>
+      expect(screen.getByRole("menuitem", { name: /^Save view/ })).toBeVisible()
+    );
+    await expect(
+      screen.queryByRole("menuitem", { name: /^Save as original/ })
+    ).toBeNull();
+  },
+};
+
+// czjw.192 Review Focus 4: Save as original from a view keeps that view the person's default.
+export const SaveAsOriginalFromView: Story = {
+  name: "Save as original from a view keeps the default",
+  args: { view: viewsDashboardPage },
+  globals: desktop,
+  beforeEach: openViews(MONTH_END_ALL, "v1"),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Edit dashboard" })
+    );
+
+    await pickView(canvas, "Month end");
+    await userEvent.click(
+      await screen.findByRole("menuitem", { name: /^Save as original/ })
+    );
+
+    await waitFor(() => expect(changeDashboard).toHaveBeenCalledTimes(1));
+    await expect(changeDashboard).toHaveBeenCalledWith({
+      id: "dashboard-1",
+      expectedVersion: 1,
+      changes: [{ op: "set-filters", filters: MONTH_END_ALL }],
+    });
+    await expect(
+      canvas.getByRole("button", { name: "View: Month end" })
+    ).toBeVisible();
+    await expect(addressParam("view")).toBe("v1");
+
+    await waitFor(() => expect(screen.queryByRole("menu")).toBeNull());
+    await pickView(canvas, "Month end");
+    const menu = within(await screen.findByRole("menu"));
+    await waitFor(() =>
+      expect(
+        within(
+          menu.getByRole("menuitemradio", { name: /^Month end/ })
+        ).getByText("Default")
+      ).toBeVisible()
+    );
+  },
+};
+
 // Delete view goes back to Original, not to the default view.
 export const RemoveView: Story = {
   name: "Delete view",

@@ -304,6 +304,7 @@ export function DashboardView(props: DashboardViewProps) {
               <FiltersBar
                 dashboard={dashboard}
                 filters={filters}
+                editing={editing}
                 onReload={reload}
               />
             </div>

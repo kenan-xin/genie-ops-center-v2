@@ -52,6 +52,7 @@ function Live(props: FiltersBarProps) {
     <FiltersBar
       dashboard={props.dashboard}
       filters={filters}
+      editing={props.editing}
       onReload={props.onReload}
     />
   );
@@ -83,6 +84,7 @@ const meta = {
   args: {
     dashboard: filtersDashboardPage.dashboard,
     filters: docsFilters,
+    editing: false,
     onReload: fn(),
   },
   render: (args) => <Live {...args} />,

@@ -276,6 +276,8 @@ export type FiltersBarProps = {
   readonly dashboard: DashboardView;
   /** The filters the page applies, from `useDashboardFilters`. */
   readonly filters: DashboardFilterState;
+  /** Edit mode, where the owner's Save as original shows (czjw.192). */
+  readonly editing: boolean;
   /** Reads the dashboard again after a save met a newer version. */
   readonly onReload: () => void;
 };
@@ -477,6 +479,11 @@ export function FiltersBar(props: FiltersBarProps) {
     change.mutate([{ op: "set-default-view", id: selected?.id ?? null }]);
   }
 
+  /** Save as original: one `set-filters` step, so the person's default stays (P19-10). */
+  function saveAsOriginal() {
+    change.mutate([{ op: "set-filters", filters: current }]);
+  }
+
   function removeView() {
     if (selected === undefined) return;
 
@@ -537,6 +544,10 @@ export function FiltersBar(props: FiltersBarProps) {
     onMakeDefault: makeDefault,
     onRemove: removeView,
     onSaveView: openNaming,
+    onSaveAsOriginal:
+      props.editing && !sameFilters(current, dashboard.filters)
+        ? saveAsOriginal
+        : undefined,
   };
 
   const statusRow = (place: "bar" | "phone") =>

@@ -36,6 +36,7 @@ import {
   ChevronDownIcon,
   type LucideIcon,
   PlusIcon,
+  SaveIcon,
   StarIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -72,6 +73,8 @@ export type ViewMenuProps = {
   readonly onRemove: () => void;
   /** Opens the Name dialog of Save view. */
   readonly onSaveView: () => void;
+  /** Stores the current filters as Original: given only in edit mode, when they differ (czjw.192). */
+  readonly onSaveAsOriginal?: (() => void) | undefined;
 };
 
 /** Two lines of a row: the name, and its explanation in muted text. */
@@ -134,6 +137,16 @@ export function ViewMenu(props: ViewMenuProps) {
       icon: PlusIcon,
       onSelect: props.onSaveView,
     },
+    ...(props.onSaveAsOriginal === undefined
+      ? []
+      : [
+          {
+            label: "Save as original",
+            line: "Stores the current filters as Original",
+            icon: SaveIcon,
+            onSelect: props.onSaveAsOriginal,
+          },
+        ]),
   ];
 
   const choices = [
