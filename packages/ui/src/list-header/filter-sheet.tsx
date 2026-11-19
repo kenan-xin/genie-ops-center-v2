@@ -120,7 +120,10 @@ export function FilterSheet(props: {
             .filter((filter) => filter.kind !== "search")
             .map((filter) => (
               <div key={filter.id} className="grid gap-1.5">
-                <span className="text-sm font-semibold">{filter.label}</span>
+                {/* A control that shows its own label gets no heading, so the label shows once (czjw.178). */}
+                {filter.labelInControl === true ? null : (
+                  <span className="text-sm font-semibold">{filter.label}</span>
+                )}
                 <FilterSlot
                   filter={filter}
                   state={state}

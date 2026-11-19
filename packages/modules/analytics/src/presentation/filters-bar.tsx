@@ -54,6 +54,7 @@ const RANGE_FILTER: ListFilterDefinition = {
   kind: "option",
   label: "Date",
   placeholder: PRESET_LABEL.all,
+  icon: "calendar",
   options: [
     ...DATE_RANGE_PRESETS.filter((preset) => preset !== "all").map(
       (preset) => ({ value: preset, label: PRESET_LABEL[preset] })
@@ -78,7 +79,7 @@ function DateControl({ value, onChange, place }: ListFilterControlProps) {
   const [customMode, setCustomMode] = useState(custom);
   const [draft, setDraft] = useState(custom ? value : undefined);
 
-  // Follow a range the address changed, such as a reset after Save as default or a shared link.
+  // Follow a range the address changed, such as Clear filters, Reset or a shared link.
   useEffect(() => {
     setCustomMode(custom);
     setDraft(custom ? value : undefined);
@@ -364,6 +365,10 @@ export function FiltersBar(props: FiltersBarProps) {
       label: field.label,
       placeholder: "All",
       options: optionsOf(field),
+      // czjw.207: the prototype's icon for a field with none of its own; a toggle shows its switch.
+      ...(field.kind === "toggle"
+        ? { labelInControl: true as const }
+        : { icon: "filter" as const }),
     },
   }));
 
@@ -399,10 +404,14 @@ export function FiltersBar(props: FiltersBarProps) {
     });
   }
 
+  // Clear filters removes every set filter, the date range too (LH26, G18, P17-11).
   const clear = () =>
-    apply(
-      Object.fromEntries(shown.map((field) => [idOf(field.field), undefined]))
-    );
+    apply({
+      [RANGE]: undefined,
+      ...Object.fromEntries(
+        shown.map((field) => [idOf(field.field), undefined])
+      ),
+    });
 
   const state: ListState = {
     params,

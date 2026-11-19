@@ -24,9 +24,11 @@ export type ListFilterDefinition = {
   readonly placeholder: string;
   readonly options?: readonly ListOption[];
   /** A closed list that the controls map to icons. */
-  readonly icon?: "building" | "file";
+  readonly icon?: "building" | "calendar" | "file" | "filter";
   /** The bar width in px of a filter that is not its kind's width; `FilterBar` fits by it (P12-12). */
   readonly barWidth?: number;
+  /** The control shows the label itself, as a toggle does, so the Filters sheet adds no heading (czjw.178). */
+  readonly labelInControl?: true;
 };
 
 export type ListTabDefinition = {

@@ -1,7 +1,13 @@
 "use client";
 
 import { debounce } from "es-toolkit";
-import { Building2Icon, FileTextIcon, SearchIcon } from "lucide-react";
+import {
+  Building2Icon,
+  CalendarIcon,
+  FileTextIcon,
+  ListFilterIcon,
+  SearchIcon,
+} from "lucide-react";
 import {
   useEffect,
   useMemo,
@@ -55,7 +61,12 @@ export type ListFilterControl = ComponentType<ListFilterControlProps>;
 export const barWidthOf = (kind: string) =>
   kind === "search" ? 256 : kind === "date-range" ? 288 : 240;
 
-const ICONS = { building: Building2Icon, file: FileTextIcon } as const;
+const ICONS = {
+  building: Building2Icon,
+  calendar: CalendarIcon,
+  file: FileTextIcon,
+  filter: ListFilterIcon,
+} as const;
 
 /** "All customers" names the many as "customers". */
 const pluralOf = (filter: ListFilterDefinition) =>

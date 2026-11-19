@@ -245,6 +245,46 @@ export const Phone: Story = {
   },
 };
 
+// czjw.207: each filter trigger shows its icon, the date its calendar and a field the filter icon.
+export const TriggerIcons: Story = {
+  name: "Each filter trigger shows its icon",
+  globals: desktop,
+  beforeEach: opened(TWO_SET),
+  play: async ({ canvas }) => {
+    await expect(
+      (await canvas.findByLabelText("Date: Last 3 months")).querySelector(
+        "svg.lucide-calendar"
+      )
+    ).not.toBeNull();
+
+    for (const name of ["Region: North", "Customer: A, B Ltd"]) {
+      expect(
+        canvas.getByLabelText(name).querySelector("svg.lucide-list-filter")
+      ).not.toBeNull();
+    }
+  },
+};
+
+// czjw.178: a toggle shows its switch beside its label, so the sheet adds no heading for it.
+export const ToggleNamedOnce: Story = {
+  name: "The Filters sheet names a toggle once",
+  globals: phone,
+  beforeEach: opened(FOUR),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Filters 5 set" })
+    );
+
+    const sheet = within(await screen.findByRole("dialog"));
+
+    // The sheet slides in, so wait for it to settle.
+    await waitFor(() =>
+      expect(sheet.getByRole("switch", { name: "Overdue only" })).toBeVisible()
+    );
+    await expect(sheet.getAllByText("Overdue only")).toHaveLength(1);
+  },
+};
+
 // A chip's remove takes the field out of the address and saves nothing (P16f-7).
 export const RemoveChipOnPhone: Story = {
   name: "Remove a chip on a phone",
@@ -308,7 +348,32 @@ export const ClearFiltersKeepsFocus: Story = {
     );
 
     await waitFor(() => expect(addressParam("f.region")).toBeNull());
-    await expect(canvas.getByLabelText("Date: Last 3 months")).toHaveFocus();
+    await expect(canvas.getByLabelText("Date: All time")).toHaveFocus();
+  },
+};
+
+// P17-11: Clear filters resets the date range too, so it works when only a range is set.
+export const ClearRangeOnPhone: Story = {
+  name: "Clear filters clears a date range set alone",
+  globals: phone,
+  beforeEach: opened(null),
+  play: async ({ canvas }) => {
+    await userEvent.click(
+      await canvas.findByRole("button", { name: "Filters 1 set" })
+    );
+
+    const sheet = within(await screen.findByRole("dialog"));
+
+    await userEvent.click(
+      await sheet.findByRole("button", { name: "Clear filters" })
+    );
+
+    await waitFor(() => expect(addressParam("range")).toBe("all"));
+    // The Filters count goes away (Review Focus 5); `hidden` reaches the trigger behind the sheet.
+    await expect(
+      canvas.queryByRole("button", { name: /^Filters \d+ set$/, hidden: true })
+    ).toBeNull();
+    await expect(changeDashboard).not.toHaveBeenCalled();
   },
 };
 
