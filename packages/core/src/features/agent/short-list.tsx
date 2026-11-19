@@ -16,47 +16,81 @@ export function moreText(hidden: number, truncated: boolean): string {
   return `${hidden.toLocaleString("en-GB")}${truncated ? "+" : ""} more rows`;
 }
 
-/** Which amounts the rows show (czjw.118 item 11): "Amount: Total", "Amounts: Total, Paid", or none. */
-export function amountNote(
-  columns: readonly ChartColumn[]
-): string | undefined {
-  const labels = columns.flatMap((column) =>
-    column.type === "money" ? [column.label] : []
-  );
+/** The columns the card's first rows show, from a 480 px card; a narrow card shows three. */
+export const SHORT_LIST_COLUMNS = 5;
 
-  if (labels.length === 0) return undefined;
-
-  return `${labels.length === 1 ? "Amount" : "Amounts"}: ${labels.join(", ")}`;
-}
+/** A cell's class by its column and index: an id or an amount on one line, a later text cut. */
+const cellClass = (column: ChartColumn, i: number) =>
+  [
+    i >= 3 ? "hidden @lg:table-cell" : "",
+    "pe-3 last:pe-0",
+    column.type === "number" || column.type === "money"
+      ? "text-end"
+      : "text-start",
+    column.type === "text" && i > 0
+      ? "w-full max-w-0 truncate"
+      : "whitespace-nowrap",
+  ].join(" ");
 
 /**
- * The first rows of a table, one line each, the values of its columns joined with " · ". A column
- * that holds another column's currency is left out, because that amount already shows it.
+ * The first rows of a table as a small table with column headers (czjw.197, D7): the table's first
+ * columns in its own order, three in a narrow card and five from a 480 px card. An id or an amount
+ * stays on one line, and a text column after the first ends in an ellipsis. A column that holds
+ * another column's currency is left out, because that amount already shows it.
  */
-export function ShortListRows(props: { readonly data: ChartData }): ReactNode {
+export function ShortListTable(props: { readonly data: ChartData }): ReactNode {
   const { data } = props;
 
   const all = data.x === undefined ? data.columns : [data.x, ...data.columns];
 
   const currencyKeys = new Set(all.map((column) => column.currencyKey));
 
-  const columns = all.filter((column) => !currencyKeys.has(column.key));
+  const columns = all
+    .filter((column) => !currencyKeys.has(column.key))
+    .slice(0, SHORT_LIST_COLUMNS);
 
   return (
-    <ul
+    <table
       aria-label="First rows"
-      className="grid gap-1.5 text-sm text-muted-foreground tabular-nums"
+      className="w-full text-sm text-muted-foreground tabular-nums"
     >
-      {data.rows.slice(0, SHORT_LIST_ROWS).map((row, index) => (
-        <li key={index} className="truncate">
-          {columns
-            .map((column) =>
-              formatChartValue(column, row[column.key] ?? null, { row })
-            )
-            .filter((value) => value !== "")
-            .join(" · ")}
-        </li>
-      ))}
-    </ul>
+      <thead>
+        <tr className="border-b border-border">
+          {columns.map((column, i) => (
+            <th
+              key={column.key}
+              scope="col"
+              className={`${cellClass(column, i)} pb-1.5 text-xs font-semibold`}
+            >
+              {column.label}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {data.rows.slice(0, SHORT_LIST_ROWS).map((row, index) => (
+          <tr key={index}>
+            {columns.map((column, i) => {
+              const value = formatChartValue(column, row[column.key] ?? null, {
+                row,
+              });
+
+              return (
+                <td
+                  key={column.key}
+                  className={`${cellClass(column, i)} pt-1.5`}
+                >
+                  {i === 0 ? (
+                    <span className="block max-w-40 truncate">{value}</span>
+                  ) : (
+                    value
+                  )}
+                </td>
+              );
+            })}
+          </tr>
+        ))}
+      </tbody>
+    </table>
   );
 }

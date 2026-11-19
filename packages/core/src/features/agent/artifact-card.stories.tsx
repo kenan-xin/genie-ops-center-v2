@@ -26,7 +26,7 @@ const TABLE_ARTIFACT = {
   config: TABLE_CONFIG,
 };
 
-/** A table of `count` records, each with an amount in its own currency. */
+/** A table of `count` records, each with an amount in its own currency, and six columns to show. */
 function tableOf(count: number, truncated = false): ChartData {
   return {
     kind: "table",
@@ -35,11 +35,19 @@ function tableOf(count: number, truncated = false): ChartData {
       { key: "name", label: "Name", type: "text" },
       { key: "total", label: "Total", type: "money", currencyKey: "currency" },
       { key: "currency", label: "Currency", type: "text" },
+      { key: "status", label: "Status", type: "text" },
+      { key: "owner", label: "Owner", type: "text" },
+      { key: "region", label: "Region", type: "text" },
+      { key: "team", label: "Team", type: "text" },
     ],
     rows: Array.from({ length: count }, (_, index) => ({
       name: `Record ${index + 1}`,
       total: 120_000 + index,
       currency: "SGD",
+      status: "Open",
+      owner: "Alex",
+      region: "North",
+      team: "Sales",
     })),
     datasets: ["example.items"],
     readAt: "2026-10-30T06:05:00Z",
@@ -79,6 +87,15 @@ function withChartCheck(check: CheckChart): Decorator {
 
 const openTable = fn();
 
+/** The visible column headers of the card's first rows, in order. */
+async function headersOf(canvas: ReturnType<typeof within>) {
+  const table = await canvas.findByRole("table", { name: "First rows" });
+
+  return within(table)
+    .getAllByRole("columnheader")
+    .map((header) => header.textContent);
+}
+
 /**
  * One artifact an answer made: its kind, title and version. In Ask it opens the artifact panel and
  * marks the shown version; in the agent panel it links to Ask; while its answer streams it waits.
@@ -92,7 +109,7 @@ const meta = {
     docs: {
       description: {
         component:
-          'The card of a chart or a table an answer made (R-45a, AG24). `action` `panel` opens the artifact panel in Ask ("Open", or "Showing" with `aria-pressed` for the shown version); `link` goes to the artifact in Ask. Until its answer is stored, the card reads "Ready when the answer ends" and is disabled. A table card reads its rows through the chart gate as the viewer and shows the first 5, one line each, under its header. Its footer holds "7 more rows", which opens the full list, and a note that names the amounts the rows show (R-44a, czjw.118).',
+          'The card of a chart or a table an answer made (R-45a, AG24). `action` `panel` opens the artifact panel in Ask ("Open", or "Showing" with `aria-pressed` for the shown version); `link` goes to the artifact in Ask. Until its answer is stored, the card reads "Ready when the answer ends" and is disabled. A table card reads its rows through the chart gate as the viewer and shows the first 5 as a small table with column headers, three columns in a narrow card and five from a 480 px card (czjw.197). Its footer holds "7 more rows", which opens the full list (R-44a).',
       },
     },
     a11y: { test: "error" },
@@ -123,7 +140,9 @@ export const InAsk: Story = {
     await expect(
       canvas.getByRole("button", { name: /^Quantity by record/ })
     ).toBeVisible();
-    await expect(canvas.queryByRole("list", { name: "First rows" })).toBeNull();
+    await expect(
+      canvas.queryByRole("table", { name: "First rows" })
+    ).toBeNull();
   },
 };
 
@@ -169,13 +188,29 @@ export const TableInAsk: Story = {
   beforeEach: () => {
     openTable.mockClear();
   },
+  // From a 480 px card the preview shows five columns (czjw.197).
+  decorators: [
+    (Story) => (
+      <div style={{ width: 560 }}>
+        <Story />
+      </div>
+    ),
+  ],
   play: async ({ canvas }) => {
-    const list = await canvas.findByRole("list", { name: "First rows" });
+    await expect(await headersOf(canvas)).toEqual([
+      "Name",
+      "Total",
+      "Status",
+      "Owner",
+      "Region",
+    ]);
 
-    const lines = within(list).getAllByRole("listitem");
+    const table = canvas.getByRole("table", { name: "First rows" });
 
-    await expect(lines).toHaveLength(5);
-    await expect(lines[0]).toHaveTextContent("Record 1 · SGD 1,200.00");
+    const rows = within(table).getAllByRole("row").slice(1);
+
+    await expect(rows).toHaveLength(5);
+    await expect(rows[0]).toHaveTextContent(/^Record 1SGD\s1,200\.00Open/);
     await expect(canvas.queryByText(/Record 6/)).toBeNull();
 
     await userEvent.click(canvas.getByRole("button", { name: /^7 more/ }));
@@ -191,15 +226,13 @@ export const ShortTable: Story = {
   args: { artifact: TABLE_ARTIFACT },
   decorators: [withChartCheck(answering(tableOf(4)))],
   play: async ({ canvas }) => {
-    const list = await canvas.findByRole("list", { name: "First rows" });
+    // The amount carries its currency, so the currency column is not a column of its own.
+    await expect(await headersOf(canvas)).toEqual(["Name", "Total", "Status"]);
 
-    const lines = within(list).getAllByRole("listitem");
+    const table = canvas.getByRole("table", { name: "First rows" });
 
-    await expect(lines).toHaveLength(4);
-    // The amount carries its currency, so the currency column is not a field of its own.
-    await expect(lines[0]?.textContent).toMatch(/^Record 1 · SGD\s1,200\.00$/);
+    await expect(within(table).getAllByRole("row")).toHaveLength(5);
     await expect(canvas.queryByText(/more/)).toBeNull();
-    await expect(canvas.getByText("Amount: Total")).toBeVisible();
   },
 };
 
@@ -223,7 +256,7 @@ export const CutTable: Story = {
     await expect(
       canvas.getByRole("button", { name: /^Records/ })
     ).toHaveTextContent("Table · 1,000+ rows");
-    await expect(canvas.getByText("Amount: Total")).toBeVisible();
+    await expect(await headersOf(canvas)).toEqual(["Name", "Total", "Status"]);
 
     await userEvent.click(more);
     await expect(openTable).toHaveBeenCalledWith({
@@ -245,6 +278,66 @@ export const TableOnAPhone: Story = {
       </div>
     ),
   ],
+  play: async ({ canvas }) => {
+    // A narrow card shows three columns (czjw.197).
+    await expect(await headersOf(canvas)).toEqual(["Name", "Total", "Status"]);
+  },
+};
+
+/** Whether an element shows its whole text, with nothing cut off. */
+const whole = (element: Element | null | undefined) =>
+  element !== null &&
+  element !== undefined &&
+  element.scrollWidth <= element.clientWidth;
+
+/** An id and an amount show whole on a phone, and a long name ends in an ellipsis (czjw.94). */
+export const TableKeepsIdsWhole: Story = {
+  name: "Table keeps ids whole",
+  args: { artifact: TABLE_ARTIFACT },
+  globals: { viewport: { value: "phone390", isRotated: false } },
+  decorators: [
+    withChartCheck(
+      answering({
+        ...tableOf(1),
+        columns: [
+          { key: "number", label: "Invoice", type: "text" },
+          { key: "customer", label: "Customer", type: "text" },
+          {
+            key: "total",
+            label: "Total",
+            type: "money",
+            currencyKey: "currency",
+          },
+          { key: "currency", label: "Currency", type: "text" },
+        ],
+        rows: [
+          {
+            number: "INV-2026-08-04",
+            customer:
+              "Northern Harbour Logistics and Cold Storage Holdings Limited",
+            total: 405_000,
+            currency: "SGD",
+          },
+        ],
+      })
+    ),
+    (Story) => (
+      <div style={{ width: 358 }}>
+        <Story />
+      </div>
+    ),
+  ],
+  play: async ({ canvas }) => {
+    const table = await canvas.findByRole("table", { name: "First rows" });
+
+    const [id, name, amount] = within(table).getAllByRole("cell");
+
+    await expect(id).toHaveTextContent("INV-2026-08-04");
+    await expect(whole(id?.querySelector("span"))).toBe(true);
+    await expect(amount?.textContent).toMatch(/^SGD\s4,050\.00$/);
+    await expect(whole(amount)).toBe(true);
+    await expect(whole(name)).toBe(false);
+  },
 };
 
 export const TableInThePanel: Story = {
@@ -263,5 +356,6 @@ export const TableInThePanel: Story = {
     });
 
     await expect(more).toHaveAttribute("href", "/ask/chat-1?artifact=2");
+    await expect(await headersOf(canvas)).toEqual(["Name", "Total", "Status"]);
   },
 };

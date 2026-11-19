@@ -7,12 +7,7 @@ import type { ReactNode } from "react";
 import { type Read, rowsText } from "./answer-sources.ts";
 import type { ArtifactRef, CardArtifact } from "./artifact-refs.ts";
 import { useGatedChart } from "./gated-chart.tsx";
-import {
-  amountNote,
-  moreText,
-  SHORT_LIST_ROWS,
-  ShortListRows,
-} from "./short-list.tsx";
+import { moreText, SHORT_LIST_ROWS, ShortListTable } from "./short-list.tsx";
 
 /**
  * What a card and a rows link do in this frame (AG12, czjw.108): in Ask they open the artifact or a
@@ -47,10 +42,10 @@ type PreviewOpen =
   | { readonly kind: "link"; readonly href: string };
 
 /**
- * The first rows of a table card, then a footer with how many more and which amounts the rows show
- * (R-44a, FL1, czjw.118). It reads the gate as the viewer
- * with the panel's query key, so opening the panel reads nothing twice. A refused read shows no
- * preview, and the card still opens the panel, which shows the refusal.
+ * The first rows of a table card, then a footer with how many more (R-44a, FL1, czjw.118). It
+ * reads the gate as the viewer with the panel's query key, so opening the panel reads nothing
+ * twice. A refused read shows no preview, and the card still opens the panel, which shows the
+ * refusal.
  */
 export function TablePreview(props: {
   // oxlint-disable-next-line anti-slop/no-unknown-parameters -- the model's raw panel config; the gate is its parser
@@ -99,23 +94,14 @@ export function TablePreview(props: {
       </button>
     );
 
-  const note = amountNote(
-    data.x === undefined ? data.columns : [data.x, ...data.columns]
-  );
-
   return (
     <>
-      <div className="min-w-0 px-4 py-2.5">
-        <ShortListRows data={data} />
+      <div className="@container min-w-0 overflow-hidden px-4 py-2.5">
+        <ShortListTable data={data} />
       </div>
-      {more === null && note === undefined ? null : (
+      {more === null ? null : (
         <div className="flex items-center gap-3 border-t border-border px-4 pt-2.5 pb-3">
           {more}
-          {note === undefined ? null : (
-            <span className="ms-auto text-xs text-muted-foreground">
-              {note}
-            </span>
-          )}
         </div>
       )}
     </>

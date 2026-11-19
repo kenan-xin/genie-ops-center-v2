@@ -106,7 +106,10 @@ test("a list answer shows 5 rows and how many more, opens the full list, and mak
       // 1. The table card shows its first 5 rows and how many more.
       await askQuestion(page, "List all invoices.");
       await expect(
-        page.getByRole("list", { name: "First rows" }).getByRole("listitem")
+        page
+          .getByRole("table", { name: "First rows" })
+          .locator("tbody")
+          .getByRole("row")
       ).toHaveCount(5, FIRST_PAINT);
 
       const more = page

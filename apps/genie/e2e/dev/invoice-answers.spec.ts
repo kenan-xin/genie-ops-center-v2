@@ -70,9 +70,10 @@ const card = (page: Page, title: string) =>
 /** The first rows of the answer's `index`th table card, in the order the answer made them. */
 const firstRows = (page: Page, index: number) =>
   page
-    .getByRole("list", { name: "First rows" })
+    .getByRole("table", { name: "First rows" })
     .nth(index)
-    .getByRole("listitem");
+    .locator("tbody")
+    .getByRole("row");
 
 /** Opens a card in the artifact panel and answers the panel's table of that title. */
 async function openCard(page: Page, title: string) {
@@ -216,7 +217,7 @@ test("the late payer answer shows the counts per customer without links and the 
       await Promise.all(
         ["ABC Trading", "Harbor Foods", "Orchid Retail"].map((name) =>
           expect(
-            page.getByRole("list", { name: "First rows" }).first()
+            page.getByRole("table", { name: "First rows" }).first()
           ).toContainText(name)
         )
       );

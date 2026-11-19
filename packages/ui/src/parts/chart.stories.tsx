@@ -970,6 +970,72 @@ export const LineInAPhoneAnswer: Story = {
   play: smallChartPlay,
 };
 
+const wideTable = {
+  ...noAxis,
+  kind: "table",
+  title: "Invoices",
+  // The meta's `x` reaches every story, so the id column is `x`, as in `linked`. The id is wider
+  // than the identity cell's 128 px floor, so without `whitespace-nowrap` it would wrap.
+  x: { key: "Invoice", label: "Invoice", type: "text" },
+  columns: [
+    "Customer",
+    "Status",
+    "Issued on",
+    "Due on",
+    "Owner",
+    "Region",
+    "Team",
+    "Terms",
+    "Reference",
+  ].map((label) => ({ key: label, label, type: "text" as const })),
+  rows: [
+    {
+      "Invoice": "INV-2026-10-06-SG-00042",
+      "Customer": "Harbor Foods",
+      "Status": "Open",
+      "Issued on": "6 Oct 2026",
+      "Due on": "5 Nov 2026",
+      "Owner": "Alex Tan",
+      "Region": "North",
+      "Team": "Sales",
+      "Terms": "Net 30",
+      "Reference": "PO-88213",
+    },
+  ],
+} satisfies ChartProps;
+
+/** H7 on czjw.94: an id in the first column stays on one line, and the table scrolls sideways. */
+export const TableInANarrowPanel: Story = {
+  name: "Table in a narrow panel",
+  args: wideTable,
+  globals: desktop,
+  render: (args: ChartProps) => (
+    <div style={{ width: 460 }}>
+      <Chart {...args} />
+    </div>
+  ),
+  play: async ({ canvas, canvasElement }) => {
+    const table = canvas.getByRole("table", { name: "Invoices" });
+
+    const id = within(table)
+      .getAllByRole("cell")[0]
+      ?.querySelector("span span");
+
+    await expect(id).toHaveTextContent("INV-2026-10-06-SG-00042");
+    await expect(id?.getClientRects()).toHaveLength(1);
+
+    const container = canvasElement.querySelector(
+      "[data-slot=table-container]"
+    );
+
+    await expect(container?.scrollWidth).toBeGreaterThan(
+      container?.clientWidth ?? Infinity
+    );
+    // A table that scrolls takes a tab stop, so a keyboard can scroll it.
+    await waitFor(() => expect(container).toHaveAttribute("tabindex", "0"));
+  },
+};
+
 const slideTable = { ...records, slide: true } as const satisfies ChartProps;
 
 const slideTablePlay: Story["play"] = async ({ canvas }) => {

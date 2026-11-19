@@ -263,7 +263,16 @@ function ChartTable(props: {
   const columns =
     first === undefined
       ? rest
-      : [{ ...first, cell: (row: ChartRow) => linked(row) }, ...rest];
+      : [
+          {
+            ...first,
+            // An id in the first column stays on one line, and the table scrolls sideways (czjw.197, the owner's H7 note on czjw.94).
+            cell: (row: ChartRow) => (
+              <span className="whitespace-nowrap">{linked(row)}</span>
+            ),
+          },
+          ...rest,
+        ];
 
   const table = (
     <DataTable
